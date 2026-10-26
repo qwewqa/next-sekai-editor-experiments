@@ -40,6 +40,7 @@ import { PRODUCT_NAME } from '../../../product'
 import { settings } from '../../../settings'
 import type { State } from '../../../state'
 import { getFilename } from '../../../utils/file'
+import { inlineName } from '../../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
@@ -143,7 +144,8 @@ const restoreAction = (sessionId: string) => ({
     },
 })
 
-const earlierMessage = (notice: EarlierNotice, name: string) => {
+const earlierMessage = (notice: EarlierNotice, fileName: string) => {
+    const name = inlineName(fileName)
     const when = formatDateInSentence(notice.chain.updatedAt)
     const { open } = i18n.value
     switch (notice.kind) {
@@ -157,7 +159,8 @@ const earlierMessage = (notice: EarlierNotice, name: string) => {
 }
 
 /** The open's own line: "Opened coconut.nxsp". */
-const openedLine = (name: string) => interpolate(() => i18n.value.history.openedFile, name)
+const openedLine = (name: string) =>
+    interpolate(() => i18n.value.history.openedFile, inlineName(name))
 
 /**
  * Shows the open's notice: an earlier session's, or "Opened coconut.nxsp" with Reopen (none when
@@ -370,7 +373,7 @@ const openRequestedProject = async (
     // Values this build doesn't know: nothing opens before the user confirms.
     if (report.hasUnknownValue) {
         const choice = await showChoice({
-            title: interpolate(() => i18n.value.open.newerValues.title, file.name),
+            title: interpolate(() => i18n.value.open.newerValues.title, inlineName(file.name)),
             message: () => i18n.value.open.newerValues.body,
             choices: [
                 { value: true, label: () => i18n.value.open.newerValues.openCopy, default: true },
@@ -602,7 +605,10 @@ const openRequestedProject = async (
     if (bound === 'yes')
         showRows([
             {
-                message: interpolate(() => i18n.value.notice.sameFileElsewhere, file.name),
+                message: interpolate(
+                    () => i18n.value.notice.sameFileElsewhere,
+                    inlineName(file.name),
+                ),
                 severity: 'info',
             },
             ...(patchRow ? [patchRow] : []),

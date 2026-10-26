@@ -3,6 +3,7 @@ import { languageTag } from '../i18n/plural'
 import { formatWhen } from '../i18n/when'
 import { stemOf } from '../local/names'
 import { settings } from '../settings'
+import { inlineName } from '../utils/inlineName'
 import { interpolateRaw } from '../utils/interpolate'
 
 // The file part of a session's label, from plain inputs: the status bar calls it
@@ -76,7 +77,7 @@ export const labelOf = ({
 }: LabelInput): StatusLabel => {
     if (file) {
         // The file Save writes to is always on screen: the bare name when it is the stem.
-        const stem = stemOf(file.name) === name
+        const stem = inlineName(stemOf(file.name)) === inlineName(name)
         const { file: strings } = i18n.value
         // A download browser adds the state: Save there downloads a new copy, it writes no file.
         const event = writesInPlace
@@ -92,22 +93,22 @@ export const labelOf = ({
             .filter(Boolean)
             .join(' · ')
         return {
-            name: stem ? '' : name,
-            file: file.name,
+            name: stem ? '' : inlineName(name),
+            file: inlineName(file.name),
             ...(state ? { state } : {}),
             changed,
         }
     }
     if (copyOf)
         return {
-            name,
+            name: inlineName(name),
             // An untitled source is the copy's own date name already; the label says only "copy".
             state: copyOf.name
-                ? interpolateRaw(fragment(i18n.value.status.separateCopy), copyOf.name)
+                ? interpolateRaw(fragment(i18n.value.status.separateCopy), inlineName(copyOf.name))
                 : fragment(i18n.value.status.separateCopyShort),
             changed: false,
         }
-    return { name, state: fragment(i18n.value.status.notInFile), changed: false }
+    return { name: inlineName(name), state: fragment(i18n.value.status.notInFile), changed: false }
 }
 
 /** The label as one line, joined with " · ", with the "•" when the file has changes. */
@@ -130,5 +131,5 @@ export const labelAccessibleName = (
             : file.event === 'opened'
               ? status.changedOpened
               : status.changedDownload
-    return interpolateRaw(template, shown, file.name)
+    return interpolateRaw(template, inlineName(shown), inlineName(file.name))
 }

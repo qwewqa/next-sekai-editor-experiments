@@ -8,6 +8,7 @@ import type { MediaKind } from '../../local/save/media'
 import { showModal } from '../../modals'
 import { showChoice, type Choice } from '../../modals/choice'
 import { PRODUCT_NAME } from '../../product'
+import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
@@ -201,7 +202,7 @@ const describe = (disk: DiskVersion) => {
         case 'otherProject':
             return disk.name === undefined
                 ? conflict.otherProjectUnnamed
-                : interpolate(() => conflict.otherProject, disk.name)()
+                : interpolate(() => conflict.otherProject, inlineName(disk.name))()
         case 'notDescendant':
             return interpolate(() => conflict.notDescendant, formatDate(disk.savedAt))()
         case 'unknown':
@@ -237,14 +238,14 @@ export const savedText = (feedback: SavedFeedback) => {
     if (feedback.kind === 'download') {
         const first = interpolate(
             () => save.downloadStarted,
-            feedback.name,
+            inlineName(feedback.name),
             () => formatSize(feedback.size),
         )()
         return withLine(first)
     }
     const without = withoutKey(feedback)
     if (without) {
-        const first = interpolate(() => without, feedback.name)()
+        const first = interpolate(() => without, inlineName(feedback.name))()
         return withLine(first)
     }
     if (feedback.stepsLine !== 'none')
@@ -253,9 +254,9 @@ export const savedText = (feedback: SavedFeedback) => {
                 feedback.stepsLine === 'notKept'
                     ? save.someStepsNotKept
                     : save.someStepsMayNotBeIncluded,
-            feedback.name,
+            inlineName(feedback.name),
         )()
-    return interpolate(() => save.saved, feedback.name)()
+    return interpolate(() => save.saved, inlineName(feedback.name))()
 }
 
 /** The defaults: the editor's choice dialogs and notices. */
@@ -297,9 +298,12 @@ export const defaultSaveUi: SaveUi = {
     },
     conflict: (input) =>
         showChoice<ConflictChoice>({
-            title: interpolate(() => i18n.value.conflict.title, input.name),
+            title: interpolate(() => i18n.value.conflict.title, inlineName(input.name)),
             message: () =>
-                [interpolate(() => i18n.value.conflict.body, input.name)(), describe(input.disk)]
+                [
+                    interpolate(() => i18n.value.conflict.body, inlineName(input.name))(),
+                    describe(input.disk),
+                ]
                     .filter(Boolean)
                     .join('\n'),
             // Cancel, Replace (danger), Open the Other Version, then Save as a Separate File…,
@@ -323,13 +327,13 @@ export const defaultSaveUi: SaveUi = {
     notFound: (name) =>
         showChoice({
             title,
-            message: interpolate(() => i18n.value.save.notFound, name),
+            message: interpolate(() => i18n.value.save.notFound, inlineName(name)),
             choices: [saveAsChoice(true)],
         }),
     denied: (name) =>
         showChoice<'saveAs' | 'tryAgain'>({
             title,
-            message: interpolate(() => i18n.value.save.denied, name),
+            message: interpolate(() => i18n.value.save.denied, inlineName(name)),
             choices: [
                 saveAsChoice(false),
                 { value: 'tryAgain', label: () => i18n.value.save.tryAgain, default: true },
@@ -338,7 +342,7 @@ export const defaultSaveUi: SaveUi = {
     readOnly: (name) =>
         showChoice({
             title,
-            message: interpolate(() => i18n.value.save.readOnly, name),
+            message: interpolate(() => i18n.value.save.readOnly, inlineName(name)),
             choices: [saveAsChoice(true)],
         }),
     failed: async (_name, message, saveAs) => {
@@ -356,13 +360,13 @@ export const defaultSaveUi: SaveUi = {
         const { save } = i18n.value
         const message =
             reason === 'notKept'
-                ? interpolate(() => i18n.value.save.notKept, name)
+                ? interpolate(() => i18n.value.save.notKept, inlineName(name))
                 : reason === 'safeMode'
                   ? () => i18n.value.save.notKeptSafe
                   : reason === 'levelData'
                     ? () =>
-                          `${interpolate(() => i18n.value.save.notProject, name)()}\n${save.exportHint}`
-                    : interpolate(() => i18n.value.save.notProject, name)
+                          `${interpolate(() => i18n.value.save.notProject, inlineName(name))()}\n${save.exportHint}`
+                    : interpolate(() => i18n.value.save.notProject, inlineName(name))
         return showChoice<'chooseAnother' | 'export'>({
             title,
             message,
@@ -386,7 +390,7 @@ export const defaultSaveUi: SaveUi = {
         const unconfirmed = feedback.kind === 'download' && downloadNotConfirmed.value
         const text =
             feedback.kind === 'saved' && isPeeking.value && simple(feedback)
-                ? interpolate(() => i18n.value.notice.savedCurrent, feedback.name)
+                ? interpolate(() => i18n.value.notice.savedCurrent, inlineName(feedback.name))
                 : () => savedText(feedback)
         // The chip it names is only shown when no higher state (Not stored) takes its place.
         const pointer = interpolate(
@@ -417,7 +421,7 @@ export const defaultSaveUi: SaveUi = {
                   ? () => i18n.value.save.noChangesOpened
                   : () => i18n.value.save.noChanges
         notify(
-            interpolate(key, name),
+            interpolate(key, inlineName(name)),
             downloadAgain
                 ? { action: { label: () => i18n.value.save.downloadAgain, run: downloadAgain } }
                 : undefined,

@@ -8,6 +8,7 @@ import { typeNoun } from '../../../preview/assets/fallbackText'
 import type { AssetChooser } from '../../../preview/assets/files/chooser'
 import type { ServerChooser } from '../../../preview/assets/server/chooser'
 import { serverFailureText } from '../../../preview/assets/server/liveText'
+import { inlineName } from '../../../utils/inlineName'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { pickFile } from '../../../utils/file'
 import WaitBar from '../../workspace/WaitBar.vue'
@@ -133,7 +134,7 @@ watch(serverPhase, async (now, before) => {
 })
 
 const alsoText = (option: (typeof also.value)[number]) =>
-    interpolateRaw(strings.value.alsoFile, typeNoun(option.type), option.title)
+    interpolateRaw(strings.value.alsoFile, typeNoun(option.type), inlineName(option.title))
 
 const baseClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 const buttonClass = `${baseClass} btn-secondary`

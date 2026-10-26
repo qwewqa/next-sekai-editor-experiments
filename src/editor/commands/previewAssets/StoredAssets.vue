@@ -14,6 +14,7 @@ import {
 import { displayOrigin } from '../../../preview/assets/serverUrl'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
+import { inlineName } from '../../../utils/inlineName'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { formatSize } from '../exportLevel/format'
 import SeverityIcon from '../../SeverityIcon.vue'
@@ -51,7 +52,7 @@ const remove = async (row: (typeof rows.value)[number]) => {
         message: () =>
             interpolateRaw(
                 row.users.length ? strings.value.removeInUse : strings.value.removeUnused,
-                row.meta.title,
+                inlineName(row.meta.title),
             ),
         choices: [{ value: true, label: () => strings.value.remove, danger: true }],
         // Nothing is removed by a stray Enter.

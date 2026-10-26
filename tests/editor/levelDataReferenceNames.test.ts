@@ -33,7 +33,7 @@ const roundTrip = (entities: LevelDataEntity[]) => {
         state.groups,
         state.stages,
     )
-    return { chart, written }
+    return { chart, written: written as LevelDataEntity[] }
 }
 
 for (const name of inherited) {

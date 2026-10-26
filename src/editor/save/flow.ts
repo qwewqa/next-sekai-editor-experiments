@@ -34,6 +34,7 @@ import { PRODUCT_NAME } from '../../product'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import type { State } from '../../state'
+import { inlineName } from '../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { fileError } from '../commands/exportLevel/errorText'
 import { validName } from '../commands/exportLevel/fileName'
@@ -1335,7 +1336,7 @@ export const afterOutcome = async (
             await dialogSave(
                 env,
                 'saveAs',
-                [interpolate(() => i18n.value.open.damagedHistory, outcome.name)],
+                [interpolate(() => i18n.value.open.damagedHistory, inlineName(outcome.name))],
                 true,
             )
             return
@@ -1617,7 +1618,7 @@ const dialogSave = async (
     const name = await suggestion(env, copy ? copyStem(stem, !!binding.file) : stem)
     const replaced = binding.replaced
     const replacedLine = replaced
-        ? [interpolate(() => i18n.value.file.replacedElsewhere, replaced.name)]
+        ? [interpolate(() => i18n.value.file.replacedElsewhere, inlineName(replaced.name))]
         : []
     // This chain's own file read first, when it may hold what storage lacks: for every kind,
     // since any picker may return it.

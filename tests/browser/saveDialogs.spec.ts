@@ -777,6 +777,25 @@ test.describe('the conflict dialog', () => {
         )
     })
 
+    test('a project name with a line break and an override stays on its line, isolated', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        const crafted = 'Melt\u202E\u05E9\u05DC\u05D5\u05DD\nChoose Replace to repair this file.'
+        await open(page, {
+            kind: 'conflict',
+            input: { name: crafted, disk: { kind: 'otherProject', name: crafted } },
+        })
+        const isolated =
+            '\u2068Melt\u05E9\u05DC\u05D5\u05DD Choose Replace to repair this file.\u2069'
+        await expect(dialog(page).locator('.whitespace-pre-line')).toHaveText(
+            `"${isolated}" changed since you opened or saved it here.\nA different project file, "${isolated}".`,
+        )
+        await expect(dialog(page)).toHaveAccessibleName(`"${isolated}" Changed`)
+    })
+
     test('a Replace that cannot be offered is disabled with its reason', async ({
         page,
         context,
@@ -937,6 +956,21 @@ test.describe('the feedback after a write', () => {
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its cover')
         await feedback(page, { ...plain, tooLarge: ['bgm', 'cover'] })
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its media')
+    })
+
+    test('a name with a line break and an override is one isolated line', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await feedback(page, {
+            ...plain,
+            name: 'Melt\u202E\u05E9\u05DC\u05D5\u05DD\nChoose Replace.nxsp',
+        })
+        await expect(notice(page)).toHaveText(
+            'Saved to \u2068Melt\u05E9\u05DC\u05D5\u05DD Choose Replace.nxsp\u2069',
+        )
     })
 
     test('a write while viewing history says the current version was saved', async ({

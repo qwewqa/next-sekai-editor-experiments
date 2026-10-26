@@ -5,6 +5,7 @@ import { i18n } from '../../../i18n'
 import BaseModal from '../../../modals/BaseModal.vue'
 import type { ReadyPrompt } from '../../../platform'
 import type { ReadResult } from '../../save/pickSession'
+import { inlineName } from '../../../utils/inlineName'
 import { interpolate } from '../../../utils/interpolate'
 import { buildLevelData } from './build'
 import { nameProblem, showsAtOnce } from './fileName'
@@ -77,7 +78,7 @@ const targetLabel = computed(() =>
                   props.target?.exported
                       ? i18n.value.export.targetLast
                       : i18n.value.export.targetOpened,
-              props.target.name,
+              inlineName(props.target.name),
           )()
         : '',
 )
@@ -101,7 +102,7 @@ const readyText = computed(() =>
     preparing.value
         ? interpolate(
               () => i18n.value.save.ready,
-              preparing.value.name,
+              inlineName(preparing.value.name),
               formatSize(preparing.value.size),
           )()
         : '',

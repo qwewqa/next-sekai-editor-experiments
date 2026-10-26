@@ -1,6 +1,7 @@
 import { i18n } from '../../i18n'
 import { formatWhen } from '../../i18n/when'
 import { showChoice, type Choice } from '../../modals/choice'
+import { inlineName } from '../../utils/inlineName'
 import { interpolateRaw } from '../../utils/interpolate'
 import { runCommand } from '../commands/runCommand'
 import { save } from '../commands/save'
@@ -35,7 +36,7 @@ export const chipText = (kind: ChipKind) => {
 /** A state as a sentence: the chip's accessible name and its line in a higher state's dialog. */
 export const chipSentence = (kind: ChipKind) => {
     const file = boundFile.value
-    const name = file?.name ?? ''
+    const name = inlineName(file?.name ?? '')
     const { state, save, confirm } = i18n.value
     switch (kind) {
         case 'fileMissing':
@@ -171,8 +172,9 @@ export const openChipDialog = async () => {
         case 'newerOnDisk': {
             // Keep Editing is the safe default, in Cancel's place.
             const choice = await showChoice<'open'>({
-                title: () => interpolateRaw(i18n.value.conflict.title, file.name),
-                message: () => lines(interpolateRaw(i18n.value.conflict.body, file.name), rest),
+                title: () => interpolateRaw(i18n.value.conflict.title, inlineName(file.name)),
+                message: () =>
+                    lines(interpolateRaw(i18n.value.conflict.body, inlineName(file.name)), rest),
                 cancelIsDefault: true,
                 cancelLabel: () => i18n.value.conflict.keepEditing,
                 choices: [
