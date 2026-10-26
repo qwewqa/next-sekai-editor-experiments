@@ -63,7 +63,7 @@ export const runWarmUp = async (groups: readonly (readonly Load[])[], env: WarmU
 }
 
 const idle = (run: () => void) => {
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 10_000 })
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 1000 })
     else setTimeout(run, 1000)
 }
 
