@@ -547,6 +547,20 @@ watch([room, short, height, isCoarsePointer], async () => {
     await follow()
 })
 
+// Tab moving focus on to a node outside the toolbar closes the flyout. A pointer press and a
+// program's focus belong to the pointer handlers, and a dialog takes focus from a pick.
+let tabbing = false
+const onTab = () => {
+    tabbing = true
+    setTimeout(() => (tabbing = false))
+}
+const onFocusOut = (event: FocusEvent) => {
+    const next = event.relatedTarget
+    if (!tabbing || activeIndex.value === -1 || !(next instanceof Element)) return
+    if (root.value?.contains(next) || next.closest('dialog')) return
+    activeIndex.value = -1
+}
+
 // Escape ends a quick switch press, and closes an open flyout, returning focus to its tool.
 const onKeydown = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return
@@ -590,6 +604,8 @@ onBeforeUnmount(() => {
             paddingInline: toolbarPadding(isCoarsePointer),
             '--tool-size': `${toolRows.size}px`,
         }"
+        @keydown.tab="onTab"
+        @focusout="onFocusOut"
     >
         <div
             class="flex flex-wrap justify-center"
