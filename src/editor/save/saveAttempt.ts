@@ -190,8 +190,8 @@ export const withSaveAttempt = async <T>(
                     // In one step: what the Save saves is the state its `seq` was reserved in.
                     return { reservation, state: savedState() }
                 }
-                // None free: no current session, or another flow holds it.
-                if (!wait || env.flusher.session?.reserved === undefined) return
+                // None free: another flow holds it.
+                if (!wait || env.session.reserved === undefined) return
                 arm()
                 await env.flusher.reservationEnded(signal)
                 if (signal.aborted) {
