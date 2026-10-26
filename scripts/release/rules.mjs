@@ -112,5 +112,6 @@ export const localChecks = [
     'npm run build:release',
     'npm run test:production',
     'npm run check:release',
+    'npm run test:browser',
     'npm run test:compatibility',
 ]

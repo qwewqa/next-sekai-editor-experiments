@@ -47,7 +47,7 @@ A hook is one call into `tally.ts`, or a read by the client. Nothing else on a h
 | `local/start.ts` | `note('reload')` when the tab's claim is its own reload |
 | Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed. Save and Export add `buildMs`, read from the clock on either side of the build await that already exists in their flows (`runBuild` and the Recent Sessions Save… build, and the `build` wrapper in `exportLevel/flow.ts`). No hook adds an await. Check adds `scope` and `size` from the plan it already holds. All but Export also call `busy` while they run, as Restore does, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
 | `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, autoscroll, Quick Switch | `features.<name>` and `peekShown` |
-| `history/index.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
+| `history/index.ts`, `editor/save/report.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
 | The preview worker host | `record('preview', …)` when the worker fails and the main thread takes over |
 | The editor canvas | `note('graphicsUnavailable')` when its renderer fails |
 
@@ -147,7 +147,7 @@ Umami's own visit counts, durations and bounce rates are wrong for this client. 
 
 1. Add it to `catalogue.ts`, with a closed set of values or a range, and to the table above.
 2. Hook it with one `bump`, `bumpCommand` or `record` at the place that already knows the value. Never compute something on a hot path for it.
-3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value.
+3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value. A renamed or removed property also changes `infra/stats/scripts/contract-events.json` and the saved queries in `infra/stats/queries/` that read it. Infra check runs them.
 4. Map it to a category in `tests/editor/analyticsPrivacy.test.ts`. If it is a new kind of data, add a line to the privacy page, give it a category, and change the page's date.
 5. Add a CHANGELOG line.
 
