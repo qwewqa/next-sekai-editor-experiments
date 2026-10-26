@@ -64,7 +64,7 @@ After a major Umami upgrade, refresh the query planner’s statistics. The night
 
 ## Operations
 
-Some commands run from your machine and take `--profile nse-prod`. The others run on the instance. To get a shell on it, run `aws ssm start-session --profile nse-prod --target <instance id>` from your machine, then `sudo -i`. On Windows, run it in PowerShell: the Git Bash terminal is not a Windows console, which a shell session needs. The instance id and the bucket name are outputs of the `nse-stats` stack (`aws cloudformation describe-stacks --profile nse-prod --stack-name nse-stats --query 'Stacks[0].Outputs'`). On the instance, the Compose command is:
+Some commands run from your machine and take `--profile nse-prod`. The others run on the instance. To get a shell on it, run `aws ssm start-session --profile nse-prod --target <instance id>` from your machine, then `sudo -i`. On Windows, run it in PowerShell. A shell session needs a Windows console, and the Git Bash terminal is not one. The instance id and the bucket name are outputs of the `nse-stats` stack (`aws cloudformation describe-stacks --profile nse-prod --stack-name nse-stats --query 'Stacks[0].Outputs'`). On the instance, the Compose command is:
 
 ```sh
 cd /opt/nse-stats
