@@ -1,9 +1,7 @@
-import { readMeta } from './db'
 import type { KvTx } from './kv/types'
 import type { NameParts } from './names'
 import { readRecentChains, type RecentFile, type RecentReadable } from './recent'
 import { fileAtOf, ids } from './removal'
-import { nextTime } from './time'
 
 // What Delete Sessions… reads of the stored chains,
 // in one transaction: every chain not marked for Delete, with the facts the page needs for the
@@ -28,15 +26,11 @@ export type DeleteCandidate = {
     hasContent: boolean
 }
 
-export type DeleteCandidates = { now: number; chains: DeleteCandidate[] }
-
 /**
- * The worker's `now` and the chains. A chain without a readable head (Recent Sessions lists it as
- * damaged) is included, with no `head`: a removal is expected against none, and it counts as not
- * saved to a file.
+ * The chains. A chain without a readable head (Recent Sessions lists it as damaged) is included,
+ * with no `head`: a removal is expected against none, and it counts as not saved to a file.
  */
-export const readDeleteCandidates = async (tx: KvTx, wall: number): Promise<DeleteCandidates> => {
-    const now = nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, wall)
+export const readDeleteCandidates = async (tx: KvTx): Promise<DeleteCandidate[]> => {
     const chains: DeleteCandidate[] = []
     for (const { recent, record, sessions } of await readRecentChains(tx)) {
         const { file } = recent
@@ -62,5 +56,5 @@ export const readDeleteCandidates = async (tx: KvTx, wall: number): Promise<Dele
             hasContent: record.hasContent === true,
         })
     }
-    return { now, chains }
+    return chains
 }
