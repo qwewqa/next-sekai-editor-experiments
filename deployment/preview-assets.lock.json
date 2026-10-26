@@ -22,7 +22,31 @@
                 "hash": "1e6134babb35da8c803c2ce67054f815f6835ae7"
             }
         },
-        "sha256": "13853174e120864d9ab1a268f39f04b1f109365b6c0f71befa26d207602a10f7"
+        "sha256": "e7a05e321f4204491df0f638c141a128119f168defe144465daf5f8ebf6c66f1"
+    },
+    "skin2": {
+        "source": "https://coconut.sonolus.com/next-sekai/sonolus/skins/coconut-next-sekai-2",
+        "item": {
+            "name": "coconut-next-sekai-2",
+            "source": "https://coconut.sonolus.com/next-sekai",
+            "version": 4,
+            "title": "Next SEKAI 02",
+            "subtitle": "Next SEKAI",
+            "author": "Burrito#1000",
+            "thumbnail": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/2/thumbnail/e461178513f806606357baf92f2e039c564b9528",
+                "hash": "e461178513f806606357baf92f2e039c564b9528"
+            },
+            "data": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/2/data/5bfc3bb1ae9cf2e4aee919d1effa2b3c75297586",
+                "hash": "5bfc3bb1ae9cf2e4aee919d1effa2b3c75297586"
+            },
+            "texture": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/2/texture/428ac4a08495ac736058a9e9e340f5d84423dbe7",
+                "hash": "428ac4a08495ac736058a9e9e340f5d84423dbe7"
+            }
+        },
+        "sha256": "c02ba536684aa7565673c0f07e034f40d0b51bbe02f16337a0d3dd87e346a921"
     },
     "particle": {
         "source": "https://coconut.sonolus.com/next-sekai/sonolus/particles/coconut-next-sekai-1",
@@ -33,10 +57,6 @@
             "title": "Next SEKAI",
             "subtitle": "Next SEKAI",
             "author": "Burrito#1000",
-            "thumbnail": {
-                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/particles/1/thumbnail/a2c4057e3e89244e1b77f8895ebe731be622090e",
-                "hash": "a2c4057e3e89244e1b77f8895ebe731be622090e"
-            },
             "data": {
                 "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/particles/1/data/6aea2c2762c9b4b18f761b39d669c72fc106426e",
                 "hash": "6aea2c2762c9b4b18f761b39d669c72fc106426e"
@@ -46,6 +66,7 @@
                 "hash": "a99f11bfdc2b6bd2b9b079db33b794a667fcc976"
             }
         },
-        "sha256": "1b36367b6ac82d7b5b067f18223a1e1e79e0734981ba7e529860d0b6d764e53d"
+        "thumbnail": false,
+        "sha256": "a74f73f93161d6537f15e8925b6c4ff122f83b4191e7d8cd3d60104d1b9786c0"
     }
 }
