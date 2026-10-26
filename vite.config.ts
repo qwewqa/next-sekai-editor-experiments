@@ -57,7 +57,9 @@ export default defineConfig(({ mode }) => ({
     },
     css: {
         postcss: {
-            plugins: [tailwind(), autoprefixer()],
+            // Uncalled, so each file gets its own Tailwind. A shared one applies the @config of
+            // landing.css to every later file, the editor's stylesheet included.
+            plugins: [tailwind, autoprefixer()],
         },
     },
     plugins: [

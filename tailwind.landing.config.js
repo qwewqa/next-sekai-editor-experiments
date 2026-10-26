@@ -6,7 +6,10 @@ module.exports = {
     future: {
         hoverOnlyWhenSupported: true,
     },
-    content: ['./app/index.html', './privacy/index.html', './src/landing/**/*.{ts,css}'],
+    content: {
+        relative: true,
+        files: ['./app/index.html', './privacy/index.html', './src/landing/**/*.{ts,css}'],
+    },
     theme: {
         extend: {
             colors,
