@@ -302,6 +302,27 @@ test.describe('chords', () => {
         await expect(page.getByRole('dialog')).toHaveCount(0)
     })
 
+    test('with a modal open, Ctrl+S and Cmd+S keep the browser default out and save nothing', async ({
+        page,
+    }) => {
+        await logDefaults(page)
+        const opened = page.evaluate(async () => {
+            const { levelInfo } = await window.editorTest.appImport<
+                typeof import('../../src/editor/commands/levelInfo')
+            >('/src/editor/commands/levelInfo/index.ts')
+            await levelInfo.execute()
+        })
+        await expect(page.getByRole('dialog', { name: 'Level Info' })).toBeVisible()
+        for (const chord of ['Control+s', 'Meta+s']) {
+            await page.keyboard.press(chord)
+            expect(await lastDefault(page)).toBe(true)
+        }
+        await expect(page.getByRole('dialog')).toHaveCount(1)
+        await expect(page.getByRole('dialog', { name: 'Level Info' })).toBeVisible()
+        await page.keyboard.press('Escape')
+        await opened
+    })
+
     test('Ctrl+Shift+A matches no plain a and keeps the browser default', async ({ page }) => {
         await logDefaults(page)
         await setTool(page, 'select')
@@ -645,6 +666,30 @@ test.describe('dock', () => {
         await setTool(page, 'select')
         await page.keyboard.press('Control+s')
         expect(await toolName(page)).toBe('select')
+    })
+
+    test('Ctrl+S in a field with typing keeps the browser default out and saves nothing', async ({
+        page,
+    }) => {
+        await edit(page)
+        const size = control(page, 'Size')
+        await size.click()
+        await page.keyboard.type('3')
+        await logDefaults(page)
+        await page.keyboard.press('Control+s')
+        expect(await lastDefault(page)).toBe(true)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+    })
+
+    test('Ctrl+S in a field showing its committed value saves', async ({ page }) => {
+        await edit(page)
+        await control(page, 'Size').click()
+        await logDefaults(page)
+        await page.keyboard.press('Control+s')
+        await expect(
+            page.getByRole('dialog').filter({ hasText: 'Save Project File' }),
+        ).toBeVisible()
+        expect(await lastDefault(page)).toBe(true)
     })
 
     test('a toggle passes Ctrl chords for any binding but keeps plain keys', async ({ page }) => {
