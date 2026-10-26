@@ -186,7 +186,7 @@ test('the families the reference names stand for fields the catalogue has', () =
 })
 
 test('the device details are explained once, with the values the catalogue allows', () => {
-    const body = section('Device details on measured events')
+    const body = section('Device Details in Events')
     const named = byName(rows(body))
     for (const key of measuredKeys) {
         const row = named.get(key)
@@ -205,7 +205,7 @@ test('the device details are explained once, with the values the catalogue allow
 })
 
 test('the reference states the exact values, the caps and the ranges', () => {
-    const exact = section('How exact the values are')
+    const exact = section('How Exact the Values Are')
     for (const words of [
         `from 0 to ${COUNT_CAP}`,
         `from 0 to ${MS_CAP}`,
@@ -232,7 +232,7 @@ test('the reference states the exact values, the caps and the ranges', () => {
         ['1', '2', '3'],
     )
 
-    const ranges = rows(section('The ranges'))
+    const ranges = rows(section('The Ranges'))
     const all = ranges.map((row) => row.cells.join(' ')).join('\n')
     // Each scale is in a row that names the fields it is used for, with all of its labels. The
     // chart counts and the cores describe their labels in words, so a few labels stand for them.
@@ -249,7 +249,7 @@ test('the reference states the exact values, the caps and the ranges', () => {
                 assert.ok(row.cells[2]?.includes(`\`${label}\``), `${scale}: ${label}`)
         }
     // The boundary rule names the labels where the code differs from the usual lower-inclusive range.
-    const rule = section('The ranges').split('\n\n')[1] ?? ''
+    const rule = section('The Ranges').split('\n\n')[1] ?? ''
     for (const [scale, value, label] of [
         ['usageShare', 80, '70-80'],
         ['usageShare', 80.5, '80-90'],

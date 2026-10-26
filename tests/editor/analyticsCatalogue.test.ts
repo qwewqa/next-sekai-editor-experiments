@@ -248,7 +248,7 @@ test('docs/analytics.md lists the catalogue', () => {
 
 test('docs/usage-statistics.md explains the fields every request carries', () => {
     const doc = readFileSync(new URL('../../docs/usage-statistics.md', import.meta.url), 'utf8')
-    const start = doc.indexOf('## What every request carries')
+    const start = doc.indexOf('## Common Fields')
     const section = doc.slice(start, doc.indexOf('\n## ', start + 1))
     const documented = new Map(
         [...section.matchAll(/^\| `(\w+)` \| ([^|]+) \|/gm)].map(([, name = '', meaning = '']) => [
