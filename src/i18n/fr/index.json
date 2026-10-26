@@ -952,7 +952,7 @@
       "usageStatistics": "Envoyer des statistiques d’utilisation",
       "usageStatisticsNote": "Les outils utilisés, les principaux paramètres, le type et la taille des fichiers, et la durée des actions. Voir Confidentialité.",
       "usageStatisticsSignal": "Désactivé par défaut, car ce navigateur envoie Do Not Track ou Global Privacy Control.",
-      "diagnostics": "Copier les informations de diagnostic…",
+      "diagnostics": "Copier les infos de diagnostic…",
       "diagnosticsTitle": "Informations de diagnostic",
       "diagnosticsNote": "Les informations de diagnostic peuvent inclure des noms de fichiers et de dossiers. Vérifiez-les avant de les partager.",
       "copy": "Copier",
