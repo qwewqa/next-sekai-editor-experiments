@@ -42,8 +42,14 @@ const page = `<!doctype html>
     <body><script type="module" src="/assets/index-12345678.js"></script></body>
 </html>
 `
-// The editor's page loads the support gate, a classic script, ahead of the bundle.
-const indexPage = page.replace('<title>', '<script src="/gate.js"></script><title>')
+// The editor's page loads the support gate, a classic script, ahead of the bundle, and links its
+// stylesheet.
+const indexPage = page
+    .replace('<title>', '<script src="/gate.js"></script><title>')
+    .replace(
+        '</head>',
+        '<link rel="stylesheet" crossorigin href="/assets/index-12345678.css"></head>',
+    )
 const withPolicy = (html) => injectPolicy(html, webPolicy)
 
 async function temporary(t) {
@@ -105,7 +111,11 @@ async function releaseFixture(t) {
         await readFile(join(root, 'src/rendering/vendor/lyon.wasm')),
     )
     await write(directory, 'assets/index-12345678.js', 'console.log("release")')
-    await write(directory, 'assets/index-12345678.css', 'body { color: red }')
+    await write(
+        directory,
+        'assets/index-12345678.css',
+        '.absolute{position:absolute}.size-full{width:100%;height:100%}',
+    )
     await writeReleaseManifest(directory, metadata, assets)
     return { directory, assets }
 }
@@ -437,6 +447,14 @@ test('index.html must load gate.js, a classic script, before the bundle', async 
     await write(directory, 'index.html', withPolicy(indexPage))
     await writeReleaseManifest(directory, metadata, assets)
     await checkRelease(directory, metadata)
+})
+
+test('a release fails when the editor’s stylesheet lacks the layout utilities', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    // The stylesheet Tailwind makes from the landing pages' content alone.
+    await write(directory, 'assets/index-12345678.css', '.flex{display:flex}.fixed{position:fixed}')
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /stylesheet lacks \.absolute and \.size-full$/)
 })
 
 test('the test site build must be the one that is marked as such', async (t) => {

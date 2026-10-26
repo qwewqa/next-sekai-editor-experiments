@@ -10,9 +10,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 // A build transforms both pages' stylesheets at once, in no fixed order.
 test('the editor’s stylesheet keeps its utilities when the landing stylesheet goes first', async () => {
     const config = await resolveConfig({ root, logLevel: 'silent' }, 'build')
-    const css = async (file) =>
-        (await preprocessCSS(await readFile(resolve(root, file), 'utf8'), resolve(root, file), config))
-            .code
+    const css = async (file) => {
+        const path = resolve(root, file)
+        return (await preprocessCSS(await readFile(path, 'utf8'), path, config)).code
+    }
     const landing = await css('src/landing/landing.css')
     const editor = await css('src/index.css')
     for (const utility of ['.absolute', '.size-full', '.grid'])
