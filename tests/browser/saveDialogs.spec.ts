@@ -364,7 +364,7 @@ test.describe('the Save dialog', () => {
             'Project files (.nxsp) are only for this editor. To create level data for upload to a Sonolus server, use Export Level Data…',
         )
         await expect(dialog(page).locator('[data-save-export-names]')).toHaveText(
-            'Level data files may be named LevelData or end in .nsld or .json.gz.',
+            'Level data files may have no extension or end in .nsld or .json.gz.',
         )
         await expect(dialog(page).locator('[data-save-storage-line]')).toBeVisible()
         await expect(dialog(page).locator('[data-save-peeking]')).toHaveText(
@@ -444,7 +444,7 @@ test.describe('the Save dialog', () => {
         const field = dialog(page).getByRole('textbox', { name: 'File Name' })
         await expect(field).toBeFocused()
         await expect(field).toHaveAccessibleDescription(
-            /use Export Level Data….*may be named LevelData or end in \.nsld or \.json\.gz\./,
+            /use Export Level Data….*may have no extension or end in \.nsld or \.json\.gz\./,
         )
         // A validation error joins the description and keeps the hint.
         await field.fill('a/b')

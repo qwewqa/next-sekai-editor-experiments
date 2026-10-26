@@ -2121,7 +2121,7 @@
     "placeholder": "未命名",
     "exportHint": "如需 Sonolus 關卡資料，請使用「匯出關卡資料…」。",
     "exportHintFirst": ".nxsp 專案檔案僅供本編輯器使用。若要產生上傳至 Sonolus 伺服器的關卡資料，請使用「匯出關卡資料…」。",
-    "exportHintNames": "關卡資料檔案可能名為 LevelData，或以 .nsld 或 .json.gz 結尾。",
+    "exportHintNames": "關卡資料檔案可能沒有副檔名，或以 .nsld 或 .json.gz 結尾。",
     "openExport": "匯出關卡資料…",
     "readOnly": "無法寫入 \"{0}\"。",
     "notProject": "\"{0}\" 不是專案檔案。",
