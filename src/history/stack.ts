@@ -382,6 +382,8 @@ const sameSelection = (a: State, b: State) =>
 const pastLimits = (before: State, after: State) => {
     for (const type of Object.keys(after.store.grid) as EntityType[]) {
         const was = before.store.grid[type]
+        // A type the edit did not write is the same map.
+        if (after.store.grid[type] === was) continue
         for (const [key, bucket] of after.store.grid[type])
             if (was.get(key) !== bucket)
                 for (const entity of bucket) if (fieldPastLimit(entity)) return true
