@@ -34,6 +34,7 @@ test('every link is on the site or on the allow-list', () => {
     const allowed = [
         /^https:\/\/github\.com\/%GITHUB_REPOSITORY%(?:\/issues|\/blob\/main\/CHANGELOG\.md)?$/,
         /^https:\/\/docs\.github\.com\/en\/site-policy\/privacy-policies\/github-general-privacy-statement$/,
+        /^https:\/\/aws\.amazon\.com\/service-terms\/$/,
         /^mailto:nse@qwewqa\.dev$/,
         /^https:\/\/nse\.qwewqa\.dev\/privacy\/$/,
         /^\/(?:LICENSE\.txt|THIRD_PARTY_NOTICES\.txt)?$/,

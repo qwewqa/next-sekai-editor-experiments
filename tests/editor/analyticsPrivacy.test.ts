@@ -13,41 +13,41 @@ const page = readFileSync(new URL('../../privacy/index.html', import.meta.url), 
 
 /** Each category, and the words of its line on the page. */
 const categories = {
-    use: 'how often each tool, command and kind of edit is used, and how it was started',
-    settings: 'the main settings',
-    files: 'the kind and approximate size of files you open, save, export and check',
+    use: 'How often each tool, command and kind of edit is used, and how it was started',
+    settings: 'the main settings, such as theme, language and whether the minimap is shown',
+    files: 'The kind and approximate size of files you open, save, export and check',
     saved: 'what a save included',
     music: 'the approximate length of music files',
-    outcome: 'and whether that worked',
-    chart: 'the approximate size of the chart, such as “250 to 319 notes”, whether it has music',
+    outcome: 'whether each action worked',
+    chart: 'the approximate chart size, such as “250 to 319 notes”, whether the chart has music',
     undo: 'how many steps the Undo window holds',
     sessions: 'how many sessions Recent Sessions lists',
-    start: 'how a visit started',
-    notices: 'how many notices and errors appeared, without their messages',
-    times: 'how long startup takes, how long it takes to open, save, export and check files and to load music',
+    start: 'how a visit started, such as recovering earlier work',
+    notices: 'For notices and errors, the editor sends counts only',
+    times: 'how long startup takes; how long it takes to open, save, export and check files and load music',
     prepared: 'how long a file takes to prepare for saving or export',
-    check: 'whether Check File and History found problems, and whether it checked a file as well as History',
-    loaded: 'how the page was loaded, such as by a reload or from the browser’s cache, whether it was hidden while it started, and whether the browser had discarded it earlier',
+    check: 'Check File and History found problems and whether the check included a file as well as History',
+    loaded: 'How the page was loaded, such as by a reload or from the browser’s cache, whether it was hidden during startup, and whether the browser had discarded it earlier',
     peek: 'how long the chart takes to show at a Timeline step',
-    slow: 'how often the editor is slow to respond',
-    lasted: 'how long the editor was visible and how long playback ran while it was, in seconds, up to one day',
+    slow: 'how often it is slow to respond, the number of clicks and key presses',
+    lasted: 'Time spent with the editor visible and time spent playing while it is visible are sent in seconds, up to one day',
     version:
-        'the editor’s version, whether it was updated since your last visit, and whether this browser has used it before',
+        'The editor’s version, whether it was updated since your last visit, and whether this browser has used it before',
     system: 'your operating system, browser and its language',
-    screen: 'your screen size and pixel density, an approximate window size and whether it is taller than wide',
-    touch: 'whether the browser reports that your main way of pointing is imprecise, such as a finger on a touch screen',
-    cores: 'the number of processor cores and the approximate memory the browser reports',
-    device: 'also carry your browser, whether your main way of pointing is imprecise, the window size, pixel density, processor cores and memory',
+    screen: 'screen size and pixel density, approximate window size and whether it is taller than wide',
+    touch: 'whether your main way of pointing is imprecise, such as a finger on a touch screen',
+    cores: 'The browser supplies the number of processor cores, approximate memory',
+    device: 'Measurements of startup, files, music, Timeline steps and slow responses also include the browser, pointing precision, window size, pixel density, processor cores and memory described above',
     preview: 'whether the preview could use graphics and draw in parallel',
     installed: 'whether the editor is running in a window of its own',
     storage:
-        'whether this browser’s storage is available, its approximate capacity and how full it is, and whether the browser has granted protection from automatic clearing',
+        'Whether this browser’s storage is available, its approximate capacity and how full it is, whether the browser has granted protection from automatic clearing',
     cleanup: 'whether automatic cleanup ran, freed space or was unable to finish',
-    referrer: 'the site you came from',
+    referrer: 'the editor sends its protocol, domain and any non-default port',
     time: 'Each report includes a timestamp',
     supports: 'which performance measurements the browser supports',
     unsupported:
-        'sends the browser family, such as Firefox or Safari, and a report that the browser is unsupported',
+        'sends the browser family, such as Firefox or Safari, and an indication that the browser is unsupported',
 }
 type Category = keyof typeof categories
 
@@ -134,7 +134,7 @@ test('every property sent has its line on the privacy page', () => {
 
 test('the privacy page says how times and chart sizes are sent, and what ranges can match', () => {
     for (const words of [
-        'How long an action takes is sent in milliseconds, up to ten minutes.',
+        'Startup and file or music action times are sent in whole milliseconds, up to ten minutes per measurement.',
         'Chart object counts below 10 are sent exactly. Larger counts, music lengths and file sizes are sent as ranges. Together these figures can sometimes match a published chart.',
     ])
         assert.ok(page.includes(words), words)
