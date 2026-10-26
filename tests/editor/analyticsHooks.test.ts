@@ -7,7 +7,14 @@ import type { Command, CommandName } from '../../src/editor/commands'
 import { nameBuiltInCommands } from '../../src/editor/commands/names'
 import { dropOpen, endOpen, openFormat, startOpen } from '../../src/editor/commands/open/report'
 import { runCommand } from '../../src/editor/commands/runCommand'
-import { finishSave, savedSize, startSave, startWrite, tracked } from '../../src/editor/save/report'
+import {
+    builtIn,
+    finishSave,
+    savedSize,
+    startSave,
+    startWrite,
+    tracked,
+} from '../../src/editor/save/report'
 import { peek, resetStates } from '../../src/history/stack'
 import { FileError } from '../../src/platform/types'
 import type { State } from '../../src/state'
@@ -96,6 +103,7 @@ test('each recorded diagnostic counts under its kind, a repeat of the last once'
 test('a Save records its action, options, target, size, outcome and time, and ends once', () => {
     startSave('save', { history: true, bgm: false })
     startWrite('picker')
+    builtIn(12)
     savedSize(1_500_000)
     finishSave({ kind: 'done' })
     // The follow-up flows of one action end it no second time.
@@ -103,7 +111,7 @@ test('a Save records its action, options, target, size, outcome and time, and en
     const [made, ...rest] = recorded()
     assert.equal(rest.length, 0)
     assert.deepEqual(
-        { ...made, took: typeof made?.took },
+        { ...made, took: typeof made?.took, buildMs: typeof made?.buildMs },
         {
             name: 'save',
             action: 'save',
@@ -113,13 +121,14 @@ test('a Save records its action, options, target, size, outcome and time, and en
             size: 1_500_000,
             outcome: 'done',
             took: 'number',
+            buildMs: 'number',
         },
     )
     // Sent as ranges, and valid.
     const { name, ...data } = made as Made
     assert.equal(name, 'save')
     const sent = fromRaw('save', data)
-    assert.equal(sent.size, '1M-4M')
+    assert.equal(sent.size, '1M-2M')
     assert.ok(isValidEvent('save', sent))
 })
 

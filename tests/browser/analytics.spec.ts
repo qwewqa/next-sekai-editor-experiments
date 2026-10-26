@@ -501,7 +501,14 @@ test('a scripted visit counts each press once by name and source, and sends the 
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
     expect(dataOf(first, 'storage')).toMatchObject({ mode: 'stored' })
-    expect(dataOf(first, 'perf')).toMatchObject({ loafSupported: true, playSeconds: 0 })
+    expect(dataOf(first, 'perf')).toMatchObject({
+        loafSupported: true,
+        frameAttribution: 'full',
+        playSeconds: 0,
+    })
+    expect(['main', 'worker', 'none']).toContain(dataOf(first, 'perf')?.previewHost)
+    expect(dataOf(first, 'perf')).toHaveProperty('viewport')
+    expect(dataOf(first, 'perf')).toHaveProperty('previewRenderScale')
     expect(stray).toEqual([])
     expect(messages).toEqual([])
 })
@@ -577,7 +584,12 @@ test('a startup that ends in an error is reported once the error page is used', 
         )
         .toBe(1)
     const [first = []] = batches
-    expect(dataOf(first, 'startup')).toEqual({ start: 'blank', outcome: 'error' })
+    // A failed startup has no time; the device details and the load facts come with it.
+    const startup = dataOf(first, 'startup')
+    expect(startup).toMatchObject({ start: 'blank', outcome: 'error', hidden: false })
+    expect(startup).not.toHaveProperty('ready')
+    expect(startup).toHaveProperty('navigation')
+    expect(startup).toHaveProperty('viewport')
 })
 
 test('opening History and its Recent Sessions tab are counted as features', async ({
@@ -617,4 +629,33 @@ test('opening History and its Recent Sessions tab are counted as features', asyn
     expect(storage).toHaveLength(2)
     expect(storage[0]).not.toHaveProperty('sessions')
     expect(storage[1]).toHaveProperty('sessions')
+})
+
+test('a preview host or render scale that changed and came back within one tick is mixed', async ({
+    page,
+}) => {
+    await start(page)
+    const { first, mixed, steady } = await page.evaluate(async () => {
+        const { startField } =
+            (await import('/src/analytics/field.ts')) as typeof import('../../src/analytics/field')
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
+        const field = startField()
+        field.measures()
+        // Everything below runs in one task, so Vue's queued watchers have not run yet.
+        const scale = settings.previewRenderScale
+        settings.showPreview = true
+        settings.showPreview = false
+        settings.previewRenderScale = scale === 1 ? 2 : 1
+        settings.previewRenderScale = scale
+        const mixed = field.measures()
+        const steady = field.measures()
+        field.stop()
+        return { first: scale, mixed, steady }
+    })
+    expect(first).toBeGreaterThan(0)
+    expect(mixed).toMatchObject({ previewHost: 'mixed', previewRenderScale: 'mixed' })
+    // The next interval begins from the value then, and nothing changed in it.
+    expect(steady).toMatchObject({ previewHost: 'none' })
+    expect(steady.previewRenderScale).not.toBe('mixed')
 })

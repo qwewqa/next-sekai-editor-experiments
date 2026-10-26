@@ -70,15 +70,22 @@ export const record = <E extends Recordable>(
 export const peekShown = (ms: number | undefined) => {
     if (!enabled) return
     bump('features.peek')
-    bump(ms === undefined ? 'perf.peek.cached' : `perf.peek.${bucket('time', ms)}`)
+    bump(ms === undefined ? 'peek.peek.cached' : `peek.peek.${bucket('peek', ms)}`)
 }
 
 let busyCount = 0
 /** An Open, Save, Restore, Check or BGM load is running, which the long frames are sorted by. */
 export const busy = (on: boolean) => {
+    const was = busyCount > 0
     busyCount = Math.max(0, busyCount + (on ? 1 : -1))
+    if (was !== busyCount > 0) onBusyChange?.(!was)
 }
 export const isBusy = () => busyCount > 0
+let onBusyChange: ((busy: boolean) => void) | undefined
+/** Calls back when the editor becomes busy or stops being; the client keeps the times. */
+export const watchBusy = (listener: ((busy: boolean) => void) | undefined) => {
+    onBusyChange = listener
+}
 
 export type Startup = { outcome: 'done' | 'slow' | 'error'; at: number; hidden: boolean }
 let started: Startup | undefined

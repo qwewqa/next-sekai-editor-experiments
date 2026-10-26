@@ -101,7 +101,7 @@ import {
     storageNote,
 } from './preview'
 import { exclusive } from './queue'
-import { finishSave, savedSize, startSave, startWrite, tracked } from './report'
+import { builtIn, finishSave, savedSize, startSave, startWrite, tracked } from './report'
 import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './saveAttempt'
 import { unlinkSession } from './unlink'
 import { refreshBinding } from './watch'
@@ -1960,9 +1960,11 @@ const sessionFileBody = async (
     env: Env,
     request: SessionFileRequest,
 ): Promise<Outcome | Dismissed> => {
+    let began = 0
     const built = await session
-        .preparing(() =>
-            env.worker.call(
+        .preparing(() => {
+            began = performance.now()
+            return env.worker.call(
                 'buildSave',
                 {
                     chainId: request.chainId,
@@ -1988,9 +1990,10 @@ const sessionFileBody = async (
                     },
                 },
                 { timeoutMs: 10 * 60_000 },
-            ),
-        )
+            )
+        })
         .catch((error: unknown) => fileError(error))
+    if (began) builtIn(performance.now() - began)
     session.checkpoint()
     if (built instanceof FileError) return { kind: 'failed', error: built, name: request.fileName }
     if ('refused' in built)

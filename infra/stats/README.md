@@ -178,7 +178,7 @@ Sign in at `http://localhost:3000` as `admin` / `umami`, create a website, and s
     bash infra/stats/scripts/query.sh prod infra/stats/queries/commands.sql <website id>
     ```
 
-    `visits.sql` counts visits per day by country, `commands.sql` ranks commands by use and visitors, `saves.sql` lists Save outcomes by target and reason, `startup.sql` shows startup time by how the visit began, then the restored chart sizes, `frames.sql` gives long frames per playback second by preview host, and `settings.sql` lists every setting value with its number of visits. The contract test runs all of them against Umami’s real schema.
+    `visits.sql` counts visits per day by country, `commands.sql` ranks commands by use and visitors, `saves.sql` lists Save outcomes by target and reason, `startup.sql` gives startup time percentiles by navigation type and document delivery, then the restored chart sizes, `frames.sql` gives long frames per minute of visible playback by preview host and render scale, and the share it leaves out, `actions.sql` gives action time percentiles by action, target and file size, `peek.sql` counts Timeline steps by the time they took, and `settings.sql` lists every setting value with its number of visits. The contract test runs all of them against Umami’s real schema.
 
 ## Cost
 
