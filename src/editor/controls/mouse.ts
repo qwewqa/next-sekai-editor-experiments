@@ -18,6 +18,7 @@ import { scopeLookup } from '../scope'
 import { switchToolTo, tool, toolName } from '../tools'
 import { secondarySwitchBack } from '../tools/state'
 import {
+    hideViewHover,
     scrollViewXBy,
     scrollViewYBy,
     setViewHover,
@@ -27,6 +28,7 @@ import {
     view,
     viewBox,
 } from '../view'
+import { isAutoscrolling, refuseAutoscroll, startAutoscroll, stopAutoscroll } from './autoscroll'
 import { lockCursor, unlockCursor } from './cursor'
 import { gesture } from './gestures/gesture'
 import { drag, isDragging } from './gestures/recognizers/drag'
@@ -35,7 +37,7 @@ import { clearPageSelection } from './pageSelection'
 
 const mouseGesture = gesture(drag(false), tap(Infinity))
 
-export const hasMouseControls = () => mouseGesture.pointerCount > 0
+export const hasMouseControls = () => mouseGesture.pointerCount > 0 || isAutoscrolling()
 
 // The pane a press started in; the press follows the mouse outside it until release.
 let pressedPane: Element | undefined
@@ -97,6 +99,7 @@ const markMouseInput = (
 
 export const cancelMouseControls = (restoreTool = true) => {
     if (switchingSecondaryTool) return
+    stopAutoscroll()
     contextClick = undefined
     closeContextMenu()
     mouseGesture.cancel()
@@ -115,7 +118,30 @@ watch(
     { flush: 'sync' },
 )
 
+// A middle press scrolls instead of using the tool; one that cannot start is still its own.
+const middlePress = (event: MouseEvent) => {
+    event.preventDefault()
+    if (event.buttons !== 4 || mouseGesture.pointerCount || isDragging.value) {
+        refuseAutoscroll()
+        return
+    }
+    isHovering = false
+    markMouseInput(event)
+    closeContextMenu()
+    view.scrollingY = undefined
+    view.scrollingX = undefined
+    view.scrollingPane = undefined
+    stopPlayer(false)
+    endMouseHover()
+    hideViewHover()
+    startAutoscroll(event)
+}
+
 const mousedown = (event: MouseEvent) => {
+    if (event.button === 1) {
+        middlePress(event)
+        return
+    }
     isHovering = false
     markMouseInput(event)
     closeContextMenu()
@@ -200,6 +226,8 @@ const mousemove = (event: MouseEvent) => {
 
 const mouseup = (event: MouseEvent) => {
     if (isTracked(event)) return
+    // A middle release belongs to the autoscroll and never ends another button's gesture.
+    if (event.button === 1) return
     const pane = pressedPane
     const p = toP(event)
     updateViewPointer(p)

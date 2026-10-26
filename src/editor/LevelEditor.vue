@@ -17,6 +17,7 @@ import ManageGroupsIcon from './commands/manageGroups/ManageGroupsIcon.vue'
 import ManageStagesIcon from './commands/manageStages/ManageStagesIcon.vue'
 import ElevationEditor from './elevation/ElevationEditor.vue'
 import { isElevationEditorOpen, isElevationSideBySide } from './elevation/state'
+import AutoscrollMarker from './AutoscrollMarker.vue'
 import LevelEditorContextMenu from './LevelEditorContextMenu.vue'
 import { activateEditorNavigation, useControlLifecycle } from './controls'
 import { useFocusControl } from './controls/focus'
@@ -365,6 +366,7 @@ const stageCount = computed(() =>
                 <ElevationEditor />
             </div>
             <LevelEditorContextMenu />
+            <AutoscrollMarker />
         </div>
         <!-- Status height stays fixed when warnings arrive. -->
         <div

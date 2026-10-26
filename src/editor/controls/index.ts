@@ -11,6 +11,7 @@ import { isEntityShown, scopeLookup } from '../scope'
 import { isScopeReduced } from '../scopeRules'
 import { tool } from '../tools'
 import { clampViewLane, clampViewToReach, view } from '../view'
+import { refuseAutoscroll } from './autoscroll'
 import { dragCursor, lockedCursor } from './cursor'
 import { isDragging } from './gestures/recognizers/drag'
 import { cancelMouseControls, hasMouseControls, mouseControlListeners } from './mouse'
@@ -172,8 +173,13 @@ export const controlsForNavigation = (getNavigation: () => EditorNavigation | un
         Object.entries(controlListeners).map(([name, listener]) => [
             name,
             (event: Event) => {
-                if (activateEditorNavigation(getNavigation())) listener(event as never)
-                else event.preventDefault()
+                if (activateEditorNavigation(getNavigation())) {
+                    listener(event as never)
+                    return
+                }
+                event.preventDefault()
+                if (event.type === 'mousedown' && (event as MouseEvent).button === 1)
+                    refuseAutoscroll()
             },
         ]),
     )
