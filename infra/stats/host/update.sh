@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs on the instance as root: at first boot (from the user data) and on every deploy (through SSM).
 # /usr/local/bin/nse-stats-update fetches this file at the commit in the instance's nse:commit tag
-# and pipes it to bash, with NSE_REPO set. Safe to run again at any time.
+# and runs it with bash, with NSE_REPO set. Safe to run again at any time.
 set -euo pipefail
 
 exec 9> /run/nse-stats-update.lock

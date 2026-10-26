@@ -186,7 +186,11 @@ Resources:
                     set -eu
                     T=$(curl -fsS --retry 5 --retry-all-errors -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token)
                     C=$(curl -fsS --retry 5 --retry-all-errors -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/tags/instance/nse:commit)
-                    curl -fsSL --retry 5 "https://raw.githubusercontent.com/${Repository}/$C/infra/stats/host/update.sh" | NSE_REPO=${Repository} bash
+                    # The whole file arrives before it runs, so a failed download cannot pass for an empty script.
+                    U=$(mktemp)
+                    trap 'rm -f "$U"' EXIT
+                    curl -fsSL --retry 5 -o "$U" "https://raw.githubusercontent.com/${Repository}/$C/infra/stats/host/update.sh"
+                    NSE_REPO=${Repository} bash "$U"
                     SCRIPT
                     chmod +x /usr/local/bin/nse-stats-update
                     /usr/local/bin/nse-stats-update
