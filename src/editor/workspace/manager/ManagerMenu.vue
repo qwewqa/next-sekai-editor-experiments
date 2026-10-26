@@ -10,7 +10,8 @@ import {
     type Component,
 } from 'vue'
 import { vScrollEdges } from '../../../directives/scrollEdges'
-import { holdsCharacter, menuKeyIndex } from '../../../utils/menuKeys'
+import { menuKeyIndex } from '../../../utils/menuKeys'
+import { holdsChord, holdsCharacter } from '../../controls/heldKeys'
 import { afterPress, returnFocus } from '../../../utils/focusFallback'
 import { swallowPress } from '../../../utils/swallowPress'
 import { createTypeAhead, isTypeAheadKey } from '../../../utils/typeAhead'
@@ -240,7 +241,7 @@ const typeAhead = createTypeAhead()
 
 const onKeydown = (event: KeyboardEvent) => {
     // An open menu holds chords from the browser, such as Ctrl+S saving the page.
-    if ((event.ctrlKey || event.metaKey) && /^[a-z]$/i.test(event.key)) {
+    if (holdsChord(event)) {
         event.preventDefault()
         return
     }

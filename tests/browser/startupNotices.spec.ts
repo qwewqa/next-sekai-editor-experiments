@@ -239,7 +239,7 @@ test.describe('load notices in the start-up pill', () => {
             'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'Continued "Coconut (Master)" from the old auto save.',
-            'A recovered change needs a newer version of the editor.',
+            'A recovered change requires a newer version of the editor.',
         ])
     })
 
@@ -316,7 +316,7 @@ test.describe('load notices in the start-up pill', () => {
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'The old auto save could not be restored.',
             'Recovered your last change to "Coconut (Master)".',
-            'A recovered change needs a newer version of the editor.',
+            'A recovered change requires a newer version of the editor.',
             'The BGM is not loaded.',
         ])
     })
@@ -1199,15 +1199,6 @@ test.describe('the not-stored prompt', () => {
 })
 
 test.describe('Settings › Local Data', () => {
-    const openLocalData = async (page: Page) => {
-        await page.evaluate(async () => {
-            const { openSettings } =
-                (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
-            void openSettings('localData')
-        })
-        await expect(page.locator('#settings-localData [data-settings-heading]')).toBeFocused()
-    }
-
     test('the section sits second, after Editor, and the index jumps to each section', async ({
         page,
     }) => {
@@ -1240,14 +1231,6 @@ test.describe('Settings › Local Data', () => {
         await expect(page.locator('#settings-about')).toBeInViewport()
         await page.locator('[data-settings-pill="localData"]').click()
         await expect(page.locator('#settings-localData [data-settings-heading]')).toBeFocused()
-    })
-
-    test('the storage line is static text under the heading', async ({ page }) => {
-        await visit(page)
-        await openLocalData(page)
-        await expect(page.locator('[data-storage-line]')).toHaveText(
-            'Recent Sessions are kept in this browser unless it runs low on space. Save to keep your work.',
-        )
     })
 
     test.describe('with storage unavailable', () => {
@@ -1535,7 +1518,7 @@ test.describe('the in-app browser line', () => {
         await expect(page.locator('.notification')).toHaveText('Next SEKAI Editor\nVersion 0.6.0')
         await expect(pill(page)).toHaveCount(0)
         await openLocalData(page)
-        await expect(page.locator('[data-storage-line]')).toContainText('Recent Sessions are kept')
+        await expect(page.locator('[data-storage-line]')).toHaveCount(0)
         await expect(page.locator('[data-at-load] li')).toHaveCount(0)
     })
 
@@ -1555,7 +1538,7 @@ test.describe('the in-app browser line', () => {
             )
             await expect(pill(page)).toHaveCount(0)
             await openLocalData(page)
-            await expect(page.locator('[data-storage-line]')).not.toContainText('built-in browser')
+            await expect(page.locator('[data-storage-line]')).toHaveCount(0)
         })
     })
 

@@ -246,8 +246,6 @@ const primaryClass = `${baseClass} btn-primary`
             </div>
         </template>
 
-        <p class="px-2 text-sm text-fg/80" data-chooser-rights>{{ strings.rights }}</p>
-
         <div
             class="sticky -bottom-2 -mx-1 -mb-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-fg/25 bg-modal px-3 py-3 max-[440px]:flex-col max-[440px]:items-stretch"
             data-chooser-actions

@@ -150,7 +150,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 
 **Recent Sessions** (`RecentSessionsTab.vue`)
 - The Timeline's row grid in its own tab, with the same current row, hover and press. Each row's caption gives the time, then the reason or note count, then the file part last, so a narrow row cuts the file part first.
-- At first the list draws a screenful of rows and 50 more. It draws more as it scrolls near the end of what is drawn, and always every row up to the cursor, the selected row, the row of an open menu and the inline Undo rows, with 50 more after them. The keys reach every row, each row has an `aria-rowindex`, and the storage line shows once every row is drawn.
+- At first the list draws a screenful of rows and 50 more. It draws more as it scrolls near the end of what is drawn, and always every row up to the cursor, the selected row, the row of an open menu and the inline Undo rows, with 50 more after them. The keys reach every row, each row has an `aria-rowindex`, and a storage warning, when there is one, shows once every row is drawn.
 - A ⋯ button at the end opens the row's menu. A row without one keeps the slot, so text edges agree. A damaged or newer row fades its title to 60 % and keeps its caption strong.
 - A Delete turns the row in place into "Deleted "X"" with an `Undo` pill, and into the text alone once it can no longer be undone. This row is the only surface for a Delete. A polite live region says each outcome to a screen reader, and an error card appears only for a Delete that did not happen.
 - Delete Sessions… is the band's end control on this tab (see the History panel band). When a run has deleted any sessions, the list is read again at once, even while its rows are held still.

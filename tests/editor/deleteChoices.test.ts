@@ -129,15 +129,15 @@ test('the newer line shows only when the chosen set holds a newer chain, singula
         lines([row(100, 'A'), row(100, 'B')]).some((line) => line.includes('newer version')),
         false,
     )
-    assert.equal(lines([newer]).at(-1), 'This session needs a newer version of the editor.')
+    assert.equal(lines([newer]).at(-1), 'This session requires a newer version of the editor.')
     assert.equal(
         lines([row(100, 'A'), newer]).at(-1),
-        'Some of these sessions need a newer version of the editor.',
+        'Some of these sessions require a newer version of the editor.',
     )
     // The not-saved line comes before the newer line.
     assert.deepEqual(lines([newer]), [
         'Delete 1 session?',
         '1 session has unsaved changes: "Later".',
-        'This session needs a newer version of the editor.',
+        'This session requires a newer version of the editor.',
     ])
 })

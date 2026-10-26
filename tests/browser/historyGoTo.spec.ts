@@ -142,6 +142,36 @@ test('Go To lists Now and each day with its steps, and a day peeks its newest en
     await expect(goTo(page).locator('[data-goto-check]')).toHaveCount(1)
 })
 
+test('an open Go To keeps Ctrl+S from the browser, and lets Ctrl+R and Ctrl+F through', async ({
+    page,
+}) => {
+    await openDialog(page)
+    await openGoTo(page)
+    await page.evaluate(() => {
+        addEventListener(
+            'keydown',
+            (event) => {
+                ;(window as unknown as { lastKey: KeyboardEvent }).lastKey = event
+            },
+            true,
+        )
+    })
+    for (const [key, prevented] of [
+        ['Control+s', true],
+        ['Control+r', false],
+        ['Control+f', false],
+    ] as const) {
+        await page.keyboard.press(key)
+        expect(
+            await page.evaluate(
+                () => (window as unknown as { lastKey: KeyboardEvent }).lastKey.defaultPrevented,
+            ),
+            key,
+        ).toBe(prevented)
+        await expect(goTo(page)).toBeVisible()
+    }
+})
+
 test('the gap row loads newer pages as it comes into view, and the rows on screen stay', async ({
     page,
 }) => {

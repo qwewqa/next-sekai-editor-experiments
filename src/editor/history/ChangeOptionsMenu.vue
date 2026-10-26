@@ -10,7 +10,8 @@ import {
     watch,
 } from 'vue'
 import { i18n } from '../../i18n'
-import { holdsCharacter, menuKeyIndex } from '../../utils/menuKeys'
+import { menuKeyIndex } from '../../utils/menuKeys'
+import { holdsChord, holdsCharacter } from '../controls/heldKeys'
 import { swallowPress } from '../../utils/swallowPress'
 import CheckIcon from './CheckIcon.vue'
 
@@ -62,7 +63,7 @@ const outside = (event: PointerEvent) => {
     }
 }
 const keydown = (event: KeyboardEvent) => {
-    if ((event.ctrlKey || event.metaKey) && /^[a-z]$/i.test(event.key)) {
+    if (holdsChord(event)) {
         event.preventDefault()
         return
     }

@@ -14,6 +14,7 @@ import './themes.css'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { startAnalytics } from './analytics/start'
+import { holdsChord } from './editor/controls/heldKeys'
 import { installSelectLists } from './modals/form/selectLists'
 import { trackStartup } from './startup/gate'
 import { registerGateRawExport } from './startup/rawExportAction'
@@ -32,7 +33,7 @@ if (seeds && new URLSearchParams(location.search).has('seedSample')) {
 // Perf builds only (`NSE_PERF=1`): the harness's handle (docs/performance-testing.md).
 if (typeof __NSE_PERF__ === 'boolean' && __NSE_PERF__) void import('./perf/hook')
 
-installSelectLists()
+installSelectLists(holdsChord)
 
 const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) throw new Error('Missing editor root element')

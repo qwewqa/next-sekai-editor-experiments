@@ -1119,7 +1119,7 @@ test.describe('Help', () => {
             'To move work to another device, save it as a .nxsp file, then open the file there.',
         )
         await expect(dialog).toContainText(
-            'A crash while saving can leave a .crswap file next to the project file. It is safe to delete.',
+            'A crash while saving can leave a .crswap file next to the project file. You can delete it.',
         )
     })
 

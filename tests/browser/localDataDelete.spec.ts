@@ -191,7 +191,7 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
         '4 sessions have unsaved changes: "Fresh", "Week", "Month" and 1 more.',
     )
     await expect(confirm).toContainText(
-        'Some of these sessions need a newer version of the editor.',
+        'Some of these sessions require a newer version of the editor.',
     )
     // Cancel is the default, and Enter on it deletes nothing.
     await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused()
@@ -352,7 +352,7 @@ test('Storage shows what the browser holds, only when the estimate says both fig
     await load(page)
     await openLocalData(page)
     await expect(stored(page)).toHaveText('Stored in this browser: 84 MB of about 2.1 GB')
-    // Delete Sessions… sits under it; Open History moved into Recovery.
+    // Delete Sessions… sits under it.
     await expect(
         page.locator('[data-local-data-storage] [data-delete-sessions-open]'),
     ).toBeVisible()
@@ -360,9 +360,7 @@ test('Storage shows what the browser holds, only when the estimate says both fig
     await expect(page.locator('[data-local-data-storage] [data-not-stored-line]')).toHaveCount(0)
 })
 
-test('Local Data shows the storage line and the total at once, from the read after startup', async ({
-    page,
-}) => {
+test('Local Data shows the total at once, from the read after startup', async ({ page }) => {
     // The first estimate answers; the ones after it wait for the spec.
     await page.addInitScript(() => {
         let calls = 0
@@ -388,8 +386,7 @@ test('Local Data shows the storage line and the total at once, from the read aft
         )
         .toBe(84_000_000)
     await openLocalData(page)
-    // This visit's read is still waiting, so these come from the kept one.
-    await expect(page.locator('[data-storage-line]')).toBeVisible({ timeout: 2000 })
+    // This visit's read is still waiting, so it comes from the kept one.
     await expect(stored(page)).toHaveText('Stored in this browser: 84 MB of about 2.1 GB', {
         timeout: 2000,
     })
@@ -434,7 +431,6 @@ test('Export Raw Data downloads the stored data and says so', async ({ page }) =
     errorsFail(page)
     await load(page)
     await openLocalData(page)
-    await expect(page.locator('[data-local-data-recovery]')).toContainText(local.exportRawNote)
     const download = page.waitForEvent('download')
     await page.locator('[data-export-raw]').click()
     expect((await download).suggestedFilename()).toMatch(

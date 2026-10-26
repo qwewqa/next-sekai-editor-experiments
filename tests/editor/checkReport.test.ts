@@ -83,7 +83,7 @@ test('a history-only check says so, and a reason line follows the scope', () => 
 test('a chain this build cannot judge says so, never that storage is unavailable', () => {
     assert.equal(
         refusalLine('needsNewer', 'coconut.nxsp', strings)(),
-        'This session needs a newer version of the editor.',
+        'This session requires a newer version of the editor.',
     )
     for (const reason of ['unreadableHead', 'order'] as const)
         assert.equal(

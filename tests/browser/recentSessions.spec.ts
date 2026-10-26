@@ -134,7 +134,6 @@ test('one row for each chain, newest first, and a click peeks it with a bar that
     await expect(rowsOf(page)).toHaveCount(3)
     await expect(rowsOf(page).nth(0)).toContainText('Beta')
     await expect(rowsOf(page).nth(1)).toContainText('Alpha')
-    await expect(page.locator('[data-history-list] [data-sessions-footer]')).toBeVisible()
     // The day header, and a caption with the file state and the note count.
     await expect(page.getByRole('grid', { name: messages.history.recentSessions })).toContainText(
         messages.history.today,
@@ -439,12 +438,12 @@ test('a list that cannot be read says so with Try Again, never an empty list', a
     await expect(failed).toHaveCount(0)
 })
 
-test('with nothing stored the list says so and still has the storage line', async ({ page }) => {
+test('with nothing stored the list says so', async ({ page }) => {
     errorsFail(page)
     await load(page, { chart: 'keep' })
     await openSessions(page)
     await expect(page.locator('[data-sessions-empty]')).toHaveText(messages.history.empty)
-    await expect(page.locator('[data-sessions-footer]')).toBeVisible()
+    await expect(page.locator('[data-sessions-footer]')).toHaveCount(0)
 })
 
 test('rows hold still under the pointer, and a refresh lands when it leaves', async ({
@@ -628,6 +627,7 @@ test('Recent Sessions’ Save… of a closed session opens the save dialog for i
     await rowFor(page, 'Alpha').locator('[data-sessions-more]').click()
     await page.getByRole('menuitem', { name: sessions.saveToFile }).click()
     await expect(page.getByRole('dialog', { name: /Save/ }).last()).toBeVisible()
+    await expect(page.locator('[data-save-export]')).toHaveCount(0)
 })
 
 test('a session’s peek ends with the tab, and offers no Find Edits Here', async ({ page }) => {
@@ -715,7 +715,7 @@ test('a long list draws rows as they are needed, and keys and scrolling reach ev
     page,
 }) => {
     errorsFail(page)
-    await load(page)
+    await load(page, { platform: { privateSuspected: true } })
     // 90 closed chains, named 1 to 90 (90 is the newest), and the open one.
     await page.evaluate(async () => {
         const { history, historySteps } = window.editorTest

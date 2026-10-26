@@ -10,18 +10,10 @@ import {
 } from '../../platform/detect'
 import type { PlatformOs } from '../../platform/types'
 
-// The storage line at the top of Settings › Local Data: one static line, the
-// first condition that holds. It never overclaims, and says what can still remove stored work.
+// The storage line in Settings › Local Data and Recent Sessions: one static line, the first
+// condition that holds. It shows only when something can delete stored work.
 
-export type StorageLineKey =
-    | 'unavailable'
-    | 'private'
-    | 'inAppBrowser'
-    | 'ios'
-    | 'safari'
-    | 'installedWebkit'
-    | 'persisted'
-    | 'default'
+export type StorageLineKey = 'unavailable' | 'private' | 'inAppBrowser' | 'ios' | 'safari'
 
 export type StorageFacts = {
     /** Storage unavailable, insecure origins included. */
@@ -29,7 +21,6 @@ export type StorageFacts = {
     privateSuspected: boolean
     /** Likely an app’s built-in browser. */
     inAppBrowser: boolean
-    persisted: boolean
     os: PlatformOs
     engine: Engine
     /** A Home Screen web app. */
@@ -44,14 +35,13 @@ export type StorageFacts = {
 export const storageUnavailable = (status: StorageStatus, safe: boolean) =>
     status.mode === 'memory' ? status.reason === undefined : status.mode === 'readOnly' && !safe
 
-export const storageLineKey = (facts: StorageFacts): StorageLineKey => {
+export const storageLineKey = (facts: StorageFacts): StorageLineKey | undefined => {
     if (facts.unavailable) return 'unavailable'
     if (facts.privateSuspected) return 'private'
     if (facts.inAppBrowser) return 'inAppBrowser'
     if (facts.os === 'ios' && !facts.standalone) return 'ios'
     if (facts.engine === 'webkit' && facts.os === 'macos' && !facts.standalone) return 'safari'
-    if (facts.engine === 'webkit' && facts.standalone) return 'installedWebkit'
-    return facts.persisted ? 'persisted' : 'default'
+    return undefined
 }
 
 /** The browser's total for this origin; absent where it gives no usable figures. */
@@ -59,7 +49,6 @@ export type StorageTotal = { usage: number; quota: number }
 
 type BrowserStorage = {
     facts: {
-        persisted: boolean
         privateSuspected: boolean
         inAppBrowser: boolean
         os: PlatformOs
@@ -91,7 +80,6 @@ const readStorage = async (): Promise<BrowserStorage> => {
     const { os, engine } = detection()
     return {
         facts: {
-            persisted: persisted === true,
             privateSuspected:
                 override.privateSuspected ??
                 (quota !== undefined && suspectPrivate({ persisted: persisted === true, quota })),

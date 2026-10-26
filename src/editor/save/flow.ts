@@ -6,7 +6,6 @@ import { isPeeking } from '../../history/stack'
 import { i18n } from '../../i18n'
 import { formatDateTime } from '../../i18n/dateTime'
 import { formatDate } from '../../i18n/when'
-import { launch } from '../../launch'
 import type { SaveReservation } from '../../local/flush'
 import { storableHandle } from '../../local/handles'
 import { toHex } from '../../local/hash'
@@ -42,7 +41,7 @@ import { clearExportDestination, exportMemory } from '../commands/exportLevel/me
 import { knownTargetAvailable } from '../commands/exportLevel/ownership'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile } from '../file'
-import { exportUsed, firstSaveDone, markFirstSaveDone } from '../file/flags'
+import { firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
 import { withSwitchRequest, type SwitchRequest } from '../switchRequest'
 import {
@@ -1427,6 +1426,10 @@ const notFoundSaveAs = async (env: Env) => {
     const name = await suggestion(env, stem)
     const input = await dialogInput(env, 'saveAs', name, [])
     const result = await saveUi.saveDialog(input)
+    if (result?.action === 'export') {
+        await openExport()
+        return
+    }
     if (result?.action !== 'save') return
     await afterOutcome(
         env,
@@ -1530,10 +1533,6 @@ const dialogInput = async (
                   }
                 : { kind: 'notLoaded' }
             : { kind: 'none' },
-        exportLine:
-            exportMemory.target !== undefined ||
-            exportMemory.sourceName !== undefined ||
-            (launch.isExistingUser && !exportUsed.value),
         ...(await storageLineOf()),
         peeking: isPeeking.value,
         estimate: {
@@ -1862,7 +1861,6 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
             ? { kind: 'available', ticked: true, locked: false }
             : { kind: 'insecure' },
         bgm: sessionBgmRow(estimate),
-        exportLine: false,
         ...(await storageLineOf()),
         peeking: false,
         estimate: {

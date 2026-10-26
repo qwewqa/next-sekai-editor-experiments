@@ -39,7 +39,7 @@ export type ConfirmTexts = {
     notSaved: string
     /** "{1} and {0} more": {0} is the count, which picks the plural form. */
     namesMore: string
-    /** "This session needs a newer version of the editor.|Some of these sessions need …" */
+    /** "This session requires a newer version of the editor.|Some of these sessions require …" */
     newer: string
     /** "{0}, {1}" */
     listJoin: string

@@ -234,37 +234,17 @@ test('shortcut capture waits past IME and dead keys and ignores Caps Lock', asyn
     expect(await savedShortcut(page, 'save')).toBe('A')
 })
 
-test('shared and browser-claiming bindings are named under their rows', async ({ page }) => {
-    // Default plain keys that also answer to the browser's Ctrl chords.
-    await expect(shortcutField(page, 'Manage Stages')).toContainText(
-        'Replaces the browser’s reload',
-    )
-    await expect(shortcutField(page, 'Select')).toContainText('Replaces the browser’s find')
-    // The browser keeps zooming with Ctrl+=.
-    await expect(shortcutField(page, 'Zoom In Y')).not.toContainText('Replaces')
-    await expect(shortcutField(page, 'Save')).not.toContainText('Replaces')
-
+test('shared bindings are named under their rows', async ({ page }) => {
     await shortcutButton(page, 'Save').click()
     await page.keyboard.press('s')
     await expect(shortcutField(page, 'Save')).toContainText('Also runs Slide')
     await expect(shortcutField(page, 'Slide')).toContainText('Also runs Save')
     await expect(shortcutButton(page, 'Slide')).toHaveAccessibleDescription(/Also runs Save/)
 
-    // An exact chord takes Ctrl+R from the plain r, and the warning moves with it.
+    // A binding of Ctrl+R ends the share on r.
     await shortcutButton(page, 'Save').click()
     await page.keyboard.press('Control+r')
     await expect(shortcutField(page, 'Slide')).not.toContainText('Also runs')
-    await expect(shortcutField(page, 'Save')).toContainText('Replaces the browser’s reload')
-    await expect(shortcutField(page, 'Manage Stages')).not.toContainText('Replaces')
-})
-
-test('Save’s row names its fixed Ctrl+S, until a binding takes that chord', async ({ page }) => {
-    await expect(shortcutField(page, 'Save')).toContainText('Also Ctrl+S (cannot be changed)')
-    // Save keeps its one binding: the alias isn't part of the map.
-    expect(await savedShortcut(page, 'save')).toBe('p')
-    await shortcutButton(page, 'Brush').click()
-    await page.keyboard.press('Control+s')
-    await expect(shortcutField(page, 'Save')).not.toContainText('Ctrl+S')
 })
 
 test.describe('on Apple devices', () => {
@@ -601,20 +581,12 @@ test("a shortcut button's name gives its binding and the capture prompt", async 
     await expect(save).toHaveAccessibleName('Save Unassigned')
 })
 
-test('the capture prompt and its tooltip clear with the same word', async ({ page }) => {
-    const save = shortcutButton(page, 'Save')
-    await save.click()
-    await expect(save).toHaveText('Press a key or click again to clear')
-    await expect(save).toHaveAttribute('title', 'Click again to clear this shortcut')
-})
-
 test('the capture prompt on an unassigned shortcut offers no clearing', async ({ page }) => {
     const save = shortcutButton(page, 'Save')
     await save.press('Delete')
     await expect(save).toHaveText('Unassigned')
     await save.click()
     await expect(save).toHaveText('Press a key')
-    await expect(save).toHaveAttribute('title', 'Input Key')
     await save.press('l')
     await expect(save).toHaveText('L')
 })
@@ -1041,8 +1013,7 @@ test('in safe mode Local Data only reads: no Delete Sessions…, no Discard…, 
         void openSettings('localData')
     })
     const section = page.locator('#settings-localData')
-    await expect(section.locator('[data-storage-line]')).toBeVisible()
-    await expect(section.locator('[data-storage-line]')).not.toContainText('cannot store')
+    await expect(section.locator('[data-storage-line]')).toHaveCount(0)
     // What the browser holds shows; nothing that writes does.
     await expect(section.locator('[data-stored-total]')).toHaveText(
         'Stored in this browser: 84 MB of about 2.1 GB',

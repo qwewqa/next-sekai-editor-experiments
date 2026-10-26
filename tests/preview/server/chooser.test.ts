@@ -511,10 +511,7 @@ test('the failures read as 2.5.3 words them', async () => {
     const second = createServerChooser('skin', auth.deps('skin'))
     second.address.value = auth.server.base
     await second.connect()
-    assert.equal(
-        say(second.error.value!),
-        'The editor cannot use servers that need you to sign in.',
-    )
+    assert.equal(say(second.error.value!), 'The editor cannot use servers that require signing in.')
 
     const offline = setup(collection(), { online: () => false })
     const third = createServerChooser('skin', offline.deps('skin'))

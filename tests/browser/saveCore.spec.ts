@@ -204,6 +204,24 @@ test('the file deleted gives the not-found dialog; Save As… keeps the docId an
     expect((await chainOf(page)).exportTarget).toMatchObject({ name: 'LevelData' })
 })
 
+test('the Export link in the not-found dialog’s Save As… opens Export Level Data', async ({
+    page,
+}) => {
+    await start(page)
+    await savedOnce(page)
+    await removeFile(page, 'coconut.nxsp')
+    await edit(page, 2)
+    await pressSave(page)
+    const dialog = choice(page)
+    await expect(dialog).toContainText('"coconut.nxsp" cannot be found.')
+    await page.waitForTimeout(350)
+    await dialog.getByRole('button', { name: 'Save As…' }).click()
+    const saveAs = saveDialog(page, 'Save As')
+    await saveAs.getByRole('button', { name: 'Export Level Data…' }).click()
+    await expect(saveAs).toHaveCount(0)
+    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
+})
+
 test('Save As gives a new docId and a revision with no parent', async ({ page }) => {
     await start(page)
     await savedOnce(page)
