@@ -324,7 +324,7 @@ test('each retention period is stated with its data', () => {
         ['keep', /combined statistics/, /without visitor codes indefinitely/],
         ['keep', /Backups on AWS/, /about five weeks/],
         ['keep', /error logs/, /two weeks/],
-        ['contact', /mailbox/, /indefinitely/],
+        ['contact', /mailbox/, /one year after your last message/],
     ]
     for (const [id, data, period] of periods)
         assert.ok(
