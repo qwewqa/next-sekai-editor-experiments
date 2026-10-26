@@ -7,8 +7,9 @@
 // Every module here may run early: none registers a listener, timer or hook, or reads storage,
 // when it is imported. Left cold, as rare or heavy: the Preview Editor's MP3 encoder, raw
 // export, Delete Sessions, diagnostics, the perf hook, the server reader and the stored-choice
-// providers. Left out because they are in the first bundle already: the BGM player, Settings,
-// Switch, the Peek effects and the sidebars.
+// providers. Left out because the storage modules load them at first paint already: the project
+// reader (`local/open/project`) and the startup events, as are the BGM player, Settings, Switch,
+// the Peek effects and the sidebars.
 
 type Load = () => Promise<unknown>
 
