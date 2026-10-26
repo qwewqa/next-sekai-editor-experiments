@@ -50,10 +50,8 @@ dc() { docker compose --project-directory "$1" -f "$1/compose.yaml" --env-file "
 # Refuse a file Compose cannot read before it replaces the running one.
 dc "$DIR/new" config --quiet
 
-# Compose does not recreate Caddy for a changed Caddyfile, so a change is validated first and then forces it.
-CADDY_CHANGED=""
+# A changed Caddyfile is validated before it replaces the running one.
 if [ -f "$DIR/Caddyfile" ] && ! cmp -s "$DIR/Caddyfile" "$DIR/new/Caddyfile"; then
-    CADDY_CHANGED=1
     (
         # shellcheck disable=SC1091
         . "$DIR/new/images.env"
@@ -95,7 +93,8 @@ fi
 
 dc "$DIR" pull --quiet
 dc "$DIR" up -d --remove-orphans
-[ -z "$CADDY_CHANGED" ] || dc "$DIR" up -d --force-recreate --no-deps caddy
+# Compose does not recreate Caddy for a changed Caddyfile, and a retry after a failure sees no change, so Caddy restarts on every update.
+dc "$DIR" up -d --force-recreate --no-deps caddy
 
 # Wait for Umami to report healthy, which includes its migrations.
 status=""
