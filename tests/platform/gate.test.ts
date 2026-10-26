@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import vm from 'node:vm'
 import { ungzip } from 'pako'
 import { serializeAutoSave } from '../../src/history/autoSave/serialize'
 import { journalContent, journalLevelData } from '../../src/local/journal/content'
@@ -10,37 +8,13 @@ import { toRecoveryFile } from '../../src/local/startup/legacy'
 import { detectFromUa } from '../../src/platform/detect'
 import { storageKey } from '../../src/storage'
 import { goldenChart, stateOf } from '../local/records/charts'
+import { gateSource, loadGate } from './gateHarness'
 
 // The support gate: public/gate.js is plain ES5 that runs before the
 // bundle, so it reads the stored formats on its own. These tests run it in Node, with a fake
 // window, and check that what it offers is what the bundle's own readers and writers say.
 
-const source = readFileSync('public/gate.js', 'utf8')
-
-type GateFile = { name: string; type: string; data: string | Uint8Array; label?: string }
-type Gate = {
-    browserFamily: (win: object) => string
-    PREFIX: string
-    missingFeatures: (win: object) => string[]
-    isWebKit: (win: object) => boolean
-    message: (win: object) => string
-    toRecoveryFile: (text: string) => GateFile
-    recoveryFiles: (storage: MemoryStorage) => GateFile[]
-    run: (win: FakeWindow) => boolean
-}
-
-// The script as the browser runs it, with `module` defined so that it exports instead of running.
-const loadGate = (): Gate => {
-    const context = { module: { exports: {} as unknown }, atob }
-    vm.runInNewContext(source, context)
-    const loaded = context.module.exports as Gate
-    // Arrays made in the script’s realm compare as foreign to deepEqual.
-    return {
-        ...loaded,
-        missingFeatures: (win) => Array.from(loaded.missingFeatures(win)),
-        recoveryFiles: (storage) => Array.from(loaded.recoveryFiles(storage)),
-    }
-}
+const source = gateSource
 
 const gate = loadGate()
 
@@ -246,8 +220,6 @@ type FakeElement = {
     addEventListener: (type: string, listener: () => void) => void
     click: () => void
 }
-
-type FakeWindow = ReturnType<typeof fakeWindow>
 
 const fakeWindow = (
     options: {

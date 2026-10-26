@@ -24,6 +24,8 @@ const slowStorageSpecs = [
     'startupSessions.spec.ts',
     // Opening a `.nxsp` and its background import.
     'openProject.spec.ts',
+    // The v1 web storage fixtures seeded into a profile and read by the editor.
+    'webStorageV1.spec.ts',
 ]
 // NSE_STORAGE_SET=core runs the core alone (check.yml); otherwise all of them, as a local run does.
 const storageSpecs =

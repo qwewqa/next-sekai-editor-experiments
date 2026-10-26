@@ -2,8 +2,8 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { samplesDir } from '../../scripts/samples.mjs'
-import { readDump, type Dump } from '../../src/local/dump'
-import { Editor, prefix, SampleClock, seedContext } from './driver'
+import type { Dump } from '../../src/local/dump'
+import { dump, Editor, prefix, SampleClock, seedContext } from './driver'
 
 // The long-history sample (`npm run samples:long-history`): six days of use of coconut through the
 // editor's own UI, with Playwright's clock (and the storage worker's Date) moved between actions,
@@ -583,35 +583,6 @@ const day6 = async (s: Session) => {
     await s.exportLevel('coconut final')
     await compose(s, 13, 30)
     await s.leave()
-}
-
-/** Reads the database in a page that loads no editor code, through the dumper alone. */
-const dump = async (context: BrowserContext) => {
-    const page = await context.newPage()
-    await page.route('**/__sample-dump', (route) =>
-        route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>dump</title>' }),
-    )
-    await page.goto('/__sample-dump')
-    const result = await page.evaluate(async (prefix) => {
-        const { dumpDatabase, dumpLocalStorage } =
-            (await import('/src/local/dump.ts')) as typeof import('../../src/local/dump')
-        const { idbFactory } =
-            (await import('/src/local/kv/idb.ts')) as typeof import('../../src/local/kv/idb')
-        const { appVersion } =
-            (await import('/src/platform/version.ts')) as typeof import('../../src/platform/version')
-        const db = await idbFactory(indexedDB).open('nse-local-data', undefined)
-        const storage = dumpLocalStorage(localStorage, prefix)
-        // The panels the generator hid for speed are not part of the sample.
-        delete storage[`${prefix}showPreview`]
-        const dumped = await dumpDatabase(db, {
-            appVersion: appVersion().appVersion,
-            localStorage: storage,
-        })
-        db.close()
-        return JSON.stringify(dumped)
-    }, prefix)
-    await page.close()
-    return readDump(JSON.parse(result)) as Dump
 }
 
 /** Counts for the README: entries by kind, sessions, chains, the days of use. */

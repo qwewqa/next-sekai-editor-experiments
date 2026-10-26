@@ -21,7 +21,8 @@ concurrency:
 jobs:
     storage:
         runs-on: ubuntu-latest
-        # Every storage spec: about 18 min of tests in Firefox and 10 in WebKit on a fast desktop.
+        # Every storage spec: about 22 min of tests in Firefox and 14 in WebKit on a fast desktop, the v1 web storage
+        # fixtures spec (about 4.5 min on one worker) included.
         timeout-minutes: 25
         strategy:
             fail-fast: false

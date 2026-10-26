@@ -42,3 +42,5 @@ tests/local/records/golden-v1/
 tests/local/nxsp/golden-v1/
 tests/zip/plan-conformance-v1/
 tests/fixtures/deflate-v1/
+tests/native/fixtures/nxsp-v1/
+tests/fixtures/web-storage-v1/
