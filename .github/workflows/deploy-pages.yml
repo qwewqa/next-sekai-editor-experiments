@@ -51,9 +51,6 @@ jobs:
             - run: npm run test:browser
               if: github.event_name == 'pull_request'
             - run: npm run build:release
-              env:
-                  PREVIEW_SKIN_URL: ${{ vars.PREVIEW_SKIN_URL }}
-                  PREVIEW_PARTICLE_URL: ${{ vars.PREVIEW_PARTICLE_URL }}
             - run: npm run test:production
             - run: npm run check:release
             - name: Upload browser failure details
