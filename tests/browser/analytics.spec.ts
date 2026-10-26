@@ -630,3 +630,32 @@ test('opening History and its Recent Sessions tab are counted as features', asyn
     expect(storage[0]).not.toHaveProperty('sessions')
     expect(storage[1]).toHaveProperty('sessions')
 })
+
+test('a preview host or render scale that changed and came back within one tick is mixed', async ({
+    page,
+}) => {
+    await start(page)
+    const { first, mixed, steady } = await page.evaluate(async () => {
+        const { startField } =
+            (await import('/src/analytics/field.ts')) as typeof import('../../src/analytics/field')
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
+        const field = startField()
+        field.measures()
+        // Everything below runs in one task, so Vue's queued watchers have not run yet.
+        const scale = settings.previewRenderScale
+        settings.showPreview = true
+        settings.showPreview = false
+        settings.previewRenderScale = scale === 1 ? 2 : 1
+        settings.previewRenderScale = scale
+        const mixed = field.measures()
+        const steady = field.measures()
+        field.stop()
+        return { first: scale, mixed, steady }
+    })
+    expect(first).toBeGreaterThan(0)
+    expect(mixed).toMatchObject({ previewHost: 'mixed', previewRenderScale: 'mixed' })
+    // The next interval begins from the value then, and nothing changed in it.
+    expect(steady).toMatchObject({ previewHost: 'none' })
+    expect(steady.previewRenderScale).not.toBe('mixed')
+})

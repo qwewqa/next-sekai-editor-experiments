@@ -58,15 +58,17 @@ export const startField = () => {
         }
         states.set(stateNow(), now)
     }
-    const stopWatching = watch(isPlaying, syncPlay)
+    // Synchronous, so the time of a change is the change's and a round trip within a tick is seen.
+    // Each reads a few scalars.
+    const stopWatching = watch(isPlaying, syncPlay, { flush: 'sync' })
     tally.watchBusy(() => {
         states.set(stateNow(), performance.now())
     })
 
     const host = createSpan(hostNow())
     const renderScale = createSpan(scaleNow())
-    const stopHost = watch(hostNow, host.see)
-    const stopScale = watch(scaleNow, renderScale.see)
+    const stopHost = watch(hostNow, host.see, { flush: 'sync' })
+    const stopScale = watch(scaleNow, renderScale.see, { flush: 'sync' })
 
     let unclassified = false
     let lastFrameStart = 0

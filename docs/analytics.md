@@ -135,7 +135,7 @@ Scales (`src/analytics/scales.ts`) use half-open `[lower, upper)` ranges, except
 
 `perf` reports the long frames (`frames.<state>.<length>`, from the Long Animation Frames API) and slow events (`slowEvents.<length>`, Event Timing from 104 ms, which is its 8 ms rounding of 100 ms). Each long frame is sorted by the state it began in: `playing` is visible playback, `busy` is an Open, Save, Check, Restore or BGM load, and `other` is the rest. The client keeps a short list of the times these states changed (`intervals.ts`: at most 64 changes, trimmed as entries arrive), with no polling. A frame that the list no longer covers is counted in `frames.unclassified` and sets `frameAttribution` to `partial` for that send. `loafSupported` and `eventTimingSupported` say whether the browser has each API. `interactions` is the browser's own count, and is left out where it has none.
 
-`previewHost` and `previewRenderScale` hold the value for the whole interval since the last send, `mixed` if it changed, and `none` for the host when the preview was not shown. Both follow watchers on change, not a frame callback.
+`previewHost` and `previewRenderScale` hold the value for the whole interval since the last send, `mixed` if it changed, and `none` for the host when the preview was not shown. Both follow synchronous watchers on change, not a frame callback, so a change that comes back within one tick still gives `mixed`.
 
 The Recent Sessions count (`sessions`) is known only after the History tab has read its list. If the first `storage` event went without it, one more goes when the count becomes known. The client reads no storage of its own for it.
 
