@@ -136,6 +136,8 @@ export type StoreOpen = {
     bind?: { name: string }
     /** Takes the file's identity: a whole open; otherwise a new `docId` and no revision. */
     identity: boolean
+    /** Parts of the file were not read: its bytes are kept, and it is never written over. */
+    partial: boolean
     /** The live state when it isn't the history's head. */
     level?: StateBatch
     summary?: ChainSummary
@@ -259,7 +261,7 @@ export const storeAndShow = async (
             { timeoutMs: 120_000 },
         )
         if (stored.kind !== 'stored') throw new Error('The opened file is no longer read')
-        if (!open.bind) void retainBytes()
+        if (open.partial) void retainBytes()
         if (stored.batches > 0)
             job = startImport({
                 worker: deps.worker,
@@ -319,7 +321,7 @@ export const storeAndShow = async (
                             exportMemory.opened = {
                                 handle: open.handle,
                                 levelData: false,
-                                partial: !open.bind,
+                                partial: open.partial,
                                 project: true,
                                 ...(kept ? { keptCopy: kept } : {}),
                             }

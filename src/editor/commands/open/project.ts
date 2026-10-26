@@ -481,6 +481,7 @@ const openRequestedProject = async (
                               }
                             : {}),
                         identity,
+                        partial: !whole,
                         ...(asHead
                             ? {
                                   summary: summaryOf(
