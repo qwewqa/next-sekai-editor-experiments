@@ -13,6 +13,7 @@ import {
     measured,
     scales,
 } from '../../src/analytics/catalogue'
+import { requestFields, requestItem } from '../../src/analytics/rules'
 import { operationCodecs } from '../../src/history/operations/registry'
 
 const K = 1024
@@ -255,13 +256,27 @@ test('docs/usage-statistics.md explains the fields every request carries', () =>
             meaning,
         ]),
     )
-    // The fields of a request item, from the sender's type: the common ones are all but the event.
-    const sender = readFileSync(new URL('../../src/analytics/sender.ts', import.meta.url), 'utf8')
-    const payload = /payload: \{([^}]*)\}/.exec(sender)?.[1] ?? ''
-    const fields = [...payload.matchAll(/^\s+(\w+)\??:/gm)]
-        .map(([, name = '']) => name)
-        .filter((name) => name !== 'name' && name !== 'data')
-    assert.deepEqual(fields.sort(), [...documented.keys()].sort())
+    // The fields of a constructed item: all but the event, which only an event has.
+    const fields = requestFields({
+        website: 'site',
+        hostname: 'nse.qwewqa.dev',
+        screenWidth: 1920,
+        screenHeight: 1080,
+        locale: 'zhs',
+        referrer: '',
+    })
+    const pageview = requestItem(fields, undefined, undefined, 1_700_000_000_000).payload
+    const event = requestItem(fields, 'visit', {}, 1_700_000_000_000).payload
+    assert.deepEqual(Object.keys(pageview).sort(), [...documented.keys()].sort())
+    assert.deepEqual(
+        Object.keys(event)
+            .filter((key) => key !== 'name' && key !== 'data')
+            .sort(),
+        Object.keys(pageview).sort(),
+    )
+    assert.equal(pageview.screen, '1920x1080')
+    assert.equal(pageview.language, 'zh-Hans')
+    assert.equal(pageview.timestamp, 1_700_000_000)
     for (const [name, meaning] of documented)
         assert.ok(meaning.trim().length > 0, `${name} has no meaning`)
 })

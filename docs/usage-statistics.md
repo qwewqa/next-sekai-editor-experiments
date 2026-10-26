@@ -9,17 +9,19 @@ The web editor sends usage statistics to a server that the maintainer runs. This
 - Nothing is sent when Settings › About › Send Usage Statistics is off. Turning it off also drops everything that was waiting, in every open tab.
 - Before you choose, the setting is on unless the browser sends Do Not Track or Global Privacy Control. The setting stays as you leave it, in this browser only.
 - Nothing is sent in safe mode, when the browser asks to save data, from an automated browser, or from a copy of the editor on another site.
+- Events are recorded when they happen and wait in memory for the next send. A send can be skipped while another request is still in flight.
 - Nothing is sent while the browser is offline. After one failed request, nothing more is sent in that visit.
 
 ## What is never sent
 
-Chart content, file names, level information, titles, text you type, paths and addresses with a query or a fragment. Shortcuts, the contents of the toolbar and presets are not sent either. The editor creates, stores and sends no identifier.
+Chart content, file names, level information, titles, text you type, paths and addresses with a query or a fragment. Shortcuts, the contents of the toolbar and presets are not sent either. The usage statistics client creates, stores and sends no visitor identifier.
 
 ## How exact the values are
 
 Most numbers are sent as ranges, so a value is never more exact than needed. The ranges are in the next section. These rules cover the rest:
 
-- **Counts** are whole numbers from 0 to 9999. A larger count is sent as 9999. A count of 0 is not sent.
+- **Counts** are whole numbers from 0 to 9999. A larger count is sent as 9999.
+- **Activity counters** are sent only when something was counted. Measured counts, such as interactions and Recent Sessions, can be zero.
 - **Action times** are whole milliseconds, from 0 to 600000 (ten minutes). A longer time is sent as 600000.
 - **Times of use** (`playSeconds` and `visibleTime`) are whole seconds, from 0 to 86400 (one day) since the previous send.
 - **Processor cores** are exact from 1 to 32, then in ranges.
@@ -35,7 +37,7 @@ Chart counts and file sizes are each ranged, but together they can sometimes mat
 
 ### The ranges
 
-A range includes its lower value and leaves out its upper value, with these exceptions. A label that is a single value is exact. In `usageShare`, `70-80` includes 80. In pixel density, `1-1.5` starts just above 1.
+Most ranges include the lower value and exclude the upper value. Chart-count and processor-core ranges include both written endpoints. Single-value labels are exact. `usageShare` includes 80 in `70-80`, so `80-90` starts above 80. Pixel-density ranges starting at 1, 2 or 3 exclude that exact value. Note-speed range `10-10.5` starts above 10, and `11.5-12` includes 12.
 
 | Range | Used for | Labels |
 | --- | --- | --- |
@@ -86,11 +88,11 @@ When the details are read depends on the event. `open`, `save`, `export`, `check
 
 ## Events and fields
 
-Each event is sent with the common fields above. A format that is a list of values is a choice among them. An event is sent only if it has something to report.
+Each event is sent with the common fields above. A format that is a list of values is a choice among them. An event is recorded only if it has something to report.
 
 ### `visit`
 
-Sent once a visit, when the statistics start.
+Recorded once when the statistics start and included in a later send.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -111,7 +113,7 @@ Sent once a visit, when the statistics start.
 
 ### `settings`
 
-Sent once a visit. It holds the value of each setting listed here and no others.
+Recorded once when the statistics start and included in a later send. It holds the value of each setting listed here and no others.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -129,20 +131,20 @@ Sent once a visit. It holds the value of each setting listed here and no others.
 | `dimUnchangedObjects` | Whether objects that a Timeline step did not change are dimmed | Yes or no |
 | `waveform` | How the music waveform is drawn | `volume`, `fft` or `off` |
 | `beatDisplay` | What the beat labels show | `beat`, `measure` or `both` |
-| `toolbarQuickSwitch` | Whether the toolbar has Quick Switch | Yes or no |
+| `toolbarQuickSwitch` | Whether Quick Switch is enabled in the toolbar | Yes or no |
 | `toolbarCustomized` | Whether the toolbar was changed from its default. Its contents are not sent | Yes or no |
 | `mouseSecondaryTool` | What the secondary mouse button does | `eraser`, `select` or `selectContextMenu` |
 | `playFollow` | Whether the view follows playback | Yes or no |
-| `touchQuickScrollShow`, `touchLongPressContextMenu` | The two touch options. They are sent only from a device whose main way of pointing is imprecise | `on`, `off` or `touch`, and yes or no |
-| `confirmCloseUnsavedFile` | Whether the editor asks before closing an unsaved file | Yes or no |
+| `touchQuickScrollShow`, `touchLongPressContextMenu` | When the Quick Scroll Zone is shown, and whether a long press opens the context menu. They are sent only from a device whose main way of pointing is imprecise | `on`, `off` or `touch`, and yes or no |
+| `confirmCloseUnsavedFile` | The Ask Before Closing with Unsaved Changes setting | Yes or no |
 
 ### `startup`
 
-Sent once a visit, with the result of starting the editor.
+Recorded once when the statistics start and included in a later send. It holds the result of starting the editor.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
-| `start` | How the visit began | `continued`, `reload`, `recovered`, `launchFile`, `blank` or `safeMode` |
+| `start` | How the visit began | `continued`, `reload`, `recovered` or `blank` |
 | `outcome` | How starting ended. `slow` means it took more than ten seconds | `done`, `slow` or `error` |
 | `ready` | The time from the page load until the editor was ready. It is left out when the page was hidden during startup, and when startup failed | Milliseconds |
 | `hidden` | Whether the page was hidden before startup ended. A hidden page runs slowly, which lengthens `ready` | Yes or no |
@@ -176,7 +178,7 @@ When a visit finds any of the following, `startup` also carries the matching fie
 
 ### `storage`
 
-Sent when the storage status is known, again when storing is paused or moves to memory only, and once more when the Recent Sessions count becomes known.
+Recorded when the storage status is known, again when storing is paused or moves to memory only, and once more when the Recent Sessions count becomes known. Each is included in a later send.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -191,7 +193,7 @@ Sent when the storage status is known, again when storing is paused or moves to 
 
 ### `chart`
 
-Sent after Open File…, after a stored session is shown and after a Save, if the chart has notes or animation events. The editor counts when the browser is idle, and not during playback.
+Recorded after Open File…, after a stored session is shown and after a Save, if the chart has notes or animation events, and included in a later send. The editor counts when the browser is idle, and not during playback.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -209,32 +211,32 @@ Sent after Open File…, after a stored session is shown and after a Save, if th
 
 ### `preview`
 
-Sent when the statistics start, if the preview is shown, and when the preview moves from its separate thread to the main thread after a failure.
+Recorded when the statistics start, if the preview is shown, and when the preview moves from its separate thread to the main thread after a failure. Each is included in a later send.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
 | `host` | Which thread draws the preview | `main` or `worker` |
-| `reason` | Why the separate thread was given up: it lacks WebGL 2, it failed, it did not answer in time, or its canvas could not be handed over. Sent only on that handover | `webgl2`, `error`, `timeout` or `transfer` |
+| `reason` | Why the separate thread was given up: a WebGL 2 graphics context could not be created, it failed, it did not answer in time, or its canvas could not be handed over. Sent only on that handover | `webgl2`, `error`, `timeout` or `transfer` |
 | `workerFrames` | Whether the separate thread had drawn any frames before it failed. Sent only on that handover | `none` or `some` |
 | `graphics` | Whether the editor could use the browser’s graphics. Sent when the statistics start | `ok` or `unavailable` |
 
 ### `open`
 
-Sent for each Open File… of a chart file. A file that is not a chart (audio, an archive, a package) is not reported.
+Recorded when an Open File… of a chart file ends, and included in a later send. A file that is not a chart (audio, an archive, a package) is not reported. Dropping a file onto the editor opens nothing and is not recorded.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
 | `format` | The kind of chart file | `nxsp`, `levelData`, `sus`, `usc`, `chcy` or `other` |
-| `via` | How the file was chosen | `picker`, `drop` or `launch` |
+| `via` | How the file was chosen | Always `picker` |
 | `size` | The file’s size | Range |
 | `outcome` | Whether the file opened, was cancelled, was refused or failed | `done`, `cancelled`, `refused` or `failed` |
-| `reason` | Why a file was refused or failed: a file error, or an unsupported or invalid file | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only`, `io`, `unsupported` or `invalid` |
+| `reason` | Why a file was refused: it is not supported, or it is not valid | `unsupported` or `invalid` |
 | `took` | How long the open took, counted from the moment the file was chosen | Milliseconds |
 | `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
 
 ### `save`
 
-Sent for each Save, Save As…, Download Again and Recent Sessions Save….
+Recorded when a Save, Save As…, Download Again or Recent Sessions Save… ends, and included in a later send.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -251,22 +253,22 @@ Sent for each Save, Save As…, Download Again and Recent Sessions Save….
 
 ### `export`
 
-Sent for each Export.
+Recorded when an export write succeeds or fails, and included in a later send. Cancelling an export is not recorded.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
-| `format` | The kind of file exported | `levelData` or `other` |
+| `format` | The kind of file exported | Always `levelData` |
 | `target` | Whether the file was chosen in a file picker or downloaded | `picker` or `download` |
 | `size` | The size of the file written | Range |
 | `took` | How long the write took, counted from after the last picker closed | Milliseconds |
 | `buildMs` | How long building the file took | Milliseconds |
-| `outcome` | How the export ended | `done`, `cancelled` or `failed` |
+| `outcome` | How the export ended | `done` or `failed` |
 | `reason` | Why it failed: a file error | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only` or `io` |
 | `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
 
 ### `check`
 
-Sent for each Check File and History that was not cancelled.
+Recorded when a Check File and History ends without being cancelled, and included in a later send.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -278,7 +280,7 @@ Sent for each Check File and History that was not cancelled.
 
 ### `bgm`
 
-Sent each time music is chosen.
+Recorded each time music is chosen, and included in a later send.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -291,7 +293,7 @@ Sent each time music is chosen.
 
 ### Counts at each send
 
-These events carry the counts since the last send. They are sent each time the page is hidden or closes. Only counts above 0 are sent.
+These events are included at each send, including the first send after a minute of use. Each carries the counts since the last send. Activity counters are sent only when something was counted.
 
 #### `usage`
 
@@ -303,17 +305,16 @@ The source is `key`, `toolbar`, `menu`, `gesture`, `wheel`, `panel` or `button`.
 
 #### `edits`
 
-How often each kind of Timeline step was added, by its name, and how often Undo and Redo were used.
+How often each kind of edit was made, by its name, how often a Timeline step was restored, and how often Undo and Redo were used.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
 | `undo`, `redo` | Undo and Redo | Count |
 | `note.add`, `note.generate`, `note.elevation`, `note.combine`, `note.split`, `note.vertical` | Notes added or generated, and notes changed in height, joined, split or made vertical | Count |
 | `object.add`, `object.edit`, `object.move`, `object.replace`, `object.paste`, `object.brush`, `object.delete`, `object.cut`, `object.flip`, `object.scale` | Objects added, edited, moved, replaced, pasted, brushed, deleted, cut, flipped or scaled | Count |
-| `property.set`, `header.set`, `levelInfo.set`, `bgm.change`, `dynamicStages.enable` | Properties set, the starting life or music offset set, level information set, music changed, dynamic stages turned on | Count |
-| `owner.create`, `owner.rename`, `owner.set`, `owner.move`, `owner.moveMany`, `owner.duplicate`, `owner.delete`, `owner.ungroup` | Stages and groups created, renamed, changed, moved, duplicated, deleted or ungrouped | Count |
-| `origin`, `continue`, `restore`, `recovery`, `externalChange` | A session’s first step (new, opened or imported), a continued session, a restore to an earlier step, recovered changes, and a change made outside the editor | Count |
-| `file.save`, `file.export` | A Save, and an Export, recorded as Timeline steps | Count |
+| `property.set`, `header.set`, `levelInfo.set`, `bgm.change`, `dynamicStages.enable` | Properties set, Initial Life or the music offset set, level information set, music changed, dynamic stages turned on | Count |
+| `owner.create`, `owner.rename`, `owner.set`, `owner.move`, `owner.moveMany`, `owner.duplicate`, `owner.delete`, `owner.ungroup` | Stages, groups and their folders created, renamed, changed, moved, duplicated, deleted or ungrouped | Count |
+| `restore` | A Timeline step was restored | Count |
 
 #### `features`
 
@@ -322,7 +323,7 @@ How often each kind of Timeline step was added, by its name, and how often Undo 
 | `historyPanel`, `historyDialog`, `recentTab` | The History panel was shown, the History dialog was opened, and the Recent Sessions tab was opened | Count |
 | `peek`, `peekRefused` | A Timeline step was viewed, and a command was refused while one was viewed | Count |
 | `restore`, `restoreSession`, `restoreCopy` | A Timeline step was restored, a stored session was restored, and a stored session was restored as a copy | Count |
-| `saveRowToFile`, `deleteSessions` | A stored session was saved with Save…, and Delete Sessions… was used | Count |
+| `saveRowToFile`, `deleteSessions` | Save… was chosen for a stored session, and Delete Sessions… was confirmed | Count |
 | `minimapDrag`, `minimapJump` | The minimap was dragged, and the minimap was used to jump | Count |
 | `autoscroll`, `quickSwitch` | Autoscroll started, and Quick Switch picked a tool | Count |
 
@@ -341,7 +342,7 @@ How often each kind of Timeline step was added, by its name, and how often Undo 
 
 ### `peek`
 
-Sent with `perf`, and only when Timeline steps were viewed since the last send.
+Included with `perf` at a send, and only when Timeline steps were viewed since the last send.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -351,7 +352,7 @@ Sent with `perf`, and only when Timeline steps were viewed since the last send.
 
 ### `perf`
 
-Sent each time the page is hidden or closes, for the time since the last send.
+Included at each send, including the first send after a minute of use, for the time since the last send.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -377,9 +378,10 @@ Sent by the support page, when the editor cannot run in the browser, on the firs
 
 ## What the server works out
 
-The server receives your IP address and your browser’s user agent with each request. The editor does not read or send either. The server uses them to:
+The server receives your IP address and your browser’s user agent with each request. The editor reads the user agent to identify the browser engine and operating system. The full user agent reaches the server in the browser’s request headers. It is not included in the event fields.
 
-- find your country, browser, operating system and type of device (such as desktop, laptop, mobile or tablet);
+The server uses your IP address to estimate your location, and your user agent to identify your browser and operating system. It uses the user agent and screen width to estimate the device type, such as desktop, laptop, mobile or tablet. It also uses them to:
+
 - make a visitor code from the site, your IP address and your user agent, together with a value that changes every day. The code groups the events of one browser in one day. People who use the same kind of browser on the same connection can share a code, and the code is different the next day;
 - drop requests from known automated clients.
 
