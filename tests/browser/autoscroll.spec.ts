@@ -6,10 +6,20 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 test.use({ viewport: { width: 1400, height: 900 } })
 
+// The session the page started, before the fixture's chart opens a new one.
+const startup = new WeakMap<Page, string | undefined>()
+
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    startup.set(
+        page,
+        await page.evaluate(async () => {
+            const { flusher } = await import('/src/local/storing.ts')
+            return flusher?.session?.id
+        }),
+    )
     await page.evaluate(installEditorFixture)
     await settle(page)
 })
@@ -307,23 +317,20 @@ test('a lost release and a blur end the motion', async ({ page }) => {
 })
 
 test('Elevation peek overlay: a middle press scrolls while held', async ({ page }) => {
-    const runtime = await page.evaluate(async () => {
-        const { flusher } = await import('/src/local/storing.ts')
-        return flusher?.session?.id
-    })
+    const first = startup.get(page)
     await openElevation(page, 'allow')
     await expect(page.locator('.elevation-editor')).toBeVisible()
     // Peeking needs a stored first entry.
     await expect
         .poll(() =>
-            page.evaluate(async (runtime) => {
+            page.evaluate(async (first) => {
                 const { flusher } =
                     await window.editorTest.appImport<typeof import('../../src/local/storing')>(
                         '/src/local/storing.ts',
                     )
                 const session = flusher?.session
-                return !!session && session.id !== runtime && flusher.newestSeq(session) > 0
-            }, runtime),
+                return !!session && session.id !== first && flusher.newestSeq(session) > 0
+            }, first),
         )
         .toBe(true)
     await page.evaluate(async () => {
@@ -335,7 +342,9 @@ test('Elevation peek overlay: a middle press scrolls while held', async ({ page 
                 '/src/local/storing.ts',
             ),
         ])
-        await peek.peekEntry(peek.entryKey(flusher!.session!.id, 0))
+        await peek.peekEntry(
+            peek.entryKey(flusher!.session!.id, flusher!.newestSeq(flusher!.session!)),
+        )
     })
     const overlay = page.locator('.elevation-peek-overlay')
     await expect(overlay).toBeVisible()
