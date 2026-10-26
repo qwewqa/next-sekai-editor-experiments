@@ -56,6 +56,20 @@ const isNoticeChord = (event: KeyboardEvent) =>
 
 const isApple = isApplePlatform()
 
+// The registered commands the key's assigned bindings name. Bindings naming commands not
+// registered yet wait for them, and never mask others.
+const matchedBindings = (event: KeyboardEvent) =>
+    matchBindings(
+        Object.fromEntries(
+            Object.entries(settings.keyboardShortcuts).filter(([name]) => isCommandName(name)),
+        ),
+        event,
+        isApple,
+    )
+
+/** Whether a command is assigned exactly this chord. */
+export const isAssignedChord = (event: KeyboardEvent) => matchedBindings(event).exact
+
 const isInToolDialog = (element: Element | null) => !!element?.closest('[data-tool-dialog]')
 
 // Radios and chip rows move with arrow keys.
@@ -116,19 +130,12 @@ const onKeydown = (event: KeyboardEvent) => {
 
     const commandChord = isCommandChord(event) && isCharacter(event.key)
     const active = document.activeElement
-    // Bindings naming commands not registered yet wait for them, and never mask others.
-    const matched = matchBindings(
-        Object.fromEntries(
-            Object.entries(settings.keyboardShortcuts).filter(([name]) => isCommandName(name)),
-        ),
-        event,
-        isApple,
-    )
+    const matched = matchedBindings(event)
     // Ctrl/Cmd+S is Save's fixed alias, unless a binding takes that chord itself.
     const alias = !matched.exact && isSaveChord(event)
     const names: CommandName[] = alias ? ['save'] : matched.names.filter(isCommandName)
     const exact = alias || matched.exact
-    // Alt+N belongs to the notice card, even where that does not act; never plain n.
+    // Alt+N belongs to the notice card unless a command is assigned it; never plain n.
     if (!exact && isNoticeChord(event)) return
     // Bubble-phase only: field/menu/drawer/drag handlers keep first refusal. This
     // exception enables just the bound Deselect action, never other Escape bindings.
