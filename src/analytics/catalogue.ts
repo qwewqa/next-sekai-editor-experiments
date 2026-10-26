@@ -9,7 +9,7 @@ import { bucket, scales, type Bucket, type Scale } from './scales'
 
 export { bucket, scales, type Bucket, type Scale } from './scales'
 
-/** A use count: whole, and capped at 9999 a visit. */
+/** A use count: whole, and capped at 9999 a send. */
 export const COUNT_CAP = 9999
 
 /** A time in whole seconds: capped at a day a send. */
