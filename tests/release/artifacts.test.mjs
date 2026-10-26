@@ -42,8 +42,7 @@ const page = `<!doctype html>
     <body><script type="module" src="/assets/index-12345678.js"></script></body>
 </html>
 `
-// The editor's page loads the support gate, a classic script, ahead of the bundle, and links its
-// stylesheet.
+// The editor's page loads gate.js, a classic script, before the bundle, and links its stylesheet.
 const indexPage = page
     .replace('<title>', '<script src="/gate.js"></script><title>')
     .replace(

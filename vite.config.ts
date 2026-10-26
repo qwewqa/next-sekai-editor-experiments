@@ -57,8 +57,7 @@ export default defineConfig(({ mode }) => ({
     },
     css: {
         postcss: {
-            // Uncalled, so PostCSS creates a Tailwind instance for each file. A shared instance
-            // keeps the @config of landing.css for every file after it.
+            // A Tailwind per CSS file and Vue <style> block, or landing.css's @config carries over
             plugins: [tailwind, autoprefixer()],
         },
     },

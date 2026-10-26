@@ -393,8 +393,7 @@ async function checkPages(directory, files, manifest) {
         throw new Error(`index.html does not match the site: ${manifest.site}`)
 }
 
-// The editor's layout requires these utilities. Without them the chart canvas grows without limit
-// and the page hangs.
+// Without these the chart canvas grows without limit and the editor's page hangs.
 const layoutUtilities = ['absolute', 'size-full']
 
 async function checkStylesheet(directory, files) {
