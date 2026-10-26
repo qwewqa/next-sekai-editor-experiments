@@ -271,16 +271,26 @@ test('the reference states the exact values, the caps and the ranges', () => {
         assert.ok(all.includes(`\`${label}\``), `cores: ${label}`)
 })
 
-/** The text of one section of the page, by the id its heading carries. */
-const sectionText = (id: string) => {
+const plain = (markup: string) =>
+    markup
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+/** The markup of one section of the page, by the id its heading carries. */
+const sectionHtml = (id: string) => {
     const start = html.indexOf(`aria-labelledby="${id}"`)
     const end = html.indexOf('</section>', start)
     assert.ok(start > 0 && end > start, `the privacy page has no section ${id}`)
-    return html
-        .slice(start, end)
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/\s+/g, ' ')
+    return html.slice(start, end)
 }
+
+/** The text of one section of the page. */
+const sectionText = (id: string) => plain(sectionHtml(id))
+
+/** The text of each paragraph of a section. */
+const paragraphs = (id: string) =>
+    [...sectionHtml(id).matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map(([, inner = '']) => plain(inner))
 
 /** What each section must keep disclosing: the setting path, the signals, the legal bases, the recipients and the periods. Each pattern names a value, not a sentence. */
 const disclosures: Record<string, RegExp[]> = {
@@ -298,22 +308,43 @@ const disclosures: Record<string, RegExp[]> = {
         /United States/,
         /Standard Contractual Clauses/,
     ],
-    keep: [/13 months/, /about five weeks/, /two weeks/],
     contact: [/legitimate interest/, /legal obligations/, /mailbox/],
-    choices: [
-        /access, correct or delete/,
-        /portable copy/,
-        /data protection authority/,
-        /object to our use of usage statistics at any time/,
-        /Settings › About › Send Usage Statistics/,
-        /emailing us/,
-    ],
+    choices: [/access, correct or delete/, /portable copy/, /data protection authority/],
 }
 
 test('the privacy page keeps its disclosures', () => {
     for (const [id, patterns] of Object.entries(disclosures))
         for (const pattern of patterns)
             assert.match(sectionText(id), pattern, `the ${id} section no longer covers ${pattern}`)
+})
+
+test('each retention period is stated with its data', () => {
+    const periods: [string, RegExp, RegExp][] = [
+        ['keep', /individual usage statistics/, /13 months/],
+        ['keep', /combined statistics/, /without visitor codes indefinitely/],
+        ['keep', /Backups on AWS/, /about five weeks/],
+        ['keep', /error logs/, /two weeks/],
+        ['contact', /mailbox/, /indefinitely/],
+    ]
+    for (const [id, data, period] of periods)
+        assert.ok(
+            paragraphs(id).some((text) => data.test(text) && period.test(text)),
+            `the ${id} section no longer ties ${data} to ${period}`,
+        )
+})
+
+test('one paragraph offers the objection to usage statistics and support', () => {
+    const parts = [
+        /object/,
+        /usage statistics/,
+        /support/,
+        /Settings › About › Send Usage Statistics/,
+        /emailing us/,
+    ]
+    assert.ok(
+        paragraphs('choices').some((text) => parts.every((part) => part.test(text))),
+        'no paragraph of the rights section covers the objection',
+    )
 })
 
 test('the privacy page links to the complete list of what is sent', () => {
