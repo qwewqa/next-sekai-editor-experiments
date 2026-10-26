@@ -143,10 +143,21 @@ curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -
 [ "$(sql -c "SELECT count(*) FROM session WHERE website_id = '$GEO' AND region IS NULL AND city IS NULL")" = 1 ] || fail "the session from a request kept its region or city"
 
 step "retention and monthly totals"
+ROLL=$(cat /proc/sys/kernel/random/uuid)
+# A failed check prints what was found and the website's rows of nse_monthly.
+dump_monthly() {
+    sql -c "SELECT month, metric, name, value, version, device, n, total, p50, p90, p99 FROM nse_monthly WHERE website_id = '$ROLL' ORDER BY 1, 2, 3, 4, 5, 6" >&2 || true
+}
+check_sql() { # what, the expected output, the query
+    local got
+    got=$(sql -c "$3")
+    [ "$got" = "$2" ] && return 0
+    dump_monthly
+    fail "$1: expected '$2', found '$got'"
+}
 # The first run creates nse_monthly. Everything stored so far is from this month, so it adds and deletes nothing.
 retain
-[ "$(sql -c "SELECT count(*) FROM nse_monthly")" = 0 ] || fail "retain added totals for a month that is not complete"
-ROLL=$(cat /proc/sys/kernel/random/uuid)
+check_sql "retain added totals for a month that is not complete" 0 "SELECT count(*) FROM nse_monthly"
 SA=$(cat /proc/sys/kernel/random/uuid) SB=$(cat /proc/sys/kernel/random/uuid) SC=$(cat /proc/sys/kernel/random/uuid)
 SF=$(cat /proc/sys/kernel/random/uuid) SG=$(cat /proc/sys/kernel/random/uuid)
 sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 'nse.qwewqa.dev')" > /dev/null
@@ -198,26 +209,25 @@ INSERT INTO revenue (revenue_id, website_id, session_id, event_id, event_name, c
 VALUES (gen_random_uuid(), :'roll', :'sc', gen_random_uuid(), 'x', 'USD');
 SQL
 OLD_EVENTS="SELECT count(*) FROM website_event WHERE website_id = '$ROLL' AND created_at < now() - interval '13 months'"
-[ "$(sql -c "$OLD_EVENTS")" = 4 ] || fail "the old events were not seeded"
+check_sql "the old events were not seeded" 4 "$OLD_EVENTS"
 
 # If the totals fail, nothing is deleted. A check that refuses every new row stands in for the failure.
 sql -c "ALTER TABLE nse_monthly ADD CONSTRAINT nse_fail CHECK (n < 0) NOT VALID" > /dev/null
 if retain 2> /dev/null; then fail "retain went on after the totals failed"; fi
-[ "$(sql -c "$OLD_EVENTS")" = 4 ] || fail "retain deleted records after its totals failed"
-[ "$(sql -c "SELECT count(*) FROM nse_monthly")" = 0 ] || fail "a failed retain kept some totals"
+check_sql "retain deleted records after its totals failed" 4 "$OLD_EVENTS"
+check_sql "a failed retain kept some totals" 0 "SELECT count(*) FROM nse_monthly"
 sql -c "ALTER TABLE nse_monthly DROP CONSTRAINT nse_fail" > /dev/null
 
 retain
-[ "$(sql -c "$OLD_EVENTS")" = 0 ] || fail "retain kept a record older than 13 months"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$ROLL'")" = 12 ] || fail "retain deleted a record that is newer than 13 months"
-[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$ROLL' AND website_event_id NOT IN (SELECT event_id FROM website_event)")" = 0 ] \
-    || fail "retain left event data without its event"
-[ "$(sql -c "SELECT count(*) FROM session WHERE session_id = '$SC'")" = 0 ] || fail "retain kept a session with no event left"
-[ "$(sql -c "SELECT count(*) FROM session WHERE session_id IN ('$SA', '$SB', '$SF', '$SG')")" = 4 ] || fail "retain deleted a session that still has an event"
+check_sql "retain kept a record older than 13 months" 0 "$OLD_EVENTS"
+check_sql "retain deleted a record that is newer than 13 months" 12 "SELECT count(*) FROM website_event WHERE website_id = '$ROLL'"
+check_sql "retain left event data without its event" 0 "SELECT count(*) FROM event_data WHERE website_id = '$ROLL' AND website_event_id NOT IN (SELECT event_id FROM website_event)"
+check_sql "retain kept a session with no event left" 0 "SELECT count(*) FROM session WHERE session_id = '$SC'"
+check_sql "retain deleted a session that still has an event" 4 "SELECT count(*) FROM session WHERE session_id IN ('$SA', '$SB', '$SF', '$SG')"
 for table in session_data session_link session_replay revenue; do
-    [ "$(sql -c "SELECT count(*) FROM $table WHERE session_id = '$SC'")" = 0 ] || fail "retain kept $table rows of a deleted session"
+    check_sql "retain kept $table rows of a deleted session" 0 "SELECT count(*) FROM $table WHERE session_id = '$SC'"
 done
-[ "$(sql -c "SELECT count(*) FROM session_data WHERE session_id = '$SF'")" = 1 ] || fail "retain deleted session_data of a kept session"
+check_sql "retain deleted session_data of a kept session" 1 "SELECT count(*) FROM session_data WHERE session_id = '$SF'"
 
 # The totals. A month is named by its first day.
 month() { sql -c "SELECT (date_trunc('month', now() AT TIME ZONE 'UTC') - interval '$1 months')::date"; }
@@ -228,7 +238,9 @@ total() { # month, metric, name, value, version, device -> the row's n
 check_total() { # the expected n, then the arguments of total
     local got
     got=$(total "${@:2}")
-    [ "$got" = "$1" ] || fail "nse_monthly ${*:2}: expected $1, found '$got'"
+    [ "$got" = "$1" ] && return 0
+    dump_monthly
+    fail "nse_monthly ${*:2}: expected $1, found '$got'"
 }
 check_total 2 "$M3" visits all '' '' ''
 check_total 2 "$M3" sessions all '' '' ''
@@ -238,35 +250,32 @@ check_total 1 "$M3" sessions country US '' ''
 check_total 1 "$M3" sessions device desktop '' ''
 check_total 4 "$M3" events save '' '' ''
 check_total 2 "$M3" events pageview '' '' ''
-check_total 4 "$M3" value save.outcome done '' ''
+check_total 4 "$M3" value save.outcome 'done' '' ''
 check_total 2 "$M3" number usage.undo.key '' '' ''
 check_total 10 "$M3" month '' '' '' ''
-[ "$(sql -c "SELECT total FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'number' AND name = 'usage.undo.key'")" = 5 ] \
-    || fail "the usage total is not 5"
+check_sql "the total of usage.undo.key" 5 "SELECT total FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'number' AND name = 'usage.undo.key'"
 # 100, 200, 300 and 400 ms: p50 250, p90 370, p99 397. Version 1.0.0 on a laptop has the first three.
-[ "$(sql -c "SELECT n || '|' || p50 || '|' || p90 || '|' || p99 FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'time' AND name = 'save.took' AND version = '' AND device = ''")" = '4|250|370|397' ] \
-    || fail "the save.took percentiles are wrong"
-[ "$(sql -c "SELECT n || '|' || p50 || '|' || p90 || '|' || p99 FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'time' AND name = 'save.took' AND version = '1.0.0' AND device = 'laptop'")" = '3|200|280|298' ] \
-    || fail "the save.took percentiles for version 1.0.0 on a laptop are wrong"
+check_sql "the save.took count and percentiles" '4|250|370|397' "SELECT n || '|' || p50 || '|' || p90 || '|' || p99 FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'time' AND name = 'save.took' AND version = '' AND device = ''"
+check_sql "the save.took count and percentiles for version 1.0.0 on a laptop" '3|200|280|298' "SELECT n || '|' || p50 || '|' || p90 || '|' || p99 FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'time' AND name = 'save.took' AND version = '1.0.0' AND device = 'laptop'"
 # The month of the deleted records keeps its totals.
 check_total 2 "$M15" visits all '' '' ''
 check_total 4 "$M15" month '' '' '' ''
 check_total 1 "$M2" events features '' '' ''
-[ "$(sql -c "SELECT count(*) FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M0'")" = 0 ] || fail "retain added totals for this month"
+check_sql "retain added totals for this month" 0 "SELECT count(*) FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M0'"
 # No row holds a session or a visit code.
-[ "$(sql -c "SELECT count(*) FROM nse_monthly WHERE name ~* '[0-9a-f]{8}-[0-9a-f]{4}' OR value ~* '[0-9a-f]{8}-[0-9a-f]{4}'")" = 0 ] || fail "nse_monthly holds a code"
+check_sql "nse_monthly holds a code" 0 "SELECT count(*) FROM nse_monthly WHERE name ~* '[0-9a-f]{8}-[0-9a-f]{4}' OR value ~* '[0-9a-f]{8}-[0-9a-f]{4}'"
 
 # A second run changes nothing.
 FINGERPRINT="SELECT count(*) || '|' || md5(string_agg(t::text, ',' ORDER BY t::text)) FROM nse_monthly t"
 BEFORE=$(sql -c "$FINGERPRINT")
 retain
-[ "$(sql -c "$FINGERPRINT")" = "$BEFORE" ] || fail "a second retain changed nse_monthly"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$ROLL'")" = 12 ] || fail "a second retain changed the records"
+check_sql "a second retain changed nse_monthly" "$BEFORE" "$FINGERPRINT"
+check_sql "a second retain changed the records" 12 "SELECT count(*) FROM website_event WHERE website_id = '$ROLL'"
 
 # Umami's migrations leave the table alone: a restart runs them again.
 dc restart umami > /dev/null
 dc up -d --wait --wait-timeout 300 > /dev/null
-[ "$(sql -c "$FINGERPRINT")" = "$BEFORE" ] || fail "Umami's start changed nse_monthly"
+check_sql "Umami's start changed nse_monthly" "$BEFORE" "$FINGERPRINT"
 
 step "dump()"
 # nightly.sh's dump itself, with the upload stubbed to copy the file. The trigger is off while a region and a city are
@@ -301,7 +310,8 @@ step "tidy"
 touch -d '3 days ago' "$NSE_DUMP_DIR/umami-old.dump" "$NSE_DUMP_DIR/restore.dump" "$NSE_DUMP_DIR/notes.txt"
 touch -d '1 day ago' "$NSE_DUMP_DIR/umami-recent.dump"
 tidy
-[ "$(ls "$NSE_DUMP_DIR" | sort | tr '\n' ' ')" = 'notes.txt umami-recent.dump ' ] || fail "tidy left: $(ls "$NSE_DUMP_DIR")"
+LEFT=$(find "$NSE_DUMP_DIR" -maxdepth 1 -type f -printf '%f\n' | sort | tr '\n' ' ')
+[ "$LEFT" = 'notes.txt umami-recent.dump ' ] || fail "tidy left: $LEFT"
 
 step "dump and restore"
 docker run -d --name nse-contract-restore -e POSTGRES_PASSWORD=x -e POSTGRES_DB=umami "$POSTGRES_IMAGE" > /dev/null

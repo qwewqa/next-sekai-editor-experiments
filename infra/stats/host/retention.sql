@@ -125,7 +125,7 @@ WHERE rn <= 5000;
 INSERT INTO nse_monthly (month, website_id, metric, name, n, total)
 SELECT month, website_id, 'number', name, n, total
 FROM (
-    SELECT ev.month, ev.website_id, ev.name || '.' || d.data_key AS name, count(*) AS n, sum(d.number_value) AS total,
+    SELECT ev.month, ev.website_id, ev.name || '.' || d.data_key AS name, count(*) AS n, round(sum(d.number_value)) AS total,
            row_number() OVER (
                PARTITION BY ev.month, ev.website_id
                ORDER BY count(*) DESC, ev.name || '.' || d.data_key
