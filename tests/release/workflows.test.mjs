@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 
@@ -101,6 +101,14 @@ test('Check cancels a superseded run on a branch or pull request, never on main 
 test('the browser jobs run beside the check job, and storage runs its core in shards', () => {
     for (const name of ['compatibility', 'compatibility-storage'])
         assert.doesNotMatch(section(check, name), /needs:/)
+    // The unit suites run in a job of their own, beside the type check, lint and format check.
+    assert.match(section(check, 'unit'), /- run: npm test\n/)
+    assert.doesNotMatch(section(check, 'unit'), /needs:/)
+    assert.doesNotMatch(section(check, 'check'), /run: npm test\n/)
+    assert.match(
+        section(check, 'compatibility'),
+        /xvfb-run -a npx playwright test --config playwright.compatibility.config.ts .* --workers=2\n/,
+    )
     const storage = section(check, 'compatibility-storage')
     assert.match(storage, /NSE_STORAGE_SET: core/)
     assert.match(storage, /fail-fast: false/)
@@ -122,20 +130,33 @@ test('the browser jobs run beside the check job, and storage runs its core in sh
         assert.match(section(check, name), new RegExp(`timeout-minutes: ${minutes}\n`))
 })
 
-test('every browser job installs through the stall guard', () => {
+test('every browser job runs in the Playwright image of the locked version', () => {
+    const lock = JSON.parse(
+        readFileSync(new URL('../../package-lock.json', import.meta.url), 'utf8'),
+    )
+    const version = lock.packages['node_modules/@playwright/test'].version
+    const image = `mcr.microsoft.com/playwright:v${version}-noble`
     for (const [text, name] of [
         [check, 'compatibility'],
         [check, 'compatibility-storage'],
+        [check, 'formats'],
         [full, 'storage'],
         [full, 'chromium'],
-    ])
-        assert.match(section(text, name), /run: scripts\/ci\/install-browsers.sh /)
-    const script = readFileSync(
-        new URL('../../scripts/ci/install-browsers.sh', import.meta.url),
-        'utf8',
+    ]) {
+        const body = section(text, name)
+        assert.match(body, new RegExp(`(?:container|image): ${image}\n`), name)
+        // Firefox needs a writable home, which a container job does not give it.
+        assert.match(body, /^ {8}env:\n(?: {12}\w+: .+\n)*? {12}HOME: \/root\n/m, name)
+        assert.doesNotMatch(body, /playwright install|install-browsers/, name)
+    }
+    // No other image, so a Playwright upgrade changes every job or fails here.
+    for (const text of [check, full])
+        for (const [tag] of text.matchAll(/mcr\.microsoft\.com\/playwright:\S+/g))
+            assert.equal(tag, image)
+    assert.equal(
+        existsSync(new URL('../../scripts/ci/install-browsers.sh', import.meta.url)),
+        false,
     )
-    assert.match(script, /for attempt in 1 2 3/)
-    assert.match(script, /timeout --kill-after=10s "\$limit"/)
 })
 
 test('browsers-full runs the whole storage set on a schedule, by hand and on ci/ branches', () => {
@@ -144,6 +165,40 @@ test('browsers-full runs the whole storage set on a schedule, by hand and on ci/
     assert.match(full, /push:\n\s+branches: \['ci\/\*\*'\]/)
     assert.doesNotMatch(full, /NSE_STORAGE_SET/)
     assert.match(section(full, 'storage'), /timeout-minutes: 25\n/)
+})
+
+test('a scheduled browsers-full run does nothing on a commit that has already passed', () => {
+    const gate = section(full, 'changed')
+    assert.ok(gate)
+    assert.match(gate, /actions: read/)
+    assert.match(gate, /run: \$\{\{ steps.changed.outputs.run \}\}/)
+    // Only a nightly can skip. A run by hand or from a push always runs.
+    assert.match(gate, /if \[ "\$\{\{ github.event_name \}\}" = schedule \]/)
+    // A passed run of the whole set: a nightly or a run by hand, on the same commit and not this run.
+    assert.match(gate, /head_sha=\$GITHUB_SHA&status=success/)
+    assert.match(gate, /\.event == "schedule" or \.event == "workflow_dispatch"/)
+    assert.match(gate, /\.id != \$id/)
+    for (const name of ['storage', 'chromium']) {
+        const body = section(full, name)
+        assert.match(body, /needs: changed\n/)
+        assert.match(body, /if: \$\{\{ needs.changed.outputs.run == 'true'/)
+    }
+})
+
+test('browsers-full runs its Chromium job on a schedule and by hand, not on a push', () => {
+    const expression = section(full, 'chromium').match(/^ {8}if: (.+)$/m)?.[1]
+    assert.ok(expression)
+    const runs = (event, output = 'true') =>
+        runInNewContext(expression.replace(/^\$\{\{\s*|\s*\}\}$/g, ''), {
+            github: { event_name: event },
+            needs: { changed: { outputs: { run: output } } },
+        })
+    assert.equal(runs('schedule'), true)
+    assert.equal(runs('workflow_dispatch'), true)
+    assert.equal(runs('push'), false)
+    assert.equal(runs('schedule', 'false'), false)
+    // The storage job keeps its push trigger.
+    assert.doesNotMatch(section(full, 'storage'), /github.event_name/)
 })
 
 test('browsers-full runs the Chromium suite in shards and leaves the timing specs to a local check', () => {
@@ -156,7 +211,11 @@ test('browsers-full runs the Chromium suite in shards and leaves the timing spec
     )
     assert.match(chromium, /name: chromium-failures-\$\{\{ strategy.job-index \}\}/)
     // The shards cover the whole suite exactly once.
-    const shards = chromium.match(/shard: \[(.+)\]/)?.[1].split(', ')
+    const shards = chromium
+        .match(/shard:\s*\[([^\]]+)\]/)?.[1]
+        .split(',')
+        .map((shard) => shard.trim())
+        .filter(Boolean)
     assert.ok(shards)
     assert.deepEqual(
         shards,

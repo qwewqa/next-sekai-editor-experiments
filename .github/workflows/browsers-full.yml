@@ -1,8 +1,10 @@
 name: Browsers Full
 
-# The whole storage set in Firefox and WebKit. Check runs the storage core on every push; this adds the
-# slow specs, startup and opening a project file. A release needs a passed run on its commit:
-# gh workflow run browsers-full.yml --ref main
+# The whole storage set in Firefox and WebKit, and the Chromium suite. Check runs the storage core on every
+# push; this adds the slow storage specs (startup and opening a project file) and the Chromium specs.
+# A release needs a passed run on its commit, started by hand: gh workflow run browsers-full.yml --ref main
+# The nightly run does nothing when a nightly or a manual run has already passed on main's head commit.
+# A push to a ci/ branch runs the storage set only; start the whole run on it by hand.
 on:
     workflow_dispatch:
     schedule:
@@ -19,11 +21,39 @@ concurrency:
     cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
+    changed:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            actions: read
+        outputs:
+            run: ${{ steps.changed.outputs.run }}
+        steps:
+            - id: changed
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  run=true
+                  if [ "${{ github.event_name }}" = schedule ]; then
+                      runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/browsers-full.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=100")
+                      passed=$(jq --argjson id "$GITHUB_RUN_ID" '[.workflow_runs[] | select(.id != $id and (.event == "schedule" or .event == "workflow_dispatch"))] | length' <<<"$runs")
+                      if [ "$passed" -gt 0 ]; then
+                          run=false
+                          echo "Browsers Full has already passed on $GITHUB_SHA. Nothing to run."
+                      fi
+                  fi
+                  echo "run=$run" >> "$GITHUB_OUTPUT"
+
     storage:
+        needs: changed
+        if: ${{ needs.changed.outputs.run == 'true' }}
         runs-on: ubuntu-latest
         # Every storage spec: about 22 min of tests in Firefox and 14 in WebKit on a fast desktop, the v1 web storage
         # fixtures spec (about 4.5 min on one worker) included.
         timeout-minutes: 25
+        container: mcr.microsoft.com/playwright:v1.63.0-noble
+        env:
+            HOME: /root
         strategy:
             fail-fast: false
             matrix:
@@ -43,7 +73,6 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: scripts/ci/install-browsers.sh ${{ matrix.engine }}
             # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
@@ -60,16 +89,41 @@ jobs:
 
     # The Chromium specs, as npm run test:browser runs them: the chromium and chromium-worker projects, about 4,500
     # tests, in shards. The timing specs are not run here: their budgets need a quiet machine with a GPU, so
-    # they are a local check before a release (npm run test:timing).
+    # they are a local check before a release (npm run test:timing). Not run on a push to a ci/ branch.
     chromium:
+        needs: changed
+        if: ${{ needs.changed.outputs.run == 'true' && github.event_name != 'push' }}
         runs-on: ubuntu-latest
         # About 13 tests a minute with four workers on the 4-vCPU runner (5 times slower than a fast desktop), so one
         # of sixteen, about 280 tests, takes about 25 min, retries included.
         timeout-minutes: 60
+        container:
+            image: mcr.microsoft.com/playwright:v1.63.0-noble
+            options: --ipc=host
+        env:
+            HOME: /root
         strategy:
             fail-fast: false
             matrix:
-                shard: [1/16, 2/16, 3/16, 4/16, 5/16, 6/16, 7/16, 8/16, 9/16, 10/16, 11/16, 12/16, 13/16, 14/16, 15/16, 16/16]
+                shard:
+                    [
+                        1/16,
+                        2/16,
+                        3/16,
+                        4/16,
+                        5/16,
+                        6/16,
+                        7/16,
+                        8/16,
+                        9/16,
+                        10/16,
+                        11/16,
+                        12/16,
+                        13/16,
+                        14/16,
+                        15/16,
+                        16/16,
+                    ]
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -79,7 +133,6 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: scripts/ci/install-browsers.sh chromium
             # The five locked preview packages, as build:release stages them. Without them the preview specs fall back to Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
