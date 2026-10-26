@@ -91,5 +91,6 @@ for _ in $(seq 1 60); do
     sleep 5
 done
 [ "$status" = healthy ] || { echo "Umami is ${status:-missing}" >&2; exit 1; }
-docker image prune -f > /dev/null
+# Docker shares the 8 GB root volume, and this host runs nothing else, so every unused image goes.
+docker image prune -af > /dev/null
 echo "stats is up at $COMMIT"
