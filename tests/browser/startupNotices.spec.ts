@@ -572,15 +572,25 @@ test.describe('load notices in the start-up pill', () => {
             }
             // A little wider, the name gives way first and the version stays on its line.
             await page.setViewportSize({ width: 680, height: 390 })
-            await expect.poll(async () => (await parts()).oneLine).toBe(true)
-            const wider = await parts()
-            test.info().annotations.push({ type: 'wider', description: JSON.stringify(wider) })
-            expect(wider).toMatchObject({
+            // The card's room follows the sheet's size, which a ResizeObserver measures a frame
+            // after the window changes: until then the card is wider than it ends up, and the
+            // name still fits. Wait for the settled state.
+            const settled = {
                 oneLine: true,
                 nameWhole: false,
                 versionWhole: true,
                 separatorShown: true,
-            })
+            }
+            await expect.poll(parts).toMatchObject(settled)
+            await page.evaluate(
+                () =>
+                    new Promise((resolve) =>
+                        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                    ),
+            )
+            const wider = await parts()
+            test.info().annotations.push({ type: 'wider', description: JSON.stringify(wider) })
+            expect(wider).toMatchObject(settled)
         })
     })
 
