@@ -117,7 +117,7 @@ sql -c "UPDATE session SET region = 'WA', city = 'Seattle'" > /dev/null
 [ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL AND city IS NOT NULL")" -ge 1 ] || fail "no session to dump with a region"
 # A clean that fails stops dump() before it makes a file or uploads one. Only the psql calls fail.
 if (
-    # shellcheck disable=SC2329
+    # shellcheck disable=SC2317,SC2329
     dc() { case " $* " in *" psql "*) return 1 ;; esac; $NSE_COMPOSE "$@"; }
     dump
 ); then fail "dump() went on after a failed clean"; fi
@@ -131,7 +131,8 @@ sql -c "ALTER TABLE session ENABLE TRIGGER nse_drop_geo" > /dev/null
 
 step "dump and restore"
 docker run -d --name nse-contract-restore -e POSTGRES_PASSWORD=x -e POSTGRES_DB=umami "$POSTGRES_IMAGE" > /dev/null
-for _ in $(seq 1 30); do docker exec nse-contract-restore pg_isready -U postgres -d umami > /dev/null 2>&1 && break; sleep 2; done
+# Over TCP: the image's first-run server listens only on the socket, before the database exists.
+for _ in $(seq 1 30); do docker exec nse-contract-restore pg_isready -h 127.0.0.1 -U postgres -d umami > /dev/null 2>&1 && break; sleep 2; done
 docker exec -i nse-contract-restore pg_restore -U postgres -d umami --no-owner --no-acl --exit-on-error < "$UPLOADS"/*.dump
 for table in website website_event event_data session _prisma_migrations; do
     a=$(sql -c "SELECT count(*) FROM $table")
