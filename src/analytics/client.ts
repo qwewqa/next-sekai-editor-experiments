@@ -1,8 +1,9 @@
 import { watch } from 'vue'
 import { SITE } from '../buildInfo'
 import { builtInCommandNames } from '../editor/commands/names'
-import { isPanelVisible } from '../editor/workspace'
+import { isPanelVisible, workspaceSize } from '../editor/workspace'
 import { onHistoryAction, type HistoryAction } from '../history/actions'
+import { STACK_CAP } from '../history/cap'
 import { liveState, stackLength } from '../history/stack'
 import { languageTag } from '../i18n/plural'
 import { launch } from '../launch'
@@ -12,9 +13,13 @@ import { previewHost } from '../preview/worker/host'
 import { hasDefaultValue, settings } from '../settings'
 import {
     bucket,
+    capCount,
+    capMs,
+    chartObjects,
     fromRaw,
     isValidEvent,
     MAX_KEYS,
+    measured,
     type EventData,
     type EventName,
 } from './catalogue'
@@ -39,16 +44,53 @@ const referrerOrigin = () => {
     }
 }
 
+type Device = Pick<
+    EventData<'perf'>,
+    'cores' | 'deviceMemory' | 'engine' | 'touch' | 'dpr' | 'viewport'
+>
+
+/** The browser’s approximate memory in GiB, where it reports one. */
+const deviceMemory = (): Device['deviceMemory'] => {
+    const value = (navigator as { deviceMemory?: unknown }).deviceMemory
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return
+    if (value >= 16) return '16+'
+    if (value <= 0.25) return '0.25'
+    const label = String(value)
+    return label === '0.5' || label === '1' || label === '2' || label === '4' || label === '8'
+        ? label
+        : 'other'
+}
+
+/** What every measured event repeats: the device it ran on, and the workspace’s width. */
+const device = (): Device => {
+    const cores = navigator.hardwareConcurrency
+    const memory = deviceMemory()
+    const dpr = devicePixelRatio
+    const viewport = measured('viewport', workspaceSize.value.width)
+    return {
+        ...(cores > 0 && { cores: bucket('cores', cores) }),
+        ...(memory && { deviceMemory: memory }),
+        engine: detection().engine,
+        touch: matchMedia('(pointer: coarse)').matches,
+        ...(dpr > 0 && { dpr: bucket('dpr', dpr) }),
+        ...(viewport && { viewport }),
+    }
+}
+
 const visit = (): EventData<'visit'> => {
     const language = navigator.language.split('-')[0]?.toLowerCase() ?? ''
+    const { width, height } = workspaceSize.value
+    const { cores, deviceMemory, dpr, viewport } = device()
     return {
         version: launch.release,
         site: SITE === 'test' ? 'test' : 'production',
         ...detection(),
         standalone: isStandalone(),
         touch: matchMedia('(pointer: coarse)').matches,
-        viewport: bucket('viewport', innerWidth),
-        dpr: bucket('dpr', devicePixelRatio),
+        ...(viewport && { viewport, viewportPortrait: height > width }),
+        ...(dpr && { dpr }),
+        ...(cores && { cores }),
+        ...(deviceMemory && { deviceMemory }),
         browserLanguage: /^[a-z]{2,3}$/.test(language) ? language : 'other',
         returning: launch.isExistingUser,
         updated: launch.updated,
@@ -81,19 +123,47 @@ const startKind = (): NonNullable<EventData<'startup'>['start']> => {
     return tally.wasNoted('reload') ? 'reload' : 'blank'
 }
 
+const navigationTypes = {
+    navigate: 'navigate',
+    reload: 'reload',
+    back_forward: 'back_forward',
+    prerender: 'other',
+} as const
+
+/** How the document came: a guess from the browser’s timing entry, `unknown` when unclear. */
+const documentDelivery = (
+    entry: PerformanceNavigationTiming | undefined,
+): NonNullable<EventData<'startup'>['documentDelivery']> => {
+    if (!entry) return 'unknown'
+    if (entry.workerStart > 0) return 'serviceWorker'
+    const delivery = (entry as { deliveryType?: string }).deliveryType
+    if (delivery === 'cache') return 'cache'
+    if (entry.transferSize > 0) return 'network'
+    return entry.decodedBodySize > 0 ? 'cache' : 'unknown'
+}
+
 const startupEvent = (): EventData<'startup'> | undefined => {
     const started = tally.startup()
     if (!started) return
     const found = Object.fromEntries(
         status.loadEvents.value.map((event) => [`found.${event.kind}`, true]),
     )
+    const [entry] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+    const discarded = (document as { wasDiscarded?: unknown }).wasDiscarded
     return {
         start: startKind(),
         outcome: started.outcome,
         // A hidden page is throttled, which inflates the time; a failed startup has no time.
-        ...(started.hidden || started.outcome === 'error'
-            ? {}
-            : { ready: bucket('time', started.at) }),
+        ...(started.hidden || started.outcome === 'error' ? {} : { ready: capMs(started.at) }),
+        hidden: started.hidden,
+        navigation: entry
+            ? ((navigationTypes as Record<string, EventData<'startup'>['navigation']>)[
+                  entry.type
+              ] ?? 'other')
+            : 'unknown',
+        documentDelivery: documentDelivery(entry),
+        ...(typeof discarded === 'boolean' && { wasDiscarded: discarded }),
+        ...device(),
         ...found,
     }
 }
@@ -112,14 +182,20 @@ const storageEvent = async (): Promise<EventData<'storage'> | undefined> => {
     const privateWindow =
         quota !== undefined && suspectPrivate({ persisted: persisted === true, quota })
     const sessions = status.recentSessionCount.value
+    const run = status.pressureRuns.at(-1)
+    const share =
+        usage !== undefined && quota !== undefined && quota > 0
+            ? measured('usageShare', (usage * 100) / quota)
+            : undefined
     return {
         mode: current.mode === 'memory' && privateWindow ? 'memory-private' : current.mode,
         ...(current.reason && { reason: current.reason }),
         persisted: persisted === undefined ? 'unsupported' : persisted ? 'granted' : 'not',
-        ...(usage !== undefined && { usage: bucket('size', usage) }),
-        ...(quota !== undefined && { quota: bucket('quota', quota) }),
-        cleanup: status.pressureRuns.some((run) => run.freed > 0),
-        ...(sessions !== undefined && { sessions: bucket('small', sessions) }),
+        ...(measured('size', usage) && { usage: measured('size', usage) }),
+        ...(measured('quota', quota) && { quota: measured('quota', quota) }),
+        ...(share && { usageShare: share }),
+        cleanup: !run ? 'notRun' : run.freed > 0 ? 'freed' : run.busy ? 'busy' : 'noSpaceFreed',
+        ...(sessions !== undefined && { sessions: capCount(sessions) }),
     }
 }
 
@@ -140,21 +216,31 @@ const chartEvent = (trigger: tally.ChartTrigger): EventData<'chart'> | undefined
         'stageTransformEventJoint',
     ])
     if (!notes && !events) return
+    const timeScales = total(['timeScale'])
+    const objects = chartObjects({
+        notes,
+        timeScales,
+        events,
+        bpms: bpms.length,
+        stages: stages.size,
+        groups: groups.size,
+    })
     return {
         trigger,
-        notes: bucket('objects', notes),
+        notes: bucket('counts', notes),
         slides: bucket(
-            'objects',
+            'counts',
             [...store.slides.note.values()].filter((n) => n.length > 1).length,
         ),
-        bpms: bucket('objects', bpms.length),
-        timeScales: bucket('objects', total(['timeScale'])),
-        events: bucket('objects', events),
-        stages: bucket('small', stages.size),
-        groups: bucket('small', groups.size),
+        bpms: bucket('counts', bpms.length),
+        timeScales: bucket('counts', timeScales),
+        events: bucket('counts', events),
+        stages: bucket('counts', stages.size),
+        groups: bucket('counts', groups.size),
+        objects: bucket('counts', objects),
         dynamicStages: isDynamicStages,
         bgm: bgm.meta?.durationMs === undefined ? 'none' : bucket('audio', bgm.meta.durationMs),
-        historySteps: bucket('objects', stackLength()),
+        historySteps: Math.min(STACK_CAP, stackLength()),
     }
 }
 
@@ -165,6 +251,9 @@ const idle = (run: (deadline: IdleDeadline) => void) => {
             run({ didTimeout: true, timeRemaining: () => 0 })
         }, 0)
 }
+
+/** The recorded events that carry the device they ran on. */
+const measuredEvents = new Set(['open', 'save', 'export', 'check', 'bgm'])
 
 /** Starts the visit's statistics; `stop` ends them and drops what was not sent. */
 export const startClient = (target: AnalyticsTarget) => {
@@ -196,22 +285,25 @@ export const startClient = (target: AnalyticsTarget) => {
 
     // The summaries since the last send, and the events the flows recorded.
     const summaries = () => {
+        field.flush()
         const { counts, recorded } = tally.collect()
         const items: Item[] = []
+        const where = device()
         for (const { name, data, at } of recorded) {
-            const made = fromRaw(name, data)
+            const made = { ...fromRaw(name, data), ...(measuredEvents.has(name) && where) }
             if (isValidEvent(name, made)) items.push(item(name, made, at))
         }
         const events = new Map<string, Record<string, unknown>>()
-        let commands = 0
         for (const [key, count] of counts) {
             const dot = key.indexOf('.')
             const name = key.slice(0, dot)
-            if (name === 'usage') commands += count
             events.set(name, { ...events.get(name), [key.slice(dot + 1)]: count })
         }
-        // The perf event goes at every send: the time and the inputs belong with the counts.
-        events.set('perf', { ...events.get('perf'), ...field.measures(commands) })
+        // The perf event goes at every send: the time and the inputs belong with the counts. The
+        // peek event goes only when there were peeks.
+        events.set('perf', { ...events.get('perf'), ...field.measures(), ...where })
+        const peeks = events.get('peek')
+        if (peeks) events.set('peek', { ...peeks, ...where })
         for (const [name, all] of events) {
             const entries = Object.entries(all)
             for (let at = 0; at < entries.length; at += MAX_KEYS) {

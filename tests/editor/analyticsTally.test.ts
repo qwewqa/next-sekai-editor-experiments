@@ -125,9 +125,9 @@ test('a Timeline step shown counts as a peek, with its time as a range or as cac
     tally.peekShown(undefined)
     assert.deepEqual(counts(), {
         'features.peek': 4,
-        'perf.peek.<50': 2,
-        'perf.peek.1k-2k': 1,
-        'perf.peek.cached': 1,
+        'peek.peek.25-50': 2,
+        'peek.peek.1k-2k': 1,
+        'peek.peek.cached': 1,
     })
 })
 
@@ -153,6 +153,19 @@ test('flows mark the page busy and not busy again, never below none', () => {
     assert.equal(tally.isBusy(), true)
     tally.busy(false)
     assert.equal(tally.isBusy(), false)
+})
+
+test('a watcher hears the page become busy and stop being busy, not each nested flow', () => {
+    const changes: boolean[] = []
+    tally.watchBusy((busy) => changes.push(busy))
+    tally.busy(true)
+    tally.busy(true)
+    tally.busy(false)
+    tally.busy(false)
+    tally.watchBusy(undefined)
+    tally.busy(true)
+    tally.busy(false)
+    assert.deepEqual(changes, [true, false])
 })
 
 test('a recorded event takes its time from the moment the action began', () => {
