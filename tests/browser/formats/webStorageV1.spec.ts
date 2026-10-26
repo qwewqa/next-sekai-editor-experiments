@@ -5,7 +5,7 @@ import { readNxsp } from '../../../src/local/nxsp'
 import { ZipReader } from '../../../src/zip'
 import { Editor } from '../../samples/driver'
 import { closePage } from '../editorFixture'
-import { errorsFail, noErrors, openHistory, timeline } from '../historyJourney'
+import { errorsFail, noErrors, notice, openHistory, timeline } from '../historyJourney'
 import { readFile, writeFile } from '../saveFlows'
 import { skipWhereTheEditorCannotStart } from '../webkitSupport'
 import {
@@ -298,19 +298,25 @@ test('A’s Timeline shows its dividers, the recovered entry and the damaged row
     await page.keyboard.press('Escape')
 
     // Undo walks the stored stack. The BGM step the cleanup left unheld (the first song, kept only
-    // by earlier steps) reads "not loaded" with Choose Audio…, never as damage.
+    // by earlier steps) reads "not loaded" with Choose Audio…, never as damage. The walk stops at
+    // a song the dump's media store lacks: in WebKit, seeded without that store, the stored song
+    // is not loaded either, and its card was the start-up one.
+    const stored = main.stores
+        .find((store) => store.name === 'media')!
+        .records.filter((record) => record.value.kind === 'bgm')
+        .map((record) => Buffer.from((record.key as { $ab: string }).$ab, 'base64').toString('hex'))
+    expect(stored).toHaveLength(1)
     const editor = new Editor(page)
     await editor.ready()
     let undone = 0
     const card = page.locator('[data-notice-card]').filter({ hasText: 'The BGM is not loaded.' })
     for (; undone < 40; undone++) {
         await expect.poll(() => editor.act(() => editor.command('z'), 4000)).toBeTruthy()
-        const unheld = await page.evaluate(async () => {
+        const unheld = await page.evaluate(async (stored) => {
             const { liveState } = await import('/src/history/stack.ts')
-            return (
-                liveState.value.bgm.meta !== undefined && liveState.value.bgm.buffer === undefined
-            )
-        })
+            const { meta, buffer } = liveState.value.bgm
+            return meta !== undefined && buffer === undefined && !stored.includes(meta.hash)
+        }, stored)
         if (unheld) break
     }
     expect(undone).toBeLessThan(40)
@@ -527,7 +533,10 @@ test('a newer build’s data stays: continuing A, Restore as a Copy, a Save that
     await openRecent(second)
     await expect(row(second, chains.A)).toHaveAttribute('data-badge', 'elsewhere')
     await rowAction(second, chains.A, 'Restore as a Copy')
-    // A copy is stored with its first edit; History stays open after a Restore, over the chart.
+    // The copy is open once its card shows. The open resets the tool and the view, so the edit
+    // waits for it. A copy is stored with its first edit; History stays open after a Restore, over
+    // the chart.
+    await expect(notice(second, 'Restored a copy of')).toBeVisible()
     await second.keyboard.press('Escape')
     await edit(second, 3100)
     await expect
