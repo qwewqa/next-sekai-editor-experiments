@@ -15,7 +15,10 @@
 #      report is counted by the next run and a final month is not made again; mixed versions, groups of one, one session
 #      with many events, text that is not in the catalogue, 6000 junk events and more versions than the cap are not
 #      totalled, and a left-out timing is in no percentile; a month whose records are all after the cutoff is not final; a second run changes
-#      nothing, Umami's start leaves nse_monthly alone, and tidy deletes old dump files
+#      nothing, Umami's start leaves nse_monthly and nse_weekly alone, and tidy deletes old dump files; the weekly counts
+#      (visits, sessions and event names by ISO week) are made on fixed week boundaries, count a week that is split
+#      across two months whole, take a late report into a week that is not final, leave out a week of 5 sessions, fold
+#      names of fewer than 10 sessions into other, and keep a week after its records are deleted
 #   7. every saved query runs, and prints the rows the batch produces
 # Needs docker, curl and jq.
 set -euo pipefail
@@ -151,6 +154,7 @@ ROLL=$(cat /proc/sys/kernel/random/uuid)
 JUNK=$(cat /proc/sys/kernel/random/uuid)
 VERS=$(cat /proc/sys/kernel/random/uuid)
 LATE=$(cat /proc/sys/kernel/random/uuid)
+WEEK=$(cat /proc/sys/kernel/random/uuid)
 SITE=$ROLL
 # A failed check prints what was found and the rows of nse_monthly for the website being checked.
 dump_monthly() {
@@ -162,6 +166,16 @@ check_sql() { # what, the expected output, the query
     [ "$got" = "$2" ] && return 0
     dump_monthly
     fail "$1: expected '$2', found '$got'"
+}
+dump_weekly() {
+    sql -c "SELECT week, metric, name, n, contributors FROM nse_weekly WHERE website_id = '$SITE' ORDER BY 1, 2, 3" >&2 || true
+}
+check_week() { # week, metric, name, then the expected n (empty for no row)
+    local got
+    got=$(sql -c "SELECT n FROM nse_weekly WHERE website_id = '$SITE' AND week = '$1' AND metric = '$2' AND name = '$3'")
+    [ "$got" = "$4" ] && return 0
+    dump_weekly
+    fail "nse_weekly $1 $2 $3: expected '$4', found '$got'"
 }
 total() { # month, metric, name, value, version, device -> the row's n
     sql -c "SELECT n FROM nse_monthly WHERE website_id = '$SITE' AND month = '$1' AND metric = '$2' AND name = '$3' AND value = '$4' AND version = '$5' AND device = '$6'"
@@ -181,7 +195,7 @@ check_time() { # month, property, version, device, then the expected "n|p50|p90|
 retain
 check_sql "retain added totals for a month that is not complete" 0 "SELECT count(*) FROM nse_monthly"
 SC=$(cat /proc/sys/kernel/random/uuid) SF=$(cat /proc/sys/kernel/random/uuid)
-sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 'nse.qwewqa.dev'), ('$JUNK', 'junk', 'nse.qwewqa.dev'), ('$VERS', 'vers', 'nse.qwewqa.dev'), ('$LATE', 'late', 'nse.qwewqa.dev')" > /dev/null
+sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 'nse.qwewqa.dev'), ('$JUNK', 'junk', 'nse.qwewqa.dev'), ('$VERS', 'vers', 'nse.qwewqa.dev'), ('$LATE', 'late', 'nse.qwewqa.dev'), ('$WEEK', 'week', 'nse.qwewqa.dev')" > /dev/null
 # Raw records, by months ago:
 #   3  11 sessions on a laptop with 1.0.0 and 11 on a desktop with 1.1.0, each with a Save time and a use count
 #   2  10 laptop sessions on 1.0.0, 10 that updated to 1.1.0 the same day (mixed), one on 2.0.0 on a tablet (a group of
@@ -192,15 +206,24 @@ sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 
 #      and 6000 events with names and values of their own
 #   VERS website, 3 months ago: 10 sessions that send 60 versions, each from all of them, and 6000 more, each from one
 #   LATE website, an hour after the cutoff of 13 months: 10 sessions, and a report that comes late
+#   WEEK website, on fixed moments of four ISO weeks (see BND and WM below): the first week is split across two months
 # One time for every LATE record, an hour after the cutoff. Both batches use it, so they are in one month even when the
 # cutoff is near a month's end, and the second is late only because it is added after the first run.
 LT=$(sql -c "SELECT to_char((now() - interval '13 months' + interval '60 minutes') AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') || '+00'")
-sql -q -v "roll=$ROLL" -v "junk=$JUNK" -v "vers=$VERS" -v "late=$LATE" -v "lt=$LT" -v "sc=$SC" -v "sf=$SF" -f - << 'SQL'
+# The weekly fixture sits on fixed timestamps: BND is the first moment of a month that is 3 to 6 months back and does
+# not start on a Monday, so the ISO week WM that contains it is split across two months. W1 to W4 are the dates of the
+# week that starts at WM and of the three after it. Every record below is at one of these moments to the second.
+BND=$(sql -c "SELECT to_char(b, 'YYYY-MM-DD HH24:MI:SS') || '+00' FROM (SELECT date_trunc('month', now() AT TIME ZONE 'UTC') - make_interval(months => n) AS b, n FROM generate_series(3, 6) n) x WHERE extract(isodow FROM b) <> 1 ORDER BY n LIMIT 1")
+WM=$(sql -c "SELECT to_char(date_trunc('week', '$BND'::timestamptz AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS') || '+00'")
+weekdate() { sql -c "SELECT (('$WM'::timestamptz AT TIME ZONE 'UTC') + interval '$1 days')::date"; }
+W1=$(weekdate 0) W2=$(weekdate 7) W3=$(weekdate 14) W4=$(weekdate 21)
+sql -q -v "roll=$ROLL" -v "junk=$JUNK" -v "vers=$VERS" -v "late=$LATE" -v "week=$WEEK" -v "bnd=$BND" -v "wm=$WM" -v "lt=$LT" -v "sc=$SC" -v "sf=$SF" -f - << 'SQL'
 SET TIME ZONE 'UTC';
 SELECT set_config('nse.roll', :'roll', false), set_config('nse.junk', :'junk', false),
        set_config('nse.sc', :'sc', false), set_config('nse.sf', :'sf', false),
        set_config('nse.vers', :'vers', false), set_config('nse.late', :'late', false),
-       set_config('nse.lt', :'lt', false) \g /dev/null
+       set_config('nse.lt', :'lt', false), set_config('nse.week', :'week', false),
+       set_config('nse.bnd', :'bnd', false), set_config('nse.wm', :'wm', false) \g /dev/null
 CREATE FUNCTION pg_temp.m(n int) RETURNS timestamptz LANGUAGE sql AS $$
     SELECT date_trunc('month', now()) - make_interval(months => n) + interval '10 days'
 $$;
@@ -229,6 +252,10 @@ DECLARE
     site_v uuid := current_setting('nse.vers')::uuid;
     site_l uuid := current_setting('nse.late')::uuid;
     lt timestamptz := current_setting('nse.lt')::timestamptz;
+    site_w uuid := current_setting('nse.week')::uuid;
+    bnd timestamptz := current_setting('nse.bnd')::timestamptz;
+    wm timestamptz := current_setting('nse.wm')::timestamptz;
+    kinds text[] := ARRAY['save', 'open', 'export', 'check', 'bgm'];
     vs uuid[] := ARRAY[]::uuid[];
     s uuid;
     t timestamptz;
@@ -327,6 +354,39 @@ BEGIN
     FOR i IN 1..10 LOOP
         s := pg_temp.mk(gen_random_uuid(), site_l, lt, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
         PERFORM pg_temp.ev(site_l, s, lt, 1, NULL, '{}');
+    END LOOP;
+
+    -- The week WM: 10 sessions in the last second of the month before BND, 10 at BND, 10 in the last second of the week.
+    FOR i IN 1..10 LOOP
+        t := bnd - interval '1 second';
+        s := pg_temp.mk(gen_random_uuid(), site_w, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        PERFORM pg_temp.ev(site_w, s, t, 1, NULL, '{}');
+        PERFORM pg_temp.ev(site_w, s, t, 2, 'open', '{}');
+        t := bnd;
+        s := pg_temp.mk(gen_random_uuid(), site_w, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        PERFORM pg_temp.ev(site_w, s, t, 1, NULL, '{}');
+        PERFORM pg_temp.ev(site_w, s, t, 2, 'open', '{}');
+        t := wm + interval '7 days' - interval '1 second';
+        s := pg_temp.mk(gen_random_uuid(), site_w, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        PERFORM pg_temp.ev(site_w, s, t, 1, NULL, '{}');
+        PERFORM pg_temp.ev(site_w, s, t, 2, 'open', '{}');
+        -- The next week, from its first second: 10 sessions, 3 of them with an Export.
+        t := wm + interval '7 days';
+        s := pg_temp.mk(gen_random_uuid(), site_w, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        PERFORM pg_temp.ev(site_w, s, t, 1, NULL, '{}');
+        PERFORM pg_temp.ev(site_w, s, t, 2, 'open', '{}');
+        IF i <= 3 THEN PERFORM pg_temp.ev(site_w, s, t, 2, 'export', '{}'); END IF;
+        -- Two weeks on: 10 sessions, each with one of five kinds of event, two of each.
+        t := wm + interval '21 days';
+        s := pg_temp.mk(gen_random_uuid(), site_w, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        PERFORM pg_temp.ev(site_w, s, t, 1, NULL, '{}');
+        PERFORM pg_temp.ev(site_w, s, t, 2, kinds[1 + (i - 1) % 5], '{}');
+    END LOOP;
+    -- The week after the next: 5 sessions, too few to be listed.
+    FOR i IN 1..5 LOOP
+        t := wm + interval '14 days';
+        s := pg_temp.mk(gen_random_uuid(), site_w, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        PERFORM pg_temp.ev(site_w, s, t, 1, NULL, '{}');
     END LOOP;
 END $$;
 SQL
@@ -460,16 +520,76 @@ check_total '' "$MC" final '' '' '' ''
 SITE=$ROLL
 # No row holds a session or a visit code.
 check_sql "nse_monthly holds a code" 0 "SELECT count(*) FROM nse_monthly WHERE name ~* '[0-9a-f]{8}-[0-9a-f]{4}' OR value ~* '[0-9a-f]{8}-[0-9a-f]{4}'"
+check_sql "nse_weekly holds a code" 0 "SELECT count(*) FROM nse_weekly WHERE name ~* '[0-9a-f]{8}-[0-9a-f]{4}'"
+
+# The weekly counts. Each week of the ROLL website is one day of records: the 10th of its month, 3, 2 and 15 months ago.
+rweek() { sql -c "SELECT date_trunc('week', date_trunc('month', now() AT TIME ZONE 'UTC') - interval '$1 months' + interval '10 days')::date"; }
+WR3=$(rweek 3) WR2=$(rweek 2) WR15=$(rweek 15)
+check_week "$WR3" visits all 22
+check_week "$WR3" sessions all 22
+check_week "$WR2" visits all 32
+check_week "$WR2" sessions all 33
+check_week "$WR2" events pageview 32
+check_week "$WR2" events visit 31
+check_week "$WR2" events save 21
+check_week "$WR2" events open 10
+check_week "$WR2" events export ''
+check_week "$WR2" events features ''
+check_week "$WR2" events other ''
+# 15 months ago: the records are gone, the week stays and is final.
+check_week "$WR15" visits all 11
+check_week "$WR15" sessions all 11
+check_week "$WR15" events pageview 11
+check_week "$WR15" events visit 10
+check_week "$WR15" events save 10
+check_week "$WR15" final '' 0
+check_sql "the weeks that are final" "$WR15" "SELECT week FROM nse_weekly WHERE website_id = '$ROLL' AND metric = 'final'"
+# Junk is not counted by name either, and the counts that are legitimate stay.
+SITE=$JUNK
+check_week "$WR3" visits all 12
+check_week "$WR3" events pageview 12
+check_week "$WR3" events save 3012
+check_week "$WR3" events secret ''
+check_sql "an event name that is not in the catalogue was counted by week" 0 "SELECT count(*) FROM nse_weekly WHERE name ~* '(secret|junk)'"
+# The week WM runs over two months: its 30 sessions are 10 in the last second of the first month, 10 at the start of the
+# second and 10 in the week's last second, and the week is counted whole. The next week begins at W2 to the second.
+SITE=$WEEK
+check_sql "the months of the split week" t "SELECT count(DISTINCT month) >= 2 FROM nse_monthly WHERE website_id = '$WEEK' AND metric = 'visits' AND name = 'all'"
+check_week "$W1" visits all 30
+check_week "$W1" sessions all 30
+check_week "$W1" events pageview 30
+check_week "$W1" events open 30
+check_week "$W2" visits all 10
+check_week "$W2" sessions all 10
+check_week "$W2" events pageview 10
+check_week "$W2" events open 10
+# An event of 3 sessions is "other", which has 3 and is left out.
+check_week "$W2" events export ''
+check_week "$W2" events other ''
+# Five sessions are too few.
+check_week "$W3" visits all ''
+check_week "$W3" sessions all ''
+check_week "$W3" events pageview ''
+# Five kinds of event, 2 sessions each, are together "other" with 10, and none is listed on its own.
+check_week "$W4" visits all 10
+check_week "$W4" events pageview 10
+check_week "$W4" events other 10
+for kind in save open export check bgm; do check_week "$W4" events "$kind" ''; done
+check_sql "weeks are final that lose no record" 0 "SELECT count(*) FROM nse_weekly WHERE website_id = '$WEEK' AND metric = 'final'"
+SITE=$ROLL
 
 # A report that arrives after the first run is counted by the next: two more sessions three months ago.
-sql -q -v "roll=$ROLL" -v "late=$LATE" -v "lt=$LT" -f - << 'SQL'
+sql -q -v "roll=$ROLL" -v "late=$LATE" -v "week=$WEEK" -v "wm=$WM" -v "lt=$LT" -f - << 'SQL'
 SET TIME ZONE 'UTC';
-SELECT set_config('nse.roll', :'roll', false), set_config('nse.late', :'late', false), set_config('nse.lt', :'lt', false) \g /dev/null
+SELECT set_config('nse.roll', :'roll', false), set_config('nse.late', :'late', false), set_config('nse.lt', :'lt', false),
+       set_config('nse.week', :'week', false), set_config('nse.wm', :'wm', false) \g /dev/null
 DO $$
 DECLARE
     roll uuid := current_setting('nse.roll')::uuid;
     site_l uuid := current_setting('nse.late')::uuid;
     lt timestamptz := current_setting('nse.lt')::timestamptz;
+    site_w uuid := current_setting('nse.week')::uuid;
+    w2 timestamptz := current_setting('nse.wm')::timestamptz + interval '7 days';
     s uuid;
     t timestamptz := date_trunc('month', now()) - interval '3 months' + interval '10 days' + interval '2 hours';
 BEGIN
@@ -500,6 +620,15 @@ BEGIN
         INSERT INTO website_event (event_id, website_id, session_id, visit_id, created_at, url_path, event_type, hostname)
         VALUES (gen_random_uuid(), site_l, s, s, lt, '/', 1, 'nse.qwewqa.dev');
     END LOOP;
+    FOR i IN 1..2 LOOP
+        s := gen_random_uuid();
+        INSERT INTO session (session_id, website_id, browser, os, device, country, language, created_at)
+        VALUES (s, site_w, 'chrome', 'Windows 10', 'laptop', 'US', 'ja', w2 + interval '1 hour');
+        INSERT INTO website_event (event_id, website_id, session_id, visit_id, created_at, url_path, event_type, hostname)
+        VALUES (gen_random_uuid(), site_w, s, s, w2 + interval '1 hour', '/', 1, 'nse.qwewqa.dev');
+        INSERT INTO website_event (event_id, website_id, session_id, visit_id, created_at, url_path, event_type, event_name, hostname)
+        VALUES (gen_random_uuid(), site_w, s, s, w2 + interval '1 hour', '/', 2, 'open', 'nse.qwewqa.dev');
+    END LOOP;
 END $$;
 SQL
 retain
@@ -514,19 +643,31 @@ check_sql "retain deleted a record that is newer than 13 months" "$((KEPT + 6))"
 SITE=$LATE
 check_total 12 "$MC" visits all '' '' ''
 check_total '' "$MC" final '' '' '' ''
+# The late report in the week W2, which is not final, is counted. The other weeks stay.
+SITE=$WEEK
+check_week "$W2" visits all 12
+check_week "$W2" sessions all 12
+check_week "$W2" events open 12
+check_week "$W1" visits all 30
+check_week "$W4" events other 10
+check_sql "a week with only late records is final" 0 "SELECT count(*) FROM nse_weekly WHERE website_id = '$WEEK' AND metric = 'final'"
 SITE=$ROLL
+# The week of the ROLL website three months ago takes the two late sessions too.
+check_week "$WR3" visits all 24
+check_week "$WR3" events usage 11
+check_week "$WR3" events save 24
 
 # A second run changes nothing.
-FINGERPRINT="SELECT count(*) || '|' || md5(string_agg(t::text, ',' ORDER BY t::text)) FROM nse_monthly t"
+FINGERPRINT="SELECT (SELECT count(*) || '|' || md5(string_agg(t::text, ',' ORDER BY t::text)) FROM nse_monthly t) || '/' || (SELECT count(*) || '|' || md5(string_agg(w::text, ',' ORDER BY w::text)) FROM nse_weekly w)"
 BEFORE=$(sql -c "$FINGERPRINT")
 retain
-check_sql "a second retain changed nse_monthly" "$BEFORE" "$FINGERPRINT"
+check_sql "a second retain changed nse_monthly or nse_weekly" "$BEFORE" "$FINGERPRINT"
 check_sql "a second retain changed the records" "$((KEPT + 6))" "$KEPT_EVENTS"
 
 # Umami's migrations leave the table alone: a restart runs them again.
 dc restart umami > /dev/null
 dc up -d --wait --wait-timeout 300 > /dev/null
-check_sql "Umami's start changed nse_monthly" "$BEFORE" "$FINGERPRINT"
+check_sql "Umami's start changed nse_monthly or nse_weekly" "$BEFORE" "$FINGERPRINT"
 
 step "dump()"
 # nightly.sh's dump itself, with the upload stubbed to copy the file. The trigger is off while a region and a city are
@@ -569,7 +710,7 @@ docker run -d --name nse-contract-restore -e POSTGRES_PASSWORD=x -e POSTGRES_DB=
 # Over TCP: the image's first-run server listens only on the socket, before the database exists.
 for _ in $(seq 1 30); do docker exec nse-contract-restore pg_isready -h 127.0.0.1 -U postgres -d umami > /dev/null 2>&1 && break; sleep 2; done
 docker exec -i nse-contract-restore pg_restore -U postgres -d umami --no-owner --no-acl --exit-on-error < "$UPLOADS"/*.dump
-for table in website website_event event_data session nse_monthly _prisma_migrations; do
+for table in website website_event event_data session nse_monthly nse_weekly _prisma_migrations; do
     a=$(sql -c "SELECT count(*) FROM $table")
     b=$(docker exec nse-contract-restore psql -U postgres -d umami -tA -c "SELECT count(*) FROM $table")
     [ "$a" = "$b" ] || fail "$table: $a rows, $b after the restore"
@@ -615,6 +756,11 @@ monthly_rows=$(run_query monthly "$ROLL")
 for row in "$M3|24|24|83" "$M2|32|33|94" "$M15|11|11|31" "$M3|1.0.0|13" "$M3|save.took|24|111|1009|1011"; do
     grep -qxF "$row" <<< "$monthly_rows" || fail "monthly.sql did not print the row $row. It printed:
 $monthly_rows"
+done
+weekly_rows=$(run_query weekly "$ROLL")
+for row in "$WR3|24|24" "$WR2|32|33" "$WR15|11|11" "$WR3|pageview|24" "$WR2|open|10"; do
+    grep -qxF "$row" <<< "$weekly_rows" || fail "weekly.sql did not print the row $row. It printed:
+$weekly_rows"
 done
 expect actions 'open|||256K-512K|1|400|400'
 expect peek 'cached|5'
