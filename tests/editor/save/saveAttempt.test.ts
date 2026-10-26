@@ -39,16 +39,20 @@ const setup = async () => {
     setPlatformForTests(mock)
     resetRingForTests()
     const session: Session = { id: 's1', chainId: 'c1', nextSeq: 5 }
+    /** A session the user switched to: New. */
+    const fresh: Session = { id: 's2', chainId: 'c2', nextSeq: 1 }
     /** How each reservation ended, in order. */
     const ends: string[] = []
     const flusher = {
         session,
         endThrows: false,
         pending: [] as { sessionId: string; chainId: string }[],
+        // As the real one: the flusher's current session, whichever it is now.
         reserveSave() {
-            if (session.reserved) return
-            const reservation = { session, seq: session.nextSeq++, wall: 1 }
-            session.reserved = reservation
+            const current = flusher.session
+            if (current.reserved) return
+            const reservation = { session: current, seq: current.nextSeq++, wall: 1 }
+            current.reserved = reservation
             return reservation
         },
         endSave(reservation: Reservation, entry?: unknown, _unit?: unknown, keep = false) {
@@ -132,7 +136,7 @@ const setup = async () => {
             unit: { docId: 'doc', file: { hash: '00' } },
         }) as never
     const entry = { wall: 1, operation: {}, state: {}, revisionId: 'rev-2' } as never
-    return { mock, session, flusher, ends, dialogs, spec, request, marker, entry }
+    return { mock, session, fresh, flusher, ends, dialogs, spec, request, marker, entry }
 }
 
 /** A throw is shown and logged as always; the test keeps the log quiet. */
@@ -290,6 +294,42 @@ test('a reservation another flow holds is waited for outside a hold, and not ins
     })
     assert.equal(got, 5, 'taken once the other flow ended')
     assert.deepEqual(t.ends, ['letGo'])
+})
+
+test('a Save that waited before its reservation, and met a new session, takes none', async () => {
+    const t = await setup()
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => {
+        release = resolve
+    })
+    const done = withSaveAttempt(t.spec(), async (attempt) => {
+        // The wait for `nse-bind` while another tab saves.
+        await gate
+        return (await attempt.reserve()) === undefined
+    })
+    // The user chooses New meanwhile.
+    t.flusher.session = t.fresh
+    release()
+    assert.equal(await done, true, 'no reservation')
+    assert.equal(t.fresh.reserved, undefined, 'nothing reserved on the new session')
+    assert.equal(t.fresh.nextSeq, 1)
+    assert.equal(t.session.reserved, undefined)
+    assert.deepEqual(t.ends, [])
+})
+
+test('a Save waiting for a reservation another flow holds, and meeting a new session, takes none', async () => {
+    const t = await setup()
+    t.session.reserved = { session: t.session, seq: 99, wall: 0 }
+    const got = await withSaveAttempt(t.spec(), async (attempt) => {
+        setTimeout(() => {
+            t.flusher.session = t.fresh
+            t.session.reserved = undefined
+        }, 20)
+        return attempt.reserve()
+    })
+    assert.equal(got, undefined)
+    assert.equal(t.fresh.reserved, undefined)
+    assert.equal(t.fresh.nextSeq, 1)
 })
 
 test('a cancel before the write ends the attempt as cancelled and lets the reservation go', async () => {

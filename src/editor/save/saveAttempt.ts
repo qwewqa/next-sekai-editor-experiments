@@ -179,6 +179,9 @@ export const withSaveAttempt = async <T>(
             if (!env) return
             await end()
             for (;;) {
+                // The build and the identity are this session's: after any wait, a switch to
+                // another session (New, Open) leaves nothing to reserve.
+                if (env.flusher.session !== env.session) return
                 const reservation = env.flusher.reserveSave()
                 if (reservation) {
                     disarm()
