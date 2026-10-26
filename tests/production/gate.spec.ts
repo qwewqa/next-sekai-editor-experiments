@@ -55,8 +55,12 @@ test('a browser without a needed feature gets the plain page and its downloads, 
     })
     await page.goto('/')
     await expect(page.locator('html')).toHaveAttribute('data-gate', 'unsupported')
-    await expect(page.getByText('This browser is too old for the editor.')).toBeVisible()
-    const button = page.getByRole('button', { name: 'Download Your Last Auto Save' })
+    await expect(
+        page.getByText(
+            'This browser does not support the features required by the editor. Update it, or open the editor in another browser.',
+        ),
+    ).toBeVisible()
+    const button = page.getByRole('button', { name: 'Download Last Auto Save' })
     await expect(button).toBeVisible()
     for (const input of ['pointer', 'keyboard']) {
         const download = page.waitForEvent('download')

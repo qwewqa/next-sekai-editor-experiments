@@ -188,7 +188,7 @@ test('the file deleted gives the not-found dialog; Save As… keeps the docId an
     await edit(page, 2)
     await pressSave(page)
     const dialog = choice(page)
-    await expect(dialog).toContainText('"coconut.nxsp" cannot be found.')
+    await expect(dialog).toContainText('“coconut.nxsp” could not be found.')
     // No hint to pick the moved file: a save picker would empty it.
     await expect(dialog).not.toContainText('moved')
     await page.waitForTimeout(350)
@@ -213,7 +213,7 @@ test('the Export link in the not-found dialog’s Save As… opens Export Level 
     await edit(page, 2)
     await pressSave(page)
     const dialog = choice(page)
-    await expect(dialog).toContainText('"coconut.nxsp" cannot be found.')
+    await expect(dialog).toContainText('“coconut.nxsp” could not be found.')
     await page.waitForTimeout(350)
     await dialog.getByRole('button', { name: 'Save As…' }).click()
     const saveAs = saveDialog(page, 'Save As')

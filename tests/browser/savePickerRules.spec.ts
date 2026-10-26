@@ -328,7 +328,7 @@ for (const lifecycle of ['reload', 'reload gap', 'switch and reopen']) {
         await pressSave(page)
         await submitSave(page)
         await expect(page.getByRole('dialog')).toContainText(
-            'Not saved. "coconut.nxsp" could not be read completely.',
+            'Not saved. “coconut.nxsp” could not be read in full.',
         )
         expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
     })

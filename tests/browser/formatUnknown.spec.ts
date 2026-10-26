@@ -45,7 +45,7 @@ for (const where of ['entity', 'data', 'value and ref'])
         await pressSave(page)
         await submitSave(page)
         await expect(page.getByRole('dialog')).toContainText(
-            'Not saved. "coconut.nxsp" could not be read completely.',
+            'Not saved. “coconut.nxsp” could not be read in full.',
         )
         expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
     })
@@ -61,7 +61,8 @@ test('a newer patch alone opens bound with its history, says so once, and saving
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('o')
     const line = notice(page).filter({
-        hasText: 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.',
+        hasText:
+            'This file was created by a newer version of Next SEKAI Editor. Some content may not be shown.',
     })
     await expect(line).toHaveCount(1)
     // Bound to its file, as a whole open is, and its History kept (the file's own chronology).
@@ -130,7 +131,8 @@ test('a newer-patch file that holds newer content: a bound Save keeps what it ca
     // Whole: the line, no partial open's, bound.
     await expect(
         notice(page).filter({
-            hasText: 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.',
+            hasText:
+                'This file was created by a newer version of Next SEKAI Editor. Some content may not be shown.',
         }),
     ).toHaveCount(1)
     expect((await chainOf(page)).file).toBeDefined()

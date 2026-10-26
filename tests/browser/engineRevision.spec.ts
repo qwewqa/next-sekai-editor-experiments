@@ -5,7 +5,7 @@ import { gunzipSync, gzipSync } from 'node:zlib'
 import { waitForStartup } from './editorFixture'
 
 const older =
-    'This level was made for an older engine revision. It now uses the current revision, so check that it still looks and plays as expected.'
+    'This level was made for an older engine revision and now uses the current one. Check that it still looks and plays as expected.'
 // A newer revision is content this build does not read, so Open says so in place of the warning.
 const newer =
     'This level has parts that this version of the editor does not support. They were left out.'

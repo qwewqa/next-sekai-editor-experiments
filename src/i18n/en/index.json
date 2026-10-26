@@ -45,12 +45,12 @@
         },
         "copy": {
             "title": "Copy",
-            "noSelected": "No object selected to copy",
+            "noSelected": "Select an object to copy",
             "copied": "Copied {0} object|Copied {0} objects"
         },
         "cut": {
             "title": "Cut",
-            "noSelected": "No object selected to cut",
+            "noSelected": "Select an object to cut",
             "cut": "Cut {0} object|Cut {0} objects"
         },
         "deselect": {
@@ -99,7 +99,7 @@
         },
         "flip": {
             "title": "Flip Horizontally",
-            "noSelected": "No object selected to flip",
+            "noSelected": "Select an object to flip",
             "flipped": "Flipped {0} object|Flipped {0} objects"
         },
         "flipVertical": {
@@ -127,13 +127,13 @@
         "scaleSelection": {
             "factor": "Scale Factor",
             "apply": "Apply",
-            "invalidFactor": "Enter a positive scale factor that keeps the result within the editor’s supported range"
+            "invalidFactor": "Enter a positive scale factor that keeps the result within the supported range"
         },
         "makeVertical": {
             "title": "Make Vertical",
             "noSelected": "Select at least one note to make vertical",
             "unchanged": "Selected notes are already vertical",
-            "invalid": "Selection cannot be made vertical within the editor’s supported range",
+            "invalid": "The selection cannot be made vertical within the supported range",
             "made": "Made {0} note vertical|Made {0} notes vertical"
         },
         "splitHold": {
@@ -143,14 +143,14 @@
         },
         "combineNotes": {
             "title": "Combine into Slide",
-            "noSelected": "No notes selected to combine",
+            "noSelected": "Select notes to combine",
             "sameSlide": "Selected notes already belong to the same slide",
             "combined": "Combined {0} notes into one slide"
         },
         "fullscreen": {
             "title": "Fullscreen",
             "toggled": "Toggled fullscreen",
-            "unsupported": "Fullscreen is not supported on your device"
+            "unsupported": "Fullscreen is not supported on this device"
         },
         "groups": {
             "groupAll": {
@@ -164,7 +164,7 @@
             },
             "switched": {
                 "all": "Switched to all groups",
-                "one": "Switched to {0} group"
+                "one": "Switched to group {0}"
             }
         },
         "generateSlideNotes": {
@@ -188,7 +188,7 @@
                 "title": "Manage Groups",
                 "moveUp": "Move Group Up",
                 "moveDown": "Move Group Down",
-                "moved": "Moved {0} group",
+                "moved": "Moved group {0}",
                 "properties": {
                     "title": "Edit Group Properties",
                     "modal": {
@@ -197,8 +197,8 @@
                     }
                 },
                 "delete": "Delete Group",
-                "deleted": "Deleted {0} group",
-                "added": "Added {0} group"
+                "deleted": "Deleted group {0}",
+                "added": "Added group {0}"
             }
         },
         "manageStages": {
@@ -207,7 +207,7 @@
                 "title": "Manage Stages",
                 "moveUp": "Move Stage Up",
                 "moveDown": "Move Stage Down",
-                "moved": "Moved {0} stage",
+                "moved": "Moved stage {0}",
                 "properties": {
                     "title": "Edit Stage Properties",
                     "modal": {
@@ -215,8 +215,8 @@
                     }
                 },
                 "delete": "Delete Stage",
-                "deleted": "Deleted {0} stage",
-                "added": "Added {0} stage"
+                "deleted": "Deleted stage {0}",
+                "added": "Added stage {0}"
             }
         },
         "minimap": {
@@ -258,17 +258,17 @@
             "invalidLevel": "Invalid level: {0}",
             "invalidChart": "Invalid chart: {0}",
             "revision": {
-                "older": "This level was made for an older engine revision. It now uses the current revision, so check that it still looks and plays as expected.",
-                "newer": "This level was made for a newer engine revision than this editor supports. Some parts may not show or save as intended."
+                "older": "This level was made for an older engine revision and now uses the current one. Check that it still looks and plays as expected.",
+                "newer": "This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your usual browser."
             },
             "refusals": {
-                "dynamicStages": "dynamic stage features used but not enabled",
-                "cyclicEventRef": "cyclic event ref \"{0}\"",
-                "cyclicSlideRef": "cyclic slide ref \"{0}\"",
-                "refNotFound": "ref \"{0}\" not found",
+                "dynamicStages": "the level uses dynamic stage features, but dynamic stages are disabled",
+                "cyclicEventRef": "circular event reference “{0}”",
+                "cyclicSlideRef": "circular slide reference “{0}”",
+                "refNotFound": "reference “{0}” not found",
                 "dataNotFound": "data {0} not found",
                 "dataNoValue": "data {0} has no value",
-                "dataNoRef": "data {0} has no ref",
+                "dataNoRef": "data {0} has no reference",
                 "unknownValue": "unknown value for {0}",
                 "invalidValue": "invalid value for {0}",
                 "groupNotFound": "time scale group {0} not found",
@@ -374,7 +374,7 @@
             },
             "switched": {
                 "all": "Switched to all stages",
-                "one": "Switched to {0} stage"
+                "one": "Switched to stage {0}"
             }
         },
         "stop": {
@@ -499,7 +499,7 @@
                 "serverFailed": "The {0} could not be downloaded again from {1}.",
                 "invalid": "The stored {0} could not be read.",
                 "failed": "{0} could not be loaded.",
-                "builtinFailed": "Built-in could not be loaded."
+                "builtinFailed": "The built-in asset could not be loaded."
             },
             "offline": "You are offline.",
             "safeMode": "Safe mode uses {0}.",
@@ -513,7 +513,7 @@
             "remove": "Remove",
             "removeStored": "Remove…",
             "inUse": "In use",
-            "removeInUse": "Remove \"{0}\"? Default is used instead.",
+            "removeInUse": "Remove “{0}”? The preview will use the Default option instead.",
             "removeUnused": "Remove \"{0}\"?",
             "removeFailed": "This item could not be removed.",
             "chooseAgain": "Choose Again…",
@@ -526,7 +526,7 @@
             },
             "part": {
                 "list": "list",
-                "details": "detail entry",
+                "details": "details",
                 "data": "data",
                 "texture": "texture",
                 "image": "image",
@@ -541,7 +541,7 @@
                 "fileTooLarge": "This file is larger than {0}.",
                 "tooManyEntries": "This file has more than {0} entries.",
                 "badName": "This file has an entry name that is not allowed.",
-                "ratio": "This file’s {0} {1} expands to more than {2} times its size.",
+                "ratio": "This file’s {0} {1} expands to more than {2} times its compressed size.",
                 "tooBig": "This file’s {0} {1} is larger than {2}.",
                 "unreadable": "This file’s {0} {1} could not be read.",
                 "missing": "This file’s {0} {1} is missing.",
@@ -572,8 +572,8 @@
             "server": {
                 "unreachable": "Could not reach this server. Check the address, or try again later.",
                 "auth": "The editor cannot use servers that require signing in.",
-                "insecure": "The editor cannot use http servers.",
-                "checksum": "The server’s checksum for this item does not match what it sent.",
+                "insecure": "HTTP server addresses are not supported.",
+                "checksum": "The downloaded content does not match the server’s checksum.",
                 "notFound": "This server does not have that item.",
                 "invalid": "This address is not a Sonolus server.",
                 "status": "This server returned an error ({0}).",
@@ -598,7 +598,7 @@
                 "tooManyParticles": "This item’s {0} data has more than {1} particles.",
                 "tooManyGroups": "This item’s {0} data has more than {1} particle groups.",
                 "effectGroups": "This item’s {0} effect \"{1}\" has more than {2} particle groups.",
-                "ratio": "This item’s {0} {1} expands to more than {2} times its size."
+                "ratio": "This item’s {0} {1} expands to more than {2} times its compressed size."
             }
         },
         "history": {
@@ -619,82 +619,82 @@
             "title": "Help",
             "touchscreen": {
                 "title": "Touchscreen",
-                "tap": "One-finger tap to use the current tool.",
-                "drag": "One-finger drag to use the current tool.",
-                "quickScroll": "One-finger drag in the quick scroll zone to scroll.",
-                "minimap": "One-finger tap in the minimap to scroll there, or drag the box that marks the visible area.",
-                "deselect": "Two-finger tap to deselect.",
-                "scrollY": "Two-finger pan vertically to scroll.",
-                "scrollX": "Two-finger pan horizontally to scroll.",
-                "zoomY": "Two-finger pinch vertically to zoom Y.",
-                "zoomX": "Two-finger pinch horizontally to zoom X.",
-                "play": "Three-finger tap to play."
+                "tap": "Tap with one finger to use the current tool.",
+                "drag": "Drag with one finger to use the current tool.",
+                "quickScroll": "Drag with one finger in the quick scroll zone to scroll.",
+                "minimap": "Tap the minimap with one finger to scroll to that position, or drag the box that marks the visible area.",
+                "deselect": "Tap with two fingers to deselect.",
+                "scrollY": "Drag two fingers vertically to scroll.",
+                "scrollX": "Drag two fingers horizontally to scroll.",
+                "zoomY": "Pinch vertically with two fingers to zoom vertically.",
+                "zoomX": "Pinch horizontally with two fingers to zoom horizontally.",
+                "play": "Tap with three fingers to play."
             },
             "mouse": {
                 "title": "Mouse",
-                "tapPrimary": "Left click to tap with primary tool.",
-                "dragPrimary": "Left click and drag to drag with primary tool.",
-                "tapSecondary": "Right click to tap with secondary tool.",
-                "dragSecondary": "Right click and drag to drag with secondary tool.",
-                "scrollY": "Wheel scroll to scroll vertically.",
-                "scrollX": "Wheel scroll with Shift key to scroll horizontally.",
+                "tapPrimary": "Left-click to use the primary tool.",
+                "dragPrimary": "Drag with the left mouse button to use the primary tool.",
+                "tapSecondary": "Right-click to use the secondary tool.",
+                "dragSecondary": "Drag with the right mouse button to use the secondary tool.",
+                "scrollY": "Use the mouse wheel to scroll vertically.",
+                "scrollX": "Hold Shift and use the mouse wheel to scroll horizontally.",
                 "autoscroll": "Middle click, then move the mouse to scroll. Click to stop.",
                 "minimap": "Left click or drag in the minimap to scroll there.",
-                "zoomY": "Wheel scroll with Ctrl key to zoom vertically.",
-                "zoomX": "Wheel scroll with Ctrl and Shift keys to zoom horizontally."
+                "zoomY": "Hold Ctrl and use the mouse wheel to zoom vertically.",
+                "zoomX": "Hold Ctrl and Shift and use the mouse wheel to zoom horizontally."
             },
             "keyboard": {
                 "title": "Keyboard",
-                "single": "Single press to execute.",
-                "multiple": "Hold a key to repeat scrolling, zooming, undo, redo, or changing note size, playback speed, group or stage."
+                "single": "Press a shortcut key to run its command.",
+                "multiple": "Hold a shortcut key to repeat its command. This works for scrolling, zooming, undo and redo, and changes to note size, playback speed, group or stage."
             },
             "selectTool": {
                 "title": "Select Tool",
-                "select": "Tap objects to select 1 object, cycling between overlapped objects.",
+                "select": "Tap an object to select it. Where objects overlap, each tap selects the next one.",
                 "deselect": "Tap empty space to deselect all objects.",
-                "move": "Drag objects to move multiple objects.",
-                "selectMultiple": "Drag empty space to select multiple objects.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
+                "move": "Drag a selected object to move the selection.",
+                "selectMultiple": "Drag from empty space to select multiple objects.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
                 "shift": "Hold Shift to include other notes in the same slide."
             },
             "eraserTool": {
                 "title": "Eraser Tool",
-                "erase": "Tap objects to erase.",
+                "erase": "Tap an object to erase it.",
                 "deselect": "Tap empty space to deselect all objects.",
                 "eraseMultiple": "Drag to erase multiple objects."
             },
             "brushTool": {
                 "title": "Brush Tool",
-                "brush": "Tap objects to brush.",
+                "brush": "Tap an object to apply the brush properties.",
                 "deselect": "Tap empty space to deselect all objects.",
-                "brushMultiple": "Drag to brush multiple objects.",
+                "brushMultiple": "Drag a box around objects to apply the brush properties.",
                 "shift": "Hold Shift to include other notes in the same slide."
             },
             "pasteTool": {
                 "title": "Paste Tool",
                 "paste": "Tap to paste.",
-                "shift": "Use Shift key to flip objects."
+                "shift": "Hold Shift to flip objects."
             },
             "noteTool": {
                 "title": "Note Tool",
-                "select": "Tap notes to select 1 note.",
-                "edit": "Tap 1 note to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 note to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
+                "select": "Tap a note to select it.",
+                "edit": "Tap a selected note to edit it.",
+                "add": "Tap empty space to add a note.",
+                "move": "Drag a note to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
                 "shift": "Hold Shift to include other notes in the same slide.",
-                "properties": "Switch to Note Tool again to change preset or default properties."
+                "properties": "Choose this tool again to change its preset or default properties."
             },
             "slideTool": {
                 "title": "Slide Tool",
-                "select": "Tap notes to select 1 note.",
-                "edit": "Tap 1 note to edit.",
-                "add": "Tap empty space to add.",
-                "connect": "Tap empty space with 1 note selected to connect.",
-                "move": "Drag 1 note to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
+                "select": "Tap a note to select it.",
+                "edit": "Tap a selected note to edit it.",
+                "add": "Tap empty space to add a note.",
+                "connect": "With one note selected, tap empty space to add a connected note.",
+                "move": "Drag a note to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
                 "shift": "Hold Shift to include other notes in the same slide.",
-                "properties": "Switch to Slide Tool again to change preset or default properties."
+                "properties": "Choose this tool again to change its preset or default properties."
             },
             "splitSlide": {
                 "split": "Cuts the connection from each selected note to the next note.",
@@ -702,75 +702,75 @@
             },
             "generateSlideNotesTool": {
                 "title": "Generate Slide Notes Tool",
-                "generate": "Tap or drag to select 1 note and generate notes for its entire slide.",
-                "generateMultiple": "Tap or drag to select 2 or more notes and generate notes between them.",
+                "generate": "Tap or drag to select one note and generate notes for its entire slide.",
+                "generateMultiple": "Tap or drag to select two or more notes and generate notes between them.",
                 "deselect": "Tap empty space to deselect all objects."
             },
             "bpmTool": {
                 "title": "BPM Tool",
-                "select": "Tap BPM changes to select 1 BPM change.",
-                "edit": "Tap 1 BPM change to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 BPM change to move.",
-                "ctrl": "Use Ctrl key to add objects to selection."
+                "select": "Tap a BPM change to select it.",
+                "edit": "Tap a selected BPM change to edit it.",
+                "add": "Tap empty space to add a BPM change.",
+                "move": "Drag a BPM change to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection."
             },
             "timeScaleTool": {
                 "title": "Time Scale Tool",
-                "select": "Tap time scales to select 1 time scale.",
-                "edit": "Tap 1 time scale to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 time scale to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "markers": "Diamond markers use the Scroll transition. Hollow markers on dotted lines hide notes.",
+                "select": "Tap a time scale to select it.",
+                "edit": "Tap a selected time scale to edit it.",
+                "add": "Tap empty space to add a time scale.",
+                "move": "Drag a time scale to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
+                "markers": "Diamond markers indicate the Scroll transition. Hollow markers on dotted lines indicate that notes are hidden.",
                 "ease": "The curve shows easing to the next change in the group."
             },
             "cameraEventTool": {
                 "title": "Camera Event Tool",
-                "select": "Tap camera events to select 1 camera event.",
-                "edit": "Tap 1 camera event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 camera event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Camera Event Tool again to change default properties."
+                "select": "Tap an event to select it.",
+                "edit": "Tap a selected event to edit it.",
+                "add": "Tap empty space to add an event.",
+                "move": "Drag an event to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
+                "properties": "Choose this tool again to change its default properties."
             },
             "stageMaskEventTool": {
                 "title": "Stage Mask Event Tool",
-                "select": "Tap stage mask events to select 1 stage mask event.",
-                "edit": "Tap 1 stage mask event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 stage mask event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Stage Mask Event Tool again to change default properties."
+                "select": "Tap an event to select it.",
+                "edit": "Tap a selected event to edit it.",
+                "add": "Tap empty space to add an event.",
+                "move": "Drag an event to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
+                "properties": "Choose this tool again to change its default properties."
             },
             "stagePivotEventTool": {
                 "title": "Stage Pivot Event Tool",
-                "select": "Tap stage pivot events to select 1 stage pivot event.",
-                "edit": "Tap 1 stage pivot event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 stage pivot event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Stage Pivot Event Tool again to change default properties."
+                "select": "Tap an event to select it.",
+                "edit": "Tap a selected event to edit it.",
+                "add": "Tap empty space to add an event.",
+                "move": "Drag an event to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
+                "properties": "Choose this tool again to change its default properties."
             },
             "stageStyleEventTool": {
                 "title": "Stage Style Event Tool",
-                "select": "Tap stage style events to select 1 stage style event.",
-                "edit": "Tap 1 stage style event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 stage style event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Stage Style Event Tool again to change default properties."
+                "select": "Tap an event to select it.",
+                "edit": "Tap a selected event to edit it.",
+                "add": "Tap empty space to add an event.",
+                "move": "Drag an event to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
+                "properties": "Choose this tool again to change its default properties."
             },
             "stageTransformEventTool": {
                 "title": "Stage Transform Event Tool",
-                "select": "Tap stage transform events to select 1 stage transform event.",
-                "edit": "Tap 1 stage transform event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 stage transform event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Stage Transform Event Tool again to change default properties."
+                "select": "Tap an event to select it.",
+                "edit": "Tap a selected event to edit it.",
+                "add": "Tap empty space to add an event.",
+                "move": "Drag an event to move it.",
+                "ctrl": "Hold Ctrl to add objects to the selection.",
+                "properties": "Choose this tool again to change its default properties."
             }
         },
-        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.",
+        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Press Esc to close it.",
         "shiftF10": "Shift+F10 or the Menu key opens the menu of the focused item.",
         "recentSessions": "Unsaved work is in History › Recent Sessions.",
         "fileTitle": "Files",
@@ -810,9 +810,9 @@
         "resetSettingsTitle": "Reset Settings",
         "resetKeybinds": "Reset Shortcuts…",
         "resetKeybindsTitle": "Reset Shortcuts",
-        "resetSettingsMessage": "Restore default settings, keeping keyboard shortcuts?",
-        "resetSettingsMessageStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting?",
-        "resetKeybindsMessage": "Restore default keyboard shortcuts?",
+        "resetSettingsMessage": "Reset settings to their defaults? Keyboard shortcuts will be kept.",
+        "resetSettingsMessageStatistics": "Reset settings to their defaults? Keyboard shortcuts and the Send Usage Statistics setting will be kept.",
+        "resetKeybindsMessage": "Reset keyboard shortcuts to their defaults?",
         "editor": {
             "title": "Editor",
             "locale": "Language",
@@ -849,7 +849,7 @@
             "showOtherStages": "Show Other Stages",
             "nameContrast": "Name Contrast",
             "showOtherObjects": "Show Other Objects",
-            "deselectSwitchesToSelect": "Second Deselect Switches to Select Tool",
+            "deselectSwitchesToSelect": "Deselect Twice to Switch to Select Tool",
             "beatDisplay": {
                 "title": "Beat Display",
                 "beat": "Beat",
@@ -901,7 +901,7 @@
             "showTime": "Show Time",
             "highlightSelection": "Highlight Selection",
             "showHitboxes": "Show Hitboxes",
-            "antialias": "Antialias",
+            "antialias": "Antialiasing",
             "parallelRendering": "Parallel Rendering",
             "transport": {
                 "title": "Playback Controls",
@@ -950,8 +950,8 @@
             "notices": "Third-Party Notices",
             "privacy": "Privacy",
             "usageStatistics": "Send Usage Statistics",
-            "usageStatisticsNote": "Which tools you use, your main settings, file types and sizes, and how long actions take. See Privacy.",
-            "usageStatisticsSignal": "Disabled by default because this browser sends Do Not Track or Global Privacy Control.",
+            "usageStatisticsNote": "Usage statistics include tool use, main settings, file types and sizes, and how long actions take. See Privacy for details.",
+            "usageStatisticsSignal": "Off by default because this browser sends a Do Not Track or Global Privacy Control signal.",
             "diagnostics": "Copy Diagnostic Info…",
             "diagnosticsTitle": "Diagnostic Info",
             "diagnosticsNote": "Diagnostic info may include file and folder names. Check it before sharing.",
@@ -968,10 +968,10 @@
             "discardAutoSave": "Discard the old auto save ({0})?",
             "discardUnreadable": "Discard the unreadable recovered work from {0} ({1})?",
             "recovery": {
-                "journal": "Unsaved work from an earlier visit, {0} · {1}",
+                "journal": "Unsaved work from an earlier visit · {0} · {1}",
                 "journalUndated": "Unsaved work from an earlier visit · {0}",
                 "autoSave": "Old auto save · {0}",
-                "unreadable": "Unreadable recovered work, {0} · {1}",
+                "unreadable": "Unreadable recovered work · {0} · {1}",
                 "listFailed": "Recovered work could not be read.",
                 "downloadFailed": "The recovered work could not be downloaded."
             },
@@ -985,7 +985,7 @@
             "deleteTitle": "Delete Sessions",
             "lastEdited": "Last edited over {0} day ago|Last edited over {0} days ago",
             "all": "All",
-            "includeNotSaved": "Include unsaved work",
+            "includeNotSaved": "Include Unsaved Work",
             "deleteNext": "Delete…",
             "deleteConfirm": "Delete {0} session?|Delete {0} sessions?",
             "notSaved": "{0} session has unsaved changes: {1}.|{0} sessions have unsaved changes: {1}.",
@@ -1221,7 +1221,7 @@
         "sessionDeleted": "This session was deleted in another tab or window.",
         "autoSaveKept": "Kept \"{0}\" from the old auto save as a separate session.",
         "autoSaveOpened": "Opened the old auto save.",
-        "journalFailed": "A recovered change could not be stored. A copy is in Local Data.",
+        "journalFailed": "A recovered change could not be stored in its session. It is available in Local Data.",
         "storageNearlyFull": "Browser storage is almost full.",
         "journalsFull": "Unsaved work from earlier visits is filling browser storage.",
         "sessionLater": "This session requires a newer version of the editor.",
@@ -1336,7 +1336,7 @@
         "redidSteps": "Redid {0} steps",
         "dynamicStages": {
             "title": "Dynamic Stages",
-            "message": "This feature requires dynamic stages. Do you want to enable dynamic stages?",
+            "message": "This feature requires dynamic stages. Enable them?",
             "enabled": "Enabled dynamic stages"
         },
         "title": "History",
@@ -1421,7 +1421,7 @@
         },
         "operation": {
             "changedHeader": "Changed {0}",
-            "changedLevelInfo": "Changed level info",
+            "changedLevelInfo": "Changed Level Info",
             "setValueOnObjects": "Set {1} to {2} on {0} object|Set {1} to {2} on {0} objects",
             "setValueOnNotes": "Set {1} to {2} on {0} note|Set {1} to {2} on {0} notes",
             "setValueOnBpm": "Set {1} to {2} on {0} BPM change|Set {1} to {2} on {0} BPM changes",
@@ -1732,7 +1732,7 @@
                 "pressCancel": "Press a key, or Esc to cancel",
                 "unassigned": "Unassigned",
                 "reserved": "{0} is reserved by the browser or system. Press another key.",
-                "altGraph": "{0} types characters on many keyboards. Press another key.",
+                "altGraph": "{0} is used to type characters on many keyboard layouts. Press another key.",
                 "alsoRuns": "Also runs {0}",
                 "names": {
                     "space": "Space",
@@ -1770,7 +1770,7 @@
                 "anchor": "Anchor",
                 "damage": "Damage",
                 "forceTick": "Force Tick",
-                "forceNonTick": "Force Non Tick"
+                "forceNonTick": "Force Non-Tick"
             },
             "pivotLane": {
                 "label": "Pivot Lane"
@@ -1882,8 +1882,8 @@
         "showSettings": "Show Preview Settings",
         "loadingSkin": "Loading skin…",
         "skinUnavailable": "The preview skin could not be loaded.",
-        "graphicsUnavailable": "Preview graphics could not be started.",
-        "chartGraphicsUnavailable": "Graphics could not be started.",
+        "graphicsUnavailable": "The preview could not be displayed.",
+        "chartGraphicsUnavailable": "The chart could not be displayed.",
         "graphicsHelp": "Check that graphics acceleration and WebGL are enabled in your browser, then restart the browser if needed.",
         "errorDetails": "Error Details",
         "reload": "Reload",
@@ -1951,12 +1951,12 @@
             "none": "No Folder",
             "expand": "Expand {0}",
             "collapse": "Collapse {0}",
-            "empty": "{0} folder is empty",
+            "empty": "Folder {0} is empty",
             "moveUp": "Move Folder Up",
             "moveDown": "Move Folder Down",
             "ungroup": "Ungroup",
             "path": "{0} › {1}",
-            "ungrouped": "Ungrouped {0} folder"
+            "ungrouped": "Ungrouped folder {0}"
         },
         "manager": {
             "show": "Show {0}",
@@ -1989,13 +1989,13 @@
         "groups": {
             "deleteFolder": "Delete Folder and Groups…",
             "deleteFolderTitle": "Delete Folder and Groups",
-            "deleteFolderMessage": "Delete the {0} folder, its groups ({1}) and their objects ({2})?",
-            "renamed": "Renamed {0} group to {1}",
+            "deleteFolderMessage": "Delete folder {0}, its groups ({1}) and their objects ({2})?",
+            "renamed": "Renamed group {0} to {1}",
             "all": "All Groups",
             "showAll": "Show All Groups",
             "hideAll": "Hide All Groups",
             "add": "Add Group",
-            "movedSelectedInto": "Moved {0} group to {1} folder|Moved {0} groups to {1} folder",
+            "movedSelectedInto": "Moved {0} group into folder {1}|Moved {0} groups into folder {1}",
             "movedSelectedOut": "Moved {0} group out of folders|Moved {0} groups out of folders",
             "deletedSelected": "Deleted {0} group|Deleted {0} groups",
             "deletedSelectedFolders": "Deleted selected folders ({0}) and groups ({1})",
@@ -2003,24 +2003,24 @@
             "deleteSelectedFoldersTitle": "Delete Folder and Groups|Delete Folders and Groups",
             "deleteSelectedMessage": "Delete the selected groups ({0}) and their objects ({1})?",
             "deleteSelectedFoldersMessage": "Delete the selected folders ({0}), groups ({1}) and their objects ({2})?",
-            "duplicated": "Duplicated {0} group",
+            "duplicated": "Duplicated group {0}",
             "duplicatedSelected": "Duplicated {0} group|Duplicated {0} groups",
             "duplicatedSelectedFolders": "Duplicated selected folders ({0}) and groups ({1})",
-            "propertySet": "Set {1} of {0} group to {2}",
-            "propertyCleared": "Cleared {1} of {0} group"
+            "propertySet": "Set {1} to {2} for group {0}",
+            "propertyCleared": "Cleared {1} for group {0}"
         },
         "stages": {
             "deleteFolder": "Delete Folder and Stages…",
             "deleteFolderTitle": "Delete Folder and Stages",
-            "deleteFolderMessage": "Delete the {0} folder, its stages ({1}) and their objects ({2})?",
-            "renamed": "Renamed {0} stage to {1}",
+            "deleteFolderMessage": "Delete folder {0}, its stages ({1}) and their objects ({2})?",
+            "renamed": "Renamed stage {0} to {1}",
             "all": "All Stages",
             "showAll": "Show All Stages",
             "hideAll": "Hide All Stages",
             "add": "Add Stage",
             "disabled": "Dynamic stages are off for this level.",
             "enable": "Enable Dynamic Stages",
-            "movedSelectedInto": "Moved {0} stage to {1} folder|Moved {0} stages to {1} folder",
+            "movedSelectedInto": "Moved {0} stage into folder {1}|Moved {0} stages into folder {1}",
             "movedSelectedOut": "Moved {0} stage out of folders|Moved {0} stages out of folders",
             "deletedSelected": "Deleted {0} stage|Deleted {0} stages",
             "deletedSelectedFolders": "Deleted selected folders ({0}) and stages ({1})",
@@ -2028,10 +2028,10 @@
             "deleteSelectedFoldersTitle": "Delete Folder and Stages|Delete Folders and Stages",
             "deleteSelectedMessage": "Delete the selected stages ({0}) and their objects ({1})?",
             "deleteSelectedFoldersMessage": "Delete the selected folders ({0}), stages ({1}) and their objects ({2})?",
-            "duplicated": "Duplicated {0} stage",
+            "duplicated": "Duplicated stage {0}",
             "duplicatedSelected": "Duplicated {0} stage|Duplicated {0} stages",
             "duplicatedSelectedFolders": "Duplicated selected folders ({0}) and stages ({1})",
-            "propertySet": "Set {1} of {0} stage to {2}"
+            "propertySet": "Set {1} to {2} for stage {0}"
         },
         "properties": {
             "sections": "Properties Sections",
@@ -2099,7 +2099,7 @@
         "chooseAnother": "Choose Another…",
         "tryAgain": "Try Again",
         "denied": "The browser did not allow writing to {0}.",
-        "notFound": "\"{0}\" cannot be found.",
+        "notFound": "“{0}” could not be found.",
         "downloadStarted": "Download started: {0} · {1}",
         "preparing": "Preparing {0}… {1}",
         "ready": "Ready: {0} · {1}",
@@ -2120,12 +2120,12 @@
         "bgm": "BGM",
         "placeholder": "Untitled",
         "exportHint": "For Sonolus, use Export Level Data…",
-        "exportHintFirst": "Project files (.nxsp) are only for this editor. To create level data for upload to a Sonolus server, use Export Level Data…",
+        "exportHintFirst": "Project files (.nxsp) are only for this editor. To create level data you can upload to a Sonolus server, use Export Level Data…",
         "exportHintNames": "Level data files may have no extension or end in .nsld or .json.gz.",
         "openExport": "Export Level Data…",
         "readOnly": "\"{0}\" cannot be written to.",
         "notProject": "\"{0}\" is not a project file.",
-        "notKept": "Not saved. \"{0}\" could not be read completely.",
+        "notKept": "Not saved. “{0}” could not be read in full.",
         "notKeptSafe": "Not saved. Files cannot be replaced in safe mode.",
         "notKeptFull": "Not saved. Browser storage is full. Delete sessions in Settings › Local Data, then save again.",
         "saved": "Saved to {0}",
@@ -2142,7 +2142,7 @@
         "noChangesSaved": "No changes since {0} was saved",
         "noChangesOpened": "No changes since {0} was opened",
         "downloadAgain": "Download Again",
-        "unreadable": "\"{0}\" could not be read completely.",
+        "unreadable": "“{0}” could not be read in full.",
         "tooLarge": "The file is too large.",
         "restoredName": "{0} (restored {1})",
         "fileType": "Next SEKAI project file",
@@ -2167,7 +2167,7 @@
         "noDamage": "No damage found.",
         "scopeBoth": "Checked \"{0}\" and the history stored in this browser.",
         "scopeStored": "Checked the history stored in this browser.",
-        "fileDamaged": "\"{0}\" is damaged. Saving makes a separate file.",
+        "fileDamaged": "“{0}” is damaged. Saving will create a separate file.",
         "repaired": "Repaired {0} Timeline step.|Repaired {0} Timeline steps.",
         "storedDamaged": "{0} Timeline step stored in this browser is damaged.|{0} Timeline steps stored in this browser are damaged.",
         "mediaDamaged": "The {0} stored in this browser was damaged."
@@ -2179,26 +2179,26 @@
         "editCover": "Edit in Cover Editor",
         "makePreview": "Make from BGM…",
         "notLoaded": "not loaded",
-        "discard": "Discard changes to level info?"
+        "discard": "Discard changes to Level Info?"
     },
     "conflict": {
         "exportTitle": "\"{0}\" Changed",
-        "exportBody": "\"{0}\" changed since your last export.",
-        "exportBodyOpened": "\"{0}\" changed since you opened it here.",
+        "exportBody": "“{0}” has changed since your last export.",
+        "exportBodyOpened": "“{0}” has changed since you opened it here.",
         "replace": "Replace",
         "title": "\"{0}\" Changed",
-        "body": "\"{0}\" changed since you opened or saved it here.",
+        "body": "“{0}” has changed since you opened or saved it here.",
         "saved": "{0}, {1} · {2}.",
         "savedNoNotes": "{0}, {1}.",
         "otherProject": "A different project file, \"{0}\".",
         "otherProjectUnnamed": "A different project file.",
-        "notDescendant": "This version was not made from yours ({0}).",
+        "notDescendant": "The version saved on {0} is not based on your version.",
         "separate": "Save as a Separate File…",
         "openOther": "Open the Other Version",
         "openOtherNote": "Your changes stay in Recent Sessions.",
         "replaceNote": "The version on disk will be kept in Recent Sessions.",
         "keptName": "{0} (replaced {1})",
-        "replaceNewer": "Made by a newer version of {0}.",
+        "replaceNewer": "This file was created by a newer version of {0}.",
         "replaceHoldsEarlier": "It contains earlier Timeline steps that are no longer stored in this browser.",
         "replaceMayHoldEarlier": "It may contain earlier Timeline steps that are no longer stored in this browser.",
         "keepEditing": "Keep Editing"
@@ -2248,7 +2248,7 @@
         "deleted": "Deleted \"{0}\"",
         "deleteRefused": "Not deleted. \"{0}\" is in use in a tab or window.",
         "deleteFailed": "\"{0}\" could not be deleted.",
-        "undoLost": "Deleted \"{0}\". It can no longer be undone."
+        "undoLost": "Deleted “{0}”. This deletion can no longer be undone."
     },
     "prompt": {
         "title": "Changes Not Stored",
@@ -2273,17 +2273,17 @@
         "openPreviewAssets": "Preview Assets",
         "damagedUnopened": "This file is damaged and could not be opened.",
         "damaged": "This file is damaged. It was opened without its history.",
-        "historyUnreadable": "This file’s history could not be read. Saving makes a separate file.",
-        "newerVersion": "Made by a newer version of {0}. Saving makes a separate file.",
-        "newerRefused": "Made by a newer version of {0}.",
-        "newerPatch": "Made by a newer version of {0}. Some content may not be shown.",
-        "mediaBad": "This file’s {0} could not be read. Saving makes a separate file.",
+        "historyUnreadable": "This file’s history could not be read. Saving will create a separate file.",
+        "newerVersion": "This file was created by a newer version of {0}. Saving will create a separate file.",
+        "newerRefused": "This file was created by a newer version of {0} and cannot be opened.",
+        "newerPatch": "This file was created by a newer version of {0}. Some content may not be shown.",
+        "mediaBad": "This file’s {0} could not be read. Saving will create a separate file.",
         "media": {
             "bgm": "BGM",
             "cover": "cover",
             "preview": "preview audio"
         },
-        "newerMajor": "Made by a newer version of {0}.",
+        "newerMajor": "File Created by a Newer Version of {0}",
         "newerMajorNote": "Only the level can be opened from this file.",
         "openLevel": "Open the Level",
         "newerValues": {
@@ -2295,7 +2295,7 @@
         "unsavedEarlier": "You have unsaved changes to an earlier version of {0} ({1}). They are in Recent Sessions.",
         "olderVersion": "This is an older version of {0}. A newer one from {1} is in Recent Sessions.",
         "restoreIt": "Restore Session",
-        "damagedHistory": "\"{0}\" has damaged history. Saving makes a separate file."
+        "damagedHistory": "The history in {0} is damaged. Saving will create a separate file."
     },
     "file": {
         "replacedElsewhere": "\"{0}\" was replaced from another tab or window.",
@@ -2307,7 +2307,7 @@
         "changedOnDisk": "Changed on disk",
         "newerOnDisk": "Newer on disk",
         "notConfirmed": "Download not confirmed",
-        "changedOnDiskName": "\"{0}\": changed on disk since you opened or saved it here.",
+        "changedOnDiskName": "“{0}” has changed on disk since you opened or saved it here.",
         "newerOnDiskName": "\"{0}\": a newer version is on disk.",
         "notStored": "Not stored"
     },

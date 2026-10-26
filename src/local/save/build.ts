@@ -187,7 +187,7 @@ export type SaveRefusalReason =
     | 'notAtBase'
     /** The chain's own file is damaged: the session unlinks, and the Save goes on as Save As…. */
     | 'damagedSource'
-    /** The head's state can't be read: ""Coconut" could not be read completely." */
+    /** The head's state can't be read: “Coconut” could not be read in full. */
     | 'unreadableHead'
     /** A plan error: a bug, or a file past a reader cap. */
     | 'plan'

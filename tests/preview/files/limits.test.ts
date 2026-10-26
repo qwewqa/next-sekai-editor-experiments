@@ -97,7 +97,7 @@ test('a list or details entry over 4 MB is refused', async () => {
         'skin',
         rawZip(entries),
         'tooBig',
-        'This file’s skin detail entry is larger than 4 MB.',
+        'This file’s skin details is larger than 4 MB.',
     )
 })
 
@@ -159,6 +159,6 @@ test('the sound effects audio has its own caps: 32 MB, 8 MB a clip, and the rati
         'effect',
         effectWith(rawZip([{ name: 'perfect.mp3', data: wav(100), method: 8 }])),
         'ratio',
-        'This file’s sound effects audio expands to more than 200 times its size.',
+        'This file’s sound effects audio expands to more than 200 times its compressed size.',
     )
 })

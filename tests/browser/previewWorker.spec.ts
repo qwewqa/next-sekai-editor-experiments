@@ -291,7 +291,7 @@ test('the setting moves the preview between hosts at once, and it keeps drawing'
     }
     // The atlases moved back and forth; nothing was decoded again.
     expect(await page.evaluate(() => window.hostTest.decodes)).toBe(2)
-    await expect(page.locator('.preview')).not.toContainText('could not be started')
+    await expect(page.locator('.preview')).not.toContainText('could not be displayed')
 })
 
 test('the setting off and on again while the worker stops starts one that draws', async ({
@@ -413,7 +413,7 @@ for (const [label, flags, decodedAgain] of [
         await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
         // The worker's canvases go once the main host has drawn.
         await expect(page.locator('.preview-viewport canvas')).toHaveCount(2)
-        await expect(page.locator('.preview')).not.toContainText('could not be started')
+        await expect(page.locator('.preview')).not.toContainText('could not be displayed')
         // The atlases came back from a worker that answered, else they were decoded again.
         await expect
             .poll(() => page.evaluate(() => window.hostTest.decodes))
