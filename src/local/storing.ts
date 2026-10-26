@@ -25,6 +25,7 @@ import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { startupGate } from '../startup/gate'
 import { keepClockWhile } from '../time'
+import { chainStartOf } from './chainFields'
 import { postSessionUpdated } from './channel'
 import { runSliced } from './chunks'
 import { isDurablyStoredWith } from './durable'
@@ -136,7 +137,8 @@ export const offerReopen = (leaving: FlushSession, outgoing: Promise<boolean>) =
     leftSession(
         reopenable,
         displayName(namePartsOf({ sourceName: leaving.sourceName, ...leaving.chain }, state)),
-        leaving.startedAt,
+        // The date that names an untitled session is its chain's first start, not this visit's.
+        chainStartOf(leaving.chain, leaving.startedAt) ?? leaving.startedAt,
         outgoing,
     )
 }
