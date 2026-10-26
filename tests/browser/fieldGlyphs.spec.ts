@@ -592,6 +592,9 @@ test('a value glyph gives way only when that lets the value fit', async ({ page 
 test('shortcut notes start with the name, not under its icon', async ({ page }) => {
     await open(page)
     await page.evaluate(async () => {
+        const { settings } = window.editorTest
+        // Select's F, shared, gives its row a note.
+        settings.keyboardShortcuts = { ...settings.keyboardShortcuts, deselect: 'f' }
         const { commands } = await import('/src/editor/commands/index.ts')
         void commands.settings.execute()
     })
