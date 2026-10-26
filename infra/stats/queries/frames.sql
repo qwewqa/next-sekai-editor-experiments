@@ -1,5 +1,5 @@
 -- Long frames per playback second, by the preview host. A perf event counts long frames in buckets
--- ("frames.playing.<bucket>") and the playback seconds; the host is the visit's last preview event.
+-- ("frames.playing.<bucket>") and the playback seconds (whole seconds); the host is the visit's last preview event.
 WITH perf AS (
     SELECT e.session_id, e.created_at::date AS day,
            sum(d.number_value) FILTER (WHERE d.data_key LIKE 'frames.playing.%') AS long_frames,

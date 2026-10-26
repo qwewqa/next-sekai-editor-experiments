@@ -12,6 +12,6 @@
         "data": { "action": "save", "target": "writeBack", "outcome": "failed", "reason": "denied" }
     },
     { "name": "preview", "data": { "host": "worker" } },
-    { "name": "perf", "data": { "frames.playing.50-100": 4, "playSeconds": "1m-5m" } },
+    { "name": "perf", "data": { "frames.playing.50-100": 4, "playSeconds": 120, "visibleTime": 300 } },
     { "name": "features", "data": { "autoscroll": 2 } }
 ]

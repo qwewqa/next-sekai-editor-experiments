@@ -106,4 +106,5 @@ expect settings 'showMinimap|on|1'
 expect settings 'previewAssets.skin|bundled|1'
 expect startup 'continued|1k-2k|1'
 expect startup '1k-2k|1'
+expect frames 'worker|1|4|120|0.033'
 echo "All checks passed."
