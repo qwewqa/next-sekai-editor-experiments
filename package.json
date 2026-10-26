@@ -23,6 +23,7 @@
         "perf:seeds": "playwright test --config playwright.samples.config.ts perfSeeds",
         "perf:preview": "tsx scripts/perf/preview.mjs",
         "format:gen": "tsx scripts/format-gen.mjs",
+        "analytics:allowlist": "tsx scripts/analytics-allowlist.mjs",
         "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing,samples}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs tests/citations.test.mjs",
         "test:browser": "node scripts/test-browser.mjs",
         "test:timing": "playwright test --project=timing --no-deps",

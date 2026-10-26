@@ -4,6 +4,7 @@ import { isSafeMode } from '../safe'
 import { settings } from '../settings'
 import { startupGate } from '../startup/gate'
 import { browserSignal, shouldSend, type AnalyticsTarget } from './config'
+import { deviceOf } from './device'
 import * as tally from './tally'
 
 declare const __NSE_ANALYTICS__: AnalyticsTarget | null
@@ -105,11 +106,13 @@ const apply = () => {
     if (sends()) {
         if (tally.isEnabled()) return
         tally.enable()
+        tally.watchDevice(deviceOf)
         void load(analyticsTarget)
         return
     }
     generation++
     tally.disable()
+    tally.watchDevice(undefined)
     client?.stop()
     client = undefined
 }

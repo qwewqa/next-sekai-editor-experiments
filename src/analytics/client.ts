@@ -7,7 +7,7 @@ import { STACK_CAP } from '../history/cap'
 import { liveState, stackLength } from '../history/stack'
 import { languageTag } from '../i18n/plural'
 import { launch } from '../launch'
-import { detection, isStandalone, suspectPrivate } from '../platform/detect'
+import { detection, isStandalone } from '../platform/detect'
 import { isPlaying } from '../player'
 import { previewHost } from '../preview/worker/host'
 import { hasDefaultValue, settings } from '../settings'
@@ -24,6 +24,7 @@ import {
     type EventName,
 } from './catalogue'
 import type { AnalyticsTarget } from './config'
+import { device } from './device'
 import { startField } from './field'
 import { createSender, SEND_INTERVAL, type Item, type SendMode } from './sender'
 import { settingsSnapshot } from './snapshot'
@@ -41,39 +42,6 @@ const referrerOrigin = () => {
         return origin === location.origin || origin === 'null' ? '' : origin
     } catch {
         return ''
-    }
-}
-
-type Device = Pick<
-    EventData<'perf'>,
-    'cores' | 'deviceMemory' | 'engine' | 'touch' | 'dpr' | 'viewport'
->
-
-/** The browser’s approximate memory in GiB, where it reports one. */
-const deviceMemory = (): Device['deviceMemory'] => {
-    const value = (navigator as { deviceMemory?: unknown }).deviceMemory
-    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return
-    if (value >= 16) return '16+'
-    if (value <= 0.25) return '0.25'
-    const label = String(value)
-    return label === '0.5' || label === '1' || label === '2' || label === '4' || label === '8'
-        ? label
-        : 'other'
-}
-
-/** What every measured event repeats: the device it ran on, and the workspace’s width. */
-const device = (): Device => {
-    const cores = navigator.hardwareConcurrency
-    const memory = deviceMemory()
-    const dpr = devicePixelRatio
-    const viewport = measured('viewport', workspaceSize.value.width)
-    return {
-        ...(cores > 0 && { cores: bucket('cores', cores) }),
-        ...(memory && { deviceMemory: memory }),
-        engine: detection().engine,
-        touch: matchMedia('(pointer: coarse)').matches,
-        ...(dpr > 0 && { dpr: bucket('dpr', dpr) }),
-        ...(viewport && { viewport }),
     }
 }
 
@@ -179,8 +147,6 @@ const storageEvent = async (): Promise<EventData<'storage'> | undefined> => {
         manager?.persisted?.().catch(() => undefined),
     ])
     const { usage, quota } = estimate ?? {}
-    const privateWindow =
-        quota !== undefined && suspectPrivate({ persisted: persisted === true, quota })
     const sessions = status.recentSessionCount.value
     const run = status.pressureRuns.at(-1)
     const share =
@@ -188,7 +154,7 @@ const storageEvent = async (): Promise<EventData<'storage'> | undefined> => {
             ? measured('usageShare', (usage * 100) / quota)
             : undefined
     return {
-        mode: current.mode === 'memory' && privateWindow ? 'memory-private' : current.mode,
+        mode: current.mode,
         ...(current.reason && { reason: current.reason }),
         persisted: persisted === undefined ? 'unsupported' : persisted ? 'granted' : 'not',
         ...(measured('size', usage) && { usage: measured('size', usage) }),
@@ -239,7 +205,7 @@ const chartEvent = (trigger: tally.ChartTrigger): EventData<'chart'> | undefined
         groups: bucket('counts', groups.size),
         objects: bucket('counts', objects),
         dynamicStages: isDynamicStages,
-        bgm: bgm.meta?.durationMs === undefined ? 'none' : bucket('audio', bgm.meta.durationMs),
+        bgm: bgm.meta?.durationMs === undefined ? 'none' : 'some',
         historySteps: Math.min(STACK_CAP, stackLength()),
     }
 }
@@ -251,9 +217,6 @@ const idle = (run: (deadline: IdleDeadline) => void) => {
             run({ didTimeout: true, timeRemaining: () => 0 })
         }, 0)
 }
-
-/** The recorded events that carry the device they ran on. */
-const measuredEvents = new Set(['open', 'save', 'export', 'check', 'bgm'])
 
 /** Starts the visit's statistics; `stop` ends them and drops what was not sent. */
 export const startClient = (target: AnalyticsTarget) => {
@@ -289,8 +252,8 @@ export const startClient = (target: AnalyticsTarget) => {
         const { counts, recorded } = tally.collect()
         const items: Item[] = []
         const where = device()
-        for (const { name, data, at } of recorded) {
-            const made = { ...fromRaw(name, data), ...(measuredEvents.has(name) && where) }
+        for (const { name, data, at, device: ranOn } of recorded) {
+            const made = { ...fromRaw(name, data), ...ranOn }
             if (isValidEvent(name, made)) items.push(item(name, made, at))
         }
         const events = new Map<string, Record<string, unknown>>()

@@ -1,11 +1,15 @@
 #!/bin/bash
-# Housekeeping for stats: clean, dump, check. With no argument it does the nightly job: clean; on Sundays
-# a dump and VACUUM; then the checks. Any step that fails is reported in the one email, and the checks
+# Housekeeping for stats: clean, retain, tidy, dump, check. With no argument it does the nightly job: clean, retain
+# and tidy; on Sundays a dump and VACUUM; then the checks. Any step that fails is reported in the one email, and the checks
 # still run. Prod runs it from nse-stats-nightly.timer at 03:00 UTC. Dev runs it
 # only by hand. Sourcing the file defines the functions and runs nothing.
 set -euo pipefail
 
 DIR=/opt/nse-stats
+# retention.sql sits beside this file, which update.sh may run from a folder of new files.
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# The folder for dumps. The contract test points NSE_DUMP_DIR at a temporary folder.
+dump_dir() { echo "${NSE_DUMP_DIR:-/data/dumps}"; }
 # CI points NSE_COMPOSE at the local Compose file; the instance uses the files in place.
 dc() {
     if [ -n "${NSE_COMPOSE:-}" ]; then
@@ -23,17 +27,33 @@ clean() {
     psql_ -c "UPDATE session SET region = NULL, city = NULL WHERE region IS NOT NULL OR city IS NOT NULL;"
 }
 
+# Totals the complete months into nse_monthly, then deletes the raw records older than 13 months
+# (allowlist.sql, then retention.sql). Both are one transaction, so the delete runs only if the totals were made.
+retain() {
+    cat "$HERE/allowlist.sql" "$HERE/retention.sql" | psql_ -q -1 -f -
+}
+
+# A dump left by a failed upload, or a download left by a failed restore, is deleted after two days, so a copy on
+# this disk does not outlive the bucket's own expiry.
+tidy() {
+    local dir
+    dir=$(dump_dir)
+    [ -d "$dir" ] || return 0
+    find "$dir" -maxdepth 1 -type f \( -name 'umami-*.dump' -o -name 'restore.dump' \) -mmin +2880 -delete
+}
+
 dump_stream() { dc exec -T db pg_dump -Fc -U umami umami; }
 
 # Writes the dump to a file and lists its contents before the upload, so a failed pg_dump cannot leave a partial dump in S3.
 dump() {
-    # The contract test points NSE_DUMP_DIR at a temporary folder.
-    local dir="${NSE_DUMP_DIR:-/data/dumps}" file
+    local dir file
+    dir=$(dump_dir)
     file="$dir/umami-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
     # Called as `dump || ...`, which turns errexit off, so every step passes failure on itself.
     # A bad dump is removed. After a failed upload the file stays.
-    # A dump never holds a region or a city, so it is refused when clean fails.
+    # A dump never holds a region, a city or a record older than 13 months, so it is refused when either step fails.
     clean || return 1
+    retain || return 1
     mkdir -p "$dir" || return 1
     { dump_stream > "$file" && dc exec -T db pg_restore --list < "$file" > /dev/null; } || { rm -f "$file"; return 1; }
     aws s3 cp --only-show-errors "$file" "s3://$NSE_BUCKET/dumps/$(basename "$file")" || return 1
@@ -112,6 +132,8 @@ main() {
     export AWS_DEFAULT_REGION
     case "${1:-all}" in
         clean) clean ;;
+        retain) retain ;;
+        tidy) tidy ;;
         dump) dump ;;
         check) check ;;
         all)
@@ -119,6 +141,8 @@ main() {
             trap '[ "$?" = 0 ] || [ -n "$notified" ] || notify "The nightly job stopped with an error."' EXIT
             failed=""
             clean || failed="$failed\nThe clean-up failed."
+            retain || failed="$failed\nThe retention job failed."
+            tidy || failed="$failed\nDeleting old dump files failed."
             if [ "$(date -u +%u)" = 7 ]; then
                 dump || failed="$failed\nThe dump failed."
                 psql_ -c "VACUUM (ANALYZE)" || failed="$failed\nVACUUM failed."
@@ -126,7 +150,7 @@ main() {
             check "$failed"
             ;;
         *)
-            echo "usage: nightly.sh [clean|dump|check]" >&2
+            echo "usage: nightly.sh [clean|retain|tidy|dump|check]" >&2
             exit 2
             ;;
     esac
