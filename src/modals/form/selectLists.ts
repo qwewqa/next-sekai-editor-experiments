@@ -66,12 +66,15 @@ const isApple = isApplePlatform()
 // Apple system selects open on these instead of stepping.
 const openKeys = new Set(['ArrowDown', 'ArrowUp'])
 
+// Whether an open list keeps a Ctrl/Cmd chord from the browser; set by `installSelectLists`.
+let holdsChord: (event: KeyboardEvent) => boolean = () => false
+
 // An open list holds every key, as a system one does; its own keys still work.
 const hold = (event: KeyboardEvent) => {
     if (!openSelectOf(event.target)) return false
     event.stopImmediatePropagation()
     // Nor do chords reach the browser, such as Ctrl+S saving the page.
-    if ((event.ctrlKey || event.metaKey) && /^[a-z]$/i.test(event.key)) event.preventDefault()
+    if (holdsChord(event)) event.preventDefault()
     return true
 }
 
@@ -151,8 +154,12 @@ const onPointerDown = (event: PointerEvent) => {
     } else if (!select && event.target instanceof HTMLSelectElement) fitList(event.target)
 }
 
-/** Installs before the app mounts, ahead of its components' listeners but not module-level ones. */
-export const installSelectLists = () => {
+/**
+ * Installs before the app mounts, ahead of its components' listeners but not module-level ones.
+ * `holds` says which chords an open list keeps from the browser.
+ */
+export const installSelectLists = (holds: (event: KeyboardEvent) => boolean) => {
+    holdsChord = holds
     addEventListener('keydown', onKeydown, true)
     addEventListener('keypress', hold, true)
     addEventListener('pointerdown', onPointerDown, true)

@@ -191,7 +191,7 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
         '4 sessions have unsaved changes: "Fresh", "Week", "Month" and 1 more.',
     )
     await expect(confirm).toContainText(
-        'Some of these sessions need a newer version of the editor.',
+        'Some of these sessions require a newer version of the editor.',
     )
     // Cancel is the default, and Enter on it deletes nothing.
     await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused()
@@ -389,7 +389,6 @@ test('Local Data shows the storage line and the total at once, from the read aft
         .toBe(84_000_000)
     await openLocalData(page)
     // This visit's read is still waiting, so these come from the kept one.
-    await expect(page.locator('[data-storage-line]')).toBeVisible({ timeout: 2000 })
     await expect(stored(page)).toHaveText('Stored in this browser: 84 MB of about 2.1 GB', {
         timeout: 2000,
     })
@@ -434,7 +433,6 @@ test('Export Raw Data downloads the stored data and says so', async ({ page }) =
     errorsFail(page)
     await load(page)
     await openLocalData(page)
-    await expect(page.locator('[data-local-data-recovery]')).toContainText(local.exportRawNote)
     const download = page.waitForEvent('download')
     await page.locator('[data-export-raw]').click()
     expect((await download).suggestedFilename()).toMatch(

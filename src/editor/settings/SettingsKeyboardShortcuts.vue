@@ -5,13 +5,7 @@ import KeyField from '../../modals/form/KeyField.vue'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import { commands, isCommandName, type CommandName } from '../commands'
-import {
-    browserShortcutOf,
-    commandChordBinding,
-    formatShortcut,
-    normalizeBinding,
-    parseChord,
-} from '../controls/bindings'
+import { normalizeBinding } from '../controls/bindings'
 import SettingsSection from './SettingsSection.vue'
 
 const props = defineProps<{
@@ -40,10 +34,6 @@ const notes = computed(() => {
         users.set(binding, [...(users.get(binding) ?? []), name])
     }
     const { key: messages, listJoin } = i18n.value.modals.form
-    const browser = {
-        reload: messages.browserReload,
-        find: messages.browserFind,
-    }
     return new Map(
         bound.map(([name, key]) => {
             const others = (users.get(normalizeBinding(key)) ?? []).filter(
@@ -60,13 +50,6 @@ const notes = computed(() => {
                             .reduce((text, title) => interpolateRaw(listJoin, text, title)),
                     ),
                 )
-            // A plain key loses its Ctrl chord to a command bound to that chord exactly.
-            const chord = parseChord(key) ? undefined : commandChordBinding(key)
-            const kind = chord && users.has(chord) ? undefined : browserShortcutOf(key)
-            if (kind) list.push(browser[kind])
-            // Ctrl/Cmd+S, Save's fixed alias, while no binding takes that chord.
-            if (name === 'save' && !users.has('Mod+s'))
-                list.push(interpolateRaw(messages.fixedAlias, formatShortcut('Mod+s') ?? 'Ctrl+S'))
             return [name, list]
         }),
     )

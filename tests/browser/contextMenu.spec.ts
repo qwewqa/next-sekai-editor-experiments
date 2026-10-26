@@ -417,13 +417,43 @@ test('browser chords stay held while the menu is open', async ({ page }) => {
         page.evaluate(
             () => (window as unknown as { lastKey: KeyboardEvent }).lastKey.defaultPrevented,
         )
-    // Ctrl+S, F and P would save, find or print the page.
-    for (const key of ['Control+s', 'Control+f', 'Control+p']) {
+    // Ctrl+S and P would save or print the page. The browser keeps Ctrl+R and F.
+    for (const [key, prevented] of [
+        ['Control+s', true],
+        ['Control+p', true],
+        ['Control+r', false],
+        ['Control+f', false],
+    ] as const) {
         await page.keyboard.press(key)
-        expect(await held()).toBe(true)
+        expect(await held(), key).toBe(prevented)
         await expect(menu).toBeVisible()
     }
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
+})
+
+test('a binding of Ctrl+R keeps that chord from the browser in an open menu', async ({ page }) => {
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.keyboardShortcuts = { ...settings.keyboardShortcuts, manageStages: 'Mod+r' }
+    })
+    await selectTwo(page)
+    await click(page, -3, 3)
+    await expect(page.getByRole('menu')).toBeVisible()
+    await page.evaluate(() => {
+        addEventListener(
+            'keydown',
+            (event) => {
+                ;(window as unknown as { lastKey: KeyboardEvent }).lastKey = event
+            },
+            true,
+        )
+    })
+    await page.keyboard.press('Control+r')
+    expect(
+        await page.evaluate(
+            () => (window as unknown as { lastKey: KeyboardEvent }).lastKey.defaultPrevented,
+        ),
+    ).toBe(true)
 })
 
 test('changing view zoom or scrolling dismisses an open menu', async ({ page }) => {

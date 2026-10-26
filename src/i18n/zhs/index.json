@@ -471,13 +471,10 @@
       "background": "背景",
       "effect": "音效",
       "storedTab": "已存储",
-      "effectHint": "用于预览和播放。",
       "default": "默认",
       "defaultSkin": "默认：Next SEKAI 01",
       "defaultParticle": "默认：Next SEKAI",
       "builtin": "内置",
-      "storedFile": "{0}（文件）",
-      "storedServer": "{0}（服务器）",
       "useBuiltinAll": "全部使用内置",
       "resetDefault": "重置为默认",
       "stored": "已存储：{0} 项，{1}",
@@ -520,7 +517,6 @@
       "removeFailed": "无法移除此项目。",
       "chooseAgain": "重新选择…",
       "noneInFile": "此文件中没有{0}。",
-      "rights": "您加载的项目仅存储在此浏览器中。",
       "progress": {
         "reading": "正在读取文件…",
         "storing": "正在存储…",
@@ -564,7 +560,6 @@
         "packageTooLarge": "此项目存储后超过 {0}。",
         "storeFailed": "无法存储此项目。"
       },
-      "chooseHint": "从文件或 Sonolus 服务器",
       "fromFile": "从文件",
       "fromServer": "从服务器",
       "serverAddress": "服务器地址",
@@ -778,7 +773,7 @@
     "recentSessions": "未保存的内容在“历史记录 › 最近会话”中。",
     "fileTitle": "文件",
     "moveBetweenDevices": "要将内容移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
-    "crswap": "保存时发生崩溃，可能会在项目文件旁留下 .crswap 文件。可以放心删除。"
+    "crswap": "保存时发生崩溃，可能会在项目文件旁留下 .crswap 文件。可以删除。"
   },
   "elevation": {
     "edit": "编辑高度",
@@ -811,11 +806,9 @@
     "title": "设置",
     "resetSettings": "重置设置…",
     "resetSettingsTitle": "重置设置",
-    "resetSettingsHint": "还原默认设置，保留键盘快捷键。",
     "resetKeybinds": "重置快捷键…",
     "resetKeybindsTitle": "重置快捷键",
     "resetSettingsMessage": "要还原默认设置并保留键盘快捷键吗？",
-    "resetSettingsHintStatistics": "还原默认设置，保留键盘快捷键和“发送使用统计”。",
     "resetSettingsMessageStatistics": "要还原默认设置并保留键盘快捷键和“发送使用统计”吗？",
     "resetKeybindsMessage": "要还原默认键盘快捷键吗？",
     "editor": {
@@ -892,7 +885,6 @@
     "preview": {
       "title": "预览",
       "assets": "资源",
-      "assetsHint": "用于预览和播放的皮肤、粒子、背景和音效。",
       "position": {
         "title": "位置",
         "auto": "自动",
@@ -967,7 +959,6 @@
     "sections": "分区",
     "localData": {
       "title": "本地数据",
-      "recoveryHeading": "恢复",
       "startupNoticesHeading": "启动通知",
       "discard": "放弃…",
       "discardConfirm": "放弃",
@@ -979,7 +970,7 @@
         "journalUndated": "以往访问中未保存的内容 · {0}",
         "autoSave": "旧的自动保存 · {0}",
         "unreadable": "无法读取的已恢复内容，{0} · {1}",
-        "listFailed": "无法读取已恢复的内容",
+        "listFailed": "无法读取已恢复的内容。",
         "downloadFailed": "无法下载已恢复的内容。"
       },
       "openHistory": "打开历史记录",
@@ -987,7 +978,6 @@
       "exportRaw": "导出原始数据",
       "open": "打开",
       "exportRawName": "{0} 原始数据 {1}.zip",
-      "storageHeading": "存储",
       "stored": "此浏览器中已存储：{0}，总容量约 {1}",
       "deleteSessions": "删除会话…",
       "deleteTitle": "删除会话",
@@ -1000,7 +990,6 @@
       "namesMore": "{1} 及其他 {0} 个",
       "newer": "其中有会话需要更新版本的编辑器。",
       "deleting": "正在删除…",
-      "exportRawNote": "用于报告问题。",
       "exportRawUnreadable": "无法读取已存储的内容。",
       "notDeleted": "有 {0} 个会话无法删除。"
     }
@@ -1256,10 +1245,7 @@
     "private": "如果这是隐私窗口，此处存储的所有内容会在关闭窗口时丢失。请保存以保留内容。",
     "inAppBrowser": "这似乎是应用内浏览器。已存储的内容可能被删除。如需保留内容，请在浏览器中打开此页面。",
     "ios": "此浏览器会在 7 天未访问后删除已存储的内容。请保存以保留内容。",
-    "safari": "Safari 会在 7 天未访问后删除已存储的内容。请保存以保留内容。",
-    "installedWebkit": "最近的会话会保留在此处，直到您移除此应用。请保存以保留内容。",
-    "persisted": "除非清除此浏览器的数据，否则最近的会话会保留在其中。请保存以保留内容。",
-    "default": "除非空间不足，否则最近的会话会保留在此浏览器中。请保存以保留内容。"
+    "safari": "Safari 会在 7 天未访问后删除已存储的内容。请保存以保留内容。"
   },
   "player": {
     "started": "开始播放",
@@ -1400,7 +1386,7 @@
       "title": "步骤详情",
       "named": "步骤详情：{0}",
       "action": "详情",
-      "unsupported": "此编辑器无法读取此步骤的详情。",
+      "unsupported": "此版本的编辑器无法读取此步骤的详情。",
       "newer": "此步骤由较新版本的编辑器记录。",
       "textShortened": "文本已缩短显示",
       "varying": "值不一致",
@@ -1739,17 +1725,13 @@
         "label": "左边框样式"
       },
       "key": {
-        "input": "输入键",
         "press": "按一个键，或再次点击以清除",
         "pressUnassigned": "按一个键",
         "pressCancel": "按一个键，或按 Esc 取消",
-        "clear": "再次点击以清除此快捷键",
         "unassigned": "未设置",
         "reserved": "{0} 由浏览器或系统保留，请按其他键。",
         "altGraph": "{0} 在许多键盘上用于输入字符，请按其他键。",
         "alsoRuns": "同时执行{0}",
-        "browserReload": "将取代浏览器的刷新快捷键",
-        "browserFind": "将取代浏览器的查找快捷键",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -1765,8 +1747,7 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        },
-        "fixedAlias": "也可按 {0}（不可更改）"
+        }
       },
       "maskLeft": {
         "label": "遮罩轨道"

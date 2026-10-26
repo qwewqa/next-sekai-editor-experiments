@@ -471,13 +471,10 @@
       "background": "Arka Plan",
       "effect": "Ses Efektleri",
       "storedTab": "Saklanan",
-      "effectHint": "Önizleme ve oynatma için kullanılır.",
       "default": "Varsayılan",
       "defaultSkin": "Varsayılan: Next SEKAI 01",
       "defaultParticle": "Varsayılan: Next SEKAI",
       "builtin": "Yerleşik",
-      "storedFile": "{0} (Dosya)",
-      "storedServer": "{0} (Sunucu)",
       "useBuiltinAll": "Tümü İçin Yerleşiği Kullan",
       "resetDefault": "Varsayılana Sıfırla",
       "stored": "Saklanan: {0} öğe, {1}",
@@ -520,7 +517,6 @@
       "removeFailed": "Bu öğe kaldırılamadı.",
       "chooseAgain": "Tekrar Seç…",
       "noneInFile": "Bu dosyada {0} yok.",
-      "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır.",
       "progress": {
         "reading": "Dosya okunuyor…",
         "storing": "Saklanıyor…",
@@ -564,7 +560,6 @@
         "packageTooLarge": "Bu öğe saklandığında {0} sınırından büyük oluyor.",
         "storeFailed": "Bu öğe saklanamadı."
       },
-      "chooseHint": "Bir dosyadan veya Sonolus sunucusundan",
       "fromFile": "Dosyadan",
       "fromServer": "Sunucudan",
       "serverAddress": "Sunucu Adresi",
@@ -778,7 +773,7 @@
     "recentSessions": "Kaydedilmemiş çalışma Geçmiş › Son Oturumlar’da.",
     "fileTitle": "Dosyalar",
     "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için .nxsp dosyası olarak kaydedin, ardından dosyayı orada açın.",
-    "crswap": "Kaydederken bir çökme olursa proje dosyasının yanında bir .crswap dosyası kalabilir. Silmek güvenlidir."
+    "crswap": "Kaydederken bir çökme olursa proje dosyasının yanında bir .crswap dosyası kalabilir. Silebilirsiniz."
   },
   "elevation": {
     "edit": "Yükseklikleri Düzenle",
@@ -811,11 +806,9 @@
     "title": "Ayarlar",
     "resetSettings": "Ayarları Sıfırla…",
     "resetSettingsTitle": "Ayarları Sıfırla",
-    "resetSettingsHint": "Klavye kısayollarını koruyarak varsayılan ayarları geri yükler.",
     "resetKeybinds": "Kısayolları Sıfırla…",
     "resetKeybindsTitle": "Kısayolları Sıfırla",
     "resetSettingsMessage": "Klavye kısayolları korunarak varsayılan ayarlar geri yüklensin mi?",
-    "resetSettingsHintStatistics": "Klavye kısayollarını ve Kullanım İstatistiklerini Gönder ayarını koruyarak varsayılan ayarları geri yükler.",
     "resetSettingsMessageStatistics": "Klavye kısayolları ve Kullanım İstatistiklerini Gönder ayarı korunarak varsayılan ayarlar geri yüklensin mi?",
     "resetKeybindsMessage": "Varsayılan klavye kısayolları geri yüklensin mi?",
     "editor": {
@@ -892,7 +885,6 @@
     "preview": {
       "title": "Önizleme",
       "assets": "Varlıklar",
-      "assetsHint": "Önizleme ve oynatma için görünüm, parçacık, arka plan ve ses efektleri.",
       "position": {
         "title": "Konum",
         "auto": "Otomatik",
@@ -967,7 +959,6 @@
     "sections": "Bölümler",
     "localData": {
       "title": "Yerel Veriler",
-      "recoveryHeading": "Kurtarma",
       "startupNoticesHeading": "Başlangıç Bildirimleri",
       "discard": "Sil…",
       "discardConfirm": "Sil",
@@ -979,7 +970,7 @@
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
-        "listFailed": "Kurtarılmış çalışma okunamadı",
+        "listFailed": "Kurtarılmış çalışma okunamadı.",
         "downloadFailed": "Kurtarılmış çalışma indirilemedi."
       },
       "openHistory": "Geçmişi Aç",
@@ -987,7 +978,6 @@
       "exportRaw": "Ham Verileri Dışa Aktar",
       "open": "Aç",
       "exportRawName": "{0} ham veriler {1}.zip",
-      "storageHeading": "Depolama Alanı",
       "stored": "Bu tarayıcıda saklanan: {0} / yaklaşık {1}",
       "deleteSessions": "Oturumları Sil…",
       "deleteTitle": "Oturumları Sil",
@@ -1000,7 +990,6 @@
       "namesMore": "{1} ve {0} tane daha",
       "newer": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.|Bu oturumlardan bazıları için editörün daha yeni bir sürümü gerekiyor.",
       "deleting": "Siliniyor…",
-      "exportRawNote": "Sorun bildirmek için.",
       "exportRawUnreadable": "Saklanan çalışma okunamadı.",
       "notDeleted": "{0} oturum silinemedi."
     }
@@ -1256,10 +1245,7 @@
     "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için kaydedin.",
     "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
     "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin.",
-    "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin.",
-    "installedWebkit": "Son Oturumlar, bu uygulamayı kaldırana kadar burada tutulur. Çalışmanızı korumak için kaydedin.",
-    "persisted": "Son Oturumlar, verilerini temizlemediğiniz sürece bu tarayıcıda tutulur. Çalışmanızı korumak için kaydedin.",
-    "default": "Son Oturumlar, alan azalmadığı sürece bu tarayıcıda tutulur. Çalışmanızı korumak için kaydedin."
+    "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin."
   },
   "player": {
     "started": "Oynatmaya başlandı",
@@ -1400,7 +1386,7 @@
       "title": "Adım ayrıntıları",
       "named": "Adım ayrıntıları: {0}",
       "action": "Ayrıntılar",
-      "unsupported": "Bu editör bu adımın ayrıntılarını okuyamıyor.",
+      "unsupported": "Editörün bu sürümü bu adımın ayrıntılarını okuyamıyor.",
       "newer": "Bu adım editörün daha yeni bir sürümüyle oluşturuldu.",
       "textShortened": "Metin kısaltılarak gösteriliyor",
       "varying": "Değişken",
@@ -1739,17 +1725,13 @@
         "label": "Kenarlık Stili (Sol)"
       },
       "key": {
-        "input": "Tuş Girin",
         "press": "Bir tuşa basın veya temizlemek için tekrar tıklayın",
         "pressUnassigned": "Bir tuşa basın",
         "pressCancel": "Bir tuşa basın veya Esc ile iptal edin",
-        "clear": "Bu kısayolu temizlemek için tekrar tıklayın",
         "unassigned": "Atanmamış",
         "reserved": "{0} tarayıcıya veya sisteme ayrılmıştır; başka bir tuşa basın.",
         "altGraph": "{0} birçok klavyede karakter yazmak için kullanılır; başka bir tuşa basın.",
         "alsoRuns": "{0} komutunu da çalıştırır",
-        "browserReload": "Tarayıcının yenileme kısayolunun yerine geçer",
-        "browserFind": "Tarayıcının bulma kısayolunun yerine geçer",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -1765,8 +1747,7 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        },
-        "fixedAlias": "{0} ile de çalışır (değiştirilemez)"
+        }
       },
       "maskLeft": {
         "label": "Maske Şeridi"

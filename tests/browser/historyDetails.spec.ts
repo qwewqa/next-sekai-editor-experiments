@@ -611,7 +611,7 @@ test('an unreadable step shows its title and one note', async ({ page }) => {
         '<b>Future export</b>',
     )
     await expect(root(page).locator('[data-operation-unsupported]')).toHaveText(
-        'This editor cannot read the details of this step.',
+        'This version of the editor cannot read the details of this step.',
     )
     await expect(root(page).locator('[data-operation-record], h3')).toHaveCount(0)
 })

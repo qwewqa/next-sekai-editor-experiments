@@ -269,7 +269,7 @@ const boxClass =
             </p>
 
             <div class="flex flex-col gap-1 text-sm">
-                <p v-if="input.exportLine" data-save-export>
+                <p v-if="input.kind !== 'saveToFile'" data-save-export>
                     <template v-if="hintParts"
                         >{{ hintParts.before
                         }}<span class="whitespace-nowrap"

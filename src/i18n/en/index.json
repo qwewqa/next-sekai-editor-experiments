@@ -471,13 +471,10 @@
             "background": "Background",
             "effect": "Sound Effects",
             "storedTab": "Stored",
-            "effectHint": "Used by the preview and playback.",
             "default": "Default",
             "defaultSkin": "Default: Next SEKAI 01",
             "defaultParticle": "Default: Next SEKAI",
             "builtin": "Built-in",
-            "storedFile": "{0} (File)",
-            "storedServer": "{0} (Server)",
             "useBuiltinAll": "Use Built-in for All",
             "resetDefault": "Reset to Default",
             "stored": "Stored: {0} item, {1}|Stored: {0} items, {1}",
@@ -520,7 +517,6 @@
             "removeFailed": "This item could not be removed.",
             "chooseAgain": "Choose Again…",
             "noneInFile": "This file has no {0}.",
-            "rights": "Items you load are stored in this browser only.",
             "progress": {
                 "reading": "Reading file…",
                 "storing": "Storing…",
@@ -564,7 +560,6 @@
                 "packageTooLarge": "This item is larger than {0} once stored.",
                 "storeFailed": "This item could not be stored."
             },
-            "chooseHint": "From a file or a Sonolus server",
             "fromFile": "From a File",
             "fromServer": "From a Server",
             "serverAddress": "Server Address",
@@ -575,7 +570,7 @@
             "noneFound": "No items found",
             "server": {
                 "unreachable": "Could not reach this server. Check the address, or try again later.",
-                "auth": "The editor cannot use servers that need you to sign in.",
+                "auth": "The editor cannot use servers that require signing in.",
                 "insecure": "The editor cannot use http servers.",
                 "checksum": "The server’s checksum for this item does not match what it sent.",
                 "notFound": "This server does not have that item.",
@@ -778,7 +773,7 @@
         "recentSessions": "Unsaved work is in History › Recent Sessions.",
         "fileTitle": "Files",
         "moveBetweenDevices": "To move work to another device, save it as a .nxsp file, then open the file there.",
-        "crswap": "A crash while saving can leave a .crswap file next to the project file. It is safe to delete."
+        "crswap": "A crash while saving can leave a .crswap file next to the project file. You can delete it."
     },
     "elevation": {
         "edit": "Edit Elevations",
@@ -811,11 +806,9 @@
         "title": "Settings",
         "resetSettings": "Reset Settings…",
         "resetSettingsTitle": "Reset Settings",
-        "resetSettingsHint": "Restore default settings, keeping keyboard shortcuts.",
         "resetKeybinds": "Reset Shortcuts…",
         "resetKeybindsTitle": "Reset Shortcuts",
         "resetSettingsMessage": "Restore default settings, keeping keyboard shortcuts?",
-        "resetSettingsHintStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting.",
         "resetSettingsMessageStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting?",
         "resetKeybindsMessage": "Restore default keyboard shortcuts?",
         "editor": {
@@ -892,7 +885,6 @@
         "preview": {
             "title": "Preview",
             "assets": "Assets",
-            "assetsHint": "Skin, particle, background and sound effects for the preview and playback.",
             "position": {
                 "title": "Position",
                 "auto": "Auto",
@@ -967,7 +959,6 @@
         "sections": "Sections",
         "localData": {
             "title": "Local Data",
-            "recoveryHeading": "Recovery",
             "startupNoticesHeading": "Startup Notices",
             "discard": "Discard…",
             "discardConfirm": "Discard",
@@ -979,7 +970,7 @@
                 "journalUndated": "Unsaved work from an earlier visit · {0}",
                 "autoSave": "Old auto save · {0}",
                 "unreadable": "Unreadable recovered work, {0} · {1}",
-                "listFailed": "Recovered work could not be read",
+                "listFailed": "Recovered work could not be read.",
                 "downloadFailed": "The recovered work could not be downloaded."
             },
             "openHistory": "Open History",
@@ -987,7 +978,6 @@
             "exportRaw": "Export Raw Data",
             "open": "Open",
             "exportRawName": "{0} raw data {1}.zip",
-            "storageHeading": "Storage",
             "stored": "Stored in this browser: {0} of about {1}",
             "deleteSessions": "Delete Sessions…",
             "deleteTitle": "Delete Sessions",
@@ -998,9 +988,8 @@
             "deleteConfirm": "Delete {0} session?|Delete {0} sessions?",
             "notSaved": "{0} session has unsaved changes: {1}.|{0} sessions have unsaved changes: {1}.",
             "namesMore": "{1} and {0} more",
-            "newer": "This session needs a newer version of the editor.|Some of these sessions need a newer version of the editor.",
+            "newer": "This session requires a newer version of the editor.|Some of these sessions require a newer version of the editor.",
             "deleting": "Deleting…",
-            "exportRawNote": "For reporting a problem.",
             "exportRawUnreadable": "The stored work could not be read.",
             "notDeleted": "{0} session could not be deleted.|{0} sessions could not be deleted."
         }
@@ -1224,7 +1213,7 @@
         "migrationFailed": "The old auto save could not be restored.",
         "autoSave": "Continued \"{0}\" from the old auto save.",
         "journal": "Recovered your last change to \"{0}\".",
-        "journalLater": "A recovered change needs a newer version of the editor.",
+        "journalLater": "A recovered change requires a newer version of the editor.",
         "openElsewhere": "\"{0}\" was not restored here because it is open in another tab or window.",
         "restoreAsCopy": "Restore as a Copy",
         "sessionDeleted": "This session was deleted in another tab or window.",
@@ -1233,9 +1222,9 @@
         "journalFailed": "A recovered change could not be stored. A copy is in Local Data.",
         "storageNearlyFull": "Browser storage is almost full.",
         "journalsFull": "Unsaved work from earlier visits is filling browser storage.",
-        "sessionLater": "This session needs a newer version of the editor.",
+        "sessionLater": "This session requires a newer version of the editor.",
         "sessionDamaged": "This session could not be opened.",
-        "newestLater": "Your most recent session needs a newer version of the editor.",
+        "newestLater": "Your most recent session requires a newer version of the editor.",
         "newestDamaged": "Your most recent session could not be opened.",
         "bgmNotLoaded": "The BGM is not loaded.",
         "more": "and {0} more in Local Data",
@@ -1256,10 +1245,7 @@
         "private": "If this is a private window, everything stored here is lost when it closes. Save to keep your work.",
         "inAppBrowser": "This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your browser.",
         "ios": "This browser deletes stored work after 7 days without a visit. Save to keep your work.",
-        "safari": "Safari deletes stored work after 7 days without a visit. Save to keep your work.",
-        "installedWebkit": "Recent Sessions are kept here until you remove this app. Save to keep your work.",
-        "persisted": "Recent Sessions are kept in this browser unless you clear its data. Save to keep your work.",
-        "default": "Recent Sessions are kept in this browser unless it runs low on space. Save to keep your work."
+        "safari": "Safari deletes stored work after 7 days without a visit. Save to keep your work."
     },
     "player": {
         "started": "Started playing",
@@ -1371,7 +1357,7 @@
         "notKept": "not kept",
         "earlierNotStored": "Earlier Timeline steps are not stored in this browser.",
         "damaged": "damaged",
-        "needsNewer": "needs a newer version",
+        "needsNewer": "requires a newer version",
         "savedOn": "Saved on {0}",
         "savedWeb": "Saved in the web editor ({0})",
         "savedWebAny": "Saved in the web editor",
@@ -1400,7 +1386,7 @@
             "title": "Step Details",
             "named": "Step Details: {0}",
             "action": "Details",
-            "unsupported": "This editor cannot read the details of this step.",
+            "unsupported": "This version of the editor cannot read the details of this step.",
             "newer": "This step was recorded by a newer version of the editor.",
             "textShortened": "Text shortened for display",
             "varying": "Varies",
@@ -1739,17 +1725,13 @@
                 "label": "Border Style (Left)"
             },
             "key": {
-                "input": "Input Key",
                 "press": "Press a key or click again to clear",
                 "pressUnassigned": "Press a key",
                 "pressCancel": "Press a key, or Esc to cancel",
-                "clear": "Click again to clear this shortcut",
                 "unassigned": "Unassigned",
                 "reserved": "{0} is reserved by the browser or system. Press another key.",
                 "altGraph": "{0} types characters on many keyboards. Press another key.",
                 "alsoRuns": "Also runs {0}",
-                "browserReload": "Replaces the browser’s reload shortcut",
-                "browserFind": "Replaces the browser’s find shortcut",
                 "names": {
                     "space": "Space",
                     "escape": "Esc",
@@ -1765,8 +1747,7 @@
                     "ctrl": "Ctrl",
                     "alt": "Alt",
                     "shift": "Shift"
-                },
-                "fixedAlias": "Also {0} (cannot be changed)"
+                }
             },
             "maskLeft": {
                 "label": "Mask Lane"

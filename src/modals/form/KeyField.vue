@@ -151,9 +151,6 @@ const onBlur = () => {
                         !isActive && !formatShortcut(modelValue),
                 }"
                 type="button"
-                :title="
-                    isActive && canClear ? i18n.modals.form.key.clear : i18n.modals.form.key.input
-                "
                 :aria-labelledby="`${textId} ${valueId}`"
                 @mousedown="onMouseDown"
                 @click="onClick"

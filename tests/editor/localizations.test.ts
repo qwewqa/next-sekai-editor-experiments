@@ -177,13 +177,6 @@ test('unit labels follow their locale’s pattern', () => {
             assert.doesNotMatch(text, new RegExp(unit), `${locale} ${key}`)
 })
 
-test('the Japanese capture tooltip says what its prompt says', () => {
-    const messages = read('ja')
-    // As the prompt "キーを押すか、もう一度クリックして削除", not a longer sentence.
-    assert.ok(messages['modals.form.key.press']!.includes('もう一度クリックして削除'))
-    assert.match(messages['modals.form.key.clear']!, /^もう一度クリックして\S*削除$/)
-})
-
 test('Japanese writes すべて, never 全て', () => {
     for (const [key, text] of Object.entries(read('ja'))) assert.doesNotMatch(text, /全て/, key)
 })

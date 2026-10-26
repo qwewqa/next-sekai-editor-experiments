@@ -10,7 +10,6 @@ const facts = (changes: Partial<StorageFacts> = {}): StorageFacts => ({
     unavailable: false,
     privateSuspected: false,
     inAppBrowser: false,
-    persisted: false,
     os: 'windows',
     engine: 'chromium',
     standalone: false,
@@ -18,17 +17,16 @@ const facts = (changes: Partial<StorageFacts> = {}): StorageFacts => ({
 })
 
 test('the storage line is the first condition that holds', () => {
-    assert.equal(storageLineKey(facts()), 'default')
-    assert.equal(storageLineKey(facts({ persisted: true })), 'persisted')
+    assert.equal(storageLineKey(facts()), undefined)
     assert.equal(storageLineKey(facts({ os: 'macos', engine: 'webkit' })), 'safari')
     assert.equal(storageLineKey(facts({ os: 'ios', engine: 'webkit' })), 'ios')
     assert.equal(
         storageLineKey(facts({ os: 'ios', engine: 'webkit', standalone: true })),
-        'installedWebkit',
+        undefined,
     )
     assert.equal(
         storageLineKey(facts({ os: 'macos', engine: 'webkit', standalone: true })),
-        'installedWebkit',
+        undefined,
     )
     assert.equal(
         storageLineKey(facts({ privateSuspected: true, os: 'ios', engine: 'webkit' })),
@@ -43,19 +41,10 @@ test('the storage line is the first condition that holds', () => {
 test('an app’s built-in browser beats the browser lines, and loses to unavailable and private', () => {
     const inApp = { inAppBrowser: true }
     assert.equal(storageLineKey(facts(inApp)), 'inAppBrowser')
-    assert.equal(storageLineKey(facts({ ...inApp, persisted: true })), 'inAppBrowser')
     assert.equal(storageLineKey(facts({ ...inApp, os: 'ios', engine: 'webkit' })), 'inAppBrowser')
     assert.equal(storageLineKey(facts({ ...inApp, os: 'macos', engine: 'webkit' })), 'inAppBrowser')
     assert.equal(storageLineKey(facts({ ...inApp, privateSuspected: true })), 'private')
     assert.equal(storageLineKey(facts({ ...inApp, unavailable: true })), 'unavailable')
-})
-
-test('a persisted grant never hides what a tab on iOS or Safari can lose', () => {
-    assert.equal(storageLineKey(facts({ persisted: true, os: 'ios', engine: 'webkit' })), 'ios')
-    assert.equal(
-        storageLineKey(facts({ persisted: true, os: 'macos', engine: 'webkit' })),
-        'safari',
-    )
 })
 
 test('the line describes the browser: safe mode’s read-only open and a wait on older tabs are not "cannot store"', () => {

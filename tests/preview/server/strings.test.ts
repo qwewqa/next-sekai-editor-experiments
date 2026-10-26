@@ -19,7 +19,6 @@ const previewAssets = (locale: string) =>
 
 test('every locale has the From a Server strings', () => {
     const keys = [
-        'chooseHint',
         'fromFile',
         'fromServer',
         'serverAddress',
@@ -80,7 +79,6 @@ test('the English words follow the editor’s conventions', () => {
     for (const text of [
         ...values(english.server),
         ...values(english.serverImport),
-        english.chooseHint,
         english.alsoServerItem,
         english.noneFound,
     ] as string[]) {

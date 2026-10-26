@@ -471,13 +471,10 @@
       "background": "Arrière-plan",
       "effect": "Effets sonores",
       "storedTab": "Stockés",
-      "effectHint": "Utilisés pour l’aperçu et la lecture.",
       "default": "Par défaut",
       "defaultSkin": "Par défaut : Next SEKAI 01",
       "defaultParticle": "Par défaut : Next SEKAI",
       "builtin": "Intégré",
-      "storedFile": "{0} (fichier)",
-      "storedServer": "{0} (serveur)",
       "useBuiltinAll": "Tout passer en intégré",
       "resetDefault": "Rétablir par défaut",
       "stored": "Stocké : {0} élément, {1}|Stocké : {0} éléments, {1}",
@@ -520,7 +517,6 @@
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau…",
       "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
-      "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur.",
       "progress": {
         "reading": "Lecture du fichier…",
         "storing": "Stockage…",
@@ -564,7 +560,6 @@
         "packageTooLarge": "Cet élément dépasse {0} une fois stocké.",
         "storeFailed": "Cet élément n’a pas pu être stocké."
       },
-      "chooseHint": "Depuis un fichier ou un serveur Sonolus",
       "fromFile": "Depuis un fichier",
       "fromServer": "Depuis un serveur",
       "serverAddress": "Adresse du serveur",
@@ -575,7 +570,7 @@
       "noneFound": "Aucun élément trouvé",
       "server": {
         "unreachable": "Impossible de joindre ce serveur. Vérifiez l’adresse ou réessayez plus tard.",
-        "auth": "L’éditeur ne peut pas utiliser les serveurs qui demandent de se connecter à un compte.",
+        "auth": "L’éditeur ne peut pas utiliser les serveurs qui nécessitent une connexion.",
         "insecure": "L’éditeur ne peut pas utiliser les serveurs http.",
         "checksum": "La somme de contrôle du serveur pour cet élément ne correspond pas à ce qu’il a envoyé.",
         "notFound": "Ce serveur n’a pas cet élément.",
@@ -778,7 +773,7 @@
     "recentSessions": "Le travail non sauvegardé se trouve dans Historique › Récentes.",
     "fileTitle": "Fichiers",
     "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil.",
-    "crswap": "Un plantage pendant la sauvegarde peut laisser un fichier .crswap à côté du fichier de projet. Vous pouvez le supprimer sans risque."
+    "crswap": "Un plantage pendant la sauvegarde peut laisser un fichier .crswap à côté du fichier de projet. Vous pouvez le supprimer."
   },
   "elevation": {
     "edit": "Modifier les élévations",
@@ -811,11 +806,9 @@
     "title": "Paramètres",
     "resetSettings": "Réinitialiser les paramètres…",
     "resetSettingsTitle": "Réinitialiser les paramètres",
-    "resetSettingsHint": "Restaurer les paramètres par défaut en conservant les raccourcis clavier.",
     "resetKeybinds": "Réinitialiser les raccourcis…",
     "resetKeybindsTitle": "Réinitialiser les raccourcis",
     "resetSettingsMessage": "Restaurer les paramètres par défaut en conservant les raccourcis clavier ?",
-    "resetSettingsHintStatistics": "Restaurer les paramètres par défaut en conservant les raccourcis clavier et le paramètre Envoyer des statistiques d’utilisation.",
     "resetSettingsMessageStatistics": "Restaurer les paramètres par défaut en conservant les raccourcis clavier et le paramètre Envoyer des statistiques d’utilisation ?",
     "resetKeybindsMessage": "Restaurer les raccourcis clavier par défaut ?",
     "editor": {
@@ -892,7 +885,6 @@
     "preview": {
       "title": "Aperçu",
       "assets": "Ressources",
-      "assetsHint": "Skin, particules, arrière-plan et effets sonores pour l’aperçu et la lecture.",
       "position": {
         "title": "Position",
         "auto": "Auto",
@@ -967,7 +959,6 @@
     "sections": "Rubriques",
     "localData": {
       "title": "Données locales",
-      "recoveryHeading": "Récupération",
       "startupNoticesHeading": "Notifications au démarrage",
       "discard": "Abandonner…",
       "discardConfirm": "Abandonner",
@@ -979,7 +970,7 @@
         "journalUndated": "Travail non sauvegardé d’une visite précédente · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
-        "listFailed": "Le travail récupéré n’a pas pu être lu",
+        "listFailed": "Le travail récupéré n’a pas pu être lu.",
         "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé."
       },
       "openHistory": "Ouvrir l’historique",
@@ -987,7 +978,6 @@
       "exportRaw": "Exporter les données brutes",
       "open": "Ouvrir",
       "exportRawName": "{0} données brutes {1}.zip",
-      "storageHeading": "Stockage",
       "stored": "Stocké dans ce navigateur : {0} sur environ {1}",
       "deleteSessions": "Supprimer des sessions…",
       "deleteTitle": "Supprimer des sessions",
@@ -1000,7 +990,6 @@
       "namesMore": "{1} et {0} autre|{1} et {0} autres",
       "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
       "deleting": "Suppression…",
-      "exportRawNote": "Pour signaler un problème.",
       "exportRawUnreadable": "Le travail stocké n’a pas pu être lu.",
       "notDeleted": "{0} session n’a pas pu être supprimée.|{0} sessions n’ont pas pu être supprimées."
     }
@@ -1256,10 +1245,7 @@
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez pour conserver votre travail.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
     "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
-    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
-    "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que vous supprimiez cette application. Sauvegardez pour conserver votre travail.",
-    "persisted": "Les sessions récentes sont conservées dans ce navigateur, sauf si vous effacez ses données. Sauvegardez pour conserver votre travail.",
-    "default": "Les sessions récentes sont conservées dans ce navigateur, sauf si l’espace vient à manquer. Sauvegardez pour conserver votre travail."
+    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail."
   },
   "player": {
     "started": "Lecture démarrée",
@@ -1400,7 +1386,7 @@
       "title": "Détails de l’étape",
       "named": "Détails de l’étape : {0}",
       "action": "Détails",
-      "unsupported": "Cet éditeur ne peut pas lire les détails de cette étape.",
+      "unsupported": "Cette version de l’éditeur ne peut pas lire les détails de cette étape.",
       "newer": "Cette étape a été créée par une version plus récente de l’éditeur.",
       "textShortened": "Texte affiché en abrégé",
       "varying": "Variable",
@@ -1739,17 +1725,13 @@
         "label": "Style de bordure (gauche)"
       },
       "key": {
-        "input": "Touche de saisie",
         "press": "Appuyez sur une touche ou cliquez à nouveau pour effacer",
         "pressUnassigned": "Appuyez sur une touche",
         "pressCancel": "Appuyez sur une touche ou sur Échap pour annuler",
-        "clear": "Cliquez à nouveau pour effacer ce raccourci",
         "unassigned": "Non attribué",
         "reserved": "{0} est réservé au navigateur ou au système ; appuyez sur une autre touche.",
         "altGraph": "{0} sert à taper des caractères sur de nombreux claviers ; appuyez sur une autre touche.",
         "alsoRuns": "Exécute aussi {0}",
-        "browserReload": "Remplace le raccourci d’actualisation du navigateur",
-        "browserFind": "Remplace le raccourci de recherche du navigateur",
         "names": {
           "space": "Espace",
           "escape": "Échap",
@@ -1765,8 +1747,7 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Maj"
-        },
-        "fixedAlias": "Aussi {0} (non modifiable)"
+        }
       },
       "maskLeft": {
         "label": "Voie du masque"

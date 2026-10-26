@@ -1057,7 +1057,7 @@ test('full-app phone and desktop composition keeps passive states in the same st
     }
 })
 
-test('tiny menu takes keyboard focus, holds browser keys and restores its opener', async ({
+test('tiny menu takes keyboard focus, holds browser keys but reload and find, and restores its opener', async ({
     page,
 }) => {
     await seed(page)
@@ -1081,11 +1081,15 @@ test('tiny menu takes keyboard focus, holds browser keys and restores its opener
     })
     await page.keyboard.press('Control+s')
     await page.keyboard.press('Meta+s')
+    await page.keyboard.press('Control+r')
+    await page.keyboard.press('Control+f')
     await page.keyboard.press('x')
     expect(await page.evaluate(() => window.historyMenuKeys)).toEqual(
         expect.arrayContaining([
             { key: 's', ctrl: true, meta: false, prevented: true },
             { key: 's', ctrl: false, meta: true, prevented: true },
+            { key: 'r', ctrl: true, meta: false, prevented: false },
+            { key: 'f', ctrl: true, meta: false, prevented: false },
             { key: 'x', ctrl: false, meta: false, prevented: true },
         ]),
     )
