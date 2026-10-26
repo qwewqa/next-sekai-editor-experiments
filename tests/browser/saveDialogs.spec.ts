@@ -410,7 +410,7 @@ test.describe('the Save dialog', () => {
                     (p) =>
                         !!(
                             p.ownerDocument
-                                .querySelector('[data-save-total]')!
+                                .querySelector('[data-save-include]')!
                                 .compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING
                         ),
                 )
