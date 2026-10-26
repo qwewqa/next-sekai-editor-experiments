@@ -13,6 +13,7 @@ import {
     measured,
     scales,
 } from '../../src/analytics/catalogue'
+import { requestFields, requestItem } from '../../src/analytics/rules'
 import { operationCodecs } from '../../src/history/operations/registry'
 
 const K = 1024
@@ -243,6 +244,41 @@ test('docs/analytics.md lists the catalogue', () => {
                 `docs/analytics.md lists ${name} ${String(pattern)}, which the catalogue lacks`,
             )
     }
+})
+
+test('docs/usage-statistics.md explains the fields every request carries', () => {
+    const doc = readFileSync(new URL('../../docs/usage-statistics.md', import.meta.url), 'utf8')
+    const start = doc.indexOf('## What every request carries')
+    const section = doc.slice(start, doc.indexOf('\n## ', start + 1))
+    const documented = new Map(
+        [...section.matchAll(/^\| `(\w+)` \| ([^|]+) \|/gm)].map(([, name = '', meaning = '']) => [
+            name,
+            meaning,
+        ]),
+    )
+    // The fields of a constructed item: all but the event, which only an event has.
+    const fields = requestFields({
+        website: 'site',
+        hostname: 'nse.qwewqa.dev',
+        screenWidth: 1920,
+        screenHeight: 1080,
+        locale: 'zhs',
+        referrer: '',
+    })
+    const pageview = requestItem(fields, undefined, undefined, 1_700_000_000_000).payload
+    const event = requestItem(fields, 'visit', {}, 1_700_000_000_000).payload
+    assert.deepEqual(Object.keys(pageview).sort(), [...documented.keys()].sort())
+    assert.deepEqual(
+        Object.keys(event)
+            .filter((key) => key !== 'name' && key !== 'data')
+            .sort(),
+        Object.keys(pageview).sort(),
+    )
+    assert.equal(pageview.screen, '1920x1080')
+    assert.equal(pageview.language, 'zh-Hans')
+    assert.equal(pageview.timestamp, 1_700_000_000)
+    for (const [name, meaning] of documented)
+        assert.ok(meaning.trim().length > 0, `${name} has no meaning`)
 })
 
 test('a measured count is capped so a long visit keeps its perf event', () => {
