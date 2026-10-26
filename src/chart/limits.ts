@@ -1,3 +1,5 @@
+import type { Chart } from '.'
+
 /**
  * The largest coordinates a chart may hold. The grid keeps a bucket for each beat a connector
  * spans, and the preview a slot lane for each lane of a note’s width, so values past these would
@@ -38,5 +40,25 @@ export const fieldPastLimit = (object: object): string | undefined => {
     for (const [name, [min, max]] of limited) {
         const value = (object as Record<string, unknown>)[name]
         if (typeof value === 'number' && !(value >= min && value <= max)) return name
+    }
+}
+
+/** Every object of a chart that has a beat. */
+export const chartObjects = (chart: Chart) => [
+    ...chart.bpms,
+    ...chart.timeScales,
+    ...chart.cameraEvents,
+    ...chart.stageMaskEvents,
+    ...chart.stagePivotEvents,
+    ...chart.stageStyleEvents,
+    ...chart.stageTransformEvents,
+    ...chart.slides.flat(),
+]
+
+/** Throws for a chart with a coordinate past its limit, as a snapshot's records are checked. */
+export const assertWithinLimits = (chart: Chart) => {
+    for (const object of chartObjects(chart)) {
+        const name = fieldPastLimit(object)
+        if (name) throw new Error(`The chart's ${name} is past its limit`)
     }
 }

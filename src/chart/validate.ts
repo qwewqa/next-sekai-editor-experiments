@@ -1,5 +1,5 @@
 import type { Chart } from '.'
-import { fieldPastLimit, isWithinLimit } from './limits'
+import { chartObjects, isWithinLimit } from './limits'
 import { ImportRefusal } from './refusal'
 
 export const validateChart = (chart: Chart) => {
@@ -8,30 +8,11 @@ export const validateChart = (chart: Chart) => {
     validateValues(chart)
 }
 
-const objectsOf = (chart: Chart) => [
-    ...chart.bpms,
-    ...chart.timeScales,
-    ...chart.cameraEvents,
-    ...chart.stageMaskEvents,
-    ...chart.stagePivotEvents,
-    ...chart.stageStyleEvents,
-    ...chart.stageTransformEvents,
-    ...chart.slides.flat(),
-]
-
-/** Refuses a coordinate past its limit, as a stored snapshot is checked when it is built. */
-export const validateLimits = (chart: Chart) => {
-    for (const object of objectsOf(chart)) {
-        const name = fieldPastLimit(object)
-        if (name) throw new ImportRefusal('invalidValue', name)
-    }
-}
-
 /** The checks that also apply to a part of a chart, such as a copy. */
 export const validateValues = (chart: Chart) => {
     // Level data refuses these, so the editor could not reopen its own file.
     const notes = chart.slides.flat()
-    const objects = objectsOf(chart)
+    const objects = chartObjects(chart)
     if (objects.some(({ beat }) => beat < 0)) throw new ImportRefusal('negativeBeat')
     if (notes.some(({ size }) => size < 0)) throw new ImportRefusal('negativeNoteSize')
     if (chart.bpms.some(({ bpm }) => !(bpm > 0 && Number.isFinite(bpm))))

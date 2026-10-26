@@ -7,10 +7,10 @@ import type { StageStyleEventObject } from '../../chart/events/stage/style'
 import type { StageTransformEventObject } from '../../chart/events/stage/transform'
 import type { FolderId, Folders } from '../../chart/folders'
 import type { GroupId, Groups } from '../../chart/groups'
+import { assertWithinLimits } from '../../chart/limits'
 import type { NoteObject } from '../../chart/note'
 import type { StageId, Stages } from '../../chart/stages'
 import type { TimeScaleObject } from '../../chart/timeScale'
-import { validateLimits } from '../../chart/validate'
 import { createState, type State } from '../../state'
 import type { BgmMeta } from '../../state/bgm'
 import { emptyLevelInfo, type LevelInfo, type MediaRef } from '../../state/levelInfo'
@@ -404,7 +404,7 @@ export const fromRecords = ({ header, kinds }: SnapshotRecords): RecordsContent 
     }
 
     // A snapshot past the limits is damaged, as the editor would refuse it on reopening.
-    validateLimits(chart)
+    assertWithinLimits(chart)
 
     return {
         chart,
