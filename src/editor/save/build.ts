@@ -14,6 +14,7 @@ import type { BuildSaveOptions } from '../../local/worker/saveHandlers'
 import { appVersion, FileError, type PinnedSource } from '../../platform'
 import type { State } from '../../state'
 import { deviceSource } from './env'
+import { timedBuild } from './report'
 
 // A Save's build: the options the storage worker's writer takes, with
 // what this tab holds that storage may not (its unflushed rows and stack, the live head, its media
@@ -194,11 +195,18 @@ export const runBuild = async (
             },
             { timeoutMs: BUILD_TIMEOUT_MS },
         )
-    let built = await call(options)
-    // The head's stored copy failed: an open session's head is always written, from the live
-    // state's records. Recent Sessions' Save… of a session that isn't open refuses.
-    if ('refused' in built && built.refused === 'unreadableHead' && request.sessionId === undefined)
-        built = await call({ ...options, pending: withHeadRecords(options.pending, request.state) })
+    const built = await timedBuild(async () => {
+        const first = await call(options)
+        // The head's stored copy failed: an open session's head is always written, from the live
+        // state's records. Recent Sessions' Save… of a session that isn't open refuses.
+        if (
+            'refused' in first &&
+            first.refused === 'unreadableHead' &&
+            request.sessionId === undefined
+        )
+            return call({ ...options, pending: withHeadRecords(options.pending, request.state) })
+        return first
+    })
     if ('refused' in built) {
         if (built.refused === 'conflict' || built.refused === 'notAtBase')
             throw new FileError('conflict', 'The file changed after it was checked')

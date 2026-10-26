@@ -101,7 +101,7 @@ import {
     storageNote,
 } from './preview'
 import { exclusive } from './queue'
-import { finishSave, savedSize, startSave, startWrite, tracked } from './report'
+import { finishSave, savedSize, startSave, startWrite, timedBuild, tracked } from './report'
 import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './saveAttempt'
 import { unlinkSession } from './unlink'
 import { refreshBinding } from './watch'
@@ -1962,32 +1962,34 @@ const sessionFileBody = async (
 ): Promise<Outcome | Dismissed> => {
     const built = await session
         .preparing(() =>
-            env.worker.call(
-                'buildSave',
-                {
-                    chainId: request.chainId,
-                    target: {
-                        kind: 'new',
-                        docId: crypto.randomUUID(),
-                        sessionId: request.sessionId,
-                    },
-                    options: {
-                        history: request.history,
-                        bgm: request.bgm,
-                        fileName: request.fileName,
-                        save: {
-                            time: Date.now(),
-                            operation: saveOperation(request.fileName, !platform.pickSaveFile),
+            timedBuild(() =>
+                env.worker.call(
+                    'buildSave',
+                    {
+                        chainId: request.chainId,
+                        target: {
+                            kind: 'new',
+                            docId: crypto.randomUUID(),
+                            sessionId: request.sessionId,
                         },
-                        context: {
-                            now: Date.now(),
-                            device: deviceSource(),
-                            appVersion: appVersion().appVersion,
+                        options: {
+                            history: request.history,
+                            bgm: request.bgm,
+                            fileName: request.fileName,
+                            save: {
+                                time: Date.now(),
+                                operation: saveOperation(request.fileName, !platform.pickSaveFile),
+                            },
+                            context: {
+                                now: Date.now(),
+                                device: deviceSource(),
+                                appVersion: appVersion().appVersion,
+                            },
+                            sessionId: request.sessionId,
                         },
-                        sessionId: request.sessionId,
                     },
-                },
-                { timeoutMs: 10 * 60_000 },
+                    { timeoutMs: 10 * 60_000 },
+                ),
             ),
         )
         .catch((error: unknown) => fileError(error))

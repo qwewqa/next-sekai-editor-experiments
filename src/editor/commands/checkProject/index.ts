@@ -76,6 +76,8 @@ export const checkProject: Command = {
                 {
                     outcome:
                         result.kind === 'failed' ? 'failed' : result.problems ? 'problems' : 'ok',
+                    scope: plan.file ? 'fileAndStored' : 'stored',
+                    ...(plan.file && { size: plan.file.found.size }),
                 },
                 began,
             )

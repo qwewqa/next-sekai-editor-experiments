@@ -89,13 +89,19 @@ const LEVEL_DATA_LIMIT = 64 * 1024 * 1024
 // The usage statistics' `export` event, for a write that went through or failed. A write begins
 // after the last picker has closed (`writeStarted`, 0 when none has). One export runs at a time.
 let writeStarted = 0
-const reportExport = (target: 'picker' | 'download', size?: number, error?: FileError) => {
+const reportExport = (
+    target: 'picker' | 'download',
+    body?: ReturnType<typeof built>,
+    error?: FileError,
+) => {
+    const buildMs = body?.buildMs()
     record(
         'export',
         {
             format: 'levelData',
             target,
-            ...(size !== undefined && { size }),
+            ...(body && { size: body.size() }),
+            ...(buildMs !== undefined && { buildMs }),
             outcome: error ? 'failed' : 'done',
             ...(error && { reason: error.code }),
         },
@@ -109,13 +115,18 @@ const cancelled = (ctx: ExportContext) => !!ctx.signal?.aborted
 
 const built = (ctx: ExportContext) => {
     let size = 0
+    let buildMs: number | undefined
     return {
         build: async () => {
+            const began = performance.now()
             const blob = await ctx.build()
+            buildMs = performance.now() - began
             size = blob.size
             return blob
         },
         size: () => size,
+        /** How long the file took to build; undefined when it was not built. */
+        buildMs: () => buildMs,
     }
 }
 
@@ -272,7 +283,7 @@ export const exportToTarget = async (
             signal: ctx.signal,
         })
         if (result.status === 'saved') {
-            reportExport('picker', body.size())
+            reportExport('picker', body)
             ctx.ui.markExported?.(result.name, 'file')
             ctx.ui.exported(result.name)
             return 'done'
@@ -339,7 +350,7 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
             return failed(ctx, fileError(caught), ctx.suggestedName)
         }
         if (picked.kind === 'failed' && cancelled(ctx) && !pick.committed) return 'cancelled'
-        if (picked.kind === 'written') reportExport('picker', sized.size())
+        if (picked.kind === 'written') reportExport('picker', sized)
         return afterPick(ctx, picked)
     }
     return exportByDownload(ctx)
@@ -405,7 +416,7 @@ const exportByDownload = async (ctx: ExportContext): Promise<ExportOutcome> => {
                 exportMemory.exportName = ctx.exportName
                 await rememberExport()
             }
-            reportExport('download', body.size())
+            reportExport('download', body)
             ctx.ui.markExported?.(result.name, 'download')
             ctx.ui.downloadStarted(result.name, body.size())
             return 'done'
