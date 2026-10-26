@@ -95,7 +95,7 @@ The art is CC0 and must be original. The generator scripts are MIT. `REUSE.toml`
 CI runs these (`.github/workflows/check.yml`):
 
 - `npm run check-type`, `npm run check-lint` and `npm run check-format`.
-- `npm test`: the unit suites, including the pipeline and licensing tests. CI runs them in UTC (`TZ=UTC npm test`). Shared code that depends on a capability is tested with both capability sets: inject `createMockPlatform({ capabilities: { ... } })` with `setPlatformForTests` once per set, and restore it afterwards.
+- `npm test`: the unit suites, including the Built-in asset pipeline, licensing and citation tests. CI runs them in UTC (`TZ=UTC npm test`). Shared code that depends on a capability is tested with both capability sets: inject `createMockPlatform({ capabilities: { ... } })` with `setPlatformForTests` once per set, and restore it afterwards.
 - `uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/*.nxsp tests/zip/plan-conformance-v1/*/expected.nxsp`: the independent checker over the `.nxsp` fixtures. It needs `uv`.
 - `npm run test:release`: the release scripts and the changelog format.
 - `npm run check:builtin-assets`, and `npm run build:native` then `npm run check:native-bundle`.
