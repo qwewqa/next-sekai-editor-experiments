@@ -265,6 +265,14 @@ test('an open list keeps chords from the browser too, as a system one does', asy
         .poll(() => page.evaluate(() => (window as unknown as { seen: boolean[] }).seen))
         // Control alone, then the chord.
         .toEqual([false, true])
+    // The browser keeps its reload and find, and the list stays open.
+    expect(await isOpen(select)).toBe(true)
+    await page.evaluate(() => ((window as unknown as { seen: boolean[] }).seen.length = 0))
+    await page.keyboard.press('ControlOrMeta+r')
+    await page.keyboard.press('ControlOrMeta+f')
+    await expect
+        .poll(() => page.evaluate(() => (window as unknown as { seen: boolean[] }).seen))
+        .toEqual([false, false, false, false])
 })
 
 test('in a tool dialog, an open list holds keys and its own Escape', async ({ page }) => {

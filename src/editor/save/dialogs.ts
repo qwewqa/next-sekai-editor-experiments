@@ -46,8 +46,6 @@ export type SaveDialogInput = {
     lines: (() => string)[]
     history: HistoryRow
     bgm: BgmRow
-    /** "For Sonolus level data, use Export Level Data… (Shift+P)." with its link. */
-    exportLine: boolean
     /** Safari, iPhone and iPad, the first Save: the storage line's first sentence. */
     storageLine?: () => string
     /** "Saves the current version." */

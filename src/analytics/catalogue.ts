@@ -214,6 +214,7 @@ export const catalogue = {
         'deleteSessions',
         'minimapDrag',
         'minimapJump',
+        'autoscroll',
         'quickSwitch',
     ]),
     notices: counts(['info', 'warning', 'error']),

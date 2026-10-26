@@ -241,10 +241,9 @@ const footer = computed(() => {
     const known = facts.value
     const state = storageStatus.value
     if (!known || !state) return
-    return i18n.value.storage[
-        // The same test as Local Data's line: waiting on older tabs or safe mode is not this.
-        storageLineKey({ ...known, unavailable: storageUnavailable(state, safe) })
-    ]
+    // The same test as Local Data's line: waiting on older tabs or safe mode is not this.
+    const key = storageLineKey({ ...known, unavailable: storageUnavailable(state, safe) })
+    return key && i18n.value.storage[key]
 })
 
 const SKELETON_ROWS = 4

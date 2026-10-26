@@ -11,7 +11,9 @@ import { isEntityShown, scopeLookup } from '../scope'
 import { isScopeReduced } from '../scopeRules'
 import { tool } from '../tools'
 import { clampViewLane, clampViewToReach, view } from '../view'
+import { refuseAutoscroll } from './autoscroll'
 import { dragCursor, lockedCursor } from './cursor'
+import { flyoutEscapes, resizeEscapes } from './escapes'
 import { isDragging } from './gestures/recognizers/drag'
 import { cancelMouseControls, hasMouseControls, mouseControlListeners } from './mouse'
 import { cancelTouchControls, hasTouchControls, touchControlListeners } from './touch'
@@ -35,12 +37,7 @@ const cancelControls = (restoreTool = true) => {
     view.entities = { hovered: [], creating: [] }
 }
 
-// Open toolbar flyouts' Escape handlers, run after a drag's and before any pane's or drawer's.
-export const flyoutEscapes = new Set<(event: KeyboardEvent) => void>()
-
-// Resize handles keep the previously focused control, so their pointer gestures
-// must own Escape before the active pane or focused control receives it.
-export const resizeEscapes = new Set<() => void>()
+export { flyoutEscapes, resizeEscapes }
 
 // One Escape press does one thing: a held Escape's repeats do nothing anywhere.
 const cancelDragOnEscape = (event: KeyboardEvent) => {
@@ -172,8 +169,12 @@ export const controlsForNavigation = (getNavigation: () => EditorNavigation | un
         Object.entries(controlListeners).map(([name, listener]) => [
             name,
             (event: Event) => {
-                if (activateEditorNavigation(getNavigation())) listener(event as never)
-                else event.preventDefault()
+                if (activateEditorNavigation(getNavigation())) {
+                    listener(event as never)
+                    return
+                }
+                event.preventDefault()
+                if (name === 'mousedown' && (event as MouseEvent).button === 1) refuseAutoscroll()
             },
         ]),
     )

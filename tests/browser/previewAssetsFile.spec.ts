@@ -232,9 +232,6 @@ test.describe('From a File', () => {
         await expect(dialog(page).locator('[data-asset-choose]')).toHaveText('Choose…')
         await choose(page)
         await expect(chooser(page).locator('[data-chooser-title]')).toHaveText('Choose a Skin')
-        await expect(chooser(page).locator('[data-chooser-rights]')).toHaveText(
-            'Items you load are stored in this browser only.',
-        )
         // Nothing is listed, and Use waits for an item.
         await expect(chooser(page).locator('[data-chooser-list]')).toHaveCount(0)
         await expect(chooser(page).locator('[data-chooser-use]')).toBeDisabled()
@@ -258,7 +255,7 @@ test.describe('From a File', () => {
         await expect(chooser(page)).toHaveCount(0)
         // The source list shows the new item, selected.
         const row = dialog(page).locator('[data-asset-row^="file:"]')
-        await expect(row).toContainText('Neon Skin (File)')
+        await expect(row).toContainText('Neon Skin')
         await expect(row).toContainText('Someone · editor-skin.scp')
         await expect(row.locator('input')).toBeChecked()
         expect((await choices(page)).skin).toMatchObject({
@@ -363,7 +360,7 @@ test.describe('From a File', () => {
         // The particle's tab shows it too.
         await tabOf(page, 'particle').click()
         await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText(
-            'Neon Particle (File)',
+            'Neon Particle',
         )
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(/^Stored: 2 items, /)
     })
@@ -390,9 +387,7 @@ test.describe('From a File', () => {
         await items.nth(1).click()
         await expect(chooser(page).locator('[data-chooser-use]')).toBeEnabled()
         await chooser(page).locator('[data-chooser-use]').click()
-        await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText(
-            'Second Skin (File)',
-        )
+        await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText('Second Skin')
         expect(await stored(page)).toHaveLength(1)
     })
 
@@ -478,9 +473,7 @@ test.describe('From a File', () => {
         await tabOf(page, 'effect').click()
         await expect(chooser(page).locator('[data-chooser-progress]')).toBeVisible()
         await expect(chooser(page)).toHaveCount(0, { timeout: 15_000 })
-        await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText(
-            'Neon Sounds (File)',
-        )
+        await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText('Neon Sounds')
         // An open chooser also stays open across tabs.
         await tabOf(page, 'skin').click()
         await choose(page)

@@ -1,0 +1,58 @@
+name: Browsers Full
+
+# The whole storage set in Firefox and WebKit. Check runs the storage core on every push; this adds the
+# slow specs, startup and opening a project file. A release needs a passed run on its commit:
+# gh workflow run browsers-full.yml --ref main
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '17 3 * * *'
+    push:
+        branches: ['ci/**']
+
+permissions:
+    contents: read
+
+concurrency:
+    # Only a push to a ci/ branch is replaced by a newer push; a nightly or a dispatch always runs.
+    group: browsers-full-${{ github.event_name == 'push' && github.ref || github.run_id }}
+    cancel-in-progress: ${{ github.event_name == 'push' }}
+
+jobs:
+    storage:
+        runs-on: ubuntu-latest
+        # Every storage spec: about 18 min of tests in Firefox and 10 in WebKit on a fast desktop.
+        timeout-minutes: 25
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - engine: firefox
+                      shard: 1/2
+                    - engine: firefox
+                      shard: 2/2
+                    - engine: webkit
+                      shard: 1/1
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - run: npm ci
+            - run: scripts/ci/install-browsers.sh ${{ matrix.engine }}
+            # The default preview skin and particle, hash-locked, as build:release stages them.
+            - name: Fetch the preview assets
+              run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
+            - run: npm run build
+            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=${{ matrix.engine }}-storage --project=${{ matrix.engine }}-production-storage --shard=${{ matrix.shard }}
+            - name: Upload browser failure details
+              if: failure()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: storage-failures-${{ strategy.job-index }}
+                  path: test-results-compatibility/
+                  if-no-files-found: ignore
+                  retention-days: 7

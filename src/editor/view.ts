@@ -290,6 +290,12 @@ const scrollLanes = (lane: number) => {
     return { min: Math.min(min, lane), max: Math.max(max, lane) }
 }
 
+/** Whether the view can scroll sideways from where it is. */
+export const canScrollViewX = () => {
+    const { min, max } = scrollLanes(view.lane)
+    return max > min
+}
+
 // A zero step keeps the lane without computing the reach, even past Basic's Max Scroll X.
 const scrolledLane = (lane: number, delta: number) => {
     if (delta === 0) return lane

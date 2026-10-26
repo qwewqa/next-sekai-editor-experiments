@@ -35,10 +35,10 @@ import {
     storageUnavailable,
 } from './storageLine'
 
-// Settings › Local Data: the storage line, the Storage subsection (what the
-// browser holds, why changes are not being stored, Delete Sessions…), Recovery (Open History, the
-// rows for what the recovery order set aside, Export Raw Data) and Startup Notices, this load's
-// notices. In safe mode it only reads: no Delete Sessions…, no Discard….
+// Settings › Local Data: the storage (a warning line, what the browser holds, why changes are not
+// being stored, Delete Sessions…), the recovery (Open History, the rows for what the recovery
+// order set aside, Export Raw Data) and Startup Notices, this load's notices. In safe mode it
+// only reads: no Delete Sessions…, no Discard….
 
 const strings = computed(() => i18n.value.settings.localData)
 const closeSettings = inject(closeSettingsKey, () => undefined)
@@ -54,9 +54,8 @@ const storageLine = computed(() => {
     const known = browserStorage.value?.facts
     const status = storageStatus.value
     if (!known || !status) return
-    return i18n.value.storage[
-        storageLineKey({ ...known, unavailable: storageUnavailable(status, safe) })
-    ]
+    const key = storageLineKey({ ...known, unavailable: storageUnavailable(status, safe) })
+    return key && i18n.value.storage[key]
 })
 
 // --- Storage: the total the browser holds, the not-stored line, Delete Sessions….
@@ -279,8 +278,6 @@ const exportRaw = async () => {
         />
 
         <div v-if="hasStorage" class="flex flex-col gap-3" data-local-data-storage>
-            <h3 class="text-sm font-bold text-fg/80">{{ strings.storageHeading }}</h3>
-
             <p v-if="storageLine" class="text-sm text-fg/80" data-storage-line>{{ storageLine }}</p>
 
             <p v-if="storedText" data-stored-total>{{ storedText }}</p>
@@ -328,8 +325,6 @@ const exportRaw = async () => {
         </div>
 
         <div class="flex flex-col gap-3" data-local-data-recovery>
-            <h3 class="text-sm font-bold text-fg/80">{{ strings.recoveryHeading }}</h3>
-
             <div>
                 <button type="button" :class="buttonClass" data-open-history @click="openHistory">
                     {{ strings.openHistory }}
@@ -378,11 +373,10 @@ const exportRaw = async () => {
 
             <p v-if="unreadable" data-recovery-unreadable>{{ strings.recovery.listFailed }}</p>
 
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div>
                 <button type="button" :class="buttonClass" data-export-raw @click="exportRaw">
                     {{ strings.exportRaw }}
                 </button>
-                <span class="text-sm text-fg/80">{{ strings.exportRawNote }}</span>
             </div>
         </div>
 

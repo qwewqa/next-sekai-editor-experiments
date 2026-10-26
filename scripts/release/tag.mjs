@@ -55,8 +55,9 @@ function requireGh() {
     if (!succeeds('gh', ['auth', 'status'])) throw new ReleaseError('Sign in with: gh auth login')
 }
 
+// browsers-full.yml does not run on a push to main, so a release starts it by hand.
 function requirePassedRuns(commit) {
-    for (const workflow of ['check.yml', 'deploy-pages.yml']) {
+    for (const workflow of ['check.yml', 'deploy-pages.yml', 'browsers-full.yml']) {
         const runs = JSON.parse(
             run('gh', [
                 'run',
@@ -73,7 +74,13 @@ function requirePassedRuns(commit) {
                 '1',
             ]),
         )
-        if (!runs.length) throw new ReleaseError(`${workflow} has not passed for ${commit}.`)
+        if (!runs.length)
+            throw new ReleaseError(
+                `${workflow} has not passed for ${commit}.` +
+                    (workflow === 'browsers-full.yml'
+                        ? ` Start it with: gh workflow run ${workflow} --ref main`
+                        : ''),
+            )
     }
 }
 

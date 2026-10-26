@@ -188,9 +188,7 @@ test.describe('ways in', () => {
         const settings = dialog(page)
         await expect(settings).toHaveAccessibleName('Settings')
         const row = settings.locator('.form-field').filter({ hasText: 'Assets' }).first()
-        await expect(row).toContainText(
-            'Skin, particle, background and sound effects for the preview and playback.',
-        )
+        await expect(row).not.toContainText('Skin, particle, background')
         await row.getByRole('button', { name: 'Preview Assets' }).click()
         await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
         await expect(dialog(page)).toHaveCount(1)
@@ -248,9 +246,6 @@ test.describe('Default and Built-in', () => {
             await expect(rowNames(page)).toHaveText(names)
             await expect(row(page, 'default').getByRole('radio')).toBeChecked()
         }
-        await expect(dialog(page).locator('[data-effect-hint]')).toHaveText(
-            'Used by the preview and playback.',
-        )
         // The pictures come from the packages once the tab shows.
         await tabOf(page, 'skin').click()
         await expect(rows.first().locator('img')).toHaveCount(1)
@@ -1108,7 +1103,7 @@ test.describe('native mode', () => {
         await expect(rows).toHaveCount(2)
         await expect(rows.nth(0)).toContainText('Built-in')
         await expect(rows.nth(0)).not.toContainText('Default')
-        await expect(rows.nth(1)).toContainText('Neon Skin (File)')
+        await expect(rows.nth(1)).toContainText('Neon Skin')
         const footer = dialog(page).locator('[data-preview-assets-footer]')
         await expect(footer.getByRole('button')).toHaveText(['Use Built-in for All'])
         await expect(dialog(page).locator('[data-reset-default]')).toHaveCount(0)

@@ -42,3 +42,5 @@ The strings in `src/i18n/`, Help, notices, the release notes in `CHANGELOG.md` a
   - History lines say "Timeline steps", so they cannot be read as chart content being lost.
 - Leave out what an action obviously does, and what does not happen.
 - Reuse an existing phrasing ("could not be read", "Save to keep your work.") rather than writing a new one.
+- Put a hint or note under a control only when it tells the user something they cannot learn from the label or by using the control, and they need it at that moment. Examples: a warning before data is lost, a privacy disclosure, a unit, the reason a control is unavailable.
+- Label related controls the same way: if one has a suffix, its neighbours have one too, or none does.

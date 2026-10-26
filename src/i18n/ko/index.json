@@ -471,14 +471,11 @@
       "background": "배경",
       "effect": "효과음",
       "storedTab": "보관됨",
-      "effectHint": "미리보기와 재생에 사용됩니다.",
       "default": "기본",
       "nextSekai01": "Next SEKAI 01",
       "nextSekai": "Next SEKAI",
       "nextSekai02": "Next SEKAI 02",
       "builtin": "내장",
-      "storedFile": "{0} (파일)",
-      "storedServer": "{0} (서버)",
       "useBuiltinAll": "모두 내장 사용",
       "resetDefault": "기본으로 초기화",
       "stored": "보관됨: {0}개, {1}",
@@ -521,7 +518,6 @@
       "removeFailed": "이 항목을 제거하지 못했습니다.",
       "chooseAgain": "다시 선택…",
       "noneInFile": "이 파일에 {0}이(가) 없습니다.",
-      "rights": "불러온 항목은 이 브라우저에만 보관됩니다.",
       "progress": {
         "reading": "파일을 읽는 중…",
         "storing": "보관하는 중…",
@@ -565,7 +561,6 @@
         "packageTooLarge": "이 항목은 보관하면 {0}보다 큽니다.",
         "storeFailed": "이 항목을 보관하지 못했습니다."
       },
-      "chooseHint": "파일 또는 Sonolus 서버에서",
       "fromFile": "파일에서",
       "fromServer": "서버에서",
       "serverAddress": "서버 주소",
@@ -643,6 +638,7 @@
         "dragSecondary": "오른쪽 클릭 + 드래그: 보조 도구로 드래그",
         "scrollY": "휠 스크롤: 수직 스크롤",
         "scrollX": "Shift + 휠 스크롤: 수평 스크롤",
+        "autoscroll": "휠 클릭 후 마우스 이동: 스크롤 (클릭하면 멈춤)",
         "minimap": "미니맵에서 왼쪽 클릭 또는 드래그: 해당 위치로 스크롤",
         "zoomY": "Ctrl + 휠 스크롤: 세로 확대/축소",
         "zoomX": "Ctrl + Shift + 휠 스크롤: 가로 확대/축소"
@@ -779,7 +775,7 @@
     "recentSessions": "저장되지 않은 작업은 기록 › 최근 세션에 있습니다.",
     "fileTitle": "파일",
     "moveBetweenDevices": "작업을 다른 기기로 옮기려면 .nxsp 파일로 저장한 다음 그 기기에서 파일을 여세요.",
-    "crswap": "저장 중 충돌이 발생하면 프로젝트 파일 옆에 .crswap 파일이 남을 수 있습니다. 삭제해도 안전합니다."
+    "crswap": "저장 중 충돌이 발생하면 프로젝트 파일 옆에 .crswap 파일이 남을 수 있습니다. 삭제해도 됩니다."
   },
   "elevation": {
     "edit": "높이 편집",
@@ -812,11 +808,9 @@
     "title": "설정",
     "resetSettings": "설정 초기화…",
     "resetSettingsTitle": "설정 초기화",
-    "resetSettingsHint": "키보드 단축키는 유지하고 설정을 기본값으로 복원합니다.",
     "resetKeybinds": "단축키 초기화…",
     "resetKeybindsTitle": "단축키 초기화",
     "resetSettingsMessage": "키보드 단축키는 유지하고 설정을 기본값으로 복원할까요?",
-    "resetSettingsHintStatistics": "키보드 단축키와 사용 통계 보내기 설정은 유지하고 설정을 기본값으로 복원합니다.",
     "resetSettingsMessageStatistics": "키보드 단축키와 사용 통계 보내기 설정은 유지하고 설정을 기본값으로 복원할까요?",
     "resetKeybindsMessage": "키보드 단축키를 기본값으로 복원할까요?",
     "editor": {
@@ -893,7 +887,6 @@
     "preview": {
       "title": "미리보기",
       "assets": "에셋",
-      "assetsHint": "미리보기와 재생에 사용하는 스킨, 파티클, 배경, 효과음.",
       "position": {
         "title": "위치",
         "auto": "자동",
@@ -968,7 +961,6 @@
     "sections": "섹션",
     "localData": {
       "title": "로컬 데이터",
-      "recoveryHeading": "복구",
       "startupNoticesHeading": "시작 알림",
       "discard": "버리기…",
       "discardConfirm": "버리기",
@@ -980,7 +972,7 @@
         "journalUndated": "이전 방문의 저장되지 않은 작업 · {0}",
         "autoSave": "이전 자동 저장 · {0}",
         "unreadable": "읽을 수 없는 복구된 작업, {0} · {1}",
-        "listFailed": "복구된 작업을 읽지 못했습니다",
+        "listFailed": "복구된 작업을 읽지 못했습니다.",
         "downloadFailed": "복구된 작업을 다운로드하지 못했습니다."
       },
       "openHistory": "기록 열기",
@@ -988,7 +980,6 @@
       "exportRaw": "원시 데이터 내보내기",
       "open": "열기",
       "exportRawName": "{0} 원시 데이터 {1}.zip",
-      "storageHeading": "저장 공간",
       "stored": "이 브라우저에 보관됨: {0} / 약 {1}",
       "deleteSessions": "세션 삭제…",
       "deleteTitle": "세션 삭제",
@@ -1001,7 +992,6 @@
       "namesMore": "{1} 외 {0}개",
       "newer": "더 새로운 버전의 편집기가 필요한 세션이 포함되어 있습니다.",
       "deleting": "삭제하는 중…",
-      "exportRawNote": "문제를 신고할 때 사용합니다.",
       "exportRawUnreadable": "보관된 작업을 읽지 못했습니다.",
       "notDeleted": "세션 {0}개를 삭제하지 못했습니다."
     }
@@ -1257,10 +1247,7 @@
     "private": "비공개 창이라면 여기에 보관된 모든 내용은 창을 닫을 때 사라집니다. 작업을 남기려면 저장해 주세요.",
     "inAppBrowser": "앱 내 브라우저로 보입니다. 보관된 작업이 삭제될 수 있습니다. 작업을 남기려면 이 페이지를 브라우저에서 열어 주세요.",
     "ios": "이 브라우저는 7일 동안 방문하지 않으면 보관된 작업을 삭제합니다. 작업을 남기려면 저장해 주세요.",
-    "safari": "Safari는 7일 동안 방문하지 않으면 보관된 작업을 삭제합니다. 작업을 남기려면 저장해 주세요.",
-    "installedWebkit": "최근 세션은 이 앱을 삭제할 때까지 여기에 보관됩니다. 작업을 남기려면 저장해 주세요.",
-    "persisted": "최근 세션은 데이터를 지우지 않는 한 이 브라우저에 보관됩니다. 작업을 남기려면 저장해 주세요.",
-    "default": "최근 세션은 공간이 부족해지지 않는 한 이 브라우저에 보관됩니다. 작업을 남기려면 저장해 주세요."
+    "safari": "Safari는 7일 동안 방문하지 않으면 보관된 작업을 삭제합니다. 작업을 남기려면 저장해 주세요."
   },
   "player": {
     "started": "플레이 시작됨",
@@ -1401,7 +1388,7 @@
       "title": "단계 세부 정보",
       "named": "단계 세부 정보: {0}",
       "action": "세부 정보",
-      "unsupported": "이 편집기는 이 단계의 세부 정보를 읽을 수 없습니다.",
+      "unsupported": "이 버전의 편집기는 이 단계의 세부 정보를 읽을 수 없습니다.",
       "newer": "이 단계는 더 새로운 버전의 편집기에서 기록되었습니다.",
       "textShortened": "텍스트를 줄여 표시함",
       "varying": "값이 다름",
@@ -1740,17 +1727,13 @@
         "label": "테두리 스타일 (왼쪽)"
       },
       "key": {
-        "input": "입력 키",
         "press": "키를 누르거나 다시 클릭하여 삭제",
         "pressUnassigned": "키를 누르세요",
         "pressCancel": "키를 누르거나 Esc로 취소",
-        "clear": "다시 클릭하여 단축키 삭제",
         "unassigned": "미지정",
         "reserved": "{0}은(는) 브라우저 또는 시스템이 사용합니다. 다른 키를 누르세요",
         "altGraph": "{0}은(는) 많은 키보드에서 문자 입력에 쓰입니다. 다른 키를 누르세요",
         "alsoRuns": "{0}도 함께 실행됩니다",
-        "browserReload": "브라우저 새로 고침 대신 실행됩니다",
-        "browserFind": "브라우저 찾기 대신 실행됩니다",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -1766,8 +1749,7 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        },
-        "fixedAlias": "{0}(으)로도 실행됩니다 (변경 불가)"
+        }
       },
       "maskLeft": {
         "label": "마스크 레인"

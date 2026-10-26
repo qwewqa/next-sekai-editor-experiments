@@ -468,7 +468,7 @@ None of these can be undone. Remove deletes a stored preview asset whether or no
 - ChoiceModal's guard (8.2) applies.
 - ConfirmModal's focus on its action is for deletes that can be undone (5.2).
 - No notice follows a reset.
-- The Reset Settings… message, "Restore default settings, keeping keyboard shortcuts?", says that shortcuts are kept, because touch users have no tooltip to say it.
+- The Reset Settings… message, "Restore default settings, keeping keyboard shortcuts?", says that shortcuts are kept.
 
 ---
 

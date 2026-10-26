@@ -57,7 +57,6 @@ const base: Input = {
     lines: [],
     history: { kind: 'available', ticked: true, locked: false },
     bgm: { kind: 'held', name: 'coconut.mp3', ticked: true },
-    exportLine: false,
     peeking: false,
     estimate: { load: () => Promise.resolve(undefined) },
 }
@@ -349,7 +348,6 @@ test.describe('the Save dialog', () => {
         await visit(page)
         await openSave(page, {
             lines: ['"coconut.nxsp" was replaced from another tab or window.'],
-            exportLine: true,
             storageLine: 'Safari deletes stored work after 7 days without a visit.',
             peeking: true,
         })
@@ -365,13 +363,29 @@ test.describe('the Save dialog', () => {
         )
     })
 
+    test('the Export line shows in Save and Save As…, not in Save… of another session', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        for (const kind of ['save', 'saveAs', 'saveToFile'] as const) {
+            await openSave(page, { kind })
+            await expect(dialog(page).locator('[data-save-export]')).toHaveCount(
+                kind === 'saveToFile' ? 0 : 1,
+            )
+            await page.keyboard.press('Escape')
+            await expect(dialog(page)).toHaveCount(0)
+        }
+    })
+
     test('the Export line is a link that closes the dialog for Export', async ({
         page,
         context,
     }) => {
         await seed(context)
         await visit(page)
-        await openSave(page, { exportLine: true })
+        await openSave(page)
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Export Level Data…' }).click()
         await expect.poll(() => result(page)).toEqual({ action: 'export' })
@@ -388,7 +402,7 @@ test.describe('the Save dialog', () => {
                 (await import('/src/settings.ts')) as typeof import('../../src/settings')
             settings.locale = 'ja'
         })
-        await openSave(page, { exportLine: true })
+        await openSave(page)
         const line = dialog(page).locator('[data-save-export]')
         await expect(line).toHaveText(
             'Sonolus 用のレベルデータには「レベルデータを出力…」を使ってください。',

@@ -266,10 +266,6 @@ test('turning the switch off stops at once, pagehide included, and Reset Setting
     await page.keyboard.press(',')
     const dialog = page.getByRole('dialog', { name: 'Settings', exact: true })
     const reset = dialog.getByRole('button', { name: 'Reset Settings…', exact: true })
-    await expect(reset).toHaveAttribute(
-        'title',
-        'Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting.',
-    )
     await reset.click()
     await expect(page.getByRole('dialog').nth(1)).toContainText(
         'Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting?',

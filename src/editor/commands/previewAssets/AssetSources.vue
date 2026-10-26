@@ -29,7 +29,6 @@ import { storedAssets, workerStore } from '../../../preview/assets/files/store'
 import { displayOrigin } from '../../../preview/assets/serverUrl'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
-import { interpolateRaw } from '../../../utils/interpolate'
 import SeverityIcon from '../../SeverityIcon.vue'
 import AssetRow from './AssetRow.vue'
 import ChooserView from './ChooserView.vue'
@@ -45,10 +44,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
 const groupName = useId()
 const sources = useTemplateRef<HTMLElement>('sources')
 const noteId = useId()
-const hintId = useId()
 const hasDefault = platform.capabilities.defaultAssets
-// The web fetches no servers: a file is the only way to choose.
-const hasServers = platform.capabilities.serverFetch
 
 type Row = {
     id: string
@@ -85,10 +81,7 @@ const chosen = computed(() => settings.previewAssets[props.type])
 const storedRow = (choice: AssetChoice & { source: 'file' | 'server' }, image?: string): Row => ({
     id: choiceKey(choice),
     choice,
-    name: interpolateRaw(
-        choice.source === 'file' ? strings.value.storedFile : strings.value.storedServer,
-        choice.title,
-    ),
+    name: choice.title,
     detail: [choice.author, displayOrigin(choice.origin)].filter(Boolean).join(' · '),
     image,
 })
@@ -282,26 +275,15 @@ onBeforeUnmount(() => {
                 {{ i18n.modals.loading.loading }}
             </p>
         </template>
-        <p v-if="type === 'effect'" class="px-3 pt-3 text-sm text-fg/80" data-effect-hint>
-            {{ strings.effectHint }}
-        </p>
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-3">
+        <div class="px-3 pt-3">
             <button
                 type="button"
                 class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                :aria-describedby="hasServers ? hintId : undefined"
                 data-asset-choose
                 @click="chooser.show()"
             >
                 {{ strings.choose }}
             </button>
-            <span
-                v-if="hasServers"
-                :id="hintId"
-                class="min-w-0 text-sm text-fg/80"
-                data-asset-choose-hint
-                >{{ strings.chooseHint }}</span
-            >
         </div>
     </div>
 </template>
