@@ -23,8 +23,10 @@ Every resource that takes tags carries `nse:service` (`stats`, or `shared` for t
 
 Only steps 1 and 6 touch the management account. It is never touched again, however many services are added.
 
+**On Windows,** run the `bash` and `aws` commands in Git Bash (Git for Windows), not in PowerShell or cmd. There, `bash` can be WSL’s, and the `NAME=value command` form does not work. Install the AWS CLI version 2 as well; `uv` runs the checks (see Checking changes).
+
 1. **Create the accounts**, in the management account: `bash infra/create-accounts.sh <prod email> <dev email>`, or Organizations › AWS accounts › Add an AWS account in the console. Each needs an email address that no other AWS account uses (a plus-address on one mailbox works). Put both in an OU `nse` if the Organization uses OUs.
-2. **Profiles** named `nse-prod` and `nse-dev`. Without IAM Identity Center, add to `~/.aws/config` (the ids stay in this local file):
+2. **Profiles** named `nse-prod` and `nse-dev`. Without IAM Identity Center, add to `~/.aws/config` (on Windows, `C:\Users\<you>\.aws\config`; the ids stay in this local file):
 
     ```ini
     [profile nse-prod]
@@ -98,5 +100,7 @@ uv run infra/check_templates.py
 shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.sh
 bash infra/stats/scripts/contract-test.sh   # needs Docker, curl, jq and Linux
 ```
+
+On Windows, run these in Git Bash and use `uv run --with shellcheck-py shellcheck …` for the third. The contract test reads `/proc` and mounts Linux paths, so it does not run in Git Bash. Run it in CI, or in WSL 2 with Docker.
 
 `infra-check.yml` runs the same when `infra/` or an infra workflow changes. Its `stats-compose` job runs the contract test against the real images.
