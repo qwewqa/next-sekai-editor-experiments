@@ -181,6 +181,14 @@ export type FlushSession = {
     identity?: PendingIdentity
 }
 
+/**
+ * Whether storage holds the session's own chain record: after its first write, and from the
+ * start for a continuation, which is in its parent's chain. A new session or a fork has none
+ * until it writes, and its chain id names nothing else.
+ */
+export const hasChainRecord = (session: FlushSession) =>
+    session.stored || (!!session.continuation && session.forkOf === undefined)
+
 export type SessionStart = {
     id: string
     docId: string

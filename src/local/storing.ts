@@ -29,6 +29,7 @@ import { isDurablyStoredWith } from './durable'
 import {
     Flusher,
     flushTimeoutMs,
+    hasChainRecord,
     heldMediaOf,
     mediaTimeoutMs,
     type FlushReport,
@@ -357,7 +358,7 @@ export const startStoring = (
     setExportPersister((fields) => instance.setChainFieldsNow(fields))
     setExportTargetReader(async () => {
         const session = instance.session
-        if (!session?.stored) return
+        if (!session || !hasChainRecord(session)) return
         const record = await storedRead(worker, 'readChainRecord', session.chainId)
         return instance.session !== session ? readValue({}) : record
     })
