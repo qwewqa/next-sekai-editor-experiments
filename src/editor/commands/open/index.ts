@@ -36,6 +36,7 @@ import { getFilename, pickFileForOpen } from '../../../utils/file'
 import { inlineName } from '../../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
+import { loadForAction } from '../../loadFailure'
 import { notify } from '../../notification'
 import { confirmSwitch, notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
@@ -107,11 +108,15 @@ export const open: Command = {
                     return
                 }
                 // A project file, read in the storage worker.
-                const { openProject } = await import('./project')
+                const project = await loadForAction(() => import('./project'))
+                if (!project) {
+                    dropOpen()
+                    return
+                }
                 openFormat('nxsp')
                 try {
                     if (!request.isCurrent()) return
-                    await openProject(file, handle, request)
+                    await project.openProject(file, handle, request)
                 } catch (error) {
                     recordError(error)
                     console.error(error)

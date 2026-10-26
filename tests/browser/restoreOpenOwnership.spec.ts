@@ -616,23 +616,17 @@ for (const navigate of [false, true]) {
 }
 
 test('Open Other captures authority before its first lazy flow import', async ({ page }) => {
-    await start(page)
-    await opened(page)
-    expect(
-        await page.evaluate(() =>
-            performance
-                .getEntriesByType('resource')
-                .some((entry) => new URL(entry.name).pathname === '/src/editor/save/flow.ts'),
-        ),
-        'fixture must exercise the first lazy flow import',
-    ).toBe(false)
-    let releaseRoute: (() => void) | undefined
+    // The flow chunk is held from the start, so neither the warm-up nor the action has it yet.
+    let releaseRoute!: () => void
+    const released = new Promise<void>((resolve) => {
+        releaseRoute = resolve
+    })
     await page.route('**/src/editor/save/flow.ts*', async (route) => {
-        await new Promise<void>((resolve) => {
-            releaseRoute = resolve
-        })
+        await released
         await route.continue()
     })
+    await start(page)
+    await opened(page)
     await page.evaluate(async () => {
         const { rememberHandle } =
             (await import('/src/editor/save/env.ts')) as typeof import('../../src/editor/save/env')
@@ -655,7 +649,6 @@ test('Open Other captures authority before its first lazy flow import', async ({
             (await import('/src/editor/file/actions.ts')) as typeof import('../../src/editor/file/actions')
         fileActions.openOtherVersion?.()
     })
-    await expect.poll(() => !!releaseRoute).toBe(true)
     await page.evaluate(async () => {
         const { liveState, pushState, undoState } =
             (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
@@ -670,7 +663,7 @@ test('Open Other captures authority before its first lazy flow import', async ({
     })
     const expected = await snapshot(page)
     expect(expected.session.file?.name).toBe('race.nxsp')
-    releaseRoute!()
+    releaseRoute()
     // The first import continuation and its cached-handle await precede this real worker barrier.
     await page.evaluate(async () => {
         await import('/src/editor/save/flow.ts')

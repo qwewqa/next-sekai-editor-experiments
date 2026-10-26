@@ -358,6 +358,18 @@ test.describe('the startup gate', () => {
         )
     })
 
+    test('an export whose code does not load says so on the gate, with the file’s name', async ({
+        page,
+    }) => {
+        await page.route('**/src/local/rawExport.ts*', (route) => route.abort())
+        await startupFlags(page, { fail: 'A row could not be read' })
+        await boot(page)
+        await gate(page).getByRole('button', { name: 'Export Raw Data' }).click()
+        await expect(gate(page).locator('[data-raw-export-note]')).toHaveText(
+            /^"Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip" could not be downloaded\.$/,
+        )
+    })
+
     test('a database that will not open is said so, and the rest is still exported', async ({
         page,
     }) => {

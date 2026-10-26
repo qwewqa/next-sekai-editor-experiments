@@ -4,6 +4,7 @@ import type { ShownName } from '../local/startup/events'
 import { interpolateRaw } from '../utils/interpolate'
 import { takeBgmLine } from './commands/bgm/chooseAudio'
 import { displayedName } from './labelText'
+import { loadForAction } from './loadFailure'
 import { notifyNotOpened } from './openFailure'
 import { copySourceName, shownName } from './shownName'
 import { confirmSwitch, notifyLeft } from './switch'
@@ -32,8 +33,8 @@ export const restoreStored = (
     withSwitchRequest(undefined, async (request): Promise<RestoreResult> => {
         const blank = { opened: false, why: 'blank' } as const
         if (!(await confirmSwitch()) || !request.isCurrent()) return blank
-        const api = await import('../local/startup/api')
-        if (!request.isCurrent()) return blank
+        const api = await loadForAction(() => import('../local/startup/api'))
+        if (!api || !request.isCurrent()) return blank
         const result = await (mode === 'copy' ? api.restoreAsCopy : api.restoreSession)(
             sessionId,
             request,

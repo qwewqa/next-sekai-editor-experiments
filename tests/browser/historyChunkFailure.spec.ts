@@ -6,10 +6,12 @@ import { installCanvasCounters, installEditorFixture, waitForStartup } from './e
 
 const errors = new WeakMap<Page, string[]>()
 
-test.beforeEach(async ({ page }) => {
+// The chunk is blocked before the page loads: the warm-up would otherwise have loaded it.
+const load = async (page: Page, blocked: string) => {
     const seen: string[] = []
     errors.set(page, seen)
     page.on('pageerror', (error) => seen.push(error.message))
+    await page.route(blocked, (route) => route.abort())
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript(() => {
         localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
@@ -20,7 +22,7 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
     await page.evaluate(installEditorFixture)
-})
+}
 
 test.afterEach(({ page }) => {
     expect(errors.get(page)).toEqual([])
@@ -29,7 +31,7 @@ test.afterEach(({ page }) => {
 test('a History dialog that fails to load leaves the Elevation Editor open and says so', async ({
     page,
 }) => {
-    await page.route('**/HistoryDialog.vue*', (route) => route.abort())
+    await load(page, '**/HistoryDialog.vue*')
     await page.evaluate(async () => {
         const { show, fixtures, settings, history, appImport } = window.editorTest
         show({ ...fixtures.interaction, isDynamicStages: true })
@@ -63,7 +65,7 @@ test('a History dialog that fails to load leaves the Elevation Editor open and s
 })
 
 test('a Step Details chunk that fails to load says so and rejects nothing', async ({ page }) => {
-    await page.route('**/StepDetailsModal.vue*', (route) => route.abort())
+    await load(page, '**/StepDetailsModal.vue*')
     await page.evaluate(async () => {
         const { appImport, historySteps } = window.editorTest
         const { captureOperationRecipe } = await appImport<

@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from '../product'
 import { interpolateRaw } from '../utils/interpolate'
 
 // What Export Raw Data says when it did not go through whole. Apart from the
@@ -24,3 +25,13 @@ export const rawExportNote = (run: RawExportRun, texts: RawExportTexts) => {
     if (run.kind === 'failed') return interpolateRaw(texts.downloadFailed, run.name)
     return run.databaseUnreadable ? texts.unreadable : undefined
 }
+
+/** A local date as 2026-10-23. */
+export const dateStamp = (date: Date) =>
+    [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+        .map((part, i) => String(part).padStart(i === 0 ? 4 : 2, '0'))
+        .join('-')
+
+/** "Next SEKAI Editor raw data 2026-10-23.zip", the pattern being the locale's. */
+export const rawExportName = (pattern: string, now: Date = new Date()) =>
+    interpolateRaw(pattern, PRODUCT_NAME, dateStamp(now))

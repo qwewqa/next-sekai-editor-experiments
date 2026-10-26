@@ -5,6 +5,7 @@ import { displayName } from '../../local/names'
 import type { RecentChain } from '../../local/recent'
 import type { ShownName } from '../../local/startup/events'
 import { isSafeMode } from '../../safe'
+import { loadForAction } from '../loadFailure'
 import { restoreStored } from '../restoreStored'
 import { backToNow, requestSessionPeek } from './selection'
 import { restoreMode, type ChainRow, type SessionRow } from './sessions'
@@ -47,8 +48,8 @@ export const restoreRow = async (row: ChainRow, mode: 'restore' | 'copy') => {
 /** Save… (the row menu): the session's head with its history, as a new file. */
 export const saveRowToFile = async (row: ChainRow) => {
     bump('features.saveRowToFile')
-    const { saveToFile } = await import('../save/flow')
-    await saveToFile(row.chain.head.sessionId)
+    const flow = await loadForAction(() => import('../save/flow'))
+    if (flow) await flow.saveToFile(row.chain.head.sessionId)
 }
 
 /**
