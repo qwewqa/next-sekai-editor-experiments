@@ -50,8 +50,9 @@ jobs:
     compatibility:
         if: ${{ !inputs.skip_browser_checks }}
         runs-on: ubuntu-latest
-        # About 11 min of tests, 7 of them in firefox-chrome, with one worker (a 4-vCPU runner's).
-        timeout-minutes: 20
+        # About 14 min of tests with one worker (a 4-vCPU runner's), and the browsers' system packages can
+        # take 6 min to install on a slow runner.
+        timeout-minutes: 30
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
