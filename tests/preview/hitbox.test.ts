@@ -858,8 +858,9 @@ const stepParticle = resolveParticle(() => ({
 const isSlot = ({ sprite }: Draw) => sprite?.startsWith('Sekai Slot') ?? false
 const isParticle = ({ sprite }: Draw) => sprite === 'particle'
 
-// Events, the held values alone, and the values after the step alone.
-type StepCase = [string, Partial<Chart>, Partial<Chart>, Partial<Chart>]
+// Events, the held values alone, the values after the step alone, and whether slot
+// effects take the values after the step.
+type StepCase = [string, Partial<Chart>, Partial<Chart>, Partial<Chart>, boolean?]
 const rotated = { cameraRotation: 90, cameraZoom: 2 }
 const elevated = [transform(0, 0, { elevation: 2 })]
 const stepCases: StepCase[] = [
@@ -916,7 +917,8 @@ const stepCases: StepCase[] = [
         { stageTransformEvents: [transform(0, 0)] },
         { stageTransformEvents: [transform(0, 90, { elevation: 2 })] },
     ],
-    // Cameras only move transformed stages; the frame's own camera matches in all three.
+    // Cameras only move transformed stages; the frame's own camera matches in all three,
+    // and it also projects the slot effects.
     [
         'camera In-Out Step midpoint',
         {
@@ -925,10 +927,11 @@ const stepCases: StepCase[] = [
         },
         { stageTransformEvents: elevated, cameraEvents: [camera(0), camera(2.01, rotated)] },
         { stageTransformEvents: elevated, cameraEvents: [camera(0, rotated)] },
+        true,
     ],
 ]
 
-for (const [name, events, held, after] of stepCases) {
+for (const [name, events, held, after, slotsAfter = false] of stepCases) {
     test(`a note on a ${name} holds its hitbox and slot effects; frames take the right limit`, () => {
         // A note on the step, and a slide across it.
         const build = (overrides: Partial<Chart>, slide = true) =>
@@ -974,8 +977,8 @@ for (const [name, events, held, after] of stepCases) {
             const particles = effects(events).filter(isParticle)
             assert.ok(slots.length > 0)
             assert.ok(particles.length > 0)
-            assert.deepEqual(slots, effects(held).filter(isSlot))
-            assert.notDeepEqual(slots, effects(after).filter(isSlot))
+            assert.deepEqual(slots, effects(slotsAfter ? after : held).filter(isSlot))
+            if (!slotsAfter) assert.notDeepEqual(slots, effects(after).filter(isSlot))
             assert.deepEqual(particles, effects(after).filter(isParticle))
         }
     })

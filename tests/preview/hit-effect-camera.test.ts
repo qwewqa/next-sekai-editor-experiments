@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { FlickDirection, type CameraChange, type Quad } from '../../src/preview/engine/layout'
+import { FlickDirection, type CameraChange } from '../../src/preview/engine/layout'
+import type { Quad } from '../../src/preview/engine/math'
 import { NoteKind, type PreviewChart, type PreviewStage } from '../../src/preview/engine/model'
 import { renderPreviewFrame } from '../../src/preview/engine/render'
 import { createTimescaleGroup } from '../../src/preview/engine/timescale'
