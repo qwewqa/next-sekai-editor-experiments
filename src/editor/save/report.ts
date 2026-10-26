@@ -30,14 +30,9 @@ export const startWrite = (target: NonNullable<Facts['target']>) => {
     if (current) Object.assign(current, { target, since: performance.now() })
 }
 
-/** Runs a build and keeps how long it took; a rebuild after a failure replaces the time. */
-export const timedBuild = async <T>(run: () => Promise<T>): Promise<T> => {
-    const began = performance.now()
-    try {
-        return await run()
-    } finally {
-        if (current) current.buildMs = performance.now() - began
-    }
+/** How long the file took to build, in milliseconds; a rebuild after a failure replaces it. */
+export const builtIn = (ms: number) => {
+    if (current) current.buildMs = ms
 }
 
 /** What was written, in bytes. */

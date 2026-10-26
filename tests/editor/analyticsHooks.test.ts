@@ -8,11 +8,11 @@ import { nameBuiltInCommands } from '../../src/editor/commands/names'
 import { dropOpen, endOpen, openFormat, startOpen } from '../../src/editor/commands/open/report'
 import { runCommand } from '../../src/editor/commands/runCommand'
 import {
+    builtIn,
     finishSave,
     savedSize,
     startSave,
     startWrite,
-    timedBuild,
     tracked,
 } from '../../src/editor/save/report'
 import { peek, resetStates } from '../../src/history/stack'
@@ -100,10 +100,10 @@ test('each recorded diagnostic counts under its kind, a repeat of the last once'
     assert.deepEqual(counts(), { 'errors.error': 2, 'errors.csp': 1 })
 })
 
-test('a Save records its action, options, target, size, outcome and time, and ends once', async () => {
+test('a Save records its action, options, target, size, outcome and time, and ends once', () => {
     startSave('save', { history: true, bgm: false })
     startWrite('picker')
-    await timedBuild(() => Promise.resolve())
+    builtIn(12)
     savedSize(1_500_000)
     finishSave({ kind: 'done' })
     // The follow-up flows of one action end it no second time.

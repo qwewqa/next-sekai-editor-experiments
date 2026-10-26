@@ -101,7 +101,7 @@ import {
     storageNote,
 } from './preview'
 import { exclusive } from './queue'
-import { finishSave, savedSize, startSave, startWrite, timedBuild, tracked } from './report'
+import { builtIn, finishSave, savedSize, startSave, startWrite, tracked } from './report'
 import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './saveAttempt'
 import { unlinkSession } from './unlink'
 import { refreshBinding } from './watch'
@@ -1960,39 +1960,40 @@ const sessionFileBody = async (
     env: Env,
     request: SessionFileRequest,
 ): Promise<Outcome | Dismissed> => {
+    let began = 0
     const built = await session
-        .preparing(() =>
-            timedBuild(() =>
-                env.worker.call(
-                    'buildSave',
-                    {
-                        chainId: request.chainId,
-                        target: {
-                            kind: 'new',
-                            docId: crypto.randomUUID(),
-                            sessionId: request.sessionId,
-                        },
-                        options: {
-                            history: request.history,
-                            bgm: request.bgm,
-                            fileName: request.fileName,
-                            save: {
-                                time: Date.now(),
-                                operation: saveOperation(request.fileName, !platform.pickSaveFile),
-                            },
-                            context: {
-                                now: Date.now(),
-                                device: deviceSource(),
-                                appVersion: appVersion().appVersion,
-                            },
-                            sessionId: request.sessionId,
-                        },
+        .preparing(() => {
+            began = performance.now()
+            return env.worker.call(
+                'buildSave',
+                {
+                    chainId: request.chainId,
+                    target: {
+                        kind: 'new',
+                        docId: crypto.randomUUID(),
+                        sessionId: request.sessionId,
                     },
-                    { timeoutMs: 10 * 60_000 },
-                ),
-            ),
-        )
+                    options: {
+                        history: request.history,
+                        bgm: request.bgm,
+                        fileName: request.fileName,
+                        save: {
+                            time: Date.now(),
+                            operation: saveOperation(request.fileName, !platform.pickSaveFile),
+                        },
+                        context: {
+                            now: Date.now(),
+                            device: deviceSource(),
+                            appVersion: appVersion().appVersion,
+                        },
+                        sessionId: request.sessionId,
+                    },
+                },
+                { timeoutMs: 10 * 60_000 },
+            )
+        })
         .catch((error: unknown) => fileError(error))
+    if (began) builtIn(performance.now() - began)
     session.checkpoint()
     if (built instanceof FileError) return { kind: 'failed', error: built, name: request.fileName }
     if ('refused' in built)
