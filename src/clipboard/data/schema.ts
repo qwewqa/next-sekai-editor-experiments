@@ -1,10 +1,11 @@
 import Type from 'typebox'
+import { maxBeat, maxLane } from '../../chart/limits'
 import { editorMetadataSchema } from '../../levelData/editorMetadata'
 import { levelDataEntitiesSchema } from '../../levelData/entities/schema'
 
 export const clipboardDataSchema = Type.Object({
-    lane: Type.Number(),
-    beat: Type.Number({ minimum: 0 }),
+    lane: Type.Number({ minimum: -maxLane, maximum: maxLane }),
+    beat: Type.Number({ minimum: 0, maximum: maxBeat }),
     entities: levelDataEntitiesSchema,
     /** Serialized note index identifying the grabbed anchor, without projecting chart data. */
     anchor: Type.Optional(Type.Integer({ minimum: 0 })),

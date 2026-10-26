@@ -1,3 +1,4 @@
+import { maxSize } from '../../chart/limits'
 import {
     applyAffine,
     clamp,
@@ -991,7 +992,8 @@ export const iterSlotLanes = (
     const shift = pivotLane + offset - 0.5
     const shiftedLane = lane - shift
     const lanes: number[] = []
-    for (let i = Math.floor(shiftedLane - size + e); i < Math.ceil(shiftedLane + size - e); i++) {
+    const end = Math.ceil(shiftedLane + size - e)
+    for (let i = Math.floor(shiftedLane - size + e); i < end && lanes.length < maxSize; i++) {
         lanes.push(i + 0.5 + shift)
     }
     return lanes
