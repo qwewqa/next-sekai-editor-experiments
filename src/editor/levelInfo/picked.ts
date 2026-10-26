@@ -42,11 +42,6 @@ export const capturePicked = async (slot: MediaSlot, file: Source): Promise<Pick
     }
 }
 
-/** Keeps the picked bytes for the flush and Save, before a step names them. */
-export const holdPicked = (picked: Picked) => {
-    holdMedia(picked.item)
-}
-
 /**
  * The file a "not loaded" slot names, picked again: held and stored at once under the recorded
  * name and type, with no edit.

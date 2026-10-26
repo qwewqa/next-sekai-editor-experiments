@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { confirmWhenReady } from './confirmWhenReady'
+import { waitForStartup } from './editorFixture'
 import { png, wav } from './levelInfoFiles'
 import {
     flushed,
@@ -76,6 +77,22 @@ const undoable = (page: Page) =>
             (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
         return canUndo.value
     })
+
+/** Whether this tab holds the bytes of a file, as a pick keeps them. */
+const holds = (page: Page, file: Buffer) =>
+    page.evaluate(async (base64) => {
+        const bytes = Uint8Array.from(atob(base64), (value) => value.charCodeAt(0))
+        const { captureMedia } =
+            (await import('/src/local/media.ts')) as typeof import('../../src/local/media')
+        const { heldItem } =
+            (await import('/src/local/heldMedia.ts')) as typeof import('../../src/local/heldMedia')
+        const { meta } = await captureMedia(
+            bytes.buffer,
+            { name: 'any.png', type: 'image/png' },
+            'image',
+        )
+        return heldItem(meta.hash) !== undefined
+    }, file.toString('base64'))
 
 const cover = png(64, 64, [40, 120, 200])
 const clip = wav(1)
@@ -386,6 +403,105 @@ test('a cover that is not loaded says so, and the same file brings it back witho
     expect(await undoable(page)).toBe(false)
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
+})
+
+test('a cover the dialog replaces or discards is released, and one it applies is kept', async ({
+    page,
+}) => {
+    const second = png(32, 32, [200, 40, 40])
+    const third = png(16, 16, [40, 200, 40])
+    let form = await openLevelInfo(page)
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'one.png',
+        mimeType: 'image/png',
+        buffer: cover,
+    })
+    await expect(form.locator('[data-level-info-cover]')).toContainText('one.png')
+    expect(await holds(page, cover)).toBe(true)
+
+    // Replaced inside the dialog: the first is released at once, the second held.
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'two.png',
+        mimeType: 'image/png',
+        buffer: second,
+    })
+    await expect(form.locator('[data-level-info-cover]')).toContainText('two.png')
+    await expect.poll(() => holds(page, cover)).toBe(false)
+    expect(await holds(page, second)).toBe(true)
+
+    // Discarded: nothing the dialog picked stays.
+    await page.keyboard.press('Escape')
+    const ask = page.getByRole('dialog', { name: 'Discard changes to level info?' })
+    await confirmWhenReady(ask.getByRole('button', { name: 'Discard', exact: true }), ask)
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await holds(page, second)).toBe(false)
+    expect(await holds(page, cover)).toBe(false)
+
+    // Applied: kept, and a later dialog that discards another pick leaves it.
+    form = await openLevelInfo(page)
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'two.png',
+        mimeType: 'image/png',
+        buffer: second,
+    })
+    await expect(form.locator('[data-level-info-cover]')).toContainText('two.png')
+    await confirm(form).click()
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await holds(page, second)).toBe(true)
+
+    form = await openLevelInfo(page)
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'three.png',
+        mimeType: 'image/png',
+        buffer: third,
+    })
+    await expect(form.locator('[data-level-info-cover]')).toContainText('three.png')
+    await page.keyboard.press('Escape')
+    await confirmWhenReady(ask.getByRole('button', { name: 'Discard', exact: true }), ask)
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await holds(page, third)).toBe(false)
+    expect(await holds(page, second)).toBe(true)
+})
+
+test('a cover that was applied, reloaded and saved is in the file', async ({ page, browser }) => {
+    test.slow()
+    const form = await openLevelInfo(page)
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'cover.png',
+        mimeType: 'image/png',
+        buffer: cover,
+    })
+    await expect(form.locator('[data-level-info-thumbnail]')).toBeVisible()
+    await confirm(form).click()
+    await expect(dialog(page)).toHaveCount(0)
+    await flushed(page)
+
+    // The reload empties the held media: the stored cover alone carries to the file.
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await waitForStartup(page)
+    expect(await holds(page, cover)).toBe(false)
+    await expect.poll(() => levelInfoOf(page)).toMatchObject({ cover: { filename: 'cover.png' } })
+    await pressSave(page)
+    await submitSave(page, 'level')
+    await expect(notice(page).filter({ hasText: 'Saved to level.nxsp' }).first()).toBeVisible()
+    const bytes = await readFile(page, 'level.nxsp')
+
+    const context = await browser.newContext()
+    try {
+        const other = await context.newPage()
+        await start(other)
+        await writeFile(other, 'level.nxsp', bytes!)
+        await queuePicks(other, ['level.nxsp'])
+        await other.keyboard.press('o')
+        await expect(notice(other).filter({ hasText: 'level.nxsp' }).first()).toBeVisible()
+        const reopened = await openLevelInfo(other)
+        const thumbnail = reopened.locator('[data-level-info-thumbnail]')
+        await expect(thumbnail).toBeVisible()
+        expect(await thumbnail.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(64)
+    } finally {
+        await context.close()
+    }
 })
 
 test('Check on the file line runs Check File and History', async ({ page }) => {
