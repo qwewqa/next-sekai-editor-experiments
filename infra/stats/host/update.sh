@@ -21,7 +21,7 @@ DIR=/opt/nse-stats
 COMMIT=$(tag nse:commit)
 ENVIRONMENT=$(tag nse:env)
 BASE="https://raw.githubusercontent.com/$NSE_REPO/$COMMIT/infra/stats/host"
-FILES="compose.yaml images.env Caddyfile nightly.sh nse-stats-nightly.service nse-stats-nightly.timer"
+FILES="compose.yaml images.env Caddyfile nightly.sh geo-trigger.sql nse-stats-nightly.service nse-stats-nightly.timer"
 
 mkdir -p "$DIR/new" /data/caddy /data/postgres
 for f in $FILES; do curl -fsSL --retry 5 -o "$DIR/new/$f" "$BASE/$f"; done
@@ -62,7 +62,8 @@ fi
 
 # Migrations have no down step, so a dump comes first whenever an image changes.
 if [ -f "$DIR/images.env" ] && ! cmp -s "$DIR/images.env" "$DIR/new/images.env" && [ -n "$(dc "$DIR" ps -q db 2> /dev/null)" ]; then
-    "$DIR/nightly.sh" dump
+    # The new script, which clears the region and city before it dumps.
+    bash "$DIR/new/nightly.sh" dump
 fi
 
 for f in $FILES; do install -m 0644 "$DIR/new/$f" "$DIR/$f"; done
@@ -104,6 +105,9 @@ for _ in $(seq 1 60); do
     sleep 5
 done
 [ "$status" = healthy ] || { echo "Umami is ${status:-missing}" >&2; exit 1; }
+# A migration can recreate the session table and lose the trigger, so it is installed again on every update.
+dc "$DIR" exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -q -1 -f - < "$DIR/geo-trigger.sql"
+"$DIR/nightly.sh" clean
 # Docker shares the 8 GB root volume, and this host runs nothing else, so every unused image goes.
 docker image prune -af > /dev/null
 echo "stats is up at $COMMIT"

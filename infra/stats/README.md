@@ -4,19 +4,20 @@ Usage statistics for the web editor: a self-hosted [Umami](https://umami.is) on 
 
 ## What runs
 
-| Part         | Detail                                                                                                                                                                                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Instance     | Ubuntu 24.04 LTS arm64. Prod `t4g.small`, dev `t4g.micro` with 1 GB of swap. Default VPC, one public subnet, Elastic IP, IMDSv2 only                                                                                                       |
-| Network      | Port 443 in, nothing else. No SSH: access is Session Manager. Certificates come from the TLS-ALPN-01 challenge on 443, so port 80 stays closed                                                                                             |
-| Containers   | Caddy, Umami and PostgreSQL in Compose, each pinned by digest in `host/images.env`. PostgreSQL has no published port                                                                                                                       |
-| Public paths | `POST /api/send`, `POST /api/batch`, `GET /api/heartbeat`. Everything else is a 404, and Caddy keeps no access log                                                                                                                         |
-| Dashboard    | Umami’s login is never routed publicly. Umami listens on the instance’s `127.0.0.1:3000`, and you reach it through a Session Manager tunnel                                                                                                |
-| Data         | One encrypted gp3 volume at `/data`: PostgreSQL, Caddy’s certificates and `secrets.env`. The volume is retained when the stack is replaced or deleted                                                                                      |
-| Secrets      | `update.sh` generates Umami’s `APP_SECRET` and the database password on first boot, into `/data/secrets.env` (readable by root only), on the encrypted data volume. They are not in the repository, in GitHub or in an AWS secrets service |
-| Backups      | A weekly `pg_dump` (Sundays, 03:00 UTC) to an S3 bucket, kept 28 days. The bucket is versioned in prod only. The instance can add and list dumps, not read or delete them                                                                  |
-| Nightly job  | `host/nightly.sh` runs at 03:00 UTC in prod. It clears the region and city Umami adds, dumps on Sundays, and checks the last dump, both disks (80%) and a test event. A failed step or check sends one email through the alert topic       |
-| Patches      | Unattended security upgrades, rebooting at 04:00 UTC when needed                                                                                                                                                                           |
-| Recovery     | EC2’s own recovery for a failed system check. In prod, one alarm reboots the instance after 5 minutes of failed instance checks and emails                                                                                                 |
+| Part         | Detail                                                                                                                                                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Instance     | Ubuntu 24.04 LTS arm64. Prod `t4g.small`, dev `t4g.micro` with 1 GB of swap. Default VPC, one public subnet, Elastic IP, IMDSv2 only                                                                                                               |
+| Network      | Port 443 in, nothing else. No SSH: access is Session Manager. Certificates come from the TLS-ALPN-01 challenge on 443, so port 80 stays closed                                                                                                     |
+| Containers   | Caddy, Umami and PostgreSQL in Compose, each pinned by digest in `host/images.env`. PostgreSQL has no published port                                                                                                                               |
+| Public paths | `POST /api/send`, `POST /api/batch`, `GET /api/heartbeat`. Everything else is a 404, and Caddy keeps no access log                                                                                                                                 |
+| Dashboard    | Umami’s login is never routed publicly. Umami listens on the instance’s `127.0.0.1:3000`, and you reach it through a Session Manager tunnel                                                                                                        |
+| Data         | One encrypted gp3 volume at `/data`: PostgreSQL, Caddy’s certificates and `secrets.env`. The volume is retained when the stack is replaced or deleted                                                                                              |
+| Secrets      | `update.sh` generates Umami’s `APP_SECRET` and the database password on first boot, into `/data/secrets.env` (readable by root only), on the encrypted data volume. They are not in the repository, in GitHub or in an AWS secrets service         |
+| Backups      | A weekly `pg_dump` (Sundays, 03:00 UTC) to an S3 bucket, kept 28 days. The bucket is versioned in prod only. The instance can add and list dumps, not read or delete them                                                                          |
+| Region, city | A trigger on Umami’s `session` table (`host/geo-trigger.sql`) sets both to NULL on every insert and update, so they are never stored. `update.sh` installs it again on every update. The nightly job and every dump also run `clean` as a backstop |
+| Nightly job  | `host/nightly.sh` runs at 03:00 UTC in prod. It clears any region and city that Umami stored, dumps on Sundays, and checks the last dump, both disks (80%) and a test event. A failed step or check sends one email through the alert topic        |
+| Patches      | Unattended security upgrades, rebooting at 04:00 UTC when needed                                                                                                                                                                                   |
+| Recovery     | EC2’s own recovery for a failed system check. In prod, one alarm reboots the instance after 5 minutes of failed instance checks and emails                                                                                                         |
 
 The host files reach the instance by commit. The stack’s `SourceCommit` parameter becomes the tag `nse:commit`, and `update.sh` downloads `host/*` at that commit from `raw.githubusercontent.com` (the repository is public). A deploy that changes only host files does not restart the instance. The user data runs once, at the instance’s first boot.
 
@@ -54,7 +55,7 @@ It needs the Session Manager plugin (`../README.md`, Set-up step 3) and a profil
 
 To upgrade Umami, PostgreSQL or Caddy, open a pull request that changes a digest in `host/images.env`. Find a digest with `docker buildx imagetools inspect <image:tag>`; it must be the index digest. Read Umami’s release notes for migrations and `ANALYZE` steps first. Migrations have no down step.
 
-1. The pull request runs `infra-check.yml`. Its contract test starts the new images and checks the request the editor sends, the clean-up, a restore and the saved queries.
+1. The pull request runs `infra-check.yml`. Its contract test starts the new images and checks the request the editor sends, the clean-up, the trigger, a restore and the saved queries.
 2. Deploy dev from `main`, send some events, then deploy dev from the branch. Look at the dashboard and run the saved queries. Run Stats dev down.
 3. Merge and deploy prod. `update.sh` takes a dump first whenever `images.env` changed.
 
@@ -71,7 +72,7 @@ cd /opt/nse-stats
 dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-file /data/stats.env "$@"; }
 ```
 
-- **Take a dump now:** `/opt/nse-stats/nightly.sh dump`.
+- **Take a dump now:** `/opt/nse-stats/nightly.sh dump`. It runs `clean` first and stops without a dump if `clean` fails.
 - **Restore a dump.** The instance cannot read S3. Create a link from your machine, fetch it on the instance, and restore. `<bucket>` is the `BucketName` output.
 
     ```sh
@@ -83,6 +84,8 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
     dc exec -T db pg_restore -U umami -d umami --clean --if-exists --no-owner --single-transaction \
       < /data/dumps/restore.dump && dc up -d umami && rm /data/dumps/restore.dump
     ```
+
+    A dump made before the trigger existed restores the table without it, and with the region and city it held. After restoring one, run `dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -q -1 -f - < /opt/nse-stats/geo-trigger.sql`, then `/opt/nse-stats/nightly.sh clean`.
 
     The restore runs in one transaction. If it fails, the database is unchanged, Umami stays stopped and the dump stays in `/data/dumps`. Fix the cause (a full disk, for example) and run the restore again.
 

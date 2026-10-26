@@ -17,7 +17,8 @@ dc() {
 }
 psql_() { dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 "$@"; }
 
-# Umami adds a region and a city from the IP address. Only the country is kept.
+# Umami adds a region and a city from the IP address. Only the country is kept. geo-trigger.sql stops the database
+# from storing them; this clears any stored before the trigger, and is the backstop if the trigger is ever missing.
 clean() {
     psql_ -c "UPDATE session SET region = NULL, city = NULL WHERE region IS NOT NULL OR city IS NOT NULL;"
 }
@@ -30,6 +31,8 @@ dump() {
     file="/data/dumps/umami-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
     # Called as `dump || ...`, which turns errexit off, so every step passes failure on itself.
     # A bad dump is removed. After a failed upload the file stays.
+    # A dump never holds a region or a city, so it is refused when clean fails.
+    clean || return 1
     mkdir -p /data/dumps || return 1
     { dump_stream > "$file" && dc exec -T db pg_restore --list < "$file" > /dev/null; } || { rm -f "$file"; return 1; }
     aws s3 cp --only-show-errors "$file" "s3://$NSE_BUCKET/dumps/$(basename "$file")" || return 1

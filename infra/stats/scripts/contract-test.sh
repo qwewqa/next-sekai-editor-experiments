@@ -4,8 +4,10 @@
 #   1. the host files are valid (Compose, Caddyfile)
 #   2. a text/plain batch with a browser User-Agent is stored, with its data; a bot User-Agent is not
 #   3. nightly.sh's clean empties region and city
-#   4. a dump restores into a fresh PostgreSQL with the same row counts
-#   5. every saved query runs, and prints the rows the batch produces
+#   4. geo-trigger.sql installs twice, and then no session keeps a region or a city, whether it arrives with them or
+#      is updated to have them
+#   5. a dump made without a clean restores into a fresh PostgreSQL with the same row counts and no region or city
+#   6. every saved query runs, and prints the rows the batch produces
 # Needs docker, curl and jq.
 set -euo pipefail
 
@@ -76,7 +78,21 @@ export NSE_COMPOSE="$COMPOSE"
 clean
 [ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL OR city IS NOT NULL")" = 0 ] || fail "region or city was kept"
 
+step "region and city are never stored"
+# psql -1 is the way update.sh runs the file, and the second run shows it can be repeated.
+sql -q -1 -f - < ../host/geo-trigger.sql
+sql -q -1 -f - < ../host/geo-trigger.sql
+# A new session that arrives with a region and a city is stored without them, and keeps its country.
+SESSION=$(cat /proc/sys/kernel/random/uuid)
+sql -c "INSERT INTO session (session_id, website_id, country, region, city) VALUES ('$SESSION', '$WEBSITE', 'US', 'WA', 'Seattle')" > /dev/null
+[ "$(sql -c "SELECT count(*) FROM session WHERE session_id = '$SESSION' AND country = 'US'")" = 1 ] || fail "the new session was not stored with its country"
+[ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL OR city IS NOT NULL")" = 0 ] || fail "a new session kept its region or city"
+# An update cannot set them either.
+sql -c "UPDATE session SET region = 'WA', city = 'Seattle'" > /dev/null
+[ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL OR city IS NOT NULL")" = 0 ] || fail "an update set a region or city"
+
 step "dump and restore"
+# No clean before the dump, as in an upgrade's dump: the live table must already hold no region or city.
 dump_stream > /tmp/nse-contract.dump
 docker run -d --name nse-contract-restore -e POSTGRES_PASSWORD=x -e POSTGRES_DB=umami "$POSTGRES_IMAGE" > /dev/null
 for _ in $(seq 1 30); do docker exec nse-contract-restore pg_isready -U postgres -d umami > /dev/null 2>&1 && break; sleep 2; done
@@ -86,6 +102,8 @@ for table in website website_event event_data session _prisma_migrations; do
     b=$(docker exec nse-contract-restore psql -U postgres -d umami -tA -c "SELECT count(*) FROM $table")
     [ "$a" = "$b" ] || fail "$table: $a rows, $b after the restore"
 done
+[ "$(docker exec nse-contract-restore psql -U postgres -d umami -tA -c "SELECT count(*) FROM session WHERE region IS NOT NULL OR city IS NOT NULL")" = 0 ] \
+    || fail "the dump holds a region or city"
 
 step "saved queries"
 run_query() { # query, website (default: the one with the batch)
