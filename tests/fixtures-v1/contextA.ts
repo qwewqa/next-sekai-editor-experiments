@@ -177,6 +177,16 @@ export const stepA3 = async (tab: Tab) => {
         await tab.focus(40 + i * 4)
         await made(tab, name, () => tab.click(0, 40 + i * 4))
     }
+    // The style event's Lane Color, set to Red in the Properties panel.
+    await tab.command('f')
+    await tab.focus(52)
+    await tab.click(0, 52)
+    const laneColor = page
+        .locator('#workspace-panel-properties .form-field')
+        .filter({ has: page.getByText('Lane Color', { exact: true }) })
+        .locator('select')
+    await made(tab, 'Lane Color', () => laneColor.selectOption({ label: 'Red' }))
+    await expect(laneColor).toHaveValue('red')
     // The panels out of the way, the chart zoomed out further.
     for (const which of ['Groups', 'Stages'])
         if (await page.getByTitle(`Hide ${which}`).isVisible())
@@ -676,7 +686,7 @@ export const stepA11 = async (a: A, tab: Tab) => {
     return visit
 }
 
-/** Step 12: Settings › Local Data › Recovery › Export Raw Data: `raw-export.zip`. */
+/** Step 12: Settings › Local Data › Export Raw Data: `raw-export.zip`. */
 export const stepA12 = async (a: A, tab: Tab) => {
     const { name, path } = await exportRawData(tab)
     expect(name).toMatch(/^Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip$/)

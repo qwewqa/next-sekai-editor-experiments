@@ -604,10 +604,7 @@ test('P needs a newer version: Restore Session says so, Save… is refused, its 
     await context.close()
 })
 
-test('Local Data › Recovery lists the unreadable recovered work', async ({
-    browser,
-    browserName,
-}) => {
+test('Local Data lists the unreadable recovered work', async ({ browser, browserName }) => {
     test.skip(browserName === 'webkit', 'WebKit private contexts store no Blobs')
     // Catches a later build that loses a journal moved to the `recovered` store (the user's last
     // edits of an unreadable journal then cannot be downloaded).

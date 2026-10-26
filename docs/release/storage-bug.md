@@ -17,7 +17,7 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 > Version {version} has a bug that can stop the editor from starting or hide your sessions. To keep your work:
 >
 > 1. Do not clear this site’s data in your browser.
-> 2. Open Settings › Local Data and choose Export Raw Data under Recovery. Keep the ZIP file it downloads.
+> 2. Open Settings › Local Data and choose Export Raw Data. Keep the ZIP file it downloads.
 > 3. If the editor shows an error with an Export Raw Data button, choose it there.
 > 4. If the editor does not start, open https://nse.qwewqa.dev/?safe and do step 2 there.
 > 5. When version {fixed} is out, reload the page and look in History › Recent Sessions.
@@ -45,7 +45,7 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 
 For each chain in History › Recent Sessions, open the row’s ⋯ menu and choose Save… there. That writes the chain’s latest state to a file without opening it. To look at a chain first, choose Restore Session, then Save.
 
-Work the editor could not read is under Settings › Local Data › Recovery: the unreadable recovered work and the journals of earlier visits, each with a Download button.
+Work the editor could not read is under Settings › Local Data: the unreadable recovered work and the journals of earlier visits, each with a Download button.
 
 If the build cannot read a chain, fix the reader on a branch and load the dump again into a fresh profile. The seeder refuses the profile that was seeded already.
 

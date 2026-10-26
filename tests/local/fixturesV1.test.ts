@@ -191,6 +191,12 @@ const observeHeader = (header: Rec, facts: Set<string>) => {
 /** The forms one chunk of a kind's records uses. */
 const observeChunk = (kind: string, chunk: Rec, facts: Set<string>) => {
     facts.add(kindForms[kind]!)
+    if (kind === 'stageStyleEvents') {
+        for (const event of chunk) {
+            const color = (event as Rec)[position('stageStyleEvent', 'laneColor')]
+            if (color !== 'default') facts.add('stageStyleEvent.laneColor')
+        }
+    }
     if (kind !== 'slides') return
     for (const slide of chunk as Rec[][]) {
         facts.add('slide')
@@ -365,6 +371,7 @@ const everything = [
     'note.third',
     'note.elevation',
     'note.attached',
+    'stageStyleEvent.laneColor',
     ...Object.values(fields.kinds as Record<string, string>),
 ]
 
