@@ -84,7 +84,7 @@ test('a native build resolves #platform and #asset-defaults to their native targ
 test('the web build keeps the default targets', async () => {
     const imports = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).imports
     assert.deepEqual(Object.keys(imports['#platform']), ['native', 'default'])
-    assert.deepEqual(Object.keys(imports['#asset-defaults']), ['native', 'default'])
+    assert.deepEqual(Object.keys(imports['#asset-defaults']), ['native', 'builtin-only', 'default'])
     assert.ok(import.meta.resolve('#platform').endsWith('/src/platform/web.ts'))
     assert.ok(
         import.meta.resolve('#asset-defaults').endsWith('/src/preview/assets/defaults.web.ts'),

@@ -36,6 +36,8 @@ import {
 } from './types'
 import { appVersion } from './version'
 
+declare const __NSE_BUILTIN_ONLY__: boolean
+
 // Touches no window, navigator or localStorage at import time, so Node tests can resolve it.
 
 // A detached input is otherwise collectable while its picker is open, losing the pick.
@@ -234,7 +236,8 @@ const webCapabilities = (): PlatformCapabilities =>
         library: false,
         fileJournal: false,
         updates: 'none',
-        defaultAssets: true,
+        // False when the dev server or the build lacks the Next SEKAI packages (vite.config.ts).
+        defaultAssets: !(typeof __NSE_BUILTIN_ONLY__ === 'boolean' && __NSE_BUILTIN_ONLY__),
         browserStorage: true,
         safeModeEntry: 'query',
         fileAssociations: false,

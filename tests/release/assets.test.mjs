@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import test from 'node:test'
-import { gzipSync } from 'node:zlib'
 import { readZip } from '../../builtin-assets/zip.mjs'
 import {
     createScp,
@@ -14,60 +12,7 @@ import {
     refreshPreviewAssetLock,
     stagePreviewAssets,
 } from '../../scripts/release-assets.mjs'
-
-const hash = (bytes) => createHash('sha1').update(bytes).digest('hex')
-const data = gzipSync(JSON.stringify({ width: 1, height: 1, sprites: [], effects: [], clips: [] }))
-const texture = Buffer.from('texture fixture')
-const audio = Buffer.from('audio fixture')
-const thumbnail = Buffer.from('thumbnail fixture')
-
-function server(t, options = {}) {
-    const urls = []
-    t.mock.method(globalThis, 'fetch', async (input) => {
-        const url = new URL(input)
-        urls.push(url.href)
-        if (url.pathname.endsWith('/data')) return new Response(data)
-        if (url.pathname.endsWith('/texture')) return new Response(texture)
-        if (url.pathname.endsWith('/audio')) return new Response(audio)
-        if (url.pathname.endsWith('/thumbnail')) return new Response(thumbnail)
-        return Response.json({
-            item: {
-                name: 'fixture',
-                title: options.title || 'Fixture skin',
-                author: 'Fixture author',
-                tags: [{ title: options.likes || '100', icon: 'heartHollow' }],
-                authorUser: { name: 'author', tags: [{ title: options.authorTag || '#OWNER' }] },
-                data: {
-                    url: '/data',
-                    hash: options.missingHash
-                        ? undefined
-                        : options.badHash
-                          ? '0'.repeat(40)
-                          : hash(data),
-                },
-                texture: { url: 'https://cdn.example/texture', hash: hash(texture) },
-                audio: { url: 'https://cdn.example/audio', hash: hash(audio) },
-                ...(!options.noThumbnail && {
-                    thumbnail: {
-                        url: 'https://cdn.example/thumbnail',
-                        hash: options.badThumbnail ? '0'.repeat(40) : hash(thumbnail),
-                    },
-                }),
-            },
-        })
-    })
-    return urls
-}
-
-async function temporary(t) {
-    const directory = await mkdtemp(join(tmpdir(), 'sekai-assets-test-'))
-    t.after(async () => {
-        assert.equal(dirname(directory), resolve(tmpdir()))
-        assert.ok(directory.startsWith(join(tmpdir(), 'sekai-assets-test-')))
-        await rm(directory, { recursive: true, force: true })
-    })
-    return directory
-}
+import { audio, data, hash, server, temporary, thumbnail } from './assetFixture.mjs'
 
 test('public and API links resolve to the same item endpoint', () => {
     const expected = 'https://example.com/server/sonolus/skins/test?localization=en'

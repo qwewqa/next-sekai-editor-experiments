@@ -10,6 +10,7 @@
         },
         "#asset-defaults": {
             "native": "./src/preview/assets/defaults.native.ts",
+            "builtin-only": "./src/preview/assets/defaults.native.ts",
             "default": "./src/preview/assets/defaults.web.ts"
         }
     },
@@ -31,6 +32,7 @@
         "release:tag": "node scripts/release/tag.mjs",
         "samples:long-history": "playwright test --config playwright.samples.config.ts longHistory",
         "probe:handles": "playwright test --config playwright.probe.config.ts",
+        "predev": "node scripts/stage-dev-assets.mjs",
         "dev": "vite --host",
         "build": "node scripts/check-lyon.mjs && vite build",
         "build:release": "node scripts/build-release.mjs",
