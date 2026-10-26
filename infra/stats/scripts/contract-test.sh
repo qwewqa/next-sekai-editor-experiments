@@ -192,11 +192,15 @@ sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 
 #      and 6000 events with names and values of their own
 #   VERS website, 3 months ago: 10 sessions that send 60 versions, each from all of them, and 6000 more, each from one
 #   LATE website, an hour after the cutoff of 13 months: 10 sessions, and a report that comes late
-sql -q -v "roll=$ROLL" -v "junk=$JUNK" -v "vers=$VERS" -v "late=$LATE" -v "sc=$SC" -v "sf=$SF" -f - << 'SQL'
+# One time for every LATE record, an hour after the cutoff. Both batches use it, so they are in one month even when the
+# cutoff is near a month's end, and the second is late only because it is added after the first run.
+LT=$(sql -c "SELECT to_char((now() - interval '13 months' + interval '60 minutes') AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') || '+00'")
+sql -q -v "roll=$ROLL" -v "junk=$JUNK" -v "vers=$VERS" -v "late=$LATE" -v "lt=$LT" -v "sc=$SC" -v "sf=$SF" -f - << 'SQL'
 SET TIME ZONE 'UTC';
 SELECT set_config('nse.roll', :'roll', false), set_config('nse.junk', :'junk', false),
        set_config('nse.sc', :'sc', false), set_config('nse.sf', :'sf', false),
-       set_config('nse.vers', :'vers', false), set_config('nse.late', :'late', false) \g /dev/null
+       set_config('nse.vers', :'vers', false), set_config('nse.late', :'late', false),
+       set_config('nse.lt', :'lt', false) \g /dev/null
 CREATE FUNCTION pg_temp.m(n int) RETURNS timestamptz LANGUAGE sql AS $$
     SELECT date_trunc('month', now()) - make_interval(months => n) + interval '10 days'
 $$;
@@ -224,6 +228,7 @@ DECLARE
     sf uuid := current_setting('nse.sf')::uuid;
     site_v uuid := current_setting('nse.vers')::uuid;
     site_l uuid := current_setting('nse.late')::uuid;
+    lt timestamptz := current_setting('nse.lt')::timestamptz;
     vs uuid[] := ARRAY[]::uuid[];
     s uuid;
     t timestamptz;
@@ -320,9 +325,8 @@ BEGIN
     END LOOP;
 
     FOR i IN 1..10 LOOP
-        t := now() - interval '13 months' + interval '60 minutes' + i * interval '1 second';
-        s := pg_temp.mk(gen_random_uuid(), site_l, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
-        PERFORM pg_temp.ev(site_l, s, t, 1, NULL, '{}');
+        s := pg_temp.mk(gen_random_uuid(), site_l, lt, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        PERFORM pg_temp.ev(site_l, s, lt, 1, NULL, '{}');
     END LOOP;
 END $$;
 SQL
@@ -450,7 +454,7 @@ check_sql "the other versions" '10' "SELECT contributors FROM nse_monthly WHERE 
 check_total '' "$M3" value visit.version 3.1.0 '' ''
 # A month whose records are all after the cutoff is not final.
 SITE=$LATE
-MC=$(sql -c "SELECT date_trunc('month', (now() - interval '13 months' + interval '60 minutes') AT TIME ZONE 'UTC')::date")
+MC=$(sql -c "SELECT date_trunc('month', '$LT'::timestamptz AT TIME ZONE 'UTC')::date")
 check_total 10 "$MC" visits all '' '' ''
 check_total '' "$MC" final '' '' '' ''
 SITE=$ROLL
@@ -458,13 +462,14 @@ SITE=$ROLL
 check_sql "nse_monthly holds a code" 0 "SELECT count(*) FROM nse_monthly WHERE name ~* '[0-9a-f]{8}-[0-9a-f]{4}' OR value ~* '[0-9a-f]{8}-[0-9a-f]{4}'"
 
 # A report that arrives after the first run is counted by the next: two more sessions three months ago.
-sql -q -v "roll=$ROLL" -v "late=$LATE" -f - << 'SQL'
+sql -q -v "roll=$ROLL" -v "late=$LATE" -v "lt=$LT" -f - << 'SQL'
 SET TIME ZONE 'UTC';
-SELECT set_config('nse.roll', :'roll', false), set_config('nse.late', :'late', false) \g /dev/null
+SELECT set_config('nse.roll', :'roll', false), set_config('nse.late', :'late', false), set_config('nse.lt', :'lt', false) \g /dev/null
 DO $$
 DECLARE
     roll uuid := current_setting('nse.roll')::uuid;
     site_l uuid := current_setting('nse.late')::uuid;
+    lt timestamptz := current_setting('nse.lt')::timestamptz;
     s uuid;
     t timestamptz := date_trunc('month', now()) - interval '3 months' + interval '10 days' + interval '2 hours';
 BEGIN
@@ -491,9 +496,9 @@ BEGIN
     FOR i IN 1..2 LOOP
         s := gen_random_uuid();
         INSERT INTO session (session_id, website_id, browser, os, device, country, language, created_at)
-        VALUES (s, site_l, 'chrome', 'Windows 10', 'laptop', 'US', 'ja', now() - interval '13 months' + interval '90 minutes');
+        VALUES (s, site_l, 'chrome', 'Windows 10', 'laptop', 'US', 'ja', lt);
         INSERT INTO website_event (event_id, website_id, session_id, visit_id, created_at, url_path, event_type, hostname)
-        VALUES (gen_random_uuid(), site_l, s, s, now() - interval '13 months' + interval '90 minutes', '/', 1, 'nse.qwewqa.dev');
+        VALUES (gen_random_uuid(), site_l, s, s, lt, '/', 1, 'nse.qwewqa.dev');
     END LOOP;
 END $$;
 SQL
