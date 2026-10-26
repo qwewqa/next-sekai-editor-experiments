@@ -3,9 +3,9 @@ import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
-// The load notices in the start-up
-// pill with their actions, the status bar label and the page title, the Reopen notice, the in-app
-// not-stored prompt, and Settings › Local Data's Recovery rows.
+// The load notices in the start-up pill with their actions, the status bar label and the page
+// title, the Reopen notice, the in-app not-stored prompt, and the recovered-work rows in
+// Settings › Local Data.
 
 const prefix = 'sonolus-next-sekai-editor.'
 
