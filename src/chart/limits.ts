@@ -3,6 +3,6 @@
  * spans, and the preview a slot lane for each lane of a note’s width, so values past these would
  * hang or exhaust memory.
  */
-export const maxBeat = 100000
+export const maxBeat = 1000000
 export const maxLane = 5000
 export const maxSize = 5000

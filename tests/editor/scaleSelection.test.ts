@@ -591,10 +591,10 @@ test('scaled beats stay within the largest beat, for connected notes and for poi
     const head = { ...source('note', 0), slideId }
     const tail = { ...source('note', 4), slideId }
     state.store.slides.note.set(slideId, [head, tail])
-    const boundary = getScaledSelectionValues([head, tail], 'beat', 24999, state)
+    const boundary = getScaledSelectionValues([head, tail], 'beat', 249999, state)
     assert.ok(boundary)
-    assert.deepEqual([...boundary.values()], [0, 99996])
-    assert.equal(getScaledSelectionValues([head, tail], 'beat', 25001, state), undefined)
+    assert.deepEqual([...boundary.values()], [0, 999996])
+    assert.equal(getScaledSelectionValues([head, tail], 'beat', 250001, state), undefined)
     assert.equal(getScaledSelectionValues([head, tail], 'beat', 1e12, state), undefined)
     const points = [source('bpm', 0), source('bpm', 4)]
     const largePoint = getScaledSelectionValues(points, 'beat', 1e4, state)
