@@ -34,6 +34,7 @@ import { PRODUCT_NAME } from '../../product'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import type { State } from '../../state'
+import { inlineName } from '../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { fileError } from '../commands/exportLevel/errorText'
 import { validName } from '../commands/exportLevel/fileName'
@@ -43,6 +44,7 @@ import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile } from '../file'
 import { firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
+import { loadForAction } from '../loadFailure'
 import { withSwitchRequest, type SwitchRequest } from '../switchRequest'
 import {
     bindingHandle,
@@ -349,8 +351,9 @@ const importingText = (source: string) => {
     const status = storageStatus.value
     if (status?.mode === 'stored' && status.reason === 'full')
         return () => i18n.value.save.notKeptFull
-    if (status?.reason === 'failed') return interpolate(() => i18n.value.save.buildFailed, source)
-    return interpolate(() => i18n.value.save.notKept, source)
+    if (status?.reason === 'failed')
+        return interpolate(() => i18n.value.save.buildFailed, inlineName(source))
+    return interpolate(() => i18n.value.save.notKept, inlineName(source))
 }
 
 /**
@@ -363,11 +366,12 @@ const refusalText = (refusal: BuildRefused, name: string, source = name) => {
     if (refused === 'importing') return importingText(source)
     if (refused === 'needsNewer')
         return () => interpolateRaw(i18n.value.conflict.replaceNewer, PRODUCT_NAME)
-    if (refused === 'unreadableHead') return interpolate(() => i18n.value.save.unreadable, name)
+    if (refused === 'unreadableHead')
+        return interpolate(() => i18n.value.save.unreadable, inlineName(name))
     if (refused === 'plan' && 'limit' in refusal.refusal && refusal.refusal.limit)
         return () => i18n.value.save.tooLarge
     // A bug, logged by the writer: the file could not be prepared.
-    return interpolate(() => i18n.value.save.buildFailed, name)
+    return interpolate(() => i18n.value.save.buildFailed, inlineName(name))
 }
 
 // Suggestions that never name a known file.
@@ -1221,7 +1225,10 @@ const replace = async (
 ) => {
     const replaces = pinned.disk.revisionId
     if (!replaces) return
-    const { keepReplaced } = await import('../commands/open/project')
+    // Without the code that keeps the version on disk, nothing is written and the card says so.
+    const project = await loadForAction(() => import('../commands/open/project'))
+    if (!project) return
+    const { keepReplaced } = project
     const stem = shownStem(env, savedState()) || stemOf(handle.name)
     const keptName = interpolateRaw(i18n.value.conflict.keptName, stem, formatDate(Date.now()))
     const kept = await keepReplaced(pinned.file, keptName)
@@ -1335,7 +1342,7 @@ export const afterOutcome = async (
             await dialogSave(
                 env,
                 'saveAs',
-                [interpolate(() => i18n.value.open.damagedHistory, outcome.name)],
+                [interpolate(() => i18n.value.open.damagedHistory, inlineName(outcome.name))],
                 true,
             )
             return
@@ -1617,7 +1624,7 @@ const dialogSave = async (
     const name = await suggestion(env, copy ? copyStem(stem, !!binding.file) : stem)
     const replaced = binding.replaced
     const replacedLine = replaced
-        ? [interpolate(() => i18n.value.file.replacedElsewhere, replaced.name)]
+        ? [interpolate(() => i18n.value.file.replacedElsewhere, inlineName(replaced.name))]
         : []
     // This chain's own file read first, when it may hold what storage lacks: for every kind,
     // since any picker may return it.
@@ -2139,8 +2146,8 @@ const openOther = (
                 saveUi.error(interpolate(() => i18n.value.save.readFailed, name))
                 return
             }
-            const { openProject } = await import('../commands/open/project')
-            if (request.isCurrent()) await openProject(opened, handle, request)
+            const project = await loadForAction(() => import('../commands/open/project'))
+            if (project && request.isCurrent()) await project.openProject(opened, handle, request)
         } catch (error) {
             if (request.isCurrent()) throw error
         }

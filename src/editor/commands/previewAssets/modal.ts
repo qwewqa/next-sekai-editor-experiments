@@ -1,5 +1,6 @@
 import { showModal } from '../../../modals'
 import { fallbacks } from '../../../preview/assets/active'
+import { loadForAction } from '../../loadFailure'
 import type { PreviewAssetsTab } from './tabs'
 
 let isOpen = false
@@ -14,14 +15,18 @@ export const showPreviewAssets = async (tab?: PreviewAssetsTab, options?: { file
     if (isOpen) return
     isOpen = true
     try {
-        const { default: PreviewAssetsModal } = await import('./PreviewAssetsModal.vue')
+        const modal = await loadForAction(() => import('./PreviewAssetsModal.vue'))
         const file = options?.file
         // The package reader stays out of the main bundle until a package is picked.
-        const held = file
-            ? await import('../../../preview/assets/files/inspect').then(({ firstTypeIn }) =>
-                  firstTypeIn(file),
-              )
+        const inspect = file
+            ? await loadForAction(() => import('../../../preview/assets/files/inspect'))
             : undefined
+        if (!modal || (file && !inspect)) {
+            isOpen = false
+            return
+        }
+        const PreviewAssetsModal = modal.default
+        const held = file && inspect ? await inspect.firstTypeIn(file) : undefined
         void showModal(
             PreviewAssetsModal,
             {

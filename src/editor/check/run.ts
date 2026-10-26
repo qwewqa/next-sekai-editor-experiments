@@ -11,6 +11,7 @@ import { platform, type DiskState } from '../../platform'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
 import { savePoint } from '../../platform/testPause'
 import { isSafeMode } from '../../safe'
+import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
 import { bindingHandle, environment, quickBinding, type Env } from '../save/binding'
 import { readDiskFacts } from '../save/disk'
@@ -111,7 +112,7 @@ export const planCheck = async (env: Env, shownName: string): Promise<Plan | und
     const binding = quickBinding(env)
     const file = binding.file
     if (!file || binding.replaced) return { env, name: shownName }
-    const name = file.name
+    const name = inlineName(file.name)
     const read = platform.pickSaveFile ? await bindingHandle(env, file) : readValue(undefined)
     if (read.storedRead === 'failed') return undefined
     const handle = read.storedValue

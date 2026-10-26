@@ -1,5 +1,6 @@
 import type { Command } from '..'
 import { i18n } from '../../../i18n'
+import { loadForAction } from '../../loadFailure'
 import SaveIcon from './SaveIcon.vue'
 
 // Save (`p`, Ctrl/Cmd+S): writes the session's `.nxsp`, by write-back, a download,
@@ -16,6 +17,7 @@ export const save: Command = {
     },
 
     async execute() {
-        await (await flows()).save()
+        const flow = await loadForAction(flows)
+        if (flow) await flow.save()
     },
 }

@@ -6,15 +6,14 @@ import type { KvDatabase, KvFactory } from '../../src/local/kv/types'
 import {
     buildRawExport,
     buildRawExportResult,
-    dateStamp,
     DUMP_ENTRY,
     exportRawData,
-    rawExportName,
     type RawSources,
 } from '../../src/local/rawExport'
 import { seedDump, seedRawExport } from '../../src/local/seed'
 import { openLocalData } from '../../src/local/testing/db'
 import { createWorld, type Tab } from '../../src/local/testing/world'
+import { dateStamp, rawExportName } from '../../src/startup/rawExportNote'
 import { storageKey } from '../../src/storage'
 import { ZipReader } from '../../src/zip'
 

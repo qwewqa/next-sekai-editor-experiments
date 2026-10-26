@@ -33,8 +33,10 @@ import { parseSus } from '../../../sus/parse'
 import { parseUsc } from '../../../usc/parse'
 import { errorMessage } from '../../../utils/error'
 import { getFilename, pickFileForOpen } from '../../../utils/file'
+import { inlineName } from '../../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
+import { loadForAction } from '../../loadFailure'
 import { notify } from '../../notification'
 import { confirmSwitch, notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
@@ -106,11 +108,15 @@ export const open: Command = {
                     return
                 }
                 // A project file, read in the storage worker.
-                const { openProject } = await import('./project')
+                const project = await loadForAction(() => import('./project'))
+                if (!project) {
+                    dropOpen()
+                    return
+                }
                 openFormat('nxsp')
                 try {
                     if (!request.isCurrent()) return
-                    await openProject(file, handle, request)
+                    await project.openProject(file, handle, request)
                 } catch (error) {
                     recordError(error)
                     console.error(error)
@@ -234,7 +240,10 @@ export const open: Command = {
             if (newerValues) {
                 const apply = newerValues
                 const choice = await showChoice({
-                    title: interpolate(() => i18n.value.open.newerValues.title, file.name),
+                    title: interpolate(
+                        () => i18n.value.open.newerValues.title,
+                        inlineName(file.name),
+                    ),
                     message: () => i18n.value.open.newerValues.body,
                     choices: [
                         {

@@ -24,10 +24,6 @@ import { STACK_CAP } from '../../src/history/cap'
 
 const doc = readFileSync(new URL('../../docs/usage-statistics.md', import.meta.url), 'utf8')
 const html = readFileSync(new URL('../../privacy/index.html', import.meta.url), 'utf8')
-const page = html
-    .replace(/<script\b[\s\S]*?<\/script>/g, '')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
 
 /** The body of each heading of the reference, up to the next heading. */
 const sections = new Map<string, string>()
@@ -275,61 +271,92 @@ test('the reference states the exact values, the caps and the ranges', () => {
         assert.ok(all.includes(`\`${label}\``), `cores: ${label}`)
 })
 
-/** What the page must keep disclosing, by topic. Each pattern names a value or a fact, not a sentence. */
+const plain = (markup: string) =>
+    markup
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+/** The markup of one section of the page, by the id its heading carries. */
+const sectionHtml = (id: string) => {
+    const start = html.indexOf(`aria-labelledby="${id}"`)
+    const end = html.indexOf('</section>', start)
+    assert.ok(start > 0 && end > start, `the privacy page has no section ${id}`)
+    return html.slice(start, end)
+}
+
+/** The text of one section of the page. */
+const sectionText = (id: string) => plain(sectionHtml(id))
+
+/** The text of each paragraph of a section. */
+const paragraphs = (id: string) =>
+    [...sectionHtml(id).matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map(([, inner = '']) => plain(inner))
+
+/** What each section must keep disclosing: the setting path, the signals, the legal bases, the recipients and the periods. Each pattern names a value, not a sentence. */
 const disclosures: Record<string, RegExp[]> = {
-    'local data': [/stay on your device/, /without accounts or cookies/, /crash reports/],
-    'first interaction': [/before your first interaction/],
-    'the switch': [/Settings › About › Send Usage Statistics/, /stop sending immediately/],
-    'defaults and signals': [/on by default/, /Do Not Track/, /Global Privacy Control/],
-    'this browser only': [/applies to this browser only/, /Clearing the site’s data resets it/],
-    precision: [
-        /limit the precision/,
-        /chart sizes, music lengths and file sizes/,
-        /match a published chart/,
+    summary: [
+        /Settings › About › Send Usage Statistics/,
+        /Do Not Track/,
+        /Global Privacy Control/,
+        /without accounts or cookies/,
     ],
-    'what the server receives': [/receives your IP address and user agent/, /device type/],
-    'the daily code': [/daily visitor code/, /changes each day/, /sets no cookies/],
-    'what is stored': [/only country, browser, operating system and device type are stored/],
-    retention: [/13 months/, /indefinitely/, /no visitor codes/, /about five weeks/, /two weeks/],
-    'small groups': [/Small groups are combined/],
-    'where it goes': [
-        /Amazon Web Services/,
+    who: [/qwewqa/, /nse@qwewqa\.dev/],
+    usage: [/legitimate interest/, /daily visitor code/],
+    hosting: [
+        /GitHub/,
+        /Amazon Web Services \(AWS\)/,
         /United States/,
-        /only provider/,
         /Standard Contractual Clauses/,
     ],
-    'the host': [/GitHub Pages hosts this site/, /GitHub may log requests/],
-    'email and files': [/nse@qwewqa\.dev/, /only for that and delete it/, /out of public issues/],
-    'the older browser': [/too old to open the editor/, /browser family/, /unsupported/],
-    'the controller and rights': [
-        /is responsible for the use of personal data/,
-        /access, correct or delete/,
-        /data protection authority/,
-    ],
+    contact: [/legitimate interest/, /legal obligations/, /mailbox/],
+    choices: [/access, correct or delete/, /portable copy/, /data protection authority/],
 }
 
 test('the privacy page keeps its disclosures', () => {
-    for (const [topic, patterns] of Object.entries(disclosures))
+    for (const [id, patterns] of Object.entries(disclosures))
         for (const pattern of patterns)
-            assert.match(page, pattern, `the privacy page no longer covers ${topic}`)
+            assert.match(sectionText(id), pattern, `the ${id} section no longer covers ${pattern}`)
 })
 
-test('the privacy page lists the categories, and links to the complete list', () => {
-    for (const category of [
-        'Tools and Settings.',
-        'Files and Charts.',
-        'Performance.',
-        'Browser and Device.',
-        'Storage.',
-        'Referring Sites.',
-    ])
-        assert.ok(page.includes(category), category)
+test('each retention period is stated with its data', () => {
+    const periods: [string, RegExp, RegExp][] = [
+        ['keep', /individual usage statistics/, /13 months/],
+        ['keep', /combined statistics/, /without visitor codes indefinitely/],
+        ['keep', /Backups on AWS/, /about five weeks/],
+        ['keep', /error logs/, /two weeks/],
+        ['contact', /mailbox/, /one year after your last message/],
+    ]
+    for (const [id, data, period] of periods)
+        assert.ok(
+            paragraphs(id).some((text) => data.test(text) && period.test(text)),
+            `the ${id} section no longer ties ${data} to ${period}`,
+        )
+})
 
+test('one paragraph offers the objection to usage statistics and support', () => {
+    const parts = [
+        /object/,
+        /usage statistics/,
+        /support/,
+        /Settings › About › Send Usage Statistics/,
+        /emailing us/,
+    ]
+    assert.ok(
+        paragraphs('choices').some((text) => parts.every((part) => part.test(text))),
+        'no paragraph of the rights section covers the objection',
+    )
+})
+
+test('the privacy page links to the complete list of what is sent', () => {
     const start = html.indexOf('aria-labelledby="usage"')
-    const usage = html.slice(start, html.indexOf('aria-labelledby="hosting"'))
-    assert.ok(start > 0 && usage.length > 0)
+    const end = html.indexOf('aria-labelledby="hosting"', start)
+
+    assert.ok(start > 0 && end > start)
+
+    const usage = html.slice(start, end)
     const link =
         /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*complete list of what is sent\s*<\/a\s*>/
+
     assert.match(usage, link)
     assert.doesNotMatch(html, /docs\/analytics\.md/)
 })

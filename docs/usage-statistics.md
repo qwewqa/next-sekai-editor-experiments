@@ -1,20 +1,20 @@
 # What the usage statistics send
 
-The web editor sends usage statistics to a server that the maintainer runs. This page lists each field it sends, when it sends it and how exact each value is. It also lists what the server works out for itself and what the server keeps. The privacy page summarizes the same in categories. Maintainers find the technical detail in [analytics.md](analytics.md).
+The web editor sends usage statistics to a server that the maintainer runs. This page lists each field it sends, when it sends it and how exact each value is. It also lists what the server works out for itself and what the server keeps. The privacy page explains what we collect, how we use it and your choices. Maintainers find the technical detail in [analytics.md](analytics.md).
 
 ## When statistics are sent
 
 - Nothing is sent before the first click, key press, touch or scroll in a visit, made while the page is visible. A visit with none sends nothing.
 - The first send is the first time the page is hidden, or a minute after that first interaction if the page is still visible. Later sends happen each time the page is hidden, at most once a minute, and once more when the page closes.
 - Nothing is sent when Settings › About › Send Usage Statistics is off. Turning it off also drops everything that was waiting, in every open tab.
-- Before you choose, the setting is on unless the browser sends Do Not Track or Global Privacy Control. The setting stays as you leave it, in this browser only.
+- Before you choose, the setting is on unless the browser sends Do Not Track or Global Privacy Control. The setting stays as you leave it, in this browser only. Clearing the site’s data in the browser resets it to this default.
 - Nothing is sent in safe mode, when the browser asks to save data, from an automated browser, or from a copy of the editor on another site.
 - Events are recorded when they happen and wait in memory for the next send. A send can be skipped while another request is still in flight.
 - Nothing is sent while the browser is offline. After one failed request, nothing more is sent in that visit.
 
 ## What is never sent
 
-Chart content, file names, level information, titles, text you type, paths and addresses with a query or a fragment. Shortcuts, the contents of the toolbar and presets are not sent either. The usage statistics client creates, stores and sends no visitor identifier.
+Chart content, file names, level information, titles, text you type, paths and addresses with a query or a fragment. Shortcuts, the contents of the toolbar and presets are not sent either. The usage statistics client creates, stores and sends no visitor identifier. It never sends an identifier that the editor stores in the browser, such as the identifier of a local session.
 
 ## How exact the values are
 
@@ -335,6 +335,8 @@ How often each kind of edit was made, by its name, how often a Timeline step was
 
 #### `errors`
 
+No crash reports are sent. The `errors` event contains only counts, without error messages or stack traces.
+
 | Field | Meaning | Format |
 | --- | --- | --- |
 | `error` | How many errors the editor caught. The text of an error is not sent | Count |
@@ -398,6 +400,7 @@ The `language` and `screen` fields of the request are stored with the visitor as
     - the total and the number of each count field, such as the use of a command;
     - the median and the 90th and 99th percentile of each time in milliseconds (`ready`, `took` and `buildMs`), over all visits and by version and device type.
 - **Weekly totals** are kept with no time limit. They hold only the visits, the sessions and the number of events of each name, for each week from Monday, and no breakdown.
+- **Separate statistics for each site.** Statistics are stored separately for each site. Only the maintainer has access to the dashboard.
 - **Only the fields on this page are totaled.** Anything else a request carries is left out of the totals.
 - **No small groups.** A total is kept only when at least 10 different visitor codes are behind it. A smaller group is merged into a group named `other` when that reaches 10, and is left out when it does not. A name keeps at most 50 values a month (100 for countries), the most common first, and the rest become `other`. A time is summarized only from groups of at least 10 visitor codes, so a left-out measurement is in no percentile.
 

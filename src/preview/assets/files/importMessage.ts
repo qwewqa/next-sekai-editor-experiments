@@ -1,3 +1,4 @@
+import { inlineName } from '../../../utils/inlineName'
 import { interpolateRaw } from '../../../utils/interpolate'
 import type { AssetType } from '../types'
 import type { AssetImportError, ImportErrorCode, ImportPart } from './errors'
@@ -67,7 +68,7 @@ export const formatImportMessage = (
             return interpolateRaw(text[code], noun, number(limit))
         case 'particleCount':
         case 'effectGroups':
-            return interpolateRaw(text[code], noun, detail.name ?? '', number(limit))
+            return interpolateRaw(text[code], noun, inlineName(detail.name ?? ''), number(limit))
         case 'packageTooLarge':
             return interpolateRaw(text.packageTooLarge, size(limit))
     }

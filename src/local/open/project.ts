@@ -13,6 +13,7 @@ import { session as currentSession } from '../../history/session'
 import { i18n } from '../../i18n'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
+import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
 import { releaseWaveform } from '../../waveform'
 import type { ChainSummary } from '../flushWrite'
@@ -439,7 +440,8 @@ export const storeKept = async (keep: KeepVersion) => {
     }
 }
 
-const damagedMessage = (name: string) => interpolate(() => i18n.value.open.damagedHistory, name)
+const damagedMessage = (name: string) =>
+    interpolate(() => i18n.value.open.damagedHistory, inlineName(name))
 const notifyDamaged = (name: string) =>
     notify(damagedMessage(name), { card: true, severity: 'warning' })
 

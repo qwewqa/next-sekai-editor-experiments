@@ -821,6 +821,37 @@ test.describe('Reopen', () => {
         await expect(page.locator('.notification-pill')).toHaveCount(0)
     })
 
+    test('an untitled session is named by the date its chain began, not the visit', async ({
+        page,
+        context,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        const began = await page.evaluate(() => window.nseFlushTest!.flusher.session!.startedAt)
+        await closePage(page, { runBeforeUnload: false })
+        const next = await context.newPage()
+        // The next visit starts ten minutes later by its clock.
+        await next.clock.setFixedTime(began + 10 * 60_000)
+        await visit(next)
+        expect(await lifeOf(next)).toBe(990)
+        await runNew(next)
+        const reopen = next
+            .locator('.notification-pill')
+            .getByRole('button', { name: /^Reopen Session from / })
+        const at = (time: number) =>
+            new Date(time).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+            })
+        const plain = (text: string) => text.replace(/\s/g, ' ')
+        await expect
+            .poll(async () => plain((await reopen.textContent()) ?? ''))
+            .toBe(`Reopen Session from ${plain(at(began))}`)
+    })
+
     test('z with nothing to undo, right after New, offers Reopen too', async ({ page }) => {
         await visit(page)
         await edit(page, 990)

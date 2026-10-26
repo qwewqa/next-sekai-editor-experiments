@@ -6,6 +6,7 @@ import { showModal } from '../../../modals'
 import InfoModal from '../../../modals/InfoModal.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { displayedName } from '../../labelText'
+import { loadForAction } from '../../loadFailure'
 import { notify } from '../../notification'
 import { environment } from '../../save/binding'
 import CheckProjectIcon from './CheckProjectIcon.vue'
@@ -29,7 +30,9 @@ export const checkProject: Command = {
             notify(() => i18n.value.notice.storageUnavailable, { card: true, severity: 'error' })
             return
         }
-        const { firstMessage, planCheck, startCheck } = await import('../../check/run')
+        const run = await loadForAction(() => import('../../check/run'))
+        if (!run) return
+        const { firstMessage, planCheck, startCheck } = run
         // Decided on the press: read access to the bound file is asked for here.
         const plan = await planCheck(env, displayedName.value)
         if (!plan) {

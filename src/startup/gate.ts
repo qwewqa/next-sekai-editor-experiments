@@ -1,4 +1,4 @@
-import { shallowReactive } from 'vue'
+import { shallowReactive, watch } from 'vue'
 import { markStartup } from '../analytics/tally'
 import { cancelSavePage } from '../editor/controls/saveChord'
 import { testKeysOpen } from '../platform/testKeys'
@@ -140,6 +140,26 @@ const startSlowTimer = (ms: number) => {
 }
 
 if (listening) startSlowTimer(readFlags().slowMs ?? SLOW_MS)
+
+/**
+ * Resolves once startup has ended, whether it opened the session or stopped at an error. Work
+ * that waits for the page to settle starts from it.
+ */
+export const startupEnded = () =>
+    new Promise<void>((resolve) => {
+        if (startupGate.phase !== 'opening') {
+            resolve()
+            return
+        }
+        const stop = watch(
+            () => startupGate.phase,
+            (phase) => {
+                if (phase === 'opening') return
+                stop()
+                resolve()
+            },
+        )
+    })
 
 /** The session being opened has a name: "Opening "Coconut (Master)"…". */
 export const setOpeningName = (name: string | undefined) => {

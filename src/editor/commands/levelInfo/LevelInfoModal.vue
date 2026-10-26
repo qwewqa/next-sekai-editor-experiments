@@ -12,6 +12,7 @@ import OptionalTextField from '../../../modals/form/OptionalTextField.vue'
 import TextAreaField from '../../../modals/form/TextAreaField.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { pickFile } from '../../../utils/file'
+import { inlineName } from '../../../utils/inlineName'
 import { runCommand } from '../runCommand'
 import { statusText } from '../../labelText'
 import { peekedSession } from '../../history/selection'
@@ -123,7 +124,7 @@ const check = () => {
 const cover = useMedia(() => draft.cover)
 const coverLine = computed(() =>
     draft.cover
-        ? draft.cover.filename || i18n.value.historyChanges.fields.cover
+        ? inlineName(draft.cover.filename) || i18n.value.historyChanges.fields.cover
         : i18n.value.modals.form.notSet,
 )
 
@@ -132,7 +133,7 @@ const preview = useMedia(() => draft.preview)
 const previewLine = computed(() => {
     const ref = draft.preview
     if (!ref) return i18n.value.modals.form.notSet
-    const name = ref.filename || i18n.value.historyChanges.fields.previewAudio
+    const name = inlineName(ref.filename) || i18n.value.historyChanges.fields.previewAudio
     return preview.status.value === 'absent' ? `${name} · ${i18n.value.levelInfo.notLoaded}` : name
 })
 
