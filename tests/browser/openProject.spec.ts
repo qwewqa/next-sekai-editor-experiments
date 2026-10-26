@@ -598,6 +598,34 @@ test('the same file opened in a second tab opens unbound, as a separate copy', a
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
 })
 
+test('a separate copy keeps its label after a reload', async ({ page, context }) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await imported(page)
+    const other = await context.newPage()
+    await start(other)
+    await openFile(other, 'coconut.nxsp')
+    await expect(notice(other).filter({ hasText: 'so this is a separate copy.' })).toBeVisible()
+    await imported(other)
+    await expect(other.locator('[data-status-text]')).toContainText('separate copy of coconut.nxsp')
+    await other.reload()
+    await waitForStartup(other)
+    await expect
+        .poll(async () => (await sessionOf(other)).copyOf)
+        .toEqual({
+            name: 'coconut.nxsp',
+            bound: true,
+        })
+    expect((await sessionOf(other)).file).toBeUndefined()
+    await expect(other.locator('[data-status-text]')).toContainText('separate copy of coconut.nxsp')
+    // The next reload keeps it too.
+    await other.reload()
+    await waitForStartup(other)
+    await expect(other.locator('[data-status-text]')).toContainText('separate copy of coconut.nxsp')
+})
+
 /** An edit of the live state, as a tool's would be. */
 const edit = (page: Page, initialLife: number) =>
     page.evaluate(async (initialLife) => {

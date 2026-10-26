@@ -168,7 +168,7 @@ const storedStack = (read: SessionRead & { kind: 'open' }): StoredStack => ({
 
 /** How a stored session opens: taken up again, continued in its chain, or as a fork. */
 type How =
-    | { mode: 'resume'; lock: LockLease }
+    | { mode: 'resume'; lock: LockLease; copyOf?: CopyOf }
     | { mode: 'continue'; parentLock: LockLease }
     | { mode: 'fork'; parentLock?: LockLease; copyOf: CopyOf }
 
@@ -259,6 +259,13 @@ export const openStored = async (
         const fork = how.mode === 'fork'
         const forkName = fork ? forkNameOf(namePartsOf(chain, state)) : undefined
         const boundFile = boundFileOf(chain)
+        // A resumed copy keeps the reason it has no file; a bound file is the label already.
+        const copyOf =
+            how.mode === 'fork'
+                ? how.copyOf
+                : how.mode === 'resume' && !boundFile
+                  ? how.copyOf
+                  : undefined
         const docId = fork ? newId() : (text(chain.docId) ?? newId())
         const name = fork ? forkName : text(chain.name)
         const start = chainStartOf(chain, session.startedAt)
@@ -267,7 +274,7 @@ export const openStored = async (
             docId,
             ...(name === undefined ? {} : { name }),
             ...(sourceName === undefined ? {} : { sourceName }),
-            ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
+            ...(copyOf ? { copyOf } : {}),
             // The chain's first start dates an untitled name; a fork's is its own, now.
             ...(start === undefined || fork ? {} : { startedAt: start }),
             ...(boundFile && how.mode !== 'fork' ? { file: boundFile } : {}),
@@ -387,7 +394,7 @@ export const openStored = async (
                         sessionId: id,
                         start: how.mode === 'resume' ? 'stored' : 'continuation',
                         ...(how.mode === 'resume' ? {} : { parent: String(session.id) }),
-                        ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
+                        ...(copyOf ? { copyOf } : {}),
                     })
                     onDestination?.()
                 }
@@ -707,7 +714,11 @@ const reloadOwn = async (
             return said(
                 openStored(deps, read, { mode: 'continue', parentLock: claim.lock }, taking),
             )
-        const opened = !!(await openStored(deps, read, { mode: 'resume', lock: claim.lock }))
+        const opened = !!(await openStored(deps, read, {
+            mode: 'resume',
+            lock: claim.lock,
+            ...(record.copyOf ? { copyOf: record.copyOf } : {}),
+        }))
         return { opened, journal }
     }
     // Continued in another tab during the gap: a fork.
