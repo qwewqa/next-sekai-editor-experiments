@@ -5,7 +5,8 @@ import { createWorld, flow, settle } from './world'
 const { storageStatus } = await import('../../../src/local/startup/events')
 
 // A Save refused while an open's import is pending says storage is full when storing is paused
-// full (the import cannot store then); every other pending case keeps the line about the file.
+// full (the import cannot store then) and does not call the file unread after another storage
+// failure; every other pending case keeps the line about the file.
 
 afterEach(() => {
     storageStatus.value = undefined
@@ -37,4 +38,12 @@ test('a Save refused for an import still running keeps the line about the file',
         undefined,
     ] as const)
         assert.match(await refusedLine(status), /^Not saved\. ".*" could not be read completely\.$/)
+})
+
+test('a Save refused for a pending import after a failed store does not call the file unread', async () => {
+    for (const status of [
+        { mode: 'stored', reason: 'failed' },
+        { mode: 'memory', reason: 'failed' },
+    ] as const)
+        assert.match(await refusedLine(status), /^".*" could not be prepared\.$/)
 })
