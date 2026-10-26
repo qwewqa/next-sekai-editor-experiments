@@ -7,7 +7,7 @@ import { preprocessCSS, resolveConfig } from 'vite'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
-// A build transforms both pages' stylesheets at once, in no fixed order.
+// A build transforms both stylesheets in no fixed order, so the landing one can come first.
 test('the editor’s stylesheet keeps its utilities when the landing stylesheet goes first', async () => {
     const config = await resolveConfig({ root, logLevel: 'silent' }, 'build')
     const css = async (file) => {
@@ -18,5 +18,5 @@ test('the editor’s stylesheet keeps its utilities when the landing stylesheet 
     const editor = await css('src/index.css')
     for (const utility of ['.absolute', '.size-full', '.grid'])
         assert.ok(editor.includes(`${utility} {`), `src/index.css lacks ${utility}`)
-    assert.ok(!landing.includes('.size-full {'), 'landing.css uses its own config')
+    assert.ok(!landing.includes('.size-full {'), 'landing.css was built with the editor’s config')
 })

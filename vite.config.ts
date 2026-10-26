@@ -57,8 +57,8 @@ export default defineConfig(({ mode }) => ({
     },
     css: {
         postcss: {
-            // Uncalled, so each file gets its own Tailwind. A shared one applies the @config of
-            // landing.css to every later file, the editor's stylesheet included.
+            // Uncalled, so PostCSS creates a Tailwind instance for each file. A shared instance
+            // keeps the @config of landing.css for every file after it.
             plugins: [tailwind, autoprefixer()],
         },
     },

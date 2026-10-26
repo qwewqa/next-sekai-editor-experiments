@@ -451,7 +451,7 @@ test('index.html must load gate.js, a classic script, before the bundle', async 
 
 test('a release fails when the editor’s stylesheet lacks the layout utilities', async (t) => {
     const { directory, assets } = await releaseFixture(t)
-    // The stylesheet Tailwind makes from the landing pages' content alone.
+    // The stylesheet Tailwind generates from the landing pages' content alone.
     await write(directory, 'assets/index-12345678.css', '.flex{display:flex}.fixed{position:fixed}')
     await writeReleaseManifest(directory, metadata, assets)
     await assert.rejects(checkRelease(directory), /stylesheet lacks \.absolute and \.size-full$/)
