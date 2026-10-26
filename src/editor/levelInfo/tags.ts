@@ -7,13 +7,14 @@ export const tagsText = (tags: readonly LevelInfoTag[]) => tags.map((tag) => tag
 
 /**
  * The tags a line gives. A line equal to `tagsText(old)` returns `old`, so a comma inside a title
- * stays. Otherwise the line is split on commas, trimmed, and its empty entries dropped.
+ * stays. Otherwise the line is split on commas (also the full-width and ideographic ones that
+ * Chinese and Japanese input methods type), trimmed, and its empty entries dropped.
  */
 export const parseTags = (text: string, old: readonly LevelInfoTag[]): readonly LevelInfoTag[] =>
     text === tagsText(old)
         ? old
         : text
-              .split(',')
+              .split(/[,，、､]/)
               .map((part) => part.trim())
               .filter((title) => title)
               .map((title) => ({ title }))

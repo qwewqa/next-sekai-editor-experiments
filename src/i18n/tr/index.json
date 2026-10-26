@@ -1883,6 +1883,7 @@
     "loadingSkin": "Görünüm yükleniyor…",
     "skinUnavailable": "Önizleme görünümü yüklenemedi.",
     "graphicsUnavailable": "Önizleme grafikleri başlatılamadı.",
+    "chartGraphicsUnavailable": "Grafikler başlatılamadı.",
     "graphicsHelp": "Tarayıcınızda grafik hızlandırmanın ve WebGL özelliğinin etkin olduğunu kontrol edin. Gerekirse tarayıcıyı yeniden başlatın.",
     "errorDetails": "Hata ayrıntıları",
     "reload": "Yeniden Yükle",

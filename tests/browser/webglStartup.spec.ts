@@ -103,7 +103,7 @@ for (const mode of ['sync', 'async'] as const) {
         await openEditor(page, false)
         const alert = page.locator('.rendering-error')
         // The headline is localized; the raw message is the detail behind the disclosure.
-        await expect(alert).toContainText('Preview graphics could not be started.')
+        await expect(alert).toContainText('Graphics could not be started.')
         const message =
             mode === 'sync'
                 ? 'Unable to create the editor WebGL2 context'
