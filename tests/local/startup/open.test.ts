@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { maxBeat } from '../../../src/chart/limits'
 import { toHex } from '../../../src/local/hash'
 import { journalState } from '../../../src/local/journal/content'
 import { readJournal } from '../../../src/local/journal/format'
@@ -16,6 +17,8 @@ import { claimSessionLock, MARKER_WAIT_MS } from '../../../src/local/startup/tab
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
+import { addBpm } from '../../../src/state/mutations/bpm'
+import { createTransaction } from '../../../src/state/transaction'
 import { editStep, futureFixtureOperation, nativeOperation } from '../../helpers/historySteps'
 import '../../helpers/lockChecks'
 import { rows, workerCore } from '../flush/harness'
@@ -505,6 +508,30 @@ test('a session this build canâ€™t open is never passed over silently: a reloadâ
     const visit = await load(world, 'visit', storage)
     assert.equal(openSession(visit).parent?.id, older.id)
     assert.deepEqual(visit.events[0], { kind: 'notOpened', which: 'newest', why: 'later' })
+})
+
+test('a stored head past the chart limits is said not to open, not left to the error gate', async () => {
+    const world = createWorld({ seed: 14 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    // A crafted store, as no edit makes this state.
+    const transaction = createTransaction(stateOf(goldenChart()))
+    addBpm(transaction, { beat: maxBeat + 1, bpm: 120 })
+    const session = beginSession(first, transaction.commit([]))
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const tab: TabStorage = new Map()
+    recordTab(tab, { sessionId: session.id, start: 'stored' })
+
+    const quiet = console.error
+    console.error = () => undefined
+    try {
+        const reload = await load(world, 'reload', storage, { tab })
+        assert.equal(reload.opened, false)
+        assert.deepEqual(reload.events, [{ kind: 'notOpened', which: 'reload', why: 'damaged' }])
+    } finally {
+        console.error = quiet
+    }
 })
 
 test('a newer database outside safe mode: a reload continues from its own journal, as with storage unavailable', async () => {

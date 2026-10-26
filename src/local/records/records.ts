@@ -7,7 +7,6 @@ import type { StageStyleEventObject } from '../../chart/events/stage/style'
 import type { StageTransformEventObject } from '../../chart/events/stage/transform'
 import type { FolderId, Folders } from '../../chart/folders'
 import type { GroupId, Groups } from '../../chart/groups'
-import { assertWithinLimits } from '../../chart/limits'
 import type { NoteObject } from '../../chart/note'
 import type { StageId, Stages } from '../../chart/stages'
 import type { TimeScaleObject } from '../../chart/timeScale'
@@ -402,9 +401,6 @@ export const fromRecords = ({ header, kinds }: SnapshotRecords): RecordsContent 
                 break
         }
     }
-
-    // A snapshot past the limits is damaged, as the editor would refuse it on reopening.
-    assertWithinLimits(chart)
 
     return {
         chart,

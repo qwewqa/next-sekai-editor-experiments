@@ -1,4 +1,5 @@
 import type { RecordValue } from '../records/canonical'
+import { recordPastLimit } from '../records/limits'
 import { kindNames, type KindName } from '../records/schema'
 import type { DiffInput, KindCandidates } from './diff'
 
@@ -88,7 +89,11 @@ export const readCandidates = async (
             const records = async (chunks: readonly string[]) => {
                 const list: Rec[] = []
                 for (const chunk of chunks)
-                    for (const record of need(await source.chunk(chunk))) list.push(record)
+                    for (const record of need(await source.chunk(chunk))) {
+                        // Past the limits is damage: building it would hang the grid.
+                        if (recordPastLimit(kind, record)) throw new Unreadable()
+                        list.push(record)
+                    }
                 return list
             }
             kinds.push({ kind, before: await records(chunksA), after: await records(chunksB) })

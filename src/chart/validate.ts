@@ -1,5 +1,5 @@
 import type { Chart } from '.'
-import { chartObjects, isWithinLimit } from './limits'
+import { isWithinLimit } from './limits'
 import { ImportRefusal } from './refusal'
 
 export const validateChart = (chart: Chart) => {
@@ -12,7 +12,16 @@ export const validateChart = (chart: Chart) => {
 export const validateValues = (chart: Chart) => {
     // Level data refuses these, so the editor could not reopen its own file.
     const notes = chart.slides.flat()
-    const objects = chartObjects(chart)
+    const objects = [
+        ...chart.bpms,
+        ...chart.timeScales,
+        ...chart.cameraEvents,
+        ...chart.stageMaskEvents,
+        ...chart.stagePivotEvents,
+        ...chart.stageStyleEvents,
+        ...chart.stageTransformEvents,
+        ...notes,
+    ]
     if (objects.some(({ beat }) => beat < 0)) throw new ImportRefusal('negativeBeat')
     if (notes.some(({ size }) => size < 0)) throw new ImportRefusal('negativeNoteSize')
     if (chart.bpms.some(({ bpm }) => !(bpm > 0 && Number.isFinite(bpm))))
