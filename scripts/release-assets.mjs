@@ -6,9 +6,13 @@ import { itemDetailsUrl } from '../src/preview/assets/serverUrl.ts'
 
 const defaults = {
     skin: 'https://coconut.sonolus.com/next-sekai/skins/coconut-next-sekai-1',
+    skin2: 'https://coconut.sonolus.com/next-sekai/skins/coconut-next-sekai-2',
     particle: 'https://coconut.sonolus.com/next-sekai/particles/coconut-next-sekai-1',
 }
-const categories = { skin: 'skins', particle: 'particles' }
+const categories = { skin: 'skins', skin2: 'skins', particle: 'particles' }
+const optionalLocal = new Set(['skin2', 'particle'])
+// Franchise artwork stays out of the package. A lock entry says so with `thumbnail: false`.
+const withoutThumbnail = new Set(['particle'])
 const lockFile = 'deployment/preview-assets.lock.json'
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
@@ -91,11 +95,17 @@ function normalizeItem(item, base, requireHash = false) {
         ...item,
         data: resourceReference(item.data, base, requireHash),
         texture: resourceReference(item.texture, base, requireHash),
+        ...(item.thumbnail && { thumbnail: resourceReference(item.thumbnail, base, requireHash) }),
     }
 }
 
-async function packageItem({ source, item }, category) {
-    const [data, texture] = await Promise.all([resource(item.data), resource(item.texture)])
+async function packageItem({ source, item }, category, withThumbnail = true) {
+    const { thumbnail, ...rest } = item
+    const [data, texture, image] = await Promise.all([
+        resource(item.data),
+        resource(item.texture),
+        withThumbnail && thumbnail ? resource(thumbnail) : undefined,
+    ])
     const decoded = JSON.parse(gunzipSync(data))
     if (
         !Array.isArray(decoded.sprites) ||
@@ -103,9 +113,10 @@ async function packageItem({ source, item }, category) {
     )
         throw new Error('Invalid preview resource data')
     const packagedItem = {
-        ...item,
+        ...rest,
         data: { ...item.data, url: '/data' },
         texture: { ...item.texture, url: '/texture' },
+        ...(image && { thumbnail: { ...thumbnail, url: '/thumbnail' } }),
     }
     const json = (value) => Buffer.from(JSON.stringify(value))
     return {
@@ -114,6 +125,7 @@ async function packageItem({ source, item }, category) {
             [`sonolus/${category}/${item.name}`]: json({ item: packagedItem }),
             data,
             texture,
+            ...(image && { thumbnail: image }),
         }),
         source,
         title: item.title,
@@ -121,29 +133,60 @@ async function packageItem({ source, item }, category) {
     }
 }
 
-export async function downloadPackage(source, category) {
-    return packageItem(await resolveItem(source, category), category)
+export async function downloadPackage(source, category, withThumbnail = true) {
+    return packageItem(await resolveItem(source, category), category, withThumbnail)
 }
 
-function lockItem(item, base) {
+function lockItem(item, base, withThumbnail) {
     const { name, source, version, title, subtitle, author, thumbnail, data, texture } = item
     return normalizeItem(
-        { name, source, version, title, subtitle, author, thumbnail, data, texture },
+        {
+            name,
+            source,
+            version,
+            title,
+            subtitle,
+            author,
+            ...(withThumbnail && { thumbnail }),
+            data,
+            texture,
+        },
         base,
         true,
     )
 }
 
+async function readLock(root) {
+    const lock = JSON.parse(await readFile(join(root, lockFile), 'utf8'))
+    if (lock.version !== 1) throw new Error('Unsupported preview asset lock version')
+    return lock
+}
+
+async function thumbnailPolicy(root, name) {
+    let entry
+    try {
+        entry = (await readLock(root))[name]
+    } catch (error) {
+        if (error.code !== 'ENOENT') throw error
+    }
+    return entry ? entry.thumbnail !== false : !withoutThumbnail.has(name)
+}
+
 export async function refreshPreviewAssetLock(root, env = process.env) {
     const lock = { version: 1 }
     for (const [name, category] of Object.entries(categories)) {
+        const withThumbnail = await thumbnailPolicy(root, name)
         const resolved = await resolveItem(
             env[`PREVIEW_${name.toUpperCase()}_URL`] || defaults[name],
             category,
         )
-        resolved.item = lockItem(resolved.item, resolved.source)
-        const { bytes } = await packageItem(resolved, category)
-        lock[name] = { ...resolved, sha256: sha256(bytes) }
+        resolved.item = lockItem(resolved.item, resolved.source, withThumbnail)
+        const { bytes } = await packageItem(resolved, category, withThumbnail)
+        lock[name] = {
+            ...resolved,
+            ...(!withThumbnail && { thumbnail: false }),
+            sha256: sha256(bytes),
+        }
     }
     await mkdir(join(root, 'deployment'), { recursive: true })
     await writeFile(join(root, lockFile), `${JSON.stringify(lock, null, 4)}\n`)
@@ -151,15 +194,14 @@ export async function refreshPreviewAssetLock(root, env = process.env) {
 }
 
 async function lockedPackage(root, name, category) {
-    const lock = JSON.parse(await readFile(join(root, lockFile), 'utf8'))
-    if (lock.version !== 1) throw new Error('Unsupported preview asset lock version')
-    const entry = lock[name]
+    const entry = (await readLock(root))[name]
     if (!entry || !/^[a-f0-9]{64}$/.test(entry.sha256))
         throw new Error(`Invalid preview asset lock entry: ${name}`)
     const source = itemDetailsUrl(entry.source, category)
     const loaded = await packageItem(
         { source, item: normalizeItem(entry.item, source, true) },
         category,
+        entry.thumbnail !== false,
     )
     if (sha256(loaded.bytes) !== entry.sha256)
         throw new Error(`Locked preview package hash mismatch: ${name}`)
@@ -180,13 +222,13 @@ export async function stagePreviewAssets(root, destination, env = process.env) {
                     source: `public/resource/${name}.scp`,
                 }
             } catch (error) {
-                if (name === 'particle' && error.code === 'ENOENT') continue
+                if (optionalLocal.has(name) && error.code === 'ENOENT') continue
                 throw error
             }
         } else {
             const override = env[`PREVIEW_${name.toUpperCase()}_URL`]
             loaded = override
-                ? await downloadPackage(override, category)
+                ? await downloadPackage(override, category, await thumbnailPolicy(root, name))
                 : await lockedPackage(root, name, category)
         }
         const { bytes, ...metadata } = loaded
