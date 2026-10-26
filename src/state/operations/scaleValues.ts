@@ -1,4 +1,5 @@
 import type { State } from '..'
+import { maxBeat, maxLane, maxSize } from '../../chart/limits'
 import { alignComputed } from '../../utils/math'
 import type { Entity } from '../entities'
 import type { SlideInfos } from '../entities/slides/hiddenTicks'
@@ -184,7 +185,7 @@ export const isWithinGridBudget = (source: State, values: Map<EditableEntity, nu
 
 /** Whether objects can move to these beats; Scale Selection refuses results past this. */
 export const isWithinBeatRange = (source: State, values: Map<EditableEntity, number>) =>
-    [...values.values()].every((beat) => Number.isSafeInteger(Math.floor(beat))) &&
+    [...values.values()].every((beat) => Math.abs(beat) <= maxBeat) &&
     isWithinGridBudget(source, values)
 
 /** A moved beat; the editor's cleans float noise onto its grid at the division passed with it. */
@@ -234,6 +235,8 @@ const validWidthValues = (values: Map<EditableEntity, number>, factor: number) =
         if (
             !Number.isFinite(size) ||
             size < 0 ||
+            size > maxSize ||
+            Math.abs(left) > maxLane ||
             !Number.isFinite(left + size) ||
             (originalSize > 0 && !(left + size > left)) ||
             (entity.type === 'cameraEventJoint' && (size < 6 || size > 24))
@@ -287,7 +290,7 @@ const transformValues = (
         if (
             !Number.isFinite(transformed) ||
             (axis === 'beat' &&
-                ((transformed < 0 && value >= 0) || !Number.isSafeInteger(Math.floor(transformed))))
+                ((transformed < 0 && value >= 0) || Math.abs(transformed) > maxBeat))
         )
             return
         if (axis === 'beat') {

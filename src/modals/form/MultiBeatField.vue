@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { maxBeat } from '../../chart/limits'
 import { fromDisplayedBeat, toDisplayedBeat } from '../../editor/beatDisplay'
 import { committedBarGrid, committedGrid } from '../../editor/beatGrid'
 import { view } from '../../editor/view'
@@ -29,6 +30,7 @@ const setStep = (value: number) => {
         v-model="displayedBeat"
         :label="i18n.modals.form.beat.label"
         :min="1"
+        :max="maxBeat + 1"
         step="any"
         :set-step
     />

@@ -572,25 +572,35 @@ test('elevation eligibility indexes each slide once and follows replaced info ar
     assert.equal(visits, notes.length)
 })
 
-test('connected grid expansion is bounded while large point-grid positions remain allowed', () => {
+test('width scaling and translation refuse a lane or a size past the limits', () => {
+    const notes = [
+        { ...source('note', 3), left: 2, size: 2 },
+        { ...source('note', 5), left: 6, size: 4 },
+    ]
+    assert.ok(getScaledSelectionValues(notes, 'width', 100))
+    assert.equal(getScaledSelectionValues(notes, 'width', 1e4), undefined)
+    assert.equal(getScaledSelectionValues(notes, 'width', 1e9), undefined)
+    assert.ok(getTranslatedSelectionValues(notes, 'width', 4000))
+    assert.equal(getTranslatedSelectionValues(notes, 'width', 1e9), undefined)
+    assert.equal(getTranslatedSelectionValues(notes, 'width', -1e9), undefined)
+})
+
+test('scaled beats stay within the largest beat, for connected notes and for points', () => {
     const state = emptyState()
     const slideId = 1 as SlideId
     const head = { ...source('note', 0), slideId }
     const tail = { ...source('note', 4), slideId }
     state.store.slides.note.set(slideId, [head, tail])
-    const boundary = getScaledSelectionValues([head, tail], 'beat', 250001, state)
+    const boundary = getScaledSelectionValues([head, tail], 'beat', 24999, state)
     assert.ok(boundary)
-    assert.deepEqual([...boundary.values()], [0, 1000004])
-    assert.equal(getScaledSelectionValues([head, tail], 'beat', 250001.25, state), undefined)
+    assert.deepEqual([...boundary.values()], [0, 99996])
+    assert.equal(getScaledSelectionValues([head, tail], 'beat', 25001, state), undefined)
     assert.equal(getScaledSelectionValues([head, tail], 'beat', 1e12, state), undefined)
-    const largePoint = getScaledSelectionValues(
-        [source('bpm', 0), source('bpm', 4)],
-        'beat',
-        1e12,
-        state,
-    )
+    const points = [source('bpm', 0), source('bpm', 4)]
+    const largePoint = getScaledSelectionValues(points, 'beat', 1e4, state)
     assert.ok(largePoint)
-    assert.deepEqual([...largePoint.values()], [0, 4e12])
+    assert.deepEqual([...largePoint.values()], [0, 4e4])
+    assert.equal(getScaledSelectionValues(points, 'beat', 1e12, state), undefined)
     assert.deepEqual(
         [...getScaledSelectionValues([head, tail], 'beat', 0.5, state)!.values()],
         [0, 2],
