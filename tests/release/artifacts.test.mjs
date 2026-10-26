@@ -77,11 +77,11 @@ async function builtinRelease() {
 
 async function releaseFixture(t) {
     const directory = await temporary(t)
-    const assets = ['skin', 'particle'].map((name) => {
+    const assets = ['skin', 'skin2', 'particle', 'effect2'].map((name) => {
         const bytes = Buffer.from(`test ${name} package`)
         return {
             file: `resource/${name}.scp`,
-            source: `https://example.com/sonolus/${name === 'skin' ? 'skins' : 'particles'}/fixture`,
+            source: `https://example.com/sonolus/${name.startsWith('skin') ? 'skins' : name === 'effect2' ? 'effects' : 'particles'}/fixture`,
             bytes: bytes.length,
             sha256: sha256(bytes),
         }
@@ -90,7 +90,7 @@ async function releaseFixture(t) {
         await write(
             directory,
             asset.file,
-            `test ${asset.file.includes('skin') ? 'skin' : 'particle'} package`,
+            `test ${asset.file.slice('resource/'.length, -'.scp'.length)} package`,
         )
     for (const file of [...staticFiles, ...noticeFiles])
         await write(directory, file, `test ${file}`)
