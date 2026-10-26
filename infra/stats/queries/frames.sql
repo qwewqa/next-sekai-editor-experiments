@@ -1,5 +1,6 @@
 -- Long frames per minute of visible playback, by the preview host and render scale. A perf event counts
--- long frames while playing ("frames.playing.<range>") and the visible playback seconds. Only summaries from
+-- long frames while playing ("frames.playing.<range>", absent when there were none, which counts as 0) and the
+-- visible playback seconds. Only summaries from
 -- a browser that reports long frames (loafSupported) with every frame sorted by when it began
 -- (frameAttribution "full") count.
 WITH perf AS (
@@ -8,7 +9,7 @@ WITH perf AS (
            max(d.string_value) FILTER (WHERE d.data_key = 'frameAttribution') AS attribution,
            max(d.string_value) FILTER (WHERE d.data_key = 'previewHost') AS host,
            max(d.string_value) FILTER (WHERE d.data_key = 'previewRenderScale') AS render_scale,
-           sum(d.number_value) FILTER (WHERE d.data_key LIKE 'frames.playing.%') AS long_frames,
+           coalesce(sum(d.number_value) FILTER (WHERE d.data_key LIKE 'frames.playing.%'), 0) AS long_frames,
            max(d.number_value) FILTER (WHERE d.data_key = 'playSeconds') AS play_seconds
     FROM website_event e
     JOIN event_data d ON d.website_event_id = e.event_id
@@ -38,6 +39,6 @@ WITH perf AS (
 )
 SELECT count(*) AS summaries_with_playback,
        count(*) FILTER (WHERE NOT (supported AND attribution = 'full')) AS left_out,
-       round(100.0 * count(*) FILTER (WHERE NOT (supported AND attribution = 'full')) / count(*)) AS left_out_percent
+       round(100.0 * count(*) FILTER (WHERE NOT (supported AND attribution = 'full')) / nullif(count(*), 0)) AS left_out_percent
 FROM perf
 WHERE play_seconds > 0;

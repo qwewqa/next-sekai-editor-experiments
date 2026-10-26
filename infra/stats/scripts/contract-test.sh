@@ -56,16 +56,16 @@ step "a batch from a browser"
 RESPONSE=$(curl -fsS -D /tmp/nse-contract.headers -X POST http://localhost:3000/api/batch \
     -H 'Content-Type: text/plain' -H "User-Agent: $BROWSER" -H 'X-Real-IP: 203.0.113.7' --data "$BATCH")
 echo "$RESPONSE"
-if [ "$(jq .processed <<< "$RESPONSE")" != 16 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
+if [ "$(jq .processed <<< "$RESPONSE")" != 17 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
 grep -qi '^access-control-allow-origin: \*' /tmp/nse-contract.headers || fail "no CORS header on the batch response"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 16 ] || fail "expected 16 stored events"
-[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 85 ] || fail "the event data was not stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 17 ] || fail "expected 17 stored events"
+[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 90 ] || fail "the event data was not stored"
 
 step "a bot User-Agent is dropped"
 BOT=$(curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -H 'User-Agent: python-requests/2.32' \
     --data "$(ev nightly '{}')")
 grep -q beep <<< "$BOT" || fail "a bot User-Agent was not dropped: $BOT"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 16 ] || fail "the bot's event was stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 17 ] || fail "the bot's event was stored"
 
 step "nightly.sh clean"
 sql -c "UPDATE session SET region = 'WA', city = 'Seattle'"
@@ -88,7 +88,9 @@ for table in website website_event event_data session _prisma_migrations; do
 done
 
 step "saved queries"
-run_query() { dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -v "website=$WEBSITE" -tA -F'|' < "../queries/$1.sql"; }
+run_query() { # query, website (default: the one with the batch)
+    dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -v "website=${2:-$WEBSITE}" -tA -F'|' < "../queries/$1.sql"
+}
 expect() { # query, a row it must print
     # The rows are captured first: grep -q exits at its match, and under pipefail the closed pipe fails psql.
     local rows
@@ -114,9 +116,18 @@ expect startup 'reload|cache|2|2|2000|2250|2400|2450|0'
 expect startup 'navigate|network|1|0|||||'
 expect startup '1000-1299|1'
 expect frames 'worker|1|1|4|120|2.00'
-expect frames '2|1|50'
+expect frames 'worker|2|1|0|60|0.00'
+expect frames '3|1|33'
 expect actions 'save|save|writeBack|1M-2M|2|1000|1160'
 expect actions 'open|||256K-512K|1|400|400'
 expect peek 'cached|5'
 expect peek '25-50|3'
+# A website with no events: every query still runs, and the share left out of the frames is empty, not an error.
+EMPTY=$(cat /proc/sys/kernel/random/uuid)
+sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$EMPTY', 'empty', 'nse.qwewqa.dev')"
+for file in ../queries/*.sql; do
+    run_query "$(basename "$file" .sql)" "$EMPTY" > /dev/null
+done
+rows=$(run_query frames "$EMPTY")
+[ "$rows" = "0|0|" ] || fail "frames.sql on a website with no events printed: $rows"
 echo "All checks passed."

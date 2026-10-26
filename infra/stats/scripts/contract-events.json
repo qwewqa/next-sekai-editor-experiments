@@ -158,6 +158,16 @@
         }
     },
     {
+        "name": "perf",
+        "data": {
+            "loafSupported": true,
+            "frameAttribution": "full",
+            "playSeconds": 60,
+            "previewHost": "worker",
+            "previewRenderScale": "2"
+        }
+    },
+    {
         "name": "features",
         "data": {
             "autoscroll": 2
