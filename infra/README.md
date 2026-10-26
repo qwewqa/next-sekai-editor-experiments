@@ -8,12 +8,12 @@ This folder is in neither the web build nor the native build, and has no `packag
 
 `nse-prod` and `nse-dev` are member accounts of the maintainer’s AWS Organization. They hold only the Next SEKAI Editor’s services. Another project gets its own accounts, and none of its stacks go here. Everything is in `us-west-2`.
 
-| Where                  | What                                                                                                                                                                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `account/account.yaml` | The baseline, deployed once per account and again when a service is added: GitHub OIDC, the alert topic, the account budget, the services zone, and a deploy role and an execution role per service |
-| `stats/`               | The first service, with its own template, host files, scripts, saved queries and runbook (`stats/README.md`)                                                                                        |
-| `check_templates.py`   | The rules we check on every template, the host files, the workflows and `leftover.sh`, in addition to `cfn-lint`                                                                                    |
-| `create-accounts.sh`   | The one-time account creation                                                                                                                                                                       |
+| Where                  | What                                                                                                                                                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `account/account.yaml` | The baseline, deployed once per account and again when a service is added: GitHub OIDC, the alert topic, the account budget, the services zone, an IAM Access Analyzer for external access, and a deploy role and an execution role per service |
+| `stats/`               | The first service, with its own template, host files, scripts, saved queries and runbook (`stats/README.md`)                                                                                                                                    |
+| `check_templates.py`   | The rules we check on every template, the host files, the workflows and `leftover.sh`, in addition to `cfn-lint`                                                                                                                                |
+| `create-accounts.sh`   | The one-time account creation                                                                                                                                                                                                                   |
 
 The account ids, email addresses and secrets are not in the repository. The ids are GitHub Environment variables, the email is passed on the command line, and a service generates its secrets on its own server.
 
@@ -83,6 +83,7 @@ A service’s template can create roles with any permissions: `nse-<service>-cfn
 | GitHub OIDC provider, IAM roles    | `AWS::IAM::OIDCProvider`, `AWS::IAM::Role`  | $0                         | No charge                                                                                                                                    |
 | Alert topic and email subscription | `AWS::SNS::Topic`, `AWS::SNS::Subscription` | $0                         | A few emails a year                                                                                                                          |
 | Budget                             | `AWS::Budgets::Budget`                      | $0                         | “You can monitor and receive notifications on your budgets free of charge” (https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/) |
+| Access Analyzer                    | `AWS::AccessAnalyzer::Analyzer`             | $0                         | External access analysis is free; only unused and internal access analysis is charged (https://aws.amazon.com/iam/access-analyzer/pricing/)  |
 
 Each environment’s zone costs $0.50 a month. For `nse-dev` that is the whole cost while stats is down. The baseline adds nothing to a service’s own cost table. The budgets are $30 for prod and $1 for dev. Each sends an email at 80% of actual cost and at 100% of forecast cost.
 

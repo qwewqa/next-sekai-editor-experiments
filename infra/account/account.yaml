@@ -35,6 +35,16 @@ Resources:
                 - { Key: 'nse:service', Value: shared }
                 - { Key: 'nse:env', Value: !Ref Environment }
 
+    # Reports any resource here that is shared outside the account. External-access analysis is free.
+    AccessAnalyzer:
+        Type: AWS::AccessAnalyzer::Analyzer
+        Properties:
+            AnalyzerName: nse-external-access
+            Type: ACCOUNT
+            Tags:
+                - { Key: 'nse:service', Value: shared }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
     AlertTopic:
         Type: AWS::SNS::Topic
         Properties:
@@ -106,6 +116,9 @@ Resources:
                               'token.actions.githubusercontent.com:aud': sts.amazonaws.com
                               # GitHub's immutable subject, owner@owner-id/name@repository-id, which a renamed or recreated repository does not match.
                               'token.actions.githubusercontent.com:sub': !Sub repo:qwewqa@17557038/next-sekai-editor-experiments@1421592566:environment:stats-${Environment}
+                              # Prod also checks the branch here, in case the Environment's branch rule is relaxed.
+                              'token.actions.githubusercontent.com:ref':
+                                  !If [IsProd, refs/heads/main, !Ref AWS::NoValue]
             Policies:
                 - PolicyName: deploy
                   PolicyDocument:

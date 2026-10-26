@@ -28,6 +28,7 @@ SERVICES = {
         "readme": "README.md",
         "types": {
             "AWS::IAM::OIDCProvider": ("Tags", None, False),
+            "AWS::AccessAnalyzer::Analyzer": ("Tags", None, False),
             "AWS::IAM::Role": ("Tags", None, False),
             "AWS::SNS::Topic": ("Tags", None, False),
             "AWS::SNS::Subscription": (None, None, False),
