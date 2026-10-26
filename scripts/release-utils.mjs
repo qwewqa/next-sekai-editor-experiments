@@ -393,6 +393,22 @@ async function checkPages(directory, files, manifest) {
         throw new Error(`index.html does not match the site: ${manifest.site}`)
 }
 
+// Without these the chart canvas grows without limit and the editor's page hangs.
+const layoutUtilities = ['absolute', 'size-full']
+
+async function checkStylesheet(directory, files) {
+    const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
+    const linked = [...index.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="\/([^"]+)"/g)]
+        .map((match) => match[1])
+        .filter((file) => files.includes(file))
+    let css = ''
+    for (const file of linked) css += (await regularFile(join(directory, file))).toString('utf8')
+    const missing = layoutUtilities.filter(
+        (name) => !new RegExp(String.raw`\.${name}(?![\w-])`).test(css),
+    )
+    if (missing.length) throw new Error(`The editor’s stylesheet lacks .${missing.join(' and .')}`)
+}
+
 // The apps' bridge and the dev-only sample seeder (src/local/seed.ts) must not reach the web build.
 // A production-site build names no test key but these (src/platform/testKeys.ts); the test site may.
 const liveTestKeys = ['nse.test.version', 'nse.test.storage', 'nse.test.startBlank']
@@ -467,6 +483,7 @@ export async function checkRelease(directory, expected = {}) {
     await checkLyonRelease(directory, files)
     await checkBuiltinRelease(directory, files)
     await checkPages(directory, files, manifest)
+    await checkStylesheet(directory, files)
     await checkBundles(directory, files, manifest.site)
     await checkAnalytics(directory, files, manifest.analytics, manifest.site)
     const recorded = Object.keys(manifest.files).sort()

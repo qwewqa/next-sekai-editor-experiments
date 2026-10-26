@@ -57,7 +57,8 @@ export default defineConfig(({ mode }) => ({
     },
     css: {
         postcss: {
-            plugins: [tailwind(), autoprefixer()],
+            // A Tailwind per CSS file and Vue <style> block, or landing.css's @config carries over
+            plugins: [tailwind, autoprefixer()],
         },
     },
     plugins: [
