@@ -14,7 +14,7 @@ Usage statistics for the web editor: a self-hosted [Umami](https://umami.is) on 
 | Data         | One encrypted gp3 volume at `/data`: PostgreSQL, Caddy’s certificates and `secrets.env`. The volume is retained when the stack is replaced or deleted                                                                                      |
 | Secrets      | `update.sh` generates Umami’s `APP_SECRET` and the database password on first boot, into `/data/secrets.env` (readable by root only), on the encrypted data volume. They are not in the repository, in GitHub or in an AWS secrets service |
 | Backups      | A weekly `pg_dump` (Sundays, 03:00 UTC) to an S3 bucket, kept 28 days. The bucket is versioned in prod only. The instance can add and list dumps, not read or delete them                                                                  |
-| Nightly job  | `host/nightly.sh` runs at 03:00 UTC in prod. It clears the region and city Umami adds, dumps on Sundays, and checks the last dump, the disk (80%) and a test event. A failed check sends an email through the alert topic                  |
+| Nightly job  | `host/nightly.sh` runs at 03:00 UTC in prod. It clears the region and city Umami adds, dumps on Sundays, and checks the last dump, both disks (80%) and a test event. A failed step or check sends one email through the alert topic       |
 | Patches      | Unattended security upgrades, rebooting at 04:00 UTC when needed                                                                                                                                                                           |
 | Recovery     | EC2’s own recovery for a failed system check. In prod, one alarm reboots the instance after 5 minutes of failed instance checks and emails                                                                                                 |
 
@@ -108,11 +108,13 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
 
     Nothing is deleted automatically. If the privacy page states a retention limit, add these statements to `clean` in `nightly.sh`.
 
-- **A nightly email** names the check that failed:
+- **A nightly email** names what failed. The checks run even after a failed step:
+    - the clean-up, the Sunday dump or `VACUUM` failed, for example because the database is down;
     - there is no dump in S3, or the dumps could not be listed (prod);
     - the newest dump is more than 8 days old (prod);
-    - the data volume is 80% full or more;
-    - the test event was refused, or did not reach the database.
+    - the data volume (`/data`) or the root volume (`/`) is 80% full or more;
+    - the test event was refused, or did not reach the database;
+    - the script itself stopped with an error.
 
     A separate email says that `/data` is not mounted. Each email ends with a pointer to this section. The log is `journalctl -u nse-stats-nightly`.
 
