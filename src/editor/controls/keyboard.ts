@@ -110,12 +110,14 @@ const returnsDeselect = (element: Element | null) => {
 export const isSaveChord = (event: KeyboardEvent) =>
     isCommandChord(event) && !event.shiftKey && event.key.toLowerCase() === 's'
 
+/** Runs before any component can stop the key, so Save Page never opens. */
+const cancelSavePage = (event: KeyboardEvent) => {
+    if (isSaveChord(event)) event.preventDefault()
+}
+
 const onKeydown = (event: KeyboardEvent) => {
-    if (isBlockingModalOpen.value) {
-        // A modal takes no commands, but Save Page must not open over it.
-        if (isSaveChord(event)) event.preventDefault()
-        return
-    }
+    // A modal takes no commands.
+    if (isBlockingModalOpen.value) return
     if (pressesButton(event)) return
     // An open tool dialog takes Escape.
     if (isToolDialogOpen.value && event.key === 'Escape') return
@@ -170,9 +172,12 @@ const onKeydown = (event: KeyboardEvent) => {
         takesDockKeys(active) ||
         (inDialog && (isTextEntry(active) || active instanceof HTMLSelectElement))
     ) {
-        if (!commandChord || event.defaultPrevented || (isTextEntry(active) && !passesToEditor)) {
-            // The field keeps its keys, but Save Page still must not open.
-            if (isSaveChord(event)) event.preventDefault()
+        // The capture-phase cancel of Save Page marks a Save chord prevented; that does not count.
+        if (
+            !commandChord ||
+            (event.defaultPrevented && !isSaveChord(event)) ||
+            (isTextEntry(active) && !passesToEditor)
+        ) {
             return
         }
     }
@@ -216,10 +221,12 @@ export const useKeyboardControl = () => {
     )
 
     onMounted(() => {
+        addEventListener('keydown', cancelSavePage, true)
         addEventListener('keydown', onKeydown)
     })
 
     onUnmounted(() => {
+        removeEventListener('keydown', cancelSavePage, true)
         removeEventListener('keydown', onKeydown)
     })
 }

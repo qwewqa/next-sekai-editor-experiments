@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { confirmReset } from './resetConfirm'
 
@@ -300,6 +300,23 @@ test.describe('chords', () => {
         expect(await toolName(page)).toBe('brush')
         expect(await lastDefault(page)).toBe(true)
         await expect(page.getByRole('dialog')).toHaveCount(0)
+    })
+
+    test('Ctrl+S rebound to Copy with page text selected keeps the browser default out', async ({
+        page,
+    }) => {
+        await page.evaluate(() => {
+            const { settings } = window.editorTest
+            settings.keyboardShortcuts = { ...settings.keyboardShortcuts, copy: 'Mod+s' }
+            const text = document.body.appendChild(document.createElement('p'))
+            text.textContent = 'Note Speed'
+            getSelection()?.selectAllChildren(text)
+        })
+        await logDefaults(page)
+        await page.keyboard.press('Control+s')
+        expect(await lastDefault(page)).toBe(true)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        expect(await page.evaluate(() => String(getSelection()))).toBe('Note Speed')
     })
 
     test('with a modal open, Ctrl+S and Cmd+S keep the browser default out and save nothing', async ({
@@ -710,6 +727,77 @@ test.describe('dock', () => {
         expect(await toolName(page)).toBe('bpm')
         expect(await lastDefault(page)).toBe(true)
         await expect(control(page, 'Critical')).toBeFocused()
+    })
+})
+
+test.describe('Save from the preview', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.evaluate(() => {
+            window.editorTest.settings.previewPosition = 'top'
+            window.editorTest.settings.topDockHeight = 200
+            window.editorTest.settings.showPreview = true
+        })
+        await page
+            .locator('.preview')
+            .getByRole('button', { name: 'Show Preview Settings', exact: true })
+            .click()
+        await expect(
+            page.locator('.preview-controls').getByText('Note Speed', { exact: true }),
+        ).toBeVisible()
+    })
+
+    const saveDialog = (page: Page) =>
+        page.getByRole('dialog').filter({ hasText: 'Save Project File' })
+
+    // A key a component stops never reaches the window's bubble listeners, so the
+    // test dispatches it on the focused element and reads whether the page cancelled it.
+    const pressSave = (target: Locator) =>
+        target.evaluate(
+            (element) =>
+                !element.dispatchEvent(
+                    new KeyboardEvent('keydown', {
+                        key: 's',
+                        ctrlKey: true,
+                        bubbles: true,
+                        cancelable: true,
+                    }),
+                ),
+        )
+
+    test('a Preview Settings field holding typing keeps the browser default out and saves nothing', async ({
+        page,
+    }) => {
+        const field = page.locator('.preview-controls input[type="number"]').first()
+        await field.click()
+        await page.keyboard.type('3')
+        expect(await pressSave(field)).toBe(true)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+    })
+
+    test('a Preview Settings field showing its committed value saves', async ({ page }) => {
+        const field = page.locator('.preview-controls input[type="number"]').first()
+        await field.click()
+        await page.keyboard.press('Control+s')
+        await expect(saveDialog(page)).toBeVisible()
+    })
+
+    test('the Preview Settings toggle and its other controls save', async ({ page }) => {
+        const toggle = page.locator('.preview-settings-toggle')
+        await toggle.focus()
+        await page.keyboard.press('Control+s')
+        await expect(saveDialog(page)).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+
+        await page.locator('.preview-controls select').first().focus()
+        await page.keyboard.press('Control+s')
+        await expect(saveDialog(page)).toBeVisible()
+    })
+
+    test('a focused playback control keeps the browser default out', async ({ page }) => {
+        const button = page.locator('.preview-transport .transport-button').first()
+        await button.focus()
+        expect(await pressSave(button)).toBe(true)
     })
 })
 

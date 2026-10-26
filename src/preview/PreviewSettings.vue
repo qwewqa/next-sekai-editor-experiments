@@ -7,7 +7,7 @@ import { optionName } from '../modals/form/fieldUsage'
 import { observeWidth, unobserveWidth } from '../modals/form/widthObserver'
 import { holdsTyping, resyncInput, revertOnEscape, trackTypedText } from '../modals/form/resync'
 import { isApplePlatform, isCommandChord, matchBindings } from '../editor/controls/bindings'
-import { isTextEntry } from '../editor/controls/keyboard'
+import { isSaveChord, isTextEntry } from '../editor/controls/keyboard'
 import ToggleSwitch from '../modals/form/ToggleSwitch.vue'
 import { vScrollEdges } from '../directives/scrollEdges'
 import { getPanelPosition, setPanelPosition, workspaceDockAttribute } from '../editor/workspace'
@@ -96,7 +96,7 @@ const focusables = (root: ParentNode) =>
         (element) => element.getClientRects().length > 0 && !element.closest('[inert]'),
     )
 const onToggleKeydown = (event: KeyboardEvent) => {
-    event.stopPropagation()
+    if (!isSaveChord(event)) event.stopPropagation()
     if (event.key !== 'Tab' || event.shiftKey || !expanded.value) return
     event.preventDefault()
     header.value?.focus()
@@ -279,17 +279,18 @@ let isPointerChange = false
 const onPointerDown = () => {
     isPointerInput = true
 }
-// Undo and redo reach the editor from fields showing their value and other controls, as in docks.
-const passesHistory = (event: KeyboardEvent) =>
+// Undo, redo and save reach the editor from fields showing their value and other controls, as in docks.
+const passesToEditor = (event: KeyboardEvent) =>
     event.target instanceof Element &&
     (!isTextEntry(event.target) || !holdsTyping(event.target)) &&
     isCommandChord(event) &&
-    matchBindings(settings.keyboardShortcuts, event, isApplePlatform()).names.some(
-        (name) => name === 'undo' || name === 'redo',
-    )
+    (isSaveChord(event) ||
+        matchBindings(settings.keyboardShortcuts, event, isApplePlatform()).names.some(
+            (name) => name === 'undo' || name === 'redo',
+        ))
 
 const onKeydown = (event: KeyboardEvent) => {
-    if (!passesHistory(event)) event.stopPropagation()
+    if (!passesToEditor(event)) event.stopPropagation()
     isPointerInput = false
     if (event.key === 'Tab') onFormTab(event)
     if (event.key !== 'Escape' || event.defaultPrevented) return
