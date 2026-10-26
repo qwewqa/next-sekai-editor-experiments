@@ -1,9 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { resource } from './previewResourceFixture'
+import { resource, serveRanges } from './previewResourceFixture'
 
-// The Preview Assets dialog with Default and Built-in. With
+// The Preview Assets dialog with Built-in, Default and the bundled Next SEKAI 02. With
 // SHOTS_DIR set, each state is also saved there as a screenshot.
 const shotsDir = process.env.SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })
@@ -16,7 +16,14 @@ type Options = {
     /** localStorage values to seed, by setting name. */
     seed?: Record<string, unknown>
     /** Makes the Default skin and particle fail, or the Default and Built-in ones. */
-    fail?: ('default-skin' | 'default-particle' | 'builtin-skin' | 'builtin-particle')[]
+    fail?: (
+        | 'default-skin'
+        | 'default-particle'
+        | 'builtin-skin'
+        | 'builtin-particle'
+        | 'skin2'
+        | 'effect2'
+    )[]
     /** Routes the Default background to a missing image. */
     query?: string
 }
@@ -27,12 +34,29 @@ const start = async (page: Page, { seed = {}, fail = [], query = '' }: Options =
     await page.route('**/resource/skin.scp*', (route) =>
         fail.includes('default-skin')
             ? route.fulfill({ status: 404 })
-            : route.fulfill({ body: resource('skins') }),
+            : serveRanges(route, resource('skins', { picture: true, author: 'Fixture author' })),
+    )
+    await page.route('**/resource/skin2.scp*', (route) =>
+        fail.includes('skin2')
+            ? route.fulfill({ status: 404 })
+            : serveRanges(
+                  route,
+                  resource('skins', {
+                      title: 'Fixture 2',
+                      picture: true,
+                      author: 'Fixture author',
+                  }),
+              ),
+    )
+    await page.route('**/resource/effect2.scp*', (route) =>
+        fail.includes('effect2')
+            ? route.fulfill({ status: 404 })
+            : serveRanges(route, readFileSync('public/builtin/effect.scp')),
     )
     await page.route('**/resource/particle.scp*', (route) =>
         fail.includes('default-particle')
             ? route.fulfill({ status: 404 })
-            : route.fulfill({ body: resource('particles') }),
+            : serveRanges(route, resource('particles', { author: 'Fixture author' })),
     )
     if (fail.includes('builtin-skin'))
         await page.route('**/builtin/skin.scp*', (route) => route.fulfill({ status: 404 }))
@@ -78,6 +102,10 @@ const shot = async (page: Page, name: string, target?: Locator) => {
     await page.waitForTimeout(400)
     await (target ?? page).screenshot({ path: `${shotsDir}/${name}.png` })
 }
+
+/** One source row by its identifier: builtin, default, or bundled:skin2. */
+const row = (page: Page, id: string) => dialog(page).locator(`[data-asset-row="${id}"]`)
+const rowNames = (page: Page) => dialog(page).locator('[data-asset-row-name]')
 
 const selectedTab = (page: Page) => dialog(page).getByRole('tab', { selected: true })
 const tabOf = (page: Page, type: string) =>
@@ -187,7 +215,9 @@ test.describe('ways in', () => {
     test('the panel’s fallback line opens it on that type’s tab', async ({ page }) => {
         await start(page, { fail: ['default-particle'] })
         const line = fallbackLine(page, 'particle')
-        await expect(line).toContainText('Particle: using Built-in. Default could not be loaded.')
+        await expect(line).toContainText(
+            'Particle: using Built-in. Next SEKAI could not be loaded.',
+        )
         await line.getByRole('button', { name: 'Preview Assets' }).click()
         await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
         await expect(selectedTab(page)).toContainText('Particle')
@@ -199,29 +229,31 @@ test.describe('ways in', () => {
 })
 
 test.describe('Default and Built-in', () => {
-    test('the source list has Default and Built-in, with Default selected', async ({ page }) => {
+    test('Built-in comes first in every tab, then the Next SEKAI rows, with Default selected', async ({
+        page,
+    }) => {
         await start(page)
         await open(page)
         const rows = dialog(page).locator('[data-asset-row]')
-        await expect(rows).toHaveCount(2)
-        await expect(rows.nth(0)).toContainText('Default: Next SEKAI 01')
-        await expect(rows.nth(1)).toContainText('Built-in')
-        await expect(rows.nth(1)).toContainText('Next SEKAI Editor contributors')
-        await expect(rows.nth(0).getByRole('radio')).toBeChecked()
-        for (const [tab, label] of [
-            ['particle', 'Default: Next SEKAI'],
-            ['background', 'Default'],
-            ['effect', 'Default'],
+        await expect(rowNames(page)).toHaveText(['Built-in', 'Next SEKAI 01', 'Next SEKAI 02'])
+        await expect(row(page, 'builtin')).toContainText('Next SEKAI Editor contributors')
+        await expect(row(page, 'default').getByRole('radio')).toBeChecked()
+        await expect(row(page, 'default')).toContainText('Fixture author')
+        for (const [tab, names] of [
+            ['particle', ['Built-in', 'Next SEKAI']],
+            ['background', ['Built-in', 'Default']],
+            ['effect', ['Built-in', 'Next SEKAI 01', 'Next SEKAI 02']],
         ] as const) {
             await tabOf(page, tab).click()
-            await expect(rows.nth(0)).toHaveText(new RegExp(`^\\s*${label}\\s*$`))
+            await expect(rowNames(page)).toHaveText(names)
+            await expect(row(page, 'default').getByRole('radio')).toBeChecked()
         }
         await expect(dialog(page).locator('[data-effect-hint]')).toHaveText(
             'Used by the preview and playback.',
         )
-        // The Built-in thumbnails come from the package once the tab shows.
+        // The pictures come from the packages once the tab shows.
         await tabOf(page, 'skin').click()
-        await expect(rows.nth(1).locator('img')).toHaveCount(1)
+        await expect(rows.first().locator('img')).toHaveCount(1)
         await shot(page, 'skin')
     })
 
@@ -245,9 +277,7 @@ test.describe('Default and Built-in', () => {
         expect(urls).not.toContain('/builtin/particle.scp')
         await expect(page.locator('.preview canvas').first()).toBeVisible()
 
-        await dialog(page)
-            .getByRole('radio', { name: /^Default/ })
-            .check()
+        await row(page, 'default').getByRole('radio').check()
         await expect.poll(() => skinTitle(page)).toBe('Fixture')
         // Back at the default, nothing is stored.
         expect(
@@ -260,12 +290,12 @@ test.describe('Default and Built-in', () => {
     }) => {
         await start(page)
         await open(page)
-        const first = dialog(page).getByRole('radio').first()
-        await first.focus()
-        await page.keyboard.press('ArrowDown')
-        await expect(dialog(page).getByRole('radio', { name: /^Built-in/ })).toBeChecked()
+        const defaultRadio = row(page, 'default').getByRole('radio')
+        await defaultRadio.focus()
         await page.keyboard.press('ArrowUp')
-        await expect(first).toBeChecked()
+        await expect(dialog(page).getByRole('radio', { name: /^Built-in/ })).toBeChecked()
+        await page.keyboard.press('ArrowDown')
+        await expect(defaultRadio).toBeChecked()
         await expect(dialog(page)).toHaveCount(1)
         await expect(dialog(page).getByRole('dialog')).toHaveCount(0)
     })
@@ -352,7 +382,7 @@ test.describe('fallbacks', () => {
         await expect(page.getByText('The preview skin could not be loaded.')).toHaveCount(0)
         await expect(page.locator('.preview canvas').first()).toBeVisible()
         const line = fallbackLine(page, 'skin')
-        await expect(line).toContainText('Skin: using Built-in. Default could not be loaded.')
+        await expect(line).toContainText('Skin: using Built-in. Next SEKAI 01 could not be loaded.')
         expect(await slotStatus(page, 'skin')).toMatchObject({
             state: 'ready',
             status: { active: 'builtin', reason: 'missing' },
@@ -366,12 +396,14 @@ test.describe('fallbacks', () => {
         // The dialog opens on the type that fell back; its tab carries the mark and the reason.
         await expect(selectedTab(page)).toContainText('Skin')
         await expect(selectedTab(page).locator('[data-tab-warning]')).toBeVisible()
-        await expect(selectedTab(page)).toHaveAccessibleName('Skin. Default could not be loaded.')
+        await expect(selectedTab(page)).toHaveAccessibleName(
+            'Skin. Next SEKAI 01 could not be loaded.',
+        )
         await expect(tabOf(page, 'particle')).toBeVisible()
         // The chosen row stays selected, with the reason under it.
-        await expect(dialog(page).getByRole('radio', { name: /^Default/ })).toBeChecked()
+        await expect(row(page, 'default').getByRole('radio')).toBeChecked()
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Built-in. Default could not be loaded.',
+            'Using Built-in. Next SEKAI 01 could not be loaded.',
         )
         await shot(page, 'fallback-skin')
         await tabOf(page, 'particle').click()
@@ -387,7 +419,7 @@ test.describe('fallbacks', () => {
         await page.evaluate(() => (window.editorTest.settings.locale = 'ja'))
         // Japanese joins with "。", not ". ".
         await expect(selectedTab(page)).toHaveAccessibleName(
-            'スキン。デフォルトを読み込めませんでした。',
+            'スキン。Next SEKAI 01を読み込めませんでした。',
         )
     })
 
@@ -398,7 +430,7 @@ test.describe('fallbacks', () => {
             {
                 seed: { previewAssets: { skin: { ...fileChoice, source: 'file' } } },
                 reason: 'The skin file is no longer stored in this browser.',
-                using: 'Default',
+                using: 'Next SEKAI 01',
             },
             {
                 seed: {
@@ -407,18 +439,18 @@ test.describe('fallbacks', () => {
                     },
                 },
                 reason: 'The skin could not be downloaded again from example.com.',
-                using: 'Default',
+                using: 'Next SEKAI 01',
             },
             {
                 seed: { previewAssets: { skin: { source: 'builtin' } } },
                 fail: ['builtin-skin' as const],
                 reason: 'Built-in could not be loaded.',
-                using: 'Default',
+                using: 'Next SEKAI 01',
             },
             {
                 seed: {},
                 fail: ['default-skin' as const],
-                reason: 'Default could not be loaded.',
+                reason: 'Next SEKAI 01 could not be loaded.',
                 using: 'Built-in',
             },
         ]
@@ -471,7 +503,7 @@ test.describe('fallbacks', () => {
         await expect(fallbackLine(page, 'skin')).toHaveCount(0)
         await open(page)
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Built-in. Default could not be loaded.',
+            'Using Built-in. Next SEKAI 01 could not be loaded.',
         )
         await expect(selectedTab(page).locator('[data-tab-warning]')).toBeVisible()
 
@@ -490,7 +522,7 @@ test.describe('fallbacks', () => {
             },
         })
         await expect(fallbackLine(page, 'skin')).toContainText(
-            'Skin: using Default. The skin file is no longer stored in this browser.',
+            'Skin: using Next SEKAI 01. The skin file is no longer stored in this browser.',
         )
         // The same choice failing for a new reason shows it again too, and a dismissal is kept once.
         await fallbackLine(page, 'skin').getByRole('button', { name: 'Close' }).click()
@@ -530,7 +562,7 @@ test.describe('fallbacks', () => {
         await expect(page.locator('[data-asset-fallbacks]')).toHaveCount(0)
         await open(page)
         const note = dialog(page).locator('[data-asset-note]')
-        await expect(note).toHaveText('Safe mode uses Default.')
+        await expect(note).toHaveText('Safe mode uses Next SEKAI 01.')
         await expect(selectedTab(page).locator('[data-tab-warning]')).toHaveCount(0)
         // The choice itself is kept.
         await expect(dialog(page).getByRole('radio', { name: /^Built-in/ })).toBeChecked()
@@ -746,14 +778,13 @@ test.describe('the review fixes', () => {
     test('a row without a picture shows a neutral glyph, not an empty square', async ({ page }) => {
         await start(page)
         await open(page)
-        const rows = dialog(page).locator('[data-asset-row]')
-        for (const tab of ['skin', 'particle', 'effect'])
-            if (tab !== 'skin') {
-                await tabOf(page, tab).click()
-                await expect(rows.nth(0).locator('svg')).toHaveCount(1)
-            } else await expect(rows.nth(0).locator('svg')).toHaveCount(1)
+        // The particle package has no picture, and the Default sound effects have no package.
+        for (const tab of ['particle', 'effect']) {
+            await tabOf(page, tab).click()
+            await expect(row(page, 'default').locator('svg')).toHaveCount(1)
+        }
         // A row with a picture has none.
-        await expect(rows.nth(1).locator('svg')).toHaveCount(0)
+        await expect(row(page, 'builtin').locator('svg')).toHaveCount(0)
     })
 
     test('keyboard open focuses the checked row, and a click never changes the choice', async ({
@@ -762,7 +793,7 @@ test.describe('the review fixes', () => {
         await start(page, { seed: { previewAssets: builtinAll } })
         await open(page)
         await expect(dialog(page).getByRole('radio', { name: /^Built-in/ })).toBeFocused()
-        await expect(dialog(page).getByRole('radio', { name: /^Default/ })).not.toBeFocused()
+        await expect(row(page, 'default').getByRole('radio')).not.toBeFocused()
     })
 
     test('a reason is not shown under a row just selected while it loads', async ({ page }) => {
@@ -801,7 +832,7 @@ test.describe('the review fixes', () => {
             .getByRole('radio', { name: /^Built-in/ })
             .check()
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Default. Built-in could not be loaded.',
+            'Using Next SEKAI 01. Built-in could not be loaded.',
         )
         expect(await skinTitle(page)).toBe('Fixture')
         await expect(fallbackLine(page, 'skin')).toContainText('Built-in could not be loaded.')
@@ -829,7 +860,7 @@ test.describe('the review fixes', () => {
         })
         await start(page)
         await open(page)
-        await expect(dialog(page).locator('[data-asset-row]').nth(1).locator('img')).toHaveCount(1)
+        await expect(row(page, 'builtin').locator('img')).toHaveCount(1)
         expect(packages.length).toBeGreaterThan(0)
         for (const { url, status } of packages) expect(status, url).toBe(206)
     })
@@ -840,7 +871,7 @@ test.describe('the review fixes', () => {
         await expect(page.locator('[data-asset-fallbacks]')).toHaveCount(0)
         await open(page)
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Built-in. Default could not be loaded.',
+            'Using Built-in. Next SEKAI 01 could not be loaded.',
         )
     })
 })
@@ -874,6 +905,177 @@ test.describe('the review fixes, narrow', () => {
         await page.keyboard.press('End')
         await expect(strip).toHaveClass(/preview-assets-tabs-more-before/)
         await expect(strip).not.toHaveClass(/preview-assets-tabs-more-after/)
+    })
+})
+
+const ns2 = { source: 'bundled', id: 'skin2' }
+const effect2 = { source: 'bundled', id: 'effect2' }
+const stored = (page: Page) =>
+    page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null'), `${KEY}previewAssets`)
+
+test.describe('Next SEKAI 02', () => {
+    test('choosing it loads its package, stores the choice, and it stays chosen', async ({
+        page,
+    }) => {
+        await start(page)
+        await expect.poll(() => skinTitle(page)).toBe('Fixture')
+        const urls = requests(page)
+        await open(page)
+        await row(page, 'bundled:skin2').getByRole('radio').check()
+        await expect.poll(() => skinTitle(page)).toBe('Fixture 2')
+        expect(urls.filter((url) => url === '/resource/skin2.scp').length).toBeGreaterThan(0)
+        expect((await stored(page)).skin).toEqual(ns2)
+        expect(await slotStatus(page, 'skin')).toMatchObject({ status: { active: 'chosen' } })
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(0)
+
+        // Reopened, the row is the checked one; Built-in can then be chosen.
+        await page.keyboard.press('Escape')
+        await expect(dialog(page)).toHaveCount(0)
+        await open(page)
+        await expect(row(page, 'bundled:skin2').getByRole('radio')).toBeChecked()
+        await expect(row(page, 'default').getByRole('radio')).not.toBeChecked()
+        await row(page, 'builtin').getByRole('radio').check()
+        await expect.poll(() => skinTitle(page)).toBe('Editor')
+        expect((await stored(page)).skin).toEqual({ source: 'builtin' })
+        await expect(row(page, 'builtin').getByRole('radio')).toBeChecked()
+    })
+
+    test('it is not requested at start unless chosen', async ({ page }) => {
+        const urls = requests(page)
+        await start(page)
+        await expect.poll(() => skinTitle(page)).toBe('Fixture')
+        await page.waitForTimeout(300)
+        expect(urls.filter((url) => /\/resource\/(skin2|effect2)\.scp$/.test(url))).toEqual([])
+        expect(urls).toContain('/resource/skin.scp')
+    })
+
+    test('a saved choice is restored after a reload', async ({ page }) => {
+        const urls = requests(page)
+        await start(page, { seed: { previewAssets: { skin: ns2, effect: effect2 } } })
+        await expect.poll(() => skinTitle(page)).toBe('Fixture 2')
+        await expect
+            .poll(() => slotStatus(page, 'effect'))
+            .toMatchObject({ state: 'ready', status: { active: 'chosen' } })
+        expect(urls).toContain('/resource/skin2.scp')
+        expect(urls).toContain('/resource/effect2.scp')
+        await page.reload()
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await page.evaluate(() => (window.editorTest.settings.showPreview = true))
+        await expect.poll(() => skinTitle(page)).toBe('Fixture 2')
+        await open(page)
+        await expect(row(page, 'bundled:skin2').getByRole('radio')).toBeChecked()
+    })
+
+    test('safe mode ignores a saved choice', async ({ page }) => {
+        const urls = requests(page)
+        await start(page, {
+            seed: { previewAssets: { skin: ns2, effect: effect2 } },
+            query: '?safe',
+        })
+        await expect.poll(() => skinTitle(page)).toBe('Fixture')
+        expect(urls.filter((url) => /\/resource\/(skin2|effect2)\.scp$/.test(url))).toEqual([])
+        expect((await stored(page)).skin).toEqual(ns2)
+    })
+
+    test('a package that cannot be loaded falls back to Next SEKAI 01 with the reason', async ({
+        page,
+    }) => {
+        await start(page, { seed: { previewAssets: { skin: ns2 } }, fail: ['skin2'] })
+        await expect.poll(() => skinTitle(page)).toBe('Fixture')
+        await expect(fallbackLine(page, 'skin')).toContainText(
+            'Skin: using Next SEKAI 01. Next SEKAI 02 could not be loaded.',
+        )
+        await open(page)
+        await expect(row(page, 'bundled:skin2').getByRole('radio')).toBeChecked()
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
+            'Using Next SEKAI 01. Next SEKAI 02 could not be loaded.',
+        )
+        expect((await stored(page)).skin).toEqual(ns2)
+    })
+
+    test('with Next SEKAI 01 also gone, the preview reaches Built-in', async ({ page }) => {
+        await start(page, {
+            seed: { previewAssets: { skin: ns2 } },
+            fail: ['skin2', 'default-skin'],
+        })
+        await expect.poll(() => skinTitle(page)).toBe('Editor')
+        await expect(fallbackLine(page, 'skin')).toContainText(
+            'Skin: using Built-in. Next SEKAI 02 could not be loaded.',
+        )
+    })
+
+    test('the sound effects choose it too, and a failure falls back', async ({ page }) => {
+        await start(page)
+        const urls = requests(page)
+        await open(page)
+        await tabOf(page, 'effect').click()
+        await row(page, 'bundled:effect2').getByRole('radio').check()
+        await expect
+            .poll(() => slotStatus(page, 'effect'))
+            .toMatchObject({ state: 'ready', status: { active: 'chosen' } })
+        expect(urls).toContain('/resource/effect2.scp')
+        expect((await stored(page)).effect).toEqual(effect2)
+        await page.keyboard.press('Escape')
+        await open(page, 'previewAssets')
+        await expect(selectedTab(page)).toContainText('Skin')
+        await tabOf(page, 'effect').click()
+        await expect(row(page, 'bundled:effect2').getByRole('radio')).toBeChecked()
+    })
+
+    test('a sound effects package that cannot be loaded falls back', async ({ page }) => {
+        await start(page, { seed: { previewAssets: { effect: effect2 } }, fail: ['effect2'] })
+        await expect
+            .poll(() => slotStatus(page, 'effect'))
+            .toMatchObject({ state: 'ready', status: { active: 'default', reason: 'missing' } })
+        await expect(fallbackLine(page, 'effect')).toContainText(
+            'Sound Effects: using Next SEKAI 01. Next SEKAI 02 could not be loaded.',
+        )
+    })
+
+    test('the chooser shows both skins’ pictures and the author, read by ranges', async ({
+        page,
+    }) => {
+        await start(page)
+        await expect.poll(() => skinTitle(page)).toBe('Fixture')
+        const packages: { url: string; status: number }[] = []
+        page.on('response', (response) => {
+            const { pathname } = new URL(response.url())
+            if (/^\/resource\/.*\.scp$/.test(pathname))
+                packages.push({ url: pathname, status: response.status() })
+        })
+        await open(page)
+        for (const id of ['default', 'bundled:skin2']) {
+            await expect(row(page, id).locator('img')).toHaveCount(1)
+            await expect(row(page, id)).toContainText('Fixture author')
+            await expect
+                .poll(() =>
+                    row(page, id)
+                        .locator('img')
+                        .evaluate((image: HTMLImageElement) => image.naturalWidth),
+                )
+                .toBeGreaterThan(0)
+        }
+        expect(packages.map((entry) => entry.url).sort()).toEqual(
+            expect.arrayContaining(['/resource/skin.scp', '/resource/skin2.scp']),
+        )
+        for (const { url, status } of packages) expect(status, url).toBe(206)
+        await shot(page, 'skin-next-sekai')
+        await tabOf(page, 'particle').click()
+        await expect(row(page, 'default')).toContainText('Fixture author')
+        await expect(row(page, 'default').locator('svg')).toHaveCount(1)
+        await expect(row(page, 'default').locator('img')).toHaveCount(0)
+        await shot(page, 'particle-next-sekai')
+    })
+
+    test('a package without a picture keeps the glyph and still shows its author', async ({
+        page,
+    }) => {
+        await start(page)
+        await open(page)
+        await tabOf(page, 'particle').click()
+        await expect(row(page, 'default')).toContainText('Fixture author')
+        await expect(row(page, 'default').locator('svg')).toHaveCount(1)
     })
 })
 
