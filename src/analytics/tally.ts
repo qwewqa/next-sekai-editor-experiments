@@ -18,8 +18,16 @@ const counts = new Map<string, number>()
 let usageKeys = 0
 // The wheel counts once a visit, never per tick.
 const wheelSeen = new Set<string>()
-type Recorded = { name: string; data: Record<string, unknown>; at: number }
+type Recorded = {
+    name: string
+    data: Record<string, unknown>
+    at: number
+    /** The device the action ran on, read when it was recorded. */
+    device?: Record<string, unknown>
+}
 let recorded: Recorded[] = []
+/** The client’s read of the device an event ran on; it gives nothing for an event with none. */
+let readDevice: ((name: string) => Record<string, unknown> | undefined) | undefined
 
 export const isEnabled = () => enabled
 
@@ -63,7 +71,17 @@ export const record = <E extends Recordable>(
 ) => {
     if (!enabled || recorded.length >= RECORD_LIMIT) return
     const took = since === undefined ? {} : { took: performance.now() - since }
-    recorded.push({ name, data: { ...data, ...took }, at: Date.now() })
+    recorded.push({ name, data: { ...data, ...took }, at: Date.now(), device: readDevice?.(name) })
+}
+
+/**
+ * Installs the client’s device reader, which `record` calls as the action ends: a few reads, so a
+ * resize before the send does not relabel it. Events recorded before the client loaded get the
+ * device as it is then.
+ */
+export const watchDevice = (reader: typeof readDevice) => {
+    readDevice = reader
+    if (reader) for (const item of recorded) item.device ??= reader(item.name)
 }
 
 /** A Timeline step shown: from the cache when `ms` is undefined, else after that many milliseconds. */

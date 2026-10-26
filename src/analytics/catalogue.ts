@@ -177,7 +177,7 @@ export const catalogue = {
         ...flags(prefixed('found', loadKinds)),
     },
     storage: {
-        mode: oneOf('stored', 'readOnly', 'memory', 'memory-private'),
+        mode: oneOf('stored', 'readOnly', 'memory'),
         reason: oneOf('full', 'upgrading', 'olderTabs', 'failed'),
         persisted: oneOf('granted', 'not', 'unsupported'),
         usage: scale('size'),
@@ -197,7 +197,7 @@ export const catalogue = {
         groups: scale('counts'),
         objects: scale('counts'),
         dynamicStages: 'boolean',
-        bgm: oneOf('none', ...scales.audio),
+        bgm: oneOf('none', 'some'),
         historySteps: { whole: STACK_CAP },
     },
     preview: {

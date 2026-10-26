@@ -177,6 +177,25 @@ test('a recorded event takes its time from the moment the action began', () => {
     assert.equal('took' in (second?.data ?? {}), false)
 })
 
+test('a recorded event keeps the device as it was when the action ended', () => {
+    tally.enable()
+    tally.record('open', { outcome: 'done' })
+    let width = 800
+    tally.watchDevice((name) => (name === 'preview' ? undefined : { viewport: width }))
+    tally.record('save', { outcome: 'done' })
+    width = 1600
+    tally.record('preview', { host: 'main' })
+    tally.record('export', { outcome: 'done' })
+    const devices = tally.collect().recorded.map(({ name, device }) => [name, device])
+    assert.deepEqual(devices, [
+        ['open', { viewport: 800 }],
+        ['save', { viewport: 800 }],
+        ['preview', undefined],
+        ['export', { viewport: 1600 }],
+    ])
+    tally.watchDevice(undefined)
+})
+
 test('a chart that opened, restored or saved waits for the client, once per trigger', () => {
     tally.chartChanged('open')
     assert.equal(tally.hasCharts(), false, 'while off')

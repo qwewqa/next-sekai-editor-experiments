@@ -7,7 +7,7 @@ import { STACK_CAP } from '../history/cap'
 import { liveState, stackLength } from '../history/stack'
 import { languageTag } from '../i18n/plural'
 import { launch } from '../launch'
-import { detection, isStandalone, suspectPrivate } from '../platform/detect'
+import { detection, isStandalone } from '../platform/detect'
 import { isPlaying } from '../player'
 import { previewHost } from '../preview/worker/host'
 import { hasDefaultValue, settings } from '../settings'
@@ -179,8 +179,6 @@ const storageEvent = async (): Promise<EventData<'storage'> | undefined> => {
         manager?.persisted?.().catch(() => undefined),
     ])
     const { usage, quota } = estimate ?? {}
-    const privateWindow =
-        quota !== undefined && suspectPrivate({ persisted: persisted === true, quota })
     const sessions = status.recentSessionCount.value
     const run = status.pressureRuns.at(-1)
     const share =
@@ -188,7 +186,7 @@ const storageEvent = async (): Promise<EventData<'storage'> | undefined> => {
             ? measured('usageShare', (usage * 100) / quota)
             : undefined
     return {
-        mode: current.mode === 'memory' && privateWindow ? 'memory-private' : current.mode,
+        mode: current.mode,
         ...(current.reason && { reason: current.reason }),
         persisted: persisted === undefined ? 'unsupported' : persisted ? 'granted' : 'not',
         ...(measured('size', usage) && { usage: measured('size', usage) }),
@@ -239,7 +237,7 @@ const chartEvent = (trigger: tally.ChartTrigger): EventData<'chart'> | undefined
         groups: bucket('counts', groups.size),
         objects: bucket('counts', objects),
         dynamicStages: isDynamicStages,
-        bgm: bgm.meta?.durationMs === undefined ? 'none' : bucket('audio', bgm.meta.durationMs),
+        bgm: bgm.meta?.durationMs === undefined ? 'none' : 'some',
         historySteps: Math.min(STACK_CAP, stackLength()),
     }
 }
@@ -289,8 +287,8 @@ export const startClient = (target: AnalyticsTarget) => {
         const { counts, recorded } = tally.collect()
         const items: Item[] = []
         const where = device()
-        for (const { name, data, at } of recorded) {
-            const made = { ...fromRaw(name, data), ...(measuredEvents.has(name) && where) }
+        for (const { name, data, at, device: ranOn } of recorded) {
+            const made = { ...fromRaw(name, data), ...ranOn }
             if (isValidEvent(name, made)) items.push(item(name, made, at))
         }
         const events = new Map<string, Record<string, unknown>>()
@@ -403,6 +401,7 @@ export const startClient = (target: AnalyticsTarget) => {
         })
     }
     tally.watchCharts(countCharts)
+    tally.watchDevice((name) => (measuredEvents.has(name) ? device() : undefined))
     if (tally.hasCharts()) countCharts()
     const stopPlayback = watch(isPlaying, (playing) => {
         if (!playing && tally.hasCharts()) countCharts()
@@ -431,6 +430,7 @@ export const startClient = (target: AnalyticsTarget) => {
             stopPlayback()
             stopPanel()
             tally.watchCharts(undefined)
+            tally.watchDevice(undefined)
             document.removeEventListener('visibilitychange', onVisibility)
             window.removeEventListener('pagehide', onPageHide)
         },
