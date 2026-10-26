@@ -147,7 +147,7 @@ Umami's own visit counts, durations and bounce rates are wrong for this client. 
 
 1. Add it to `catalogue.ts`, with a closed set of values or a range, and to the table above.
 2. Hook it with one `bump`, `bumpCommand` or `record` at the place that already knows the value. Never compute something on a hot path for it.
-3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value.
+3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value. A renamed or removed property also changes `infra/stats/scripts/contract-events.json` and the saved queries in `infra/stats/queries/` that read it. Infra check runs them.
 4. Map it to a category in `tests/editor/analyticsPrivacy.test.ts`. If it is a new kind of data, add a line to the privacy page, give it a category, and change the page's date.
 5. Add a CHANGELOG line.
 

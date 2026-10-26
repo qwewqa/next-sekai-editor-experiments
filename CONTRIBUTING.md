@@ -101,7 +101,7 @@ CI runs these (`.github/workflows/check.yml`):
 - `npm run check:builtin-assets`, and `npm run build:native` then `npm run check:native-bundle`.
 - `npm run test:compatibility` in Firefox, WebKit and mobile WebKit, in jobs that run beside the checks above. The storage specs run in shards, and only the core of them: the ones in `coreStorageSpecs` in `playwright.compatibility.config.ts`. A new storage spec goes in that list unless it is slow. The slow ones (`startupSessions` and `openProject`) run in `.github/workflows/browsers-full.yml` together with the core, every night, on a push to a `ci/` branch and when started by hand: `gh workflow run browsers-full.yml --ref main`. A run stops after four failed browser tests, and a newer push to a branch or pull request cancels the older run.
 
-A change under `infra/` or to an infra workflow also runs `.github/workflows/infra-check.yml`: `cfn-lint`, `infra/check_templates.py`, `shellcheck`, and a contract test of the real Umami and PostgreSQL images. Run the first three locally as `infra/README.md` shows.
+A change under `infra/` or `src/analytics/`, or to an infra workflow, also runs `.github/workflows/infra-check.yml`: `cfn-lint`, `infra/check_templates.py`, `shellcheck`, and a contract test of the real Umami and PostgreSQL images. Run the first three locally as `infra/README.md` shows.
 
 Also:
 

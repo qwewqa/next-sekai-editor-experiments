@@ -2,7 +2,7 @@
 
 The Next SEKAI Editor’s AWS services. The editor itself is static and needs none of this. These are the services around it, starting with `stats/` (usage statistics, a self-hosted Umami).
 
-This folder is in neither the web build nor the native build, and has no `package.json`. Its checks run in `.github/workflows/infra-check.yml`, only when `infra/` or an infra workflow changes, or by hand. Deploys are by hand and never part of a release.
+This folder is in neither the web build nor the native build, and has no `package.json`. Its checks run in `.github/workflows/infra-check.yml`, only when `infra/`, `src/analytics/` or an infra workflow changes, or by hand. Deploys are by hand and never part of a release.
 
 ## What the accounts are for
 
@@ -102,7 +102,7 @@ Each environment’s zone costs $0.50 a month. For `nse-dev` that is the whole c
 
 ## Checking changes
 
-Push a branch that adds or changes `infra/` to a `ci/<name>` branch first, and get Infra check green, including the `stats-compose` job, before the change reaches `main`. The contract test cannot run without Docker, so CI is its first run.
+Push a branch that adds or changes `infra/` to a `ci/<name>` branch first, and get Infra check green, including the `stats-compose` job, before the change reaches `main`. The contract test needs Docker on Linux, so CI is usually its first run.
 
 No AWS access is needed for these:
 
