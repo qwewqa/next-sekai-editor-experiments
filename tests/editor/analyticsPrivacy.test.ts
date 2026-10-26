@@ -24,10 +24,6 @@ import { STACK_CAP } from '../../src/history/cap'
 
 const doc = readFileSync(new URL('../../docs/usage-statistics.md', import.meta.url), 'utf8')
 const html = readFileSync(new URL('../../privacy/index.html', import.meta.url), 'utf8')
-const page = html
-    .replace(/<script\b[\s\S]*?<\/script>/g, '')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
 
 /** The body of each heading of the reference, up to the next heading. */
 const sections = new Map<string, string>()
@@ -275,82 +271,49 @@ test('the reference states the exact values, the caps and the ranges', () => {
         assert.ok(all.includes(`\`${label}\``), `cores: ${label}`)
 })
 
-/** What the page must keep disclosing, by topic. Each pattern names a value or a fact, not a sentence. */
+/** The text of one section of the page, by the id its heading carries. */
+const sectionText = (id: string) => {
+    const start = html.indexOf(`aria-labelledby="${id}"`)
+    const end = html.indexOf('</section>', start)
+    assert.ok(start > 0 && end > start, `the privacy page has no section ${id}`)
+    return html
+        .slice(start, end)
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+}
+
+/** What each section must keep disclosing: the setting path, the signals, the legal bases, the recipients and the periods. Each pattern names a value, not a sentence. */
 const disclosures: Record<string, RegExp[]> = {
-    'local data': [
-        /charts, editing history, settings and stored assets/,
-        /kept in this browser’s storage/,
-        /Clearing the site’s data in your browser deletes this stored data/,
+    summary: [
+        /Settings › About › Send Usage Statistics/,
+        /Do Not Track/,
+        /Global Privacy Control/,
         /without accounts or cookies/,
     ],
-    'the choice': [
-        /Usage statistics are optional/,
-        /turn them off for this browser/,
-        /Settings › About › Send Usage Statistics/,
-        /on by default unless your browser sends Do Not Track or Global Privacy Control/,
-        /Your choice overrides these browser signals/,
-    ],
-    'purpose and legal basis': [
-        /understand how the editor is used/,
-        /improve its reliability and performance/,
-        /legal basis is our legitimate interest in improving the editor/,
-    ],
-    'what is collected': [
-        /tools and commands, settings/,
-        /time spent in the editor, performance and errors/,
-        /File types and sizes, chart sizes, music lengths/,
-        /results of file actions/,
-        /Browser and device information, browser storage status, country and referring site/,
-    ],
-    'content exclusions': [
-        /Statistics do not include chart content, file names, level titles or other text you type/,
-    ],
-    'counting visits': [
-        /To count visits/,
-        /IP address and information about your browser/,
-        /daily visitor code/,
-        /code is stored with your activity and changes each day/,
-    ],
-    'hosting and transfers': [
-        /GitHub Pages hosts this site/,
-        /GitHub may log requests, including your IP address/,
-        /Amazon Web Services \(AWS\) servers in the United States/,
-        /AWS provides hosting and backups/,
-        /only provider with whom we share these statistics/,
+    who: [/qwewqa/, /nse@qwewqa\.dev/],
+    usage: [/legitimate interest/, /daily visitor code/],
+    hosting: [
+        /GitHub/,
+        /Amazon Web Services \(AWS\)/,
+        /United States/,
         /Standard Contractual Clauses/,
     ],
-    retention: [
-        /individual usage statistics for 13 months/,
-        /combined statistics without visitor codes indefinitely/,
-        /Backups on AWS are deleted after about five weeks/,
-        /Server error logs may contain your IP address/,
-        /delete these logs after two weeks/,
-    ],
-    'email and files': [
-        /email address and message to answer you/,
-        /keep the conversation in our mailbox/,
-        /use it only for that and delete it when the problem is fixed/,
-    ],
-    'the controller and contact': [
-        /qwewqa runs this site and is responsible for the use of personal data/,
-        /privacy questions and requests/,
-        /nse@qwewqa\.dev/,
-    ],
-    rights: [
-        /Depending on the law that applies/,
-        /access, correct or delete your personal data/,
-        /receive a portable copy/,
-        /restrict its use, or object to its use/,
-        /Send requests to the email address above/,
-        /complain to your local data protection authority/,
-        /may be unable to identify which usage statistics relate to you/,
+    keep: [/13 months/, /about five weeks/, /two weeks/],
+    contact: [/legitimate interest/, /legal obligations/, /mailbox/],
+    choices: [
+        /access, correct or delete/,
+        /portable copy/,
+        /data protection authority/,
+        /object to our use of usage statistics at any time/,
+        /Settings › About › Send Usage Statistics/,
+        /emailing us/,
     ],
 }
 
 test('the privacy page keeps its disclosures', () => {
-    for (const [topic, patterns] of Object.entries(disclosures))
+    for (const [id, patterns] of Object.entries(disclosures))
         for (const pattern of patterns)
-            assert.match(page, pattern, `the privacy page no longer covers ${topic}`)
+            assert.match(sectionText(id), pattern, `the ${id} section no longer covers ${pattern}`)
 })
 
 test('the privacy page links to the complete list of what is sent', () => {

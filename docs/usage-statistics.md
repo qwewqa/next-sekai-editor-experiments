@@ -1,6 +1,6 @@
 # What the usage statistics send
 
-The web editor sends usage statistics to a server that the maintainer runs. This page lists each field it sends, when it sends it and how exact each value is. It also lists what the server works out for itself and what the server keeps. The privacy page summarizes the same in categories. Maintainers find the technical detail in [analytics.md](analytics.md).
+The web editor sends usage statistics to a server that the maintainer runs. This page lists each field it sends, when it sends it and how exact each value is. It also lists what the server works out for itself and what the server keeps. The privacy page explains what we collect, how we use it and your choices. Maintainers find the technical detail in [analytics.md](analytics.md).
 
 ## When statistics are sent
 
@@ -335,7 +335,7 @@ How often each kind of edit was made, by its name, how often a Timeline step was
 
 #### `errors`
 
-No crash reports are sent. An error adds one to the count, and nothing else about it is sent.
+No crash reports are sent. The `errors` event contains only counts, without error messages or stack traces.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -400,7 +400,7 @@ The `language` and `screen` fields of the request are stored with the visitor as
     - the total and the number of each count field, such as the use of a command;
     - the median and the 90th and 99th percentile of each time in milliseconds (`ready`, `took` and `buildMs`), over all visits and by version and device type.
 - **Weekly totals** are kept with no time limit. They hold only the visits, the sessions and the number of events of each name, for each week from Monday, and no breakdown.
-- **Each site is kept apart.** The statistics of a site are stored under that site, apart from the data of other sites. Only the maintainer can open the dashboard.
+- **Separate statistics for each site.** Statistics are stored separately for each site. Only the maintainer has access to the dashboard.
 - **Only the fields on this page are totaled.** Anything else a request carries is left out of the totals.
 - **No small groups.** A total is kept only when at least 10 different visitor codes are behind it. A smaller group is merged into a group named `other` when that reaches 10, and is left out when it does not. A name keeps at most 50 values a month (100 for countries), the most common first, and the rest become `other`. A time is summarized only from groups of at least 10 visitor codes, so a left-out measurement is in no percentile.
 
