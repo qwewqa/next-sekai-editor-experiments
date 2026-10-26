@@ -119,8 +119,8 @@ const parseEntities = (
         return ref === undefined ? undefined : ids.get(ref)
     }
 
-    const groupIds: Record<string, GroupId> = {}
-    const stageIds: Record<string, StageId> = {}
+    const groupIds = new Map<string, GroupId>()
+    const stageIds = new Map<string, StageId>()
     let defaultStageId: StageId
 
     const ctx: ParseCtx = {
@@ -134,7 +134,7 @@ const parseEntities = (
 
         getGroupId(entity) {
             const ref = getRef(entity, '#TIMESCALE_GROUP')
-            const id = groupIds[ref]
+            const id = groupIds.get(ref)
             if (!id) throw new ImportRefusal('refNotFound', ref)
 
             return id
@@ -143,7 +143,7 @@ const parseEntities = (
             const [id] = addToGroups(chart.groups, editorName, object)
 
             if (name) {
-                groupIds[name] = id
+                groupIds.set(name, id)
             }
         },
 
@@ -152,7 +152,7 @@ const parseEntities = (
             if (chart.isDynamicStages) {
                 if (ref === undefined) throw new ImportRefusal('dataNotFound', 'stage')
 
-                const id = stageIds[ref]
+                const id = stageIds.get(ref)
                 if (!id) throw new ImportRefusal('refNotFound', ref)
 
                 return id
@@ -167,7 +167,7 @@ const parseEntities = (
             const [id] = addToStages(chart.stages, editorName, object)
 
             if (name) {
-                stageIds[name] = id
+                stageIds.set(name, id)
             }
 
             return id
