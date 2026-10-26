@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { mkdirSync, readFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { variants } from './previewAssetsPackages'
 import { resource, serveRanges } from './previewResourceFixture'
 
 // The Preview Assets dialog with Built-in, Default and the bundled Next SEKAI 02. With
@@ -21,6 +22,7 @@ type Options = {
         | 'default-particle'
         | 'builtin-skin'
         | 'builtin-particle'
+        | 'default-effect'
         | 'skin2'
         | 'effect2'
     )[]
@@ -48,10 +50,22 @@ const start = async (page: Page, { seed = {}, fail = [], query = '' }: Options =
                   }),
               ),
     )
-    await page.route('**/resource/effect2.scp*', (route) =>
-        fail.includes('effect2')
+    // The sound effects come from real packages, with the items renamed.
+    const effects = async (title: string) =>
+        Buffer.from(
+            await variants('effect', [
+                { name: 'fixture', title, author: 'Fixture author', picture: false },
+            ]),
+        )
+    const effect = await effects('Next SEKAI 01')
+    const effect2 = await effects('Next SEKAI 02')
+    await page.route('**/resource/effect.scp*', (route) =>
+        fail.includes('default-effect')
             ? route.fulfill({ status: 404 })
-            : serveRanges(route, readFileSync('public/builtin/effect.scp')),
+            : serveRanges(route, effect),
+    )
+    await page.route('**/resource/effect2.scp*', (route) =>
+        fail.includes('effect2') ? route.fulfill({ status: 404 }) : serveRanges(route, effect2),
     )
     await page.route('**/resource/particle.scp*', (route) =>
         fail.includes('default-particle')
@@ -123,6 +137,13 @@ const skinTitle = (page: Page) =>
             typeof import('../../src/preview/assets')
         >('/src/preview/assets/index.ts')
         return assetSession.slots.skin.value.value?.title
+    })
+const effectTitle = (page: Page) =>
+    page.evaluate(async () => {
+        const { assetSession } = await window.editorTest.appImport<
+            typeof import('../../src/preview/assets')
+        >('/src/preview/assets/index.ts')
+        return assetSession.slots.effect.value.value?.title
     })
 const slotStatus = (page: Page, type: string) =>
     page.evaluate(async (type) => {
@@ -941,6 +962,8 @@ test.describe('Next SEKAI 02', () => {
         await expect.poll(() => skinTitle(page)).toBe('Fixture')
         for (const type of ['particle', 'effect'])
             await expect.poll(() => slotStatus(page, type)).toMatchObject({ state: 'ready' })
+        await expect.poll(() => effectTitle(page)).toBe('Next SEKAI 01')
+        expect(urls).toContain('/resource/effect.scp')
         expect(urls.filter((url) => /\/resource\/(skin2|effect2)\.scp$/.test(url))).toEqual([])
         expect(urls).toContain('/resource/skin.scp')
     })
@@ -1062,6 +1085,33 @@ test.describe('Next SEKAI 02', () => {
         await expect(row(page, 'default').locator('svg')).toHaveCount(1)
         await expect(row(page, 'default').locator('img')).toHaveCount(0)
         await shot(page, 'particle-next-sekai')
+    })
+
+    test('the Sound Effects rows show their authors with the glyph, and Default loads effect.scp', async ({
+        page,
+    }) => {
+        await start(page)
+        await expect.poll(() => effectTitle(page)).toBe('Next SEKAI 01')
+        await open(page)
+        await tabOf(page, 'effect').click()
+        for (const id of ['default', 'bundled:effect2']) {
+            await expect(row(page, id)).toContainText('Fixture author')
+            await expect(row(page, id).locator('svg')).toHaveCount(1)
+            await expect(row(page, id).locator('img')).toHaveCount(0)
+        }
+        await shot(page, 'effect-next-sekai')
+        await row(page, 'bundled:effect2').getByRole('radio').check()
+        await expect.poll(() => effectTitle(page)).toBe('Next SEKAI 02')
+    })
+
+    test('without effect.scp the Default sound effects fall back to Built-in', async ({ page }) => {
+        await start(page, { fail: ['default-effect'] })
+        await expect
+            .poll(() => slotStatus(page, 'effect'))
+            .toMatchObject({ state: 'ready', status: { active: 'builtin', reason: 'missing' } })
+        await expect(fallbackLine(page, 'effect')).toContainText(
+            'Sound Effects: using Built-in. Next SEKAI 01 could not be loaded.',
+        )
     })
 })
 

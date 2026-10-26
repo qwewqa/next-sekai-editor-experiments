@@ -260,6 +260,7 @@ function validateFileNames(files, assets) {
         'resource/skin.scp',
         'resource/skin2.scp',
         'resource/particle.scp',
+        'resource/effect.scp',
         'resource/effect2.scp',
     ])
     if (!Array.isArray(assets)) throw new Error('Invalid preview asset declarations')
@@ -274,7 +275,7 @@ function validateFileNames(files, assets) {
         )
             throw new Error('Invalid preview asset declaration')
     }
-    if (remaining.has('resource/skin.scp')) throw new Error('Missing preview skin')
+    for (const file of remaining) throw new Error(`Missing preview package: ${file}`)
     const exact = new Set([
         'index.html',
         'privacy/index.html',

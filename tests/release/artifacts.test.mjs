@@ -77,11 +77,11 @@ async function builtinRelease() {
 
 async function releaseFixture(t) {
     const directory = await temporary(t)
-    const assets = ['skin', 'skin2', 'particle', 'effect2'].map((name) => {
+    const assets = ['skin', 'skin2', 'particle', 'effect', 'effect2'].map((name) => {
         const bytes = Buffer.from(`test ${name} package`)
         return {
             file: `resource/${name}.scp`,
-            source: `https://example.com/sonolus/${name.startsWith('skin') ? 'skins' : name === 'effect2' ? 'effects' : 'particles'}/fixture`,
+            source: `https://example.com/sonolus/${name.startsWith('skin') ? 'skins' : name.startsWith('effect') ? 'effects' : 'particles'}/fixture`,
             bytes: bytes.length,
             sha256: sha256(bytes),
         }
@@ -160,6 +160,19 @@ test('artifact verification detects file tampering and unexpected files', async 
     await write(directory, 'assets/index-12345678.js', 'console.log("release")')
     await write(directory, 'resource/next-sekai-resources.scp', 'unintended media')
     await assert.rejects(checkRelease(directory), /Unexpected release file/)
+})
+
+test('a release without one of the locked preview packages fails', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    for (const missing of assets) {
+        const rest = assets.filter((asset) => asset !== missing)
+        await rm(join(directory, missing.file))
+        await assert.rejects(
+            writeReleaseManifest(directory, metadata, rest),
+            new RegExp(`Missing preview package: ${missing.file.replace('.', '\.')}`),
+        )
+        await write(directory, missing.file, `test ${missing.file} package`)
+    }
 })
 
 test('a production bundle names no test key but the three live ones', async (t) => {

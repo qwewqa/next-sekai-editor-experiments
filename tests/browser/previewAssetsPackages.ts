@@ -31,7 +31,7 @@ const entriesOf = async (bytes: Uint8Array): Promise<Entries> => {
 const json = (bytes: Uint8Array | undefined) =>
     JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>
 
-export type Variant = { name: string; title?: string; author?: string }
+export type Variant = { name: string; title?: string; author?: string; picture?: false }
 
 /** The Built-in package of a type with its item renamed, or several items sharing its resources. */
 export const variants = async (type: Type, items: Variant[]): Promise<Uint8Array> => {
@@ -44,12 +44,16 @@ export const variants = async (type: Type, items: Variant[]): Promise<Uint8Array
     if (!original) throw new Error('The Built-in package has no item')
     const originalName = String(original.name)
     entries.delete(`sonolus/${category}/${originalName}`)
-    const made = items.map(({ name, title, author }) => ({
-        ...original,
-        name,
-        ...(title === undefined ? {} : { title }),
-        ...(author === undefined ? {} : { author }),
-    }))
+    const made = items.map(({ name, title, author, picture }) => {
+        const item: Record<string, unknown> = {
+            ...original,
+            name,
+            ...(title === undefined ? {} : { title }),
+            ...(author === undefined ? {} : { author }),
+        }
+        if (picture === false) delete item['thumbnail']
+        return item
+    })
     entries.set(`sonolus/${category}/list`, utf8(JSON.stringify({ pageCount: 1, items: made })))
     for (const item of made)
         entries.set(

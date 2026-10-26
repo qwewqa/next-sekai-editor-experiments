@@ -56,10 +56,13 @@ type Row = {
     image: string | undefined
 }
 
+// The Next SEKAI 02 package a type has, if any.
+const bundledId = props.type === 'skin' ? 'skin2' : props.type === 'effect' ? 'effect2' : undefined
+
 // The author and picture of Built-in, Default and Next SEKAI 02 come from their packages, read once the tab shows.
 const builtin = ref<PackageInfo>()
 const defaultInfo = ref<PackageInfo>()
-const skin2Info = ref<PackageInfo>()
+const bundledInfo = ref<PackageInfo>()
 let closed = false
 const read = (url: string | undefined, target: typeof builtin) => {
     if (url)
@@ -69,9 +72,8 @@ const read = (url: string | undefined, target: typeof builtin) => {
 }
 onMounted(() => {
     read(builtinUrl(props.type), builtin)
-    if (hasDefault && (props.type === 'skin' || props.type === 'particle'))
-        read(packageUrls[props.type], defaultInfo)
-    if (hasDefault && props.type === 'skin') read(packageUrls.skin2, skin2Info)
+    if (hasDefault && props.type !== 'background') read(packageUrls[props.type], defaultInfo)
+    if (hasDefault && bundledId) read(packageUrls[bundledId], bundledInfo)
 })
 onBeforeUnmount(() => (closed = true))
 
@@ -106,16 +108,14 @@ const rows = computed<Row[]>(() => {
             detail: defaultInfo.value?.author ?? '',
             image: props.type === 'background' ? firstPaintBackgroundUrl : defaultInfo.value?.image,
         })
-    const bundledId =
-        props.type === 'skin' ? 'skin2' : props.type === 'effect' ? 'effect2' : undefined
     if (hasDefault && bundledId && packageUrls[bundledId]) {
         const choice: AssetChoice = { source: 'bundled', id: bundledId }
         list.push({
             id: choiceKey(choice),
             choice,
             name: strings.value.nextSekai02,
-            detail: skin2Info.value?.author ?? '',
-            image: skin2Info.value?.image,
+            detail: bundledInfo.value?.author ?? '',
+            image: bundledInfo.value?.image,
         })
     }
     // The stored items of this type, newest first.

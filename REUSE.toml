@@ -49,7 +49,6 @@ SPDX-License-Identifier = "LicenseRef-Store-Badges"
 [[annotations]]
 path = [
     "src/preview/bg.png",
-    "src/assets/se_live_*.mp3",
     "public/favicon.ico",
     "public/thumbnail.png",
 ]

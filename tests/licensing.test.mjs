@@ -115,12 +115,7 @@ test('every tracked file containing "Font Awesome" is on the CC-BY-4.0 icon list
 })
 
 test('the upstream-unconfirmed files are not covered by MIT', () => {
-    for (const file of [
-        'src/preview/bg.png',
-        'src/assets/se_live_perfect.mp3',
-        'public/favicon.ico',
-        'public/thumbnail.png',
-    ])
+    for (const file of ['src/preview/bg.png', 'public/favicon.ico', 'public/thumbnail.png'])
         assert.equal(
             annotationFor(annotations, file)?.annotation['SPDX-License-Identifier'],
             'LicenseRef-Upstream-Unconfirmed',

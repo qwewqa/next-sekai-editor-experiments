@@ -20,7 +20,7 @@ const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
 test('the native defaults module imports neither bg.png nor the clips', () => {
     const source = read('src/preview/assets/defaults.native.ts').toString('utf8')
-    assert.equal(/bg\.png|se_live|\.mp3|defaults\.web|resource\//.test(source), false)
+    assert.equal(/bg\.png|\.mp3|defaults\.web|resource\//.test(source), false)
 })
 
 test('the web-only list matches the files and locks it names', () => {
@@ -28,9 +28,6 @@ test('the web-only list matches the files and locks it names', () => {
     const lock = JSON.parse(read('deployment/preview-assets.lock.json'))
     const names = list.files.map((file) => file.name)
     for (const name of [
-        ...readdirSync(new URL('../../src/assets/', import.meta.url)).filter((f) =>
-            f.startsWith('se_live_'),
-        ),
         'bg.png',
         'thumbnail.png',
         'favicon.ico',
@@ -41,6 +38,9 @@ test('the web-only list matches the files and locks it names', () => {
         'skin thumbnail',
         'skin2 texture',
         'skin2 thumbnail',
+        'effect.scp',
+        'effect data',
+        'effect audio',
         'effect2.scp',
         'effect2 audio',
         'particle texture',
@@ -65,7 +65,6 @@ test('the web-only list matches the files and locks it names', () => {
     for (const reference of [
         'thumbnail.png',
         'favicon.ico',
-        'se_live',
         'resource/',
         'coconut',
         'og:image',
@@ -77,12 +76,13 @@ test('the web-only list matches the files and locks it names', () => {
 
 test('the franchise pictures stay out of the packages the lock names', () => {
     const lock = JSON.parse(read('deployment/preview-assets.lock.json'))
-    for (const name of ['particle', 'effect2']) {
+    for (const name of ['particle', 'effect', 'effect2']) {
         assert.equal(lock[name].thumbnail, false, name)
         assert.equal('thumbnail' in lock[name].item, false, name)
     }
     const names = JSON.parse(read('deployment/web-only-assets.json')).files.map((file) => file.name)
     assert.equal(names.includes('particle thumbnail'), false)
+    assert.equal(names.includes('effect thumbnail'), false)
     assert.equal(names.includes('effect2 thumbnail'), false)
 })
 

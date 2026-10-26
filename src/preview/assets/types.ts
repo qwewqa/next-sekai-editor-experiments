@@ -109,7 +109,7 @@ export type BundledProviders = {
 }
 
 /** Where the web's packages are served from, for the chooser to read their details. */
-export type PackageUrls = Partial<Record<'skin' | 'particle' | BundledId, string>>
+export type PackageUrls = Partial<Record<'skin' | 'particle' | 'effect' | BundledId, string>>
 
 export type AssetStatus = {
     active: 'chosen' | 'default' | 'builtin'
