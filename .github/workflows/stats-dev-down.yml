@@ -33,6 +33,7 @@ jobs:
             - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
               with:
                   role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/nse-stats-deploy
+                  role-session-name: ${{ github.run_id }}-${{ github.run_attempt }}
                   aws-region: us-west-2
             - run: bash infra/stats/scripts/dev-down.sh ${{ github.event_name == 'schedule' && '--reaper' || '' }}
               env:
