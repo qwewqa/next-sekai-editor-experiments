@@ -2,18 +2,27 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { crc32, gunzipSync } from 'node:zlib'
+import { readZip } from '../builtin-assets/zip.mjs'
 import { itemDetailsUrl } from '../src/preview/assets/serverUrl.ts'
 
 const defaults = {
     skin: 'https://coconut.sonolus.com/next-sekai/skins/coconut-next-sekai-1',
     skin2: 'https://coconut.sonolus.com/next-sekai/skins/coconut-next-sekai-2',
     particle: 'https://coconut.sonolus.com/next-sekai/particles/coconut-next-sekai-1',
+    effect: 'https://coconut.sonolus.com/next-sekai/effects/coconut-next-sekai-1',
     effect2: 'https://coconut.sonolus.com/next-sekai/effects/coconut-next-sekai-2',
 }
-const categories = { skin: 'skins', skin2: 'skins', particle: 'particles', effect2: 'effects' }
-const optionalLocal = new Set(['skin2', 'particle', 'effect2'])
-// Franchise artwork stays out of the package. A lock entry says so with `thumbnail: false`.
-const withoutThumbnail = new Set(['particle', 'effect2'])
+export const categories = {
+    skin: 'skins',
+    skin2: 'skins',
+    particle: 'particles',
+    effect: 'effects',
+    effect2: 'effects',
+}
+const optionalLocal = new Set(['skin2', 'particle', 'effect', 'effect2'])
+// Franchise artwork stays out of these packages, whatever the lock says. A lock entry also
+// records it with `thumbnail: false`, and may leave out the picture of any other item.
+const withoutThumbnail = new Set(['particle', 'effect', 'effect2'])
 // The second resource of an item: a skin or particle has a texture, an effect has audio.
 const second = (category) => (category === 'effects' ? 'audio' : 'texture')
 const lockFile = 'deployment/preview-assets.lock.json'
@@ -176,7 +185,21 @@ async function thumbnailPolicy(root, name) {
     } catch (error) {
         if (error.code !== 'ENOENT') throw error
     }
-    return entry ? entry.thumbnail !== false : !withoutThumbnail.has(name)
+    return !withoutThumbnail.has(name) && entry?.thumbnail !== false
+}
+
+// A package that should have no picture has no `thumbnail` entry and no locator for one.
+function hasPicture(bytes, category) {
+    const zip = readZip(bytes)
+    if (zip.has('thumbnail')) return true
+    return [
+        `sonolus/${category}/list`,
+        ...[...zip.keys()].filter((key) => key.startsWith(`sonolus/${category}/`)),
+    ].some((key) => {
+        if (!zip.has(key)) return false
+        const json = JSON.parse(Buffer.from(zip.get(key)).toString('utf8'))
+        return [json.item, ...(json.items ?? [])].some((item) => item && 'thumbnail' in item)
+    })
 }
 
 export async function refreshPreviewAssetLock(root, env = process.env) {
@@ -208,12 +231,14 @@ async function lockedPackage(root, name, category) {
     const loaded = await packageItem(
         { source, item: normalizeItem(entry.item, source, category, true) },
         category,
-        entry.thumbnail !== false,
+        await thumbnailPolicy(root, name),
     )
     if (sha256(loaded.bytes) !== entry.sha256)
         throw new Error(`Locked preview package hash mismatch: ${name}`)
     return loaded
 }
+
+export { lockedPackage }
 
 export async function stagePreviewAssets(root, destination, env = process.env) {
     const source = env.PREVIEW_ASSET_SOURCE || 'server'
@@ -232,6 +257,8 @@ export async function stagePreviewAssets(root, destination, env = process.env) {
                 if (optionalLocal.has(name) && error.code === 'ENOENT') continue
                 throw error
             }
+            if (!(await thumbnailPolicy(root, name)) && hasPicture(loaded.bytes, category))
+                throw new Error(`Local ${name}.scp has a picture that its lock entry leaves out`)
         } else {
             const override = env[`PREVIEW_${name.toUpperCase()}_URL`]
             loaded = override

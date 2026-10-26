@@ -8,6 +8,7 @@ import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 import { readZip } from '../../builtin-assets/zip.mjs'
 import {
+    createScp,
     downloadPackage,
     itemDetailsUrl,
     refreshPreviewAssetLock,
@@ -160,7 +161,13 @@ test('refresh pins Coconut resources and default staging uses the lock without i
             'https://coconut.sonolus.com/next-sekai/sonolus/effects/coconut-next-sekai-2',
         ),
     )
+    assert.ok(
+        urls.includes(
+            'https://coconut.sonolus.com/next-sekai/sonolus/effects/coconut-next-sekai-1',
+        ),
+    )
     assert.equal(lock.particle.thumbnail, false)
+    assert.equal(lock.effect.thumbnail, false)
     assert.equal(lock.effect2.thumbnail, false)
     assert.equal('thumbnail' in lock.particle.item, false)
     assert.equal('thumbnail' in lock.skin, false)
@@ -175,6 +182,7 @@ test('refresh pins Coconut resources and default staging uses the lock without i
             'resource/skin.scp',
             'resource/skin2.scp',
             'resource/particle.scp',
+            'resource/effect.scp',
             'resource/effect2.scp',
         ],
     )
@@ -189,12 +197,15 @@ test('refresh pins Coconut resources and default staging uses the lock without i
         'https://cdn.example/texture',
         'https://coconut.sonolus.com/data',
         'https://cdn.example/audio',
+        'https://coconut.sonolus.com/data',
+        'https://cdn.example/audio',
     ])
     const parts = (asset) => readZip(readFileSync(join(directory, asset.file)))
     assert.equal(parts(assets[0]).has('thumbnail'), true)
     assert.equal(parts(assets[1]).has('thumbnail'), true)
     assert.equal(parts(assets[2]).has('thumbnail'), false)
     assert.equal(parts(assets[3]).has('thumbnail'), false)
+    assert.equal(parts(assets[4]).has('thumbnail'), false)
     for (const asset of assets) {
         const bytes = await readFile(join(directory, asset.file))
         assert.equal(bytes.length, asset.bytes)
@@ -203,7 +214,8 @@ test('refresh pins Coconut resources and default staging uses the lock without i
     assert.equal(assets[0].sha256, lock.skin.sha256)
     assert.equal(assets[1].sha256, lock.skin2.sha256)
     assert.equal(assets[2].sha256, lock.particle.sha256)
-    assert.equal(assets[3].sha256, lock.effect2.sha256)
+    assert.equal(assets[3].sha256, lock.effect.sha256)
+    assert.equal(assets[4].sha256, lock.effect2.sha256)
 })
 
 test('refresh keeps a left-out picture, and an override cannot bring it back', async (t) => {
@@ -227,6 +239,31 @@ test('refresh keeps a left-out picture, and an override cannot bring it back', a
     assert.equal(picture(staged[0].file), false)
     assert.equal(picture(staged[1].file), true)
     assert.equal(picture(staged[2].file), false)
+    // The item holds no locator for the left-out picture, though the server offered one.
+    const item = (file, category, name) =>
+        JSON.parse(readZip(readFileSync(join(directory, file))).get(`sonolus/${category}/${name}`))
+            .item
+    assert.equal('thumbnail' in item(staged[2].file, 'particles', 'fixture'), false)
+    assert.equal('thumbnail' in item(staged[1].file, 'skins', 'fixture'), true)
+})
+
+test('the left-out pictures are pinned by the script, not only by the lock', async (t) => {
+    server(t)
+    const directory = await temporary(t)
+    await refreshPreviewAssetLock(directory, {})
+    const lockPath = join(directory, 'deployment/preview-assets.lock.json')
+    const lock = JSON.parse(await readFile(lockPath, 'utf8'))
+    for (const name of ['particle', 'effect', 'effect2']) {
+        delete lock[name].thumbnail
+        lock[name].item.thumbnail = { url: 'https://cdn.example/thumbnail', hash: hash(thumbnail) }
+    }
+    await writeFile(lockPath, JSON.stringify(lock))
+    const staged = await stagePreviewAssets(directory, directory, {})
+    for (const asset of staged.filter((asset) => /particle|effect/.test(asset.file)))
+        assert.equal(readZip(readFileSync(join(directory, asset.file))).has('thumbnail'), false)
+    const refreshed = await refreshPreviewAssetLock(directory, {})
+    for (const name of ['particle', 'effect', 'effect2'])
+        assert.equal(refreshed[name].thumbnail, false)
 })
 
 test('a locked item without a picture packages none', async (t) => {
@@ -234,7 +271,7 @@ test('a locked item without a picture packages none', async (t) => {
     const directory = await temporary(t)
     await refreshPreviewAssetLock(directory, {})
     const assets = await stagePreviewAssets(directory, directory, {})
-    assert.equal(assets.length, 4)
+    assert.equal(assets.length, 5)
     assert.equal(readZip(readFileSync(join(directory, assets[0].file))).has('thumbnail'), false)
 })
 
@@ -315,7 +352,8 @@ test('configured servers replace the defaults', async (t) => {
         PREVIEW_SKIN_URL: 'https://example.com/skins/custom',
         PREVIEW_SKIN2_URL: 'https://example.com/skins/custom2',
         PREVIEW_PARTICLE_URL: 'https://example.com/particles/custom',
-        PREVIEW_EFFECT2_URL: 'https://example.com/effects/custom',
+        PREVIEW_EFFECT_URL: 'https://example.com/effects/custom',
+        PREVIEW_EFFECT2_URL: 'https://example.com/effects/custom2',
     })
     assert.ok(urls.includes('https://example.com/sonolus/skins/custom'))
     assert.ok(urls.includes('https://example.com/sonolus/particles/custom'))
@@ -355,19 +393,42 @@ test('local staging requires a skin, accepts optional packages, and never fetche
         ['resource/skin.scp'],
     )
     assert.equal(await readFile(join(output, 'resource/skin.scp'), 'utf8'), 'local skin')
-    await writeFile(join(directory, 'public/resource/particle.scp'), 'local particle')
+    const local = (name, category, extra = {}, item = {}) =>
+        createScp({
+            [`sonolus/${category}/list`]: Buffer.from(
+                JSON.stringify({ items: [{ name: 'x', ...item }] }),
+            ),
+            data,
+            ...extra,
+        })
+    const put = (name, bytes) => writeFile(join(directory, `public/resource/${name}.scp`), bytes)
+    await put('particle', local('particle', 'particles'))
     assert.equal((await stagePreviewAssets(directory, output, env)).length, 2)
-    await writeFile(join(directory, 'public/resource/skin2.scp'), 'local skin 2')
-    await writeFile(join(directory, 'public/resource/effect2.scp'), 'local effects 2')
+    await put('skin2', 'local skin 2')
+    await put('effect', local('effect', 'effects'))
+    await put('effect2', local('effect2', 'effects'))
     assert.deepEqual(
         (await stagePreviewAssets(directory, output, env)).map((asset) => asset.file),
         [
             'resource/skin.scp',
             'resource/skin2.scp',
             'resource/particle.scp',
+            'resource/effect.scp',
             'resource/effect2.scp',
         ],
     )
+    // A package whose item leaves its picture out may carry neither the entry nor a locator.
+    for (const name of ['particle', 'effect', 'effect2']) {
+        const category = name === 'particle' ? 'particles' : 'effects'
+        for (const bad of [
+            local(name, category, { thumbnail: thumbnail }),
+            local(name, category, {}, { thumbnail: { url: '/thumbnail' } }),
+        ]) {
+            await put(name, bad)
+            await assert.rejects(stagePreviewAssets(directory, output, env), /leaves out/)
+        }
+        await put(name, local(name, category))
+    }
     await assert.rejects(
         stagePreviewAssets(directory, output, { PREVIEW_ASSET_SOURCE: 'typo' }),
         /must be/,

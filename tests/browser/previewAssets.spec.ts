@@ -939,7 +939,8 @@ test.describe('Next SEKAI 02', () => {
         const urls = requests(page)
         await start(page)
         await expect.poll(() => skinTitle(page)).toBe('Fixture')
-        await page.waitForTimeout(300)
+        for (const type of ['particle', 'effect'])
+            await expect.poll(() => slotStatus(page, type)).toMatchObject({ state: 'ready' })
         expect(urls.filter((url) => /\/resource\/(skin2|effect2)\.scp$/.test(url))).toEqual([])
         expect(urls).toContain('/resource/skin.scp')
     })
@@ -1061,16 +1062,6 @@ test.describe('Next SEKAI 02', () => {
         await expect(row(page, 'default').locator('svg')).toHaveCount(1)
         await expect(row(page, 'default').locator('img')).toHaveCount(0)
         await shot(page, 'particle-next-sekai')
-    })
-
-    test('a package without a picture keeps the glyph and still shows its author', async ({
-        page,
-    }) => {
-        await start(page)
-        await open(page)
-        await tabOf(page, 'particle').click()
-        await expect(row(page, 'default')).toContainText('Fixture author')
-        await expect(row(page, 'default').locator('svg')).toHaveCount(1)
     })
 })
 

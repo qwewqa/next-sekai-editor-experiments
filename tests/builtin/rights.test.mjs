@@ -75,6 +75,17 @@ test('the web-only list matches the files and locks it names', () => {
     assert.ok(list.references.some((r) => r.regex && new RegExp(r.regex).test('bg-aB3_-xyZ.png')))
 })
 
+test('the franchise pictures stay out of the packages the lock names', () => {
+    const lock = JSON.parse(read('deployment/preview-assets.lock.json'))
+    for (const name of ['particle', 'effect2']) {
+        assert.equal(lock[name].thumbnail, false, name)
+        assert.equal('thumbnail' in lock[name].item, false, name)
+    }
+    const names = JSON.parse(read('deployment/web-only-assets.json')).files.map((file) => file.name)
+    assert.equal(names.includes('particle thumbnail'), false)
+    assert.equal(names.includes('effect2 thumbnail'), false)
+})
+
 test('coconut appears in no locale file', () => {
     for (const locale of readdirSync(new URL('../../src/i18n/', import.meta.url), {
         withFileTypes: true,

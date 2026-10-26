@@ -63,7 +63,7 @@ export const reasonText = (fallback: FallbackState) => {
     }
 }
 
-/** "Using Default. The skin file is no longer stored in this browser." under the chosen row. */
+/** "Using Next SEKAI 01. The skin file is no longer stored in this browser." under the chosen row. */
 export const rowText = (fallback: FallbackState) =>
     interpolateRaw(
         fallback.using === 'stored' ? strings().fallback.rowStored : strings().fallback.row,
@@ -71,7 +71,7 @@ export const rowText = (fallback: FallbackState) =>
         reasonText(fallback),
     )
 
-/** "Skin: using Default. …" in the Preview panel. */
+/** "Skin: using Next SEKAI 01. …" in the Preview panel. */
 export const panelText = (fallback: FallbackState) =>
     interpolateRaw(
         fallback.using === 'stored' ? strings().fallback.panelStored : strings().fallback.panel,

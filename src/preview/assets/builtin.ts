@@ -74,7 +74,8 @@ export const loadEffectPackage = async (
 
     const dataRaw = getResource(item.data)
     const audioRaw = getResource(item.audio)
-    if (!dataRaw || !audioRaw) throw new AssetError('corrupt', 'Built-in effect is incomplete')
+    if (!dataRaw || !audioRaw)
+        throw new AssetError('corrupt', `The effect package ${url} is incomplete`)
 
     const audio = parseScp(new Uint8Array(audioRaw).buffer)
     return decodeEffectClips({
@@ -163,5 +164,3 @@ export const loadPackageInfo = (
     }
     return info
 }
-
-export const loadBuiltinInfo = (type: AssetType) => loadPackageInfo(builtinUrl(type), type)

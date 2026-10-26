@@ -498,11 +498,11 @@
         "storageUnavailable": "L’éditeur ne peut pas accéder à l’élément stocké ({0}) dans ce navigateur.",
         "serverFailed": "Impossible de télécharger à nouveau l’élément ({0}) depuis {1}.",
         "invalid": "L’élément stocké ({0}) n’a pas pu être lu.",
-        "failed": "Impossible de charger {0}.",
+        "failed": "Impossible de charger \"{0}\".",
         "builtinFailed": "L’élément intégré n’a pas pu être chargé."
       },
       "offline": "Vous êtes hors ligne.",
-      "safeMode": "Le mode sans échec utilise {0}.",
+      "safeMode": "Le mode sans échec utilise \"{0}\".",
       "choose": "Choisir…",
       "chooseSkin": "Choisir un skin",
       "chooseParticle": "Choisir une particule",

@@ -10,7 +10,7 @@ export type ScpArchive = {
 export const parseScp = (buffer: ArrayBuffer): ScpArchive => {
     const bytes = new Uint8Array(buffer)
 
-    // The shared central-directory parser; CRCs stay unchecked, as the preview fixture writes zeros.
+    // The shared central-directory parser; CRCs stay unchecked.
     let entries: Map<string, ZipEntry>
     try {
         entries = new Map(readDirectory(bytes).map((entry) => [entry.name, entry]))

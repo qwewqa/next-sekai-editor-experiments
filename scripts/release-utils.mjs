@@ -120,7 +120,7 @@ async function dependencyNotices(root, kind) {
         'UI icons: Font Awesome Free by Fonticons, Inc. (https://fontawesome.com), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).',
         ...(kind === 'web'
             ? [
-                  'Preview skins "Next SEKAI 01" and "Next SEKAI 02", the preview particle "Next SEKAI" and the preview sound effects "Next SEKAI 01" and "Next SEKAI 02", by Burrito, from coconut.sonolus.com, under its author’s terms.',
+                  'Preview assets by Burrito, from coconut.sonolus.com, under the author’s terms: skins "Next SEKAI 01" and "Next SEKAI 02", particle "Next SEKAI", and sound effects "Next SEKAI 01" and "Next SEKAI 02".',
               ]
             : []),
         'Font Awesome icon attribution: notices/Font-Awesome.txt',
