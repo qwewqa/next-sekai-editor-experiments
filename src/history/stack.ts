@@ -1,6 +1,8 @@
 import { computed, ref, shallowReactive, shallowRef, watch, type Ref } from 'vue'
 import { recordError } from '../diagnostics'
+import { fieldPastLimit } from '../chart/limits'
 import type { State } from '../state'
+import type { EntityType } from '../state/entities'
 import { emitHistoryAction } from './actions'
 import { cappedSpan, STACK_CAP } from './cap'
 import { freezePublished } from './freeze'
@@ -374,6 +376,20 @@ const sameSelection = (a: State, b: State) =>
         a.selectedEntities.every((entity, i) => entity === b.selectedEntities[i]))
 
 /**
+ * Whether a state holds a coordinate past the chart limits, in a bucket the other lacks. A chart
+ * with one is refused on reopening, so no edit may produce it.
+ */
+const pastLimits = (before: State, after: State) => {
+    for (const type of Object.keys(after.store.grid) as EntityType[]) {
+        const was = before.store.grid[type]
+        for (const [key, bucket] of after.store.grid[type])
+            if (was.get(key) !== bucket)
+                for (const entity of bucket) if (fieldPastLimit(entity)) return true
+    }
+    return false
+}
+
+/**
  * Pushes a state: an edit, or Restore of a History entry, which leaves the peek first.
  * An edit that leaves the chart as it was is no step: the chart is compared
  * as its stored records, so it holds however the entities were rebuilt. A selection it changed
@@ -390,6 +406,8 @@ export const pushState = (
         if (isProduction()) return false
         throw new Error('pushState while viewing history')
     }
+    // An edit past the limits does not happen, as a Scale Selection past them does not.
+    if (kind === 'edit' && pastLimits(currentState.value, state)) return false
     // Callers built `state` from what's on screen: a queued move can never reorder it.
     const step = captureStep({ kind, operation })
     if (kind === 'edit' && sameChart(currentState.value, state)) {

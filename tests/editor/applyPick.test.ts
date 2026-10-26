@@ -13,6 +13,7 @@ import { createSessionDescriptor, session } from '../../src/history/session'
 import { canUndo, liveState, resetStates, setSlotLoader } from '../../src/history/stack'
 import type { State } from '../../src/state'
 import type { Bgm } from '../../src/state/bgm'
+import { emptyStore } from '../helpers/emptyStore'
 import { initialStep, nativeOperation } from '../helpers/historySteps'
 
 const operation = ((old, next) =>
@@ -28,7 +29,8 @@ const meta = (hash: string, filename = `${hash}.mp3`) => ({
     type: 'audio/mpeg',
 })
 
-const stateOf = (bgm: Bgm): State => ({ bgm, selectedEntities: [] }) as unknown as State
+const stateOf = (bgm: Bgm): State =>
+    ({ bgm, selectedEntities: [], store: emptyStore }) as unknown as State
 
 const picked = (hash: string, filename = `${hash}.mp3`): PickedBgm => ({
     filename: filename.replace(/\.mp3$/, ''),

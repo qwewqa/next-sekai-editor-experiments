@@ -1,19 +1,6 @@
 import type { Chart } from '.'
-import { maxBeat, maxLane, maxSize } from './limits'
+import { isWithinLimit } from './limits'
 import { ImportRefusal } from './refusal'
-
-const limits: Record<string, number> = {
-    beat: maxBeat,
-    yOffsetBeat: maxBeat,
-    left: maxLane,
-    cameraLeft: maxLane,
-    maskLeft: maxLane,
-    pivotLane: maxLane,
-    cameraZoomTargetLane: maxLane,
-    size: maxSize,
-    cameraSize: maxSize,
-    maskSize: maxSize,
-}
 
 export const validateChart = (chart: Chart) => {
     if (!chart.bpms.some(({ beat }) => beat === 0)) throw new ImportRefusal('initialBpm')
@@ -43,7 +30,7 @@ export const validateValues = (chart: Chart) => {
     for (const object of objects) {
         for (const [name, value] of Object.entries(object)) {
             if (typeof value !== 'number') continue
-            if (!Number.isFinite(value) || Math.abs(value) > (limits[name] ?? Infinity))
+            if (!Number.isFinite(value) || !isWithinLimit(name, value))
                 throw new ImportRefusal('invalidValue', name)
         }
     }

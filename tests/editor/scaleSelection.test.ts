@@ -585,6 +585,17 @@ test('width scaling and translation refuse a lane or a size past the limits', ()
     assert.equal(getTranslatedSelectionValues(notes, 'width', -1e9), undefined)
 })
 
+test('width limits apply by field: an editor lane or a translation has none', () => {
+    const lanes = [
+        { ...source('timeScale', 3), editorLane: 6000 },
+        { ...source('stageTransformEventJoint', 5), xTranslation: 7000 },
+    ]
+    assert.ok(getTranslatedSelectionValues(lanes, 'width', -1))
+    assert.ok(getTranslatedSelectionValues(lanes, 'width', 1e5))
+    const notes = [{ ...source('note', 3), left: 2, size: 2 }]
+    assert.equal(getTranslatedSelectionValues(notes, 'width', 1e5), undefined)
+})
+
 test('scaled beats stay within the largest beat, for connected notes and for points', () => {
     const state = emptyState()
     const slideId = 1 as SlideId
