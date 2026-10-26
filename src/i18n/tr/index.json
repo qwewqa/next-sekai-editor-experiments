@@ -1200,7 +1200,7 @@
   "load": {
     "version": "Sürüm {0}",
     "updated": "{0} sürümüne güncellendi",
-    "whatsNew": "Yenilikler",
+    "whatsNew": "Sürüm Notları",
     "upgradeBlocked": "Saklanan çalışmanızı açmak için diğer {0} sekmelerini kapatın.",
     "olderVersion": "Bu tarayıcıda editörün daha yeni bir sürümü açıldı. Sayfayı yeniden yükleyin veya çalışmanızı korumak için kaydedin.",
     "tryAgain": "Tekrar Dene",

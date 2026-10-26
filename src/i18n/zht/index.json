@@ -1200,7 +1200,7 @@
   "load": {
     "version": "版本 {0}",
     "updated": "已更新至版本 {0}",
-    "whatsNew": "新功能",
+    "whatsNew": "發行說明",
     "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已存放的內容。",
     "olderVersion": "此瀏覽器中已開啟過較新版本的編輯器。請重新載入，或儲存以保留內容。",
     "tryAgain": "重試",

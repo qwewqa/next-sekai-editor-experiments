@@ -1200,7 +1200,7 @@
   "load": {
     "version": "Version {0}",
     "updated": "Mis à jour vers la version {0}",
-    "whatsNew": "Nouveautés",
+    "whatsNew": "Notes de version",
     "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
     "olderVersion": "Une version plus récente de l’éditeur a été ouverte dans ce navigateur. Rechargez la page, ou sauvegardez pour conserver votre travail.",
     "tryAgain": "Réessayer",
