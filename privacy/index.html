@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta
             name="description"
-            content="How %PRODUCT_NAME% uses your data, how long it is kept and your privacy choices."
+            content="What data we collect when you use %PRODUCT_NAME%, how long we keep it and how to turn off usage statistics."
         />
         <meta name="theme-color" content="#77efdc" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#232539" media="(prefers-color-scheme: dark)" />
@@ -13,7 +13,7 @@
         <link rel="apple-touch-icon" href="/builtin-assets/out/icon/app-icon-180.png" />
         <link rel="canonical" href="https://nse.qwewqa.dev/privacy/" />
         <link rel="stylesheet" href="/src/landing/landing.css" />
-        <title>Privacy – %PRODUCT_NAME%</title>
+        <title>Privacy Notice – %PRODUCT_NAME%</title>
         <script>
             // The theme before first paint, from the editor's stored choice.
             {
@@ -55,7 +55,9 @@
 
                 <main class="flex flex-col gap-8 p-4 sm:p-6">
                     <div class="flex flex-col gap-1">
-                        <h1 class="text-2xl font-bold text-fg-strong sm:text-3xl">Privacy</h1>
+                        <h1 class="text-2xl font-bold text-fg-strong sm:text-3xl">
+                            Privacy Notice
+                        </h1>
                         <p class="text-sm text-fg/80">
                             Last updated:
                             <time datetime="2026-10-26">October 26, 2026</time>
@@ -63,29 +65,26 @@
                     </div>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="summary">
-                        <h2 id="summary" class="text-lg font-bold text-fg-strong">
-                            Your Data and Choices
-                        </h2>
+                        <h2 id="summary" class="text-lg font-bold text-fg-strong">Summary</h2>
                         <p>
-                            Your charts, editing history, settings and stored assets are kept in
-                            this browser’s storage. Clearing the site’s data in your browser deletes
-                            this stored data. The web editor works without accounts or cookies.
+                            Your charts, editing history, settings and preview assets are stored in
+                            your browser. Clearing this site’s data deletes these local copies. The
+                            editor does not require an account or use cookies.
                         </p>
                         <p>
-                            Usage statistics are optional. You can turn them off for this browser in
-                            Settings › About › Send Usage Statistics.
-                        </p>
-                        <p>
-                            Statistics are on by default unless your browser sends Do Not Track or
-                            Global Privacy Control. Your choice overrides these browser signals.
+                            Usage statistics are on by default unless your browser sends a Do Not
+                            Track or Global Privacy Control signal. You can turn them on or off for
+                            this browser in Settings › About › Send Usage Statistics. If you change
+                            this setting, it takes precedence over the browser signals.
                         </p>
                     </section>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="who">
-                        <h2 id="who" class="text-lg font-bold text-fg-strong">Who Runs This</h2>
+                        <h2 id="who" class="text-lg font-bold text-fg-strong">Data Controller</h2>
                         <p>
-                            %PRODUCT_NAME% is an open-source project by qwewqa. qwewqa runs this
-                            site and is responsible for the use of personal data described here.
+                            %PRODUCT_NAME% is an open-source project run by qwewqa, the data
+                            controller for the personal data described in this notice. “We” and “us”
+                            refer to qwewqa.
                         </p>
                         <p>
                             Send privacy questions and requests to
@@ -98,77 +97,77 @@
                             Usage Statistics
                         </h2>
                         <p>
-                            We collect usage statistics to understand how the editor is used and
-                            improve its reliability and performance. We rely on our legitimate
-                            interest in improving the editor.
+                            We collect usage statistics because we have a legitimate interest in
+                            understanding how the editor is used and improving it.
                         </p>
+                        <p>The statistics include:</p>
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
-                                Use of tools and commands, settings, time spent in the editor,
-                                performance and errors.
+                                Tools and commands you use, some editor settings and time spent in
+                                the editor.
                             </li>
                             <li>
-                                File types and sizes, chart sizes, music lengths and the results of
-                                file actions.
+                                How long actions take, other performance measurements and the number
+                                of errors.
                             </li>
                             <li>
-                                Browser and device information, browser storage status, country and
-                                referring site.
+                                File types and sizes, chart sizes (such as the number of notes), and
+                                the length of the music.
+                            </li>
+                            <li>Results of attempts to open, save or export files.</li>
+                            <li>
+                                Browser and device details, language settings, screen size, your
+                                country and the site that referred you.
+                            </li>
+                            <li>
+                                Whether browser storage is available, how much is used and its
+                                limits.
                             </li>
                         </ul>
                         <p>
-                            Statistics do not include chart content, file names, level titles or
-                            other text you type.
-                        </p>
-                        <p>
-                            See the
+                            The statistics do not include chart content, file names, level titles or
+                            other text you type. For the full list, see
                             <a
                                 href="https://github.com/%GITHUB_REPOSITORY%/blob/main/docs/usage-statistics.md"
                                 class="link"
                                 target="_blank"
                                 rel="noopener"
-                                >complete list of what is sent</a
+                                >What the usage statistics send</a
                             >.
                         </p>
 
                         <h3 class="mt-2 font-bold text-fg-strong">Counting Visits</h3>
                         <p>
-                            To count visits, the server uses your IP address and information about
-                            your browser to create a daily visitor code. The code is stored with
-                            your activity and changes each day.
+                            We count visits using a visitor identifier generated from your IP
+                            address and browser details. It changes each day and is stored with
+                            individual usage records. We also use your IP address to estimate your
+                            country. The statistics do not contain your IP address, but error logs
+                            on the statistics server may contain it.
                         </p>
                     </section>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="hosting">
                         <h2 id="hosting" class="text-lg font-bold text-fg-strong">
-                            Where Data Is Processed
+                            Hosting and Sharing
                         </h2>
                         <p>
-                            GitHub Pages hosts this site. GitHub may log requests, including your IP
-                            address, and keeps those logs under its own
+                            This site is hosted on GitHub Pages. GitHub may log requests, including
+                            your IP address, as described in
                             <a
                                 href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
                                 class="link"
                                 target="_blank"
                                 rel="noopener"
-                                >privacy statement</a
+                                >GitHub’s privacy statement</a
                             >.
                         </p>
                         <p>
-                            Our statistics server and backups are hosted by Amazon Web Services
-                            (AWS) in the United States. AWS processes the data on our behalf. We do
-                            not otherwise share usage statistics.
+                            We store usage statistics and their backups with Amazon Web Services
+                            (AWS) in the United States. AWS processes this data on our behalf. We do
+                            not share usage statistics with anyone else.
                         </p>
                         <p>
-                            For transfers subject to EU data protection rules, we rely on the
-                            European Commission’s Standard Contractual Clauses in
-                            <a
-                                href="https://aws.amazon.com/service-terms/"
-                                class="link"
-                                target="_blank"
-                                rel="noopener"
-                                >AWS’s terms</a
-                            >.
+                            Our email provider processes the messages and attachments you send us.
                         </p>
                     </section>
 
@@ -176,52 +175,66 @@
                         <h2 id="keep" class="text-lg font-bold text-fg-strong">
                             How Long We Keep Data
                         </h2>
-                        <p>We keep individual usage statistics for 13 months.</p>
-                        <p>We keep combined statistics without visitor codes indefinitely.</p>
-                        <p>Backups on AWS are deleted after about five weeks.</p>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                Individual usage records, including visitor identifiers: up to 13
+                                months.
+                            </li>
+                            <li>
+                                Backups of the statistics: up to six weeks after each backup is
+                                made.
+                            </li>
+                            <li>Error logs on the statistics server: up to two weeks.</li>
+                            <li>Email conversations: up to one year after your last message.</li>
+                        </ul>
                         <p>
-                            Server error logs may contain your IP address. We delete these logs
-                            after two weeks.
+                            Aggregated statistics contain no visitor identifiers and are kept
+                            indefinitely.
                         </p>
                     </section>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="contact">
                         <h2 id="contact" class="text-lg font-bold text-fg-strong">
-                            Email and Files You Send Us
+                            Email and Support
                         </h2>
                         <p>
-                            When you contact us, we use your email address and message to answer
-                            you. We rely on our legitimate interest in providing support. For
-                            requests about your data rights, we use this information to meet our
-                            legal obligations. We keep the conversation in our mailbox for one year
-                            after your last message, so we can refer to it if you contact us again.
-                            If you send a file to help fix a problem, we use it only for that and
-                            delete it when the problem is fixed.
+                            When you email us, we use your email address and message to respond,
+                            based on our legitimate interest in providing support. For requests
+                            about your data protection rights, we use your message to respond as
+                            required by law.
+                        </p>
+                        <p>
+                            If you send a file to help us investigate a problem, we use it only for
+                            that and delete it once the problem is fixed.
                         </p>
                     </section>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="choices">
                         <h2 id="choices" class="text-lg font-bold text-fg-strong">Your Rights</h2>
                         <p>
-                            Depending on the law that applies, you may have rights to access,
-                            correct or delete your personal data, receive a portable copy, restrict
-                            its use, or object to its use. Send requests to the email address above.
-                            You may also complain to your local data protection authority.
+                            Depending on the law that applies, you may have the right to access,
+                            correct or delete your personal data, receive a copy in a reusable
+                            format, or restrict how we use it.
                         </p>
                         <p>
                             You can object at any time to our use of your personal data for usage
-                            statistics or support by emailing us. You can also stop sending usage
-                            statistics in Settings › About › Send Usage Statistics.
+                            statistics or support. You can also turn off usage statistics in
+                            Settings › About › Send Usage Statistics.
                         </p>
-                        <p>We may be unable to identify which usage statistics relate to you.</p>
+                        <p>
+                            To exercise any of these rights, email
+                            <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>. You can
+                            also complain to your local data protection authority.
+                        </p>
+                        <p>
+                            For usage statistics, we may not be able to find the records that belong
+                            to you.
+                        </p>
                     </section>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="changes">
                         <h2 id="changes" class="text-lg font-bold text-fg-strong">Changes</h2>
-                        <p>
-                            We may update this notice as the editor changes. The date at the top
-                            shows when it was last updated.
-                        </p>
+                        <p>We may update this notice as the editor changes.</p>
                     </section>
                 </main>
 
