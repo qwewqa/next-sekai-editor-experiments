@@ -89,3 +89,19 @@ test('a clock range never throws', () => {
     assert.equal(formatClockRange('en', Number.NaN, at(10, 16, 16, 16)), '')
     assert.doesNotThrow(() => formatClockRange('en', at(10, 16, 16, 33), at(10, 16, 16, 16)))
 })
+
+test('a time without a zone follows a change of the engine’s zone', () => {
+    const original = process.env.TZ
+    const instant = Date.UTC(2026, 10, 5, 1, 30)
+    try {
+        process.env.TZ = 'America/Los_Angeles'
+        assert.equal(formatDateTime('en', instant, instant), 'Nov 4, 5:30 PM')
+        assert.equal(formatClock('en', instant), '5:30 PM')
+        process.env.TZ = 'Asia/Tokyo'
+        assert.equal(formatDateTime('en', instant, instant), 'Nov 5, 10:30 AM')
+        assert.equal(formatClock('en', instant), '10:30 AM')
+    } finally {
+        if (original === undefined) delete process.env.TZ
+        else process.env.TZ = original
+    }
+})
