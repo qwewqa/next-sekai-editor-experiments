@@ -124,9 +124,7 @@ const described = computed(() => {
 })
 const hasNotes = computed(
     () =>
-        (showExport.value && !emphasised.value) ||
-        !!props.input.storageLine ||
-        !!props.input.peeking,
+        (showExport.value && !emphasised.value) || !!props.input.storageLine || props.input.peeking,
 )
 
 const title = computed(() =>
