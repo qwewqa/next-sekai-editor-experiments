@@ -199,6 +199,9 @@
                                 a private window, and approximately how full it is;
                             </li>
                             <li>
+                                whether automatic cleanup ran, freed space or was unable to finish;
+                            </li>
+                            <li>
                                 the site you came from, if you followed a link from another site,
                                 without the rest of its address.
                             </li>
@@ -214,14 +217,13 @@
                             other text you type, or any identifier stored in your browser. Counts,
                             such as how often a tool is used, are sent as numbers up to 9999. How
                             long an action takes is sent in milliseconds, up to ten minutes. The
-                            screen size is sent as it is. Other numbers, such as sizes, the number
-                            of notes and how long the chart takes to show a step, are sent as
-                            ranges.
+                            screen size is sent as it is. Other numbers, such as sizes and how long
+                            the chart takes to show a step, are sent as ranges.
                         </p>
                         <p>
-                            The number of notes and other objects in a chart, the length of its
-                            music and the sizes of its files are sent as ranges. Together they can
-                            sometimes match a chart that has been published.
+                            Chart object counts below 10 are sent exactly. Larger counts, music
+                            lengths and file sizes are sent as ranges. Together these figures can
+                            sometimes match a published chart.
                         </p>
                         <p>
                             The server receives your IP address and browser’s user agent with each

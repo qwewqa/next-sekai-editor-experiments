@@ -42,6 +42,7 @@ const categories = {
     installed: 'whether the editor is installed',
     storage:
         'whether this browser’s storage is available, whether this looks like a private window, and approximately how full it is',
+    cleanup: 'whether automatic cleanup ran, freed space or was unable to finish',
     referrer: 'the site you came from',
     time: 'Each is sent with the time it happened.',
 }
@@ -75,6 +76,7 @@ const rules: [RegExp, Category][] = [
     [/^startup\.(?:cores|deviceMemory|engine|touch|dpr|viewport)$/, 'device'],
     [/^startup\./, 'start'],
     [/^storage\.sessions$/, 'sessions'],
+    [/^storage\.cleanup$/, 'cleanup'],
     [/^storage\./, 'storage'],
     [/^chart\.bgm$/, 'music'],
     [/^chart\.historySteps$/, 'undo'],
@@ -130,7 +132,7 @@ test('every property sent has its line on the privacy page', () => {
 test('the privacy page says how times and chart sizes are sent, and what ranges can match', () => {
     for (const words of [
         'How long an action takes is sent in milliseconds, up to ten minutes.',
-        'Together they can sometimes match a chart that has been published.',
+        'Chart object counts below 10 are sent exactly. Larger counts, music lengths and file sizes are sent as ranges. Together these figures can sometimes match a published chart.',
     ])
         assert.ok(page.includes(words), words)
 })
