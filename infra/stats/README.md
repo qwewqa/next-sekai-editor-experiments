@@ -77,9 +77,11 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
     # on the instance:
     mkdir -p /data/dumps && curl -fsSL -o /data/dumps/restore.dump '<link>'
     dc stop umami
-    dc exec -T db pg_restore -U umami -d umami --clean --if-exists --no-owner < /data/dumps/restore.dump
-    dc up -d umami; rm /data/dumps/restore.dump
+    dc exec -T db pg_restore -U umami -d umami --clean --if-exists --no-owner --single-transaction \
+      < /data/dumps/restore.dump && dc up -d umami && rm /data/dumps/restore.dump
     ```
+
+    The restore runs in one transaction. If it fails, the database is unchanged, Umami stays stopped and the dump stays in `/data/dumps`. Fix the cause (a full disk, for example) and run the restore again.
 
     CI tests that a dump restores into a fresh PostgreSQL with the same row counts.
 
