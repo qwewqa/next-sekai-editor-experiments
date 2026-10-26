@@ -166,8 +166,9 @@ test('browsers-full runs the Chromium suite in shards and leaves the timing spec
     assert.doesNotMatch(chromium, /--project=timing/)
     assert.doesNotMatch(full, /chromium-timing/)
     const rules = readFileSync(new URL('../../scripts/release/rules.mjs', import.meta.url), 'utf8')
-    assert.match(rules, /'npm run test:timing',/)
-    assert.doesNotMatch(rules, /'npm run test:browser',/)
+    // A release from a branch other than main has no Browsers Full run, so it runs the whole suite locally.
+    assert.match(rules, /'npm run test:browser',/)
+    assert.doesNotMatch(rules, /'npm run test:timing',/)
 })
 
 test('a release needs a passed browsers-full run and says how to start one', () => {
