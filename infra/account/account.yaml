@@ -11,10 +11,6 @@ Parameters:
     AlertEmail:
         Type: String
         Description: Receives the alert topic and the budget emails. Passed on the command line, never committed.
-    Repository:
-        Type: String
-        Default: qwewqa/next-sekai-editor-experiments
-        Description: The GitHub repository whose workflows may assume the deploy roles.
 
 Mappings:
     Environments:
@@ -108,7 +104,8 @@ Resources:
                       Condition:
                           StringEquals:
                               'token.actions.githubusercontent.com:aud': sts.amazonaws.com
-                              'token.actions.githubusercontent.com:sub': !Sub repo:${Repository}:environment:stats-${Environment}
+                              # GitHub's immutable subject, owner@owner-id/name@repository-id, which a renamed or recreated repository does not match.
+                              'token.actions.githubusercontent.com:sub': !Sub repo:qwewqa@17557038/next-sekai-editor-experiments@1421592566:environment:stats-${Environment}
             Policies:
                 - PolicyName: deploy
                   PolicyDocument:
