@@ -1373,15 +1373,9 @@ export const renderPreviewFrame = (
         })
 
         if (showEffects && spriteSet && slot.size > 0) {
-            let slotAffine = identityStageScreenTransform
-            withLayoutAt(
-                target,
-                (context) => {
-                    slotAffine = stageTransformToAffineOrIdentity(
-                        visualStageTransformAt(context, note, target, true),
-                    )
-                },
-                true,
+            // Slot effects keep the stage at the hit, under the current camera.
+            const slotAffine = stageTransformToAffineOrIdentity(
+                visualStageTransformAt(context, note, target, true),
             )
             if (spriteSet.slot && !singleLine && elapsed < SLOT_EFFECT_DURATION) {
                 const a = 1 - elapsed / SLOT_EFFECT_DURATION
