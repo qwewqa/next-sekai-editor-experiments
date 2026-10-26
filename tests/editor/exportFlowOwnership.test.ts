@@ -18,6 +18,7 @@ import {
 } from '../../src/editor/commands/exportLevel/memory'
 import { knownTargetAvailable } from '../../src/editor/commands/exportLevel/ownership'
 import { setTargetLock } from '../../src/editor/commands/exportLevel/targetLock'
+import { notifyResetState } from '../../src/history/resetHooks'
 import { readValue } from '../../src/local/storedRead'
 import type { StorageWorker } from '../../src/local/worker/client'
 import { setPlatformForTests } from '../../src/platform'
@@ -263,3 +264,95 @@ for (const kind of ['empty', 'no-handle', 'different', 'own'] as const) {
         assert.ok(mock.calls.some((call) => call.startsWith('write:')))
     })
 }
+
+// A cancel cannot undo a committed write, but the next chart must not inherit its file.
+const afterReset = async (route: 'remembered' | 'picker') => {
+    const { mock, target } = await setup()
+    const persisted: unknown[] = []
+    setExportPersister((fields) => {
+        persisted.push(fields)
+        return Promise.resolve(true)
+    })
+    const marked: string[] = []
+    const ctx: ExportContext = {
+        ...context(),
+        exportName: 'A',
+        ui: { ...ui(), markExported: (name) => marked.push(name) },
+    }
+    const abort = new AbortController()
+    ctx.signal = abort.signal
+    const reached = gate()
+    const release = gate()
+    // The write has landed and its read-back is slow.
+    mock.fault = async (point) => {
+        if (point !== 'closed') return
+        reached.resolve()
+        await release.promise
+    }
+    if (route === 'picker')
+        mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('copy.nsld') })
+    const exporting = route === 'remembered' ? exportToTarget(ctx, target) : exportByPicker(ctx)
+    await reached.promise
+    abort.abort()
+    // A new chart starts while the first one's write is still being read back.
+    notifyResetState()
+    release.resolve()
+    await exporting
+    assert.equal(exportMemory.target, undefined)
+    assert.equal(exportMemory.exportName, undefined)
+    assert.deepEqual(persisted, [])
+    assert.deepEqual(marked, [])
+}
+
+for (const route of ['remembered', 'picker'] as const) {
+    test(`a ${route} Export finished after a new chart is remembered nowhere`, async () => {
+        await afterReset(route)
+    })
+}
+
+test('a picker Export stops at the handle comparison when a new chart began meanwhile', async () => {
+    const { mock, target } = await setup()
+    const persisted: unknown[] = []
+    setExportPersister((fields) => {
+        persisted.push(fields)
+        return Promise.resolve(true)
+    })
+    await rememberExport()
+    persisted.length = 0
+    target.handle.isSameEntry = () => {
+        notifyResetState()
+        return Promise.resolve(false)
+    }
+    const marked: string[] = []
+    const ctx = { ...context(), ui: { ...ui(), markExported: (name: string) => marked.push(name) } }
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('copy.nsld') })
+    await exportByPicker(ctx)
+    assert.equal(exportMemory.target, undefined)
+    assert.deepEqual(persisted, [])
+    assert.deepEqual(marked, [])
+})
+
+test('a download whose bookkeeping outlasts a new chart is not recorded in it', async () => {
+    const mock = createMockPlatform({ capabilities: { writeBack: false } })
+    setPlatformForTests(mock)
+    const storing = gate()
+    const finish = gate()
+    setExportPersister(async () => {
+        storing.resolve()
+        await finish.promise
+        return true
+    })
+    const marked: string[] = []
+    const ctx = {
+        ...context(),
+        exportName: 'A',
+        ui: { ...ui(), markExported: (name: string) => marked.push(name) },
+    }
+    const exporting = exportByPicker(ctx)
+    await storing.promise
+    notifyResetState()
+    finish.resolve()
+    assert.equal(await exporting, 'done')
+    assert.deepEqual(marked, [])
+    assert.equal(exportMemory.exportName, undefined)
+})

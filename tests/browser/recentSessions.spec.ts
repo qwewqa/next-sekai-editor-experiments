@@ -446,6 +446,20 @@ test('with nothing stored the list says so', async ({ page }) => {
     await expect(page.locator('[data-sessions-footer]')).toHaveCount(0)
 })
 
+test('with storing paused by a full browser and nothing stored the list says so', async ({
+    page,
+}) => {
+    errorsFail(page, { allow: [/A flush failed/] })
+    await load(page, { storage: { forceQuota: true } })
+    await edit(page, { title: 'Alpha', life: 990 })
+    await expect
+        .poll(() => page.evaluate(() => window.nseStorageTest?.status()))
+        .toMatchObject({ mode: 'stored', reason: 'full' })
+    await openSessions(page)
+    await expect(rowsOf(page)).toHaveCount(0)
+    await expect(page.locator('[data-sessions-empty]')).toHaveText(messages.storage.reason.full)
+})
+
 test('rows hold still under the pointer, and a refresh lands when it leaves', async ({
     page,
     context,
