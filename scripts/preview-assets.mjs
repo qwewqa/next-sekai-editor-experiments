@@ -34,20 +34,28 @@ async function writeAtomic(file, write) {
     }
 }
 
+// Offline, or coconut not answering: the switch reports the missing package once, at start.
+const isUnreachable = (error) =>
+    error?.name === 'TypeError' ||
+    error?.name === 'TimeoutError' ||
+    /^Preview download failed/.test(error?.message ?? '')
+
 /**
  * Puts the locked preview packages in public/resource/ for the dev server. A staged package that
  * matches the lock stays. Otherwise the package comes from a cache shared by every checkout of
  * the repository, and otherwise from coconut. A failure is reported in the result.
  */
 export async function stageDevPreviewAssets(root, env = process.env, cacheRoot) {
-    if (env.NSE_SKIP_PREVIEW_ASSETS === '1') return { skipped: true, failures: [] }
+    if (env.NSE_SKIP_PREVIEW_ASSETS === '1') return { skipped: true, failures: [], unexpected: [] }
     const cache = cacheRoot ?? join(root, 'node_modules/.cache/nse-preview-assets')
     const failures = []
+    const unexpected = []
     let entries
     try {
         entries = await readLock(root)
     } catch (error) {
-        return { skipped: false, failures: [`the lock cannot be read: ${error.message}`] }
+        const message = `the lock cannot be read: ${error.message}`
+        return { skipped: false, failures: [message], unexpected: [message] }
     }
     for (const { name, category, sha256: expected } of entries) {
         try {
@@ -61,9 +69,10 @@ export async function stageDevPreviewAssets(root, env = process.env, cacheRoot) 
             await writeAtomic(target, (file) => copyFile(cached, file))
         } catch (error) {
             failures.push(`${name}: ${error.message}`)
+            if (!isUnreachable(error)) unexpected.push(`${name}: ${error.message}`)
         }
     }
-    return { skipped: false, failures }
+    return { skipped: false, failures, unexpected }
 }
 
 /**
@@ -72,9 +81,10 @@ export async function stageDevPreviewAssets(root, env = process.env, cacheRoot) 
  * checks the packages itself and says so with NSE_PREVIEW_ASSETS=release.
  */
 export async function previewAssetsMode(root, env = process.env) {
+    // A release stages every package itself, whatever the dev variable says.
+    if (env.NSE_PREVIEW_ASSETS === 'release') return { included: true }
     if (env.NSE_SKIP_PREVIEW_ASSETS === '1')
         return { included: false, reason: 'NSE_SKIP_PREVIEW_ASSETS is set' }
-    if (env.NSE_PREVIEW_ASSETS === 'release') return { included: true }
     let entries
     try {
         entries = await readLock(root)

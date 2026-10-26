@@ -2,7 +2,7 @@ export function stageDevPreviewAssets(
     root: string,
     env?: NodeJS.ProcessEnv,
     cacheRoot?: string,
-): Promise<{ skipped: boolean; failures: string[] }>
+): Promise<{ skipped: boolean; failures: string[]; unexpected: string[] }>
 
 export function previewAssetsMode(
     root: string,

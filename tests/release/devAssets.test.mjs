@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import test from 'node:test'
+import { promisify } from 'node:util'
 import { previewAssetsMode, stageDevPreviewAssets } from '../../scripts/preview-assets.mjs'
 import { refreshPreviewAssetLock } from '../../scripts/release-assets.mjs'
 import { server, temporary } from './assetFixture.mjs'
@@ -23,7 +25,7 @@ const staged = (root, name) => readFile(join(root, `public/resource/${name}.scp`
 test('a miss builds each package from the lock, stages it and caches it', async (t) => {
     const { root, lock, urls, cache } = await checkout(t)
     const result = await stageDevPreviewAssets(root, {}, cache)
-    assert.deepEqual(result, { skipped: false, failures: [] })
+    assert.deepEqual(result, { skipped: false, failures: [], unexpected: [] })
     assert.ok(urls.length > 0)
     for (const name of names) {
         assert.equal(sha256(await staged(root, name)), lock[name].sha256, name)
@@ -45,7 +47,11 @@ test('a staged package that matches the lock is kept, with no network', async (t
     const before = await staged(root, 'skin')
     urls.length = 0
     t.mock.method(globalThis, 'fetch', () => assert.fail('a matching package fetched'))
-    assert.deepEqual(await stageDevPreviewAssets(root, {}, cache), { skipped: false, failures: [] })
+    assert.deepEqual(await stageDevPreviewAssets(root, {}, cache), {
+        skipped: false,
+        failures: [],
+        unexpected: [],
+    })
     assert.deepEqual(await staged(root, 'skin'), before)
 })
 
@@ -55,7 +61,11 @@ test('a cache hit is copied over a changed package, with no network', async (t) 
     await writeFile(join(root, 'public/resource/skin.scp'), 'old package')
     await rm(join(root, 'public/resource/particle.scp'))
     t.mock.method(globalThis, 'fetch', () => assert.fail('a cached package fetched'))
-    assert.deepEqual(await stageDevPreviewAssets(root, {}, cache), { skipped: false, failures: [] })
+    assert.deepEqual(await stageDevPreviewAssets(root, {}, cache), {
+        skipped: false,
+        failures: [],
+        unexpected: [],
+    })
     assert.equal(sha256(await staged(root, 'skin')), lock.skin.sha256)
     assert.equal(sha256(await staged(root, 'particle')), lock.particle.sha256)
 })
@@ -94,6 +104,7 @@ test('NSE_SKIP_PREVIEW_ASSETS skips staging and leaves staged packages alone', a
     assert.deepEqual(await stageDevPreviewAssets(root, { NSE_SKIP_PREVIEW_ASSETS: '1' }, cache), {
         skipped: true,
         failures: [],
+        unexpected: [],
     })
     await assert.rejects(staged(root, 'skin'), { code: 'ENOENT' })
 })
@@ -116,4 +127,33 @@ test('the assets are in only when every locked package is staged and matches', a
     assert.match((await mode()).reason, /skin\.scp, effect2\.scp/)
     // A release build stages every package itself.
     assert.deepEqual(await mode({ NSE_PREVIEW_ASSETS: 'release' }), { included: true })
+})
+
+test('an unreachable coconut is left to the switch, and a hash mismatch is not', async (t) => {
+    const { root, cache } = await checkout(t)
+    t.mock.method(globalThis, 'fetch', async () => {
+        throw new TypeError('fetch failed')
+    })
+    const offline = await stageDevPreviewAssets(root, {}, cache)
+    assert.equal(offline.failures.length, names.length)
+    assert.deepEqual(offline.unexpected, [])
+    t.mock.restoreAll()
+    t.mock.method(globalThis, 'fetch', async () => new Response('tampered'))
+    const changed = await stageDevPreviewAssets(root, {}, cache)
+    assert.ok(changed.unexpected.length > 0)
+    assert.match(changed.unexpected[0], /hash mismatch/)
+})
+
+test('a release beats the dev skip variable', async (t) => {
+    const { root } = await checkout(t)
+    const both = { NSE_SKIP_PREVIEW_ASSETS: '1', NSE_PREVIEW_ASSETS: 'release' }
+    assert.deepEqual(await previewAssetsMode(root, both), { included: true })
+})
+
+test('the dev staging prints nothing when the switch will report it', async () => {
+    const run = promisify(execFile)
+    const { stdout, stderr } = await run(process.execPath, ['scripts/stage-dev-assets.mjs'], {
+        env: { ...process.env, NSE_SKIP_PREVIEW_ASSETS: '1' },
+    })
+    assert.equal(stdout + stderr, '')
 })
