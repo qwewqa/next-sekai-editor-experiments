@@ -5,10 +5,11 @@
 #   2. a text/plain batch with a browser User-Agent is stored, with its data; a bot User-Agent is not
 #   3. nightly.sh's clean empties region and city
 #   4. a dump restores into a fresh PostgreSQL with the same row counts
-#   5. every saved query runs
+#   5. every saved query runs, and prints the rows the batch produces
 # Needs docker, curl and jq.
 set -euo pipefail
 
+EVENTS=$(cd "$(dirname "$0")" && pwd)/contract-events.json
 cd "$(dirname "$0")/../host"
 COMPOSE="docker compose --env-file images.env -f compose.local.yaml"
 dc() { $COMPOSE "$@"; }
@@ -39,33 +40,32 @@ WEBSITE=$(cat /proc/sys/kernel/random/uuid)
 sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$WEBSITE', 'contract', 'nse.qwewqa.dev')"
 
 NOW=$(date +%s)
+# The payload around an event, as the editor sends it.
+# shellcheck disable=SC2016
+BASE='{website: $w, hostname: "nse.qwewqa.dev", url: "/", title: "", language: "ja", screen: "1920x1080", timestamp: $t}'
 ev() { # name, data (JSON object)
     jq -nc --arg w "$WEBSITE" --arg n "$1" --argjson d "$2" --argjson t "$NOW" \
-        '{type: "event", payload: ({website: $w, hostname: "nse.qwewqa.dev", url: "/", title: "", language: "ja", screen: "1920x1080", timestamp: $t} + (if $n == "" then {} else {name: $n, data: $d} end))}'
+        "{type: \"event\", payload: ($BASE + {name: \$n, data: \$d})}"
 }
-BATCH=$(jq -sc '.' <(ev "" '{}') \
-    <(ev settings '{"theme":"dark","showMinimap":true}') \
-    <(ev startup '{"start":"continued","outcome":"done","ready":"1-2s"}') \
-    <(ev chart '{"trigger":"restore","notes":"1k-10k"}') \
-    <(ev usage '{"zoomXIn.key":3,"undo.toolbar":1}') \
-    <(ev save '{"action":"save","target":"writeBack","outcome":"failed","reason":"denied"}') \
-    <(ev preview '{"host":"worker"}') \
-    <(ev perf '{"frames.playing.50-100":4,"playSeconds":120}'))
+# The events in contract-events.json are checked against the editor's catalogue by a unit test. The one with
+# an empty name is the pageview.
+BATCH=$(jq -c --arg w "$WEBSITE" --argjson t "$NOW" \
+    "[.[] | {type: \"event\", payload: ($BASE + (if .name == \"\" then {} else {name: .name, data: .data} end))}]" "$EVENTS")
 
 step "a batch from a browser"
 RESPONSE=$(curl -fsS -D /tmp/nse-contract.headers -X POST http://localhost:3000/api/batch \
     -H 'Content-Type: text/plain' -H "User-Agent: $BROWSER" -H 'X-Real-IP: 203.0.113.7' --data "$BATCH")
 echo "$RESPONSE"
-if [ "$(jq .processed <<< "$RESPONSE")" != 8 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
+if [ "$(jq .processed <<< "$RESPONSE")" != 9 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
 grep -qi '^access-control-allow-origin: \*' /tmp/nse-contract.headers || fail "no CORS header on the batch response"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 8 ] || fail "expected 8 stored events"
-[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" -ge 15 ] || fail "the event data was not stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 9 ] || fail "expected 9 stored events"
+[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" -ge 18 ] || fail "the event data was not stored"
 
 step "a bot User-Agent is dropped"
 BOT=$(curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -H 'User-Agent: python-requests/2.32' \
     --data "$(ev nightly '{}')")
 grep -q beep <<< "$BOT" || fail "a bot User-Agent was not dropped: $BOT"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 8 ] || fail "the bot's event was stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 9 ] || fail "the bot's event was stored"
 
 step "nightly.sh clean"
 sql -c "UPDATE session SET region = 'WA', city = 'Seattle'"
@@ -88,8 +88,22 @@ for table in website website_event event_data session _prisma_migrations; do
 done
 
 step "saved queries"
+run_query() { dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -v "website=$WEBSITE" -tA -F'|' < "../queries/$1.sql"; }
+expect() { # query, a row it must print
+    run_query "$1" | grep -qxF "$2" || fail "$1.sql did not print the row $2"
+}
 for file in ../queries/*.sql; do
     echo "$file"
-    dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -v "website=$WEBSITE" < "$file" > /dev/null
+    run_query "$(basename "$file" .sql)" > /dev/null
 done
+# What the batch above holds, as each query reports it.
+run_query visits | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}\|[^|]+\|1$' || fail "visits.sql did not count the pageview"
+expect commands 'zoomXIn|key|3|1'
+expect commands 'undo|toolbar|1|1'
+expect saves 'writeBack|failed|denied|1'
+expect settings 'theme|dark|1'
+expect settings 'showMinimap|on|1'
+expect settings 'previewAssets.skin|bundled|1'
+expect startup 'continued|1k-2k|1'
+expect startup '1k-2k|1'
 echo "All checks passed."

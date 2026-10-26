@@ -103,4 +103,4 @@ bash infra/stats/scripts/contract-test.sh   # needs Docker, curl, jq and Linux
 
 On Windows, run these in Git Bash and use `uv run --with shellcheck-py shellcheck …` for the third. The contract test reads `/proc` and mounts Linux paths, so it does not run in Git Bash. Run it in CI, or in WSL 2 with Docker.
 
-`infra-check.yml` runs the same when `infra/` or an infra workflow changes. Its `stats-compose` job runs the contract test against the real images.
+`infra-check.yml` runs the same when `infra/`, `src/analytics/` or an infra workflow changes. Its `stats-compose` job runs the contract test against the real images.

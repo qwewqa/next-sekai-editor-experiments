@@ -1,0 +1,17 @@
+[
+    { "name": "", "data": {} },
+    {
+        "name": "settings",
+        "data": { "theme": "dark", "showMinimap": "on", "previewAssets.skin": "bundled" }
+    },
+    { "name": "startup", "data": { "start": "continued", "outcome": "done", "ready": "1k-2k" } },
+    { "name": "chart", "data": { "trigger": "restore", "notes": "1k-2k" } },
+    { "name": "usage", "data": { "zoomXIn.key": 3, "undo.toolbar": 1 } },
+    {
+        "name": "save",
+        "data": { "action": "save", "target": "writeBack", "outcome": "failed", "reason": "denied" }
+    },
+    { "name": "preview", "data": { "host": "worker" } },
+    { "name": "perf", "data": { "frames.playing.50-100": 4, "playSeconds": "1m-5m" } },
+    { "name": "features", "data": { "autoscroll": 2 } }
+]
