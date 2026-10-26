@@ -82,6 +82,11 @@ test('the date is valid and its text matches', () => {
     )
 })
 
+test('the page is titled Privacy Notice', () => {
+    assert.match(html, /<title>Privacy Notice – %PRODUCT_NAME%<\/title>/)
+    assert.match(html, /<h1\b[^>]*>\s*Privacy Notice\s*<\/h1>/)
+})
+
 test('the wording follows the editor’s conventions', () => {
     assert.doesNotMatch(text, /\w'\w/, 'a straight apostrophe')
     assert.doesNotMatch(
