@@ -350,8 +350,9 @@ const importingText = (source: string) => {
     const status = storageStatus.value
     if (status?.mode === 'stored' && status.reason === 'full')
         return () => i18n.value.save.notKeptFull
-    if (status?.reason === 'failed') return interpolate(() => i18n.value.save.buildFailed, source)
-    return interpolate(() => i18n.value.save.notKept, source)
+    if (status?.reason === 'failed')
+        return interpolate(() => i18n.value.save.buildFailed, inlineName(source))
+    return interpolate(() => i18n.value.save.notKept, inlineName(source))
 }
 
 /**
@@ -364,11 +365,12 @@ const refusalText = (refusal: BuildRefused, name: string, source = name) => {
     if (refused === 'importing') return importingText(source)
     if (refused === 'needsNewer')
         return () => interpolateRaw(i18n.value.conflict.replaceNewer, PRODUCT_NAME)
-    if (refused === 'unreadableHead') return interpolate(() => i18n.value.save.unreadable, name)
+    if (refused === 'unreadableHead')
+        return interpolate(() => i18n.value.save.unreadable, inlineName(name))
     if (refused === 'plan' && 'limit' in refusal.refusal && refusal.refusal.limit)
         return () => i18n.value.save.tooLarge
     // A bug, logged by the writer: the file could not be prepared.
-    return interpolate(() => i18n.value.save.buildFailed, name)
+    return interpolate(() => i18n.value.save.buildFailed, inlineName(name))
 }
 
 // Suggestions that never name a known file.

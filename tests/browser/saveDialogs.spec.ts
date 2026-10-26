@@ -312,6 +312,20 @@ test.describe('the Save dialog', () => {
         await expect(dialog(page).locator('[data-save-row="bgm"]')).not.toContainText(/\d [kM]B/)
     })
 
+    test('a BGM name with a line break and an override is one isolated line', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page, {
+            bgm: { kind: 'held', name: 'a\u202E\u05D0\nb.mp3', ticked: true },
+        })
+        await expect(dialog(page).locator('[data-save-name-line]')).toHaveText(
+            '\u2068a\u05D0 b.mp3\u2069',
+        )
+    })
+
     test('a file that holds history locks its row, ticked, with "Already in"; the BGM stays a choice', async ({
         page,
         context,
