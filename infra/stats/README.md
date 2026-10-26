@@ -87,10 +87,11 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
 
 - **Replace the instance** (a new image id, or a broken boot). The data volume is the only part that must survive. Umami records nothing from the moment the instance stops until the deploy ends. Do the steps in this order.
     1. Take a dump.
-    2. Merge the pull request that changes `ImageId` in `stats.yaml`. Do not deploy yet.
-    3. Allow termination: `aws ec2 modify-instance-attribute --profile nse-prod --instance-id <id> --no-disable-api-termination`.
-    4. Stop the instance (`aws ec2 stop-instances --profile nse-prod --instance-ids <id>`) and detach the data volume (`aws ec2 detach-volume --profile nse-prod --volume-id <DataVolumeId output>`). Wait until the volume is `available`.
-    5. Run Stats deploy for `prod`. The new instance attaches the volume and finds its filesystem, certificates, secrets and data. CloudFormation then deletes the old instance. The Elastic IP and the DNS record do not change.
+    2. Merge the pull request that changes the literal `ImageId` in `stats.yaml`. Do not deploy yet.
+    3. Check the change set, which stops nothing: `AWS_PROFILE=nse-prod SOURCE_COMMIT=<merged sha> PLAN=1 bash infra/stats/scripts/deploy.sh prod`. It must list `Instance` with `Replacement` `True`. If it does not, stop here. Delete the change set it names with `aws cloudformation delete-change-set --profile nse-prod --stack-name nse-stats --change-set-name <name>`.
+    4. Allow termination: `aws ec2 modify-instance-attribute --profile nse-prod --instance-id <id> --no-disable-api-termination`.
+    5. Stop the instance (`aws ec2 stop-instances --profile nse-prod --instance-ids <id>`) and detach the data volume (`aws ec2 detach-volume --profile nse-prod --volume-id <DataVolumeId output>`). Wait until the volume is `available`.
+    6. Run Stats deploy for `prod`. The new instance attaches the volume and finds its filesystem, certificates, secrets and data. CloudFormation then deletes the old instance. The Elastic IP and the DNS record do not change.
 
     A change to the template’s `UserData` takes effect only on a new instance, because cloud-init runs it once per instance. Make that change together with an `ImageId` change, using this procedure. On its own, a `UserData` change stops and starts the instance and changes nothing on the instance.
 

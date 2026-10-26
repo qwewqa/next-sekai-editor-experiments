@@ -4,6 +4,7 @@
 #   SOURCE_COMMIT      the pushed commit whose infra/stats/host files the instance runs (default: HEAD)
 #   MONITOR_WEBSITE    the Umami "monitor" website id. Empty clears it and skips the nightly test event
 #                      (stats-deploy.yml sets it from the Environment variable STATS_MONITOR_WEBSITE)
+#   PLAN=1             only creates the change set and prints what it would do, as an administrator
 set -euo pipefail
 
 ENVIRONMENT=${1:?usage: deploy.sh dev|prod}
@@ -28,12 +29,22 @@ aws cloudformation deploy \
     --role-arn "arn:aws:iam::$ACCOUNT:role/nse-stats-cfn" \
     --capabilities CAPABILITY_NAMED_IAM \
     --no-fail-on-empty-changeset \
+    ${PLAN:+--no-execute-changeset} \
     --tags "nse:service=stats" "nse:env=$ENVIRONMENT" \
     --parameter-overrides \
     "Environment=$ENVIRONMENT" "SourceCommit=$COMMIT" "MonitorWebsite=${MONITOR_WEBSITE:-}" \
     "VpcId=$VPC" "SubnetId=$SUBNET" "AvailabilityZone=$ZONE" \
     "ZoneId=$(output nse-account ServicesZoneId)" "ZoneName=$(output nse-account ServicesZoneName)" \
     "AlertTopicArn=$(output nse-account AlertTopicArn)"
+
+if [ -n "${PLAN:-}" ]; then
+    set_name=$(aws cloudformation list-change-sets --stack-name "$STACK" --query "sort_by(Summaries[?Status=='CREATE_COMPLETE'],&CreationTime)[-1].ChangeSetName" --output text)
+    if [ "$set_name" = None ]; then echo "No changes."; exit 0; fi
+    aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$set_name" \
+        --query 'Changes[].ResourceChange.[LogicalResourceId,Action,Replacement]' --output text
+    echo "Nothing was changed. The change set stays until deleted: $set_name"
+    exit 0
+fi
 
 if [ "$ENVIRONMENT" = prod ]; then
     aws cloudformation update-termination-protection --stack-name "$STACK" --enable-termination-protection > /dev/null

@@ -18,10 +18,6 @@ Parameters:
     Repository:
         Type: String
         Default: qwewqa/next-sekai-editor-experiments
-    ImageId:
-        Type: AWS::EC2::Image::Id
-        Default: ami-0ac0ed4cc59d81934
-        Description: Ubuntu 24.04 LTS arm64 in us-west-2. Pinned, so a new image never replaces the instance on its own.
     VpcId:
         Type: AWS::EC2::VPC::Id
     SubnetId:
@@ -125,7 +121,9 @@ Resources:
     Instance:
         Type: AWS::EC2::Instance
         Properties:
-            ImageId: !Ref ImageId
+            # Ubuntu 24.04 LTS arm64 in us-west-2. A literal, so that a reviewed change reaches every deploy and a new
+            # image never replaces the instance on its own.
+            ImageId: ami-0ac0ed4cc59d81934
             InstanceType: !FindInMap [Sizes, !Ref Environment, InstanceType]
             SubnetId: !Ref SubnetId
             SecurityGroupIds: [!Ref SecurityGroup]
