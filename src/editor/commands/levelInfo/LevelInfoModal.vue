@@ -17,11 +17,11 @@ import { statusText } from '../../labelText'
 import { peekedSession } from '../../history/selection'
 import { stopPlayer } from '../../player'
 import { changedFields, type Draft } from '../../levelInfo/draft'
+import { trackHeldPicks } from '../../levelInfo/heldPicks'
 import MediaRow from '../../levelInfo/MediaRow.vue'
 import {
     attachPicked,
     capturePicked,
-    holdPicked,
     type MediaSlot,
     type Picked,
     type Source,
@@ -58,6 +58,24 @@ provide(stackLongValuesKey, true)
 const draft = shallowReactive<Draft>({ ...props.opening })
 const dirty = computed(() => changedFields(props.opening, draft).length > 0)
 
+// --- Picks held for this dialog. A pick the tab did not hold before stays held only while the
+// draft or the opening values name it, or after Apply; the rest is released.
+const picks = trackHeldPicks()
+const inUse = (hash: string) =>
+    [props.opening, draft].some((each) => each.cover?.hash === hash || each.preview?.hash === hash)
+watch(
+    () => [draft.cover?.hash, draft.preview?.hash],
+    () => {
+        picks.release(inUse)
+    },
+)
+// Closed without Apply: every unused pick goes. After Apply the set is empty.
+onBeforeUnmount(() => {
+    picks.release(
+        (hash) => props.opening.cover?.hash === hash || props.opening.preview?.hash === hash,
+    )
+})
+
 // --- Leaving: with changes, asks first. Escape reaches `modalcancel` while the form is "busy".
 let asking = false
 const askDiscard = async () => {
@@ -85,9 +103,13 @@ const leave = () => {
 
 const submit = () => {
     if (props.readOnly) emit('close')
-    // A plain copy: the form's own object is reactive.
-    // eslint-disable-next-line @typescript-eslint/no-misused-spread
-    else emit('close', { ...draft })
+    else {
+        // The step that names the picks is made from this draft, which keeps their bytes held.
+        picks.applied()
+        // A plain copy: the form's own object is reactive.
+        // eslint-disable-next-line @typescript-eslint/no-misused-spread
+        emit('close', { ...draft })
+    }
 }
 
 // --- The file line and Check.
@@ -168,10 +190,11 @@ const take = async (slot: MediaSlot, source: Source) => {
     // The file a "not loaded" slot names: stored again, nothing changes.
     if (named && media.status.value === 'absent' && picked.ref.hash === named.hash) {
         attachPicked(picked, named)
+        picks.adopt(named.hash)
         void media.reload()
         return
     }
-    holdPicked(picked)
+    picks.hold(picked)
     draft[slot] = picked.ref
 }
 
