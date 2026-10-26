@@ -56,16 +56,16 @@ step "a batch from a browser"
 RESPONSE=$(curl -fsS -D /tmp/nse-contract.headers -X POST http://localhost:3000/api/batch \
     -H 'Content-Type: text/plain' -H "User-Agent: $BROWSER" -H 'X-Real-IP: 203.0.113.7' --data "$BATCH")
 echo "$RESPONSE"
-if [ "$(jq .processed <<< "$RESPONSE")" != 9 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
+if [ "$(jq .processed <<< "$RESPONSE")" != 16 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
 grep -qi '^access-control-allow-origin: \*' /tmp/nse-contract.headers || fail "no CORS header on the batch response"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 9 ] || fail "expected 9 stored events"
-[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 19 ] || fail "the event data was not stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 16 ] || fail "expected 16 stored events"
+[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 85 ] || fail "the event data was not stored"
 
 step "a bot User-Agent is dropped"
 BOT=$(curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -H 'User-Agent: python-requests/2.32' \
     --data "$(ev nightly '{}')")
 grep -q beep <<< "$BOT" || fail "a bot User-Agent was not dropped: $BOT"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 9 ] || fail "the bot's event was stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 16 ] || fail "the bot's event was stored"
 
 step "nightly.sh clean"
 sql -c "UPDATE session SET region = 'WA', city = 'Seattle'"
@@ -110,7 +110,13 @@ expect saves 'writeBack|failed|denied|1'
 expect settings 'theme|dark|1'
 expect settings 'showMinimap|on|1'
 expect settings 'previewAssets.skin|bundled|1'
-expect startup 'continued|1k-2k|1'
-expect startup '1k-2k|1'
-expect frames 'worker|1|4|120|0.033'
+expect startup 'reload|cache|2|2|2000|2250|2400|2450|0'
+expect startup 'navigate|network|1|0|||||'
+expect startup '1000-1299|1'
+expect frames 'worker|1|1|4|120|2.00'
+expect frames '2|1|50'
+expect actions 'save|save|writeBack|1M-2M|2|1000|1160'
+expect actions 'open|||256K-512K|1|400|400'
+expect peek 'cached|5'
+expect peek '25-50|3'
 echo "All checks passed."
