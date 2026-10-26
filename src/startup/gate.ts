@@ -1,5 +1,6 @@
 import { shallowReactive } from 'vue'
 import { markStartup } from '../analytics/tally'
+import { cancelSavePage } from '../editor/controls/saveChord'
 import { testKeysOpen } from '../platform/testKeys'
 import { errorMessage } from '../utils/error'
 
@@ -113,6 +114,8 @@ const inGate = (target: EventTarget | null) =>
 const swallow = (event: Event) => {
     if (startupGate.phase === 'done') return
     if (!(KEY_EVENTS as readonly string[]).includes(event.type) && inGate(event.target)) return
+    // The editor's own cancel of Save Page never runs once the event stops here.
+    if (event instanceof KeyboardEvent) cancelSavePage(event)
     event.stopImmediatePropagation()
 }
 

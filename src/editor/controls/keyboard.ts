@@ -17,6 +17,7 @@ import {
 import { isDragging } from './gestures/recognizers/drag'
 import { hasMouseControls } from './mouse'
 import { clearPageSelection } from './pageSelection'
+import { cancelSavePage, isConsumed, isSaveChord } from './saveChord'
 
 export const isTextEntry = (target: EventTarget | null) =>
     target instanceof HTMLTextAreaElement ||
@@ -106,16 +107,9 @@ const returnsDeselect = (element: Element | null) => {
     )
 }
 
-/** Ctrl+S, or Cmd+S on Apple keyboards: Save's fixed alias, outside the customizable map. */
-export const isSaveChord = (event: KeyboardEvent) =>
-    isCommandChord(event) && !event.shiftKey && event.key.toLowerCase() === 's'
-
 const onKeydown = (event: KeyboardEvent) => {
-    if (isBlockingModalOpen.value) {
-        // A modal takes no commands, but Save Page must not open over it.
-        if (isSaveChord(event)) event.preventDefault()
-        return
-    }
+    // A modal takes no commands.
+    if (isBlockingModalOpen.value) return
     if (pressesButton(event)) return
     // An open tool dialog takes Escape.
     if (isToolDialogOpen.value && event.key === 'Escape') return
@@ -170,9 +164,7 @@ const onKeydown = (event: KeyboardEvent) => {
         takesDockKeys(active) ||
         (inDialog && (isTextEntry(active) || active instanceof HTMLSelectElement))
     ) {
-        if (!commandChord || event.defaultPrevented || (isTextEntry(active) && !passesToEditor)) {
-            // The field keeps its keys, but Save Page still must not open.
-            if (isSaveChord(event)) event.preventDefault()
+        if (!commandChord || isConsumed(event) || (isTextEntry(active) && !passesToEditor)) {
             return
         }
     }
@@ -216,10 +208,12 @@ export const useKeyboardControl = () => {
     )
 
     onMounted(() => {
+        addEventListener('keydown', cancelSavePage, true)
         addEventListener('keydown', onKeydown)
     })
 
     onUnmounted(() => {
+        removeEventListener('keydown', cancelSavePage, true)
         removeEventListener('keydown', onKeydown)
     })
 }

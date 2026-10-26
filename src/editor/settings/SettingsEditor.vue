@@ -142,8 +142,8 @@ watch(
             :label="i18n.settings.editor.elevationSideBySide"
             :options="[
                 [i18n.elevation.auto, 'auto'],
-                [i18n.elevation.allow, 'allow'],
-                [i18n.elevation.disallow, 'disallow'],
+                [i18n.elevation.always, 'allow'],
+                [i18n.elevation.never, 'disallow'],
             ]"
         />
 
