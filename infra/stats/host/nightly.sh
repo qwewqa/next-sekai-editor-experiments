@@ -28,10 +28,11 @@ dump_stream() { dc exec -T db pg_dump -Fc -U umami umami; }
 dump() {
     local file
     file="/data/dumps/umami-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
-    mkdir -p /data/dumps
-    dump_stream > "$file"
-    dc exec -T db pg_restore --list < "$file" > /dev/null
-    aws s3 cp --only-show-errors "$file" "s3://$NSE_BUCKET/dumps/$(basename "$file")"
+    # Called as `dump || ...`, which turns errexit off, so every step passes failure on itself.
+    # A bad dump is removed. After a failed upload the file stays.
+    mkdir -p /data/dumps || return 1
+    { dump_stream > "$file" && dc exec -T db pg_restore --list < "$file" > /dev/null; } || { rm -f "$file"; return 1; }
+    aws s3 cp --only-show-errors "$file" "s3://$NSE_BUCKET/dumps/$(basename "$file")" || return 1
     rm -f "$file"
 }
 
