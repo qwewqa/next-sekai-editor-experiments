@@ -488,9 +488,9 @@
         "effect": "effets sonores"
       },
       "fallback": {
-        "panel": "{0} : utilisation de {1}. {2}",
+        "panel": "{0} : utilisation de \"{1}\". {2}",
         "panelStored": "{0} : utilisation de \"{1}\". {2}",
-        "row": "Utilisation de {0}. {1}",
+        "row": "Utilisation de \"{0}\". {1}",
         "rowStored": "Utilisation de \"{0}\". {1}"
       },
       "reason": {
