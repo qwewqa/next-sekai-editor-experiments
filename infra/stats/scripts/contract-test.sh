@@ -90,7 +90,10 @@ done
 step "saved queries"
 run_query() { dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -v "website=$WEBSITE" -tA -F'|' < "../queries/$1.sql"; }
 expect() { # query, a row it must print
-    run_query "$1" | grep -qxF "$2" || fail "$1.sql did not print the row $2"
+    local rows
+    rows=$(run_query "$1")
+    grep -qxF "$2" <<< "$rows" || fail "$1.sql did not print the row $2. It printed:
+$rows"
 }
 for file in ../queries/*.sql; do
     echo "$file"
