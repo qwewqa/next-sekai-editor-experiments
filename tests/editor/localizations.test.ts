@@ -249,6 +249,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.laneDivisions.custom.modal.division',
         'commands.note.title.default',
         // French writes "skin", as in its preview strings.
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.previewAssets.noun.skin',
         'commands.previewAssets.skin',
         'commands.slide.title.default',
@@ -313,6 +316,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.bgm.title',
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.toggleVolume.type.bgm',
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
@@ -347,6 +353,9 @@ const identicalToEnglish: Record<string, string[]> = {
     ko: [
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.visibilities.toggle.types.bpm',
         // The device, the time and the count in one line.
         'conflict.saved',
@@ -383,6 +392,9 @@ const identicalToEnglish: Record<string, string[]> = {
     tr: [
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.visibilities.toggle.types.bpm',
         // The device, the time and the count in one line.
         'conflict.saved',
@@ -418,6 +430,9 @@ const identicalToEnglish: Record<string, string[]> = {
     zhs: [
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
@@ -448,6 +463,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.bgm.title',
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.toggleVolume.type.bgm',
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
