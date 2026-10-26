@@ -108,9 +108,9 @@ test('the browser jobs run beside the check job, and storage runs its core in sh
     assert.match(storage, /NSE_STORAGE_SET: core/)
     assert.match(storage, /fail-fast: false/)
     for (const shard of [
-        'firefox\n {22}shard: 1\/2',
-        'firefox\n {22}shard: 2\/2',
-        'webkit\n {22}shard: 1\/1',
+        'firefox\n {22}shard: 1/2',
+        'firefox\n {22}shard: 2/2',
+        'webkit\n {22}shard: 1/1',
     ])
         assert.match(storage, new RegExp(`engine: ${shard}`))
     assert.match(
