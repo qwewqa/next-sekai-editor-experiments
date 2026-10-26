@@ -354,6 +354,12 @@ test.describe('the Save dialog', () => {
         await expect(dialog(page).locator('[data-save-line]')).toHaveText(
             '"coconut.nxsp" was replaced from another tab or window.',
         )
+        // File Name's description opens with the situation line, then the Export note.
+        await expect(
+            dialog(page).getByRole('textbox', { name: 'File Name' }),
+        ).toHaveAccessibleDescription(
+            /^"coconut\.nxsp" was replaced from another tab or window\..*use Export Level Data…/,
+        )
         await expect(dialog(page).locator('[data-save-export] p').first()).toHaveText(
             'Project files (.nxsp) are only for this editor. To create level data for upload to a Sonolus server, use Export Level Data…',
         )

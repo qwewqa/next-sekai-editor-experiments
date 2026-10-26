@@ -111,12 +111,13 @@ const totalText = computed(() =>
 const keptText = (name: string) => interpolate(() => i18n.value.save.keptOptions, name)()
 
 // --- The Export line: emphasised and first in the body until this browser has exported, then the
-// small line in the notes. File Name's description names the emphasised line, so a screen reader
-// reads it on arriving in the field, where focus starts.
+// small line in the notes. File Name's description names the situation lines and the emphasised
+// line, so a screen reader reads them on arriving in the field, where focus starts.
 const showExport = computed(() => props.input.kind !== 'saveToFile')
 const emphasised = computed(() => showExport.value && !exportUsed.value)
 const described = computed(() => {
     const named = [
+        ...props.input.lines.map((_, i) => `${ids}-line-${i}`),
         emphasised.value ? `${ids}-export` : '',
         shownProblem.value ? `${ids}-problem` : '',
     ].filter(Boolean)
@@ -170,7 +171,9 @@ const boxClass =
             @submit.prevent="submit"
             @modalcancel="cancel"
         >
-            <p v-for="(line, i) in input.lines" :key="i" data-save-line>{{ line() }}</p>
+            <p v-for="(line, i) in input.lines" :id="`${ids}-line-${i}`" :key="i" data-save-line>
+                {{ line() }}
+            </p>
             <ExportLine
                 v-if="emphasised"
                 :id="`${ids}-export`"
