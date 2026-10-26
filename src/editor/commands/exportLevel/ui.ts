@@ -3,6 +3,7 @@ import { i18n } from '../../../i18n'
 import { showChoice } from '../../../modals/choice'
 import type { FileError } from '../../../platform'
 import { interpolate } from '../../../utils/interpolate'
+import { markExportUsed } from '../../file/flags'
 import { notify } from '../../notification'
 import { fileErrorKey } from './errorText'
 import type { ExportUi } from './flow'
@@ -134,6 +135,7 @@ export const exportUi: ExportUi = {
     },
     // Called, not referenced: history imports this module's importers at load.
     markExported: (name, delivery) => {
+        markExportUsed()
         markExported(name, delivery)
     },
     downloadStarted: (name, size) => {
