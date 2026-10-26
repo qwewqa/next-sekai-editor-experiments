@@ -141,9 +141,9 @@ INSERT INTO nse_monthly (month, website_id, metric, name, version, device, n, p5
 SELECT month, website_id, 'time', name, version, device, n, p50, p90, p99
 FROM (
     SELECT ev.month, ev.website_id, ev.name || '.' || d.data_key AS name, g.version, g.device, count(*) AS n,
-           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY d.number_value)) AS p50,
-           round(percentile_cont(0.9) WITHIN GROUP (ORDER BY d.number_value)) AS p90,
-           round(percentile_cont(0.99) WITHIN GROUP (ORDER BY d.number_value)) AS p99,
+           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY d.number_value::float8)) AS p50,
+           round(percentile_cont(0.9) WITHIN GROUP (ORDER BY d.number_value::float8)) AS p90,
+           round(percentile_cont(0.99) WITHIN GROUP (ORDER BY d.number_value::float8)) AS p99,
            row_number() OVER (
                PARTITION BY ev.month, ev.website_id
                ORDER BY count(*) DESC, ev.name || '.' || d.data_key, g.version, g.device

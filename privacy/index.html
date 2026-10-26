@@ -137,7 +137,7 @@
                         </h2>
                         <p>
                             The editor sends these to stats.nse-services.qwewqa.dev, a server we run
-                            on Amazon Web Services in the United States:
+                            on Amazon Web Services (AWS) in the United States:
                         </p>
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
@@ -190,11 +190,11 @@
                             <li>
                                 your operating system, browser and its language, your screen size
                                 and pixel density, an approximate window size and whether it is
-                                taller than wide, whether the browser reports a primary pointer with
-                                limited accuracy, such as touch input, the number of processor cores
-                                and the approximate memory the browser reports, whether the preview
-                                could use graphics and draw in parallel, and whether the editor is
-                                running in its own app window;
+                                taller than wide, whether the browser reports that your main way of
+                                pointing is imprecise, such as a finger on a touch screen, the
+                                number of processor cores and the approximate memory the browser
+                                reports, whether the preview could use graphics and draw in
+                                parallel, and whether the editor is running in a window of its own;
                             </li>
                             <li>
                                 whether this browser’s storage is available, its approximate
@@ -213,8 +213,9 @@
                             Each report includes a timestamp: for one action, the time it happened;
                             for a summary, the time the summary was made. Measurements of startup,
                             files, music, Timeline steps and slow responses also carry your browser,
-                            whether the primary pointer has limited accuracy, the window size, pixel
-                            density, processor cores and memory, as they were when the action ended.
+                            whether your main way of pointing is imprecise, the window size, pixel
+                            density, processor cores and memory. These are read when the action
+                            ends.
                         </p>
                         <p>
                             It never sends your charts or their content, file names, level titles or
@@ -234,32 +235,34 @@
                             request. It uses them to count visits, to find your country and to
                             estimate a device type, such as phone or laptop, and may also find your
                             region and city. It stores none of these except your country and the
-                            device type. To count visits it keeps a code made from the IP address
-                            and user agent that changes every day. The code groups one browser’s
-                            activity within a day, and it can group people who share a connection
-                            and browser setup. The statistics hold no name or account, and we may be
-                            unable to find which records are yours. The server sets no cookies and
-                            stores nothing in your browser.
+                            device type. To count visits it keeps a daily code made from the IP
+                            address and user agent. The same code is used for one browser’s activity
+                            within a day, and people on the same connection with the same browser
+                            can get the same code. The statistics contain no name or account, and we
+                            may be unable to find which records are yours. The server sets no
+                            cookies and stores nothing in your browser.
                         </p>
                         <p>
-                            We keep each report for 13 months and then delete it. Before that, its
-                            figures go into monthly totals: the number of visits, the uses of each
-                            tool, setting and file type, and typical times. Visits are counted by
-                            editor version, browser, operating system, device type, country and
-                            language, one at a time. Times are counted by editor version and device
-                            type. The totals hold no codes and no single report, and we keep them
-                            with no time limit. Backups on AWS are deleted after about five weeks.
-                            Only the maintainer has access to the statistics dashboard.
+                            We keep each report for 13 months and then delete it. Before it is
+                            deleted, its figures are added to monthly totals: the number of visits,
+                            how often each tool, setting and file type is used, and typical times.
+                            Visits are counted separately by each of these: editor version, browser,
+                            operating system, device type, country and language. Times are counted
+                            by editor version and device type. The totals contain no daily codes and
+                            no individual reports, and we keep them with no time limit. Backups on
+                            AWS are deleted after about five weeks. Only the maintainer has access
+                            to the statistics dashboard.
                         </p>
                         <p>
-                            Server error logs can contain your IP address when the server crashes in
-                            a rare way. They are deleted after two weeks.
+                            The server’s error logs can contain your IP address after an unexpected
+                            failure. They are deleted after two weeks.
                         </p>
                         <p>
                             Nothing is sent from a visit until you use the editor, for example by
                             clicking or pressing a key. If your browser is too old to open the
-                            editor, the page that says so sends its browser family and an
-                            unsupported-browser report once you interact with it.
+                            editor, the page that tells you so sends the browser family, such as
+                            Firefox or Safari, and a report that the browser is unsupported, when
+                            you click or press a key on it.
                         </p>
                         <p>
                             <strong class="text-fg-strong">Turning them off.</strong> Turn off
@@ -310,9 +313,11 @@
                                 Delete sessions with Settings › Local Data › Delete Sessions… or in
                                 History › Recent Sessions. Discard recovered work under Settings ›
                                 Local Data. Remove stored assets in Preview Assets › Stored. Deleted
-                                sessions may stay in browser storage until cleanup runs. Clearing
-                                the site’s data in your browser deletes all of it, and also the
-                                statistics choice, which applies to this browser only.
+                                sessions may stay in browser storage until automatic cleanup runs.
+                                Clearing the site’s data in your browser deletes all of it,
+                                including the statistics choice. That choice applies to this browser
+                                only, and statistics are on again unless your browser sends Do Not
+                                Track or Global Privacy Control.
                             </li>
                         </ul>
                     </section>
@@ -327,8 +332,8 @@
                             the statistics are sent there from wherever you use the editor.
                         </p>
                         <p>
-                            Turning off Settings › About › Send Usage Statistics stops them. Send
-                            questions and requests to
+                            Turn off Settings › About › Send Usage Statistics to stop sending them.
+                            Send questions and requests to
                             <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
                         </p>
                     </section>

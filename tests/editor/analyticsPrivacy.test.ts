@@ -35,18 +35,19 @@ const categories = {
         'the editor’s version, whether it was updated since your last visit, and whether this browser has used it before',
     system: 'your operating system, browser and its language',
     screen: 'your screen size and pixel density, an approximate window size and whether it is taller than wide',
-    touch: 'whether the browser reports a primary pointer with limited accuracy, such as touch input',
+    touch: 'whether the browser reports that your main way of pointing is imprecise, such as a finger on a touch screen',
     cores: 'the number of processor cores and the approximate memory the browser reports',
-    device: 'also carry your browser, whether the primary pointer has limited accuracy, the window size, pixel density, processor cores and memory',
+    device: 'also carry your browser, whether your main way of pointing is imprecise, the window size, pixel density, processor cores and memory',
     preview: 'whether the preview could use graphics and draw in parallel',
-    installed: 'whether the editor is running in its own app window',
+    installed: 'whether the editor is running in a window of its own',
     storage:
         'whether this browser’s storage is available, its approximate capacity and how full it is, and whether the browser has granted protection from automatic clearing',
     cleanup: 'whether automatic cleanup ran, freed space or was unable to finish',
     referrer: 'the site you came from',
     time: 'Each report includes a timestamp',
     supports: 'which performance measurements the browser supports',
-    unsupported: 'sends its browser family and an unsupported-browser report',
+    unsupported:
+        'sends the browser family, such as Firefox or Safari, and a report that the browser is unsupported',
 }
 type Category = keyof typeof categories
 
