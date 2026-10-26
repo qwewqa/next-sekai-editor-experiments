@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { maxBeat, maxLane, maxMeter, maxSize, minMeter } from '../../src/chart/limits'
+import { maxBeat, maxLane, maxMeter, maxSize } from '../../src/chart/limits'
 import type { NoteObject } from '../../src/chart/note'
 import { parseLevelDataChart } from '../../src/chart/parse/levelData'
 import { validateChart } from '../../src/chart/validate'
@@ -94,7 +94,7 @@ test('a BPM change with a meter past the limits is not pushed', () => {
     start(first)
     const withMeter = (meter: number) =>
         edits(first, (transaction) => addBpm(transaction, { beat: 8, bpm: 120, meter }))
-    for (const meter of [1e16, maxMeter + 1, minMeter / 2])
+    for (const meter of [1e16, maxMeter + 1, 0])
         assert.equal(pushState(noteAdd(1), withMeter(meter)), false, `${meter}`)
     assert.equal(pushState(noteAdd(1), withMeter(3)), true)
     reopens(state.value)

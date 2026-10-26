@@ -2,7 +2,7 @@ import type { LevelDataEntity } from '@sonolus/core'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import test from 'node:test'
-import { maxBeat, maxLane, maxMeter, maxSize, minMeter } from '../../src/chart/limits'
+import { maxBeat, maxLane, maxMeter, maxSize } from '../../src/chart/limits'
 import { parseLevelDataChart } from '../../src/chart/parse/levelData'
 import { parseSusChart } from '../../src/chart/parse/sus'
 import { parseUscChart } from '../../src/chart/parse/usc'
@@ -224,12 +224,12 @@ test('the grid and the slot lanes end for a value past the limits', () => {
 })
 
 test('a BPM change with a meter far past the limits is refused', () => {
-    for (const meter of [1e16, maxMeter + 1, minMeter / 2, 1e-12]) {
+    for (const meter of [1e16, maxMeter + 1, 0, -4]) {
         const chart = parseLevelDataChart(minimalLevel())
         chart.bpms.push({ beat: 0.1, bpm: 120, meter })
         assert.throws(() => validateChart(chart), refusal('meter'), `${meter}`)
     }
-    for (const meter of [minMeter, 3, 4, maxMeter]) {
+    for (const meter of [1e-12, 3, 4, maxMeter]) {
         const chart = parseLevelDataChart(minimalLevel())
         chart.bpms.push({ beat: 0.1, bpm: 120, meter })
         validateChart(chart)

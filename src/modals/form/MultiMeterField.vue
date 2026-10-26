@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { maxMeter, minMeter } from '../../chart/limits'
+import { maxMeter } from '../../chart/limits'
 import { i18n } from '../../i18n'
 import MultiNumberField from './MultiNumberField.vue'
 
@@ -10,8 +10,9 @@ const modelValue = defineModel<number | undefined>({ required: true })
     <MultiNumberField
         v-model="modelValue"
         :label="i18n.modals.form.meter.label"
-        :min="minMeter"
+        :min="Number.EPSILON"
         :max="maxMeter"
+        exclusive-min
         step="any"
     />
 </template>

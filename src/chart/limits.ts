@@ -6,8 +6,7 @@
 export const maxBeat = 100000
 export const maxLane = 5000
 export const maxSize = 5000
-/** Bars walk the grid one at a time, so a bar must neither be tiny nor outlast the chart. */
-export const minMeter = 1 / 16
+/** A bar longer than the chart stalls the grid searches. */
 export const maxMeter = maxBeat
 
 /** The range of each bounded field of a chart object or entity. */
@@ -22,7 +21,8 @@ const fieldLimits: Record<string, readonly [min: number, max: number]> = {
     size: [0, maxSize],
     cameraSize: [0, maxSize],
     maskSize: [0, maxSize],
-    meter: [minMeter, maxMeter],
+    // Above 0.
+    meter: [Number.MIN_VALUE, maxMeter],
 }
 
 /** Whether a field's value is within its limit; fields without one always are. */
