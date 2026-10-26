@@ -19,7 +19,6 @@ export const categories = {
     effect: 'effects',
     effect2: 'effects',
 }
-const optionalLocal = new Set(['skin2', 'particle', 'effect', 'effect2'])
 // Franchise artwork stays out of these packages, whatever the lock says. A lock entry also
 // records it with `thumbnail: false`, and may leave out the picture of any other item.
 const withoutThumbnail = new Set(['particle', 'effect', 'effect2'])
@@ -248,14 +247,9 @@ export async function stagePreviewAssets(root, destination, env = process.env) {
     for (const [name, category] of Object.entries(categories)) {
         let loaded
         if (source === 'local') {
-            try {
-                loaded = {
-                    bytes: await readFile(join(root, `public/resource/${name}.scp`)),
-                    source: `public/resource/${name}.scp`,
-                }
-            } catch (error) {
-                if (optionalLocal.has(name) && error.code === 'ENOENT') continue
-                throw error
+            loaded = {
+                bytes: await readFile(join(root, `public/resource/${name}.scp`)),
+                source: `public/resource/${name}.scp`,
             }
             if (!(await thumbnailPolicy(root, name)) && hasPicture(loaded.bytes, category))
                 throw new Error(`Local ${name}.scp has a picture that its lock entry leaves out`)

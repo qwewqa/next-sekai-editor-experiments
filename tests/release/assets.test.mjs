@@ -324,7 +324,7 @@ test('one configured server preserves the other locked asset', async (t) => {
     )
 })
 
-test('local staging requires a skin, accepts optional packages, and never fetches', async (t) => {
+test('local staging requires all five packages and never fetches', async (t) => {
     t.mock.method(globalThis, 'fetch', () => assert.fail('local build fetched from a server'))
     const directory = await temporary(t)
     const output = join(directory, 'output')
@@ -332,12 +332,7 @@ test('local staging requires a skin, accepts optional packages, and never fetche
     await assert.rejects(stagePreviewAssets(directory, output, env), { code: 'ENOENT' })
     await mkdir(join(directory, 'public/resource'), { recursive: true })
     await writeFile(join(directory, 'public/resource/skin.scp'), 'local skin')
-    const assets = await stagePreviewAssets(directory, output, env)
-    assert.deepEqual(
-        assets.map((asset) => asset.file),
-        ['resource/skin.scp'],
-    )
-    assert.equal(await readFile(join(output, 'resource/skin.scp'), 'utf8'), 'local skin')
+    await assert.rejects(stagePreviewAssets(directory, output, env), { code: 'ENOENT' })
     const local = (name, category, extra = {}, item = {}) =>
         createScp({
             [`sonolus/${category}/list`]: Buffer.from(
@@ -348,7 +343,7 @@ test('local staging requires a skin, accepts optional packages, and never fetche
         })
     const put = (name, bytes) => writeFile(join(directory, `public/resource/${name}.scp`), bytes)
     await put('particle', local('particle', 'particles'))
-    assert.equal((await stagePreviewAssets(directory, output, env)).length, 2)
+    await assert.rejects(stagePreviewAssets(directory, output, env), { code: 'ENOENT' })
     await put('skin2', 'local skin 2')
     await put('effect', local('effect', 'effects'))
     await put('effect2', local('effect2', 'effects'))
