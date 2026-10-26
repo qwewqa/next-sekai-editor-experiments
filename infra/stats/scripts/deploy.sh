@@ -23,6 +23,9 @@ read -r SUBNET VPC ZONE < <(aws ec2 describe-subnets --filters Name=default-for-
     --query 'sort_by(Subnets,&AvailabilityZone)[0].[SubnetId,VpcId,AvailabilityZone]' --output text | tr -d '\r')
 if [ -z "${SUBNET:-}" ] || [ "$SUBNET" = None ]; then echo "No default subnet. Run: aws ec2 create-default-vpc" >&2; exit 1; fi
 
+# The CLI's own output is kept, because for PLAN=1 it names the change set this run created.
+DEPLOY_LOG=$(mktemp)
+trap 'rm -f "$DEPLOY_LOG"' EXIT
 aws cloudformation deploy \
     --stack-name "$STACK" \
     --template-file stats.yaml \
@@ -35,12 +38,13 @@ aws cloudformation deploy \
     "Environment=$ENVIRONMENT" "SourceCommit=$COMMIT" "MonitorWebsite=${MONITOR_WEBSITE:-}" \
     "VpcId=$VPC" "SubnetId=$SUBNET" "AvailabilityZone=$ZONE" \
     "ZoneId=$(output nse-account ServicesZoneId)" "ZoneName=$(output nse-account ServicesZoneName)" \
-    "AlertTopicArn=$(output nse-account AlertTopicArn)"
+    "AlertTopicArn=$(output nse-account AlertTopicArn)" | tee "$DEPLOY_LOG"
 
 if [ -n "${PLAN:-}" ]; then
-    set_name=$(aws cloudformation list-change-sets --stack-name "$STACK" --query "sort_by(Summaries[?Status=='CREATE_COMPLETE'],&CreationTime)[-1].ChangeSetName" --output text)
-    if [ "$set_name" = None ]; then echo "No changes."; exit 0; fi
-    aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$set_name" \
+    # Without changes the CLI creates no change set and prints no such line.
+    set_name=$(sed -n 's/.*describe-change-set --change-set-name \([^ ]*\).*/\1/p' "$DEPLOY_LOG" | tr -d '\r' | head -1)
+    if [ -z "$set_name" ]; then echo "No changes."; exit 0; fi
+    aws cloudformation describe-change-set --change-set-name "$set_name" \
         --query 'Changes[].ResourceChange.[LogicalResourceId,Action,Replacement]' --output text
     echo "Nothing was changed. The change set stays until deleted: $set_name"
     exit 0
