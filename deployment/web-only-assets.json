@@ -69,17 +69,17 @@
         {
             "name": "skin.scp",
             "source": "deployment/preview-assets.lock.json#skin",
-            "sha256": "7d68b1440513e08808eb161e9684f05f74df807e023e86b25351ff463abe06ab"
+            "sha256": "13853174e120864d9ab1a268f39f04b1f109365b6c0f71befa26d207602a10f7"
         },
         {
             "name": "skin data",
             "source": "public/resource/skin.scp:data",
-            "sha256": "f63db45842bf6da43fe1012110746cc7b64c95444cf19380d00d5ae1b0a2ba88"
+            "sha256": "30293e7fe228868bad103cbfb43bfe657194abcfa37e80c7c9d40feee1496a9a"
         },
         {
             "name": "skin texture",
             "source": "public/resource/skin.scp:texture",
-            "sha256": "c0e1f7271f7c86ad21752fe7d175d4f11d7d0d60ce06df0e74b46e29e98161b3"
+            "sha256": "052d93f9c822cda64545887d76bb9dc0d3653cbf0e35966b55d749a9bc43df1a"
         },
         {
             "name": "particle.scp",

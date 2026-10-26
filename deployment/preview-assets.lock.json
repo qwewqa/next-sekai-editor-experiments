@@ -14,15 +14,15 @@
                 "hash": "1059334bcd8455f8751e05aa2b4939f61416f6d5"
             },
             "data": {
-                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/1/data/7aa5628cebcbd73e39bcbd9f002134538bc53da9",
-                "hash": "7aa5628cebcbd73e39bcbd9f002134538bc53da9"
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/1/data/a6777d27ad1c13bfd0008f2cbbb7e95071b01311",
+                "hash": "a6777d27ad1c13bfd0008f2cbbb7e95071b01311"
             },
             "texture": {
-                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/1/texture/0bd8484672ea687eee6a2ddbe2b314044d26268f",
-                "hash": "0bd8484672ea687eee6a2ddbe2b314044d26268f"
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/1/texture/1e6134babb35da8c803c2ce67054f815f6835ae7",
+                "hash": "1e6134babb35da8c803c2ce67054f815f6835ae7"
             }
         },
-        "sha256": "7d68b1440513e08808eb161e9684f05f74df807e023e86b25351ff463abe06ab"
+        "sha256": "13853174e120864d9ab1a268f39f04b1f109365b6c0f71befa26d207602a10f7"
     },
     "particle": {
         "source": "https://coconut.sonolus.com/next-sekai/sonolus/particles/coconut-next-sekai-1",
