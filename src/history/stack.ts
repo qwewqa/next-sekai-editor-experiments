@@ -1,6 +1,6 @@
 import { computed, ref, shallowReactive, shallowRef, watch, type Ref } from 'vue'
-import { recordError } from '../diagnostics'
 import { fieldPastLimit } from '../chart/limits'
+import { recordError } from '../diagnostics'
 import type { State } from '../state'
 import type { EntityType } from '../state/entities'
 import { emitHistoryAction } from './actions'
