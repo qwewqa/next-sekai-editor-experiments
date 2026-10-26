@@ -119,7 +119,7 @@ test('the browser jobs run beside the check job, and storage runs its core in sh
     )
     for (const [name, minutes] of [
         ['check', 15],
-        ['compatibility', 20],
+        ['compatibility', 30],
         ['compatibility-storage', 25],
     ])
         assert.match(section(check, name), new RegExp(`timeout-minutes: ${minutes}\n`))
