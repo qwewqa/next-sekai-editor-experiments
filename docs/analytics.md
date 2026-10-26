@@ -88,6 +88,17 @@ How the code enforces them:
 - A unit test (`tests/editor/analyticsPrivacy.test.ts`) maps every property to a category, and each category to the words of its line on the privacy page. A property the page does not cover fails it.
 - A browser spec saves a chart whose title, artist and file name contain a canary, and fails if any request contains it, or any key outside the catalogue.
 
+## What the server keeps
+
+- **Raw records** (events, their data, sessions and what hangs off them) are kept 13 months. The nightly job deletes older ones (`infra/stats/host/retention.sql`). A session goes once none of its events remain. Backups on AWS expire after about five weeks, and a dump or download left on the host is deleted after two days, so no copy outlives those limits by much.
+- **Monthly totals** are kept with no time limit, in `nse_monthly`, a table of ours in the Umami database. The job adds a month’s rows once the month is complete, before it deletes any raw record of that month, and a failure in that step deletes nothing. They hold no session or visit code, only counts, sums and percentiles:
+    - visits and sessions a month, each by version, browser, OS, device class, country and language, one dimension at a time;
+    - events by name, and by property value for the flags and fixed choices;
+    - the total and count of the numeric properties, such as use counts;
+    - p50, p90 and p99 of the millisecond timings (`ready`, `took`, `buildMs`), over all visits and by version and device class. This is the one cross.
+- A new numeric property that is a time in milliseconds is a timing: add it to the two lists in `retention.sql`. A unit test checks them against the catalogue. A new event or property needs nothing else, because the totals read whatever the catalogue lets through.
+- The runbook (`infra/stats/README.md`) has the details, and `queries/monthly.sql` reads the totals.
+
 ## The catalogue
 
 `catalogue.ts` is the source; a unit test keeps this table in step with it. A property written `found.<kind>` stands for one property per value. "At hide" means the event goes with each send and carries the counts since the last one.

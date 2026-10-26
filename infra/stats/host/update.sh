@@ -21,7 +21,7 @@ DIR=/opt/nse-stats
 COMMIT=$(tag nse:commit)
 ENVIRONMENT=$(tag nse:env)
 BASE="https://raw.githubusercontent.com/$NSE_REPO/$COMMIT/infra/stats/host"
-FILES="compose.yaml images.env Caddyfile nightly.sh geo-trigger.sql nse-stats-nightly.service nse-stats-nightly.timer"
+FILES="compose.yaml images.env Caddyfile nightly.sh geo-trigger.sql retention.sql nse-stats-nightly.service nse-stats-nightly.timer"
 
 mkdir -p "$DIR/new" /data/caddy /data/postgres
 for f in $FILES; do curl -fsSL --retry 5 -o "$DIR/new/$f" "$BASE/$f"; done

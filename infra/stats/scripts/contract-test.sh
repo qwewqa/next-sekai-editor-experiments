@@ -7,9 +7,12 @@
 #   4. geo-trigger.sql installs twice, and then no session keeps a region or a city, whether it is inserted with them,
 #      updated to have them, or created by a request
 #   5. nightly.sh's dump (with the upload stubbed) clears a region and city that are stored when it starts, a failed
-#      clean stops it before any upload, and the dump restores into a fresh PostgreSQL with the same row counts and no
-#      region or city
-#   6. every saved query runs, and prints the rows the batch produces
+#      clean stops it before any upload, and the dump restores into a fresh PostgreSQL with the same row counts, no
+#      region or city and no record older than 13 months
+#   6. nightly.sh's retain adds the monthly totals (counts, percentiles, no codes) for the complete months, then deletes
+#      the records older than 13 months and the sessions with no event left; a failure in the totals deletes nothing,
+#      a second run changes nothing, Umami's start leaves nse_monthly alone, and tidy deletes old dump files
+#   7. every saved query runs, and prints the rows the batch produces
 # Needs docker, curl and jq.
 set -euo pipefail
 
@@ -139,6 +142,132 @@ curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -
 [ "$(sql -c "SELECT count(*) FROM session WHERE website_id = '$GEO'")" = 1 ] || fail "the request did not create one session"
 [ "$(sql -c "SELECT count(*) FROM session WHERE website_id = '$GEO' AND region IS NULL AND city IS NULL")" = 1 ] || fail "the session from a request kept its region or city"
 
+step "retention and monthly totals"
+# The first run creates nse_monthly. Everything stored so far is from this month, so it adds and deletes nothing.
+retain
+[ "$(sql -c "SELECT count(*) FROM nse_monthly")" = 0 ] || fail "retain added totals for a month that is not complete"
+ROLL=$(cat /proc/sys/kernel/random/uuid)
+SA=$(cat /proc/sys/kernel/random/uuid) SB=$(cat /proc/sys/kernel/random/uuid) SC=$(cat /proc/sys/kernel/random/uuid)
+SF=$(cat /proc/sys/kernel/random/uuid) SG=$(cat /proc/sys/kernel/random/uuid)
+sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 'nse.qwewqa.dev')" > /dev/null
+# Raw records in three kinds of month: 15 months ago (older than 13), 3 and 2 months ago (complete, kept), and this one
+# (not complete). A and B ran version 1.0.0 and 1.1.0 three months ago. C and F are old; F also has an event two months
+# ago, so its session must stay. C has the rows that hang off a session.
+sql -q -v "roll=$ROLL" -v "sa=$SA" -v "sb=$SB" -v "sc=$SC" -v "sf=$SF" -v "sg=$SG" -f - << 'SQL'
+SET TIME ZONE 'UTC';
+CREATE FUNCTION pg_temp.ev(site uuid, sess uuid, ts timestamptz, etype int, ename text, props jsonb) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE id uuid := gen_random_uuid();
+BEGIN
+    INSERT INTO website_event (event_id, website_id, session_id, visit_id, created_at, url_path, event_type, event_name, hostname)
+    VALUES (id, site, sess, sess, ts, '/', etype, ename, 'nse.qwewqa.dev');
+    INSERT INTO event_data (event_data_id, website_id, website_event_id, data_key, string_value, number_value, data_type, created_at)
+    SELECT gen_random_uuid(), site, id, key,
+           CASE WHEN jsonb_typeof(value) = 'string' THEN value #>> '{}' END,
+           CASE WHEN jsonb_typeof(value) = 'number' THEN (value #>> '{}')::numeric END,
+           CASE WHEN jsonb_typeof(value) = 'number' THEN 2 ELSE 1 END, ts
+    FROM jsonb_each(props);
+END $$;
+INSERT INTO session (session_id, website_id, browser, os, device, country, language, created_at) VALUES
+    (:'sa', :'roll', 'chrome', 'Windows 10', 'laptop', 'US', 'ja', date_trunc('month', now()) - interval '3 months' + interval '10 days'),
+    (:'sb', :'roll', 'firefox', 'Linux', 'desktop', 'JP', 'en', date_trunc('month', now()) - interval '3 months' + interval '11 days'),
+    (:'sc', :'roll', 'chrome', 'Windows 10', 'laptop', 'US', 'ja', date_trunc('month', now()) - interval '15 months' + interval '10 days'),
+    (:'sf', :'roll', 'chrome', 'Windows 10', 'laptop', 'US', 'ja', date_trunc('month', now()) - interval '15 months' + interval '11 days'),
+    (:'sg', :'roll', 'chrome', 'Windows 10', 'laptop', 'US', 'ja', now());
+SELECT pg_temp.ev(:'roll', :'sa', date_trunc('month', now()) - interval '3 months' + interval '10 days', 1, NULL, '{}');
+SELECT pg_temp.ev(:'roll', :'sa', date_trunc('month', now()) - interval '3 months' + interval '10 days', 2, 'visit', '{"version": "1.0.0"}');
+SELECT pg_temp.ev(:'roll', :'sa', date_trunc('month', now()) - interval '3 months' + interval '10 days', 2, 'save', '{"outcome": "done", "took": 100}');
+SELECT pg_temp.ev(:'roll', :'sa', date_trunc('month', now()) - interval '3 months' + interval '10 days', 2, 'save', '{"outcome": "done", "took": 200}');
+SELECT pg_temp.ev(:'roll', :'sa', date_trunc('month', now()) - interval '3 months' + interval '10 days', 2, 'save', '{"outcome": "done", "took": 300}');
+SELECT pg_temp.ev(:'roll', :'sb', date_trunc('month', now()) - interval '3 months' + interval '11 days', 1, NULL, '{}');
+SELECT pg_temp.ev(:'roll', :'sb', date_trunc('month', now()) - interval '3 months' + interval '11 days', 2, 'visit', '{"version": "1.1.0"}');
+SELECT pg_temp.ev(:'roll', :'sb', date_trunc('month', now()) - interval '3 months' + interval '11 days', 2, 'save', '{"outcome": "done", "took": 400}');
+SELECT pg_temp.ev(:'roll', :'sb', date_trunc('month', now()) - interval '3 months' + interval '11 days', 2, 'usage', '{"undo.key": 3}');
+SELECT pg_temp.ev(:'roll', :'sb', date_trunc('month', now()) - interval '3 months' + interval '11 days', 2, 'usage', '{"undo.key": 2}');
+SELECT pg_temp.ev(:'roll', :'sc', date_trunc('month', now()) - interval '15 months' + interval '10 days', 1, NULL, '{}');
+SELECT pg_temp.ev(:'roll', :'sc', date_trunc('month', now()) - interval '15 months' + interval '10 days', 2, 'visit', '{"version": "1.0.0"}');
+SELECT pg_temp.ev(:'roll', :'sc', date_trunc('month', now()) - interval '15 months' + interval '10 days', 2, 'save', '{"outcome": "done", "took": 1000}');
+SELECT pg_temp.ev(:'roll', :'sf', date_trunc('month', now()) - interval '15 months' + interval '11 days', 1, NULL, '{}');
+SELECT pg_temp.ev(:'roll', :'sf', date_trunc('month', now()) - interval '2 months' + interval '10 days', 2, 'features', '{}');
+SELECT pg_temp.ev(:'roll', :'sg', now(), 1, NULL, '{}');
+INSERT INTO session_data (session_data_id, website_id, session_id, data_key, data_type) VALUES
+    (gen_random_uuid(), :'roll', :'sc', 'k', 1), (gen_random_uuid(), :'roll', :'sf', 'k', 1);
+INSERT INTO session_link (website_id, session_id, distinct_id) VALUES (:'roll', :'sc', 'x');
+INSERT INTO session_replay (replay_id, website_id, session_id, visit_id, chunk_index, events, event_count, started_at, ended_at)
+VALUES (gen_random_uuid(), :'roll', :'sc', :'sc', 0, '\x00', 1, now(), now());
+INSERT INTO revenue (revenue_id, website_id, session_id, event_id, event_name, currency)
+VALUES (gen_random_uuid(), :'roll', :'sc', gen_random_uuid(), 'x', 'USD');
+SQL
+OLD_EVENTS="SELECT count(*) FROM website_event WHERE website_id = '$ROLL' AND created_at < now() - interval '13 months'"
+[ "$(sql -c "$OLD_EVENTS")" = 4 ] || fail "the old events were not seeded"
+
+# If the totals fail, nothing is deleted. A check that refuses every new row stands in for the failure.
+sql -c "ALTER TABLE nse_monthly ADD CONSTRAINT nse_fail CHECK (n < 0) NOT VALID" > /dev/null
+if retain 2> /dev/null; then fail "retain went on after the totals failed"; fi
+[ "$(sql -c "$OLD_EVENTS")" = 4 ] || fail "retain deleted records after its totals failed"
+[ "$(sql -c "SELECT count(*) FROM nse_monthly")" = 0 ] || fail "a failed retain kept some totals"
+sql -c "ALTER TABLE nse_monthly DROP CONSTRAINT nse_fail" > /dev/null
+
+retain
+[ "$(sql -c "$OLD_EVENTS")" = 0 ] || fail "retain kept a record older than 13 months"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$ROLL'")" = 12 ] || fail "retain deleted a record that is newer than 13 months"
+[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$ROLL' AND website_event_id NOT IN (SELECT event_id FROM website_event)")" = 0 ] \
+    || fail "retain left event data without its event"
+[ "$(sql -c "SELECT count(*) FROM session WHERE session_id = '$SC'")" = 0 ] || fail "retain kept a session with no event left"
+[ "$(sql -c "SELECT count(*) FROM session WHERE session_id IN ('$SA', '$SB', '$SF', '$SG')")" = 4 ] || fail "retain deleted a session that still has an event"
+for table in session_data session_link session_replay revenue; do
+    [ "$(sql -c "SELECT count(*) FROM $table WHERE session_id = '$SC'")" = 0 ] || fail "retain kept $table rows of a deleted session"
+done
+[ "$(sql -c "SELECT count(*) FROM session_data WHERE session_id = '$SF'")" = 1 ] || fail "retain deleted session_data of a kept session"
+
+# The totals. A month is named by its first day.
+month() { sql -c "SELECT (date_trunc('month', now() AT TIME ZONE 'UTC') - interval '$1 months')::date"; }
+M15=$(month 15) M3=$(month 3) M2=$(month 2) M0=$(month 0)
+total() { # month, metric, name, value, version, device -> the row's n
+    sql -c "SELECT n FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$1' AND metric = '$2' AND name = '$3' AND value = '$4' AND version = '$5' AND device = '$6'"
+}
+check_total() { # the expected n, then the arguments of total
+    local got
+    got=$(total "${@:2}")
+    [ "$got" = "$1" ] || fail "nse_monthly ${*:2}: expected $1, found '$got'"
+}
+check_total 2 "$M3" visits all '' '' ''
+check_total 2 "$M3" sessions all '' '' ''
+check_total 1 "$M3" visits version 1.0.0 '' ''
+check_total 1 "$M3" visits version 1.1.0 '' ''
+check_total 1 "$M3" sessions country US '' ''
+check_total 1 "$M3" sessions device desktop '' ''
+check_total 4 "$M3" events save '' '' ''
+check_total 2 "$M3" events pageview '' '' ''
+check_total 4 "$M3" value save.outcome done '' ''
+check_total 2 "$M3" number usage.undo.key '' '' ''
+check_total 10 "$M3" month '' '' '' ''
+[ "$(sql -c "SELECT total FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'number' AND name = 'usage.undo.key'")" = 5 ] \
+    || fail "the usage total is not 5"
+# 100, 200, 300 and 400 ms: p50 250, p90 370, p99 397. Version 1.0.0 on a laptop has the first three.
+[ "$(sql -c "SELECT n || '|' || p50 || '|' || p90 || '|' || p99 FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'time' AND name = 'save.took' AND version = '' AND device = ''")" = '4|250|370|397' ] \
+    || fail "the save.took percentiles are wrong"
+[ "$(sql -c "SELECT n || '|' || p50 || '|' || p90 || '|' || p99 FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M3' AND metric = 'time' AND name = 'save.took' AND version = '1.0.0' AND device = 'laptop'")" = '3|200|280|298' ] \
+    || fail "the save.took percentiles for version 1.0.0 on a laptop are wrong"
+# The month of the deleted records keeps its totals.
+check_total 2 "$M15" visits all '' '' ''
+check_total 4 "$M15" month '' '' '' ''
+check_total 1 "$M2" events features '' '' ''
+[ "$(sql -c "SELECT count(*) FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M0'")" = 0 ] || fail "retain added totals for this month"
+# No row holds a session or a visit code.
+[ "$(sql -c "SELECT count(*) FROM nse_monthly WHERE name ~* '[0-9a-f]{8}-[0-9a-f]{4}' OR value ~* '[0-9a-f]{8}-[0-9a-f]{4}'")" = 0 ] || fail "nse_monthly holds a code"
+
+# A second run changes nothing.
+FINGERPRINT="SELECT count(*) || '|' || md5(string_agg(t::text, ',' ORDER BY t::text)) FROM nse_monthly t"
+BEFORE=$(sql -c "$FINGERPRINT")
+retain
+[ "$(sql -c "$FINGERPRINT")" = "$BEFORE" ] || fail "a second retain changed nse_monthly"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$ROLL'")" = 12 ] || fail "a second retain changed the records"
+
+# Umami's migrations leave the table alone: a restart runs them again.
+dc restart umami > /dev/null
+dc up -d --wait --wait-timeout 300 > /dev/null
+[ "$(sql -c "$FINGERPRINT")" = "$BEFORE" ] || fail "Umami's start changed nse_monthly"
+
 step "dump()"
 # nightly.sh's dump itself, with the upload stubbed to copy the file. The trigger is off while a region and a city are
 # put back, and nothing calls clean first: dump() has to clear them before its snapshot.
@@ -146,6 +275,9 @@ export NSE_BUCKET=contract NSE_DUMP_DIR="$WORK/dumps"
 UPLOADS="$WORK/uploads"
 mkdir -p "$UPLOADS"
 aws() { cp "$4" "$UPLOADS/$(basename "$5")"; } # s3 cp --only-show-errors <file> <destination>
+# A record that arrives late for a month already rolled up is deleted before the snapshot.
+sql -c "INSERT INTO website_event (event_id, website_id, session_id, visit_id, created_at, url_path, event_type, event_name, hostname)
+    SELECT gen_random_uuid(), '$ROLL', '$SF', '$SF', now() - interval '14 months', '/', 2, 'late', 'nse.qwewqa.dev'" > /dev/null
 sql -c "ALTER TABLE session DISABLE TRIGGER nse_drop_geo" > /dev/null
 sql -c "UPDATE session SET region = 'WA', city = 'Seattle'" > /dev/null
 [ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL AND city IS NOT NULL")" -ge 1 ] || fail "no session to dump with a region"
@@ -161,20 +293,30 @@ dump || fail "dump() failed"
 [ "$(find "$UPLOADS" -type f | wc -l)" = 1 ] || fail "dump() did not upload exactly one dump"
 [ -z "$(ls -A "$NSE_DUMP_DIR")" ] || fail "dump() left its file after the upload"
 [ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL OR city IS NOT NULL")" = 0 ] || fail "dump() did not clear the region and city"
+[ "$(sql -c "$OLD_EVENTS")" = 0 ] || fail "dump() did not apply the retention"
 sql -c "ALTER TABLE session ENABLE TRIGGER nse_drop_geo" > /dev/null
+
+step "tidy"
+# A dump or a download left behind goes after two days. Other files, and newer ones, stay.
+touch -d '3 days ago' "$NSE_DUMP_DIR/umami-old.dump" "$NSE_DUMP_DIR/restore.dump" "$NSE_DUMP_DIR/notes.txt"
+touch -d '1 day ago' "$NSE_DUMP_DIR/umami-recent.dump"
+tidy
+[ "$(ls "$NSE_DUMP_DIR" | sort | tr '\n' ' ')" = 'notes.txt umami-recent.dump ' ] || fail "tidy left: $(ls "$NSE_DUMP_DIR")"
 
 step "dump and restore"
 docker run -d --name nse-contract-restore -e POSTGRES_PASSWORD=x -e POSTGRES_DB=umami "$POSTGRES_IMAGE" > /dev/null
 # Over TCP: the image's first-run server listens only on the socket, before the database exists.
 for _ in $(seq 1 30); do docker exec nse-contract-restore pg_isready -h 127.0.0.1 -U postgres -d umami > /dev/null 2>&1 && break; sleep 2; done
 docker exec -i nse-contract-restore pg_restore -U postgres -d umami --no-owner --no-acl --exit-on-error < "$UPLOADS"/*.dump
-for table in website website_event event_data session _prisma_migrations; do
+for table in website website_event event_data session nse_monthly _prisma_migrations; do
     a=$(sql -c "SELECT count(*) FROM $table")
     b=$(docker exec nse-contract-restore psql -U postgres -d umami -tA -c "SELECT count(*) FROM $table")
     [ "$a" = "$b" ] || fail "$table: $a rows, $b after the restore"
 done
 [ "$(docker exec nse-contract-restore psql -U postgres -d umami -tA -c "SELECT count(*) FROM session WHERE region IS NOT NULL OR city IS NOT NULL")" = 0 ] \
     || fail "the dump holds a region or city"
+[ "$(docker exec nse-contract-restore psql -U postgres -d umami -tA -c "SELECT count(*) FROM website_event WHERE created_at < now() - interval '13 months'")" = 0 ] \
+    || fail "the dump holds a record older than 13 months"
 
 step "saved queries"
 run_query() { # query, website (default: the one with the batch)
@@ -208,6 +350,11 @@ expect frames 'worker|1|1|4|120|2.00'
 expect frames 'worker|2|1|0|60|0.00'
 expect frames '3|1|33'
 expect actions 'save|save|writeBack|1M-2M|2|1000|1160'
+monthly_rows=$(run_query monthly "$ROLL")
+for row in "$M3|2|2|10" "$M15|2|2|4" "$M3|1.0.0|1" "$M3|save.took|4|250|370|397"; do
+    grep -qxF "$row" <<< "$monthly_rows" || fail "monthly.sql did not print the row $row. It printed:
+$monthly_rows"
+done
 expect actions 'open|||256K-512K|1|400|400'
 expect peek 'cached|5'
 expect peek '25-50|3'
