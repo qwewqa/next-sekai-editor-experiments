@@ -11,7 +11,7 @@ export const GITHUB_REPOSITORY =
 /** Whether this build contains the privacy page. */
 export const HAS_PRIVACY_PAGE = typeof __HAS_PRIVACY_PAGE__ === 'boolean' && __HAS_PRIVACY_PAGE__
 
-/** `CHANGELOG.md` on `main`, newest release first: the update line's What’s New and About's Release Notes. */
+/** `CHANGELOG.md` on `main`, newest release first: the update line's and About's Release Notes. */
 export const RELEASE_NOTES_URL = `https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md`
 
 /** The site this build is for: `test` under `NSE_SITE=test`, else `production`. */

@@ -20,7 +20,7 @@ import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { isDynamicStages, requestDynamicStages } from '../../../history/dynamicStages'
 import { defaultGroupId, groups } from '../../../history/groups'
 import { refuseWhilePeeking } from '../../../history/peek'
-import { stackGeneration } from '../../../history/stack'
+import { queuedMovesSettled, stackGeneration } from '../../../history/stack'
 import { defaultStageId, stages } from '../../../history/stages'
 import { i18n } from '../../../i18n'
 import { settings } from '../../../settings'
@@ -125,8 +125,9 @@ let isPasteWaiting = false
 export const hasWaitingPaste = () => isPasteWaiting
 
 /**
- * Waits for a clipboard read before a paste. False drops it: another paste is waiting, or an
- * edit, a scope or layout change, a drag, or with `keepsTool` a tool switch came meanwhile.
+ * Waits for a clipboard read, and for any queued Undo or Redo, before a paste. False drops it:
+ * another paste is waiting, or an edit, a scope or layout change, a drag, or with `keepsTool` a
+ * tool switch came meanwhile.
  */
 export const waitToPaste = async (
     read: () => Promise<unknown>,
@@ -161,9 +162,14 @@ export const waitToPaste = async (
     )
     isPasteWaiting = true
     try {
-        await read()
-    } catch {
-        // A failed read pastes what was read before.
+        try {
+            await read()
+        } catch {
+            // A failed read pastes what was read before.
+        }
+        // A queued Undo or Redo changes the chart only when its slot loads, and a paste before
+        // then would cancel it. Keep guarding until it settles, then judge.
+        for (let moves = queuedMovesSettled(); moves; moves = queuedMovesSettled()) await moves
     } finally {
         stop()
         isPasteWaiting = false

@@ -788,7 +788,7 @@
         "squareGrid": "1:1 Grid",
         "auto": "Auto",
         "allow": "Allow",
-        "disallow": "Don’t Allow",
+        "disallow": "Do Not Allow",
         "off": "Off",
         "canvas": "Note Elevations",
         "empty": "No notes at this beat",
@@ -1200,7 +1200,7 @@
     "load": {
         "version": "Version {0}",
         "updated": "Updated to version {0}",
-        "whatsNew": "What’s New",
+        "whatsNew": "Release Notes",
         "upgradeBlocked": "Close other {0} tabs to open your stored work.",
         "olderVersion": "A newer version of the editor has been opened in this browser. Reload, or save to keep your work.",
         "tryAgain": "Try Again",

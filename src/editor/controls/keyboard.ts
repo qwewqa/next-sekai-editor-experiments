@@ -111,7 +111,12 @@ export const isSaveChord = (event: KeyboardEvent) =>
     isCommandChord(event) && !event.shiftKey && event.key.toLowerCase() === 's'
 
 const onKeydown = (event: KeyboardEvent) => {
-    if (isBlockingModalOpen.value || pressesButton(event)) return
+    if (isBlockingModalOpen.value) {
+        // A modal takes no commands, but Save Page must not open over it.
+        if (isSaveChord(event)) event.preventDefault()
+        return
+    }
+    if (pressesButton(event)) return
     // An open tool dialog takes Escape.
     if (isToolDialogOpen.value && event.key === 'Escape') return
 
@@ -152,11 +157,11 @@ const onKeydown = (event: KeyboardEvent) => {
         void runCommand(commands.deselect, 'key')
         return
     }
-    // A field showing its committed value passes undo and redo to the editor.
-    const passesHistory =
+    // A field showing its committed value passes undo, redo and save to the editor.
+    const passesToEditor =
         commandChord &&
         isTextEntry(active) &&
-        names.some((name) => name === 'undo' || name === 'redo') &&
+        names.some((name) => name === 'undo' || name === 'redo' || name === 'save') &&
         !holdsTyping(active)
     // In docks, fields keep their keys; other controls pass only unclaimed Ctrl or Cmd chords.
     // Tool dialogs float over the chart, so only their fields and selects hold keys that way.
@@ -165,8 +170,11 @@ const onKeydown = (event: KeyboardEvent) => {
         takesDockKeys(active) ||
         (inDialog && (isTextEntry(active) || active instanceof HTMLSelectElement))
     ) {
-        if (!commandChord || event.defaultPrevented || (isTextEntry(active) && !passesHistory))
+        if (!commandChord || event.defaultPrevented || (isTextEntry(active) && !passesToEditor)) {
+            // The field keeps its keys, but Save Page still must not open.
+            if (isSaveChord(event)) event.preventDefault()
             return
+        }
     }
     if (inDialog && active && movesFocus(active, event.key)) return
 
@@ -187,7 +195,8 @@ const onKeydown = (event: KeyboardEvent) => {
     // A command chord has no native use outside text entry, so selects and toggles drop it.
     if (
         keepsDefault(event) &&
-        !(isCommandChord(event) && (passesHistory || !isTextEntry(event.target)))
+        !isSaveChord(event) &&
+        !(isCommandChord(event) && (passesToEditor || !isTextEntry(event.target)))
     )
         return
 
