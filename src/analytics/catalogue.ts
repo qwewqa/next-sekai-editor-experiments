@@ -12,15 +12,20 @@ export { bucket, scales, type Bucket, type Scale } from './scales'
 /** A use count: whole, and capped at 9999 a visit. */
 export const COUNT_CAP = 9999
 
+/** A time in whole seconds: capped at a day a send. */
+export const SECONDS_CAP = 86_400
+
 /** A measured count as a use count: whole, not below 0, and capped. */
 export const capCount = (value: number) => Math.min(COUNT_CAP, Math.max(0, Math.round(value)))
 
-/** A span in milliseconds as whole seconds, capped like a count. */
-export const capSeconds = (milliseconds: number) => capCount(milliseconds / 1000)
+/** A span in milliseconds as whole seconds, not below 0, and capped. */
+export const capSeconds = (milliseconds: number) =>
+    Math.min(SECONDS_CAP, Math.max(0, Math.round(milliseconds / 1000)))
 
 type Prop =
     | 'boolean'
     | 'count'
+    | 'seconds'
     | { readonly scale: Scale }
     | { readonly oneOf: readonly string[] }
     | { readonly pattern: RegExp }
@@ -227,10 +232,10 @@ export const catalogue = {
         ...counts(prefixed('frames.playing', scales.frame)),
         ...counts(prefixed('frames.busy', scales.frame)),
         ...counts(prefixed('frames.other', scales.frame)),
-        playSeconds: 'count',
+        playSeconds: 'seconds',
         slowInputs: 'count',
         interactions: 'count',
-        visibleTime: 'count',
+        visibleTime: 'seconds',
         cores: scale('cores'),
     },
     errors: counts(['error', 'csp']),
@@ -243,7 +248,7 @@ export type EventName = keyof typeof catalogue | 'usage'
 
 type ValueOf<P> = P extends 'boolean'
     ? boolean
-    : P extends 'count'
+    : P extends 'count' | 'seconds'
       ? number
       : P extends { scale: infer S extends Scale }
         ? Bucket<S>
@@ -295,6 +300,8 @@ const fits = (prop: Prop, value: unknown) => {
     if (prop === 'boolean') return typeof value === 'boolean'
     if (prop === 'count')
         return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= COUNT_CAP
+    if (prop === 'seconds')
+        return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= SECONDS_CAP
     if (typeof value !== 'string') return false
     if ('scale' in prop) return (scales[prop.scale] as readonly string[]).includes(value)
     if ('oneOf' in prop) return prop.oneOf.includes(value)

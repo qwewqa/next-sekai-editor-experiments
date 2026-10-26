@@ -89,7 +89,7 @@ export const startField = () => {
             const measures = {
                 loafSupported,
                 cores: bucket('cores', navigator.hardwareConcurrency),
-                // A count is capped at 9999, or a long visit would lose its whole `perf` event. The times are whole seconds.
+                // A count is capped at 9999 and a time at a day, or a long visit would lose its whole `perf` event.
                 visibleTime: capSeconds(visible - sentVisible),
                 playSeconds: capSeconds(played - sentPlay),
                 interactions: capCount(

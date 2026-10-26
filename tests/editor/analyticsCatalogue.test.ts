@@ -146,16 +146,16 @@ test('a measured count is capped so a long visit keeps its perf event', () => {
     assert.ok(!isValidEvent('perf', { interactions: 10_000 }))
 })
 
-test('playing and visible time are whole seconds, rounded and capped', () => {
+test('playing and visible time are whole seconds, rounded and capped at a day', () => {
     assert.equal(capSeconds(0), 0)
     assert.equal(capSeconds(499), 0)
     assert.equal(capSeconds(500), 1)
     assert.equal(capSeconds(119_400), 119)
-    assert.equal(capSeconds(9_999_000), 9999)
-    assert.equal(capSeconds(86_400_000), 9999)
+    assert.equal(capSeconds(86_400_000), 86_400)
+    assert.equal(capSeconds(90_000_000), 86_400)
     assert.equal(capSeconds(-5), 0)
-    assert.ok(isValidEvent('perf', { playSeconds: capSeconds(120_000), visibleTime: 9999 }))
-    for (const value of [10_000, 1.5, -1, '1m-5m', '0'])
+    assert.ok(isValidEvent('perf', { playSeconds: capSeconds(120_000), visibleTime: 86_400 }))
+    for (const value of [86_401, 1.5, -1, '1m-5m', '0'])
         assert.ok(!isValidEvent('perf', { playSeconds: value }), String(value))
     assert.ok(!isValidEvent('perf', { visibleTime: '5m-20m' }))
 })

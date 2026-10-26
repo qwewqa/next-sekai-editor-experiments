@@ -76,7 +76,7 @@ The switch appears only in a build with a target. Reset Settings… skips it, an
 ## Privacy rules
 
 1. No chart content, file names, level info, titles, free text, paths, URLs with a query or hash, and no ids that link visits.
-2. Only fixed values, booleans, ranges, use counts capped at 9999 and times in whole seconds capped at 9999, plus the screen size in Umami's usual form.
+2. Only fixed values, booleans, ranges, use counts capped at 9999 and times in whole seconds capped at a day (86400), plus the screen size in Umami's usual form.
 3. The client creates, stores and sends no identifier. Umami's daily session hash is the only grouping.
 4. Nothing is sent before the setting and the browser's signals are read, and nothing at all when the result is off.
 
@@ -114,7 +114,7 @@ How the code enforces them:
 | `errors` | at hide | `error`, `csp` |
 | `unsupported` | the support page, on its first input | `engine` |
 
-`playSeconds` and `visibleTime` measure the time since the previous send, rounded to whole seconds and capped at 9999 per event. Other durations and sizes use ranges.
+`playSeconds` and `visibleTime` measure the time since the previous send, rounded to whole seconds and capped at a day (86400) per event. Other durations and sizes use ranges.
 
 `chart.historySteps` is the size of the Undo window, at most 1,000 steps (`STACK_CAP`), not the length of the Timeline.
 
