@@ -34,6 +34,7 @@
         "probe:handles": "playwright test --config playwright.probe.config.ts",
         "predev": "node scripts/stage-dev-assets.mjs",
         "dev": "vite --host",
+        "prebuild": "node scripts/stage-dev-assets.mjs",
         "build": "node scripts/check-lyon.mjs && vite build",
         "build:release": "node scripts/build-release.mjs",
         "build:native": "node scripts/build-native.mjs",

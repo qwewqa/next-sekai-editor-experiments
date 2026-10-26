@@ -12,6 +12,7 @@ import { basename, dirname, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
+import { previewAssetsMode, stageDevPreviewAssets } from '../preview-assets.mjs'
 import { installActionProbe, runAction } from './actions.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -1397,6 +1398,10 @@ const withinCell = (cell, run) => {
 let baseUrl = args.url
 if (!baseUrl) {
     if (!args.noBuild) {
+        await stageDevPreviewAssets(root)
+        const assets = await previewAssetsMode(root)
+        if (!assets.included)
+            throw new Error(`The perf build needs the Next SEKAI packages: ${assets.reason}.`)
         log('building', dist)
         execFileSync(
             process.execPath,

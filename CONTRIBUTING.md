@@ -29,7 +29,7 @@ One frontend is built twice: `npm run build` for the web and `npm run build:nati
 | Asset defaults | `#asset-defaults` | Per build |
 | The AWS services around the editor: their templates, scripts and runbooks | `infra/` | Neither |
 
-`#platform` and `#asset-defaults` are `package.json` `imports` with a `native` condition. Native mode (`vite --mode native`) selects it; the web build and the Node tests resolve the `default` target.
+`#platform` and `#asset-defaults` are `package.json` `imports` with a `native` condition. Native mode (`vite --mode native`) selects it; the web build and the Node tests resolve the `default` target. A web build or dev server without the five Next SEKAI packages takes the `builtin-only` target, the apps’ Built-in defaults (README).
 
 ### Capabilities, not checks
 

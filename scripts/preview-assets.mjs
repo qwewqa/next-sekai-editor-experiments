@@ -96,6 +96,9 @@ export async function previewAssetsMode(root, env = process.env) {
         if (!(await matches(join(root, 'public/resource', `${name}.scp`), expected)))
             missing.push(`${name}.scp`)
     return missing.length
-        ? { included: false, reason: `public/resource/ lacks or differs on ${missing.join(', ')}` }
+        ? {
+              included: false,
+              reason: `these files in public/resource/ are missing or do not match the lock: ${missing.join(', ')}`,
+          }
         : { included: true }
 }

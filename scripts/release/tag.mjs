@@ -56,7 +56,7 @@ function requireGh() {
 }
 
 // browsers-full.yml does not run on a push to main, so a release starts it by hand.
-function requirePassedRuns(commit) {
+function requirePassedRuns(commit, head) {
     for (const workflow of ['check.yml', 'deploy-pages.yml', 'browsers-full.yml']) {
         const runs = JSON.parse(
             run('gh', [
@@ -78,7 +78,9 @@ function requirePassedRuns(commit) {
             throw new ReleaseError(
                 `${workflow} has not passed for ${commit}.` +
                     (workflow === 'browsers-full.yml'
-                        ? ` Start it with: gh workflow run ${workflow} --ref main`
+                        ? commit === head
+                            ? ` Start it with: gh workflow run ${workflow} --ref main`
+                            : ` Push it to a ci/ branch to run it, for example: git push origin ${commit}:refs/heads/ci/release`
                         : ''),
             )
     }
@@ -129,7 +131,7 @@ function main() {
             readFormatVersions(showAt(newest)),
             readFormatVersions(showAt(commit)),
         )
-    if (onMain) requirePassedRuns(commit)
+    if (onMain) requirePassedRuns(commit, head)
 
     // 4. What is in and out.
     const notes = unreleasedLines(show(commit, 'CHANGELOG.md'))
