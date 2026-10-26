@@ -3,7 +3,7 @@ import test from 'node:test'
 import { resolveZone } from '../../../src/calendar/calendar'
 import { readDeleteCandidates } from '../../../src/local/candidates'
 import { chainStartOf } from '../../../src/local/chainFields'
-import { readMeta, writeMeta } from '../../../src/local/db'
+import { writeMeta } from '../../../src/local/db'
 import {
     BUSY_LIMIT_MS,
     BUSY_RETRY_MS,
@@ -21,7 +21,6 @@ import { sessionReadability } from '../../../src/local/records/unknownValues'
 import { SESSION_V } from '../../../src/local/records/version'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld, type World } from '../../../src/local/testing/world'
-import { nextTime } from '../../../src/local/time'
 import '../../helpers/lockChecks'
 import { closedChain, daysPass, MemoryStorage, openDeleter, tamper } from '../deletion/harness'
 import { rows, workerCore } from '../flush/harness'
@@ -158,6 +157,24 @@ test('ranges count calendar days in the page’s zone: 8 days ago is over 7 and 
     assert.deepEqual(
         found.map((chain) => chain.chainId),
         [0, 1, 2, 3, 4].map((n) => chains[n]!.first.chainId),
+    )
+})
+
+test('the age follows the wall clock, not a clock that ran ahead and was corrected', async () => {
+    const { world, chains, read } = await setup(2)
+    await age(world, chains[0]!, NOW - DAY)
+    await age(world, chains[1]!, NOW + 3 * DAY)
+    // The device clock was a year ahead while the editor wrote; the user then corrected it.
+    await edit(world, (tx) => writeMeta(tx, 'maxSeenTime', NOW + 365 * DAY))
+    const found = await read()
+    assert.deepEqual(
+        chains.map((chain) => byChain(found, chain)?.ageDays),
+        // Yesterday, and a last edit still ahead of the wall clock (never old).
+        [1, 0],
+    )
+    assert.deepEqual(
+        found.filter((chain) => chain.ageDays > 90),
+        [],
     )
 })
 
@@ -589,10 +606,9 @@ test('a chain counted as saved whose file is taken over or rebound after the rea
 })
 
 /** The candidates as they were read before the one-cursor read: one read per chain and session. */
-const candidatesPerChain = async (tx: KvTx, wall: number) => {
+const candidatesPerChain = async (tx: KvTx) => {
     type Row = Record<string, unknown>
     const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
-    const now = nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, wall)
     const chains: unknown[] = []
     for (const { value } of await tx.entries('chains', { index: 'updatedAt', direction: 'prev' })) {
         if (!isRow(value) || value.deleting !== undefined || typeof value.chainId !== 'string')
@@ -628,7 +644,7 @@ const candidatesPerChain = async (tx: KvTx, wall: number) => {
             hasContent: record.hasContent === true,
         })
     }
-    return { now, chains }
+    return chains
 }
 
 /** Recent Sessions' list as it was read before the one-cursor read: one read per chain and session. */
@@ -720,11 +736,10 @@ test('the candidates and Recent Sessions’ list read in one cursor are the ones
     })
     const read = <T>(fn: (tx: KvTx) => Promise<T>) =>
         deleter.tab.run(() => deleter.core.read(['chains', 'sessions', 'stackBlocks', 'meta'], fn))
-    const { now, chains: found } = await read((tx) => readDeleteCandidates(tx, NOW))
-    const expected = await read((tx) => candidatesPerChain(tx, NOW))
+    const found = await read(readDeleteCandidates)
+    const expected = await read(candidatesPerChain)
     // Recent Sessions' list, every field, is the one read chain by chain.
     assert.deepEqual(await read(readRecent), await read(recentPerChain))
-    assert.equal(now, expected.now)
     assert.deepEqual(
         found.map((chain) => ({
             chainId: chain.chainId,
@@ -735,7 +750,7 @@ test('the candidates and Recent Sessions’ list read in one cursor are the ones
             readable: chain.readable,
             hasContent: chain.hasContent,
         })),
-        expected.chains,
+        expected,
     )
     // Every kind of chain is there: the marked one left out, the rest in.
     assert.equal(found.length, 8)

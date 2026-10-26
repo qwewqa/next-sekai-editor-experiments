@@ -1,5 +1,6 @@
 import {
     TIME_LIMIT,
+    hostZone,
     sameDay as sameZoneDay,
     sameYear as sameZoneYear,
     type Zone,
@@ -10,8 +11,9 @@ import { languageTag } from './plural'
 // app locale's own format. A date from another year carries its year.
 //
 // Every export takes an optional last `zone`: a zone's own local time, from the History clock.
-// Without one, the engine's zone is used, as it always was. Every export is total: a time outside
-// the range a `Date` holds (±8.64e15) is taken to its nearest end, and NaN to 0, never an error.
+// Without one, the engine's zone now is used, read on every call, so a zone change shows at once.
+// Every export is total: a time outside the range a `Date` holds (±8.64e15) is taken to its nearest
+// end, and NaN to 0, never an error.
 
 const clampTime = (time: number) =>
     Number.isNaN(time) ? 0 : Math.min(TIME_LIMIT, Math.max(-TIME_LIMIT, time))
@@ -24,15 +26,13 @@ const formatter = (
     options: Intl.DateTimeFormatOptions,
     zone?: Zone,
 ) => {
-    const id = zone === undefined ? `${locale}/${key}` : `${locale}/${zone}/${key}`
+    const timeZone = zone ?? hostZone()
+    const id = `${locale}/${timeZone}/${key}`
     let found = formatters.get(id)
     if (!found)
         formatters.set(
             id,
-            (found = new Intl.DateTimeFormat(
-                languageTag(locale),
-                zone === undefined ? options : { ...options, timeZone: zone },
-            )),
+            (found = new Intl.DateTimeFormat(languageTag(locale), { ...options, timeZone })),
         )
     return found
 }

@@ -54,10 +54,8 @@ export const maintHandlers = (context: WorkerContext) => ({
     },
 
     /** Delete Sessions…: every unmarked chain with the facts the ranges and the not-saved test read. */
-    deleteCandidates: (request: { wall: number }) =>
-        context.core.read(['chains', 'sessions', 'stackBlocks', 'meta'], (tx) =>
-            readDeleteCandidates(tx, request.wall),
-        ),
+    deleteCandidates: () =>
+        context.core.read(['chains', 'sessions', 'stackBlocks', 'meta'], readDeleteCandidates),
 
     /** One GC pass when due, or `always` (after a removal). */
     gcPass: (request: { always?: boolean } | undefined, scope?: CallScope) =>

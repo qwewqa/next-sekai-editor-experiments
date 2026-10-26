@@ -25,7 +25,7 @@ export type DeleteChain = {
     updatedAt: number
     fileAt?: number
     sessions: string[]
-    /** Whole local calendar days between the last edit and the worker's `now`. */
+    /** Whole local calendar days between the last edit and now by the wall clock; 0 for an edit in the future. */
     ageDays: number
     /** `notSavedToFile`; a chain this build can't read counts as not saved. */
     notSaved: boolean
@@ -84,7 +84,7 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
 
     /** Every chain not marked for Delete and not held open now, in storage's order (newest first). */
     const readDeleteChoices = async (): Promise<StoredRead<DeleteChain[]>> => {
-        const read = await storedRead(worker, 'deleteCandidates', { wall: now() })
+        const read = await storedRead(worker, 'deleteCandidates', undefined)
         if (read.storedRead === 'failed') return read
         let held: Set<string>
         try {
@@ -93,9 +93,9 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
             recordError(error)
             return { storedRead: 'failed', storedError: error }
         }
-        const { chains, now: stamp } = read.storedValue
+        const chains = read.storedValue
         const zone = (deps.zone ?? hostZone)()
-        const today = dayKey(stamp, zone)
+        const today = dayKey(now(), zone)
         const downloadsConfirmed = deps.downloadsConfirmed()
         const out: DeleteChain[] = []
         for (const chain of chains) {
