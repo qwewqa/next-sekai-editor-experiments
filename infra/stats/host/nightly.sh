@@ -27,13 +27,14 @@ dump_stream() { dc exec -T db pg_dump -Fc -U umami umami; }
 
 # Writes the dump to a file and lists its contents before the upload, so a failed pg_dump cannot leave a partial dump in S3.
 dump() {
-    local file
-    file="/data/dumps/umami-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
+    # The contract test points NSE_DUMP_DIR at a temporary folder.
+    local dir="${NSE_DUMP_DIR:-/data/dumps}" file
+    file="$dir/umami-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
     # Called as `dump || ...`, which turns errexit off, so every step passes failure on itself.
     # A bad dump is removed. After a failed upload the file stays.
     # A dump never holds a region or a city, so it is refused when clean fails.
     clean || return 1
-    mkdir -p /data/dumps || return 1
+    mkdir -p "$dir" || return 1
     { dump_stream > "$file" && dc exec -T db pg_restore --list < "$file" > /dev/null; } || { rm -f "$file"; return 1; }
     aws s3 cp --only-show-errors "$file" "s3://$NSE_BUCKET/dumps/$(basename "$file")" || return 1
     rm -f "$file"

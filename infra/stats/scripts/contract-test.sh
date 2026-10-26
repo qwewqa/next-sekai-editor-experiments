@@ -4,9 +4,11 @@
 #   1. the host files are valid (Compose, Caddyfile)
 #   2. a text/plain batch with a browser User-Agent is stored, with its data; a bot User-Agent is not
 #   3. nightly.sh's clean empties region and city
-#   4. geo-trigger.sql installs twice, and then no session keeps a region or a city, whether it arrives with them or
-#      is updated to have them
-#   5. a dump made without a clean restores into a fresh PostgreSQL with the same row counts and no region or city
+#   4. geo-trigger.sql installs twice, and then no session keeps a region or a city, whether it is inserted with them,
+#      updated to have them, or created by a request
+#   5. nightly.sh's dump (with the upload stubbed) clears a region and city that are stored when it starts, a failed
+#      clean stops it before any upload, and the dump restores into a fresh PostgreSQL with the same row counts and no
+#      region or city
 #   6. every saved query runs, and prints the rows the batch produces
 # Needs docker, curl and jq.
 set -euo pipefail
@@ -19,10 +21,11 @@ dc() { $COMPOSE "$@"; }
 . ./images.env
 BROWSER='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
 
+WORK=$(mktemp -d)
 cleanup() {
     dc down -v > /dev/null 2>&1 || true
     docker rm -f nse-contract-restore > /dev/null 2>&1 || true
-    rm -f /tmp/nse-contract.dump /tmp/nse-contract.headers
+    rm -rf "$WORK" /tmp/nse-contract.headers
 }
 trap cleanup EXIT
 
@@ -90,13 +93,46 @@ sql -c "INSERT INTO session (session_id, website_id, country, region, city) VALU
 # An update cannot set them either.
 sql -c "UPDATE session SET region = 'WA', city = 'Seattle'" > /dev/null
 [ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL OR city IS NOT NULL")" = 0 ] || fail "an update set a region or city"
+# A request after the trigger is installed. A new IP address makes a new session, on a website of its own so the saved
+# queries below are unchanged. The Cloudflare headers are one way Umami may be given a location; if it ignores them the
+# session has none, and the check still holds.
+GEO=$(cat /proc/sys/kernel/random/uuid)
+sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$GEO', 'geo', 'nse.qwewqa.dev')" > /dev/null
+# shellcheck disable=SC2016
+GEO_EVENT=$(jq -nc --arg w "$GEO" --argjson t "$NOW" '{type: "event", payload: {website: $w, hostname: "nse.qwewqa.dev", url: "/", title: "", language: "ja", screen: "1920x1080", timestamp: $t}}')
+curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -H "User-Agent: $BROWSER" -H 'X-Real-IP: 203.0.113.8' \
+    -H 'cf-ipcountry: US' -H 'cf-region-code: WA' -H 'cf-ipcity: Seattle' --data "$GEO_EVENT" > /dev/null
+[ "$(sql -c "SELECT count(*) FROM session WHERE website_id = '$GEO'")" = 1 ] || fail "the request did not create one session"
+[ "$(sql -c "SELECT count(*) FROM session WHERE website_id = '$GEO' AND region IS NULL AND city IS NULL")" = 1 ] || fail "the session from a request kept its region or city"
+
+step "dump()"
+# nightly.sh's dump itself, with the upload stubbed to copy the file. The trigger is off while a region and a city are
+# put back, and nothing calls clean first: dump() has to clear them before its snapshot.
+export NSE_BUCKET=contract NSE_DUMP_DIR="$WORK/dumps"
+UPLOADS="$WORK/uploads"
+mkdir -p "$UPLOADS"
+aws() { cp "$4" "$UPLOADS/$(basename "$5")"; } # s3 cp --only-show-errors <file> <destination>
+sql -c "ALTER TABLE session DISABLE TRIGGER nse_drop_geo" > /dev/null
+sql -c "UPDATE session SET region = 'WA', city = 'Seattle'" > /dev/null
+[ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL AND city IS NOT NULL")" -ge 1 ] || fail "no session to dump with a region"
+# A clean that fails stops dump() before it makes a file or uploads one. Only the psql calls fail.
+if (
+    # shellcheck disable=SC2329
+    dc() { case " $* " in *" psql "*) return 1 ;; esac; $NSE_COMPOSE "$@"; }
+    dump
+); then fail "dump() went on after a failed clean"; fi
+[ -z "$(ls -A "$UPLOADS")" ] || fail "dump() uploaded after a failed clean"
+[ ! -d "$NSE_DUMP_DIR" ] || [ -z "$(ls -A "$NSE_DUMP_DIR")" ] || fail "dump() left a file after a failed clean"
+dump || fail "dump() failed"
+[ "$(find "$UPLOADS" -type f | wc -l)" = 1 ] || fail "dump() did not upload exactly one dump"
+[ -z "$(ls -A "$NSE_DUMP_DIR")" ] || fail "dump() left its file after the upload"
+[ "$(sql -c "SELECT count(*) FROM session WHERE region IS NOT NULL OR city IS NOT NULL")" = 0 ] || fail "dump() did not clear the region and city"
+sql -c "ALTER TABLE session ENABLE TRIGGER nse_drop_geo" > /dev/null
 
 step "dump and restore"
-# No clean before the dump, as in an upgrade's dump: the live table must already hold no region or city.
-dump_stream > /tmp/nse-contract.dump
 docker run -d --name nse-contract-restore -e POSTGRES_PASSWORD=x -e POSTGRES_DB=umami "$POSTGRES_IMAGE" > /dev/null
 for _ in $(seq 1 30); do docker exec nse-contract-restore pg_isready -U postgres -d umami > /dev/null 2>&1 && break; sleep 2; done
-docker exec -i nse-contract-restore pg_restore -U postgres -d umami --no-owner --no-acl --exit-on-error < /tmp/nse-contract.dump
+docker exec -i nse-contract-restore pg_restore -U postgres -d umami --no-owner --no-acl --exit-on-error < "$UPLOADS"/*.dump
 for table in website website_event event_data session _prisma_migrations; do
     a=$(sql -c "SELECT count(*) FROM $table")
     b=$(docker exec nse-contract-restore psql -U postgres -d umami -tA -c "SELECT count(*) FROM $table")
