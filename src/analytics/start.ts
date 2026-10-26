@@ -2,7 +2,7 @@ import { watch } from 'vue'
 import { SITE } from '../buildInfo'
 import { isSafeMode } from '../safe'
 import { settings } from '../settings'
-import { startupGate } from '../startup/gate'
+import { startupEnded } from '../startup/gate'
 import { browserSignal, shouldSend, type AnalyticsTarget } from './config'
 import { deviceOf } from './device'
 import * as tally from './tally'
@@ -53,25 +53,6 @@ const sends = () =>
                 ?.saveData === true,
     })
 
-// Startup ended, whether it opened the session or stopped at an error: a startup that failed is
-// the signal that matters most, so the client loads after it too, and once the user has used the
-// page (the gate swallows other input), it sends the failure.
-const startupEnded = () =>
-    new Promise<void>((resolve) => {
-        const stop = watch(
-            () => startupGate.phase,
-            (phase) => {
-                if (phase === 'opening') return
-                stop()
-                resolve()
-            },
-        )
-        if (startupGate.phase !== 'opening') {
-            stop()
-            resolve()
-        }
-    })
-
 const idle = () =>
     new Promise<void>((resolve) => {
         if (typeof requestIdleCallback === 'function')
@@ -90,6 +71,8 @@ let generation = 0
 
 const load = async (target: AnalyticsTarget) => {
     const at = ++generation
+    // A startup that failed is the signal that matters most, so the client loads after it too,
+    // and once the user has used the page (the gate swallows other input), it sends the failure.
     await startupEnded()
     await idle()
     if (at !== generation) return

@@ -12,10 +12,10 @@ import { configureHeldBgm, decodeBgmData, withCachedBgm } from '../editor/media/
 import { getVerticalScale } from '../editor/navigation'
 import { setSaveEnvironment } from '../editor/save/binding'
 import { markedSeq, removeMarker, withBind } from '../editor/save/env'
-import { prefetchSaveCode } from '../editor/save/prefetch'
 import { refreshBinding, watchBindings } from '../editor/save/watch'
 import { withSwitchRequest } from '../editor/switchRequest'
 import { view } from '../editor/view'
+import { warmUp } from '../editor/warmUp'
 import { onHistoryAction } from '../history/actions'
 import { createHistoryOperation } from '../history/createHistoryOperation'
 import { captureEntryDescription } from '../history/operations'
@@ -23,7 +23,7 @@ import { setPeekSource } from '../history/peek'
 import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
-import { startupGate } from '../startup/gate'
+import { startupEnded, startupGate } from '../startup/gate'
 import { keepClockWhile } from '../time'
 import { chainStartOf } from './chainFields'
 import { postSessionUpdated } from './channel'
@@ -487,8 +487,8 @@ export const startStoring = (
             }),
     })
 
-    // Once startup is over, the code behind them loads, so a later deploy cannot take it away.
-    prefetchSaveCode()
+    // Once startup is over, the code behind the likely features loads in the background.
+    warmUp(startupEnded)
 
     worker.onRestart(() => {
         void instance.restarted()
