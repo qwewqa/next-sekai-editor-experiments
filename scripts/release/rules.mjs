@@ -114,6 +114,8 @@ export const fixturePaths = [
     'src/levelData',
     'src/chart',
     'src/editor/save',
+    'src/editor/commands/exportLevel/memory.ts',
+    'src/storage.ts',
     'tools/fields-v1.json',
 ]
 

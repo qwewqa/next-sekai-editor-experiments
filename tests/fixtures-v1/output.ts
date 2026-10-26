@@ -179,14 +179,6 @@ export const nxspNames = [
     'no-media.nxsp',
 ] as const
 
-export const webNames = [
-    'nse-local-data.json',
-    'nse-local-data-download.json',
-    'raw-export.zip',
-    'saving-marker-file.nxsp',
-    'journal-unavailable.json',
-] as const
-
 const sums = (files: Map<string, Uint8Array | string>) =>
     `${[...files].map(([name, bytes]) => `${sha256(bytes)}  ${name}`).join('\n')}\n`
 
