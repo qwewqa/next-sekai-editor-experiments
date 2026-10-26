@@ -140,7 +140,7 @@ Dev exists only while an analytics test runs, in `nse-dev`, and is deleted compl
     - an Elastic IP: `aws ec2 release-address --allocation-id <id>`;
     - a bucket: `aws s3 rb s3://<bucket> --force`.
 
-Once the repository variable `STATS_DEV_REAPER` is `on` (`../README.md`, Set-up step 7), Stats dev down also runs every six hours and deletes a stats dev stack that is over 12 hours old. It covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` sends an email if a dev stack is left up anyway.
+Once the repository variable `STATS_DEV_REAPER` is `on` (`../README.md`, Set-up step 7), Stats dev down also runs every six hours and deletes a stats dev stack that is over 12 hours old. With no stack, it still deletes the retained volume, Elastic IP and bucket that an interrupted run left, and checks for leftovers. It covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` sends an email if a dev stack is left up anyway.
 
 A dev deploy after a Stats dev down needs a new certificate. Let’s Encrypt allows five per identical set of names a week, and after that Caddy uses ZeroSSL.
 
