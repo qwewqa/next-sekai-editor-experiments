@@ -247,6 +247,13 @@ const footer = computed(() => {
     return key && i18n.value.storage[key]
 })
 
+// An empty list says why when a full browser stopped this tab's chain from being stored.
+const emptyText = computed(() =>
+    storageStatus.value?.mode === 'stored' && storageStatus.value.reason === 'full'
+        ? i18n.value.storage.reason.full
+        : i18n.value.history.empty,
+)
+
 const SKELETON_ROWS = 4
 
 // --- Peek: the cursor's row, and what the bar shows.
@@ -736,7 +743,7 @@ const notePointer = (event: PointerEvent) => {
                     class="flex h-24 items-center justify-center px-3 text-center text-sm text-fg/80"
                     data-sessions-empty
                 >
-                    {{ i18n.history.empty }}
+                    {{ emptyText }}
                 </div>
                 <div
                     v-else
