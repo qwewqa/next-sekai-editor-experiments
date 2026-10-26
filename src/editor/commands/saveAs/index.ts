@@ -1,5 +1,6 @@
 import type { Command } from '..'
 import { i18n } from '../../../i18n'
+import { loadForAction } from '../../loadFailure'
 import SaveAsIcon from './SaveAsIcon.vue'
 
 // Save As… (no default key): the Save dialog, then a new file with a new `docId`.
@@ -12,7 +13,7 @@ export const saveAs: Command = {
     },
 
     async execute() {
-        const { saveAs: run } = await import('../../save/flow')
-        await run()
+        const flow = await loadForAction(() => import('../../save/flow'))
+        if (flow) await flow.saveAs()
     },
 }

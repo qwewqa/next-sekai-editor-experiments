@@ -7,10 +7,12 @@ import {
 } from '../editor/commands/exportLevel/memory'
 import { setTargetLock } from '../editor/commands/exportLevel/targetLock'
 import { setFileActions } from '../editor/file'
+import { loadForAction } from '../editor/loadFailure'
 import { configureHeldBgm, decodeBgmData, withCachedBgm } from '../editor/media/heldBgm'
 import { getVerticalScale } from '../editor/navigation'
 import { setSaveEnvironment } from '../editor/save/binding'
 import { markedSeq, removeMarker, withBind } from '../editor/save/env'
+import { prefetchSaveCode } from '../editor/save/prefetch'
 import { refreshBinding, watchBindings } from '../editor/save/watch'
 import { withSwitchRequest } from '../editor/switchRequest'
 import { view } from '../editor/view'
@@ -421,7 +423,10 @@ export const startStoring = (
             // request isn't behind a storage read (never at startup).
             if (startupGate.phase === 'done' && prefetched !== instance.session) {
                 prefetched = instance.session
-                void import('../editor/save/flow').then((flow) => flow.prefetchHandle())
+                void import('../editor/save/flow').then(
+                    (flow) => flow.prefetchHandle(),
+                    () => undefined,
+                )
             }
             instance.append(
                 captureEntryDescription(action),
@@ -447,27 +452,41 @@ export const startStoring = (
     })
     // The file state's dialogs run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
-    setUnregisteredTargetCheck(async (target) =>
-        (await flows()).exportTargetAvailable(target.handle),
-    )
+    // A button on the file state: a load that fails says so, and changes nothing.
+    const withFlow = async (
+        run: (flow: Awaited<ReturnType<typeof flows>>) => void | Promise<void>,
+    ) => {
+        const flow = await loadForAction(flows)
+        if (flow) await run(flow)
+    }
+    // Without the code to ask, the target is not authorized and a picker asks.
+    setUnregisteredTargetCheck(async (target) => {
+        const flow = await flows().catch((error: unknown) => {
+            recordError(error)
+        })
+        return flow ? flow.exportTargetAvailable(target.handle) : false
+    })
     setTargetLock((run) => withBind('shared', run))
     setFileActions({
-        saveAs: () => void flows().then((flow) => flow.fileSaveAs()),
-        downloadAgain: () => void flows().then((flow) => flow.fileDownloadAgain()),
+        saveAs: () => void withFlow((flow) => flow.fileSaveAs()),
+        downloadAgain: () => void withFlow((flow) => flow.fileDownloadAgain()),
         openOtherVersion: () =>
             void withSwitchRequest(undefined, async (request) => {
                 try {
-                    const flow = await flows()
-                    if (request.isCurrent()) await flow.openOtherVersion(request)
+                    const flow = await loadForAction(flows)
+                    if (flow && request.isCurrent()) await flow.openOtherVersion(request)
                 } catch (error) {
                     if (request.isCurrent()) throw error
                 }
             }),
         persistConfirmed: () =>
-            void flows().then((flow) => {
+            void withFlow((flow) => {
                 flow.persistConfirmed()
             }),
     })
+
+    // Once startup is over, the code behind them loads, so a later deploy cannot take it away.
+    prefetchSaveCode()
 
     worker.onRestart(() => {
         void instance.restarted()

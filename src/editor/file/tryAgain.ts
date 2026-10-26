@@ -1,4 +1,5 @@
 import { i18n } from '../../i18n'
+import { loadForAction } from '../loadFailure'
 import { notify } from '../notification'
 import { causeOf } from './notStored'
 
@@ -8,7 +9,8 @@ import { causeOf } from './notStored'
  * chip and the line go away.
  */
 export const tryStoringAgain = async () => {
-    const { retryStoring } = await import('../../local/retryStoring')
-    const status = await retryStoring()
+    const retry = await loadForAction(() => import('../../local/retryStoring'))
+    if (!retry) return
+    const status = await retry.retryStoring()
     if (causeOf(status)) notify(() => i18n.value.notSaving.bar, { card: true, severity: 'warning' })
 }
