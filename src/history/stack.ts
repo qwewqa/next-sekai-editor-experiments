@@ -167,6 +167,12 @@ const endBatch = (outcome: MoveOutcome) => {
  */
 export const pendingMoveOutcome = () => requested
 
+/**
+ * Settles when the moves queued behind a slot's load have landed, failed or been cancelled; none
+ * while nothing is queued. The chart is unchanged until then, so a caller guarding on it waits.
+ */
+export const queuedMovesSettled = () => batch?.outcome
+
 /** Any edit, or entering peek, cancels pending moves. */
 export const cancelPendingMoves = () => {
     if (!pendingMove.value && !batch) return
