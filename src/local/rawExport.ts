@@ -1,6 +1,4 @@
-import { PRODUCT_NAME } from '../product'
 import { storageKey } from '../storage'
-import { interpolateRaw } from '../utils/interpolate'
 import { assembleZip, prepareEntry, type PreparedEntry } from '../zip/writer'
 import { DB_NAME } from './db'
 import {
@@ -162,16 +160,6 @@ export const buildRawExportResult = async (
 /** The ZIP of the stored data (see `buildRawExportResult`). */
 export const buildRawExport = async (appVersion: string, sources?: RawSources): Promise<Blob> =>
     (await buildRawExportResult(appVersion, sources)).zip
-
-/** A local date as 2026-10-23. */
-export const dateStamp = (date: Date) =>
-    [date.getFullYear(), date.getMonth() + 1, date.getDate()]
-        .map((part, i) => String(part).padStart(i === 0 ? 4 : 2, '0'))
-        .join('-')
-
-/** "Next SEKAI Editor raw data 2026-10-23.zip", the pattern being the locale's. */
-export const rawExportName = (pattern: string, now: Date = new Date()) =>
-    interpolateRaw(pattern, PRODUCT_NAME, dateStamp(now))
 
 /**
  * Builds the file and hands it over; `save` is the platform's download. Throws when the hand-over

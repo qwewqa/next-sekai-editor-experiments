@@ -1,5 +1,18 @@
 import { expect, test, type Page } from '@playwright/test'
-import { edit, notice, pressSave, saveDialog, sessionOf, start, submitSave } from './saveFlows'
+import { executePlan, planNxsp } from '../../src/local/nxsp'
+import { fresh } from '../local/nxsp/chain'
+import {
+    chainOf,
+    edit,
+    notice,
+    pressSave,
+    readFile,
+    saveDialog,
+    sessionOf,
+    start,
+    submitSave,
+    writeFile,
+} from './saveFlows'
 
 // A tab left open across a deploy, or one without a connection, cannot load the Save code. The
 // code loads in the background once startup is over (the warm-up); a press that finds it missing
@@ -94,4 +107,83 @@ test('the warm-up loads the History code before first use, and opening History f
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.waitForTimeout(500)
     expect(modules.slice(before)).toEqual([])
+})
+
+test.describe('code that loads inside a Save', () => {
+    test('Replace and Open the Other Version say so when the project code does not load', async ({
+        page,
+    }) => {
+        // Save's own code loads; the code that keeps or opens the file on disk does not.
+        await page.route('**/src/editor/commands/open/project.ts*', (route) => route.abort())
+        await start(page)
+        await edit(page, 1)
+        await pressSave(page)
+        await submitSave(page, 'coconut')
+        await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+        await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ event: 'saved' })
+
+        const other = [
+            ...new Uint8Array(
+                await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer(),
+            ),
+        ]
+        await writeFile(page, 'coconut.nxsp', other)
+        await edit(page, 2)
+        await pressSave(page)
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toContainText('"coconut.nxsp" Changed')
+        // Past the dialog's activation guard.
+        await page.waitForTimeout(350)
+        const session = await sessionOf(page)
+        for (const choice of ['Replace', 'Open the Other Version']) {
+            await dialog.getByRole('button', { name: choice }).click()
+            await expect(notice(page).filter({ hasText: failed })).toBeVisible()
+            // The file on disk is as it was, and so is the session.
+            expect(await readFile(page, 'coconut.nxsp')).toEqual(other)
+            expect(await sessionOf(page)).toEqual(session)
+            if (choice === 'Replace') {
+                // The dialog is gone; a Save asks again.
+                await page.waitForTimeout(350)
+                await pressSave(page)
+                await expect(dialog).toContainText('"coconut.nxsp" Changed')
+                await page.waitForTimeout(350)
+            }
+        }
+    })
+})
+
+test('Preview Assets says so when its code does not load', async ({ page }) => {
+    await page.route('**/PreviewAssetsModal.vue*', (route) => route.abort())
+    await start(page)
+    await page.evaluate(async () => {
+        const { showPreviewAssets } =
+            (await import('/src/editor/commands/previewAssets/modal.ts')) as typeof import('../../src/editor/commands/previewAssets/modal')
+        await showPreviewAssets()
+    })
+    await expect(notice(page).filter({ hasText: failed })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('Preview Assets opened with a package says so when the package reader does not load', async ({
+    page,
+}) => {
+    await page.route('**/preview/assets/files/inspect.ts*', (route) => route.abort())
+    await start(page)
+    await page.evaluate(async () => {
+        const { showPreviewAssets } =
+            (await import('/src/editor/commands/previewAssets/modal.ts')) as typeof import('../../src/editor/commands/previewAssets/modal')
+        await showPreviewAssets(undefined, { file: new File([new Uint8Array(4)], 'pack.scp') })
+    })
+    await expect(notice(page).filter({ hasText: failed })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('the docked History panel says so when its code does not load', async ({ page }) => {
+    await page.route('**/history/HistoryPanel.vue*', (route) => route.abort())
+    await start(page)
+    const dock = page.locator('[data-workspace-dock="right"]')
+    await dock.getByRole('tab', { name: 'History' }).click()
+    await expect(dock.locator('[data-history-failed]')).toHaveText(
+        'The Timeline could not be loaded.',
+    )
 })

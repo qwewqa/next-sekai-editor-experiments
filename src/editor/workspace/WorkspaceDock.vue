@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, type Component } from 'vue'
+import { computed, defineAsyncComponent, defineComponent, h, type Component } from 'vue'
+import { recordError } from '../../diagnostics'
 import { i18n } from '../../i18n'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
@@ -29,13 +30,33 @@ const props = defineProps<{
     side: DockSide
 }>()
 
+// The tile of a History panel whose code did not load (offline after a deploy).
+const HistoryFailed = defineComponent(
+    () => () =>
+        h(
+            'div',
+            {
+                class: 'flex h-full items-center justify-center px-3 text-center text-sm text-fg/80',
+                'data-history-failed': '',
+            },
+            i18n.value.history.loadFailed,
+        ),
+)
+
 // History loads when it is first opened: it brings the storage modules' readers.
 const components: Record<PanelId, Component> = {
     preview: PreviewPanel,
     groups: GroupsPanel,
     stages: StagesPanel,
     properties: PropertiesPanel,
-    history: defineAsyncComponent(() => import('../history/HistoryPanel.vue')),
+    history: defineAsyncComponent({
+        loader: () => import('../history/HistoryPanel.vue'),
+        errorComponent: HistoryFailed,
+        onError: (error, _retry, fail) => {
+            recordError(error)
+            fail()
+        },
+    }),
 }
 
 const dock = computed(() => workspaceLayout.value.docks[props.side])

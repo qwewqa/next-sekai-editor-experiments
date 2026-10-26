@@ -43,6 +43,7 @@ import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile } from '../file'
 import { firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
+import { loadForAction } from '../loadFailure'
 import { withSwitchRequest, type SwitchRequest } from '../switchRequest'
 import {
     bindingHandle,
@@ -1221,7 +1222,10 @@ const replace = async (
 ) => {
     const replaces = pinned.disk.revisionId
     if (!replaces) return
-    const { keepReplaced } = await import('../commands/open/project')
+    // Without the code that keeps the version on disk, nothing is written and the card says so.
+    const project = await loadForAction(() => import('../commands/open/project'))
+    if (!project) return
+    const { keepReplaced } = project
     const stem = shownStem(env, savedState()) || stemOf(handle.name)
     const keptName = interpolateRaw(i18n.value.conflict.keptName, stem, formatDate(Date.now()))
     const kept = await keepReplaced(pinned.file, keptName)
@@ -2139,8 +2143,8 @@ const openOther = (
                 saveUi.error(interpolate(() => i18n.value.save.readFailed, name))
                 return
             }
-            const { openProject } = await import('../commands/open/project')
-            if (request.isCurrent()) await openProject(opened, handle, request)
+            const project = await loadForAction(() => import('../commands/open/project'))
+            if (project && request.isCurrent()) await project.openProject(opened, handle, request)
         } catch (error) {
             if (request.isCurrent()) throw error
         }
