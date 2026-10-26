@@ -5,8 +5,9 @@ import { decode, pixelAt } from './pngDecode.mjs'
 
 // The base skin's (Next SEKAI 01) judgment line, sampled from its texture: per colour the Edge and
 // Center solids and its 100 texel Gradient at texels 0, 25, 50, 75 and 99 (stage edge to centre).
-// It has no coloured bands, single lines or end caps: the engine falls back to its one Background
-// (black at 0.57) and to Edge, so ours must match those too.
+// It has one band for every colour, and no coloured single lines or end caps: the engine falls back
+// to its Background (black at 0.57) and to Edge, so ours must match those too. Ours has no
+// coloured bands either.
 const base = {
     Neutral: ['#afafaf', '#cacaca', '#afafaf', '#b6b6b6', '#bdbdbd', '#c4c4c4', '#cacaca'],
     Red: ['#ff186f', '#fa72ab', '#ff186f', '#fe2f7e', '#fc468e', '#fb5c9d', '#fa72ab'],
@@ -68,10 +69,8 @@ test('judgment line colours match the base’s within a small ΔE', () => {
                 gradient[i],
             ),
         )
-        for (const name of ['Sekai Judgment Background', `Sekai Judgment Background ${color}`]) {
-            const got = sample(name)
-            close(name, got, band.color)
-            assert.ok(Math.abs(got[3] / 255 - band.alpha) <= 0.01, `${name}: alpha ${got[3]}`)
-        }
     }
+    const got = sample('Sekai Judgment Background')
+    close('Background', got, band.color)
+    assert.ok(Math.abs(got[3] / 255 - band.alpha) <= 0.01, `Background: alpha ${got[3]}`)
 })

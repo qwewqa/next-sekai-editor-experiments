@@ -131,7 +131,7 @@ test('the brush offers only properties it can apply', () => {
         'xTranslation',
     ])
         assert.ok(!keys.includes(key), key)
-    assert.equal(keys.length, 52)
+    assert.equal(keys.length, 53)
     assert.equal(propertyField.get('connectorEase')?.ease, true)
 })
 

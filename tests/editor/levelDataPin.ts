@@ -100,6 +100,7 @@ export const pinned: Record<number, ReturnType<typeof tableAt>> = {
                 fields: [
                     '#BEAT value required',
                     'editorLane value optional',
+                    'laneColor value optional choice 0-8 default 0',
                     'judgeLineColor value required choice 0-7 default 5',
                     'judgeLineStyle value optional choice 0-1 default 0',
                     'leftBorderStyle value required choice 0-3 default 0',

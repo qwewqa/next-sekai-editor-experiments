@@ -4,6 +4,7 @@ import { parseStageEvents } from '.'
 import { getEventRefs } from '..'
 import { getOptionalValue, getValue, type ParseCtx } from '../..'
 import { easeFromValue } from '../../../../../ease'
+import { noteStyles, noteStyleValueSchema } from '../../../../noteStyle'
 import { ImportRefusal } from '../../../../refusal'
 import type { StageId } from '../../../../stages'
 import { beatSchema } from '../../schemas'
@@ -25,6 +26,7 @@ export const parseStageStyleEventsToChart = (
             stageId,
             beat: getValue(entity, EngineArchetypeDataName.Beat, beatSchema),
             editorLane: getOptionalValue(entity, 'editorLane', editorLaneSchema) ?? 0,
+            laneColor: noteStyles[getOptionalValue(entity, 'laneColor', noteStyleValueSchema) ?? 0],
             judgmentLineColor:
                 judgmentLineColors[getValue(entity, 'judgeLineColor', judgmentLineColorSchema)],
             judgmentLineStyle:

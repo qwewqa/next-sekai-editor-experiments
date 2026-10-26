@@ -5,7 +5,7 @@ import { gzipSync } from 'node:zlib'
 import type {} from '../../src/preview/previewTest'
 
 // Tiny in-memory packages keep these tests independent of optional local skins.
-const archive = (entries: Record<string, Buffer>) => {
+export const archive = (entries: Record<string, Buffer>) => {
     const local: Buffer[] = []
     const central: Buffer[] = []
     let offset = 0

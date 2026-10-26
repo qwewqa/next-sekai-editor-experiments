@@ -89,6 +89,7 @@ export type BrushProperties = {
     divisionParity?: DivisionParity
     yOffset?: number
     yOffsetBeat?: number
+    laneColor?: NoteStyle
     judgmentLineColor?: JudgmentLineColor
     judgmentLineStyle?: JudgmentLineStyle
     leftBorderStyle?: BorderStyle

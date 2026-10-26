@@ -1596,7 +1596,7 @@
         "label": "引导不透明度"
       },
       "colors": {
-        "neutral": "白",
+        "neutral": "灰",
         "red": "红",
         "green": "绿",
         "blue": "蓝",
@@ -1712,7 +1712,7 @@
       },
       "judgmentLineColor": {
         "label": "判定线颜色",
-        "neutral": "白",
+        "neutral": "灰",
         "red": "红",
         "green": "绿",
         "blue": "蓝",
@@ -1728,6 +1728,9 @@
       },
       "laneAlpha": {
         "label": "轨道不透明度"
+      },
+      "laneColor": {
+        "label": "轨道颜色"
       },
       "left": {
         "label": "轨道"

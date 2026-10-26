@@ -92,6 +92,7 @@ export const stageStyleEventRecord = (e: StageStyleEventObject): Rec => [
     e.stageId,
     e.beat,
     e.editorLane,
+    e.laneColor,
     e.judgmentLineColor,
     e.judgmentLineStyle,
     e.leftBorderStyle,

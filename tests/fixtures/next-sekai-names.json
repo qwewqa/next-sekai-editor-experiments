@@ -1,15 +1,15 @@
 {
     "engine": {
         "repository": "sonolus-next-sekai-engine",
-        "commit": "d3a3cef"
+        "commit": "ed2a1da"
     },
     "counts": {
-        "spritesDeclared": 1335,
-        "sprites": 1324,
+        "spritesDeclared": 1351,
+        "sprites": 1340,
         "particles": 505,
         "clips": 15
     },
-    "sha256": "976971d7dc0f1fb41694e12a2158e6243f7c987f5f95cde163e74f60c3672399",
+    "sha256": "de317d5dbf9b13c6cf2ee1ead421a8a9e60b1b35154f0420ec42646d758cc7cc",
     "sprites": [
         "#DIRECTIONAL_MARKER_RED",
         "#DIRECTIONAL_MARKER_YELLOW",
@@ -942,7 +942,23 @@
         "Sekai Judgment Single Line Red",
         "Sekai Judgment Single Line Yellow",
         "Sekai Lane Background",
+        "Sekai Lane Background Black",
+        "Sekai Lane Background Blue",
+        "Sekai Lane Background Cyan",
+        "Sekai Lane Background Green",
+        "Sekai Lane Background Neutral",
         "Sekai Lane Background Preview",
+        "Sekai Lane Background Preview Black",
+        "Sekai Lane Background Preview Blue",
+        "Sekai Lane Background Preview Cyan",
+        "Sekai Lane Background Preview Green",
+        "Sekai Lane Background Preview Neutral",
+        "Sekai Lane Background Preview Purple",
+        "Sekai Lane Background Preview Red",
+        "Sekai Lane Background Preview Yellow",
+        "Sekai Lane Background Purple",
+        "Sekai Lane Background Red",
+        "Sekai Lane Background Yellow",
         "Sekai Lane Divider",
         "Sekai Lane Divider Preview",
         "Sekai Normal Active Slide Connection Active",

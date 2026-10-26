@@ -453,3 +453,71 @@ test('engine dynamic stage level renders in the composed editor without browser 
     await page.screenshot({ path: testInfo.outputPath('engine-composed.png') })
     expect(errors).toEqual([])
 })
+
+test('a Lane Color edit repaints a stage the composed layout has already drawn', async ({
+    page,
+}) => {
+    await page.evaluate(() => {
+        const { fixtures, show, settings, view } = window.editorTest
+        settings.width = 24
+        settings.pps = 80
+        settings.showOtherObjects = false
+        // One style event from the start, so the whole visible stretch has its lane color.
+        const style = { ...fixtures.events.stageStyleEvents[0]!, beat: 0, laneAlpha: 1 }
+        show(
+            {
+                ...fixtures.events,
+                bpms: [{ beat: 0, bpm: 120 }],
+                cameraEvents: [],
+                timeScales: [],
+                stageStyleEvents: [style],
+                slides: [],
+            },
+            5,
+        )
+        view.layout = 'composed'
+        view.laneDivision = 4
+    })
+    await settle(page)
+    await expect.poll(() => page.evaluate(() => window.editorFrames.chart)).toBeGreaterThan(1)
+    const canvas = page.locator('canvas.editor-chart')
+    const before = await canvas.screenshot()
+    await page.evaluate(async () => {
+        const { editSelectedEditableEntities } =
+            (await import('/src/editor/sidebars/default/index.ts')) as typeof import('../../src/editor/sidebars/default')
+        const { history, store } = window.editorTest
+        const joint = [...store.getAllEntities()].find(
+            (entity) => entity.type === 'stageStyleEventJoint',
+        )!
+        history.replaceState({ ...history.state.value, selectedEntities: [joint] })
+        editSelectedEditableEntities({ laneColor: 'red' })
+    })
+    await settle(page)
+    const after = await canvas.screenshot()
+    expect(after.equals(before)).toBe(false)
+    // The tint moves from Default’s blue-green to red: pixels gain red and lose blue.
+    const moved = await page.evaluate(
+        async ({ before, after }) => {
+            const read = async (base64: string) => {
+                const image = await createImageBitmap(
+                    await (await fetch(`data:image/png;base64,${base64}`)).blob(),
+                )
+                const surface = new OffscreenCanvas(image.width, image.height)
+                const ctx = surface.getContext('2d')!
+                ctx.drawImage(image, 0, 0)
+                return ctx.getImageData(0, 0, image.width, image.height).data
+            }
+            const [a, b] = await Promise.all([read(before), read(after)])
+            let redUp = 0
+            let blueDown = 0
+            for (let i = 0; i < a.length; i += 4) {
+                if (b[i]! > a[i]!) redUp++
+                if (b[i + 2]! < a[i + 2]!) blueDown++
+            }
+            return { redUp, blueDown }
+        },
+        { before: before.toString('base64'), after: after.toString('base64') },
+    )
+    expect(moved.redUp).toBeGreaterThan(100)
+    expect(moved.blueDown).toBeGreaterThan(100)
+})

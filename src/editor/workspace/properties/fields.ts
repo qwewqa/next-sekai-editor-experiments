@@ -353,6 +353,15 @@ const fields: PropertyField[] = [
         brush: { initial: 0 },
     },
     {
+        key: 'laneColor',
+        section: 'values',
+        kind: 'style',
+        label: (t) => t.modals.form.laneColor.label,
+        show: type('stageStyleEventJoint'),
+        valueLabel: styleLabel,
+        brush: { initial: 'default' },
+    },
+    {
         key: 'judgmentLineColor',
         section: 'values',
         kind: 'style',

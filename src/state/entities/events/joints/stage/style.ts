@@ -5,10 +5,12 @@ import type {
     JudgmentLineStyle,
     StageStyleEventObject,
 } from '../../../../../chart/events/stage/style'
+import type { NoteStyle } from '../../../../../chart/noteStyle'
 
 export type StageStyleEventJointEntity = BaseStageEventJointEntity & {
     type: 'stageStyleEventJoint'
     editorLane: number
+    laneColor: NoteStyle
     judgmentLineColor: JudgmentLineColor
     judgmentLineStyle: JudgmentLineStyle
     leftBorderStyle: BorderStyle
@@ -34,6 +36,7 @@ export const toStageStyleEventJointEntity = (
     stageId: object.stageId,
     beat: object.beat,
     editorLane: object.editorLane,
+    laneColor: object.laneColor,
     judgmentLineColor: object.judgmentLineColor,
     judgmentLineStyle: object.judgmentLineStyle,
     leftBorderStyle: object.leftBorderStyle,

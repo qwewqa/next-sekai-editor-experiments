@@ -106,6 +106,8 @@ const enumText: { [F in EnumField]: (t: OperationStrings, value: FieldValue<F>) 
         value === 'default' ? t.modals.form.noteStyle.default : t.modals.form.colors[value],
     connectorStyle: (t, value) =>
         value === 'default' ? t.modals.form.noteStyle.default : t.modals.form.colors[value],
+    laneColor: (t, value) =>
+        value === 'default' ? t.modals.form.noteStyle.default : t.modals.form.colors[value],
     sfx: (t, value) => t.modals.form.sfx[value],
     connectorType: (t, value) => t.modals.form.connectorType[value],
     connectorLayer: (t, value) => t.modals.form.connectorLayer[value],

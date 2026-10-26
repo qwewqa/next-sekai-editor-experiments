@@ -158,6 +158,7 @@ export const kinds: Kind[] = [
             stageId: track,
             beat,
             editorLane: tag,
+            laneColor: 'default',
             judgmentLineColor: 'neutral',
             judgmentLineStyle: 'default',
             leftBorderStyle: 'default',

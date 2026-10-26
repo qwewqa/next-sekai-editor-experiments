@@ -10,6 +10,7 @@ import OptionalIsFullWidthField from '../../../../../modals/form/OptionalIsFullW
 import OptionalJudgmentLineAlphaField from '../../../../../modals/form/OptionalJudgmentLineAlphaField.vue'
 import OptionalJudgmentLineColorField from '../../../../../modals/form/OptionalJudgmentLineColorField.vue'
 import OptionalJudgmentLineStyleField from '../../../../../modals/form/OptionalJudgmentLineStyleField.vue'
+import OptionalLaneColorField from '../../../../../modals/form/OptionalLaneColorField.vue'
 import OptionalLaneAlphaField from '../../../../../modals/form/OptionalLaneAlphaField.vue'
 import OptionalLeftBorderStyleField from '../../../../../modals/form/OptionalLeftBorderStyleField.vue'
 import OptionalNoteAlphaField from '../../../../../modals/form/OptionalNoteAlphaField.vue'
@@ -25,6 +26,7 @@ const copyLabel = computed(() =>
         : i18n.value.modals.form.unset.auto,
 )
 
+const laneColor = createModel('laneColor')
 const judgmentLineColor = createModel('judgmentLineColor')
 const judgmentLineStyle = createModel('judgmentLineStyle')
 const leftBorderStyle = createModel('leftBorderStyle')
@@ -40,6 +42,7 @@ const copyProperties = createModel('copyProperties')
 
 <template>
     <EmptyLabelProvider :label="copyLabel">
+        <OptionalLaneColorField v-model="laneColor" />
         <OptionalJudgmentLineColorField v-model="judgmentLineColor" />
         <OptionalJudgmentLineStyleField v-model="judgmentLineStyle" />
         <OptionalLeftBorderStyleField v-model="leftBorderStyle" />

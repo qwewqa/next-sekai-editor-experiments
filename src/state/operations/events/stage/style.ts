@@ -17,6 +17,7 @@ export const editSelectedStageStyleEvent = (
         stageId: object.stageId ?? entity.stageId,
         beat: object.beat ?? entity.beat,
         editorLane: object.editorLane ?? entity.editorLane,
+        laneColor: object.laneColor ?? entity.laneColor,
         judgmentLineColor: object.judgmentLineColor ?? entity.judgmentLineColor,
         judgmentLineStyle: object.judgmentLineStyle ?? entity.judgmentLineStyle,
         leftBorderStyle: object.leftBorderStyle ?? entity.leftBorderStyle,

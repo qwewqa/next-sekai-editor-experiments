@@ -337,6 +337,7 @@ test('overshooting eases keep camera, mask and style values within their ranges,
 
     const style = (time: number, alpha: number, judgeLineColor: number, fullWidth: number) => ({
         time,
+        laneColor: 0,
         judgeLineColor,
         judgeLineStyle: 0 as const,
         leftBorderStyle: 0,
@@ -456,6 +457,7 @@ test('In-Out Step midpoints hold the value before the jump at the left limit onl
         styles: [
             {
                 time: 0,
+                laneColor: 0,
                 judgeLineColor: 0,
                 judgeLineStyle: 0,
                 leftBorderStyle: 0,
@@ -469,6 +471,7 @@ test('In-Out Step midpoints hold the value before the jump at the left limit onl
             },
             {
                 time: 4,
+                laneColor: 0,
                 judgeLineColor: 1,
                 judgeLineStyle: 1,
                 leftBorderStyle: 1,

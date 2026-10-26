@@ -974,6 +974,7 @@ const chainFixture = () => {
             stageStyleEvents: points.map((point) => ({
                 ...point,
                 editorLane: 0,
+                laneColor: 'default',
                 judgmentLineColor: 'neutral',
                 judgmentLineStyle: 'default',
                 leftBorderStyle: 'default',

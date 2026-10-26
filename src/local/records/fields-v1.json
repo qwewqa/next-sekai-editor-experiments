@@ -146,6 +146,7 @@
         { "name": "stageId", "type": "id", "ref": "stages" },
         { "name": "beat", "type": "number" },
         { "name": "editorLane", "type": "number" },
+        { "name": "laneColor", "type": "enum:noteStyle" },
         { "name": "judgmentLineColor", "type": "enum:judgmentLineColor" },
         { "name": "judgmentLineStyle", "type": "enum:judgmentLineStyle" },
         { "name": "leftBorderStyle", "type": "enum:borderStyle" },

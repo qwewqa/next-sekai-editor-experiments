@@ -327,6 +327,7 @@ export const records = {
         f('stageId', 'id', { ref: 'stages' }),
         f('beat', 'number'),
         f('editorLane', 'number'),
+        f('laneColor', 'enum:noteStyle'),
         f('judgmentLineColor', 'enum:judgmentLineColor'),
         f('judgmentLineStyle', 'enum:judgmentLineStyle'),
         f('leftBorderStyle', 'enum:borderStyle'),
