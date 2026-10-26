@@ -234,11 +234,12 @@ test('a record past the chart limits makes the change unknown: nothing is built 
     const base = stateOf(goldenChart())
     const past = edit(base, (t) => addNote(t, createSlideId(), note(maxBeat + 1)))
     const bpmPast = edit(base, (t) => addBpm(t, { beat: maxBeat + 1, bpm: 90, meter: 4 }))
-    for (const [before, after] of [
+    const pairs: [State, State][] = [
         [past, base],
         [base, past],
         [bpmPast, base],
-    ])
+    ]
+    for (const [before, after] of pairs)
         assert.equal(
             await readCandidates(memorySource(before, after), rootOf(before), rootOf(after)),
             undefined,
