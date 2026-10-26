@@ -42,13 +42,13 @@ docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME=st
 # that deletes the visitor's address and headers.
 FILTERED=$(docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME=stats.example.test "$CADDY_IMAGE" \
     caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile 2> /dev/null \
-    | jq -c '.logging.logs.default.encoder | [.format, ([.fields | to_entries[] | select(.value.filter == "delete") | .key] | sort)]')
-[ "$FILTERED" = '["filter",["error","remote","remote_addr","request>client_ip","request>headers","request>remote_ip","request>remote_port"]]' ] \
+    | jq -c '.logging.logs.default | [.exclude, .encoder.format, ([.encoder.fields | to_entries[] | select(.value.filter == "delete") | .key] | sort)]')
+[ "$FILTERED" = '[["http.log.error"],"filter",["error","remote","remote_addr","request>client_ip","request>headers","request>remote_ip","request>remote_port"]]' ] \
     || fail "Caddy's log is not filtered as expected: $FILTERED"
 
 step "Caddy's error log keeps no visitor address"
 # The real Caddyfile on a plain-HTTP site, with umami pointing at a closed port, so that every request to /api/send
-# fails in reverse_proxy and Caddy logs the error. The request carries an address and a User-Agent that must not appear.
+# fails in reverse_proxy. Caddy logs no request error. The request carries an address and a User-Agent that must not appear.
 docker run -d --name nse-contract-caddy --add-host umami:127.0.0.1 -p 127.0.0.1::8080 \
     -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME=http://:8080 "$CADDY_IMAGE" > /dev/null
 CADDY_URL="http://$(docker port nse-contract-caddy 8080/tcp | head -n 1)"
@@ -61,13 +61,11 @@ for _ in $(seq 30); do
 done
 [ "$STATUS" = 502 ] || fail "Caddy answered $STATUS where it should answer 502 for an upstream that is down"
 CADDY_LOG=$(docker logs nse-contract-caddy 2>&1)
-# The log lines are JSON. The error line is the one from the http.log.error logger.
-ERRORS=$(jq -cR 'fromjson? | select(.logger == "http.log.error")' <<< "$CADDY_LOG")
-[ -n "$ERRORS" ] || fail "Caddy logged no error for the failed request. Its log:
+# The log lines are JSON. Caddy logged its start, and no request error.
+[ -n "$(jq -cR 'fromjson? | select(.logger != null)' <<< "$CADDY_LOG")" ] || fail "Caddy's log is not JSON:
 $CADDY_LOG"
-jq -e -s 'all(.[]; .level == "error" and .status == 502 and (.msg | endswith("connection refused"))
-    and .request.method == "POST" and .request.uri == "/api/send")' <<< "$ERRORS" > /dev/null \
-    || fail "the error line lost its message, status or request line: $ERRORS"
+[ -z "$(jq -cR 'fromjson? | select(.logger == "http.log.error")' <<< "$CADDY_LOG")" ] || fail "Caddy logged a request error:
+$CADDY_LOG"
 if grep -qE '198\.51\.100\.77|ContractVisitor|remote_ip|remote_port|client_ip|"headers"' <<< "$CADDY_LOG"; then
     fail "Caddy's log holds a visitor address or header:
 $CADDY_LOG"
