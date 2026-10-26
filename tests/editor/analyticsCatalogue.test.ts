@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
     bucket,
     capCount,
+    capSeconds,
     catalogue,
     isValidEvent,
     MAX_KEYS,
@@ -33,9 +34,6 @@ test('each range starts at its limit and ends just below the next', () => {
         ['small', 5, '2-5'],
         ['small', 100, '21-100'],
         ['small', 101, '101+'],
-        ['duration', 0, '0'],
-        ['duration', 1, '<1m'],
-        ['duration', 60_000, '1m-5m'],
         ['frame', 50, '50-100'],
         ['frame', 500, '500+'],
         ['viewport', 639, 's'],
@@ -146,4 +144,18 @@ test('a measured count is capped so a long visit keeps its perf event', () => {
     assert.equal(capCount(-3), 0)
     assert.ok(isValidEvent('perf', { interactions: capCount(25_000), cores: '9+' }))
     assert.ok(!isValidEvent('perf', { interactions: 10_000 }))
+})
+
+test('playing and visible time are whole seconds, rounded and capped at a day', () => {
+    assert.equal(capSeconds(0), 0)
+    assert.equal(capSeconds(499), 0)
+    assert.equal(capSeconds(500), 1)
+    assert.equal(capSeconds(119_400), 119)
+    assert.equal(capSeconds(86_400_000), 86_400)
+    assert.equal(capSeconds(90_000_000), 86_400)
+    assert.equal(capSeconds(-5), 0)
+    assert.ok(isValidEvent('perf', { playSeconds: capSeconds(120_000), visibleTime: 86_400 }))
+    for (const value of [86_401, 1.5, -1, '1m-5m', '0'])
+        assert.ok(!isValidEvent('perf', { playSeconds: value }), String(value))
+    assert.ok(!isValidEvent('perf', { visibleTime: '5m-20m' }))
 })

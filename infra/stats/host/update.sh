@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs on the instance as root: at first boot (from the user data) and on every deploy (through SSM).
 # /usr/local/bin/nse-stats-update fetches this file at the commit in the instance's nse:commit tag
-# and pipes it to bash, with NSE_REPO set. Safe to run again at any time.
+# and runs it with bash, with NSE_REPO set. Safe to run again at any time.
 set -euo pipefail
 
 exec 9> /run/nse-stats-update.lock
@@ -33,10 +33,11 @@ if [ ! -f /data/secrets.env ]; then
         printf 'POSTGRES_PASSWORD=%s\nAPP_SECRET=%s\n' "$(openssl rand -hex 24)" "$(openssl rand -hex 32)" > /data/secrets.env
     )
 fi
+STATS_HOSTNAME=$(tag nse:hostname)
 (
     umask 077
     cat > /data/stats.env << ENV
-STATS_HOSTNAME=$(tag nse:hostname)
+STATS_HOSTNAME=$STATS_HOSTNAME
 NSE_ENV=$ENVIRONMENT
 NSE_BUCKET=$(tag nse:bucket)
 NSE_TOPIC=$(tag nse:topic)
@@ -48,6 +49,16 @@ dc() { docker compose --project-directory "$1" -f "$1/compose.yaml" --env-file "
 
 # Refuse a file Compose cannot read before it replaces the running one.
 dc "$DIR/new" config --quiet
+
+# A changed Caddyfile is validated before it replaces the running one.
+if [ -f "$DIR/Caddyfile" ] && ! cmp -s "$DIR/Caddyfile" "$DIR/new/Caddyfile"; then
+    (
+        # shellcheck disable=SC1091
+        . "$DIR/new/images.env"
+        docker run --rm -v "$DIR/new/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME="$STATS_HOSTNAME" "$CADDY_IMAGE" \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+    )
+fi
 
 # Migrations have no down step, so a dump comes first whenever an image changes.
 if [ -f "$DIR/images.env" ] && ! cmp -s "$DIR/images.env" "$DIR/new/images.env" && [ -n "$(dc "$DIR" ps -q db 2> /dev/null)" ]; then
@@ -82,6 +93,8 @@ fi
 
 dc "$DIR" pull --quiet
 dc "$DIR" up -d --remove-orphans
+# Compose does not recreate Caddy for a changed Caddyfile, and a retry after a failure sees no change, so Caddy restarts on every update.
+dc "$DIR" up -d --force-recreate --no-deps caddy
 
 # Wait for Umami to report healthy, which includes its migrations.
 status=""
@@ -91,5 +104,6 @@ for _ in $(seq 1 60); do
     sleep 5
 done
 [ "$status" = healthy ] || { echo "Umami is ${status:-missing}" >&2; exit 1; }
-docker image prune -f > /dev/null
+# Docker shares the 8 GB root volume, and this host runs nothing else, so every unused image goes.
+docker image prune -af > /dev/null
 echo "stats is up at $COMMIT"

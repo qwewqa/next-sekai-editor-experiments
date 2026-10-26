@@ -14,7 +14,7 @@ Usage statistics for the web editor: a self-hosted [Umami](https://umami.is) on 
 | Data         | One encrypted gp3 volume at `/data`: PostgreSQL, Caddy’s certificates and `secrets.env`. The volume is retained when the stack is replaced or deleted                                                                                      |
 | Secrets      | `update.sh` generates Umami’s `APP_SECRET` and the database password on first boot, into `/data/secrets.env` (readable by root only), on the encrypted data volume. They are not in the repository, in GitHub or in an AWS secrets service |
 | Backups      | A weekly `pg_dump` (Sundays, 03:00 UTC) to an S3 bucket, kept 28 days. The bucket is versioned in prod only. The instance can add and list dumps, not read or delete them                                                                  |
-| Nightly job  | `host/nightly.sh` runs at 03:00 UTC in prod. It clears the region and city Umami adds, dumps on Sundays, and checks the last dump, the disk (80%) and a test event. A failed check sends an email through the alert topic                  |
+| Nightly job  | `host/nightly.sh` runs at 03:00 UTC in prod. It clears the region and city Umami adds, dumps on Sundays, and checks the last dump, both disks (80%) and a test event. A failed step or check sends one email through the alert topic       |
 | Patches      | Unattended security upgrades, rebooting at 04:00 UTC when needed                                                                                                                                                                           |
 | Recovery     | EC2’s own recovery for a failed system check. In prod, one alarm reboots the instance after 5 minutes of failed instance checks and emails                                                                                                 |
 
@@ -26,7 +26,10 @@ The host files reach the instance by commit. The stack’s `SourceCommit` parame
 
 Run Actions › Stats deploy, choosing `dev` or `prod`. Prod waits for the maintainer’s approval and refuses any branch but `main`. The workflow assumes `nse-stats-deploy` by OIDC, runs `scripts/deploy.sh`, and ends with a smoke check: `/api/heartbeat` over HTTPS, then the database’s migrations. The same script runs by hand with a profile: `AWS_PROFILE=nse-dev SOURCE_COMMIT=<pushed sha> bash infra/stats/scripts/deploy.sh dev`. For prod: `AWS_PROFILE=nse-prod SOURCE_COMMIT=<pushed sha> MONITOR_WEBSITE=<monitor website id> bash infra/stats/scripts/deploy.sh prod`. Without `MONITOR_WEBSITE` the deploy clears it.
 
-If the first deploy of the stack fails, CloudFormation rolls it back to `ROLLBACK_COMPLETE` and deletes the empty volume, Elastic IP and bucket that it made (they are `RetainExceptOnCreate`). Delete the failed stack, fix the cause, and deploy again. In dev, run Stats dev down. In prod the deploy role cannot delete stacks, so use the admin profile: `aws cloudformation delete-stack --profile nse-prod --stack-name nse-stats`. Do this only for a stack that never ran. After a successful deploy, deleting the stack leaves its data volume, Elastic IP and bucket behind, because they are retained.
+A failed first deploy is one of two cases. Read the stack’s status first: `aws cloudformation describe-stacks --stack-name nse-stats --query 'Stacks[0].StackStatus'`.
+
+- **`ROLLBACK_COMPLETE`:** CloudFormation failed and rolled back, and deleted the empty volume, Elastic IP and bucket that it made (they are `RetainExceptOnCreate`). The stack never ran, and prod’s termination protection is not yet on. Delete the failed stack, fix the cause, and deploy again. In dev, run Stats dev down. In prod the deploy role cannot delete stacks, so use the admin profile: `aws cloudformation delete-stack --profile nse-prod --stack-name nse-stats`.
+- **`CREATE_COMPLETE`, with the deploy failing afterwards:** the stack exists and the failure came later, at Session Manager registration, the update, the heartbeat or the migrations check. Do not delete the stack: in prod it has termination protection, and deleting it leaves its data volume, Elastic IP and bucket behind, because they are retained. Find the cause on the instance (see If a deploy fails on a permission, and `/var/log/nse-stats-init.log`), fix it, and run the deploy again. It is safe to repeat.
 
 Try the whole cycle in dev first (see Dev below). Deploying prod, in order:
 
@@ -45,7 +48,7 @@ Try the whole cycle in dev first (see Dev below). Deploying prod, in order:
 bash infra/stats/scripts/dashboard.sh prod    # or dev; then open http://localhost:3000
 ```
 
-It needs the Session Manager plugin (`../README.md`, Set-up step 3) and a profile `nse-prod` or `nse-dev`. The script finds the running instance by its `nse:service=stats` tag and forwards port 3000.
+It needs the Session Manager plugin (`../README.md`, Set-up step 3) and a profile `nse-prod` or `nse-dev`. The script finds the running instance by its `nse:service=stats` tag and forwards port 3000. If port 3000 is still busy after Ctrl+C in Git Bash, end `session-manager-plugin.exe` in Task Manager.
 
 ## Upgrades
 
@@ -61,7 +64,7 @@ After a major Umami upgrade, refresh the query planner’s statistics. The night
 
 ## Operations
 
-Some commands run from your machine and take `--profile nse-prod`. The others run on the instance. To get a shell on it, run `aws ssm start-session --profile nse-prod --target <instance id>` from your machine, then `sudo -i`. The instance id and the bucket name are outputs of the `nse-stats` stack (`aws cloudformation describe-stacks --profile nse-prod --stack-name nse-stats --query 'Stacks[0].Outputs'`). On the instance, the Compose command is:
+Some commands run from your machine and take `--profile nse-prod`. The others run on the instance. To get a shell on it, run `aws ssm start-session --profile nse-prod --target <instance id>` from your machine, then `sudo -i`. On Windows, run it in PowerShell: the Git Bash terminal is not a Windows console, which a shell session needs. The instance id and the bucket name are outputs of the `nse-stats` stack (`aws cloudformation describe-stacks --profile nse-prod --stack-name nse-stats --query 'Stacks[0].Outputs'`). On the instance, the Compose command is:
 
 ```sh
 cd /opt/nse-stats
@@ -77,18 +80,21 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
     # on the instance:
     mkdir -p /data/dumps && curl -fsSL -o /data/dumps/restore.dump '<link>'
     dc stop umami
-    dc exec -T db pg_restore -U umami -d umami --clean --if-exists --no-owner < /data/dumps/restore.dump
-    dc up -d umami; rm /data/dumps/restore.dump
+    dc exec -T db pg_restore -U umami -d umami --clean --if-exists --no-owner --single-transaction \
+      < /data/dumps/restore.dump && dc up -d umami && rm /data/dumps/restore.dump
     ```
+
+    The restore runs in one transaction. If it fails, the database is unchanged, Umami stays stopped and the dump stays in `/data/dumps`. Fix the cause (a full disk, for example) and run the restore again.
 
     CI tests that a dump restores into a fresh PostgreSQL with the same row counts.
 
 - **Replace the instance** (a new image id, or a broken boot). The data volume is the only part that must survive. Umami records nothing from the moment the instance stops until the deploy ends. Do the steps in this order.
     1. Take a dump.
-    2. Merge the pull request that changes `ImageId` in `stats.yaml`. Do not deploy yet.
-    3. Allow termination: `aws ec2 modify-instance-attribute --profile nse-prod --instance-id <id> --no-disable-api-termination`.
-    4. Stop the instance (`aws ec2 stop-instances --profile nse-prod --instance-ids <id>`) and detach the data volume (`aws ec2 detach-volume --profile nse-prod --volume-id <DataVolumeId output>`). Wait until the volume is `available`.
-    5. Run Stats deploy for `prod`. The new instance attaches the volume and finds its filesystem, certificates, secrets and data. CloudFormation then deletes the old instance. The Elastic IP and the DNS record do not change.
+    2. Merge the pull request that changes the literal `ImageId` in `stats.yaml`. Do not deploy yet.
+    3. Check the change set, which stops nothing: `AWS_PROFILE=nse-prod SOURCE_COMMIT=<merged sha> PLAN=1 bash infra/stats/scripts/deploy.sh prod`. It must list `Instance` with `Replacement` `True`. If it does not, stop here. Delete the change set it names with `aws cloudformation delete-change-set --profile nse-prod --stack-name nse-stats --change-set-name <name>`.
+    4. Allow termination: `aws ec2 modify-instance-attribute --profile nse-prod --instance-id <id> --no-disable-api-termination`.
+    5. Stop the instance (`aws ec2 stop-instances --profile nse-prod --instance-ids <id>`) and detach the data volume (`aws ec2 detach-volume --profile nse-prod --volume-id <DataVolumeId output>`). Wait until the volume is `available`.
+    6. Run Stats deploy for `prod`. The new instance attaches the volume and finds its filesystem, certificates, secrets and data. CloudFormation then deletes the old instance. The Elastic IP and the DNS record do not change.
 
     A change to the template’s `UserData` takes effect only on a new instance, because cloud-init runs it once per instance. Make that change together with an `ImageId` change, using this procedure. On its own, a `UserData` change stops and starts the instance and changes nothing on the instance.
 
@@ -105,11 +111,13 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
 
     Nothing is deleted automatically. If the privacy page states a retention limit, add these statements to `clean` in `nightly.sh`.
 
-- **A nightly email** names the check that failed:
+- **A nightly email** names what failed. The checks run even after a failed step:
+    - the clean-up, the Sunday dump or `VACUUM` failed, for example because the database is down;
     - there is no dump in S3, or the dumps could not be listed (prod);
     - the newest dump is more than 8 days old (prod);
-    - the data volume is 80% full or more;
-    - the test event was refused, or did not reach the database.
+    - the data volume (`/data`) or the root volume (`/`) is 80% full or more;
+    - the test event was refused, or did not reach the database;
+    - the script itself stopped with an error.
 
     A separate email says that `/data` is not mounted. Each email ends with a pointer to this section. The log is `journalctl -u nse-stats-nightly`.
 
@@ -135,7 +143,7 @@ Dev exists only while an analytics test runs, in `nse-dev`, and is deleted compl
     - an Elastic IP: `aws ec2 release-address --allocation-id <id>`;
     - a bucket: `aws s3 rb s3://<bucket> --force`.
 
-Once the repository variable `STATS_DEV_REAPER` is `on` (`../README.md`, Set-up step 7), Stats dev down also runs every six hours and deletes a stats dev stack that is over 12 hours old. It covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` sends an email if a dev stack is left up anyway.
+Once the repository variable `STATS_DEV_REAPER` is `on` (`../README.md`, Set-up step 7), Stats dev down also runs every six hours and deletes a stats dev stack that is over 12 hours old. With no stack, it still deletes the retained volume, Elastic IP and bucket that an interrupted run left, and checks for leftovers. It covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` sends an email if a dev stack is left up anyway.
 
 A dev deploy after a Stats dev down needs a new certificate. Let’s Encrypt allows five per identical set of names a week, and after that Caddy uses ZeroSSL.
 
@@ -162,7 +170,7 @@ Sign in at `http://localhost:3000` as `admin` / `umami`, create a website, and s
 ## Reading the numbers
 
 - A pageview is an engaged visit: one where the user clicked, pressed a key, touched or scrolled. Loads that never interacted are not counted at all. The totals therefore undercount page loads, by design.
-- Count visits from pageviews, and time spent from `visibleTime`. Umami’s visit duration and bounce rate are wrong for this client, so ignore them.
+- Count visits from pageviews, and time spent from `visibleTime`, in seconds. Umami’s visit duration and bounce rate are wrong for this client, so ignore them.
 - Umami’s unique visitors are visitors per day, because the salt rotates daily.
 - The saved queries in `queries/` answer the usual questions. Each takes the website’s id:
 
@@ -170,7 +178,7 @@ Sign in at `http://localhost:3000` as `admin` / `umami`, create a website, and s
     bash infra/stats/scripts/query.sh prod infra/stats/queries/commands.sql <website id>
     ```
 
-    `visits.sql` counts visits per day by country, `commands.sql` ranks commands by use and visitors, `saves.sql` lists Save outcomes by target and reason, `startup.sql` shows startup time by how the visit began and the chart size, `frames.sql` gives long frames per playback second by preview host, and `settings.sql` lists every setting value with its number of visits. The contract test runs all of them against Umami’s real schema.
+    `visits.sql` counts visits per day by country, `commands.sql` ranks commands by use and visitors, `saves.sql` lists Save outcomes by target and reason, `startup.sql` shows startup time by how the visit began, then the restored chart sizes, `frames.sql` gives long frames per playback second by preview host, and `settings.sql` lists every setting value with its number of visits. The contract test runs all of them against Umami’s real schema.
 
 ## Cost
 

@@ -27,7 +27,7 @@ const categories = {
     check: 'whether Check File and History found problems',
     peek: 'how long the chart takes to show at a Timeline step',
     slow: 'how often the editor is slow to respond',
-    lasted: 'approximately how long playback and the visit lasted',
+    lasted: 'how long playback ran and the editor was visible, in seconds',
     version:
         'the editor’s version, whether it was updated since your last visit, and whether this browser has used it before',
     system: 'your operating system, browser and its language',
