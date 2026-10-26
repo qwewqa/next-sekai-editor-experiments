@@ -69,7 +69,7 @@
         {
             "name": "skin.scp",
             "source": "deployment/preview-assets.lock.json#skin",
-            "sha256": "13853174e120864d9ab1a268f39f04b1f109365b6c0f71befa26d207602a10f7"
+            "sha256": "e7a05e321f4204491df0f638c141a128119f168defe144465daf5f8ebf6c66f1"
         },
         {
             "name": "skin data",
@@ -82,9 +82,34 @@
             "sha256": "052d93f9c822cda64545887d76bb9dc0d3653cbf0e35966b55d749a9bc43df1a"
         },
         {
+            "name": "skin thumbnail",
+            "source": "public/resource/skin.scp:thumbnail",
+            "sha256": "a128a111348d3b1530c7a14fe7fd4da2c70b62a7accc7e86ff095c96de7fa7cb"
+        },
+        {
+            "name": "skin2.scp",
+            "source": "deployment/preview-assets.lock.json#skin2",
+            "sha256": "c02ba536684aa7565673c0f07e034f40d0b51bbe02f16337a0d3dd87e346a921"
+        },
+        {
+            "name": "skin2 data",
+            "source": "public/resource/skin2.scp:data",
+            "sha256": "890eff214f23eca3b22186bc038f4549cabc20a17471bf902ab94dc07f07a12e"
+        },
+        {
+            "name": "skin2 texture",
+            "source": "public/resource/skin2.scp:texture",
+            "sha256": "19df1e88a405e642b36a34d9cd6c9ae579f38df5a58c92c6bab8b0b05cba0468"
+        },
+        {
+            "name": "skin2 thumbnail",
+            "source": "public/resource/skin2.scp:thumbnail",
+            "sha256": "faad53bef99f6367d7d1d4d80fb2200ab8d23ab405b6409881d1c3ed148a6d91"
+        },
+        {
             "name": "particle.scp",
             "source": "deployment/preview-assets.lock.json#particle",
-            "sha256": "1b36367b6ac82d7b5b067f18223a1e1e79e0734981ba7e529860d0b6d764e53d"
+            "sha256": "a74f73f93161d6537f15e8925b6c4ff122f83b4191e7d8cd3d60104d1b9786c0"
         },
         {
             "name": "particle data",
@@ -95,6 +120,21 @@
             "name": "particle texture",
             "source": "public/resource/particle.scp:texture",
             "sha256": "40b087da052ce71e1cb0107f8afe70ea67ea8c148520f1a36c3fdcab40cb4887"
+        },
+        {
+            "name": "effect2.scp",
+            "source": "deployment/preview-assets.lock.json#effect2",
+            "sha256": "8ca563e690d5d49d6f39e010008a36d81cd937bc7812865e2b8a5a938490eb43"
+        },
+        {
+            "name": "effect2 data",
+            "source": "public/resource/effect2.scp:data",
+            "sha256": "67e53fa9bac19e69b19e53adec89855e370d8bf71584c3a7dc30afccd91e38eb"
+        },
+        {
+            "name": "effect2 audio",
+            "source": "public/resource/effect2.scp:audio",
+            "sha256": "cd1be085c3296dd6de1b6d6283832b564061fdb5cb8683d4d6c0e1f7a37c95eb"
         }
     ],
     "references": [
