@@ -28,6 +28,7 @@ import { formatCount } from '../../utils/size'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
+import { isConsumed } from '../controls/saveChord'
 import { downloadConfirmed } from '../file/flags'
 import { writesInPlace } from '../file/state'
 import { platform } from '../../platform'
@@ -511,7 +512,7 @@ const onKeyup = (event: KeyboardEvent) => {
 }
 
 const onKeydown = (event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.isComposing) return
+    if (isConsumed(event) || event.isComposing) return
     if (
         !(event.target instanceof HTMLElement) ||
         (event.target !== scroller.value && !event.target.closest('[data-sessions-row]'))

@@ -17,6 +17,7 @@ import {
 import { isDragging } from './gestures/recognizers/drag'
 import { hasMouseControls } from './mouse'
 import { clearPageSelection } from './pageSelection'
+import { cancelSavePage, isConsumed, isSaveChord } from './saveChord'
 
 export const isTextEntry = (target: EventTarget | null) =>
     target instanceof HTMLTextAreaElement ||
@@ -106,15 +107,6 @@ const returnsDeselect = (element: Element | null) => {
     )
 }
 
-/** Ctrl+S, or Cmd+S on Apple keyboards: Save's fixed alias, outside the customizable map. */
-export const isSaveChord = (event: KeyboardEvent) =>
-    isCommandChord(event) && !event.shiftKey && event.key.toLowerCase() === 's'
-
-/** Runs before any component can stop the key, so Save Page never opens. */
-const cancelSavePage = (event: KeyboardEvent) => {
-    if (isSaveChord(event)) event.preventDefault()
-}
-
 const onKeydown = (event: KeyboardEvent) => {
     // A modal takes no commands.
     if (isBlockingModalOpen.value) return
@@ -172,12 +164,7 @@ const onKeydown = (event: KeyboardEvent) => {
         takesDockKeys(active) ||
         (inDialog && (isTextEntry(active) || active instanceof HTMLSelectElement))
     ) {
-        // The capture-phase cancel of Save Page marks a Save chord prevented; that does not count.
-        if (
-            !commandChord ||
-            (event.defaultPrevented && !isSaveChord(event)) ||
-            (isTextEntry(active) && !passesToEditor)
-        ) {
+        if (!commandChord || isConsumed(event) || (isTextEntry(active) && !passesToEditor)) {
             return
         }
     }
