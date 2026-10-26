@@ -519,11 +519,11 @@ test.describe('a stored item that is gone', () => {
         await open(page)
         const note = dialog(page).locator('[data-asset-note]')
         await expect(note).toContainText(
-            'Using Default. The skin file is no longer stored in this browser.',
+            'Using Next SEKAI 01. The skin file is no longer stored in this browser.',
         )
         // The panel's line gives the same reason.
         await expect(fallbackLine(page, 'skin')).toContainText(
-            'Skin: using Default. The skin file is no longer stored in this browser.',
+            'Skin: using Next SEKAI 01. The skin file is no longer stored in this browser.',
         )
         await expect(tabOf(page, 'skin')).toHaveAccessibleName(
             'Skin. The skin file is no longer stored in this browser.',
@@ -578,7 +578,7 @@ test.describe('a stored item that is gone', () => {
             assetSession.reload('skin')
         }, first?.key)
         await expect(dialog(page).locator('[data-asset-note]')).toContainText(
-            'Using Default. The skin file is no longer stored in this browser.',
+            'Using Next SEKAI 01. The skin file is no longer stored in this browser.',
         )
 
         await dialog(page).locator('[data-asset-choose-again]').click()
@@ -617,11 +617,11 @@ test.describe('a stored item that is gone', () => {
             } as never
         }, key)
         await expect(fallbackLine(page, 'skin')).toContainText(
-            'Skin: using Default. The stored skin could not be read.',
+            'Skin: using Next SEKAI 01. The stored skin could not be read.',
         )
         await open(page)
         await expect(dialog(page).locator('[data-asset-note]')).toContainText(
-            'Using Default. The stored skin could not be read.',
+            'Using Next SEKAI 01. The stored skin could not be read.',
         )
         // Only a gone file offers Choose Again.
         await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
@@ -660,7 +660,7 @@ test.describe('a stored item that is gone', () => {
             } as never
         }, key)
         await expect(fallbackLine(page, 'skin')).toContainText(
-            'Skin: using Default. The stored skin could not be read.',
+            'Skin: using Next SEKAI 01. The stored skin could not be read.',
         )
         expect((await choices(page)).skin?.key).toBe(key)
     })
@@ -673,10 +673,12 @@ test.describe('storage that cannot be opened', () => {
         await page.addInitScript(() => localStorage.setItem('nse.test.noStorage', '1'))
         await start(page, { previewAssets: { skin: fileChoice } })
         const reason = 'The editor cannot access the stored skin in this browser.'
-        await expect(fallbackLine(page, 'skin')).toContainText(`Skin: using Default. ${reason}`)
+        await expect(fallbackLine(page, 'skin')).toContainText(
+            `Skin: using Next SEKAI 01. ${reason}`,
+        )
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            `Using Default. ${reason}`,
+            `Using Next SEKAI 01. ${reason}`,
         )
         await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
         expect((await choices(page)).skin).toEqual(fileChoice)
@@ -801,8 +803,8 @@ test.describe('the source list', () => {
             'neon.scp',
             await variants('skin', [{ name: 'neon', title: 'Neon Skin' }]),
         )
-        // Default, Built-in and the stored item, with Choose… outside the group.
-        await expect(dialog(page).locator('[data-asset-row]')).toHaveCount(3)
+        // Built-in, Next SEKAI 01, Next SEKAI 02 and the stored item, with Choose… outside the group.
+        await expect(dialog(page).locator('[data-asset-row]')).toHaveCount(4)
         await dialog(page).locator('[data-asset-row] input:checked').focus()
         const seen: (string | undefined)[] = []
         for (const key of [
