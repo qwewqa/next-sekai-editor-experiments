@@ -170,7 +170,7 @@ Sign in at `http://localhost:3000` as `admin` / `umami`, create a website, and s
 ## Reading the numbers
 
 - A pageview is an engaged visit: one where the user clicked, pressed a key, touched or scrolled. Loads that never interacted are not counted at all. The totals therefore undercount page loads, by design.
-- Count visits from pageviews, and time spent from `visibleTime`. Umami’s visit duration and bounce rate are wrong for this client, so ignore them.
+- Count visits from pageviews, and time spent from `visibleTime`, in seconds. Umami’s visit duration and bounce rate are wrong for this client, so ignore them.
 - Umami’s unique visitors are visitors per day, because the salt rotates daily.
 - The saved queries in `queries/` answer the usual questions. Each takes the website’s id:
 

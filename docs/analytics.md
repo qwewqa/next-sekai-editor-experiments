@@ -114,7 +114,7 @@ How the code enforces them:
 | `errors` | at hide | `error`, `csp` |
 | `unsupported` | the support page, on its first input | `engine` |
 
-`playSeconds` and `visibleTime` are whole seconds since the last send, capped at 9999 like a count. They stay exact because they identify nothing; the other times and sizes are ranges, because an exact audio length, count or size can identify a song, chart or file.
+`playSeconds` and `visibleTime` measure the time since the previous send, rounded to whole seconds and capped at 9999 per event. Other durations and sizes use ranges.
 
 `chart.historySteps` is the size of the Undo window, at most 1,000 steps (`STACK_CAP`), not the length of the Timeline.
 
