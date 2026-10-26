@@ -53,7 +53,18 @@ Only steps 1 and 6 touch the management account. It is never touched again, howe
     AWS then emails a subscription message to the alert address. Confirm it in that email, or the alerts are not delivered.
 
 6. **Delegate the services zones,** in the management account’s `qwewqa.dev` zone, from each stack’s `ServicesZoneNameServers` output: one `NS` record named `nse-services` (prod) and one named `nse-services-dev` (dev), each with the four name servers. This is the last change in the management account. Then activate the cost allocation tags `nse:service` and `nse:env` in its Billing console (Cost allocation tags). They can take a day to appear after the first tagged resource exists.
-7. **Optional: the dev reaper.** Once the baseline and the `stats-dev` Environment exist, set the repository variable `STATS_DEV_REAPER` to `on` (Settings › Secrets and variables › Actions › Variables). Stats dev down then also runs every six hours and deletes a stats dev stack that is over 12 hours old. Without the variable it runs only by hand.
+7. **Account defaults,** once in each account. They cover resources made later; the stats stack already sets each for its own:
+
+    ```sh
+    ACCOUNT=$(aws sts get-caller-identity --profile nse-<env> --query Account --output text)
+    aws s3control put-public-access-block --profile nse-<env> --account-id "$ACCOUNT"       --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+    aws ec2 enable-ebs-encryption-by-default --profile nse-<env> --region us-west-2
+    aws ec2 modify-instance-metadata-defaults --profile nse-<env> --region us-west-2 --http-tokens required
+    ```
+
+    Audit history is CloudTrail's free 90-day event history; there is no trail.
+
+8. **Optional: the dev reaper.** Once the baseline and the `stats-dev` Environment exist, set the repository variable `STATS_DEV_REAPER` to `on` (Settings › Secrets and variables › Actions › Variables). Stats dev down then also runs every six hours and deletes a stats dev stack that is over 12 hours old. Without the variable it runs only by hand.
 
 Then follow `stats/README.md` to deploy the first service.
 

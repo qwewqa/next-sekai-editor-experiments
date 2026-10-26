@@ -22,7 +22,7 @@ The host files reach the instance by commit. The stack’s `SourceCommit` parame
 
 ## Deploy
 
-**Set-up, once,** as in `../README.md`, steps 1 to 6: the accounts and profiles, the Environments with `AWS_ACCOUNT_ID`, the baseline in the account, and the `nse-services` zone delegated in `qwewqa.dev`. Without the delegation Caddy cannot get a certificate, and the deploy’s smoke check fails after about 5 minutes.
+**Set-up, once,** as in `../README.md`, steps 1 to 7: the accounts and profiles, the Environments with `AWS_ACCOUNT_ID`, the baseline in the account, the `nse-services` zone delegated in `qwewqa.dev`, and the account defaults. Without the delegation Caddy cannot get a certificate, and the deploy’s smoke check fails after about 5 minutes.
 
 Run Actions › Stats deploy, choosing `dev` or `prod`. Prod waits for the maintainer’s approval and refuses any branch but `main`. The workflow assumes `nse-stats-deploy` by OIDC, runs `scripts/deploy.sh`, and ends with a smoke check: `/api/heartbeat` over HTTPS, then the database’s migrations. The same script runs by hand with a profile: `AWS_PROFILE=nse-dev SOURCE_COMMIT=<pushed sha> bash infra/stats/scripts/deploy.sh dev`. For prod: `AWS_PROFILE=nse-prod SOURCE_COMMIT=<pushed sha> MONITOR_WEBSITE=<monitor website id> bash infra/stats/scripts/deploy.sh prod`. Without `MONITOR_WEBSITE` the deploy clears it.
 
@@ -143,16 +143,16 @@ Dev exists only while an analytics test runs, in `nse-dev`, and is deleted compl
     - an Elastic IP: `aws ec2 release-address --allocation-id <id>`;
     - a bucket: `aws s3 rb s3://<bucket> --force`.
 
-Once the repository variable `STATS_DEV_REAPER` is `on` (`../README.md`, Set-up step 7), Stats dev down also runs every six hours and deletes a stats dev stack that is over 12 hours old. With no stack, it still deletes the retained volume, Elastic IP and bucket that an interrupted run left, and checks for leftovers. It covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` sends an email if a dev stack is left up anyway.
+Once the repository variable `STATS_DEV_REAPER` is `on` (`../README.md`, Set-up step 8), Stats dev down also runs every six hours and deletes a stats dev stack that is over 12 hours old. With no stack, it still deletes the retained volume, Elastic IP and bucket that an interrupted run left, and checks for leftovers. It covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` sends an email if a dev stack is left up anyway.
 
 A dev deploy after a Stats dev down needs a new certificate. Let’s Encrypt allows five per identical set of names a week, and after that Caddy uses ZeroSSL.
 
 ## If a deploy fails on a permission
 
-CloudFormation cannot check some permissions before it runs. The causes below are likely, and none is confirmed. If a deploy fails, find the symptom here. Fix the policy in `account/account.yaml`, redeploy the baseline (`../README.md`, Set-up step 5), and deploy again.
+CloudFormation cannot check some permissions before it runs. A dev deploy has passed all of these except the prod-only alarm. If a deploy fails, find the symptom here. Fix the policy in `account/account.yaml`, redeploy the baseline (`../README.md`, Set-up step 5), and deploy again.
 
 - **`RunInstances`, `CreateVolume` or `CreateTags` is not authorized.** Look at the execution role’s statements `CreateTaggedEc2`, `UseUntaggedEc2` and `TagOnCreate`. Add the resource named in the error to the matching statement. A resource that carries no `nse:service` tag belongs in `UseUntaggedEc2`.
-- **“Role … is invalid or cannot be assumed.”** Remove the `aws:SourceArn` condition from the trust policy of `nse-stats-cfn`, and keep `aws:SourceAccount`. AWS documents `aws:SourceArn` for other role types, not for the service role of a stack.
+- **“Role … is invalid or cannot be assumed.”** Check the trust policy of `nse-stats-cfn` and the stack’s role ARN in `deploy.sh`.
 - **The instance profile is refused with an `iam:PassRole` error.** Look at the condition on `PassTheInstanceRole` (`iam:PassedToService` is `ec2.amazonaws.com`). Add the service named in the error to that condition. Do not remove the condition.
 - **The Route 53 record is refused.** `StatsRecords` already lists the record name with and without the trailing dot. Compare the name in the error with that list.
 - **The deploy’s update command fails, or the instance never registers.** Read `/var/log/nse-stats-init.log` through Session Manager. Look for an error from the data volume’s device lookup, from `apt-get` (the Docker packages), or from `snap install aws-cli`.
