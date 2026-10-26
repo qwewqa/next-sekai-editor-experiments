@@ -2,11 +2,15 @@ import type { BackgroundFit } from '../engine/background'
 import type { LoadedParticle } from '../particle'
 import type { LoadedSkin } from '../skin'
 
+/** A package that ships with the web build besides Default. */
+export type BundledId = 'skin2' | 'effect2'
+
 export type AssetType = 'skin' | 'particle' | 'background' | 'effect'
 
 export type AssetChoice =
     | { source: 'default' }
     | { source: 'builtin' }
+    | { source: 'bundled'; id: BundledId }
     | {
           source: 'file' | 'server'
           /** sha256 of the stored package */
@@ -91,13 +95,21 @@ export type DefaultProvider<T extends AssetType> = (
 /** One per build: the web's files, or the apps' Built-in. */
 export type AssetDefaults = { [T in AssetType]: DefaultProvider<T> }
 
-/** Providers for chosen sources other than Default; none exist yet. */
+/** Providers for stored choices. */
 export type ChoiceProviders = {
     [T in AssetType]?: (
-        choice: Exclude<AssetChoice, { source: 'default' }>,
+        choice: Extract<AssetChoice, { source: 'file' | 'server' }>,
         context: LoadContext,
     ) => Promise<Loaded[T]>
 }
+
+/** The bundled packages of a build, by the type they are for. */
+export type BundledProviders = {
+    [T in AssetType]?: Partial<Record<BundledId, DefaultProvider<T>>>
+}
+
+/** Where the web's packages are served from, for the chooser to read their details. */
+export type PackageUrls = Partial<Record<'skin' | 'particle' | BundledId, string>>
 
 export type AssetStatus = {
     active: 'chosen' | 'default' | 'builtin'

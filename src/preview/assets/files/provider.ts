@@ -145,5 +145,5 @@ export const createStoredProviders = ({
         particle: provider('particle'),
         background: provider('background'),
         effect: provider('effect'),
-    } as ChoiceProviders
+    }
 }

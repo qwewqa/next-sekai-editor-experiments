@@ -1,4 +1,5 @@
 import { i18n } from '../../i18n'
+import { platform } from '../../platform'
 import { interpolateRaw } from '../../utils/interpolate'
 import type { FallbackState } from './notices'
 import { displayOrigin } from './serverUrl'
@@ -11,10 +12,27 @@ export const typeNoun = (type: FallbackState['type']) => strings().noun[type]
 /** The type as a tab label ("Skin", "Sound Effects"). */
 export const typeLabel = (type: FallbackState['type']) => strings()[type]
 
+/**
+ * What the Default row of a type is called. On the web it is a Next SEKAI package or, for the
+ * background, "Default"; in the apps Default is Built-in.
+ */
+export const defaultName = (type: FallbackState['type']) => {
+    if (!platform.capabilities.defaultAssets) return strings().default
+    switch (type) {
+        case 'skin':
+        case 'effect':
+            return strings().nextSekai01
+        case 'particle':
+            return strings().nextSekai
+        case 'background':
+            return strings().default
+    }
+}
+
 // Default or Built-in by name; a stored item by its title, in the locale's own quotes.
 const usingLabel = (fallback: FallbackState) =>
     fallback.using === 'default'
-        ? strings().default
+        ? defaultName(fallback.type)
         : fallback.using === 'builtin'
           ? strings().builtin
           : fallback.usingTitle
@@ -36,8 +54,10 @@ export const reasonText = (fallback: FallbackState) => {
             return strings().offline
         case 'invalid':
             return interpolateRaw(reason.invalid, noun)
+        case 'bundledFailed':
+            return interpolateRaw(reason.failed, strings().nextSekai02)
         case 'defaultFailed':
-            return reason.defaultFailed
+            return interpolateRaw(reason.failed, defaultName(fallback.type))
         case 'builtinFailed':
             return reason.builtinFailed
     }

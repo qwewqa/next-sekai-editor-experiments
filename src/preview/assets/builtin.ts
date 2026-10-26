@@ -25,18 +25,17 @@ import {
 
 export const builtinUrl = (name: string) => `${import.meta.env.BASE_URL}builtin/${name}.scp`
 
-const fetchPackage = async (name: string, signal: AbortSignal) => {
+const fetchPackage = async (url: string, signal: AbortSignal) => {
     const isAborted = () => signal.aborted
-    const response = await fetch(builtinUrl(name), { signal })
+    const response = await fetch(url, { signal })
     if (isAborted() || response.status === 404) return
-    if (!response.ok)
-        throw new AssetError('unavailable', `Built-in ${name}: HTTP ${response.status}`)
+    if (!response.ok) throw new AssetError('unavailable', `${url}: HTTP ${response.status}`)
     const buffer = await response.arrayBuffer()
     return isAborted() ? undefined : buffer
 }
 
 const loadBackground = async ({ signal }: LoadContext): Promise<LoadedBackground | undefined> => {
-    const buffer = await fetchPackage('background', signal)
+    const buffer = await fetchPackage(builtinUrl('background'), signal)
     const read = buffer && readItem<BackgroundItem>(buffer, 'backgrounds')
     if (!read) return
     const { item, getResource } = read
@@ -63,11 +62,12 @@ const loadBackground = async ({ signal }: LoadContext): Promise<LoadedBackground
     }
 }
 
-const loadEffect = async ({
-    signal,
-    decodeAudio,
-}: LoadContext): Promise<LoadedEffect | undefined> => {
-    const buffer = await fetchPackage('effect', signal)
+/** An effect package served as a static file: Built-in's, or a bundled one. */
+export const loadEffectPackage = async (
+    url: string,
+    { signal, decodeAudio }: LoadContext,
+): Promise<LoadedEffect | undefined> => {
+    const buffer = await fetchPackage(url, signal)
     const read = buffer && readItem<EffectItem>(buffer, 'effects')
     if (!read) return
     const { item, getResource } = read
@@ -94,7 +94,7 @@ export const builtinProviders = {
     particle: ({ signal }) =>
         loadPreviewResource(builtinUrl('particle'), loadParticleFromScp, signal),
     background: loadBackground,
-    effect: loadEffect,
+    effect: (context) => loadEffectPackage(builtinUrl('effect'), context),
 } satisfies AssetDefaults
 
 const categories = {
@@ -104,14 +104,14 @@ const categories = {
     effect: 'effects',
 } as const
 
-export type BuiltinInfo = {
+export type PackageInfo = {
     title: string
     author: string
     /** An object URL of the item's small picture, kept for the page. */
     image: string | undefined
 }
 
-const infos = new Map<AssetType, Promise<BuiltinInfo | undefined>>()
+const infos = new Map<string, Promise<PackageInfo | undefined>>()
 
 type ItemInfo = { name: string; title: string; author: string; thumbnail?: { url?: string | null } }
 
@@ -121,14 +121,17 @@ const readJson = async <T>(archive: RangedScp, path: string) => {
 }
 
 /**
- * The Built-in item's title, author and picture for the source lists; undefined when it cannot be read.
+ * A package's item title, author and picture for the source lists; undefined when it cannot be read.
  * Only the package's list, details and picture are fetched, not the resources the item loads with.
  */
-export const loadBuiltinInfo = (type: AssetType): Promise<BuiltinInfo | undefined> => {
-    let info = infos.get(type)
+export const loadPackageInfo = (
+    packageUrl: string,
+    type: AssetType,
+): Promise<PackageInfo | undefined> => {
+    let info = infos.get(packageUrl)
     if (!info) {
         info = (async () => {
-            const archive = await openRangedScp(builtinUrl(type), new AbortController().signal)
+            const archive = await openRangedScp(packageUrl, new AbortController().signal)
             if (!archive) return
             const category = categories[type]
             const list = await readJson<ServerItemList<ItemInfo>>(
@@ -152,11 +155,13 @@ export const loadBuiltinInfo = (type: AssetType): Promise<BuiltinInfo | undefine
                     : undefined,
             }
         })().catch(() => undefined)
-        infos.set(type, info)
+        infos.set(packageUrl, info)
         // An unreadable package is tried again at the next request.
         void info.then((value) => {
-            if (!value) infos.delete(type)
+            if (!value) infos.delete(packageUrl)
         })
     }
     return info
 }
+
+export const loadBuiltinInfo = (type: AssetType) => loadPackageInfo(builtinUrl(type), type)
