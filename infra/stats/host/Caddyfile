@@ -5,6 +5,23 @@
 	servers {
 		protocols h1 h2
 	}
+	# Caddy's own log goes to stderr, then journald. Request errors are not logged at all: their message can
+	# hold a socket error with the visitor's address (an upload cut off mid-way). The filter drops the
+	# visitor's address and headers from the rest, and the fields that can carry an address: a TLS-ALPN
+	# handshake's remote, and a socket error's text.
+	log {
+		exclude http.log.error
+		format filter {
+			wrap json
+			request>remote_ip delete
+			request>remote_port delete
+			request>client_ip delete
+			request>headers delete
+			remote delete
+			remote_addr delete
+			error delete
+		}
+	}
 }
 
 {$STATS_HOSTNAME} {

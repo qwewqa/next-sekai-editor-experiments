@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs the real Umami and PostgreSQL images from host/images.env (through host/compose.local.yaml) and checks
 # what the server and the editor's sender rely on. infra-check.yml runs it; so can anyone with Docker.
-#   1. the host files are valid (Compose, Caddyfile)
+#   1. the host files are valid (Compose, Caddyfile), and Caddy's own log drops the visitor's address and headers
 #   2. a text/plain batch with a browser User-Agent is stored, with its data; a bot User-Agent is not
 #   3. nightly.sh's clean empties region and city
 #   4. geo-trigger.sql installs twice, and then no session keeps a region or a city, whether it is inserted with them,
@@ -24,7 +24,7 @@ BROWSER='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) 
 WORK=$(mktemp -d)
 cleanup() {
     dc down -v > /dev/null 2>&1 || true
-    docker rm -f nse-contract-restore > /dev/null 2>&1 || true
+    docker rm -f nse-contract-restore nse-contract-caddy > /dev/null 2>&1 || true
     rm -rf "$WORK" /tmp/nse-contract.headers
 }
 trap cleanup EXIT
@@ -37,6 +37,40 @@ step "host files"
 POSTGRES_PASSWORD=x APP_SECRET=x STATS_HOSTNAME=stats.example.test docker compose --env-file images.env -f compose.yaml config --quiet
 docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME=stats.example.test "$CADDY_IMAGE" \
     caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+# The global log block turns Caddy's own log, which holds the request behind every logged error, into a filter encoder
+# that deletes the visitor's address and headers.
+FILTERED=$(docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME=stats.example.test "$CADDY_IMAGE" \
+    caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile 2> /dev/null \
+    | jq -c '.logging.logs.default | [.exclude, .encoder.format, ([.encoder.fields | to_entries[] | select(.value.filter == "delete") | .key] | sort)]')
+[ "$FILTERED" = '[["http.log.error"],"filter",["error","remote","remote_addr","request>client_ip","request>headers","request>remote_ip","request>remote_port"]]' ] \
+    || fail "Caddy's log is not filtered as expected: $FILTERED"
+
+step "Caddy's error log keeps no visitor address"
+# The real Caddyfile on a plain-HTTP site, with umami pointing at a closed port, so that every request to /api/send
+# fails in reverse_proxy. Caddy logs no request error. The request carries an address and a User-Agent that must not appear.
+docker run -d --name nse-contract-caddy --add-host umami:127.0.0.1 -p 127.0.0.1::8080 \
+    -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME=http://:8080 "$CADDY_IMAGE" > /dev/null
+CADDY_URL="http://$(docker port nse-contract-caddy 8080/tcp | head -n 1)"
+STATUS=000
+for _ in $(seq 30); do
+    STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$CADDY_URL/api/send" -H 'X-Forwarded-For: 198.51.100.77' \
+        -H 'User-Agent: ContractVisitor/9.9' --data '{}' || true)
+    [ "$STATUS" = 502 ] && break
+    sleep 1
+done
+[ "$STATUS" = 502 ] || fail "Caddy answered $STATUS where it should answer 502 for an upstream that is down"
+CADDY_LOG=$(docker logs nse-contract-caddy 2>&1)
+# The log lines are JSON. Caddy logged its start, and no request error.
+[ -n "$(jq -cR 'fromjson? | select(.logger != null)' <<< "$CADDY_LOG")" ] || fail "Caddy's log is not JSON:
+$CADDY_LOG"
+[ -z "$(jq -cR 'fromjson? | select(.logger == "http.log.error")' <<< "$CADDY_LOG")" ] || fail "Caddy logged a request error:
+$CADDY_LOG"
+if grep -qE '198\.51\.100\.77|ContractVisitor|remote_ip|remote_port|client_ip|"headers"' <<< "$CADDY_LOG"; then
+    fail "Caddy's log holds a visitor address or header:
+$CADDY_LOG"
+fi
+docker rm -f nse-contract-caddy > /dev/null
 
 step "start Umami"
 dc up -d --wait --wait-timeout 300
