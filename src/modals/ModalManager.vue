@@ -130,11 +130,7 @@ const vOpen = {
             const target = primary ?? label?.control ?? label ?? body?.querySelector('button')
             target?.focus({ focusVisible })
             // A prefilled name is selected, so typing replaces it.
-            if (
-                (target instanceof HTMLInputElement && target.type === 'text') ||
-                target instanceof HTMLTextAreaElement
-            )
-                target.select()
+            if (target instanceof HTMLInputElement && target.type === 'text') target.select()
         }
         el.showModal()
         // showModal lands on the first button, the close ×, so the default takes focus in the same
