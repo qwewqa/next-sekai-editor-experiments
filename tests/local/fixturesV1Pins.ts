@@ -6,7 +6,7 @@
 // same commit; no existing fixture is ever replaced, and an existing file's line in SHA256SUMS stays.
 
 /** The editor build the fixtures were written by: the `appVersion` of every file and dump. */
-export const FIXTURE_BUILDS: readonly string[] = ['0.5.22+f2f4d8a8']
+export const FIXTURE_BUILDS: readonly string[] = ['0.5.22+0d503931']
 
 /**
  * The commit the fixtures are confirmed at: the build that wrote them, or a later commit at which a
@@ -14,10 +14,10 @@ export const FIXTURE_BUILDS: readonly string[] = ['0.5.22+f2f4d8a8']
  * `npm run release:tag -- 0.6.0` stops when a format path changed since it (scripts/release/rules.mjs
  * `fixturePaths`), and when it is not in the history of the commit tagged: merge with a merge commit.
  */
-export const FIXTURES_CONFIRMED_AT = 'f2f4d8a8'
+export const FIXTURES_CONFIRMED_AT = '0d503931'
 
 /** The SHA-256 of each folder's SHA256SUMS file. */
 export const SUMS_DIGESTS: Readonly<Record<'nxsp-v1' | 'web-storage-v1', string>> = {
-    'nxsp-v1': '6d777927762a10b640682aac8fccac1e9ba41fbd9ff2c0ef28cbe2e1ab0b1dff',
-    'web-storage-v1': 'bdc05cac73b9ceff5d536206102d88bd18022dafa9cceb8cbe81fa7f0f2446eb',
+    'nxsp-v1': 'a90b1568fb6b76179a07fcc672f16a0ef72314368dfecf4ab3d6c34006a0a287',
+    'web-storage-v1': '6d96a815fe72ee271a45f9e869dfc914d756f6f11e915c93c6e3c482e09d078c',
 }
