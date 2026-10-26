@@ -34,6 +34,7 @@ import { gesture } from './gestures/gesture'
 import { drag, isDragging } from './gestures/recognizers/drag'
 import { tap } from './gestures/recognizers/tap'
 import { clearPageSelection } from './pageSelection'
+import { hasTouchControls } from './touch'
 
 const mouseGesture = gesture(drag(false), tap(Infinity))
 
@@ -118,10 +119,15 @@ watch(
     { flush: 'sync' },
 )
 
-// A middle press scrolls instead of using the tool; one that cannot start is still its own.
+// A middle press starts autoscroll and never reaches the tool. A refused one is still owned, so its release is consumed.
 const middlePress = (event: MouseEvent) => {
     event.preventDefault()
-    if (event.buttons !== 4 || mouseGesture.pointerCount || isDragging.value) {
+    if (
+        event.buttons !== 4 ||
+        mouseGesture.pointerCount ||
+        isDragging.value ||
+        hasTouchControls()
+    ) {
         refuseAutoscroll()
         return
     }

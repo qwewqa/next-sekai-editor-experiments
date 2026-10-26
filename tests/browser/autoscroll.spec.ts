@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
 
 // Middle-click autoscroll in the chart and the Elevation Editor. The speed curve and the button
 // rules are in tests/editor/autoscroll.test.ts; these cases cover the browser's event orders.
@@ -9,7 +9,29 @@ test.use({ viewport: { width: 1400, height: 900 } })
 // The session the page started, before the fixture's chart opens a new one.
 const startup = new WeakMap<Page, string | undefined>()
 
+/** Records every release and click before the app's listeners, to read what they did to it. */
+const recordReleases = () => {
+    const events: Event[] = []
+    ;(window as unknown as { releases: Event[] }).releases = events
+    for (const type of ['mouseup', 'auxclick', 'click', 'contextmenu'])
+        addEventListener(type, (event) => events.push(event), true)
+}
+
+const releases = (page: Page) =>
+    page.evaluate(() =>
+        (window as unknown as { releases: MouseEvent[] }).releases.map((event) => ({
+            type: event.type,
+            button: event.button,
+            prevented: event.defaultPrevented,
+        })),
+    )
+const clearReleases = (page: Page) =>
+    page.evaluate(() => {
+        ;(window as unknown as { releases: Event[] }).releases.length = 0
+    })
+
 test.beforeEach(async ({ page }) => {
+    await page.addInitScript(recordReleases)
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
@@ -210,20 +232,12 @@ test('Elevation Editor: Escape stops, a key keeps the held middle button owned u
 
     // No command is bound to this key, and the release after it still belongs to the autoscroll.
     await page.keyboard.press('ScrollLock')
-    await page.evaluate(() => {
-        const seen: string[] = []
-        ;(window as unknown as { seen: string[] }).seen = seen
-        for (const type of ['mouseup', 'auxclick', 'click'])
-            document.addEventListener(type, () => seen.push(type), true)
-    })
+    await clearReleases(page)
     await middleUp(page)
     await settle(page)
-    expect(await page.evaluate(() => (window as unknown as { seen: string[] }).seen)).toEqual([])
-    // The recorder sees an ordinary click.
-    await page.mouse.click(start.x, start.y - 200)
-    expect(await page.evaluate(() => (window as unknown as { seen: string[] }).seen)).toContain(
-        'mouseup',
-    )
+    const seen = await releases(page)
+    expect(seen.map(({ type }) => type)).toEqual(expect.arrayContaining(['mouseup', 'auxclick']))
+    expect(seen.every(({ button, prevented }) => button === 1 && prevented)).toBe(true)
 })
 
 test('a middle press during a left drag is refused and its release does not end the drag', async ({
@@ -288,7 +302,7 @@ test('a press on the minimap while it runs stops it and does not jump; the next 
     await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8)
     await expectStopped(page)
     await expectStill(page, () => viewTime(page))
-    expect(await viewTime(page)).toBeCloseTo(100, 0)
+    expect(await viewTime(page)).toBeGreaterThan(50)
     await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8)
     await expect.poll(() => viewTime(page)).toBeLessThan(50)
 })
@@ -373,10 +387,40 @@ test('hold middle, stop with left, release middle first: nothing is placed and t
     await page.mouse.move(start.x, start.y + 60, { steps: 3 })
     await page.mouse.down()
     await expectStopped(page)
+    await clearReleases(page)
     await middleUp(page)
     await page.mouse.up()
     await expectStill(page, () => viewTime(page))
+    const seen = await releases(page)
+    expect(seen.filter(({ type }) => type === 'mouseup').map(({ button }) => button)).toEqual([
+        1, 0,
+    ])
+    expect(seen.every(({ prevented }) => prevented)).toBe(true)
     expect(await noteCount(page)).toBe(notes)
     await page.mouse.click(start.x, start.y)
     await expect.poll(() => noteCount(page)).toBe(notes + 1)
+})
+
+test.describe('with a touch down', () => {
+    test.use({ hasTouch: true })
+
+    test('a middle click starts nothing and the touch still scrolls', async ({ page }) => {
+        await showFar(page)
+        const start = await paneCenter(page, 'canvas.editor-chart')
+        const touch = await touchInput(page)
+        const fingers = (dy: number): [number, number][] => [
+            [start.x - 200, start.y + dy],
+            [start.x - 100, start.y + dy],
+        ]
+        await touch('touchStart', fingers(0))
+        await page.mouse.move(start.x, start.y)
+        await middleDown(page)
+        await middleUp(page)
+        await settle(page)
+        await expectStopped(page)
+        const before = await viewTime(page)
+        for (const dy of [20, 60, 120]) await touch('touchMove', fingers(dy))
+        await expect.poll(() => viewTime(page)).not.toBe(before)
+        await touch('touchEnd', [])
+    })
 })

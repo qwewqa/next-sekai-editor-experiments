@@ -42,9 +42,9 @@ const run = (events: AutoscrollEvent[], from: AutoscrollState = idleAutoscroll) 
 
 const start: AutoscrollEvent = { type: 'start', buttons: 4 }
 const middleUp: AutoscrollEvent = { type: 'up', button: 1, buttons: 0 }
-const near: AutoscrollEvent = { type: 'move', button: -1, buttons: 4, dx: 5, dy: 3 }
-const far: AutoscrollEvent = { type: 'move', button: -1, buttons: 4, dx: 0, dy: 40 }
-const back: AutoscrollEvent = { type: 'move', button: -1, buttons: 4, dx: 0, dy: 1 }
+const near: AutoscrollEvent = { type: 'move', buttons: 4, dx: 5, dy: 3 }
+const far: AutoscrollEvent = { type: 'move', buttons: 4, dx: 0, dy: 40 }
+const back: AutoscrollEvent = { type: 'move', buttons: 4, dx: 0, dy: 1 }
 
 test('a release inside the dead zone keeps the motion; one after leaving it ends it', () => {
     const click = run([start, near, middleUp])
@@ -54,8 +54,7 @@ test('a release inside the dead zone keeps the motion; one after leaving it ends
     assert.equal(run([start, far, back, middleUp]).state.running, false)
     // A sideways-only move counts, even when sideways scrolling is off.
     assert.equal(
-        run([start, { type: 'move', button: -1, buttons: 4, dx: 30, dy: 0 }, middleUp]).state
-            .running,
+        run([start, { type: 'move', buttons: 4, dx: 30, dy: 0 }, middleUp]).state.running,
         false,
     )
 })
@@ -109,7 +108,7 @@ test('another key stops without being consumed, and a lone modifier changes noth
 })
 
 test('a move without the middle bit stops it only while the starting release is awaited', () => {
-    const lost: AutoscrollEvent = { type: 'move', button: -1, buttons: 0, dx: 0, dy: 30 }
+    const lost: AutoscrollEvent = { type: 'move', buttons: 0, dx: 0, dy: 30 }
     const awaiting = run([start, lost])
     assert.equal(awaiting.state.running, false)
     assert.deepEqual(awaiting.state.held, [])
@@ -118,7 +117,7 @@ test('a move without the middle bit stops it only while the starting release is 
 })
 
 test('a chorded press stops the motion and is owned', () => {
-    const { state } = run([start, { type: 'move', button: -1, buttons: 5, dx: 0, dy: 0 }])
+    const { state } = run([start, { type: 'move', buttons: 5, dx: 0, dy: 0 }])
     assert.equal(state.running, false)
     assert.deepEqual(
         run([{ type: 'down', button: 0, buttons: 5, primary: false }], state).consumed,
@@ -143,16 +142,16 @@ test('a refused middle press is owned, and its release does not start anything',
     assert.deepEqual(consumed, [false, true, true])
 })
 
-test('releasing middle before left after a stopping press is a release, in either event', () => {
-    const stopByLeft: AutoscrollEvent = { type: 'move', button: 0, buttons: 5, dx: 0, dy: 0 }
+test('releasing middle before left after a stopping press is a release, whichever event reports it', () => {
+    const stopByLeft: AutoscrollEvent = { type: 'move', buttons: 5, dx: 0, dy: 0 }
     const leftDown: AutoscrollEvent = { type: 'down', button: 0, buttons: 5, primary: false }
-    // Middle is released while left stays down: a move that names the button.
+    // Middle is released while left stays down: a move shows the bit gone.
     const viaMove = run([start, far, stopByLeft, leftDown])
     assert.equal(viaMove.state.running, false)
     assert.deepEqual(viaMove.state.held, [1, 0])
     const afterMove = run(
         [
-            { type: 'move', button: 1, buttons: 1, dx: 0, dy: 0 },
+            { type: 'move', buttons: 1, dx: 0, dy: 0 },
             { type: 'up', button: 1, buttons: 1 },
             { type: 'click', button: 1 },
             { type: 'up', button: 0, buttons: 0 },
@@ -167,12 +166,4 @@ test('releasing middle before left after a stopping press is a release, in eithe
     const viaUp = run([{ type: 'up', button: 1, buttons: 1 }], viaMove.state)
     assert.deepEqual(viaUp.state.held, [0])
     assert.deepEqual(viaUp.state.trailing, [1])
-})
-
-test('a middle release reported on a move starts click mode, not a lost release', () => {
-    const quiet = run([start, near, { type: 'move', button: 1, buttons: 0, dx: 0, dy: 0 }])
-    // The move names the middle button: an observed release inside the dead zone, so click mode.
-    assert.equal(quiet.state.running, true)
-    assert.equal(quiet.state.awaiting, false)
-    assert.deepEqual(quiet.state.trailing, [1])
 })

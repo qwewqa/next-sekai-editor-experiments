@@ -37,7 +37,7 @@ export type AutoscrollEvent =
     | { type: 'refuse'; button: number }
     | { type: 'down'; button: number; buttons: number; primary: boolean }
     | { type: 'up'; button: number; buttons: number }
-    | { type: 'move'; button: number; buttons: number; dx: number; dy: number }
+    | { type: 'move'; buttons: number; dx: number; dy: number }
     | { type: 'click'; button: number }
     | { type: 'key'; key: string }
     | { type: 'escape' }
@@ -76,11 +76,7 @@ const release = (state: AutoscrollState, button: number): AutoscrollState => {
     return next.hold ? stopped(next) : { ...next, awaiting: false }
 }
 
-/**
- * The autoscroll's state after an event, and whether the event is the autoscroll's own and
- * must not reach the page. A press while the motion runs stops it and is owned with its release
- * and click; a key or an unrelated press never gives up a button that is still held.
- */
+/** Returns the next state and whether the event must be consumed. */
 export const reduceAutoscroll = (
     state: AutoscrollState,
     event: AutoscrollEvent,
@@ -122,16 +118,10 @@ export const reduceAutoscroll = (
         case 'move': {
             const previous = state.buttons
             let next: AutoscrollState = { ...state, buttons: event.buttons }
-            // A release while another button stays down is reported on the move, not a pointerup.
-            const reported =
-                event.button >= 0 &&
-                previous & bitOf(event.button) &&
-                !(event.buttons & bitOf(event.button))
-            if (reported && next.held.includes(event.button)) next = release(next, event.button)
             if (next.running) {
                 if (Math.abs(event.dx) > DEAD_ZONE || Math.abs(event.dy) > DEAD_ZONE)
                     next = { ...next, hold: true }
-                // A button newly down, whose pointerdown a chord does not fire, is a press.
+                // A chorded press fires no pointerdown, so a button newly set in `buttons` is a press.
                 const pressed = BUTTON_BITS.flatMap((bit, button) =>
                     event.buttons & ~previous & bit && !next.held.includes(button) ? [button] : [],
                 )

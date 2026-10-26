@@ -9,7 +9,7 @@ import {
 } from '../autoscroll'
 import { editorNavigation, getControlBounds, type EditorNavigation } from '../navigation'
 import { canScrollViewX, scrollViewXBy, scrollViewYBy, view } from '../view'
-import { resizeEscapes } from './index'
+import { resizeEscapes } from './escapes'
 
 type Motion = {
     anchor: { x: number; y: number }
@@ -132,7 +132,6 @@ const onPointerMove = (event: PointerEvent) => {
     if (motion) motion.pointer = { x: event.clientX, y: event.clientY }
     apply({
         type: 'move',
-        button: event.button,
         buttons: event.buttons,
         dx: motion ? motion.pointer.x - motion.anchor.x : 0,
         dy: motion ? motion.pointer.y - motion.anchor.y : 0,
@@ -173,7 +172,7 @@ const listeners: [string, (event: never) => void][] = [
     ['keydown', onKeyDown],
     ['wheel', onWheel],
 ]
-// Registered at load, so they run before the panes' and the minimap's own listeners.
+// Window capture, registered at load: ahead of the other window listeners, such as the Escape handler.
 for (const [type, listener] of listeners)
     addEventListener(type, listener as EventListener, { capture: true, passive: type === 'wheel' })
 if (import.meta.hot) {
