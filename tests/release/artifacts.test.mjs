@@ -169,7 +169,7 @@ test('a release without one of the locked preview packages fails', async (t) => 
         await rm(join(directory, missing.file))
         await assert.rejects(
             writeReleaseManifest(directory, metadata, rest),
-            new RegExp(`Missing preview package: ${missing.file.replace('.', '\.')}`),
+            new RegExp(`Missing preview package: ${missing.file.replace('.', '[.]')}`),
         )
         await write(directory, missing.file, `test ${missing.file} package`)
     }

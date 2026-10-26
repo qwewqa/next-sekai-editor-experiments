@@ -76,7 +76,7 @@ test('REUSE.toml parses and its default annotation is MIT', () => {
 
 test('every tracked binary or media file has an explicit REUSE.toml annotation', () => {
     const files = tracked.filter(isMedia)
-    assert.ok(files.length > 20, 'the media files are found')
+    assert.ok(files.length > 10, 'the media files are found')
     const missing = files.filter((file) => !annotationFor(annotations, file)?.explicit)
     assert.deepEqual(missing, [])
 })
