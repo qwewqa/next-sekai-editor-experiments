@@ -204,6 +204,10 @@ const controlListeners = { ...paneControls, ...cursorListeners }
 const activate = () => {
     if (navigation) activateEditorNavigation(navigation)
 }
+// The peek overlay takes presses; a middle press still scrolls.
+const startMiddleScroll = (event: PointerEvent) => {
+    if (event.pointerType === 'mouse' && event.button === 1) paneControls.mousedown?.(event)
+}
 const xToLane = (x: number) =>
     elevationLayout.value.laneLeft + (x - elevationBounds.x) / elevationLayout.value.laneScale
 const availableCommands: CommandName[] = [
@@ -2076,7 +2080,7 @@ onUnmounted(() => {
             v-if="isPeeking"
             class="elevation-peek-overlay absolute inset-0 flex touch-none items-center justify-center bg-black/40 p-4"
             :style="{ paddingTop: `${headerHeight}px` }"
-            @pointerdown.prevent
+            @pointerdown.prevent="startMiddleScroll"
             @wheel.prevent="(event: WheelEvent) => paneControls.wheel?.(event)"
             @contextmenu.prevent
         >

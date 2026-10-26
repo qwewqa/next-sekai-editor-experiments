@@ -46,6 +46,17 @@ html[data-app-inactive] *::after {
     animation-play-state: paused !important;
 }
 
+/* Autoscroll sets one cursor over the whole window, as the browsers' own does. */
+:root[data-autoscroll='y'],
+:root[data-autoscroll='y'] * {
+    cursor: ns-resize !important;
+}
+
+:root[data-autoscroll='xy'],
+:root[data-autoscroll='xy'] * {
+    cursor: all-scroll !important;
+}
+
 /*
  * Scroll edge fades (see `vScrollEdges`): an end that hides more content fades
  * out over --scroll-fade. They add no size, and scrolled-to focus targets keep

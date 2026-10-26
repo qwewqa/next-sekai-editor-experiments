@@ -642,6 +642,7 @@
                 "dragSecondary": "Right click and drag to drag with secondary tool.",
                 "scrollY": "Wheel scroll to scroll vertically.",
                 "scrollX": "Wheel scroll with Shift key to scroll horizontally.",
+                "autoscroll": "Middle click, then move the mouse to scroll. Click to stop.",
                 "minimap": "Left click or drag in the minimap to scroll there.",
                 "zoomY": "Wheel scroll with Ctrl key to zoom vertically.",
                 "zoomX": "Wheel scroll with Ctrl and Shift keys to zoom horizontally."

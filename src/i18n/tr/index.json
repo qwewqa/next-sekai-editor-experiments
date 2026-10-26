@@ -642,6 +642,7 @@
         "dragSecondary": "Sağ tıklayıp sürükleyerek ikincil aracı kullanın.",
         "scrollY": "Dikey kaydırma için tekerleği çevirin.",
         "scrollX": "Yatay kaydırma için Shift tuşuyla birlikte tekerlek kaydırması yapın.",
+        "autoscroll": "Kaydırmak için orta tıklayıp fareyi hareket ettirin. Durdurmak için tıklayın.",
         "minimap": "O konuma kaydırmak için mini haritada sol tıklayın veya sürükleyin.",
         "zoomY": "Dikey yakınlaştırma için Ctrl tuşuyla birlikte tekerleği kaydırın.",
         "zoomX": "Yatay yakınlaştırma için Ctrl ve Shift tuşlarıyla tekerlek kaydırması yapın."
