@@ -61,7 +61,7 @@ jobs:
                   cache: npm
             - run: npm ci
             - run: scripts/ci/install-browsers.sh firefox webkit
-            # The default preview skin and particle, hash-locked, as build:release stages them.
+            # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npm run build
@@ -103,7 +103,7 @@ jobs:
                   cache: npm
             - run: npm ci
             - run: scripts/ci/install-browsers.sh ${{ matrix.engine }}
-            # The default preview skin and particle, hash-locked, as build:release stages them.
+            # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npm run build

@@ -16,6 +16,8 @@
 - **Check** in Level Info checks the project file and the history stored in this browser. It repairs what it can from the file and lists what is still damaged. In Settings › Toolbar and Settings › Keyboard Shortcuts it is Check File and History.
 - Use **Preview Assets** to choose the skin, particle, background and sound effects. It is in the toolbar and the Preview panel’s menu. The web editor includes the Next SEKAI 02 skin and sound effects.
 - The **Minimap**, a strip beside the chart, shows the whole chart. Click or drag in it to scroll. While you view a step in History, it marks that step’s changes. It is shown in wide windows; turn it on or off with the Minimap tool or **Settings › Editor › Show Minimap**. Drag its left edge to resize it.
+- Stage style events have a **Lane Color**. A lane color change follows the event’s easing. The judgment line keeps its opacity during color changes.
+- In the preview, hit effects stay on their notes when the camera moves, and notes attached across stages line up as in Sonolus.
 - **Middle click** in the chart or the Elevation Editor, then move the mouse to scroll. Click to stop.
 - With **Settings › Toolbar › Quick Switch** on, you can hold a tool and slide along its toolbar row to pick another one.
 - Ctrl/Cmd+R reloads the page and Ctrl/Cmd+F opens the browser’s find bar, unless you assign them to a command in **Settings › Keyboard Shortcuts**. Before, they ran the commands assigned to R and F.
@@ -27,7 +29,6 @@
 - The editor is now named "Next SEKAI Editor" (formerly "Sonolus Next SEKAI Editor").
 - **Safari 17 or later is required** (iOS 17 or later on iPhone and iPad).
 - If the editor does not start, add `?safe` to its address to open it in safe mode.
-- Stage style events have a **Lane Color**. A lane color change follows the event’s easing. The judgment line keeps its opacity during color changes.
 
 ## 0.5.22 (2026-10-17)
 
