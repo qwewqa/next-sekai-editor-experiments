@@ -245,6 +245,27 @@ test('docs/analytics.md lists the catalogue', () => {
     }
 })
 
+test('docs/usage-statistics.md explains the fields every request carries', () => {
+    const doc = readFileSync(new URL('../../docs/usage-statistics.md', import.meta.url), 'utf8')
+    const start = doc.indexOf('## What every request carries')
+    const section = doc.slice(start, doc.indexOf('\n## ', start + 1))
+    const documented = new Map(
+        [...section.matchAll(/^\| `(\w+)` \| ([^|]+) \|/gm)].map(([, name = '', meaning = '']) => [
+            name,
+            meaning,
+        ]),
+    )
+    // The fields of a request item, from the sender's type: the common ones are all but the event.
+    const sender = readFileSync(new URL('../../src/analytics/sender.ts', import.meta.url), 'utf8')
+    const payload = /payload: \{([^}]*)\}/.exec(sender)?.[1] ?? ''
+    const fields = [...payload.matchAll(/^\s+(\w+)\??:/gm)]
+        .map(([, name = '']) => name)
+        .filter((name) => name !== 'name' && name !== 'data')
+    assert.deepEqual(fields.sort(), [...documented.keys()].sort())
+    for (const [name, meaning] of documented)
+        assert.ok(meaning.trim().length > 0, `${name} has no meaning`)
+})
+
 test('a measured count is capped so a long visit keeps its perf event', () => {
     assert.equal(capCount(10_000), 9999)
     assert.equal(capCount(-3), 0)

@@ -1,6 +1,6 @@
 # Usage statistics
 
-The web editor sends usage statistics to a self-hosted Umami server: which tools people use, the main settings, file types and sizes, and how long actions take. This page is for maintainers. The privacy page (`privacy/index.html`) tells users what is sent, and `infra/stats/README.md` covers the server.
+The web editor sends usage statistics to a self-hosted Umami server: which tools people use, the main settings, file types and sizes, and how long actions take. This page is for maintainers. The list of what is sent, for readers, is `docs/usage-statistics.md`. The privacy page (`privacy/index.html`) summarizes it by category, and `infra/stats/README.md` covers the server.
 
 The code is in `src/analytics/`:
 
@@ -87,7 +87,7 @@ How the code enforces them:
 - `record` takes only the types the catalogue gives. A range is a branded type that only `bucket` makes.
 - The client checks every event against the catalogue before it queues it, and drops one that fails.
 - The lint forbids `src/analytics/` from importing the level info, file names and the document title.
-- A unit test (`tests/editor/analyticsPrivacy.test.ts`) maps every property to a category, and each category to the words of its line on the privacy page. A property the page does not cover fails it.
+- A unit test (`tests/editor/analyticsPrivacy.test.ts`) checks that `docs/usage-statistics.md` explains every property and states the precision rules, and that the privacy page keeps its disclosures and links to that list. A property the list does not cover fails it.
 - A browser spec saves a chart whose title, artist and file name contain a canary, and fails if any request contains it, or any key outside the catalogue.
 
 ## What the server keeps
@@ -163,10 +163,10 @@ Umami's own visit counts, durations and bounce rates are wrong for this client. 
 
 ## Adding an event or a property
 
-1. Add it to `catalogue.ts`, with a closed set of values or a range, and to the table above.
+1. Add it to `catalogue.ts`, with a closed set of values or a range, to the table above and to `docs/usage-statistics.md`, in plain words with its format.
 2. Hook it with one `bump`, `bumpCommand` or `record` at the place that already knows the value. Never compute something on a hot path for it.
 3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value. A renamed or removed property also changes `infra/stats/scripts/contract-events.json` and the saved queries in `infra/stats/queries/` that read it. Infra check runs them.
-4. Map it to a category in `tests/editor/analyticsPrivacy.test.ts`. If it is a new kind of data, add a line to the privacy page, give it a category, and change the page's date.
+4. A new field needs only its row in `docs/usage-statistics.md`, which the tests check. A new category of data, or a changed practice (what is sent, when, how long it is kept, who receives it), also changes the privacy page and its date.
 5. Add a CHANGELOG line.
 
 ## Build variables
