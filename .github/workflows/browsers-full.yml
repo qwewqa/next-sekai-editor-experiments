@@ -63,13 +63,13 @@ jobs:
     # they are a local check before a release (npm run test:timing).
     chromium:
         runs-on: ubuntu-latest
-        # A shard of 750 tests ran at about 13 tests a minute with four workers on the 4-vCPU runner (5 times slower
-        # than a fast desktop), so one of eight, 563 tests, takes about 45 min.
+        # About 13 tests a minute with four workers on the 4-vCPU runner (5 times slower than a fast desktop), so one
+        # of sixteen, about 280 tests, takes about 25 min, retries included.
         timeout-minutes: 60
         strategy:
             fail-fast: false
             matrix:
-                shard: [1/8, 2/8, 3/8, 4/8, 5/8, 6/8, 7/8, 8/8]
+                shard: [1/16, 2/16, 3/16, 4/16, 5/16, 6/16, 7/16, 8/16, 9/16, 10/16, 11/16, 12/16, 13/16, 14/16, 15/16, 16/16]
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:

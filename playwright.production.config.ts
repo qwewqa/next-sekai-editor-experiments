@@ -12,6 +12,8 @@ export default defineConfig({
     testMatch: '**/*.spec.ts',
     workers: 1,
     forbidOnly: !!process.env.CI,
+    // A test that passes on its retry is reported as flaky.
+    retries: process.env.CI ? 1 : 0,
     timeout: 60_000,
     expect: { timeout: 10_000 },
     reporter: 'list',

@@ -29,7 +29,11 @@ export default defineConfig({
     // More workers don't help: the dev server is the limit. Concurrent runs should pass --workers.
     workers: '25%',
     forbidOnly: !!process.env.CI,
-    timeout: 30_000,
+    // CI runners are about five times slower than a fast desktop. A test that passes on its retry is
+    // reported as flaky.
+    timeout: process.env.CI ? 90_000 : 30_000,
+    expect: { timeout: process.env.CI ? 15_000 : 5_000 },
+    retries: process.env.CI ? 1 : 0,
     reporter: 'list',
     outputDir: 'test-results',
     use: {

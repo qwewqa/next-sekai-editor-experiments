@@ -162,7 +162,7 @@ test('browsers-full runs the Chromium suite in shards and leaves the timing spec
         shards,
         shards.map((_, index) => `${index + 1}/${shards.length}`),
     )
-    assert.equal(shards.length, 8)
+    assert.equal(shards.length, 16)
     assert.doesNotMatch(chromium, /--project=timing/)
     assert.doesNotMatch(full, /chromium-timing/)
     const rules = readFileSync(new URL('../../scripts/release/rules.mjs', import.meta.url), 'utf8')
