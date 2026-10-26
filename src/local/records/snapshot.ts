@@ -1,5 +1,6 @@
 import { fromHex16, hash16Sync, toHex } from '../hash'
 import { canonicalBytes, type RecordValue } from './canonical'
+import { recordPastLimit } from './limits'
 import { noteCountOf, recordKey, type KindRecords, type SnapshotRecords } from './records'
 import {
     checkHeader,
@@ -233,6 +234,8 @@ export const decodeSnapshot = (rootJson: unknown, source: SnapshotSource): Snaps
             return (chunk as unknown[]).map((record, j) => {
                 checkRecord(form, record, `${kind}[${i}][${j}]`)
                 checkRefs(form, record, ids, `${kind}[${i}][${j}]`)
+                const past = recordPastLimit(kind, record as Rec)
+                if (past) throw new SchemaError(`${kind}[${i}][${j}].${past}`, 'past its limit')
                 return { key: recordKey(kind, record as Rec), record: record as Rec }
             })
         })

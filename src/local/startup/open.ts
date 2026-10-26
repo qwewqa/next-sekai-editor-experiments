@@ -1,3 +1,4 @@
+import { recordError } from '../../diagnostics'
 import { restoreExportMemory } from '../../editor/commands/exportLevel/memory'
 import { sameFileContent } from '../../editor/file/content'
 import { bgmStatus, claimNotice, isHeldHere, runHeld } from '../../editor/media/heldBgm'
@@ -149,15 +150,35 @@ const shownOf = (read: SessionRead & { kind: 'open' }, state: State): ShownName 
     }
 }
 
+/** A stored head that is read but cannot be built: its records break the schema or the limits. */
+class DamagedHead extends Error {
+    override name = 'DamagedHead'
+}
+
 const headState = async (worker: OpenDeps['worker'], head: Uint8Array) => {
     const parts = await worker.call('readSnapshot', toHex(head))
     if (parts.root === undefined) throw new Error(`The head ${toHex(head)} is not stored`)
-    return stateFromRecords(
-        decodeSnapshot(parts.root, {
-            node: (hex) => parts.nodes[hex],
-            chunk: (hex) => parts.chunks[hex],
-        }),
-    )
+    try {
+        return stateFromRecords(
+            decodeSnapshot(parts.root, {
+                node: (hex) => parts.nodes[hex],
+                chunk: (hex) => parts.chunks[hex],
+            }),
+        )
+    } catch (error) {
+        recordError(error)
+        throw new DamagedHead(`The head ${toHex(head)} could not be read`, { cause: error })
+    }
+}
+
+/** The head's state, or undefined with the session said not to open when its records are damaged. */
+const headOrDamaged = async (deps: OpenDeps, head: Uint8Array) => {
+    try {
+        return await headState(deps.worker, head)
+    } catch (error) {
+        if (!(error instanceof DamagedHead)) throw error
+        deps.events({ kind: 'notOpened', which: 'reload', why: 'damaged' })
+    }
 }
 
 const storedStack = (read: SessionRead & { kind: 'open' }): StoredStack => ({
@@ -219,7 +240,8 @@ export const openStored = async (
         if (!flusher) {
             return
         }
-        const state = await headState(deps.worker, read.head)
+        const state = await headOrDamaged(deps, read.head)
+        if (!state) return
         if ((request && !request.isCurrent()) || (canShow && !canShow())) return
         // Start Blank, or a chart made meanwhile, keeps what's on screen.
         if (!replace && (isBlankRequested() || !deps.untouched())) {
@@ -551,7 +573,8 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
     if (name.kind !== 'date') setOpeningName(name.text)
     const headId = String(read.session.id)
     if (hasWebLocks() && (await deps.client.heldElsewhere(sessionLock(headId)))) {
-        const state = await headState(deps.worker, read.head)
+        const state = await headOrDamaged(deps, read.head)
+        if (!state) return false
         deps.events({ kind: 'openElsewhere', name: shownOf(read, state), sessionId: headId })
         return false
     }
@@ -560,7 +583,8 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
     if (bound !== 'no') return forked(deps, read, headId, { quiet: bound === 'unknown' })
     const parentLock = await holdShared(deps.locks, headId)
     if (!parentLock) {
-        const state = await headState(deps.worker, read.head)
+        const state = await headOrDamaged(deps, read.head)
+        if (!state) return false
         deps.events({ kind: 'openElsewhere', name: shownOf(read, state), sessionId: headId })
         return false
     }

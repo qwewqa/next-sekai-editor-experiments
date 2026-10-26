@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { maxBeat } from '../../../src/chart/limits'
 import type { NoteObject } from '../../../src/chart/note'
 import {
     MARK_LIMIT,
@@ -227,6 +228,24 @@ test('one tick added to a slide marks one note, and Edits Here finds only its be
     assert.deepEqual(summary.beats, [6])
     assert.equal(touchesBeats(summary.beats, 0, 4), false)
     assert.equal(touchesBeats(summary.beats, 5, 7), true)
+})
+
+test('a record past the chart limits makes the change unknown: nothing is built from it', async () => {
+    const base = stateOf(goldenChart())
+    const past = edit(base, (t) => addNote(t, createSlideId(), note(maxBeat + 1)))
+    const bpmPast = edit(base, (t) => addBpm(t, { beat: maxBeat + 1, bpm: 90, meter: 4 }))
+    const pairs: [State, State][] = [
+        [past, base],
+        [base, past],
+        [bpmPast, base],
+    ]
+    for (const [before, after] of pairs)
+        assert.equal(
+            await readCandidates(memorySource(before, after), rootOf(before), rootOf(after)),
+            undefined,
+        )
+    const within = edit(base, (t) => addNote(t, createSlideId(), note(maxBeat)))
+    assert.ok(await readCandidates(memorySource(base, within), rootOf(base), rootOf(within)))
 })
 
 test('events: a BPM changed in place, a BPM added', async () => {

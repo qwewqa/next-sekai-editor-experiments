@@ -127,9 +127,10 @@ const vOpen = {
             }
             // Otherwise its first field or button.
             const label = body?.querySelector('label')
-            ;(primary ?? label?.control ?? label ?? body?.querySelector('button'))?.focus({
-                focusVisible,
-            })
+            const target = primary ?? label?.control ?? label ?? body?.querySelector('button')
+            target?.focus({ focusVisible })
+            // A prefilled name is selected, so typing replaces it.
+            if (target instanceof HTMLInputElement && target.type === 'text') target.select()
         }
         el.showModal()
         // showModal lands on the first button, the close ×, so the default takes focus in the same

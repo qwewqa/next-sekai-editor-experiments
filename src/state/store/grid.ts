@@ -51,7 +51,7 @@ export const addToStoreGrid = <T extends EntityType>(
     fromBeat: number,
     toBeat = fromBeat,
 ) => {
-    for (let key = Math.floor(fromBeat); key <= Math.floor(toBeat); key++) {
+    for (let key = Math.floor(fromBeat); key <= Math.floor(toBeat) && key < key + 1; key++) {
         writableBucket(grid, entity.type, key).add(entity)
     }
 }
@@ -62,7 +62,7 @@ export const removeFromStoreGrid = <T extends EntityType>(
     fromBeat: number,
     toBeat = fromBeat,
 ) => {
-    for (let key = Math.floor(fromBeat); key <= Math.floor(toBeat); key++) {
+    for (let key = Math.floor(fromBeat); key <= Math.floor(toBeat) && key < key + 1; key++) {
         const entities = grid[entity.type].get(key)
         if (!entities) continue
 
@@ -84,7 +84,7 @@ export const replaceInStoreGrid = <T extends EntityType>(
     fromBeat: number,
     toBeat = fromBeat,
 ) => {
-    for (let key = Math.floor(fromBeat); key <= Math.floor(toBeat); key++) {
+    for (let key = Math.floor(fromBeat); key <= Math.floor(toBeat) && key < key + 1; key++) {
         const entities = grid[entity.type].get(key)
         if (!entities?.has(entity)) continue
 

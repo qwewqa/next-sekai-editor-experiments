@@ -46,6 +46,7 @@ import {
     undoState,
 } from '../../src/history/stack'
 import type { State } from '../../src/state'
+import { emptyStore } from '../helpers/emptyStore'
 import { editStep, initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
 
 // Peek's core in Node: the override, debounced requests, failures, leaving,
@@ -58,6 +59,7 @@ const fake = (name: string, offset = 0, extra: Partial<State> = {}) =>
         name,
         bgm: { offset },
         selectedEntities: [],
+        store: emptyStore,
         ...extra,
     }) as unknown as Fake
 

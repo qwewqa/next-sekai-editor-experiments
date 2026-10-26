@@ -162,13 +162,13 @@ const lastLine = (interval: Interval, division: number) => {
     const end = interval.e - TOLERANCE / division
     if (isOnGrid(interval, division)) {
         let k = Math.ceil(end * division) - 1
-        while ((k + 1) / division < end) k++
-        while (k / division >= end) k--
+        while (Number.isSafeInteger(k) && (k + 1) / division < end) k++
+        while (Number.isSafeInteger(k) && k / division >= end) k--
         return k / division
     }
     let n = Math.ceil((end - interval.s) * division) - 1
-    while (interval.s + (n + 1) / division < end) n++
-    while (n > 0 && interval.s + n / division >= end) n--
+    while (Number.isSafeInteger(n) && interval.s + (n + 1) / division < end) n++
+    while (n > 0 && Number.isSafeInteger(n) && interval.s + n / division >= end) n--
     return interval.s + n / division
 }
 
@@ -181,26 +181,26 @@ const roundIn = (interval: Interval, beat: number, division: number) =>
 const ceilIn = (interval: Interval, beat: number, division: number) => {
     if (isOnGrid(interval, division)) {
         let k = Math.ceil(beat * division)
-        while ((k - 1) / division >= beat) k--
-        while (k / division < beat) k++
+        while (Number.isSafeInteger(k) && (k - 1) / division >= beat) k--
+        while (Number.isSafeInteger(k) && k / division < beat) k++
         return k / division
     }
     let n = Math.max(0, Math.ceil((beat - interval.s) * division))
-    while (n > 0 && interval.s + (n - 1) / division >= beat) n--
-    while (interval.s + n / division < beat) n++
+    while (n > 0 && Number.isSafeInteger(n) && interval.s + (n - 1) / division >= beat) n--
+    while (Number.isSafeInteger(n) && interval.s + n / division < beat) n++
     return interval.s + n / division
 }
 
 const floorIn = (interval: Interval, beat: number, division: number) => {
     if (isOnGrid(interval, division)) {
         let k = Math.floor(beat * division)
-        while ((k + 1) / division <= beat) k++
-        while (k / division > beat) k--
+        while (Number.isSafeInteger(k) && (k + 1) / division <= beat) k++
+        while (Number.isSafeInteger(k) && k / division > beat) k--
         return k / division
     }
     let n = Math.max(0, Math.floor((beat - interval.s) * division))
-    while (interval.s + (n + 1) / division <= beat) n++
-    while (n > 0 && interval.s + n / division > beat) n--
+    while (Number.isSafeInteger(n) && interval.s + (n + 1) / division <= beat) n++
+    while (n > 0 && Number.isSafeInteger(n) && interval.s + n / division > beat) n--
     return interval.s + n / division
 }
 

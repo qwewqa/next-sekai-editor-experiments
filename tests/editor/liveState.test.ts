@@ -12,11 +12,13 @@ import {
     state,
 } from '../../src/history/stack'
 import type { State } from '../../src/state'
+import { emptyStore } from '../helpers/emptyStore'
 import { futureFixtureOperation, futureInitialLife, initialStep } from '../helpers/historySteps'
 
 const root = new URL('../../', import.meta.url)
 
-const fakeState = (name: string) => ({ name, initialLife: 0 }) as unknown as State
+const fakeState = (name: string) =>
+    ({ name, initialLife: 0, store: emptyStore }) as unknown as State
 
 const start = () => {
     const first = fakeState('first')

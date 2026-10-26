@@ -1,4 +1,5 @@
 import type { State } from '..'
+import { isWithinLimit, maxBeat } from '../../chart/limits'
 import { alignComputed } from '../../utils/math'
 import type { Entity } from '../entities'
 import type { SlideInfos } from '../entities/slides/hiddenTicks'
@@ -184,7 +185,7 @@ export const isWithinGridBudget = (source: State, values: Map<EditableEntity, nu
 
 /** Whether objects can move to these beats; Scale Selection refuses results past this. */
 export const isWithinBeatRange = (source: State, values: Map<EditableEntity, number>) =>
-    [...values.values()].every((beat) => Number.isSafeInteger(Math.floor(beat))) &&
+    [...values.values()].every((beat) => Math.abs(beat) <= maxBeat) &&
     isWithinGridBudget(source, values)
 
 /** A moved beat; the editor's cleans float noise onto its grid at the division passed with it. */
@@ -228,12 +229,15 @@ export const getScaledSelectionValues = (
 
 const validWidthValues = (values: Map<EditableEntity, number>, factor: number) => {
     for (const [entity, left] of values) {
-        const sizeKey = widthKeys(entity)?.[1]
+        const keys = widthKeys(entity)
+        const sizeKey = keys?.[1]
         const originalSize = sizeKey ? Number((entity as EditableProperties)[sizeKey]) : 0
         const size = scaleSize(originalSize, factor)
         if (
             !Number.isFinite(size) ||
             size < 0 ||
+            (sizeKey && !isWithinLimit(sizeKey, size)) ||
+            (keys && !isWithinLimit(keys[0], left)) ||
             !Number.isFinite(left + size) ||
             (originalSize > 0 && !(left + size > left)) ||
             (entity.type === 'cameraEventJoint' && (size < 6 || size > 24))
@@ -287,7 +291,7 @@ const transformValues = (
         if (
             !Number.isFinite(transformed) ||
             (axis === 'beat' &&
-                ((transformed < 0 && value >= 0) || !Number.isSafeInteger(Math.floor(transformed))))
+                ((transformed < 0 && value >= 0) || Math.abs(transformed) > maxBeat))
         )
             return
         if (axis === 'beat') {

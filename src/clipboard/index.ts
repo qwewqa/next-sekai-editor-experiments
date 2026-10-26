@@ -3,6 +3,7 @@ import { computed, markRaw, ref } from 'vue'
 import type { Chart } from '../chart'
 import type { NoteObject } from '../chart/note'
 import { parseLevelDataChart } from '../chart/parse/levelData'
+import { validateValues } from '../chart/validate'
 import { parseClipboardData } from './data/parse'
 import type { ClipboardData } from './data/schema'
 
@@ -108,6 +109,7 @@ const getClipboardEntry = (text: string): ClipboardEntry => {
         const anchorEntity = data.anchor === undefined ? undefined : data.entities[data.anchor]
         const noteSources = anchorEntity ? new Map<NoteObject, LevelDataEntity>() : undefined
         const chart = parseLevelDataChart(data.entities, data.defaultGuideColors, noteSources)
+        validateValues(chart)
         const anchor = noteSources
             ? chart.slides.flat().findIndex((note) => noteSources.get(note) === anchorEntity)
             : -1

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { maxBeat } from '../../../src/chart/limits'
 import { PeekError, entryKey } from '../../../src/history/peek'
 import {
     liveState,
@@ -23,6 +24,8 @@ import { createWorld } from '../../../src/local/testing/world'
 import type { StorageWorker } from '../../../src/local/worker/client'
 import { peekHandlers } from '../../../src/local/worker/peekHandlers'
 import type { State } from '../../../src/state'
+import { addBpm } from '../../../src/state/mutations/bpm'
+import { createTransaction } from '../../../src/state/transaction'
 import { editStep, initialStep, nativeOperation, originOperation } from '../../helpers/historySteps'
 import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
@@ -39,11 +42,11 @@ const encoded = (state: State) => encodeSnapshot(toRecords(state))
 const hexOf = (state: State) => toHex(encoded(state).root.hash)
 
 /** A stored session of three states, and the page's verified reads. */
-const stored = async (seed: number) => {
+const stored = async (seed: number, change: (state: State) => State = widen) => {
     const world = createWorld({ seed })
     const page = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
-    const b = widen(a)
+    const b = change(a)
     const c = widen(b, 1)
     const session = beginIn(page, a)
     page.flusher.append(
@@ -159,6 +162,44 @@ test('a chunk whose bytes changed reads damaged: peek rejects, and Undo never la
     await assert.rejects(slotLoader(read)(encoded(b).root.hash))
 
     // The restored stack's slot for B fails to load: the move is cancelled, C stays live.
+    resetStates({ isDirty: false, step: initialStep(originOperation('import')), state: a })
+    setSlotLoader(slotLoader(read))
+    const slots = [a, b, c].map((state, index) => ({
+        snapshot: encoded(state).root.hash,
+        step: index
+            ? editStep(
+                  nativeOperation(
+                      { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
+                      index === 1 ? 'B' : 'C',
+                  ),
+              )
+            : initialStep(originOperation('import')),
+        isDirty: false,
+    }))
+    await quietly(async () => {
+        restoreStates(slots, 2, c)
+        undoState()
+        for (let i = 0; i < 50; i++) await new Promise((resolve) => setTimeout(resolve, 1))
+    })
+    assert.equal(liveState.value, c)
+    setSlotLoader(undefined)
+    resetStates({ isDirty: false, step: initialStep(originOperation('import')), state: a })
+})
+
+test('a snapshot with a coordinate past the limits reads damaged: peek rejects, and Undo never lands on it', async () => {
+    // A crafted file, as no edit makes this state.
+    const pastLimit = (state: State) => {
+        const transaction = createTransaction(state)
+        addBpm(transaction, { beat: maxBeat + 1, bpm: 120 })
+        return transaction.commit([])
+    }
+    const { a, b, c, session, read, worker, seqOf } = await stored(30, pastLimit)
+
+    assert.deepEqual(await quietly(() => readStoredState(read, hexOf(b))), { kind: 'damaged' })
+    const source = createPeekSource(worker, () => undefined)
+    await quietly(() => rejectsWith(source.load(entryKey(session.id, seqOf(b))), 'damaged'))
+    await assert.rejects(quietly(() => slotLoader(read)(encoded(b).root.hash)))
+
     resetStates({ isDirty: false, step: initialStep(originOperation('import')), state: a })
     setSlotLoader(slotLoader(read))
     const slots = [a, b, c].map((state, index) => ({

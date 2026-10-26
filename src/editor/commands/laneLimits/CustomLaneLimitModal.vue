@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { maxLane } from '../../../chart/limits'
 import { i18n } from '../../../i18n'
 import FormModal from '../../../modals/form/FormModal.vue'
 import NumberField from '../../../modals/form/NumberField.vue'
@@ -19,7 +20,7 @@ const model = ref(settings.customMaxLane)
             v-model="model"
             :label="i18n.commands.laneLimits.maximum"
             :min="Number.MIN_VALUE"
-            :max="Number.MAX_SAFE_INTEGER"
+            :max="maxLane"
             step="any"
         />
     </FormModal>

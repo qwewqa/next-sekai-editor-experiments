@@ -1,9 +1,15 @@
 import type { Chart } from '.'
+import { isWithinLimit } from './limits'
 import { ImportRefusal } from './refusal'
 
 export const validateChart = (chart: Chart) => {
     if (!chart.bpms.some(({ beat }) => beat === 0)) throw new ImportRefusal('initialBpm')
 
+    validateValues(chart)
+}
+
+/** The checks that also apply to a part of a chart, such as a copy. */
+export const validateValues = (chart: Chart) => {
     // Level data refuses these, so the editor could not reopen its own file.
     const notes = chart.slides.flat()
     const objects = [
@@ -23,8 +29,9 @@ export const validateChart = (chart: Chart) => {
     // NaN and infinities save as null.
     for (const object of objects) {
         for (const [name, value] of Object.entries(object)) {
-            if (typeof value !== 'number' || Number.isFinite(value)) continue
-            throw new ImportRefusal('invalidValue', name)
+            if (typeof value !== 'number') continue
+            if (!Number.isFinite(value) || !isWithinLimit(name, value))
+                throw new ImportRefusal('invalidValue', name)
         }
     }
 }

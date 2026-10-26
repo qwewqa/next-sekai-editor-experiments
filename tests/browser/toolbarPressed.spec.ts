@@ -2052,3 +2052,24 @@ test('a press held from before a flyout closed leaves the reopened one open as i
     await expect(group).toHaveAttribute('aria-expanded', 'true')
     await page.mouse.up()
 })
+
+test('a flyout opened by keyboard closes when Tab leaves its rows', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.toolbar = [['redo', 'select']]
+    })
+    await shown(page)
+        .and(page.getByTitle('Select', { exact: true }))
+        .focus()
+    await page.keyboard.press('Enter')
+    await expect.poll(() => placedFlyout(page)).toBe(0)
+    // Both rows keep it open.
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
+    await expect(toolbar(page).locator(':focus')).toHaveCount(1)
+    expect(await placedFlyout(page)).toBe(0)
+    await page.keyboard.press('Tab')
+    await expect(toolbar(page).locator(':focus')).toHaveCount(0)
+    await expect.poll(() => placedFlyout(page)).toBe(-1)
+    // The tools are usable again without a click or a pointer move.
+    await expect(toolbar(page).locator('[inert]')).toHaveCount(0)
+})

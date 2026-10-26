@@ -224,6 +224,26 @@ test('Export suggests the displayed name: the title before the BGM’s', async (
     )
 })
 
+test('a prefilled name is selected when Export opens by keyboard, so typing replaces it', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    await page.evaluate(() => {
+        const { history, historySteps } = window.editorTest
+        const state = history.state.value
+        history.pushState(historySteps.futureInitialLife(state.initialLife, 990, 'Life 990'), {
+            ...state,
+            initialLife: 990,
+            levelInfo: { ...state.levelInfo, title: 'kiwi' },
+        })
+    })
+    await openExport(page)
+    const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+    await expect(field).toHaveValue('kiwi')
+    await page.keyboard.type('kiwi-hard')
+    await expect(field).toHaveValue('kiwi-hard')
+})
+
 test('a typed name is checked, and a forbidden character disables Export at once', async ({
     page,
 }) => {

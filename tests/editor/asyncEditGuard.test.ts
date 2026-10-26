@@ -12,11 +12,12 @@ import {
     undoState,
 } from '../../src/history/stack'
 import type { State } from '../../src/state'
+import { emptyStore } from '../helpers/emptyStore'
 
 const operation = (input: NativeOperationInput) =>
     createOperation(input, { locale: 'en', describe: () => 'Guard test' })
-const first = { fixture: 'first' } as unknown as State
-const second = { fixture: 'second' } as unknown as State
+const first = { fixture: 'first', store: emptyStore } as unknown as State
+const second = { fixture: 'second', store: emptyStore } as unknown as State
 const init = operation({ id: 'nse.origin', data: { origin: 'new' } })
 const edit = operation({
     id: 'nse.header.set',
@@ -131,7 +132,11 @@ test('origin abort and disposal invalidate permanently while independent prompts
 // The held-BGM attach changes the live state with no step while a dialog or a confirm is open;
 // what the user typed or picked must still apply.
 const bgmMeta = { hash: 'h', filename: 'a.mp3', size: 4, type: 'audio/mpeg' }
-const unattached = { bgm: { offset: 0, meta: bgmMeta }, selectedEntities: [] } as unknown as State
+const unattached = {
+    bgm: { offset: 0, meta: bgmMeta },
+    selectedEntities: [],
+    store: emptyStore,
+} as unknown as State
 const withAudio = (state: State, offset = state.bgm.offset) =>
     ({
         ...state,

@@ -190,6 +190,32 @@ test.describe('roomy panel', () => {
             .poll(() => page.evaluate(() => window.editorTest.snapshot().selected[0]?.left))
             .toBe(2)
     })
+
+    test('a beat, lane or size past the chart limits is refused like other bad input', async ({
+        page,
+    }) => {
+        await open(page)
+        await selectNoteAt(page, 3)
+        const selection = panel(page).getByRole('region', { name: 'Selection' })
+        const note = () => page.evaluate(() => window.editorTest.snapshot().selected[0])
+        const before = await note()
+        for (const [label, value] of [
+            ['Beat', '100000000'],
+            ['Lane', '1000000000'],
+            ['Size', '1000000000'],
+        ] as const) {
+            const field = selection.getByLabel(label, { exact: true })
+            await field.fill(value)
+            await field.press('Enter')
+            await field.blur()
+            await expect(field).not.toHaveValue(value)
+            expect(await note(), label).toEqual(before)
+        }
+        const lane = selection.getByLabel('Lane', { exact: true })
+        await lane.fill('5000')
+        await lane.blur()
+        await expect.poll(async () => (await note())?.left).toBe(5000)
+    })
 })
 
 test.describe('phone panel', () => {
