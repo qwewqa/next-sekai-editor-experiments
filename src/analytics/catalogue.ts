@@ -15,6 +15,9 @@ export const COUNT_CAP = 9999
 /** A measured count as a use count: whole, not below 0, and capped. */
 export const capCount = (value: number) => Math.min(COUNT_CAP, Math.max(0, Math.round(value)))
 
+/** A span in milliseconds as whole seconds, capped like a count. */
+export const capSeconds = (milliseconds: number) => capCount(milliseconds / 1000)
+
 type Prop =
     | 'boolean'
     | 'count'
@@ -224,10 +227,10 @@ export const catalogue = {
         ...counts(prefixed('frames.playing', scales.frame)),
         ...counts(prefixed('frames.busy', scales.frame)),
         ...counts(prefixed('frames.other', scales.frame)),
-        playSeconds: scale('duration'),
+        playSeconds: 'count',
         slowInputs: 'count',
         interactions: 'count',
-        visibleTime: scale('duration'),
+        visibleTime: 'count',
         cores: scale('cores'),
     },
     errors: counts(['error', 'csp']),

@@ -76,7 +76,7 @@ The switch appears only in a build with a target. Reset Settings… skips it, an
 ## Privacy rules
 
 1. No chart content, file names, level info, titles, free text, paths, URLs with a query or hash, and no ids that link visits.
-2. Only fixed values, booleans, ranges and use counts capped at 9999, plus the screen size in Umami's usual form.
+2. Only fixed values, booleans, ranges, use counts capped at 9999 and times in whole seconds capped at 9999, plus the screen size in Umami's usual form.
 3. The client creates, stores and sends no identifier. Umami's daily session hash is the only grouping.
 4. Nothing is sent before the setting and the browser's signals are read, and nothing at all when the result is off.
 
@@ -114,6 +114,8 @@ How the code enforces them:
 | `errors` | at hide | `error`, `csp` |
 | `unsupported` | the support page, on its first input | `engine` |
 
+`playSeconds` and `visibleTime` are whole seconds since the last send, capped at 9999 like a count. They stay exact because they identify nothing; the other times and sizes are ranges, because an exact audio length, count or size can identify a song, chart or file.
+
 `chart.historySteps` is the size of the Undo window, at most 1,000 steps (`STACK_CAP`), not the length of the Timeline.
 
 `peek.<time>` is the time from the start of the load, after the debounce, until the step shows with its change. Up to 100 ms of it is the wait for the change. A step whose state comes from the cache is counted as `cached` and not timed.
@@ -122,7 +124,7 @@ The Recent Sessions count (`sessions`) is known only after the History tab has r
 
 `unsupported` is sent by `public/gate.js`, not by the client, when the support gate stops the editor. The build puts the target in a tag on the editor's page, `<meta name="nse-analytics" content="ORIGIN WEBSITE HOST">`, and only in a build with a target; `check:release` compares it with the manifest. The page sends one beacon on its first trusted input while visible, under the same rules as the client (a signal, an off switch, an automated browser, a request to save data, another host).
 
-Umami's own visit counts, durations and bounce rates are wrong for this client. Without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime`.
+Umami's own visit counts, durations and bounce rates are wrong for this client. Without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime` (seconds).
 
 ## Adding an event or a property
 
