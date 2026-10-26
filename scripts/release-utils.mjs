@@ -120,7 +120,7 @@ async function dependencyNotices(root, kind) {
         'UI icons: Font Awesome Free by Fonticons, Inc. (https://fontawesome.com), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).',
         ...(kind === 'web'
             ? [
-                  'Default preview skin and particle: "Next SEKAI 01" by Burrito, from coconut.sonolus.com, under its author’s terms.',
+                  'Preview skins "Next SEKAI 01" and "Next SEKAI 02", the preview particle "Next SEKAI" and the preview sound effects "Next SEKAI 01" and "Next SEKAI 02", by Burrito, from coconut.sonolus.com, under its author’s terms.',
               ]
             : []),
         'Font Awesome icon attribution: notices/Font-Awesome.txt',
@@ -256,7 +256,12 @@ async function listFiles(directory, prefix = '') {
 }
 
 function validateFileNames(files, assets) {
-    const remaining = new Set(['resource/skin.scp', 'resource/particle.scp'])
+    const remaining = new Set([
+        'resource/skin.scp',
+        'resource/skin2.scp',
+        'resource/particle.scp',
+        'resource/effect2.scp',
+    ])
     if (!Array.isArray(assets)) throw new Error('Invalid preview asset declarations')
     for (const asset of assets) {
         if (

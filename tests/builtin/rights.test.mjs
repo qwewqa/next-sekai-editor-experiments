@@ -35,8 +35,14 @@ test('the web-only list matches the files and locks it names', () => {
         'thumbnail.png',
         'favicon.ico',
         'skin.scp',
+        'skin2.scp',
         'particle.scp',
         'skin texture',
+        'skin thumbnail',
+        'skin2 texture',
+        'skin2 thumbnail',
+        'effect2.scp',
+        'effect2 audio',
         'particle texture',
     ])
         assert.ok(names.includes(name), name)

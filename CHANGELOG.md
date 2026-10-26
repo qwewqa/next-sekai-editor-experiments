@@ -14,7 +14,7 @@
 - **Level Properties is now Level Info**, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file.
 - The BGM dialog has **Download BGM**. When the BGM is not loaded, **Choose Audio…** in the notice attaches the audio file.
 - **Check** in Level Info checks the project file and the history stored in this browser. It repairs what it can from the file and lists what is still damaged. In Settings › Toolbar and Settings › Keyboard Shortcuts it is Check File and History.
-- Use **Preview Assets** to choose the skin, particle, background and sound effects for the preview and playback. It is in the toolbar and the Preview panel’s menu.
+- Use **Preview Assets** to choose the skin, particle, background and sound effects for the preview and playback. It is in the toolbar and the Preview panel’s menu. The web editor includes the Next SEKAI 02 skin and sound effects.
 - The **Minimap**, a strip beside the chart, shows the whole chart. Click or drag in it to scroll. While you view a step in History, it marks that step’s changes. It is shown in wide windows; turn it on or off with the Minimap tool or **Settings › Editor › Show Minimap**. Drag its left edge to resize it.
 - With **Settings › Toolbar › Quick Switch** on, you can hold a tool and slide along its toolbar row to pick another one.
 - On iPhone and iPad, playback is heard in silent mode.

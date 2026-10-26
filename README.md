@@ -9,13 +9,17 @@ npm ci
 npm run dev
 ```
 
-Local preview requires `public/resource/skin.scp`; `public/resource/particle.scp` is optional.
-The browser specs need them. To download the hash-locked skin and particle
-(`deployment/preview-assets.lock.json`) into `public/resource/`, as CI does:
+Local preview requires `public/resource/skin.scp`. `public/resource/skin2.scp`,
+`public/resource/effect2.scp` and `public/resource/particle.scp` are optional. The browser specs need all three. To download the
+hash-locked skins, sound effects and particle (`deployment/preview-assets.lock.json`) into `public/resource/`,
+as CI does:
 
 ```sh
 node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
 ```
+
+Fetch again after the lock changes. Packages staged before the pictures were added show no
+picture in the chooser.
 
 `npm run build:release` builds `dist` with preview assets.
 

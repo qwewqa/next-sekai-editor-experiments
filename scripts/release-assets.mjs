@@ -8,11 +8,14 @@ const defaults = {
     skin: 'https://coconut.sonolus.com/next-sekai/skins/coconut-next-sekai-1',
     skin2: 'https://coconut.sonolus.com/next-sekai/skins/coconut-next-sekai-2',
     particle: 'https://coconut.sonolus.com/next-sekai/particles/coconut-next-sekai-1',
+    effect2: 'https://coconut.sonolus.com/next-sekai/effects/coconut-next-sekai-2',
 }
-const categories = { skin: 'skins', skin2: 'skins', particle: 'particles' }
-const optionalLocal = new Set(['skin2', 'particle'])
+const categories = { skin: 'skins', skin2: 'skins', particle: 'particles', effect2: 'effects' }
+const optionalLocal = new Set(['skin2', 'particle', 'effect2'])
 // Franchise artwork stays out of the package. A lock entry says so with `thumbnail: false`.
-const withoutThumbnail = new Set(['particle'])
+const withoutThumbnail = new Set(['particle', 'effect2'])
+// The second resource of an item: a skin or particle has a texture, an effect has audio.
+const second = (category) => (category === 'effects' ? 'audio' : 'texture')
 const lockFile = 'deployment/preview-assets.lock.json'
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
@@ -86,36 +89,39 @@ async function resolveItem(source, category) {
     const url = itemDetailsUrl(source, category)
     const response = await download(url)
     const { item } = await response.json()
-    return { source: url, item: normalizeItem(item, response.url || url) }
+    return { source: url, item: normalizeItem(item, response.url || url, category) }
 }
 
-function normalizeItem(item, base, requireHash = false) {
+function normalizeItem(item, base, category, requireHash = false) {
     if (!item?.name || typeof item.title !== 'string') throw new Error('Invalid preview item')
     return {
         ...item,
         data: resourceReference(item.data, base, requireHash),
-        texture: resourceReference(item.texture, base, requireHash),
+        [second(category)]: resourceReference(item[second(category)], base, requireHash),
         ...(item.thumbnail && { thumbnail: resourceReference(item.thumbnail, base, requireHash) }),
     }
 }
 
 async function packageItem({ source, item }, category, withThumbnail = true) {
     const { thumbnail, ...rest } = item
-    const [data, texture, image] = await Promise.all([
+    const key = second(category)
+    const [data, extra, image] = await Promise.all([
         resource(item.data),
-        resource(item.texture),
+        resource(item[key]),
         withThumbnail && thumbnail ? resource(thumbnail) : undefined,
     ])
     const decoded = JSON.parse(gunzipSync(data))
     if (
-        !Array.isArray(decoded.sprites) ||
-        (category === 'particles' && !Array.isArray(decoded.effects))
+        category === 'effects'
+            ? !Array.isArray(decoded.clips)
+            : !Array.isArray(decoded.sprites) ||
+              (category === 'particles' && !Array.isArray(decoded.effects))
     )
         throw new Error('Invalid preview resource data')
     const packagedItem = {
         ...rest,
         data: { ...item.data, url: '/data' },
-        texture: { ...item.texture, url: '/texture' },
+        [key]: { ...item[key], url: `/${key}` },
         ...(image && { thumbnail: { ...thumbnail, url: '/thumbnail' } }),
     }
     const json = (value) => Buffer.from(JSON.stringify(value))
@@ -124,7 +130,7 @@ async function packageItem({ source, item }, category, withThumbnail = true) {
             [`sonolus/${category}/list`]: json({ items: [packagedItem] }),
             [`sonolus/${category}/${item.name}`]: json({ item: packagedItem }),
             data,
-            texture,
+            [key]: extra,
             ...(image && { thumbnail: image }),
         }),
         source,
@@ -137,8 +143,8 @@ export async function downloadPackage(source, category, withThumbnail = true) {
     return packageItem(await resolveItem(source, category), category, withThumbnail)
 }
 
-function lockItem(item, base, withThumbnail) {
-    const { name, source, version, title, subtitle, author, thumbnail, data, texture } = item
+function lockItem(item, base, category, withThumbnail) {
+    const { name, source, version, title, subtitle, author, thumbnail, data } = item
     return normalizeItem(
         {
             name,
@@ -149,9 +155,10 @@ function lockItem(item, base, withThumbnail) {
             author,
             ...(withThumbnail && { thumbnail }),
             data,
-            texture,
+            [second(category)]: item[second(category)],
         },
         base,
+        category,
         true,
     )
 }
@@ -180,7 +187,7 @@ export async function refreshPreviewAssetLock(root, env = process.env) {
             env[`PREVIEW_${name.toUpperCase()}_URL`] || defaults[name],
             category,
         )
-        resolved.item = lockItem(resolved.item, resolved.source, withThumbnail)
+        resolved.item = lockItem(resolved.item, resolved.source, category, withThumbnail)
         const { bytes } = await packageItem(resolved, category, withThumbnail)
         lock[name] = {
             ...resolved,
@@ -199,7 +206,7 @@ async function lockedPackage(root, name, category) {
         throw new Error(`Invalid preview asset lock entry: ${name}`)
     const source = itemDetailsUrl(entry.source, category)
     const loaded = await packageItem(
-        { source, item: normalizeItem(entry.item, source, true) },
+        { source, item: normalizeItem(entry.item, source, category, true) },
         category,
         entry.thumbnail !== false,
     )
