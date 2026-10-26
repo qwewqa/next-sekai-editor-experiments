@@ -17,7 +17,7 @@
 - Use **Preview Assets** to choose the skin, particle, background and sound effects. It is in the toolbar and the Preview panel’s menu.
 - The **Minimap**, a strip beside the chart, shows the whole chart. Click or drag in it to scroll. While you view a step in History, it marks that step’s changes. It is shown in wide windows; turn it on or off with the Minimap tool or **Settings › Editor › Show Minimap**. Drag its left edge to resize it.
 - With **Settings › Toolbar › Quick Switch** on, you can hold a tool and slide along its toolbar row to pick another one.
-- Ctrl/Cmd+R reloads the page and Ctrl/Cmd+F opens the browser’s find, unless you assign them in **Settings › Keyboard Shortcuts**. Before, they ran the commands on R and F.
+- Ctrl/Cmd+R reloads the page and Ctrl/Cmd+F opens the browser’s find bar, unless you assign them to a command in **Settings › Keyboard Shortcuts**. Before, they ran the commands assigned to R and F.
 - On iPhone and iPad, playback is heard in silent mode.
 - Names with dots, such as "feat. Miku", are no longer cut at the first dot.
 - Settings has an About section with the version and **Copy Diagnostic Info…**.

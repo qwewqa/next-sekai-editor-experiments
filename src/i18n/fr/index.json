@@ -570,7 +570,7 @@
       "noneFound": "Aucun élément trouvé",
       "server": {
         "unreachable": "Impossible de joindre ce serveur. Vérifiez l’adresse ou réessayez plus tard.",
-        "auth": "L’éditeur ne peut pas utiliser les serveurs qui nécessitent une connexion.",
+        "auth": "L’éditeur ne peut pas utiliser les serveurs qui nécessitent une connexion à un compte.",
         "insecure": "L’éditeur ne peut pas utiliser les serveurs http.",
         "checksum": "La somme de contrôle du serveur pour cet élément ne correspond pas à ce qu’il a envoyé.",
         "notFound": "Ce serveur n’a pas cet élément.",

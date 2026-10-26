@@ -1426,6 +1426,10 @@ const notFoundSaveAs = async (env: Env) => {
     const name = await suggestion(env, stem)
     const input = await dialogInput(env, 'saveAs', name, [])
     const result = await saveUi.saveDialog(input)
+    if (result?.action === 'export') {
+        await openExport()
+        return
+    }
     if (result?.action !== 'save') return
     await afterOutcome(
         env,
