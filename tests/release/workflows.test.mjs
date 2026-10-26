@@ -31,10 +31,7 @@ test('main and PRs keep standalone checks and release validation without duplica
         assert.equal(allowed('check', ref), false)
         assert.equal(allowed('build', ref, 'skipped'), true)
     }
-    assert.match(
-        job('build'),
-        /run: npm run test:browser\n\s+if: github.event_name == 'pull_request'/,
-    )
+    assert.doesNotMatch(job('build'), /test:browser/)
     assert.match(job('build'), /run: npm run test:production/)
     assert.match(job('build'), /run: npm run check:release/)
 })
@@ -131,7 +128,6 @@ test('every browser job installs through the stall guard', () => {
         [check, 'compatibility-storage'],
         [full, 'storage'],
         [full, 'chromium'],
-        [full, 'chromium-timing'],
     ])
         assert.match(section(text, name), /run: scripts\/ci\/install-browsers.sh /)
     const script = readFileSync(
@@ -150,9 +146,9 @@ test('browsers-full runs the whole storage set on a schedule, by hand and on ci/
     assert.match(section(full, 'storage'), /timeout-minutes: 25\n/)
 })
 
-test('browsers-full runs the Chromium suite in shards and the timing specs alone', () => {
+test('browsers-full runs the Chromium suite in shards and leaves the timing specs to a local check', () => {
     const chromium = section(full, 'chromium')
-    assert.match(chromium, /timeout-minutes: 25\n/)
+    assert.match(chromium, /timeout-minutes: 60\n/)
     assert.match(chromium, /fail-fast: false/)
     assert.match(
         chromium,
@@ -166,13 +162,12 @@ test('browsers-full runs the Chromium suite in shards and the timing specs alone
         shards,
         shards.map((_, index) => `${index + 1}/${shards.length}`),
     )
-    assert.equal(shards.length, 6)
+    assert.equal(shards.length, 8)
     assert.doesNotMatch(chromium, /--project=timing/)
-    const timing = section(full, 'chromium-timing')
-    assert.match(timing, /timeout-minutes: 15\n/)
-    assert.doesNotMatch(timing, /matrix:|needs:/)
-    assert.match(timing, /npx playwright test --project=timing --no-deps\n/)
-    assert.match(timing, /name: chromium-timing-failures\n/)
+    assert.doesNotMatch(full, /chromium-timing/)
+    const rules = readFileSync(new URL('../../scripts/release/rules.mjs', import.meta.url), 'utf8')
+    assert.match(rules, /'npm run test:timing',/)
+    assert.doesNotMatch(rules, /'npm run test:browser',/)
 })
 
 test('a release needs a passed browsers-full run and says how to start one', () => {
