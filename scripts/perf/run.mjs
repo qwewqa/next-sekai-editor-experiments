@@ -12,8 +12,8 @@ import { basename, dirname, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
-import { installActionProbe, runAction } from './actions.mjs'
 import { previewAssetsMode, stageDevPreviewAssets } from '../preview-assets.mjs'
+import { installActionProbe, runAction } from './actions.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
