@@ -78,13 +78,13 @@ test('a native build resolves #platform and #asset-defaults to their native targ
         all += await readFile(join(assets, file), 'utf8')
     assert.ok(all.includes('Not implemented in this build.'), 'the platform stub is in')
     assert.ok(all.includes('builtin/'), 'the Built-in defaults are in')
-    assert.equal(/se_live|resource\/|bg-[\w-]{8}\.png/.test(all), false)
+    assert.equal(/resource\/|bg-[\w-]{8}\.png/.test(all), false)
 })
 
 test('the web build keeps the default targets', async () => {
     const imports = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).imports
     assert.deepEqual(Object.keys(imports['#platform']), ['native', 'default'])
-    assert.deepEqual(Object.keys(imports['#asset-defaults']), ['native', 'default'])
+    assert.deepEqual(Object.keys(imports['#asset-defaults']), ['native', 'builtin-only', 'default'])
     assert.ok(import.meta.resolve('#platform').endsWith('/src/platform/web.ts'))
     assert.ok(
         import.meta.resolve('#asset-defaults').endsWith('/src/preview/assets/defaults.web.ts'),
@@ -145,9 +145,8 @@ test('the bundle check fails on each kind of web-only content', async () => {
     )
     await tamper(
         'hash',
-        (d) =>
-            cp(join(root, 'src/assets/se_live_perfect.mp3'), join(d, 'assets/clip-abcdefgh.mp3')),
-        /web-only file se_live_perfect\.mp3/,
+        (d) => cp(join(root, 'src/preview/bg.png'), join(d, 'assets/picture-abcdefgh.png')),
+        /web-only file bg\.png/,
     )
     await tamper(
         'reference',

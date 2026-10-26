@@ -8,6 +8,7 @@ import { defaultClientConditions, defineConfig } from 'vite'
 import { analyticsFromEnv, gateTag } from './scripts/analytics.mjs'
 import { devPolicy, injectPolicy, nativePolicy, webPolicy } from './scripts/csp.mjs'
 import { nativeIndexHtml } from './scripts/native.mjs'
+import { previewAssetsMode } from './scripts/preview-assets.mjs'
 import { probePlugin, samplesPlugin } from './scripts/samples.mjs'
 import { applyTestSite, siteFromEnv } from './scripts/site.mjs'
 import { appVersion } from './scripts/version.mjs'
@@ -34,6 +35,19 @@ const analyticsFor = (mode: string) =>
         perf: process.env.NSE_PERF === '1',
     })
 
+// The web build has the Next SEKAI assets when every locked package is staged; otherwise it
+// behaves like the apps, with Built-in as Default (scripts/preview-assets.mjs).
+const previewAssets = await previewAssetsMode(root)
+let warned = false
+const builtinOnly = (mode: string) => {
+    if (mode === 'native' || previewAssets.included) return false
+    if (!warned) {
+        warned = true
+        console.warn(`Preview assets: using Built-in only, because ${previewAssets.reason}.`)
+    }
+    return true
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
     // Each checkout keeps its own dependency cache, so worktrees whose node_modules is a link to
@@ -44,7 +58,12 @@ export default defineConfig(({ mode }) => ({
     },
     resolve: {
         // Native mode: #platform and #asset-defaults take their native targets.
-        conditions: mode === 'native' ? ['native', ...defaultClientConditions] : undefined,
+        conditions:
+            mode === 'native'
+                ? ['native', ...defaultClientConditions]
+                : builtinOnly(mode)
+                  ? ['builtin-only', ...defaultClientConditions]
+                  : undefined,
     },
     build: {
         target: ['chrome106', 'edge106', 'firefox105', 'safari16', 'ios16'],
@@ -146,6 +165,7 @@ export default defineConfig(({ mode }) => ({
         __NSE_PERF__: JSON.stringify(process.env.NSE_PERF === '1'),
         __HAS_PRIVACY_PAGE__: JSON.stringify('privacy' in pages(mode)),
         __NATIVE__: JSON.stringify(mode === 'native'),
+        __NSE_BUILTIN_ONLY__: JSON.stringify(builtinOnly(mode)),
         __APP_VERSION__: JSON.stringify(appVersion({ cwd: root }).appVersion),
         __NSE_ANALYTICS__: JSON.stringify(analyticsFor(mode)),
     },

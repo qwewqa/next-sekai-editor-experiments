@@ -539,10 +539,16 @@ test('the central-directory parser reads what scp.ts needs, without verifying CR
 })
 
 test('the parser reads the shipped packages', { skip: !hasShippedPackages() }, () => {
-    for (const name of ['skin', 'particle']) {
+    const parts = {
+        skin: ['data', 'texture', 'thumbnail'],
+        skin2: ['data', 'texture', 'thumbnail'],
+        particle: ['data', 'texture'],
+        effect2: ['data', 'audio'],
+    }
+    for (const [name, expected] of Object.entries(parts)) {
         const bytes = new Uint8Array(readFileSync(`public/resource/${name}.scp`))
         const entries = readDirectory(bytes)
-        assert.deepEqual(entries.map((entry) => entry.name).slice(2), ['data', 'texture'])
+        assert.deepEqual(entries.map((entry) => entry.name).slice(2), expected)
         assert.ok(entries.every((entry) => entry.method === 0))
     }
 })
@@ -550,7 +556,7 @@ test('the parser reads the shipped packages', { skip: !hasShippedPackages() }, (
 // The locked packages only: nativeBundle.test.mjs plants a stand-in while it builds.
 function hasShippedPackages() {
     const lock = JSON.parse(readFileSync('deployment/preview-assets.lock.json', 'utf8'))
-    return ['skin', 'particle'].every((name) => {
+    return ['skin', 'skin2', 'particle', 'effect2'].every((name) => {
         try {
             const bytes = readFileSync(`public/resource/${name}.scp`)
             return createHash('sha256').update(bytes).digest('hex') === lock[name].sha256

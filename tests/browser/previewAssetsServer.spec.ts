@@ -519,7 +519,7 @@ test.describe('on the web', () => {
         expect((await choices(page)).skin).toMatchObject({ source: 'server', name: 'neon' })
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Default. The skin could not be downloaded again from server.test/api.',
+            'Using Next SEKAI 01. The skin could not be downloaded again from server.test/api.',
         )
     })
 })
@@ -695,7 +695,7 @@ test.describe('a server item that left storage', () => {
         expect((await choices(page)).skin).toMatchObject({ source: 'server', name: 'neon' })
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Default. The skin could not be downloaded again from server.test/api.',
+            'Using Next SEKAI 01. The skin could not be downloaded again from server.test/api.',
         )
         await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
         await expect(tabOf(page, 'skin').locator('[data-tab-warning]')).toBeVisible()
@@ -725,7 +725,7 @@ test.describe('a server item that left storage', () => {
         expect((await choices(page)).skin).toMatchObject({ source: 'server', name: 'neon' })
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Default. You are offline.',
+            'Using Next SEKAI 01. You are offline.',
         )
     })
 })

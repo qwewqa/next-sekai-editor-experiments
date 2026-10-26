@@ -32,7 +32,7 @@ const prefixed = <const P extends string, const T extends string>(prefix: P, key
     keys.map((key) => `${prefix}.${key}` as const)
 
 const position = oneOf('auto', 'left', 'right', 'top', 'disabled')
-const assetSource = oneOf('default', 'builtin', 'file')
+const assetSource = oneOf('default', 'builtin', 'bundled', 'file')
 const fileError = [
     'conflict',
     'not-found',

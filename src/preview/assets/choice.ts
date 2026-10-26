@@ -1,5 +1,5 @@
 import Type from 'typebox'
-import type { AssetChoice, AssetType } from './types'
+import type { AssetChoice, AssetType, BundledId } from './types'
 
 export const assetTypes = [
     'skin',
@@ -18,23 +18,39 @@ const storedChoice = <S extends 'file' | 'server'>(source: S) =>
         origin: Type.String(),
     })
 
+/** The bundled package a type has, if any. */
+const bundledChoices = { skin: 'skin2', effect: 'effect2' } as const
+
 /** One choice as the setting stores it; a malformed one repairs to Default. */
-export const assetChoiceSchema = Type.Union(
-    [
-        Type.Object({ source: Type.Literal('default') }),
-        Type.Object({ source: Type.Literal('builtin') }),
-        storedChoice('file'),
-        storedChoice('server'),
-    ],
-    { default: { source: 'default' } },
-)
+const choiceSchema = (bundledId?: BundledId) =>
+    Type.Unsafe<AssetChoice>(
+        Type.Union(
+            [
+                Type.Object({ source: Type.Literal('default') }),
+                Type.Object({ source: Type.Literal('builtin') }),
+                ...(bundledId
+                    ? [
+                          Type.Object({
+                              source: Type.Literal('bundled'),
+                              id: Type.Literal(bundledId),
+                          }),
+                      ]
+                    : []),
+                storedChoice('file'),
+                storedChoice('server'),
+            ],
+            { default: { source: 'default' } },
+        ),
+    )
+
+export const assetChoiceSchema = choiceSchema()
 
 export const previewAssetsSchema = Type.Object(
     {
-        skin: assetChoiceSchema,
+        skin: choiceSchema(bundledChoices.skin),
         particle: assetChoiceSchema,
         background: assetChoiceSchema,
-        effect: assetChoiceSchema,
+        effect: choiceSchema(bundledChoices.effect),
     },
     {
         default: {
@@ -60,4 +76,6 @@ export const withRecentServer = (servers: readonly string[], address: string) =>
 export const choiceKey = (choice: AssetChoice) =>
     choice.source === 'file' || choice.source === 'server'
         ? `${choice.source}:${choice.key}`
-        : choice.source
+        : choice.source === 'bundled'
+          ? `bundled:${choice.id}`
+          : choice.source

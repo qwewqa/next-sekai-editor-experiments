@@ -9,9 +9,13 @@ npm ci
 npm run dev
 ```
 
-Local preview requires `public/resource/skin.scp`; `public/resource/particle.scp` is optional.
-The browser specs need them. To download the hash-locked skin and particle
-(`deployment/preview-assets.lock.json`) into `public/resource/`, as CI does:
+The web editor’s preview uses the Next SEKAI skins, particle and sound effects from coconut.sonolus.com
+(`deployment/preview-assets.lock.json`). `npm run dev` stages the five packages in
+`public/resource/` before it starts: a package that matches the lock stays, otherwise it comes
+from a cache in `node_modules/.cache/nse-preview-assets/`, otherwise it is downloaded and checked
+against the lock. If a package is missing, the editor uses Built-in only, as the apps do, and says
+so at start. `NSE_SKIP_PREVIEW_ASSETS=1 npm run dev` does that on purpose. To stage them by hand,
+as CI does:
 
 ```sh
 node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"

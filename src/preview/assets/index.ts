@@ -1,4 +1,4 @@
-import defaults, { firstPaintBackgroundUrl } from '#asset-defaults'
+import defaults, { bundled, firstPaintBackgroundUrl, packageUrls } from '#asset-defaults'
 import { settings } from '../../settings'
 import { builtinProviders } from './builtin'
 import { assetTypes, choiceKey } from './choice'
@@ -16,9 +16,10 @@ export const assets = createAssetLoader({
     defaults,
     builtin: builtinProviders,
     providers: lazyStoredProviders(),
+    bundled,
 })
 
-export { firstPaintBackgroundUrl }
+export { firstPaintBackgroundUrl, packageUrls }
 
 const defaultChoices = Object.fromEntries(
     assetTypes.map((type) => [type, { source: 'default' }]),

@@ -45,6 +45,29 @@ test('Preview Settings open by themselves at first load where they fit', async (
     ).toHaveAttribute('aria-expanded', 'true')
 })
 
+test('the preview packages are served and answer ranges with 206', async ({ page }) => {
+    const manifest = (await (await page.request.get('/release-manifest.json')).json()) as {
+        previewAssets: { file: string }[]
+    }
+    const files = manifest.previewAssets.map((asset) => asset.file)
+    expect(files).toEqual(expect.arrayContaining(['resource/skin.scp', 'resource/skin2.scp']))
+    for (const file of files) {
+        const whole = await page.request.get(`/${file}`)
+        expect(whole.status(), file).toBe(200)
+        const size = (await whole.body()).length
+        // The preview server misreads a suffix range, so the tail is asked for by position, as the reader
+        // does when it sees that.
+        const tail = await page.request.get(`/${file}`, {
+            headers: { Range: `bytes=${size - 1024}-${size - 1}` },
+        })
+        expect(tail.status(), file).toBe(206)
+        expect(tail.headers()['content-range'], file).toBe(
+            `bytes ${size - 1024}-${size - 1}/${size}`,
+        )
+        expect((await tail.body()).length, file).toBe(1024)
+    }
+})
+
 test('release assets, preview, chart editing and FFT audio work in the production bundle', async ({
     page,
 }, testInfo) => {
@@ -395,7 +418,11 @@ test('release assets, preview, chart editing and FFT audio work in the productio
     expect(requests.some((url) => new URL(url).pathname.startsWith('/src/'))).toBe(false)
     expect(requests.some((url) => new URL(url).pathname === '/resource/skin.scp')).toBe(true)
     expect(requests.some((url) => new URL(url).pathname === '/resource/particle.scp')).toBe(true)
-    expect(requests.some((url) => new URL(url).pathname.endsWith('.mp3'))).toBe(true)
+    expect(
+        requests.some((url) => /\/resource\/(skin2|effect2)\.scp$/.test(new URL(url).pathname)),
+        'Next SEKAI 02 is requested only when chosen',
+    ).toBe(false)
+    expect(requests.some((url) => new URL(url).pathname === '/resource/effect.scp')).toBe(true)
     expect(requests.some((url) => /\/assets\/bg-.*\.png$/.test(new URL(url).pathname))).toBe(true)
     await page.screenshot({ path: testInfo.outputPath('production.png'), fullPage: true })
 })
