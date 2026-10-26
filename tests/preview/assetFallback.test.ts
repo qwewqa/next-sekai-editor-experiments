@@ -43,6 +43,7 @@ const fileChoice: AssetChoice = {
     author: 'Author',
     origin: 'item.scp',
 }
+const bundled: AssetChoice = { source: 'bundled', id: 'skin2' }
 const serverChoice: AssetChoice = { ...fileChoice, source: 'server', origin: 'https://example.com' }
 
 test('Default failing with a 404 falls back to Built-in, and says so', async (t) => {
@@ -155,6 +156,48 @@ test('where Default is Built-in, the chain does not try it twice', async (t) => 
     assert.equal(calls, 1)
 })
 
+test('a bundled choice loads through its provider and stays the chosen source', async () => {
+    const loader = createAssetLoader({
+        defaults: set(provider('default')),
+        builtin: set(provider('built-in')),
+        bundled: { skin: { skin2: provider('Next SEKAI 02') } },
+    })
+    const result = await loader.load('skin', bundled, context())
+    assert.equal(result?.value.title, 'Next SEKAI 02')
+    assert.deepEqual(result?.status, { active: 'chosen' })
+})
+
+test('a bundled choice that is absent or fails uses Default, then Built-in, with the reason', async (t) => {
+    t.mock.method(console, 'error', () => {})
+    const absent = async () => undefined
+    const failing = async () => {
+        throw new AssetError('unavailable', 'HTTP 503')
+    }
+    for (const [skin2, reason] of [
+        [absent, 'missing'],
+        [failing, 'unavailable'],
+        [undefined, 'missing'],
+    ] as const) {
+        const toDefault = createAssetLoader({
+            defaults: set(provider('default')),
+            builtin: set(provider('built-in')),
+            bundled: skin2 ? { skin: { skin2 } } : {},
+        })
+        assert.deepEqual((await toDefault.load('skin', bundled, context()))?.status, {
+            active: 'default',
+            reason,
+        })
+        const toBuiltin = createAssetLoader({
+            defaults: set(absent),
+            builtin: set(provider('built-in')),
+            bundled: skin2 ? { skin: { skin2 } } : {},
+        })
+        const result = await toBuiltin.load('skin', bundled, context())
+        assert.equal(result?.value.title, 'built-in')
+        assert.deepEqual(result?.status, { active: 'builtin', reason })
+    }
+})
+
 test('each reason has one sentence for the choice that failed', () => {
     const status = (reason: 'missing' | 'corrupt' | 'unavailable') =>
         ({ active: 'default', reason }) as const
@@ -168,6 +211,8 @@ test('each reason has one sentence for the choice that failed', () => {
     assert.equal(reasonKey(serverChoice, status('unavailable')), 'serverFailed')
     assert.equal(reasonKey(serverChoice, status('corrupt')), 'invalid')
     assert.equal(reasonKey(fileChoice, { active: 'chosen' }), undefined)
+    assert.equal(reasonKey(bundled, status('missing')), 'bundledFailed')
+    assert.equal(reasonKey(bundled, { active: 'chosen' }), undefined)
 })
 
 test('a fallback is named by its type, choice and reason, and dismissal is per such key', () => {
@@ -213,6 +258,26 @@ test('a choice is its source, and a stored one its package', () => {
     assert.equal(choiceKey({ source: 'builtin' }), 'builtin')
     assert.equal(choiceKey(fileChoice), 'file:abc')
     assert.equal(choiceKey(serverChoice), 'server:abc')
+    assert.equal(choiceKey(bundled), 'bundled:skin2')
+})
+
+test('a bundled choice is kept only for the type that has the package', () => {
+    const repaired = Value.Repair(previewAssetsSchema, {
+        skin: { source: 'bundled', id: 'skin2' },
+        particle: { source: 'bundled', id: 'skin2' },
+        background: { source: 'bundled', id: 'effect2' },
+        effect: { source: 'bundled', id: 'effect2' },
+    }) as ReturnType<typeof Value.Create<typeof previewAssetsSchema>>
+    assert.deepEqual(repaired.skin, { source: 'bundled', id: 'skin2' })
+    assert.deepEqual(repaired.effect, { source: 'bundled', id: 'effect2' })
+    assert.deepEqual(repaired.particle, { source: 'default' })
+    assert.deepEqual(repaired.background, { source: 'default' })
+    const wrong = Value.Repair(previewAssetsSchema, {
+        skin: { source: 'bundled', id: 'effect2' },
+        effect: { source: 'bundled', id: 'skin2' },
+    }) as typeof repaired
+    assert.deepEqual(wrong.skin, { source: 'default' })
+    assert.deepEqual(wrong.effect, { source: 'default' })
 })
 
 test('the stored choices default to Default and repair what cannot be read', () => {
