@@ -255,7 +255,7 @@ test.describe('the update line', () => {
         }
     }
 
-    test('an existing user sees Updated to version with What’s New at the bottom', async ({
+    test('an existing user sees Updated to version with Release Notes at the bottom', async ({
         page,
         context,
     }) => {
@@ -269,7 +269,7 @@ test.describe('the update line', () => {
         const toolbar = (await page.locator('[data-editor-toolbar] > div').boundingBox())!
         expect(box.y + box.height).toBeLessThanOrEqual(toolbar.y)
         const popup = page.waitForEvent('popup')
-        await pill(page).getByRole('button', { name: 'What’s New' }).click()
+        await pill(page).getByRole('button', { name: 'Release Notes' }).click()
         expect((await popup).url()).toBe(
             'https://github.com/qwewqa/next-sekai-editor-experiments/blob/main/CHANGELOG.md',
         )

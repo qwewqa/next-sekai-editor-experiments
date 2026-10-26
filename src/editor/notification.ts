@@ -55,7 +55,7 @@ let id = 0
  */
 export const PILL_NOTICES = 3
 
-// "Next SEKAI Editor / Version X", or "Updated to version X.Y.Z" with What’s New.
+// "Next SEKAI Editor / Version X", or "Updated to version X.Y.Z" with Release Notes.
 const titleLines = (): NoticeLine[] => {
     const name = PRODUCT_NAME
     if (launch.updated)
