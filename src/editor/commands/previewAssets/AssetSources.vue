@@ -152,7 +152,7 @@ const chooseAgain = () => {
 }
 
 const select = (row: Row) => {
-    if (choiceKey(row.choice) === choiceKey(chosen.value)) return
+    if (row.id === selectedId.value) return
     settings.previewAssets = { ...settings.previewAssets, [props.type]: row.choice }
     // Using a stored item marks it used; the mark is only a note.
     if (row.choice.source === 'file' || row.choice.source === 'server')
