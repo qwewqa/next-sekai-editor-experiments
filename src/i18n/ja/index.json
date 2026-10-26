@@ -471,13 +471,11 @@
       "background": "背景",
       "effect": "効果音",
       "storedTab": "保管済み",
-      "effectHint": "プレビューと再生で使用されます。",
       "default": "デフォルト",
-      "defaultSkin": "デフォルト：Next SEKAI 01",
-      "defaultParticle": "デフォルト：Next SEKAI",
+      "nextSekai01": "Next SEKAI 01",
+      "nextSekai": "Next SEKAI",
+      "nextSekai02": "Next SEKAI 02",
       "builtin": "内蔵アセット",
-      "storedFile": "{0} (ファイル)",
-      "storedServer": "{0} (サーバー)",
       "useBuiltinAll": "すべて内蔵アセットにする",
       "resetDefault": "デフォルトにリセット",
       "stored": "保管済み：{0}件、{1}",
@@ -500,11 +498,11 @@
         "storageUnavailable": "このブラウザーに保管された{0}にアクセスできません。",
         "serverFailed": "{1}から{0}を再ダウンロードできませんでした。",
         "invalid": "保管済みの{0}を読み込めませんでした。",
-        "defaultFailed": "デフォルトを読み込めませんでした。",
+        "failed": "{0}を読み込めませんでした。",
         "builtinFailed": "内蔵アセットを読み込めませんでした。"
       },
       "offline": "オフラインです。",
-      "safeMode": "セーフモードではデフォルトを使用します。",
+      "safeMode": "セーフモードでは{0}を使用します。",
       "choose": "選択…",
       "chooseSkin": "スキンを選択",
       "chooseParticle": "パーティクルを選択",
@@ -520,7 +518,6 @@
       "removeFailed": "この項目を削除できませんでした。",
       "chooseAgain": "もう一度選択…",
       "noneInFile": "このファイルに{0}はありません。",
-      "rights": "読み込んだ項目はこのブラウザーにのみ保管されます。",
       "progress": {
         "reading": "ファイルを読み込み中…",
         "storing": "保管中…",
@@ -564,7 +561,6 @@
         "packageTooLarge": "この項目は保管すると{0}を超えます。",
         "storeFailed": "この項目を保管できませんでした。"
       },
-      "chooseHint": "ファイルまたはSonolusサーバーから",
       "fromFile": "ファイルから",
       "fromServer": "サーバーから",
       "serverAddress": "サーバーのアドレス",
@@ -642,6 +638,7 @@
         "dragSecondary": "サブツールで右ドラッグできます。",
         "scrollY": "マウスホイールでスクロールできます。",
         "scrollX": "Shift+ホイールスクロールで横方向にスクロールできます。",
+        "autoscroll": "ホイールクリックしてからマウスを動かすとスクロールできます。クリックすると止まります。",
         "minimap": "ミニマップを左クリックまたはドラッグすると、その位置にスクロールできます。",
         "zoomY": "Ctrl+ホイールスクロールで縦方向にズームできます。",
         "zoomX": "Ctrl+Shift+ホイールスクロールで横方向にズームできます。"
@@ -778,7 +775,7 @@
     "recentSessions": "未保存の作業は、「履歴 › 最近」にあります。",
     "fileTitle": "ファイル",
     "moveBetweenDevices": "作業を別のデバイスに移すには、.nxsp ファイルとして保存し、そのデバイスでファイルを開いてください。",
-    "crswap": "保存中にクラッシュすると、プロジェクトファイルの横に .crswap ファイルが残ることがあります。削除しても問題ありません。"
+    "crswap": "保存中にクラッシュすると、プロジェクトファイルの横に .crswap ファイルが残ることがあります。削除して構いません。"
   },
   "elevation": {
     "edit": "高さを編集",
@@ -790,8 +787,8 @@
     "snapping": "高さのスナップ",
     "squareGrid": "グリッド 1:1",
     "auto": "自動",
-    "allow": "許可",
-    "disallow": "許可しない",
+    "always": "常に",
+    "never": "しない",
     "off": "オフ",
     "canvas": "ノーツの高さ",
     "empty": "この拍にはノーツがありません",
@@ -811,11 +808,9 @@
     "title": "設定",
     "resetSettings": "設定をリセット…",
     "resetSettingsTitle": "設定をリセット",
-    "resetSettingsHint": "キーボードショートカットを保持して、設定を初期値に戻します。",
     "resetKeybinds": "ショートカットをリセット…",
     "resetKeybindsTitle": "ショートカットをリセット",
     "resetSettingsMessage": "キーボードショートカットを保持して、設定を初期値に戻しますか？",
-    "resetSettingsHintStatistics": "キーボードショートカットと「使用状況の統計を送信」を保持して、設定を初期値に戻します。",
     "resetSettingsMessageStatistics": "キーボードショートカットと「使用状況の統計を送信」を保持して、設定を初期値に戻しますか？",
     "resetKeybindsMessage": "キーボードショートカットを初期値に戻しますか？",
     "editor": {
@@ -892,7 +887,6 @@
     "preview": {
       "title": "プレビュー",
       "assets": "アセット",
-      "assetsHint": "プレビューと再生で使うスキン、パーティクル、背景、効果音。",
       "position": {
         "title": "プレビュー位置",
         "auto": "自動",
@@ -967,7 +961,6 @@
     "sections": "セクション",
     "localData": {
       "title": "ローカルデータ",
-      "recoveryHeading": "回復",
       "startupNoticesHeading": "起動時の通知",
       "discard": "破棄…",
       "discardConfirm": "破棄",
@@ -979,7 +972,7 @@
         "journalUndated": "以前の訪問時の未保存の作業 · {0}",
         "autoSave": "以前の自動保存 · {0}",
         "unreadable": "読み取れない回復済みの作業、{0} · {1}",
-        "listFailed": "回復済みの作業を読み取れませんでした",
+        "listFailed": "回復済みの作業を読み取れませんでした。",
         "downloadFailed": "回復済みの作業をダウンロードできませんでした。"
       },
       "openHistory": "履歴を開く",
@@ -987,7 +980,6 @@
       "exportRaw": "生データを出力",
       "open": "開く",
       "exportRawName": "{0} 生データ {1}.zip",
-      "storageHeading": "ストレージ",
       "stored": "このブラウザーに保管: {0} / 約 {1}",
       "deleteSessions": "セッションを削除…",
       "deleteTitle": "セッションを削除",
@@ -1000,7 +992,6 @@
       "namesMore": "{1} ほか {0} 件",
       "newer": "より新しいバージョンのエディターが必要なセッションが含まれています。",
       "deleting": "削除中…",
-      "exportRawNote": "問題を報告するときに使います。",
       "exportRawUnreadable": "保管されている作業を読み取れませんでした。",
       "notDeleted": "{0} 件のセッションを削除できませんでした。"
     }
@@ -1209,7 +1200,7 @@
   "load": {
     "version": "バージョン {0}",
     "updated": "バージョン {0} に更新しました",
-    "whatsNew": "新機能",
+    "whatsNew": "リリースノート",
     "upgradeBlocked": "保管されている作業を開くには、{0} の他のタブを閉じてください。",
     "olderVersion": "このブラウザーで、より新しいバージョンのエディターが開かれました。再読み込みするか、作業を残すには保存してください。",
     "tryAgain": "再試行",
@@ -1256,10 +1247,7 @@
     "private": "プライベートウィンドウの場合、ここに保管された内容はウィンドウを閉じると失われます。作業を残すには保存してください。",
     "inAppBrowser": "アプリ内ブラウザーのようです。保管された作業が削除されることがあります。作業を残すには、このページをブラウザーで開いてください。",
     "ios": "このブラウザーは、7日間アクセスがないと保管された作業を削除します。作業を残すには保存してください。",
-    "safari": "Safari は、7日間アクセスがないと保管された作業を削除します。作業を残すには保存してください。",
-    "installedWebkit": "最近のセッションは、このアプリを削除するまでここに保持されます。作業を残すには保存してください。",
-    "persisted": "最近のセッションは、データを消去しない限りこのブラウザーに保持されます。作業を残すには保存してください。",
-    "default": "最近のセッションは、空き容量が少なくならない限りこのブラウザーに保持されます。作業を残すには保存してください。"
+    "safari": "Safari は、7日間アクセスがないと保管された作業を削除します。作業を残すには保存してください。"
   },
   "player": {
     "started": "再生しました",
@@ -1400,7 +1388,7 @@
       "title": "操作の詳細",
       "named": "操作の詳細：{0}",
       "action": "詳細",
-      "unsupported": "このエディターでは、この操作の詳細を読み取れません。",
+      "unsupported": "このバージョンのエディターでは、この操作の詳細を読み取れません。",
       "newer": "この操作は新しいバージョンのエディターで記録されました。",
       "textShortened": "テキストを省略しています",
       "varying": "値が異なります",
@@ -1602,7 +1590,7 @@
         "blue": "青",
         "yellow": "黄",
         "purple": "紫",
-        "cyan": "水",
+        "cyan": "水色",
         "black": "黒"
       },
       "connectorIsPassThrough": {
@@ -1729,6 +1717,9 @@
       "laneAlpha": {
         "label": "レーンの不透明度"
       },
+      "laneColor": {
+        "label": "レーンの色"
+      },
       "left": {
         "label": "レーン"
       },
@@ -1736,17 +1727,13 @@
         "label": "左枠の表示方式"
       },
       "key": {
-        "input": "キーを入力",
         "press": "キーを押すか、もう一度クリックして削除",
         "pressUnassigned": "キーを押す",
         "pressCancel": "キーを押すか、Escでキャンセル",
-        "clear": "もう一度クリックしてショートカットを削除",
         "unassigned": "未割り当て",
         "reserved": "{0} はブラウザーまたはシステムが使用します。別のキーを押してください",
         "altGraph": "{0} は多くのキーボードで文字の入力に使われます。別のキーを押してください",
         "alsoRuns": "{0}も実行されます",
-        "browserReload": "ブラウザーの再読み込みの代わりに実行されます",
-        "browserFind": "ブラウザーのページ内検索の代わりに実行されます",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -1762,8 +1749,7 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        },
-        "fixedAlias": "{0} でも実行されます (変更不可)"
+        }
       },
       "maskLeft": {
         "label": "マスクのレーン"
@@ -1897,6 +1883,7 @@
     "loadingSkin": "スキンを読み込み中…",
     "skinUnavailable": "プレビュー用スキンを読み込めませんでした。",
     "graphicsUnavailable": "プレビューの描画を開始できませんでした。",
+    "chartGraphicsUnavailable": "描画を開始できませんでした。",
     "graphicsHelp": "ブラウザーでグラフィックスアクセラレーションとWebGLが有効になっていることを確認し、必要に応じてブラウザーを再起動してください。",
     "errorDetails": "エラーの詳細",
     "reload": "再読み込み",
@@ -2132,7 +2119,9 @@
     "history": "履歴",
     "bgm": "BGM",
     "placeholder": "無題",
-    "exportHint": "Sonolus 用のレベルデータには「レベルデータを出力…」を使ってください。",
+    "exportHint": "Sonolus用のレベルデータには「レベルデータを出力…」を使ってください。",
+    "exportHintFirst": "プロジェクトファイル（.nxsp）はこのエディター専用です。Sonolusサーバーにアップロードするレベルデータを作るには「レベルデータを出力…」を使ってください。",
+    "exportHintNames": "レベルデータのファイル名はLevelDataの場合や、.nsldまたは.json.gzで終わる場合があります。",
     "openExport": "レベルデータを出力…",
     "readOnly": "「{0}」に書き込めません。",
     "notProject": "「{0}」はプロジェクトファイルではありません。",

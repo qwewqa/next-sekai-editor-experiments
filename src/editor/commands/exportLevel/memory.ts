@@ -63,13 +63,25 @@ export const exportMemory: ExportMemory = {}
 let storedTarget: ExportChainFields['exportTarget'] | undefined
 const registered = new WeakMap<ExportTarget, { name: string; fingerprint: string }>()
 
-/** A rewrite retains its last stored ownership even when the next metadata write fails. */
-export const replaceExportTarget = async (target: ExportTarget) => {
+/**
+ * Counts the sessions this memory has served: an Export that began in an earlier one must not
+ * hand its file to the current one.
+ */
+let generation = 0
+export const exportGeneration = () => generation
+
+/**
+ * A rewrite retains its last stored ownership even when the next metadata write fails. Returns
+ * false, changing nothing, when `current` no longer holds after the handle comparison.
+ */
+export const replaceExportTarget = async (target: ExportTarget, current: () => boolean) => {
     const previous = exportMemory.target
     const registration = previous && registered.get(previous)
-    if (registration && (await sameEntry(previous.handle, target.handle)))
+    if (registration && (await sameEntry(previous.handle, target.handle)) && current())
         registered.set(target, registration)
+    if (!current()) return false
     exportMemory.target = target
+    return true
 }
 
 /** Drops the destination and name after a new-identity Save As. */
@@ -82,6 +94,7 @@ export const clearExportDestination = () => {
 
 /** Forgets the target and names, as a new chart does. */
 export const clearExportMemory = () => {
+    generation++
     storedTarget = undefined
     delete exportMemory.target
     delete exportMemory.exportName

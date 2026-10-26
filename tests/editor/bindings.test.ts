@@ -3,7 +3,6 @@ import test from 'node:test'
 import {
     bindingOf,
     blocksDefault,
-    browserShortcutOf,
     formatBinding,
     isAltGraphAlphanumeric,
     isReservedChord,
@@ -167,20 +166,28 @@ test('the browser keeps its reserved chords, per platform', () => {
     assert.equal(isReservedChord(press('s', 'c'), false), false)
 })
 
-test('bindings that take a browser shortcut name it', () => {
-    assert.equal(browserShortcutOf('Mod+r'), 'reload')
-    assert.equal(browserShortcutOf('r'), 'reload')
-    assert.equal(browserShortcutOf('R'), 'reload')
-    assert.equal(browserShortcutOf('F5'), 'reload')
-    assert.equal(browserShortcutOf('f'), 'find')
-    assert.equal(browserShortcutOf('Mod+f'), 'find')
-    // Zoom keys keep the browser's zoom.
-    assert.equal(browserShortcutOf('='), undefined)
-    assert.equal(browserShortcutOf('Mod++'), undefined)
-    assert.equal(browserShortcutOf('0'), undefined)
-    assert.equal(browserShortcutOf('Alt+r'), undefined)
-    assert.equal(browserShortcutOf('Mod+s'), undefined)
-    assert.equal(browserShortcutOf('ArrowUp'), undefined)
+test('a plain letter binding does not take the browser’s reload and find', () => {
+    const plain = { select: 'f', reload: 'r', hard: 'R', undo: 'z', shifted: 'F' }
+    assert.deepEqual(matchBindings(plain, press('r', 'c'), false).names, [])
+    assert.deepEqual(matchBindings(plain, press('r', 'm'), true).names, [])
+    assert.deepEqual(matchBindings(plain, press('R', 'cs'), false).names, [])
+    assert.deepEqual(matchBindings(plain, press('f', 'c'), false).names, [])
+    assert.deepEqual(matchBindings(plain, press('f', 'm'), true).names, [])
+    // Ctrl+Shift+F is not a browser chord, so it answers as before.
+    assert.deepEqual(matchBindings(plain, press('F', 'cs'), false).names, ['shifted'])
+    assert.deepEqual(matchBindings(plain, press('z', 'c'), false).names, ['undo'])
+    assert.deepEqual(matchBindings(plain, press('r'), false).names, ['reload'])
+})
+
+test('a binding of the browser’s chord itself takes it', () => {
+    const chords = { reload: 'Mod+r', hard: 'Mod+Shift+r', select: 'Mod+f' }
+    assert.deepEqual(matchBindings(chords, press('r', 'c'), false), {
+        names: ['reload'],
+        exact: true,
+    })
+    assert.deepEqual(matchBindings(chords, press('r', 'm'), true).names, ['reload'])
+    assert.deepEqual(matchBindings(chords, press('R', 'cs'), false).names, ['hard'])
+    assert.deepEqual(matchBindings(chords, press('f', 'c'), false).names, ['select'])
 })
 
 test('Ctrl or Cmd keep the browser action out only for letters', () => {

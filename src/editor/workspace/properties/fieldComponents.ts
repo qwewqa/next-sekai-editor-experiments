@@ -38,6 +38,7 @@ import MultiJudgmentLineAlphaField from '../../../modals/form/MultiJudgmentLineA
 import MultiJudgmentLineColorField from '../../../modals/form/MultiJudgmentLineColorField.vue'
 import MultiJudgmentLineStyleField from '../../../modals/form/MultiJudgmentLineStyleField.vue'
 import MultiLaneAlphaField from '../../../modals/form/MultiLaneAlphaField.vue'
+import MultiLaneColorField from '../../../modals/form/MultiLaneColorField.vue'
 import MultiLeftBorderStyleField from '../../../modals/form/MultiLeftBorderStyleField.vue'
 import MultiLeftField from '../../../modals/form/MultiLeftField.vue'
 import MultiMaskLeftField from '../../../modals/form/MultiMaskLeftField.vue'
@@ -95,6 +96,7 @@ import OptionalJudgmentLineAlphaField from '../../../modals/form/OptionalJudgmen
 import OptionalJudgmentLineColorField from '../../../modals/form/OptionalJudgmentLineColorField.vue'
 import OptionalJudgmentLineStyleField from '../../../modals/form/OptionalJudgmentLineStyleField.vue'
 import OptionalLaneAlphaField from '../../../modals/form/OptionalLaneAlphaField.vue'
+import OptionalLaneColorField from '../../../modals/form/OptionalLaneColorField.vue'
 import OptionalLeftBorderStyleField from '../../../modals/form/OptionalLeftBorderStyleField.vue'
 import OptionalMaskSizeField from '../../../modals/form/OptionalMaskSizeField.vue'
 import OptionalNoteAlphaField from '../../../modals/form/OptionalNoteAlphaField.vue'
@@ -144,6 +146,7 @@ export const multiFieldComponents: Record<PropertyKey, Component> = {
     divisionParity: MultiDivisionParityField,
     yOffset: MultiYOffsetField,
     yOffsetBeat: MultiYOffsetBeatField,
+    laneColor: MultiLaneColorField,
     judgmentLineColor: MultiJudgmentLineColorField,
     judgmentLineStyle: MultiJudgmentLineStyleField,
     leftBorderStyle: MultiLeftBorderStyleField,
@@ -199,6 +202,7 @@ export const optionalFieldComponents: Record<BrushKey, Component> = {
     divisionParity: OptionalDivisionParityField,
     yOffset: OptionalYOffsetField,
     yOffsetBeat: OptionalYOffsetBeatField,
+    laneColor: OptionalLaneColorField,
     judgmentLineColor: OptionalJudgmentLineColorField,
     judgmentLineStyle: OptionalJudgmentLineStyleField,
     leftBorderStyle: OptionalLeftBorderStyleField,

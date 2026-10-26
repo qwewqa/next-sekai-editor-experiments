@@ -12,6 +12,7 @@ type Facts = {
     bgm: boolean
     target?: 'writeBack' | 'picker' | 'download'
     size?: number
+    buildMs?: number
     /** When the write began, after the last picker and dialog closed. */
     since?: number
 }
@@ -29,6 +30,11 @@ export const startWrite = (target: NonNullable<Facts['target']>) => {
     if (current) Object.assign(current, { target, since: performance.now() })
 }
 
+/** How long the file took to build, in milliseconds; a rebuild after a failure replaces it. */
+export const builtIn = (ms: number) => {
+    if (current) current.buildMs = ms
+}
+
 /** What was written, in bytes. */
 export const savedSize = (size: number) => {
     if (current) current.size = size
@@ -37,7 +43,7 @@ export const savedSize = (size: number) => {
 /** The action ends. Without an outcome, it ended at a dialog or a refusal that wrote nothing. */
 export const finishSave = (outcome?: Outcome | { kind: 'noChanges' }) => {
     if (!current) return
-    const { action, history, bgm, target, size, since } = current
+    const { action, history, bgm, target, size, buildMs, since } = current
     current = undefined
     busy(false)
     if (outcome?.kind === 'done') chartChanged('save')
@@ -50,6 +56,7 @@ export const finishSave = (outcome?: Outcome | { kind: 'noChanges' }) => {
             bgm,
             ...(target && { target }),
             ...(size !== undefined && { size }),
+            ...(buildMs !== undefined && { buildMs }),
             outcome: outcome?.kind ?? 'cancelled',
             ...(failed && { reason: failed.code }),
             ...(outcome?.kind === 'refused' && { reason: outcome.reason }),

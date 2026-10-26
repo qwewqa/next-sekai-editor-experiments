@@ -14,6 +14,7 @@ const isIntactRow = (key: Uint8Array, row: unknown): row is ChunkRow => {
     return (
         value?.bytes instanceof Uint8Array &&
         typeof value.crc32 === 'number' &&
+        typeof value.size === 'number' &&
         isChunkRowIntact(key, { bytes: value.bytes, crc32: value.crc32 })
     )
 }

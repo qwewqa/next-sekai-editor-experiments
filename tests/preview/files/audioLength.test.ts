@@ -33,8 +33,6 @@ test('each format the browsers decode is measured from its container', () => {
         assert.ok(length.seconds >= 0.5 && length.seconds < 0.6, `${name}: ${length.seconds}`)
         assert.equal(length.channels, 2, name)
     }
-    const perfect = measureClip(new Uint8Array(readFileSync('src/assets/se_live_perfect.mp3')))
-    assert.ok(perfect && perfect.seconds > 0.7 && perfect.seconds < 0.8)
     assert.deepEqual(measureClip(wav(2)), { seconds: 2, channels: 1 })
 })
 

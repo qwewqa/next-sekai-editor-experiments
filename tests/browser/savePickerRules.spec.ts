@@ -3,7 +3,7 @@ import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { crafted } from '../local/nxsp/craft'
 import { confirmNew } from './confirmWhenReady'
-import { installTestPlatform, waitForStartup } from './editorFixture'
+import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import {
     chainById,
     chainOf,
@@ -11,6 +11,7 @@ import {
     flushed,
     notice,
     pauseAt,
+    pickerCalls,
     pressSave,
     projectOf,
     prompts,
@@ -535,6 +536,57 @@ test('ordinary Save As clears Export destination and name in the file and after 
     await expect(notice(page).filter({ hasText: 'Exported to CopyLevelData' })).toBeVisible()
     expect(await readFile(page, 'LevelData')).toEqual(original)
 })
+
+for (const how of ['a new visit', 'Reopen']) {
+    test(`${how} that continues the session offers Export’s remembered target before any edit`, async ({
+        context,
+    }) => {
+        const first = await context.newPage()
+        await start(first)
+        await edit(first, 1)
+        await queuePicks(first, ['LevelData'])
+        await first.keyboard.press('Shift+P')
+        await expect(first.getByRole('dialog').getByRole('textbox')).toBeVisible()
+        await first.keyboard.press('Enter')
+        await expect(notice(first).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+        await expect.poll(async () => (await chainOf(first)).exportTarget).toBeDefined()
+        await first.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+
+        let page = first
+        if (how === 'a new visit') {
+            first.on('dialog', (dialog) => void dialog.accept())
+            await closePage(first, { runBeforeUnload: true })
+            page = await context.newPage()
+            await start(page)
+        } else {
+            await page.evaluate(async () => {
+                const { resetState } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
+                resetState(false)
+            })
+            const reopened = await page.evaluate(async () => {
+                const until = async (ok: () => boolean) => {
+                    for (let i = 0; i < 100 && !ok(); i++)
+                        await new Promise((r) => setTimeout(r, 50))
+                }
+                const api =
+                    (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
+                await until(() => api.previousSession.value !== undefined)
+                return api.reopen()
+            })
+            expect(reopened).toBe(true)
+        }
+        const pickerCallsBefore = (await pickerCalls(page)).length
+
+        await page.keyboard.press('Shift+P')
+        await expect(page.getByRole('dialog').locator('[data-export-target-name]')).toHaveText(
+            'LevelData (your last export)',
+        )
+        await page.keyboard.press('Enter')
+        await expect(notice(page).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+        expect(await pickerCalls(page)).toHaveLength(pickerCallsBefore)
+    })
+}
 
 test('Export refuses a takeover while storing is paused', async ({ context }) => {
     const owner = await context.newPage()

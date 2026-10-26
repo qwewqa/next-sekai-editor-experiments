@@ -219,6 +219,7 @@ R: Camera Zoom [cameraZoom]: ~Varies > 1.25
 #property.stageStyle.color en
 T: Edited 1 stage style event
 R: Judgment Line Color [judgmentLineColor]: ~Varies > Cyan
+R: Lane Color [laneColor]: Default > Red
 R: Border Style (Left) [leftBorderStyle]: Default > Medium
 
 #property.bpm.value en
@@ -647,11 +648,11 @@ E: 3 earlier, head 0, omitted 0
 
 #unknown.future.fallback en
 T: Did a future thing
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.future.noFallback en
 T: Edit
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.version2 en
 T: Added 3 notes
@@ -659,40 +660,40 @@ N: This step was recorded by a newer version of the editor.
 
 #unknown.invalidData en
 T: Added -1 notes
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.nullOperation en
 T: Edit
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.stringOperation en
 T: Edit
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.extraKeys en
 T: Added 3 notes
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.fallback.html en
 T: <b>Bold</b> <script>x</script>
 Second line
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.fallback.long en
 T: Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. 
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.fallback.empty en
 T: Edit
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.fallbackOnly.restoreKind en
 T: Future restore
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #unknown.knownId.invalid.noFallback en
 T: Initial state
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #undo.single.noteAdd en
 T: Undo · Added 2 notes
@@ -1301,7 +1302,7 @@ N: This step was recorded by a newer version of the editor.
 
 #unknown.foreignLocale en
 T: Hecho (lang es)
-N: This editor cannot read the details of this step.
+N: This version of the editor cannot read the details of this step.
 
 #event.export.download en
 T: Exported level.scp

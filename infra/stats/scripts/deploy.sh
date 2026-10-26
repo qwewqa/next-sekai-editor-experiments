@@ -4,6 +4,7 @@
 #   SOURCE_COMMIT      the pushed commit whose infra/stats/host files the instance runs (default: HEAD)
 #   MONITOR_WEBSITE    the Umami "monitor" website id. Empty clears it and skips the nightly test event
 #                      (stats-deploy.yml sets it from the Environment variable STATS_MONITOR_WEBSITE)
+#   PLAN=1             only creates the change set and prints what it would do, as an administrator
 set -euo pipefail
 
 ENVIRONMENT=${1:?usage: deploy.sh dev|prod}
@@ -19,21 +20,35 @@ output() { aws cloudformation describe-stacks --stack-name "$1" --query "Stacks[
 
 # The first default subnet, ordered by zone name. A different subnet would replace the instance, so the order must stay the same.
 read -r SUBNET VPC ZONE < <(aws ec2 describe-subnets --filters Name=default-for-az,Values=true \
-    --query 'sort_by(Subnets,&AvailabilityZone)[0].[SubnetId,VpcId,AvailabilityZone]' --output text)
+    --query 'sort_by(Subnets,&AvailabilityZone)[0].[SubnetId,VpcId,AvailabilityZone]' --output text | tr -d '\r')
 if [ -z "${SUBNET:-}" ] || [ "$SUBNET" = None ]; then echo "No default subnet. Run: aws ec2 create-default-vpc" >&2; exit 1; fi
 
+# The CLI's own output is kept, because for PLAN=1 it names the change set this run created.
+DEPLOY_LOG=$(mktemp)
+trap 'rm -f "$DEPLOY_LOG"' EXIT
 aws cloudformation deploy \
     --stack-name "$STACK" \
     --template-file stats.yaml \
     --role-arn "arn:aws:iam::$ACCOUNT:role/nse-stats-cfn" \
     --capabilities CAPABILITY_NAMED_IAM \
     --no-fail-on-empty-changeset \
+    ${PLAN:+--no-execute-changeset} \
     --tags "nse:service=stats" "nse:env=$ENVIRONMENT" \
     --parameter-overrides \
     "Environment=$ENVIRONMENT" "SourceCommit=$COMMIT" "MonitorWebsite=${MONITOR_WEBSITE:-}" \
     "VpcId=$VPC" "SubnetId=$SUBNET" "AvailabilityZone=$ZONE" \
     "ZoneId=$(output nse-account ServicesZoneId)" "ZoneName=$(output nse-account ServicesZoneName)" \
-    "AlertTopicArn=$(output nse-account AlertTopicArn)"
+    "AlertTopicArn=$(output nse-account AlertTopicArn)" | tee "$DEPLOY_LOG"
+
+if [ -n "${PLAN:-}" ]; then
+    # Without changes the CLI creates no change set and prints no such line.
+    set_name=$(sed -n 's/.*describe-change-set --change-set-name \([^ ]*\).*/\1/p' "$DEPLOY_LOG" | tr -d '\r' | head -1)
+    if [ -z "$set_name" ]; then echo "No changes."; exit 0; fi
+    aws cloudformation describe-change-set --change-set-name "$set_name" \
+        --query 'Changes[].ResourceChange.[LogicalResourceId,Action,Replacement]' --output text
+    echo "Nothing was changed. The change set stays until deleted: $set_name"
+    exit 0
+fi
 
 if [ "$ENVIRONMENT" = prod ]; then
     aws cloudformation update-termination-protection --stack-name "$STACK" --enable-termination-protection > /dev/null

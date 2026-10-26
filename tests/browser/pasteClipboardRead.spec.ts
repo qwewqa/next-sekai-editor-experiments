@@ -379,6 +379,73 @@ for (const boundary of ['toolRoundTrip', 'cancelledDrag'] as const)
         expect(await pastedBeats(page)).toEqual([])
     })
 
+type SlotGate = { finish: () => void; baseLife: number }
+
+/**
+ * Makes the stack a stored one whose previous slot is not loaded: an Undo queues until
+ * finish() lets it load. The head differs from that slot in the notes, or in the level only.
+ */
+const unloadedPreviousSlot = (page: Page, change: 'notes' | 'level') =>
+    page.evaluate(async (change) => {
+        const { history, historySteps, appImport } = window.editorTest
+        const stack =
+            await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
+        const base = history.state.value
+        let head = { ...base, initialLife: base.initialLife + 1 }
+        if (change === 'notes') {
+            const { editSelectedEditableEntities } = await appImport<
+                typeof import('../../src/editor/sidebars/default')
+            >('/src/editor/sidebars/default/index.ts')
+            editSelectedEditableEntities({ size: 5 })
+            head = history.state.value
+        }
+        const gate = { baseLife: base.initialLife } as SlotGate
+        const loaded = new Promise<typeof base>((resolve) => {
+            gate.finish = () => resolve(base)
+        })
+        Object.assign(window, { gate })
+        stack.setSlotLoader(() => loaded)
+        stack.restoreStates(
+            [
+                { step: historySteps.initialStep(), snapshot: new Uint8Array(32), isDirty: false },
+                {
+                    step: historySteps.editStep(
+                        historySteps.initialLife(base.initialLife, head.initialLife),
+                    ),
+                    isDirty: true,
+                },
+            ],
+            1,
+            head,
+        )
+    }, change)
+
+for (const change of ['notes', 'level'] as const)
+    test(`a held read keeps the Paste waiting for an Undo whose slot is still loading; it ${change === 'notes' ? 'drops the Paste' : 'then pastes'}`, async ({
+        page,
+    }) => {
+        await clickWaiting(page, 6, () => unloadedPreviousSlot(page, change))
+        await expect.poll(() => waiting(page)).toBe(true)
+        await page.evaluate(() => {
+            window.editorTest.history.undoState()
+        })
+        await release(page)
+        await settle(page)
+        expect(await waiting(page)).toBe(true)
+        expect(await pastedBeats(page)).toEqual([])
+
+        await page.evaluate(() => (window as never as { gate: SlotGate }).gate.finish())
+        await expect.poll(() => waiting(page)).toBe(false)
+        const life = await page.evaluate(() => window.editorTest.history.state.value.initialLife)
+        const gate = await page.evaluate(() => (window as never as { gate: SlotGate }).gate)
+        // The Undo landed whichever way it went.
+        expect(life).toBe(gate.baseLife)
+        expect(
+            await page.evaluate(() => window.editorTest.snapshot().notes.map((n) => n.size)),
+        ).not.toContain(5)
+        expect(await pastedBeats(page)).toEqual(change === 'notes' ? [] : [6])
+    })
+
 test('selection and metadata edits including a metadata Undo/Redo preserve the saved Paste coordinate', async ({
     page,
 }) => {

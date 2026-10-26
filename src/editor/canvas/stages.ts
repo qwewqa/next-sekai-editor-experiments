@@ -1,7 +1,9 @@
+import { noteStyles, type NoteStyle } from '../../chart/noteStyle'
 import type { StageProps, Transition } from '../../preview/engine/stage'
 import { StageTriangles } from '../../rendering/stageMesh'
 import { convexDirection } from '../../rendering/triangleClip'
 import { timeToBeat } from '../../state/integrals/bpms'
+import { connectorStyleColor } from '../../utils/colors'
 import { clamp, lerp } from '../../utils/math'
 import type { Range } from '../../utils/range'
 import type { ScopeLookup } from '../scopeRules'
@@ -24,6 +26,44 @@ const borderWidth = (style: Transition<number>, scale: number) =>
 const sameDivider = (a: StagePoint['division']['start'], b: StagePoint['division']['start']) =>
     a.size === b.size && a.parity === b.parity
 
+// Tints by note style code: the swatch colors, with stronger Green, Blue and Cyan.
+const laneTintOverrides: Partial<Record<NoteStyle, number>> = {
+    green: 0x4ee07a,
+    blue: 0x5a6cf0,
+    cyan: 0x40e0d0,
+}
+const defaultTint = 0x83b6d0
+const laneTints = noteStyles.map((style) =>
+    style === 'default'
+        ? defaultTint
+        : (laneTintOverrides[style] ?? parseInt(connectorStyleColor(style).slice(1), 16)),
+)
+
+const channel = (color: number, shift: number) => (color >> shift) & 0xff
+
+const mixTint = (start: number, end: number, progress: number) => {
+    if (start === end) return start
+    const mixed = (shift: number) =>
+        Math.round(lerp(channel(start, shift), channel(end, shift), progress))
+    return (mixed(16) << 16) | (mixed(8) << 8) | mixed(0)
+}
+
+const sameLaneColor = (a: Transition<number>, b: Transition<number>) =>
+    a.start === b.start &&
+    a.end === b.end &&
+    (a.progress === b.progress || (a.start === a.end && b.start === b.end))
+
+// The tint over a slice, at the color progress of its two samples.
+const sliceTint = (a: Transition<number>, b: Transition<number>) => {
+    const progress =
+        a.start === b.start && a.end === b.end ? (a.progress + b.progress) / 2 : b.progress
+    return mixTint(
+        laneTints[b.start] ?? defaultTint,
+        laneTints[b.end] ?? defaultTint,
+        clamp(progress),
+    )
+}
+
 // Only fields the stage canvas paints. Constant transition endpoints ignore
 // progress: an unchanged divider or border does not need a new slice at each sample.
 const sameDivision = (a: StagePoint['division'], b: StagePoint['division']) =>
@@ -36,6 +76,7 @@ const samePaint = (a: StagePoint, b: StagePoint) =>
     a.right === b.right &&
     a.pivotLane + a.xLaneTranslate === b.pivotLane + b.xLaneTranslate &&
     a.laneAlpha === b.laneAlpha &&
+    sameLaneColor(a.laneColor, b.laneColor) &&
     a.fullWidth === b.fullWidth &&
     a.divisionLineAlpha === b.divisionLineAlpha &&
     sameDivision(a.division, b.division) &&
@@ -151,8 +192,9 @@ const drawSlice = (
         finish()
         return
     }
+    const tint = sliceTint(a.laneColor, b.laneColor)
     if (triangles)
-        supported &&= appendStageQuad(triangles, quad, direction, 0x83b6d0, opacity * alpha * 0.16)
+        supported &&= appendStageQuad(triangles, quad, direction, tint, opacity * alpha * 0.16)
     else {
         ctx.save()
         ctx.beginPath()
@@ -162,7 +204,7 @@ const drawSlice = (
         ctx.lineTo(a.right, yA)
         ctx.closePath()
         ctx.globalAlpha = opacity * alpha * 0.16
-        ctx.fillStyle = '#83b6d0'
+        ctx.fillStyle = `#${tint.toString(16).padStart(6, '0')}`
         ctx.fill()
         ctx.clip()
     }

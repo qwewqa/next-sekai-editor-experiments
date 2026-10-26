@@ -42,8 +42,13 @@ const page = `<!doctype html>
     <body><script type="module" src="/assets/index-12345678.js"></script></body>
 </html>
 `
-// The editor's page loads the support gate, a classic script, ahead of the bundle.
-const indexPage = page.replace('<title>', '<script src="/gate.js"></script><title>')
+// The editor's page loads gate.js, a classic script, before the bundle, and links its stylesheet.
+const indexPage = page
+    .replace('<title>', '<script src="/gate.js"></script><title>')
+    .replace(
+        '</head>',
+        '<link rel="stylesheet" crossorigin href="/assets/index-12345678.css"></head>',
+    )
 const withPolicy = (html) => injectPolicy(html, webPolicy)
 
 async function temporary(t) {
@@ -77,11 +82,11 @@ async function builtinRelease() {
 
 async function releaseFixture(t) {
     const directory = await temporary(t)
-    const assets = ['skin', 'particle'].map((name) => {
+    const assets = ['skin', 'skin2', 'particle', 'effect', 'effect2'].map((name) => {
         const bytes = Buffer.from(`test ${name} package`)
         return {
             file: `resource/${name}.scp`,
-            source: `https://example.com/sonolus/${name === 'skin' ? 'skins' : 'particles'}/fixture`,
+            source: `https://example.com/sonolus/${name.startsWith('skin') ? 'skins' : name.startsWith('effect') ? 'effects' : 'particles'}/fixture`,
             bytes: bytes.length,
             sha256: sha256(bytes),
         }
@@ -90,7 +95,7 @@ async function releaseFixture(t) {
         await write(
             directory,
             asset.file,
-            `test ${asset.file.includes('skin') ? 'skin' : 'particle'} package`,
+            `test ${asset.file.slice('resource/'.length, -'.scp'.length)} package`,
         )
     for (const file of [...staticFiles, ...noticeFiles])
         await write(directory, file, `test ${file}`)
@@ -105,7 +110,11 @@ async function releaseFixture(t) {
         await readFile(join(root, 'src/rendering/vendor/lyon.wasm')),
     )
     await write(directory, 'assets/index-12345678.js', 'console.log("release")')
-    await write(directory, 'assets/index-12345678.css', 'body { color: red }')
+    await write(
+        directory,
+        'assets/index-12345678.css',
+        '.absolute{position:absolute}.size-full{width:100%;height:100%}',
+    )
     await writeReleaseManifest(directory, metadata, assets)
     return { directory, assets }
 }
@@ -160,6 +169,19 @@ test('artifact verification detects file tampering and unexpected files', async 
     await write(directory, 'assets/index-12345678.js', 'console.log("release")')
     await write(directory, 'resource/next-sekai-resources.scp', 'unintended media')
     await assert.rejects(checkRelease(directory), /Unexpected release file/)
+})
+
+test('a release without one of the locked preview packages fails', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    for (const missing of assets) {
+        const rest = assets.filter((asset) => asset !== missing)
+        await rm(join(directory, missing.file))
+        await assert.rejects(
+            writeReleaseManifest(directory, metadata, rest),
+            new RegExp(`Missing preview package: ${missing.file.replace('.', '[.]')}`),
+        )
+        await write(directory, missing.file, `test ${missing.file} package`)
+    }
 })
 
 test('a production bundle names no test key but the three live ones', async (t) => {
@@ -437,6 +459,14 @@ test('index.html must load gate.js, a classic script, before the bundle', async 
     await write(directory, 'index.html', withPolicy(indexPage))
     await writeReleaseManifest(directory, metadata, assets)
     await checkRelease(directory, metadata)
+})
+
+test('a release fails when the editor’s stylesheet lacks the layout utilities', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    // The stylesheet Tailwind generates from the landing pages' content alone.
+    await write(directory, 'assets/index-12345678.css', '.flex{display:flex}.fixed{position:fixed}')
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /stylesheet lacks \.absolute and \.size-full$/)
 })
 
 test('the test site build must be the one that is marked as such', async (t) => {

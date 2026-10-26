@@ -43,7 +43,7 @@ import { load, openSession } from './load'
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
 // What the UI acts on after startup on the test core: Reopen and Restore
-// as a Copy, and Settings › Local Data › Recovery's rows.
+// as a Copy, and the recovered-work rows in Settings › Local Data.
 
 /** The page's localStorage, under the editor's own prefix, as Local Data reads it. */
 const local = new MemoryStorage()

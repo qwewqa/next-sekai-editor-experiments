@@ -6,7 +6,6 @@ import { isPeeking } from '../../history/stack'
 import { i18n } from '../../i18n'
 import { formatDateTime } from '../../i18n/dateTime'
 import { formatDate } from '../../i18n/when'
-import { launch } from '../../launch'
 import type { SaveReservation } from '../../local/flush'
 import { storableHandle } from '../../local/handles'
 import { toHex } from '../../local/hash'
@@ -42,7 +41,7 @@ import { clearExportDestination, exportMemory } from '../commands/exportLevel/me
 import { knownTargetAvailable } from '../commands/exportLevel/ownership'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile } from '../file'
-import { exportUsed, firstSaveDone, markFirstSaveDone } from '../file/flags'
+import { firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
 import { withSwitchRequest, type SwitchRequest } from '../switchRequest'
 import {
@@ -102,7 +101,7 @@ import {
     storageNote,
 } from './preview'
 import { exclusive } from './queue'
-import { finishSave, savedSize, startSave, startWrite, tracked } from './report'
+import { builtIn, finishSave, savedSize, startSave, startWrite, tracked } from './report'
 import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './saveAttempt'
 import { unlinkSession } from './unlink'
 import { refreshBinding } from './watch'
@@ -342,14 +341,16 @@ const feedback = (built: BuiltSave, kind: 'saved' | 'download', name: string) =>
 
 /**
  * The line for a Save refused while an import is pending. While storing is paused full, the import
- * cannot store until the user frees space, and the line says so. Otherwise it says that the file
- * could not be read completely.
+ * cannot store until the user frees space, and the line says so. After any other storage failure
+ * the file was read, so the line says only that it could not be prepared. Otherwise it says that
+ * the file could not be read completely.
  */
 const importingText = (source: string) => {
     const status = storageStatus.value
-    return status?.mode === 'stored' && status.reason === 'full'
-        ? () => i18n.value.save.notKeptFull
-        : interpolate(() => i18n.value.save.notKept, source)
+    if (status?.mode === 'stored' && status.reason === 'full')
+        return () => i18n.value.save.notKeptFull
+    if (status?.reason === 'failed') return interpolate(() => i18n.value.save.buildFailed, source)
+    return interpolate(() => i18n.value.save.notKept, source)
 }
 
 /**
@@ -1427,6 +1428,10 @@ const notFoundSaveAs = async (env: Env) => {
     const name = await suggestion(env, stem)
     const input = await dialogInput(env, 'saveAs', name, [])
     const result = await saveUi.saveDialog(input)
+    if (result?.action === 'export') {
+        await openExport()
+        return
+    }
     if (result?.action !== 'save') return
     await afterOutcome(
         env,
@@ -1530,10 +1535,6 @@ const dialogInput = async (
                   }
                 : { kind: 'notLoaded' }
             : { kind: 'none' },
-        exportLine:
-            exportMemory.target !== undefined ||
-            exportMemory.sourceName !== undefined ||
-            (launch.isExistingUser && !exportUsed.value),
         ...(await storageLineOf()),
         peeking: isPeeking.value,
         estimate: {
@@ -1862,7 +1863,6 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
             ? { kind: 'available', ticked: true, locked: false }
             : { kind: 'insecure' },
         bgm: sessionBgmRow(estimate),
-        exportLine: false,
         ...(await storageLineOf()),
         peeking: false,
         estimate: {
@@ -1962,9 +1962,11 @@ const sessionFileBody = async (
     env: Env,
     request: SessionFileRequest,
 ): Promise<Outcome | Dismissed> => {
+    let began = 0
     const built = await session
-        .preparing(() =>
-            env.worker.call(
+        .preparing(() => {
+            began = performance.now()
+            return env.worker.call(
                 'buildSave',
                 {
                     chainId: request.chainId,
@@ -1990,9 +1992,10 @@ const sessionFileBody = async (
                     },
                 },
                 { timeoutMs: 10 * 60_000 },
-            ),
-        )
+            )
+        })
         .catch((error: unknown) => fileError(error))
+    if (began) builtIn(performance.now() - began)
     session.checkpoint()
     if (built instanceof FileError) return { kind: 'failed', error: built, name: request.fileName }
     if ('refused' in built)

@@ -86,6 +86,7 @@ export const style = (
     stageId: stage(1),
     beat,
     editorLane: 0,
+    laneColor: 'default',
     judgmentLineColor: 'neutral',
     judgmentLineStyle: 'default',
     leftBorderStyle: 'default',
@@ -192,7 +193,9 @@ export const goldenChart = (): FixtureChart => ({
                 eventEase: 'outQuad',
             },
         ],
-        stageStyleEvents: [style(1, { judgmentLineColor: 'cyan', leftBorderStyle: 'light' })],
+        stageStyleEvents: [
+            style(1, { laneColor: 'red', judgmentLineColor: 'cyan', leftBorderStyle: 'light' }),
+        ],
         stageTransformEvents: [
             {
                 stageId: stage(2),

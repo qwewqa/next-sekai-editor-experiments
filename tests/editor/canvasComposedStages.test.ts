@@ -52,6 +52,7 @@ const chart = (): Chart => ({
             stageId,
             beat: 0,
             editorLane: 0,
+            laneColor: 'default',
             judgmentLineColor: 'neutral',
             judgmentLineStyle: 'default',
             leftBorderStyle: 'default',
@@ -67,13 +68,14 @@ const chart = (): Chart => ({
 })
 
 const fixture = (source = chart()) => {
-    const fills: { alpha: number; points: number[][] }[] = []
+    const fills: { alpha: number; color: string; points: number[][] }[] = []
     const strokes: { alpha: number; points: number[][]; clip?: number[][] }[] = []
     let points: number[][] = []
     let clip: number[][] | undefined
     const clips: (number[][] | undefined)[] = []
     const ctx = {
         globalAlpha: 1,
+        fillStyle: '',
         save() {
             clips.push(clip)
         },
@@ -94,7 +96,7 @@ const fixture = (source = chart()) => {
             points.push(p)
         },
         fill() {
-            fills.push({ alpha: this.globalAlpha, points })
+            fills.push({ alpha: this.globalAlpha, color: this.fillStyle, points })
         },
         stroke() {
             strokes.push({ alpha: this.globalAlpha, points, clip })
@@ -163,6 +165,7 @@ test('stationary stage stretches paint once even when identical event endpoints 
 test('stationary masks retain slices when painted opacity, borders or divisions change', () => {
     const changes = [
         { laneAlpha: 0.2 },
+        { laneColor: 'red' as const },
         { isFullWidth: true },
         { divisionLineAlpha: 0.2 },
         { leftBorderStyle: 'light' as const },
@@ -190,6 +193,40 @@ test('stationary masks retain slices when painted opacity, borders or divisions 
     const { context, fills } = fixture(source)
     drawComposedStages(context, { min: 1, max: 3 }, fullScope)
     assert.ok(fills.length >= 16)
+})
+
+test('composed stage surfaces take the tint of their lane color', () => {
+    const tinted = (laneColor: Chart['stageStyleEvents'][number]['laneColor']) => {
+        const source = chart()
+        source.stageStyleEvents = [0, 4].map((beat) => ({
+            ...source.stageStyleEvents[0]!,
+            beat,
+            laneColor,
+        }))
+        const { context, fills } = fixture(source)
+        drawComposedStages(context, { min: 0, max: 4 }, fullScope)
+        return fills.map(({ color }) => color)
+    }
+    // Default keeps the usual tint, and colors with swatches of their own get theirs.
+    assert.ok(tinted('default').every((color) => color === '#83b6d0'))
+    assert.ok(tinted('red').every((color) => color === '#d6737b'))
+    // Cyan and Blue are not the faint guide colors, which Default’s tint would hide.
+    assert.ok(tinted('cyan').every((color) => color === '#40e0d0'))
+
+    // A fade passes through the tints between, and ends on the last one.
+    const source = chart()
+    source.stageStyleEvents = [
+        { ...source.stageStyleEvents[0]!, beat: 1 },
+        { ...source.stageStyleEvents[0]!, beat: 3, laneColor: 'red' },
+    ]
+    source.stageMaskEvents = source.stageMaskEvents.map((event) => ({ ...event, maskLeft: -2 }))
+    const { context, fills } = fixture(source)
+    drawComposedStages(context, { min: 1, max: 3 }, fullScope)
+    const reds = fills.map(({ color }) => parseInt(color.slice(1, 3), 16))
+    assert.ok(reds.length > 4)
+    assert.ok(reds[0]! < reds.at(-1)!)
+    assert.ok(reds.every((red, index) => index === 0 || red >= reds[index - 1]!))
+    assert.ok(reds.at(-1)! <= 0xd6 && reds[0]! >= 0x83)
 })
 
 test('horizontal culling retains crossing slices and borders just outside the pane at fractional DPR', () => {

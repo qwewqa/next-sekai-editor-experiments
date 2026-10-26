@@ -149,6 +149,21 @@ test('Alt+N focuses the action, which does not time out while focused, and Escap
     await expect(pill(page)).toHaveCount(0)
 })
 
+test('Alt+N opens History when assigned to it, with a notice visible', async ({ page }) => {
+    await boot(page)
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.keyboardShortcuts = { ...settings.keyboardShortcuts, history: 'Alt+n' }
+    })
+    await page.locator('.chart-pane').focus()
+    await notifyWithAction(page, 'Nothing to undo')
+    await expect(pill(page)).toBeVisible()
+    await page.keyboard.press('Alt+KeyN')
+    await expect(page.locator('[data-history-surface]')).toBeVisible()
+    expect(await runs(page)).toBe(0)
+    await expect(pill(page).getByRole('button', { name: 'Open History' })).not.toBeFocused()
+})
+
 test('Alt+N does nothing without an action notice', async ({ page }) => {
     await boot(page)
     await page.locator('.chart-pane').focus()
@@ -255,7 +270,7 @@ test.describe('the update line', () => {
         }
     }
 
-    test('an existing user sees Updated to version with What’s New at the bottom', async ({
+    test('an existing user sees Updated to version with Release Notes at the bottom', async ({
         page,
         context,
     }) => {
@@ -269,7 +284,7 @@ test.describe('the update line', () => {
         const toolbar = (await page.locator('[data-editor-toolbar] > div').boundingBox())!
         expect(box.y + box.height).toBeLessThanOrEqual(toolbar.y)
         const popup = page.waitForEvent('popup')
-        await pill(page).getByRole('button', { name: 'What’s New' }).click()
+        await pill(page).getByRole('button', { name: 'Release Notes' }).click()
         expect((await popup).url()).toBe(
             'https://github.com/qwewqa/next-sekai-editor-experiments/blob/main/CHANGELOG.md',
         )

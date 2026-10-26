@@ -210,6 +210,7 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
         fields: {
             '#BEAT': value(required),
             editorLane: value(),
+            laneColor: choice(range(0, 8), 0),
             // Purple, which a new style event gets.
             judgeLineColor: choice(range(0, 7), 5, required),
             judgeLineStyle: choice([0, 1], 0),

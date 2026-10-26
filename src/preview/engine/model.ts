@@ -133,6 +133,7 @@ export type StagePivotEvent = {
 
 export type StageStyleEvent = {
     time: number
+    laneColor: number
     judgeLineColor: number
     judgeLineStyle: 0 | 1
     leftBorderStyle: number

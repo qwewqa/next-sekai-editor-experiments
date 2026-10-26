@@ -16,12 +16,13 @@ import {
     assetSession,
     firstPaintBackgroundUrl,
     isAssetSafeModeActive,
+    packageUrls,
     type AssetType,
 } from '../../../preview/assets'
 import { fallbacks } from '../../../preview/assets/active'
-import { loadBuiltinInfo, type BuiltinInfo } from '../../../preview/assets/builtin'
+import { loadPackageInfo, builtinUrl, type PackageInfo } from '../../../preview/assets/builtin'
 import { choiceKey } from '../../../preview/assets/choice'
-import { rowText } from '../../../preview/assets/fallbackText'
+import { defaultName, rowText } from '../../../preview/assets/fallbackText'
 import { storedChoice, type AssetChooser } from '../../../preview/assets/files/chooser'
 import type { ServerChooser } from '../../../preview/assets/server/chooser'
 import { storedAssets, workerStore } from '../../../preview/assets/files/store'
@@ -44,10 +45,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
 const groupName = useId()
 const sources = useTemplateRef<HTMLElement>('sources')
 const noteId = useId()
-const hintId = useId()
 const hasDefault = platform.capabilities.defaultAssets
-// The web fetches no servers: a file is the only way to choose.
-const hasServers = platform.capabilities.serverFetch
 
 type Row = {
     id: string
@@ -58,61 +56,73 @@ type Row = {
     image: string | undefined
 }
 
-// Built-in's title, author and picture come from its package, read once the tab shows.
-const builtin = ref<BuiltinInfo>()
+// The Next SEKAI 02 package a type has, if any.
+const bundledId = props.type === 'skin' ? 'skin2' : props.type === 'effect' ? 'effect2' : undefined
+
+// The author and picture of Built-in, Default and Next SEKAI 02 come from their packages, read once the tab shows.
+const builtin = ref<PackageInfo>()
+const defaultInfo = ref<PackageInfo>()
+const bundledInfo = ref<PackageInfo>()
 let closed = false
+const read = (url: string | undefined, target: typeof builtin) => {
+    if (url)
+        void loadPackageInfo(url, props.type).then((info) => {
+            if (!closed) target.value = info
+        })
+}
 onMounted(() => {
-    void loadBuiltinInfo(props.type).then((info) => {
-        if (!closed) builtin.value = info
-    })
+    read(builtinUrl(props.type), builtin)
+    if (hasDefault && props.type !== 'background') read(packageUrls[props.type], defaultInfo)
+    if (hasDefault && bundledId) read(packageUrls[bundledId], bundledInfo)
 })
 onBeforeUnmount(() => (closed = true))
 
-const defaultName = computed(() =>
-    props.type === 'skin'
-        ? strings.value.defaultSkin
-        : props.type === 'particle'
-          ? strings.value.defaultParticle
-          : strings.value.default,
-)
+const defaultRowName = computed(() => defaultName(props.type))
 
 const chosen = computed(() => settings.previewAssets[props.type])
 
 const storedRow = (choice: AssetChoice & { source: 'file' | 'server' }, image?: string): Row => ({
     id: choiceKey(choice),
     choice,
-    name: interpolateRaw(
-        choice.source === 'file' ? strings.value.storedFile : strings.value.storedServer,
-        choice.title,
-    ),
+    name: choice.title,
     detail: [choice.author, displayOrigin(choice.origin)].filter(Boolean).join(' · '),
     image,
 })
 
 const rows = computed<Row[]>(() => {
-    const list: Row[] = []
+    const list: Row[] = [
+        {
+            id: 'builtin',
+            // In the apps Default is Built-in, which the setting stores as Default.
+            choice: { source: hasDefault ? 'builtin' : 'default' },
+            name: strings.value.builtin,
+            detail: builtin.value?.author ?? '',
+            image: builtin.value?.image,
+        },
+    ]
     if (hasDefault)
         list.push({
             id: 'default',
             choice: { source: 'default' },
-            name: defaultName.value,
-            detail: '',
-            // Only the background has an image of its own to show.
-            image: props.type === 'background' ? firstPaintBackgroundUrl : undefined,
+            name: defaultRowName.value,
+            detail: defaultInfo.value?.author ?? '',
+            image: props.type === 'background' ? firstPaintBackgroundUrl : defaultInfo.value?.image,
         })
-    list.push({
-        id: 'builtin',
-        // In the apps Default is Built-in, which the setting stores as Default.
-        choice: { source: hasDefault ? 'builtin' : 'default' },
-        name: strings.value.builtin,
-        detail: builtin.value?.author ?? '',
-        image: builtin.value?.image,
-    })
+    if (hasDefault && bundledId && packageUrls[bundledId]) {
+        const choice: AssetChoice = { source: 'bundled', id: bundledId }
+        list.push({
+            id: choiceKey(choice),
+            choice,
+            name: strings.value.nextSekai02,
+            detail: bundledInfo.value?.author ?? '',
+            image: bundledInfo.value?.image,
+        })
+    }
     // The stored items of this type, newest first.
     for (const meta of storedAssets.value) {
         if (meta.type !== props.type) continue
         const choice = storedChoice(meta)
-        if (choice.source === 'default' || choice.source === 'builtin') continue
+        if (choice.source !== 'file' && choice.source !== 'server') continue
         list.push(storedRow(choice, storedThumbnail(meta)))
     }
     // A choice whose package is gone still shows, so its reason can sit under it.
@@ -125,9 +135,13 @@ const rows = computed<Row[]>(() => {
     return list
 })
 
+const bundledType = { skin2: 'skin', effect2: 'effect' } as const
+
 const selectedId = computed(() => {
     const choice = chosen.value
     if (choice.source === 'file' || choice.source === 'server') return choiceKey(choice)
+    if (choice.source === 'bundled' && hasDefault && props.type === bundledType[choice.id])
+        return choiceKey(choice)
     return choice.source === 'default' && hasDefault ? 'default' : 'builtin'
 })
 
@@ -148,7 +162,11 @@ const select = (row: Row) => {
 const fallback = computed(() => fallbacks.value.find((item) => item.type === props.type))
 const noteText = computed(() => {
     if (isAssetSafeModeActive)
-        return fallback.value ? rowText(fallback.value) : hasDefault ? strings.value.safeMode : ''
+        return fallback.value
+            ? rowText(fallback.value)
+            : hasDefault
+              ? interpolateRaw(strings.value.safeMode, defaultRowName.value)
+              : ''
     return fallback.value ? rowText(fallback.value) : ''
 })
 const hasWarning = computed(() => !!fallback.value)
@@ -258,26 +276,15 @@ onBeforeUnmount(() => {
                 {{ i18n.modals.loading.loading }}
             </p>
         </template>
-        <p v-if="type === 'effect'" class="px-3 pt-3 text-sm text-fg/80" data-effect-hint>
-            {{ strings.effectHint }}
-        </p>
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-3">
+        <div class="px-3 pt-3">
             <button
                 type="button"
                 class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                :aria-describedby="hasServers ? hintId : undefined"
                 data-asset-choose
                 @click="chooser.show()"
             >
                 {{ strings.choose }}
             </button>
-            <span
-                v-if="hasServers"
-                :id="hintId"
-                class="min-w-0 text-sm text-fg/80"
-                data-asset-choose-hint
-                >{{ strings.chooseHint }}</span
-            >
         </div>
     </div>
 </template>

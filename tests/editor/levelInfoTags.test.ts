@@ -50,3 +50,16 @@ test('an edit that splits a title with a comma makes two tags', () => {
     const comma: readonly LevelInfoTag[] = [{ title: 'Rock, Pop' }]
     assert.deepEqual(parseTags('Rock, Pop ', comma), [{ title: 'Rock' }, { title: 'Pop' }])
 })
+
+test('an edited line also splits on the full-width, ideographic and half-width ideographic commas', () => {
+    assert.deepEqual(parseTags('原创，困难、练习､Hard,Easy', []), [
+        { title: '原创' },
+        { title: '困难' },
+        { title: '练习' },
+        { title: 'Hard' },
+        { title: 'Easy' },
+    ])
+    // A line left as shown still keeps a title that holds one.
+    const held: readonly LevelInfoTag[] = [{ title: 'A、B' }]
+    assert.equal(parseTags(tagsText(held), held), held)
+})

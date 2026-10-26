@@ -6,12 +6,15 @@ import BaseModal from '../../modals/BaseModal.vue'
 import { interpolate } from '../../utils/interpolate'
 import { formatCount, formatSize } from '../../utils/size'
 import { nameProblem, showsAtOnce } from '../commands/exportLevel/fileName'
+import { exportUsed } from '../file/flags'
 import type { SaveDialogInput, SaveDialogResult } from './dialogs'
+import ExportLine from './ExportLine.vue'
 import { totalOf } from './total'
 
 // The Save dialog: the first Save, Save As… and Recent Sessions' Save…. File Name,
 // History and BGM with their sizes and disabled states, the total, and
-// the notes that apply. It names the file only: the session's Name is Level Info's.
+// the notes that apply (the Export line leads the body until this browser has exported).
+// It names the file only: the session's Name is Level Info's.
 const props = defineProps<{ input: SaveDialogInput }>()
 
 const emit = defineEmits<{ close: [result: SaveDialogResult] }>()
@@ -107,25 +110,23 @@ const totalText = computed(() =>
 
 const keptText = (name: string) => interpolate(() => i18n.value.save.keptOptions, name)()
 
-// --- The Export line: "Export Level Data…" in it is the link. A character touching it on either
-// side stays on its line, so a Japanese 「 never ends a line before it.
-const hint = computed(() => i18n.value.save.exportHint)
-const link = computed(() => i18n.value.commands.exportLevel.title)
-const hintParts = computed(() => {
-    const at = hint.value.indexOf(link.value)
-    if (at < 0) return undefined
-    const before = hint.value.slice(0, at)
-    const after = hint.value.slice(at + link.value.length)
-    const lead = /\S$/u.exec(before)?.[0] ?? ''
-    const trail = /^\S/u.exec(after)?.[0] ?? ''
-    return {
-        before: before.slice(0, before.length - lead.length),
-        lead,
-        link: link.value,
-        trail,
-        after: after.slice(trail.length),
-    }
+// --- The Export line: emphasised and first in the body until this browser has exported, then the
+// small line in the notes. File Name's description names the situation lines and the emphasised
+// line, so a screen reader reads them on arriving in the field, where focus starts.
+const showExport = computed(() => props.input.kind !== 'saveToFile')
+const emphasised = computed(() => showExport.value && !exportUsed.value)
+const described = computed(() => {
+    const named = [
+        ...props.input.lines.map((_, i) => `${ids}-line-${i}`),
+        emphasised.value ? `${ids}-export` : '',
+        shownProblem.value ? `${ids}-problem` : '',
+    ].filter(Boolean)
+    return named.length ? named.join(' ') : undefined
 })
+const hasNotes = computed(
+    () =>
+        (showExport.value && !emphasised.value) || !!props.input.storageLine || props.input.peeking,
+)
 
 const title = computed(() =>
     props.input.kind === 'saveAs' ? i18n.value.save.titleAs : i18n.value.save.title,
@@ -170,7 +171,15 @@ const boxClass =
             @submit.prevent="submit"
             @modalcancel="cancel"
         >
-            <p v-for="(line, i) in input.lines" :key="i" data-save-line>{{ line() }}</p>
+            <p v-for="(line, i) in input.lines" :id="`${ids}-line-${i}`" :key="i" data-save-line>
+                {{ line() }}
+            </p>
+            <ExportLine
+                v-if="emphasised"
+                :id="`${ids}-export`"
+                emphasis
+                @export="emit('close', { action: 'export' })"
+            />
 
             <div class="flex flex-col gap-1">
                 <!-- Label and field share a row while the field keeps about 12rem. -->
@@ -186,7 +195,7 @@ const boxClass =
                             autocomplete="off"
                             :placeholder="placeholder"
                             :aria-invalid="!!shownProblem"
-                            :aria-describedby="shownProblem ? `${ids}-problem` : undefined"
+                            :aria-describedby="described"
                             data-save-name
                             @input="onInput"
                             @blur="reveal"
@@ -268,30 +277,11 @@ const boxClass =
                 {{ totalText }}
             </p>
 
-            <div class="flex flex-col gap-1 text-sm">
-                <p v-if="input.exportLine" data-save-export>
-                    <template v-if="hintParts"
-                        >{{ hintParts.before
-                        }}<span class="whitespace-nowrap"
-                            >{{ hintParts.lead
-                            }}<button
-                                type="button"
-                                class="focus-out whitespace-normal rounded-sm underline outline outline-2 outline-transparent"
-                                @click="emit('close', { action: 'export' })"
-                            >
-                                {{ hintParts.link }}</button
-                            >{{ hintParts.trail }}</span
-                        >{{ hintParts.after }}</template
-                    >
-                    <button
-                        v-else
-                        type="button"
-                        class="focus-out rounded-sm text-left underline outline outline-2 outline-transparent"
-                        @click="emit('close', { action: 'export' })"
-                    >
-                        {{ hint }}
-                    </button>
-                </p>
+            <div v-if="hasNotes" class="flex flex-col gap-1 text-sm">
+                <ExportLine
+                    v-if="showExport && !emphasised"
+                    @export="emit('close', { action: 'export' })"
+                />
                 <p v-if="input.storageLine" class="text-fg/80" data-save-storage-line>
                     {{ input.storageLine() }}
                 </p>

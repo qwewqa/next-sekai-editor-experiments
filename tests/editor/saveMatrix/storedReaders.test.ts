@@ -65,3 +65,35 @@ test('a binding refresh whose record read fails changes nothing', async () => {
     assert.equal(session.edited, true)
     assert.deepEqual((session.chain as { replaced?: unknown }).replaced, replaced)
 })
+
+test('a binding refresh reads an untouched continuation’s record, and not a new chain’s', async () => {
+    localStorage.clear()
+    const replaced = { by: 'other', at: 5, name: 'a.nxsp' }
+    const make = (extra: object) => ({
+        id: 's',
+        chainId: 'c',
+        stored: false,
+        edited: false,
+        chain: { file: { name: 'a.nxsp' } },
+        ...extra,
+    })
+    let reads = 0
+    const worker = {
+        call: () => {
+            reads += 1
+            return Promise.resolve({ replaced })
+        },
+    }
+    const continuation = make({ continuation: true })
+    await refreshBinding(worker, { session: continuation } as never)
+    assert.equal(reads, 1)
+    assert.equal(continuation.edited, true)
+    assert.deepEqual((continuation.chain as { replaced?: unknown }).replaced, replaced)
+    // A new chain and an unstored fork have no record yet: nothing is read.
+    for (const extra of [{}, { continuation: true, forkOf: 'p' }]) {
+        const session = make(extra)
+        await refreshBinding(worker, { session } as never)
+        assert.equal(reads, 1)
+        assert.equal(session.edited, false)
+    }
+})

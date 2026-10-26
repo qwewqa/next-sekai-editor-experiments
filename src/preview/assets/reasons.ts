@@ -8,6 +8,7 @@ export type ReasonKey =
     | 'serverFailed'
     | 'offline'
     | 'invalid'
+    | 'bundledFailed'
     | 'defaultFailed'
     | 'builtinFailed'
 
@@ -19,6 +20,8 @@ export const reasonKey = (choice: AssetChoice, status: AssetStatus): ReasonKey |
             return 'defaultFailed'
         case 'builtin':
             return 'builtinFailed'
+        case 'bundled':
+            return 'bundledFailed'
         case 'file':
             // Storage that cannot be opened may still hold the file: it is not gone.
             return status.reason === 'corrupt'

@@ -23,6 +23,7 @@ import { ownDeviceId } from '../save/env'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
+import { isConsumed } from '../controls/saveChord'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
@@ -1067,7 +1068,7 @@ const onKeyup = (event: KeyboardEvent) => {
 }
 
 const onKeydown = (event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.isComposing) return
+    if (isConsumed(event) || event.isComposing) return
     // The list itself holds focus for a moment as it opens, until the cursor's row takes it. A key
     // in that moment acts on the cursor as it would a moment later.
     if (

@@ -17,6 +17,7 @@ import {
 import { isDragging } from './gestures/recognizers/drag'
 import { hasMouseControls } from './mouse'
 import { clearPageSelection } from './pageSelection'
+import { cancelSavePage, isConsumed, isSaveChord } from './saveChord'
 
 export const isTextEntry = (target: EventTarget | null) =>
     target instanceof HTMLTextAreaElement ||
@@ -54,6 +55,20 @@ const isNoticeChord = (event: KeyboardEvent) =>
     event.code === 'KeyN' && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
 
 const isApple = isApplePlatform()
+
+// The registered commands the key's assigned bindings name. Bindings naming commands not
+// registered yet wait for them, and never mask others.
+const matchedBindings = (event: KeyboardEvent) =>
+    matchBindings(
+        Object.fromEntries(
+            Object.entries(settings.keyboardShortcuts).filter(([name]) => isCommandName(name)),
+        ),
+        event,
+        isApple,
+    )
+
+/** Whether a command is assigned exactly this chord. */
+export const isAssignedChord = (event: KeyboardEvent) => matchedBindings(event).exact
 
 const isInToolDialog = (element: Element | null) => !!element?.closest('[data-tool-dialog]')
 
@@ -106,30 +121,21 @@ const returnsDeselect = (element: Element | null) => {
     )
 }
 
-/** Ctrl+S, or Cmd+S on Apple keyboards: Save's fixed alias, outside the customizable map. */
-export const isSaveChord = (event: KeyboardEvent) =>
-    isCommandChord(event) && !event.shiftKey && event.key.toLowerCase() === 's'
-
 const onKeydown = (event: KeyboardEvent) => {
-    if (isBlockingModalOpen.value || pressesButton(event)) return
+    // A modal takes no commands.
+    if (isBlockingModalOpen.value) return
+    if (pressesButton(event)) return
     // An open tool dialog takes Escape.
     if (isToolDialogOpen.value && event.key === 'Escape') return
 
     const commandChord = isCommandChord(event) && isCharacter(event.key)
     const active = document.activeElement
-    // Bindings naming commands not registered yet wait for them, and never mask others.
-    const matched = matchBindings(
-        Object.fromEntries(
-            Object.entries(settings.keyboardShortcuts).filter(([name]) => isCommandName(name)),
-        ),
-        event,
-        isApple,
-    )
+    const matched = matchedBindings(event)
     // Ctrl/Cmd+S is Save's fixed alias, unless a binding takes that chord itself.
     const alias = !matched.exact && isSaveChord(event)
     const names: CommandName[] = alias ? ['save'] : matched.names.filter(isCommandName)
     const exact = alias || matched.exact
-    // Alt+N belongs to the notice card, even where that does not act; never plain n.
+    // Alt+N belongs to the notice card unless a command is assigned it; never plain n.
     if (!exact && isNoticeChord(event)) return
     // Bubble-phase only: field/menu/drawer/drag handlers keep first refusal. This
     // exception enables just the bound Deselect action, never other Escape bindings.
@@ -152,11 +158,11 @@ const onKeydown = (event: KeyboardEvent) => {
         void runCommand(commands.deselect, 'key')
         return
     }
-    // A field showing its committed value passes undo and redo to the editor.
-    const passesHistory =
+    // A field showing its committed value passes undo, redo and save to the editor.
+    const passesToEditor =
         commandChord &&
         isTextEntry(active) &&
-        names.some((name) => name === 'undo' || name === 'redo') &&
+        names.some((name) => name === 'undo' || name === 'redo' || name === 'save') &&
         !holdsTyping(active)
     // In docks, fields keep their keys; other controls pass only unclaimed Ctrl or Cmd chords.
     // Tool dialogs float over the chart, so only their fields and selects hold keys that way.
@@ -165,8 +171,9 @@ const onKeydown = (event: KeyboardEvent) => {
         takesDockKeys(active) ||
         (inDialog && (isTextEntry(active) || active instanceof HTMLSelectElement))
     ) {
-        if (!commandChord || event.defaultPrevented || (isTextEntry(active) && !passesHistory))
+        if (!commandChord || isConsumed(event) || (isTextEntry(active) && !passesToEditor)) {
             return
+        }
     }
     if (inDialog && active && movesFocus(active, event.key)) return
 
@@ -187,7 +194,8 @@ const onKeydown = (event: KeyboardEvent) => {
     // A command chord has no native use outside text entry, so selects and toggles drop it.
     if (
         keepsDefault(event) &&
-        !(isCommandChord(event) && (passesHistory || !isTextEntry(event.target)))
+        !isSaveChord(event) &&
+        !(isCommandChord(event) && (passesToEditor || !isTextEntry(event.target)))
     )
         return
 
@@ -207,10 +215,12 @@ export const useKeyboardControl = () => {
     )
 
     onMounted(() => {
+        addEventListener('keydown', cancelSavePage, true)
         addEventListener('keydown', onKeydown)
     })
 
     onUnmounted(() => {
+        removeEventListener('keydown', cancelSavePage, true)
         removeEventListener('keydown', onKeydown)
     })
 }

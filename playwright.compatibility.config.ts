@@ -3,26 +3,35 @@ import config from './playwright.config'
 
 // Parallel local runs can each choose a free preview server port.
 // CI runs under xvfb-run, which gives headless Firefox a WebGL2 context.
-// CI runs the storage projects (`*-storage`) as a job of their own, beside the others.
+// CI runs the storage projects (`*-storage`) as jobs of their own, beside the others.
 const previewPort = process.env.PLAYWRIGHT_PREVIEW_PORT ?? '5211'
 const previewUrl = `http://127.0.0.1:${previewPort}`
 
-const storageSpecs = [
+// The storage core, which every push runs.
+const coreStorageSpecs = [
     'storageHandshake.spec.ts',
     'storageCommitOnUnload.spec.ts',
     'storageWorker.spec.ts',
     'storageFlush.spec.ts',
     // The journal's kill tests: page.close() in Firefox and WebKit.
     'journalKill.spec.ts',
+    // Saving where there's no save picker: the download flow.
+    'saveDownload.spec.ts',
+]
+// The slow specs, which browsers-full.yml adds: about 12 of the 18 minutes of Firefox storage.
+const slowStorageSpecs = [
     // Startup, the recovery order and the auto save migration.
     'startupSessions.spec.ts',
     // Opening a `.nxsp` and its background import.
     'openProject.spec.ts',
-    // Saving where there's no save picker: the download flow.
-    'saveDownload.spec.ts',
     // The v1 web storage fixtures seeded into a profile and read by the editor.
     'webStorageV1.spec.ts',
 ]
+// NSE_STORAGE_SET=core runs the core alone (check.yml); otherwise all of them, as a local run does.
+const storageSpecs =
+    process.env.NSE_STORAGE_SET === 'core'
+        ? coreStorageSpecs
+        : [...coreStorageSpecs, ...slowStorageSpecs]
 
 export default defineConfig({
     ...config,
@@ -33,6 +42,11 @@ export default defineConfig({
         'assetSelectGap.spec.ts',
     ],
     outputDir: 'test-results-compatibility',
+    // Firefox under xvfb sometimes fails to create its first WebGL2 context. A test that passes
+    // on its retry is reported as flaky.
+    retries: process.env.CI ? 1 : 0,
+    // A broken build or an environment fault fails every test; stop after a few instead of retrying all.
+    maxFailures: process.env.CI ? 4 : 0,
     use: {
         ...config.use,
         launchOptions: {},

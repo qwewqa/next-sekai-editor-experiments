@@ -1,59 +1,18 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import test from 'node:test'
-import { gzipSync } from 'node:zlib'
+import { readZip } from '../../builtin-assets/zip.mjs'
 import {
+    createScp,
     downloadPackage,
     itemDetailsUrl,
     refreshPreviewAssetLock,
     stagePreviewAssets,
 } from '../../scripts/release-assets.mjs'
-
-const hash = (bytes) => createHash('sha1').update(bytes).digest('hex')
-const data = gzipSync(JSON.stringify({ width: 1, height: 1, sprites: [], effects: [] }))
-const texture = Buffer.from('texture fixture')
-
-function server(t, options = {}) {
-    const urls = []
-    t.mock.method(globalThis, 'fetch', async (input) => {
-        const url = new URL(input)
-        urls.push(url.href)
-        if (url.pathname.endsWith('/data')) return new Response(data)
-        if (url.pathname.endsWith('/texture')) return new Response(texture)
-        return Response.json({
-            item: {
-                name: 'fixture',
-                title: options.title || 'Fixture skin',
-                author: 'Fixture author',
-                tags: [{ title: options.likes || '100', icon: 'heartHollow' }],
-                authorUser: { name: 'author', tags: [{ title: options.authorTag || '#OWNER' }] },
-                data: {
-                    url: '/data',
-                    hash: options.missingHash
-                        ? undefined
-                        : options.badHash
-                          ? '0'.repeat(40)
-                          : hash(data),
-                },
-                texture: { url: 'https://cdn.example/texture', hash: hash(texture) },
-            },
-        })
-    })
-    return urls
-}
-
-async function temporary(t) {
-    const directory = await mkdtemp(join(tmpdir(), 'sekai-assets-test-'))
-    t.after(async () => {
-        assert.equal(dirname(directory), resolve(tmpdir()))
-        assert.ok(directory.startsWith(join(tmpdir(), 'sekai-assets-test-')))
-        await rm(directory, { recursive: true, force: true })
-    })
-    return directory
-}
+import { audio, data, hash, server, temporary, thumbnail } from './assetFixture.mjs'
 
 test('public and API links resolve to the same item endpoint', () => {
     const expected = 'https://example.com/server/sonolus/skins/test?localization=en'
@@ -76,7 +35,41 @@ test('downloads resolve relative resources and preserve attribution', async (t) 
         'https://example.com/server/sonolus/skins/test',
         'https://example.com/data',
         'https://cdn.example/texture',
+        'https://cdn.example/thumbnail',
     ])
+})
+
+test('a package carries the item picture, and one without a picture has none', async (t) => {
+    const options = {}
+    server(t, options)
+    const zip = readZip((await downloadPackage('https://example.com/skins/test', 'skins')).bytes)
+    assert.deepEqual(zip.get('thumbnail'), thumbnail)
+    const item = JSON.parse(zip.get('sonolus/skins/fixture')).item
+    assert.equal(item.thumbnail.url, '/thumbnail')
+    assert.equal(item.thumbnail.hash, hash(thumbnail))
+    options.noThumbnail = true
+    const bare = readZip((await downloadPackage('https://example.com/skins/test', 'skins')).bytes)
+    assert.equal(bare.has('thumbnail'), false)
+    assert.equal('thumbnail' in JSON.parse(bare.get('sonolus/skins/fixture')).item, false)
+})
+
+test('a picture hash mismatch fails instead of packaging a modified picture', async (t) => {
+    server(t, { badThumbnail: true })
+    await assert.rejects(
+        downloadPackage('https://example.com/skins/test', 'skins'),
+        /hash mismatch/,
+    )
+})
+
+test('an effect package holds its audio in place of a texture', async (t) => {
+    server(t)
+    const zip = readZip(
+        (await downloadPackage('https://example.com/effects/test', 'effects')).bytes,
+    )
+    assert.deepEqual(zip.get('audio'), audio)
+    assert.equal(zip.has('texture'), false)
+    const item = JSON.parse(zip.get('sonolus/effects/fixture')).item
+    assert.equal(item.audio.url, '/audio')
 })
 
 test('a server hash mismatch fails instead of packaging modified resources', async (t) => {
@@ -105,24 +98,126 @@ test('refresh pins Coconut resources and default staging uses the lock without i
             'https://coconut.sonolus.com/next-sekai/sonolus/particles/coconut-next-sekai-1',
         ),
     )
+    assert.ok(
+        urls.includes('https://coconut.sonolus.com/next-sekai/sonolus/skins/coconut-next-sekai-2'),
+    )
+    assert.ok(
+        urls.includes(
+            'https://coconut.sonolus.com/next-sekai/sonolus/effects/coconut-next-sekai-2',
+        ),
+    )
+    assert.ok(
+        urls.includes(
+            'https://coconut.sonolus.com/next-sekai/sonolus/effects/coconut-next-sekai-1',
+        ),
+    )
+    assert.equal(lock.particle.thumbnail, false)
+    assert.equal(lock.effect.thumbnail, false)
+    assert.equal(lock.effect2.thumbnail, false)
+    assert.equal('thumbnail' in lock.particle.item, false)
+    assert.equal('thumbnail' in lock.skin, false)
+    assert.equal(lock.skin2.item.thumbnail.hash, hash(thumbnail))
     assert.equal(lock.skin.item.data.url, 'https://coconut.sonolus.com/data')
     assert.equal(lock.skin.item.data.hash, hash(data))
     urls.length = 0
     const assets = await stagePreviewAssets(directory, directory, {})
-    assert.equal(assets.length, 2)
+    assert.deepEqual(
+        assets.map((asset) => asset.file),
+        [
+            'resource/skin.scp',
+            'resource/skin2.scp',
+            'resource/particle.scp',
+            'resource/effect.scp',
+            'resource/effect2.scp',
+        ],
+    )
     assert.deepEqual(urls, [
         'https://coconut.sonolus.com/data',
         'https://cdn.example/texture',
+        'https://cdn.example/thumbnail',
         'https://coconut.sonolus.com/data',
         'https://cdn.example/texture',
+        'https://cdn.example/thumbnail',
+        'https://coconut.sonolus.com/data',
+        'https://cdn.example/texture',
+        'https://coconut.sonolus.com/data',
+        'https://cdn.example/audio',
+        'https://coconut.sonolus.com/data',
+        'https://cdn.example/audio',
     ])
+    const parts = (asset) => readZip(readFileSync(join(directory, asset.file)))
+    assert.equal(parts(assets[0]).has('thumbnail'), true)
+    assert.equal(parts(assets[1]).has('thumbnail'), true)
+    assert.equal(parts(assets[2]).has('thumbnail'), false)
+    assert.equal(parts(assets[3]).has('thumbnail'), false)
+    assert.equal(parts(assets[4]).has('thumbnail'), false)
     for (const asset of assets) {
         const bytes = await readFile(join(directory, asset.file))
         assert.equal(bytes.length, asset.bytes)
         assert.equal(createHash('sha256').update(bytes).digest('hex'), asset.sha256)
     }
     assert.equal(assets[0].sha256, lock.skin.sha256)
-    assert.equal(assets[1].sha256, lock.particle.sha256)
+    assert.equal(assets[1].sha256, lock.skin2.sha256)
+    assert.equal(assets[2].sha256, lock.particle.sha256)
+    assert.equal(assets[3].sha256, lock.effect.sha256)
+    assert.equal(assets[4].sha256, lock.effect2.sha256)
+})
+
+test('refresh keeps a left-out picture, and an override cannot bring it back', async (t) => {
+    server(t)
+    const directory = await temporary(t)
+    await refreshPreviewAssetLock(directory, {})
+    const lockPath = join(directory, 'deployment/preview-assets.lock.json')
+    const lock = JSON.parse(await readFile(lockPath, 'utf8'))
+    lock.skin.thumbnail = false
+    await writeFile(lockPath, JSON.stringify(lock))
+    const refreshed = await refreshPreviewAssetLock(directory, {})
+    assert.equal(refreshed.skin.thumbnail, false)
+    assert.equal('thumbnail' in refreshed.skin.item, false)
+    assert.equal(refreshed.skin2.thumbnail, undefined)
+    const staged = await stagePreviewAssets(directory, directory, {
+        PREVIEW_SKIN_URL: 'https://example.com/skins/custom',
+        PREVIEW_SKIN2_URL: 'https://example.com/skins/custom2',
+        PREVIEW_PARTICLE_URL: 'https://example.com/particles/custom',
+    })
+    const picture = (file) => readZip(readFileSync(join(directory, file))).has('thumbnail')
+    assert.equal(picture(staged[0].file), false)
+    assert.equal(picture(staged[1].file), true)
+    assert.equal(picture(staged[2].file), false)
+    // The item holds no locator for the left-out picture, though the server offered one.
+    const item = (file, category, name) =>
+        JSON.parse(readZip(readFileSync(join(directory, file))).get(`sonolus/${category}/${name}`))
+            .item
+    assert.equal('thumbnail' in item(staged[2].file, 'particles', 'fixture'), false)
+    assert.equal('thumbnail' in item(staged[1].file, 'skins', 'fixture'), true)
+})
+
+test('the left-out pictures are pinned by the script, not only by the lock', async (t) => {
+    server(t)
+    const directory = await temporary(t)
+    await refreshPreviewAssetLock(directory, {})
+    const lockPath = join(directory, 'deployment/preview-assets.lock.json')
+    const lock = JSON.parse(await readFile(lockPath, 'utf8'))
+    for (const name of ['particle', 'effect', 'effect2']) {
+        delete lock[name].thumbnail
+        lock[name].item.thumbnail = { url: 'https://cdn.example/thumbnail', hash: hash(thumbnail) }
+    }
+    await writeFile(lockPath, JSON.stringify(lock))
+    const staged = await stagePreviewAssets(directory, directory, {})
+    for (const asset of staged.filter((asset) => /particle|effect/.test(asset.file)))
+        assert.equal(readZip(readFileSync(join(directory, asset.file))).has('thumbnail'), false)
+    const refreshed = await refreshPreviewAssetLock(directory, {})
+    for (const name of ['particle', 'effect', 'effect2'])
+        assert.equal(refreshed[name].thumbnail, false)
+})
+
+test('a locked item without a picture packages none', async (t) => {
+    server(t, { noThumbnail: true })
+    const directory = await temporary(t)
+    await refreshPreviewAssetLock(directory, {})
+    const assets = await stagePreviewAssets(directory, directory, {})
+    assert.equal(assets.length, 5)
+    assert.equal(readZip(readFileSync(join(directory, assets[0].file))).has('thumbnail'), false)
 })
 
 test('upstream item metadata only changes packaged assets after an explicit refresh', async (t) => {
@@ -200,7 +295,10 @@ test('configured servers replace the defaults', async (t) => {
     const directory = await temporary(t)
     await stagePreviewAssets(directory, directory, {
         PREVIEW_SKIN_URL: 'https://example.com/skins/custom',
+        PREVIEW_SKIN2_URL: 'https://example.com/skins/custom2',
         PREVIEW_PARTICLE_URL: 'https://example.com/particles/custom',
+        PREVIEW_EFFECT_URL: 'https://example.com/effects/custom',
+        PREVIEW_EFFECT2_URL: 'https://example.com/effects/custom2',
     })
     assert.ok(urls.includes('https://example.com/sonolus/skins/custom'))
     assert.ok(urls.includes('https://example.com/sonolus/particles/custom'))
@@ -217,7 +315,7 @@ test('one configured server preserves the other locked asset', async (t) => {
     })
     assert.equal(assets[0].source, 'https://example.com/sonolus/skins/custom')
     assert.equal(
-        assets[1].source,
+        assets[2].source,
         'https://coconut.sonolus.com/next-sekai/sonolus/particles/coconut-next-sekai-1',
     )
     assert.deepEqual(
@@ -226,7 +324,7 @@ test('one configured server preserves the other locked asset', async (t) => {
     )
 })
 
-test('local staging requires a skin, accepts optional particles, and never fetches', async (t) => {
+test('local staging requires all five packages and never fetches', async (t) => {
     t.mock.method(globalThis, 'fetch', () => assert.fail('local build fetched from a server'))
     const directory = await temporary(t)
     const output = join(directory, 'output')
@@ -234,14 +332,43 @@ test('local staging requires a skin, accepts optional particles, and never fetch
     await assert.rejects(stagePreviewAssets(directory, output, env), { code: 'ENOENT' })
     await mkdir(join(directory, 'public/resource'), { recursive: true })
     await writeFile(join(directory, 'public/resource/skin.scp'), 'local skin')
-    const assets = await stagePreviewAssets(directory, output, env)
+    await assert.rejects(stagePreviewAssets(directory, output, env), { code: 'ENOENT' })
+    const local = (name, category, extra = {}, item = {}) =>
+        createScp({
+            [`sonolus/${category}/list`]: Buffer.from(
+                JSON.stringify({ items: [{ name: 'x', ...item }] }),
+            ),
+            data,
+            ...extra,
+        })
+    const put = (name, bytes) => writeFile(join(directory, `public/resource/${name}.scp`), bytes)
+    await put('particle', local('particle', 'particles'))
+    await assert.rejects(stagePreviewAssets(directory, output, env), { code: 'ENOENT' })
+    await put('skin2', 'local skin 2')
+    await put('effect', local('effect', 'effects'))
+    await put('effect2', local('effect2', 'effects'))
     assert.deepEqual(
-        assets.map((asset) => asset.file),
-        ['resource/skin.scp'],
+        (await stagePreviewAssets(directory, output, env)).map((asset) => asset.file),
+        [
+            'resource/skin.scp',
+            'resource/skin2.scp',
+            'resource/particle.scp',
+            'resource/effect.scp',
+            'resource/effect2.scp',
+        ],
     )
-    assert.equal(await readFile(join(output, 'resource/skin.scp'), 'utf8'), 'local skin')
-    await writeFile(join(directory, 'public/resource/particle.scp'), 'local particle')
-    assert.equal((await stagePreviewAssets(directory, output, env)).length, 2)
+    // A package whose item leaves its picture out may carry neither the entry nor a locator.
+    for (const name of ['particle', 'effect', 'effect2']) {
+        const category = name === 'particle' ? 'particles' : 'effects'
+        for (const bad of [
+            local(name, category, { thumbnail: thumbnail }),
+            local(name, category, {}, { thumbnail: { url: '/thumbnail' } }),
+        ]) {
+            await put(name, bad)
+            await assert.rejects(stagePreviewAssets(directory, output, env), /leaves out/)
+        }
+        await put(name, local(name, category))
+    }
     await assert.rejects(
         stagePreviewAssets(directory, output, { PREVIEW_ASSET_SOURCE: 'typo' }),
         /must be/,

@@ -175,6 +175,31 @@ test.describe('the startup gate', () => {
         expect((await seen()).filter((s) => s.type === 'keydown')).toHaveLength(1)
     })
 
+    test('Ctrl+S during startup keeps Save Page closed, as after it', async ({ page }) => {
+        await startupFlags(page, { hold: true })
+        await recordInput(page)
+        await boot(page)
+        await expect(gate(page)).toBeVisible()
+        // A dispatched event reports whether the page cancelled it.
+        const pressSave = () =>
+            page.evaluate(
+                () =>
+                    !document.body.dispatchEvent(
+                        new KeyboardEvent('keydown', {
+                            key: 's',
+                            ctrlKey: true,
+                            bubbles: true,
+                            cancelable: true,
+                        }),
+                    ),
+            )
+        expect(await pressSave()).toBe(true)
+        expect(await page.evaluate(() => window.seen)).toEqual([])
+        await page.evaluate(() => window.nseStartupRelease?.())
+        await expect(gate(page)).toHaveCount(0)
+        expect(await pressSave()).toBe(true)
+    })
+
     test('the spinner turns, and under reduced motion pulses instead of standing still', async ({
         page,
     }) => {

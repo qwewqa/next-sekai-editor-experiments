@@ -1,23 +1,54 @@
+import { STACK_CAP } from '../history/cap'
 import { operationCodecs, type OperationId } from '../history/operations/registry'
 import type { LoadEvent } from '../local/startup/events'
-import { bucket, scales, type Bucket, type Scale } from './scales'
+import { measured, scales, type Bucket, type Scale } from './scales'
 
 // Every event the usage statistics may send, and every value each property may take. The client
 // checks each event against this before it queues it and drops one that fails, so a value that
 // slips past the types (through `as`) never leaves. docs/analytics.md lists the same events; a unit
 // test keeps the two in step.
 
-export { bucket, scales, type Bucket, type Scale } from './scales'
+export { bucket, measured, scales, type Bucket, type Scale } from './scales'
 
-/** A use count: whole, and capped at 9999 a visit. */
+/** A use count: whole, and capped at 9999 a send. */
 export const COUNT_CAP = 9999
+
+/** A time in whole seconds: capped at a day a send. */
+export const SECONDS_CAP = 86_400
+
+/** A time in whole milliseconds: capped at ten minutes, which means that or more. */
+export const MS_CAP = 600_000
+
+/** A measured time as whole milliseconds, not below 0, and capped. */
+export const capMs = (milliseconds: number) =>
+    Math.min(MS_CAP, Math.max(0, Math.round(milliseconds)))
+
+/**
+ * The chart's object total, from the raw counts: notes, time scales, animation-event joints, BPM
+ * entries, stages and groups. Slides are left out: each is a set of notes already counted.
+ */
+export const chartObjects = (counts: {
+    notes: number
+    timeScales: number
+    events: number
+    bpms: number
+    stages: number
+    groups: number
+}) => counts.notes + counts.timeScales + counts.events + counts.bpms + counts.stages + counts.groups
 
 /** A measured count as a use count: whole, not below 0, and capped. */
 export const capCount = (value: number) => Math.min(COUNT_CAP, Math.max(0, Math.round(value)))
 
+/** A span in milliseconds as whole seconds, not below 0, and capped. */
+export const capSeconds = (milliseconds: number) =>
+    Math.min(SECONDS_CAP, Math.max(0, Math.round(milliseconds / 1000)))
+
 type Prop =
     | 'boolean'
     | 'count'
+    | 'seconds'
+    | 'ms'
+    | { readonly whole: number }
     | { readonly scale: Scale }
     | { readonly oneOf: readonly string[] }
     | { readonly pattern: RegExp }
@@ -31,8 +62,21 @@ const flags = <const T extends string>(keys: readonly T[]) =>
 const prefixed = <const P extends string, const T extends string>(prefix: P, keys: readonly T[]) =>
     keys.map((key) => `${prefix}.${key}` as const)
 
+const engines = oneOf('chromium', 'webkit', 'firefox', 'other')
+const renderScales = ['0.25', '0.5', '0.75', '1', '1.25', '1.5', '1.75', '2'] as const
+
+/** What a measured event repeats, so a figure is read against the device that made it. */
+const device = {
+    cores: scale('cores'),
+    deviceMemory: oneOf('0.25', '0.5', '1', '2', '4', '8', '16+', 'other'),
+    engine: engines,
+    touch: 'boolean',
+    dpr: scale('dpr'),
+    viewport: scale('viewport'),
+} as const
+
 const position = oneOf('auto', 'left', 'right', 'top', 'disabled')
-const assetSource = oneOf('default', 'builtin', 'file')
+const assetSource = oneOf('default', 'builtin', 'bundled', 'file')
 const fileError = [
     'conflict',
     'not-found',
@@ -80,11 +124,14 @@ export const catalogue = {
         version: { pattern: /^\d+\.\d+\.\d+$/ },
         site: oneOf('production', 'test'),
         os: oneOf('windows', 'macos', 'linux', 'ios', 'android', 'other'),
-        engine: oneOf('chromium', 'webkit', 'firefox', 'other'),
+        engine: engines,
         standalone: 'boolean',
         touch: 'boolean',
         viewport: scale('viewport'),
+        viewportPortrait: 'boolean',
         dpr: scale('dpr'),
+        cores: scale('cores'),
+        deviceMemory: device.deviceMemory,
         browserLanguage: { pattern: /^(?:[a-z]{2,3}|other)$/ },
         returning: 'boolean',
         updated: 'boolean',
@@ -94,7 +141,7 @@ export const catalogue = {
         themeShown: oneOf('light', 'dark'),
         locale: oneOf('en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht'),
         previewInWorker: 'boolean',
-        previewRenderScale: oneOf('0.25', '0.5', '0.75', '1', '1.25', '1.5', '1.75', '2'),
+        previewRenderScale: oneOf(...renderScales),
         previewAntialias: 'boolean',
         previewShowHitboxes: 'boolean',
         previewNoteSpeed: scale('noteSpeed'),
@@ -121,7 +168,12 @@ export const catalogue = {
     startup: {
         start: oneOf('continued', 'reload', 'recovered', 'launchFile', 'blank', 'safeMode'),
         outcome: oneOf('done', 'error', 'slow'),
-        ready: scale('time'),
+        ready: 'ms',
+        hidden: 'boolean',
+        navigation: oneOf('navigate', 'reload', 'back_forward', 'other', 'unknown'),
+        documentDelivery: oneOf('cache', 'network', 'serviceWorker', 'unknown'),
+        wasDiscarded: 'boolean',
+        ...device,
         ...flags(prefixed('found', loadKinds)),
     },
     storage: {
@@ -130,21 +182,23 @@ export const catalogue = {
         persisted: oneOf('granted', 'not', 'unsupported'),
         usage: scale('size'),
         quota: scale('quota'),
-        cleanup: 'boolean',
-        sessions: scale('small'),
+        usageShare: scale('usageShare'),
+        cleanup: oneOf('notRun', 'busy', 'noSpaceFreed', 'freed'),
+        sessions: 'count',
     },
     chart: {
         trigger: oneOf('open', 'restore', 'save'),
-        notes: scale('objects'),
-        slides: scale('objects'),
-        bpms: scale('objects'),
-        timeScales: scale('objects'),
-        events: scale('objects'),
-        stages: scale('small'),
-        groups: scale('small'),
+        notes: scale('counts'),
+        slides: scale('counts'),
+        bpms: scale('counts'),
+        timeScales: scale('counts'),
+        events: scale('counts'),
+        stages: scale('counts'),
+        groups: scale('counts'),
+        objects: scale('counts'),
         dynamicStages: 'boolean',
         bgm: oneOf('none', ...scales.audio),
-        historySteps: scale('objects'),
+        historySteps: { whole: STACK_CAP },
     },
     preview: {
         host: oneOf('main', 'worker'),
@@ -158,7 +212,8 @@ export const catalogue = {
         size: scale('size'),
         outcome: oneOf('done', 'cancelled', 'refused', 'failed'),
         reason: oneOf(...fileError, 'unsupported', 'invalid'),
-        took: scale('time'),
+        took: 'ms',
+        ...device,
     },
     save: {
         action: oneOf('save', 'saveAs', 'saveToFile', 'downloadAgain'),
@@ -166,7 +221,8 @@ export const catalogue = {
         history: 'boolean',
         bgm: 'boolean',
         size: scale('size'),
-        took: scale('time'),
+        took: 'ms',
+        buildMs: 'ms',
         outcome: oneOf(
             'done',
             'cancelled',
@@ -180,25 +236,32 @@ export const catalogue = {
         ),
         reason: oneOf(...fileError, 'notKept', 'notProject', 'levelData', 'safeMode'),
         step: oneOf('build', 'read', 'readBack', 'download', 'check'),
+        ...device,
     },
     export: {
         format: oneOf('levelData', 'other'),
         target: oneOf('picker', 'download'),
         size: scale('size'),
-        took: scale('time'),
+        took: 'ms',
+        buildMs: 'ms',
         outcome: oneOf('done', 'cancelled', 'failed'),
         reason: oneOf(...fileError),
+        ...device,
     },
     check: {
         outcome: oneOf('ok', 'problems', 'failed'),
-        took: scale('time'),
+        took: 'ms',
+        scope: oneOf('stored', 'fileAndStored'),
+        size: scale('size'),
+        ...device,
     },
     bgm: {
         format: oneOf('mp3', 'ogg', 'wav', 'flac', 'm4a', 'other'),
         size: scale('size'),
         length: scale('audio'),
-        took: scale('time'),
+        took: 'ms',
         outcome: oneOf('done', 'cancelled', 'failed'),
+        ...device,
     },
     edits: counts([...editKeys, 'undo', 'redo']),
     features: counts([
@@ -214,24 +277,33 @@ export const catalogue = {
         'deleteSessions',
         'minimapDrag',
         'minimapJump',
+        'autoscroll',
         'quickSwitch',
     ]),
     notices: counts(['info', 'warning', 'error']),
+    peek: {
+        ...counts(prefixed('peek', [...scales.peek, 'cached'])),
+        ...device,
+    },
     perf: {
-        ...counts(prefixed('peek', [...scales.time, 'cached'])),
         loafSupported: 'boolean',
+        eventTimingSupported: 'boolean',
         ...counts(prefixed('frames.playing', scales.frame)),
         ...counts(prefixed('frames.busy', scales.frame)),
         ...counts(prefixed('frames.other', scales.frame)),
-        playSeconds: scale('duration'),
-        slowInputs: 'count',
+        'frames.unclassified': 'count',
+        frameAttribution: oneOf('full', 'partial'),
+        ...counts(prefixed('slowEvents', scales.slowEvent)),
         interactions: 'count',
-        visibleTime: scale('duration'),
-        cores: scale('cores'),
+        playSeconds: 'seconds',
+        visibleTime: 'seconds',
+        previewHost: oneOf('main', 'worker', 'none', 'mixed', 'unknown'),
+        previewRenderScale: oneOf(...renderScales, 'mixed', 'unknown'),
+        ...device,
     },
     errors: counts(['error', 'csp']),
     // Sent by the support page (public/gate.js), not by the client.
-    unsupported: { engine: oneOf('chromium', 'webkit', 'firefox', 'other') },
+    unsupported: { engine: engines },
 } as const satisfies Record<string, Record<string, Prop>>
 
 /** The events with fixed properties; `usage`'s keys are made from the command names. */
@@ -239,7 +311,7 @@ export type EventName = keyof typeof catalogue | 'usage'
 
 type ValueOf<P> = P extends 'boolean'
     ? boolean
-    : P extends 'count'
+    : P extends 'count' | 'seconds' | 'ms' | { whole: number }
       ? number
       : P extends { scale: infer S extends Scale }
         ? Bucket<S>
@@ -272,14 +344,16 @@ export const fromRaw = (name: string, raw: Record<string, unknown>) => {
         Object.hasOwn(catalogue, name) ? catalogue[name as keyof typeof catalogue] : {}
     ) as Record<string, Prop>
     return Object.fromEntries(
-        Object.entries(raw).map(([key, value]) => {
+        Object.entries(raw).flatMap(([key, value]): [string, unknown][] => {
             const prop = props[key]
-            return [
-                key,
-                prop && typeof prop === 'object' && 'scale' in prop && typeof value === 'number'
-                    ? bucket(prop.scale, value)
-                    : value,
-            ]
+            if (typeof value !== 'number') return [[key, value]]
+            // A measurement that is missing, not finite or negative stays absent.
+            if (prop === 'ms') return Number.isFinite(value) ? [[key, capMs(value)]] : []
+            if (typeof prop === 'object' && 'scale' in prop) {
+                const range = measured(prop.scale, value)
+                return range === undefined ? [] : [[key, range]]
+            }
+            return [[key, value]]
         }),
     )
 }
@@ -291,6 +365,12 @@ const fits = (prop: Prop, value: unknown) => {
     if (prop === 'boolean') return typeof value === 'boolean'
     if (prop === 'count')
         return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= COUNT_CAP
+    if (prop === 'seconds')
+        return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= SECONDS_CAP
+    if (prop === 'ms')
+        return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= MS_CAP
+    if (typeof prop === 'object' && 'whole' in prop)
+        return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= prop.whole
     if (typeof value !== 'string') return false
     if ('scale' in prop) return (scales[prop.scale] as readonly string[]).includes(value)
     if ('oneOf' in prop) return prop.oneOf.includes(value)

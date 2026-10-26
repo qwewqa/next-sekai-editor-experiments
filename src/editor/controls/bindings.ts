@@ -66,6 +66,13 @@ export const isAltGraphAlphanumeric = (input: KeyInput, apple: boolean) =>
 export const isCommandChord = (input: KeyInput) =>
     (input.ctrlKey || input.metaKey) && !input.altKey && !input.getModifierState?.('AltGraph')
 
+/** Ctrl/Cmd+R and Ctrl/Cmd+F, the browser's reload and find: only a binding of the chord itself takes them. */
+export const isBrowserChord = (input: KeyInput) => {
+    if (!isCommandChord(input)) return false
+    const key = input.key.toLowerCase()
+    return key === 'r' || (key === 'f' && !input.shiftKey)
+}
+
 /** The binding a key press records: letters lowercase with Shift spelled out. */
 export const bindingOf = (input: KeyInput, apple: boolean) => {
     const { key } = input
@@ -97,7 +104,7 @@ export const normalizeBinding = (binding: string) => {
 
 /**
  * Names bound to a key press. A chord bound exactly wins; otherwise plain
- * bindings match the key whatever modifiers are held.
+ * bindings match the key whatever modifiers are held, except for the browser's chords.
  */
 export const matchBindings = <N extends string>(
     shortcuts: Partial<Record<N, string>>,
@@ -114,6 +121,7 @@ export const matchBindings = <N extends string>(
             .map(([name]) => name)
         if (names.length) return { names, exact: true }
     }
+    if (isBrowserChord(input)) return { names: [], exact: false }
     const key = plainKey(input)
     const names = entries
         .filter(([, value]) => value === key && !parseChord(value))
@@ -129,38 +137,6 @@ export const blocksDefault = (input: KeyInput, exact: boolean) => {
     if (input.ctrlKey || input.metaKey)
         return /^[a-z]$/i.test(input.key) && (exact || isCommandChord(input))
     return exact || !input.altKey
-}
-
-/** The Ctrl or Cmd chord a binding takes: its own, or a plain character's. */
-const commandChordOf = (binding: string): Chord | undefined => {
-    const chord = parseChord(binding)
-    if (chord) return chord.mod && !chord.alt ? chord : undefined
-    if (!isCharacter(binding)) return
-    return isLetter(binding)
-        ? {
-              mod: true,
-              alt: false,
-              shift: binding !== binding.toLowerCase(),
-              key: binding.toLowerCase(),
-          }
-        : { mod: true, alt: false, shift: false, key: binding }
-}
-
-export type BrowserShortcut = 'reload' | 'find'
-
-/** The browser action a binding replaces while the editor has focus. */
-export const browserShortcutOf = (binding: string): BrowserShortcut | undefined => {
-    if (binding === 'F5') return 'reload'
-    const chord = commandChordOf(binding)
-    if (!chord) return
-    if (chord.key === 'r') return 'reload'
-    if (chord.key === 'f' && !chord.shift) return 'find'
-}
-
-/** The chord a plain character binding also answers to, for conflicts with chords. */
-export const commandChordBinding = (binding: string) => {
-    const chord = commandChordOf(binding)
-    return chord && stringifyChord(chord)
 }
 
 /** Chords the browser or OS keeps for itself, so pages never receive them. */

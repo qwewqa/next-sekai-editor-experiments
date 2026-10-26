@@ -265,6 +265,7 @@ const samples: Record<FieldId, FieldValue<FieldId>> = {
     divisionParity: 'odd',
     yOffset: 0,
     yOffsetBeat: 0,
+    laneColor: 'red',
     judgmentLineColor: 'red',
     judgmentLineStyle: 'singleLine',
     leftBorderStyle: 'light',
@@ -299,8 +300,8 @@ const samples: Record<FieldId, FieldValue<FieldId>> = {
     elevation: 0,
 }
 
-test('all 61 fields retain their qualified labels, applicability, typed values and units', () => {
-    assert.equal(Object.keys(samples).length, 61)
+test('all 62 fields retain their qualified labels, applicability, typed values and units', () => {
+    assert.equal(Object.keys(samples).length, 62)
     assert.deepEqual(Object.keys(samples).sort(), Object.keys(fieldCodecs).sort())
     for (const locale of locales) {
         const ctx = context(locale)

@@ -10,8 +10,11 @@ const edgeBand = 2
 // floor is the least alpha the brightest interior pixel must keep, so none of them turns faint;
 // opaque, if given, the least share of interior pixels at full alpha.
 const translucent = [
-    // The base's lane is dark navy at 0.40 alpha, over the background.
-    { pattern: /^Sekai Lane Background( Preview)?$|^#LANE$|^#STAGE_MIDDLE$/, floor: 0.4 },
+    // The base's lane is dark navy at 0.40 alpha, over the background. Ours, in every color, is too.
+    {
+        pattern: /^Sekai Lane Background( Preview)?( [A-Z][a-z]+)?$|^#LANE$|^#STAGE_MIDDLE$/,
+        floor: 0.4,
+    },
     // The base's dividers are grey-white at 0.36, its borders white at 0.21.
     { pattern: /^Sekai (Lane Divider|Stage Border)( Preview)?$/, floor: 0.25 },
     // The base's judgment background is black at 0.57, darkening the lane under the line.

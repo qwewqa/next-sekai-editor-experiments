@@ -57,7 +57,6 @@ const base: Input = {
     lines: [],
     history: { kind: 'available', ticked: true, locked: false },
     bgm: { kind: 'held', name: 'coconut.mp3', ticked: true },
-    exportLine: false,
     peeking: false,
     estimate: { load: () => Promise.resolve(undefined) },
 }
@@ -349,20 +348,124 @@ test.describe('the Save dialog', () => {
         await visit(page)
         await openSave(page, {
             lines: ['"coconut.nxsp" was replaced from another tab or window.'],
-            exportLine: true,
             storageLine: 'Safari deletes stored work after 7 days without a visit.',
             peeking: true,
         })
         await expect(dialog(page).locator('[data-save-line]')).toHaveText(
             '"coconut.nxsp" was replaced from another tab or window.',
         )
-        await expect(dialog(page).locator('[data-save-export]')).toHaveText(
-            'For Sonolus, use Export Level Data…',
+        // File Name's description opens with the situation line, then the Export note.
+        await expect(
+            dialog(page).getByRole('textbox', { name: 'File Name' }),
+        ).toHaveAccessibleDescription(
+            /^"coconut\.nxsp" was replaced from another tab or window\..*use Export Level Data…/,
+        )
+        await expect(dialog(page).locator('[data-save-export] p').first()).toHaveText(
+            'Project files (.nxsp) are only for this editor. To create level data for upload to a Sonolus server, use Export Level Data…',
+        )
+        await expect(dialog(page).locator('[data-save-export-names]')).toHaveText(
+            'Level data files may be named LevelData or end in .nsld or .json.gz.',
         )
         await expect(dialog(page).locator('[data-save-storage-line]')).toBeVisible()
         await expect(dialog(page).locator('[data-save-peeking]')).toHaveText(
             'Saves the current version.',
         )
+    })
+
+    test('the Export line shows in Save and Save As…, not in Save… of another session', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        // Not yet exported: the line leads the body, with the info glyph, before File Name.
+        for (const kind of ['save', 'saveAs', 'saveToFile'] as const) {
+            await openSave(page, { kind })
+            const line = dialog(page).locator('[data-save-export]')
+            await expect(line).toHaveCount(kind === 'saveToFile' ? 0 : 1)
+            if (kind !== 'saveToFile') {
+                await expect(line.locator('[data-severity="info"]')).toHaveCount(1)
+                await expect(line.locator('[data-save-export-names]')).toHaveCount(1)
+                const leads = await line.evaluate(
+                    (p) =>
+                        !!(
+                            p.compareDocumentPosition(
+                                p.ownerDocument.querySelector('[data-save-name]')!,
+                            ) & Node.DOCUMENT_POSITION_FOLLOWING
+                        ),
+                )
+                expect(leads).toBe(true)
+            }
+            await page.keyboard.press('Escape')
+            await expect(dialog(page)).toHaveCount(0)
+        }
+    })
+
+    test('after an export the Export line is the small note above the buttons', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await context.addInitScript(() => {
+            localStorage.setItem('sonolus-next-sekai-editor.exportUsed', 'true')
+        })
+        await visit(page)
+        for (const kind of ['save', 'saveAs', 'saveToFile'] as const) {
+            await openSave(page, { kind })
+            const line = dialog(page).locator('[data-save-export]')
+            await expect(line).toHaveCount(kind === 'saveToFile' ? 0 : 1)
+            if (kind !== 'saveToFile') {
+                await expect(line.locator('[data-severity]')).toHaveCount(0)
+                await expect(line.locator('[data-save-export-names]')).toHaveCount(0)
+                await expect(line).toHaveText('For Sonolus, use Export Level Data…')
+                const after = await line.evaluate(
+                    (p) =>
+                        !!(
+                            p.ownerDocument
+                                .querySelector('[data-save-include]')!
+                                .compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING
+                        ),
+                )
+                expect(after).toBe(true)
+                await expect(line.locator('xpath=..')).toHaveClass(/text-sm/)
+            }
+            await page.keyboard.press('Escape')
+            await expect(dialog(page)).toHaveCount(0)
+        }
+    })
+
+    test('File Name is described by the emphasised Export line, and Shift+Tab reaches its link', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await openSave(page)
+        const field = dialog(page).getByRole('textbox', { name: 'File Name' })
+        await expect(field).toBeFocused()
+        await expect(field).toHaveAccessibleDescription(
+            /use Export Level Data….*may be named LevelData or end in \.nsld or \.json\.gz\./,
+        )
+        // A validation error joins the description and keeps the hint.
+        await field.fill('a/b')
+        await expect(field).toHaveAccessibleDescription(
+            /use Export Level Data….*\.json\.gz\..*A name cannot contain \//,
+        )
+        await field.fill('Coconut')
+        await page.keyboard.press('Shift+Tab')
+        await expect(dialog(page).getByRole('button', { name: 'Export Level Data…' })).toBeFocused()
+        await page.keyboard.press('Escape')
+        await expect(dialog(page)).toHaveCount(0)
+
+        await page.evaluate(async () => {
+            const { markExportUsed } =
+                (await import('/src/editor/file/flags.ts')) as typeof import('../../src/editor/file/flags')
+            markExportUsed()
+        })
+        await openSave(page)
+        await expect(field).toBeFocused()
+        await expect(field).not.toHaveAccessibleDescription(/Export Level Data/)
+        await expect(field).not.toHaveAttribute('aria-describedby', /./)
     })
 
     test('the Export line is a link that closes the dialog for Export', async ({
@@ -371,7 +474,7 @@ test.describe('the Save dialog', () => {
     }) => {
         await seed(context)
         await visit(page)
-        await openSave(page, { exportLine: true })
+        await openSave(page)
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Export Level Data…' }).click()
         await expect.poll(() => result(page)).toEqual({ action: 'export' })
@@ -388,10 +491,10 @@ test.describe('the Save dialog', () => {
                 (await import('/src/settings.ts')) as typeof import('../../src/settings')
             settings.locale = 'ja'
         })
-        await openSave(page, { exportLine: true })
+        await openSave(page)
         const line = dialog(page).locator('[data-save-export]')
-        await expect(line).toHaveText(
-            'Sonolus 用のレベルデータには「レベルデータを出力…」を使ってください。',
+        await expect(line.locator('p').first()).toHaveText(
+            'プロジェクトファイル（.nxsp）はこのエディター専用です。Sonolusサーバーにアップロードするレベルデータを作るには「レベルデータを出力…」を使ってください。',
         )
         // The widths, from a 320 px phone's up, at which 「 ends a line before the link or 」 starts
         // one after it.

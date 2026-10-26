@@ -76,7 +76,7 @@ test('REUSE.toml parses and its default annotation is MIT', () => {
 
 test('every tracked binary or media file has an explicit REUSE.toml annotation', () => {
     const files = tracked.filter(isMedia)
-    assert.ok(files.length > 20, 'the media files are found')
+    assert.ok(files.length > 10, 'the media files are found')
     const missing = files.filter((file) => !annotationFor(annotations, file)?.explicit)
     assert.deepEqual(missing, [])
 })
@@ -115,12 +115,7 @@ test('every tracked file containing "Font Awesome" is on the CC-BY-4.0 icon list
 })
 
 test('the upstream-unconfirmed files are not covered by MIT', () => {
-    for (const file of [
-        'src/preview/bg.png',
-        'src/assets/se_live_perfect.mp3',
-        'public/favicon.ico',
-        'public/thumbnail.png',
-    ])
+    for (const file of ['src/preview/bg.png', 'public/favicon.ico', 'public/thumbnail.png'])
         assert.equal(
             annotationFor(annotations, file)?.annotation['SPDX-License-Identifier'],
             'LicenseRef-Upstream-Unconfirmed',

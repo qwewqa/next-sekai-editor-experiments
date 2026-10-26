@@ -16,6 +16,7 @@ import type { ReadResult } from '../../save/pickSession'
 import { isLevelDataContent, mayBeLevelData } from './content'
 import { fileError } from './errorText'
 import {
+    exportGeneration,
     exportMemory,
     ownsExportTarget,
     rememberExport,
@@ -78,6 +79,11 @@ export type ExportContext = {
     read?: Promise<ReadResult> | 'start'
     /** Called when the picker returned a file: its write runs to its end, cancel or not. */
     committed?: () => void
+    /**
+     * The session this Export began in, set by the flow's first call. A write that outlasts a
+     * cancel is verified, but remembered and recorded only while that session is current.
+     */
+    generation?: number
 }
 
 /** done: written or handed over; cancelled: nothing written; back: the picker was dismissed. */
@@ -89,13 +95,19 @@ const LEVEL_DATA_LIMIT = 64 * 1024 * 1024
 // The usage statistics' `export` event, for a write that went through or failed. A write begins
 // after the last picker has closed (`writeStarted`, 0 when none has). One export runs at a time.
 let writeStarted = 0
-const reportExport = (target: 'picker' | 'download', size?: number, error?: FileError) => {
+const reportExport = (
+    target: 'picker' | 'download',
+    body?: ReturnType<typeof built>,
+    error?: FileError,
+) => {
+    const buildMs = body?.buildMs()
     record(
         'export',
         {
             format: 'levelData',
             target,
-            ...(size !== undefined && { size }),
+            ...(body && { size: body.size() }),
+            ...(buildMs !== undefined && { buildMs }),
             outcome: error ? 'failed' : 'done',
             ...(error && { reason: error.code }),
         },
@@ -104,23 +116,35 @@ const reportExport = (target: 'picker' | 'download', size?: number, error?: File
     writeStarted = 0
 }
 
+const started = (ctx: ExportContext): ExportContext =>
+    ctx.generation === undefined ? { ...ctx, generation: exportGeneration() } : ctx
+
+const sameSession = (ctx: ExportContext) =>
+    ctx.generation === undefined || ctx.generation === exportGeneration()
+
 // Only the user's cancel: a browser's own AbortError is a failure.
 const cancelled = (ctx: ExportContext) => !!ctx.signal?.aborted
 
 const built = (ctx: ExportContext) => {
     let size = 0
+    let buildMs: number | undefined
     return {
         build: async () => {
+            const began = performance.now()
             const blob = await ctx.build()
+            buildMs = performance.now() - began
             size = blob.size
             return blob
         },
         size: () => size,
+        /** How long the file took to build; undefined when it was not built. */
+        buildMs: () => buildMs,
     }
 }
 
 const remember = async (ctx: ExportContext, target: ExportTarget) => {
-    await replaceExportTarget(target)
+    if (!sameSession(ctx)) return
+    if (!(await replaceExportTarget(target, () => sameSession(ctx)))) return
     if (ctx.exportName !== undefined) exportMemory.exportName = ctx.exportName
     await rememberExport()
 }
@@ -241,10 +265,11 @@ const conflicted = async (ctx: ExportContext, target: ExportTarget): Promise<Exp
  * first call on the gesture; the changed-on-disk check compares the file with `expected`.
  */
 export const exportToTarget = async (
-    ctx: ExportContext,
+    context: ExportContext,
     target: ExportTarget,
     expected: DiskState = target.disk,
 ): Promise<ExportOutcome> => {
+    const ctx = started(context)
     const body = built(ctx)
     writeStarted = performance.now()
     const revoked = new Error('Export destination was revoked')
@@ -272,8 +297,8 @@ export const exportToTarget = async (
             signal: ctx.signal,
         })
         if (result.status === 'saved') {
-            reportExport('picker', body.size())
-            ctx.ui.markExported?.(result.name, 'file')
+            reportExport('picker', body)
+            if (sameSession(ctx)) ctx.ui.markExported?.(result.name, 'file')
             ctx.ui.exported(result.name)
             return 'done'
         }
@@ -316,7 +341,8 @@ const failed = (ctx: ExportContext, error: FileError, fallback: string) => {
 }
 
 /** Exports through the save picker, or downloads where there is none. */
-export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome> => {
+export const exportByPicker = async (context: ExportContext): Promise<ExportOutcome> => {
+    const ctx = started(context)
     // Only the pick session opens a picker: build, verify, pick and write run there.
     if (platform.pickSaveFile) {
         // A failure after a Cancel, before a file was picked, is the Cancel's: no dialog follows.
@@ -339,7 +365,7 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
             return failed(ctx, fileError(caught), ctx.suggestedName)
         }
         if (picked.kind === 'failed' && cancelled(ctx) && !pick.committed) return 'cancelled'
-        if (picked.kind === 'written') reportExport('picker', sized.size())
+        if (picked.kind === 'written') reportExport('picker', sized)
         return afterPick(ctx, picked)
     }
     return exportByDownload(ctx)
@@ -350,7 +376,7 @@ const afterPick = async (ctx: ExportContext, picked: PickedLevelData): Promise<E
     switch (picked.kind) {
         case 'written': {
             const { result } = picked
-            ctx.ui.markExported?.(result.name, 'file')
+            if (sameSession(ctx)) ctx.ui.markExported?.(result.name, 'file')
             ctx.ui.exported(result.name)
             return 'done'
         }
@@ -380,7 +406,8 @@ const afterPick = async (ctx: ExportContext, picked: PickedLevelData): Promise<E
 }
 
 /** A browser without a save picker: the level data is downloaded. */
-const exportByDownload = async (ctx: ExportContext): Promise<ExportOutcome> => {
+const exportByDownload = async (context: ExportContext): Promise<ExportOutcome> => {
+    const ctx = started(context)
     const body = built(ctx)
     writeStarted = performance.now()
     let result: SaveResult
@@ -401,12 +428,12 @@ const exportByDownload = async (ctx: ExportContext): Promise<ExportOutcome> => {
         case 'saved':
         case 'download-started':
         case 'exported':
-            if (ctx.exportName !== undefined) {
+            if (ctx.exportName !== undefined && sameSession(ctx)) {
                 exportMemory.exportName = ctx.exportName
                 await rememberExport()
             }
-            reportExport('download', body.size())
-            ctx.ui.markExported?.(result.name, 'download')
+            reportExport('download', body)
+            if (sameSession(ctx)) ctx.ui.markExported?.(result.name, 'download')
             ctx.ui.downloadStarted(result.name, body.size())
             return 'done'
         case 'cancelled':

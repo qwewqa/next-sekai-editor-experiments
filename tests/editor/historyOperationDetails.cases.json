@@ -1070,6 +1070,17 @@
                                 }
                             },
                             {
+                                "field": "laneColor",
+                                "before": {
+                                    "mode": "uniform",
+                                    "value": "default"
+                                },
+                                "after": {
+                                    "mode": "uniform",
+                                    "value": "red"
+                                }
+                            },
+                            {
                                 "field": "leftBorderStyle",
                                 "before": {
                                     "mode": "uniform",

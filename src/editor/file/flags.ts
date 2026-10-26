@@ -33,6 +33,6 @@ export const confirmDownloads = confirmed.set
 export const firstSaveDone = firstSave.value
 export const markFirstSaveDone = firstSave.set
 
-/** Export Level Data… has run once (the Save dialog's Export line). */
+/** Export Level Data… has finished once (the Save dialog's Export line stops leading the body). */
 export const exportUsed = exported.value
 export const markExportUsed = exported.set

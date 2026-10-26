@@ -1505,10 +1505,15 @@ test('browser chords stay held while an action menu is open', async ({ page }) =
         page.evaluate(
             () => (window as unknown as { lastKey: KeyboardEvent }).lastKey.defaultPrevented,
         )
-    // Ctrl+S, F and P would save, find or print the page.
-    for (const key of ['Control+s', 'Control+f', 'Control+p']) {
+    // Ctrl+S and P would save or print the page. The browser keeps Ctrl+R and F.
+    for (const [key, prevented] of [
+        ['Control+s', true],
+        ['Control+p', true],
+        ['Control+r', false],
+        ['Control+f', false],
+    ] as const) {
         await page.keyboard.press(key)
-        expect(await held()).toBe(true)
+        expect(await held(), key).toBe(prevented)
         await expect(menu).toBeVisible()
     }
     expect(await canUndo(page)).toBe(false)

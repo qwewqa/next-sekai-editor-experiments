@@ -72,7 +72,11 @@ export class Store {
         for (const node of snapshot.nodes) this.nodes.set(toHex(node.hash), node.json)
         for (const chunk of [snapshot.header, ...snapshot.chunks]) {
             const stored = deflateChunk(chunk.bytes)
-            this.chunks.set(toHex(chunk.hash), { stored, crc32: chunkCrc32(chunk.hash, stored) })
+            this.chunks.set(toHex(chunk.hash), {
+                stored,
+                crc32: chunkCrc32(chunk.hash, stored),
+                size: chunk.bytes.length,
+            })
         }
         return toHex(snapshot.root.hash)
     }

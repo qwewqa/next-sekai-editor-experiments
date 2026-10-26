@@ -4,7 +4,7 @@ import { onHistoryAction } from '../history/actions'
 import { isBlockingModalOpen } from '../modals'
 import { isComposingKey } from '../utils/composition'
 import { focusAfterRemoval } from '../utils/focusFallback'
-import { isTextEntry } from './controls/keyboard'
+import { isAssignedChord, isTextEntry } from './controls/keyboard'
 import NoticeRegion from './NoticeRegion.vue'
 import { cardInDialog, dismissCardForEdit, dismissNoticeCard, noticeCard } from './notification'
 
@@ -17,7 +17,8 @@ const cardButton = () =>
     document.querySelector<HTMLElement>('[data-notice-card] [data-notice-close]')
 
 // Alt+N (Option+N on macOS, by code) focuses the latest card while it is shown.
-// A text field and IME composition keep the key: Option+N is the dead key of "ñ".
+// A text field and IME composition keep the key: Option+N is the dead key of "ñ". A command
+// assigned exactly this chord keeps it too.
 const onKeydown = (event: KeyboardEvent) => {
     if (event.code !== 'KeyN' || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
         return
@@ -25,6 +26,7 @@ const onKeydown = (event: KeyboardEvent) => {
     const editing = (target: EventTarget | null) =>
         isTextEntry(target) || target instanceof HTMLSelectElement
     if (isComposingKey(event) || editing(event.target) || editing(document.activeElement)) return
+    if (isAssignedChord(event)) return
     // A blocking dialog makes the page inert: only a card shown over it can be reached.
     if (!noticeCard.value || (isBlockingModalOpen.value && !cardInDialog.value)) return
     const button = cardButton()

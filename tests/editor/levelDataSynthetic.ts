@@ -163,6 +163,7 @@ export const fullLevel = (): LevelDataEntity[] => [
         {
             '#BEAT': 0,
             editorLane: 2,
+            laneColor: 4,
             judgeLineColor: 3,
             judgeLineStyle: 1,
             leftBorderStyle: 1,

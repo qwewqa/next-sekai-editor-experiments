@@ -3,9 +3,9 @@ import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
-// The load notices in the start-up
-// pill with their actions, the status bar label and the page title, the Reopen notice, the in-app
-// not-stored prompt, and Settings › Local Data's Recovery rows.
+// The load notices in the start-up pill with their actions, the status bar label and the page
+// title, the Reopen notice, the in-app not-stored prompt, and the recovered-work rows in
+// Settings › Local Data.
 
 const prefix = 'sonolus-next-sekai-editor.'
 
@@ -239,7 +239,7 @@ test.describe('load notices in the start-up pill', () => {
             'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'Continued "Coconut (Master)" from the old auto save.',
-            'A recovered change needs a newer version of the editor.',
+            'A recovered change requires a newer version of the editor.',
         ])
     })
 
@@ -316,7 +316,7 @@ test.describe('load notices in the start-up pill', () => {
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'The old auto save could not be restored.',
             'Recovered your last change to "Coconut (Master)".',
-            'A recovered change needs a newer version of the editor.',
+            'A recovered change requires a newer version of the editor.',
             'The BGM is not loaded.',
         ])
     })
@@ -572,15 +572,25 @@ test.describe('load notices in the start-up pill', () => {
             }
             // A little wider, the name gives way first and the version stays on its line.
             await page.setViewportSize({ width: 680, height: 390 })
-            await expect.poll(async () => (await parts()).oneLine).toBe(true)
-            const wider = await parts()
-            test.info().annotations.push({ type: 'wider', description: JSON.stringify(wider) })
-            expect(wider).toMatchObject({
+            // The card's room follows the sheet's size, which a ResizeObserver measures a frame
+            // after the window changes: until then the card is wider than it ends up, and the
+            // name still fits. Wait for the settled state.
+            const settled = {
                 oneLine: true,
                 nameWhole: false,
                 versionWhole: true,
                 separatorShown: true,
-            })
+            }
+            await expect.poll(parts).toMatchObject(settled)
+            await page.evaluate(
+                () =>
+                    new Promise((resolve) =>
+                        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                    ),
+            )
+            const wider = await parts()
+            test.info().annotations.push({ type: 'wider', description: JSON.stringify(wider) })
+            expect(wider).toMatchObject(settled)
         })
     })
 
@@ -1199,15 +1209,6 @@ test.describe('the not-stored prompt', () => {
 })
 
 test.describe('Settings › Local Data', () => {
-    const openLocalData = async (page: Page) => {
-        await page.evaluate(async () => {
-            const { openSettings } =
-                (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
-            void openSettings('localData')
-        })
-        await expect(page.locator('#settings-localData [data-settings-heading]')).toBeFocused()
-    }
-
     test('the section sits second, after Editor, and the index jumps to each section', async ({
         page,
     }) => {
@@ -1240,14 +1241,6 @@ test.describe('Settings › Local Data', () => {
         await expect(page.locator('#settings-about')).toBeInViewport()
         await page.locator('[data-settings-pill="localData"]').click()
         await expect(page.locator('#settings-localData [data-settings-heading]')).toBeFocused()
-    })
-
-    test('the storage line is static text under the heading', async ({ page }) => {
-        await visit(page)
-        await openLocalData(page)
-        await expect(page.locator('[data-storage-line]')).toHaveText(
-            'Recent Sessions are kept in this browser unless it runs low on space. Save to keep your work.',
-        )
     })
 
     test.describe('with storage unavailable', () => {
@@ -1535,7 +1528,7 @@ test.describe('the in-app browser line', () => {
         await expect(page.locator('.notification')).toHaveText('Next SEKAI Editor\nVersion 0.6.0')
         await expect(pill(page)).toHaveCount(0)
         await openLocalData(page)
-        await expect(page.locator('[data-storage-line]')).toContainText('Recent Sessions are kept')
+        await expect(page.locator('[data-storage-line]')).toHaveCount(0)
         await expect(page.locator('[data-at-load] li')).toHaveCount(0)
     })
 
@@ -1555,7 +1548,7 @@ test.describe('the in-app browser line', () => {
             )
             await expect(pill(page)).toHaveCount(0)
             await openLocalData(page)
-            await expect(page.locator('[data-storage-line]')).not.toContainText('built-in browser')
+            await expect(page.locator('[data-storage-line]')).toHaveCount(0)
         })
     })
 

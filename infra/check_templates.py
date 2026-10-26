@@ -28,6 +28,7 @@ SERVICES = {
         "readme": "README.md",
         "types": {
             "AWS::IAM::OIDCProvider": ("Tags", None, False),
+            "AWS::AccessAnalyzer::Analyzer": ("Tags", None, False),
             "AWS::IAM::Role": ("Tags", None, False),
             "AWS::SNS::Topic": ("Tags", None, False),
             "AWS::SNS::Subscription": (None, None, False),
@@ -198,9 +199,9 @@ def check_roles(name, template, errors):
         trust = res["Properties"]["AssumeRolePolicyDocument"]["Statement"][0]
         if match and match["service"] == service and role_name.endswith("-deploy"):
             sub = trust["Condition"]["StringEquals"].get("token.actions.githubusercontent.com:sub")
-            want = f"repo:${{Repository}}:environment:{service}-${{Environment}}"
-            if text(sub) != want:
-                errors.append(f"shared: {rid} trusts {text(sub)!r}; it must trust exactly {want!r}.")
+            want = rf"repo:[^/@:]+@\d+/[^/@:]+@\d+:environment:{service}-\$\{{Environment\}}"
+            if not re.fullmatch(want, text(sub) or ""):
+                errors.append(f"shared: {rid} trusts {text(sub)!r}; it must trust one repository's {service}-<env> Environment, by its immutable subject.")
             if trust["Condition"]["StringEquals"].get("token.actions.githubusercontent.com:aud") != "sts.amazonaws.com":
                 errors.append(f"shared: {rid} must require the audience sts.amazonaws.com.")
         if name == "shared" and match:

@@ -101,7 +101,7 @@ export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource
     const { bpms } = state
     const rowOf = (time: number) => mapping.timeToY(time) * scale
     let fill: string | undefined
-    let alpha = 1
+    let alpha = ctx.globalAlpha
     const style = (color: string, opacity: number) => {
         if (color !== fill) ctx.fillStyle = fill = color
         if (opacity !== alpha) ctx.globalAlpha = alpha = opacity

@@ -14,6 +14,12 @@ on:
 permissions:
     contents: read
 
+concurrency:
+    # A newer push to a branch or pull request cancels the run it replaces; main and tags run to the end.
+    # Deploy Pages calls this workflow on a tag. Its own groups are named pages-*, so they never clash.
+    group: check-${{ github.ref }}
+    cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
     check:
         runs-on: ubuntu-latest
@@ -43,10 +49,9 @@ jobs:
 
     compatibility:
         if: ${{ !inputs.skip_browser_checks }}
-        needs: check
         runs-on: ubuntu-latest
-        # About 2.5 min of tests with one worker (a 4-vCPU runner's) on a fast desktop.
-        timeout-minutes: 25
+        # About 11 min of tests, 7 of them in firefox-chrome, with one worker (a 4-vCPU runner's).
+        timeout-minutes: 20
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -56,8 +61,8 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: npx playwright install --with-deps firefox webkit
-            # The default preview skin and particle, hash-locked, as build:release stages them.
+            - run: scripts/ci/install-browsers.sh firefox webkit
+            # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npm run build
@@ -102,13 +107,22 @@ jobs:
 
     compatibility-storage:
         if: ${{ !inputs.skip_browser_checks }}
-        needs: check
         runs-on: ubuntu-latest
-        # About 1 min of tests in Firefox with one worker on a fast desktop; WebKit runs them on Linux.
-        # 190 tests on one worker passed 25 minutes on 2026-10-21 (155 done, none failing). The v1
-        # fixtures' web storage spec (11 tests in each browser, 120 to 240 s allowed each) was added
-        # after that, so the limit is 55: read the first run's time and set it from that.
-        timeout-minutes: 55
+        # The storage core: about 9 min of tests in Firefox and 4 in WebKit on a fast desktop.
+        # browsers-full.yml runs the rest of the storage specs.
+        timeout-minutes: 25
+        env:
+            NSE_STORAGE_SET: core
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - engine: firefox
+                      shard: 1/2
+                    - engine: firefox
+                      shard: 2/2
+                    - engine: webkit
+                      shard: 1/1
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -118,17 +132,17 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: npx playwright install --with-deps firefox webkit
-            # The default preview skin and particle, hash-locked, as build:release stages them.
+            - run: scripts/ci/install-browsers.sh ${{ matrix.engine }}
+            # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npm run build
-            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project='*-storage'
+            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=${{ matrix.engine }}-storage --project=${{ matrix.engine }}-production-storage --shard=${{ matrix.shard }}
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: compatibility-storage-failures
+                  name: compatibility-storage-failures-${{ strategy.job-index }}
                   path: test-results-compatibility/
                   if-no-files-found: ignore
                   retention-days: 7

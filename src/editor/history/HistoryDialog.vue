@@ -15,6 +15,7 @@ import { i18n } from '../../i18n'
 import { modalTitleKey } from '../../modals/title'
 import { settings } from '../../settings'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
+import { isConsumed } from '../controls/saveChord'
 import HistoryPanel from './HistoryPanel.vue'
 import type { HistoryCloseResult, HistoryPresentation } from './presentation'
 import { peekedInfo, peekedSession } from './selection'
@@ -53,7 +54,7 @@ const viewChart = () => {
     emit('close', 'view-chart')
 }
 const onEscape = (event: KeyboardEvent) => {
-    if (event.defaultPrevented) return
+    if (isConsumed(event)) return
     if (event.key !== 'Escape') {
         const target = event.target
         if (

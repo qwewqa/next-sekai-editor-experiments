@@ -120,7 +120,7 @@ async function dependencyNotices(root, kind) {
         'UI icons: Font Awesome Free by Fonticons, Inc. (https://fontawesome.com), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).',
         ...(kind === 'web'
             ? [
-                  'Default preview skin and particle: "Next SEKAI 01" by Burrito, from coconut.sonolus.com, under its author’s terms.',
+                  'Preview assets by Burrito, from coconut.sonolus.com, under the author’s terms: skins "Next SEKAI 01" and "Next SEKAI 02", particle "Next SEKAI", and sound effects "Next SEKAI 01" and "Next SEKAI 02".',
               ]
             : []),
         'Font Awesome icon attribution: notices/Font-Awesome.txt',
@@ -256,7 +256,13 @@ async function listFiles(directory, prefix = '') {
 }
 
 function validateFileNames(files, assets) {
-    const remaining = new Set(['resource/skin.scp', 'resource/particle.scp'])
+    const remaining = new Set([
+        'resource/skin.scp',
+        'resource/skin2.scp',
+        'resource/particle.scp',
+        'resource/effect.scp',
+        'resource/effect2.scp',
+    ])
     if (!Array.isArray(assets)) throw new Error('Invalid preview asset declarations')
     for (const asset of assets) {
         if (
@@ -269,7 +275,7 @@ function validateFileNames(files, assets) {
         )
             throw new Error('Invalid preview asset declaration')
     }
-    if (remaining.has('resource/skin.scp')) throw new Error('Missing preview skin')
+    for (const file of remaining) throw new Error(`Missing preview package: ${file}`)
     const exact = new Set([
         'index.html',
         'privacy/index.html',
@@ -393,6 +399,22 @@ async function checkPages(directory, files, manifest) {
         throw new Error(`index.html does not match the site: ${manifest.site}`)
 }
 
+// Without these the chart canvas grows without limit and the editor's page hangs.
+const layoutUtilities = ['absolute', 'size-full']
+
+async function checkStylesheet(directory, files) {
+    const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
+    const linked = [...index.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="\/([^"]+)"/g)]
+        .map((match) => match[1])
+        .filter((file) => files.includes(file))
+    let css = ''
+    for (const file of linked) css += (await regularFile(join(directory, file))).toString('utf8')
+    const missing = layoutUtilities.filter(
+        (name) => !new RegExp(String.raw`\.${name}(?![\w-])`).test(css),
+    )
+    if (missing.length) throw new Error(`The editor’s stylesheet lacks .${missing.join(' and .')}`)
+}
+
 // The apps' bridge and the dev-only sample seeder (src/local/seed.ts) must not reach the web build.
 // A production-site build names no test key but these (src/platform/testKeys.ts); the test site may.
 const liveTestKeys = ['nse.test.version', 'nse.test.storage', 'nse.test.startBlank']
@@ -467,6 +489,7 @@ export async function checkRelease(directory, expected = {}) {
     await checkLyonRelease(directory, files)
     await checkBuiltinRelease(directory, files)
     await checkPages(directory, files, manifest)
+    await checkStylesheet(directory, files)
     await checkBundles(directory, files, manifest.site)
     await checkAnalytics(directory, files, manifest.analytics, manifest.site)
     const recorded = Object.keys(manifest.files).sort()

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Housekeeping for stats: clean, dump, check. With no argument it does the nightly job: clean; on Sundays
-# a dump and VACUUM; then the checks. Prod runs it from nse-stats-nightly.timer at 03:00 UTC. Dev runs it
+# a dump and VACUUM; then the checks. Any step that fails is reported in the one email, and the checks
+# still run. Prod runs it from nse-stats-nightly.timer at 03:00 UTC. Dev runs it
 # only by hand. Sourcing the file defines the functions and runs nothing.
 set -euo pipefail
 
@@ -16,7 +17,8 @@ dc() {
 }
 psql_() { dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 "$@"; }
 
-# Umami adds a region and a city from the IP address. Only the country is kept.
+# Umami adds a region and a city from the IP address. Only the country is kept. geo-trigger.sql stops the database
+# from storing them; this clears any stored before the trigger, and is the backstop if the trigger is ever missing.
 clean() {
     psql_ -c "UPDATE session SET region = NULL, city = NULL WHERE region IS NOT NULL OR city IS NOT NULL;"
 }
@@ -25,12 +27,16 @@ dump_stream() { dc exec -T db pg_dump -Fc -U umami umami; }
 
 # Writes the dump to a file and lists its contents before the upload, so a failed pg_dump cannot leave a partial dump in S3.
 dump() {
-    local file
-    file="/data/dumps/umami-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
-    mkdir -p /data/dumps
-    dump_stream > "$file"
-    dc exec -T db pg_restore --list < "$file" > /dev/null
-    aws s3 cp --only-show-errors "$file" "s3://$NSE_BUCKET/dumps/$(basename "$file")"
+    # The contract test points NSE_DUMP_DIR at a temporary folder.
+    local dir="${NSE_DUMP_DIR:-/data/dumps}" file
+    file="$dir/umami-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
+    # Called as `dump || ...`, which turns errexit off, so every step passes failure on itself.
+    # A bad dump is removed. After a failed upload the file stays.
+    # A dump never holds a region or a city, so it is refused when clean fails.
+    clean || return 1
+    mkdir -p "$dir" || return 1
+    { dump_stream > "$file" && dc exec -T db pg_restore --list < "$file" > /dev/null; } || { rm -f "$file"; return 1; }
+    aws s3 cp --only-show-errors "$file" "s3://$NSE_BUCKET/dumps/$(basename "$file")" || return 1
     rm -f "$file"
 }
 
@@ -43,8 +49,17 @@ no_dump_message() {
     fi
 }
 
+notified=""
+# Sends the email through the alert topic. The text is printf %b input.
+notify() {
+    printf '%b\n' "$1" >&2
+    notified=1
+    aws sns publish --topic-arn "$NSE_TOPIC" --subject "nse stats $NSE_ENV: nightly job failed" --message "$(printf '%b\nRunbook: infra/stats/README.md, Operations.' "$1")" > /dev/null
+}
+
+# The argument lists the steps that already failed.
 check() {
-    local problems="" newest age pct body
+    local problems="${1:-}" newest age pct body mount
     if [ "$NSE_ENV" = prod ]; then
         newest=$(aws s3api list-objects-v2 --bucket "$NSE_BUCKET" --prefix dumps/ \
             --query 'sort_by(Contents,&LastModified)[-1].LastModified' --output text 2> /dev/null || echo error)
@@ -56,8 +71,10 @@ check() {
             [ "$age" -le 8 ] || problems="$problems\nThe newest dump is $age days old."
         fi
     fi
-    pct=$(df --output=pcent /data | tail -1 | tr -dc 0-9)
-    [ "$pct" -lt 80 ] || problems="$problems\nThe data volume is $pct% full."
+    for mount in /data /; do
+        pct=$(df --output=pcent "$mount" | tail -1 | tr -dc 0-9)
+        [ "$pct" -lt 80 ] || problems="$problems\nThe disk at $mount is $pct% full."
+    done
     if [[ "${NSE_MONITOR_WEBSITE:-}" =~ ^[0-9a-f-]{36}$ ]]; then
         body="{\"type\":\"event\",\"payload\":{\"website\":\"$NSE_MONITOR_WEBSITE\",\"hostname\":\"monitor\",\"url\":\"/\",\"title\":\"\",\"screen\":\"1x1\",\"language\":\"en\",\"name\":\"nightly\"}}"
         curl -fsS --max-time 20 -o /dev/null --resolve "$STATS_HOSTNAME:443:127.0.0.1" \
@@ -68,8 +85,7 @@ check() {
             || problems="$problems\nThe test event did not reach the database."
     fi
     if [ -n "$problems" ]; then
-        printf '%b\n' "$problems" >&2
-        aws sns publish --topic-arn "$NSE_TOPIC" --subject "nse stats $NSE_ENV: check failed" --message "$(printf '%b\nRunbook: infra/stats/README.md, Operations.' "$problems")" > /dev/null
+        notify "$problems"
         return 1
     fi
 }
@@ -99,12 +115,15 @@ main() {
         dump) dump ;;
         check) check ;;
         all)
-            clean
+            # An error in the script itself still sends the email.
+            trap '[ "$?" = 0 ] || [ -n "$notified" ] || notify "The nightly job stopped with an error."' EXIT
+            failed=""
+            clean || failed="$failed\nThe clean-up failed."
             if [ "$(date -u +%u)" = 7 ]; then
-                dump
-                psql_ -c "VACUUM (ANALYZE)"
+                dump || failed="$failed\nThe dump failed."
+                psql_ -c "VACUUM (ANALYZE)" || failed="$failed\nVACUUM failed."
             fi
-            check
+            check "$failed"
             ;;
         *)
             echo "usage: nightly.sh [clean|dump|check]" >&2

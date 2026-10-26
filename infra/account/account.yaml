@@ -11,10 +11,6 @@ Parameters:
     AlertEmail:
         Type: String
         Description: Receives the alert topic and the budget emails. Passed on the command line, never committed.
-    Repository:
-        Type: String
-        Default: qwewqa/next-sekai-editor-experiments
-        Description: The GitHub repository whose workflows may assume the deploy roles.
 
 Mappings:
     Environments:
@@ -35,6 +31,16 @@ Resources:
         Properties:
             Url: https://token.actions.githubusercontent.com
             ClientIdList: [sts.amazonaws.com]
+            Tags:
+                - { Key: 'nse:service', Value: shared }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    # Reports any resource here that is shared outside the account. External-access analysis is free.
+    AccessAnalyzer:
+        Type: AWS::AccessAnalyzer::Analyzer
+        Properties:
+            AnalyzerName: nse-external-access
+            Type: ACCOUNT
             Tags:
                 - { Key: 'nse:service', Value: shared }
                 - { Key: 'nse:env', Value: !Ref Environment }
@@ -108,7 +114,11 @@ Resources:
                       Condition:
                           StringEquals:
                               'token.actions.githubusercontent.com:aud': sts.amazonaws.com
-                              'token.actions.githubusercontent.com:sub': !Sub repo:${Repository}:environment:stats-${Environment}
+                              # GitHub's immutable subject, owner@owner-id/name@repository-id, which a renamed or recreated repository does not match.
+                              'token.actions.githubusercontent.com:sub': !Sub repo:qwewqa@17557038/next-sekai-editor-experiments@1421592566:environment:stats-${Environment}
+                              # Prod also checks the branch here, in case the Environment's branch rule is relaxed.
+                              'token.actions.githubusercontent.com:ref':
+                                  !If [IsProd, refs/heads/main, !Ref AWS::NoValue]
             Policies:
                 - PolicyName: deploy
                   PolicyDocument:
@@ -123,6 +133,7 @@ Resources:
                                 - cloudformation:ExecuteChangeSet
                                 - cloudformation:DeleteChangeSet
                                 - cloudformation:GetTemplate
+                                - cloudformation:GetTemplateSummary
                                 - cloudformation:UpdateTerminationProtection
                                 # deploy.sh passes the two tags with --tags.
                                 - cloudformation:TagResource

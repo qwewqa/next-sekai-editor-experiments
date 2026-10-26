@@ -29,3 +29,20 @@ test('older skins retain judgment edge fallback without borrowing another color'
     assert.equal(skin.judgments[0]?.singleLine, edge)
     assert.equal(skin.judgments[1]?.singleLine, undefined)
 })
+
+test('lane backgrounds follow the note style codes, and colors a skin lacks use its own lane', () => {
+    const lane = sprite(0)
+    const red = sprite(1)
+    const skin = resolveSkin((name) =>
+        name === 'Sekai Lane Background'
+            ? lane
+            : name === 'Sekai Lane Background Red'
+              ? red
+              : undefined,
+    )
+
+    assert.equal(skin.laneBackgrounds.length, 9)
+    assert.equal(skin.laneBackgrounds[0], lane)
+    assert.equal(skin.laneBackgrounds[2], red)
+    for (const index of [1, 3, 4, 5, 6, 7, 8]) assert.equal(skin.laneBackgrounds[index], lane)
+})

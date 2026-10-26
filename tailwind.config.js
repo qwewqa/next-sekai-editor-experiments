@@ -6,7 +6,7 @@ module.exports = {
     future: {
         hoverOnlyWhenSupported: true,
     },
-    content: ['./index.html', './src/**/*.vue', './src/**/*.ts'],
+    content: { relative: true, files: ['./index.html', './src/**/*.vue', './src/**/*.ts'] },
     theme: {
         extend: {
             colors,

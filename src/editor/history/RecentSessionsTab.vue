@@ -28,6 +28,7 @@ import { formatCount } from '../../utils/size'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
+import { isConsumed } from '../controls/saveChord'
 import { downloadConfirmed } from '../file/flags'
 import { writesInPlace } from '../file/state'
 import { platform } from '../../platform'
@@ -241,11 +242,17 @@ const footer = computed(() => {
     const known = facts.value
     const state = storageStatus.value
     if (!known || !state) return
-    return i18n.value.storage[
-        // The same test as Local Data's line: waiting on older tabs or safe mode is not this.
-        storageLineKey({ ...known, unavailable: storageUnavailable(state, safe) })
-    ]
+    // The same test as Local Data's line: waiting on older tabs or safe mode is not this.
+    const key = storageLineKey({ ...known, unavailable: storageUnavailable(state, safe) })
+    return key && i18n.value.storage[key]
 })
+
+// An empty list says why when a full browser stopped this tab's chain from being stored.
+const emptyText = computed(() =>
+    storageStatus.value?.mode === 'stored' && storageStatus.value.reason === 'full'
+        ? i18n.value.storage.reason.full
+        : i18n.value.history.empty,
+)
 
 const SKELETON_ROWS = 4
 
@@ -512,7 +519,7 @@ const onKeyup = (event: KeyboardEvent) => {
 }
 
 const onKeydown = (event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.isComposing) return
+    if (isConsumed(event) || event.isComposing) return
     if (
         !(event.target instanceof HTMLElement) ||
         (event.target !== scroller.value && !event.target.closest('[data-sessions-row]'))
@@ -736,7 +743,7 @@ const notePointer = (event: PointerEvent) => {
                     class="flex h-24 items-center justify-center px-3 text-center text-sm text-fg/80"
                     data-sessions-empty
                 >
-                    {{ i18n.history.empty }}
+                    {{ emptyText }}
                 </div>
                 <div
                     v-else

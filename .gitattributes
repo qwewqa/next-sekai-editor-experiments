@@ -17,3 +17,4 @@ tests/zip/plan-conformance-v1/** -text
 
 # Shell scripts and units run on Linux.
 infra/** text eol=lf
+scripts/ci/** text eol=lf

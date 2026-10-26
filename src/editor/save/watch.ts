@@ -1,5 +1,5 @@
 import { session as currentSession } from '../../history/session'
-import type { Flusher, FlushSession } from '../../local/flush'
+import { hasChainRecord, type Flusher, type FlushSession } from '../../local/flush'
 import { storedRead, type ReadWorker } from '../../local/storedRead'
 import type { StorageWorker } from '../../local/worker/client'
 import { unbindFile } from '../file'
@@ -18,9 +18,9 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
  */
 export const refreshBinding = async (worker: ReadWorker, flusher: Flusher | undefined) => {
     const session = flusher?.session
-    if (!session?.stored) return
+    if (!session || !hasChainRecord(session)) return
     const read = await storedRead(worker, 'readChainRecord', session.chainId)
-    if (flusher?.session !== session) return
+    if (flusher.session !== session) return
     // A failed read is a hint only: the press reads again.
     if (read.storedRead !== 'value' || !read.storedValue) return
     const record = read.storedValue

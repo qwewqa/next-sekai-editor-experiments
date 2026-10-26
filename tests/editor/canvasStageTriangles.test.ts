@@ -221,6 +221,7 @@ const stageProps = (left = -2, right = 2, pivot = 0, borders = 1) => ({
     pivotLane: pivot,
     xLaneTranslate: 0,
     laneAlpha: 1,
+    laneColor: { start: 0, end: 0, progress: 0 },
     fullWidth: 0,
     divisionLineAlpha: 1,
     division: { start: { size: 2, parity: 0 }, end: { size: 2, parity: 0 }, progress: 0 },
@@ -390,4 +391,26 @@ test('stage packing fallback preserves preceding and following triangle batches'
     assert.ok(paints.slice(1, -1).every((paint) => paint.kind !== 'mesh'))
     assert.ok(meshes[0]?.data.every((value, index) => index % 6 || value < -3))
     assert.ok(meshes[1]?.data.every((value, index) => index % 6 || value > 3))
+})
+
+test('the stage fill takes the tint of the lane color, mixed by its progress', () => {
+    const fill = (laneColor: { start: number; end: number; progress: number }) => {
+        const { context, paints } = stageContext([() => ({ ...stageProps(), laneColor })])
+        drawComposedStages(context, { min: 0, max: 1 }, fullScope, 1)
+        const data = paints[0]?.data ?? []
+        const alpha = data[5]!
+        // Premultiplied channels back to 0..255.
+        return [data[2]!, data[3]!, data[4]!].map((value) => Math.round((value / alpha) * 255))
+    }
+    assert.deepEqual(fill({ start: 0, end: 0, progress: 0 }), [0x83, 0xb6, 0xd0])
+    assert.deepEqual(fill({ start: 2, end: 2, progress: 0 }), [0xd6, 0x73, 0x7b])
+    // Halfway from Default to Red; a constant color ignores the progress.
+    assert.deepEqual(fill({ start: 0, end: 2, progress: 0.5 }), [
+        Math.round((0x83 + 0xd6) / 2),
+        Math.round((0xb6 + 0x73) / 2),
+        Math.round((0xd0 + 0x7b) / 2),
+    ])
+    assert.deepEqual(fill({ start: 2, end: 2, progress: 0.5 }), [0xd6, 0x73, 0x7b])
+    // An overshooting progress stays on the ends.
+    assert.deepEqual(fill({ start: 0, end: 2, progress: 1.4 }), [0xd6, 0x73, 0x7b])
 })

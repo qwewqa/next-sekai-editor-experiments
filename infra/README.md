@@ -2,18 +2,18 @@
 
 The Next SEKAI Editor’s AWS services. The editor itself is static and needs none of this. These are the services around it, starting with `stats/` (usage statistics, a self-hosted Umami).
 
-This folder is in neither the web build nor the native build, and has no `package.json`. Its checks run in `.github/workflows/infra-check.yml`, only when `infra/` or an infra workflow changes, or by hand. Deploys are by hand and never part of a release.
+This folder is in neither the web build nor the native build, and has no `package.json`. Its checks run in `.github/workflows/infra-check.yml`, only when `infra/`, `src/analytics/` or an infra workflow changes, or by hand. Deploys are by hand and never part of a release.
 
 ## What the accounts are for
 
 `nse-prod` and `nse-dev` are member accounts of the maintainer’s AWS Organization. They hold only the Next SEKAI Editor’s services. Another project gets its own accounts, and none of its stacks go here. Everything is in `us-west-2`.
 
-| Where                  | What                                                                                                                                                                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `account/account.yaml` | The baseline, deployed once per account and again when a service is added: GitHub OIDC, the alert topic, the account budget, the services zone, and a deploy role and an execution role per service |
-| `stats/`               | The first service, with its own template, host files, scripts, saved queries and runbook (`stats/README.md`)                                                                                        |
-| `check_templates.py`   | The rules we check on every template, the host files, the workflows and `leftover.sh`, in addition to `cfn-lint`                                                                                    |
-| `create-accounts.sh`   | The one-time account creation                                                                                                                                                                       |
+| Where                  | What                                                                                                                                                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `account/account.yaml` | The baseline, deployed once per account and again when a service is added: GitHub OIDC, the alert topic, the account budget, the services zone, an IAM Access Analyzer for external access, and a deploy role and an execution role per service |
+| `stats/`               | The first service, with its own template, host files, scripts, saved queries and runbook (`stats/README.md`)                                                                                                                                    |
+| `check_templates.py`   | The rules we check on every template, the host files, the workflows and `leftover.sh`, in addition to `cfn-lint`                                                                                                                                |
+| `create-accounts.sh`   | The one-time account creation                                                                                                                                                                                                                   |
 
 The account ids, email addresses and secrets are not in the repository. The ids are GitHub Environment variables, the email is passed on the command line, and a service generates its secrets on its own server.
 
@@ -23,8 +23,10 @@ Every resource that takes tags carries `nse:service` (`stats`, or `shared` for t
 
 Only steps 1 and 6 touch the management account. It is never touched again, however many services are added.
 
+**On Windows,** run the `bash` and `aws` commands in Git Bash (Git for Windows), not in PowerShell or cmd. There, `bash` can be WSL’s, and the `NAME=value command` form does not work. Install the AWS CLI version 2 as well; `uv` runs the checks (see Checking changes).
+
 1. **Create the accounts**, in the management account: `bash infra/create-accounts.sh <prod email> <dev email>`, or Organizations › AWS accounts › Add an AWS account in the console. Each needs an email address that no other AWS account uses (a plus-address on one mailbox works). Put both in an OU `nse` if the Organization uses OUs.
-2. **Profiles** named `nse-prod` and `nse-dev`. Without IAM Identity Center, add to `~/.aws/config` (the ids stay in this local file):
+2. **Profiles** named `nse-prod` and `nse-dev`. Without IAM Identity Center, add to `~/.aws/config` (on Windows, `C:\Users\<you>\.aws\config`; the ids stay in this local file):
 
     ```ini
     [profile nse-prod]
@@ -36,7 +38,7 @@ Only steps 1 and 6 touch the management account. It is never touched again, howe
     and the same for `nse-dev`. `source_profile = default` means the profile signs in with your `default` credentials, which are for the management account. Organizations creates `OrganizationAccountAccessRole` in each new account, and it gives administrator access. With Identity Center, assign `AdministratorAccess` on both accounts instead and give the profiles the same names. The accounts’ root users are not used. The commands below that run in a member account take `--profile nse-<env>`.
 
 3. **Session Manager plugin,** once, for the dashboard tunnel. On Windows run the installer from `https://s3.amazonaws.com/session-manager-downloads/plugin/latest/windows/SessionManagerPluginSetup.exe`, then open a new terminal and check `session-manager-plugin`. Other systems: AWS’s page “Install the Session Manager plugin for the AWS CLI”.
-4. **GitHub.** Create the Environments `stats-dev` (any branch) and `stats-prod` (the maintainer as required reviewer, deployment branch `main` only). Environment rules are free in a public repository. Each Environment gets the variable `AWS_ACCOUNT_ID`, set to the id of its account. `stats-prod` gets `STATS_MONITOR_WEBSITE` later (`stats/README.md`, Deploy).
+4. **GitHub.** Create the Environments `stats-dev` (any branch) and `stats-prod` (the maintainer as required reviewer, deployment branch `main` only). Environment rules are free in a public repository. Each Environment gets the variable `AWS_ACCOUNT_ID`, set to the id of its account. `stats-prod` gets `STATS_MONITOR_WEBSITE` later (`stats/README.md`, Deploy). The deploy roles trust the repository by GitHub’s immutable OIDC subject, `repo:<owner>@<owner id>/<name>@<repository id>:environment:<Environment>`, written in `account/account.yaml`. In a fork, `gh api repos/<owner>/<name>/actions/oidc/customization/sub` prints its prefix.
 5. **Deploy the baseline** in each account:
 
     ```sh
@@ -51,7 +53,18 @@ Only steps 1 and 6 touch the management account. It is never touched again, howe
     AWS then emails a subscription message to the alert address. Confirm it in that email, or the alerts are not delivered.
 
 6. **Delegate the services zones,** in the management account’s `qwewqa.dev` zone, from each stack’s `ServicesZoneNameServers` output: one `NS` record named `nse-services` (prod) and one named `nse-services-dev` (dev), each with the four name servers. This is the last change in the management account. Then activate the cost allocation tags `nse:service` and `nse:env` in its Billing console (Cost allocation tags). They can take a day to appear after the first tagged resource exists.
-7. **Optional: the dev reaper.** Once the baseline and the `stats-dev` Environment exist, set the repository variable `STATS_DEV_REAPER` to `on` (Settings › Secrets and variables › Actions › Variables). Stats dev down then also runs every six hours and deletes a stats dev stack that is over 12 hours old. Without the variable it runs only by hand.
+7. **Account defaults,** once in each account. They cover resources made later; the stats stack already sets each for its own:
+
+    ```sh
+    ACCOUNT=$(aws sts get-caller-identity --profile nse-<env> --query Account --output text)
+    aws s3control put-public-access-block --profile nse-<env> --account-id "$ACCOUNT"       --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+    aws ec2 enable-ebs-encryption-by-default --profile nse-<env> --region us-west-2
+    aws ec2 modify-instance-metadata-defaults --profile nse-<env> --region us-west-2 --http-tokens required
+    ```
+
+    Audit history is CloudTrail's free 90-day event history; there is no trail.
+
+8. **Optional: the dev reaper.** Once the baseline and the `stats-dev` Environment exist, set the repository variable `STATS_DEV_REAPER` to `on` (Settings › Secrets and variables › Actions › Variables). Stats dev down then also runs every six hours and deletes a stats dev stack that is over 12 hours old. Without the variable it runs only by hand.
 
 Then follow `stats/README.md` to deploy the first service.
 
@@ -81,6 +94,7 @@ A service’s template can create roles with any permissions: `nse-<service>-cfn
 | GitHub OIDC provider, IAM roles    | `AWS::IAM::OIDCProvider`, `AWS::IAM::Role`  | $0                         | No charge                                                                                                                                    |
 | Alert topic and email subscription | `AWS::SNS::Topic`, `AWS::SNS::Subscription` | $0                         | A few emails a year                                                                                                                          |
 | Budget                             | `AWS::Budgets::Budget`                      | $0                         | “You can monitor and receive notifications on your budgets free of charge” (https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/) |
+| Access Analyzer                    | `AWS::AccessAnalyzer::Analyzer`             | $0                         | External access analysis is free; only unused and internal access analysis is charged (https://aws.amazon.com/iam/access-analyzer/pricing/)  |
 
 Each environment’s zone costs $0.50 a month. For `nse-dev` that is the whole cost while stats is down. The baseline adds nothing to a service’s own cost table. The budgets are $30 for prod and $1 for dev. Each sends an email at 80% of actual cost and at 100% of forecast cost.
 
@@ -88,7 +102,7 @@ Each environment’s zone costs $0.50 a month. For `nse-dev` that is the whole c
 
 ## Checking changes
 
-Push a branch that adds or changes `infra/` to a `ci/<name>` branch first, and get Infra check green, including the `stats-compose` job, before the change reaches `main`. The contract test cannot run without Docker, so CI is its first run.
+Push a branch that adds or changes `infra/` to a `ci/<name>` branch first, and get Infra check green, including the `stats-compose` job, before the change reaches `main`. The contract test needs Docker on Linux, so CI is usually its first run.
 
 No AWS access is needed for these:
 
@@ -99,4 +113,6 @@ shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.
 bash infra/stats/scripts/contract-test.sh   # needs Docker, curl, jq and Linux
 ```
 
-`infra-check.yml` runs the same when `infra/` or an infra workflow changes. Its `stats-compose` job runs the contract test against the real images.
+On Windows, run these in Git Bash and use `uv run --with shellcheck-py shellcheck …` for the third. The contract test reads `/proc` and mounts Linux paths, so it does not run in Git Bash. Run it in CI, or in WSL 2 with Docker.
+
+`infra-check.yml` runs the same when `infra/`, `src/analytics/` or an infra workflow changes. Its `stats-compose` job runs the contract test against the real images.

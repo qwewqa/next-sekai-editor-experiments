@@ -17,6 +17,8 @@ if (process.env.GITHUB_SHA && process.env.GITHUB_SHA !== commit) {
     throw new Error('GITHUB_SHA does not match the checked-out source')
 }
 process.env.GITHUB_SHA = commit
+// The release stages every locked package itself, so the build includes the Next SEKAI assets.
+process.env.NSE_PREVIEW_ASSETS = 'release'
 const { version, appVersion: shown, atTag } = appVersion({ cwd: root })
 const metadata = {
     version,

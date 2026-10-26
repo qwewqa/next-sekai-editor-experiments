@@ -1,7 +1,7 @@
 {
   "source.nxsp": {
-    "fingerprint": "zip:5708:0:9ead14ee",
-    "size": 5708,
+    "fingerprint": "zip:5719:0:a99e16ec",
+    "size": 5719,
     "entries": [
       {
         "index": 0,
@@ -16,28 +16,28 @@
         "index": 1,
         "name": "level.json",
         "method": 8,
-        "crc32": 325745116,
-        "compressedSize": 1279,
-        "uncompressedSize": 11457,
+        "crc32": 1791969369,
+        "compressedSize": 1283,
+        "uncompressedSize": 11488,
         "dataOffset": 856
       },
       {
         "index": 2,
         "name": "history/manifest.json",
         "method": 8,
-        "crc32": 2168104888,
-        "compressedSize": 1262,
+        "crc32": 3553582427,
+        "compressedSize": 1263,
         "uncompressedSize": 4850,
-        "dataOffset": 2206
+        "dataOffset": 2210
       },
       {
         "index": 3,
         "name": "history/chunks.bin",
         "method": 0,
-        "crc32": 375097878,
-        "compressedSize": 1189,
-        "uncompressedSize": 1189,
-        "dataOffset": 3536
+        "crc32": 2094639827,
+        "compressedSize": 1195,
+        "uncompressedSize": 1195,
+        "dataOffset": 3541
       },
       {
         "index": 4,
@@ -46,7 +46,7 @@
         "crc32": 136824160,
         "compressedSize": 15,
         "uncompressedSize": 15,
-        "dataOffset": 4791
+        "dataOffset": 4802
       },
       {
         "index": 5,
@@ -55,7 +55,7 @@
         "crc32": 3245599963,
         "compressedSize": 17,
         "uncompressedSize": 17,
-        "dataOffset": 4874
+        "dataOffset": 4885
       },
       {
         "index": 6,
@@ -64,7 +64,7 @@
         "crc32": 1553704227,
         "compressedSize": 12,
         "uncompressedSize": 12,
-        "dataOffset": 4963
+        "dataOffset": 4974
       }
     ]
   }

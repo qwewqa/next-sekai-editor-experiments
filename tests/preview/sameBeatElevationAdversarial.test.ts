@@ -531,6 +531,7 @@ test('same-beat attached alpha follows linear elevation independently of geometr
             )
             const style = {
                 time: 0,
+                laneColor: 0,
                 judgeLineColor: 0,
                 judgeLineStyle: 0 as const,
                 leftBorderStyle: 0,

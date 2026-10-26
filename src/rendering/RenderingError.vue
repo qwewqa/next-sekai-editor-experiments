@@ -18,7 +18,7 @@ const isDetailOpen = ref(false)
         @keydown.stop
     >
         <div class="flex max-w-md flex-col items-center gap-3">
-            <p>{{ i18n.preview.graphicsUnavailable }}</p>
+            <p>{{ i18n.preview.chartGraphicsUnavailable }}</p>
             <p>{{ i18n.preview.graphicsHelp }}</p>
             <details
                 v-if="message"

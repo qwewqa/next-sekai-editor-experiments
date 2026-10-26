@@ -471,13 +471,11 @@
       "background": "背景",
       "effect": "音效",
       "storedTab": "已存放",
-      "effectHint": "用於預覽和播放。",
       "default": "預設",
-      "defaultSkin": "預設：Next SEKAI 01",
-      "defaultParticle": "預設：Next SEKAI",
+      "nextSekai01": "Next SEKAI 01",
+      "nextSekai": "Next SEKAI",
+      "nextSekai02": "Next SEKAI 02",
       "builtin": "內建",
-      "storedFile": "{0}（檔案）",
-      "storedServer": "{0}（伺服器）",
       "useBuiltinAll": "全部使用內建",
       "resetDefault": "重置為預設",
       "stored": "已存放：{0} 項，{1}",
@@ -500,11 +498,11 @@
         "storageUnavailable": "編輯器無法存取此瀏覽器中已存放的{0}。",
         "serverFailed": "無法從 {1} 重新下載{0}。",
         "invalid": "無法讀取已存放的{0}。",
-        "defaultFailed": "無法載入預設項。",
+        "failed": "無法載入{0}。",
         "builtinFailed": "無法載入內建項。"
       },
       "offline": "您已離線。",
-      "safeMode": "安全模式使用預設項。",
+      "safeMode": "安全模式使用{0}。",
       "choose": "選擇…",
       "chooseSkin": "選擇外觀",
       "chooseParticle": "選擇粒子",
@@ -520,7 +518,6 @@
       "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇…",
       "noneInFile": "此檔案中沒有{0}。",
-      "rights": "您載入的項目僅存放在此瀏覽器中。",
       "progress": {
         "reading": "正在讀取檔案…",
         "storing": "正在存放…",
@@ -564,7 +561,6 @@
         "packageTooLarge": "此項目存放後超過 {0}。",
         "storeFailed": "無法存放此項目。"
       },
-      "chooseHint": "從檔案或 Sonolus 伺服器",
       "fromFile": "從檔案",
       "fromServer": "從伺服器",
       "serverAddress": "伺服器位址",
@@ -642,6 +638,7 @@
         "dragSecondary": "右鍵單擊並拖曳以使用輔助工具進行拖曳。",
         "scrollY": "滾輪滾動可垂直滾動。",
         "scrollX": "使用 Shift 鍵+滾輪滾動可水平滾動。",
+        "autoscroll": "中鍵單擊後移動滑鼠即可捲動。單擊即可停止。",
         "minimap": "在小地圖中左鍵單擊或拖曳即可捲動到該位置。",
         "zoomY": "使用 Ctrl 鍵+滾輪滾動可垂直縮放。",
         "zoomX": "使用 Ctrl 和 Shift 鍵滾動滾輪可水平縮放。"
@@ -778,7 +775,7 @@
     "recentSessions": "未儲存的內容在「歷史記錄 › 最近工作階段」中。",
     "fileTitle": "檔案",
     "moveBetweenDevices": "要將內容移到另一台裝置，請儲存為 .nxsp 檔案，然後在那台裝置上開啟該檔案。",
-    "crswap": "儲存時發生當機，可能會在專案檔案旁留下 .crswap 檔案。可以放心刪除。"
+    "crswap": "儲存時發生當機，可能會在專案檔案旁留下 .crswap 檔案。可以刪除。"
   },
   "elevation": {
     "edit": "編輯高度",
@@ -790,8 +787,8 @@
     "snapping": "高度吸附",
     "squareGrid": "1:1 網格",
     "auto": "自動",
-    "allow": "允許",
-    "disallow": "不允許",
+    "always": "始終",
+    "never": "從不",
     "off": "關閉",
     "canvas": "音符高度",
     "empty": "此節拍沒有音符",
@@ -811,11 +808,9 @@
     "title": "設定",
     "resetSettings": "重置設定…",
     "resetSettingsTitle": "重置設定",
-    "resetSettingsHint": "還原預設設定，保留鍵盤快捷鍵。",
     "resetKeybinds": "重置快捷鍵…",
     "resetKeybindsTitle": "重置快捷鍵",
     "resetSettingsMessage": "要還原預設設定並保留鍵盤快捷鍵嗎？",
-    "resetSettingsHintStatistics": "還原預設設定，保留鍵盤快捷鍵和「傳送使用統計」。",
     "resetSettingsMessageStatistics": "要還原預設設定並保留鍵盤快捷鍵和「傳送使用統計」嗎？",
     "resetKeybindsMessage": "要還原預設鍵盤快捷鍵嗎？",
     "editor": {
@@ -892,7 +887,6 @@
     "preview": {
       "title": "預覽",
       "assets": "資源",
-      "assetsHint": "用於預覽和播放的外觀、粒子、背景和音效。",
       "position": {
         "title": "位置",
         "auto": "自動",
@@ -967,7 +961,6 @@
     "sections": "分區",
     "localData": {
       "title": "本機資料",
-      "recoveryHeading": "恢復",
       "startupNoticesHeading": "啟動通知",
       "discard": "捨棄…",
       "discardConfirm": "捨棄",
@@ -979,7 +972,7 @@
         "journalUndated": "先前造訪中未儲存的內容 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
-        "listFailed": "無法讀取已恢復的內容",
+        "listFailed": "無法讀取已恢復的內容。",
         "downloadFailed": "無法下載已恢復的內容。"
       },
       "openHistory": "開啟歷史記錄",
@@ -987,7 +980,6 @@
       "exportRaw": "匯出原始資料",
       "open": "開啟",
       "exportRawName": "{0} 原始資料 {1}.zip",
-      "storageHeading": "儲存空間",
       "stored": "此瀏覽器中已存放：{0}，總容量約 {1}",
       "deleteSessions": "刪除工作階段…",
       "deleteTitle": "刪除工作階段",
@@ -1000,7 +992,6 @@
       "namesMore": "{1} 及其他 {0} 個",
       "newer": "其中有工作階段需要較新版本的編輯器。",
       "deleting": "正在刪除…",
-      "exportRawNote": "用於回報問題。",
       "exportRawUnreadable": "無法讀取已存放的內容。",
       "notDeleted": "有 {0} 個工作階段無法刪除。"
     }
@@ -1209,7 +1200,7 @@
   "load": {
     "version": "版本 {0}",
     "updated": "已更新至版本 {0}",
-    "whatsNew": "新功能",
+    "whatsNew": "發行說明",
     "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已存放的內容。",
     "olderVersion": "此瀏覽器中已開啟過較新版本的編輯器。請重新載入，或儲存以保留內容。",
     "tryAgain": "重試",
@@ -1256,10 +1247,7 @@
     "private": "如果這是無痕視窗，此處存放的所有內容會在關閉視窗時遺失。請儲存以保留內容。",
     "inAppBrowser": "這似乎是應用程式內建瀏覽器。已存放的內容可能被刪除。如需保留內容，請在瀏覽器中開啟此頁面。",
     "ios": "此瀏覽器會在 7 天未造訪後刪除已存放的內容。請儲存以保留內容。",
-    "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請儲存以保留內容。",
-    "installedWebkit": "最近的工作階段會保留在此處，直到您移除此應用程式。請儲存以保留內容。",
-    "persisted": "除非清除此瀏覽器的資料，否則最近的工作階段會保留在其中。請儲存以保留內容。",
-    "default": "除非空間不足，否則最近的工作階段會保留在此瀏覽器中。請儲存以保留內容。"
+    "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請儲存以保留內容。"
   },
   "player": {
     "started": "開始播放",
@@ -1400,7 +1388,7 @@
       "title": "步驟詳細資訊",
       "named": "步驟詳細資訊：{0}",
       "action": "詳細資訊",
-      "unsupported": "此編輯器無法讀取此步驟的詳細資訊。",
+      "unsupported": "此版本的編輯器無法讀取此步驟的詳細資訊。",
       "newer": "此步驟由較新版本的編輯器記錄。",
       "textShortened": "文字已縮短顯示",
       "varying": "值不一致",
@@ -1596,7 +1584,7 @@
         "label": "引導線不透明度"
       },
       "colors": {
-        "neutral": "預設",
+        "neutral": "灰",
         "red": "紅",
         "green": "綠",
         "blue": "藍",
@@ -1712,7 +1700,7 @@
       },
       "judgmentLineColor": {
         "label": "判定線顏色",
-        "neutral": "預設",
+        "neutral": "灰",
         "red": "紅",
         "green": "綠",
         "blue": "藍",
@@ -1729,6 +1717,9 @@
       "laneAlpha": {
         "label": "軌道不透明度"
       },
+      "laneColor": {
+        "label": "軌道顏色"
+      },
       "left": {
         "label": "軌道"
       },
@@ -1736,17 +1727,13 @@
         "label": "邊框樣式（左）"
       },
       "key": {
-        "input": "輸入鍵位",
         "press": "按一個鍵，或再次點選以清除",
         "pressUnassigned": "按一個鍵",
         "pressCancel": "按一個鍵，或按 Esc 取消",
-        "clear": "再次點選以清除此快捷鍵",
         "unassigned": "未設定",
         "reserved": "{0} 由瀏覽器或系統保留，請按其他鍵。",
         "altGraph": "{0} 在許多鍵盤上用於輸入字元，請按其他鍵。",
         "alsoRuns": "同時執行{0}",
-        "browserReload": "將取代瀏覽器的重新整理快捷鍵",
-        "browserFind": "將取代瀏覽器的尋找快捷鍵",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -1762,8 +1749,7 @@
           "ctrl": "Ctrl",
           "alt": "Alt",
           "shift": "Shift"
-        },
-        "fixedAlias": "也可按 {0}（不可變更）"
+        }
       },
       "maskLeft": {
         "label": "遮罩軌道"
@@ -1897,6 +1883,7 @@
     "loadingSkin": "正在載入外觀…",
     "skinUnavailable": "無法載入預覽外觀。",
     "graphicsUnavailable": "無法啟動預覽圖形。",
+    "chartGraphicsUnavailable": "無法啟動圖形渲染。",
     "graphicsHelp": "請確認瀏覽器已啟用圖形加速和 WebGL，必要時重新啟動瀏覽器。",
     "errorDetails": "錯誤詳細資訊",
     "reload": "重新載入",
@@ -2133,6 +2120,8 @@
     "bgm": "BGM",
     "placeholder": "未命名",
     "exportHint": "如需 Sonolus 關卡資料，請使用「匯出關卡資料…」。",
+    "exportHintFirst": ".nxsp 專案檔案僅供本編輯器使用。若要產生上傳至 Sonolus 伺服器的關卡資料，請使用「匯出關卡資料…」。",
+    "exportHintNames": "關卡資料檔案可能名為 LevelData，或以 .nsld 或 .json.gz 結尾。",
     "openExport": "匯出關卡資料…",
     "readOnly": "無法寫入 \"{0}\"。",
     "notProject": "\"{0}\" 不是專案檔案。",

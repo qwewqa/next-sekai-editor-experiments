@@ -110,6 +110,8 @@ test('the landing config shares the editor’s colours and shadows, and reads th
     assert.deepEqual(landing.theme.extend.colors, shared.colors)
     assert.deepEqual(editor.theme.extend.boxShadow, shared.boxShadow)
     assert.deepEqual(landing.theme.extend.boxShadow, shared.boxShadow)
-    assert.ok(landing.content.includes('./privacy/index.html'))
-    assert.ok(!editor.content.some((glob) => glob.includes('privacy') || glob.includes('landing')))
+    assert.ok(landing.content.files.includes('./privacy/index.html'))
+    assert.ok(
+        !editor.content.files.some((glob) => glob.includes('privacy') || glob.includes('landing')),
+    )
 })

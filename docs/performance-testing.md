@@ -286,9 +286,10 @@ These recur, and a spike in a run is often one of them. Check them before blamin
 
 Usage statistics must cost nothing measurable (`docs/analytics.md`). To check a change, run the same plan against two builds in ABBA order: A has no analytics target, and B sends to a loopback mock.
 
-1. Build both with `NSE_PERF=1`. A perf build accepts only a loopback origin, and the `webdriver` rule does not apply to one:
+1. Build both with `NSE_PERF=1`, after staging the preview assets. A perf build accepts only a loopback origin, and the `webdriver` rule does not apply to one. Check that neither build prints a Built-in only line, which would mean the builds draw the Built-in skin:
 
     ```sh
+    node scripts/stage-dev-assets.mjs
     NSE_PERF=1 node node_modules/vite/bin/vite.js build --sourcemap --outDir perf-results/A/dist --emptyOutDir
     NSE_PERF=1 NSE_ANALYTICS_ORIGIN=http://127.0.0.1:5535 NSE_ANALYTICS_WEBSITE=<any UUID> \
         node node_modules/vite/bin/vite.js build --sourcemap --outDir perf-results/B/dist --emptyOutDir

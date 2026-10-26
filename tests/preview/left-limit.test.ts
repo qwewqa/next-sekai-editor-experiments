@@ -263,6 +263,7 @@ test('finite stages remain absent before their start and visible through their i
         styles: [
             {
                 time: 1,
+                laneColor: 0,
                 judgeLineColor: 0,
                 judgeLineStyle: 0,
                 leftBorderStyle: 0,

@@ -141,12 +141,6 @@ const confirmReset = async (title: () => string, message: () => string, reset: (
     })
     if (confirmed) reset()
 }
-// Reset Settings… keeps Send Usage Statistics, and says so where the build shows it.
-const resetSettingsHint = computed(() =>
-    analyticsTarget
-        ? i18n.value.settings.resetSettingsHintStatistics
-        : i18n.value.settings.resetSettingsHint,
-)
 const askResetSettings = () =>
     confirmReset(
         () => i18n.value.settings.resetSettingsTitle,
@@ -189,7 +183,6 @@ onBeforeUnmount(() => {
                 <button
                     type="button"
                     class="btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                    :title="resetSettingsHint"
                     @click="askResetSettings"
                 >
                     {{ i18n.settings.resetSettings }}

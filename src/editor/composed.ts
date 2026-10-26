@@ -1,3 +1,4 @@
+import { noteStyleValue } from '../chart/noteStyle'
 import type { StageId } from '../chart/stages'
 import { easeValues } from '../ease'
 import {
@@ -148,6 +149,7 @@ const buildComposedLayout = (state: LayoutSource) => {
                 })),
                 styles: stageStyles.map((event) => ({
                     time: toTime(event.beat),
+                    laneColor: noteStyleValue(event.laneColor),
                     judgeLineColor: colors.indexOf(event.judgmentLineColor),
                     judgeLineStyle: event.judgmentLineStyle === 'singleLine' ? 1 : 0,
                     leftBorderStyle: borders.indexOf(event.leftBorderStyle),

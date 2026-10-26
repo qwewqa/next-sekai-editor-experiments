@@ -223,3 +223,74 @@ test('batch BPM properties retain batch semantics and commit one undo step', asy
     // The initial BPM stays at 0.
     expect(result).toEqual({ preview: [0, 2, 2], committed: [0, 2, 2], undoRestoredSource: true })
 })
+
+test('a lane color survives another edit, undo and redo, and both serialized forms', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { editSelectedEditableEntities } =
+            (await import('/src/editor/sidebars/default/index.ts')) as typeof import('../../src/editor/sidebars/default')
+        const { serializeToLevelDataEntities } =
+            (await import('/src/levelData/entities/serialize/index.ts')) as typeof import('../../src/levelData/entities/serialize')
+        const { parseLevelDataChart } =
+            (await import('/src/chart/parse/levelData/index.ts')) as typeof import('../../src/chart/parse/levelData')
+        const { toRecords } =
+            (await import('/src/local/records/records.ts')) as typeof import('../../src/local/records/records')
+        const { history, store, fixtures, show } = window.editorTest
+        show(fixtures.events)
+        const joint = () =>
+            [...store.getAllEntities()].find(
+                (entity) => entity.type === 'stageStyleEventJoint' && entity.beat === 3.5,
+            ) as { laneColor: string; laneAlpha: number } | undefined
+        const select = () => {
+            const entity = [...store.getAllEntities()].find(
+                (entity) => entity.type === 'stageStyleEventJoint' && entity.beat === 3.5,
+            )!
+            history.replaceState({ ...history.state.value, selectedEntities: [entity] })
+        }
+        const read = () => ({ laneColor: joint()?.laneColor, laneAlpha: joint()?.laneAlpha })
+        const start = read()
+        select()
+        editSelectedEditableEntities({ laneColor: 'red' })
+        const colored = read()
+        editSelectedEditableEntities({ laneAlpha: 0.25 })
+        const alpha = read()
+        history.undoState()
+        const undone = read()
+        history.undoState()
+        const undoneTwice = read()
+        history.redoState()
+        history.redoState()
+        const redone = read()
+
+        const state = history.state.value
+        const entities = serializeToLevelDataEntities(
+            state.initialLife,
+            state.isDynamicStages,
+            state.store,
+            state.groups,
+            state.stages,
+        )
+        const written = entities
+            .filter((entity) => entity.archetype === 'StageStyleChange')
+            .map((entity) => entity.data.find((item) => item.name === 'laneColor'))
+            .map((item) => item && 'value' in item && item.value)
+        const reread = parseLevelDataChart(entities).stageStyleEvents.map((e) => e.laneColor)
+        // The records hold the color after the marker lane.
+        const style = toRecords(state).kinds.find((kind) => kind.kind === 'stageStyleEvents')
+        const record = style?.records.map(({ record }) => record[3])
+        return { start, colored, alpha, undone, undoneTwice, redone, written, reread, record }
+    })
+    expect(result.start.laneColor).toBe('default')
+    expect(result.colored).toMatchObject({ laneColor: 'red', laneAlpha: result.start.laneAlpha })
+    expect(result.alpha).toMatchObject({ laneColor: 'red', laneAlpha: 0.25 })
+    // The undo of the alpha keeps the color the earlier step set.
+    expect(result.undone).toEqual(result.colored)
+    expect(result.undoneTwice).toEqual(result.start)
+    expect(result.redone).toEqual(result.alpha)
+    // Red is 2 in level data, and the other style events keep Default.
+    expect(result.written).toContain(2)
+    expect(result.written.filter((value) => value === 2)).toHaveLength(1)
+    expect(result.reread.filter((color) => color === 'red')).toHaveLength(1)
+    expect(result.record?.filter((value) => value === 'red')).toHaveLength(1)
+})

@@ -101,9 +101,10 @@ const readOwn = async (
 
 /**
  * Reads the chain's own file before a save picker that may return it: whole, and only when it
- * isn't at the base, when storage lacks rows of its base (or knows of damage in them) or head media it may hold. Read access is asked for only when storage lacks something;
- * otherwise only a grant already held reads. `damaged`: a build just found damage in storage, so
- * the file is read whatever storage says, but only with a grant already held. `prompt: false`: a
+ * isn't at the base, when storage lacks rows of its base (or knows of damage in them) or head
+ * media it may hold. Read access is asked for only when storage lacks something; otherwise only a
+ * grant already held reads. `damaged`: a build just found damage in storage, so the file is read
+ * whatever storage says, but only with a grant already held. `prompt: false`: a
  * read just before a picker opens, on the same press, also only with a grant already held (a prompt
  * would spend the press the picker needs). Never rejects.
  */

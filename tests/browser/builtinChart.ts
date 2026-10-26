@@ -77,6 +77,7 @@ export const buildCharts = () => {
                 stageId: 1,
                 beat: 0,
                 editorLane: 0,
+                laneColor: 'default',
                 judgmentLineColor: 'neutral',
                 judgmentLineStyle: 'default',
                 leftBorderStyle: 'default',
@@ -202,6 +203,25 @@ export const buildCharts = () => {
             ])
         }
         charts.styles = c
+    }
+    // Lane colors and judgment line colors, held and fading; the line is crossed by a note each beat.
+    {
+        const c = blank()
+        const [first] = c.stageStyleEvents
+        const colors = [
+            ['default', 'neutral'],
+            ['red', 'red'],
+            ['blue', 'green'],
+            ['black', 'cyan'],
+        ] as const
+        c.stageStyleEvents = colors.map(([laneColor, judgmentLineColor], i) => ({
+            ...first!,
+            beat: i * 4,
+            laneColor,
+            judgmentLineColor,
+        }))
+        for (let beat = 2; beat < 14; beat++) c.slides.push([note(beat, { left: -1, size: 2 })])
+        charts.colors = c
     }
     ;(window as unknown as { __charts: typeof charts }).__charts = charts
 }

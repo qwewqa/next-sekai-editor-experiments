@@ -58,7 +58,7 @@
                         <h1 class="text-2xl font-bold text-fg-strong sm:text-3xl">Privacy</h1>
                         <p class="text-sm text-fg/80">
                             Last updated:
-                            <time datetime="2026-10-25">October 25, 2026</time>
+                            <time datetime="2026-10-26">October 26, 2026</time>
                         </p>
                     </div>
 
@@ -149,13 +149,13 @@
                                 minimap is shown;
                             </li>
                             <li>
-                                the kind and approximate size of files you open, save and export,
-                                what a save included, and whether that worked;
+                                the kind and approximate size of files you open, save, export and
+                                check, what a save included, and whether that worked;
                             </li>
                             <li>the approximate length of music files;</li>
                             <li>
-                                the approximate size of the chart and of its Timeline, such as
-                                “1,000 to 2,000 notes”, and approximately how many sessions Recent
+                                the approximate size of the chart, such as “250 to 319 notes”, how
+                                many steps the Undo window holds, and how many sessions Recent
                                 Sessions lists;
                             </li>
                             <li>
@@ -163,14 +163,24 @@
                                 and how many notices and errors appeared, without their messages;
                             </li>
                             <li>
-                                how long startup takes, how long it takes to open, save, export and
-                                check files and to load music, and how long the chart takes to show
-                                at a Timeline step;
+                                how the page was loaded, such as by a reload or from the browser’s
+                                cache, whether it was hidden while it started, and whether the
+                                browser had discarded it earlier;
                             </li>
                             <li>
-                                whether Check File and History found problems, how often the editor
-                                is slow to respond, and approximately how long playback and the
-                                visit lasted;
+                                how long startup takes, how long it takes to open, save, export and
+                                check files and to load music, how long a file takes to prepare for
+                                saving or export, and how long the chart takes to show at a Timeline
+                                step;
+                            </li>
+                            <li>
+                                whether Check File and History found problems, and whether it
+                                checked a file as well as History;
+                            </li>
+                            <li>
+                                how often the editor is slow to respond, and how long the editor was
+                                visible and how long playback ran while it was, in seconds, up to
+                                one day;
                             </li>
                             <li>
                                 the editor’s version, whether it was updated since your last visit,
@@ -178,34 +188,49 @@
                             </li>
                             <li>
                                 your operating system, browser and its language, your screen size
-                                and pixel density, an approximate window size, whether the screen is
-                                a touch screen, the number of processor cores as a range, whether
-                                the preview could use graphics and draw in parallel, and whether the
-                                editor is installed;
+                                and pixel density, an approximate window size and whether it is
+                                taller than wide, whether the screen is a touch screen, the number
+                                of processor cores and the approximate memory the browser reports,
+                                whether the preview could use graphics and draw in parallel, and
+                                whether the editor is installed;
                             </li>
                             <li>
                                 whether this browser’s storage is available, whether this looks like
                                 a private window, and approximately how full it is;
                             </li>
                             <li>
+                                whether automatic cleanup ran, freed space or was unable to finish;
+                            </li>
+                            <li>
                                 the site you came from, if you followed a link from another site,
                                 without the rest of its address.
                             </li>
                         </ul>
-                        <p>Each is sent with the time it happened.</p>
+                        <p>
+                            Each is sent with the time it happened. Measurements of startup, files,
+                            music, Timeline steps and slow responses also carry your browser,
+                            whether the screen is a touch screen, the window size, pixel density,
+                            processor cores and memory.
+                        </p>
                         <p>
                             It never sends your charts or their content, file names, level titles or
                             other text you type, or any identifier stored in your browser. Counts,
-                            such as how often a tool is used, and the screen size are sent as they
-                            are. Other numbers, such as sizes and times, are sent as ranges.
+                            such as how often a tool is used, are sent as numbers up to 9999. How
+                            long an action takes is sent in milliseconds, up to ten minutes. The
+                            screen size is sent as it is. Other numbers, such as sizes and how long
+                            the chart takes to show a step, are sent as ranges.
+                        </p>
+                        <p>
+                            Chart object counts below 10 are sent exactly. Larger counts, music
+                            lengths and file sizes are sent as ranges. Together these figures can
+                            sometimes match a published chart.
                         </p>
                         <p>
                             The server receives your IP address and browser’s user agent with each
-                            request. It uses them to count visits and to find your country, and does
-                            not store them. It also finds your region and city, and deletes them
-                            within a day. To count visits it keeps a code made from them that
-                            changes every day. It sets no cookies and stores nothing in your
-                            browser.
+                            request. It uses them to count visits and to find your country, and may
+                            also find your region and city. It stores none of these except your
+                            country. To count visits it keeps a code made from them that changes
+                            every day. It sets no cookies and stores nothing in your browser.
                         </p>
                         <p>
                             We keep the statistics with no time limit for now. The release notes and
@@ -255,16 +280,15 @@
                                 <strong class="text-fg-strong">Files you send us.</strong> If you
                                 send us a file to help fix a problem, we use it only for that and
                                 delete it when the problem is fixed. This can be a project file or
-                                the file from Export Raw Data in Settings › Local Data › Recovery.
-                                Send it by email, not in a public issue. It contains your charts and
-                                audio.
+                                the file from Export Raw Data in Settings › Local Data. Send it by
+                                email, not in a public issue. It contains your charts and audio.
                             </li>
                             <li>
                                 <strong class="text-fg-strong">Data in your browser.</strong>
                                 Delete sessions with Settings › Local Data › Delete Sessions… or in
                                 History › Recent Sessions. Discard recovered work under Settings ›
-                                Local Data › Recovery. Remove stored assets in Preview Assets ›
-                                Stored. Clearing the site’s data in your browser deletes all of it.
+                                Local Data. Remove stored assets in Preview Assets › Stored.
+                                Clearing the site’s data in your browser deletes all of it.
                             </li>
                         </ul>
                     </section>

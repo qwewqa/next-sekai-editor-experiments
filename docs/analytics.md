@@ -45,9 +45,9 @@ A hook is one call into `tally.ts`, or a read by the client. Nothing else on a h
 | `notify`, `recordDiagnostic` | `notices.<severity>`, `errors.<kind>` |
 | `finishStartup`, `failStartup` | `markStartup`: the time, the outcome, and whether the page was ever hidden |
 | `local/start.ts` | `note('reload')` when the tab's claim is its own reload |
-| Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed. All but Export also call `busy` while they run, as Restore does, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
-| `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, Quick Switch | `features.<name>` and `peekShown` |
-| `history/index.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
+| Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed. Save and Export add `buildMs`, read from the clock on either side of the build await that already exists in their flows (`runBuild` and the Recent Sessions Save… build, and the `build` wrapper in `exportLevel/flow.ts`). No hook adds an await. Check adds `scope` and `size` from the plan it already holds. All but Export also call `busy` while they run, as Restore does, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
+| `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, autoscroll, Quick Switch | `features.<name>` and `peekShown` |
+| `history/index.ts`, `editor/save/report.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
 | The preview worker host | `record('preview', …)` when the worker fails and the main thread takes over |
 | The editor canvas | `note('graphicsUnavailable')` when its renderer fails |
 
@@ -76,7 +76,7 @@ The switch appears only in a build with a target. Reset Settings… skips it, an
 ## Privacy rules
 
 1. No chart content, file names, level info, titles, free text, paths, URLs with a query or hash, and no ids that link visits.
-2. Only fixed values, booleans, ranges and use counts capped at 9999, plus the screen size in Umami's usual form.
+2. Only fixed values, booleans, ranges, use counts capped at 9999, action times in whole milliseconds capped at ten minutes (600000), times in whole seconds capped at a day (86400), the Undo window's step count (at most 1,000), and the screen size in Umami's usual form.
 3. The client creates, stores and sends no identifier. Umami's daily session hash is the only grouping.
 4. Nothing is sent before the setting and the browser's signals are read, and nothing at all when the result is off.
 
@@ -95,40 +95,59 @@ How the code enforces them:
 | Event | When | Properties |
 | --- | --- | --- |
 | (pageview) | client start | `url` (always `/`), `title` (empty), `hostname`, `language`, `screen`, `referrer` (another site's origin only) |
-| `visit` | client start | `version`, `site`, `os`, `engine`, `standalone`, `touch`, `viewport`, `dpr`, `browserLanguage`, `returning`, `updated` |
+| `visit` | client start | `version`, `site`, `os`, `engine`, `standalone`, `touch`, `viewport`, `viewportPortrait`, `dpr`, `cores`, `deviceMemory`, `browserLanguage`, `returning`, `updated` |
 | `settings` | client start | `theme`, `themeShown`, `locale`, `previewInWorker`, `previewRenderScale`, `previewAntialias`, `previewShowHitboxes`, `previewNoteSpeed`, `previewAssets.<type>`, `showPreview`, `previewPosition`, `showMinimap`, `showHistory`, `historyPosition`, `dimUnchangedObjects`, `waveform`, `beatDisplay`, `toolbarQuickSwitch`, `toolbarCustomized`, `mouseSecondaryTool`, `playFollow`, `touchQuickScrollShow`, `touchLongPressContextMenu`, `confirmCloseUnsavedFile` |
-| `startup` | client start | `start`, `outcome`, `ready`, `found.<kind>` |
-| `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
-| `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `dynamicStages`, `bgm`, `historySteps` |
+| `startup` | client start | `start`, `outcome`, `ready`, `hidden`, `navigation`, `documentDelivery`, `wasDiscarded`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `found.<kind>` |
+| `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `usageShare`, `cleanup`, `sessions` |
+| `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `objects`, `dynamicStages`, `bgm`, `historySteps` |
 | `preview` | client start if the preview is shown, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
-| `open` | each Open… | `format`, `via`, `size`, `outcome`, `reason`, `took` |
-| `save` | each Save, Save As…, Download Again and Recent Sessions' Save… | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
-| `export` | each Export | `format`, `target`, `size`, `took`, `outcome`, `reason` |
-| `check` | each Check File and History | `outcome`, `took` |
-| `bgm` | each BGM chosen | `format`, `size`, `length`, `took`, `outcome` |
+| `open` | each Open… | `format`, `via`, `size`, `outcome`, `reason`, `took`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` |
+| `save` | each Save, Save As…, Download Again and Recent Sessions' Save… | `action`, `target`, `history`, `bgm`, `size`, `took`, `buildMs`, `outcome`, `reason`, `step`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` |
+| `export` | each Export | `format`, `target`, `size`, `took`, `buildMs`, `outcome`, `reason`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` |
+| `check` | each Check File and History | `outcome`, `took`, `scope`, `size`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` |
+| `bgm` | each BGM chosen | `format`, `size`, `length`, `took`, `outcome`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` |
 | `usage` | at hide | `<command>.<source>` |
 | `edits` | at hide | `<operation>`, `undo`, `redo` |
-| `features` | at hide | `historyPanel`, `historyDialog`, `recentTab`, `peek`, `peekRefused`, `restore`, `restoreSession`, `restoreCopy`, `saveRowToFile`, `deleteSessions`, `minimapDrag`, `minimapJump`, `quickSwitch` |
+| `features` | at hide | `historyPanel`, `historyDialog`, `recentTab`, `peek`, `peekRefused`, `restore`, `restoreSession`, `restoreCopy`, `saveRowToFile`, `deleteSessions`, `minimapDrag`, `minimapJump`, `autoscroll`, `quickSwitch` |
 | `notices` | at hide | `info`, `warning`, `error` |
-| `perf` | at hide | `peek.<time>`, `loafSupported`, `frames.<state>.<length>`, `playSeconds`, `slowInputs`, `interactions`, `visibleTime`, `cores` |
+| `peek` | at hide, only when there were peeks | `peek.<time>`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` |
+| `perf` | at hide | `loafSupported`, `eventTimingSupported`, `frames.<state>.<length>`, `frames.unclassified`, `frameAttribution`, `slowEvents.<length>`, `interactions`, `playSeconds`, `visibleTime`, `previewHost`, `previewRenderScale`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` |
 | `errors` | at hide | `error`, `csp` |
 | `unsupported` | the support page, on its first input | `engine` |
 
-`chart.historySteps` is the size of the Undo window, at most 1,000 steps (`STACK_CAP`), not the length of the Timeline.
+The device details (`cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`) go on each measured event, so a figure is read against the device that made it. `viewport` is the workspace's width, and `viewportPortrait` on `visit` says whether its height is greater. `deviceMemory` is the browser's rounded figure in GiB, `16+` above 16 and `other` for a value that is not a power of two; it is absent where the browser reports none.
 
-`peek.<time>` is the time from the start of the load, after the debounce, until the step shows with its change. Up to 100 ms of it is the wait for the change. A step whose state comes from the cache is counted as `cached` and not timed.
+Scales (`src/analytics/scales.ts`) use half-open `[lower, upper)` ranges, except where a label names an exact value (`dpr` `1`, `2` and `3`, `noteSpeed` `10`) and `usageShare`, whose `70-80` includes exactly 80 because cleanup starts only above 80% (`HIGH_SHARE`). A missing, non-finite or negative measurement is left out. Chart counts are exact from 0 to 9, then ten ranges a decade, such as `250-319`, up to `100000+`. Audio length is in seconds from `<10`, and file sizes double from `<16K` to `16G+`.
+
+`took` is the action's time in whole milliseconds, at most 600000, which means 600000 or more. `ready` is the same. `buildMs` is the part of a Save or Export spent building the file. `took` begins after the last picker or dialog closes. A Save or Export that builds before its picker opens leaves the build out of `took`, and `buildMs` still reports it. `startup.ready` is left out for a hidden or failed start, and `hidden` says whether the page was hidden before startup ended.
+
+`startup.navigation` is the navigation type, and `documentDelivery` is a guess from the navigation timing entry: `serviceWorker` when a worker started for the load, `cache` when the browser says so or the document had a body and no transfer, else `network`, and `unknown` when the entry is missing or unclear. A cached document does not mean the scripts or stored data were warm. `wasDiscarded` is sent where the browser has the property.
+
+`chart.objects` is the sum of the raw counts of notes, time scales, animation event joints, BPM entries, stages and groups, ranged once. It leaves out slides, which are sets of notes already counted. `chart.historySteps` is the size of the Undo window, at most 1,000 steps (`STACK_CAP`), not the length of the Timeline. The counts, the audio length and the file sizes are each ranged, but together they can sometimes match a chart that has been published.
+
+`storage.usageShare` is the usage as a percent of the quota, from the same estimate, and is left out without a positive quota. `cleanup` is the latest cleanup run seen: `notRun`, `busy`, `noSpaceFreed` or `freed`.
+
+`check.scope` is `fileAndStored` when the run read the bound file, else `stored`. `check.size` is that file's size, and is left out for `stored`.
+
+`playSeconds` and `visibleTime` measure the time since the previous send in whole seconds, capped at a day (86400) per event. `playSeconds` counts playback only while the page is visible. The part of a second left over stays for the next send. Other durations and sizes use ranges.
+
+`peek.<time>` is the time from the start of the load, after the debounce, until the step shows with its change. Up to 100 ms of it is the wait for the change. A step whose state comes from the cache is counted as `cached` and not timed. The `peek` event is sent with `perf`, and only when there were peeks.
+
+`perf` reports the long frames (`frames.<state>.<length>`, from the Long Animation Frames API) and slow events (`slowEvents.<length>`, Event Timing from 104 ms, which is its 8 ms rounding of 100 ms). Each long frame is sorted by the state it began in: `playing` is visible playback, `busy` is an Open, Save, Check, Restore or BGM load, and `other` is the rest. The client keeps a short list of the times these states changed (`intervals.ts`: at most 64 changes, trimmed as entries arrive), with no polling. A frame that the list no longer covers is counted in `frames.unclassified` and sets `frameAttribution` to `partial` for that send. `loafSupported` and `eventTimingSupported` say whether the browser has each API. `interactions` is the browser's own count, and is left out where it has none.
+
+`previewHost` and `previewRenderScale` hold the value for the whole interval since the last send, `mixed` if it changed, and `none` for the host when the preview was not shown. Both follow synchronous watchers on change, not a frame callback, so a change that comes back within one tick still gives `mixed`.
 
 The Recent Sessions count (`sessions`) is known only after the History tab has read its list. If the first `storage` event went without it, one more goes when the count becomes known. The client reads no storage of its own for it.
 
 `unsupported` is sent by `public/gate.js`, not by the client, when the support gate stops the editor. The build puts the target in a tag on the editor's page, `<meta name="nse-analytics" content="ORIGIN WEBSITE HOST">`, and only in a build with a target; `check:release` compares it with the manifest. The page sends one beacon on its first trusted input while visible, under the same rules as the client (a signal, an off switch, an automated browser, a request to save data, another host).
 
-Umami's own visit counts, durations and bounce rates are wrong for this client. Without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime`.
+Umami's own visit counts, durations and bounce rates are wrong for this client. Without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime` (seconds).
 
 ## Adding an event or a property
 
 1. Add it to `catalogue.ts`, with a closed set of values or a range, and to the table above.
 2. Hook it with one `bump`, `bumpCommand` or `record` at the place that already knows the value. Never compute something on a hot path for it.
-3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value.
+3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value. A renamed or removed property also changes `infra/stats/scripts/contract-events.json` and the saved queries in `infra/stats/queries/` that read it. Infra check runs them.
 4. Map it to a category in `tests/editor/analyticsPrivacy.test.ts`. If it is a new kind of data, add a line to the privacy page, give it a category, and change the page's date.
 5. Add a CHANGELOG line.
 

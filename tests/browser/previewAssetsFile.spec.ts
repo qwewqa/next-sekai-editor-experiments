@@ -232,9 +232,6 @@ test.describe('From a File', () => {
         await expect(dialog(page).locator('[data-asset-choose]')).toHaveText('Choose…')
         await choose(page)
         await expect(chooser(page).locator('[data-chooser-title]')).toHaveText('Choose a Skin')
-        await expect(chooser(page).locator('[data-chooser-rights]')).toHaveText(
-            'Items you load are stored in this browser only.',
-        )
         // Nothing is listed, and Use waits for an item.
         await expect(chooser(page).locator('[data-chooser-list]')).toHaveCount(0)
         await expect(chooser(page).locator('[data-chooser-use]')).toBeDisabled()
@@ -258,7 +255,7 @@ test.describe('From a File', () => {
         await expect(chooser(page)).toHaveCount(0)
         // The source list shows the new item, selected.
         const row = dialog(page).locator('[data-asset-row^="file:"]')
-        await expect(row).toContainText('Neon Skin (File)')
+        await expect(row).toContainText('Neon Skin')
         await expect(row).toContainText('Someone · editor-skin.scp')
         await expect(row.locator('input')).toBeChecked()
         expect((await choices(page)).skin).toMatchObject({
@@ -363,7 +360,7 @@ test.describe('From a File', () => {
         // The particle's tab shows it too.
         await tabOf(page, 'particle').click()
         await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText(
-            'Neon Particle (File)',
+            'Neon Particle',
         )
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(/^Stored: 2 items, /)
     })
@@ -390,9 +387,7 @@ test.describe('From a File', () => {
         await items.nth(1).click()
         await expect(chooser(page).locator('[data-chooser-use]')).toBeEnabled()
         await chooser(page).locator('[data-chooser-use]').click()
-        await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText(
-            'Second Skin (File)',
-        )
+        await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText('Second Skin')
         expect(await stored(page)).toHaveLength(1)
     })
 
@@ -478,9 +473,7 @@ test.describe('From a File', () => {
         await tabOf(page, 'effect').click()
         await expect(chooser(page).locator('[data-chooser-progress]')).toBeVisible()
         await expect(chooser(page)).toHaveCount(0, { timeout: 15_000 })
-        await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText(
-            'Neon Sounds (File)',
-        )
+        await expect(dialog(page).locator('[data-asset-row^="file:"]')).toContainText('Neon Sounds')
         // An open chooser also stays open across tabs.
         await tabOf(page, 'skin').click()
         await choose(page)
@@ -519,11 +512,11 @@ test.describe('a stored item that is gone', () => {
         await open(page)
         const note = dialog(page).locator('[data-asset-note]')
         await expect(note).toContainText(
-            'Using Default. The skin file is no longer stored in this browser.',
+            'Using Next SEKAI 01. The skin file is no longer stored in this browser.',
         )
         // The panel's line gives the same reason.
         await expect(fallbackLine(page, 'skin')).toContainText(
-            'Skin: using Default. The skin file is no longer stored in this browser.',
+            'Skin: using Next SEKAI 01. The skin file is no longer stored in this browser.',
         )
         await expect(tabOf(page, 'skin')).toHaveAccessibleName(
             'Skin. The skin file is no longer stored in this browser.',
@@ -553,6 +546,46 @@ test.describe('a stored item that is gone', () => {
         await expect(fallbackLine(page, 'skin')).toHaveCount(0)
     })
 
+    test('Choose Again with a package that is already chosen loads it again', async ({ page }) => {
+        await start(page)
+        await open(page, 'skin')
+        const bytes = await variants('skin', [
+            { name: 'neon', title: 'Neon Skin', author: 'Someone' },
+        ])
+        await importFile(page, 'skin', 'neon.scp', bytes)
+        const first = (await choices(page)).skin
+        expect(first?.source).toBe('file')
+        await expect.poll(async () => (await slot(page, 'skin')).title).toBe('Neon Skin')
+
+        // Its bytes go while the choice stays, and the skin loads again, as after a reload.
+        await page.evaluate(async (key) => {
+            const [{ workerStore }, { assetSession }] = await Promise.all([
+                window.editorTest.appImport<typeof import('../../src/preview/assets/files/store')>(
+                    '/src/preview/assets/files/store.ts',
+                ),
+                window.editorTest.appImport<typeof import('../../src/preview/assets')>(
+                    '/src/preview/assets/index.ts',
+                ),
+            ])
+            await workerStore.remove(key!)
+            assetSession.reload('skin')
+        }, first?.key)
+        await expect(dialog(page).locator('[data-asset-note]')).toContainText(
+            'Using Next SEKAI 01. The skin file is no longer stored in this browser.',
+        )
+
+        await dialog(page).locator('[data-asset-choose-again]').click()
+        await pick(page, 'neon.scp', bytes)
+        await chooser(page).locator('[data-chooser-use]').click()
+        await expect(chooser(page)).toHaveCount(0)
+        // The package is stored under the choice's key, so the choice itself did not change.
+        expect((await choices(page)).skin).toEqual(first)
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(0)
+        await expect(fallbackLine(page, 'skin')).toHaveCount(0)
+        await expect.poll(async () => (await slot(page, 'skin')).title).toBe('Neon Skin')
+        expect((await slot(page, 'skin')).status).toMatchObject({ active: 'chosen' })
+    })
+
     test('a stored package that cannot be read says so, in the panel and in the dialog', async ({
         page,
     }) => {
@@ -577,11 +610,11 @@ test.describe('a stored item that is gone', () => {
             } as never
         }, key)
         await expect(fallbackLine(page, 'skin')).toContainText(
-            'Skin: using Default. The stored skin could not be read.',
+            'Skin: using Next SEKAI 01. The stored skin could not be read.',
         )
         await open(page)
         await expect(dialog(page).locator('[data-asset-note]')).toContainText(
-            'Using Default. The stored skin could not be read.',
+            'Using Next SEKAI 01. The stored skin could not be read.',
         )
         // Only a gone file offers Choose Again.
         await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
@@ -620,7 +653,7 @@ test.describe('a stored item that is gone', () => {
             } as never
         }, key)
         await expect(fallbackLine(page, 'skin')).toContainText(
-            'Skin: using Default. The stored skin could not be read.',
+            'Skin: using Next SEKAI 01. The stored skin could not be read.',
         )
         expect((await choices(page)).skin?.key).toBe(key)
     })
@@ -633,10 +666,12 @@ test.describe('storage that cannot be opened', () => {
         await page.addInitScript(() => localStorage.setItem('nse.test.noStorage', '1'))
         await start(page, { previewAssets: { skin: fileChoice } })
         const reason = 'The editor cannot access the stored skin in this browser.'
-        await expect(fallbackLine(page, 'skin')).toContainText(`Skin: using Default. ${reason}`)
+        await expect(fallbackLine(page, 'skin')).toContainText(
+            `Skin: using Next SEKAI 01. ${reason}`,
+        )
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            `Using Default. ${reason}`,
+            `Using Next SEKAI 01. ${reason}`,
         )
         await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
         expect((await choices(page)).skin).toEqual(fileChoice)
@@ -761,8 +796,8 @@ test.describe('the source list', () => {
             'neon.scp',
             await variants('skin', [{ name: 'neon', title: 'Neon Skin' }]),
         )
-        // Default, Built-in and the stored item, with Choose… outside the group.
-        await expect(dialog(page).locator('[data-asset-row]')).toHaveCount(3)
+        // Built-in, Next SEKAI 01, Next SEKAI 02 and the stored item, with Choose… outside the group.
+        await expect(dialog(page).locator('[data-asset-row]')).toHaveCount(4)
         await dialog(page).locator('[data-asset-row] input:checked').focus()
         const seen: (string | undefined)[] = []
         for (const key of [

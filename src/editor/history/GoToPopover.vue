@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, useId, useTemplateRef 
 import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import { swallowPress } from '../../utils/swallowPress'
+import { holdsChord } from '../controls/heldKeys'
 import { workspaceDockAttribute } from '../workspace'
 import CheckIcon from './CheckIcon.vue'
 import { filterHere, hereRangeText, takeHereRange } from './editsHere'
@@ -151,7 +152,7 @@ const pick = (filter: Filter) => {
 
 const onKeydown = (event: KeyboardEvent) => {
     // An open popover holds chords from the browser, such as Ctrl+S saving the page.
-    if ((event.ctrlKey || event.metaKey) && /^[a-z]$/i.test(event.key)) {
+    if (holdsChord(event)) {
         event.preventDefault()
         return
     }

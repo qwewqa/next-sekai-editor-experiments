@@ -177,13 +177,6 @@ test('unit labels follow their locale’s pattern', () => {
             assert.doesNotMatch(text, new RegExp(unit), `${locale} ${key}`)
 })
 
-test('the Japanese capture tooltip says what its prompt says', () => {
-    const messages = read('ja')
-    // As the prompt "キーを押すか、もう一度クリックして削除", not a longer sentence.
-    assert.ok(messages['modals.form.key.press']!.includes('もう一度クリックして削除'))
-    assert.match(messages['modals.form.key.clear']!, /^もう一度クリックして\S*削除$/)
-})
-
 test('Japanese writes すべて, never 全て', () => {
     for (const [key, text] of Object.entries(read('ja'))) assert.doesNotMatch(text, /全て/, key)
 })
@@ -249,6 +242,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.laneDivisions.custom.modal.division',
         'commands.note.title.default',
         // French writes "skin", as in its preview strings.
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.previewAssets.noun.skin',
         'commands.previewAssets.skin',
         'commands.slide.title.default',
@@ -313,6 +309,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.bgm.title',
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.toggleVolume.type.bgm',
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
@@ -347,6 +346,9 @@ const identicalToEnglish: Record<string, string[]> = {
     ko: [
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.visibilities.toggle.types.bpm',
         // The device, the time and the count in one line.
         'conflict.saved',
@@ -383,6 +385,9 @@ const identicalToEnglish: Record<string, string[]> = {
     tr: [
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.visibilities.toggle.types.bpm',
         // The device, the time and the count in one line.
         'conflict.saved',
@@ -418,6 +423,9 @@ const identicalToEnglish: Record<string, string[]> = {
     zhs: [
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
@@ -448,6 +456,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.bgm.title',
         'commands.bpm.title',
         'commands.events.title',
+        'commands.previewAssets.nextSekai',
+        'commands.previewAssets.nextSekai01',
+        'commands.previewAssets.nextSekai02',
         'commands.toggleVolume.type.bgm',
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.

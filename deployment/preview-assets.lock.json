@@ -14,15 +14,39 @@
                 "hash": "1059334bcd8455f8751e05aa2b4939f61416f6d5"
             },
             "data": {
-                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/1/data/7aa5628cebcbd73e39bcbd9f002134538bc53da9",
-                "hash": "7aa5628cebcbd73e39bcbd9f002134538bc53da9"
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/1/data/a6777d27ad1c13bfd0008f2cbbb7e95071b01311",
+                "hash": "a6777d27ad1c13bfd0008f2cbbb7e95071b01311"
             },
             "texture": {
-                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/1/texture/0bd8484672ea687eee6a2ddbe2b314044d26268f",
-                "hash": "0bd8484672ea687eee6a2ddbe2b314044d26268f"
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/1/texture/1e6134babb35da8c803c2ce67054f815f6835ae7",
+                "hash": "1e6134babb35da8c803c2ce67054f815f6835ae7"
             }
         },
-        "sha256": "7d68b1440513e08808eb161e9684f05f74df807e023e86b25351ff463abe06ab"
+        "sha256": "e7a05e321f4204491df0f638c141a128119f168defe144465daf5f8ebf6c66f1"
+    },
+    "skin2": {
+        "source": "https://coconut.sonolus.com/next-sekai/sonolus/skins/coconut-next-sekai-2",
+        "item": {
+            "name": "coconut-next-sekai-2",
+            "source": "https://coconut.sonolus.com/next-sekai",
+            "version": 4,
+            "title": "Next SEKAI 02",
+            "subtitle": "Next SEKAI",
+            "author": "Burrito#1000",
+            "thumbnail": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/2/thumbnail/e461178513f806606357baf92f2e039c564b9528",
+                "hash": "e461178513f806606357baf92f2e039c564b9528"
+            },
+            "data": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/2/data/5bfc3bb1ae9cf2e4aee919d1effa2b3c75297586",
+                "hash": "5bfc3bb1ae9cf2e4aee919d1effa2b3c75297586"
+            },
+            "texture": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/skins/2/texture/428ac4a08495ac736058a9e9e340f5d84423dbe7",
+                "hash": "428ac4a08495ac736058a9e9e340f5d84423dbe7"
+            }
+        },
+        "sha256": "c02ba536684aa7565673c0f07e034f40d0b51bbe02f16337a0d3dd87e346a921"
     },
     "particle": {
         "source": "https://coconut.sonolus.com/next-sekai/sonolus/particles/coconut-next-sekai-1",
@@ -33,10 +57,6 @@
             "title": "Next SEKAI",
             "subtitle": "Next SEKAI",
             "author": "Burrito#1000",
-            "thumbnail": {
-                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/particles/1/thumbnail/a2c4057e3e89244e1b77f8895ebe731be622090e",
-                "hash": "a2c4057e3e89244e1b77f8895ebe731be622090e"
-            },
             "data": {
                 "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/particles/1/data/6aea2c2762c9b4b18f761b39d669c72fc106426e",
                 "hash": "6aea2c2762c9b4b18f761b39d669c72fc106426e"
@@ -46,6 +66,49 @@
                 "hash": "a99f11bfdc2b6bd2b9b079db33b794a667fcc976"
             }
         },
-        "sha256": "1b36367b6ac82d7b5b067f18223a1e1e79e0734981ba7e529860d0b6d764e53d"
+        "thumbnail": false,
+        "sha256": "a74f73f93161d6537f15e8925b6c4ff122f83b4191e7d8cd3d60104d1b9786c0"
+    },
+    "effect": {
+        "source": "https://coconut.sonolus.com/next-sekai/sonolus/effects/coconut-next-sekai-1",
+        "item": {
+            "name": "coconut-next-sekai-1",
+            "source": "https://coconut.sonolus.com/next-sekai",
+            "version": 5,
+            "title": "Next SEKAI 01",
+            "subtitle": "Next SEKAI",
+            "author": "Burrito#1000",
+            "data": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/effects/1/data/c7fb106c6912e9cee19e5caea43956df1eb2c766",
+                "hash": "c7fb106c6912e9cee19e5caea43956df1eb2c766"
+            },
+            "audio": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/effects/1/audio/ad8bbc5a89efb86527b4a7a89dd051a6d3852018",
+                "hash": "ad8bbc5a89efb86527b4a7a89dd051a6d3852018"
+            }
+        },
+        "thumbnail": false,
+        "sha256": "8f7f53172a719ec1c45ad7e38363a5886ec893dbbb9298c7d55cb3a957402259"
+    },
+    "effect2": {
+        "source": "https://coconut.sonolus.com/next-sekai/sonolus/effects/coconut-next-sekai-2",
+        "item": {
+            "name": "coconut-next-sekai-2",
+            "source": "https://coconut.sonolus.com/next-sekai",
+            "version": 5,
+            "title": "Next SEKAI 02",
+            "subtitle": "Next SEKAI",
+            "author": "Burrito#1000",
+            "data": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/effects/2/data/c7fb106c6912e9cee19e5caea43956df1eb2c766",
+                "hash": "c7fb106c6912e9cee19e5caea43956df1eb2c766"
+            },
+            "audio": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/effects/2/audio/069216decf21074ade64122824f16f8cecaee315",
+                "hash": "069216decf21074ade64122824f16f8cecaee315"
+            }
+        },
+        "thumbnail": false,
+        "sha256": "8ca563e690d5d49d6f39e010008a36d81cd937bc7812865e2b8a5a938490eb43"
     }
 }

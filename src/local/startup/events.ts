@@ -39,7 +39,7 @@ export type LoadEvent =
     | { kind: 'migratedRevision'; sessionId: string }
     /** "Recovered your last change to "{0}"." */
     | { kind: 'journalRecovered'; name: ShownName; sessionId: string }
-    /** "A recovered change needs a newer version of the editor." */
+    /** "A recovered change requires a newer version of the editor." */
     | { kind: 'journalLater' }
     /** After GC and cleanup, usage is still above the cleanup threshold: "Browser storage is almost full." [Local Data]. */
     | { kind: 'storageNearlyFull' }

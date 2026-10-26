@@ -589,10 +589,16 @@ test('an export that is written, and one that fails, are recorded for the usage 
         const events = tally
             .collect()
             .recorded.map(
-                ({ name, data }) => ({ name, ...data }) as { name: string; took?: number },
+                ({ name, data }) =>
+                    ({ name, ...data }) as { name: string; took?: number; buildMs?: number },
             )
+        // The build is timed for each file that was built, and not for the failed write.
         assert.deepEqual(
-            events.map(({ took: _took, ...rest }) => rest),
+            events.map(({ buildMs }) => typeof buildMs),
+            ['number', 'undefined', 'number', 'number'],
+        )
+        assert.deepEqual(
+            events.map(({ took: _took, buildMs: _buildMs, ...rest }) => rest),
             [
                 {
                     name: 'export',

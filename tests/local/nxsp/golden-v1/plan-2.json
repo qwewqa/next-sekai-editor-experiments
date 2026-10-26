@@ -103,8 +103,8 @@
     {
       "name": "level.json",
       "method": 8,
-      "crc32": 2835704253,
-      "uncompressedSize": 12018,
+      "crc32": 2583037456,
+      "uncompressedSize": 12049,
       "parts": [
         {
           "kind": "bytes",
@@ -458,6 +458,10 @@
                   {
                     "name": "editorLane",
                     "value": 0
+                  },
+                  {
+                    "name": "laneColor",
+                    "value": 2
                   },
                   {
                     "name": "judgeLineColor",
@@ -1590,7 +1594,7 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 3058018633,
+      "crc32": 2066181002,
       "uncompressedSize": 7547,
       "parts": [
         {
@@ -1612,7 +1616,7 @@
                   }
                 },
                 "time": 1792126795000,
-                "snapshot": "999562af272c130cbe25b7c543276a01",
+                "snapshot": "f9359c19d893410ddfd56aeb00451e7d",
                 "noteCount": 9
               },
               {
@@ -1630,7 +1634,7 @@
                   }
                 },
                 "time": 1792126796000,
-                "snapshot": "bb7bab6e564b8db94bcd0c317104139b",
+                "snapshot": "9057de20cd7a7d49340302d0314d7bc4",
                 "noteCount": 12,
                 "kept": false
               },
@@ -1649,7 +1653,7 @@
                   }
                 },
                 "time": 1792126797000,
-                "snapshot": "482a1283f29361be2e822e39136d3cec",
+                "snapshot": "45da35fa5a4557efb88fd85eeec8caaf",
                 "noteCount": 10,
                 "dirty": true
               },
@@ -1668,7 +1672,7 @@
                   }
                 },
                 "time": 1792126798000,
-                "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
+                "snapshot": "b5fe316542275d1fab1375ca40242523",
                 "noteCount": 10
               },
               {
@@ -1688,7 +1692,7 @@
                   }
                 },
                 "time": 1792126799000,
-                "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
+                "snapshot": "b5fe316542275d1fab1375ca40242523",
                 "noteCount": 10,
                 "revisionId": "r001-0000-4000-8000-000000000000",
                 "device": {
@@ -1711,7 +1715,7 @@
                   }
                 },
                 "time": 1792126801000,
-                "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
+                "snapshot": "b5fe316542275d1fab1375ca40242523",
                 "noteCount": 10
               },
               {
@@ -1729,7 +1733,7 @@
                   }
                 },
                 "time": 1792126802000,
-                "snapshot": "b226043df53ed5b5eae67fc829139850",
+                "snapshot": "368ea0fe248736fdf1ffb569d4e24c56",
                 "noteCount": 11
               },
               {
@@ -1747,7 +1751,7 @@
                   }
                 },
                 "time": 1792126803000,
-                "snapshot": "0232e1e97e183033c65bd4203a6effce",
+                "snapshot": "61a08fa713b9d6b09307c72daa54977b",
                 "noteCount": 11
               },
               {
@@ -1767,7 +1771,7 @@
                   }
                 },
                 "time": 1792126804000,
-                "snapshot": "0232e1e97e183033c65bd4203a6effce",
+                "snapshot": "61a08fa713b9d6b09307c72daa54977b",
                 "noteCount": 11,
                 "revisionId": "s001-0000-4000-8000-000000000000",
                 "device": {
@@ -1778,7 +1782,7 @@
               }
             ],
             "roots": {
-              "999562af272c130cbe25b7c543276a01": [
+              "f9359c19d893410ddfd56aeb00451e7d": [
                 1,
                 "de34b56c8236920918fa1ac0efe6cec6",
                 [
@@ -1808,7 +1812,7 @@
                   ],
                   [
                     "stageStyleEvents",
-                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                    "c7683ecf6d79e6d7d344a62fb3ed6263"
                   ],
                   [
                     "stageTransformEvents",
@@ -1817,7 +1821,7 @@
                 ],
                 9
               ],
-              "482a1283f29361be2e822e39136d3cec": [
+              "45da35fa5a4557efb88fd85eeec8caaf": [
                 1,
                 "de34b56c8236920918fa1ac0efe6cec6",
                 [
@@ -1847,7 +1851,7 @@
                   ],
                   [
                     "stageStyleEvents",
-                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                    "c7683ecf6d79e6d7d344a62fb3ed6263"
                   ],
                   [
                     "stageTransformEvents",
@@ -1856,7 +1860,7 @@
                 ],
                 10
               ],
-              "b5ba26df2283cb1cd7ac48c385a4e4e8": [
+              "b5fe316542275d1fab1375ca40242523": [
                 1,
                 "9fff73c5f19f09738772d05baf18b54e",
                 [
@@ -1886,7 +1890,7 @@
                   ],
                   [
                     "stageStyleEvents",
-                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                    "c7683ecf6d79e6d7d344a62fb3ed6263"
                   ],
                   [
                     "stageTransformEvents",
@@ -1895,7 +1899,7 @@
                 ],
                 10
               ],
-              "b226043df53ed5b5eae67fc829139850": [
+              "368ea0fe248736fdf1ffb569d4e24c56": [
                 1,
                 "9fff73c5f19f09738772d05baf18b54e",
                 [
@@ -1925,7 +1929,7 @@
                   ],
                   [
                     "stageStyleEvents",
-                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                    "c7683ecf6d79e6d7d344a62fb3ed6263"
                   ],
                   [
                     "stageTransformEvents",
@@ -1934,7 +1938,7 @@
                 ],
                 11
               ],
-              "0232e1e97e183033c65bd4203a6effce": [
+              "61a08fa713b9d6b09307c72daa54977b": [
                 1,
                 "bb80a2993a08797c012eab4b989ea7ce",
                 [
@@ -1964,7 +1968,7 @@
                   ],
                   [
                     "stageStyleEvents",
-                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                    "c7683ecf6d79e6d7d344a62fb3ed6263"
                   ],
                   [
                     "stageTransformEvents",
@@ -2017,11 +2021,11 @@
                   "fc69f5483924d4aff06683335ded65d1"
                 ]
               ],
-              "ec7e12fc53132cfbc1e4b9ff64b74cd8": [
+              "c7683ecf6d79e6d7d344a62fb3ed6263": [
                 "stageStyleEvents",
                 0,
                 [
-                  "40b783550034e9d28d76681825a58fed"
+                  "1811fe6d40cc8c5e712e166c5293cb5f"
                 ]
               ],
               "4a422a26c54fa83bc5f1e4c92ad29f25": [
@@ -2085,33 +2089,33 @@
                 35
               ],
               [
-                "40b783550034e9d28d76681825a58fed",
+                "1811fe6d40cc8c5e712e166c5293cb5f",
                 704,
-                53
+                59
               ],
               [
                 "785cf7fc1d8caf4021845009ea643c09",
-                757,
+                763,
                 43
               ],
               [
                 "985cec3836fc092b8502871a62e8a0b7",
-                800,
+                806,
                 75
               ],
               [
                 "9fff73c5f19f09738772d05baf18b54e",
-                875,
+                881,
                 314
               ],
               [
                 "fb2a34be183631bf8d8f91a891c8abae",
-                1189,
+                1195,
                 82
               ],
               [
                 "bb80a2993a08797c012eab4b989ea7ce",
-                1271,
+                1277,
                 314
               ]
             ],
@@ -2119,7 +2123,7 @@
               "base": 0,
               "slots": [
                 {
-                  "snapshot": "999562af272c130cbe25b7c543276a01",
+                  "snapshot": "f9359c19d893410ddfd56aeb00451e7d",
                   "step": {
                     "kind": "init",
                     "operation": {
@@ -2136,7 +2140,7 @@
                   }
                 },
                 {
-                  "snapshot": "482a1283f29361be2e822e39136d3cec",
+                  "snapshot": "45da35fa5a4557efb88fd85eeec8caaf",
                   "step": {
                     "kind": "edit",
                     "operation": {
@@ -2151,7 +2155,7 @@
                   }
                 },
                 {
-                  "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
+                  "snapshot": "b5fe316542275d1fab1375ca40242523",
                   "step": {
                     "kind": "edit",
                     "operation": {
@@ -2166,7 +2170,7 @@
                   }
                 },
                 {
-                  "snapshot": "b226043df53ed5b5eae67fc829139850",
+                  "snapshot": "368ea0fe248736fdf1ffb569d4e24c56",
                   "step": {
                     "kind": "edit",
                     "operation": {
@@ -2181,7 +2185,7 @@
                   }
                 },
                 {
-                  "snapshot": "0232e1e97e183033c65bd4203a6effce",
+                  "snapshot": "61a08fa713b9d6b09307c72daa54977b",
                   "step": {
                     "kind": "edit",
                     "operation": {
@@ -2205,14 +2209,14 @@
     {
       "name": "history/chunks.bin",
       "method": 0,
-      "crc32": 3110340803,
-      "uncompressedSize": 1585,
+      "crc32": 3056491756,
+      "uncompressedSize": 1591,
       "parts": [
         {
           "kind": "copy",
           "source": "golden",
           "entryIndex": 3,
-          "dataOffset": 3456,
+          "dataOffset": 3461,
           "check": {
             "kind": "entryCrc"
           }
@@ -2245,7 +2249,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 5,
-          "dataOffset": 4754,
+          "dataOffset": 4765,
           "check": {
             "kind": "entryCrc"
           }
@@ -2262,7 +2266,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 6,
-          "dataOffset": 4823,
+          "dataOffset": 4834,
           "check": {
             "kind": "entryCrc"
           }

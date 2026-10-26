@@ -1,0 +1,176 @@
+[
+    {
+        "name": "",
+        "data": {}
+    },
+    {
+        "name": "settings",
+        "data": {
+            "theme": "dark",
+            "showMinimap": "on",
+            "previewAssets.skin": "bundled"
+        }
+    },
+    {
+        "name": "startup",
+        "data": {
+            "start": "continued",
+            "outcome": "done",
+            "ready": 1500,
+            "hidden": false,
+            "navigation": "reload",
+            "documentDelivery": "cache",
+            "cores": "8",
+            "deviceMemory": "8",
+            "engine": "chromium",
+            "touch": false,
+            "dpr": "2",
+            "viewport": "1440-1920"
+        }
+    },
+    {
+        "name": "startup",
+        "data": {
+            "start": "continued",
+            "outcome": "done",
+            "ready": 2500,
+            "hidden": false,
+            "navigation": "reload",
+            "documentDelivery": "cache"
+        }
+    },
+    {
+        "name": "startup",
+        "data": {
+            "start": "blank",
+            "outcome": "done",
+            "hidden": true,
+            "navigation": "navigate",
+            "documentDelivery": "network",
+            "wasDiscarded": false
+        }
+    },
+    {
+        "name": "chart",
+        "data": {
+            "trigger": "restore",
+            "notes": "1000-1299",
+            "objects": "1300-1599"
+        }
+    },
+    {
+        "name": "usage",
+        "data": {
+            "zoomXIn.key": 3,
+            "undo.toolbar": 1
+        }
+    },
+    {
+        "name": "save",
+        "data": {
+            "action": "save",
+            "target": "writeBack",
+            "outcome": "failed",
+            "reason": "denied"
+        }
+    },
+    {
+        "name": "save",
+        "data": {
+            "action": "save",
+            "target": "writeBack",
+            "outcome": "done",
+            "size": "1M-2M",
+            "took": 800,
+            "buildMs": 300
+        }
+    },
+    {
+        "name": "save",
+        "data": {
+            "action": "save",
+            "target": "writeBack",
+            "outcome": "done",
+            "size": "1M-2M",
+            "took": 1200,
+            "buildMs": 500
+        }
+    },
+    {
+        "name": "open",
+        "data": {
+            "format": "nxsp",
+            "via": "picker",
+            "size": "256K-512K",
+            "outcome": "done",
+            "took": 400
+        }
+    },
+    {
+        "name": "preview",
+        "data": {
+            "host": "worker"
+        }
+    },
+    {
+        "name": "peek",
+        "data": {
+            "peek.25-50": 3,
+            "peek.cached": 5,
+            "cores": "8",
+            "deviceMemory": "8",
+            "engine": "chromium",
+            "touch": false,
+            "dpr": "2",
+            "viewport": "1440-1920"
+        }
+    },
+    {
+        "name": "perf",
+        "data": {
+            "loafSupported": true,
+            "eventTimingSupported": true,
+            "frames.playing.50-100": 4,
+            "frameAttribution": "full",
+            "slowEvents.104-200": 2,
+            "playSeconds": 120,
+            "visibleTime": 300,
+            "previewHost": "worker",
+            "previewRenderScale": "1",
+            "cores": "8",
+            "deviceMemory": "8",
+            "engine": "chromium",
+            "touch": false,
+            "dpr": "2",
+            "viewport": "1440-1920"
+        }
+    },
+    {
+        "name": "perf",
+        "data": {
+            "loafSupported": true,
+            "frames.playing.100-200": 10,
+            "frames.unclassified": 3,
+            "frameAttribution": "partial",
+            "playSeconds": 60,
+            "previewHost": "main",
+            "previewRenderScale": "1"
+        }
+    },
+    {
+        "name": "perf",
+        "data": {
+            "loafSupported": true,
+            "frameAttribution": "full",
+            "playSeconds": 60,
+            "previewHost": "worker",
+            "previewRenderScale": "2"
+        }
+    },
+    {
+        "name": "features",
+        "data": {
+            "autoscroll": 2
+        }
+    }
+]

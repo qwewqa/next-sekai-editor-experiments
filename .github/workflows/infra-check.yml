@@ -1,14 +1,26 @@
 name: Infra check
 
 # The infrastructure under infra/ has its own checks. This workflow touches no AWS account, and it runs
-# only when infra/ or an infra workflow changes (or by hand), never on a tag.
+# only when infra/, the analytics client (src/analytics/) or an infra workflow changes (or by hand), never on a tag.
 on:
     push:
         branches: ['main', 'ci/**']
-        paths: ['infra/**', '.github/workflows/infra-check.yml', '.github/workflows/stats-*.yml']
+        paths:
+            [
+                'infra/**',
+                'src/analytics/**',
+                '.github/workflows/infra-check.yml',
+                '.github/workflows/stats-*.yml',
+            ]
     pull_request:
         branches: ['main']
-        paths: ['infra/**', '.github/workflows/infra-check.yml', '.github/workflows/stats-*.yml']
+        paths:
+            [
+                'infra/**',
+                'src/analytics/**',
+                '.github/workflows/infra-check.yml',
+                '.github/workflows/stats-*.yml',
+            ]
     workflow_dispatch:
 
 permissions:

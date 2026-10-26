@@ -4,4 +4,5 @@ import { refreshPreviewAssetLock } from './release-assets.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const lock = await refreshPreviewAssetLock(root)
-console.log(`Locked preview assets: ${lock.skin.item.title}, ${lock.particle.item.title}`)
+const entries = Object.values(lock).filter((entry) => typeof entry === 'object')
+console.log(`Locked preview assets: ${entries.map((entry) => entry.item.title).join(', ')}`)

@@ -2,17 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 import { createScp } from '../../scripts/release-assets.mjs'
-import { loadEffectFromUrls } from '../../src/preview/assets/effect'
 import { createAssetLoader } from '../../src/preview/assets/loader'
 import { readItem } from '../../src/preview/assets/scpItem'
 import {
     AssetError,
-    sfxSlots,
     type AssetChoice,
     type AssetDefaults,
     type LoadContext,
     type Loaded,
-    type SfxSlot,
 } from '../../src/preview/assets/types'
 import { loadParticle } from '../../src/preview/particle'
 import { loadSkin } from '../../src/preview/skin'
@@ -38,10 +35,6 @@ const fileChoice: AssetChoice = {
     author: 'Author',
     origin: 'item.scp',
 }
-const slotUrls = Object.fromEntries(sfxSlots.map((slot) => [slot, `/${slot}.mp3`])) as Record<
-    SfxSlot,
-    string
->
 
 test('the default is used when the choice is Default', async () => {
     const loader = createAssetLoader({ defaults: fakeDefaults() })
@@ -202,34 +195,4 @@ test('the skin and particle parsers take details and a resource getter', async (
         ),
         /Missing particle texture/,
     )
-})
-
-test('a synthetic effect decodes each slot and leaves a failing one undefined', async (t) => {
-    const fetched: string[] = []
-    t.mock.method(globalThis, 'fetch', async (url: string) => {
-        fetched.push(url)
-        return { arrayBuffer: async () => new TextEncoder().encode(url).buffer } as Response
-    })
-    const effect = await loadEffectFromUrls('Fake', slotUrls, {
-        signal: new AbortController().signal,
-        decodeAudio: async (data) => {
-            const url = new TextDecoder().decode(data)
-            if (url === '/criticalTrace.mp3') throw new Error('cannot decode')
-            return { url } as unknown as AudioBuffer
-        },
-    })
-    assert.equal(effect?.title, 'Fake')
-    assert.equal(fetched.length, 10)
-    assert.equal(effect?.buffers.criticalTrace, undefined)
-    assert.deepEqual(effect?.buffers.normalTap, { url: '/normalTap.mp3' })
-    assert.deepEqual(Object.keys(effect?.buffers ?? {}).sort(), [...sfxSlots].sort())
-})
-
-test('an aborted effect load resolves undefined', async (t) => {
-    const controller = new AbortController()
-    t.mock.method(globalThis, 'fetch', async () => {
-        controller.abort()
-        return { arrayBuffer: async () => new ArrayBuffer(0) } as Response
-    })
-    assert.equal(await loadEffectFromUrls('Fake', slotUrls, context(controller.signal)), undefined)
 })

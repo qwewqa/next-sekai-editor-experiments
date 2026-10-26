@@ -2,56 +2,6 @@
     "version": 1,
     "files": [
         {
-            "name": "se_live_connect.mp3",
-            "source": "src/assets/se_live_connect.mp3",
-            "sha256": "024d5f148bd5c7d7cfe156c2d8941fad853af796a194615db1a3d50a561f1063"
-        },
-        {
-            "name": "se_live_connect_critical.mp3",
-            "source": "src/assets/se_live_connect_critical.mp3",
-            "sha256": "4f2a9e42d7e2c664bdffe2dfbf297073ef5820f3aa283b3e5d29372b46b570aa"
-        },
-        {
-            "name": "se_live_critical.mp3",
-            "source": "src/assets/se_live_critical.mp3",
-            "sha256": "69dce310b8be9ac7cf2ca9c36be0846bbd4ca251bad4c2a8c7483dc7de515600"
-        },
-        {
-            "name": "se_live_flick.mp3",
-            "source": "src/assets/se_live_flick.mp3",
-            "sha256": "7394b0374322ea1645f175f2d12784d7263029b30cacfd4e126e619c5027413f"
-        },
-        {
-            "name": "se_live_flick_critical.mp3",
-            "source": "src/assets/se_live_flick_critical.mp3",
-            "sha256": "8ccdfee6e28d12b94bcf417943f76402df2fd86dde7fc921093f82401f71c3b4"
-        },
-        {
-            "name": "se_live_long.mp3",
-            "source": "src/assets/se_live_long.mp3",
-            "sha256": "f6eee1669d2e652880f53c9d88d0879b87467d5afc19f3c7052b76cd11bed3e4"
-        },
-        {
-            "name": "se_live_long_critical.mp3",
-            "source": "src/assets/se_live_long_critical.mp3",
-            "sha256": "810023ec45326e660e28a8cecca52f16a375027b71b4651eabf23bd12b230aac"
-        },
-        {
-            "name": "se_live_perfect.mp3",
-            "source": "src/assets/se_live_perfect.mp3",
-            "sha256": "7d1abbdb41b381fbba1500669da5be458c15855fa33d6e62ccfe837885bbd151"
-        },
-        {
-            "name": "se_live_trace.mp3",
-            "source": "src/assets/se_live_trace.mp3",
-            "sha256": "71ea96bd178d90d200fa24807de9ced133d035153751b0d9bda6c0c0accbe1c3"
-        },
-        {
-            "name": "se_live_trace_critical.mp3",
-            "source": "src/assets/se_live_trace_critical.mp3",
-            "sha256": "92377fbcb5aa1ce406000c422c3e1210ea941f351e935697daac220ac09316ba"
-        },
-        {
             "name": "bg.png",
             "source": "src/preview/bg.png",
             "sha256": "1812f1bb90e1ec25ad0ea3a358f1233b611b6bd42307c787bb3f0b6a3814f71f"
@@ -69,22 +19,47 @@
         {
             "name": "skin.scp",
             "source": "deployment/preview-assets.lock.json#skin",
-            "sha256": "7d68b1440513e08808eb161e9684f05f74df807e023e86b25351ff463abe06ab"
+            "sha256": "e7a05e321f4204491df0f638c141a128119f168defe144465daf5f8ebf6c66f1"
         },
         {
             "name": "skin data",
             "source": "public/resource/skin.scp:data",
-            "sha256": "f63db45842bf6da43fe1012110746cc7b64c95444cf19380d00d5ae1b0a2ba88"
+            "sha256": "30293e7fe228868bad103cbfb43bfe657194abcfa37e80c7c9d40feee1496a9a"
         },
         {
             "name": "skin texture",
             "source": "public/resource/skin.scp:texture",
-            "sha256": "c0e1f7271f7c86ad21752fe7d175d4f11d7d0d60ce06df0e74b46e29e98161b3"
+            "sha256": "052d93f9c822cda64545887d76bb9dc0d3653cbf0e35966b55d749a9bc43df1a"
+        },
+        {
+            "name": "skin thumbnail",
+            "source": "public/resource/skin.scp:thumbnail",
+            "sha256": "a128a111348d3b1530c7a14fe7fd4da2c70b62a7accc7e86ff095c96de7fa7cb"
+        },
+        {
+            "name": "skin2.scp",
+            "source": "deployment/preview-assets.lock.json#skin2",
+            "sha256": "c02ba536684aa7565673c0f07e034f40d0b51bbe02f16337a0d3dd87e346a921"
+        },
+        {
+            "name": "skin2 data",
+            "source": "public/resource/skin2.scp:data",
+            "sha256": "890eff214f23eca3b22186bc038f4549cabc20a17471bf902ab94dc07f07a12e"
+        },
+        {
+            "name": "skin2 texture",
+            "source": "public/resource/skin2.scp:texture",
+            "sha256": "19df1e88a405e642b36a34d9cd6c9ae579f38df5a58c92c6bab8b0b05cba0468"
+        },
+        {
+            "name": "skin2 thumbnail",
+            "source": "public/resource/skin2.scp:thumbnail",
+            "sha256": "faad53bef99f6367d7d1d4d80fb2200ab8d23ab405b6409881d1c3ed148a6d91"
         },
         {
             "name": "particle.scp",
             "source": "deployment/preview-assets.lock.json#particle",
-            "sha256": "1b36367b6ac82d7b5b067f18223a1e1e79e0734981ba7e529860d0b6d764e53d"
+            "sha256": "a74f73f93161d6537f15e8925b6c4ff122f83b4191e7d8cd3d60104d1b9786c0"
         },
         {
             "name": "particle data",
@@ -95,6 +70,36 @@
             "name": "particle texture",
             "source": "public/resource/particle.scp:texture",
             "sha256": "40b087da052ce71e1cb0107f8afe70ea67ea8c148520f1a36c3fdcab40cb4887"
+        },
+        {
+            "name": "effect.scp",
+            "source": "deployment/preview-assets.lock.json#effect",
+            "sha256": "8f7f53172a719ec1c45ad7e38363a5886ec893dbbb9298c7d55cb3a957402259"
+        },
+        {
+            "name": "effect data",
+            "source": "public/resource/effect.scp:data",
+            "sha256": "67e53fa9bac19e69b19e53adec89855e370d8bf71584c3a7dc30afccd91e38eb"
+        },
+        {
+            "name": "effect audio",
+            "source": "public/resource/effect.scp:audio",
+            "sha256": "6fc8df5368dce316c5959c9f98a34be5ad4984c3dc6b83c98b67e3cbd29e2453"
+        },
+        {
+            "name": "effect2.scp",
+            "source": "deployment/preview-assets.lock.json#effect2",
+            "sha256": "8ca563e690d5d49d6f39e010008a36d81cd937bc7812865e2b8a5a938490eb43"
+        },
+        {
+            "name": "effect2 data",
+            "source": "public/resource/effect2.scp:data",
+            "sha256": "67e53fa9bac19e69b19e53adec89855e370d8bf71584c3a7dc30afccd91e38eb"
+        },
+        {
+            "name": "effect2 audio",
+            "source": "public/resource/effect2.scp:audio",
+            "sha256": "cd1be085c3296dd6de1b6d6283832b564061fdb5cb8683d4d6c0e1f7a37c95eb"
         }
     ],
     "references": [
@@ -106,9 +111,6 @@
         },
         {
             "regex": "bg-[A-Za-z0-9_-]{8}.png"
-        },
-        {
-            "text": "se_live"
         },
         {
             "text": "resource/"

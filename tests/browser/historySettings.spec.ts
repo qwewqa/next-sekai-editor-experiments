@@ -185,6 +185,29 @@ test('History follows its binding as a tool, a hotkey and in the command list', 
     await expect(sheet).toHaveCount(0)
 })
 
+// A short screen opens History as a blocking dialog, which takes no commands itself.
+for (const [name, size] of [
+    ['a sheet', { width: 1600, height: 1000 }],
+    ['a blocking dialog', { width: 700, height: 300 }],
+] as const) {
+    test(`History bound to Ctrl+S opens and closes with it (${name})`, async ({ page }) => {
+        errorsFail(page)
+        await load(page)
+        await placeTap(page, { lane: 0, beat: 1 })
+        await page.setViewportSize(size)
+        await page.evaluate(() => {
+            const { settings } = window.editorTest
+            settings.keyboardShortcuts = { ...settings.keyboardShortcuts, history: 'Mod+s' }
+        })
+        const sheet = timeline(page)
+        await page.keyboard.press('Control+s')
+        await expect(sheet).toBeVisible()
+        await expect(sheet.getByRole('row', { name: /^Now/ })).toBeFocused()
+        await page.keyboard.press('Control+s')
+        await expect(sheet).toHaveCount(0)
+    })
+}
+
 // --- The first key after opening
 
 const focusedRow = (page: Page) => timeline(page).locator('[data-history-row]:focus')

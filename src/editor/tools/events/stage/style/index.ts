@@ -6,6 +6,7 @@ import type {
     JudgmentLineStyle,
     StageStyleEventObject,
 } from '../../../../../chart/events/stage/style'
+import type { NoteStyle } from '../../../../../chart/noteStyle'
 import { applyEaseEdit, cycleEase, type EaseEdit, type WithEaseEdits } from '../../../../../ease'
 import { pushState, replaceState, state } from '../../../../../history'
 import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
@@ -51,6 +52,7 @@ import { commitDrop, moveLane, pointHitsOfType, pressTarget } from '../../../uti
 import StageStyleEventSidebar from './StageStyleEventSidebar.vue'
 
 type DefaultStageStyleEventProperties = {
+    laneColor?: NoteStyle
     judgmentLineColor?: JudgmentLineColor
     judgmentLineStyle?: JudgmentLineStyle
     leftBorderStyle?: BorderStyle
@@ -356,6 +358,10 @@ const getPropertiesFromSelection = () => {
 
     return {
         stageId: view.stageId ?? stageStyleEventJoint?.stageId ?? defaultStageId.value,
+        laneColor:
+            defaultStageStyleEventProperties.value.laneColor ??
+            stageStyleEventJoint?.laneColor ??
+            'default',
         judgmentLineColor:
             defaultStageStyleEventProperties.value.judgmentLineColor ??
             stageStyleEventJoint?.judgmentLineColor ??

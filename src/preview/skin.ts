@@ -157,6 +157,8 @@ export type PreviewSkin = {
     stageRightBorder?: Sprite
 
     laneBackground?: Sprite
+    // Indexed by the note style code; every colored lane falls back to the skin's own.
+    laneBackgrounds: (Sprite | undefined)[]
     laneDivider?: Sprite
     stageBorder?: Sprite
 
@@ -330,6 +332,8 @@ export const resolveSkin = (get: SpriteGetter): PreviewSkin => {
     const normalFlickArrows = firstArrows(flickArrows, redArrows, redArrowsFallback)
     const criticalFlickArrows = firstArrows(criticalArrows, yellowArrows, yellowArrowsFallback)
 
+    const laneBackground = get('Sekai Lane Background')
+
     const skin: PreviewSkin = {
         cover: get(SkinSpriteName.StageCover),
 
@@ -338,7 +342,15 @@ export const resolveSkin = (get: SpriteGetter): PreviewSkin => {
         stageLeftBorder: get(SkinSpriteName.StageLeftBorder),
         stageRightBorder: get(SkinSpriteName.StageRightBorder),
 
-        laneBackground: get('Sekai Lane Background'),
+        laneBackground,
+        laneBackgrounds: noteStyles.map((style, i) =>
+            i === 0
+                ? laneBackground
+                : first(
+                      `Sekai Lane Background ${style.charAt(0).toUpperCase()}${style.slice(1)}`,
+                      'Sekai Lane Background',
+                  ),
+        ),
         laneDivider: get('Sekai Lane Divider'),
         stageBorder: get('Sekai Stage Border'),
 

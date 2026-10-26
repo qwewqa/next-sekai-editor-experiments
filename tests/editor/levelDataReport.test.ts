@@ -242,6 +242,7 @@ test('an unknown choice value gives a report entry and the field’s default', (
     )
     assert.equal(run('StagePivotChange', 'ease').stagePivotEvents[0]?.eventEase, 'linear')
     const style = (name: string) => run('StageStyleChange', name).stageStyleEvents[0]
+    assert.equal(style('laneColor')?.laneColor, 'default')
     assert.equal(style('judgeLineColor')?.judgmentLineColor, 'purple')
     assert.equal(style('judgeLineStyle')?.judgmentLineStyle, 'default')
     assert.equal(style('leftBorderStyle')?.leftBorderStyle, 'default')
@@ -249,6 +250,56 @@ test('an unknown choice value gives a report entry and the field’s default', (
     assert.equal(style('ease')?.eventEase, 'linear')
     assert.equal(run('StageTransformChange', 'anchor').stageTransformEvents[0]?.anchor, 'default')
     assert.equal(run('StageTransformChange', 'ease').stageTransformEvents[0]?.eventEase, 'linear')
+})
+
+test('the lane color round trips with the note style codes, and an absent or unknown one reads Default', () => {
+    const level = fullLevel()
+    const styles = (entities: LevelDataEntity[]) =>
+        parseLevelDataChart(entities).stageStyleEvents.map((event) => event.laneColor)
+    // Blue in the first style event, none in the second.
+    assert.deepEqual(styles(level), ['blue', 'default'])
+
+    // Every code is written back as it was read.
+    const codes = [
+        'default',
+        'neutral',
+        'red',
+        'green',
+        'blue',
+        'yellow',
+        'purple',
+        'cyan',
+        'black',
+    ]
+    for (const [code, name] of codes.entries()) {
+        const chart = parseLevelDataChart(withData(level, 'StageStyleChange', 'laneColor', code))
+        assert.equal(chart.stageStyleEvents[0]?.laneColor, name)
+        const state = createState(chart, 0)
+        const written = serializeToLevelDataEntities(
+            state.initialLife,
+            state.isDynamicStages,
+            state.store,
+            state.groups,
+            state.stages,
+        )
+        const data = written
+            .filter((entity) => entity.archetype === 'StageStyleChange')
+            .map((entity) => entity.data.find((item) => item.name === 'laneColor'))
+        assert.deepEqual(
+            data.map((item) => item && 'value' in item && item.value),
+            [code, code],
+        )
+    }
+
+    // A code from a newer version is reported, and the level reads as Default.
+    const { chart, report } = parse(withData(level, 'StageStyleChange', 'laneColor', 9))
+    assert.deepEqual(
+        chart.stageStyleEvents.map((event) => event.laneColor),
+        ['default', 'default'],
+    )
+    assert.deepEqual(report.entries, [
+        { kind: 'value', archetype: 'StageStyleChange', field: 'laneColor', value: 9, count: 2 },
+    ])
 })
 
 test('every choice field in the table takes the unknown-value path', () => {

@@ -11,11 +11,14 @@ import {
     pauseAt,
     pressSave,
     projectOf,
+    prompts,
+    queuePicks,
     reached,
     readFile,
     release,
     removeFile,
     rows,
+    saveDialog,
     sessionOf,
     start,
     submitSave,
@@ -328,3 +331,58 @@ test('Replace is offered for a file on disk with a newer patch, and keeps it fir
     const session = sessions!.map((row) => row.value).find((row) => row.chainId === kept.chainId)!
     expect(session.origin).toBe('replaced')
 })
+
+/** Opens an OPFS file with its handle, as Open File… on a save picker's platform does. */
+const openFile = (page: Page, name: string) =>
+    page.evaluate(async (name) => {
+        const root = await navigator.storage.getDirectory()
+        const handle = await root.getFileHandle(name)
+        const { openProject } = await import('/src/editor/commands/open/project.ts')
+        await openProject(await handle.getFile(), handle)
+    }, name)
+
+for (const reload of [false, true])
+    test(`a separate copy made by Open takes its file over when saved over it${reload ? ', after a reload' : ''}`, async ({
+        context,
+    }) => {
+        const a = await context.newPage()
+        await start(a)
+        await savedOnce(a)
+        const aChain = await chainOf(a)
+
+        const b = await context.newPage()
+        await start(b)
+        await openFile(b, 'coconut.nxsp')
+        await expect(
+            notice(b).filter({
+                hasText:
+                    '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+            }),
+        ).toBeVisible()
+        expect((await sessionOf(b)).file).toBeUndefined()
+        if (reload) {
+            await b.reload()
+            await waitForStartup(b)
+            await expect(b.locator('canvas.editor-chart')).toBeVisible()
+        }
+        await edit(b, 7)
+        await queuePicks(b, ['coconut.nxsp'])
+        await pressSave(b)
+        await submitSave(b)
+        await expect(notice(b).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+        await expect(b.getByRole('dialog')).toHaveCount(0)
+        const bChain = await chainOf(b)
+        expect((bChain.file as Row).name).toBe('coconut.nxsp')
+        expect(bChain.chainId).not.toBe(aChain.chainId)
+        expect((await projectOf(b, 'coconut.nxsp')).id).toBe(bChain.docId)
+
+        // A loses the file and its next Save asks where.
+        await a.bringToFront()
+        await expect.poll(async () => (await sessionOf(a)).file).toBeUndefined()
+        expect(await prompts(a)).toBe(true)
+        await edit(a, 9)
+        await pressSave(a)
+        await expect(saveDialog(a)).toContainText(
+            '"coconut.nxsp" was replaced from another tab or window.',
+        )
+    })

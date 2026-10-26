@@ -1,6 +1,7 @@
 import { EngineArchetypeDataName, type LevelDataEntity } from '@sonolus/core'
 import { serializeStageEventsToLevelDataEntities } from '.'
 import { getStoreEntities } from '../..'
+import { noteStyleValue } from '../../../../../chart/noteStyle'
 import type { StageId } from '../../../../../chart/stages'
 import { easeValues } from '../../../../../ease'
 import type { OrderedStore } from '../../../../../local/records/extract'
@@ -30,6 +31,10 @@ export const serializeStageStyleEventsToLevelDataEntities = (
                 {
                     name: 'editorLane',
                     value: joint.editorLane,
+                },
+                {
+                    name: 'laneColor',
+                    value: noteStyleValue(joint.laneColor),
                 },
                 {
                     name: 'judgeLineColor',

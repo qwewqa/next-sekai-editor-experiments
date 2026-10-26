@@ -10,6 +10,6 @@ Frozen with Formats v1. `tests/local/nxsp/golden.test.ts` builds a fixed chain w
 uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/write-1.nxsp tests/local/nxsp/golden-v1/write-2.nxsp
 ```
 
-Written by `NSE_WRITE_GOLDEN=1 npx tsx --test tests/local/nxsp/golden.test.ts`. Never again once v0.6.0 ships.
+Written by `NSE_WRITE_GOLDEN=1 npx tsx --test tests/local/nxsp/golden.test.ts`, which also rewrites `store.json` from the chain first. Never again once v0.6.0 ships.
 
 Until v0.6.0 ships, formats change in place at v1, and these files are regenerated with them. After that, follow `docs/format-versioning.md`.

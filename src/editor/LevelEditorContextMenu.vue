@@ -12,7 +12,8 @@ import { getSplitHoldNotes } from '../state/operations/splitHold'
 import { vScrollEdges } from '../directives/scrollEdges'
 import { interpolate } from '../utils/interpolate'
 import { focusAfterRemoval } from '../utils/focusFallback'
-import { holdsCharacter, menuKeyIndex } from '../utils/menuKeys'
+import { menuKeyIndex } from '../utils/menuKeys'
+import { holdsChord, holdsCharacter } from './controls/heldKeys'
 import { commands, isCommandName, type Command, type CommandName } from './commands'
 import {
     formatShortcut,
@@ -253,10 +254,7 @@ const onKeydown = (event: KeyboardEvent) => {
         if (action) {
             event.preventDefault()
             execute(action.name)
-        } else if (
-            ((event.ctrlKey || event.metaKey) && /^[a-z]$/i.test(event.key)) ||
-            holdsCharacter(event)
-        ) {
+        } else if (holdsChord(event) || holdsCharacter(event)) {
             // Nor do other chords or characters reach the browser, such as Ctrl+S saving the page.
             event.preventDefault()
         }

@@ -177,9 +177,6 @@ test.describe('From a Server', () => {
         const errors = await start(page)
         const server = await serve(page, { title: 'Neon Server', files: await files(SKIN) })
         await open(page)
-        await expect(dialog(page).locator('[data-asset-choose-hint]')).toHaveText(
-            'From a file or a Sonolus server',
-        )
         await choose(page)
         // The chooser starts on a file; the switch has both.
         await expect(chooser(page).locator('[data-chooser-mode-option="file"]')).toBeChecked()
@@ -214,7 +211,7 @@ test.describe('From a Server', () => {
         await useButton(page).click()
         await expect(chooser(page)).toHaveCount(0)
         const row = dialog(page).locator('[data-asset-row^="server:"]')
-        await expect(row).toContainText('Neon Skin (Server)')
+        await expect(row).toContainText('Neon Skin')
         await expect(row).toContainText('Someone · server.test/api')
         await expect(row.locator('input')).toBeChecked()
         expect((await choices(page)).skin).toMatchObject({
@@ -316,7 +313,7 @@ test.describe('From a Server', () => {
         expect(await stored(page)).toHaveLength(2)
         await tabOf(page, 'particle').click()
         await expect(dialog(page).locator('[data-asset-row^="server:"]')).toContainText(
-            'Neon Particle (Server)',
+            'Neon Particle',
         )
     })
 
@@ -499,14 +496,9 @@ test.describe('From a Server', () => {
 })
 
 test.describe('on the web', () => {
-    test('the chooser offers a file only, with no switch and no server hint', async ({ page }) => {
+    test('the chooser offers a file only, with no switch', async ({ page }) => {
         const errors = await start(page)
         await open(page)
-        await expect(dialog(page).locator('[data-asset-choose-hint]')).toHaveCount(0)
-        await expect(dialog(page).locator('[data-asset-choose]')).not.toHaveAttribute(
-            'aria-describedby',
-            /./,
-        )
         await choose(page)
         await expect(chooser(page).locator('[data-chooser-mode]')).toHaveCount(0)
         await expect(chooser(page).locator('[data-chooser-select-file]')).toBeVisible()
@@ -527,7 +519,7 @@ test.describe('on the web', () => {
         expect((await choices(page)).skin).toMatchObject({ source: 'server', name: 'neon' })
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Default. The skin could not be downloaded again from server.test/api.',
+            'Using Next SEKAI 01. The skin could not be downloaded again from server.test/api.',
         )
     })
 })
@@ -574,7 +566,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, BASE)
         await expect(errorOf(page).locator('[data-server-error-text]')).toHaveText(
-            'The editor cannot use servers that need you to sign in.',
+            'The editor cannot use servers that require signing in.',
         )
     })
 
@@ -703,7 +695,7 @@ test.describe('a server item that left storage', () => {
         expect((await choices(page)).skin).toMatchObject({ source: 'server', name: 'neon' })
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Default. The skin could not be downloaded again from server.test/api.',
+            'Using Next SEKAI 01. The skin could not be downloaded again from server.test/api.',
         )
         await expect(dialog(page).locator('[data-asset-choose-again]')).toHaveCount(0)
         await expect(tabOf(page, 'skin').locator('[data-tab-warning]')).toBeVisible()
@@ -733,7 +725,7 @@ test.describe('a server item that left storage', () => {
         expect((await choices(page)).skin).toMatchObject({ source: 'server', name: 'neon' })
         await open(page, 'skin')
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Default. You are offline.',
+            'Using Next SEKAI 01. You are offline.',
         )
     })
 })
@@ -1049,7 +1041,7 @@ test.describe('looks', () => {
                 await shot(page, name('error-unreachable'))
                 server.state.down = false
                 await connect(page, `${ORIGIN}/auth`)
-                await expect(errorOf(page)).toContainText('need you to sign in')
+                await expect(errorOf(page)).toContainText('require signing in')
                 await shot(page, name('error-auth'))
                 await connect(page, `${ORIGIN}/broken`)
                 await expect(errorOf(page)).toContainText('returned an error (503)')

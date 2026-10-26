@@ -7,6 +7,7 @@ import {
     type AssetResult,
     type AssetStatus,
     type AssetType,
+    type BundledProviders,
     type ChoiceProviders,
     type DefaultProvider,
     type LoadContext,
@@ -25,8 +26,9 @@ export const createAssetLoader = (options: {
     /** The Built-in set: the Built-in choice, and the last resort when Default fails. */
     builtin?: AssetDefaults
     providers?: ChoiceProviders
+    bundled?: BundledProviders
 }) => {
-    const { defaults, builtin, providers = {} } = options
+    const { defaults, builtin, providers = {}, bundled = {} } = options
 
     const load = async <T extends AssetType>(
         type: T,
@@ -53,6 +55,21 @@ export const createAssetLoader = (options: {
             } catch (error) {
                 if (isAborted()) return
                 console.error(`Failed to load the built-in ${type}:`, error)
+                reason = reasonOf(error)
+            }
+        } else if (choice.source === 'bundled') {
+            try {
+                const provider = bundled[type]?.[choice.id]
+                const value = await provider?.(context)
+                if (isAborted()) {
+                    release(type, value)
+                    return
+                }
+                if (value !== undefined) return { value, status: { active: 'chosen' } }
+                reason = 'missing'
+            } catch (error) {
+                if (isAborted()) return
+                console.error(`Failed to load the bundled ${type}:`, error)
                 reason = reasonOf(error)
             }
         } else if (choice.source !== 'default') {

@@ -24,10 +24,7 @@ const openAssets = () => {
 <template>
     <SettingsSection id="preview" :title="i18n.settings.preview.title">
         <!-- Choosing the skin and the rest has a dialog of its own. -->
-        <BaseField
-            :label="i18n.settings.preview.assets"
-            :notes="[i18n.settings.preview.assetsHint]"
-        >
+        <BaseField :label="i18n.settings.preview.assets">
             <input
                 class="btn btn-secondary h-9 max-w-full rounded-full px-4"
                 type="button"
