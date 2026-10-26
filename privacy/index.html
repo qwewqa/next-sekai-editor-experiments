@@ -69,6 +69,10 @@
                             an open-source project by qwewqa.
                         </p>
                         <p>
+                            qwewqa runs this site and is responsible for the use of personal data
+                            described here.
+                        </p>
+                        <p>
                             Contact:
                             <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>. Report
                             bugs on the
@@ -89,9 +93,9 @@
                         <p>
                             The web editor has no accounts, cookies or crash reports. It sends usage
                             statistics to our own server, such as which tools you use and how long
-                            actions take. It never sends your charts or file names. Turn them off in
-                            Settings › About › Send Usage Statistics. The site itself is static
-                            files on GitHub Pages.
+                            actions take. Your charts and file names are excluded. Turn off Settings
+                            › About › Send Usage Statistics to stop sending statistics. The site
+                            itself is static files on GitHub Pages.
                         </p>
                     </section>
 
@@ -106,9 +110,9 @@
                             <li>
                                 BGM, preview audio and covers are stored with the sessions that use
                                 them. When space runs low, audio and covers may be deleted if only
-                                earlier Timeline steps use them. No other data is deleted
-                                automatically. Your browser may also clear this site’s storage.
-                                Settings › Local Data says when.
+                                earlier Timeline steps use them. Automatic deletion is limited to
+                                those audio and cover files. Your browser may also clear this site’s
+                                storage. Settings › Local Data says when.
                             </li>
                         </ul>
                         <h3 class="mt-2 font-bold text-fg-strong">Requests It Makes</h3>
@@ -136,95 +140,155 @@
                             Usage Statistics
                         </h2>
                         <p>
-                            The editor sends these to stats.nse-services.qwewqa.dev, a server we run
-                            on Amazon Web Services (AWS) in the United States:
+                            We use usage statistics to improve the editor. Our legal basis for
+                            collecting and using them is our legitimate interest in improving the
+                            editor.
                         </p>
+                        <p>
+                            The editor sends usage statistics only to stats.nse-services.qwewqa.dev,
+                            a server we run. We process and store them on Amazon Web Services (AWS)
+                            servers in the United States, in the us-west-2 region. AWS provides
+                            hosting and backup storage and is the only provider with whom we share
+                            these statistics. We keep them separate from data from other sites. Only
+                            the maintainer has access to the statistics dashboard.
+                        </p>
+                        <p>
+                            For transfers subject to EU data protection rules, we rely on the
+                            safeguards in the
+                            <a
+                                href="https://aws.amazon.com/service-terms/"
+                                class="link"
+                                target="_blank"
+                                rel="noopener"
+                                >AWS Service Terms</a
+                            >. These include the EU Standard Contractual Clauses adopted by the
+                            European Commission in June 2021. The clauses apply automatically to AWS
+                            customers for transfers covered by those terms.
+                        </p>
+                        <p>
+                            The editor sends usage counts, settings, information about file and
+                            chart sizes, performance measurements, browser and device information,
+                            storage information and referring sites. The details are listed below.
+                        </p>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Tools and Settings</h3>
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
-                                how often each tool, command and kind of edit is used, and how it
-                                was started, such as from a key, the toolbar or a menu;
+                                How often each tool, command and kind of edit is used, and how it
+                                was started, such as from a key, the toolbar or a menu.
                             </li>
                             <li>
-                                the main settings, such as the theme, the language and whether the
-                                minimap is shown;
+                                The main settings, such as the theme, the language and whether the
+                                minimap is shown.
                             </li>
                             <li>
-                                the kind and approximate size of files you open, save, export and
-                                check, what a save included, and whether that worked;
-                            </li>
-                            <li>the approximate length of music files;</li>
-                            <li>
-                                the approximate size of the chart, such as “250 to 319 notes”,
-                                whether it has music, how many steps the Undo window holds, and how
-                                many sessions Recent Sessions lists;
-                            </li>
-                            <li>
-                                how a visit started, for example whether earlier work was recovered,
-                                and how many notices and errors appeared, without their messages;
-                            </li>
-                            <li>
-                                how the page was loaded, such as by a reload or from the browser’s
-                                cache, whether it was hidden while it started, and whether the
-                                browser had discarded it earlier;
-                            </li>
-                            <li>
-                                how long startup takes, how long it takes to open, save, export and
-                                check files and to load music, how long a file takes to prepare for
-                                saving or export, and how long the chart takes to show at a Timeline
-                                step;
-                            </li>
-                            <li>
-                                whether Check File and History found problems, and whether it
-                                checked a file as well as History;
-                            </li>
-                            <li>
-                                how often the editor is slow to respond and how many clicks and key
-                                presses there were, which performance measurements the browser
-                                supports, and how long the editor was visible and how long playback
-                                ran while it was, in seconds, up to one day;
-                            </li>
-                            <li>
-                                the editor’s version, whether it was updated since your last visit,
-                                and whether this browser has used it before;
-                            </li>
-                            <li>
-                                your operating system, browser and its language, your screen size
-                                and pixel density, an approximate window size and whether it is
-                                taller than wide, whether the browser reports that your main way of
-                                pointing is imprecise, such as a finger on a touch screen, the
-                                number of processor cores and the approximate memory the browser
-                                reports, whether the preview could use graphics and draw in
-                                parallel, and whether the editor is running in a window of its own;
-                            </li>
-                            <li>
-                                whether this browser’s storage is available, its approximate
-                                capacity and how full it is, and whether the browser has granted
-                                protection from automatic clearing;
-                            </li>
-                            <li>
-                                whether automatic cleanup ran, freed space or was unable to finish;
-                            </li>
-                            <li>
-                                the site you came from, if you followed a link from another site,
-                                without the rest of its address.
+                                How a visit started, for example whether earlier work was recovered,
+                                and counts of notices and errors. Their messages are excluded.
                             </li>
                         </ul>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Files and Charts</h3>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                The kind and approximate size of files you open, save, export and
+                                check, what a save included, and whether that worked.
+                            </li>
+                            <li>The approximate length of music files.</li>
+                            <li>
+                                The approximate size of the chart, such as “250 to 319 notes”,
+                                whether it has music, how many steps the Undo window holds, and how
+                                many sessions Recent Sessions lists.
+                            </li>
+                            <li>
+                                Whether Check File and History found problems, and whether the check
+                                included a file as well as History.
+                            </li>
+                        </ul>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Performance</h3>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                How the page was loaded, such as by a reload or from the browser’s
+                                cache, whether it was hidden while it started, and whether the
+                                browser had discarded it earlier.
+                            </li>
+                            <li>
+                                How long startup takes, how long it takes to open, save, export and
+                                check files and to load music, how long a file takes to prepare for
+                                saving or export, and how long the chart takes to show at a Timeline
+                                step.
+                            </li>
+                            <li>
+                                How often the editor is slow to respond, how many clicks and key
+                                presses there were, and which performance measurements the browser
+                                supports.
+                            </li>
+                            <li>
+                                How long the editor was visible and how long playback ran while it
+                                was, in seconds, up to one day.
+                            </li>
+                        </ul>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Browser and Device</h3>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                The editor’s version, whether it was updated since your last visit,
+                                and whether this browser has used it before.
+                            </li>
+                            <li>
+                                Your operating system, browser and its language, your screen size
+                                and pixel density, an approximate window size and whether it is
+                                taller than wide.
+                            </li>
+                            <li>
+                                Whether the browser reports that your main way of pointing is
+                                imprecise, such as a finger on a touch screen, and the number of
+                                processor cores and the approximate memory the browser reports.
+                            </li>
+                            <li>
+                                Whether the preview could use graphics and draw in parallel, and
+                                whether the editor is running in a window of its own.
+                            </li>
+                        </ul>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Storage</h3>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                Whether this browser’s storage is available, its approximate
+                                capacity and how full it is, and whether the browser has granted
+                                protection from automatic clearing.
+                            </li>
+                            <li>
+                                Whether automatic cleanup ran, freed space or was unable to finish.
+                            </li>
+                        </ul>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Referring Sites</h3>
                         <p>
-                            Each report includes a timestamp: for one action, the time it happened;
-                            for a summary, the time the summary was made. Measurements of startup,
-                            files, music, Timeline steps and slow responses also carry your browser,
-                            whether your main way of pointing is imprecise, the window size, pixel
-                            density, processor cores and memory. For a file or music action, these
-                            are read when the action ends. For startup, Timeline steps and slow
-                            responses, they are read when the report is made.
+                            If you followed a link from another site, the editor sends that site’s
+                            domain only.
+                        </p>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Measurement Details</h3>
+                        <p>
+                            Each report includes a timestamp. For one action, this is the time it
+                            happened. For a summary, it is the time the summary was made.
                         </p>
                         <p>
-                            It never sends your charts or their content, file names, level titles or
-                            other text you type, or any identifier stored in your browser. Counts,
-                            such as how often a tool is used, are sent as numbers up to 9999. How
-                            long an action takes is sent in milliseconds, up to ten minutes. The
-                            screen size is sent as it is. Other numbers, such as sizes and how long
-                            the chart takes to show a step, are sent as ranges.
+                            Measurements of startup, files, music, Timeline steps and slow responses
+                            also include your browser, whether your main way of pointing is
+                            imprecise, the window size, pixel density, processor cores and memory.
+                            For a file or music action, these are read when the action ends. For
+                            startup, Timeline steps and slow responses, they are read when the
+                            report is made.
+                        </p>
+                        <p>
+                            Your charts and their content, file names, level titles, other text you
+                            type and identifiers stored in your browser are excluded from reports.
+                            Counts, such as how often a tool is used, are sent as numbers up to
+                            9999. How long an action takes is sent in milliseconds, up to ten
+                            minutes. The screen size is sent as it is. Other numbers, such as sizes
+                            and how long the chart takes to show a step, are sent as ranges.
                         </p>
                         <p>
                             Chart object counts below 10 are sent exactly. Larger counts, music
@@ -232,48 +296,49 @@
                             sometimes match a published chart.
                         </p>
                         <p>
-                            The server receives your IP address and browser’s user agent with each
-                            request. It uses them to count visits, and to find your country,
-                            browser, operating system and device type, such as phone or laptop. It
-                            may also find your region and city. It stores none of these except your
-                            country, browser, operating system and device type. To count visits it
-                            keeps a daily code made from the IP address and user agent. The same
-                            code is used for one browser’s activity within a day, and people on the
-                            same connection with the same browser can get the same code. The
-                            statistics contain no name or account, and we may be unable to find
-                            which records are yours. The server sets no cookies and stores nothing
-                            in your browser.
-                        </p>
-                        <p>
-                            We keep each report for 13 months and then delete it. Before it is
-                            deleted, its figures are added to monthly totals: the number of visits,
-                            how often each tool, setting and file type is used, and typical times.
-                            Visits are counted separately by each of these: editor version, browser,
-                            operating system, device type, country and language. Times are counted
-                            by editor version and device type. A group is listed on its own only
-                            when at least 10 different daily visitor codes are behind it. Smaller
-                            groups are counted together as “other”, or left out when that is also
-                            under 10. The totals contain no daily codes and no individual reports,
-                            and we keep them with no time limit. Backups on AWS are deleted after
-                            about five weeks. Only the maintainer has access to the statistics
-                            dashboard.
-                        </p>
-                        <p>
-                            The server’s error logs can contain your IP address after an unexpected
-                            failure. They are deleted after two weeks.
-                        </p>
-                        <p>
-                            Nothing is sent from a visit until you use the editor, for example by
+                            Reports from a visit start only after you use the editor, for example by
                             clicking or pressing a key. If your browser is too old to open the
                             editor, the page that tells you so sends the browser family, such as
                             Firefox or Safari, and a report that the browser is unsupported, when
                             you click or press a key on it.
                         </p>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Counting Visits</h3>
                         <p>
-                            <strong class="text-fg-strong">Turning them off.</strong> Turn off
-                            Settings › About › Send Usage Statistics. Nothing more is sent from that
-                            moment. If your browser sends Do Not Track or Global Privacy Control,
-                            the editor sends nothing unless you turn the setting on.
+                            The server receives your IP address and browser’s user agent with each
+                            request. It uses them to count visits and to find your country, browser,
+                            operating system and device type, such as phone or laptop. It may also
+                            find your region and city. Of these details, it stores only your
+                            country, browser, operating system and device type.
+                        </p>
+                        <p>
+                            To count visits, the server keeps a daily code made from the IP address
+                            and user agent. The same code is used for one browser’s activity within
+                            a day. People on the same connection with the same browser can get the
+                            same code. The server sets no cookies and stores nothing in your
+                            browser.
+                        </p>
+
+                        <h3 class="mt-2 font-bold text-fg-strong">Monthly and Weekly Totals</h3>
+                        <p>
+                            Monthly totals include the number of visits, how often each tool,
+                            setting and file type is used, and typical times. Visits are counted
+                            separately by editor version, browser, operating system, device type,
+                            country and language. Times are counted by editor version and device
+                            type.
+                        </p>
+                        <p>
+                            Weekly totals include visits, sessions and how often each event happens.
+                            They use ISO weeks, starting on Monday in UTC. Breakdowns and timings
+                            are kept only in the monthly totals.
+                        </p>
+                        <p>
+                            In both monthly and weekly totals, a group is shown separately only if
+                            it contains at least 10 distinct daily visitor codes. Smaller groups are
+                            combined as “other”. If the combined group still contains fewer than 10
+                            distinct daily visitor codes, it is omitted. Both kinds of totals
+                            contain only combined figures, with daily visitor codes and individual
+                            reports excluded.
                         </p>
                     </section>
 
@@ -289,57 +354,88 @@
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="keep">
                         <h2 id="keep" class="text-lg font-bold text-fg-strong">
-                            What We Keep, and Deleting Your Data
+                            How Long We Keep Data
                         </h2>
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
-                                <strong class="text-fg-strong">Usage statistics.</strong> We keep
-                                each report described above for 13 months, and the monthly totals
-                                with no time limit. The reports contain a daily code but no name or
-                                account, so we may be unable to find which records are yours.
-                                Backups on AWS are deleted after about five weeks. To stop any more
-                                being sent, turn off Settings › About › Send Usage Statistics. Send
-                                questions and requests to
-                                <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
+                                <strong class="text-fg-strong">Usage reports.</strong> We delete
+                                individual usage reports after 13 months. Before deletion, their
+                                figures are added to the monthly and weekly totals described above.
+                                We keep both kinds of totals with no time limit.
+                            </li>
+                            <li>
+                                <strong class="text-fg-strong">Backups.</strong> Backups on AWS are
+                                deleted after about five weeks.
+                            </li>
+                            <li>
+                                <strong class="text-fg-strong">Server error logs.</strong> These
+                                logs may contain your IP address after an unexpected failure. We
+                                delete them after two weeks.
                             </li>
                             <li>
                                 <strong class="text-fg-strong">GitHub’s logs.</strong> GitHub keeps
                                 its request logs under its own policy.
                             </li>
-                            <li>
-                                <strong class="text-fg-strong">Files you send us.</strong> If you
-                                send us a file to help fix a problem, we use it only for that and
-                                delete it when the problem is fixed. This can be a project file or
-                                the file from Export Raw Data in Settings › Local Data. Send it by
-                                email, not in a public issue. It contains your charts and audio.
-                            </li>
-                            <li>
-                                <strong class="text-fg-strong">Data in your browser.</strong>
-                                Delete sessions with Settings › Local Data › Delete Sessions… or in
-                                History › Recent Sessions. Discard recovered work under Settings ›
-                                Local Data. Remove stored assets in Preview Assets › Stored. Deleted
-                                sessions may stay in browser storage until automatic cleanup runs.
-                                Clearing the site’s data in your browser deletes all of it,
-                                including the statistics choice. That choice applies to this browser
-                                only, and statistics are on again unless your browser sends Do Not
-                                Track or Global Privacy Control.
-                            </li>
                         </ul>
                     </section>
 
-                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="choices">
-                        <h2 id="choices" class="text-lg font-bold text-fg-strong">Your Choices</h2>
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="contact">
+                        <h2 id="contact" class="text-lg font-bold text-fg-strong">
+                            Email and Files You Send Us
+                        </h2>
                         <p>
-                            The usage statistics go only to our own server. We use them to improve
-                            the editor, and never share them or combine them with data from other
-                            sites. The basis for collecting them is our legitimate interest in
-                            improving the editor. The server runs on AWS in the United States, so
-                            the statistics are sent there from wherever you use the editor.
+                            If you contact us, we use your email address and message to answer you,
+                            and keep the conversation in our mailbox.
                         </p>
                         <p>
-                            Turn off Settings › About › Send Usage Statistics to stop sending them.
-                            Send questions and requests to
-                            <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
+                            If you send us a file to help fix a problem, we use it only for that and
+                            delete it when the problem is fixed. This can be a project file or the
+                            file from Export Raw Data in Settings › Local Data. Send it by email to
+                            <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>. Keep it
+                            out of public issues. It contains your charts and audio.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="delete">
+                        <h2 id="delete" class="text-lg font-bold text-fg-strong">
+                            Deleting Data in Your Browser
+                        </h2>
+                        <p>
+                            Delete sessions with Settings › Local Data › Delete Sessions… or in
+                            History › Recent Sessions. Discard recovered work under Settings › Local
+                            Data. Remove stored assets in Preview Assets › Stored. Deleted sessions
+                            may stay in browser storage until automatic cleanup runs.
+                        </p>
+                        <p>
+                            Clearing the site’s data in your browser deletes all of it, including
+                            the statistics choice.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="choices">
+                        <h2 id="choices" class="text-lg font-bold text-fg-strong">
+                            Your Rights and Choices
+                        </h2>
+                        <p>
+                            Turn off Settings › About › Send Usage Statistics to stop sending
+                            statistics immediately. If your browser sends Do Not Track or Global
+                            Privacy Control, statistics are off unless you turn the setting on.
+                        </p>
+                        <p>
+                            This choice applies to this browser only. Clearing the site’s data
+                            resets it. Statistics are then on again unless your browser sends Do Not
+                            Track or Global Privacy Control.
+                        </p>
+                        <p>
+                            Depending on the law that applies, you may have rights to access,
+                            correct or delete your personal data, restrict its use, or object to its
+                            use. Send questions and requests to
+                            <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>. You may
+                            also complain to your local data protection authority.
+                        </p>
+                        <p>
+                            Usage reports contain a daily visitor code rather than a name or
+                            account, so we may be unable to identify records that relate to you.
                         </p>
                     </section>
 
