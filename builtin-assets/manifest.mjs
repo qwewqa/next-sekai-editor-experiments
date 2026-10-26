@@ -24,8 +24,8 @@ export const productName = product.name
 export const setVersion = 1
 
 /**
- * The sprites the set leaves out on purpose: the stage that bakes in its dividers, and the colored
- * judgment bands, which are the uncolored band in the base set.
+ * The sprites the set leaves out on purpose: the stage that bakes in its dividers and the colored
+ * judgment bands. The base set has only the uncolored one.
  */
 export const omittedSprites = [
     'Sekai Stage',

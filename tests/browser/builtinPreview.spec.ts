@@ -4,9 +4,10 @@ import { buildCharts } from './builtinChart'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // The preview with the Built-in skin, particle and background for reference charts:
-// every note type, the flick directions, slides and guides, the eight styles and the lane and judgment line colors, at a desktop and
-// a phone size in both themes, with the far end of the lane in the first shot. With SHOTS_DIR set
-// the shots are saved there; either way each must show something other than the empty stage.
+// every note type, the flick directions, slides and guides, the eight styles and the lane and
+// judgment line colors, at a desktop and a phone size in both themes, with the far end of the lane
+// in the first shot. With SHOTS_DIR set the shots are saved there; either way each must show
+// something other than the empty stage.
 const shotsDir = process.env.SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })
 

@@ -193,7 +193,7 @@ test('Lane Color shows a ring for Default and the color’s swatch for the other
     ).toHaveAttribute('fill', '#555555')
     await select(page, 'stageStyleEventJoint', [1])
     await expect(dot('Lane Color')).toHaveAttribute('stroke-dasharray', '2.2 2')
-    // Mixed values show no swatch, and the Judgment Line Color above is untouched.
+    // Mixed values show no swatch.
     await select(page, 'stageStyleEventJoint', [0, 1])
     await expect(lead(page, 'Lane Color')).toHaveCount(0)
     await expect(field(page, 'Lane Color').locator('.form-field-mixed-value')).toHaveCount(2)

@@ -449,9 +449,8 @@ const blendBorderLayout = (start: Quad, end: Quad, progress: number): Quad => {
 // The lane background's body alpha in the skins that have colored lanes.
 export const LANE_BACKGROUND_ALPHA = 0.4
 
-// The alphas of two sprites drawn on the same quad, B over A, so that the pair shows `alpha` in
-// all and B's share is `progress`. A sprite body with alpha `body` is composited as "over":
-// B at alpha * t and A at alpha * (1 - t) / (1 - body * alpha * t).
+// The alphas of a pair on one quad, B over A, that show `alpha` with B's share `progress`:
+// B is alpha * t and A is alpha * (1 - t) / (1 - body * alpha * t) for a body of alpha `body`.
 export const crossfadeAlphas = (alpha: number, progress: number, body = 1): [number, number] => {
     const a = clamp(alpha, 0, 1)
     const t = clamp(progress, 0, 1)
@@ -852,8 +851,8 @@ export const drawDynamicStage = (
     if (la > 0) {
         drawCrossfade(
             draw,
-            skin.laneBackgrounds[laneColor.start],
-            skin.laneBackgrounds[laneColor.end],
+            skin.laneBackgrounds[laneColor.start] ?? skin.laneBackground,
+            skin.laneBackgrounds[laneColor.end] ?? skin.laneBackground,
             place(layoutStageLaneByEdges(context.layout, l, r)),
             z(0),
             z(0.5),

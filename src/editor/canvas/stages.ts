@@ -1,7 +1,9 @@
+import { noteStyles, type NoteStyle } from '../../chart/noteStyle'
 import type { StageProps, Transition } from '../../preview/engine/stage'
 import { StageTriangles } from '../../rendering/stageMesh'
 import { convexDirection } from '../../rendering/triangleClip'
 import { timeToBeat } from '../../state/integrals/bpms'
+import { connectorStyleColor } from '../../utils/colors'
 import { clamp, lerp } from '../../utils/math'
 import type { Range } from '../../utils/range'
 import type { ScopeLookup } from '../scopeRules'
@@ -24,12 +26,19 @@ const borderWidth = (style: Transition<number>, scale: number) =>
 const sameDivider = (a: StagePoint['division']['start'], b: StagePoint['division']['start']) =>
     a.size === b.size && a.parity === b.parity
 
-// The surface tint of each lane color, by note style code. Default is the usual tint; the others
-// follow the colors of the Lane Color swatches, except Blue and Cyan, which are stronger because
-// the tint is faint and would match Default.
-const laneTints = [
-    0x83b6d0, 0xededed, 0xd6737b, 0x73d69d, 0x5a6cf0, 0xd6b362, 0xd673cd, 0x40e0d0, 0x555555,
-] as const
+// The surface tint of each lane color, by note style code. Default keeps the usual tint and the
+// others take the swatch colors. The tint is faint, so Green, Blue and Cyan are stronger.
+const laneTintOverrides: Partial<Record<NoteStyle, number>> = {
+    green: 0x4ee07a,
+    blue: 0x5a6cf0,
+    cyan: 0x40e0d0,
+}
+const defaultTint = 0x83b6d0
+const laneTints = noteStyles.map((style) =>
+    style === 'default'
+        ? defaultTint
+        : (laneTintOverrides[style] ?? parseInt(connectorStyleColor(style).slice(1), 16)),
+)
 
 const channel = (color: number, shift: number) => (color >> shift) & 0xff
 
@@ -50,8 +59,8 @@ const sliceTint = (a: Transition<number>, b: Transition<number>) => {
     const progress =
         a.start === b.start && a.end === b.end ? (a.progress + b.progress) / 2 : b.progress
     return mixTint(
-        laneTints[b.start] ?? laneTints[0],
-        laneTints[b.end] ?? laneTints[0],
+        laneTints[b.start] ?? defaultTint,
+        laneTints[b.end] ?? defaultTint,
         clamp(progress),
     )
 }
