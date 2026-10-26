@@ -130,6 +130,8 @@ test('every browser job installs through the stall guard', () => {
         [check, 'compatibility'],
         [check, 'compatibility-storage'],
         [full, 'storage'],
+        [full, 'chromium'],
+        [full, 'chromium-timing'],
     ])
         assert.match(section(text, name), /run: scripts\/ci\/install-browsers.sh /)
     const script = readFileSync(
@@ -146,6 +148,31 @@ test('browsers-full runs the whole storage set on a schedule, by hand and on ci/
     assert.match(full, /push:\n\s+branches: \['ci\/\*\*'\]/)
     assert.doesNotMatch(full, /NSE_STORAGE_SET/)
     assert.match(section(full, 'storage'), /timeout-minutes: 25\n/)
+})
+
+test('browsers-full runs the Chromium suite in shards and the timing specs alone', () => {
+    const chromium = section(full, 'chromium')
+    assert.match(chromium, /timeout-minutes: 25\n/)
+    assert.match(chromium, /fail-fast: false/)
+    assert.match(
+        chromium,
+        /npx playwright test --project=chromium --project=chromium-worker --shard=\$\{\{ matrix.shard \}\} --workers=4\n/,
+    )
+    assert.match(chromium, /name: chromium-failures-\$\{\{ strategy.job-index \}\}/)
+    // The shards cover the whole suite exactly once.
+    const shards = chromium.match(/shard: \[(.+)\]/)?.[1].split(', ')
+    assert.ok(shards)
+    assert.deepEqual(
+        shards,
+        shards.map((_, index) => `${index + 1}/${shards.length}`),
+    )
+    assert.equal(shards.length, 6)
+    assert.doesNotMatch(chromium, /--project=timing/)
+    const timing = section(full, 'chromium-timing')
+    assert.match(timing, /timeout-minutes: 15\n/)
+    assert.doesNotMatch(timing, /matrix:|needs:/)
+    assert.match(timing, /npx playwright test --project=timing --no-deps\n/)
+    assert.match(timing, /name: chromium-timing-failures\n/)
 })
 
 test('a release needs a passed browsers-full run and says how to start one', () => {

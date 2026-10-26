@@ -57,3 +57,64 @@ jobs:
                   path: test-results-compatibility/
                   if-no-files-found: ignore
                   retention-days: 7
+
+    # The whole Chromium suite, as npm run test:browser runs it: the chromium and chromium-worker projects,
+    # about 4,500 tests, in shards. The timing specs run in their own job below.
+    chromium:
+        runs-on: ubuntu-latest
+        # Estimates until a run confirms them: a quarter of the suite took 12.7 min with four workers on a fast
+        # desktop, so one of six should take about 9 min there and 12 to 18 on a runner.
+        timeout-minutes: 25
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1/6, 2/6, 3/6, 4/6, 5/6, 6/6]
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - run: npm ci
+            - run: scripts/ci/install-browsers.sh chromium
+            # The five locked preview packages, as build:release stages them. Without them the preview specs fall back to Built-in only.
+            - name: Fetch the preview assets
+              run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
+            - run: npx playwright test --project=chromium --project=chromium-worker --shard=${{ matrix.shard }} --workers=4
+            - name: Upload browser failure details
+              if: failure()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: chromium-failures-${{ strategy.job-index }}
+                  path: test-results/
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    # Measures real frame timing, so it runs alone on its own runner, not beside the shards.
+    chromium-timing:
+        runs-on: ubuntu-latest
+        # Estimate until a run confirms it: the timing specs take about 1 min on one worker, and the install and npm ci most of the job.
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - run: npm ci
+            - run: scripts/ci/install-browsers.sh chromium
+            - name: Fetch the preview assets
+              run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
+            - run: npx playwright test --project=timing --no-deps
+            - name: Upload browser failure details
+              if: failure()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: chromium-timing-failures
+                  path: test-results/timing/
+                  if-no-files-found: ignore
+                  retention-days: 7

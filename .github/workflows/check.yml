@@ -77,8 +77,8 @@ jobs:
                   if-no-files-found: ignore
                   retention-days: 7
 
-    # The v1 fixtures read by the running editor in Chromium, on every push (the pull request run of
-    # test:browser is the only other Chromium run): the write-back of each history file, the saving
+    # The v1 fixtures read by the running editor in Chromium, on every push (test:browser, in Browsers Full
+    # and on pull requests, is the only other Chromium run): the write-back of each history file, the saving
     # marker, and the web storage reads (docs/format-versioning.md section 8).
     formats:
         if: ${{ !inputs.skip_browser_checks }}
