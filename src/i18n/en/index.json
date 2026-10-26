@@ -1883,6 +1883,7 @@
         "loadingSkin": "Loading skin…",
         "skinUnavailable": "The preview skin could not be loaded.",
         "graphicsUnavailable": "Preview graphics could not be started.",
+        "chartGraphicsUnavailable": "Graphics could not be started.",
         "graphicsHelp": "Check that graphics acceleration and WebGL are enabled in your browser, then restart the browser if needed.",
         "errorDetails": "Error Details",
         "reload": "Reload",

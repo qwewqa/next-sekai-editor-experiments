@@ -1883,6 +1883,7 @@
     "loadingSkin": "正在加载皮肤…",
     "skinUnavailable": "无法加载预览皮肤。",
     "graphicsUnavailable": "无法启动预览图形。",
+    "chartGraphicsUnavailable": "无法启动图形。",
     "graphicsHelp": "请检查浏览器是否已启用图形加速和 WebGL，必要时重启浏览器。",
     "errorDetails": "错误详情",
     "reload": "重新加载",

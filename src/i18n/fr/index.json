@@ -1883,6 +1883,7 @@
     "loadingSkin": "Chargement du skin…",
     "skinUnavailable": "Le skin de l’aperçu n’a pas pu être chargé.",
     "graphicsUnavailable": "Le rendu de l’aperçu n’a pas pu démarrer.",
+    "chartGraphicsUnavailable": "Le rendu n’a pas pu démarrer.",
     "graphicsHelp": "Vérifiez que l’accélération graphique et WebGL sont activés dans votre navigateur, puis redémarrez-le si nécessaire.",
     "errorDetails": "Détails de l’erreur",
     "reload": "Recharger",

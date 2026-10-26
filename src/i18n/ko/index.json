@@ -1883,6 +1883,7 @@
     "loadingSkin": "스킨 불러오는 중…",
     "skinUnavailable": "미리보기 스킨을 불러오지 못했습니다.",
     "graphicsUnavailable": "미리보기 그래픽을 시작하지 못했습니다.",
+    "chartGraphicsUnavailable": "그래픽을 시작하지 못했습니다.",
     "graphicsHelp": "브라우저에서 그래픽 가속과 WebGL이 활성화되어 있는지 확인하고, 필요하면 브라우저를 다시 시작해 주세요.",
     "errorDetails": "오류 상세 정보",
     "reload": "새로고침",

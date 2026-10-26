@@ -1883,6 +1883,7 @@
     "loadingSkin": "正在載入外觀…",
     "skinUnavailable": "無法載入預覽外觀。",
     "graphicsUnavailable": "無法啟動預覽圖形。",
+    "chartGraphicsUnavailable": "無法啟動圖形。",
     "graphicsHelp": "請確認瀏覽器已啟用圖形加速和 WebGL，必要時重新啟動瀏覽器。",
     "errorDetails": "錯誤詳細資訊",
     "reload": "重新載入",

@@ -1883,6 +1883,7 @@
     "loadingSkin": "スキンを読み込み中…",
     "skinUnavailable": "プレビュー用スキンを読み込めませんでした。",
     "graphicsUnavailable": "プレビューの描画を開始できませんでした。",
+    "chartGraphicsUnavailable": "描画を開始できませんでした。",
     "graphicsHelp": "ブラウザーでグラフィックスアクセラレーションとWebGLが有効になっていることを確認し、必要に応じてブラウザーを再起動してください。",
     "errorDetails": "エラーの詳細",
     "reload": "再読み込み",
