@@ -288,9 +288,11 @@ const sectionHtml = (id: string) => {
 /** The text of one section of the page. */
 const sectionText = (id: string) => plain(sectionHtml(id))
 
-/** The text of each paragraph of a section. */
-const paragraphs = (id: string) =>
-    [...sectionHtml(id).matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)].map(([, inner = '']) => plain(inner))
+/** The markup inside each paragraph and list item of a section. */
+const elements = (id: string) =>
+    [...sectionHtml(id).matchAll(/<(p|li)\b[^>]*>([\s\S]*?)<\/\1>/g)].map(
+        ([, , inner = '']) => inner,
+    )
 
 /** What each section must keep disclosing: the setting path, the signals, the legal bases, the recipients and the periods. Each pattern names a value, not a sentence. */
 const disclosures: Record<string, RegExp[]> = {
@@ -298,18 +300,23 @@ const disclosures: Record<string, RegExp[]> = {
         /Settings › About › Send Usage Statistics/,
         /Do Not Track/,
         /Global Privacy Control/,
-        /without accounts or cookies/,
+        /does not require an account/,
+        /or use cookies/,
     ],
     who: [/qwewqa/, /nse@qwewqa\.dev/],
-    usage: [/legitimate interest/, /daily visitor code/],
-    hosting: [
-        /GitHub/,
-        /Amazon Web Services \(AWS\)/,
-        /United States/,
-        /Standard Contractual Clauses/,
+    usage: [
+        /legitimate interest/,
+        /visitor identifier/,
+        /estimate your country/,
+        /error logs on the statistics server may contain it/,
     ],
-    contact: [/legitimate interest/, /legal obligations/, /mailbox/],
-    choices: [/access, correct or delete/, /portable copy/, /data protection authority/],
+    hosting: [/GitHub/, /Amazon Web Services \(AWS\)/, /United States/, /email provider/],
+    contact: [/legitimate interest/, /required by law/],
+    choices: [
+        /access, correct or delete/,
+        /copy in a reusable format/,
+        /data protection authority/,
+    ],
 }
 
 test('the privacy page keeps its disclosures', () => {
@@ -318,36 +325,49 @@ test('the privacy page keeps its disclosures', () => {
             assert.match(sectionText(id), pattern, `the ${id} section no longer covers ${pattern}`)
 })
 
+test('the hosting section names no transfer clauses', () => {
+    assert.doesNotMatch(sectionText('hosting'), /Standard Contractual Clauses/)
+    assert.doesNotMatch(html, /aws\.amazon\.com/)
+})
+
 test('each retention period is stated with its data', () => {
-    const periods: [string, RegExp, RegExp][] = [
-        ['keep', /individual usage statistics/, /13 months/],
-        ['keep', /combined statistics/, /without visitor codes indefinitely/],
-        ['keep', /Backups on AWS/, /about five weeks/],
-        ['keep', /error logs/, /two weeks/],
-        ['contact', /mailbox/, /one year after your last message/],
+    const periods: [RegExp, RegExp[]][] = [
+        [/Individual usage records/, [/up to 13 months/]],
+        [/Backups of the statistics/, [/up to six weeks after each backup is made/]],
+        [/Error logs on the statistics server/, [/up to two weeks/]],
+        [/Email conversations/, [/up to one year after your last message/]],
+        [/Aggregated statistics/, [/no visitor identifiers/, /indefinitely/]],
     ]
-    for (const [id, data, period] of periods)
+    const texts = elements('keep').map(plain)
+    for (const [data, values] of periods)
         assert.ok(
-            paragraphs(id).some((text) => data.test(text) && period.test(text)),
-            `the ${id} section no longer ties ${data} to ${period}`,
+            texts.some((text) => data.test(text) && values.every((value) => value.test(text))),
+            `the keep section no longer ties ${data} to ${values.join(' and ')}`,
         )
 })
 
-test('one paragraph offers the objection to usage statistics and support', () => {
+test('a separate paragraph offers the objection, and one email link covers the rights', () => {
     const parts = [
         /object/,
         /usage statistics/,
         /support/,
+        /at any time/,
         /Settings › About › Send Usage Statistics/,
-        /emailing us/,
     ]
+    const paragraphs = elements('choices')
+    const objection = paragraphs.filter((markup) => parts.every((part) => part.test(plain(markup))))
+    assert.equal(objection.length, 1, 'one paragraph of the rights section offers the objection')
+    const general = paragraphs.find((markup) => /access, correct or delete/.test(plain(markup)))
     assert.ok(
-        paragraphs('choices').some((text) => parts.every((part) => part.test(text))),
-        'no paragraph of the rights section covers the objection',
+        general && general !== objection[0],
+        'the general rights are a paragraph of their own',
     )
+    const links = sectionHtml('choices').match(/<a\s+href="mailto:nse@qwewqa\.dev"/g)
+    assert.equal(links?.length, 1, 'one email link covers all the rights')
+    assert.match(sectionText('choices'), /To exercise any of these rights, email/)
 })
 
-test('the privacy page links to the complete list of what is sent', () => {
+test('the privacy page links to the usage statistics reference', () => {
     const start = html.indexOf('aria-labelledby="usage"')
     const end = html.indexOf('aria-labelledby="hosting"', start)
 
@@ -355,7 +375,7 @@ test('the privacy page links to the complete list of what is sent', () => {
 
     const usage = html.slice(start, end)
     const link =
-        /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*complete list of what is sent\s*<\/a\s*>/
+        /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*What the usage statistics send\s*<\/a\s*>/
 
     assert.match(usage, link)
     assert.doesNotMatch(html, /docs\/analytics\.md/)
