@@ -2119,7 +2119,7 @@
     "history": "履歴",
     "bgm": "BGM",
     "placeholder": "無題",
-    "exportHint": "Sonolus 用のレベルデータには「レベルデータを出力…」を使ってください。",
+    "exportHint": "Sonolus用のレベルデータには「レベルデータを出力…」を使ってください。",
     "exportHintFirst": "プロジェクトファイル（.nxsp）はこのエディター専用です。Sonolusサーバーにアップロードするレベルデータを作るには「レベルデータを出力…」を使ってください。",
     "exportHintNames": "レベルデータのファイル名はLevelDataの場合や、.nsldまたは.json.gzで終わる場合があります。",
     "openExport": "レベルデータを出力…",
