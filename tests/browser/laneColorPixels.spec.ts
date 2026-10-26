@@ -109,8 +109,36 @@ const pixelAt = (page: Page, png: Buffer) =>
         return [...ctx.getImageData(x, y, 1, 1).data]
     }, png.toString('base64'))
 
+declare global {
+    interface Window {
+        laneTest: { uploads: number; frames: number }
+    }
+}
+
+// Counts the preview's atlas uploads (the skin and the particle are ready after two) and frames.
+const countPreview = () => {
+    window.laneTest = { uploads: 0, frames: 0 }
+    const isPreview = (gl: WebGL2RenderingContext) =>
+        gl.canvas instanceof HTMLCanvasElement &&
+        gl.canvas.matches('.preview-viewport > canvas:not(.preview-selection)')
+    const upload = WebGL2RenderingContext.prototype.texImage2D
+    WebGL2RenderingContext.prototype.texImage2D = function (...args: unknown[]) {
+        if (isPreview(this) && args.some((arg) => arg instanceof ImageBitmap))
+            window.laneTest.uploads++
+        return Reflect.apply(upload, this, args)
+    }
+    const clear = WebGL2RenderingContext.prototype.clear
+    WebGL2RenderingContext.prototype.clear = function (...args) {
+        if (isPreview(this)) window.laneTest.frames++
+        return clear.apply(this, args)
+    }
+}
+
 const shoot = async (page: Page, laneColors: [string, string]) => {
-    await page.evaluate((laneColors) => {
+    // The skin is on the GPU, whatever the load.
+    await expect.poll(() => page.evaluate(() => window.laneTest.uploads)).toBeGreaterThanOrEqual(2)
+    const before = await page.evaluate((laneColors) => {
+        const frames = window.laneTest.frames
         const charts = (window as unknown as { __charts: Record<string, never> }).__charts
         const chart = structuredClone(charts.colors) as unknown as {
             slides: unknown[]
@@ -132,14 +160,13 @@ const shoot = async (page: Page, laneColors: [string, string]) => {
         window.editorTest.show(chart as never, 0)
         // Halfway through the ease of the first event.
         window.editorTest.view.cursorTime = 0.5
+        return frames
     }, laneColors)
-    await page.evaluate(async () => {
-        await window.editorTest.nextTick()
-        await new Promise<void>((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-        )
-    })
-    await page.waitForTimeout(400)
+    // A frame drawn after the change, and the host has finished it.
+    await expect
+        .poll(() => page.evaluate(() => window.laneTest.frames))
+        .toBeGreaterThanOrEqual(before + 1)
+    await page.evaluate(() => window.nsePreviewTest?.settled())
     return pixelAt(page, await page.locator('.preview-viewport').first().screenshot())
 }
 
@@ -152,6 +179,7 @@ test('a lane color fade is the pixel of a lane that holds the exact blend', asyn
         route.fulfill({ body: black, contentType: 'image/png' }),
     )
     await page.addInitScript(installCanvasCounters)
+    await page.addInitScript(countPreview)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)

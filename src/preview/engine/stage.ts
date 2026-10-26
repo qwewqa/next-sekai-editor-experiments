@@ -449,8 +449,7 @@ const blendBorderLayout = (start: Quad, end: Quad, progress: number): Quad => {
 // The lane background's body alpha in the skins that have colored lanes.
 export const LANE_BACKGROUND_ALPHA = 0.4
 
-// The alphas of a pair on one quad, B over A, that show `alpha` with B's share `progress`:
-// B is alpha * t and A is alpha * (1 - t) / (1 - body * alpha * t) for a body of alpha `body`.
+// B is alpha * t and A is alpha * (1 - t) / (1 - body * alpha * t), so the pair shows alpha.
 export const crossfadeAlphas = (alpha: number, progress: number, body = 1): [number, number] => {
     const a = clamp(alpha, 0, 1)
     const t = clamp(progress, 0, 1)

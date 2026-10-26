@@ -26,8 +26,7 @@ const borderWidth = (style: Transition<number>, scale: number) =>
 const sameDivider = (a: StagePoint['division']['start'], b: StagePoint['division']['start']) =>
     a.size === b.size && a.parity === b.parity
 
-// The surface tint of each lane color, by note style code. Default keeps the usual tint and the
-// others take the swatch colors. The tint is faint, so Green, Blue and Cyan are stronger.
+// Tints by note style code: the swatch colors, with stronger Green, Blue and Cyan.
 const laneTintOverrides: Partial<Record<NoteStyle, number>> = {
     green: 0x4ee07a,
     blue: 0x5a6cf0,
