@@ -101,7 +101,6 @@ jobs:
     # marker, and the web storage reads (docs/format-versioning.md section 8).
     formats:
         if: ${{ !inputs.skip_browser_checks }}
-        needs: check
         runs-on: ubuntu-latest
         # About 2 min of tests with two workers on a fast desktop.
         timeout-minutes: 25
