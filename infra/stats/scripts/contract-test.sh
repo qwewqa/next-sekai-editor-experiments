@@ -18,7 +18,8 @@
 #      nothing, Umami's start leaves nse_monthly and nse_weekly alone, and tidy deletes old dump files; the weekly counts
 #      (visits, sessions and event names by ISO week) are made on fixed week boundaries, count a week that is split
 #      across two months whole, take a late report into a week that is not final, leave out a week of 5 sessions, fold
-#      names of fewer than 10 sessions into other, and keep a week after its records are deleted
+#      names of fewer than 10 sessions into other, and keep a week after its records are deleted; a month and a week with 10 sessions but 9
+#      visits show the visits empty, not 0
 #   7. every saved query runs, and prints the rows the batch produces
 # Needs docker, curl and jq.
 set -euo pipefail
@@ -155,6 +156,7 @@ JUNK=$(cat /proc/sys/kernel/random/uuid)
 VERS=$(cat /proc/sys/kernel/random/uuid)
 LATE=$(cat /proc/sys/kernel/random/uuid)
 WEEK=$(cat /proc/sys/kernel/random/uuid)
+MIX=$(cat /proc/sys/kernel/random/uuid)
 SITE=$ROLL
 # A failed check prints what was found and the rows of nse_monthly for the website being checked.
 dump_monthly() {
@@ -195,7 +197,7 @@ check_time() { # month, property, version, device, then the expected "n|p50|p90|
 retain
 check_sql "retain added totals for a month that is not complete" 0 "SELECT count(*) FROM nse_monthly"
 SC=$(cat /proc/sys/kernel/random/uuid) SF=$(cat /proc/sys/kernel/random/uuid)
-sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 'nse.qwewqa.dev'), ('$JUNK', 'junk', 'nse.qwewqa.dev'), ('$VERS', 'vers', 'nse.qwewqa.dev'), ('$LATE', 'late', 'nse.qwewqa.dev'), ('$WEEK', 'week', 'nse.qwewqa.dev')" > /dev/null
+sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 'nse.qwewqa.dev'), ('$JUNK', 'junk', 'nse.qwewqa.dev'), ('$VERS', 'vers', 'nse.qwewqa.dev'), ('$LATE', 'late', 'nse.qwewqa.dev'), ('$WEEK', 'week', 'nse.qwewqa.dev'), ('$MIX', 'mix', 'nse.qwewqa.dev')" > /dev/null
 # Raw records, by months ago:
 #   3  11 sessions on a laptop with 1.0.0 and 11 on a desktop with 1.1.0, each with a Save time and a use count
 #   2  10 laptop sessions on 1.0.0, 10 that updated to 1.1.0 the same day (mixed), one on 2.0.0 on a tablet (a group of
@@ -217,13 +219,13 @@ BND=$(sql -c "SELECT to_char(b, 'YYYY-MM-DD HH24:MI:SS') || '+00' FROM (SELECT d
 WM=$(sql -c "SELECT to_char(date_trunc('week', '$BND'::timestamptz AT TIME ZONE 'UTC'), 'YYYY-MM-DD HH24:MI:SS') || '+00'")
 weekdate() { sql -c "SELECT (('$WM'::timestamptz AT TIME ZONE 'UTC') + interval '$1 days')::date"; }
 W1=$(weekdate 0) W2=$(weekdate 7) W3=$(weekdate 14) W4=$(weekdate 21)
-sql -q -v "roll=$ROLL" -v "junk=$JUNK" -v "vers=$VERS" -v "late=$LATE" -v "week=$WEEK" -v "bnd=$BND" -v "wm=$WM" -v "lt=$LT" -v "sc=$SC" -v "sf=$SF" -f - << 'SQL'
+sql -q -v "roll=$ROLL" -v "junk=$JUNK" -v "vers=$VERS" -v "late=$LATE" -v "week=$WEEK" -v "mix=$MIX" -v "bnd=$BND" -v "wm=$WM" -v "lt=$LT" -v "sc=$SC" -v "sf=$SF" -f - << 'SQL'
 SET TIME ZONE 'UTC';
 SELECT set_config('nse.roll', :'roll', false), set_config('nse.junk', :'junk', false),
        set_config('nse.sc', :'sc', false), set_config('nse.sf', :'sf', false),
        set_config('nse.vers', :'vers', false), set_config('nse.late', :'late', false),
        set_config('nse.lt', :'lt', false), set_config('nse.week', :'week', false),
-       set_config('nse.bnd', :'bnd', false), set_config('nse.wm', :'wm', false) \g /dev/null
+       set_config('nse.bnd', :'bnd', false), set_config('nse.wm', :'wm', false), set_config('nse.mix', :'mix', false) \g /dev/null
 CREATE FUNCTION pg_temp.m(n int) RETURNS timestamptz LANGUAGE sql AS $$
     SELECT date_trunc('month', now()) - make_interval(months => n) + interval '10 days'
 $$;
@@ -253,6 +255,7 @@ DECLARE
     site_l uuid := current_setting('nse.late')::uuid;
     lt timestamptz := current_setting('nse.lt')::timestamptz;
     site_w uuid := current_setting('nse.week')::uuid;
+    site_x uuid := current_setting('nse.mix')::uuid;
     bnd timestamptz := current_setting('nse.bnd')::timestamptz;
     wm timestamptz := current_setting('nse.wm')::timestamptz;
     kinds text[] := ARRAY['save', 'open', 'export', 'check', 'bgm'];
@@ -381,6 +384,14 @@ BEGIN
         s := pg_temp.mk(gen_random_uuid(), site_w, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
         PERFORM pg_temp.ev(site_w, s, t, 1, NULL, '{}');
         PERFORM pg_temp.ev(site_w, s, t, 2, kinds[1 + (i - 1) % 5], '{}');
+    END LOOP;
+    -- Ten sessions three months ago, 9 with a pageview and one with only an Open: the sessions reach 10 and the visits
+    -- do not, in the month and in the week.
+    FOR i IN 1..10 LOOP
+        t := pg_temp.m(3) + i * interval '1 minute';
+        s := pg_temp.mk(gen_random_uuid(), site_x, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        IF i <= 9 THEN PERFORM pg_temp.ev(site_x, s, t, 1, NULL, '{}');
+        ELSE PERFORM pg_temp.ev(site_x, s, t, 2, 'open', '{}'); END IF;
     END LOOP;
     -- The week after the next: 5 sessions, too few to be listed.
     FOR i IN 1..5 LOOP
@@ -551,6 +562,13 @@ check_week "$WR3" events pageview 12
 check_week "$WR3" events save 3012
 check_week "$WR3" events secret ''
 check_sql "an event name that is not in the catalogue was counted by week" 0 "SELECT count(*) FROM nse_weekly WHERE name ~* '(secret|junk)'"
+# 9 sessions with a pageview and one with only an Open: the sessions are kept and the visits are held back.
+SITE=$MIX
+check_total '' "$M3" visits all '' '' ''
+check_total 10 "$M3" sessions all '' '' ''
+check_week "$WR3" visits all ''
+check_week "$WR3" sessions all 10
+SITE=$JUNK
 # The week WM runs over two months: its 30 sessions are 10 in the last second of the first month, 10 at the start of the
 # second and 10 in the week's last second, and the week is counted whole. The next week begins at W2 to the second.
 SITE=$WEEK
@@ -757,6 +775,12 @@ for row in "$M3|24|24|83" "$M2|32|33|94" "$M15|11|11|31" "$M3|1.0.0|13" "$M3|sav
     grep -qxF "$row" <<< "$monthly_rows" || fail "monthly.sql did not print the row $row. It printed:
 $monthly_rows"
 done
+# A month and a week that keep their sessions and hold back their visits show the visits empty, not 0.
+mixed_rows=$(run_query monthly "$MIX")
+[ "$mixed_rows" = "$M3||10|10" ] || fail "monthly.sql printed this for a month with 10 sessions and 9 visits: $mixed_rows"
+mixed_rows=$(run_query weekly "$MIX")
+[ "$mixed_rows" = "$WR3||10
+$WR3|other|10" ] || fail "weekly.sql printed this for a week with 10 sessions and 9 visits: $mixed_rows"
 weekly_rows=$(run_query weekly "$ROLL")
 for row in "$WR3|24|24" "$WR2|32|33" "$WR15|11|11" "$WR3|pageview|24" "$WR2|open|10"; do
     grep -qxF "$row" <<< "$weekly_rows" || fail "weekly.sql did not print the row $row. It printed:
