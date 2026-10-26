@@ -2,56 +2,6 @@
     "version": 1,
     "files": [
         {
-            "name": "se_live_connect.mp3",
-            "source": "src/assets/se_live_connect.mp3",
-            "sha256": "024d5f148bd5c7d7cfe156c2d8941fad853af796a194615db1a3d50a561f1063"
-        },
-        {
-            "name": "se_live_connect_critical.mp3",
-            "source": "src/assets/se_live_connect_critical.mp3",
-            "sha256": "4f2a9e42d7e2c664bdffe2dfbf297073ef5820f3aa283b3e5d29372b46b570aa"
-        },
-        {
-            "name": "se_live_critical.mp3",
-            "source": "src/assets/se_live_critical.mp3",
-            "sha256": "69dce310b8be9ac7cf2ca9c36be0846bbd4ca251bad4c2a8c7483dc7de515600"
-        },
-        {
-            "name": "se_live_flick.mp3",
-            "source": "src/assets/se_live_flick.mp3",
-            "sha256": "7394b0374322ea1645f175f2d12784d7263029b30cacfd4e126e619c5027413f"
-        },
-        {
-            "name": "se_live_flick_critical.mp3",
-            "source": "src/assets/se_live_flick_critical.mp3",
-            "sha256": "8ccdfee6e28d12b94bcf417943f76402df2fd86dde7fc921093f82401f71c3b4"
-        },
-        {
-            "name": "se_live_long.mp3",
-            "source": "src/assets/se_live_long.mp3",
-            "sha256": "f6eee1669d2e652880f53c9d88d0879b87467d5afc19f3c7052b76cd11bed3e4"
-        },
-        {
-            "name": "se_live_long_critical.mp3",
-            "source": "src/assets/se_live_long_critical.mp3",
-            "sha256": "810023ec45326e660e28a8cecca52f16a375027b71b4651eabf23bd12b230aac"
-        },
-        {
-            "name": "se_live_perfect.mp3",
-            "source": "src/assets/se_live_perfect.mp3",
-            "sha256": "7d1abbdb41b381fbba1500669da5be458c15855fa33d6e62ccfe837885bbd151"
-        },
-        {
-            "name": "se_live_trace.mp3",
-            "source": "src/assets/se_live_trace.mp3",
-            "sha256": "71ea96bd178d90d200fa24807de9ced133d035153751b0d9bda6c0c0accbe1c3"
-        },
-        {
-            "name": "se_live_trace_critical.mp3",
-            "source": "src/assets/se_live_trace_critical.mp3",
-            "sha256": "92377fbcb5aa1ce406000c422c3e1210ea941f351e935697daac220ac09316ba"
-        },
-        {
             "name": "bg.png",
             "source": "src/preview/bg.png",
             "sha256": "1812f1bb90e1ec25ad0ea3a358f1233b611b6bd42307c787bb3f0b6a3814f71f"
@@ -122,6 +72,21 @@
             "sha256": "40b087da052ce71e1cb0107f8afe70ea67ea8c148520f1a36c3fdcab40cb4887"
         },
         {
+            "name": "effect.scp",
+            "source": "deployment/preview-assets.lock.json#effect",
+            "sha256": "8f7f53172a719ec1c45ad7e38363a5886ec893dbbb9298c7d55cb3a957402259"
+        },
+        {
+            "name": "effect data",
+            "source": "public/resource/effect.scp:data",
+            "sha256": "67e53fa9bac19e69b19e53adec89855e370d8bf71584c3a7dc30afccd91e38eb"
+        },
+        {
+            "name": "effect audio",
+            "source": "public/resource/effect.scp:audio",
+            "sha256": "6fc8df5368dce316c5959c9f98a34be5ad4984c3dc6b83c98b67e3cbd29e2453"
+        },
+        {
             "name": "effect2.scp",
             "source": "deployment/preview-assets.lock.json#effect2",
             "sha256": "8ca563e690d5d49d6f39e010008a36d81cd937bc7812865e2b8a5a938490eb43"
@@ -146,9 +111,6 @@
         },
         {
             "regex": "bg-[A-Za-z0-9_-]{8}.png"
-        },
-        {
-            "text": "se_live"
         },
         {
             "text": "resource/"

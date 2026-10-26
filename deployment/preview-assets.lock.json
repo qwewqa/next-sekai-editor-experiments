@@ -69,6 +69,27 @@
         "thumbnail": false,
         "sha256": "a74f73f93161d6537f15e8925b6c4ff122f83b4191e7d8cd3d60104d1b9786c0"
     },
+    "effect": {
+        "source": "https://coconut.sonolus.com/next-sekai/sonolus/effects/coconut-next-sekai-1",
+        "item": {
+            "name": "coconut-next-sekai-1",
+            "source": "https://coconut.sonolus.com/next-sekai",
+            "version": 5,
+            "title": "Next SEKAI 01",
+            "subtitle": "Next SEKAI",
+            "author": "Burrito#1000",
+            "data": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/effects/1/data/c7fb106c6912e9cee19e5caea43956df1eb2c766",
+                "hash": "c7fb106c6912e9cee19e5caea43956df1eb2c766"
+            },
+            "audio": {
+                "url": "https://coconut-tree.sonolus.com/483d29624685ac369786860fdd52046717d2e0a513bace0b8fa16a92452f7710/effects/1/audio/ad8bbc5a89efb86527b4a7a89dd051a6d3852018",
+                "hash": "ad8bbc5a89efb86527b4a7a89dd051a6d3852018"
+            }
+        },
+        "thumbnail": false,
+        "sha256": "8f7f53172a719ec1c45ad7e38363a5886ec893dbbb9298c7d55cb3a957402259"
+    },
     "effect2": {
         "source": "https://coconut.sonolus.com/next-sekai/sonolus/effects/coconut-next-sekai-2",
         "item": {
