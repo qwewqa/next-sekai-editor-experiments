@@ -5,11 +5,9 @@
 // warm-up load stays silent.
 //
 // Every module here may run early: none registers a listener, timer or hook, or reads storage,
-// when it is imported. Left cold, as rare or heavy: the Preview Editor's MP3 encoder, raw
-// export, Delete Sessions, diagnostics, the perf hook, the server reader and the stored-choice
-// providers. Left out because the storage modules load them at first paint already: the project
-// reader (`local/open/project`) and the startup events, as are the BGM player, Settings, Switch,
-// the Peek effects and the sidebars.
+// when it is imported. Modules the first bundle or the storage modules already load at first paint
+// (the project reader, the startup events, the BGM player, Settings, Switch, the Peek effects, the
+// sidebars) are not listed. The MP3 encoder and raw export stay cold: they are rare and heavy.
 
 type Load = () => Promise<unknown>
 

@@ -110,46 +110,40 @@ test('the warm-up loads the History code before first use, and opening History f
 })
 
 test.describe('code that loads inside a Save', () => {
-    test('Replace and Open the Other Version say so when the project code does not load', async ({
-        page,
-    }) => {
-        // Save's own code loads; the code that keeps or opens the file on disk does not.
-        await page.route('**/src/editor/commands/open/project.ts*', (route) => route.abort())
-        await start(page)
-        await edit(page, 1)
-        await pressSave(page)
-        await submitSave(page, 'coconut')
-        await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-        await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ event: 'saved' })
+    // Save's own code loads; the code that keeps or opens the file on disk does not.
+    for (const choice of ['Replace', 'Open the Other Version'])
+        test(`${choice} says so when the project code does not load`, async ({ page }) => {
+            await page.route('**/src/editor/commands/open/project.ts*', (route) => route.abort())
+            await start(page)
+            await edit(page, 1)
+            await pressSave(page)
+            await submitSave(page, 'coconut')
+            await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+            await expect
+                .poll(async () => (await chainOf(page)).file)
+                .toMatchObject({ event: 'saved' })
 
-        const other = [
-            ...new Uint8Array(
-                await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer(),
-            ),
-        ]
-        await writeFile(page, 'coconut.nxsp', other)
-        await edit(page, 2)
-        await pressSave(page)
-        const dialog = page.getByRole('dialog')
-        await expect(dialog).toContainText('"coconut.nxsp" Changed')
-        // Past the dialog's activation guard.
-        await page.waitForTimeout(350)
-        const session = await sessionOf(page)
-        for (const choice of ['Replace', 'Open the Other Version']) {
+            const other = [
+                ...new Uint8Array(
+                    await (
+                        await executePlan(planNxsp(fresh().input).plan, new Map())
+                    ).arrayBuffer(),
+                ),
+            ]
+            await writeFile(page, 'coconut.nxsp', other)
+            await edit(page, 2)
+            await pressSave(page)
+            const dialog = page.getByRole('dialog')
+            await expect(dialog).toContainText('"coconut.nxsp" Changed')
+            // Past the dialog's activation guard.
+            await page.waitForTimeout(350)
+            const session = await sessionOf(page)
             await dialog.getByRole('button', { name: choice }).click()
             await expect(notice(page).filter({ hasText: failed })).toBeVisible()
             // The file on disk is as it was, and so is the session.
             expect(await readFile(page, 'coconut.nxsp')).toEqual(other)
             expect(await sessionOf(page)).toEqual(session)
-            if (choice === 'Replace') {
-                // The dialog is gone; a Save asks again.
-                await page.waitForTimeout(350)
-                await pressSave(page)
-                await expect(dialog).toContainText('"coconut.nxsp" Changed')
-                await page.waitForTimeout(350)
-            }
-        }
-    })
+        })
 })
 
 test('Preview Assets says so when its code does not load', async ({ page }) => {
