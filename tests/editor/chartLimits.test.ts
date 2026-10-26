@@ -1,7 +1,8 @@
 import type { LevelDataEntity } from '@sonolus/core'
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import test from 'node:test'
-import { maxBeat, maxLane, maxSize } from '../../src/chart/limits'
+import { maxBeat, maxLane, maxMeter, maxSize, minMeter } from '../../src/chart/limits'
 import { parseLevelDataChart } from '../../src/chart/parse/levelData'
 import { parseSusChart } from '../../src/chart/parse/sus'
 import { parseUscChart } from '../../src/chart/parse/usc'
@@ -112,7 +113,7 @@ test('every event kind refuses a coordinate past its limit', () => {
     refused((c) => c.bpms.push({ beat: 1e16, bpm: 120 }), 'beat')
 })
 
-test('a USC, a ChCy file and a SUS file with a note at beat 1e16 are refused', () => {
+test('a USC and a ChCy file with a note at beat 1e16, and a SUS file with a bar of 1e15 beats, are refused', () => {
     const usc = {
         version: 2,
         usc: {
@@ -169,6 +170,7 @@ test('a USC, a ChCy file and a SUS file with a note at beat 1e16 are refused', (
     })
     assert.throws(() => validateChart(parseUscChart(chcyToUsc(chcy).objects)), refusal('beat'))
 
+    // A SUS file reaches a late beat only through a long bar, which is refused as a meter.
     const sus = [
         '#TITLE "Import"',
         '#REQUEST "ticks_per_beat 480"',
@@ -178,7 +180,7 @@ test('a USC, a ChCy file and a SUS file with a note at beat 1e16 are refused', (
         '#00112:11',
         '#00113:11',
     ]
-    assert.throws(() => validateChart(parseSusChart(parseSus(sus))), refusal('beat'))
+    assert.throws(() => validateChart(parseSusChart(parseSus(sus))), refusal('meter'))
 })
 
 test('a copy with a beat or a note past the limits is not pasted', () => {
@@ -219,4 +221,45 @@ test('the grid and the slot lanes end for a value past the limits', () => {
 
     assert.ok(iterSlotLanes(0, 1e9).length <= maxSize)
     assert.ok(iterSlotLanes(1e16, 1).length <= maxSize)
+})
+
+test('a BPM change with a meter far past the limits is refused', () => {
+    for (const meter of [1e16, maxMeter + 1, minMeter / 2, 1e-12]) {
+        const chart = parseLevelDataChart(minimalLevel())
+        chart.bpms.push({ beat: 0.1, bpm: 120, meter })
+        assert.throws(() => validateChart(chart), refusal('meter'), `${meter}`)
+    }
+    for (const meter of [minMeter, 3, 4, maxMeter]) {
+        const chart = parseLevelDataChart(minimalLevel())
+        chart.bpms.push({ beat: 0.1, bpm: 120, meter })
+        validateChart(chart)
+    }
+})
+
+test('the grid searches end for a meter that slipped past the limits, promptly', () => {
+    // Run apart, so a hang fails the test instead of stalling the run.
+    const url = (path: string) => JSON.stringify(new URL(path, import.meta.url).href)
+    const script = `
+        import { calculateBpms, toBpmIntegral } from ${url('../../src/state/integrals/bpms.ts')}
+        import { ceilGridBeat, floorGridBeat, gridLines, snapBeat, toBeatGrid } from ${url('../../src/state/integrals/grid.ts')}
+        for (const meter of [1e16, 1e-12]) {
+            const grid = toBeatGrid(
+                calculateBpms([{ beat: 0, bpm: 120 }, { beat: 0.1, bpm: 120, meter }].map(toBpmIntegral)),
+            )
+            for (const division of [1, 4, 192]) {
+                ceilGridBeat(grid, 0.05, division)
+                floorGridBeat(grid, 0.5, division)
+                snapBeat(grid, 0.5, division)
+                gridLines(grid, 0, 30, division, 2000)
+            }
+        }
+        console.log('done')
+    `
+    const run = spawnSync(
+        process.execPath,
+        ['--import', 'tsx', '--input-type=module', '--eval', script],
+        { encoding: 'utf8', timeout: 20_000 },
+    )
+    assert.equal(run.signal, null, 'timed out')
+    assert.equal(run.status, 0, run.stderr)
 })
