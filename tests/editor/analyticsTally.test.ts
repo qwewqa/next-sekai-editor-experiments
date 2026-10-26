@@ -177,7 +177,7 @@ test('a recorded event takes its time from the moment the action began', () => {
     assert.equal('took' in (second?.data ?? {}), false)
 })
 
-test('a recorded event keeps the device as it was when the action ended', () => {
+test('a recorded event keeps the device as it was when the action ended, and none if there was no reader', () => {
     tally.enable()
     tally.record('open', { outcome: 'done' })
     let width = 800
@@ -188,11 +188,23 @@ test('a recorded event keeps the device as it was when the action ended', () => 
     tally.record('export', { outcome: 'done' })
     const devices = tally.collect().recorded.map(({ name, device }) => [name, device])
     assert.deepEqual(devices, [
-        ['open', { viewport: 800 }],
+        ['open', undefined],
         ['save', { viewport: 800 }],
         ['preview', undefined],
         ['export', { viewport: 1600 }],
     ])
+    tally.watchDevice(undefined)
+})
+
+test('an action finished before the client loads keeps the window it ended in', () => {
+    // start.ts installs the reader with the counting, so a resize before the client loads and
+    // sends the report does not change what the action recorded.
+    tally.enable()
+    let width = 1200
+    tally.watchDevice(() => ({ viewport: width }))
+    tally.record('open', { outcome: 'done' })
+    width = 480
+    assert.deepEqual(tally.collect().recorded[0]?.device, { viewport: 1200 })
     tally.watchDevice(undefined)
 })
 

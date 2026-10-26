@@ -24,6 +24,7 @@ import {
     type EventName,
 } from './catalogue'
 import type { AnalyticsTarget } from './config'
+import { device } from './device'
 import { startField } from './field'
 import { createSender, SEND_INTERVAL, type Item, type SendMode } from './sender'
 import { settingsSnapshot } from './snapshot'
@@ -41,39 +42,6 @@ const referrerOrigin = () => {
         return origin === location.origin || origin === 'null' ? '' : origin
     } catch {
         return ''
-    }
-}
-
-type Device = Pick<
-    EventData<'perf'>,
-    'cores' | 'deviceMemory' | 'engine' | 'touch' | 'dpr' | 'viewport'
->
-
-/** The browser’s approximate memory in GiB, where it reports one. */
-const deviceMemory = (): Device['deviceMemory'] => {
-    const value = (navigator as { deviceMemory?: unknown }).deviceMemory
-    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return
-    if (value >= 16) return '16+'
-    if (value <= 0.25) return '0.25'
-    const label = String(value)
-    return label === '0.5' || label === '1' || label === '2' || label === '4' || label === '8'
-        ? label
-        : 'other'
-}
-
-/** What every measured event repeats: the device it ran on, and the workspace’s width. */
-const device = (): Device => {
-    const cores = navigator.hardwareConcurrency
-    const memory = deviceMemory()
-    const dpr = devicePixelRatio
-    const viewport = measured('viewport', workspaceSize.value.width)
-    return {
-        ...(cores > 0 && { cores: bucket('cores', cores) }),
-        ...(memory && { deviceMemory: memory }),
-        engine: detection().engine,
-        touch: matchMedia('(pointer: coarse)').matches,
-        ...(dpr > 0 && { dpr: bucket('dpr', dpr) }),
-        ...(viewport && { viewport }),
     }
 }
 
@@ -250,9 +218,6 @@ const idle = (run: (deadline: IdleDeadline) => void) => {
         }, 0)
 }
 
-/** The recorded events that carry the device they ran on. */
-const measuredEvents = new Set(['open', 'save', 'export', 'check', 'bgm'])
-
 /** Starts the visit's statistics; `stop` ends them and drops what was not sent. */
 export const startClient = (target: AnalyticsTarget) => {
     const base = {
@@ -401,7 +366,6 @@ export const startClient = (target: AnalyticsTarget) => {
         })
     }
     tally.watchCharts(countCharts)
-    tally.watchDevice((name) => (measuredEvents.has(name) ? device() : undefined))
     if (tally.hasCharts()) countCharts()
     const stopPlayback = watch(isPlaying, (playing) => {
         if (!playing && tally.hasCharts()) countCharts()
@@ -430,7 +394,6 @@ export const startClient = (target: AnalyticsTarget) => {
             stopPlayback()
             stopPanel()
             tally.watchCharts(undefined)
-            tally.watchDevice(undefined)
             document.removeEventListener('visibilitychange', onVisibility)
             window.removeEventListener('pagehide', onPageHide)
         },

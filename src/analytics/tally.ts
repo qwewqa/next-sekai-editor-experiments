@@ -75,13 +75,12 @@ export const record = <E extends Recordable>(
 }
 
 /**
- * Installs the client’s device reader, which `record` calls as the action ends: a few reads, so a
- * resize before the send does not relabel it. Events recorded before the client loaded get the
- * device as it is then.
+ * Installs the reader of the device an event ran on (device.ts), which `record` calls as the
+ * action ends: a few reads, so a resize before the send does not relabel it. start.ts installs it
+ * with the counting, before the client loads.
  */
 export const watchDevice = (reader: typeof readDevice) => {
     readDevice = reader
-    if (reader) for (const item of recorded) item.device ??= reader(item.name)
 }
 
 /** A Timeline step shown: from the cache when `ms` is undefined, else after that many milliseconds. */
