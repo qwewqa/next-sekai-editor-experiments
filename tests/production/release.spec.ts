@@ -422,7 +422,7 @@ test('release assets, preview, chart editing and FFT audio work in the productio
         requests.some((url) => /\/resource\/(skin2|effect2)\.scp$/.test(new URL(url).pathname)),
         'Next SEKAI 02 is requested only when chosen',
     ).toBe(false)
-    expect(requests.some((url) => new URL(url).pathname.endsWith('.mp3'))).toBe(true)
+    expect(requests.some((url) => new URL(url).pathname === '/resource/effect.scp')).toBe(true)
     expect(requests.some((url) => /\/assets\/bg-.*\.png$/.test(new URL(url).pathname))).toBe(true)
     await page.screenshot({ path: testInfo.outputPath('production.png'), fullPage: true })
 })
