@@ -178,7 +178,8 @@
                                 checked a file as well as History;
                             </li>
                             <li>
-                                how often the editor is slow to respond, and how long the editor was
+                                how often the editor is slow to respond, which performance
+                                measurements the browser supports, and how long the editor was
                                 visible and how long playback ran while it was, in seconds, up to
                                 one day;
                             </li>
@@ -189,14 +190,16 @@
                             <li>
                                 your operating system, browser and its language, your screen size
                                 and pixel density, an approximate window size and whether it is
-                                taller than wide, whether the screen is a touch screen, the number
-                                of processor cores and the approximate memory the browser reports,
-                                whether the preview could use graphics and draw in parallel, and
-                                whether the editor is installed;
+                                taller than wide, whether the browser reports a primary pointer with
+                                limited accuracy, such as touch input, the number of processor cores
+                                and the approximate memory the browser reports, whether the preview
+                                could use graphics and draw in parallel, and whether the editor is
+                                running in its own app window;
                             </li>
                             <li>
-                                whether this browser’s storage is available, and approximately how
-                                full it is;
+                                whether this browser’s storage is available, its approximate
+                                capacity and how full it is, and whether the browser has granted
+                                protection from automatic clearing;
                             </li>
                             <li>
                                 whether automatic cleanup ran, freed space or was unable to finish;
@@ -207,10 +210,11 @@
                             </li>
                         </ul>
                         <p>
-                            Each is sent with the time it happened. Measurements of startup, files,
-                            music, Timeline steps and slow responses also carry your browser,
-                            whether the screen is a touch screen, the window size, pixel density,
-                            processor cores and memory.
+                            Each report includes a timestamp: for one action, the time it happened;
+                            for a summary, the time the summary was made. Measurements of startup,
+                            files, music, Timeline steps and slow responses also carry your browser,
+                            whether the primary pointer has limited accuracy, the window size, pixel
+                            density, processor cores and memory, as they were when the action ended.
                         </p>
                         <p>
                             It never sends your charts or their content, file names, level titles or
@@ -227,19 +231,35 @@
                         </p>
                         <p>
                             The server receives your IP address and browser’s user agent with each
-                            request. It uses them to count visits and to find your country, and may
-                            also find your region and city. It stores none of these except your
-                            country. To count visits it keeps a code made from them that changes
-                            every day. It sets no cookies and stores nothing in your browser.
+                            request. It uses them to count visits, to find your country and to
+                            estimate a device type, such as phone or laptop, and may also find your
+                            region and city. It stores none of these except your country and the
+                            device type. To count visits it keeps a code made from the IP address
+                            and user agent that changes every day. The code groups one browser’s
+                            activity within a day, and it can group people who share a connection
+                            and browser setup. The statistics hold no name or account, and we may be
+                            unable to find which records are yours. The server sets no cookies and
+                            stores nothing in your browser.
                         </p>
                         <p>
-                            We keep the statistics with no time limit for now. The release notes and
-                            this page will announce any limit we set. Only the maintainer can see
-                            them.
+                            We keep each report for 13 months and then delete it. Before that, its
+                            figures go into monthly totals: the number of visits, the uses of each
+                            tool, setting and file type, and typical times. Visits are counted by
+                            editor version, browser, operating system, device type, country and
+                            language, one at a time. Times are counted by editor version and device
+                            type. The totals hold no codes and no single report, and we keep them
+                            with no time limit. Backups on AWS are deleted after about five weeks.
+                            Only the maintainer has access to the statistics dashboard.
+                        </p>
+                        <p>
+                            Server error logs can contain your IP address when the server crashes in
+                            a rare way. They are deleted after two weeks.
                         </p>
                         <p>
                             Nothing is sent from a visit until you use the editor, for example by
-                            clicking or pressing a key.
+                            clicking or pressing a key. If your browser is too old to open the
+                            editor, the page that says so sends its browser family and an
+                            unsupported-browser report once you interact with it.
                         </p>
                         <p>
                             <strong class="text-fg-strong">Turning them off.</strong> Turn off
@@ -266,10 +286,12 @@
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
                                 <strong class="text-fg-strong">Usage statistics.</strong> We keep
-                                the usage statistics described above with no time limit for now.
-                                They contain no name, account or identifier, so there is no way to
-                                find or delete one person’s statistics. To stop any more being sent,
-                                turn off Settings › About › Send Usage Statistics. Questions go to
+                                each report described above for 13 months, and the monthly totals
+                                with no time limit. The reports contain a daily code but no name or
+                                account, so we may be unable to find which records are yours.
+                                Backups on AWS are deleted after about five weeks. To stop any more
+                                being sent, turn off Settings › About › Send Usage Statistics. Send
+                                questions and requests to
                                 <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
                             </li>
                             <li>
@@ -287,10 +309,28 @@
                                 <strong class="text-fg-strong">Data in your browser.</strong>
                                 Delete sessions with Settings › Local Data › Delete Sessions… or in
                                 History › Recent Sessions. Discard recovered work under Settings ›
-                                Local Data. Remove stored assets in Preview Assets › Stored.
-                                Clearing the site’s data in your browser deletes all of it.
+                                Local Data. Remove stored assets in Preview Assets › Stored. Deleted
+                                sessions may stay in browser storage until cleanup runs. Clearing
+                                the site’s data in your browser deletes all of it, and also the
+                                statistics choice, which applies to this browser only.
                             </li>
                         </ul>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="choices">
+                        <h2 id="choices" class="text-lg font-bold text-fg-strong">Your Choices</h2>
+                        <p>
+                            The usage statistics go only to our own server. We use them to improve
+                            the editor, and never share them or combine them with data from other
+                            sites. The basis for collecting them is our legitimate interest in
+                            improving the editor. The server runs on AWS in the United States, so
+                            the statistics are sent there from wherever you use the editor.
+                        </p>
+                        <p>
+                            Turning off Settings › About › Send Usage Statistics stops them. Send
+                            questions and requests to
+                            <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
+                        </p>
                     </section>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="changes">
