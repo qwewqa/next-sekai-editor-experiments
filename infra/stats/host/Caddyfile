@@ -6,7 +6,8 @@
 		protocols h1 h2
 	}
 	# Caddy's own log (to stderr, then journald) records the request behind an error: a failed
-	# reverse_proxy while Umami is down, for example. Drop the visitor's address and headers from it.
+	# reverse_proxy while Umami is down, for example. Drop the visitor's address and headers from it, and
+	# the fields that can carry an address elsewhere: a TLS-ALPN handshake's remote, and a socket error's text.
 	log {
 		format filter {
 			wrap json
@@ -14,6 +15,9 @@
 			request>remote_port delete
 			request>client_ip delete
 			request>headers delete
+			remote delete
+			remote_addr delete
+			error delete
 		}
 	}
 }

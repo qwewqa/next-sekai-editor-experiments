@@ -43,7 +43,7 @@ docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME=st
 FILTERED=$(docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" -e STATS_HOSTNAME=stats.example.test "$CADDY_IMAGE" \
     caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile 2> /dev/null \
     | jq -c '.logging.logs.default.encoder | [.format, ([.fields | to_entries[] | select(.value.filter == "delete") | .key] | sort)]')
-[ "$FILTERED" = '["filter",["request>client_ip","request>headers","request>remote_ip","request>remote_port"]]' ] \
+[ "$FILTERED" = '["filter",["error","remote","remote_addr","request>client_ip","request>headers","request>remote_ip","request>remote_port"]]' ] \
     || fail "Caddy's log is not filtered as expected: $FILTERED"
 
 step "Caddy's error log keeps no visitor address"
