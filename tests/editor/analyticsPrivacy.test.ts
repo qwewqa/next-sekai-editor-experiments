@@ -277,34 +277,73 @@ test('the reference states the exact values, the caps and the ranges', () => {
 
 /** What the page must keep disclosing, by topic. Each pattern names a value or a fact, not a sentence. */
 const disclosures: Record<string, RegExp[]> = {
-    'local data': [/stay on your device/, /without accounts or cookies/, /crash reports/],
-    'first interaction': [/before your first interaction/],
-    'the switch': [/Settings › About › Send Usage Statistics/, /stop sending immediately/],
-    'defaults and signals': [/on by default/, /Do Not Track/, /Global Privacy Control/],
-    'this browser only': [/applies to this browser only/, /Clearing the site’s data resets it/],
-    precision: [
-        /limit the precision/,
-        /chart sizes, music lengths and file sizes/,
-        /match a published chart/,
+    'local data': [
+        /charts, editing history, settings and stored assets/,
+        /kept in this browser’s storage/,
+        /Clearing the site’s data in your browser deletes this stored data/,
+        /without accounts or cookies/,
     ],
-    'what the server receives': [/receives your IP address and user agent/, /device type/],
-    'the daily code': [/daily visitor code/, /changes each day/, /sets no cookies/],
-    'what is stored': [/only country, browser, operating system and device type are stored/],
-    retention: [/13 months/, /indefinitely/, /no visitor codes/, /about five weeks/, /two weeks/],
-    'small groups': [/Small groups are combined/],
-    'where it goes': [
-        /Amazon Web Services/,
-        /United States/,
-        /only provider/,
+    'the choice': [
+        /Usage statistics are optional/,
+        /turn them off for this browser/,
+        /Settings › About › Send Usage Statistics/,
+        /on by default unless your browser sends Do Not Track or Global Privacy Control/,
+        /Your choice overrides these browser signals/,
+    ],
+    'purpose and legal basis': [
+        /understand how the editor is used/,
+        /improve its reliability and performance/,
+        /legal basis is our legitimate interest in improving the editor/,
+    ],
+    'what is collected': [
+        /tools and commands, settings/,
+        /time spent in the editor, performance and errors/,
+        /File types and sizes, chart sizes, music lengths/,
+        /results of file actions/,
+        /Browser and device information, browser storage status, country and referring site/,
+    ],
+    'content exclusions': [
+        /Statistics do not include chart content, file names, level titles or other text you type/,
+    ],
+    'counting visits': [
+        /To count visits/,
+        /IP address and information about your browser/,
+        /daily visitor code/,
+        /code is stored with your activity and changes each day/,
+    ],
+    'hosting and transfers': [
+        /GitHub Pages hosts this site/,
+        /GitHub may log requests, including your IP address/,
+        /Amazon Web Services \(AWS\) servers in the United States/,
+        /AWS provides hosting and backups/,
+        /only provider with whom we share these statistics/,
         /Standard Contractual Clauses/,
     ],
-    'the host': [/GitHub Pages hosts this site/, /GitHub may log requests/],
-    'email and files': [/nse@qwewqa\.dev/, /only for that and delete it/, /out of public issues/],
-    'the older browser': [/too old to open the editor/, /browser family/, /unsupported/],
-    'the controller and rights': [
-        /is responsible for the use of personal data/,
-        /access, correct or delete/,
-        /data protection authority/,
+    retention: [
+        /individual usage statistics for 13 months/,
+        /combined statistics without visitor codes indefinitely/,
+        /Backups on AWS are deleted after about five weeks/,
+        /Server error logs may contain your IP address/,
+        /delete these logs after two weeks/,
+    ],
+    'email and files': [
+        /email address and message to answer you/,
+        /keep the conversation in our mailbox/,
+        /use it only for that and delete it when the problem is fixed/,
+    ],
+    'the controller and contact': [
+        /qwewqa runs this site and is responsible for the use of personal data/,
+        /privacy questions and requests/,
+        /nse@qwewqa\.dev/,
+    ],
+    rights: [
+        /Depending on the law that applies/,
+        /access, correct or delete your personal data/,
+        /receive a portable copy/,
+        /restrict its use, or object to its use/,
+        /Send requests to the email address above/,
+        /complain to your local data protection authority/,
+        /may be unable to identify which usage statistics relate to you/,
     ],
 }
 
@@ -314,22 +353,16 @@ test('the privacy page keeps its disclosures', () => {
             assert.match(page, pattern, `the privacy page no longer covers ${topic}`)
 })
 
-test('the privacy page lists the categories, and links to the complete list', () => {
-    for (const category of [
-        'Tools and Settings.',
-        'Files and Charts.',
-        'Performance.',
-        'Browser and Device.',
-        'Storage.',
-        'Referring Sites.',
-    ])
-        assert.ok(page.includes(category), category)
-
+test('the privacy page links to the complete list of what is sent', () => {
     const start = html.indexOf('aria-labelledby="usage"')
-    const usage = html.slice(start, html.indexOf('aria-labelledby="hosting"'))
-    assert.ok(start > 0 && usage.length > 0)
+    const end = html.indexOf('aria-labelledby="hosting"', start)
+
+    assert.ok(start > 0 && end > start)
+
+    const usage = html.slice(start, end)
     const link =
         /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*complete list of what is sent\s*<\/a\s*>/
+
     assert.match(usage, link)
     assert.doesNotMatch(html, /docs\/analytics\.md/)
 })
