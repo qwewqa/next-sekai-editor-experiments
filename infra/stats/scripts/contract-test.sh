@@ -90,6 +90,7 @@ done
 step "saved queries"
 run_query() { dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -v "website=$WEBSITE" -tA -F'|' < "../queries/$1.sql"; }
 expect() { # query, a row it must print
+    # The rows are captured first: grep -q exits at its match, and under pipefail the closed pipe fails psql.
     local rows
     rows=$(run_query "$1")
     grep -qxF "$2" <<< "$rows" || fail "$1.sql did not print the row $2. It printed:
@@ -100,7 +101,9 @@ for file in ../queries/*.sql; do
     run_query "$(basename "$file" .sql)" > /dev/null
 done
 # What the batch above holds, as each query reports it.
-run_query visits | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}\|[^|]+\|1$' || fail "visits.sql did not count the pageview"
+rows=$(run_query visits)
+grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}\|[^|]+\|1$' <<< "$rows" || fail "visits.sql did not count the pageview. It printed:
+$rows"
 expect commands 'zoomXIn|key|3|1'
 expect commands 'undo|toolbar|1|1'
 expect saves 'writeBack|failed|denied|1'
