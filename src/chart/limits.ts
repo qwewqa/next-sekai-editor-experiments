@@ -31,8 +31,12 @@ export const isWithinLimit = (name: string, value: number) => {
     return !limit || (value >= limit[0] && value <= limit[1])
 }
 
+const limited = Object.entries(fieldLimits)
+
 /** The first bounded field of a chart object or entity that is past its limit. */
 export const fieldPastLimit = (object: object): string | undefined => {
-    for (const [name, value] of Object.entries(object))
-        if (typeof value === 'number' && !isWithinLimit(name, value)) return name
+    for (const [name, [min, max]] of limited) {
+        const value = (object as Record<string, unknown>)[name]
+        if (typeof value === 'number' && !(value >= min && value <= max)) return name
+    }
 }

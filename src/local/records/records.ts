@@ -10,6 +10,7 @@ import type { GroupId, Groups } from '../../chart/groups'
 import type { NoteObject } from '../../chart/note'
 import type { StageId, Stages } from '../../chart/stages'
 import type { TimeScaleObject } from '../../chart/timeScale'
+import { validateLimits } from '../../chart/validate'
 import { createState, type State } from '../../state'
 import type { BgmMeta } from '../../state/bgm'
 import { emptyLevelInfo, type LevelInfo, type MediaRef } from '../../state/levelInfo'
@@ -401,6 +402,9 @@ export const fromRecords = ({ header, kinds }: SnapshotRecords): RecordsContent 
                 break
         }
     }
+
+    // A snapshot past the limits is damaged, as the editor would refuse it on reopening.
+    validateLimits(chart)
 
     return {
         chart,
