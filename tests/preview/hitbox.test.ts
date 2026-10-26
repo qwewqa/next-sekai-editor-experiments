@@ -917,8 +917,7 @@ const stepCases: StepCase[] = [
         { stageTransformEvents: [transform(0, 0)] },
         { stageTransformEvents: [transform(0, 90, { elevation: 2 })] },
     ],
-    // Cameras only move transformed stages; the frame's own camera matches in all three,
-    // and it also projects the slot effects.
+    // Cameras only move transformed stages; the frame's own camera matches in all three.
     [
         'camera In-Out Step midpoint',
         {
