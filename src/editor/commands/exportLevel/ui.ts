@@ -2,6 +2,7 @@ import { markExported } from '../../../history'
 import { i18n } from '../../../i18n'
 import { showChoice } from '../../../modals/choice'
 import type { FileError } from '../../../platform'
+import { inlineName } from '../../../utils/inlineName'
 import { interpolate } from '../../../utils/interpolate'
 import { markExportUsed } from '../../file/flags'
 import { notify } from '../../notification'
@@ -15,7 +16,7 @@ const title = () => i18n.value.export.title
 
 /** What the user reads for a failed file operation, naming the file that failed. */
 export const fileErrorText = (name: string, error: FileError) =>
-    interpolate(() => i18n.value.save[fileErrorKey(error)], error.fileName ?? name)()
+    interpolate(() => i18n.value.save[fileErrorKey(error)], inlineName(error.fileName ?? name))()
 
 /**
  * What the pick could not put back, emptied or not: Download keeps the bytes. Without `downloadable`
@@ -36,7 +37,7 @@ export const showNotPutBack = async (
                 : emptied
                   ? i18n.value.save.notPutBack
                   : i18n.value.save.openedContentGone,
-        name,
+        inlineName(name),
     )
     if (!downloadable) {
         await showChoice({
@@ -71,14 +72,14 @@ export const exportUi: ExportUi = {
     // Choose Another… is the safe default; Replace overwrites, keeping nothing.
     conflict: (name, disk, opened) =>
         showChoice({
-            title: interpolate(() => i18n.value.conflict.exportTitle, name),
+            title: interpolate(() => i18n.value.conflict.exportTitle, inlineName(name)),
             message: () =>
                 `${interpolate(
                     () =>
                         opened
                             ? i18n.value.conflict.exportBodyOpened
                             : i18n.value.conflict.exportBody,
-                    name,
+                    inlineName(name),
                 )()}\n${formatSize(disk.size)}${
                     disk.lastModified === undefined ? '' : ` · ${formatTime(disk.lastModified)}`
                 }`,
@@ -94,13 +95,13 @@ export const exportUi: ExportUi = {
     notLevelData: (name) =>
         showChoice({
             title,
-            message: interpolate(() => i18n.value.export.notLevelData, name),
+            message: interpolate(() => i18n.value.export.notLevelData, inlineName(name)),
             choices: [chooseAnother],
         }),
     unsupportedParts: (name) =>
         showChoice({
             title,
-            message: interpolate(() => i18n.value.export.unsupportedParts, name),
+            message: interpolate(() => i18n.value.export.unsupportedParts, inlineName(name)),
             choices: [chooseAnother],
         }),
     notPutBack: (name, emptied, downloadable) => showNotPutBack(title, name, emptied, downloadable),
@@ -108,13 +109,13 @@ export const exportUi: ExportUi = {
         showChoice({
             title,
             // No hint to pick the moved file: a save picker would empty it.
-            message: interpolate(() => i18n.value.save.notFound, name),
+            message: interpolate(() => i18n.value.save.notFound, inlineName(name)),
             choices: [chooseAnother],
         }),
     denied: (name) =>
         showChoice({
             title,
-            message: interpolate(() => i18n.value.save.denied, name),
+            message: interpolate(() => i18n.value.save.denied, inlineName(name)),
             choices: [
                 { ...chooseAnother, default: undefined },
                 {
@@ -131,7 +132,7 @@ export const exportUi: ExportUi = {
             choices: [chooseAnother],
         }),
     exported: (name) => {
-        notify(interpolate(() => i18n.value.export.exported, name))
+        notify(interpolate(() => i18n.value.export.exported, inlineName(name)))
     },
     // Called, not referenced: history imports this module's importers at load.
     markExported: (name, delivery) => {
@@ -142,7 +143,7 @@ export const exportUi: ExportUi = {
         notify(
             interpolate(
                 () => i18n.value.save.downloadStarted,
-                name,
+                inlineName(name),
                 () => formatSize(size),
             ),
         )

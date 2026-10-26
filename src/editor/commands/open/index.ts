@@ -33,6 +33,7 @@ import { parseSus } from '../../../sus/parse'
 import { parseUsc } from '../../../usc/parse'
 import { errorMessage } from '../../../utils/error'
 import { getFilename, pickFileForOpen } from '../../../utils/file'
+import { inlineName } from '../../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
 import { notify } from '../../notification'
@@ -234,7 +235,10 @@ export const open: Command = {
             if (newerValues) {
                 const apply = newerValues
                 const choice = await showChoice({
-                    title: interpolate(() => i18n.value.open.newerValues.title, file.name),
+                    title: interpolate(
+                        () => i18n.value.open.newerValues.title,
+                        inlineName(file.name),
+                    ),
                     message: () => i18n.value.open.newerValues.body,
                     choices: [
                         {

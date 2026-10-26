@@ -23,6 +23,7 @@ import { recentSessionCount, storageStatus } from '../../local/startup/events'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { focusLost } from '../../utils/focusFallback'
+import { inlineName } from '../../utils/inlineName'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { commands, type CommandName } from '../commands'
@@ -140,7 +141,7 @@ const notesIn = (state: typeof liveState.value) => {
 /** The date fallback of a name, in the History calendar's zone: "Untitled · Oct 16, 2:41 PM". */
 const namedBy = (shown: DisplayName, startedAt: number | undefined) =>
     shown.kind !== 'date'
-        ? shown.text
+        ? inlineName(shown.text)
         : startedAt === undefined
           ? i18n.value.save.placeholder
           : interpolateRaw(i18n.value.session.untitled, format.value.dateTime(startedAt))

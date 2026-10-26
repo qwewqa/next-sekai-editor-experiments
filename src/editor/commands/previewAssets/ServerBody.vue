@@ -6,6 +6,7 @@ import type { AssetType } from '../../../preview/assets'
 import { typeNoun } from '../../../preview/assets/fallbackText'
 import type { ServerChooser } from '../../../preview/assets/server/chooser'
 import { serverFailureText } from '../../../preview/assets/server/liveText'
+import { inlineName } from '../../../utils/inlineName'
 import { interpolateRaw } from '../../../utils/interpolate'
 import SeverityIcon from '../../SeverityIcon.vue'
 import AlsoOptions from './AlsoOptions.vue'
@@ -60,7 +61,7 @@ const listedItem = () =>
     )
 
 const alsoText = (option: (typeof also.value)[number]) =>
-    interpolateRaw(strings.value.alsoServerItem, typeNoun(option.type), option.title)
+    interpolateRaw(strings.value.alsoServerItem, typeNoun(option.type), inlineName(option.title))
 
 const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'
 const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placeholder:opacity-60'

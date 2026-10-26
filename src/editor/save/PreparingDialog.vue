@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, useId, useTemplateRef, watch } from 'vue'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
+import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
 import { formatSize } from '../../utils/size'
 import WaitBar from '../workspace/WaitBar.vue'
@@ -22,7 +23,7 @@ const readyButton = useTemplateRef<HTMLButtonElement>('readyButton')
 const text = computed(() =>
     interpolate(
         () => (props.model.ready ? i18n.value.save.ready : i18n.value.save.preparing),
-        props.name,
+        inlineName(props.name),
         props.model.size ? formatSize(props.model.size) : '',
     )().trim(),
 )

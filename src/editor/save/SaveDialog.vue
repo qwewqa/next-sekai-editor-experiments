@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from
 import type { SaveSizeEstimate } from '../../local/save/estimate'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
+import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
 import { formatCount, formatSize } from '../../utils/size'
 import { nameProblem, showsAtOnce } from '../commands/exportLevel/fileName'
@@ -93,7 +94,7 @@ const bgmSizeText = computed(() => {
 const bgmDetail = computed(() => {
     const row = bgmRow.value
     if (row.kind === 'notLoaded') return i18n.value.save.bgmNotLoaded
-    return row.kind === 'held' ? row.name : ''
+    return row.kind === 'held' ? inlineName(row.name) : ''
 })
 
 // The total follows the ticks at once, with no new estimate.
@@ -108,7 +109,8 @@ const totalText = computed(() =>
         : interpolate(() => i18n.value.save.sizeTotal, formatSize(total.value))(),
 )
 
-const keptText = (name: string) => interpolate(() => i18n.value.save.keptOptions, name)()
+const keptText = (name: string) =>
+    interpolate(() => i18n.value.save.keptOptions, inlineName(name))()
 
 // --- The Export line: emphasised and first in the body until this browser has exported, then the
 // small line in the notes. File Name's description names the situation lines and the emphasised
