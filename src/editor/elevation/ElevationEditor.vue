@@ -2346,9 +2346,10 @@ onUnmounted(() => {
 
 /* Each field is sized for its values rather than squeezed to keep one row: the
    beat holds values such as 123.063, and snapping at most "1/64". Narrow
-   headers wrap the snap field onto its own row instead. */
+   headers wrap the snap field onto its own row instead. The beat width follows the
+   font: seven digit widths hold 123.063 in any font. */
 .elevation-beat-field .elevation-field {
-    width: 5rem;
+    width: max(5rem, calc(7ch + 1.25rem));
     padding-inline: 0.625rem;
 }
 
@@ -2451,7 +2452,9 @@ onUnmounted(() => {
         gap: 0;
     }
 
+    /* The label may run over the empty cell beside it, so a longer word is not cut short. */
     .elevation-label {
+        margin-right: -2.25rem;
         padding-right: 0;
     }
 
