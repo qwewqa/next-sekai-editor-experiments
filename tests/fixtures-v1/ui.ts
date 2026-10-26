@@ -308,7 +308,7 @@ export const addPreviewPackage = async (tab: Tab, name: string, bytes: Uint8Arra
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.previewAssets)
+        void runCommand(commands.previewAssets, 'button')
     })
     const dialog = page.locator('dialog[open]')
     await expect(dialog).toHaveAccessibleName('Preview Assets')

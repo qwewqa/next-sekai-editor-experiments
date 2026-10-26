@@ -203,7 +203,7 @@ export class Tab extends Editor {
         await this.page.evaluate(async () => {
             const { commands } = await import('/src/editor/commands/index.ts')
             const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-            void runCommand(commands.saveAs)
+            void runCommand(commands.saveAs, 'button')
         })
     }
 
