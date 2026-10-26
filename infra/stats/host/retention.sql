@@ -8,11 +8,14 @@
 --     The public endpoint takes anything, so anything else, such as an email address sent by hand, is left out. A session
 --     column that is not in Umami's lists is counted as "other".
 --   * A row stands for at least 10 distinct sessions (`contributors`, as a stand-in for people). A cell with fewer is
---     merged into an "other" row of its metric when that has 10, and left out when it does not. A sum or a timing is
---     kept only for 10 or more sessions. The timings are percentiles, which cannot be subtracted from one another.
+--     merged into an "other" row of its metric when that has 10, and left out when it does not. A sum is kept only for
+--     10 or more sessions. A timing is made only from the groups of version by device class that have 10 or more
+--     sessions, for every row, so a left-out measurement is in no percentile.
+--   * A name keeps at most 50 values a month (100 countries), the most common first, and the rest are "other". Only the
+--     version, the language, the country and the browser language have more than that.
 --   * A session has the editor version of its visit events only if they all agree; else "mixed". No version: "unknown".
 -- Every night the totals of each complete month are made again from the raw records, so a late report is counted. A
--- month is made final, with a row of metric "final", in the run that first deletes any of its records; it is not made
+-- month is made final, with a row of metric "final", in the run that first deletes one of its records; it is not made
 -- again, because its records are partly gone.
 --   month     the first day of the month, UTC
 --   metric    visits    pageviews, by name (all, version, browser, os, device, country, language) and value
@@ -123,22 +126,26 @@ GROUP BY ev.month, ev.website_id, ev.session_id, v.version, s.browser, s.os, s.d
 -- Visits and sessions, one name at a time.
 INSERT INTO nse_monthly (month, website_id, metric, name, value, n, contributors)
 SELECT month, website_id, metric, name,
-       CASE WHEN ns >= 10 OR name = 'all' THEN value ELSE 'other' END,
+       CASE WHEN name = 'all' OR (ns >= 10 AND rk <= CASE WHEN name = 'country' THEN 100 ELSE 50 END)
+            THEN value ELSE 'other' END,
        sum(n), sum(ns)
 FROM (
-    SELECT g.month, g.website_id, m.metric, g.name, g.value,
-           CASE WHEN m.metric = 'visits' THEN sum(g.visits) ELSE count(*) END AS n,
-           count(*) FILTER (WHERE m.metric = 'sessions' OR g.visits > 0) AS ns
+    SELECT q.*, row_number() OVER (PARTITION BY month, website_id, metric, name ORDER BY ns DESC, value) AS rk
     FROM (
-        SELECT s.month, s.website_id, s.visits, x.name, x.value
-        FROM nse_sess s
-        CROSS JOIN LATERAL (VALUES
-            ('all', ''), ('version', s.version), ('browser', s.browser), ('os', s.os),
-            ('device', s.device), ('country', s.country), ('language', s.language)
-        ) x(name, value)
-    ) g
-    CROSS JOIN (VALUES ('visits'), ('sessions')) m(metric)
-    GROUP BY g.month, g.website_id, m.metric, g.name, g.value
+        SELECT g.month, g.website_id, m.metric, g.name, g.value,
+               CASE WHEN m.metric = 'visits' THEN sum(g.visits) ELSE count(*) END AS n,
+               count(*) FILTER (WHERE m.metric = 'sessions' OR g.visits > 0) AS ns
+        FROM (
+            SELECT s.month, s.website_id, s.visits, x.name, x.value
+            FROM nse_sess s
+            CROSS JOIN LATERAL (VALUES
+                ('all', ''), ('version', s.version), ('browser', s.browser), ('os', s.os),
+                ('device', s.device), ('country', s.country), ('language', s.language)
+            ) x(name, value)
+        ) g
+        CROSS JOIN (VALUES ('visits'), ('sessions')) m(metric)
+        GROUP BY g.month, g.website_id, m.metric, g.name, g.value
+    ) q
 ) c
 GROUP BY 1, 2, 3, 4, 5
 HAVING sum(ns) >= 10 AND sum(n) > 0;
@@ -157,14 +164,18 @@ HAVING count(DISTINCT ev.session_id) >= 10;
 -- Events by property and value, for text and flags.
 INSERT INTO nse_monthly (month, website_id, metric, name, value, n, contributors)
 SELECT d.month, d.website_id, 'value', d.name || '.' || d.data_key,
-       CASE WHEN c.ns >= 10 THEN d.string_value ELSE 'other' END,
+       CASE WHEN c.ns >= 10 AND (c.kind <> 'pattern' OR c.rk <= 50) THEN d.string_value ELSE 'other' END,
        count(*), count(DISTINCT d.session_id)
 FROM nse_data d
 JOIN (
-    SELECT month, website_id, name, data_key, string_value, count(DISTINCT session_id) AS ns
-    FROM nse_data
-    WHERE kind IN ('text', 'pattern', 'boolean')
-    GROUP BY 1, 2, 3, 4, 5
+    SELECT q.*,
+           row_number() OVER (PARTITION BY month, website_id, name, data_key ORDER BY ns DESC, string_value) AS rk
+    FROM (
+        SELECT month, website_id, name, data_key, kind, string_value, count(DISTINCT session_id) AS ns
+        FROM nse_data
+        WHERE kind IN ('text', 'pattern', 'boolean')
+        GROUP BY 1, 2, 3, 4, 5, 6
+    ) q
 ) c ON c.month = d.month AND c.website_id = d.website_id AND c.name = d.name AND c.data_key = d.data_key
    AND c.string_value = d.string_value
 WHERE d.kind IN ('text', 'pattern', 'boolean')
@@ -179,8 +190,10 @@ WHERE kind = 'count'
 GROUP BY month, website_id, name, data_key
 HAVING count(DISTINCT session_id) >= 10;
 
--- The timings, overall and by version and device class. A version or a device class with fewer than 10 sessions is
--- "other" before the groups are made.
+-- The timings. A version (at most 50 a month) or a device class with fewer than 10 sessions is "other". The disjoint
+-- groups of version by device class with fewer than 10 sessions are left out, and every row that is published, overall,
+-- by version, by device class and by both, is made only from the measurements of the groups that are kept. A left-out
+-- measurement is in no row, so no percentile can be turned back into it.
 CREATE TEMP TABLE nse_t ON COMMIT DROP AS
 SELECT d.month, d.website_id, d.session_id, d.name || '.' || d.data_key AS prop, d.number_value::float8 AS x,
        s.version AS ver, s.device AS dev
@@ -190,29 +203,50 @@ WHERE d.kind = 'time';
 
 CREATE TEMP TABLE nse_tmap ON COMMIT DROP AS
 SELECT t.month, t.website_id, t.session_id, t.prop, t.x,
-       CASE WHEN v.ns >= 10 THEN t.ver ELSE 'other' END AS ver,
+       CASE WHEN v.ns >= 10 AND v.rk <= 50 THEN t.ver ELSE 'other' END AS ver,
        CASE WHEN dv.ns >= 10 THEN t.dev ELSE 'other' END AS dev
 FROM nse_t t
 JOIN (
-    SELECT month, website_id, prop, ver, count(DISTINCT session_id) AS ns FROM nse_t GROUP BY 1, 2, 3, 4
+    SELECT q.*, row_number() OVER (PARTITION BY month, website_id, prop ORDER BY ns DESC, ver) AS rk
+    FROM (
+        SELECT month, website_id, prop, ver, count(DISTINCT session_id) AS ns FROM nse_t GROUP BY 1, 2, 3, 4
+    ) q
 ) v ON v.month = t.month AND v.website_id = t.website_id AND v.prop = t.prop AND v.ver = t.ver
 JOIN (
     SELECT month, website_id, prop, dev, count(DISTINCT session_id) AS ns FROM nse_t GROUP BY 1, 2, 3, 4
 ) dv ON dv.month = t.month AND dv.website_id = t.website_id AND dv.prop = t.prop AND dv.dev = t.dev;
+
+CREATE TEMP TABLE nse_tkept ON COMMIT DROP AS
+SELECT t.month, t.website_id, t.session_id, t.prop, t.x, t.ver, t.dev
+FROM nse_tmap t
+JOIN (
+    SELECT month, website_id, prop, ver, dev
+    FROM nse_tmap
+    GROUP BY 1, 2, 3, 4, 5
+    HAVING count(DISTINCT session_id) >= 10
+) k ON k.month = t.month AND k.website_id = t.website_id AND k.prop = t.prop AND k.ver = t.ver AND k.dev = t.dev;
 
 INSERT INTO nse_monthly (month, website_id, metric, name, version, device, n, contributors, p50, p90, p99)
 SELECT t.month, t.website_id, 'time', t.prop, g.ver, g.dev, count(*), count(DISTINCT t.session_id),
        round(percentile_cont(0.5) WITHIN GROUP (ORDER BY t.x)),
        round(percentile_cont(0.9) WITHIN GROUP (ORDER BY t.x)),
        round(percentile_cont(0.99) WITHIN GROUP (ORDER BY t.x))
-FROM nse_tmap t
+FROM nse_tkept t
 CROSS JOIN LATERAL (VALUES ('', ''), (t.ver, ''), ('', t.dev), (t.ver, t.dev)) g(ver, dev)
 GROUP BY t.month, t.website_id, t.prop, g.ver, g.dev
 HAVING count(DISTINCT t.session_id) >= 10;
 
--- A month with records that go now is final: it is not totalled again.
+-- A month with a record that goes now is final: it is not totalled again. A month that has only records after the
+-- cutoff is not, so a report that arrives late is still counted.
 INSERT INTO nse_monthly (month, website_id, metric, name, n)
-SELECT month, website_id, 'final', '', 0 FROM nse_todo WHERE month::timestamptz <= (SELECT earliest FROM nse_cutoff);
+SELECT t.month, t.website_id, 'final', '', 0
+FROM nse_todo t
+WHERE EXISTS (
+    SELECT 1 FROM website_event e
+    WHERE e.website_id = t.website_id
+      AND e.created_at >= t.month::timestamptz
+      AND e.created_at < least((t.month + interval '1 month')::timestamptz, (SELECT earliest FROM nse_cutoff))
+);
 
 -- Every month before the cutoff has its totals, and is final. Events and their data go first, then the sessions that
 -- have no event left, with what hangs off them.

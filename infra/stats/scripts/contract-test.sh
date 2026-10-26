@@ -13,7 +13,8 @@
 #      percentiles, no codes) for what the catalogue allows and for 10 or more sessions; a failure in the totals deletes
 #      nothing; the records older than 13 months, their sessions and what hangs off them go (heatmap rows too); a late
 #      report is counted by the next run and a final month is not made again; mixed versions, groups of one, one session
-#      with many events, text that is not in the catalogue and 6000 junk events are not totalled; a second run changes
+#      with many events, text that is not in the catalogue, 6000 junk events and more versions than the cap are not
+#      totalled, and a left-out timing is in no percentile; a month whose records are all after the cutoff is not final; a second run changes
 #      nothing, Umami's start leaves nse_monthly alone, and tidy deletes old dump files
 #   7. every saved query runs, and prints the rows the batch produces
 # Needs docker, curl and jq.
@@ -148,6 +149,8 @@ curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -
 step "retention and monthly totals"
 ROLL=$(cat /proc/sys/kernel/random/uuid)
 JUNK=$(cat /proc/sys/kernel/random/uuid)
+VERS=$(cat /proc/sys/kernel/random/uuid)
+LATE=$(cat /proc/sys/kernel/random/uuid)
 SITE=$ROLL
 # A failed check prints what was found and the rows of nse_monthly for the website being checked.
 dump_monthly() {
@@ -178,7 +181,7 @@ check_time() { # month, property, version, device, then the expected "n|p50|p90|
 retain
 check_sql "retain added totals for a month that is not complete" 0 "SELECT count(*) FROM nse_monthly"
 SC=$(cat /proc/sys/kernel/random/uuid) SF=$(cat /proc/sys/kernel/random/uuid)
-sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 'nse.qwewqa.dev'), ('$JUNK', 'junk', 'nse.qwewqa.dev')" > /dev/null
+sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 'nse.qwewqa.dev'), ('$JUNK', 'junk', 'nse.qwewqa.dev'), ('$VERS', 'vers', 'nse.qwewqa.dev'), ('$LATE', 'late', 'nse.qwewqa.dev')" > /dev/null
 # Raw records, by months ago:
 #   3  11 sessions on a laptop with 1.0.0 and 11 on a desktop with 1.1.0, each with a Save time and a use count
 #   2  10 laptop sessions on 1.0.0, 10 that updated to 1.1.0 the same day (mixed), one on 2.0.0 on a tablet (a group of
@@ -187,10 +190,13 @@ sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$ROLL', 'roll', 
 #      recent one, so its session must stay
 #   JUNK website, 3 months ago: 12 sessions with text that is not in the catalogue, in unknown and in known properties,
 #      and 6000 events with names and values of their own
-sql -q -v "roll=$ROLL" -v "junk=$JUNK" -v "sc=$SC" -v "sf=$SF" -f - << 'SQL'
+#   VERS website, 3 months ago: 10 sessions that send 60 versions, each from all of them, and 6000 more, each from one
+#   LATE website, an hour after the cutoff of 13 months: 10 sessions, and a report that comes late
+sql -q -v "roll=$ROLL" -v "junk=$JUNK" -v "vers=$VERS" -v "late=$LATE" -v "sc=$SC" -v "sf=$SF" -f - << 'SQL'
 SET TIME ZONE 'UTC';
 SELECT set_config('nse.roll', :'roll', false), set_config('nse.junk', :'junk', false),
-       set_config('nse.sc', :'sc', false), set_config('nse.sf', :'sf', false) \g /dev/null
+       set_config('nse.sc', :'sc', false), set_config('nse.sf', :'sf', false),
+       set_config('nse.vers', :'vers', false), set_config('nse.late', :'late', false) \g /dev/null
 CREATE FUNCTION pg_temp.m(n int) RETURNS timestamptz LANGUAGE sql AS $$
     SELECT date_trunc('month', now()) - make_interval(months => n) + interval '10 days'
 $$;
@@ -216,6 +222,9 @@ DECLARE
     junk uuid := current_setting('nse.junk')::uuid;
     sc uuid := current_setting('nse.sc')::uuid;
     sf uuid := current_setting('nse.sf')::uuid;
+    site_v uuid := current_setting('nse.vers')::uuid;
+    site_l uuid := current_setting('nse.late')::uuid;
+    vs uuid[] := ARRAY[]::uuid[];
     s uuid;
     t timestamptz;
     js uuid[] := ARRAY[]::uuid[];
@@ -296,6 +305,25 @@ BEGIN
         PERFORM pg_temp.ev(junk, js[1 + i % 12], t, 2, 'junk' || i, jsonb_build_object('x', 'v' || i));
         PERFORM pg_temp.ev(junk, js[1 + i % 12], t, 2, 'save', jsonb_build_object('outcome', 'v' || i));
     END LOOP;
+
+    FOR i IN 1..10 LOOP
+        t := pg_temp.m(3) + i * interval '1 minute';
+        s := pg_temp.mk(gen_random_uuid(), site_v, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        vs := vs || s;
+        PERFORM pg_temp.ev(site_v, s, t, 1, NULL, '{}');
+        FOR j IN 0..59 LOOP
+            PERFORM pg_temp.ev(site_v, s, t, 2, 'visit', jsonb_build_object('version', '2.0.' || j));
+        END LOOP;
+    END LOOP;
+    FOR i IN 1..6000 LOOP
+        PERFORM pg_temp.ev(site_v, vs[1 + i % 10], pg_temp.m(3) + interval '1 hour', 2, 'visit', jsonb_build_object('version', '3.' || i || '.0'));
+    END LOOP;
+
+    FOR i IN 1..10 LOOP
+        t := now() - interval '13 months' + interval '60 minutes' + i * interval '1 second';
+        s := pg_temp.mk(gen_random_uuid(), site_l, t, 'chrome', 'Windows 10', 'laptop', 'US', 'ja');
+        PERFORM pg_temp.ev(site_l, s, t, 1, NULL, '{}');
+    END LOOP;
 END $$;
 SQL
 OLD_EVENTS="SELECT count(*) FROM website_event WHERE website_id = '$ROLL' AND created_at < now() - interval '13 months'"
@@ -375,7 +403,8 @@ check_total '' "$M2" value visit.version 2.0.0 '' ''
 check_total 10 "$M2" value open.format other '' ''
 check_total '' "$M2" value open.format sus '' ''
 check_total '' "$M2" value export.outcome 'done' '' ''
-check_time "$M2" save.took '' '' '21|300|300|4061'
+# The singleton's 5001 ms is in no row: the overall row is the percentiles of the two groups that are kept.
+check_time "$M2" save.took '' '' '20|250|300|300'
 check_time "$M2" save.took 1.0.0 '' '10|200|200|200'
 check_time "$M2" save.took mixed '' '10|300|300|300'
 check_time "$M2" save.took '' laptop '20|250|300|300'
@@ -386,7 +415,7 @@ check_time "$M2" save.took other '' ''
 check_time "$M2" save.took '' tablet ''
 check_time "$M2" save.took '' other ''
 check_time "$M2" export.took '' '' ''
-check_sql "no total of 5001 or of the single session's 50" 0 "SELECT count(*) FROM nse_monthly WHERE website_id = '$ROLL' AND (p50 IN (5001, 50) OR p90 IN (5001, 50) OR p99 IN (5001, 50) OR name LIKE 'export%')"
+check_sql "a timing row includes a left-out measurement, or the single session's rows are totalled" 0 "SELECT count(*) FROM nse_monthly WHERE website_id = '$ROLL' AND month = '$M2' AND ((metric = 'time' AND (n > 20 OR p99 > 300)) OR name LIKE 'export%')"
 
 # 15 months ago: the records are gone, the totals stay and the month is final.
 check_total 11 "$M15" visits all '' '' ''
@@ -412,17 +441,30 @@ check_total '' "$M3" events junk1 '' '' ''
 check_time "$M3" save.took '' '' '12|10|10|10'
 check_sql "text that is not in the catalogue was totalled" 0 "SELECT count(*) FROM nse_monthly WHERE name ~* '(example|alice|secret|junk|email)' OR value ~* '(example|alice|secret|junk|email)' OR value ~ '^v[0-9]'"
 check_sql "the rows of the website with 6000 junk events" 21 "SELECT count(*) FROM nse_monthly WHERE website_id = '$JUNK'"
+# More well-formed versions than the cap: 50 of the 60 that ten sessions send, and "other" for the rest and the 6000.
+SITE=$VERS
+check_total 6600 "$M3" events visit '' '' ''
+check_total 10 "$M3" visits version mixed '' ''
+check_sql "the version rows of a website with 6060 versions" 51 "SELECT count(*) FROM nse_monthly WHERE website_id = '$VERS' AND metric = 'value' AND name = 'visit.version'"
+check_sql "the other versions" '10' "SELECT contributors FROM nse_monthly WHERE website_id = '$VERS' AND metric = 'value' AND name = 'visit.version' AND value = 'other'"
+check_total '' "$M3" value visit.version 3.1.0 '' ''
+# A month whose records are all after the cutoff is not final.
+SITE=$LATE
+MC=$(sql -c "SELECT date_trunc('month', (now() - interval '13 months' + interval '60 minutes') AT TIME ZONE 'UTC')::date")
+check_total 10 "$MC" visits all '' '' ''
+check_total '' "$MC" final '' '' '' ''
 SITE=$ROLL
 # No row holds a session or a visit code.
 check_sql "nse_monthly holds a code" 0 "SELECT count(*) FROM nse_monthly WHERE name ~* '[0-9a-f]{8}-[0-9a-f]{4}' OR value ~* '[0-9a-f]{8}-[0-9a-f]{4}'"
 
 # A report that arrives after the first run is counted by the next: two more sessions three months ago.
-sql -q -v "roll=$ROLL" -f - << 'SQL'
+sql -q -v "roll=$ROLL" -v "late=$LATE" -f - << 'SQL'
 SET TIME ZONE 'UTC';
-SELECT set_config('nse.roll', :'roll', false) \g /dev/null
+SELECT set_config('nse.roll', :'roll', false), set_config('nse.late', :'late', false) \g /dev/null
 DO $$
 DECLARE
     roll uuid := current_setting('nse.roll')::uuid;
+    site_l uuid := current_setting('nse.late')::uuid;
     s uuid;
     t timestamptz := date_trunc('month', now()) - interval '3 months' + interval '10 days' + interval '2 hours';
 BEGIN
@@ -446,6 +488,13 @@ BEGIN
         SELECT gen_random_uuid(), roll, event_id, k, v, n, d, t
         FROM e, (VALUES ('outcome', 'done', NULL::numeric, 1), ('took', NULL, 111::numeric, 2)) x(k, v, n, d);
     END LOOP;
+    FOR i IN 1..2 LOOP
+        s := gen_random_uuid();
+        INSERT INTO session (session_id, website_id, browser, os, device, country, language, created_at)
+        VALUES (s, site_l, 'chrome', 'Windows 10', 'laptop', 'US', 'ja', now() - interval '13 months' + interval '90 minutes');
+        INSERT INTO website_event (event_id, website_id, session_id, visit_id, created_at, url_path, event_type, hostname)
+        VALUES (gen_random_uuid(), site_l, s, s, now() - interval '13 months' + interval '90 minutes', '/', 1, 'nse.qwewqa.dev');
+    END LOOP;
 END $$;
 SQL
 retain
@@ -457,6 +506,10 @@ check_time "$M3" save.took '' '' '24|111|1009|1011'
 check_total 10 "$M15" visits version 1.0.0 '' ''
 check_time "$M15" save.took '' '' '10|500|500|500'
 check_sql "retain deleted a record that is newer than 13 months" "$((KEPT + 6))" "$KEPT_EVENTS"
+SITE=$LATE
+check_total 12 "$MC" visits all '' '' ''
+check_total '' "$MC" final '' '' '' ''
+SITE=$ROLL
 
 # A second run changes nothing.
 FINGERPRINT="SELECT count(*) || '|' || md5(string_agg(t::text, ',' ORDER BY t::text)) FROM nse_monthly t"
