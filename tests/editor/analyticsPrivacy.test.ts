@@ -300,18 +300,18 @@ const disclosures: Record<string, RegExp[]> = {
         /Settings › About › Send Usage Statistics/,
         /Do Not Track/,
         /Global Privacy Control/,
-        /without accounts or cookies/,
+        /does not require an account/,
+        /or use cookies/,
     ],
     who: [/qwewqa/, /nse@qwewqa\.dev/],
-    usage: [/legitimate interest/, /visitor identifier/],
-    hosting: [
-        /GitHub/,
-        /Amazon Web Services \(AWS\)/,
-        /United States/,
-        /Standard Contractual Clauses/,
-        /email provider/,
+    usage: [
+        /legitimate interest/,
+        /visitor identifier/,
+        /estimate your country/,
+        /error logs on the statistics server may contain it/,
     ],
-    contact: [/legitimate interest/, /legal obligations/],
+    hosting: [/GitHub/, /Amazon Web Services \(AWS\)/, /United States/, /email provider/],
+    contact: [/legitimate interest/, /required by law/],
     choices: [
         /access, correct or delete/,
         /copy in a reusable format/,
@@ -325,13 +325,18 @@ test('the privacy page keeps its disclosures', () => {
             assert.match(sectionText(id), pattern, `the ${id} section no longer covers ${pattern}`)
 })
 
+test('the hosting section names no transfer clauses', () => {
+    assert.doesNotMatch(sectionText('hosting'), /Standard Contractual Clauses/)
+    assert.doesNotMatch(html, /aws\.amazon\.com/)
+})
+
 test('each retention period is stated with its data', () => {
     const periods: [RegExp, RegExp[]][] = [
-        [/Usage records/, [/up to 13 months/]],
-        [/Backups of the statistics/, [/up to six weeks from creation/]],
+        [/Individual usage records/, [/up to 13 months/]],
+        [/Backups of the statistics/, [/up to six weeks after each backup is made/]],
         [/Error logs on the statistics server/, [/up to two weeks/]],
         [/Email conversations/, [/up to one year after your last message/]],
-        [/Combined statistics/, [/no visitor identifiers/, /indefinitely/]],
+        [/Aggregated statistics/, [/no visitor identifiers/, /indefinitely/]],
     ]
     const texts = elements('keep').map(plain)
     for (const [data, values] of periods)
@@ -341,7 +346,7 @@ test('each retention period is stated with its data', () => {
         )
 })
 
-test('one paragraph offers the objection to usage statistics and support', () => {
+test('a separate paragraph offers the objection, and one email link covers the rights', () => {
     const parts = [
         /object/,
         /usage statistics/,
@@ -349,14 +354,17 @@ test('one paragraph offers the objection to usage statistics and support', () =>
         /at any time/,
         /Settings › About › Send Usage Statistics/,
     ]
+    const paragraphs = elements('choices')
+    const objection = paragraphs.filter((markup) => parts.every((part) => part.test(plain(markup))))
+    assert.equal(objection.length, 1, 'one paragraph of the rights section offers the objection')
+    const general = paragraphs.find((markup) => /access, correct or delete/.test(plain(markup)))
     assert.ok(
-        elements('choices').some(
-            (markup) =>
-                parts.every((part) => part.test(plain(markup))) &&
-                /<a\s+href="mailto:nse@qwewqa\.dev"/.test(markup),
-        ),
-        'no paragraph of the rights section covers the objection',
+        general && general !== objection[0],
+        'the general rights are a paragraph of their own',
     )
+    const links = sectionHtml('choices').match(/<a\s+href="mailto:nse@qwewqa\.dev"/g)
+    assert.equal(links?.length, 1, 'one email link covers all the rights')
+    assert.match(sectionText('choices'), /To exercise any of these rights, email/)
 })
 
 test('the privacy page links to the usage statistics reference', () => {
@@ -367,7 +375,7 @@ test('the privacy page links to the usage statistics reference', () => {
 
     const usage = html.slice(start, end)
     const link =
-        /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*usage statistics reference\s*<\/a\s*>/
+        /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*What the usage statistics send\s*<\/a\s*>/
 
     assert.match(usage, link)
     assert.doesNotMatch(html, /docs\/analytics\.md/)
