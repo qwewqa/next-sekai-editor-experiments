@@ -101,7 +101,6 @@ import {
     getStageProps,
     getStageYOffset,
     resolveJudgeLineStyle,
-    stagePropsHasTransform,
     stagePropsTransform,
     type StageProps,
 } from './stage'
@@ -245,9 +244,7 @@ export const renderPreviewFrame = (
     const stageTransformAt = (index: number): StageTransform => {
         const props = stagePropsAt(index)
         if (!props) return identityStageTransform
-        return (stageTransformsNow[index] ??= stagePropsHasTransform(props)
-            ? stagePropsTransform(context, props)
-            : identityStageTransform)
+        return (stageTransformsNow[index] ??= stagePropsTransform(context, props))
     }
     const stageAffineAt = (index: number): StageScreenTransform =>
         chart.stages[index]
@@ -1373,15 +1370,8 @@ export const renderPreviewFrame = (
         })
 
         if (showEffects && spriteSet && slot.size > 0) {
-            let slotAffine = identityStageScreenTransform
-            withLayoutAt(
-                target,
-                (context) => {
-                    slotAffine = stageTransformToAffineOrIdentity(
-                        visualStageTransformAt(context, note, target, true),
-                    )
-                },
-                true,
+            const slotAffine = stageTransformToAffineOrIdentity(
+                visualStageTransformAt(context, note, target, true),
             )
             if (spriteSet.slot && !singleLine && elapsed < SLOT_EFFECT_DURATION) {
                 const a = 1 - elapsed / SLOT_EFFECT_DURATION
