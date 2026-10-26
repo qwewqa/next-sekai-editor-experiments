@@ -15,6 +15,7 @@ import {
     AssetError,
     type AssetChoice,
     type AssetDefaults,
+    type AssetResult,
     type DefaultProvider,
     type LoadContext,
     type Loaded,
@@ -192,7 +193,11 @@ test('a bundled choice that is absent or fails uses Default, then Built-in, with
             builtin: set(provider('built-in')),
             bundled: skin2 ? { skin: { skin2 } } : {},
         })
-        const result = await toBuiltin.load('skin', bundled, context())
+        const result: AssetResult<'skin'> | undefined = await toBuiltin.load(
+            'skin',
+            bundled,
+            context(),
+        )
         assert.equal(result?.value.title, 'built-in')
         assert.deepEqual(result?.status, { active: 'builtin', reason })
     }
