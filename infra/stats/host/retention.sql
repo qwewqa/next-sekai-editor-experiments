@@ -1,21 +1,31 @@
--- The nightly retention job, in one transaction: it adds the monthly totals for every complete month that has none, then
--- deletes the raw records older than 13 months. If the totals fail, the transaction rolls back and nothing is deleted,
--- so no month is deleted without its totals. Safe to run again. Run it with psql -1 (nightly.sh retain).
+-- The nightly retention job, in one transaction, run by `nightly.sh retain` as `allowlist.sql` followed by this file
+-- with psql -1. It totals the raw records of every complete month into nse_monthly, then deletes the raw records older
+-- than 13 months. If the totals fail, the transaction rolls back and nothing is deleted. Safe to run again.
 --
--- nse_monthly is ours, not Umami's. Umami's migrations leave a table they do not know alone. It holds no session or
--- visit code: only counts, sums and percentiles, one dimension at a time (the one cross is version by device class, for
--- the timings). The rows are kept for good, and the delete below never touches them.
+-- nse_monthly is ours, not Umami's; Umami's migrations leave a table they do not know alone. It is kept for good and the
+-- delete below never touches it. It holds no session or visit code, and only what the catalogue allows:
+--   * Only an event name, a property and a value in nse_allowed (generated from src/analytics/catalogue.ts) are totalled.
+--     The public endpoint takes anything, so anything else, such as an email address sent by hand, is left out. A session
+--     column that is not in Umami's lists is counted as "other".
+--   * A row stands for at least 10 distinct sessions (`contributors`, as a stand-in for people). A cell with fewer is
+--     merged into an "other" row of its metric when that has 10, and left out when it does not. A sum or a timing is
+--     kept only for 10 or more sessions. The timings are percentiles, which cannot be subtracted from one another.
+--   * A session has the editor version of its visit events only if they all agree; else "mixed". No version: "unknown".
+-- Every night the totals of each complete month are made again from the raw records, so a late report is counted. A
+-- month is made final, with a row of metric "final", in the run that first deletes any of its records; it is not made
+-- again, because its records are partly gone.
 --   month     the first day of the month, UTC
---   metric    month     one row per website and month, name and value empty: n is the month's events. It marks the month as done
---             visits    pageviews, by name (all, version, browser, os, device, country, language) and value
+--   metric    visits    pageviews, by name (all, version, browser, os, device, country, language) and value
 --             sessions  the sessions with an event, by the same names and values
---             events    events by event name ('pageview' for a pageview)
+--             events    events by event name ("pageview" for a pageview)
 --             value     events by "event.property" and value, for the properties that are text or flags
---             number    events that carry "event.property", with its total in `total`, for the numbers that are counts
---             time      "event.property" for the millisecond timings, by version and device class ('' for all)
---   n         the count; total, p50, p90 and p99 are set on number and time rows only
--- Umami v3.4.1 tables: event_data, website_event, session_data, session_link, session_replay, session_replay_saved,
--- revenue, session. It has no foreign keys (Prisma relationMode "prisma"); the order below is the one its code uses.
+--             number    "event.property" for the counts: events that carry it, and the sum of its values in `total`
+--             time      "event.property" for the millisecond timings: p50, p90 and p99, overall and by version and
+--                       device class ('' for all)
+--             final     marks a month that is not totalled again
+-- Umami v3.4.1 tables with visitor data: event_data, website_event, session, session_data, session_link,
+-- session_replay, session_replay_saved, heatmap_event, revenue. There are no foreign keys (Prisma relationMode
+-- "prisma"); the delete order is the one Umami's code uses.
 SET LOCAL TIME ZONE 'UTC';
 
 CREATE TABLE IF NOT EXISTS nse_monthly (
@@ -27,6 +37,7 @@ CREATE TABLE IF NOT EXISTS nse_monthly (
     version text NOT NULL DEFAULT '',
     device text NOT NULL DEFAULT '',
     n bigint NOT NULL,
+    contributors bigint NOT NULL DEFAULT 0,
     total numeric,
     p50 numeric,
     p90 numeric,
@@ -34,56 +45,90 @@ CREATE TABLE IF NOT EXISTS nse_monthly (
     PRIMARY KEY (month, website_id, metric, name, value, version, device)
 );
 
--- A month is complete two days after it ends, so a visit that crosses midnight has been sent.
+CREATE TEMP TABLE nse_cutoff ON COMMIT DROP AS SELECT now() - interval '13 months' AS earliest;
+
+-- The complete months that are not final, and the totals they had.
 CREATE TEMP TABLE nse_todo ON COMMIT DROP AS
 SELECT DISTINCT e.website_id, date_trunc('month', e.created_at)::date AS month
 FROM website_event e
-WHERE e.created_at < date_trunc('month', now() - interval '2 days')
+WHERE e.created_at < date_trunc('month', now())
   AND NOT EXISTS (
       SELECT 1 FROM nse_monthly m
-      WHERE m.metric = 'month' AND m.website_id = e.website_id AND m.month = date_trunc('month', e.created_at)::date
+      WHERE m.metric = 'final' AND m.website_id = e.website_id AND m.month = date_trunc('month', e.created_at)::date
   );
 
+DELETE FROM nse_monthly m USING nse_todo t WHERE m.website_id = t.website_id AND m.month = t.month;
+
+-- The events and the data that the catalogue allows.
 CREATE TEMP TABLE nse_ev ON COMMIT DROP AS
 SELECT e.event_id, e.website_id, e.session_id, e.event_type,
-       CASE WHEN e.event_type = 1 THEN 'pageview' ELSE coalesce(e.event_name, '') END AS name,
+       CASE WHEN e.event_type = 1 THEN 'pageview' ELSE e.event_name END AS name,
        t.month
 FROM website_event e
-JOIN nse_todo t ON t.website_id = e.website_id AND t.month = date_trunc('month', e.created_at)::date;
+JOIN nse_todo t ON t.website_id = e.website_id AND t.month = date_trunc('month', e.created_at)::date
+WHERE e.event_type = 1
+   OR (e.event_type = 2 AND e.event_name IN (SELECT event FROM nse_allowed WHERE event NOT LIKE '#%'));
 
--- The version of the editor a session ran, from its visit event.
-CREATE TEMP TABLE nse_version ON COMMIT DROP AS
-SELECT ev.session_id, min(d.string_value) AS version
+CREATE TEMP TABLE nse_data ON COMMIT DROP AS
+SELECT ev.month, ev.website_id, ev.session_id, ev.name, d.data_key, a.kind, d.string_value, d.number_value
 FROM nse_ev ev
 JOIN event_data d ON d.website_event_id = ev.event_id
-WHERE ev.name = 'visit' AND d.data_key = 'version'
-GROUP BY ev.session_id;
+JOIN nse_allowed a ON a.event = ev.name AND a.property = d.data_key
+WHERE (a.kind = 'text' AND d.data_type = 1 AND d.string_value = a.value)
+   OR (a.kind = 'pattern' AND d.data_type = 1 AND d.string_value ~ a.value)
+   OR (a.kind = 'boolean' AND d.data_type = 3 AND d.string_value IN ('true', 'false'))
+   OR (a.kind IN ('count', 'time') AND d.data_type = 2
+       AND d.number_value BETWEEN 0 AND a.max AND d.number_value = trunc(d.number_value))
+UNION ALL
+SELECT ev.month, ev.website_id, ev.session_id, ev.name, d.data_key, 'count', d.string_value, d.number_value
+FROM nse_ev ev
+JOIN event_data d ON d.website_event_id = ev.event_id
+JOIN nse_allowed a ON a.event = ev.name AND a.property = '*' AND a.kind = 'usage'
+WHERE d.data_type = 2 AND d.data_key ~ a.value
+  AND d.number_value BETWEEN 0 AND a.max AND d.number_value = trunc(d.number_value);
 
+-- A session's version, if its visit events agree.
+CREATE TEMP TABLE nse_version ON COMMIT DROP AS
+SELECT session_id,
+       CASE WHEN count(DISTINCT string_value) = 1 THEN min(string_value) ELSE 'mixed' END AS version
+FROM nse_data
+WHERE name = 'visit' AND data_key = 'version'
+GROUP BY session_id;
+
+-- One row for each session and month, with its columns checked against Umami's lists.
 CREATE TEMP TABLE nse_sess ON COMMIT DROP AS
 SELECT ev.month, ev.website_id, ev.session_id,
        count(*) FILTER (WHERE ev.event_type = 1) AS visits,
        coalesce(v.version, 'unknown') AS version,
-       coalesce(s.browser, 'unknown') AS browser,
-       coalesce(s.os, 'unknown') AS os,
-       coalesce(s.device, 'unknown') AS device,
-       coalesce(s.country, 'unknown') AS country,
-       coalesce(s.language, 'unknown') AS language
+       CASE WHEN s.browser IS NULL THEN 'unknown'
+            WHEN s.browser IN (SELECT value FROM nse_allowed WHERE event = '#session' AND property = 'browser') THEN s.browser
+            ELSE 'other' END AS browser,
+       CASE WHEN s.os IS NULL THEN 'unknown'
+            WHEN s.os IN (SELECT value FROM nse_allowed WHERE event = '#session' AND property = 'os') THEN s.os
+            ELSE 'other' END AS os,
+       CASE WHEN s.device IS NULL THEN 'unknown'
+            WHEN s.device IN (SELECT value FROM nse_allowed WHERE event = '#session' AND property = 'device') THEN s.device
+            ELSE 'other' END AS device,
+       CASE WHEN s.country IS NULL THEN 'unknown'
+            WHEN s.country ~ (SELECT value FROM nse_allowed WHERE event = '#session' AND property = 'country') THEN s.country
+            ELSE 'other' END AS country,
+       CASE WHEN s.language IS NULL THEN 'unknown'
+            WHEN s.language ~ (SELECT value FROM nse_allowed WHERE event = '#session' AND property = 'language') THEN s.language
+            ELSE 'other' END AS language
 FROM nse_ev ev
 LEFT JOIN session s ON s.session_id = ev.session_id
 LEFT JOIN nse_version v ON v.session_id = ev.session_id
 GROUP BY ev.month, ev.website_id, ev.session_id, v.version, s.browser, s.os, s.device, s.country, s.language;
 
--- A month keeps at most 5000 rows of a metric, the largest first, so junk sent to the public endpoint cannot grow the table.
--- The timings (ready, took, buildMs) are the catalogue's millisecond properties; a unit test checks the list.
-INSERT INTO nse_monthly (month, website_id, metric, name, value, n)
-SELECT month, website_id, metric, name, value, n
+-- Visits and sessions, one name at a time.
+INSERT INTO nse_monthly (month, website_id, metric, name, value, n, contributors)
+SELECT month, website_id, metric, name,
+       CASE WHEN ns >= 10 OR name = 'all' THEN value ELSE 'other' END,
+       sum(n), sum(ns)
 FROM (
     SELECT g.month, g.website_id, m.metric, g.name, g.value,
            CASE WHEN m.metric = 'visits' THEN sum(g.visits) ELSE count(*) END AS n,
-           row_number() OVER (
-               PARTITION BY g.month, g.website_id, m.metric
-               ORDER BY CASE WHEN m.metric = 'visits' THEN sum(g.visits) ELSE count(*) END DESC, g.name, g.value
-           ) AS rn
+           count(*) FILTER (WHERE m.metric = 'sessions' OR g.visits > 0) AS ns
     FROM (
         SELECT s.month, s.website_id, s.visits, x.name, x.value
         FROM nse_sess s
@@ -94,83 +139,83 @@ FROM (
     ) g
     CROSS JOIN (VALUES ('visits'), ('sessions')) m(metric)
     GROUP BY g.month, g.website_id, m.metric, g.name, g.value
-) t
-WHERE rn <= 5000 AND n > 0;
+) c
+GROUP BY 1, 2, 3, 4, 5
+HAVING sum(ns) >= 10 AND sum(n) > 0;
 
+-- Events by name.
+INSERT INTO nse_monthly (month, website_id, metric, name, n, contributors)
+SELECT ev.month, ev.website_id, 'events', CASE WHEN en.ns >= 10 THEN ev.name ELSE 'other' END,
+       count(*), count(DISTINCT ev.session_id)
+FROM nse_ev ev
+JOIN (
+    SELECT month, website_id, name, count(DISTINCT session_id) AS ns FROM nse_ev GROUP BY 1, 2, 3
+) en ON en.month = ev.month AND en.website_id = ev.website_id AND en.name = ev.name
+GROUP BY 1, 2, 4
+HAVING count(DISTINCT ev.session_id) >= 10;
+
+-- Events by property and value, for text and flags.
+INSERT INTO nse_monthly (month, website_id, metric, name, value, n, contributors)
+SELECT d.month, d.website_id, 'value', d.name || '.' || d.data_key,
+       CASE WHEN c.ns >= 10 THEN d.string_value ELSE 'other' END,
+       count(*), count(DISTINCT d.session_id)
+FROM nse_data d
+JOIN (
+    SELECT month, website_id, name, data_key, string_value, count(DISTINCT session_id) AS ns
+    FROM nse_data
+    WHERE kind IN ('text', 'pattern', 'boolean')
+    GROUP BY 1, 2, 3, 4, 5
+) c ON c.month = d.month AND c.website_id = d.website_id AND c.name = d.name AND c.data_key = d.data_key
+   AND c.string_value = d.string_value
+WHERE d.kind IN ('text', 'pattern', 'boolean')
+GROUP BY 1, 2, 4, 5
+HAVING count(DISTINCT d.session_id) >= 10;
+
+-- The counts: how many events carry the property, and the sum of its values.
+INSERT INTO nse_monthly (month, website_id, metric, name, n, contributors, total)
+SELECT month, website_id, 'number', name || '.' || data_key, count(*), count(DISTINCT session_id), round(sum(number_value))
+FROM nse_data
+WHERE kind = 'count'
+GROUP BY month, website_id, name, data_key
+HAVING count(DISTINCT session_id) >= 10;
+
+-- The timings, overall and by version and device class. A version or a device class with fewer than 10 sessions is
+-- "other" before the groups are made.
+CREATE TEMP TABLE nse_t ON COMMIT DROP AS
+SELECT d.month, d.website_id, d.session_id, d.name || '.' || d.data_key AS prop, d.number_value::float8 AS x,
+       s.version AS ver, s.device AS dev
+FROM nse_data d
+JOIN nse_sess s ON s.month = d.month AND s.website_id = d.website_id AND s.session_id = d.session_id
+WHERE d.kind = 'time';
+
+CREATE TEMP TABLE nse_tmap ON COMMIT DROP AS
+SELECT t.month, t.website_id, t.session_id, t.prop, t.x,
+       CASE WHEN v.ns >= 10 THEN t.ver ELSE 'other' END AS ver,
+       CASE WHEN dv.ns >= 10 THEN t.dev ELSE 'other' END AS dev
+FROM nse_t t
+JOIN (
+    SELECT month, website_id, prop, ver, count(DISTINCT session_id) AS ns FROM nse_t GROUP BY 1, 2, 3, 4
+) v ON v.month = t.month AND v.website_id = t.website_id AND v.prop = t.prop AND v.ver = t.ver
+JOIN (
+    SELECT month, website_id, prop, dev, count(DISTINCT session_id) AS ns FROM nse_t GROUP BY 1, 2, 3, 4
+) dv ON dv.month = t.month AND dv.website_id = t.website_id AND dv.prop = t.prop AND dv.dev = t.dev;
+
+INSERT INTO nse_monthly (month, website_id, metric, name, version, device, n, contributors, p50, p90, p99)
+SELECT t.month, t.website_id, 'time', t.prop, g.ver, g.dev, count(*), count(DISTINCT t.session_id),
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY t.x)),
+       round(percentile_cont(0.9) WITHIN GROUP (ORDER BY t.x)),
+       round(percentile_cont(0.99) WITHIN GROUP (ORDER BY t.x))
+FROM nse_tmap t
+CROSS JOIN LATERAL (VALUES ('', ''), (t.ver, ''), ('', t.dev), (t.ver, t.dev)) g(ver, dev)
+GROUP BY t.month, t.website_id, t.prop, g.ver, g.dev
+HAVING count(DISTINCT t.session_id) >= 10;
+
+-- A month with records that go now is final: it is not totalled again.
 INSERT INTO nse_monthly (month, website_id, metric, name, n)
-SELECT month, website_id, metric, name, n
-FROM (
-    SELECT month, website_id, 'events' AS metric, name, count(*) AS n,
-           row_number() OVER (PARTITION BY month, website_id ORDER BY count(*) DESC, name) AS rn
-    FROM nse_ev
-    GROUP BY month, website_id, name
-) t
-WHERE rn <= 5000;
+SELECT month, website_id, 'final', '', 0 FROM nse_todo WHERE month::timestamptz <= (SELECT earliest FROM nse_cutoff);
 
-INSERT INTO nse_monthly (month, website_id, metric, name, value, n)
-SELECT month, website_id, 'value', name, value, n
-FROM (
-    SELECT ev.month, ev.website_id, ev.name || '.' || d.data_key AS name, coalesce(d.string_value, '') AS value, count(*) AS n,
-           row_number() OVER (
-               PARTITION BY ev.month, ev.website_id
-               ORDER BY count(*) DESC, ev.name || '.' || d.data_key, coalesce(d.string_value, '')
-           ) AS rn
-    FROM nse_ev ev
-    JOIN event_data d ON d.website_event_id = ev.event_id
-    WHERE d.data_type IN (1, 3)
-    GROUP BY ev.month, ev.website_id, ev.name, d.data_key, d.string_value
-) t
-WHERE rn <= 5000;
-
-INSERT INTO nse_monthly (month, website_id, metric, name, n, total)
-SELECT month, website_id, 'number', name, n, total
-FROM (
-    SELECT ev.month, ev.website_id, ev.name || '.' || d.data_key AS name, count(*) AS n, round(sum(d.number_value)) AS total,
-           row_number() OVER (
-               PARTITION BY ev.month, ev.website_id
-               ORDER BY count(*) DESC, ev.name || '.' || d.data_key
-           ) AS rn
-    FROM nse_ev ev
-    JOIN event_data d ON d.website_event_id = ev.event_id
-    WHERE d.data_type = 2 AND d.data_key NOT IN ('ready', 'took', 'buildMs')
-    GROUP BY ev.month, ev.website_id, ev.name, d.data_key
-) t
-WHERE rn <= 5000;
-
-INSERT INTO nse_monthly (month, website_id, metric, name, version, device, n, p50, p90, p99)
-SELECT month, website_id, 'time', name, version, device, n, p50, p90, p99
-FROM (
-    SELECT ev.month, ev.website_id, ev.name || '.' || d.data_key AS name, g.version, g.device, count(*) AS n,
-           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY d.number_value::float8)) AS p50,
-           round(percentile_cont(0.9) WITHIN GROUP (ORDER BY d.number_value::float8)) AS p90,
-           round(percentile_cont(0.99) WITHIN GROUP (ORDER BY d.number_value::float8)) AS p99,
-           row_number() OVER (
-               PARTITION BY ev.month, ev.website_id
-               ORDER BY count(*) DESC, ev.name || '.' || d.data_key, g.version, g.device
-           ) AS rn
-    FROM nse_ev ev
-    JOIN event_data d ON d.website_event_id = ev.event_id
-    LEFT JOIN session s ON s.session_id = ev.session_id
-    LEFT JOIN nse_version v ON v.session_id = ev.session_id
-    CROSS JOIN LATERAL (VALUES
-        ('', ''),
-        (coalesce(v.version, 'unknown'), ''),
-        ('', coalesce(s.device, 'unknown')),
-        (coalesce(v.version, 'unknown'), coalesce(s.device, 'unknown'))
-    ) g(version, device)
-    WHERE d.data_type = 2 AND d.data_key IN ('ready', 'took', 'buildMs')
-    GROUP BY ev.month, ev.website_id, ev.name, d.data_key, g.version, g.device
-) t
-WHERE rn <= 5000;
-
--- Last, so a month is marked done only with its rows.
-INSERT INTO nse_monthly (month, website_id, metric, name, n)
-SELECT month, website_id, 'month', '', count(*) FROM nse_ev GROUP BY month, website_id;
-
--- Every month before the cutoff has its totals now. Events and their data go first, then the sessions that have no event
--- left, with what hangs off them.
-CREATE TEMP TABLE nse_cutoff ON COMMIT DROP AS SELECT now() - interval '13 months' AS earliest;
-
+-- Every month before the cutoff has its totals, and is final. Events and their data go first, then the sessions that
+-- have no event left, with what hangs off them.
 DELETE FROM event_data
 WHERE created_at < (SELECT earliest FROM nse_cutoff)
    OR website_event_id IN (SELECT event_id FROM website_event WHERE created_at < (SELECT earliest FROM nse_cutoff));
@@ -186,5 +231,6 @@ DELETE FROM session_data WHERE session_id IN (SELECT session_id FROM nse_gone);
 DELETE FROM session_link WHERE session_id IN (SELECT session_id FROM nse_gone);
 DELETE FROM session_replay WHERE session_id IN (SELECT session_id FROM nse_gone) OR created_at < (SELECT earliest FROM nse_cutoff);
 DELETE FROM session_replay_saved WHERE created_at < (SELECT earliest FROM nse_cutoff);
+DELETE FROM heatmap_event WHERE session_id IN (SELECT session_id FROM nse_gone) OR created_at < (SELECT earliest FROM nse_cutoff);
 DELETE FROM revenue WHERE session_id IN (SELECT session_id FROM nse_gone) OR created_at < (SELECT earliest FROM nse_cutoff);
 DELETE FROM session WHERE session_id IN (SELECT session_id FROM nse_gone);

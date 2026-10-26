@@ -27,10 +27,10 @@ clean() {
     psql_ -c "UPDATE session SET region = NULL, city = NULL WHERE region IS NOT NULL OR city IS NOT NULL;"
 }
 
-# Adds the monthly totals for every complete month that has none, then deletes the raw records older than 13 months
-# (retention.sql). Both are one transaction, so the delete runs only if the totals were added.
+# Totals the complete months into nse_monthly, then deletes the raw records older than 13 months
+# (allowlist.sql, then retention.sql). Both are one transaction, so the delete runs only if the totals were made.
 retain() {
-    psql_ -q -1 -f - < "$HERE/retention.sql"
+    cat "$HERE/allowlist.sql" "$HERE/retention.sql" | psql_ -q -1 -f -
 }
 
 # A dump left by a failed upload, or a download left by a failed restore, is deleted after two days, so a copy on

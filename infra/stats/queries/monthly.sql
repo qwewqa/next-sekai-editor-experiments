@@ -1,5 +1,6 @@
 -- The monthly totals that stay after the raw records are deleted (nse_monthly, written by the nightly job; it exists
--- after the first nightly run). A month appears two days after it ends. They hold no session or visit code.
+-- after the first nightly run). A complete month appears after the next run and is made again each night until it is
+-- final. The totals hold no session or visit code, and only rows with 10 or more sessions behind them.
 -- 1. Per month: engaged visits, sessions (per day) and events.
 -- 2. Per month and editor version: visits.
 -- 3. The timings, per month, in milliseconds: p50, p90 and p99 over all versions and devices.

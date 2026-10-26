@@ -7,6 +7,8 @@ The code is in `src/analytics/`:
 - `tally.ts`: the counters and the input that arms a visit. It is in the main bundle, and it is the only analytics code that the edit and command paths call.
 - `catalogue.ts`: every event and the values each property may take, with the functions that turn numbers into ranges.
 - `config.ts`: the rule that decides whether a page sends.
+- `device.ts`: the reader of the device an event ran on. `start.ts` hands it to `tally.record`.
+- `allowlist.ts`: the allowed events, properties and values for the server's monthly totals, written to `infra/stats/host/allowlist.sql` (see "What the server keeps").
 - `start.ts`: starts and stops the client, and follows the switch in this tab and in other tabs.
 - `client.ts` and `sender.ts`: loaded after startup, only when statistics are on. They build the events and send them.
 
@@ -91,12 +93,16 @@ How the code enforces them:
 ## What the server keeps
 
 - **Raw records** (events, their data, sessions and what hangs off them) are kept 13 months. The nightly job deletes older ones (`infra/stats/host/retention.sql`). A session goes once none of its events remain. Backups on AWS expire after about five weeks, and a dump or download left on the host is deleted after two days, so no copy outlives those limits by much.
-- **Monthly totals** are kept with no time limit, in `nse_monthly`, a table of ours in the Umami database. The job adds a month’s rows once the month is complete, before it deletes any raw record of that month, and a failure in that step deletes nothing. They hold no session or visit code, only counts, sums and percentiles:
+- **Monthly totals** are kept with no time limit, in `nse_monthly`, a table of ours in the Umami database. They hold no session or visit code, only counts, sums and percentiles:
     - visits and sessions a month, each by version, browser, OS, device class, country and language, one dimension at a time;
     - events by name, and by property value for the flags and fixed choices;
     - the total and count of the numeric properties, such as use counts;
     - p50, p90 and p99 of the millisecond timings (`ready`, `took`, `buildMs`), over all visits and by version and device class. This is the one cross.
-- A new numeric property that is a time in milliseconds is a timing: add it to the two lists in `retention.sql`. A unit test checks them against the catalogue. A new event or property needs nothing else, because the totals read whatever the catalogue lets through.
+- **Only the catalogue goes in.** The public endpoint takes anything, so the job totals only an event name, a property and a value that `src/analytics/catalogue.ts` allows, and the session columns that Umami's own lists allow (browser, OS and device; a country as two capital letters; a short language tag). A session column outside its list counts as `other`. `infra/stats/host/allowlist.sql` holds the allowed values. It is generated: run `npm run analytics:allowlist` after changing the catalogue or the built-in commands. A unit test fails until the file matches. A new event or property needs nothing else. A new numeric property that is a time in milliseconds is a timing because the catalogue says `ms`.
+- **No small groups.** A row stands for at least 10 distinct sessions (`contributors`, a stand-in for people): a count of a value, a sum, a timing group. A smaller cell is merged into an `other` row of its metric if that reaches 10, and is left out otherwise. For the timings, a version or a device class with fewer than 10 sessions becomes `other` before the groups are made, and a group under 10 is left out. Counts can still be subtracted from the `all` row, which is accepted: a count is not a measurement. No sum or timing is stored in a way that lets a left-out group be recovered, because a percentile cannot be subtracted.
+- **Versions.** A session has the version of its `visit` events only if they agree. Otherwise it is `mixed`, and with no `visit` event it is `unknown`. The measured events do not carry the version, so a timing takes its session's.
+- **Late reports.** Every night the job makes the totals of each complete month again from the raw records, so a report that arrives late is counted. A month is made final, with a `final` row, in the run that first deletes any of its records, and is not made again, because its records are partly gone. That is the one piece of state the job needs: without it, the next run would replace correct totals with totals of what is left.
+- The job runs in one transaction, so a failure in the totals deletes nothing.
 - The runbook (`infra/stats/README.md`) has the details, and `queries/monthly.sql` reads the totals.
 
 ## The catalogue
@@ -126,7 +132,7 @@ How the code enforces them:
 | `errors` | at hide | `error`, `csp` |
 | `unsupported` | the support page, on its first input | `engine` |
 
-The device details (`cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`) go on each measured event, so a figure is read against the device that made it. The per-action events (`open`, `save`, `export`, `check`, `bgm`) take them when the action is recorded (`tally.record` calls the reader that the client installs), so a resize before the send does not relabel them; `peek` and `perf` cover an interval and take them when they are sent. `storage.mode` is `stored`, `readOnly` or `memory`; the client does not guess a private window. `viewport` is the workspace's width, and `viewportPortrait` on `visit` says whether its height is greater. `deviceMemory` is the browser's rounded figure in GiB, `16+` above 16 and `other` for a value that is not a power of two; it is absent where the browser reports none.
+The device details (`cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`) go on each measured event, so a figure is read against the device that made it. The per-action events (`open`, `save`, `export`, `check`, `bgm`) take them as the action is recorded: `start.ts` gives `tally.record` the reader in `device.ts` when the statistics start, before the client loads, so a resize before the send does not relabel them. `startup`, `peek` and `perf` cover a stretch of time, and the client reads them when it builds them. `storage.mode` is `stored`, `readOnly` or `memory`; the client does not guess a private window. `viewport` is the workspace's width, and `viewportPortrait` on `visit` says whether its height is greater. `deviceMemory` is the browser's rounded figure in GiB, `16+` above 16 and `other` for a value that is not a power of two; it is absent where the browser reports none.
 
 Scales (`src/analytics/scales.ts`) use half-open `[lower, upper)` ranges, except where a label names an exact value (`dpr` `1`, `2` and `3`, `noteSpeed` `10`) and `usageShare`, whose `70-80` includes exactly 80 because cleanup starts only above 80% (`HIGH_SHARE`). A missing, non-finite or negative measurement is left out. Chart counts are exact from 0 to 9, then ten ranges a decade, such as `250-319`, up to `100000+`. Audio length is in seconds from `<10`, and file sizes double from `<16K` to `16G+`.
 

@@ -214,8 +214,9 @@
                             for a summary, the time the summary was made. Measurements of startup,
                             files, music, Timeline steps and slow responses also carry your browser,
                             whether your main way of pointing is imprecise, the window size, pixel
-                            density, processor cores and memory. These are read when the action
-                            ends.
+                            density, processor cores and memory. For a file or music action, these
+                            are read when the action ends. For startup, Timeline steps and slow
+                            responses, they are read when the report is made.
                         </p>
                         <p>
                             It never sends your charts or their content, file names, level titles or
@@ -248,10 +249,13 @@
                             how often each tool, setting and file type is used, and typical times.
                             Visits are counted separately by each of these: editor version, browser,
                             operating system, device type, country and language. Times are counted
-                            by editor version and device type. The totals contain no daily codes and
-                            no individual reports, and we keep them with no time limit. Backups on
-                            AWS are deleted after about five weeks. Only the maintainer has access
-                            to the statistics dashboard.
+                            by editor version and device type. A group is listed on its own only
+                            when at least 10 different daily visitor codes are behind it. Smaller
+                            groups are counted together as “other”, or left out when that is also
+                            under 10. The totals contain no daily codes and no individual reports,
+                            and we keep them with no time limit. Backups on AWS are deleted after
+                            about five weeks. Only the maintainer has access to the statistics
+                            dashboard.
                         </p>
                         <p>
                             The server’s error logs can contain your IP address after an unexpected
