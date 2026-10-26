@@ -74,3 +74,82 @@ test('only a version tag builds with the usage statistics target', () => {
     assert.equal(value('NSE_ANALYTICS_ORIGIN', 'refs/tags/v0.6.0'), 'https://stats')
     assert.equal(value('NSE_ANALYTICS_WEBSITE', 'refs/tags/v0.6.0'), 'id')
 })
+
+const full = read('browsers-full')
+const section = (text, name) =>
+    text.match(
+        new RegExp(String.raw`^    ${name}:\n([\s\S]*?)(?=^    \w[\w-]*:|(?![\s\S]))`, 'm'),
+    )?.[1]
+
+test('Check cancels a superseded run on a branch or pull request, never on main or a tag', () => {
+    const expression = check.match(/^ {4}cancel-in-progress: (.+)$/m)?.[1]
+    assert.ok(expression)
+    const cancels = (ref) =>
+        runInNewContext(expression.replace(/^\$\{\{\s*|\s*\}\}$/g, ''), {
+            github: { ref },
+            startsWith: (value, prefix) => value.startsWith(prefix),
+        })
+    assert.equal(cancels('refs/heads/main'), false)
+    assert.equal(cancels('refs/tags/v0.6.0'), false)
+    assert.equal(cancels('refs/heads/ci/slim'), true)
+    assert.equal(cancels('refs/pull/123/merge'), true)
+    // Deploy Pages names its groups pages-*; a called workflow with the caller's group would wait on it.
+    assert.match(check, /group: check-\$\{\{ github.ref \}\}/)
+    assert.match(
+        pages,
+        /group: \$\{\{ startsWith\(github.ref, 'refs\/tags\/v'\) && 'pages-deploy' \|\| format\('pages-\{0\}', github.ref\) \}\}/,
+    )
+})
+
+test('the browser jobs run beside the check job, and storage runs its core in shards', () => {
+    for (const name of ['compatibility', 'compatibility-storage'])
+        assert.doesNotMatch(section(check, name), /needs:/)
+    const storage = section(check, 'compatibility-storage')
+    assert.match(storage, /NSE_STORAGE_SET: core/)
+    assert.match(storage, /fail-fast: false/)
+    for (const shard of [
+        'firefox\n {22}shard: 1\/2',
+        'firefox\n {22}shard: 2\/2',
+        'webkit\n {22}shard: 1\/1',
+    ])
+        assert.match(storage, new RegExp(`engine: ${shard}`))
+    assert.match(
+        storage,
+        /--project=\$\{\{ matrix.engine \}\}-storage --project=\$\{\{ matrix.engine \}\}-production-storage --shard=\$\{\{ matrix.shard \}\}/,
+    )
+    for (const [name, minutes] of [
+        ['check', 15],
+        ['compatibility', 20],
+        ['compatibility-storage', 25],
+    ])
+        assert.match(section(check, name), new RegExp(`timeout-minutes: ${minutes}\n`))
+})
+
+test('every browser job installs through the stall guard', () => {
+    for (const [text, name] of [
+        [check, 'compatibility'],
+        [check, 'compatibility-storage'],
+        [full, 'storage'],
+    ])
+        assert.match(section(text, name), /run: scripts\/ci\/install-browsers.sh /)
+    const script = readFileSync(
+        new URL('../../scripts/ci/install-browsers.sh', import.meta.url),
+        'utf8',
+    )
+    assert.match(script, /for attempt in 1 2 3/)
+    assert.match(script, /timeout --kill-after=10s "\$limit"/)
+})
+
+test('browsers-full runs the whole storage set on a schedule, by hand and on ci/ branches', () => {
+    assert.match(full, /workflow_dispatch:/)
+    assert.match(full, /schedule:\n\s+- cron: '/)
+    assert.match(full, /push:\n\s+branches: \['ci\/\*\*'\]/)
+    assert.doesNotMatch(full, /NSE_STORAGE_SET/)
+    assert.match(section(full, 'storage'), /timeout-minutes: 25\n/)
+})
+
+test('a release needs a passed browsers-full run and says how to start one', () => {
+    const tag = readFileSync(new URL('../../scripts/release/tag.mjs', import.meta.url), 'utf8')
+    assert.match(tag, /\['check.yml', 'deploy-pages.yml', 'browsers-full.yml'\]/)
+    assert.match(tag, /gh workflow run \$\{workflow\} --ref main/)
+})
