@@ -38,9 +38,10 @@ jobs:
             - run: npm run check-lint
             - run: npm run check-format
             - run: npm test
-            # One call, so the golden pair's completeFrom claim is checked against write-1.
+            # One call, so the completeFrom claims between files are checked: the golden pair's against
+            # write-1, and the v1 fixtures' against each other.
             - name: Check the .nxsp fixtures with the independent checker
-              run: uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/*.nxsp tests/zip/plan-conformance-v1/*/expected.nxsp
+              run: uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/*.nxsp tests/zip/plan-conformance-v1/*/expected.nxsp tests/native/fixtures/nxsp-v1/*.nxsp tests/fixtures/web-storage-v1/*.nxsp
             - run: npm run test:release
             - run: npm run check:builtin-assets
             - run: npm run build:native
@@ -49,8 +50,9 @@ jobs:
     compatibility:
         if: ${{ !inputs.skip_browser_checks }}
         runs-on: ubuntu-latest
-        # About 11 min of tests, 7 of them in firefox-chrome, with one worker (a 4-vCPU runner's).
-        timeout-minutes: 20
+        # About 14 min of tests with one worker (a 4-vCPU runner's), and the browsers' system packages can
+        # take 6 min to install on a slow runner.
+        timeout-minutes: 30
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -72,6 +74,35 @@ jobs:
               with:
                   name: compatibility-failures
                   path: test-results-compatibility/
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    # The v1 fixtures read by the running editor in Chromium, on every push (the pull request run of
+    # test:browser is the only other Chromium run): the write-back of each history file, the saving
+    # marker, and the web storage reads (docs/format-versioning.md section 8).
+    formats:
+        if: ${{ !inputs.skip_browser_checks }}
+        needs: check
+        runs-on: ubuntu-latest
+        # About 2 min of tests with two workers on a fast desktop.
+        timeout-minutes: 25
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - run: npm ci
+            - run: npx playwright install --with-deps chromium
+            - run: npx playwright test tests/browser/formats --project=chromium --workers=2
+            - name: Upload browser failure details
+              if: failure()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: formats-failures
+                  path: test-results/
                   if-no-files-found: ignore
                   retention-days: 7
 

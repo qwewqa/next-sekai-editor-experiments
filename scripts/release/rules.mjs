@@ -102,6 +102,50 @@ export function checkPatchFormats(version, newest, before, after) {
     )
 }
 
+/**
+ * The v1 fixtures (docs/format-versioning.md section 8) are the output of the code that ships as
+ * v0.6.0, so until that tag exists a change to anything a v1 file or row holds means they are
+ * regenerated first. The paths those changes are in:
+ */
+export const fixturePaths = [
+    'src/local',
+    'src/zip',
+    'src/history/operations',
+    'src/levelData',
+    'src/chart',
+    'src/editor/save',
+    'src/editor/commands/exportLevel/memory.ts',
+    'src/storage.ts',
+    'tools/fields-v1.json',
+]
+
+/** The file that holds the commit the fixtures are confirmed at. */
+export const fixturePins = 'tests/local/fixturesV1Pins.ts'
+
+/** The version whose tag freezes the fixtures. */
+export const fixtureShip = '0.6.0'
+
+/** The commit named by `FIXTURES_CONFIRMED_AT` in the pins file's text. */
+export function readFixturesConfirmedAt(text) {
+    const match = /^export const FIXTURES_CONFIRMED_AT = '([0-9a-f]{7,40})'/m.exec(text ?? '')
+    if (!match) throw new ReleaseError(`Cannot find FIXTURES_CONFIRMED_AT in ${fixturePins}.`)
+    return match[1]
+}
+
+/**
+ * Stops the ship tag when a format path changed since the commit the fixtures are confirmed at
+ * (the build that wrote them, or a later one a maintainer checked changed nothing they hold).
+ * `changed` is the list of changed paths from `git diff --name-only <confirmedAt> <commit>`.
+ */
+export function checkFixtures(version, confirmedAt, changed) {
+    if (version !== fixtureShip || !changed.length) return
+    throw new ReleaseError(
+        `The v1 fixtures are confirmed at ${confirmedAt}, and these paths changed since: ${changed.join(', ')}. ` +
+            'Regenerate them (npm run fixtures:v1, format-versioning.md section 8). If the change leaves ' +
+            `every file and row they hold as it was, set FIXTURES_CONFIRMED_AT in ${fixturePins} to the commit you checked.`,
+    )
+}
+
 /** The local checks for a branch that CI does not check before the tag (CONTRIBUTING, Releasing). */
 export const localChecks = [
     'npm run check-type',
