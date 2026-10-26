@@ -26,6 +26,11 @@
 --             time      "event.property" for the millisecond timings: p50, p90 and p99, overall and by version and
 --                       device class ('' for all)
 --             final     marks a month that is not totalled again
+-- nse_weekly holds the headline counts by ISO week (UTC, Monday first): visits and sessions (name "all") and events by
+-- event name, with the same allowlist and the same 10-session rule, made again every night until the week is final.
+-- It has no breakdowns, no sums and no timings, only counts, so nothing in it can be subtracted from a monthly sum or
+-- timing to recover a left-out value. It is a table of its own because its key is a week, not a month, and so the
+-- monthly rows and queries stay as they are.
 -- Umami v3.4.1 tables with visitor data: event_data, website_event, session, session_data, session_link,
 -- session_replay, session_replay_saved, heatmap_event, revenue. There are no foreign keys (Prisma relationMode
 -- "prisma"); the delete order is the one Umami's code uses.
@@ -46,6 +51,16 @@ CREATE TABLE IF NOT EXISTS nse_monthly (
     p90 numeric,
     p99 numeric,
     PRIMARY KEY (month, website_id, metric, name, value, version, device)
+);
+
+CREATE TABLE IF NOT EXISTS nse_weekly (
+    week date NOT NULL,
+    website_id uuid NOT NULL,
+    metric text NOT NULL,
+    name text NOT NULL,
+    n bigint NOT NULL,
+    contributors bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (week, website_id, metric, name)
 );
 
 CREATE TEMP TABLE nse_cutoff ON COMMIT DROP AS SELECT now() - interval '13 months' AS earliest;
@@ -235,6 +250,61 @@ FROM nse_tkept t
 CROSS JOIN LATERAL (VALUES ('', ''), (t.ver, ''), ('', t.dev), (t.ver, t.dev)) g(ver, dev)
 GROUP BY t.month, t.website_id, t.prop, g.ver, g.dev
 HAVING count(DISTINCT t.session_id) >= 10;
+
+-- The weekly counts. A complete week is one before this week. Its rows are made again from the raw records until a
+-- record of it is deleted, as the months are.
+CREATE TEMP TABLE nse_wtodo ON COMMIT DROP AS
+SELECT DISTINCT e.website_id, date_trunc('week', e.created_at)::date AS week
+FROM website_event e
+WHERE e.created_at < date_trunc('week', now())
+  AND NOT EXISTS (
+      SELECT 1 FROM nse_weekly w
+      WHERE w.metric = 'final' AND w.website_id = e.website_id AND w.week = date_trunc('week', e.created_at)::date
+  );
+
+DELETE FROM nse_weekly w USING nse_wtodo t WHERE w.website_id = t.website_id AND w.week = t.week;
+
+CREATE TEMP TABLE nse_wev ON COMMIT DROP AS
+SELECT e.website_id, e.session_id, e.event_type,
+       CASE WHEN e.event_type = 1 THEN 'pageview' ELSE e.event_name END AS name,
+       t.week
+FROM website_event e
+JOIN nse_wtodo t ON t.website_id = e.website_id AND t.week = date_trunc('week', e.created_at)::date
+WHERE e.event_type = 1
+   OR (e.event_type = 2 AND e.event_name IN (SELECT event FROM nse_allowed WHERE event NOT LIKE '#%'));
+
+INSERT INTO nse_weekly (week, website_id, metric, name, n, contributors)
+SELECT week, website_id, 'visits', 'all', count(*), count(DISTINCT session_id)
+FROM nse_wev
+WHERE event_type = 1
+GROUP BY week, website_id
+HAVING count(DISTINCT session_id) >= 10;
+
+INSERT INTO nse_weekly (week, website_id, metric, name, n, contributors)
+SELECT week, website_id, 'sessions', 'all', count(DISTINCT session_id), count(DISTINCT session_id)
+FROM nse_wev
+GROUP BY week, website_id
+HAVING count(DISTINCT session_id) >= 10;
+
+INSERT INTO nse_weekly (week, website_id, metric, name, n, contributors)
+SELECT ev.week, ev.website_id, 'events', CASE WHEN en.ns >= 10 THEN ev.name ELSE 'other' END,
+       count(*), count(DISTINCT ev.session_id)
+FROM nse_wev ev
+JOIN (
+    SELECT week, website_id, name, count(DISTINCT session_id) AS ns FROM nse_wev GROUP BY 1, 2, 3
+) en ON en.week = ev.week AND en.website_id = ev.website_id AND en.name = ev.name
+GROUP BY 1, 2, 4
+HAVING count(DISTINCT ev.session_id) >= 10;
+
+INSERT INTO nse_weekly (week, website_id, metric, name, n)
+SELECT t.week, t.website_id, 'final', '', 0
+FROM nse_wtodo t
+WHERE EXISTS (
+    SELECT 1 FROM website_event e
+    WHERE e.website_id = t.website_id
+      AND e.created_at >= t.week::timestamptz
+      AND e.created_at < least((t.week + interval '7 days')::timestamptz, (SELECT earliest FROM nse_cutoff))
+);
 
 -- A month with a record that goes now is final: it is not totalled again. A month that has only records after the
 -- cutoff is not, so a report that arrives late is still counted.

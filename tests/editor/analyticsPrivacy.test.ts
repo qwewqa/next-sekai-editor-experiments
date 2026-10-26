@@ -1,141 +1,418 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { catalogue } from '../../src/analytics/catalogue'
+import {
+    bucket,
+    catalogue,
+    COUNT_CAP,
+    MS_CAP,
+    scales,
+    SECONDS_CAP,
+    sources,
+} from '../../src/analytics/catalogue'
+import { shouldSend, type Inputs } from '../../src/analytics/config'
+import { editKey, startKind } from '../../src/analytics/rules'
+import * as tally from '../../src/analytics/tally'
+import { endOpen, startOpen } from '../../src/editor/commands/open/report'
+import type { HistoryAction } from '../../src/history/actions'
+import { STACK_CAP } from '../../src/history/cap'
 
-// Every value the usage statistics send has a line on the privacy page that names it. Each
-// property maps to a category, and each category to words the page must contain, so a property
-// added without its line on the page fails here.
+// What the usage statistics send is explained in two places. docs/usage-statistics.md lists every
+// field that is sent, so a field added to the catalogue without its row fails here. The privacy
+// page keeps the disclosures that do not change with a field. The catalogue allows more than is
+// sent today; the tests below tie the difference to the code that produces each value.
 
-const page = readFileSync(new URL('../../privacy/index.html', import.meta.url), 'utf8')
+const doc = readFileSync(new URL('../../docs/usage-statistics.md', import.meta.url), 'utf8')
+const html = readFileSync(new URL('../../privacy/index.html', import.meta.url), 'utf8')
+const page = html
+    .replace(/<script\b[\s\S]*?<\/script>/g, '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
 
-/** Each category, and the words of its line on the page. */
-const categories = {
-    use: 'how often each tool, command and kind of edit is used, and how it was started',
-    settings: 'the main settings',
-    files: 'the kind and approximate size of files you open, save, export and check',
-    saved: 'what a save included',
-    music: 'the approximate length of music files',
-    outcome: 'and whether that worked',
-    chart: 'the approximate size of the chart, such as “250 to 319 notes”, whether it has music',
-    undo: 'how many steps the Undo window holds',
-    sessions: 'how many sessions Recent Sessions lists',
-    start: 'how a visit started',
-    notices: 'how many notices and errors appeared, without their messages',
-    times: 'how long startup takes, how long it takes to open, save, export and check files and to load music',
-    prepared: 'how long a file takes to prepare for saving or export',
-    check: 'whether Check File and History found problems, and whether it checked a file as well as History',
-    loaded: 'how the page was loaded, such as by a reload or from the browser’s cache, whether it was hidden while it started, and whether the browser had discarded it earlier',
-    peek: 'how long the chart takes to show at a Timeline step',
-    slow: 'how often the editor is slow to respond',
-    lasted: 'how long the editor was visible and how long playback ran while it was, in seconds, up to one day',
-    version:
-        'the editor’s version, whether it was updated since your last visit, and whether this browser has used it before',
-    system: 'your operating system, browser and its language',
-    screen: 'your screen size and pixel density, an approximate window size and whether it is taller than wide',
-    touch: 'whether the browser reports that your main way of pointing is imprecise, such as a finger on a touch screen',
-    cores: 'the number of processor cores and the approximate memory the browser reports',
-    device: 'also carry your browser, whether your main way of pointing is imprecise, the window size, pixel density, processor cores and memory',
-    preview: 'whether the preview could use graphics and draw in parallel',
-    installed: 'whether the editor is running in a window of its own',
-    storage:
-        'whether this browser’s storage is available, its approximate capacity and how full it is, and whether the browser has granted protection from automatic clearing',
-    cleanup: 'whether automatic cleanup ran, freed space or was unable to finish',
-    referrer: 'the site you came from',
-    time: 'Each report includes a timestamp',
-    supports: 'which performance measurements the browser supports',
-    unsupported:
-        'sends the browser family, such as Firefox or Safari, and a report that the browser is unsupported',
-}
-type Category = keyof typeof categories
-
-/** What need not be on the page: values that are the same in every request. */
-const unlisted: Record<string, string> = {
-    'pageview.website': 'our id for the site; the same in every request',
-    'pageview.url': 'always /',
-    'pageview.title': 'always empty',
-    'pageview.hostname': 'which of our two sites; the same in every request',
-    'visit.site': 'which of our two sites, as the hostname',
+/** The body of each heading of the reference, up to the next heading. */
+const sections = new Map<string, string>()
+const headings = [...doc.matchAll(/^#{2,4} (.+)$/gm)]
+headings.forEach((heading, i) => {
+    const title = (heading[1] ?? '').replaceAll('`', '')
+    const end = headings[i + 1]?.index ?? doc.length
+    sections.set(title, doc.slice((heading.index ?? 0) + heading[0].length, end))
+})
+const section = (title: string) => {
+    const body = sections.get(title)
+    assert.ok(body !== undefined, `docs/usage-statistics.md has no section “${title}”`)
+    return body
 }
 
-/** The category of each property, by `<event>.<key>`; the first match wins. */
-const rules: [RegExp, Category][] = [
-    [/^pageview\.language$/, 'settings'],
-    [/^pageview\.screen$/, 'screen'],
-    [/^pageview\.referrer$/, 'referrer'],
-    [/^pageview\.timestamp$/, 'time'],
-    [/^visit\.(?:version|returning|updated)$/, 'version'],
-    [/^visit\.(?:os|engine|browserLanguage)$/, 'system'],
-    [/^unsupported\./, 'unsupported'],
-    [/^visit\.(?:viewport|viewportPortrait|dpr)$/, 'screen'],
-    [/^visit\.(?:cores|deviceMemory)$/, 'cores'],
-    [/^visit\.touch$/, 'touch'],
-    [/^visit\.standalone$/, 'installed'],
-    [/^settings\./, 'settings'],
-    [/^startup\.ready$/, 'times'],
-    [/^startup\.(?:navigation|documentDelivery|hidden|wasDiscarded)$/, 'loaded'],
-    [/^startup\.(?:cores|deviceMemory|engine|touch|dpr|viewport)$/, 'device'],
-    [/^startup\./, 'start'],
-    [/^storage\.sessions$/, 'sessions'],
-    [/^storage\.cleanup$/, 'cleanup'],
-    [/^storage\./, 'storage'],
-    [/^chart\.historySteps$/, 'undo'],
-    [/^chart\./, 'chart'],
-    [/^preview\.graphics$/, 'preview'],
-    [/^preview\./, 'preview'],
-    [/^(?:open|save|export|bgm)\.took$/, 'times'],
-    [/^(?:save|export)\.buildMs$/, 'prepared'],
-    [
-        /^(?:open|save|export|check|bgm|perf|peek)\.(?:cores|deviceMemory|engine|touch|dpr|viewport)$/,
-        'device',
-    ],
-    [/^bgm\.length$/, 'music'],
-    [/^save\.(?:history|bgm)$/, 'saved'],
-    [/^(?:open|save|export|bgm)\.(?:outcome|reason|step)$/, 'outcome'],
-    [/^(?:open|save|export|bgm)\./, 'files'],
-    [/^check\.took$/, 'times'],
-    [/^check\.size$/, 'files'],
-    [/^check\.(?:outcome|scope)$/, 'check'],
-    [/^(?:usage|edits|features)\./, 'use'],
-    [/^(?:notices|errors)\./, 'notices'],
-    [/^peek\.peek\./, 'peek'],
-    [/^perf\.(?:playSeconds|visibleTime)$/, 'lasted'],
-    [/^perf\.(?:loafSupported|eventTimingSupported)$/, 'supports'],
-    [/^perf\.previewHost$/, 'preview'],
-    [/^perf\.previewRenderScale$/, 'settings'],
-    [/^perf\./, 'slow'],
-]
+const tokens = (cell: string) => [...cell.matchAll(/`([^`]+)`/g)].map(([, token = '']) => token)
 
-const properties = [
-    ...['website', 'url', 'title', 'hostname', 'language', 'screen', 'referrer', 'timestamp'].map(
-        (key) => `pageview.${key}`,
-    ),
-    'usage.<command>.<source>',
-    ...Object.entries(catalogue).flatMap(([name, props]) =>
-        Object.keys(props).map((key) => `${name}.${key}`),
-    ),
-]
+type Row = { cells: string[]; names: string[] }
+/** The table rows of a section: the cells, and the names in backticks in the first cell. */
+const rows = (body: string): Row[] =>
+    body
+        .split('\n')
+        .filter((line) => line.startsWith('|') && !/^\|[\s|-]+\|$/.test(line))
+        .map((line) =>
+            line
+                .slice(1, -1)
+                .split('|')
+                .map((cell) => cell.trim()),
+        )
+        .filter((cells) => cells[0] !== 'Field' && cells[0] !== 'Range')
+        .map((cells) => ({ cells, names: tokens(cells[0] ?? '') }))
 
-test('every property sent has its line on the privacy page', () => {
-    const used = new Set<Category>()
-    for (const property of properties) {
-        if (property in unlisted) continue
-        const category = rules.find(([pattern]) => pattern.test(property))?.[1]
-        assert.ok(category, `${property} has no category`)
-        used.add(category)
+const byName = (list: Row[]) =>
+    new Map(list.flatMap((row) => row.names.map((name): [string, Row] => [name, row])))
+
+/** The field families the reference names once, and the fields each stands for. */
+const frameStates = ['playing', 'busy', 'other']
+const families: Record<string, string[]> = {
+    'frames.<state>.<length>': frameStates.flatMap((state) =>
+        scales.frame.map((length) => `frames.${state}.${length}`),
+    ),
+    'slowEvents.<length>': scales.slowEvent.map((length) => `slowEvents.${length}`),
+    'peek.<time>': scales.peek.map((time) => `peek.${time}`),
+}
+const familyOf = (key: string) =>
+    Object.entries(families).find(([, members]) => members.includes(key))?.[0]
+
+/** The documented name of a catalogue key: itself, or the family it belongs to. */
+const documentedAs = (key: string) => familyOf(key) ?? key
+
+const kindOf = (prop: unknown) =>
+    typeof prop === 'string'
+        ? prop
+        : typeof prop === 'object' && prop !== null
+          ? (['scale', 'oneOf', 'whole', 'pattern'].find((kind) => kind in prop) ?? '')
+          : ''
+
+/** What the catalogue allows and nothing sends today. The reference leaves it out. */
+const unused: Record<string, readonly string[]> = {
+    'startup.start': ['launchFile', 'safeMode'],
+    'open.via': ['drop', 'launch'],
+    'open.reason': ['conflict', 'not-found', 'denied', 'not-local', 'no-space', 'read-only', 'io'],
+    'export.format': ['other'],
+    'export.outcome': ['cancelled'],
+}
+/** The `edits` keys that the client never counts: see `editKey`. */
+const unusedEdits = ['origin', 'continue', 'recovery', 'externalChange', 'file.save', 'file.export']
+
+const formatFits = (prop: unknown, row: Row, unusedValues: readonly string[] = []) => {
+    const cells = row.cells
+    const format = cells[2] ?? ''
+    if (/^As above$/i.test(format)) return true
+    switch (kindOf(prop)) {
+        case 'boolean':
+            return /yes or no/i.test(format)
+        case 'count':
+            return /count/i.test(format)
+        case 'ms':
+            return /milliseconds/i.test(format)
+        case 'seconds':
+            return /seconds/i.test(format)
+        case 'scale':
+            return /range|exact/i.test(format)
+        case 'whole':
+            return /exact/i.test(format)
+        case 'oneOf': {
+            const sent = (prop as { oneOf: readonly string[] }).oneOf.filter(
+                (value) => !unusedValues.includes(value),
+            )
+            const listed = row.names.length === 1 ? tokens(format) : sent
+            return (
+                sent.every((value) => cells.join(' ').includes(`\`${value}\``)) &&
+                listed.every((value) => sent.includes(value))
+            )
+        }
+        default:
+            return format.length > 0
     }
-    for (const [category, words] of Object.entries(categories)) {
-        assert.ok(used.has(category as Category), `${category} names no property`)
-        assert.ok(page.includes(words), `the privacy page lacks “${words}” (${category})`)
+}
+
+const measuredKeys = ['cores', 'deviceMemory', 'engine', 'touch', 'dpr', 'viewport'] as const
+
+test('the reference covers the catalogue’s fields and leaves out what nothing sends', () => {
+    const events = [...Object.keys(catalogue), 'usage']
+    for (const event of events) {
+        const eventRows = rows(section(event))
+        const named = byName(eventRows)
+        for (const row of eventRows)
+            assert.ok(
+                (row.cells[1] ?? '').length > 0,
+                `${event}: ${row.names.join(', ')} has no meaning`,
+            )
+
+        if (event === 'usage') {
+            assert.deepEqual([...named.keys()], ['<command>.<source>'])
+            for (const source of sources)
+                assert.ok(section(event).includes(`\`${source}\``), `usage: the source ${source}`)
+            continue
+        }
+
+        const props = catalogue[event as keyof typeof catalogue] as Record<string, unknown>
+        const documented = new Set<string>()
+        for (const [key, prop] of Object.entries(props)) {
+            const name = documentedAs(key)
+            if (event === 'edits' && unusedEdits.includes(key)) {
+                assert.ok(!named.has(name), `edits.${key} is not counted, so it is not listed`)
+                continue
+            }
+            documented.add(name)
+            const row = named.get(name)
+            assert.ok(row, `${event}.${key} is not in docs/usage-statistics.md (${name})`)
+            // The found.* rows list a yes-or-no each and have no format column.
+            if (key.startsWith('found.')) continue
+            assert.ok(
+                formatFits(prop, row, unused[`${event}.${key}`]),
+                `${event}.${key}: its format does not fit`,
+            )
+        }
+        for (const name of named.keys())
+            assert.ok(
+                documented.has(name),
+                `docs/usage-statistics.md lists ${event} ${name}, which the catalogue lacks`,
+            )
     }
 })
 
-test('the privacy page says how times and chart sizes are sent, and what ranges can match', () => {
+test('the families the reference names stand for fields the catalogue has', () => {
+    for (const [family, members] of Object.entries(families)) {
+        const event = family.startsWith('peek.') ? 'peek' : 'perf'
+        const keys = Object.keys(catalogue[event])
+        for (const member of members) assert.ok(keys.includes(member), member)
+        assert.ok(section(event).includes(`\`${family}\``), family)
+    }
+    // Every other frame or slow-response field is a counter that is a member of a family.
+    for (const key of Object.keys(catalogue.perf))
+        if (/^(?:frames|slowEvents)\./.test(key) && key !== 'frames.unclassified')
+            assert.ok(familyOf(key), key)
+    for (const state of frameStates)
+        assert.ok(section('perf').includes(`\`${state}\``), `perf: the state ${state}`)
+})
+
+test('the device details are explained once, with the values the catalogue allows', () => {
+    const body = section('Device details on measured events')
+    const named = byName(rows(body))
+    for (const key of measuredKeys) {
+        const row = named.get(key)
+        assert.ok(row, key)
+        assert.ok((row.cells[1] ?? '').length > 0, key)
+        assert.ok(formatFits(catalogue.perf[key], row), `${key}: its format does not fit`)
+    }
+    // Each event that repeats them lists them in a row of its own.
+    for (const [event, props] of Object.entries(catalogue))
+        if (measuredKeys.every((key) => key in props) && event !== 'visit')
+            for (const key of measuredKeys)
+                assert.ok(
+                    rows(section(event)).some((row) => row.names.includes(key)),
+                    `${event}.${key}`,
+                )
+})
+
+test('the reference states the exact values, the caps and the ranges', () => {
+    const exact = section('How exact the values are')
     for (const words of [
-        'How long an action takes is sent in milliseconds, up to ten minutes.',
-        'Chart object counts below 10 are sent exactly. Larger counts, music lengths and file sizes are sent as ranges. Together these figures can sometimes match a published chart.',
+        `from 0 to ${COUNT_CAP}`,
+        `from 0 to ${MS_CAP}`,
+        `from 0 to ${SECONDS_CAP}`,
+        `up to ${STACK_CAP}.`,
+        `up to ${COUNT_CAP}.`,
+        'Processor cores** are exact from 1 to 32',
+        'Pixel density** is exact for 1, 2 and 3',
+        '**Screen size** is exact',
+        '**Chart counts** are exact from 0 to 9',
+        '**Music lengths and file sizes** are always ranges',
+        '**A missing or invalid measurement** is left out',
     ])
-        assert.ok(page.includes(words), words)
+        assert.ok(exact.includes(words), words)
+
+    // The exact values the sentences name are the scales’ own.
+    assert.deepEqual(scales.counts.slice(0, 10), ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
+    assert.deepEqual(
+        scales.cores.slice(0, 32),
+        Array.from({ length: 32 }, (_, i) => String(i + 1)),
+    )
+    assert.deepEqual(
+        scales.dpr.filter((label) => /^\d$/.test(label)),
+        ['1', '2', '3'],
+    )
+
+    const ranges = rows(section('The ranges'))
+    const all = ranges.map((row) => row.cells.join(' ')).join('\n')
+    // Each scale is in a row that names the fields it is used for, with all of its labels. The
+    // chart counts and the cores describe their labels in words, so a few labels stand for them.
+    const written: Record<string, number> = { counts: 0, cores: 0 }
+    for (const [event, props] of Object.entries(catalogue))
+        for (const [key, prop] of Object.entries(props as Record<string, unknown>)) {
+            if (kindOf(prop) !== 'scale') continue
+            const name = documentedAs(key)
+            const scale = (prop as { scale: keyof typeof scales }).scale
+            const row = ranges.find((candidate) => candidate.cells[1]?.includes(`\`${name}\``))
+            assert.ok(row, `${event}.${key}: no row of The ranges names ${name}`)
+            if (scale in written) continue
+            for (const label of scales[scale])
+                assert.ok(row.cells[2]?.includes(`\`${label}\``), `${scale}: ${label}`)
+        }
+    // The boundary rule names the labels where the code differs from the usual lower-inclusive range.
+    const rule = section('The ranges').split('\n\n')[1] ?? ''
+    for (const [scale, value, label] of [
+        ['usageShare', 80, '70-80'],
+        ['usageShare', 80.5, '80-90'],
+        ['noteSpeed', 10.1, '10-10.5'],
+        ['noteSpeed', 12, '11.5-12'],
+        ['counts', 15, '13-15'],
+        ['cores', 48, '33-48'],
+    ] as const) {
+        assert.equal(bucket(scale, value), label, `${scale} ${value}`)
+        if (scale !== 'counts' && scale !== 'cores')
+            assert.ok(rule.includes(label), `the range rule names ${label}`)
+    }
+    for (const label of ['80000-99999', '100000+', '250-319', '13-15', '80-99'])
+        assert.ok(scales.counts.includes(label) && all.includes(`\`${label}\``), label)
+    const decade = scales.counts.slice(10, 20).map((label) => label.split('-')[0])
+    assert.deepEqual(decade, ['10', '13', '16', '20', '25', '32', '40', '50', '63', '80'])
+    assert.ok(all.includes(`start at ${decade.slice(0, -1).join(', ')} and ${decade.at(-1)}`))
+    for (const label of scales.cores.slice(32))
+        assert.ok(all.includes(`\`${label}\``), `cores: ${label}`)
+})
+
+/** What the page must keep disclosing, by topic. Each pattern names a value or a fact, not a sentence. */
+const disclosures: Record<string, RegExp[]> = {
+    'local data': [/stay on your device/, /without accounts or cookies/, /crash reports/],
+    'first interaction': [/before your first interaction/],
+    'the switch': [/Settings › About › Send Usage Statistics/, /stop sending immediately/],
+    'defaults and signals': [/on by default/, /Do Not Track/, /Global Privacy Control/],
+    'this browser only': [/applies to this browser only/, /Clearing the site’s data resets it/],
+    precision: [
+        /limit the precision/,
+        /chart sizes, music lengths and file sizes/,
+        /match a published chart/,
+    ],
+    'what the server receives': [/receives your IP address and user agent/, /device type/],
+    'the daily code': [/daily visitor code/, /changes each day/, /sets no cookies/],
+    'what is stored': [/only country, browser, operating system and device type are stored/],
+    retention: [/13 months/, /indefinitely/, /no visitor codes/, /about five weeks/, /two weeks/],
+    'small groups': [/Small groups are combined/],
+    'where it goes': [
+        /Amazon Web Services/,
+        /United States/,
+        /only provider/,
+        /Standard Contractual Clauses/,
+    ],
+    'the host': [/GitHub Pages hosts this site/, /GitHub may log requests/],
+    'email and files': [/nse@qwewqa\.dev/, /only for that and delete it/, /out of public issues/],
+    'the older browser': [/too old to open the editor/, /browser family/, /unsupported/],
+    'the controller and rights': [
+        /is responsible for the use of personal data/,
+        /access, correct or delete/,
+        /data protection authority/,
+    ],
+}
+
+test('the privacy page keeps its disclosures', () => {
+    for (const [topic, patterns] of Object.entries(disclosures))
+        for (const pattern of patterns)
+            assert.match(page, pattern, `the privacy page no longer covers ${topic}`)
+})
+
+test('the privacy page lists the categories, and links to the complete list', () => {
+    for (const category of [
+        'Tools and Settings.',
+        'Files and Charts.',
+        'Performance.',
+        'Browser and Device.',
+        'Storage.',
+        'Referring Sites.',
+    ])
+        assert.ok(page.includes(category), category)
+
+    const start = html.indexOf('aria-labelledby="usage"')
+    const usage = html.slice(start, html.indexOf('aria-labelledby="hosting"'))
+    assert.ok(start > 0 && usage.length > 0)
+    const link =
+        /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*complete list of what is sent\s*<\/a\s*>/
+    assert.match(usage, link)
+    assert.doesNotMatch(html, /docs\/analytics\.md/)
+})
+
+const action = (kind: string, operation?: unknown) =>
+    ({ kind, step: { operation } }) as unknown as HistoryAction
+
+test('the reference leaves out what the code that produces each value never sends', () => {
+    // startup.start: every combination a visit can start with.
+    const starts = new Set<string>()
+    for (const reloaded of [false, true])
+        for (const kinds of [
+            [],
+            ['continued'],
+            ['journalRecovered'],
+            ['unsavedRecovered'],
+            ['journalKept'],
+            ['continued', 'journalKept'],
+        ])
+            starts.add(startKind(false, new Set(kinds), reloaded))
+    assert.deepEqual(
+        [...starts].sort(),
+        catalogue.startup.start.oneOf.filter((v) => !unused['startup.start']?.includes(v)).sort(),
+    )
+    // A start in safe mode is never sent.
+    const inputs: Inputs = {
+        target: { origin: 'https://stats.example', website: 'x' },
+        fromTestKey: false,
+        choice: true,
+        signal: false,
+        webdriver: false,
+        hostname: 'nse.qwewqa.dev',
+        site: 'production',
+        safeMode: false,
+        saveData: false,
+    }
+    assert.ok(shouldSend(inputs))
+    assert.ok(!shouldSend({ ...inputs, safeMode: true }))
+
+    // open.via and open.outcome: what endOpen records, which takes only two reasons.
+    tally.enable()
+    try {
+        const sent: Record<string, Set<unknown>> = {
+            via: new Set(),
+            outcome: new Set(),
+            reason: new Set(),
+        }
+        for (const [outcome, reason] of [
+            ['done'],
+            ['cancelled'],
+            ['failed'],
+            ['refused', 'unsupported'],
+            ['refused', 'invalid'],
+        ] as const) {
+            startOpen({ size: 1 } as File)
+            endOpen(outcome, reason)
+        }
+        for (const { data } of tally.collect().recorded)
+            for (const key of Object.keys(sent)) if (key in data) sent[key]?.add(data[key])
+        assert.deepEqual([...(sent.via ?? [])], ['picker'])
+        assert.deepEqual([...(sent.outcome ?? [])].sort(), [...catalogue.open.outcome.oneOf].sort())
+        assert.deepEqual([...(sent.reason ?? [])].sort(), ['invalid', 'unsupported'])
+    } finally {
+        tally.disable()
+    }
+})
+
+test('an export records only its write, as a level file, done or failed', () => {
+    const flow = readFileSync(
+        new URL('../../src/editor/commands/exportLevel/flow.ts', import.meta.url),
+        'utf8',
+    )
+    const record = /record\(\s*'export',\s*\{([\s\S]*?)\},\s*writeStarted/.exec(flow)?.[1] ?? ''
+    assert.match(record, /format: 'levelData'/)
+    assert.match(record, /outcome: error \? 'failed' : 'done'/)
+})
+
+test('edits count Undo, Redo, edits and restores, and nothing else', () => {
+    assert.equal(editKey(action('undo')), 'undo')
+    assert.equal(editKey(action('redo')), 'redo')
+    assert.equal(editKey(action('edit', { id: 'nse.note.add' })), 'note.add')
+    assert.equal(editKey(action('restore', { id: 'nse.restore' })), 'restore')
+    for (const kind of ['reset', 'save', 'export'])
+        assert.equal(editKey(action(kind, { id: 'nse.origin' })), undefined, kind)
+    for (const key of unusedEdits) assert.ok(key in catalogue.edits, key)
 })

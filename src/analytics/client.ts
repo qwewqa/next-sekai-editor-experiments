@@ -5,7 +5,6 @@ import { isPanelVisible, workspaceSize } from '../editor/workspace'
 import { onHistoryAction, type HistoryAction } from '../history/actions'
 import { STACK_CAP } from '../history/cap'
 import { liveState, stackLength } from '../history/stack'
-import { languageTag } from '../i18n/plural'
 import { launch } from '../launch'
 import { detection, isStandalone } from '../platform/detect'
 import { isPlaying } from '../player'
@@ -26,6 +25,7 @@ import {
 import type { AnalyticsTarget } from './config'
 import { device } from './device'
 import { startField } from './field'
+import { editKey, requestFields, requestItem, startKind } from './rules'
 import { createSender, SEND_INTERVAL, type Item, type SendMode } from './sender'
 import { settingsSnapshot } from './snapshot'
 import * as status from './status'
@@ -65,31 +65,18 @@ const visit = (): EventData<'visit'> => {
     }
 }
 
-const operationId = (operation: unknown) =>
-    typeof operation === 'object' &&
-    operation !== null &&
-    'id' in operation &&
-    typeof operation.id === 'string'
-        ? operation.id.replace(/^nse\./, '')
-        : undefined
-
 const countEdit = (action: HistoryAction) => {
-    if (action.kind === 'undo' || action.kind === 'redo') tally.bump(`edits.${action.kind}`)
-    else if (action.kind === 'edit' || action.kind === 'restore') {
-        const id = operationId(action.step.operation)
-        if (id) tally.bump(`edits.${id}`)
-    }
+    const key = editKey(action)
+    if (key) tally.bump(`edits.${key}`)
 }
 
-/** How the visit began, from the load events and the tab’s claim; the first that fits. */
-const startKind = (): NonNullable<EventData<'startup'>['start']> => {
-    if (status.isSafeMode()) return 'safeMode'
-    const kinds = new Set<string>(status.loadEvents.value.map((event) => event.kind))
-    if (['journalRecovered', 'unsavedRecovered', 'journalKept'].some((kind) => kinds.has(kind)))
-        return 'recovered'
-    if (kinds.has('continued')) return 'continued'
-    return tally.wasNoted('reload') ? 'reload' : 'blank'
-}
+/** How the visit began, from the load events and the tab’s claim. */
+const startOf = () =>
+    startKind(
+        status.isSafeMode(),
+        new Set<string>(status.loadEvents.value.map((event) => event.kind)),
+        tally.wasNoted('reload'),
+    )
 
 const navigationTypes = {
     navigate: 'navigate',
@@ -119,7 +106,7 @@ const startupEvent = (): EventData<'startup'> | undefined => {
     const [entry] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
     const discarded = (document as { wasDiscarded?: unknown }).wasDiscarded
     return {
-        start: startKind(),
+        start: startOf(),
         outcome: started.outcome,
         // A hidden page is throttled, which inflates the time; a failed startup has no time.
         ...(started.hidden || started.outcome === 'error' ? {} : { ready: capMs(started.at) }),
@@ -220,19 +207,16 @@ const idle = (run: (deadline: IdleDeadline) => void) => {
 
 /** Starts the visit's statistics; `stop` ends them and drops what was not sent. */
 export const startClient = (target: AnalyticsTarget) => {
-    const base = {
+    const base = requestFields({
         website: target.website,
         hostname: location.hostname,
-        screen: `${screen.width}x${screen.height}`,
-        language: languageTag(settings.locale),
-        url: '/',
-        title: '',
+        screenWidth: screen.width,
+        screenHeight: screen.height,
+        locale: settings.locale,
         referrer: referrerOrigin(),
-    }
-    const item = (name?: string, data?: Record<string, unknown>, at = Date.now()): Item => ({
-        type: 'event',
-        payload: { ...base, ...(name && { name, data }), timestamp: Math.floor(at / 1000) },
     })
+    const item = (name?: string, data?: Record<string, unknown>, at = Date.now()) =>
+        requestItem(base, name, data, at)
     const sender = createSender({
         url: `${target.origin}/api/batch`,
         fetch: (url, init) => fetch(url, init),
