@@ -101,7 +101,6 @@ import {
     getStageProps,
     getStageYOffset,
     resolveJudgeLineStyle,
-    stagePropsHasTransform,
     stagePropsTransform,
     type StageProps,
 } from './stage'
@@ -245,9 +244,7 @@ export const renderPreviewFrame = (
     const stageTransformAt = (index: number): StageTransform => {
         const props = stagePropsAt(index)
         if (!props) return identityStageTransform
-        return (stageTransformsNow[index] ??= stagePropsHasTransform(props)
-            ? stagePropsTransform(context, props)
-            : identityStageTransform)
+        return (stageTransformsNow[index] ??= stagePropsTransform(context, props))
     }
     const stageAffineAt = (index: number): StageScreenTransform =>
         chart.stages[index]

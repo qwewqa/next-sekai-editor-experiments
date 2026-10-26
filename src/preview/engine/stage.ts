@@ -7,7 +7,6 @@ import {
     computeStageTransform,
     currentLayoutTransform,
     identityStageScreenTransform,
-    identityStageTransform,
     layoutSekaiStage,
     layoutStageLaneByEdges,
     perspectiveRect,
@@ -370,18 +369,16 @@ export const stagePropsTransform = (
     props: StageProps,
     elevationOffset = 0,
 ): StageTransform =>
-    stagePropsHasTransform(props) || elevationOffset !== 0
-        ? computeStageTransform(
-              context.layout,
-              currentLayoutTransform(context.layout),
-              props.rotate,
-              props.xLaneTranslate,
-              props.yLaneTranslate,
-              props.lane,
-              props.centerWeight,
-              props.elevation + elevationOffset,
-          )
-        : identityStageTransform
+    computeStageTransform(
+        context.layout,
+        currentLayoutTransform(context.layout),
+        props.rotate,
+        props.xLaneTranslate,
+        props.yLaneTranslate,
+        props.lane,
+        props.centerWeight,
+        props.elevation + elevationOffset,
+    )
 
 const transitionWeight = (transition: Transition<number>, target: number) => {
     let weight = 0
