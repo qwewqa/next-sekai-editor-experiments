@@ -2119,6 +2119,8 @@
     "bgm": "배경음",
     "placeholder": "제목 없음",
     "exportHint": "Sonolus용 레벨 데이터를 만들려면 레벨 데이터 내보내기…를 사용하세요.",
+    "exportHintFirst": ".nxsp 프로젝트 파일은 이 편집기 전용입니다. Sonolus 서버에 업로드할 레벨 데이터를 만들려면 레벨 데이터 내보내기…를 사용하세요.",
+    "exportHintNames": "레벨 데이터 파일의 이름은 LevelData 또는 .nsld나 .json.gz로 끝나는 이름일 수 있습니다.",
     "openExport": "레벨 데이터 내보내기…",
     "readOnly": "\"{0}\"에 쓸 수 없습니다.",
     "notProject": "\"{0}\"은(는) 프로젝트 파일이 아닙니다.",

@@ -354,8 +354,11 @@ test.describe('the Save dialog', () => {
         await expect(dialog(page).locator('[data-save-line]')).toHaveText(
             '"coconut.nxsp" was replaced from another tab or window.',
         )
-        await expect(dialog(page).locator('[data-save-export]')).toHaveText(
-            'For Sonolus, use Export Level Data…',
+        await expect(dialog(page).locator('[data-save-export] p').first()).toHaveText(
+            'Project files (.nxsp) are only for this editor. To create level data for upload to a Sonolus server, use Export Level Data…',
+        )
+        await expect(dialog(page).locator('[data-save-export-names]')).toHaveText(
+            'Level data files may be named LevelData or end in .nsld or .json.gz.',
         )
         await expect(dialog(page).locator('[data-save-storage-line]')).toBeVisible()
         await expect(dialog(page).locator('[data-save-peeking]')).toHaveText(
@@ -376,6 +379,7 @@ test.describe('the Save dialog', () => {
             await expect(line).toHaveCount(kind === 'saveToFile' ? 0 : 1)
             if (kind !== 'saveToFile') {
                 await expect(line.locator('[data-severity="info"]')).toHaveCount(1)
+                await expect(line.locator('[data-save-export-names]')).toHaveCount(1)
                 const leads = await line.evaluate(
                     (p) =>
                         !!(
@@ -406,6 +410,8 @@ test.describe('the Save dialog', () => {
             await expect(line).toHaveCount(kind === 'saveToFile' ? 0 : 1)
             if (kind !== 'saveToFile') {
                 await expect(line.locator('[data-severity]')).toHaveCount(0)
+                await expect(line.locator('[data-save-export-names]')).toHaveCount(0)
+                await expect(line).toHaveText('For Sonolus, use Export Level Data…')
                 const after = await line.evaluate(
                     (p) =>
                         !!(
@@ -431,11 +437,13 @@ test.describe('the Save dialog', () => {
         await openSave(page)
         const field = dialog(page).getByRole('textbox', { name: 'File Name' })
         await expect(field).toBeFocused()
-        await expect(field).toHaveAccessibleDescription(/For Sonolus, use Export Level Data…/)
+        await expect(field).toHaveAccessibleDescription(
+            /use Export Level Data….*may be named LevelData or end in \.nsld or \.json\.gz\./,
+        )
         // A validation error joins the description and keeps the hint.
         await field.fill('a/b')
         await expect(field).toHaveAccessibleDescription(
-            /For Sonolus, use Export Level Data….*A name cannot contain \//,
+            /use Export Level Data….*\.json\.gz\..*A name cannot contain \//,
         )
         await field.fill('Coconut')
         await page.keyboard.press('Shift+Tab')
@@ -479,8 +487,8 @@ test.describe('the Save dialog', () => {
         })
         await openSave(page)
         const line = dialog(page).locator('[data-save-export]')
-        await expect(line).toHaveText(
-            'Sonolus 用のレベルデータには「レベルデータを出力…」を使ってください。',
+        await expect(line.locator('p').first()).toHaveText(
+            'プロジェクトファイル（.nxsp）はこのエディター専用です。Sonolusサーバーにアップロードするレベルデータを作るには「レベルデータを出力…」を使ってください。',
         )
         // The widths, from a 320 px phone's up, at which 「 ends a line before the link or 」 starts
         // one after it.

@@ -2119,6 +2119,8 @@
         "bgm": "BGM",
         "placeholder": "Untitled",
         "exportHint": "For Sonolus, use Export Level Data…",
+        "exportHintFirst": "Project files (.nxsp) are only for this editor. To create level data for upload to a Sonolus server, use Export Level Data…",
+        "exportHintNames": "Level data files may be named LevelData or end in .nsld or .json.gz.",
         "openExport": "Export Level Data…",
         "readOnly": "\"{0}\" cannot be written to.",
         "notProject": "\"{0}\" is not a project file.",

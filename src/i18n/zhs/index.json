@@ -2119,6 +2119,8 @@
     "bgm": "背景音乐",
     "placeholder": "未命名",
     "exportHint": "如需 Sonolus 关卡数据，请使用“导出关卡数据…”。",
+    "exportHintFirst": ".nxsp 项目文件仅供本编辑器使用。要生成上传到 Sonolus 服务器的关卡数据，请使用“导出关卡数据…”。",
+    "exportHintNames": "关卡数据文件可能名为 LevelData，或以 .nsld 或 .json.gz 结尾。",
     "openExport": "导出关卡数据…",
     "readOnly": "无法写入“{0}”。",
     "notProject": "“{0}”不是项目文件。",

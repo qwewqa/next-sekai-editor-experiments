@@ -2119,6 +2119,8 @@
     "bgm": "Arka Plan Müziği",
     "placeholder": "Adsız",
     "exportHint": "Sonolus için Seviye Verisini Dışa Aktar… komutunu kullanın.",
+    "exportHintFirst": "Proje dosyaları (.nxsp) yalnızca bu editörde kullanılır. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar… komutunu kullanın.",
+    "exportHintNames": "Seviye verisi dosyalarının adı LevelData olabilir veya .nsld ya da .json.gz ile bitebilir.",
     "openExport": "Seviye Verisini Dışa Aktar…",
     "readOnly": "\"{0}\" dosyasına yazılamıyor.",
     "notProject": "\"{0}\" bir proje dosyası değil.",

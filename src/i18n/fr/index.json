@@ -2119,6 +2119,8 @@
     "bgm": "Musique",
     "placeholder": "Sans titre",
     "exportHint": "Pour Sonolus, utilisez Exporter les données de niveau…",
+    "exportHintFirst": "Les fichiers de projet (.nxsp) sont réservés à cet éditeur. Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau…",
+    "exportHintNames": "Les fichiers de données de niveau peuvent porter le nom LevelData ou se terminer par .nsld ou .json.gz.",
     "openExport": "Exporter les données de niveau…",
     "readOnly": "Impossible d’écrire dans \"{0}\".",
     "notProject": "\"{0}\" n’est pas un fichier de projet.",

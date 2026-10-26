@@ -415,8 +415,9 @@ test('removed messages stay out of every locale', () => {
     }
 })
 
-// SaveDialog.vue links "Export Level Data…" inside `save.exportHint` by finding the command's
-// title in the hint, and shows no link when a locale words one without the other.
+// ExportLine.vue links "Export Level Data…" inside `save.exportHint` and `save.exportHintFirst`
+// by finding the command's title in the text, and shows no link when a locale words one without
+// the other.
 test('the Save dialog’s export hint contains the Export command’s title in every locale', () => {
     for (const locale of locales) {
         const messages = read(locale)
@@ -425,6 +426,13 @@ test('the Save dialog’s export hint contains the Export command’s title in e
         assert.ok(title, `${locale}: commands.exportLevel.title`)
         assert.ok(hint.includes(title), `${locale}: save.exportHint lacks "${title}"`)
         assert.ok(hint.trim() !== title, `${locale}: the hint is only the link`)
+        const first = messages['save.exportHintFirst']!
+        assert.equal(
+            first.split(title).length - 1,
+            1,
+            `${locale}: save.exportHintFirst must contain "${title}" once`,
+        )
+        assert.ok(first.trim() !== title, `${locale}: the first-time hint is only the link`)
     }
 })
 
