@@ -179,6 +179,9 @@ export const withSaveAttempt = async <T>(
             if (!env) return
             await end()
             for (;;) {
+                // The build and the identity are this session's: after any wait, a switch to
+                // another session (New, Open) leaves nothing to reserve.
+                if (env.flusher.session !== env.session) return
                 const reservation = env.flusher.reserveSave()
                 if (reservation) {
                     disarm()
@@ -187,8 +190,8 @@ export const withSaveAttempt = async <T>(
                     // In one step: what the Save saves is the state its `seq` was reserved in.
                     return { reservation, state: savedState() }
                 }
-                // None free: no current session, or another flow holds it.
-                if (!wait || env.flusher.session?.reserved === undefined) return
+                // None free: another flow holds it.
+                if (!wait || env.session.reserved === undefined) return
                 arm()
                 await env.flusher.reservationEnded(signal)
                 if (signal.aborted) {

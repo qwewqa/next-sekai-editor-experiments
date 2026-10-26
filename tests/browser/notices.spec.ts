@@ -149,6 +149,21 @@ test('Alt+N focuses the action, which does not time out while focused, and Escap
     await expect(pill(page)).toHaveCount(0)
 })
 
+test('Alt+N opens History when assigned to it, with a notice visible', async ({ page }) => {
+    await boot(page)
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.keyboardShortcuts = { ...settings.keyboardShortcuts, history: 'Alt+n' }
+    })
+    await page.locator('.chart-pane').focus()
+    await notifyWithAction(page, 'Nothing to undo')
+    await expect(pill(page)).toBeVisible()
+    await page.keyboard.press('Alt+KeyN')
+    await expect(page.locator('[data-history-surface]')).toBeVisible()
+    expect(await runs(page)).toBe(0)
+    await expect(pill(page).getByRole('button', { name: 'Open History' })).not.toBeFocused()
+})
+
 test('Alt+N does nothing without an action notice', async ({ page }) => {
     await boot(page)
     await page.locator('.chart-pane').focus()
