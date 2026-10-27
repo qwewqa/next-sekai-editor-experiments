@@ -1252,7 +1252,7 @@ test('actual 220px French dock protects partial count and the complete unavailab
     for (const parent of [parents.first(), parents.last()]) {
         expect((await parent.boundingBox())!.height).toBe(80)
         const reason = parent.locator('[data-history-flag]')
-        await expect(reason).toHaveText('non conservé')
+        await expect(reason).toHaveText('non conservée')
         expect(
             await reason.evaluate((element) => ({
                 height: element.scrollHeight,

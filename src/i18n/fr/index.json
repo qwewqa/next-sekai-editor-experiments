@@ -1307,9 +1307,9 @@
     "tryAgain": "Réessayer",
     "steps": "{0} étape|{0} étapes",
     "newerSteps": "{0} étape plus récente|{0} étapes plus récentes",
-    "notKept": "non conservé",
+    "notKept": "non conservée",
     "earlierNotStored": "Les étapes antérieures de la chronologie ne sont pas stockées dans ce navigateur.",
-    "damaged": "endommagé",
+    "damaged": "endommagée",
     "needsNewer": "nécessite une version plus récente",
     "savedOn": "Sauvegardé sur {0}",
     "savedWeb": "Sauvegardé dans l’éditeur web ({0})",
@@ -1622,7 +1622,7 @@
         "label": "Masquer les notes"
       },
       "isAttached": {
-        "label": "Attaché"
+        "label": "Attachée"
       },
       "isConnectorSeparator": {
         "label": "Séparateur",
