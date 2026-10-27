@@ -6,9 +6,11 @@ export const isTypeAheadKey = (
 /**
  * Type-ahead over a list's labels, as WAI-ARIA menus and listboxes offer: keys typed
  * within the timeout build a prefix, and the next label starting with it, wrapping, is
- * chosen. One letter repeated cycles through its matches.
+ * chosen. One letter repeated cycles through its matches. Text is lowercased by the language
+ * tag `language` gives (the editor's language, not the system's), so "i" matches "Intro" in
+ * English on a Turkish system while Turkish keeps its dotted and dotless I.
  */
-export const createTypeAhead = (timeout = 500) => {
+export const createTypeAhead = (language: () => string, timeout = 500) => {
     let typed: string[] = []
     let at = -Infinity
     return (
@@ -17,7 +19,7 @@ export const createTypeAhead = (timeout = 500) => {
         current: number,
         now = Date.now(),
     ): number | undefined => {
-        const char = key.toLocaleLowerCase()
+        const char = key.toLocaleLowerCase(language())
         typed = now - at <= timeout ? [...typed, char] : [char]
         at = now
         const repeated = typed.every((typedChar) => typedChar === char)
@@ -26,7 +28,7 @@ export const createTypeAhead = (timeout = 500) => {
         const start = repeated ? current + 1 : current
         for (let offset = 0; offset < labels.length; offset++) {
             const index = (((start + offset) % labels.length) + labels.length) % labels.length
-            if (labels[index]?.toLocaleLowerCase().startsWith(prefix)) return index
+            if (labels[index]?.toLocaleLowerCase(language()).startsWith(prefix)) return index
         }
         return undefined
     }

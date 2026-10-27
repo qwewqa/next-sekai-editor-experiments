@@ -37,7 +37,7 @@ import type { State } from '../../state'
 import { inlineName } from '../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { fileError } from '../commands/exportLevel/errorText'
-import { validName } from '../commands/exportLevel/fileName'
+import { nameKey, validName } from '../commands/exportLevel/fileName'
 import { clearExportDestination, exportMemory } from '../commands/exportLevel/memory'
 import { knownTargetAvailable } from '../commands/exportLevel/ownership'
 import { fileErrorText } from '../commands/exportLevel/ui'
@@ -381,7 +381,7 @@ const knownNames = async (env: Env) => {
     // A failed list suggests as if no file were known: the name is only a suggestion,
     // and the picker or the write still checks the file.
     if (read.storedRead === 'failed') return new Set<string>()
-    return new Set(read.storedValue.map((owner) => owner.name.normalize('NFC').toLocaleLowerCase()))
+    return new Set(read.storedValue.map((owner) => nameKey(owner.name)))
 }
 
 /**
@@ -393,7 +393,7 @@ const suggestion = async (env: Env, stem: string) => {
     const base = validName(stem)
     if (!platform.pickSaveFile) return base
     const known = await knownNames(env)
-    const taken = (name: string) => known.has(`${name}.nxsp`.normalize('NFC').toLocaleLowerCase())
+    const taken = (name: string) => known.has(nameKey(`${name}.nxsp`))
     let name = base
     while (taken(name)) name = nextCopyName(name)
     return name
