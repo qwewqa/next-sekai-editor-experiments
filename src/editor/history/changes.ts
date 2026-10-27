@@ -36,6 +36,7 @@ import {
 } from '../../local/records/records'
 import type { KindName } from '../../local/records/schema'
 import { storageWorker } from '../../local/start'
+import { testWindowMs } from '../../platform/testKeys'
 import { settings } from '../../settings'
 import { createState, type State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
@@ -296,6 +297,7 @@ export const changeLine = computed(() => {
  * before a read lands do not restart it, and it ends when a step settles or the peek does.
  */
 export const slowRead = shallowRef(false)
+const SLOW_READ_MS = 250
 let slowTimer: ReturnType<typeof setTimeout> | undefined
 watch(
     [comparisonStatus, peekedInfo],
@@ -305,10 +307,13 @@ watch(
             slowTimer = undefined
             slowRead.value = false
         } else if (!slowTimer && !slowRead.value)
-            slowTimer = setTimeout(() => {
-                slowTimer = undefined
-                slowRead.value = true
-            }, 250)
+            slowTimer = setTimeout(
+                () => {
+                    slowTimer = undefined
+                    slowRead.value = true
+                },
+                testWindowMs('nse.test.slowRead', SLOW_READ_MS),
+            )
     },
     { immediate: true, flush: 'sync' },
 )

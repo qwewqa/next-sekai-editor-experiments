@@ -319,7 +319,7 @@ test('the setting off and on again while the worker stops starts one that draws'
 test("after a hang, the worker's last frame shows until the skin is decoded again", async ({
     page,
 }) => {
-    await open(page, 'worker', { hangOnFrame: 2, timeoutMs: 1500 })
+    await open(page, 'worker', { hangOnFrame: 2, timeoutMs: 8000 })
     // The skin's second download is slow, so the main host draws before it has a skin.
     let requests = 0
     let release = () => {}

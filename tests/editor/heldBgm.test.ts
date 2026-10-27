@@ -88,13 +88,18 @@ const environment = (extra: Partial<HeldEnvironment> = {}) => {
 
 const said: string[] = []
 const refusedWith: string[] = []
+const refusedAtStartup: boolean[] = []
 
 beforeEach(() => {
     resetHeldBgmForTests()
     said.length = 0
     refusedWith.length = 0
+    refusedAtStartup.length = 0
     onUnheldAfterMove((hash) => said.push(hash))
-    onBgmRefused((hash, kind) => refusedWith.push(`${hash}:${kind}`))
+    onBgmRefused((hash, kind, startup) => {
+        refusedWith.push(`${hash}:${kind}`)
+        refusedAtStartup.push(startup)
+    })
     setSlotLoader(undefined)
     show(named('a'))
 })
@@ -286,6 +291,22 @@ test('a stored BGM refused for its length is said once per hash, with its kind, 
     await settleHeldBgm()
     assert.equal(decodes, 1)
     assert.deepEqual(refusedWith, ['a:audioTooLong'])
+})
+
+test('a refusal is a startup one when the reattachment began while the gate was open, however late it comes', async () => {
+    let atStartup = true
+    const { env } = environment({
+        decode: () => Promise.reject(new TaskFailure('audioTooLong', 'longer than the limit')),
+        atStartup: () => atStartup,
+    })
+    configureHeldBgm(env)
+    atStartup = false
+    await settleHeldBgm()
+    assert.deepEqual(refusedAtStartup, [true])
+    // A reattachment that begins after startup is not.
+    show(named('b'))
+    await settleHeldBgm()
+    assert.deepEqual(refusedAtStartup, [true, false])
 })
 
 test('a refused hash whose bytes the store lacks is still reported absent', async () => {

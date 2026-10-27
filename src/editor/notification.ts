@@ -205,8 +205,15 @@ const pillLines = (): NoticeLine[] => {
     })
 }
 
-/** How long after the page loaded its start-up toast may still become the start-up card. */
+/** How long after the startup gate lifts its start-up toast may still become the start-up card. */
 const STARTUP_WINDOW_MS = 12_000
+
+// When the gate lifted, which starts the window: a slow startup does not use it up.
+let gateLiftedAt: number | undefined
+const noteGateLifted = () => {
+    gateLiftedAt ??= performance.now()
+}
+if (startupGate.phase === 'done') noteGateLifted()
 
 // An edit, undo, redo or restore since load: a card after it would interrupt the work.
 let workedSinceLoad = false
@@ -217,14 +224,14 @@ onHistoryAction(({ kind }) => {
 
 /**
  * Whether the start-up notice is still the one shown, so a load notice may join it: its card, or
- * the quick toast of a clean load while the page is under 12 s old and nothing was edited, undone,
+ * the quick toast of a clean load within 12 s of the gate lifting, while nothing was edited, undone,
  * redone or restored. Never the faint text left after it.
  */
 export const startupNoticeCurrent = () =>
     noticeCard.value?.startup === true ||
     (notification.value.startup === true &&
         !workedSinceLoad &&
-        performance.now() < STARTUP_WINDOW_MS)
+        (gateLiftedAt === undefined || performance.now() - gateLiftedAt < STARTUP_WINDOW_MS))
 
 // The start-up notice, not yet replaced by another: what the gate's lifting shows again.
 const startupKept = () => notification.value.startup === true || noticeCard.value?.startup === true
@@ -248,6 +255,7 @@ const refreshPill = () => {
 watch(
     () => startupGate.phase,
     (phase) => {
+        if (phase === 'done') noteGateLifted()
         if (phase === 'done' && startupKept()) refreshPill()
     },
 )

@@ -132,10 +132,11 @@ export const refusalLine = (kind: BgmRefusal): NoticeLine => ({
 onRefusalLine(refusalLine)
 
 // A BGM refused for its length, at a load, a switch or Undo and Redo: a card with Choose Audio.
-onBgmRefused((_hash, kind) => {
+onBgmRefused((_hash, kind, startup) => {
     const { message, severity, action } = refusalLine(kind)
-    // At load, a line of the start-up card while that shows; else a card of its own.
-    if (startupNoticeCurrent()) {
+    // At load, a line of the start-up card while that shows, or only kept once it has not (a
+    // reattachment that began at startup can finish after an edit); else a card of its own.
+    if (startup || startupNoticeCurrent()) {
         addLoadNotice(message, action, LOAD_ORDER.bgmNotLoaded, severity)
         return
     }
