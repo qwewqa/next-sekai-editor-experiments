@@ -192,6 +192,43 @@ test('Delete from the menu turns the row into an inline Undo row; its Undo bring
     await expect(rowsOf(page).nth(1)).toContainText('Alpha')
 })
 
+// The session this tab left is what Undo's Reopen offers; deleting it here takes the offer away.
+test('Delete of the session this tab just left takes away the Reopen that Undo offers', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    const alpha = await closedChain(page, { title: 'Alpha', life: 990 })
+    const left = () =>
+        page.evaluate(async () => {
+            const { previousSession } = await window.editorTest.appImport<
+                typeof import('../../src/local/startup/events')
+            >('/src/local/startup/events.ts')
+            return previousSession.value?.sessionId
+        })
+    await expect.poll(left).toBe(alpha.sessionId)
+    await openSessions(page)
+    await rowFor(page, 'Alpha').locator('[data-sessions-more]').click()
+    await page.getByRole('menu').getByRole('menuitem', { name: sessions.delete }).click()
+    await expect(deletedFor(page, 'Alpha')).toHaveCount(1)
+    await expect.poll(left).toBeUndefined()
+
+    // Back on the blank chart, Undo has nothing to undo and no Reopen to offer.
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-recent-sessions]')).toHaveCount(0)
+    await page.evaluate(async () => {
+        const { commands } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands')
+        >('/src/editor/commands/index.ts')
+        const { runCommand } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/runCommand')
+        >('/src/editor/commands/runCommand.ts')
+        await runCommand(commands.undo, 'button')
+    })
+    await expect(notice(page, messages.commands.undo.noState)).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Reopen Session from / })).toHaveCount(0)
+})
+
 test('the Delete key deletes the focused row, focus moves to the next real row, three presses delete three, and a held key deletes one', async ({
     page,
 }) => {
