@@ -34,8 +34,6 @@ const wav = (seconds: number, tone = 5) => {
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
         localStorage.setItem('nse.test.storage', '{}')
-        // A reload on a slow runner can outlast the 12 s a load notice may join the start-up notice.
-        localStorage.setItem('nse.test.startupWindow', '600000')
         localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
         localStorage.setItem('sonolus-next-sekai-editor.showSidebar', 'false')
     })
