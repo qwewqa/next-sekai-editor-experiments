@@ -907,14 +907,14 @@ const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
         return result.opened
     }
     // A Duplicate Tab: a fork without the binding; of an unstored continuation, a fork
-    // of what it continued.
+    // of what it continued. The other tab still holds the session.
     const read = await deps.worker.call('readSession', record.sessionId)
-    if (read.kind === 'open') return forked(deps, read, record.sessionId)
+    if (read.kind === 'open') return forked(deps, read, record.sessionId, { elsewhere: true })
     if (read.kind !== 'missing') return false
     if (record.start === 'blank') return newVisit(deps)
     if (record.start === 'continuation' && record.parent) {
         const parent = await deps.worker.call('readSession', record.parent)
-        if (parent.kind === 'open') return forked(deps, parent, record.parent)
+        if (parent.kind === 'open') return forked(deps, parent, record.parent, { elsewhere: true })
     }
     return false
 }

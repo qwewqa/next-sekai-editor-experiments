@@ -598,7 +598,11 @@ test('P requires a newer version: Restore Session says so, Save… is refused, i
     await openRecent(page)
     await rowAction(page, chains.P, 'Save…')
     await expect
-        .poll(async () => (await notices(page)).some((text) => text.startsWith('Not saved')))
+        .poll(async () =>
+            (await notices(page)).some((text) =>
+                text.startsWith('This session could not be saved'),
+            ),
+        )
         .toBe(true)
     await rowAction(page, chains.P, 'Restore Session')
     await expect

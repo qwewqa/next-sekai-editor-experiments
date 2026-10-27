@@ -743,6 +743,7 @@ test('a separate copy of an untitled session names its source by when it started
     assert.deepEqual(event, {
         kind: 'separateCopy',
         of: { name: '', bound: false, at: parent.startedAt },
+        elsewhere: true,
     })
     assert.equal(typeof parent.startedAt, 'number')
 })
@@ -761,7 +762,11 @@ test('a separate copy of a chart named by its song names its source by the song'
     openSession(visit)
     const copy = await load(world, 'copy', storage, { tab: new Map(visit.tab) })
     const event = copy.events.find((each) => each.kind === 'separateCopy')
-    assert.deepEqual(event, { kind: 'separateCopy', of: { name: 'song', bound: false } })
+    assert.deepEqual(event, {
+        kind: 'separateCopy',
+        of: { name: 'song', bound: false },
+        elsewhere: true,
+    })
 })
 
 test("a copy's source is its file, else its own name, else the date it started", () => {
