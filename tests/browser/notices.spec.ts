@@ -396,9 +396,23 @@ test('a new notice under a stationary pointer is held from the start', async ({ 
     await page.clock.install()
     await notifyWithAction(page, 'First')
     await pill(page).hover()
+    // Count pill entries, so the fake clock moves only after Chrome has entered the new pill.
+    await page.evaluate(() => {
+        Reflect.set(window, 'pillEnters', 0)
+        document.addEventListener(
+            'pointerenter',
+            (event) => {
+                if (event.target instanceof Element && event.target.matches('.notification-pill'))
+                    Reflect.set(window, 'pillEnters', Number(Reflect.get(window, 'pillEnters')) + 1)
+            },
+            true,
+        )
+    })
     // A second notice appears where the pointer already is; the pointer does not move.
     await notifyWithAction(page, 'Second')
     await expect(pill(page)).toContainText('Second')
+    // The fake clock does not wait for that frame, so wait for the entry before running it.
+    await expect.poll(() => page.evaluate(() => Number(Reflect.get(window, 'pillEnters')))).toBe(1)
     await page.clock.runFor(20_000)
     await expect(pill(page)).toBeVisible()
     await page.mouse.move(5, 5)
