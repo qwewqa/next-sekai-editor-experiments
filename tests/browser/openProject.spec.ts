@@ -534,6 +534,8 @@ test('a reload mid-import without a handle marks the rows that never arrived kep
     await page.evaluate(() => {
         localStorage.removeItem('nse.test.importDelay')
     })
+    // The import is still running; the open itself has settled, so the reload is not an unfinished open.
+    await openingSettled(page)
     await page.reload()
     await waitForStartup(page)
     await imported(page)
@@ -1360,7 +1362,7 @@ test('at load a refused stored BGM is a row of the start-up card, whose action s
     await start(next)
     const card = notice(next).filter({ hasText: REFUSED })
     await expect(card).toBeVisible()
-    await expect(card).toContainText(said(en.load.continued, '', '').split('"')[0]!)
+    await expect(card).toContainText(en.load.continued.slice(0, en.load.continued.indexOf('{0}')))
     await expect(card.getByRole('button', { name: en.notice.chooseAudio })).toBeVisible()
     await expect(card.getByRole('button', { name: en.load.openHistory })).toBeVisible()
 })
