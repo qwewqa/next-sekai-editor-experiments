@@ -2270,18 +2270,9 @@
     "fileMissing": "檔案遺失",
     "changedOnDisk": "磁碟上已變更",
     "newerOnDisk": "磁碟上有較新版本",
-    "notConfirmed": "下載未確認",
     "changedOnDiskName": "「{0}」在此處開啟或儲存後，已在磁碟上變更。",
     "newerOnDiskName": "磁碟上有「{0}」的較新版本。",
     "notStored": "未存放"
-  },
-  "confirm": {
-    "title": "下載未確認",
-    "body": "請確認 {0} 已下載完成（{1}）。",
-    "bodyUndated": "請確認 {0} 已下載完成。",
-    "haveFile": "我已有該檔案",
-    "downloadAgain": "再次下載",
-    "announce": "{0} 之後要確認時，請使用狀態列中的「{1}」。"
   },
   "notSaving": {
     "bar": "變更未存放在此瀏覽器中。"

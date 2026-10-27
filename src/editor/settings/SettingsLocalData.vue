@@ -212,10 +212,9 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
     }
 }
 
-// The setting is the web's: not offered where downloads are never confirmed (iPhone and
-// iPad never show the close prompt), and not in the apps, which close on their own terms.
-const showsClosePrompt =
-    platform.capabilities.browserStorage && !platform.capabilities.unconfirmedDownloads
+// The setting is the web's: not offered where there is no close prompt (iPhone and iPad), and
+// not in the apps, which close on their own terms.
+const showsClosePrompt = platform.capabilities.browserStorage && platform.capabilities.closePrompt
 
 // The raised-button geometry (design-language §4).
 const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'

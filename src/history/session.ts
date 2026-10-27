@@ -27,8 +27,6 @@ export type SessionFile = {
     readonly name: string
     readonly event?: string
     readonly at?: number
-    /** I Have the File was pressed for this download. */
-    readonly confirmed?: boolean
     readonly hash?: string
 }
 

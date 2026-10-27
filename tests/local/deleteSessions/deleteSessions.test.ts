@@ -95,7 +95,6 @@ const setup = async (
             calls.results.push(result.kind)
             return result
         },
-        downloadsConfirmed: () => false,
         paused: () => calls.paused,
         retryStoring: () => {
             calls.retried++
@@ -189,7 +188,6 @@ test("the age follows the page's zone, not 24-hour spans", async () => {
         worker: deleter.worker,
         locks: deleter.tab.locks,
         removeLocked: (request) => deleter.remove(request),
-        downloadsConfirmed: () => false,
         paused: () => undefined,
         retryStoring: () => Promise.resolve(),
         zone: () => UTC,
@@ -253,10 +251,9 @@ test('a chain with a session of a newer version is included, flagged and counted
     await world.idle()
 })
 
-test('a chain is not saved when it has content in no file, or is bound and changed, or bound by a download not confirmed', async () => {
-    const { world, chains, read, ds, deleter } = await setup(6)
-    const [blank, content, saved, edited, downloaded, confirmed] = chains as [
-        Chain,
+test('a chain is not saved when it has content in no file, or is bound and changed; a download counts as the file', async () => {
+    const { world, chains, read } = await setup(5)
+    const [blank, content, saved, edited, downloaded] = chains as [
         Chain,
         Chain,
         Chain,
@@ -277,28 +274,9 @@ test('a chain is not saved when it has content in no file, or is bound and chang
     await patchChain(world, downloaded, {
         file: { name: 'c.nxsp', event: 'downloaded', ...(await hash(downloaded)) },
     })
-    await patchChain(world, confirmed, {
-        file: { name: 'd.nxsp', event: 'downloaded', confirmed: true, ...(await hash(confirmed)) },
-    })
     const found = await read()
     const flags = chains.map((chain) => byChain(found, chain)?.notSaved)
-    assert.deepEqual(flags, [false, true, false, true, true, false])
-    // A download confirmed in this browser counts as saved.
-    const here = createDeleteSessions({
-        worker: deleter.worker,
-        locks: deleter.tab.locks,
-        removeLocked: (request) => deleter.remove(request),
-        downloadsConfirmed: () => true,
-        paused: () => undefined,
-        retryStoring: () => Promise.resolve(),
-        zone: () => UTC,
-    })
-    const again = await deleter.tab.run(() => here.readDeleteChoices())
-    assert.equal(
-        again.storedRead === 'value' && byChain(again.storedValue, downloaded)?.notSaved,
-        false,
-    )
-    void ds
+    assert.deepEqual(flags, [false, true, false, true, false])
 })
 
 test('a chain whose file another chain took over counts as not saved', async () => {
@@ -521,7 +499,6 @@ test('a signal stops between chains; a read that cannot list is a failure, never
         },
         locks: deleter.tab.locks,
         removeLocked: () => Promise.resolve({ kind: 'failed' }),
-        downloadsConfirmed: () => false,
         paused: () => undefined,
         retryStoring: () => Promise.resolve(),
     })
@@ -670,7 +647,6 @@ const recentPerChain = async (tx: KvTx) => {
                       ...(typeof fileRow.at === 'number' && Number.isFinite(fileRow.at)
                           ? { at: fileRow.at }
                           : {}),
-                      ...(fileRow.confirmed === true ? { confirmed: true } : {}),
                   }
                 : undefined
         const root = head ? await headOf(tx, head) : undefined

@@ -15,7 +15,7 @@ const readPlatform = () =>
         engine: detection().engine,
         os: platform.os,
         diagnostics: platform.diagnostics().engine,
-        unconfirmedDownloads: platform.capabilities.unconfirmedDownloads,
+        closePrompt: platform.capabilities.closePrompt,
     }))
 
 test('nse.test.platform overrides engine and OS', async ({ page }) => {
@@ -28,7 +28,7 @@ test('nse.test.platform overrides engine and OS', async ({ page }) => {
         engine: 'webkit',
         os: 'ios',
         diagnostics: 'webkit',
-        unconfirmedDownloads: true,
+        closePrompt: false,
     })
 })
 

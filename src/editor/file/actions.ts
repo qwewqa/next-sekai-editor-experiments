@@ -8,8 +8,6 @@ export type FileActions = {
     downloadAgain: () => void
     /** Opens the file on disk as a new session in place of this one. */
     openOtherVersion: () => void
-    /** Stores that the open session's download is confirmed, beside the label's state. */
-    persistConfirmed: () => void
 }
 
 export const fileActions: Partial<FileActions> = {}

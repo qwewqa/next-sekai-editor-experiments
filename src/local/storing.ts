@@ -493,10 +493,6 @@ export const startStoring = (
                     if (request.isCurrent()) throw error
                 }
             }),
-        persistConfirmed: () =>
-            void withFlow((flow) => {
-                flow.persistConfirmed()
-            }),
     })
 
     // Once startup is over, the code behind the likely features loads in the background.

@@ -1,6 +1,6 @@
 import type { KvTx } from './kv/types'
 import type { NameParts } from './names'
-import { readRecentChains, type RecentFile, type RecentReadable } from './recent'
+import { readRecentChains, type RecentReadable } from './recent'
 import { fileAtOf, ids } from './removal'
 
 // What Delete Sessions… reads of the stored chains,
@@ -21,7 +21,8 @@ export type DeleteCandidate = {
     nameParts: NameParts
     /** `newer` or `damaged`: a session this build can't read, or a missing head; deleted all the same. */
     readable: RecentReadable
-    file?: Pick<RecentFile, 'event' | 'confirmed'>
+    /** The chain has a bound file. */
+    bound: boolean
     changed: boolean
     hasContent: boolean
 }
@@ -44,14 +45,7 @@ export const readDeleteCandidates = async (tx: KvTx): Promise<DeleteCandidate[]>
             startedAt: recent.head.startedAt,
             nameParts: recent.nameParts,
             readable: recent.readable,
-            ...(file
-                ? {
-                      file: {
-                          ...(file.event === undefined ? {} : { event: file.event }),
-                          ...(file.confirmed ? { confirmed: true } : {}),
-                      },
-                  }
-                : {}),
+            bound: file !== undefined,
             changed: recent.changed,
             hasContent: record.hasContent === true,
         })

@@ -6,53 +6,25 @@ import { notSavedToFile, type SavedFacts } from '../../../src/local/keptData'
 // page-close prompt).
 
 const facts = (over: Partial<SavedFacts> = {}): SavedFacts => ({
+    bound: false,
     changed: false,
     hasContent: false,
     ...over,
 })
 
-test('a chain is not saved when it is bound and changed, bound by a download not confirmed, or unbound with content', () => {
-    const table: [string, SavedFacts, boolean, boolean][] = [
-        ['unbound, no content', facts(), false, false],
-        ['unbound with content', facts({ hasContent: true }), false, true],
-        ['bound by a save, unchanged', facts({ file: { event: 'saved' } }), false, false],
-        ['bound by an open, unchanged', facts({ file: { event: 'opened' } }), false, false],
-        ['bound and changed', facts({ file: { event: 'saved' }, changed: true }), false, true],
-        ['bound by a download, unconfirmed', facts({ file: { event: 'downloaded' } }), false, true],
-        ['… confirmed in this browser', facts({ file: { event: 'downloaded' } }), true, false],
-        [
-            '… confirmed by I Have the File',
-            facts({ file: { event: 'downloaded', confirmed: true } }),
-            false,
-            false,
-        ],
-        ['an unknown event reads as a download', facts({ file: { event: 'sent' } }), false, true],
-        ['a binding without an event is a download', facts({ file: {} }), false, true],
-        [
-            'a download confirmed here but changed since',
-            facts({ file: { event: 'downloaded' }, changed: true }),
-            true,
-            true,
-        ],
+test('a chain is not saved when it is bound and changed, or unbound with content', () => {
+    const table: [string, SavedFacts, boolean][] = [
+        ['unbound, no content', facts(), false],
+        ['unbound with content', facts({ hasContent: true }), true],
+        ['bound, unchanged', facts({ bound: true }), false],
+        ['bound and changed', facts({ bound: true, changed: true }), true],
         [
             'content is not enough when a file holds it',
-            facts({ file: { event: 'saved' }, hasContent: true }),
+            facts({ bound: true, hasContent: true }),
             false,
-            false,
         ],
-        [
-            'a chain this build cannot read counts as not saved',
-            facts({ readable: 'newer' }),
-            true,
-            true,
-        ],
-        [
-            '… even bound and unchanged',
-            facts({ readable: 'newer', file: { event: 'saved' } }),
-            true,
-            true,
-        ],
+        ['a chain this build cannot read counts as not saved', facts({ readable: 'newer' }), true],
+        ['… even bound and unchanged', facts({ readable: 'damaged', bound: true }), true],
     ]
-    for (const [what, input, confirmedHere, expected] of table)
-        assert.equal(notSavedToFile(input, confirmedHere), expected, what)
+    for (const [what, input, expected] of table) assert.equal(notSavedToFile(input), expected, what)
 })

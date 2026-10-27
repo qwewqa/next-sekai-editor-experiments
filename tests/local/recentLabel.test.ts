@@ -71,7 +71,7 @@ test('a row whose file another chain took over reads "Unsaved"', async () => {
         const label = labelOf({
             name: 'Coconut',
             changed: chain.changed,
-            writesInPlace: true,
+            showEvent: false,
             ...(chain.file ? { file: chain.file } : {}),
         })
         return labelLine({ ...label, name: '' })

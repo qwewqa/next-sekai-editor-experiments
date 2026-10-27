@@ -2270,18 +2270,9 @@
         "fileMissing": "File missing",
         "changedOnDisk": "Changed on disk",
         "newerOnDisk": "Newer on disk",
-        "notConfirmed": "Download not confirmed",
         "changedOnDiskName": "“{0}” has changed on disk since you opened or saved it here.",
         "newerOnDiskName": "A newer version of “{0}” is on disk.",
         "notStored": "Not stored"
-    },
-    "confirm": {
-        "title": "Download Not Confirmed",
-        "body": "Check that {0} finished downloading ({1}).",
-        "bodyUndated": "Check that {0} finished downloading.",
-        "haveFile": "I Have the File",
-        "downloadAgain": "Download Again",
-        "announce": "{0} To confirm it later, use {1} in the status bar."
     },
     "notSaving": {
         "bar": "Changes are not being stored in this browser."

@@ -1008,57 +1008,10 @@ test.describe('the feedback after a write', () => {
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp')
     })
 
-    test('a download not yet confirmed carries I Have the File, which clears the chip', async ({
-        page,
-        context,
-    }) => {
+    test('a download notice carries no action', async ({ page, context }) => {
         await seed(context, { fileSystemAccess: false })
         await visit(page)
         await page.evaluate(async () => {
-            const { bindFile } =
-                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
-            const { liveState } =
-                (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
-            bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
-        })
-        await feedback(page, { ...plain, kind: 'download', size: 12_400_000 })
-        await expect(notice(page)).toContainText('Download started: coconut.nxsp · 12.4 MB')
-        await expect(notice(page)).toContainText(
-            'To confirm it later, use Download not confirmed in the status bar.',
-        )
-        await page.waitForTimeout(400)
-        await page.getByRole('button', { name: 'I Have the File' }).click()
-        await expect(page.locator('[data-file-chip]')).toHaveCount(0)
-    })
-
-    test('while Not stored takes the chip, the card does not point to a chip that is not shown', async ({
-        page,
-        context,
-    }) => {
-        await seed(context, { fileSystemAccess: false })
-        await visit(page)
-        await page.evaluate(async () => {
-            const { bindFile, raised } =
-                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
-            const { liveState } =
-                (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
-            bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
-            raised.notStored.value = true
-        })
-        await feedback(page, { ...plain, kind: 'download', size: 12_400_000 })
-        await expect(notice(page)).toContainText('Download started: coconut.nxsp · 12.4 MB')
-        await expect(notice(page)).not.toContainText('To confirm it later')
-        await expect(page.getByRole('button', { name: 'I Have the File' })).toBeVisible()
-    })
-
-    test('a confirmed download carries no action', async ({ page, context }) => {
-        await seed(context, { fileSystemAccess: false })
-        await visit(page)
-        await page.evaluate(async () => {
-            localStorage.setItem('sonolus-next-sekai-editor.downloadConfirmed', 'true')
-            const { confirmDownloads } =
-                (await import('/src/editor/file/flags.ts')) as typeof import('../../src/editor/file/flags')
-            confirmDownloads()
             const { bindFile } =
                 (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
             const { liveState } =
@@ -1068,7 +1021,7 @@ test.describe('the feedback after a write', () => {
         await feedback(page, { ...plain, kind: 'download', size: 1_000, stepsLine: 'notKept' })
         await expect(notice(page)).toContainText('Download started: coconut.nxsp · 1 kB')
         await expect(notice(page)).toContainText('Some earlier Timeline steps were not kept.')
-        await expect(page.getByRole('button', { name: 'I Have the File' })).toHaveCount(0)
+        await expect(notice(page).getByRole('button')).toHaveCount(0)
     })
 
     test('"No changes" after a download offers Download Again', async ({ page, context }) => {

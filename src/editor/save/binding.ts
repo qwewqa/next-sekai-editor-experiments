@@ -25,7 +25,6 @@ export type StoredFile = {
     }
     completeFrom?: string
     disk?: DiskState
-    confirmed?: true
 }
 
 /** The chain's identity fields as a Save reads them: stored, or kept in memory. */

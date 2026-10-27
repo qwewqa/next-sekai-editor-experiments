@@ -4,10 +4,10 @@ import { chipSeverity, chipStates, rowBadges } from '../../src/editor/file/chip'
 import { formatSize } from '../../src/utils/size'
 
 test('the chip slot takes the highest-priority state and lists the rest', () => {
-    assert.deepEqual(chipStates(['notConfirmed', 'changedOnDisk', 'notStored']), [
+    assert.deepEqual(chipStates(['newerOnDisk', 'changedOnDisk', 'notStored']), [
         'notStored',
         'changedOnDisk',
-        'notConfirmed',
+        'newerOnDisk',
     ])
     assert.deepEqual(chipStates(['newerOnDisk', 'fileMissing']), ['fileMissing', 'newerOnDisk'])
     assert.deepEqual(chipStates([]), [])
@@ -18,16 +18,15 @@ test('the chip draws its icon by severity', () => {
     assert.equal(chipSeverity('fileMissing'), 'warning')
     assert.equal(chipSeverity('changedOnDisk'), 'warning')
     assert.equal(chipSeverity('newerOnDisk'), 'info')
-    assert.equal(chipSeverity('notConfirmed'), 'info')
 })
 
 test('a row shows at most two badges: its state, then open in another tab', () => {
-    assert.deepEqual(rowBadges(['changedOnDisk', 'notConfirmed'], true), [
+    assert.deepEqual(rowBadges(['changedOnDisk', 'newerOnDisk'], true), [
         'changedOnDisk',
         'openElsewhere',
     ])
     assert.deepEqual(rowBadges([], true), ['openElsewhere'])
-    assert.deepEqual(rowBadges(['notConfirmed'], false), ['notConfirmed'])
+    assert.deepEqual(rowBadges(['newerOnDisk'], false), ['newerOnDisk'])
     assert.deepEqual(rowBadges([], false), [])
 })
 

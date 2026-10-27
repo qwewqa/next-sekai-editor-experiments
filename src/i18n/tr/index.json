@@ -2270,18 +2270,9 @@
     "fileMissing": "Dosya yok",
     "changedOnDisk": "Diskte değişti",
     "newerOnDisk": "Diskte daha yeni",
-    "notConfirmed": "İndirme onaylanmadı",
     "changedOnDiskName": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
     "newerOnDiskName": "Diskte \"{0}\" için daha yeni bir sürüm var.",
     "notStored": "Saklanmıyor"
-  },
-  "confirm": {
-    "title": "İndirme Onaylanmadı",
-    "body": "{0} dosyasının indirmesinin tamamlandığını kontrol edin ({1}).",
-    "bodyUndated": "{0} dosyasının indirmesinin tamamlandığını kontrol edin.",
-    "haveFile": "Dosya Bende",
-    "downloadAgain": "Tekrar İndir",
-    "announce": "{0} Daha sonra onaylamak için durum çubuğundaki {1} düğmesini kullanın."
   },
   "notSaving": {
     "bar": "Değişiklikler bu tarayıcıda saklanmıyor."

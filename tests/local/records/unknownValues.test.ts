@@ -42,9 +42,9 @@ test('an unknown entry kind or a newer root makes a session, and its chain, unre
 test('unknown enum values follow the field table', () => {
     assert.equal(readOrigin('continued'), 'continued')
     assert.equal(readOrigin('fallback'), undefined)
-    assert.deepEqual(readFileEvent('saved', undefined), { event: 'saved', confirmed: false })
-    assert.deepEqual(readFileEvent('downloaded', true), { event: 'downloaded', confirmed: true })
-    assert.deepEqual(readFileEvent('synced', true), { event: 'downloaded', confirmed: false })
+    assert.deepEqual(readFileEvent('saved'), 'saved')
+    assert.deepEqual(readFileEvent('downloaded'), 'downloaded')
+    assert.deepEqual(readFileEvent('synced'), 'downloaded')
     assert.equal(readMediaKind('cover'), 'cover')
     assert.equal(readMediaKind('thumbnail'), undefined)
     assert.equal(isKnownNodeType('root'), true)

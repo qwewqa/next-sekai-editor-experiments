@@ -82,38 +82,6 @@ test.describe('a notice card that goes while it holds focus', () => {
     })
 })
 
-test('the file chip, taken away by its own dialog, hands focus to the chart', async ({ page }) => {
-    await boot(page)
-    await page.evaluate(async () => {
-        const state = await window.editorTest.appImport<
-            typeof import('../../src/editor/file/state')
-        >('/src/editor/file/state.ts')
-        const stack =
-            await window.editorTest.appImport<typeof import('../../src/history/stack')>(
-                '/src/history/stack.ts',
-            )
-        state.bindFile(
-            { name: 'probe.nxsp', event: 'downloaded', at: Date.now() },
-            stack.liveState.value,
-        )
-    })
-    const chip = page.locator('[data-file-chip]')
-    await chip.focus()
-    await page.keyboard.press('Enter')
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-    // The dialog has placed its focus, on its default.
-    await expect(dialog.getByRole('button', { name: 'Download Again' })).toBeFocused()
-    // A key press just after opening is ignored, so it is repeated until the dialog takes it.
-    await expect(async () => {
-        await dialog.getByRole('button', { name: 'I Have the File' }).focus()
-        await page.keyboard.press('Enter')
-        await expect(dialog).toHaveCount(0, { timeout: 500 })
-    }).toPass()
-    await expect(chip).toHaveCount(0)
-    await expect(page.locator('.chart-pane').first()).toBeFocused()
-})
-
 test.describe('the Elevation Editor in full screen', () => {
     test.beforeEach(async ({ page }) => {
         await boot(page)

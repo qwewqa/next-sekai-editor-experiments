@@ -2184,22 +2184,6 @@ export const openOtherVersion = (supplied?: SwitchRequest) =>
         }
     })
 
-/** I Have the File: `file.confirmed` stored on the chain record. */
-export const persistConfirmed = () => {
-    const env = environment()
-    if (!env) return
-    const { session } = env
-    if (session.identity) {
-        session.identity = {
-            ...session.identity,
-            file: { ...session.identity.file, confirmed: true },
-        }
-        return
-    }
-    const file = session.chain?.file
-    if (isRow(file)) void env.flusher.setChainFields({ file: { ...file, confirmed: true } })
-}
-
 // Broadcasts: a takeover tells other tabs to read their record again.
 
 let channel: BroadcastChannel | undefined

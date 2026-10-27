@@ -45,8 +45,7 @@ import { inlineName } from '../../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { formatSize } from '../../../utils/size'
 import { createWaveform } from '../../../waveform'
-import { confirmDownloads } from '../../file/flags'
-import { confirmFile, fileChanged } from '../../file/state'
+import { fileChanged } from '../../file/state'
 import {
     bgmStatus,
     claimNotice,
@@ -59,7 +58,6 @@ import { raiseWithRefusal } from '../../media/refusalCard'
 import { dismissNoticeCard, notify, type NoticeLine } from '../../notification'
 import { restoreStored } from '../../restoreStored'
 import { bindingHandle, bindingOf, environment, type Env } from '../../save/binding'
-import { ownDeviceId } from '../../save/env'
 import { revokedOf } from '../../save/watch'
 import { notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
@@ -491,8 +489,6 @@ const openWithNotices = async (
         if (!request.isCurrent()) return
         // Last: leaving a peek ends the request.
         leavePeek()
-        // Opening it proves the user has the download.
-        if (own.file.event === 'downloaded') confirmFile()
         endOpen('done')
         notifyOpened(name, earlier, undefined, false)
         return
@@ -609,11 +605,6 @@ const openWithNotices = async (
     })
     if (!committing) cancel()
     if (stored?.kind !== 'stored' || !stored.shown || !request.isCurrent()) return
-
-    // A file this browser wrote confirms that its downloads work; no other row changes.
-    const written = opened.project
-    const device = written?.revision?.device.id
-    if (identity && written && device === ownDeviceId(written.lineageId)) confirmDownloads()
 
     // The session this open left, which Reopen offers.
     const left = previousSession.value?.sessionId

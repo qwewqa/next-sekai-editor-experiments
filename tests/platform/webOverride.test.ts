@@ -24,7 +24,7 @@ const level = () => Promise.resolve(new Blob([gzip(JSON.stringify({ entities: []
 test('the override sets engine and OS', () => {
     assert.deepEqual(detection(), { engine: 'webkit', os: 'ios' })
     assert.equal(platform.os, 'ios')
-    assert.equal(platform.capabilities.unconfirmedDownloads, true)
+    assert.equal(platform.capabilities.closePrompt, false)
     assert.equal(platform.diagnostics().engine, 'webkit')
 })
 

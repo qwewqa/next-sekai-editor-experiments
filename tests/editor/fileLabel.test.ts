@@ -34,13 +34,13 @@ const { createSessionDescriptor, session } = await import('../../src/history/ses
 const { resetStates } = await import('../../src/history/stack')
 
 // The file part of a label comes from one function, `labelOf`: the status bar and a Recent
-// Sessions row call it, so a row can never say what the status bar would not.
+// Sessions row call it. A row leaves out the file event.
 
 const at = new Date(2026, 9, 14, 15, 15).getTime()
 const input = (rest: Partial<LabelInput> = {}): LabelInput => ({
     name: 'Coconut (Master)',
     changed: false,
-    writesInPlace: true,
+    showEvent: false,
     ...rest,
 })
 
@@ -71,7 +71,7 @@ test('a download browser adds the event, an unknown event reads as a download', 
     const when = (event?: string) =>
         labelOf(
             input({
-                writesInPlace: false,
+                showEvent: true,
                 file: { name: 'a.nxsp', ...(event ? { event } : {}), at },
             }),
         ).state
@@ -81,22 +81,20 @@ test('a download browser adds the event, an unknown event reads as a download', 
     assert.equal(when('saved'), when('downloaded'))
     // Without a time there is nothing to say.
     assert.equal(
-        labelOf(input({ writesInPlace: false, file: { name: 'a.nxsp', event: 'opened' } })).state,
+        labelOf(input({ showEvent: true, file: { name: 'a.nxsp', event: 'opened' } })).state,
         undefined,
     )
 })
 
-test('a row says a download is not confirmed, after the event and before what a check found', () => {
+test('a row leaves out the event, and keeps what a check found', () => {
     const file: LabelFile = { name: 'a.nxsp', event: 'downloaded', at }
-    const state = (rest: Partial<LabelInput>) =>
-        labelOf(input({ writesInPlace: false, file, ...rest })).state ?? ''
-    assert.match(state({ notConfirmed: true }), /^downloaded .* · download not confirmed$/)
+    const state = (rest: Partial<LabelInput>) => labelOf(input({ file, ...rest })).state ?? ''
     assert.match(
-        state({ notConfirmed: true, diskFinding: 'changed' }),
-        /download not confirmed · changed on disk$/,
+        state({ showEvent: true, diskFinding: 'changed' }),
+        /^downloaded .* · changed on disk$/,
     )
-    // The status bar does not pass it: its chip says so.
-    assert.doesNotMatch(state({}), /not confirmed/)
+    assert.equal(state({ showEvent: false, diskFinding: 'changed' }), 'changed on disk')
+    assert.equal(state({ showEvent: false }), '')
 })
 
 test('what a check found on disk joins the state', () => {
@@ -132,7 +130,7 @@ test("a row built from a chain's record says what the status bar says for the sa
             name: displayedName.value,
             file: stored,
             changed: fileChanged.value,
-            writesInPlace: writesInPlace(),
+            showEvent: !writesInPlace(),
         })
         assert.deepEqual(statusLabel.value, row, event)
         assert.equal(statusText.value, labelLine(row), event)

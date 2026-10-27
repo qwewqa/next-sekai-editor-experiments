@@ -232,7 +232,7 @@ const webCapabilities = (): PlatformCapabilities =>
             (allowsFileSystemAccess() &&
                 typeof window !== 'undefined' &&
                 'showSaveFilePicker' in window),
-        unconfirmedDownloads: detection().os === 'ios',
+        closePrompt: detection().os !== 'ios',
         library: false,
         fileJournal: false,
         updates: 'none',
