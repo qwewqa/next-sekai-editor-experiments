@@ -50,6 +50,11 @@ jobs:
               run: npx playwright install --with-deps chromium
             - run: npm run build:release
             - run: npm run test:production
+            # The tests that passed only on a retry, and each failure, in this job's summary. It never fails the job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard production
             - run: npm run check:release
             - name: Upload browser failure details
               if: failure()

@@ -306,3 +306,25 @@ test('browsers-full runs the CI exclusions in a job that does not block, on a sc
     assert.match(config, /grep: runExcluded \? ciExcluded : undefined/)
     assert.match(config, /grepInvert: ciExcluded\.length && !runExcluded \? ciExcluded : undefined/)
 })
+
+test('the release build lists its flaky tests in its summary without ever blocking the deploy', () => {
+    const build = job('build')
+    const list = build.match(
+        /- name: List flaky tests\n\s+if: \$\{\{ !cancelled\(\) \}\}\n\s+continue-on-error: true\n\s+run: node scripts\/flaky-report\.mjs shard production\n/,
+    )
+    assert.ok(list)
+    // After the production specs and before the release check, so a failed spec still gets its summary.
+    const body = build
+    assert.ok(body.indexOf('npm run test:production') < body.indexOf(list[0]))
+    assert.ok(body.indexOf(list[0]) < body.indexOf('npm run check:release'))
+    // The deploy conditions are the ones the tests above hold; the step adds no output or dependency.
+    assert.doesNotMatch(list[0], /id:|outputs/)
+    const config = readFileSync(
+        new URL('../../playwright.production.config.ts', import.meta.url),
+        'utf8',
+    )
+    assert.match(
+        config,
+        /process\.env\.CI \? \[\['list'\], \['json', \{ outputFile: 'flaky\/raw\.json' \}\]\] : 'list'/,
+    )
+})
