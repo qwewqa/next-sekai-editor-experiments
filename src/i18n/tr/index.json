@@ -149,7 +149,6 @@
     },
     "fullscreen": {
       "title": "Tam Ekran",
-      "toggled": "Tam ekran değiştirildi",
       "unsupported": "Bu cihaz tam ekranı desteklemiyor"
     },
     "groups": {
@@ -383,7 +382,8 @@
     },
     "toggleVolume": {
       "title": "{0} Sesini Aç/Kapat",
-      "toggled": "{0} sesi açıldı/kapatıldı",
+      "muted": "{0} sesi kapatıldı",
+      "unmuted": "{0} sesi açıldı",
       "type": {
         "bgm": "Arka Plan Müziği",
         "sfx": "Ses Efektleri"
@@ -401,11 +401,13 @@
     "visibilities": {
       "cycle": {
         "title": "Nesne Görünürlüklerini Değiştir",
-        "cycled": "Nesne görünürlükleri değiştirildi"
+        "all": "Tüm nesneler gösteriliyor",
+        "only": "Yalnızca {0} gösteriliyor"
       },
       "toggle": {
         "title": "Görünürlük: {0}",
-        "toggled": "{0} görünürlüğü değiştirildi",
+        "on": "{0} görünürlüğü açıldı",
+        "off": "{0} görünürlüğü kapatıldı",
         "types": {
           "note": "Nota",
           "cameraEvent": "Kamera Olayı",
