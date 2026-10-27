@@ -38,6 +38,9 @@ jobs:
                   persist-credentials: false
             # A dev deploy can run from any branch, so the template rules run first.
             - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+              # No lock file to key uv's cache on, so it stays off.
+              with:
+                  enable-cache: false
             - run: uv run infra/check_templates.py
             - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
               with:

@@ -33,6 +33,9 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+              # No lock file to key uv's cache on, so it stays off.
+              with:
+                  enable-cache: false
             - run: npm ci
             - run: npm run check-type
             - run: npm run check-lint
@@ -60,6 +63,9 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+              # No lock file to key uv's cache on, so it stays off.
+              with:
+                  enable-cache: false
             - run: npm ci
             - run: npm test
 
