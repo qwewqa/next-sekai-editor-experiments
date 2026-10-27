@@ -24,8 +24,8 @@ import {
 const props = defineProps<{
     initial?: boolean
     /**
-     * A persistent dialog's region: it reads only notices drawn over its dialog. One under it cannot
-     * be reached until the dialog closes, so the page region reads it then.
+     * A persistent dialog's region: it reads only notices drawn over its dialog. A notice under it
+     * cannot be reached until the dialog closes, so the page region reads it then.
      */
     overOnly?: boolean
 }>()
@@ -43,7 +43,8 @@ const drawnOver = (notice: Notice) =>
     (cardInDialog.value && noticeCard.value?.id === notice.id) ||
     (quickInDialog.value && notification.value.id === notice.id)
 
-// A notice the page region read just before the persistent dialog covered it is read again after.
+// A notice the page region read just before a persistent dialog covered it is read again once the
+// dialog closes.
 if (props.overOnly && announced === latestNotice.value && !drawnOver(latestNotice.value))
     announced = undefined
 

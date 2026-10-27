@@ -10,7 +10,7 @@ const props = withDefaults(
         title: string
         /** The body neither pads nor scrolls; its content fills it and scrolls itself. */
         fill?: boolean
-        /** False for a dialog only its own button closes: no close button. */
+        /** False for a dialog that only its own button closes; it then has no close button. */
         closable?: boolean
     }>(),
     { closable: true },

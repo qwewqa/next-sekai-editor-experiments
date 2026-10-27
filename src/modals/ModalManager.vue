@@ -98,8 +98,8 @@ const onClick = (event: MouseEvent, modal: Modal) => {
 // What opens each dialog and gives its default focus.
 const openers = new WeakMap<HTMLDialogElement, () => void>()
 
-// A persistent dialog that the browser closed anyway, as on an Escape it does not let the page
-// refuse, opens again; the editor under it stays inert meanwhile.
+// A persistent dialog that the browser closes anyway (an Escape the page cannot refuse) opens
+// again; the editor under it stays inert meanwhile.
 const onClose = (event: Event, modal: Modal) => {
     const dialog = event.currentTarget as HTMLDialogElement
     if (modal.persistent && modals.includes(modal) && dialog.isConnected && !dialog.open) {

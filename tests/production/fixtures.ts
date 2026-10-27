@@ -255,13 +255,12 @@ export const diagnostics = (page: Page) =>
 export const seedVersion = () => {
     localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
     localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
-    // The first-visit dialog counts as shown.
-    localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+    // The agreement counts as given.
     localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
 }
 
 /**
- * Waits for the editor and its startup, then fails if the first-visit dialog shows: the mark is
+ * Waits for the editor and its startup, then fails if the agreement dialog shows: the record is
  * missing (the config's storageState and seedVersion seed it).
  */
 export const editorReady = async (page: Page) => {
@@ -272,12 +271,12 @@ export const editorReady = async (page: Page) => {
         () =>
             new Promise<boolean>((resolve) => {
                 requestAnimationFrame(() =>
-                    resolve(document.querySelector('[data-first-visit]') !== null),
+                    resolve(document.querySelector('[data-agreement]') !== null),
                 )
             }),
     )
     if (open)
         throw new Error(
-            'The first-visit dialog is open: seed sonolus-next-sekai-editor.firstVisitShown',
+            'The agreement dialog is open: seed sonolus-next-sekai-editor.agreement = {"terms":999,"privacy":999}',
         )
 }

@@ -146,6 +146,7 @@ const dynamic: Record<string, string> = {
     'commands.previewAssets.serverImport.': 'Record<ImportErrorCode> for a server item',
     'commands.previewAssets.part.': 'the part named by the refused entry',
     'commands.previewAssets.server.': 'the server error kinds',
+    'agreement.updated.': 'the changed page, read as updated[change] in AgreementDialog.vue',
     'settings.editor.theme.': "the setting's options",
     'settings.preview.position.': "the setting's options",
     'settings.preview.transport.': "the setting's options",

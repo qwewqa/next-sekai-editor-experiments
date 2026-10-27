@@ -4,7 +4,7 @@ import SelectField from '../../modals/form/SelectField.vue'
 import { settings } from '../../settings'
 import { themes } from '../../themes'
 
-// Theme, in Settings and in the first-visit dialog.
+// Theme, in Settings and in the agreement dialog.
 </script>
 
 <template>

@@ -610,3 +610,19 @@ test('messages use no straight quotes, and French guillemets hold a no-break spa
     for (const [key, text] of Object.entries(read('fr')))
         assert.doesNotMatch(text, /«(?!\u00a0)|(?<!\u00a0)»/u, key)
 })
+
+// AgreementSentence.vue links the two documents' names inside the sentence by finding them in it.
+// Korean and Chinese use the button's word twice, once for the button and once as the verb.
+test('the agreement sentence names each document once, and the button, in every locale', () => {
+    for (const locale of readdirSync(directory, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)) {
+        const messages = read(locale)
+        const sentence = messages['agreement.sentence']!
+        for (const key of ['agreement.terms', 'agreement.privacy']) {
+            const name = messages[key]!
+            assert.equal(sentence.split(name).length - 1, 1, `${locale}: ${key} once`)
+        }
+        assert.ok(sentence.includes(messages['agreement.agree']!), `${locale}: agreement.agree`)
+    }
+})

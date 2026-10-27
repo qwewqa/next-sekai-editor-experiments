@@ -18,7 +18,6 @@ const seed = (context: BrowserContext, storage: object = {}, platform?: object) 
                 'sonolus-next-sekai-editor.lastAppVersion',
                 JSON.stringify('0.6.0'),
             )
-            localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
             localStorage.setItem(
                 'sonolus-next-sekai-editor.agreement',
                 '{"terms":999,"privacy":999}',

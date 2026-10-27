@@ -1168,18 +1168,18 @@ const openChart = async (page, group) => {
     await page.waitForFunction(() => window.nsePerf?.startup() === 'done', null, {
         timeout: 300_000,
     })
-    // A run never measures behind the first-visit dialog: its decision is made at the gate's lifting.
-    const firstVisit = await page.evaluate(
+    // A run never measures behind the agreement dialog, which opens as the gate lifts.
+    const agreement = await page.evaluate(
         () =>
             new Promise((resolve) =>
                 requestAnimationFrame(() =>
-                    resolve(document.querySelector('[data-first-visit]') !== null),
+                    resolve(document.querySelector('[data-agreement]') !== null),
                 ),
             ),
     )
-    if (firstVisit)
+    if (agreement)
         throw new Error(
-            'The first-visit dialog is open: seed sonolus-next-sekai-editor.firstVisitShown',
+            'The agreement dialog is open: seed sonolus-next-sekai-editor.agreement = {"terms":999,"privacy":999}',
         )
     await page.mouse.move(5, 5)
     await page.waitForTimeout(1000)
@@ -1538,8 +1538,7 @@ try {
                     'sonolus-next-sekai-editor.lastAppVersion',
                     JSON.stringify('0.6.0'),
                 )
-                // The first-visit dialog counts as shown.
-                localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+                // The agreement counts as given.
                 localStorage.setItem(
                     'sonolus-next-sekai-editor.agreement',
                     '{"terms":999,"privacy":999}',

@@ -23,9 +23,10 @@ import { storageKey } from '../../src/storage'
 
 // Safe mode's rule and the startup gate's state.
 
-test("safe mode writes only settings and keys outside the editor's own", () => {
+test("safe mode writes only settings, flags, the agreement and keys outside the editor's own", () => {
     registerSettingKeys(['theme', 'locale'])
-    for (const key of ['theme', 'locale', 'toolbarExportMigrated'])
+    // Agreeing in safe mode carries over to a normal load.
+    for (const key of ['theme', 'locale', 'toolbarExportMigrated', 'agreement'])
         assert.equal(safeModeMayWrite(storageKey(key)), true, key)
     for (const key of [
         'canary',

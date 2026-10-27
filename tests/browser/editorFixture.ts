@@ -5,6 +5,7 @@ import type { NoteObject } from '../../src/chart/note'
 import type { StageId } from '../../src/chart/stages'
 import type { PlatformOverride } from '../../src/platform/detect'
 import type { Entity } from '../../src/state/entities'
+import { AGREED, AGREEMENT_KEY } from '../helpers/agreement'
 
 type BriefEntity = { type: string; beat: number; left?: number; size?: number }
 
@@ -89,8 +90,7 @@ export const installCanvasCounters = (legacyCanvas = false) => {
     // Seeded settings make every profile an existing user, who would see "Updated to version" with
     // an action over the canvas; the last version seen is the override's, so specs see "Version X".
     localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
-    // The first-visit dialog counts as shown; its own specs remove the mark.
-    localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+    // The agreement counts as given; its own specs remove the record.
     localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     // Only the explicitly configured historical parity server uses this path.
     // A missing GPU module in the current app must fail rather than silently
@@ -113,49 +113,44 @@ export const installCanvasCounters = (legacyCanvas = false) => {
     }
 }
 
-/** The localStorage key that marks the first-visit dialog as shown. */
-export const FIRST_VISIT_MARK = 'sonolus-next-sekai-editor.firstVisitShown'
-
-/** Seeds the agreement record (and the first-visit mark) in a profile that the config's storageState does not reach. */
+/** Seeds the agreement record in a profile that the config's storageState does not reach. */
 export const withAgreement = async (context: BrowserContext) => {
     await context.addInitScript(() => {
-        localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
         localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     })
     return context
 }
 
 /**
- * Fails while the first-visit dialog is open or its decision is pending: a spec that builds its own
- * profile seeds the mark, and the first-visit specs opt out.
+ * Fails while the agreement dialog is open or still to come: a spec that builds its own profile
+ * seeds the record, and the agreement specs opt out.
  */
-const expectNoFirstVisit = async (page: Page) => {
+const expectNoAgreement = async (page: Page) => {
     const state = await page.evaluate(async () => {
         // The app's own copy of the module, under the URL it was loaded by.
         const url =
             performance
                 .getEntriesByType('resource')
                 .map((entry) => entry.name)
-                .find(
-                    (name) => new URL(name).pathname === '/src/editor/firstVisit/firstVisit.ts',
-                ) ?? '/src/editor/firstVisit/firstVisit.ts'
-        const { firstVisitState } = (await import(
+                .find((name) => new URL(name).pathname === '/src/editor/agreement/agreement.ts') ??
+            '/src/editor/agreement/agreement.ts'
+        const { agreementState } = (await import(
             url
-        )) as typeof import('../../src/editor/firstVisit/firstVisit')
-        return firstVisitState.value
+        )) as typeof import('../../src/editor/agreement/agreement')
+        return agreementState.value
     })
     if (state !== 'notDue' && state !== 'done')
         throw new Error(
-            `The first-visit dialog is ${state}: seed ${FIRST_VISIT_MARK}, or pass { firstVisit: true }`,
+            `The agreement dialog is ${state}: seed ${AGREEMENT_KEY} = ${AGREED}, or pass { agreement: true }`,
         )
 }
 
 /**
  * Waits until the startup gate lifts: until the session is open, input is
  * swallowed. Specs without the fixture hook (`installCanvasCounters`) wait before their first input.
- * It then fails if the first-visit dialog is open or still to be decided, unless `firstVisit` is set.
+ * It then fails if the agreement dialog is open or still to come, unless `agreement` is set.
  */
-export const waitForStartup = async (page: Page, { firstVisit = false } = {}) => {
+export const waitForStartup = async (page: Page, { agreement = false } = {}) => {
     await expect
         .poll(
             () =>
@@ -175,7 +170,7 @@ export const waitForStartup = async (page: Page, { firstVisit = false } = {}) =>
             { timeout: 20_000 },
         )
         .toBe('done')
-    if (!firstVisit) await expectNoFirstVisit(page)
+    if (!agreement) await expectNoAgreement(page)
 }
 
 /** Seeds the platform override: pass it to addInitScript with the override. */
@@ -209,15 +204,15 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
     if (!held && !/"fail"/.test(flags) && startupGate.phase !== 'done')
         throw new Error(`Startup did not finish: ${startupGate.phase}`)
     if (window.nseStartupError) throw new Error(`Startup failed: ${window.nseStartupError}`)
-    // A spec that forgets the first-visit mark fails here, not behind the dialog.
+    // A spec that forgets the agreement record fails here, not behind the dialog.
     if (!held && !/"fail"/.test(flags)) {
-        const { firstVisitState } = await appImport<
-            typeof import('../../src/editor/firstVisit/firstVisit')
-        >('/src/editor/firstVisit/firstVisit.ts')
-        const state = firstVisitState.value
+        const { agreementState } = await appImport<
+            typeof import('../../src/editor/agreement/agreement')
+        >('/src/editor/agreement/agreement.ts')
+        const state = agreementState.value
         if (state !== 'notDue' && state !== 'done')
             throw new Error(
-                `The first-visit dialog is ${state}: seed sonolus-next-sekai-editor.firstVisitShown`,
+                `The agreement dialog is ${state}: seed sonolus-next-sekai-editor.agreement = {"terms":999,"privacy":999}`,
             )
     }
     if (window.installEditorRendering) {

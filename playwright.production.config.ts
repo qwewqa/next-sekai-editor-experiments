@@ -27,16 +27,13 @@ export default defineConfig({
     use: {
         browserName: 'chromium',
         baseURL,
-        // The first-visit dialog counts as shown; its own spec starts without the mark.
+        // The agreement counts as given; its own spec starts without the record.
         storageState: {
             cookies: [],
             origins: [
                 {
                     origin: new URL(baseURL).origin,
-                    localStorage: [
-                        { name: 'sonolus-next-sekai-editor.firstVisitShown', value: '1' },
-                        { name: AGREEMENT_KEY, value: AGREED },
-                    ],
+                    localStorage: [{ name: AGREEMENT_KEY, value: AGREED }],
                 },
             ],
         },

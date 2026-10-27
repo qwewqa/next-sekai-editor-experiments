@@ -13,7 +13,7 @@ export const STARTUP_WINDOW_MS = 12_000
 
 /**
  * When the start-up toast may still become the start-up card: within 12 s of the startup gate
- * lifting. A hold keeps it open, as while the first-visit dialog covers the page, and its release
+ * lifting. A hold keeps it open, as while the agreement dialog covers the page, and its release
  * starts the 12 s again, since that is when the page first becomes usable.
  */
 export const createStartupWindow = () => {

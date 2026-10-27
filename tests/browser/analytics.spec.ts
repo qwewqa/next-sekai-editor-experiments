@@ -662,8 +662,8 @@ test('a preview host or render scale that changed and came back within one tick 
     expect(steady.previewRenderScale).not.toBe('mixed')
 })
 
-test.describe('with the first-visit dialog', () => {
-    // These pages start without the mark the config's storageState seeds, so the dialog is due.
+test.describe('with the agreement dialog', () => {
+    // These pages start without the record the config's storageState seeds, so agreement is due.
     test.use({
         storageState: {
             cookies: [],
@@ -679,11 +679,11 @@ test.describe('with the first-visit dialog', () => {
         },
     })
 
-    const MARK = 'sonolus-next-sekai-editor.firstVisitShown'
-    const firstVisit = (page: Page) => page.getByRole('dialog', { name: 'Next SEKAI Editor' })
-    const close = (page: Page) => firstVisit(page).locator('[data-modal-footer] button').click()
+    const KEY = 'sonolus-next-sekai-editor.agreement'
+    const gateDialog = (page: Page) => page.getByRole('dialog', { name: 'Next SEKAI Editor' })
+    const agree = (page: Page) => gateDialog(page).getByRole('button', { name: 'Agree' }).click()
 
-    /** The pages of the context: a fixed version and the panels away, without the mark. */
+    /** The pages of the context: a fixed version and the panels away, without the record. */
     const seed = (context: BrowserContext) =>
         context.addInitScript(() => {
             // The client's modules are found in the resource timing entries.
@@ -704,21 +704,17 @@ test.describe('with the first-visit dialog', () => {
     /** The startup test flags for the tab's first load. */
     const startupFlags = (page: Page, flags: object) =>
         page.addInitScript((flags) => {
-            if (sessionStorage.getItem('fv.flagsSet')) return
-            sessionStorage.setItem('fv.flagsSet', '1')
+            if (sessionStorage.getItem('agr.flagsSet')) return
+            sessionStorage.setItem('agr.flagsSet', '1')
             sessionStorage.setItem('nse.test.startup', JSON.stringify(flags))
         }, flags)
 
-    const decided = (page: Page) =>
-        expect
-            .poll(() =>
-                page.evaluate(async () => {
-                    const { firstVisitState } =
-                        (await import('/src/editor/firstVisit/firstVisit.ts')) as typeof import('../../src/editor/firstVisit/firstVisit')
-                    return firstVisitState.value
-                }),
-            )
-            .toMatch(/^(open|done)$/)
+    const agreementState = (page: Page) =>
+        page.evaluate(async () => {
+            const { agreementState } =
+                (await import('/src/editor/agreement/agreement.ts')) as typeof import('../../src/editor/agreement/agreement')
+            return agreementState.value
+        })
 
     /** A real pointer press on the chart. */
     const clickChart = async (page: Page) => {
@@ -728,7 +724,7 @@ test.describe('with the first-visit dialog', () => {
 
     const shownVisit = async (page: Page) => {
         await page.goto('/')
-        await expect(firstVisit(page)).toBeVisible()
+        await expect(gateDialog(page)).toBeVisible()
         await expect.poll(() => clientLoaded(page), { timeout: 15_000 }).toBe(3)
     }
 
@@ -749,7 +745,7 @@ test.describe('with the first-visit dialog', () => {
         await installAnalytics(page)
     })
 
-    test('a press on the gate arms nothing: no request until the dialog is closed and the editor used', async ({
+    test('nothing under the gate arms or sends: a Start Blank press, the links, a hide, pagehide and the minute; after Agree the next input does', async ({
         page,
         context,
     }) => {
@@ -759,11 +755,13 @@ test.describe('with the first-visit dialog', () => {
         await page.goto('/')
         const gate = page.locator('dialog[data-startup-gate]')
         await gate.getByRole('button', { name: 'Start Blank' }).click()
-        await expect(firstVisit(page)).toBeVisible()
-        // Privacy opens in a new tab; the page is then hidden, and goes away.
-        const popup = page.waitForEvent('popup')
-        await firstVisit(page).getByRole('link', { name: 'Privacy' }).click()
-        await (await popup).close()
+        await expect(gateDialog(page)).toBeVisible()
+        // Each link opens in a new tab; the page is then hidden, and goes away.
+        for (const name of ['Terms of Service', 'Privacy Notice']) {
+            const popup = page.waitForEvent('popup')
+            await gateDialog(page).getByRole('link', { name }).click()
+            await (await popup).close()
+        }
         await hide(page)
         await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
         // The client has loaded, and its minute passes with the dialog open. The fake clock
@@ -796,7 +794,7 @@ test.describe('with the first-visit dialog', () => {
                 BEACONS,
             ),
         ).toEqual([])
-        await close(page)
+        await agree(page)
         await clickChart(page)
         await sends(page, batches)
         expect(startOf(batches[0] ?? [])).toEqual([...START])
@@ -806,7 +804,7 @@ test.describe('with the first-visit dialog', () => {
     test('a press on a field in the dialog arms nothing', async ({ page, context }) => {
         const { batches } = await mock(context)
         await shownVisit(page)
-        await firstVisit(page).getByRole('combobox', { name: 'Theme' }).click()
+        await gateDialog(page).getByRole('combobox', { name: 'Theme' }).click()
         await page.keyboard.press('Escape')
         for (let i = 0; i < 3; i++) await hide(page)
         await page.waitForTimeout(500)
@@ -816,14 +814,14 @@ test.describe('with the first-visit dialog', () => {
     test('turned off in the dialog, nothing is ever sent', async ({ page, context }) => {
         const { batches } = await mock(context)
         await shownVisit(page)
-        const toggle = firstVisit(page).getByRole('switch', { name: 'Send Usage Statistics' })
+        const toggle = gateDialog(page).getByRole('switch', { name: 'Send Usage Statistics' })
         await expect(toggle).toHaveAttribute('aria-checked', 'true')
-        await expect(firstVisit(page)).toContainText(
+        await expect(gateDialog(page)).toContainText(
             'They include which tools you use, some editor settings',
         )
         await toggle.click()
         await expect(toggle).toHaveAttribute('aria-checked', 'false')
-        await close(page)
+        await agree(page)
         await interact(page)
         await clickChart(page)
         for (let i = 0; i < 3; i++) await hide(page)
@@ -831,26 +829,7 @@ test.describe('with the first-visit dialog', () => {
         expect(batches).toEqual([])
     })
 
-    test('a load that defers the dialog arms as usual', async ({ page, context }) => {
-        const { batches } = await mock(context)
-        await startupFlags(page, { hold: true })
-        await page.goto('/')
-        await expect
-            .poll(() => page.evaluate(() => typeof window.nseStartupRelease))
-            .toBe('function')
-        await page.evaluate(async () => {
-            const { addLoadEvent } =
-                (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
-            addLoadEvent({ kind: 'storageCleared' })
-            window.nseStartupRelease?.()
-        })
-        await decided(page)
-        await expect(firstVisit(page)).toHaveCount(0)
-        await clickChart(page)
-        await sends(page, batches)
-    })
-
-    test('a startup that fails on a first visit is still reported once the error page is used', async ({
+    test('a startup that fails where agreement is due is never reported, as nothing arms', async ({
         page,
         context,
     }) => {
@@ -859,14 +838,35 @@ test.describe('with the first-visit dialog', () => {
         await page.goto('/')
         const gate = page.locator('dialog[data-startup-gate]')
         await expect(gate.getByRole('alert')).toBeVisible()
-        await decided(page)
+        await expect.poll(() => agreementState(page)).toBe('done')
+        await expect.poll(() => clientLoaded(page), { timeout: 15_000 }).toBe(3)
+        await gate.getByRole('alert').click()
+        for (let i = 0; i < 3; i++) await hide(page)
+        await page.waitForTimeout(500)
+        expect(batches).toEqual([])
+        expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBeNull()
+    })
+
+    test('a startup that fails with a current record is reported once the error page is used', async ({
+        page,
+        context,
+    }) => {
+        const { batches } = await mock(context)
+        await page.addInitScript(
+            (key) => localStorage.setItem(key, '{"terms":999,"privacy":999}'),
+            KEY,
+        )
+        await startupFlags(page, { fail: 'A row could not be read' })
+        await page.goto('/')
+        const gate = page.locator('dialog[data-startup-gate]')
+        await expect(gate.getByRole('alert')).toBeVisible()
+        expect(await agreementState(page)).toBe('notDue')
         await gate.getByRole('alert').click()
         await sends(page, batches)
         expect(dataOf(batches[0] ?? [], 'startup')).toMatchObject({ outcome: 'error' })
-        expect(await page.evaluate((key) => localStorage.getItem(key), MARK)).toBeNull()
     })
 
-    test('a mark that cannot be stored skips the dialog, and the visit arms as usual', async ({
+    test('where the record cannot be stored, Agree still lets the next input arm', async ({
         page,
         context,
     }) => {
@@ -877,38 +877,28 @@ test.describe('with the first-visit dialog', () => {
                 if (name === key) throw new DOMException('Full', 'QuotaExceededError')
                 setItem.call(this, name, value)
             }
-        }, MARK)
-        await page.goto('/')
-        await decided(page)
-        await expect(firstVisit(page)).toHaveCount(0)
-        await clickChart(page)
-        await sends(page, batches)
-    })
-
-    test('a late notice that closes the dialog lets the next input arm', async ({
-        page,
-        context,
-    }) => {
-        const { batches } = await mock(context)
-        await page.addInitScript(() => {
-            let open: () => void = () => undefined
-            const gate = new Promise<void>((resolve) => (open = resolve))
-            ;(window as unknown as { releaseEstimate: () => void }).releaseEstimate = () => open()
-            StorageManager.prototype.estimate = async () => {
-                await gate
-                return { usage: 900_000_000, quota: 1_000_000_000 }
-            }
-        })
+        }, KEY)
         await shownVisit(page)
-        await page.evaluate(() =>
-            (window as unknown as { releaseEstimate: () => void }).releaseEstimate(),
-        )
-        await expect(firstVisit(page)).toHaveCount(0)
+        await agree(page)
         await clickChart(page)
         await sends(page, batches)
     })
 
-    test('a hidden page waits with the hold, and the visit arms once the dialog is closed', async ({
+    test('Agree in another tab lets the next input here arm', async ({ page, context }) => {
+        const { batches } = await mock(context)
+        await shownVisit(page)
+        const other = await context.newPage()
+        await other.goto('/')
+        await expect(gateDialog(other)).toBeVisible()
+        await agree(other)
+        await other.close()
+        await expect(gateDialog(page)).toHaveCount(0)
+        await expect.poll(() => agreementState(page)).toBe('done')
+        await clickChart(page)
+        await sends(page, batches)
+    })
+
+    test('a hidden page holds it too, and the visit arms after Agree', async ({
         page,
         context,
     }) => {
@@ -922,15 +912,17 @@ test.describe('with the first-visit dialog', () => {
         await page.goto('/')
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await expect.poll(() => clientLoaded(page), { timeout: 15_000 }).toBe(3)
+        // The dialog opens in a hidden page too: nothing is stored before Agree.
+        await expect.poll(() => agreementState(page)).toBe('open')
         await page.evaluate(() => {
             delete (document as { visibilityState?: unknown }).visibilityState
             document.dispatchEvent(new Event('visibilitychange'))
         })
-        await expect(firstVisit(page)).toBeVisible()
+        await expect(gateDialog(page)).toBeVisible()
         await interact(page)
         for (let i = 0; i < 3; i++) await hide(page)
         expect(batches).toEqual([])
-        await close(page)
+        await agree(page)
         await clickChart(page)
         await sends(page, batches)
     })

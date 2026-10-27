@@ -231,7 +231,7 @@ export const startupNoticeCurrent = () =>
         startupWindow.isOpen(performance.now()))
 
 /**
- * Keeps the start-up toast current while the first-visit dialog covers the page; at the release
+ * Keeps the start-up toast current while the agreement dialog covers the page; at the release
  * its 12 s start, since the page only then becomes usable.
  */
 export const holdStartupWindow = (held: boolean) => {

@@ -17,10 +17,6 @@ test('a profile with only a migration flag is a new user', () => {
     )
 })
 
-test('the first-visit mark alone is not an existing user', () => {
-    assert.equal(isExistingUser(stored('firstVisitShown'), prefix), false)
-})
-
 test('the agreement record alone is not an existing user', () => {
     assert.equal(isExistingUser(stored('agreement'), prefix), false)
 })

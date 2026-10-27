@@ -4,7 +4,7 @@ import { localizations } from '../../i18n/localizations'
 import SelectField from '../../modals/form/SelectField.vue'
 import { settings } from '../../settings'
 
-// Language, in Settings and in the first-visit dialog; each language is named in itself.
+// Language, in Settings and in the agreement dialog; each language is named in itself.
 </script>
 
 <template>

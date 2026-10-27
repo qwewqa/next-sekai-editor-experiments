@@ -121,7 +121,7 @@ test('the first trusted input on a visible page arms the visit, and the listener
     input({ isTrusted: true } as Event)
     page.visibilityState = 'visible'
     assert.equal(armed, 0, 'an untrusted input, and one while hidden')
-    // While the first-visit dialog holds it, an input arms nothing, and the listeners stay.
+    // While the agreement dialog holds it, an input arms nothing, and the listeners stay.
     tally.holdArming(true)
     input({ isTrusted: true } as Event)
     assert.equal(armed, 0, 'an input while held')

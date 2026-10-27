@@ -1183,6 +1183,17 @@
     "leave": "Quitter le mode sans échec",
     "open": "Ouvrir en mode sans échec"
   },
+  "agreement": {
+    "terms": "Conditions d’utilisation",
+    "privacy": "Avis de confidentialité",
+    "agree": "Accepter",
+    "sentence": "En choisissant Accepter, vous acceptez les Conditions d’utilisation et confirmez avoir 13 ans ou plus et avoir lu l’Avis de confidentialité.",
+    "updated": {
+      "terms": "Nous avons mis à jour les Conditions d’utilisation.",
+      "privacy": "Nous avons mis à jour l’Avis de confidentialité.",
+      "both": "Nous avons mis à jour les Conditions d’utilisation et l’Avis de confidentialité."
+    }
+  },
   "load": {
     "version": "Version {0}",
     "updated": "Mis à jour vers la version {0}",

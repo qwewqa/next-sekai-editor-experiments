@@ -1183,6 +1183,17 @@
         "leave": "Leave Safe Mode",
         "open": "Open in Safe Mode"
     },
+    "agreement": {
+        "terms": "Terms of Service",
+        "privacy": "Privacy Notice",
+        "agree": "Agree",
+        "sentence": "By choosing Agree, you agree to the Terms of Service and confirm that you are 13 or older and have read the Privacy Notice.",
+        "updated": {
+            "terms": "We updated the Terms of Service.",
+            "privacy": "We updated the Privacy Notice.",
+            "both": "We updated the Terms of Service and the Privacy Notice."
+        }
+    },
     "load": {
         "version": "Version {0}",
         "updated": "Updated to version {0}",

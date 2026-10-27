@@ -113,7 +113,7 @@ const baseURL = `http://127.0.0.1:${port}`
 // Which host draws the preview, whatever the setting says. Every page also starts without the
 // startup guard's question about an opening that did not finish, which a spec that reloads or
 // closes soon after an open would otherwise meet on a slow machine; the guard's own specs clear
-// `nse.test.noOpeningGuard`. The first-visit dialog counts as shown; its own specs remove the mark.
+// `nse.test.noOpeningGuard`. The agreement counts as given; its own specs remove the record.
 const seeded = (value: 'main' | 'worker') => ({
     storageState: {
         cookies: [],
@@ -123,7 +123,6 @@ const seeded = (value: 'main' | 'worker') => ({
                 localStorage: [
                     { name: 'nse.test.previewHost', value },
                     { name: 'nse.test.noOpeningGuard', value: 'true' },
-                    { name: 'sonolus-next-sekai-editor.firstVisitShown', value: '1' },
                     { name: AGREEMENT_KEY, value: AGREED },
                 ],
             },

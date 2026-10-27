@@ -1183,6 +1183,17 @@
     "leave": "Güvenli Moddan Çık",
     "open": "Güvenli Modda Aç"
   },
+  "agreement": {
+    "terms": "Kullanım Koşulları",
+    "privacy": "Gizlilik Bildirimi",
+    "agree": "Kabul Et",
+    "sentence": "Kabul Et düğmesini seçerek Kullanım Koşulları’nı kabul eder, 13 yaşında veya daha büyük olduğunuzu ve Gizlilik Bildirimi’ni okuduğunuzu onaylarsınız.",
+    "updated": {
+      "terms": "Kullanım Koşulları’nı güncelledik.",
+      "privacy": "Gizlilik Bildirimi’ni güncelledik.",
+      "both": "Kullanım Koşulları’nı ve Gizlilik Bildirimi’ni güncelledik."
+    }
+  },
   "load": {
     "version": "Sürüm {0}",
     "updated": "{0} sürümüne güncellendi",

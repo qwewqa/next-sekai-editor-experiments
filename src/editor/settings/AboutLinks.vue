@@ -16,11 +16,6 @@ import {
 import { i18n } from '../../i18n'
 import { appVersion, platform } from '../../platform'
 
-const props = defineProps<{
-    /** The links to show, by key, as `['privacy']`; all of them when unset. */
-    only?: readonly ('releaseNotes' | 'source' | 'license' | 'notices' | 'privacy' | 'terms')[]
-}>()
-
 const about = computed(() => i18n.value.settings.about)
 
 // Release Notes is CHANGELOG.md on main; a build with no release tag behind its version has none.
@@ -40,12 +35,6 @@ const links = computed(() => [
     ...(HAS_TERMS_PAGE ? [{ key: 'terms', label: about.value.terms, href: TERMS_PATH }] : []),
 ])
 
-const listed = computed(() =>
-    links.value.filter(
-        (link) => !props.only || (props.only as readonly string[]).includes(link.key),
-    ),
-)
-
 const open = (href: string) => {
     platform.openExternal(new URL(href, location.href).href)
 }
@@ -54,7 +43,7 @@ const open = (href: string) => {
 <template>
     <div class="flex flex-wrap gap-2" data-about-links>
         <a
-            v-for="link in listed"
+            v-for="link in links"
             :key="link.key"
             :href="link.href"
             target="_blank"

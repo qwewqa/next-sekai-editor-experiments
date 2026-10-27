@@ -172,8 +172,8 @@ const arm = (event: Event) => {
 }
 
 /**
- * While held, no input arms the visit: on a load where the first-visit dialog is due, from
- * module evaluation until the dialog is skipped or closed.
+ * While held, no input arms the visit: on a load where agreement is due, from module evaluation
+ * until Agree, here or in another tab.
  */
 export const holdArming = (held: boolean) => {
     armingHeld = held

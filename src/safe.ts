@@ -1,8 +1,9 @@
+import { AGREEMENT_KEY } from './editor/agreement/rules'
 import { WEB_MIGRATION_FLAGS } from './settings/migrationFlags'
 import { storageKey } from './storage'
 
-// Safe mode on the web (`?safe`): a blank editor over a read-only database that
-// writes nothing to localStorage but settings and the migration flags. It is imported ahead of
+// Safe mode on the web (`?safe`): a blank editor over a read-only database that writes nothing to
+// localStorage but settings, the migration flags and the agreement. It is imported ahead of
 // everything that stores (`launch.ts` imports it first), so the guard below is in place before any write.
 
 export const SAFE_PARAM = 'safe'
@@ -21,11 +22,11 @@ export const registerSettingKeys = (keys: Iterable<string>) => {
     for (const key of keys) settingKeys.add(storageKey(key))
 }
 
-const flagKeys = new Set(WEB_MIGRATION_FLAGS.map(storageKey))
+const flagKeys = new Set([...WEB_MIGRATION_FLAGS, AGREEMENT_KEY].map(storageKey))
 const ownPrefix = storageKey('')
 
-/** Whether safe mode lets this localStorage key change: a setting, a migration flag, or a key outside
- * the editor's own. */
+/** Whether safe mode lets this localStorage key change: a setting, a migration flag, the agreement,
+ * or a key outside the editor's own. */
 export const safeModeMayWrite = (key: string) =>
     !key.startsWith(ownPrefix) || settingKeys.has(key) || flagKeys.has(key)
 
