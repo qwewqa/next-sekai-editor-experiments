@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 const errors = new WeakMap<Page, string[]>()
@@ -105,6 +105,22 @@ test('the Beat field keeps a typed beat with more than three decimals', async ({
     await expect.poll(() => elevationBeat(page)).toBe(20 / 3)
 })
 
+// The room left in the field after its text, in the field's own font, tabular digits included.
+const roomAfterText = (field: Locator) =>
+    field.evaluate((input: HTMLInputElement) => {
+        const style = getComputedStyle(input)
+        const text = document.createElement('span')
+        text.textContent = input.value
+        for (const key of ['fontFamily', 'fontSize', 'fontWeight', 'fontVariantNumeric'] as const)
+            text.style[key] = style[key]
+        document.body.append(text)
+        const width = text.getBoundingClientRect().width
+        text.remove()
+        const room =
+            input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+        return room - width
+    })
+
 test('the Beat field fits a long beat', async ({ page }) => {
     await setUp(page, 16)
     await page.keyboard.press('t')
@@ -117,29 +133,28 @@ test('the Beat field fits a long beat', async ({ page }) => {
         await page.setViewportSize({ width, height: 844 })
         await settle(page)
         // The text fits inside the padding.
-        expect(
-            await field.evaluate((input: HTMLInputElement) => {
-                const style = getComputedStyle(input)
-                // The text in the field's own font, tabular digits included.
-                const text = document.createElement('span')
-                text.textContent = input.value
-                for (const key of [
-                    'fontFamily',
-                    'fontSize',
-                    'fontWeight',
-                    'fontVariantNumeric',
-                ] as const)
-                    text.style[key] = style[key]
-                document.body.append(text)
-                const width = text.getBoundingClientRect().width
-                text.remove()
-                const room =
-                    input.clientWidth -
-                    parseFloat(style.paddingLeft) -
-                    parseFloat(style.paddingRight)
-                return room - width
-            }),
-            `${width}`,
-        ).toBeGreaterThanOrEqual(0)
+        expect(await roomAfterText(field), `${width}`).toBeGreaterThanOrEqual(0)
     }
+})
+
+test('the Beat field fits a long beat in the narrowest layout, beside the chart', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 812 })
+    await setUp(page, 16)
+    await page.evaluate(() => {
+        window.editorTest.settings.elevationEditorSideBySide = 'allow'
+    })
+    await page.keyboard.press('t')
+    // The header is narrower than 12rem, so the labels sit above their fields.
+    await expect(page.locator('.elevation-header')).toBeVisible()
+    expect(
+        await page.locator('.elevation-header').evaluate((header) => header.clientWidth),
+    ).toBeLessThan(192)
+    const field = page.getByRole('spinbutton', { name: 'Beat', exact: true })
+    await field.fill('123.063')
+    await field.press('Enter')
+    await field.blur()
+    await expect(field).toHaveValue('123.063')
+    expect(await roomAfterText(field)).toBeGreaterThanOrEqual(0)
 })
