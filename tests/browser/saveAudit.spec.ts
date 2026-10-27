@@ -447,7 +447,7 @@ test('our own file gone back to an older revision says it does not continue ours
     await pressSave(page)
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('"coconut.nxsp" Changed')
-    await expect(dialog).toContainText(/This version was not made from yours \(.+\)\./)
+    await expect(dialog).toContainText(/The version saved on .+ is not based on your version\./)
     await expect(dialog).not.toContainText('Saved in the web editor')
 })
 

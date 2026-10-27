@@ -243,7 +243,7 @@ test('an item whose checksum does not match is refused with the server’s wordi
     assert.equal(error?.kind, 'item')
     assert.equal(
         error?.kind === 'item' && error.message,
-        'The server’s checksum for this item does not match what it sent.',
+        'The downloaded content does not match the server’s checksum.',
     )
 })
 
@@ -526,7 +526,10 @@ test('an http address is refused before anything is fetched, and a bad field say
     const chooser = createServerChooser('skin', deps('skin'))
     chooser.address.value = 'http://server.test/api'
     await chooser.connect()
-    assert.equal(serverErrorText(chooser.error.value!, en), 'The editor cannot use http servers.')
+    assert.equal(
+        serverErrorText(chooser.error.value!, en),
+        'HTTP server addresses are not supported.',
+    )
     chooser.address.value = ''
     await chooser.connect()
     assert.equal(serverErrorText(chooser.error.value!, en), 'Enter a server address.')
@@ -745,7 +748,7 @@ test('a server effect whose audio expands too far is refused as the item’s', a
     const error = chooser.useError.value
     assert.equal(
         error?.kind === 'item' && error.message,
-        'This item’s sound effects audio expands to more than 200 times its size.',
+        'This item’s sound effects audio expands to more than 200 times its compressed size.',
     )
 })
 

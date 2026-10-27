@@ -112,7 +112,10 @@ test('Undo of a chain the sweep removed says it can no longer be undone, once, a
     t.fakes.undo = () => Promise.resolve({ kind: 'done', restored: [], lost: ['a'] })
     await t.model.undo('a')
     assert.deepEqual(statuses(t.model), [['a', 'lost']])
-    assert.equal(t.model.announcement.value, 'Deleted "Alpha". It can no longer be undone.')
+    assert.equal(
+        t.model.announcement.value,
+        'Deleted “Alpha”. This deletion can no longer be undone.',
+    )
     t.log.undone.length = 0
     await t.model.undo('a')
     assert.deepEqual(t.log.undone, [])

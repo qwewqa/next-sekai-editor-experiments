@@ -442,7 +442,7 @@ test("an empty folder's eye is disabled and says it is empty", async ({ page }) 
     await seedGroups(page, seed, ['Spare'])
     const eye = row(panel(page), 'Spare').locator('.manager-eye')
     await expect(eye).toBeDisabled()
-    await expect(eye).toHaveAccessibleName('Spare folder is empty')
+    await expect(eye).toHaveAccessibleName('Folder Spare is empty')
     await expect(row(panel(page), 'Verse').locator('.manager-eye')).toBeEnabled()
 })
 

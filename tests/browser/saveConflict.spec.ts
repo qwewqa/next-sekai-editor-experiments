@@ -314,9 +314,9 @@ test('Replace is offered for a file on disk with a newer patch, and keeps it fir
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('"coconut.nxsp" Changed')
     await page.waitForTimeout(350)
-    // A newer patch is not "Made by a newer version": nothing it holds is unread.
+    // A newer patch is not "This file was created by a newer version": nothing it holds is unread.
     await expect(dialog.getByRole('button', { name: 'Replace' })).toBeEnabled()
-    await expect(dialog).not.toContainText('Made by a newer version')
+    await expect(dialog).not.toContainText('This file was created by a newer version')
     await dialog.getByRole('button', { name: 'Replace' }).click()
     await expect
         .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).replaces, {

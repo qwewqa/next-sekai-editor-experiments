@@ -45,12 +45,12 @@
     },
     "copy": {
       "title": "Kopyala",
-      "noSelected": "Kopyalanacak nesne seçilmedi",
+      "noSelected": "Kopyalanacak bir nesne seçin",
       "copied": "{0} nesne kopyalandı"
     },
     "cut": {
       "title": "Kes",
-      "noSelected": "Kesilecek nesne seçilmedi",
+      "noSelected": "Kesilecek bir nesne seçin",
       "cut": "{0} nesne kesildi"
     },
     "deselect": {
@@ -99,7 +99,7 @@
     },
     "flip": {
       "title": "Yatay Çevir",
-      "noSelected": "Çevrilecek nesne seçilmedi",
+      "noSelected": "Çevrilecek bir nesne seçin",
       "flipped": "{0} nesne yatay çevrildi"
     },
     "flipVertical": {
@@ -127,13 +127,13 @@
     "scaleSelection": {
       "factor": "Ölçek katsayısı",
       "apply": "Uygula",
-      "invalidFactor": "Sonucu editörün desteklediği aralıkta tutan pozitif bir ölçek katsayısı girin"
+      "invalidFactor": "Sonucu desteklenen aralıkta tutan pozitif bir ölçek katsayısı girin"
     },
     "makeVertical": {
       "title": "Dikey Düzenle",
       "noSelected": "Dikey düzenlemek için en az bir nota seçin",
       "unchanged": "Seçilen notalar zaten dikey düzenlenmiş",
-      "invalid": "Seçim, editörün desteklediği aralıkta dikey düzenlenemiyor",
+      "invalid": "Seçim, desteklenen aralıkta dikey düzenlenemiyor",
       "made": "{0} nota dikey düzenlendi"
     },
     "splitHold": {
@@ -143,14 +143,14 @@
     },
     "combineNotes": {
       "title": "Kaydırmada Birleştir",
-      "noSelected": "Birleştirilecek nota seçilmedi",
+      "noSelected": "Birleştirilecek notaları seçin",
       "sameSlide": "Seçilen notalar zaten aynı kaydırmaya ait",
       "combined": "{0} nota tek kaydırmada birleştirildi"
     },
     "fullscreen": {
       "title": "Tam Ekran",
       "toggled": "Tam ekran değiştirildi",
-      "unsupported": "Cihazınız tam ekranı desteklemiyor"
+      "unsupported": "Bu cihaz tam ekranı desteklemiyor"
     },
     "groups": {
       "groupAll": {
@@ -258,14 +258,14 @@
       "invalidLevel": "Geçersiz seviye: {0}",
       "invalidChart": "Geçersiz çizelge: {0}",
       "revision": {
-        "older": "Bu seviye daha eski bir motor revizyonu için yapılmış. Artık güncel revizyonu kullanıyor, bu yüzden hâlâ beklendiği gibi göründüğünü ve oynandığını kontrol edin.",
-        "newer": "Bu seviye, bu editörün desteklediğinden daha yeni bir motor revizyonu için yapılmış. Bazı kısımlar amaçlandığı gibi görünmeyebilir veya kaydedilmeyebilir."
+        "older": "Bu seviye daha eski bir motor revizyonu için yapılmış ve artık güncel revizyonu kullanıyor. Hâlâ beklendiği gibi göründüğünü ve oynandığını kontrol edin.",
+        "newer": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Bazı özellikler çalışmayabilir ve saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı normalde kullandığınız tarayıcıda açın."
       },
       "refusals": {
-        "dynamicStages": "dinamik sahneler etkin değilken dinamik sahne özellikleri kullanılıyor",
-        "cyclicEventRef": "döngüsel olay referansı \"{0}\"",
-        "cyclicSlideRef": "döngüsel kaydırma referansı \"{0}\"",
-        "refNotFound": "\"{0}\" referansı bulunamadı",
+        "dynamicStages": "seviye dinamik sahne özelliklerini kullanıyor ancak dinamik sahneler devre dışı",
+        "cyclicEventRef": "döngüsel olay referansı “{0}”",
+        "cyclicSlideRef": "döngüsel kaydırma referansı “{0}”",
+        "refNotFound": "“{0}” referansı bulunamadı",
         "dataNotFound": "{0} verisi bulunamadı",
         "dataNoValue": "{0} verisinin değeri yok",
         "dataNoRef": "{0} verisinin referansı yok",
@@ -499,7 +499,7 @@
         "serverFailed": "{0}, {1} adresinden yeniden indirilemedi.",
         "invalid": "Saklanan {0} okunamadı.",
         "failed": "{0} yüklenemedi.",
-        "builtinFailed": "Yerleşik yüklenemedi."
+        "builtinFailed": "Yerleşik varlık yüklenemedi."
       },
       "offline": "Çevrimdışısınız.",
       "safeMode": "Güvenli mod şunu kullanır: {0}.",
@@ -513,7 +513,7 @@
       "remove": "Kaldır",
       "removeStored": "Kaldır…",
       "inUse": "Kullanımda",
-      "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine Varsayılan kullanılır.",
+      "removeInUse": "“{0}” kaldırılsın mı? Önizleme bunun yerine Varsayılan seçeneğini kullanacak.",
       "removeUnused": "\"{0}\" kaldırılsın mı?",
       "removeFailed": "Bu öğe kaldırılamadı.",
       "chooseAgain": "Tekrar Seç…",
@@ -541,7 +541,7 @@
         "fileTooLarge": "Bu dosya {0} sınırından büyük.",
         "tooManyEntries": "Bu dosyada {0} girdiden fazlası var.",
         "badName": "Bu dosyada izin verilmeyen bir girdi adı var.",
-        "ratio": "Bu dosyadaki {1} ({0}) açıldığında boyutunun {2} katından fazlasına ulaşıyor.",
+        "ratio": "Bu dosyadaki {1} ({0}), açıldığında sıkıştırılmış boyutunun {2} katını aşıyor.",
         "tooBig": "Bu dosyadaki {1} ({0}), {2} sınırından büyük.",
         "unreadable": "Bu dosyadaki {1} ({0}) okunamadı.",
         "missing": "Bu dosyadaki {1} ({0}) eksik.",
@@ -572,8 +572,8 @@
       "server": {
         "unreachable": "Bu sunucuya ulaşılamadı. Adresi kontrol edin veya daha sonra tekrar deneyin.",
         "auth": "Editör, oturum açmayı gerektiren sunucuları kullanamaz.",
-        "insecure": "Editör http sunucularını kullanamaz.",
-        "checksum": "Bu öğe için sunucunun sağlama toplamı, gönderdiği içerikle eşleşmiyor.",
+        "insecure": "HTTP sunucu adresleri desteklenmiyor.",
+        "checksum": "İndirilen içerik sunucunun sağlama toplamıyla eşleşmiyor.",
         "notFound": "Bu sunucuda böyle bir öğe yok.",
         "invalid": "Bu adres bir Sonolus sunucusu değil.",
         "status": "Sunucu bir hata döndürdü ({0}).",
@@ -598,7 +598,7 @@
         "tooManyParticles": "Bu öğedeki veride ({0}) {1} parçacıktan fazlası var.",
         "tooManyGroups": "Bu öğedeki veride ({0}) {1} parçacık grubundan fazlası var.",
         "effectGroups": "Bu öğedeki \"{1}\" efektinde ({0}) {2} parçacık grubundan fazlası var.",
-        "ratio": "Bu öğedeki {1} ({0}) açıldığında boyutunun {2} katından fazlasına ulaşıyor."
+        "ratio": "Bu öğedeki {1} ({0}), açıldığında sıkıştırılmış boyutunun {2} katını aşıyor."
       }
     },
     "history": {
@@ -648,7 +648,7 @@
         "selectMultiple": "Çerçeve içindeki nesneleri seçmek için boş alandan başlayarak sürükleyin.",
         "move": "Seçimin tamamını taşımak için seçili bir nesneyi sürükleyin.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin. Seçili nesnelerin tümü aynı türdeyse boyutları birlikte değişir.",
-        "modifiers": "Seçime nesne eklemek veya seçimden çıkarmak için Ctrl (macOS'ta Cmd) tuşunu basılı tutun. Kaydırmaların tamamını seçmek için Shift tuşunu basılı tutun."
+        "modifiers": "Seçime nesne eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutun. Kaydırmaların tamamını seçmek için Shift tuşunu basılı tutun."
       },
       "eraserTool": {
         "erase": "Bir nesneyi silmek için ona dokunun veya içindeki her şeyi silmek için sürükleyerek bir çerçeve çizin.",
@@ -672,7 +672,7 @@
         "edit": "Özelliklerini göstermek için seçili bir nesneye dokunun.",
         "move": "Bir nesneyi tek başına taşımak için sürükleyin. Birden fazla nesneyi birlikte taşımak için Seçim aracını kullanın.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin.",
-        "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS'ta Cmd) tuşunu basılı tutarak dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun."
+        "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun."
       },
       "noteTool": {
         "presets": "Nota #1 ile Nota #4 arasındaki seçenekler ön ayarlardır. Ön ayarı veya varsayılan özelliklerini değiştirmek için Nota komutunu tekrar seçin.",
@@ -689,7 +689,7 @@
         "replace": "Bir BPM değişikliğini başka bir BPM değişikliğinin üzerine taşımak, orada bulunanı değiştirir."
       },
       "timeScaleTool": {
-        "markers": "Elmas işaretçiler Kaydırma geçişini kullanır. Noktalı çizgilerdeki içi boş işaretçiler notaları gizler.",
+        "markers": "Elmas işaretçiler Kaydırma geçişini gösterir. Noktalı çizgilerdeki içi boş işaretçiler notaların gizlendiğini gösterir.",
         "ease": "Eğri, gruptaki bir sonraki değişikliğe geçişi gösterir."
       },
       "event": {
@@ -701,7 +701,7 @@
         "drag": "Arka plan müziğinin zaman kaymasını değiştirmek için yukarı veya aşağı sürükleyin."
       }
     },
-    "altN": "Alt+N (macOS'ta Option+N) odağı en son bildirime taşır. Kapatmak için Esc tuşuna basın.",
+    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Kapatmak için Esc tuşuna basın.",
     "shiftF10": "Shift+F10 veya Menü tuşu, odaktaki öğenin menüsünü açar.",
     "recentSessions": "Bu tarayıcıda tutulan kaydedilmemiş çalışma, Geçmiş > Son Oturumlar bölümündedir.",
     "fileTitle": "Dosyalar",
@@ -740,9 +740,9 @@
     "resetSettingsTitle": "Ayarları Sıfırla",
     "resetKeybinds": "Kısayolları Sıfırla…",
     "resetKeybindsTitle": "Kısayolları Sıfırla",
-    "resetSettingsMessage": "Klavye kısayolları korunarak varsayılan ayarlar geri yüklensin mi?",
-    "resetSettingsMessageStatistics": "Klavye kısayolları ve Kullanım İstatistiklerini Gönder ayarı korunarak varsayılan ayarlar geri yüklensin mi?",
-    "resetKeybindsMessage": "Varsayılan klavye kısayolları geri yüklensin mi?",
+    "resetSettingsMessage": "Ayarlar varsayılanlara sıfırlansın mı? Klavye kısayolları korunacak.",
+    "resetSettingsMessageStatistics": "Ayarlar varsayılanlara sıfırlansın mı? Klavye kısayolları ve Kullanım İstatistiklerini Gönder ayarı korunacak.",
+    "resetKeybindsMessage": "Klavye kısayolları varsayılanlara sıfırlansın mı?",
     "editor": {
       "title": "Editör",
       "locale": "Dil",
@@ -880,8 +880,8 @@
       "notices": "Üçüncü Taraf Lisansları",
       "privacy": "Gizlilik",
       "usageStatistics": "Kullanım İstatistiklerini Gönder",
-      "usageStatisticsNote": "Kullandığınız araçlar, temel ayarlarınız, dosya türleri ve boyutları ile işlemlerin ne kadar sürdüğü. Gizlilik’e bakın.",
-      "usageStatisticsSignal": "Bu tarayıcı Do Not Track veya Global Privacy Control gönderdiği için varsayılan olarak devre dışı.",
+      "usageStatisticsNote": "Kullanım istatistikleri araç kullanımını, temel ayarları, dosya türlerini ve boyutlarını ve işlemlerin ne kadar sürdüğünü içerir. Ayrıntılar için Gizlilik’e bakın.",
+      "usageStatisticsSignal": "Bu tarayıcı Do Not Track veya Global Privacy Control sinyali gönderdiği için varsayılan olarak kapalı.",
       "diagnostics": "Tanılama Bilgilerini Kopyala…",
       "diagnosticsTitle": "Tanılama Bilgileri",
       "diagnosticsNote": "Tanılama bilgileri dosya ve klasör adlarını içerebilir. Paylaşmadan önce kontrol edin.",
@@ -898,10 +898,10 @@
       "discardAutoSave": "Eski otomatik kaydetme verisi ({0}) silinsin mi?",
       "discardUnreadable": "{0} tarihli okunamayan kurtarılmış çalışma ({1}) silinsin mi?",
       "recovery": {
-        "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma, {0} · {1}",
+        "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0} · {1}",
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
-        "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
+        "unreadable": "Okunamayan kurtarılmış çalışma · {0} · {1}",
         "listFailed": "Kurtarılmış çalışma okunamadı.",
         "downloadFailed": "Kurtarılmış çalışma indirilemedi."
       },
@@ -915,7 +915,7 @@
       "deleteTitle": "Oturumları Sil",
       "lastEdited": "Son düzenleme {0} günden uzun süre önce",
       "all": "Tümü",
-      "includeNotSaved": "Kaydedilmemiş çalışmayı dahil et",
+      "includeNotSaved": "Kaydedilmemiş Çalışmayı Dahil Et",
       "deleteNext": "Sil…",
       "deleteConfirm": "{0} oturum silinsin mi?",
       "notSaved": "{0} oturumda kaydedilmemiş değişiklikler var: {1}.",
@@ -1151,7 +1151,7 @@
     "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
     "autoSaveKept": "Eski otomatik kaydetme verisindeki \"{0}\" ayrı bir oturum olarak saklandı.",
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
-    "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Bir kopyası Yerel Veriler’de.",
+    "journalFailed": "Kurtarılan bir değişiklik oturumunda saklanamadı. Yerel Veriler’den erişilebilir.",
     "storageNearlyFull": "Tarayıcının depolama alanı neredeyse dolu.",
     "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma tarayıcının depolama alanını dolduruyor.",
     "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
@@ -1266,7 +1266,7 @@
     "redidSteps": "{0} adım yinelendi",
     "dynamicStages": {
       "title": "Dinamik Sahneler",
-      "message": "Bu özellik dinamik sahneler gerektirir. Dinamik sahneleri etkinleştirmek istiyor musunuz?",
+      "message": "Bu özellik dinamik sahneler gerektirir. Etkinleştirilsin mi?",
       "enabled": "Dinamik sahneler etkinleştirildi"
     },
     "title": "Geçmiş",
@@ -1351,7 +1351,7 @@
     },
     "operation": {
       "changedHeader": "{0} değiştirildi",
-      "changedLevelInfo": "Seviye bilgileri değiştirildi",
+      "changedLevelInfo": "Seviye Bilgileri değiştirildi",
       "setValueOnObjects": "{0} nesne için {1} değeri {2} olarak ayarlandı",
       "setValueOnNotes": "{0} nota için {1} değeri {2} olarak ayarlandı",
       "setValueOnBpm": "{0} BPM değişikliği için {1} değeri {2} olarak ayarlandı",
@@ -1662,7 +1662,7 @@
         "pressCancel": "Bir tuşa basın veya Esc ile iptal edin",
         "unassigned": "Atanmamış",
         "reserved": "{0} tarayıcıya veya sisteme ayrılmıştır; başka bir tuşa basın.",
-        "altGraph": "{0} birçok klavyede karakter yazmak için kullanılır; başka bir tuşa basın.",
+        "altGraph": "{0} birçok klavye düzeninde karakter yazmak için kullanılır. Başka bir tuşa basın.",
         "alsoRuns": "{0} komutunu da çalıştırır",
         "names": {
           "space": "Space",
@@ -1812,8 +1812,8 @@
     "showSettings": "Önizleme ayarlarını göster",
     "loadingSkin": "Görünüm yükleniyor…",
     "skinUnavailable": "Önizleme görünümü yüklenemedi.",
-    "graphicsUnavailable": "Önizleme grafikleri başlatılamadı.",
-    "chartGraphicsUnavailable": "Grafikler başlatılamadı.",
+    "graphicsUnavailable": "Önizleme görüntülenemedi.",
+    "chartGraphicsUnavailable": "Nota çizelgesi görüntülenemedi.",
     "graphicsHelp": "Tarayıcınızda grafik hızlandırmanın ve WebGL özelliğinin etkin olduğunu kontrol edin. Gerekirse tarayıcıyı yeniden başlatın.",
     "errorDetails": "Hata ayrıntıları",
     "reload": "Yeniden Yükle",
@@ -2029,7 +2029,7 @@
     "chooseAnother": "Başka Birini Seç…",
     "tryAgain": "Tekrar Dene",
     "denied": "Tarayıcı {0} dosyasına yazmaya izin vermedi.",
-    "notFound": "\"{0}\" bulunamıyor.",
+    "notFound": "“{0}” bulunamadı.",
     "downloadStarted": "İndirme başlatıldı: {0} · {1}",
     "preparing": "{0} hazırlanıyor… {1}",
     "ready": "Hazır: {0} · {1}",
@@ -2055,7 +2055,7 @@
     "openExport": "Seviye Verisini Dışa Aktar…",
     "readOnly": "\"{0}\" dosyasına yazılamıyor.",
     "notProject": "\"{0}\" bir proje dosyası değil.",
-    "notKept": "Kaydedilmedi. \"{0}\" tamamen okunamadı.",
+    "notKept": "Kaydedilmedi. “{0}” tamamen okunamadı.",
     "notKeptSafe": "Kaydedilmedi. Güvenli modda dosyalar değiştirilemez.",
     "notKeptFull": "Kaydedilmedi. Tarayıcının depolama alanı dolu. Ayarlar › Yerel Veriler’den oturumları silin, ardından yeniden kaydedin.",
     "saved": "{0} dosyasına kaydedildi",
@@ -2072,7 +2072,7 @@
     "noChangesSaved": "{0} kaydedildiğinden beri değişiklik yok",
     "noChangesOpened": "{0} açıldığından beri değişiklik yok",
     "downloadAgain": "Tekrar İndir",
-    "unreadable": "\"{0}\" tamamen okunamadı.",
+    "unreadable": "“{0}” tamamen okunamadı.",
     "tooLarge": "Dosya çok büyük.",
     "restoredName": "{0} ({1} geri yüklendi)",
     "fileType": "Next SEKAI proje dosyası",
@@ -2097,7 +2097,7 @@
     "noDamage": "Hasar bulunamadı.",
     "scopeBoth": "\"{0}\" ile bu tarayıcıda saklanan geçmiş denetlendi.",
     "scopeStored": "Bu tarayıcıda saklanan geçmiş denetlendi.",
-    "fileDamaged": "\"{0}\" hasarlı. Kaydetmek ayrı bir dosya oluşturur.",
+    "fileDamaged": "“{0}” hasarlı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
     "repaired": "{0} Zaman Çizgisi adımı onarıldı.",
     "storedDamaged": "Bu tarayıcıda saklanan {0} Zaman Çizgisi adımı hasarlı.",
     "mediaDamaged": "Bu tarayıcıda saklanan seviyenin {0} hasarlıydı."
@@ -2109,26 +2109,26 @@
     "editCover": "Kapak Editöründe Düzenle",
     "makePreview": "Arka Plan Müziğinden Oluştur…",
     "notLoaded": "yüklenmedi",
-    "discard": "Seviye bilgilerindeki değişiklikler silinsin mi?"
+    "discard": "Seviye Bilgileri değişiklikleri silinsin mi?"
   },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",
-    "exportBody": "\"{0}\", son dışa aktarmanızdan bu yana değişti.",
-    "exportBodyOpened": "\"{0}\", burada açtığınızdan bu yana değişti.",
+    "exportBody": "“{0}”, son dışa aktarmanızdan bu yana değişti.",
+    "exportBodyOpened": "“{0}”, burada açtığınızdan bu yana değişti.",
     "replace": "Üzerine Yaz",
     "title": "\"{0}\" Değişti",
-    "body": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
+    "body": "“{0}”, burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
     "saved": "{0}, {1} · {2}.",
     "savedNoNotes": "{0}, {1}.",
     "otherProject": "Farklı bir proje dosyası: \"{0}\".",
     "otherProjectUnnamed": "Farklı bir proje dosyası.",
-    "notDescendant": "Bu sürüm sizinkinden oluşturulmadı ({0}).",
+    "notDescendant": "{0} tarihinde kaydedilen sürüm, sizin sürümünüzü temel almıyor.",
     "separate": "Ayrı Dosya Olarak Kaydet…",
     "openOther": "Diğer Sürümü Aç",
     "openOtherNote": "Değişiklikleriniz Son Oturumlar’da kalır.",
     "replaceNote": "Diskteki sürüm Son Oturumlar’da saklanır.",
     "keptName": "{0} ({1} değiştirildi)",
-    "replaceNewer": "Daha yeni bir {0} sürümüyle oluşturuldu.",
+    "replaceNewer": "Bu dosya daha yeni bir {0} sürümüyle oluşturuldu.",
     "replaceHoldsEarlier": "Artık bu tarayıcıda saklanmayan önceki Zaman Çizgisi adımlarını içeriyor.",
     "replaceMayHoldEarlier": "Artık bu tarayıcıda saklanmayan önceki Zaman Çizgisi adımlarını içeriyor olabilir.",
     "keepEditing": "Düzenlemeye Devam Et"
@@ -2178,7 +2178,7 @@
     "deleted": "\"{0}\" silindi",
     "deleteRefused": "Silinmedi. \"{0}\" bir sekmede veya pencerede kullanımda.",
     "deleteFailed": "\"{0}\" silinemedi.",
-    "undoLost": "\"{0}\" silindi. Artık geri alınamaz."
+    "undoLost": "“{0}” silindi. Bu silme işlemi artık geri alınamaz."
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
@@ -2203,17 +2203,17 @@
     "openPreviewAssets": "Önizleme Varlıkları",
     "damagedUnopened": "Bu dosya hasarlı ve açılamadı.",
     "damaged": "Bu dosya hasarlı. Geçmişi olmadan açıldı.",
-    "historyUnreadable": "Bu dosyanın geçmişi okunamadı. Kaydetmek ayrı bir dosya oluşturur.",
-    "newerVersion": "Daha yeni bir {0} sürümüyle oluşturuldu. Kaydetmek ayrı bir dosya oluşturur.",
-    "newerRefused": "Daha yeni bir {0} sürümüyle oluşturuldu.",
-    "newerPatch": "Daha yeni bir {0} sürümüyle oluşturuldu. Bazı içerikler gösterilmeyebilir.",
-    "mediaBad": "Bu dosyanın {0} okunamadı. Kaydetmek ayrı bir dosya oluşturur.",
+    "historyUnreadable": "Bu dosyanın geçmişi okunamadı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
+    "newerVersion": "Bu dosya daha yeni bir {0} sürümüyle oluşturuldu. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
+    "newerRefused": "Bu dosya daha yeni bir {0} sürümüyle oluşturuldu ve açılamıyor.",
+    "newerPatch": "Bu dosya daha yeni bir {0} sürümüyle oluşturuldu. Bazı içerikler gösterilmeyebilir.",
+    "mediaBad": "Bu dosyanın {0} okunamadı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
     "media": {
       "bgm": "arka plan müziği",
       "cover": "kapak görseli",
       "preview": "önizleme sesi"
     },
-    "newerMajor": "Daha yeni bir {0} sürümüyle oluşturuldu.",
+    "newerMajor": "Daha Yeni Bir {0} Sürümüyle Oluşturulmuş Dosya",
     "newerMajorNote": "Bu dosyadan yalnızca seviye açılabilir.",
     "openLevel": "Seviyeyi Aç",
     "newerValues": {
@@ -2225,7 +2225,7 @@
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
     "olderVersion": "Bu, {0} dosyasının eski bir sürümü. Daha yeni bir sürüm ({1}) Son Oturumlar’da.",
     "restoreIt": "Oturumu Geri Yükle",
-    "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."
+    "damagedHistory": "{0} dosyasının geçmişi hasarlı. Kaydettiğinizde ayrı bir dosya oluşturulacak."
   },
   "file": {
     "replacedElsewhere": "\"{0}\" başka bir sekmeden veya pencereden değiştirildi.",
@@ -2237,7 +2237,7 @@
     "changedOnDisk": "Diskte değişti",
     "newerOnDisk": "Diskte daha yeni",
     "notConfirmed": "İndirme onaylanmadı",
-    "changedOnDiskName": "\"{0}\": burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
+    "changedOnDiskName": "“{0}”, burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
     "newerOnDiskName": "\"{0}\": diskte daha yeni bir sürüm var.",
     "notStored": "Saklanmıyor"
   },

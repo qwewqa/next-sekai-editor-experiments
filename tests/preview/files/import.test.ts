@@ -163,7 +163,7 @@ test('a ratio bomb is refused before anything inflates', async () => {
     assert.equal(error.detail.part, 'texture')
     assert.equal(
         importMessage(error),
-        'This file’s skin texture expands to more than 200 times its size.',
+        'This file’s skin texture expands to more than 200 times its compressed size.',
     )
 })
 

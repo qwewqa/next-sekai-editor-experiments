@@ -159,6 +159,6 @@ test('the sound effects audio has its own caps: 32 MB, 8 MB a clip, and the rati
         'effect',
         effectWith(rawZip([{ name: 'perfect.mp3', data: wav(100), method: 8 }])),
         'ratio',
-        'This file’s sound effects audio expands to more than 200 times its size.',
+        'This file’s sound effects audio expands to more than 200 times its compressed size.',
     )
 })

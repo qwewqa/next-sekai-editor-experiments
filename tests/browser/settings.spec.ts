@@ -196,7 +196,7 @@ test('shortcut capture refuses chords the browser keeps and waits for another ke
     await expectRefused(
         page,
         'Save',
-        'Ctrl+Alt+K types characters on many keyboards. Press another key.',
+        'Ctrl+Alt+K is used to type characters on many keyboard layouts. Press another key.',
     )
     expect(await savedShortcut(page, 'save')).toBe('Mod+h')
 
@@ -205,7 +205,7 @@ test('shortcut capture refuses chords the browser keeps and waits for another ke
     await expectRefused(
         page,
         'Save',
-        'Ctrl+Alt+1 types characters on many keyboards. Press another key.',
+        'Ctrl+Alt+1 is used to type characters on many keyboard layouts. Press another key.',
     )
     expect(await savedShortcut(page, 'save')).toBe('Mod+h')
 })
@@ -854,7 +854,7 @@ test('the auto save rows are gone, and Beat Display sits with the display rows',
     expect(at('Show Minimap')).toBe(at('Zero-Width Notes') + 1)
     expect(at('Show Edits by Default')).toBe(at('Show Minimap') + 1)
     expect(at('Max Scroll X (lanes)')).toBe(at('Name Contrast') + 1)
-    expect(at('Second Deselect Switches to Select Tool')).toBe(at('Drag to Pan X') + 1)
+    expect(at('Deselect Twice to Switch to Select Tool')).toBe(at('Drag to Pan X') + 1)
     expect(at('Elevation Editor Connector Arrows')).toBe(at('Elevation Editor Side by Side') + 1)
 })
 
@@ -924,12 +924,12 @@ test('on a short screen the section index scrolls away with the sections', async
 for (const reset of [
     {
         name: 'Reset Settings',
-        message: 'Restore default settings, keeping keyboard shortcuts?',
+        message: 'Reset settings to their defaults? Keyboard shortcuts will be kept.',
         changed: 'previewNoteSpeed',
     },
     {
         name: 'Reset Shortcuts',
-        message: 'Restore default keyboard shortcuts?',
+        message: 'Reset keyboard shortcuts to their defaults?',
         changed: 'save',
     },
 ]) {

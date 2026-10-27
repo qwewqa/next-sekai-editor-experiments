@@ -397,9 +397,11 @@ test('Undo after the sweep says the chain can no longer be undone', async ({ pag
         .getByRole('button', { name: messages.commands.undo.title })
         .click()
     // The inline row says so, with no Undo left, and the live region reads it.
-    await expect(deletedRows(page)).toContainText('Deleted "Alpha". It can no longer be undone.')
+    await expect(deletedRows(page)).toContainText(
+        'Deleted “Alpha”. This deletion can no longer be undone.',
+    )
     await expect(page.locator('[data-sessions-live]')).toHaveText(
-        'Deleted "Alpha". It can no longer be undone.',
+        'Deleted “Alpha”. This deletion can no longer be undone.',
     )
     await expect(deletedRows(page).getByRole('button')).toHaveCount(0)
     await expect(rowFor(page, 'Alpha')).toHaveCount(0)

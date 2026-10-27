@@ -301,7 +301,7 @@ test('a changed target meets the conflict dialog’s Export form; Replace keeps 
     await page.keyboard.press('Enter')
     const conflict = dialog(page)
     await expect(conflict).toHaveAccessibleName('"LevelData" Changed')
-    await expect(conflict).toContainText('"LevelData" changed since you opened it here.')
+    await expect(conflict).toContainText('“LevelData” has changed since you opened it here.')
     await expect(conflict).toContainText(/[\d.]+\skB.* · /)
     const buttons = conflict.locator('[data-choice-buttons] button')
     await expect(buttons).toHaveText(['Cancel', 'Replace', 'Choose Another…'])
@@ -321,7 +321,7 @@ test('a changed target meets the conflict dialog’s Export form; Replace keeps 
         'LevelData (your last export)',
     )
     await page.keyboard.press('Enter')
-    await expect(dialog(page)).toContainText('"LevelData" changed since your last export.')
+    await expect(dialog(page)).toContainText('“LevelData” has changed since your last export.')
     await page.waitForTimeout(350)
     await dialog(page).getByRole('button', { name: 'Cancel' }).click()
     await expect(dialog(page)).toHaveCount(0)
