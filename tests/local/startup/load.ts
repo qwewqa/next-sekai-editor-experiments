@@ -76,6 +76,8 @@ export type LoadOptions = {
     media?: Partial<HeldEnvironment>
     /** Runs before the editor side shows a session (one that throws, say). */
     show?: (shown: Shown) => void
+    /** Replaces the tab client's check of who holds a lock (one that rejects, say). */
+    heldElsewhere?: TabClient['heldElsewhere']
 }
 
 export type Load = Awaited<ReturnType<typeof load>>
@@ -155,6 +157,7 @@ export const load = async (
     const shown: Shown[] = []
     const shownStates: State[] = []
     const own = recovery.ownOutcome
+    const client = new TabClient(page.tab.locks)
     const deps: OpenDeps = {
         worker: {
             call: (async (method: string, arg: unknown) => {
@@ -164,7 +167,9 @@ export const load = async (
         },
         status: page.core.status,
         locks: page.tab.locks,
-        client: new TabClient(page.tab.locks),
+        client: options.heldElsewhere
+            ? { id: () => client.id(), heldElsewhere: options.heldElsewhere }
+            : client,
         safe: false,
         journal: page.store,
         ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
