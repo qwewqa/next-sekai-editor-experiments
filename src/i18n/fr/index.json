@@ -1190,7 +1190,9 @@
     "openingBlank": "Ouverture…",
     "slow": "Cela prend plus de temps que d’habitude.",
     "error": "L’éditeur n’a pas pu ouvrir votre travail stocké.",
-    "blank": "Démarrer à vide"
+    "blank": "Démarrer à vide",
+    "unfinished": "L’ouverture de \"{0}\" ne s’est pas terminée la dernière fois.",
+    "unfinishedUntitled": "L’ouverture de votre session ne s’est pas terminée la dernière fois."
   },
   "safe": {
     "bar": "Mode sans échec : les modifications ne sont pas stockées.",

@@ -11,7 +11,7 @@ import {
 } from '../../history/session'
 import { liveState, stackGeneration, type RestoredSlot } from '../../history/stack'
 import type { JournalFound, JournalStore, LockService } from '../../platform/types'
-import { setOpeningName } from '../../startup/gate'
+import { askUnfinished, setOpeningName } from '../../startup/gate'
 import type { State } from '../../state'
 import { chainStartOf } from '../chainFields'
 import type { FlushSession, StoredStack } from '../flush'
@@ -38,6 +38,7 @@ import {
     writeTabRecord,
     type TabRecord,
 } from './tab'
+import { withOpening, type Opening } from './unfinished'
 
 // Which session a load opens, once the recovery order has run. A same-tab reload
 // keeps its session, decided by the session lock; a Duplicate Tab forks; a new visit continues
@@ -107,6 +108,8 @@ export type OpenDeps = {
     /** Journals offered in Local Data: the reload's own goes there when it can't load it. */
     keptForLocalData?: JournalFound[]
     flusher: () => import('../flush').Flusher | undefined
+    /** Sessions whose last opening did not finish: an automatic open of one asks first. */
+    unfinished?: ReadonlySet<string>
     /** A journal whose work a new session took over: the key goes once that session holds it. */
     retireJournal?: (found: JournalFound, by: string, seq: number, dropped?: () => void) => void
     /** Shows an opened session in the editor (`show.ts`): the stack, the head, the view. */
@@ -142,12 +145,18 @@ const boundFileOf = (chain: Record<string, unknown>) => {
     }
 }
 
-const shownOf = (read: SessionRead & { kind: 'open' }, state: State): ShownName => {
+const shownOf = (read: SessionRead & { kind: 'open' }, state?: State): ShownName => {
     const at = chainStartOf(read.chain, read.session.startedAt)
     return {
         name: displayName(namePartsOf(read.chain, state)),
         ...(at === undefined ? {} : { at }),
     }
+}
+
+/** The session as the question names it: undefined for one with only a date name. */
+const unfinishedName = (read: SessionRead & { kind: 'open' }) => {
+    const name = displayName(namePartsOf(read.chain))
+    return name.kind === 'date' ? undefined : name.text
 }
 
 /** A stored head that is read but cannot be built: its records break the schema or the limits. */
@@ -193,12 +202,37 @@ type How =
     | { mode: 'continue'; parentLock: LockLease }
     | { mode: 'fork'; parentLock?: LockLease; copyOf: CopyOf }
 
+type OpenStoredOptions = {
+    /** An action of the user's (Reopen, Restore as a Copy): it replaces what's open. */
+    replace?: boolean
+    request?: SwitchRequest
+    canShow?: () => boolean
+    onShown?: (leaving: FlushSession | undefined) => void
+    onDestination?: () => void
+    onTransferred?: () => void
+    /**
+     * A journal of the session that couldn't be applied but reads: a continuation or fork
+     * starts from its state, an entry over the stored stack, so the newest work is on screen
+     * and stored by its first write.
+     */
+    recovered?: { found: JournalFound; state: State }
+}
+
 /**
  * Opens a stored session in this tab: its stack restored with the head loaded, and the storing
  * side's session started. Resolves the head's state, or undefined when Start Blank was pressed
- * while it loaded.
+ * while it loaded. The startup guard records the opening (`unfinished.ts`).
  */
-export const openStored = async (
+export const openStored = (
+    deps: OpenDeps,
+    read: SessionRead & { kind: 'open' },
+    how: How,
+    options: OpenStoredOptions = {},
+): Promise<State | undefined> =>
+    withOpening((opening) => openStoredWith(opening, deps, read, how, options))
+
+const openStoredWith = async (
+    opening: Opening,
     deps: OpenDeps,
     read: SessionRead & { kind: 'open' },
     how: How,
@@ -210,21 +244,7 @@ export const openStored = async (
         onShown,
         onDestination,
         onTransferred,
-    }: {
-        /** An action of the user's (Reopen, Restore as a Copy): it replaces what's open. */
-        replace?: boolean
-        request?: SwitchRequest
-        canShow?: () => boolean
-        onShown?: (leaving: FlushSession | undefined) => void
-        onDestination?: () => void
-        onTransferred?: () => void
-        /**
-         * A journal of the session that couldn't be applied but reads: a continuation or fork
-         * starts from its state, an entry over the stored stack, so the newest work is on screen
-         * and stored by its first write.
-         */
-        recovered?: { found: JournalFound; state: State }
-    } = {},
+    }: OpenStoredOptions,
 ): Promise<State | undefined> => {
     const flusher = deps.flusher()
     // Whether the flusher's session took this open over: the tab record, Export's memory and
@@ -240,6 +260,17 @@ export const openStored = async (
         if (!flusher) {
             return
         }
+        const sessionId = String(read.session.id)
+        // An automatic open of a session that did not finish opening last time asks first.
+        if (
+            !replace &&
+            deps.unfinished?.has(sessionId) &&
+            !isBlankRequested() &&
+            deps.untouched() &&
+            (await askUnfinished(unfinishedName(read))) === 'blank'
+        )
+            return
+        await opening.add(sessionId)
         const state = await headOrDamaged(deps, read.head)
         if (!state) return
         if ((request && !request.isCurrent()) || (canShow && !canShow())) return
@@ -433,6 +464,7 @@ export const openStored = async (
         }
         if (request) request.publish({ state: shown, sessionId: id, reset: false }, publish)
         else publish()
+        if (ownership.transferred && destinationMatches()) opening.published()
         return ownership.transferred ? shown : undefined
     } finally {
         own?.release()
@@ -572,10 +604,9 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
     const name = displayName(namePartsOf(read.chain))
     if (name.kind !== 'date') setOpeningName(name.text)
     const headId = String(read.session.id)
+    // Named from the chain: a second tab decodes nothing the first may be stuck on.
     if (hasWebLocks() && (await deps.client.heldElsewhere(sessionLock(headId)))) {
-        const state = await headOrDamaged(deps, read.head)
-        if (!state) return false
-        deps.events({ kind: 'openElsewhere', name: shownOf(read, state), sessionId: headId })
+        deps.events({ kind: 'openElsewhere', name: shownOf(read), sessionId: headId })
         return false
     }
     const bound = await boundElsewhere(deps, read)
@@ -583,9 +614,7 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
     if (bound !== 'no') return forked(deps, read, headId, { quiet: bound === 'unknown' })
     const parentLock = await holdShared(deps.locks, headId)
     if (!parentLock) {
-        const state = await headOrDamaged(deps, read.head)
-        if (!state) return false
-        deps.events({ kind: 'openElsewhere', name: shownOf(read, state), sessionId: headId })
+        deps.events({ kind: 'openElsewhere', name: shownOf(read), sessionId: headId })
         return false
     }
     let state: State | undefined

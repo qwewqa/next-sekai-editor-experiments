@@ -3,9 +3,11 @@ import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch
 import { i18n } from '../i18n'
 import WaitSpinner from '../editor/workspace/WaitSpinner.vue'
 import { openInSafeMode } from '../safe'
+import { inlineName } from '../utils/inlineName'
 import { interpolate } from '../utils/interpolate'
 import {
     SPINNER_DELAY_MS,
+    answerUnfinished,
     registerGateElement,
     runRawExport,
     startBlank,
@@ -15,21 +17,29 @@ import {
 // The startup gate: a modal dialog, so the page behind it is inert, over the
 // editor from the first frame. Nothing shows for the first 150 ms; then a spinner with the
 // session's name. After 10 s it offers Start Blank and Open in Safe Mode, and a startup that
-// throws shows the error's own text with Open in Safe Mode and Export Raw Data.
+// throws shows the error's own text with Open in Safe Mode and Export Raw Data. A stored session
+// that did not finish opening last time asks at once, with no spinner: Start Blank or Try Again.
 
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const textId = useId()
 
 // A failure is said at once; a quick open shows nothing at all.
 const delayed = ref(false)
-const shown = computed(() => delayed.value || startupGate.phase === 'error')
+const shown = computed(
+    () => delayed.value || startupGate.phase === 'error' || startupGate.asking !== undefined,
+)
 
 const text = computed(() => {
     if (startupGate.phase === 'error') return i18n.value.startup.error
+    const asking = startupGate.asking
+    if (asking)
+        return asking.name === undefined
+            ? i18n.value.startup.unfinishedUntitled
+            : interpolate(() => i18n.value.startup.unfinished, inlineName(asking.name))()
     const name = startupGate.name
     return name === undefined
         ? i18n.value.startup.openingBlank
-        : interpolate(() => i18n.value.startup.opening, name)()
+        : interpolate(() => i18n.value.startup.opening, inlineName(name))()
 })
 
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -52,7 +62,7 @@ onBeforeUnmount(() => {
 
 // The buttons arrive after the dialog opened: focus the first, as a dialog's default would.
 watch(
-    () => [startupGate.phase, startupGate.slow] as const,
+    () => [startupGate.phase, startupGate.slow, startupGate.asking] as const,
     () => {
         void Promise.resolve().then(() => {
             dialog.value?.querySelector<HTMLElement>('button')?.focus()
@@ -76,7 +86,10 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
         @cancel.prevent
     >
         <template v-if="shown">
-            <WaitSpinner v-if="startupGate.phase === 'opening'" class="size-8" />
+            <WaitSpinner
+                v-if="startupGate.phase === 'opening' && !startupGate.asking"
+                class="size-8"
+            />
             <p
                 :id="textId"
                 :role="startupGate.phase === 'error' ? 'alert' : 'status'"
@@ -91,9 +104,27 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
             >
                 {{ startupGate.error }}
             </p>
-            <p v-else-if="startupGate.slow">{{ i18n.startup.slow }}</p>
+            <p v-else-if="startupGate.slow && !startupGate.asking">{{ i18n.startup.slow }}</p>
+            <div v-if="startupGate.asking" class="flex flex-wrap justify-center gap-2">
+                <button
+                    type="button"
+                    :class="buttonClass"
+                    data-unfinished="blank"
+                    @click="answerUnfinished('blank')"
+                >
+                    {{ i18n.startup.blank }}
+                </button>
+                <button
+                    type="button"
+                    :class="buttonClass"
+                    data-unfinished="again"
+                    @click="answerUnfinished('again')"
+                >
+                    {{ i18n.load.tryAgain }}
+                </button>
+            </div>
             <div
-                v-if="startupGate.phase === 'error' || startupGate.slow"
+                v-else-if="startupGate.phase === 'error' || startupGate.slow"
                 class="flex flex-wrap justify-center gap-2"
             >
                 <button

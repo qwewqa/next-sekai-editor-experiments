@@ -1190,7 +1190,9 @@
         "openingBlank": "Opening…",
         "slow": "This is taking longer than usual.",
         "error": "The editor could not open your stored work.",
-        "blank": "Start Blank"
+        "blank": "Start Blank",
+        "unfinished": "“{0}” did not finish opening last time.",
+        "unfinishedUntitled": "Your session did not finish opening last time."
     },
     "safe": {
         "bar": "Safe mode: changes are not stored.",

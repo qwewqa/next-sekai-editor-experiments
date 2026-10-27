@@ -1190,7 +1190,9 @@
     "openingBlank": "正在打开…",
     "slow": "耗时比平时更长。",
     "error": "编辑器无法打开已存储的内容。",
-    "blank": "从空白开始"
+    "blank": "从空白开始",
+    "unfinished": "上次未能完成打开“{0}”。",
+    "unfinishedUntitled": "上次未能完成打开您的会话。"
   },
   "safe": {
     "bar": "安全模式：更改不会被存储。",

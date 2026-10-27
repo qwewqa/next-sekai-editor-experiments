@@ -1190,7 +1190,9 @@
     "openingBlank": "Açılıyor…",
     "slow": "Bu işlem her zamankinden uzun sürüyor.",
     "error": "Editör saklanan çalışmanızı açamadı.",
-    "blank": "Boş Başlat"
+    "blank": "Boş Başlat",
+    "unfinished": "Geçen sefer \"{0}\" açılırken işlem yarım kaldı.",
+    "unfinishedUntitled": "Geçen sefer oturumunuz açılırken işlem yarım kaldı."
   },
   "safe": {
     "bar": "Güvenli mod: değişiklikler saklanmıyor.",
