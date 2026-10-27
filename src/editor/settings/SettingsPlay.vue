@@ -28,13 +28,18 @@ import SettingsSection from './SettingsSection.vue'
         <SelectField
             v-model="settings.playStartPosition"
             :label="i18n.settings.play.startPosition.title"
+            :description="i18n.settings.descriptions.playStartPosition"
             :options="[
                 [i18n.settings.play.startPosition.view, 'view'],
                 [i18n.settings.play.startPosition.cursor, 'cursor'],
             ]"
         />
 
-        <ToggleField v-model="settings.playFollow" :label="i18n.settings.play.follow" />
+        <ToggleField
+            v-model="settings.playFollow"
+            :label="i18n.settings.play.follow"
+            :description="i18n.settings.descriptions.playFollow"
+        />
 
         <NumberField
             v-model="settings.playFollowPosition"

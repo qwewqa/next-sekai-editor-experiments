@@ -44,6 +44,7 @@ watch(
         <SelectField
             v-model="settings.beatDisplay"
             :label="i18n.settings.editor.beatDisplay.title"
+            :description="i18n.settings.descriptions.beatDisplay"
             :options="[
                 [i18n.settings.editor.beatDisplay.beat, 'beat'],
                 [i18n.settings.editor.beatDisplay.measure, 'measure'],
@@ -81,7 +82,11 @@ watch(
             :description="i18n.settings.descriptions.dimUnchangedObjects"
         />
 
-        <ToggleField v-model="settings.showGroupName" :label="i18n.settings.editor.showGroupName" />
+        <ToggleField
+            v-model="settings.showGroupName"
+            :label="i18n.settings.editor.showGroupName"
+            :description="i18n.settings.descriptions.showGroupName"
+        />
 
         <ToggleField
             v-model="settings.hideGroupNameWhenFocusingGroup"
@@ -94,7 +99,11 @@ watch(
             :description="i18n.settings.descriptions.showOtherGroups"
         />
 
-        <ToggleField v-model="settings.showStageName" :label="i18n.settings.editor.showStageName" />
+        <ToggleField
+            v-model="settings.showStageName"
+            :label="i18n.settings.editor.showStageName"
+            :description="i18n.settings.descriptions.showStageName"
+        />
 
         <ToggleField
             v-model="settings.hideStageNameWhenFocusingStage"
@@ -122,6 +131,7 @@ watch(
         <NumberField
             v-model="settings.maxScrollX"
             :label="i18n.settings.editor.maxScrollX"
+            :description="i18n.settings.descriptions.maxScrollX"
             :min="0"
         />
 
@@ -145,6 +155,7 @@ watch(
         <SelectField
             v-model="settings.elevationEditorSideBySide"
             :label="i18n.settings.editor.elevationSideBySide"
+            :description="i18n.settings.descriptions.elevationEditorSideBySide"
             :options="[
                 [i18n.elevation.auto, 'auto'],
                 [i18n.elevation.always, 'allow'],
@@ -155,6 +166,7 @@ watch(
         <ToggleField
             v-model="settings.elevationConnectorArrows"
             :label="i18n.settings.editor.elevationConnectorArrows"
+            :description="i18n.settings.descriptions.elevationConnectorArrows"
         />
     </SettingsSection>
 </template>

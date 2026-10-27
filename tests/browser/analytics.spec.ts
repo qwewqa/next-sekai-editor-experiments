@@ -254,9 +254,7 @@ test('turning the switch off stops at once, pagehide included, and Reset Setting
     const field = await settingsSwitch(page)
     const toggle = field.getByRole('switch', { name: 'Send Usage Statistics' })
     await expect(toggle).toHaveAttribute('aria-checked', 'true')
-    await expect(field).toContainText(
-        'Usage statistics include which tools you use, some editor settings',
-    )
+    await expect(field).toContainText('They include which tools you use, some editor settings')
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
     await hide(page)
@@ -329,7 +327,7 @@ for (const signal of ['gpc', 'dnt'] as const)
         )
         expect(await clientLoaded(page)).toBe(0)
         await toggle.click()
-        await expect(field).toContainText('Usage statistics include which tools you use')
+        await expect(field).toContainText('They include which tools you use')
         await expect.poll(() => clientLoaded(page)).toBe(3)
         await page.keyboard.press('Escape')
         await interact(page)
@@ -821,7 +819,7 @@ test.describe('with the first-visit dialog', () => {
         const toggle = firstVisit(page).getByRole('switch', { name: 'Send Usage Statistics' })
         await expect(toggle).toHaveAttribute('aria-checked', 'true')
         await expect(firstVisit(page)).toContainText(
-            'Usage statistics include which tools you use, some editor settings',
+            'They include which tools you use, some editor settings',
         )
         await toggle.click()
         await expect(toggle).toHaveAttribute('aria-checked', 'false')

@@ -86,17 +86,21 @@ test.describe('in Settings', () => {
         await boot(page)
     })
 
-    test('16 described rows, each with a 24 px face, a 44 px target and exact names', async ({
+    test('33 described rows, each with a 24 px face, a 44 px target and exact names', async ({
         page,
     }) => {
         const dialog = await openSettings(page)
-        await expect(dialog.locator('[data-field-info]')).toHaveCount(16)
+        await expect(dialog.locator('[data-field-info]')).toHaveCount(33)
         const { root, info } = field(dialog, 'Name Contrast')
         await expect(info).toHaveAccessibleName('About Name Contrast')
         const toggle = root.getByRole('switch')
         await expect(toggle).toHaveAccessibleName('Name Contrast')
-        await expect(toggle).toHaveAccessibleDescription('Outlines group and stage names in black.')
-        await expect(info).toHaveAccessibleDescription('Outlines group and stage names in black.')
+        await expect(toggle).toHaveAccessibleDescription(
+            'Outlines group and stage names in black and brightens stage names.',
+        )
+        await expect(info).toHaveAccessibleDescription(
+            'Outlines group and stage names in black and brightens stage names.',
+        )
         // A select and a number field are named by their label's text alone, too.
         await expect(
             field(dialog, 'Waveform Visualization').root.getByRole('combobox'),

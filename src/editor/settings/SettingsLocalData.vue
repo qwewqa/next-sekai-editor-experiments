@@ -273,6 +273,7 @@ const exportRaw = async () => {
             v-if="showsClosePrompt"
             v-model="settings.confirmCloseUnsavedFile"
             :label="strings.confirmClose"
+            :description="i18n.settings.descriptions.confirmCloseUnsavedFile"
             data-confirm-close
         />
 

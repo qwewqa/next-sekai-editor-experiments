@@ -12,6 +12,7 @@ import SettingsSection from './SettingsSection.vue'
         <NumberField
             v-model="settings.touchQuickScrollWidth"
             :label="i18n.settings.touch.quickScrollWidth"
+            :description="i18n.settings.descriptions.touchQuickScrollWidth"
             :min="0"
             :max="200"
             step="any"
@@ -31,6 +32,7 @@ import SettingsSection from './SettingsSection.vue'
         <ToggleField
             v-model="settings.touchScrollInertia"
             :label="i18n.settings.touch.scrollInertia"
+            :description="i18n.settings.descriptions.touchScrollInertia"
         />
 
         <ToggleField
