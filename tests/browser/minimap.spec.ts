@@ -809,12 +809,15 @@ test.describe('indicator', () => {
         }
     })
 
-    test('over 60 playing frames the cursor is written about once per pixel it moved and the box not at all', async ({
+    // The cursor moves a quarter of a pixel a frame, by hand: how far a playing cursor goes in 60
+    // frames depends on how long those frames take, which a loaded runner does not hold.
+    test('over 60 frames of slow cursor movement the cursor is written once per pixel it moved and the box not at all', async ({
         page,
     }) => {
         await setup(page, { follow: false, cursor: 40 })
+        const m = await minimapStrip(page).metrics()
         const before = await overlay(page)
-        await page.evaluate(() => {
+        await page.evaluate((step) => {
             const writes = { cursor: 0, box: 0 }
             ;(window as unknown as { overlayWrites: typeof writes }).overlayWrites = writes
             const watch = (selector: string, key: 'cursor' | 'box') =>
@@ -824,8 +827,16 @@ test.describe('indicator', () => {
                 )
             watch('[data-minimap-cursor]', 'cursor')
             watch('[data-minimap-box]', 'box')
-        })
-        await playFrames(page, 60)
+            return new Promise<void>((resolve) => {
+                let left = 60
+                const next = () => {
+                    window.editorTest.view.cursorTime += step
+                    if (--left > 0) requestAnimationFrame(next)
+                    else resolve()
+                }
+                requestAnimationFrame(next)
+            })
+        }, m.row / 4)
         const after = await overlay(page)
         const writes = await page.evaluate(
             () =>
@@ -833,10 +844,11 @@ test.describe('indicator', () => {
                     .overlayWrites,
         )
         const moved = Math.ceil(before.cursorY - after.cursorY)
+        // Several frames in each pixel, so a write on every frame writes far more than the pixels.
         expect(moved).toBeGreaterThan(2)
+        expect(moved).toBeLessThanOrEqual(20)
         expect(writes.cursor).toBeGreaterThanOrEqual(1)
         expect(writes.cursor).toBeLessThanOrEqual(moved + 2)
-        expect(writes.cursor).toBeLessThan(30)
         expect(writes.box).toBe(0)
     })
 })

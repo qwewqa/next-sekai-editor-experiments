@@ -1,0 +1,5 @@
+/* Test runs only: the app's sans text in Selawik on every machine. vite.config.ts adds the font faces. */
+:root,
+.font-sans {
+    font-family: 'Selawik', sans-serif !important;
+}

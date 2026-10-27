@@ -37,7 +37,6 @@ jobs:
             - run: npm run check-type
             - run: npm run check-lint
             - run: npm run check-format
-            - run: npm test
             # One call, so the completeFrom claims between files are checked: the golden pair's against
             # write-1, and the v1 fixtures' against each other.
             - name: Check the .nxsp fixtures with the independent checker
@@ -47,12 +46,33 @@ jobs:
             - run: npm run build:native
             - run: npm run check:native-bundle
 
+    # The unit suites are a job of their own, beside the checks above: they take about 9 min. Some of them
+    # run the independent .nxsp checker, so this job needs uv.
+    unit:
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+            - run: npm ci
+            - run: npm test
+
     compatibility:
         if: ${{ !inputs.skip_browser_checks }}
         runs-on: ubuntu-latest
-        # About 14 min of tests with one worker (a 4-vCPU runner's), and the browsers' system packages can
-        # take 6 min to install on a slow runner.
+        # About 8 min of tests with two workers on a 4-vCPU runner.
         timeout-minutes: 30
+        # Playwright's image holds Firefox, WebKit and their system packages. Its version is the one in
+        # package-lock.json (tests/release/workflows.test.mjs checks that). Firefox needs a writable HOME.
+        container: mcr.microsoft.com/playwright:v1.63.0-noble
+        env:
+            HOME: /root
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -62,12 +82,25 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: scripts/ci/install-browsers.sh firefox webkit
             # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npm run build
-            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=firefox --project=firefox-chrome --project=firefox-production --project=firefox-preview-worker --project=webkit --project=webkit-production --project=mobile-webkit-production
+            - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=firefox --project=firefox-chrome --project=firefox-production --project=firefox-preview-worker --project=webkit --project=webkit-production --project=mobile-webkit-production --workers=2
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "compatibility"
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-compatibility
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -77,15 +110,19 @@ jobs:
                   if-no-files-found: ignore
                   retention-days: 7
 
-    # The v1 fixtures read by the running editor in Chromium, on every push (the pull request run of
-    # test:browser is the only other Chromium run): the write-back of each history file, the saving
+    # The v1 fixtures read by the running editor in Chromium, on every push (Browsers Full is the only other
+    # Chromium run): the write-back of each history file, the saving
     # marker, and the web storage reads (docs/format-versioning.md section 8).
     formats:
         if: ${{ !inputs.skip_browser_checks }}
-        needs: check
         runs-on: ubuntu-latest
         # About 2 min of tests with two workers on a fast desktop.
         timeout-minutes: 25
+        container:
+            image: mcr.microsoft.com/playwright:v1.63.0-noble
+            options: --ipc=host
+        env:
+            HOME: /root
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -95,8 +132,21 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: npx playwright install --with-deps chromium
             - run: npx playwright test tests/browser/formats --project=chromium --workers=2
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "formats"
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-formats
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -112,7 +162,9 @@ jobs:
         # The storage core: about 9 min of tests in Firefox and 4 in WebKit on a fast desktop.
         # browsers-full.yml runs the rest of the storage specs.
         timeout-minutes: 25
+        container: mcr.microsoft.com/playwright:v1.63.0-noble
         env:
+            HOME: /root
             NSE_STORAGE_SET: core
         strategy:
             fail-fast: false
@@ -133,12 +185,25 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: scripts/ci/install-browsers.sh ${{ matrix.engine }}
             # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npm run build
             - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=${{ matrix.engine }}-storage --project=${{ matrix.engine }}-production-storage --shard=${{ matrix.shard }}
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "${{ matrix.engine }} storage ${{ matrix.shard }}"
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-compatibility-storage-${{ strategy.job-index }}
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -147,3 +212,22 @@ jobs:
                   path: test-results-compatibility/
                   if-no-files-found: ignore
                   retention-days: 7
+
+    # One table of every flaky test and failure in this run, from the lists of the jobs above. It never fails the run.
+    flaky:
+        needs: [compatibility, formats, compatibility-storage]
+        if: ${{ !cancelled() && !inputs.skip_browser_checks }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        continue-on-error: true
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              continue-on-error: true
+              with:
+                  pattern: flaky-*
+                  path: flaky-lists
+                  merge-multiple: true
+            - run: node scripts/flaky-report.mjs collect flaky-lists

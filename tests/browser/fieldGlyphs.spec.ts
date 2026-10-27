@@ -577,13 +577,13 @@ test('a value glyph gives way only when that lets the value fit', async ({ page 
             })
             await nextTick()
         }, locale)
-        await page.waitForTimeout(100)
-        for (const glyph of await check()) {
-            if (!glyph.shown) gaveWay++
-            expect(glyph.shown, `${locale} ${glyph.value}`).toBe(
-                glyph.fitsWith || !glyph.fitsWithout,
-            )
-        }
+        // Until the glyphs follow the new locale's text and its fallback fonts.
+        const wrong = async () =>
+            (await check())
+                .filter((glyph) => glyph.shown !== (glyph.fitsWith || !glyph.fitsWithout))
+                .map((glyph) => glyph.value)
+        await expect.poll(wrong, { message: locale }).toEqual([])
+        for (const glyph of await check()) if (!glyph.shown) gaveWay++
     }
     // French "Haut à gauche" (Up Left) fits only without its arrow.
     expect(gaveWay).toBeGreaterThan(0)

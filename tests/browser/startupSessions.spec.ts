@@ -888,6 +888,8 @@ test("a late flush landing during the marker's wait is in the session the reload
     page,
     context,
 }) => {
+    // The test takes as long as it needs between its page calls, so the wait outlasts them.
+    await context.addInitScript(() => localStorage.setItem('nse.test.markerWait', '60000'))
     await visit(page)
     await edit(page, 990)
     await settled(page)
@@ -898,8 +900,7 @@ test("a late flush landing during the marker's wait is in the session the reload
     const reloaded = await reopenedTab(context, record)
     const visiting = visit(reloaded)
     await waitsForLock(page, sessionId)
-    // The unloading page's flush lands while the reload waits, then the page goes at once: the
-    // wait is only 2 s, so nothing between them polls.
+    // The unloading page's flush lands while the reload waits, then the page goes at once.
     await page.evaluate(async () => {
         const hooks = window.nseFlushTest!
         hooks.stall = false

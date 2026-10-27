@@ -282,39 +282,60 @@ test('a day with a step not stored yet can be picked', async ({ page }) => {
     await expect(selected(page)).toContainText('Fresh 1')
 })
 
-test('Go To keeps its list while it reads again, and shows the skeleton only on a zone change', async ({
-    page,
-}) => {
-    await openDialog(page)
-    await openGoTo(page)
-    const hold = await holdWorker(page, 'readTimelineIndex')
-    try {
-        await pushSteps(page, 1)
-        await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
-        // The Timeline reads the stored step back, and Go To reads its index again.
-        await hold.reached()
-        await expect(items(page)).toHaveCount(DAYS + 2)
-        await expect(items(page).nth(1)).toContainText('1 step')
-        await expect(goTo(page).locator('[data-goto-loading]')).toHaveCount(0)
-    } finally {
-        await hold.release()
-    }
-    await expect(items(page).nth(1)).toContainText('1 step')
-
-    // A zone change drops the list until the days are read for the new zone.
-    const hold2 = await holdWorker(page, 'readTimelineIndex')
-    try {
-        const cdp = await page.context().newCDPSession(page)
-        await cdp.send('Emulation.setTimezoneOverride', { timezoneId: 'Pacific/Kiritimati' })
-        await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-        await hold2.reached()
-        await expect(goTo(page).locator('[data-goto-loading]').first()).toBeVisible()
-    } finally {
-        await hold2.release()
-    }
-    await expect(goTo(page).locator('[data-goto-loading]')).toHaveCount(0)
-    await expect(items(page).first()).toContainText('Now')
+// The config gives every context a zone, which a second override cannot replace: this context has
+// none. Its page starts in UTC, set before the app loads, and the test changes the zone from the same
+// session.
+const zones = new WeakMap<Page, (zone: string) => Promise<unknown>>()
+const unzoned = test.extend({
+    context: async ({ browser }, use) => {
+        const context = await browser.newContext({ timezoneId: undefined })
+        await use(context)
+        await context.close()
+    },
+    page: async ({ context }, use) => {
+        const page = await context.newPage()
+        const session = await context.newCDPSession(page)
+        const set = (timezoneId: string) =>
+            session.send('Emulation.setTimezoneOverride', { timezoneId })
+        await set('UTC')
+        zones.set(page, set)
+        await use(page)
+    },
 })
+
+unzoned(
+    'Go To keeps its list while it reads again, and shows the skeleton only on a zone change',
+    async ({ page }) => {
+        await openDialog(page)
+        await openGoTo(page)
+        const hold = await holdWorker(page, 'readTimelineIndex')
+        try {
+            await pushSteps(page, 1)
+            await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+            // The Timeline reads the stored step back, and Go To reads its index again.
+            await hold.reached()
+            await expect(items(page)).toHaveCount(DAYS + 2)
+            await expect(items(page).nth(1)).toContainText('1 step')
+            await expect(goTo(page).locator('[data-goto-loading]')).toHaveCount(0)
+        } finally {
+            await hold.release()
+        }
+        await expect(items(page).nth(1)).toContainText('1 step')
+
+        // A zone change drops the list until the days are read for the new zone.
+        const hold2 = await holdWorker(page, 'readTimelineIndex')
+        try {
+            await zones.get(page)!('Pacific/Kiritimati')
+            await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+            await hold2.reached()
+            await expect(goTo(page).locator('[data-goto-loading]').first()).toBeVisible()
+        } finally {
+            await hold2.release()
+        }
+        await expect(goTo(page).locator('[data-goto-loading]')).toHaveCount(0)
+        await expect(items(page).first()).toContainText('Now')
+    },
+)
 
 test('Go To lists its days while a session on the path is importing', async ({ page }) => {
     await openDialog(page)

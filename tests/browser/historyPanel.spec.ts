@@ -327,6 +327,9 @@ test.describe('the tab', () => {
                 .filter({ has: page.getByText(name, { exact: true }) })
                 .getByRole('combobox')
         const options = (name: string) => select(name).locator('option').allTextContents()
+        // The options are read once, so the selects must be there first.
+        await expect(select('History')).toBeVisible()
+        await expect(select('Groups')).toBeVisible()
         expect(await options('History')).toEqual(await options('Groups'))
         expect(await options('History')).toContain('Disabled')
         await shoot(page, 'settings-panels')
@@ -529,10 +532,13 @@ test.describe('the dialog', () => {
         await stored(page)
         await page.keyboard.press('Shift+H')
         await expect(sheet(page)).toHaveAttribute('data-sheet', 'bottom')
+        // The sheet opens by growing; it is measured once it has its width.
+        await expect
+            .poll(async () => (await sheet(page).boundingBox())?.width ?? 0)
+            .toBeGreaterThan(360)
         const box = await sheet(page).boundingBox()
         const pane = await page.locator('.chart-pane').boundingBox()
         if (!box || !pane) throw new Error('no layout')
-        expect(box.width).toBeGreaterThan(360)
         expect(box.height).toBeGreaterThanOrEqual(240)
         expect(box.y + box.height).toBeLessThanOrEqual(pane.y + pane.height - 7)
         await row(page, 'Life 1', 'dialog').click()

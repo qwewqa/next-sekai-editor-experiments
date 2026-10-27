@@ -32,7 +32,7 @@ import { isBlankRequested, startsBlankForTests } from './state'
 import type { SessionRead } from './stored'
 import {
     claimSessionLock,
-    MARKER_WAIT_MS,
+    markerWaitMs,
     readMarker,
     readTabRecord,
     writeTabRecord,
@@ -68,7 +68,7 @@ export const claimTab = async (locks: LockService): Promise<Claim> => {
         return marked
             ? { kind: 'reload', record, lock: noLease(sessionLock(record.sessionId)) }
             : { kind: 'duplicate', record }
-    const lock = await claimSessionLock(locks, record.sessionId, marked ? MARKER_WAIT_MS : 0)
+    const lock = await claimSessionLock(locks, record.sessionId, marked ? markerWaitMs() : 0)
     return lock ? { kind: 'reload', record, lock } : { kind: 'duplicate', record }
 }
 

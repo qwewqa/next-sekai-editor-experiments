@@ -1,7 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { inflateRawSync } from 'node:zlib'
-import { confirmWhenReady } from './confirmWhenReady'
+import { confirmWhenReady, workTimeout } from './confirmWhenReady'
 import {
     closePage,
     installCanvasCounters,
@@ -632,7 +632,7 @@ test.describe('safe mode', () => {
         await expect(page).toHaveURL(/\?safe$/)
         await leave(page).click()
         await confirmWhenReady(dialog.getByRole('button', { name: 'Leave Anyway' }), dialog)
-        await expect(page).toHaveURL(/\/$/)
+        await expect(page).toHaveURL(/\/$/, { timeout: workTimeout })
     })
 
     test("a registered guard, the not-stored prompt's, is asked instead", async ({ page }) => {

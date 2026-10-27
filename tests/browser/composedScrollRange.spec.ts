@@ -225,9 +225,19 @@ test('a lower Max Scroll X brings the view within the reach at once, in either l
         const { scrollViewXBy } =
             await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
         const frame = () => new Promise(requestAnimationFrame)
-        scrollViewXBy(1_000_000, true)
-        while (view.lane === 0) await frame()
-        const at = view.lane
+        // A loaded runner can draw its first frame after the ease has ended; the ease is tried
+        // again until a frame lands in the middle of it.
+        let at = 0
+        for (let attempt = 0; attempt < 20; attempt++) {
+            settings.maxScrollX = 1000
+            view.lane = 0
+            await nextTick()
+            scrollViewXBy(1_000_000, true)
+            while (view.lane === 0) await frame()
+            at = view.lane
+            if (at < 998) break
+            while (view.scrollingX) await frame()
+        }
         settings.maxScrollX = at + 2
         await nextTick()
         const easing = !!view.scrollingX

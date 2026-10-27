@@ -1,6 +1,6 @@
 import vue from '@vitejs/plugin-vue'
 import autoprefixer from 'autoprefixer'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
@@ -112,6 +112,47 @@ export default defineConfig(({ mode }) => ({
                         .replaceAll('%PRODUCT_NAME%', PRODUCT_NAME)
                         .replaceAll('%GITHUB_REPOSITORY%', repository),
             },
+        },
+        {
+            // Test runs only (webServer in playwright.config.ts): every page draws its sans text in the
+            // one font tests/fonts holds, so layout tests see the same widths on every machine.
+            name: 'test-font',
+            apply: (_config, { command }) =>
+                command === 'serve' && process.env.NSE_TEST_FONT === '1',
+            // A script that blocks the page adds the fonts from their bytes, which a font face takes
+            // at once, so no text is laid out in a fallback font first.
+            configureServer(server) {
+                server.middlewares.use('/__test-font.js', (_req, res) => {
+                    const faces = [
+                        ['400', 'Regular'],
+                        ['600', 'Semibold'],
+                        ['700', 'Bold'],
+                    ].map(
+                        ([weight, name]) =>
+                            `add(${weight}, '${readFileSync(resolve(root, `tests/fonts/selawik/Selawik-${name}.ttf`)).toString('base64')}')`,
+                    )
+                    res.setHeader('Content-Type', 'text/javascript')
+                    res.end(
+                        `const add = (weight, text) => {
+                            const bytes = Uint8Array.from(atob(text), (char) => char.charCodeAt(0))
+                            document.fonts.add(new FontFace('Selawik', bytes, { weight: String(weight) }))
+                        }
+                        ${faces.join(';')}`,
+                    )
+                })
+            },
+            transformIndexHtml: () => [
+                {
+                    tag: 'script',
+                    attrs: { src: '/__test-font.js' },
+                    injectTo: 'head-prepend' as const,
+                },
+                {
+                    tag: 'link',
+                    attrs: { rel: 'stylesheet', href: '/tests/fonts/test-font.css' },
+                    injectTo: 'head' as const,
+                },
+            ],
         },
         {
             // The apps' page has no web-only tags or icon.

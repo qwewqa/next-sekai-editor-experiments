@@ -538,6 +538,7 @@ export const startStoring = (
         read: (hash, size) =>
             worker.call('readMedia', hash, { timeoutMs: mediaTimeoutMs(size ?? 0) }),
         decode: decodeBgmData,
+        atStartup: () => startupGate.phase !== 'done',
         store: (item) =>
             worker.call('storeMedia', item, { timeoutMs: mediaTimeoutMs(item.bytes.byteLength) }),
     })

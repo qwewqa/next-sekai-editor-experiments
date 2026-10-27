@@ -227,10 +227,13 @@ for (const pixelRatio of [1, 1.25, 2]) {
                 Math.abs(actual.x - reference.x),
                 `${name}: horizontal ink alignment`,
             ).toBeLessThan(0.6)
+            // SVG and Canvas text rasterise with different hinting on some platforms, which moves
+            // the vertical centroid of small figures by about a pixel. A wrong baseline moves it
+            // by several.
             expect(
                 Math.abs(actual.y - reference.y),
                 `${name}: vertical ink alignment`,
-            ).toBeLessThan(0.6)
+            ).toBeLessThanOrEqual(1.25)
         }
     })
 }

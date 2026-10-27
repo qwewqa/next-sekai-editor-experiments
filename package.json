@@ -24,7 +24,7 @@
         "perf:preview": "tsx scripts/perf/preview.mjs",
         "format:gen": "tsx scripts/format-gen.mjs",
         "analytics:allowlist": "tsx scripts/analytics-allowlist.mjs",
-        "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing,samples}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs tests/citations.test.mjs",
+        "test": "tsx --import ./tests/setup/utc.mjs --test \"tests/{editor,preview,platform,zip,local,builtin,landing,samples}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs tests/citations.test.mjs",
         "test:browser": "node scripts/test-browser.mjs",
         "test:timing": "playwright test --project=timing --no-deps",
         "test:compatibility": "npm run build && playwright test --config playwright.compatibility.config.ts",

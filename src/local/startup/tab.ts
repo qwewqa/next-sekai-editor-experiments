@@ -1,4 +1,5 @@
 import { platform } from '../../platform'
+import { testWindowMs } from '../../platform/testKeys'
 import type { LockService } from '../../platform/types'
 import { storageKey } from '../../storage'
 import { sessionLock } from '../locks'
@@ -112,6 +113,9 @@ export const watchMarker = (current: () => string | undefined) => {
 
 /** The wait for a late flush from the page that went away (about 2 s). */
 export const MARKER_WAIT_MS = 2000
+
+/** A spec sets `nse.test.markerWait` (ms) to widen or shorten the wait. */
+export const markerWaitMs = () => testWindowMs('nse.test.markerWait', MARKER_WAIT_MS)
 
 /**
  * Takes a session's lock exclusively, as a reload does: at once when free, or with `waitMs`, a

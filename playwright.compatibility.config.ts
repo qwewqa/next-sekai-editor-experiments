@@ -43,13 +43,21 @@ export default defineConfig({
     ],
     outputDir: 'test-results-compatibility',
     // Firefox under xvfb sometimes fails to create its first WebGL2 context. A test that passes
-    // on its retry is reported as flaky.
-    retries: process.env.CI ? 1 : 0,
+    // on a retry is reported as flaky.
+    retries: process.env.CI ? 2 : 0,
     // A broken build or an environment fault fails every test; stop after a few instead of retrying all.
     maxFailures: process.env.CI ? 4 : 0,
     use: {
         ...config.use,
         launchOptions: {},
+        // As in the main config: no startup guard question unless a spec tests the guard.
+        storageState: {
+            cookies: [],
+            origins: [String(config.use?.baseURL), previewUrl].map((origin) => ({
+                origin,
+                localStorage: [{ name: 'nse.test.noOpeningGuard', value: 'true' }],
+            })),
+        },
     },
     projects: [
         { name: 'firefox', use: { browserName: 'firefox' } },

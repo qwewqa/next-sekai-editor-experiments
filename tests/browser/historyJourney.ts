@@ -1,4 +1,10 @@
-import { expect, type BrowserContext, type Locator, type Page } from '@playwright/test'
+import {
+    expect,
+    type BrowserContext,
+    type ConsoleMessage,
+    type Locator,
+    type Page,
+} from '@playwright/test'
 import type { PlatformOverride } from '../../src/platform/detect'
 import { SampleClock } from '../samples/driver'
 import { installEditorFixture, installTestPlatform, useTool, waitForStartup } from './editorFixture'
@@ -68,6 +74,44 @@ const caught = new WeakMap<Page, string[]>()
 const VUE_WARNING = /Duplicate keys|Unhandled error/
 
 /**
+ * What the page knew of a console error beyond its text, as one line: each error argument's name,
+ * message, the name of the error behind it (the worker sends only that across), and the storage
+ * worker's status and the browser's estimate. A worker error reaches the page as its name alone,
+ * so this is where a storage failure's cause shows.
+ */
+const errorDetail = async (page: Page, message: ConsoleMessage) => {
+    try {
+        const errors = await Promise.all(
+            message.args().map((handle) =>
+                handle.evaluate((value) =>
+                    value instanceof Error
+                        ? {
+                              ...value,
+                              name: value.name,
+                              message: value.message,
+                              cause: String(value.cause),
+                          }
+                        : undefined,
+                ),
+            ),
+        )
+        const state = await page.evaluate(async () => {
+            const { storageWorker } =
+                await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                    '/src/local/start.ts',
+                )
+            return {
+                storing: storageWorker?.status,
+                estimate: await navigator.storage.estimate(),
+            }
+        })
+        return JSON.stringify({ errors: errors.filter(Boolean), ...state })
+    } catch {
+        return undefined
+    }
+}
+
+/**
  * Collects page errors, console errors and Vue duplicate-key / unhandled-error warnings. Each one
  * fails the test at once (a soft failure, so the test still runs to its end) and is also kept in
  * the returned list. `allow` names the errors a test expects on purpose, such as the flusher's
@@ -88,8 +132,15 @@ export const errorsFail = (page: Page, opts: { allow?: RegExp[] } = {}) => {
     page.on('pageerror', (error) => add(`pageerror: ${error.message}`))
     page.on('console', (message) => {
         const text = message.text()
-        if (message.type() === 'error') add(`console.error: ${text}`)
-        else if (message.type() === 'warning' && VUE_WARNING.test(text))
+        if (message.type() === 'error') {
+            add(`console.error: ${text}`)
+            const [firstLine] = text.split('\n')
+            // A failing run shows the detail beside the failure.
+            if (!opts.allow?.some((pattern) => pattern.test(`console.error: ${text}`)))
+                void errorDetail(page, message).then((detail) => {
+                    if (detail) console.log(`[detail of ${firstLine}] ${detail}`)
+                })
+        } else if (message.type() === 'warning' && VUE_WARNING.test(text))
             add(`console.warn: ${text}`)
     })
     return found

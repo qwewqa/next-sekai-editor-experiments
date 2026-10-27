@@ -87,18 +87,29 @@ for (const { type, from, to } of picks)
                     const before = topOf(other)
                     const frames: Frame[] = []
                     const start = performance.now()
-                    const tick = () => {
-                        const at = performance.now() - start
+                    const sample = () => {
                         frames.push({
-                            at,
+                            at: performance.now() - start,
                             top: topOf(other),
                             line: !!document.querySelector('[data-asset-loading]'),
                             checked: row(to).querySelector('input')!.checked,
                         })
-                        if (at < windowMs) requestAnimationFrame(tick)
-                        else resolve({ before, frames })
+                    }
+                    // Timers sample too: a loaded runner can deliver its first frame late, and
+                    // the page is judged as it stands, whether or not a frame was drawn.
+                    const timer = setInterval(sample, 25)
+                    const tick = () => {
+                        sample()
+                        if (frames.at(-1)!.at < windowMs) requestAnimationFrame(tick)
+                        else {
+                            clearInterval(timer)
+                            resolve({ before, frames })
+                        }
                     }
                     row(to).click()
+                    // After the click's own updates, before any timer or frame.
+                    queueMicrotask(sample)
+                    setTimeout(sample)
                     requestAnimationFrame(tick)
                 }),
             [to, other, WINDOW_MS] as const,

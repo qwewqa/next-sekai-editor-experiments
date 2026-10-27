@@ -427,6 +427,66 @@ test.describe('load notices in the start-up pill', () => {
             await expect(page.locator('[data-at-load] li')).toHaveText(['Late line.'])
         })
 
+    // The window starts when the gate lifts: a startup that outlasts it does not use it up.
+    test('a load notice right after a slow startup joins the start-up card', async ({
+        page,
+        context,
+    }) => {
+        await seed(context, { 'nse.test.startup': JSON.stringify({ hold: true }) })
+        // The page clock the notice code reads can stand still at a chosen page age.
+        await page.addInitScript(() => {
+            const real = performance.now.bind(performance)
+            const clock = { frozen: undefined as number | undefined }
+            ;(window as unknown as { pageClock: typeof clock }).pageClock = clock
+            performance.now = () => clock.frozen ?? real()
+        })
+        await page.goto('/')
+        await expect.poll(() => page.evaluate(() => !!window.nseStartupRelease)).toBe(true)
+        // Startup ends at a page age of 13 s, past the 12 s the window once counted from load, and
+        // the clock stays there until the notice is added.
+        await page.evaluate(() => {
+            ;(window as unknown as { pageClock: { frozen: number } }).pageClock.frozen = 13_000
+            window.nseStartupRelease?.()
+        })
+        await opened(page)
+        await expect(pill(page)).toHaveCount(0)
+        await addEvent(page, { kind: 'storageCleared' })
+        await expect(pill(page)).toContainText('Work from earlier visits is missing.')
+    })
+
+    // A BGM refused after startup began its reattachment: after an edit it is only kept, where a
+    // refusal from a user's own action is a card.
+    for (const startup of [true, false])
+        test(
+            startup
+                ? 'a BGM refusal from startup after an edit is kept, with no card'
+                : 'a BGM refusal from a user action after an edit is a card',
+            async ({ page }) => {
+                await visit(page)
+                await edit(page, 990)
+                await page.evaluate(async (startup) => {
+                    const { noticeRefused } =
+                        (await import('/src/editor/media/heldBgm.ts')) as typeof import('../../src/editor/media/heldBgm')
+                    const { TaskFailure } =
+                        (await import('/src/utils/error.ts')) as typeof import('../../src/utils/error')
+                    noticeRefused(
+                        'refused-hash',
+                        new TaskFailure('audioTooLong', 'too long'),
+                        startup,
+                    )
+                }, startup)
+                if (startup) {
+                    await expect(pill(page)).toHaveCount(0)
+                    await page.evaluate(async () => {
+                        const { openSettings } =
+                            (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+                        void openSettings('localData')
+                    })
+                    await expect(page.locator('[data-at-load] li')).toHaveCount(1)
+                } else await expect(pill(page)).toBeVisible()
+            },
+        )
+
     test.describe('on a phone', () => {
         test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 

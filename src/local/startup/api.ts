@@ -14,7 +14,7 @@ import { AUTO_SAVE_KEY, AUTO_SAVE_UNREADABLE_KEY, toRecoveryFile } from './legac
 import { boundElsewhere, copyOfOf, holdShared, openStored, type OpenDeps } from './open'
 import { journalledSession } from './resume'
 import { parseAutoSaveSlot, replaySessionJournal, type RecoveryContext } from './steps'
-import { claimSessionLock, MARKER_WAIT_MS } from './tab'
+import { claimSessionLock, markerWaitMs } from './tab'
 
 // What the UI acts on after startup: Reopen after leaving a session,
 // Restore as a Copy from a load notice, and Settings › Local Data › Recovery's rows with their
@@ -82,7 +82,7 @@ const openSession = async (
     // Safe mode reads only: the replay is a write, and its exclusive lock is not taken.
     const lock = open.safe
         ? undefined
-        : await claimSessionLock(open.locks, sessionId, own ? MARKER_WAIT_MS : 0)
+        : await claimSessionLock(open.locks, sessionId, own ? markerWaitMs() : 0)
     let shared: LockLease | undefined
     try {
         // Its pending journal first (between loads): a stale session is never opened

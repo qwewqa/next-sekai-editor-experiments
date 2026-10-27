@@ -31,6 +31,9 @@ const showNote = (page: Page) =>
             1.1,
         )
         settings.width = 20
+        // A finger held still for half a second opens the context menu and ends the gesture,
+        // which a loaded runner can leave between a gesture's events.
+        settings.touchLongPressContextMenu = false
         await nextTick()
     })
 
@@ -64,11 +67,11 @@ test('the zone is 32 pixels wide by default', async ({ page }) => {
     const start = await view(page)
     // Just inside: a scroll.
     await swipe(page, 28, 0, -60)
+    await expect.poll(async () => (await view(page)).time).not.toBe(start.time)
     expect(await notes(page)).toEqual(before)
-    expect((await view(page)).time).not.toBe(start.time)
     // Just outside: the tool's drag.
     await swipe(page, 40, 0, -60)
-    expect(await notes(page)).not.toEqual(before)
+    await expect.poll(() => notes(page)).not.toEqual(before)
 })
 
 test('a quick scroll moves the view vertically only, with or without inertia', async ({ page }) => {

@@ -1,8 +1,10 @@
 name: Browsers Full
 
-# The whole storage set in Firefox and WebKit. Check runs the storage core on every push; this adds the
-# slow specs, startup and opening a project file. A release needs a passed run on its commit:
-# gh workflow run browsers-full.yml --ref main
+# The whole storage set in Firefox and WebKit, and the Chromium suite. Check runs the storage core on every
+# push; this adds the slow storage specs (startup and opening a project file) and the Chromium specs.
+# A release needs a passed run on its commit, started by hand: gh workflow run browsers-full.yml --ref main
+# The nightly run does nothing when a nightly or a manual run has already passed on main's head commit.
+# A push to a ci/ branch runs the storage set only; start the whole run on it by hand.
 on:
     workflow_dispatch:
     schedule:
@@ -19,11 +21,39 @@ concurrency:
     cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
+    changed:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            actions: read
+        outputs:
+            run: ${{ steps.changed.outputs.run }}
+        steps:
+            - id: changed
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  run=true
+                  if [ "${{ github.event_name }}" = schedule ]; then
+                      runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/browsers-full.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=100")
+                      passed=$(jq --argjson id "$GITHUB_RUN_ID" '[.workflow_runs[] | select(.id != $id and (.event == "schedule" or .event == "workflow_dispatch"))] | length' <<<"$runs")
+                      if [ "$passed" -gt 0 ]; then
+                          run=false
+                          echo "Browsers Full has already passed on $GITHUB_SHA. Nothing to run."
+                      fi
+                  fi
+                  echo "run=$run" >> "$GITHUB_OUTPUT"
+
     storage:
+        needs: changed
+        if: ${{ needs.changed.outputs.run == 'true' }}
         runs-on: ubuntu-latest
         # Every storage spec: about 22 min of tests in Firefox and 14 in WebKit on a fast desktop, the v1 web storage
         # fixtures spec (about 4.5 min on one worker) included.
         timeout-minutes: 25
+        container: mcr.microsoft.com/playwright:v1.63.0-noble
+        env:
+            HOME: /root
         strategy:
             fail-fast: false
             matrix:
@@ -43,12 +73,25 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - run: scripts/ci/install-browsers.sh ${{ matrix.engine }}
             # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npm run build
             - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=${{ matrix.engine }}-storage --project=${{ matrix.engine }}-production-storage --shard=${{ matrix.shard }}
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "${{ matrix.engine }} storage ${{ matrix.shard }}"
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-storage-${{ strategy.job-index }}
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -57,3 +100,140 @@ jobs:
                   path: test-results-compatibility/
                   if-no-files-found: ignore
                   retention-days: 7
+
+    # The Chromium specs, as npm run test:browser runs them: the chromium and chromium-worker projects, about 4,500
+    # tests, in shards. The timing specs are not run here: their budgets need a quiet machine with a GPU, so
+    # they are a local check before a release (npm run test:timing). Not run on a push to a ci/ branch.
+    chromium:
+        needs: changed
+        if: ${{ needs.changed.outputs.run == 'true' && github.event_name != 'push' }}
+        runs-on: ubuntu-latest
+        # About 13 tests a minute with four workers on the 4-vCPU runner (5 times slower than a fast desktop), so one
+        # of sixteen, about 280 tests, takes about 25 min, retries included.
+        timeout-minutes: 60
+        container:
+            image: mcr.microsoft.com/playwright:v1.63.0-noble
+            options: --ipc=host
+        env:
+            HOME: /root
+        strategy:
+            fail-fast: false
+            matrix:
+                shard:
+                    [
+                        1/16,
+                        2/16,
+                        3/16,
+                        4/16,
+                        5/16,
+                        6/16,
+                        7/16,
+                        8/16,
+                        9/16,
+                        10/16,
+                        11/16,
+                        12/16,
+                        13/16,
+                        14/16,
+                        15/16,
+                        16/16,
+                    ]
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - run: npm ci
+            # Selawik for the sans-serif stack as well, for text the page's own font does not reach (tests/fonts/README.md).
+            - name: Install the test fonts
+              run: scripts/ci/install-test-fonts.sh
+            # The five locked preview packages, as build:release stages them. Without them the preview specs fall back to Built-in only.
+            - name: Fetch the preview assets
+              run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
+            - run: npx playwright test --project=chromium --project=chromium-worker --shard=${{ matrix.shard }} --workers=4
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "chromium ${{ matrix.shard }}"
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-chromium-${{ strategy.job-index }}
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
+            - name: Upload browser failure details
+              if: failure()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: chromium-failures-${{ strategy.job-index }}
+                  path: test-results/
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    # The tests that chromium leaves out (ciExclusions in playwright.config.ts), run once each, on every nightly and
+    # manual run. A failure here does not fail the run. The summary lists the ones that pass now, which can be dropped.
+    excluded:
+        needs: changed
+        if: ${{ needs.changed.outputs.run == 'true' && github.event_name != 'push' }}
+        continue-on-error: true
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        container:
+            image: mcr.microsoft.com/playwright:v1.63.0-noble
+            options: --ipc=host
+        env:
+            HOME: /root
+            NSE_RUN_EXCLUDED: '1'
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - run: npm ci
+            # The five locked preview packages, as build:release stages them. Without them the preview specs fall back to Built-in only.
+            - name: Fetch the preview assets
+              run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
+            - run: npx playwright test --project=chromium --project=chromium-worker --workers=2
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "excluded" --excluded
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-excluded
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    # One table of every flaky test and failure in this run, from the lists of the jobs above. It never fails the run.
+    flaky:
+        needs: [changed, storage, chromium, excluded]
+        if: ${{ !cancelled() && needs.changed.outputs.run == 'true' }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        continue-on-error: true
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              continue-on-error: true
+              with:
+                  pattern: flaky-*
+                  path: flaky-lists
+                  merge-multiple: true
+            - run: node scripts/flaky-report.mjs collect flaky-lists

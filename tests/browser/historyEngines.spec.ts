@@ -307,7 +307,11 @@ test('a live entry arriving keeps the row under the pointer where it was', async
     errorsFail(page)
     await load(page)
     await synthesise(page, 80)
+    // Storing the entries and the first read replace the rows and put the list back at the top,
+    // so scroll after both.
+    await flush(page)
     await openHistory(page, { focused: false })
+    await timelineRead(page)
     const list = timeline(page)
     // The wheel's distance differs between engines, so the list is put at its place directly.
     await list.evaluate((element) => {
@@ -338,7 +342,9 @@ test('a live entry arriving keeps the row under the pointer where it was', async
         .poll(() => list.evaluate((element) => element.scrollHeight))
         .toBeGreaterThan(height)
     await stableTop(page, title)
-    expect(Math.abs((await topOf(page, title)) - before)).toBeLessThanOrEqual(1)
+    await expect
+        .poll(async () => Math.abs((await topOf(page, title)) - before))
+        .toBeLessThanOrEqual(1)
 })
 
 test('an arrow key moves focus on when the focused row has scrolled out of the rendered rows', async ({

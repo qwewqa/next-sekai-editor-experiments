@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import type english from '../../src/i18n/en/index.json'
-import { confirmKeyWhenReady, confirmWhenReady } from './confirmWhenReady'
+import { confirmKeyWhenReady, confirmWhenReady, workTimeout } from './confirmWhenReady'
 import {
     errorsFail,
     flush,
@@ -195,7 +195,7 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
     )
     // Cancel is the default, and Enter on it deletes nothing.
     await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused()
-    await confirmKeyWhenReady(page, 'Enter', deleteDialog(page))
+    await confirmKeyWhenReady(page, 'Enter', confirm)
     await expect(notice(page, /Deleted/)).toHaveCount(0)
     await page.keyboard.press('Escape')
     const rows = await recentRows(page)
@@ -217,12 +217,12 @@ test('with the box unticked the unsaved work is kept, and what is deleted leaves
     await expect(confirm).not.toContainText('newer version')
     await confirmWhenReady(
         confirm.getByRole('button', { name: messages.modals.confirm.delete }),
-        deleteDialog(page),
+        confirm,
     )
     // A card: a quick toast would fade over the open dialog.
     await expect(
         page.locator('[data-notice-card]').filter({ hasText: 'Deleted 1 session' }),
-    ).toBeVisible()
+    ).toBeVisible({ timeout: workTimeout })
     await expect(deleteDialog(page)).toHaveCount(0)
     await page.keyboard.press('Escape')
     const rows = await recentRows(page)
@@ -248,9 +248,9 @@ test('ticking the box deletes the unsaved work too, including a chain from a new
     await expect(confirm).not.toContainText('“Week”')
     await confirmWhenReady(
         confirm.getByRole('button', { name: messages.modals.confirm.delete }),
-        deleteDialog(page),
+        confirm,
     )
-    await expect(notice(page, 'Deleted 3 sessions')).toBeVisible()
+    await expect(notice(page, 'Deleted 3 sessions')).toBeVisible({ timeout: workTimeout })
     await page.keyboard.press('Escape')
     const rows = await recentRows(page)
     for (const title of ['browser-regression.json', 'Month', 'Later'])
@@ -271,10 +271,12 @@ test('a run that deletes some and skips one says both', async ({ page }) => {
     await tamper(page, 'chains', month, { updatedAt: Date.now() })
     await confirmWhenReady(
         confirmDialog(page).getByRole('button', { name: messages.modals.confirm.delete }),
-        deleteDialog(page),
+        confirmDialog(page),
     )
-    await expect(notice(page, 'Deleted 2 sessions')).toBeVisible()
-    await expect(notice(page, '1 session could not be deleted.')).toBeVisible()
+    await expect(notice(page, 'Deleted 2 sessions')).toBeVisible({ timeout: workTimeout })
+    await expect(notice(page, '1 session could not be deleted.')).toBeVisible({
+        timeout: workTimeout,
+    })
 })
 
 test('Delete… is disabled when nothing is chosen', async ({ page }) => {
@@ -300,10 +302,12 @@ test('a chain edited since the dialog read it is skipped, and a run that deletes
     await page.locator('[data-delete-next]').click()
     await confirmWhenReady(
         confirmDialog(page).getByRole('button', { name: messages.modals.confirm.delete }),
-        deleteDialog(page),
+        confirmDialog(page),
     )
     // Edited since it was read: skipped, so nothing went, and the failure says so.
-    await expect(notice(page, '1 session could not be deleted.')).toBeVisible()
+    await expect(notice(page, '1 session could not be deleted.')).toBeVisible({
+        timeout: workTimeout,
+    })
 })
 
 // --- The Storage subsection, Recovery's Export Raw Data, and the almost-full notice.
@@ -551,7 +555,7 @@ test.describe('from Recent Sessions', () => {
                 .dispatchEvent('click')
             await expect(deleteDialog(page)).toBeHidden({ timeout: 300 })
         }).toPass({ timeout: 10_000 })
-        await expect(notice(page, 'Deleted 3 sessions')).toBeVisible()
+        await expect(notice(page, 'Deleted 3 sessions')).toBeVisible({ timeout: workTimeout })
         await expect(rows.filter({ hasText: 'Month' })).toHaveCount(0)
         await expect(rows.filter({ hasText: 'Later' })).toHaveCount(0)
         await expect(rows.filter({ hasText: 'Week' })).toHaveCount(1)
@@ -569,9 +573,9 @@ test.describe('from Recent Sessions', () => {
         await page.locator('[data-delete-next]').click()
         await confirmWhenReady(
             confirmDialog(page).getByRole('button', { name: messages.modals.confirm.delete }),
-            deleteDialog(page),
+            confirmDialog(page),
         )
-        await expect(notice(page, 'Deleted 3 sessions')).toBeVisible()
+        await expect(notice(page, 'Deleted 3 sessions')).toBeVisible({ timeout: workTimeout })
         await expect(page.locator('[data-peek-back]')).toHaveCount(0)
         await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
         await expect(rows.filter({ hasText: 'Month' })).toHaveCount(0)

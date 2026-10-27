@@ -25,6 +25,8 @@ export type HeldEnvironment = {
     decode: (data: ArrayBuffer) => Promise<{ buffer: AudioBuffer; waveform?: Waveform }>
     /** Stores a picked item again (`storeMedia`). */
     store?: (item: BatchMedia) => Promise<boolean>
+    /** Whether the startup gate is still open: a reattachment that begins then is startup's. */
+    atStartup?: () => boolean
 }
 
 /** Entries kept besides none that is the live head's. */
@@ -67,10 +69,14 @@ export const onUnheldAfterMove = (say: (hash: string) => void) => {
 /** Why a BGM was refused for its length: the container's bound, or the decoded duration. */
 export type BgmRefusal = 'audioMayBeTooLong' | 'audioTooLong'
 
-let refusedNotice: ((hash: string, kind: BgmRefusal) => void) | undefined
+let refusedNotice: ((hash: string, kind: BgmRefusal, startup: boolean) => void) | undefined
 
-/** What says so when a BGM that is not picked now is refused for its length (the editor side registers it). */
-export const onBgmRefused = (say: (hash: string, kind: BgmRefusal) => void) => {
+/**
+ * What says so when a BGM that is not picked now is refused for its length (the editor side
+ * registers it). `startup` is true when the reattachment that found it began while the startup
+ * gate was open, so the refusal may arrive long after.
+ */
+export const onBgmRefused = (say: (hash: string, kind: BgmRefusal, startup: boolean) => void) => {
     refusedNotice = say
 }
 
@@ -81,7 +87,7 @@ export const refusalOf = (error: unknown): BgmRefusal | undefined =>
         ? error.kind
         : undefined
 
-type Waiting = { id: string; hash: string; kind: BgmRefusal }
+type Waiting = { id: string; hash: string; kind: BgmRefusal; startup: boolean }
 
 let holds = 0
 const waiting: Waiting[] = []
@@ -116,13 +122,13 @@ export const hostRefusalRow = (host: { shown: () => boolean; raise: () => void }
     rowCard = { id: session.value.sessionId, ...host }
 }
 
-const sayRefusal = ({ id, hash, kind }: Waiting) => {
+const sayRefusal = ({ id, hash, kind, startup }: Waiting) => {
     if (session.value.sessionId !== id) return
     if (rowCard?.id === id && rowCard.shown()) {
         rowCard.raise()
         return
     }
-    refusedNotice?.(hash, kind)
+    refusedNotice?.(hash, kind, startup)
 }
 
 /**
@@ -150,20 +156,20 @@ export const holdRefusalNotices = () => {
 }
 
 /** Says a refusal once per hash per session, for the session shown. */
-const announceRefusal = (hash: string, kind: BgmRefusal) => {
+const announceRefusal = (hash: string, kind: BgmRefusal, startup: boolean) => {
     if (!claimNotice(hash)) return
-    const entry = { id: session.value.sessionId, hash, kind }
+    const entry = { id: session.value.sessionId, hash, kind, startup }
     known = { id: entry.id, kind }
     if (holds) waiting.push(entry)
     else sayRefusal(entry)
 }
 
 /** Remembers a refusal for the session and says it once. Returns whether the error was one. */
-export const noticeRefused = (hash: string, error: unknown) => {
+export const noticeRefused = (hash: string, error: unknown, startup = false) => {
     const kind = refusalOf(error)
     if (!kind) return false
     refused.set(hash, kind)
-    announceRefusal(hash, kind)
+    announceRefusal(hash, kind, startup)
     return true
 }
 
@@ -340,14 +346,14 @@ export const bgmStatus = async (hash: string, size: number | undefined): Promise
 let lastSession: string | undefined
 let lastBgm: Bgm | undefined
 
-const reattach = async (id: string, bgm: Bgm, moved: boolean) => {
+const reattach = async (id: string, bgm: Bgm, moved: boolean, startup: boolean) => {
     const meta = bgm.meta
     if (!meta) return
     const why = refused.get(meta.hash)
     if (why) {
         // Back at refused audio whose notice was not said while it was away.
         if (session.value.sessionId === id && liveState.value.bgm.meta?.hash === meta.hash)
-            announceRefusal(meta.hash, why)
+            announceRefusal(meta.hash, why, startup)
         return
     }
     const cached = cachedHeld(meta.hash)
@@ -377,7 +383,7 @@ const reattach = async (id: string, bgm: Bgm, moved: boolean) => {
     } catch (error) {
         // Said for the session shown, where the hash is still the live one.
         if (session.value.sessionId === id && liveState.value.bgm.meta?.hash === meta.hash)
-            noticeRefused(meta.hash, error)
+            noticeRefused(meta.hash, error, startup)
         return
     }
     if (parts) attachHeld(id, meta.hash, parts)
@@ -389,7 +395,7 @@ const onLive = (id: string, bgm: Bgm, peeking: boolean) => {
     lastSession = id
     lastBgm = bgm
     if (peeking || !bgm.meta || bgm.buffer) return
-    runHeld(reattach(id, bgm, moved))
+    runHeld(reattach(id, bgm, moved, environment?.atStartup?.() ?? false))
 }
 
 let stop: (() => void) | undefined

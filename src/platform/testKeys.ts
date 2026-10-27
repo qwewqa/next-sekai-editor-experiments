@@ -9,3 +9,18 @@ export const testKeysOpen =
     (import.meta as { env?: { DEV?: boolean } }).env?.DEV !== false ||
     typeof __NSE_SITE__ !== 'string' ||
     __NSE_SITE__ === 'test'
+
+/**
+ * A product timing window in ms, or `normal`: a spec widens or shortens it through the
+ * `nse.test.*` key it names. Read on each use, and only in builds that read test keys.
+ */
+export const testWindowMs = (key: string, normal: number) => {
+    if (!testKeysOpen) return normal
+    try {
+        const set = localStorage.getItem(key)
+        const ms = set === null ? Number.NaN : Number(set)
+        return Number.isFinite(ms) && ms >= 0 ? ms : normal
+    } catch {
+        return normal
+    }
+}

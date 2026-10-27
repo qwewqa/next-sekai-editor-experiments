@@ -292,6 +292,38 @@ test('Escape in the description asks before it throws the typed text away', asyn
     expect((await levelInfoOf(page)).description).toBe('Typed but not left')
 })
 
+/** The page's console errors and uncaught errors from now on. */
+const collectConsole = (page: Page) => {
+    const logged: string[] = []
+    page.on('console', (message) => {
+        if (message.type() === 'error') logged.push(`console.error: ${message.text()}`)
+    })
+    page.on('pageerror', (error) => logged.push(`pageerror: ${error.message}`))
+    return logged
+}
+
+/**
+ * Waits for Generate to hand the result back and close the editor. When it does not, the failure
+ * says what stayed on screen (a loading dialog still working, or its failure message) and what the
+ * page logged, so one run on a slow runner shows whether Generate is slow or has failed.
+ */
+const closesAfterGenerate = async (page: Page, editor: Locator, logged: string[]) => {
+    try {
+        await expect(editor).toHaveCount(0)
+    } catch (error) {
+        const open = await page.getByRole('dialog').evaluateAll((dialogs) =>
+            dialogs.map((element) => ({
+                text: (element as HTMLElement).innerText.replace(/\s+/g, ' ').trim(),
+                working: element.querySelector('.wait-bar-slide, [role="progressbar"]') !== null,
+            })),
+        )
+        throw new Error(
+            `Generate did not close the Cover Editor. Open dialogs: ${JSON.stringify(open)}. Logged: ${JSON.stringify(logged)}`,
+            { cause: error },
+        )
+    }
+}
+
 test('Make from BGM… and Edit in Cover Editor return their result with the typed fields kept', async ({
     page,
 }) => {
@@ -325,8 +357,9 @@ test('Make from BGM… and Edit in Cover Editor return their result with the typ
     const editor = page.getByRole('dialog', { name: 'Cover Editor', exact: true }).first()
     // It starts from the cover in the form.
     await expect(editor.getByRole('button', { name: '64×64', exact: true })).toBeVisible()
+    const logged = collectConsole(page)
     await editor.getByRole('button', { name: 'Generate', exact: true }).click()
-    await expect(editor).toHaveCount(0)
+    await closesAfterGenerate(page, editor, logged)
     await expect(form.locator('[data-level-info-cover]')).toContainText('cover.png')
     await expect(field(form, 'Title')).toHaveValue('Typed before')
 

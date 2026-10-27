@@ -339,9 +339,19 @@ test('release assets, preview, chart editing and FFT audio work in the productio
                 return (await frames(page)).chart - before
             })
             .toBe(0)
-        // Default 1000 pixels/s and imported BPM 60 put beat 1/4 above time zero.
+        // The view can rest a few pixels off time zero, as it did on a slow runner, so a click
+        // at a computed height can miss the note. A box over most of the pane holds it either way.
         await page.keyboard.press('f')
-        await page.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2 - 250)
+        await page.mouse.move(bounds!.x + 10, bounds!.y + 30)
+        await page.mouse.down()
+        await page.mouse.move(
+            bounds!.x + bounds!.width - 10,
+            bounds!.y + bounds!.height / 2 + 100,
+            {
+                steps: 10,
+            },
+        )
+        await page.mouse.up()
         const lane = page.getByLabel('Lane', { exact: true })
         await expect(lane).toHaveValue('-1.5')
         await lane.fill('2')
