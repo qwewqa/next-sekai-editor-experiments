@@ -408,8 +408,8 @@ const suggestions = async (env: Env, stems: string[]) => {
 const suggestion = async (env: Env, stem: string) => (await suggestions(env, [stem]))[0] ?? ''
 
 /**
- * File Name's prefill and its placeholder, which an empty field saves: both suggestions, so
- * "Untitled" is numbered as a name is.
+ * File Name's prefill and its placeholder. An empty field saves the placeholder, so it is a
+ * suggestion too, numbered as a name is.
  */
 const fieldNames = async (env: Env, stem: string) => {
     const [name = '', placeholder = ''] = await suggestions(env, [

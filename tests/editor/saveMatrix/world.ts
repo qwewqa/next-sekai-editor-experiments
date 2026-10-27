@@ -98,7 +98,7 @@ export type Setup = {
     read?: 'granted' | 'prompt' | 'denied'
     /** Another chain bound to other.nxsp. */
     other?: boolean
-    /** The other chain's file's name in place of other.nxsp. */
+    /** The name of the other chain's file, in place of other.nxsp. */
     otherFile?: string
     /** Another chain's Export target, target.nsld. */
     target?: boolean
