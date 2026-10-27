@@ -57,6 +57,16 @@ import storageWorkerUrl from './worker/storage.worker?worker&url'
 export const STORAGE_TEST_KEY = 'nse.test.storage'
 /** The fixture hook's no-storage key. */
 const NO_STORAGE_TEST_KEY = 'nse.test.noStorage'
+/** With this key set, the startup guard records openings but never asks about an unfinished one. */
+const NO_OPENING_GUARD_TEST_KEY = 'nse.test.noOpeningGuard'
+
+const noOpeningGuard = () => {
+    try {
+        return testKeysOpen && localStorage.getItem(NO_OPENING_GUARD_TEST_KEY) !== null
+    } catch {
+        return false
+    }
+}
 
 type StorageTestFlags = TestFlags & {
     rpcTimeoutMs?: number
@@ -372,7 +382,7 @@ export const startStorage = async () => {
                     : {}),
                 keptForLocalData: recovery.keptForLocalData,
                 flusher: () => flusher,
-                ...(unfinished ? { unfinished } : {}),
+                ...(unfinished && !noOpeningGuard() ? { unfinished } : {}),
                 show: showSession,
                 showState,
                 onLeft: offerReopen,

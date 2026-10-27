@@ -4,6 +4,7 @@ import type { JournalOutcome } from './journal/replay'
 import { importLock, sessionLock } from './locks'
 import type { DeleteTarget, Mark, Marked, RemoveRequest, RemoveResult } from './removal'
 import { tryLease, type LockLease } from './sessions'
+import { previousSession } from './startup/events'
 import { storedRead, type ReadWorker } from './storedRead'
 import type { CallOptions } from './worker/rpc'
 import type { StorageHandlers } from './worker/storage.worker'
@@ -87,6 +88,12 @@ const lockChain = async (
 export const runGc = (worker: Worker, always: boolean): Promise<GcResult | undefined> =>
     call(worker, 'gcPass', { always }, { timeoutMs: GC_TIMEOUT_MS }).catch(() => undefined)
 
+/** A chain this tab deletes takes the session it left with it: Reopen offers it no more. */
+const forgetLeft = (sessions: readonly string[]) => {
+    const left = previousSession.value
+    if (left && sessions.includes(left.sessionId)) previousSession.value = undefined
+}
+
 export const createDeletion = (deps: DeletionDeps) => {
     const { worker, locks, journal } = deps
     const now = deps.now ?? Date.now
@@ -110,7 +117,10 @@ export const createDeletion = (deps: DeletionDeps) => {
         } finally {
             for (const lease of leases) lease.release()
         }
-        if (result.kind === 'removed') deps.updated()
+        if (result.kind === 'removed') {
+            forgetLeft(request.locked)
+            deps.updated()
+        }
         return result
     }
 
@@ -144,6 +154,7 @@ export const createDeletion = (deps: DeletionDeps) => {
             } finally {
                 for (const lease of leases) lease.release()
             }
+            forgetLeft(target.sessions)
             deps.updated()
             deps.sweepAt?.(marked.at + SWEEP_AGE_MS)
             return { kind: 'marked', mark: marked }

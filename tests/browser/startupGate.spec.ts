@@ -657,6 +657,7 @@ test.describe('a session that did not finish opening', () => {
 
     test.beforeEach(async ({ context }) => {
         await context.addInitScript(() => {
+            localStorage.removeItem('nse.test.noOpeningGuard')
             localStorage.setItem('nse.test.storage', '{}')
             localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
             localStorage.setItem('sonolus-next-sekai-editor.showSidebar', 'false')
