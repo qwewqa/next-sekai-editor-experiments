@@ -10,7 +10,7 @@ import { webLockService } from '../../../src/local/locks'
 import { sessionCopyOf } from '../../../src/local/names'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
-import { holdSessionLock } from '../../../src/local/sessions'
+import { holdParentLock, holdSessionLock } from '../../../src/local/sessions'
 import { boundElsewhere, claimTab } from '../../../src/local/startup/open'
 import { journalsStep, type RecoveryContext } from '../../../src/local/startup/steps'
 import { claimSessionLock, MARKER_WAIT_MS } from '../../../src/local/startup/tab'
@@ -27,7 +27,14 @@ import { goldenChart, stateOf } from '../records/charts'
 import { storedEntries, widen } from '../timeline/helpers'
 import { autoSaveText } from './autoSaveText'
 import { readOpen } from './harness'
-import { load, markUnloaded, openSession, recordTab, type TabStorage } from './load'
+import {
+    load,
+    markUnloaded,
+    openSession,
+    recordTab,
+    type LoadOptions,
+    type TabStorage,
+} from './load'
 
 // Which session a load opens, on the test core: the claim, the recovery order and
 // `openAtStart` run as `start.ts` runs them. A reload never appends to a session over its own
@@ -767,6 +774,113 @@ test('a separate copy of a chart named by its song names its source by the song'
         of: { name: 'song', bound: false },
         elsewhere: true,
     })
+})
+
+// A closing page can hold its lock past the marker's wait and release it while the load runs. The
+// reload still opens a separate copy, and its notice says the session is open elsewhere only while
+// another tab holds it.
+test("a reload that finds its session held past the marker's wait says it is open elsewhere only while it is still held", async () => {
+    const world = createWorld({ seed: 18 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const stored = beginSession(first, stateOf(goldenChart()))
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const closing = world.tab('closing')
+    const reloadHeld = async (name: string, released: boolean) => {
+        const tab: TabStorage = new Map()
+        recordTab(tab, { sessionId: stored.id, start: 'stored' })
+        markUnloaded(tab, stored.id)
+        const lock = holdSessionLock(closing.locks, stored.id)
+        await closing.run(() => lock.granted)
+        const reload = await load(world, name, storage, {
+            tab,
+            meanwhile: () => {
+                if (released) lock.release()
+            },
+        })
+        lock.release()
+        assert.equal(reload.claim.kind, 'duplicate')
+        const copy = openSession(reload)
+        assert.notEqual(copy.forkOf, undefined)
+        assert.equal(copy.parent?.id, stored.id)
+        const event = reload.events.find((each) => each.kind === 'separateCopy')
+        reload.page.tab.kill()
+        return event
+    }
+    const released = await reloadHeld('released', true)
+    assert.ok(released)
+    assert.equal('elsewhere' in released, false)
+    assert.equal((await reloadHeld('held', false))?.elsewhere, true)
+})
+
+test("a reload of an unstored continuation held past the marker's wait says it is open elsewhere only while it is still held", async () => {
+    const world = createWorld({ seed: 19 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const parent = beginSession(first, stateOf(goldenChart()))
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const parentHolder = world.tab('parent holder')
+    const reloadHeld = async (name: string, released: boolean) => {
+        // The closing page holds its continuation's lock until it is killed.
+        const closing = await load(world, `${name} closing`, storage)
+        const continuation = openSession(closing)
+        assert.equal(continuation.parent?.id, parent.id)
+        // Another tab holds the parent too, so only the continuation's own lock can tell.
+        const parentHold = holdParentLock(parentHolder.locks, parent.id)
+        await parentHolder.run(() => parentHold.granted)
+        const tab = new Map(closing.tab)
+        markUnloaded(tab, continuation.id)
+        const reload = await load(world, name, storage, {
+            tab,
+            meanwhile: () => {
+                if (released) closing.page.tab.kill()
+            },
+        })
+        closing.page.tab.kill()
+        parentHold.release()
+        assert.equal(reload.claim.kind, 'duplicate')
+        const copy = openSession(reload)
+        assert.notEqual(copy.forkOf, undefined)
+        assert.equal(copy.parent?.id, parent.id)
+        const event = reload.events.find((each) => each.kind === 'separateCopy')
+        reload.page.tab.kill()
+        return event
+    }
+    const released = await reloadHeld('released', true)
+    assert.ok(released)
+    assert.equal('elsewhere' in released, false)
+    assert.equal((await reloadHeld('held', false))?.elsewhere, true)
+})
+
+test('a Duplicate Tab whose lock check fails, or that has no Web Locks, says only that it opened a separate copy', async () => {
+    const world = createWorld({ seed: 20 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    // The tab it is copied from holds the session throughout.
+    const stored = beginSession(first, stateOf(goldenChart()))
+    await first.flusher.flush({ strict: true })
+    const tab: TabStorage = new Map()
+    recordTab(tab, { sessionId: stored.id, start: 'stored' })
+    const copyIn = async (name: string, options: LoadOptions = {}) => {
+        const copy = await load(world, name, storage, { tab: new Map(tab), ...options })
+        assert.equal(copy.claim.kind, 'duplicate')
+        assert.notEqual(openSession(copy).forkOf, undefined)
+        const event = copy.events.find((each) => each.kind === 'separateCopy')
+        copy.page.tab.kill()
+        assert.ok(event)
+        return 'elsewhere' in event
+    }
+    const failing = () => Promise.reject(new Error('The lock query failed'))
+    assert.equal(await copyIn('failing', { heldElsewhere: failing }), false)
+    const navigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    Object.defineProperty(globalThis, 'navigator', { value: {}, configurable: true })
+    try {
+        assert.equal(await copyIn('no locks'), false)
+    } finally {
+        if (navigator) Object.defineProperty(globalThis, 'navigator', navigator)
+    }
 })
 
 test("a copy's source is its file, else its own name, else the date it started", () => {

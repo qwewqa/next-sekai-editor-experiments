@@ -375,6 +375,9 @@ const openMenu = async (row: ChainRow, anchor: HTMLElement, touch = false) => {
     // The item reads as of now: who holds the session is asked again.
     const held = await heldElsewhere()
     if (disposed || token !== menuToken) return
+    // A badge that differs from this check is stale, so the list is read again to match the menu.
+    if (held.has(row.chain.head.sessionId) !== (row.badge === 'elsewhere'))
+        void list.refresh({ now: true })
     // The row's name is the menu's heading, so a sheet over the chart says whose menu it is.
     const items = sessionMenuItems(row, held, safe).map((item) => ({
         ...item,

@@ -181,7 +181,7 @@ Each of the following fields is included and set to yes when its condition appli
 | `found.notOpened` | A session could not be opened because it was damaged or needed a newer version of the editor |
 | `found.openElsewhere` | The most recent session was open in another tab, so this tab started blank |
 | `found.deletedElsewhere` | The session this tab reloaded was deleted in another tab |
-| `found.separateCopy` | This tab opened a separate copy because the session was open in another tab |
+| `found.separateCopy` | This tab opened a separate copy of a session |
 | `found.bgmNotLoaded` | The music of the continued session could not be loaded |
 
 ### `storage`

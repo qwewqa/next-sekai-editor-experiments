@@ -647,6 +647,7 @@ const forked = async (
         recovered,
         quiet,
         elsewhere,
+        heldBy,
     }: {
         held?: LockLease
         copyOf?: CopyOf
@@ -655,6 +656,8 @@ const forked = async (
         quiet?: boolean
         /** Another tab is known to hold the session or its file. */
         elsewhere?: boolean
+        /** A session another tab held. The notice says so only while it is still held. */
+        heldBy?: string
     } = {},
 ): Promise<boolean> => {
     // The hold taken here is released here; a passed one is its creator's.
@@ -671,10 +674,18 @@ const forked = async (
     } finally {
         shared?.release()
     }
-    if (state && !quiet)
-        deps.events({ kind: 'separateCopy', of: copyOf, ...(elsewhere ? { elsewhere: true } : {}) })
+    if (state && !quiet) {
+        const open = heldBy === undefined ? elsewhere : await heldNow(deps, heldBy)
+        deps.events({ kind: 'separateCopy', of: copyOf, ...(open ? { elsewhere: true } : {}) })
+    }
     return !!state
 }
+
+/** Whether another tab holds a session's lock now; false when that cannot be told. */
+const heldNow = (deps: Pick<OpenDeps, 'client'>, sessionId: string): Promise<boolean> =>
+    hasWebLocks()
+        ? deps.client.heldElsewhere(sessionLock(sessionId)).catch(() => false)
+        : Promise.resolve(false)
 
 /** A reload while storage is unavailable continues from its own journal. */
 const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: LockLease): boolean => {
@@ -907,14 +918,15 @@ const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
         return result.opened
     }
     // A Duplicate Tab: a fork without the binding; of an unstored continuation, a fork
-    // of what it continued. The other tab still holds the session.
+    // of what it continued. A page that is closing may release its lock after the claim.
+    const heldBy = record.sessionId
     const read = await deps.worker.call('readSession', record.sessionId)
-    if (read.kind === 'open') return forked(deps, read, record.sessionId, { elsewhere: true })
+    if (read.kind === 'open') return forked(deps, read, record.sessionId, { heldBy })
     if (read.kind !== 'missing') return false
     if (record.start === 'blank') return newVisit(deps)
     if (record.start === 'continuation' && record.parent) {
         const parent = await deps.worker.call('readSession', record.parent)
-        if (parent.kind === 'open') return forked(deps, parent, record.parent, { elsewhere: true })
+        if (parent.kind === 'open') return forked(deps, parent, record.parent, { heldBy })
     }
     return false
 }

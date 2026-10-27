@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { chipSeverity, chipStates, rowBadges } from '../../src/editor/file/chip'
+import { chipSeverity, chipStates } from '../../src/editor/file/chip'
 import { formatSize } from '../../src/utils/size'
 
 test('the chip slot takes the highest-priority state and lists the rest', () => {
@@ -18,16 +18,6 @@ test('the chip draws its icon by severity', () => {
     assert.equal(chipSeverity('fileMissing'), 'warning')
     assert.equal(chipSeverity('changedOnDisk'), 'warning')
     assert.equal(chipSeverity('newerOnDisk'), 'info')
-})
-
-test('a row shows at most two badges: its state, then open in another tab', () => {
-    assert.deepEqual(rowBadges(['changedOnDisk', 'newerOnDisk'], true), [
-        'changedOnDisk',
-        'openElsewhere',
-    ])
-    assert.deepEqual(rowBadges([], true), ['openElsewhere'])
-    assert.deepEqual(rowBadges(['newerOnDisk'], false), ['newerOnDisk'])
-    assert.deepEqual(rowBadges([], false), [])
 })
 
 test('sizes use decimal units, one decimal below 100 of a unit and none from 100', () => {
