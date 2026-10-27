@@ -49,7 +49,7 @@ export type AttemptSpec = {
     readonly importWait: 'none' | 'chain'
     /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */
     readonly importChain?: string
-    /** A write-back's, requested at the press and awaited after the commit. */
+    /** A write-back's, requested at the press and awaited before the check and the commit. */
     readonly permission?: Promise<PermissionState>
     /** A large touch download: "Preparing…" opens at once, with this size. */
     readonly estimated?: number
