@@ -13,7 +13,7 @@ import {
     peekRow,
     placeTap,
 } from './historyJourney'
-import { projectOf, queuePicks, submitSave } from './saveFlows'
+import { chainOf, pressSave, projectOf, queuePicks, submitSave } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -419,6 +419,56 @@ test("restoring the chain's latest session continues it with its file", async ({
     await openedChain(page).toBe(alpha.chainId)
     await expect(notice(page, 'Restored “coconut”')).toBeVisible()
     await expect(page.getByText('coconut.nxsp').last()).toBeVisible()
+})
+
+/** A row's caption in a download browser: the time, the notes, the file name, a bullet when changed. */
+const downloadCaption = (file: string, changed = false) =>
+    new RegExp(
+        String.raw`^\d{1,2}:\d{2}\s[AP]M · 4 notes · ${file.replace('.', String.raw`\.`)}${changed ? ' •' : ''}$`,
+    )
+
+/** A session with four notes, saved as `name` by a download, and stored. */
+const downloadedSession = async (page: Page, name: string) => {
+    await page.evaluate(() => {
+        const { show, fixtures } = window.editorTest
+        show(fixtures.interaction, 3)
+    })
+    await edit(page, { title: name, life: 990 })
+    const downloading = page.waitForEvent('download')
+    await pressSave(page)
+    await submitSave(page, name)
+    expect((await downloading).suggestedFilename()).toBe(`${name}.nxsp`)
+    await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ event: 'downloaded' })
+    await flush(page)
+    return flushIds(page)
+}
+
+test('a downloaded file reads as its name on the open row and on a stored row, with a bullet after a change', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page, { platform: { fileSystemAccess: false } })
+    const first = await downloadedSession(page, 'alpha')
+    const second = await downloadedSession(page, 'beta')
+    await openSessions(page)
+    const caption = (chainId: string) =>
+        page.locator(`[data-sessions-row][data-chain="${chainId}"] [data-sessions-caption]`)
+
+    // The stored row and the open one, with no download event in either.
+    await expect(caption(first.chainId)).toHaveText(downloadCaption('alpha.nxsp'))
+    await expect(caption(second.chainId)).toHaveText(downloadCaption('beta.nxsp'))
+    await expect(page.locator('[data-sessions-row][data-badge="thisTab"]')).toHaveAttribute(
+        'data-chain',
+        second.chainId,
+    )
+
+    // A change shows at once on the open row, and on the stored row once it is stored.
+    await edit(page, { title: 'Gamma', life: 970 })
+    await expect(caption(second.chainId)).toHaveText(downloadCaption('beta.nxsp', true))
+    await flush(page)
+    await newSession(page)
+    await expect(caption(second.chainId)).toHaveText(downloadCaption('beta.nxsp', true))
+    await expect(caption(first.chainId)).toHaveText(downloadCaption('alpha.nxsp'))
 })
 
 test('a list that cannot be read says so with Try Again, never an empty list', async ({ page }) => {
