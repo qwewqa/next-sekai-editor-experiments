@@ -719,6 +719,38 @@ test.describe('Groups and Stages side by side', () => {
         expect(await getSettings(page, ['groupsStagesSplit'])).toEqual({ groupsStagesSplit: 0.5 })
     })
 
+    test('Settings › Panels turns them off, which keeps them stacked after a reload', async ({
+        page,
+    }) => {
+        await setSettings(page, { leftDockWidth: 760 })
+        await settle(page)
+        expect(await sideBySide(page)).toBe(true)
+        await page.keyboard.press(',')
+        const toggle = page
+            .getByRole('dialog')
+            .locator('[data-settings-section="panels"]')
+            .getByRole('switch', { name: 'Groups and Stages Side by Side' })
+        await expect(toggle).toHaveAttribute('aria-checked', 'true')
+        await expect(toggle).toHaveAccessibleDescription(
+            /^When Preview, Groups and Stages are all shown in the left panels/,
+        )
+        await toggle.click()
+        await expect(toggle).toHaveAttribute('aria-checked', 'false')
+        await page.keyboard.press('Escape')
+        await settle(page)
+        expect(await sideBySide(page)).toBe(false)
+
+        await page.reload()
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await setSettings(page, { showPreview: true })
+        await settle(page)
+        expect(await getSettings(page, ['groupsStagesSideBySide'])).toEqual({
+            groupsStagesSideBySide: false,
+        })
+        expect(await sideBySide(page)).toBe(false)
+    })
+
     test('a drag on the divider between them ends when the divider turns', async ({ page }) => {
         const divider = dock(page, 'left').getByRole('separator', {
             name: 'Resize Groups and Stages',

@@ -167,6 +167,7 @@ export const catalogue = {
         touchQuickScrollShow: oneOf('on', 'off', 'touch'),
         touchLongPressContextMenu: 'boolean',
         confirmCloseUnsavedFile: 'boolean',
+        groupsStagesSideBySide: 'boolean',
     },
     startup: {
         start: oneOf('continued', 'reload', 'recovered', 'launchFile', 'blank', 'safeMode'),
@@ -302,6 +303,7 @@ export const catalogue = {
         visibleTime: 'seconds',
         previewHost: oneOf('main', 'worker', 'none', 'mixed', 'unknown'),
         previewRenderScale: oneOf(...renderScales, 'mixed', 'unknown'),
+        groupsStagesSideBySide: oneOf('on', 'off', 'mixed'),
         ...device,
     },
     errors: counts(['error', 'csp']),

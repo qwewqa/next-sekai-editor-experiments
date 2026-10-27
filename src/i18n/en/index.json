@@ -888,7 +888,8 @@
             "longPressContextMenu": "Long Press for Context Menu"
         },
         "panels": {
-            "title": "Panels"
+            "title": "Panels",
+            "groupsStagesSideBySide": "Groups and Stages Side by Side"
         },
         "about": {
             "title": "About",
@@ -929,6 +930,7 @@
             "maxScrollX": "Sets how far you can scroll left or right from the chart’s center. In Composed layout, you can scroll farther to reach notes and stages.",
             "elevationEditorSideBySide": "Auto opens the Elevation Editor beside the chart when there is room. With Always, they stay side by side. With Never, the Elevation Editor replaces the chart.",
             "elevationConnectorArrows": "Arrows point from each connector’s start to its end on selected or hovered slides. They appear where there is room between the notes.",
+            "groupsStagesSideBySide": "When Preview, Groups and Stages are all shown in the left panels or all in the right panels, and those panels are wide enough, Groups and Stages are shown side by side below Preview. To widen the panels, drag the edge between the panels and the chart.",
             "confirmCloseUnsavedFile": "Asks before the page closes while changes are not saved to a project file, even when they are stored in this browser. When closing would lose edits, the editor always asks.",
             "previewNoteSpeed": "Higher values make notes approach faster in the preview. If a group’s Force Note Speed is above 0, it overrides this value.",
             "previewShowHitboxes": "Shows the areas used to judge notes and slides. They appear shortly before notes are hit and while slides are active.",

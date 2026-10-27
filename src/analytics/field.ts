@@ -1,5 +1,5 @@
 import { watch } from 'vue'
-import { isPanelVisible } from '../editor/workspace'
+import { areGroupsStagesSideBySide, isPanelVisible } from '../editor/workspace'
 import { isPlaying } from '../player'
 import { previewHost } from '../preview/worker/host'
 import { settings } from '../settings'
@@ -10,9 +10,9 @@ import { renderScaleOf } from './snapshot'
 import * as tally from './tally'
 
 // Field performance (docs/analytics.md): long frames and slow events from observers that run only
-// for slow entries, the visible and playing time as spans, and the preview's host and render scale
-// as values that can change within an interval. No timer and no polling; nothing here runs per
-// frame.
+// for slow entries, the visible and playing time as spans, and the preview's host, its render scale
+// and whether Groups and Stages are side by side as values that can change within an interval. No
+// timer and no polling; nothing here runs per frame.
 
 /** How far back a long frame is still placed by the state it began in. */
 const HISTORY_MS = 30_000
@@ -30,6 +30,10 @@ const scaleNow = (): NonNullable<EventData<'perf'>['previewRenderScale']> =>
     Number.isFinite(settings.previewRenderScale)
         ? renderScaleOf(settings.previewRenderScale)
         : 'unknown'
+
+// Shown side by side, not only allowed by the setting.
+const sideBySideNow = (): NonNullable<EventData<'perf'>['groupsStagesSideBySide']> =>
+    areGroupsStagesSideBySide.value ? 'on' : 'off'
 
 export const startField = () => {
     const isVisible = () => document.visibilityState === 'visible'
@@ -69,6 +73,8 @@ export const startField = () => {
     const renderScale = createSpan(scaleNow())
     const stopHost = watch(hostNow, host.see, { flush: 'sync' })
     const stopScale = watch(scaleNow, renderScale.see, { flush: 'sync' })
+    const sideBySide = createSpan(sideBySideNow())
+    const stopSideBySide = watch(sideBySideNow, sideBySide.see, { flush: 'sync' })
 
     let unclassified = false
     let lastFrameStart = 0
@@ -150,6 +156,7 @@ export const startField = () => {
                 }),
                 previewHost: host.take(hostNow()),
                 previewRenderScale: renderScale.take(scaleNow()),
+                groupsStagesSideBySide: sideBySide.take(sideBySideNow()),
             }
             sentVisible = visible
             sentPlay = playing.sent
@@ -161,6 +168,7 @@ export const startField = () => {
             stopWatching()
             stopHost()
             stopScale()
+            stopSideBySide()
             tally.watchBusy(undefined)
             for (const observer of observers) observer.disconnect()
         },

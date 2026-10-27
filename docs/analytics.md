@@ -116,7 +116,7 @@ How the code enforces them:
 | --- | --- | --- |
 | (pageview) | client start | `url` (always `/`), `title` (empty), `hostname`, `language`, `screen`, `referrer` (another site's origin only) |
 | `visit` | client start | `version`, `site`, `os`, `engine`, `standalone`, `touch`, `viewport`, `viewportHeight`, `viewportAspect`, `dpr`, `cores`, `deviceMemory`, `browserLanguage`, `returning`, `updated` |
-| `settings` | client start | `theme`, `themeShown`, `locale`, `previewInWorker`, `previewRenderScale`, `previewAntialias`, `previewShowHitboxes`, `previewNoteSpeed`, `previewAssets.<type>`, `showPreview`, `previewPosition`, `showMinimap`, `showHistory`, `historyPosition`, `dimUnchangedObjects`, `waveform`, `beatDisplay`, `toolbarQuickSwitch`, `toolbarCustomized`, `mouseSecondaryTool`, `playFollow`, `touchQuickScrollShow`, `touchLongPressContextMenu`, `confirmCloseUnsavedFile` |
+| `settings` | client start | `theme`, `themeShown`, `locale`, `previewInWorker`, `previewRenderScale`, `previewAntialias`, `previewShowHitboxes`, `previewNoteSpeed`, `previewAssets.<type>`, `showPreview`, `previewPosition`, `showMinimap`, `showHistory`, `historyPosition`, `dimUnchangedObjects`, `waveform`, `beatDisplay`, `toolbarQuickSwitch`, `toolbarCustomized`, `mouseSecondaryTool`, `playFollow`, `touchQuickScrollShow`, `touchLongPressContextMenu`, `confirmCloseUnsavedFile`, `groupsStagesSideBySide` |
 | `startup` | client start | `start`, `outcome`, `ready`, `hidden`, `navigation`, `documentDelivery`, `wasDiscarded`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect`, `found.<kind>` |
 | `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `usageShare`, `cleanup`, `sessions` |
 | `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `objects`, `dynamicStages`, `bgm`, `historySteps` |
@@ -131,7 +131,7 @@ How the code enforces them:
 | `features` | at hide | `historyPanel`, `historyDialog`, `recentTab`, `peek`, `peekRefused`, `restore`, `restoreSession`, `restoreCopy`, `saveRowToFile`, `deleteSessions`, `minimapDrag`, `minimapJump`, `autoscroll`, `quickSwitch` |
 | `notices` | at hide | `info`, `warning`, `error` |
 | `peek` | at hide, only when there were peeks | `peek.<time>`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
-| `perf` | at hide | `loafSupported`, `eventTimingSupported`, `frames.<state>.<length>`, `frames.unclassified`, `frameAttribution`, `slowEvents.<length>`, `interactions`, `playSeconds`, `visibleTime`, `previewHost`, `previewRenderScale`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
+| `perf` | at hide | `loafSupported`, `eventTimingSupported`, `frames.<state>.<length>`, `frames.unclassified`, `frameAttribution`, `slowEvents.<length>`, `interactions`, `playSeconds`, `visibleTime`, `previewHost`, `previewRenderScale`, `groupsStagesSideBySide`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
 | `errors` | at hide | `error`, `csp` |
 | `unsupported` | the support page, on its first input | `engine` |
 
@@ -157,7 +157,7 @@ Scales (`src/analytics/scales.ts`) use half-open `[lower, upper)` ranges, except
 
 `perf` reports the long frames (`frames.<state>.<length>`, from the Long Animation Frames API) and slow events (`slowEvents.<length>`, Event Timing from 104 ms, which is its 8 ms rounding of 100 ms). Each long frame is sorted by the state it began in: `playing` is visible playback, `busy` is an Open, Save, Check, Restore or BGM load, and `other` is the rest. The client keeps a short list of the times these states changed (`intervals.ts`: at most 64 changes, trimmed as entries arrive), with no polling. A frame that the list no longer covers is counted in `frames.unclassified` and sets `frameAttribution` to `partial` for that send. `loafSupported` and `eventTimingSupported` say whether the browser has each API. `interactions` is the browser's own count, and is left out where it has none.
 
-`previewHost` and `previewRenderScale` hold the value for the whole interval since the last send, `mixed` if it changed, and `none` for the host when the preview was not shown. Both follow synchronous watchers on change, not a frame callback, so a change that comes back within one tick still gives `mixed`.
+`previewHost`, `previewRenderScale` and `groupsStagesSideBySide` hold the value for the whole interval since the last send, `mixed` if it changed, and `none` for the host when the preview was not shown. `groupsStagesSideBySide` is `on` only while the layout shows Groups and Stages side by side (`sideBySide` of a dock in `layout.ts`), not whenever the setting is on. All three follow synchronous watchers on change, not a frame callback, so a change that comes back within one tick still gives `mixed`.
 
 The Recent Sessions count (`sessions`) is known only after the History tab has read its list. If the first `storage` event went without it, one more goes when the count becomes known. The client reads no storage of its own for it.
 

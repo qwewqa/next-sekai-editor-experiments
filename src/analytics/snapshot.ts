@@ -46,6 +46,7 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
         mouseSecondaryTool: settings.mouseSecondaryTool,
         playFollow: settings.playFollow,
         confirmCloseUnsavedFile: settings.confirmCloseUnsavedFile,
+        groupsStagesSideBySide: settings.groupsStagesSideBySide,
         ...(touch && {
             touchQuickScrollShow: settings.touchQuickScrollShow,
             touchLongPressContextMenu: settings.touchLongPressContextMenu,
