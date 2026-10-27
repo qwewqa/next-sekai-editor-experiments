@@ -804,7 +804,7 @@ test('files that cannot be fetched from another host name that host', async () =
     })
     assert.equal(
         serverErrorText(chooser.useError.value!, en),
-        "Could not download this item's files from cdn.test.",
+        'Could not download this item’s files from cdn.test.',
     )
 })
 

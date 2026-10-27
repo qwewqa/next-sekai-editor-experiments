@@ -642,7 +642,7 @@ test.describe('when a server cannot be used', () => {
         await connect(page, BASE)
         await useButton(page).click()
         await expect(useErrorOf(page)).toHaveText(
-            "Could not download this item's files from cdn.test.",
+            'Could not download this item’s files from cdn.test.',
         )
         await expect(useButton(page)).toBeEnabled()
         expect(await stored(page)).toHaveLength(0)
