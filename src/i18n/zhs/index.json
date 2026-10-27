@@ -2274,18 +2274,9 @@
     "fileMissing": "文件丢失",
     "changedOnDisk": "磁盘上已更改",
     "newerOnDisk": "磁盘上有更新版本",
-    "notConfirmed": "下载未确认",
     "changedOnDiskName": "“{0}”在此处打开或保存后，已在磁盘上更改。",
     "newerOnDiskName": "磁盘上有“{0}”的更新版本。",
     "notStored": "未存储"
-  },
-  "confirm": {
-    "title": "下载未确认",
-    "body": "请确认 {0} 已下载完成（{1}）。",
-    "bodyUndated": "请确认 {0} 已下载完成。",
-    "haveFile": "我已有该文件",
-    "downloadAgain": "再次下载",
-    "announce": "{0} 以后确认时，请使用状态栏中的“{1}”。"
   },
   "notSaving": {
     "bar": "更改未存储在此浏览器中。"

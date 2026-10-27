@@ -716,7 +716,7 @@ test('the main dump holds every stored row form of v1', async () => {
     assert.ok(entries.some((row) => row.kind === 'zzFixtureKind'))
 })
 
-test('the download dump holds a downloaded, confirmed binding and badChunks', () => {
+test('the download dump holds a downloaded binding and badChunks', () => {
     // Catches a dump that stopped holding what only a browser without pickers writes.
     const dump = readDump(
         JSON.parse(readFileSync(join(webDir, 'nse-local-data-download.json'), 'utf8')),
@@ -725,7 +725,6 @@ test('the download dump holds a downloaded, confirmed binding and badChunks', ()
     assert.equal(chains.length, 1)
     const [chain] = chains as [Row]
     assert.equal((chain.file as Row).event, 'downloaded')
-    assert.equal((chain.file as Row).confirmed, true)
     assert.ok(chain.badChunks)
     assert.equal(valuesOf(dump, 'handles').length, 0)
 })
@@ -832,7 +831,7 @@ const saveDevices = (dump: Dump) => {
 test("a file's device id is per document: own saves match the install's derivation, foreign ones do not", async () => {
     // Catches a later change to the derivation (HMAC-SHA-256 of the lineage under the install's
     // `deviceId`, as a UUIDv8): every v1 save would then read as another device's, the user's own
-    // completed Save would meet a conflict dialog and a download would stop confirming. The browser
+    // completed Save would meet a conflict dialog. The browser
     // specs pin it too, but only the Node tests run on every push.
     const main = saveDevices(
         readDump(JSON.parse(readFileSync(join(webDir, 'nse-local-data.json'), 'utf8'))),

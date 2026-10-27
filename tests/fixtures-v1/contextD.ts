@@ -1,6 +1,5 @@
 import { expect, type Browser } from '@playwright/test'
 import { createHash } from 'node:crypto'
-import { confirmWhenReady } from '../browser/confirmWhenReady'
 import { saveDialog, submitSave } from '../browser/saveFlows'
 import { badChunksOf, BUILD } from './contextA'
 import { readFile } from './contextB'
@@ -126,19 +125,8 @@ export const runD = async (browser: Browser, products: Products) => {
     expect(untickedRead.history.headRecords.header[8]).toBeDefined()
     products.put('bgm-unticked.nxsp', unticked.bytes)
     await tab.stored_()
-    // The last download is confirmed. Reopening it is no confirmation here: the chain has damaged
-    // parts (`badChunks`), and an open of a chain's own last write needs none (history-format 3.4),
-    // so the chip's I Have the File does it.
-    const chip = tab.page.locator('[data-file-chip]')
-    await expect(chip).toHaveAttribute('data-file-chip', 'notConfirmed')
-    await chip.click()
-    const dialog = tab.page.getByRole('dialog', { name: 'Download Not Confirmed' })
-    await expect(dialog).toBeVisible()
-    await confirmWhenReady(dialog.getByRole('button', { name: 'I Have the File' }), dialog)
-    await expect(chip).toBeHidden()
-    await tab.stored_()
     const bound = (await tab.chain()).file as Row
-    expect(bound).toMatchObject({ event: 'downloaded', confirmed: true })
+    expect(bound).toMatchObject({ event: 'downloaded' })
     await tab.leave()
     return profile.dump(BUILD)
 }

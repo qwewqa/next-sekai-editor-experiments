@@ -7,7 +7,8 @@ import { inlineName } from '../utils/inlineName'
 import { interpolateRaw } from '../utils/interpolate'
 
 // The file part of a session's label, from plain inputs: the status bar calls it
-// with the open session's and a Recent Sessions row with a chain's, so the two never disagree.
+// with the open session's and a Recent Sessions row with a chain's. A row leaves out the file event
+// (`showEvent`); the rest is the same.
 
 /** The bound file as the label shows it: `event` is 'saved', 'downloaded' or 'opened' (else a download). */
 export type LabelFile = { name: string; event?: string; at?: number }
@@ -31,15 +32,10 @@ export type LabelInput = {
     changed: boolean
     /** What a separate copy was made from; a stored chain does not know it. */
     copyOf?: { name: string }
-    /**
-     * The bound file is a download not confirmed: a row says so, as the chip does in the
-     * status bar, which does not pass it.
-     */
-    notConfirmed?: boolean
     /** What a check found on disk; a list does not check. */
     diskFinding?: 'missing' | 'changed' | 'newer'
-    /** Whether Save writes the file in place; a download browser adds the event to the label. */
-    writesInPlace: boolean
+    /** Whether the label names the file event: the status bar does in a download browser, a row never. */
+    showEvent: boolean
 }
 
 // A state fragment of a line joined with " · " is lower case, unless it opens with a
@@ -71,27 +67,20 @@ export const labelOf = ({
     file,
     changed,
     copyOf,
-    notConfirmed,
     diskFinding,
-    writesInPlace,
+    showEvent,
 }: LabelInput): StatusLabel => {
     if (file) {
         // The file Save writes to is always on screen: the bare name when it is the stem.
         const stem = inlineName(stemOf(file.name)) === inlineName(name)
         const { file: strings } = i18n.value
         // A download browser adds the state: Save there downloads a new copy, it writes no file.
-        const event = writesInPlace
+        const event = !showEvent
             ? undefined
             : file.event === 'opened'
               ? eventFragment(strings.opened, file.at)
               : eventFragment(strings.downloaded, file.at)
-        const state = [
-            event,
-            notConfirmed ? fragment(i18n.value.state.notConfirmed) : undefined,
-            diskFragment(diskFinding),
-        ]
-            .filter(Boolean)
-            .join(' · ')
+        const state = [event, diskFragment(diskFinding)].filter(Boolean).join(' · ')
         return {
             name: stem ? '' : inlineName(name),
             file: inlineName(file.name),

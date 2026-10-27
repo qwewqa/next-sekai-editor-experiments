@@ -30,9 +30,6 @@ import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
 import { isConsumed } from '../controls/saveChord'
-import { downloadConfirmed } from '../file/flags'
-import { writesInPlace } from '../file/state'
-import { platform } from '../../platform'
 import { labelAccessibleName, labelLine, labelOf } from '../fileLabel'
 import { liveRow } from '../liveRow'
 import { readBrowserFacts, storageLineKey, storageUnavailable } from '../settings/storageLine'
@@ -146,14 +143,6 @@ const namedBy = (shown: DisplayName, startedAt: number | undefined) =>
           ? i18n.value.save.placeholder
           : interpolateRaw(i18n.value.session.untitled, format.value.dateTime(startedAt))
 
-/** A download not confirmed: the status bar's rule (state.ts `downloadNotConfirmed`) for a stored file. */
-const notConfirmed = (file: RecentChain['file']) =>
-    !!file &&
-    file.event !== 'saved' &&
-    file.event !== 'opened' &&
-    !file.confirmed &&
-    (platform.capabilities.unconfirmedDownloads || !downloadConfirmed.value)
-
 const nameOf = (row: ChainRow) =>
     row.thisTab
         ? liveRow.value.name
@@ -194,15 +183,14 @@ const notesText = (row: ChainRow) => {
         : interpolateRaw(i18n.value.peek.notes, formatCount(count))
 }
 
-/** The caption: time, the file part, the notes (or why the session cannot be opened). */
+/** The caption: time, the notes (or why the session cannot be opened), the file name. */
 const captionOf = (row: ChainRow) => {
     const label = row.thisTab
         ? liveRow.value.label
         : labelOf({
               name: nameOf(row),
               changed: row.chain.changed,
-              writesInPlace: writesInPlace(),
-              notConfirmed: notConfirmed(row.chain.file),
+              showEvent: false,
               ...(row.chain.file ? { file: row.chain.file } : {}),
           })
     // The file part last: in a narrow row it is cut first, never the reason or the count.
@@ -220,8 +208,7 @@ const accessibleOf = (row: ChainRow) => {
               labelOf({
                   name,
                   changed: row.chain.changed,
-                  writesInPlace: writesInPlace(),
-                  notConfirmed: notConfirmed(file),
+                  showEvent: false,
                   ...(file ? { file } : {}),
               }),
               name,

@@ -2,13 +2,7 @@ import { computed } from 'vue'
 import { session } from '../history/session'
 import { liveState } from '../history/stack'
 import { displayName, namePartsOf } from '../local/names'
-import {
-    diskFinding,
-    downloadNotConfirmed,
-    fileChanged,
-    fileEvent,
-    writesInPlace,
-} from './file/state'
+import { diskFinding, fileChanged, fileEvent, writesInPlace } from './file/state'
 import { labelAccessibleName, labelLine, labelOf, type StatusLabel } from './fileLabel'
 import { shownName } from './shownName'
 
@@ -43,7 +37,7 @@ const liveFile = computed(() =>
 const liveInput = () => ({
     name: displayedName.value,
     changed: fileChanged.value,
-    writesInPlace: writesInPlace(),
+    showEvent: !writesInPlace(),
     ...(liveFile.value ? { file: liveFile.value } : {}),
     ...(session.value.copyOf ? { copyOf: session.value.copyOf } : {}),
     ...(diskFinding.value ? { diskFinding: diskFinding.value } : {}),
@@ -52,12 +46,11 @@ const liveInput = () => ({
 export const statusLabel = computed((): StatusLabel => labelOf(liveInput()))
 
 /**
- * This tab's row of Recent Sessions: the status bar's label (one `labelOf`), which a row also
- * gives the download-not-confirmed fragment, as the chip does in the bar. Reached through
- * `liveRow.ts`, since History files may not import this module.
+ * This tab's row of Recent Sessions: the status bar's label (one `labelOf`) without the file
+ * event. Reached through `liveRow.ts`, since History files may not import this module.
  */
 export const liveRow = computed(() => {
-    const label = labelOf({ ...liveInput(), notConfirmed: downloadNotConfirmed.value })
+    const label = labelOf({ ...liveInput(), showEvent: false })
     return {
         name: displayedName.value,
         label,

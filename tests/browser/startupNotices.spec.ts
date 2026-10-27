@@ -1150,34 +1150,24 @@ test.describe('New with unsaved changes', () => {
         await expect(unsaved(page)).toHaveCount(0)
     })
 
-    // A download counts as the file here, confirmed or not: the chart stays in Recent Sessions.
-    for (const confirmed of [true, false])
-        test(`n right after a Save does not ask, the download ${confirmed ? 'confirmed' : 'not confirmed'}`, async ({
-            page,
-        }) => {
-            await page.addInitScript(
-                ({ prefix, confirmed }) => {
-                    localStorage.setItem(
-                        'nse.test.platform',
-                        JSON.stringify({ fileSystemAccess: false }),
-                    )
-                    if (confirmed) localStorage.setItem(`${prefix}downloadConfirmed`, 'true')
-                },
-                { prefix, confirmed },
-            )
-            await visit(page)
-            await edit(page, 990)
-            const download = page.waitForEvent('download')
-            const saving = run(page, 'save')
-            const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
-            await save.getByRole('button', { name: 'Save', exact: true }).click()
-            await download
-            await saving
-            await page.keyboard.press('n')
-            await expect.poll(() => lifeOf(page)).toBe(1000)
-            await expect(page.locator('.notification-pill')).toContainText('New level')
-            await expect(unsaved(page)).toHaveCount(0)
+    // A download counts as the file here: the chart stays in Recent Sessions.
+    test('n right after a Save in a download browser does not ask', async ({ page }) => {
+        await page.addInitScript(() => {
+            localStorage.setItem('nse.test.platform', JSON.stringify({ fileSystemAccess: false }))
         })
+        await visit(page)
+        await edit(page, 990)
+        const download = page.waitForEvent('download')
+        const saving = run(page, 'save')
+        const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
+        await save.getByRole('button', { name: 'Save', exact: true }).click()
+        await download
+        await saving
+        await page.keyboard.press('n')
+        await expect.poll(() => lifeOf(page)).toBe(1000)
+        await expect(page.locator('.notification-pill')).toContainText('New level')
+        await expect(unsaved(page)).toHaveCount(0)
+    })
 })
 
 // The first write of a visit is due about a second after the first edit. A switch inside that
@@ -1344,68 +1334,31 @@ test.describe('the not-stored prompt', () => {
         expect(await lifeOf(page)).toBe(990)
     })
 
-    // A file that holds the work is as good as a store, so the repeated switch goes on; a
-    // download that is not confirmed is not.
-    for (const confirmed of [true, false])
-        test(`after a Save to a file the repeated switch ${confirmed ? 'does not ask' : 'still asks while the download is unconfirmed'}`, async ({
-            page,
-        }) => {
-            await page.addInitScript(
-                ({ prefix, confirmed }) => {
-                    localStorage.setItem(
-                        'nse.test.platform',
-                        JSON.stringify({ fileSystemAccess: false }),
-                    )
-                    if (confirmed) localStorage.setItem(`${prefix}downloadConfirmed`, 'true')
-                },
-                { prefix, confirmed },
-            )
-            await visit(page)
-            await edit(page, 990)
-            const going = run(page, 'reset')
-            const download = page.waitForEvent('download')
-            await confirmWhenReady(prompt(page).getByRole('button', { name: 'Save' }), prompt(page))
-            const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
-            await save.getByRole('button', { name: 'Save', exact: true }).click()
-            await download
-            await going
-            // The prompt does not wait for its Save, so the repeat starts after the Save has finished.
-            await expect(
-                page
-                    .locator('.notification, .notification-pill')
-                    .filter({ hasText: /Download started/ }),
-            ).toBeVisible()
-            expect(await lifeOf(page)).toBe(990)
-            const repeated = run(page, 'reset')
-            if (confirmed) {
-                await repeated
-                await expect.poll(() => lifeOf(page)).toBe(1000)
-                await expect(prompt(page)).toHaveCount(0)
-            } else {
-                // Save would only offer the download again: the prompt offers the confirm.
-                const unconfirmed = page.getByRole('dialog', { name: 'Download Not Confirmed' })
-                await expect(unconfirmed).toContainText('finished downloading')
-                await expect(unconfirmed.locator('[data-choice-buttons] button')).toHaveText([
-                    'Cancel',
-                    'Leave Anyway',
-                    'I Have the File',
-                ])
-                await confirmWhenReady(
-                    unconfirmed.getByRole('button', { name: 'Cancel' }),
-                    unconfirmed,
-                )
-                await repeated
-                expect(await lifeOf(page)).toBe(990)
-                // I Have the File settles the download and goes on.
-                const confirming = run(page, 'reset')
-                await confirmWhenReady(
-                    unconfirmed.getByRole('button', { name: 'I Have the File' }),
-                    unconfirmed,
-                )
-                await confirming
-                await expect.poll(() => lifeOf(page)).toBe(1000)
-            }
+    // A file that holds the work is as good as a store, so the repeated switch goes on.
+    test('after a Save to a file the repeated switch does not ask', async ({ page }) => {
+        await page.addInitScript(() => {
+            localStorage.setItem('nse.test.platform', JSON.stringify({ fileSystemAccess: false }))
         })
+        await visit(page)
+        await edit(page, 990)
+        const going = run(page, 'reset')
+        const download = page.waitForEvent('download')
+        await confirmWhenReady(prompt(page).getByRole('button', { name: 'Save' }), prompt(page))
+        const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
+        await save.getByRole('button', { name: 'Save', exact: true }).click()
+        await download
+        await going
+        // The prompt does not wait for its Save, so the repeat starts after the Save has finished.
+        await expect(
+            page
+                .locator('.notification, .notification-pill')
+                .filter({ hasText: /Download started/ }),
+        ).toBeVisible()
+        expect(await lifeOf(page)).toBe(990)
+        await run(page, 'reset')
+        await expect.poll(() => lifeOf(page)).toBe(1000)
+        await expect(prompt(page)).toHaveCount(0)
+    })
 
     test('Open, Restore as a Copy and Reopen ask the same', async ({ page }) => {
         await visit(page)

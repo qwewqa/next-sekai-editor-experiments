@@ -2117,14 +2117,6 @@ export const fileSaveAs = () =>
         if (env) await notFoundSaveAs(env)
     })
 
-/** Download Again: builds and downloads the bound file once more. */
-export const fileDownloadAgain = () =>
-    exclusive('fileDownloadAgain', async () => {
-        const env = environment()
-        const file = env && quickBinding(env).file
-        if (env && file) await downloadAgain(env, file)
-    })
-
 /**
  * Open the Other Version: the file on disk as a new session in place of this one, which
  * keeps its changes. It asks first when this session's work is not stored. A file that can't
@@ -2185,22 +2177,6 @@ export const openOtherVersion = (supplied?: SwitchRequest) =>
             if (request.isCurrent()) throw error
         }
     })
-
-/** I Have the File: `file.confirmed` stored on the chain record. */
-export const persistConfirmed = () => {
-    const env = environment()
-    if (!env) return
-    const { session } = env
-    if (session.identity) {
-        session.identity = {
-            ...session.identity,
-            file: { ...session.identity.file, confirmed: true },
-        }
-        return
-    }
-    const file = session.chain?.file
-    if (isRow(file)) void env.flusher.setChainFields({ file: { ...file, confirmed: true } })
-}
 
 // Broadcasts: a takeover tells other tabs to read their record again.
 

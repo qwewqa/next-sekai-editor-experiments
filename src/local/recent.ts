@@ -19,7 +19,7 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
 export type RecentReadable = 'yes' | 'newer' | 'damaged'
 
 /** A chain's bound file as the label shows it; `event` is as stored, an unknown value a download. */
-export type RecentFile = { name: string; event?: string; at?: number; confirmed?: boolean }
+export type RecentFile = { name: string; event?: string; at?: number }
 
 export type RecentChain = {
     chainId: string
@@ -50,7 +50,6 @@ const fileOf = (value: unknown): RecentFile | undefined => {
         name: value.name,
         ...(typeof value.event === 'string' ? { event: value.event } : {}),
         ...(at === undefined ? {} : { at }),
-        ...(value.confirmed === true ? { confirmed: true } : {}),
     }
 }
 

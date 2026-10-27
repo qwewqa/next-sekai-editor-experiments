@@ -12,7 +12,7 @@ export const platform = {
     os: 'other',
     capabilities: Object.freeze({
         writeBack: true,
-        unconfirmedDownloads: false,
+        closePrompt: false,
         library: true,
         fileJournal: true,
         updates: 'desktop',

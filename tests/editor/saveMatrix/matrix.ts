@@ -309,7 +309,7 @@ export const PATHS: PathDef[] = [
         lock: 'none',
         importWait: true,
         build: true,
-        run: () => flow.fileDownloadAgain(),
+        run: () => flow.save(),
     },
     {
         id: 'export',

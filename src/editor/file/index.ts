@@ -1,2 +1,2 @@
 export { fileActions, setFileActions } from './actions'
-export { bindFile, chip, confirmFile, downloadNotConfirmed, fileChanged, unbindFile } from './state'
+export { bindFile, chip, fileChanged, unbindFile } from './state'

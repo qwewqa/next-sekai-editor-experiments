@@ -2274,18 +2274,9 @@
     "fileMissing": "Fichier introuvable",
     "changedOnDisk": "Modifié sur le disque",
     "newerOnDisk": "Plus récent sur le disque",
-    "notConfirmed": "Téléchargement non confirmé",
     "changedOnDiskName": "\"{0}\" a changé sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
     "newerOnDiskName": "Une version plus récente de \"{0}\" est sur le disque.",
     "notStored": "Non stocké"
-  },
-  "confirm": {
-    "title": "Téléchargement non confirmé",
-    "body": "Vérifiez que {0} a fini de se télécharger ({1}).",
-    "bodyUndated": "Vérifiez que {0} a fini de se télécharger.",
-    "haveFile": "J’ai le fichier",
-    "downloadAgain": "Télécharger à nouveau",
-    "announce": "{0} Pour le confirmer plus tard, utilisez {1} dans la barre d’état."
   },
   "notSaving": {
     "bar": "Les modifications ne sont pas stockées dans ce navigateur."

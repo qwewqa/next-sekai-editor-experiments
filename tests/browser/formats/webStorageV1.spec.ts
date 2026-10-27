@@ -669,7 +669,7 @@ test('a profile seeded from the download dump counts as saved, continues, and it
     browserName,
 }) => {
     test.setTimeout(120_000)
-    // Catches a later build that reads a v1 download binding (`downloaded`, `confirmed`) as changed or
+    // Catches a later build that reads a v1 download binding (`downloaded`) as changed or
     // unsaved, or writes a file from a chain with `badChunks` that does not open.
     const download = readFixture('nse-local-data-download.json')
     const { context, clock } = await profile(browser, browserName, {
@@ -680,7 +680,7 @@ test('a profile seeded from the download dump counts as saved, continues, and it
     const [chain] = valuesOf(download, 'chains') as [Record<string, unknown>]
     const name = (chain.file as { name: string }).name
     await expect(page.locator('[data-status-label]')).toContainText(name)
-    // Counted as saved to its file: no chip asks to confirm it, no "changed" mark yet.
+    // Counted as saved to its file: no chip, no "changed" mark yet.
     await expect(page.locator('[data-file-chip]')).toHaveCount(0)
     expect(await page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId)).toBe(
         chain.chainId,

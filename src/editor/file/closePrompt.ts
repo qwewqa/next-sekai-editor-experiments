@@ -1,7 +1,7 @@
 import { isDirty } from '../../history'
 import { platform } from '../../platform'
 import { settings } from '../../settings'
-import { boundFile, downloadNotConfirmed, fileChanged } from './state'
+import { boundFile, fileChanged } from './state'
 
 // The page-close prompt: the browser's own, with no text of ours. A session that
 // isn't durably stored and has edits always prompts; one with changes not in a file prompts when
@@ -31,12 +31,6 @@ export const hasEditsNotInFile = () => {
     return stored ? stored.edited || stored.chain?.edited === true : isDirty.value
 }
 
-/**
- * Whether the open session has changes not in a file: edits no file holds, or a binding
- * by a download that isn't confirmed.
- */
-export const hasChangesNotInFile = () => hasEditsNotInFile() || downloadNotConfirmed.value
-
 /** Whether leaving now loses edits no store holds. */
 const losesEdits = () => {
     const stored = storing?.flusher?.session
@@ -45,5 +39,5 @@ const losesEdits = () => {
 }
 
 platform.onCloseRequested(
-    () => !(losesEdits() || (settings.confirmCloseUnsavedFile && hasChangesNotInFile())),
+    () => !(losesEdits() || (settings.confirmCloseUnsavedFile && hasEditsNotInFile())),
 )

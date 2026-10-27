@@ -300,7 +300,7 @@ test.describe('the iOS bar', () => {
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
     })
 
-    test('an unconfirmed download is settled from the Not stored dialog with I Have the File', async ({
+    test('after a download with nothing changed since, Save is still the Not stored dialog default', async ({
         page,
         context,
     }) => {
@@ -315,23 +315,9 @@ test.describe('the iOS bar', () => {
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
 
         await chip(page).click()
-        await expect(dialog(page)).toContainText('finished downloading')
-        // Nothing changed since the download: Save would only offer it again, so it is left out
-        // and I Have the File is the default.
-        expect(await buttons(page)).toEqual([
-            'Cancel',
-            'Local Data',
-            'Try Again',
-            'I Have the File',
-        ])
-        await expect(dialog(page).getByRole('button', { name: 'I Have the File' })).toBeFocused()
-        await press(page, 'I Have the File')
-
-        // The download line and its button are gone.
-        await chip(page).click()
         await expect(dialog(page)).toBeVisible()
-        await expect(dialog(page)).not.toContainText('finished downloading')
         expect(await buttons(page)).toEqual(['Cancel', 'Local Data', 'Try Again', 'Save'])
+        await expect(dialog(page).getByRole('button', { name: 'Save' })).toBeFocused()
     })
 
     test('Save in the bar saves the work, and the bar goes', async ({ page, context }) => {
@@ -344,6 +330,6 @@ test.describe('the iOS bar', () => {
         // A download browser's first Save asks for the name.
         await submitSave(page, 'coconut')
         await expect(bar(page)).toHaveCount(0)
-        await expect(chip(page)).toHaveAttribute('data-file-chip', /notStored|notConfirmed/)
+        await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
     })
 })
