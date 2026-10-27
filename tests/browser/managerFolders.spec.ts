@@ -1160,7 +1160,7 @@ test('New Folder adds and names a folder at the end', async ({ page }) => {
     await expect(input).toBeFocused()
     await expect(input).toHaveValue('#1')
     await input.press('Escape')
-    await expect(page.locator('.notification')).toHaveText('Added group folder "#1"')
+    await expect(page.locator('.notification')).toHaveText('Added group folder “#1”')
     expect(await tree(page)).toBe('Default Lead [#1:]')
     // Numbered like new groups and stages.
     await panel(page).getByRole('button', { name: 'New Folder', exact: true }).click()
