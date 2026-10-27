@@ -2,12 +2,20 @@ import { execFileSync } from 'node:child_process'
 
 export const defaultRepository = 'qwewqa/next-sekai-editor-experiments'
 
-/** `owner/name` from a GitHub https or ssh remote URL, with or without `.git`; else undefined. */
+const host = String.raw`(?:www\.|ssh\.)?github\.com`
+const path = String.raw`([\w.-]+)/([\w.-]+?)(?:\.git)?/?$`
+// https://, ssh:// and git:// with optional credentials (ending at the last @) and port.
+const urlForm = new RegExp(
+    String.raw`^(?:https?|ssh|git)://(?:[^/]*@)?${host}(?::\d+)?/${path}`,
+    'i',
+)
+// user@host:owner/repo
+const scpForm = new RegExp(String.raw`^(?:[^@/:]+@)?${host}:${path}`, 'i')
+
+/** `owner/name` from a github.com, www.github.com or ssh.github.com remote, else undefined. */
 export function parseGithubRemote(url) {
-    const match =
-        /^(?:https?:\/\/(?:[^/@]+@)?|ssh:\/\/git@|git@)github\.com[/:]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i.exec(
-            String(url).trim(),
-        )
+    const remote = String(url).trim()
+    const match = urlForm.exec(remote) ?? scpForm.exec(remote)
     return match ? `${match[1]}/${match[2]}` : undefined
 }
 

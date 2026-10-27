@@ -222,7 +222,7 @@ test('the reference states the exact values, the caps and the ranges', () => {
         `up to ${STACK_CAP}.`,
         `up to ${COUNT_CAP}.`,
         'Processor cores** are exact from 1 to 32',
-        'Pixel density** is exact for 1, 2 and 3',
+        'Pixel density** is exact for 1, 1.25, 1.5, 1.75, 2 and 3',
         '**Screen size** is exact',
         '**Chart counts** are exact from 0 to 9',
         '**Music lengths and file sizes** are always ranges',
@@ -236,10 +236,14 @@ test('the reference states the exact values, the caps and the ranges', () => {
         scales.cores.slice(0, 32),
         Array.from({ length: 32 }, (_, i) => String(i + 1)),
     )
-    assert.deepEqual(
-        scales.dpr.filter((label) => /^\d$/.test(label)),
-        ['1', '2', '3'],
-    )
+    const exactDpr = scales.dpr.filter((label) => /^[\d.]+$/.test(label))
+    assert.deepEqual(exactDpr, ['1', '1.25', '1.5', '1.75', '2', '3'])
+    // Every passage that names the exact pixel densities lists the same ones.
+    const lastDpr = exactDpr.at(-1)
+    const firstDpr = exactDpr.slice(0, -1).join(', ')
+    for (const row of doc.split('\n').filter((line) => line.startsWith('| `dpr` |')))
+        assert.ok(row.includes(`Exact for ${firstDpr} and ${lastDpr}, a range otherwise`), row)
+    assert.ok(section('The Ranges').includes(`start at ${firstDpr} or ${lastDpr} exclude`))
 
     const ranges = rows(section('The Ranges'))
     const all = ranges.map((row) => row.cells.join(' ')).join('\n')

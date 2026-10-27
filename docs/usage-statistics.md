@@ -27,7 +27,7 @@ Most numeric values are sent as ranges.
 - **Durations** are whole milliseconds, from 0 to 600000 (ten minutes). A longer duration is sent as 600000.
 - **Time spent** (`playSeconds` and `visibleTime`) is measured since the previous batch and reported in whole seconds from 0 to 86400 (one day).
 - **Processor cores** are exact from 1 to 32, then in ranges.
-- **Pixel density** is exact for 1, 2 and 3, and a range otherwise.
+- **Pixel density** is exact for 1, 1.25, 1.5, 1.75, 2 and 3, and a range otherwise.
 - **Screen size** is exact, in pixels.
 - **Chart counts** are exact from 0 to 9, then in ranges.
 - **Undo history** (`historySteps`) is an exact number of steps, up to 1000.
@@ -39,7 +39,7 @@ Chart counts and file-size ranges can sometimes identify a published chart when 
 
 ### The Ranges
 
-Most ranges include the lower value and exclude the upper value. Chart-count and processor-core ranges include both endpoints. Single-value labels are exact. For `usageShare`, `70-80` includes 80, so `80-90` starts above 80. Pixel-density ranges that start at 1, 2 or 3 exclude that value. The note-speed range `10-10.5` starts above 10, and `11.5-12` includes 12.
+Most ranges include the lower value and exclude the upper value. Chart-count and processor-core ranges include both endpoints. Single-value labels are exact. For `usageShare`, `70-80` includes 80, so `80-90` starts above 80. Pixel-density ranges that start at 1, 1.25, 1.5, 1.75, 2 or 3 exclude that value. The note-speed range `10-10.5` starts above 10, and `11.5-12` includes 12.
 
 | Range | Used for | Labels |
 | --- | --- | --- |
@@ -85,7 +85,7 @@ The events `startup`, `open`, `save`, `export`, `check`, `bgm`, `peek` and `perf
 | `deviceMemory` | The device memory in GB, as rounded by the browser | `0.25`, `0.5`, `1`, `2`, `4`, `8`, `16+`, or `other` for any other value. Omitted when the browser reports none |
 | `engine` | The browser engine, detected by the editor from the browser’s user agent | `chromium`, `webkit`, `firefox` or `other` |
 | `touch` | Whether the primary pointing device has limited precision, as with a touch screen | Yes or no |
-| `dpr` | The pixel density of the screen | Exact for 1, 2 and 3, a range otherwise |
+| `dpr` | The pixel density of the screen | Exact for 1, 1.25, 1.5, 1.75, 2 and 3, a range otherwise |
 | `viewport` | The width of the editor’s workspace in pixels | Range |
 | `viewportHeight` | The height of the editor’s workspace in pixels | Range |
 | `viewportAspect` | The workspace’s width divided by its height. Below 1, it is taller than it is wide | Range |
@@ -111,7 +111,7 @@ Recorded once when statistics collection starts.
 | `viewport` | The width of the editor’s workspace | Range |
 | `viewportHeight` | The height of the editor’s workspace | Range |
 | `viewportAspect` | The workspace’s width divided by its height | Range |
-| `dpr` | The pixel density of the screen | Exact for 1, 2 and 3, a range otherwise |
+| `dpr` | The pixel density of the screen | Exact for 1, 1.25, 1.5, 1.75, 2 and 3, a range otherwise |
 | `cores` | The number of processor cores | Exact from 1 to 32, then a range |
 | `deviceMemory` | The memory reported by the browser | As above |
 | `browserLanguage` | The browser’s language without its region or script, such as `en` or `ja`. The editor’s own language is in `language` | Two or three letters, or `other` |

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import type english from '../../src/i18n/en/index.json'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { REPOSITORY } from './sourceRepository'
 
 const messages = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
@@ -287,9 +288,7 @@ test.describe('the update line', () => {
         expect(box.y + box.height).toBeLessThanOrEqual(toolbar.y)
         const popup = page.waitForEvent('popup')
         await pill(page).getByRole('button', { name: 'Release Notes' }).click()
-        expect((await popup).url()).toBe(
-            'https://github.com/qwewqa/next-sekai-editor-experiments/blob/main/CHANGELOG.md',
-        )
+        expect((await popup).url()).toBe(`https://github.com/${REPOSITORY}/blob/main/CHANGELOG.md`)
         // Seen once: the next load is the plain version again.
         await page.reload()
         await expect(page.locator('.notification')).toHaveText('Next SEKAI Editor\nVersion 0.6.0')
