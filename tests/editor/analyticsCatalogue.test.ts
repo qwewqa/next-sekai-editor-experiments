@@ -58,6 +58,14 @@ test('each range starts at its limit and ends just below the next', () => {
         ['viewport', 360, '360-400'],
         ['viewport', 1439.5, '1100-1440'],
         ['viewport', 2560, '2560+'],
+        ['viewportHeight', 399, '<400'],
+        ['viewportHeight', 500, '500-600'],
+        ['viewportHeight', 1439.5, '1080-1440'],
+        ['viewportHeight', 1440, '1440+'],
+        ['viewportAspect', 0.49, '<0.5'],
+        ['viewportAspect', 0.85, '0.85-1'],
+        ['viewportAspect', 1, '1-1.15'],
+        ['viewportAspect', 2.3, '2.3+'],
         ['dpr', 0.75, '<1'],
         ['dpr', 1, '1'],
         ['dpr', 1.25, '1-1.5'],
@@ -141,8 +149,8 @@ test('the Undo window and the Recent Sessions count are exact', () => {
 
 test('perf and peek stay within their key budgets', () => {
     // 45 is the most an event may carry; the figures here are the most each is built to populate.
-    assert.equal(Object.keys(catalogue.perf).length, 37)
-    assert.equal(Object.keys(catalogue.peek).length, 20)
+    assert.equal(Object.keys(catalogue.perf).length, 39)
+    assert.equal(Object.keys(catalogue.peek).length, 22)
     assert.ok(Object.keys(catalogue.perf).length <= MAX_KEYS)
     const every = (name: 'perf' | 'peek') =>
         Object.fromEntries(

@@ -124,7 +124,16 @@ const formatFits = (prop: unknown, row: Row, unusedValues: readonly string[] = [
     }
 }
 
-const measuredKeys = ['cores', 'deviceMemory', 'engine', 'touch', 'dpr', 'viewport'] as const
+const measuredKeys = [
+    'cores',
+    'deviceMemory',
+    'engine',
+    'touch',
+    'dpr',
+    'viewport',
+    'viewportHeight',
+    'viewportAspect',
+] as const
 
 test("the reference covers the catalogue's fields and leaves out what nothing sends", () => {
     const events = [...Object.keys(catalogue), 'usage']

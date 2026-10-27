@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
+import { isValidEvent } from '../../src/analytics/catalogue'
 import * as tally from '../../src/analytics/tally'
+import { viewportDetails } from '../../src/analytics/viewport'
 
 // The page the arming listener needs: listeners by type, and the visibility.
 const listeners = new Map<string, (event: Event) => void>()
@@ -206,6 +208,44 @@ test('an action finished before the client loads keeps the window it ended in', 
     width = 480
     assert.deepEqual(tally.collect().recorded[0]?.device, { viewport: 1200 })
     tally.watchDevice(undefined)
+})
+
+test('an event after a resize to portrait carries the new ranges and an aspect below 1', () => {
+    tally.enable()
+    let size = { width: 1440, height: 900 }
+    tally.watchDevice(() => viewportDetails(size.width, size.height))
+    tally.record('save', { outcome: 'done' })
+    size = { width: 500, height: 900 }
+    tally.record('save', { outcome: 'done' })
+    const [landscape, portrait] = tally.collect().recorded.map(({ device }) => device)
+    assert.deepEqual(landscape, {
+        viewport: '1440-1920',
+        viewportHeight: '900-1080',
+        viewportAspect: '1.45-1.7',
+    })
+    assert.deepEqual(portrait, {
+        viewport: '480-640',
+        viewportHeight: '900-1080',
+        viewportAspect: '0.5-0.65',
+    })
+    assert.ok(isValidEvent('save', { outcome: 'done', ...portrait }))
+    tally.watchDevice(undefined)
+})
+
+test('the aspect edge at 1 is exact, and a size that is not a number sends nothing', () => {
+    assert.equal(viewportDetails(799, 800).viewportAspect, '0.85-1')
+    assert.equal(viewportDetails(800, 800).viewportAspect, '1-1.15')
+    assert.equal(viewportDetails(801, 800).viewportAspect, '1-1.15')
+    assert.equal(viewportDetails(300, 1440).viewportHeight, '1440+')
+    assert.equal(viewportDetails(300, 500).viewportHeight, '500-600')
+    assert.deepEqual(viewportDetails(400, 399.5), {
+        viewport: '400-480',
+        viewportHeight: '<400',
+        viewportAspect: '1-1.15',
+    })
+    assert.deepEqual(viewportDetails(Number.NaN, 700), { viewportHeight: '600-768' })
+    assert.deepEqual(viewportDetails(700, 0), { viewport: '640-768', viewportHeight: '<400' })
+    assert.deepEqual(viewportDetails(-1, Number.NaN), {})
 })
 
 test('a chart that opened, restored or saved waits for the client, once per trigger', () => {

@@ -78,6 +78,13 @@ const defined = {
     },
     /** The workspace's width in CSS pixels. */
     viewport: fromEdges([360, 400, 480, 640, 768, 1000, 1100, 1440, 1920, 2560], String),
+    /**
+     * The workspace's height in CSS pixels. 500 and 600 are where the notice sheet changes shape
+     * (sheetGeometry.ts); 500 is also the Settings index's short-screen limit.
+     */
+    viewportHeight: fromEdges([400, 500, 600, 768, 900, 1080, 1440], String),
+    /** The workspace's width divided by its height; 1 is the edge between portrait and landscape. */
+    viewportAspect: fromEdges([0.5, 0.65, 0.85, 1, 1.15, 1.45, 1.7, 1.9, 2.3], String),
     dpr: {
         labels: ['<1', '1', '1-1.5', '1.5-2', '2', '2-2.5', '2.5-3', '3', '3+'],
         limits: [1, { upTo: 1 }, 1.5, 2, { upTo: 2 }, 2.5, 3, { upTo: 3 }],
@@ -127,6 +134,8 @@ export const scales = {
     quota: defined.quota.labels,
     usageShare: defined.usageShare.labels,
     viewport: defined.viewport.labels,
+    viewportHeight: defined.viewportHeight.labels,
+    viewportAspect: defined.viewportAspect.labels,
     dpr: defined.dpr.labels,
     noteSpeed: defined.noteSpeed.labels,
     peek: defined.peek.labels,
