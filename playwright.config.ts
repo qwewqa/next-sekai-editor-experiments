@@ -18,11 +18,6 @@ const previewHostSpecs = ['preview.spec.ts', 'previewSelection.spec.ts']
 type CiExclusion = { spec: string; title?: string; project?: string; reason: string }
 const ciExclusions: CiExclusion[] = [
     {
-        spec: 'elevationBeatField.spec.ts',
-        title: 'fits a long beat',
-        reason: 'the long beat’s text overflows its field by about 6 px in the Linux font, a clipping the product still has',
-    },
-    {
         spec: 'localizations.spec.ts',
         title: 'fr elevation controls fit on a 320px',
         reason: 'the French label is 80 px of text in 76 px in the Linux font, a clipping the product still has',
@@ -78,11 +73,6 @@ const ciExclusions: CiExclusion[] = [
         spec: 'startupSessions.spec.ts',
         title: 'a late flush landing during the marker.s wait',
         reason: 'the reload waits 2 s for the old page’s lock, and the steps between the test’s two page calls can outlast that on the runner',
-    },
-    {
-        spec: 'historyGoTo.spec.ts',
-        title: 'keys: Up crosses the gap',
-        reason: 'a possible product bug: keyboard focus falls to the page body while the list window moves, and the arrow keys stop',
     },
     {
         spec: 'historyThemes.spec.ts',

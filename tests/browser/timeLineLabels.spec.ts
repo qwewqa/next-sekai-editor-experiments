@@ -468,33 +468,31 @@ test('hovering across a cursor line that ends clear of the labels redraws only t
         view.cursorTime = view.hoverTime
     })
     const { x, y } = await page.evaluate(() => window.editorTest.point(0, 10.5))
-    // Warm the active-label state before counting.
-    await page.mouse.move(x, y - 30)
-    // Until the chart has drawn nothing for 300 ms: a loaded runner draws the warm-up's frame late.
-    await page.evaluate(
-        () =>
-            new Promise<void>((resolve) => {
-                let drawn = window.editorFrames.chart
-                let since = performance.now()
-                const check = () => {
-                    if (window.editorFrames.chart !== drawn) {
-                        drawn = window.editorFrames.chart
-                        since = performance.now()
+    const sweep = async () => {
+        for (let dy = -27; dy <= 30; dy += 3) await page.mouse.move(x, y + dy)
+        // Until the chart has drawn nothing for 300 ms: a loaded runner draws the frames the moves
+        // asked for late, after the moves have returned.
+        await page.evaluate(
+            () =>
+                new Promise<void>((resolve) => {
+                    let drawn = window.editorFrames.chart
+                    let since = performance.now()
+                    const check = () => {
+                        if (window.editorFrames.chart !== drawn) {
+                            drawn = window.editorFrames.chart
+                            since = performance.now()
+                        }
+                        if (performance.now() - since >= 300) resolve()
+                        else requestAnimationFrame(check)
                     }
-                    if (performance.now() - since >= 300) resolve()
-                    else requestAnimationFrame(check)
-                }
-                requestAnimationFrame(check)
-            }),
-    )
+                    requestAnimationFrame(check)
+                }),
+        )
+    }
+    // Once to warm the active-label state, which draws the chart as it goes, then counted.
+    await sweep()
     await page.evaluate(() => (window.editorFrames = { chart: 0, overlay: 0 }))
-    for (let dy = -27; dy <= 30; dy += 3) await page.mouse.move(x, y + dy)
-    await page.evaluate(
-        () =>
-            new Promise<void>((resolve) =>
-                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-            ),
-    )
+    await sweep()
     const frames = await page.evaluate(() => window.editorFrames)
     expect(frames.chart).toBe(0)
     expect(frames.overlay).toBeGreaterThanOrEqual(4)

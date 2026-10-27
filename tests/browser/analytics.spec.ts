@@ -501,11 +501,9 @@ test('a scripted visit counts each press once by name and source, and sends the 
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
     expect(dataOf(first, 'storage')).toMatchObject({ mode: 'stored' })
-    expect(dataOf(first, 'perf')).toMatchObject({
-        loafSupported: true,
-        frameAttribution: 'full',
-        playSeconds: 0,
-    })
+    expect(dataOf(first, 'perf')).toMatchObject({ loafSupported: true, playSeconds: 0 })
+    // How much of a frame the browser attributes depends on the browser build, not on this visit.
+    expect(['full', 'partial']).toContain(dataOf(first, 'perf')?.frameAttribution)
     expect(['main', 'worker', 'none']).toContain(dataOf(first, 'perf')?.previewHost)
     expect(dataOf(first, 'perf')).toHaveProperty('viewport')
     expect(dataOf(first, 'perf')).toHaveProperty('previewRenderScale')

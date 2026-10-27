@@ -192,8 +192,16 @@ test.describe('name halo overflow WebGL2', () => {
         for (const sample of result.samples) {
             expect(sample.painted).toBeGreaterThan(0)
             expect(sample.flatMismatches, JSON.stringify(sample)).toBe(0)
-            if (sample.x === 0) expect(sample.mismatches, JSON.stringify(sample)).toBe(0)
-            else {
+            if (sample.x === 0) {
+                // Same texture width, so the same texels. A GPU or driver may still round the
+                // sampling of an anti-aliased edge by a level or two, so edges differ by at most 2
+                // channel levels in a few pixels. A wrong opacity changes flat interiors, which stay
+                // exact above, and a shifted texture moves edges by far more than 2.
+                expect(sample.maxDelta, JSON.stringify(sample)).toBeLessThanOrEqual(2)
+                expect(sample.mismatches / sample.painted, JSON.stringify(sample)).toBeLessThan(
+                    0.01,
+                )
+            } else {
                 // Clipping changes the texture's width, so native linear UV
                 // interpolation can round an AA edge differently. Keep shape,
                 // flat interiors and opacity strict; permit <=2 premultiplied
