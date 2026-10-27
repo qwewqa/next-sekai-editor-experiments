@@ -64,7 +64,9 @@ test.describe('with a fine pointer', () => {
         await boot(page)
         const dialog = await openHelp(page)
         await expect(dialog).toContainText(modal.mouse.contextMenu)
-        await expect(dialog).not.toContainText(modal.mouse.secondary.split('{0}')[0])
+        await expect(dialog).not.toContainText(
+            modal.mouse.secondary.slice(0, modal.mouse.secondary.indexOf('{0}')),
+        )
 
         await page.evaluate(() => (window.editorTest.settings.mouseSecondaryTool = 'select'))
         await expect(dialog).toContainText(
