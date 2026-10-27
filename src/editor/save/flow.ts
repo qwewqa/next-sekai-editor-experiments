@@ -828,7 +828,7 @@ const ownerDisk = async (env: Env, owner: HandleOwner) => {
 /** A picked file holding what nobody here wrote: nothing is written over it. */
 const changedWhilePicked = (name: string): Outcome => ({
     kind: 'failed',
-    error: new FileError('conflict', `${name} changed on disk`),
+    error: new FileError('conflict', `${name} changed on disk`, undefined, 'check'),
     name,
 })
 
@@ -1822,7 +1822,7 @@ export const saveToFile = (sessionId: string) =>
     exclusive(`saveToFile:${sessionId}`, async () => {
         const env = environment()
         if (!env) {
-            saveUi.error(() => i18n.value.save.unavailable)
+            saveUi.error(() => i18n.value.save.sessionUnavailable)
             return
         }
         await tracked('saveToFile', () => saveToFileNow(env, sessionId))
@@ -1847,7 +1847,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
         return
     }
     if (read.kind !== 'open') {
-        saveUi.error(() => i18n.value.save.unavailable)
+        saveUi.error(() => i18n.value.save.sessionUnavailable)
         return
     }
     const chainId = read.session.chainId as string
@@ -2023,6 +2023,7 @@ const sessionFileBody = async (
         saveUi.saved({
             ...savedOf(built, 'download', request.fileName),
             committedState: request.committed,
+            ofStored: true,
         })
         markFirstSaveDone()
         return { kind: 'done' }
@@ -2057,7 +2058,7 @@ const sessionFilePicked = async (
     if (filled)
         return {
             kind: 'failed',
-            error: new FileError('conflict', `${name} changed`),
+            error: new FileError('conflict', `${name} changed`, undefined, 'check'),
             name,
         }
     let tookOver = false
@@ -2091,6 +2092,7 @@ const sessionFilePicked = async (
     saveUi.saved({
         ...savedOf(built, 'saved', name),
         committedState: request.committed,
+        ofStored: true,
     })
     markFirstSaveDone()
     return { kind: 'done' }

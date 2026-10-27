@@ -611,7 +611,11 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
     }
     const bound = await boundElsewhere(deps, read)
     // A check that could not tell forks without a line: the status bar names the copy.
-    if (bound !== 'no') return forked(deps, read, headId, { quiet: bound === 'unknown' })
+    if (bound !== 'no')
+        return forked(deps, read, headId, {
+            quiet: bound === 'unknown',
+            elsewhere: bound === 'yes',
+        })
     const parentLock = await holdShared(deps.locks, headId)
     if (!parentLock) {
         deps.events({ kind: 'openElsewhere', name: shownOf(read), sessionId: headId })
@@ -643,12 +647,15 @@ const forked = async (
         copyOf = copyOfOf(read),
         recovered,
         quiet,
+        elsewhere,
     }: {
         held?: LockLease
         copyOf?: CopyOf
         recovered?: { found: JournalFound; state: State }
         /** No opening notice. */
         quiet?: boolean
+        /** Another tab is known to hold the session or its file. */
+        elsewhere?: boolean
     } = {},
 ): Promise<boolean> => {
     // The hold taken here is released here; a passed one is its creator's.
@@ -665,7 +672,8 @@ const forked = async (
     } finally {
         shared?.release()
     }
-    if (state && !quiet) deps.events({ kind: 'separateCopy', of: copyOf })
+    if (state && !quiet)
+        deps.events({ kind: 'separateCopy', of: copyOf, ...(elsewhere ? { elsewhere: true } : {}) })
     return !!state
 }
 

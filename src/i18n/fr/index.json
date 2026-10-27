@@ -2102,6 +2102,7 @@
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
     "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau.",
+    "sessionUnavailable": "Cette session n’a pas pu être sauvegardée.",
     "storageUnavailable": "Non sauvegardé. L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez, ou utilisez Sauvegarder sous.",
     "include": "Inclure",
     "historySize": "{0} étape · {1}|{0} étapes · {1}",
@@ -2169,6 +2170,7 @@
   "notice": {
     "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir.",
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
+    "separateCopyOf": "Copie séparée de \"{0}\" ouverte.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
     "bgmMayBeTooLong": "La musique n’a pas été chargée. La durée des fichiers audio ne doit pas dépasser {0} minutes.",
