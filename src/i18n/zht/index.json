@@ -109,19 +109,19 @@
     "scaleBeat": {
       "title": "縮放節拍間距…",
       "dialogTitle": "縮放節拍間距",
-      "noSelected": "請選取至少兩個位於不同節拍的物件進行縮放",
+      "noSelected": "請選取至少兩個位於不同節拍的物件",
       "scaled": "已縮放 {0} 個物件的節拍間距"
     },
     "scaleWidth": {
       "title": "縮放寬度…",
       "dialogTitle": "縮放寬度",
-      "noSelected": "請選取具有橫向跨度的物件進行縮放",
+      "noSelected": "請選取具有橫向跨度的物件",
       "scaled": "已縮放 {0} 個物件的寬度"
     },
     "scaleElevation": {
       "title": "縮放高度間距…",
       "dialogTitle": "縮放高度間距",
-      "noSelected": "請選取至少兩個高度不同的音符或舞台變換進行縮放",
+      "noSelected": "請選取至少兩個高度不同的音符或舞台變換事件",
       "scaled": "已縮放 {0} 個物件的高度間距"
     },
     "scaleSelection": {
@@ -262,7 +262,7 @@
         "newer": "此關卡是為較新的引擎修訂版製作的，此編輯器尚不支援。部分內容可能無法正確顯示或儲存。"
       },
       "refusals": {
-        "dynamicStages": "關卡使用了動態舞台功能，但未啟用動態舞台",
+        "dynamicStages": "關卡使用了動態舞台，但未啟用",
         "cyclicEventRef": "事件參照「{0}」形成循環",
         "cyclicSlideRef": "滑條參照「{0}」形成循環",
         "refNotFound": "找不到參照「{0}」",
@@ -278,9 +278,9 @@
         "invalidBpm": "BPM 必須是有限的正數",
         "missingValue": "{0} 沒有 {1}",
         "missingNote": "{0} 缺少音符",
-        "ticksPerBeat": "每拍 tick 數缺失或異常",
-        "offset": "偏移異常",
-        "timeScaleChange": "時間倍率變化異常",
+        "ticksPerBeat": "每拍 tick 數缺失或無效",
+        "offset": "偏移無效",
+        "timeScaleChange": "時間倍率變化無效",
         "meter": "每小節拍數無效",
         "missingMeter": "第 {0} 小節沒有每小節拍數"
       },
@@ -304,7 +304,7 @@
       "title": "重做",
       "noState": "無需重做",
       "failed": "無法重做",
-      "redid": "已重做 \"{0}\""
+      "redid": "已重做「{0}」"
     },
     "reset": {
       "title": "新增"
@@ -392,7 +392,7 @@
       "title": "撤銷",
       "noState": "無需撤銷",
       "failed": "無法撤銷",
-      "undid": "已撤銷 \"{0}\""
+      "undid": "已撤銷「{0}」"
     },
     "utilities": {
       "title": "工具"
@@ -420,19 +420,19 @@
     "zooms": {
       "zoomXIn": {
         "title": "放大X軸",
-        "zoomed": "放大X軸 10%"
+        "zoomed": "橫向放大 10%"
       },
       "zoomXOut": {
         "title": "縮小X軸",
-        "zoomed": "縮小X軸 10%"
+        "zoomed": "橫向縮小 10%"
       },
       "zoomYIn": {
         "title": "放大Y軸",
-        "zoomed": "放大Y軸 10%"
+        "zoomed": "縱向放大 10%"
       },
       "zoomYOut": {
         "title": "縮小Y軸",
-        "zoomed": "縮小Y軸 10%"
+        "zoomed": "縱向縮小 10%"
       }
     },
     "bpm": {
@@ -489,9 +489,9 @@
       },
       "fallback": {
         "panel": "{0}：正在使用{1}。{2}",
-        "panelStored": "{0}：正在使用 \"{1}\"。{2}",
+        "panelStored": "{0}：正在使用「{1}」。{2}",
         "row": "正在使用{0}。{1}",
-        "rowStored": "正在使用 \"{0}\"。{1}"
+        "rowStored": "正在使用「{0}」。{1}"
       },
       "reason": {
         "fileGone": "{0}檔案已不再存放在此瀏覽器中。",
@@ -509,12 +509,12 @@
       "chooseBackground": "選擇背景",
       "chooseEffect": "選擇音效",
       "use": "使用",
-      "alsoFile": "同時使用此檔案中的{0} \"{1}\"",
+      "alsoFile": "同時使用此檔案中的{0}「{1}」",
       "remove": "移除",
       "removeStored": "移除…",
       "inUse": "使用中",
       "removeInUse": "移除「{0}」？預覽將改用預設選項。",
-      "removeUnused": "移除 \"{0}\"？",
+      "removeUnused": "移除「{0}」？",
       "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇…",
       "noneInFile": "此檔案中沒有{0}。",
@@ -554,8 +554,8 @@
         "tooManyEffects": "此檔案的{0}資料中的效果超過 {1} 個。",
         "tooManyParticles": "此檔案的{0}資料中的粒子超過 {1} 個。",
         "tooManyGroups": "此檔案的{0}資料中的粒子組超過 {1} 個。",
-        "particleCount": "此檔案的{0}效果 \"{1}\" 的粒子超過 {2} 個。",
-        "effectGroups": "此檔案的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
+        "particleCount": "此檔案的{0}效果「{1}」的粒子超過 {2} 個。",
+        "effectGroups": "此檔案的{0}效果「{1}」的粒子組超過 {2} 個。",
         "noPerfect": "此檔案的{0}音訊中沒有可用的 #PERFECT 片段。",
         "audioLength": "此檔案的{0}音訊總長超過 {1} 秒。",
         "packageTooLarge": "此項目存放後超過 {0}。",
@@ -567,7 +567,7 @@
       "connect": "連線",
       "search": "搜尋…",
       "more": "更多",
-      "alsoServerItem": "同時使用此伺服器中的{0} \"{1}\"",
+      "alsoServerItem": "同時使用此伺服器中的{0}「{1}」",
       "noneFound": "找不到項目",
       "server": {
         "unreachable": "無法連線到此伺服器。請檢查位址，或稍後再試。",
@@ -575,7 +575,7 @@
         "insecure": "不支援 HTTP 伺服器位址。",
         "checksum": "下載的內容與伺服器的檢查碼不符。",
         "notFound": "此伺服器上沒有該項目。",
-        "invalid": "此位址不是 Sonolus 伺服器。",
+        "invalid": "伺服器傳回的資料無法由編輯器讀取。",
         "status": "伺服器回傳了錯誤（{0}）。",
         "filesFailed": "無法從 {0} 下載此項目的檔案。",
         "addressEmpty": "請輸入伺服器位址。",
@@ -592,12 +592,12 @@
         "noNoteSprites": "此項目的{0}資料中沒有音符精靈。",
         "tooManySprites": "此項目的{0}資料中的精靈超過 {1} 個。",
         "tooManyEffects": "此項目的{0}資料中的效果超過 {1} 個。",
-        "particleCount": "此項目的{0}效果 \"{1}\" 的粒子超過 {2} 個。",
+        "particleCount": "此項目的{0}效果「{1}」的粒子超過 {2} 個。",
         "noPerfect": "此項目的{0}音訊中沒有可用的 #PERFECT 片段。",
         "audioLength": "此項目的{0}音訊總長超過 {1} 秒。",
         "tooManyParticles": "此項目的{0}資料中的粒子超過 {1} 個。",
         "tooManyGroups": "此項目的{0}資料中的粒子組超過 {1} 個。",
-        "effectGroups": "此項目的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
+        "effectGroups": "此項目的{0}效果「{1}」的粒子組超過 {2} 個。",
         "ratio": "此項目的{0}{1}解壓縮後超過其壓縮大小的 {2} 倍。"
       }
     },
@@ -950,7 +950,7 @@
       "notices": "第三方聲明",
       "privacy": "隱私",
       "usageStatistics": "傳送使用統計",
-      "usageStatisticsNote": "使用統計包括工具使用情況、主要設定、檔案類型和大小，以及操作所需的時間。詳情請參閱「隱私」。",
+      "usageStatisticsNote": "使用統計包括您使用的工具、部分編輯器設定、檔案類型和大小，以及操作所需的時間。詳情請參閱「隱私」。",
       "usageStatisticsSignal": "預設關閉，因為此瀏覽器傳送了 Do Not Track 或 Global Privacy Control 訊號。",
       "diagnostics": "複製診斷資訊…",
       "diagnosticsTitle": "診斷資訊",
@@ -966,12 +966,12 @@
       "discardConfirm": "捨棄",
       "cannotOpen": "（此版本無法開啟）",
       "discardAutoSave": "要捨棄舊的自動儲存（{0}）嗎？",
-      "discardUnreadable": "要捨棄 {0} 無法讀取的已恢復內容（{1}）嗎？",
+      "discardUnreadable": "要捨棄 {0} 的已恢復內容（{1}）嗎？這些內容無法開啟。",
       "recovery": {
         "journal": "先前造訪中未儲存的內容 · {0} · {1}",
         "journalUndated": "先前造訪中未儲存的內容 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
-        "unreadable": "無法讀取的已恢復內容 · {0} · {1}",
+        "unreadable": "無法開啟的已恢復內容 · {0} · {1}",
         "listFailed": "無法讀取已恢復的內容。",
         "downloadFailed": "無法下載已恢復的內容。"
       },
@@ -1186,7 +1186,7 @@
     }
   },
   "startup": {
-    "opening": "正在開啟 \"{0}\"…",
+    "opening": "正在開啟「{0}」…",
     "openingBlank": "正在開啟…",
     "slow": "耗時比平常更久。",
     "error": "編輯器無法開啟已存放的內容。",
@@ -1204,22 +1204,22 @@
     "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已存放的內容。",
     "olderVersion": "此瀏覽器中已開啟過較新版本的編輯器。請重新載入，或儲存以保留內容。",
     "tryAgain": "重試",
-    "continued": "已從 {1} 繼續 \"{0}\"。",
+    "continued": "已從 {1} 繼續「{0}」。",
     "continuedUntitled": "已繼續 {0} 的工作階段。",
-    "continuedUndated": "已繼續 \"{0}\"。",
+    "continuedUndated": "已繼續「{0}」。",
     "cleared": "先前造訪的內容已遺失。瀏覽器清除了此網站的儲存空間。",
     "inAppBrowser": "這似乎是應用程式內建瀏覽器。部分功能可能無法使用，已存放的內容也可能被刪除。如需保留內容，請在常用瀏覽器中開啟此頁面。",
-    "journalKept": "已將對 \"{0}\" 的已恢復變更保留為獨立的工作階段。",
+    "journalKept": "已將對「{0}」的已恢復變更保留為獨立的工作階段。",
     "fallback": "已恢復先前造訪中未儲存的內容。",
     "fallbackLocal": "先前造訪中未儲存的內容在本機資料中。",
     "migrationFailed": "無法還原舊的自動儲存。",
-    "autoSave": "已從舊的自動儲存繼續 \"{0}\"。",
-    "journal": "已恢復對 \"{0}\" 的最後變更。",
+    "autoSave": "已從舊的自動儲存繼續「{0}」。",
+    "journal": "已恢復對「{0}」的最後變更。",
     "journalLater": "已恢復的變更需要較新版本的編輯器。",
-    "openElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此未在此處還原。",
+    "openElsewhere": "「{0}」已在另一個分頁或視窗中開啟，因此未在此處還原。",
     "restoreAsCopy": "還原為副本",
     "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
-    "autoSaveKept": "已將舊的自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
+    "autoSaveKept": "已將舊的自動儲存中的「{0}」保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
     "journalFailed": "無法將已恢復的變更存放到其工作階段中。可在本機資料中找到。",
     "storageNearlyFull": "瀏覽器儲存空間幾乎已滿。",
@@ -1363,7 +1363,7 @@
     "savedOn": "儲存於 {0}",
     "savedWeb": "儲存於網頁編輯器 ({0})",
     "savedWebAny": "儲存於網頁編輯器",
-    "quoted": "\"{0}\"",
+    "quoted": "「{0}」",
     "quotedField": "{0}",
     "continuedFrom": "從 {0} 繼續",
     "announceViewing": "正在檢視 {0}",
@@ -1379,7 +1379,7 @@
       "loadFailed": "無法載入最近工作階段。",
       "thisTab": "此分頁",
       "elsewhere": "其他分頁",
-      "actions": "\"{0}\" 的更多操作",
+      "actions": "「{0}」的更多操作",
       "saveToFile": "儲存…",
       "delete": "刪除",
       "openReason": "已在另一個分頁或視窗中開啟。"
@@ -2063,9 +2063,9 @@
     "placeholder": "LevelData",
     "export": "匯出",
     "exported": "已匯出至 {0}",
-    "notLevelData": "\"{0}\" 不是關卡資料。",
+    "notLevelData": "「{0}」不是關卡資料。",
     "fileType": "Next SEKAI 關卡資料",
-    "unsupportedParts": "\"{0}\" 包含此版本編輯器不支援的部分。"
+    "unsupportedParts": "「{0}」包含此版本編輯器不支援的部分。"
   },
   "peek": {
     "loadingShort": "載入中…",
@@ -2075,7 +2075,7 @@
     "unavailable": "無法取得變更",
     "loadingChanges": "正在載入變更…",
     "addedRemoved": "新增 {0} · 刪除 {1}",
-    "exportsCurrent": "匯出目前版本。",
+    "exportsCurrent": "匯出時間軸中標為「現在」的版本。",
     "overlay": "正在檢視歷史記錄 · 唯讀",
     "backToNow": "返回現在",
     "restore": "還原",
@@ -2090,7 +2090,7 @@
     "changesBelow": "下方的變更：{0}",
     "changesAboveAny": "上方的變更",
     "changesBelowAny": "下方的變更",
-    "savesCurrent": "儲存目前版本。",
+    "savesCurrent": "儲存時間軸中標為「現在」的版本。",
     "showEdits": "顯示變更",
     "changeOptions": "變更的顯示選項"
   },
@@ -2104,16 +2104,16 @@
     "preparing": "正在準備 {0}… {1}",
     "ready": "已準備好：{0} · {1}",
     "download": "下載",
-    "buildFailed": "無法準備 \"{0}\"。",
-    "readFailed": "無法讀取 \"{0}\"。",
-    "changedWhileWriting": "\"{0}\" 在寫入時已變更。",
-    "downloadFailed": "無法下載 \"{0}\"。",
-    "notLocal": "\"{0}\" 尚不在此裝置上。",
+    "buildFailed": "無法準備「{0}」。",
+    "readFailed": "無法讀取「{0}」。",
+    "changedWhileWriting": "「{0}」在寫入時已變更。",
+    "downloadFailed": "無法下載「{0}」。",
+    "notLocal": "「{0}」尚不在此裝置上。",
     "noSpace": "空間不足，無法寫入 {0}。",
-    "writeFailed": "無法寫入 \"{0}\"。",
-    "notPutBack": "\"{0}\" 已被清空，且無法還原其內容。",
-    "openedContentGone": "\"{0}\" 已不再包含先前的內容。",
-    "replacedContentGone": "\"{0}\" 已不再包含先前的內容。",
+    "writeFailed": "無法寫入「{0}」。",
+    "notPutBack": "「{0}」已被清空，且無法還原其內容。",
+    "openedContentGone": "「{0}」的內容已變更。",
+    "replacedContentGone": "「{0}」的內容已變更。",
     "title": "儲存專案檔案",
     "titleAs": "另存新檔",
     "history": "歷史記錄",
@@ -2123,8 +2123,8 @@
     "exportHintFirst": ".nxsp 專案檔案僅供本編輯器使用。若要產生上傳至 Sonolus 伺服器的關卡資料，請使用「匯出關卡資料…」。",
     "exportHintNames": "關卡資料檔案可能沒有副檔名，或以 .nsld 或 .json.gz 結尾。",
     "openExport": "匯出關卡資料…",
-    "readOnly": "無法寫入 \"{0}\"。",
-    "notProject": "\"{0}\" 不是專案檔案。",
+    "readOnly": "無法寫入「{0}」。",
+    "notProject": "「{0}」不是專案檔案。",
     "notKept": "未儲存。無法完整讀取「{0}」。",
     "notKeptSafe": "未儲存。安全模式下無法取代檔案。",
     "notKeptFull": "未儲存。瀏覽器儲存空間已滿。請在「設定 › 本機資料」中刪除工作階段，然後重新儲存。",
@@ -2162,10 +2162,10 @@
     "title": "檢查檔案和歷史記錄",
     "checkingFile": "正在檢查 {0}…",
     "checkingStored": "正在檢查已存放的歷史記錄…",
-    "changed": "\"{0}\" 在檢查期間已變更。請重試。",
-    "stillOpening": "\"{0}\" 仍在開啟中。請重試。",
+    "changed": "「{0}」在檢查期間已變更。請重試。",
+    "stillOpening": "「{0}」仍在開啟中。請重試。",
     "noDamage": "未發現損毀。",
-    "scopeBoth": "已檢查 \"{0}\" 和此瀏覽器中存放的歷史記錄。",
+    "scopeBoth": "已檢查「{0}」和此瀏覽器中存放的歷史記錄。",
     "scopeStored": "已檢查此瀏覽器中存放的歷史記錄。",
     "fileDamaged": "「{0}」已損毀。儲存時會建立獨立的檔案。",
     "repaired": "已修復 {0} 個時間軸步驟。",
@@ -2182,15 +2182,15 @@
     "discard": "要捨棄對關卡資訊的變更嗎？"
   },
   "conflict": {
-    "exportTitle": "\"{0}\" 已變更",
+    "exportTitle": "「{0}」已變更",
     "exportBody": "「{0}」在上次匯出後已變更。",
     "exportBodyOpened": "「{0}」在此處開啟後已變更。",
     "replace": "取代",
-    "title": "\"{0}\" 已變更",
+    "title": "「{0}」已變更",
     "body": "「{0}」在此處開啟或儲存後已變更。",
     "saved": "{0}，{1} · {2}。",
     "savedNoNotes": "{0}，{1}。",
-    "otherProject": "另一個專案檔案 \"{0}\"。",
+    "otherProject": "另一個專案檔案「{0}」。",
     "otherProjectUnnamed": "另一個專案檔案。",
     "notDescendant": "{0} 儲存的版本並非基於您的版本。",
     "separate": "另存為獨立檔案…",
@@ -2207,18 +2207,18 @@
     "invalidChar": "名稱不能包含 {0}",
     "controlChar": "名稱不能包含控制字元",
     "edgeDotSpace": "名稱不能以句點或空格開頭或結尾",
-    "reserved": "名稱不能是 \"{0}\"",
+    "reserved": "名稱不能是「{0}」",
     "tooLong": "名稱過長"
   },
   "notice": {
     "useOpenFile": "要開啟檔案，請使用「開啟…」。",
-    "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
+    "sameFileElsewhere": "「{0}」已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
-    "bgmDiffers": "這與原本的 BGM \"{0}\" 不是同一個檔案。",
+    "bgmDiffers": "這與原本的 BGM「{0}」不是同一個檔案。",
     "bgmDiffersUnnamed": "這與原本的 BGM 不是同一個檔案。",
     "newLevel": "新關卡",
-    "reopen": "重新開啟 \"{0}\"",
+    "reopen": "重新開啟「{0}」",
     "reopenUntitled": "重新開啟 {0} 的工作階段",
     "readOnlyPeek": "檢視歷史記錄時為唯讀",
     "restoredTo": "已還原到 {0}",
@@ -2242,12 +2242,12 @@
   },
   "session": {
     "untitled": "未命名 · {0}",
-    "restored": "已還原 \"{0}\"",
-    "restoredCopy": "已還原 \"{0}\" 的副本",
+    "restored": "已還原「{0}」",
+    "restoredCopy": "已還原「{0}」的複本",
     "deletedMany": "已刪除 {0} 個工作階段",
-    "deleted": "已刪除 \"{0}\"",
-    "deleteRefused": "未刪除。\"{0}\" 正在某個分頁或視窗中使用。",
-    "deleteFailed": "無法刪除 \"{0}\"。",
+    "deleted": "已刪除「{0}」",
+    "deleteRefused": "未刪除。「{0}」正在某個分頁或視窗中使用。",
+    "deleteFailed": "無法刪除「{0}」。",
     "undoLost": "已刪除「{0}」。此次刪除無法再撤銷。"
   },
   "prompt": {
@@ -2287,7 +2287,7 @@
     "newerMajorNote": "只能開啟此檔案中的關卡。",
     "openLevel": "開啟關卡",
     "newerValues": {
-      "title": "\"{0}\" 使用了較新的功能",
+      "title": "「{0}」使用了較新的功能",
       "body": "此關卡使用了此版本編輯器不支援的值。開啟獨立的副本時，這些值會改為預設值。",
       "openCopy": "開啟副本"
     },
@@ -2298,7 +2298,7 @@
     "damagedHistory": "「{0}」的歷史記錄已損毀。儲存時會建立獨立的檔案。"
   },
   "file": {
-    "replacedElsewhere": "\"{0}\" 已從另一個分頁或視窗被取代。",
+    "replacedElsewhere": "「{0}」已從另一個分頁或視窗被取代。",
     "downloaded": "{0} · {1} 已下載",
     "opened": "{0} · {1} 已開啟"
   },
@@ -2308,7 +2308,7 @@
     "newerOnDisk": "磁碟上有較新版本",
     "notConfirmed": "下載未確認",
     "changedOnDiskName": "「{0}」在此處開啟或儲存後，已在磁碟上變更。",
-    "newerOnDiskName": "\"{0}\"：磁碟上有較新版本。",
+    "newerOnDiskName": "磁碟上有「{0}」的較新版本。",
     "notStored": "未存放"
   },
   "confirm": {

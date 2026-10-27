@@ -109,19 +109,19 @@
     "scaleBeat": {
       "title": "缩放节拍间距…",
       "dialogTitle": "缩放节拍间距",
-      "noSelected": "请选择至少两个位于不同节拍的对象进行缩放",
+      "noSelected": "请选择至少两个位于不同节拍的对象",
       "scaled": "已缩放 {0} 个对象的节拍间距"
     },
     "scaleWidth": {
       "title": "缩放宽度…",
       "dialogTitle": "缩放宽度",
-      "noSelected": "请选择具有横向跨度的对象进行缩放",
+      "noSelected": "请选择具有横向跨度的对象",
       "scaled": "已缩放 {0} 个对象的宽度"
     },
     "scaleElevation": {
       "title": "缩放高度间距…",
       "dialogTitle": "缩放高度间距",
-      "noSelected": "请选择至少两个高度不同的音符或舞台变换进行缩放",
+      "noSelected": "请选择至少两个高度不同的音符或舞台变换事件",
       "scaled": "已缩放 {0} 个对象的高度间距"
     },
     "scaleSelection": {
@@ -262,7 +262,7 @@
         "newer": "此关卡是为较新的引擎修订版制作的，此编辑器尚不支持。部分内容可能无法正确显示或保存。"
       },
       "refusals": {
-        "dynamicStages": "关卡使用了动态舞台功能，但未启用动态舞台",
+        "dynamicStages": "关卡使用了动态舞台，但未启用",
         "cyclicEventRef": "事件引用“{0}”形成循环",
         "cyclicSlideRef": "长按音符引用“{0}”形成循环",
         "refNotFound": "找不到引用“{0}”",
@@ -278,9 +278,9 @@
         "invalidBpm": "BPM 必须是有限的正数",
         "missingValue": "{0} 没有 {1}",
         "missingNote": "{0} 缺少音符",
-        "ticksPerBeat": "每拍 tick 数缺失或异常",
-        "offset": "偏移异常",
-        "timeScaleChange": "时间尺度变化异常",
+        "ticksPerBeat": "每拍 tick 数缺失或无效",
+        "offset": "偏移无效",
+        "timeScaleChange": "时间尺度变化无效",
         "meter": "每小节拍数无效",
         "missingMeter": "第 {0} 小节没有每小节拍数"
       },
@@ -575,7 +575,7 @@
         "insecure": "不支持 HTTP 服务器地址。",
         "checksum": "下载的内容与服务器的校验和不符。",
         "notFound": "此服务器上没有该项目。",
-        "invalid": "此地址不是 Sonolus 服务器。",
+        "invalid": "服务器返回的数据无法由编辑器读取。",
         "status": "服务器返回了错误（{0}）。",
         "filesFailed": "无法从 {0} 下载此项目的文件。",
         "addressEmpty": "请输入服务器地址。",
@@ -950,7 +950,7 @@
       "notices": "第三方声明",
       "privacy": "隐私",
       "usageStatistics": "发送使用统计",
-      "usageStatisticsNote": "使用统计包括工具使用情况、主要设置、文件类型和大小，以及操作所需的时间。详情参见“隐私”。",
+      "usageStatisticsNote": "使用统计包括您使用的工具、部分编辑器设置、文件类型和大小，以及操作所需的时间。详情参见“隐私”。",
       "usageStatisticsSignal": "默认关闭，因为此浏览器发送了 Do Not Track 或 Global Privacy Control 信号。",
       "diagnostics": "复制诊断信息…",
       "diagnosticsTitle": "诊断信息",
@@ -966,12 +966,12 @@
       "discardConfirm": "放弃",
       "cannotOpen": "（此版本无法打开）",
       "discardAutoSave": "要放弃旧的自动保存（{0}）吗？",
-      "discardUnreadable": "要放弃 {0} 无法读取的已恢复内容（{1}）吗？",
+      "discardUnreadable": "要放弃 {0} 的已恢复内容（{1}）吗？这些内容无法打开。",
       "recovery": {
         "journal": "以往访问中未保存的内容 · {0} · {1}",
         "journalUndated": "以往访问中未保存的内容 · {0}",
         "autoSave": "旧的自动保存 · {0}",
-        "unreadable": "无法读取的已恢复内容 · {0} · {1}",
+        "unreadable": "无法打开的已恢复内容 · {0} · {1}",
         "listFailed": "无法读取已恢复的内容。",
         "downloadFailed": "无法下载已恢复的内容。"
       },
@@ -2075,7 +2075,7 @@
     "unavailable": "无法获取更改",
     "loadingChanges": "正在加载更改…",
     "addedRemoved": "添加 {0} · 删除 {1}",
-    "exportsCurrent": "导出当前版本。",
+    "exportsCurrent": "导出时间线中标为“现在”的版本。",
     "overlay": "正在查看历史记录 · 只读",
     "backToNow": "返回现在",
     "restore": "还原",
@@ -2090,7 +2090,7 @@
     "changesBelow": "下方的更改：{0}",
     "changesAboveAny": "上方的更改",
     "changesBelowAny": "下方的更改",
-    "savesCurrent": "保存当前版本。",
+    "savesCurrent": "保存时间线中标为“现在”的版本。",
     "showEdits": "显示更改",
     "changeOptions": "更改的显示选项"
   },
@@ -2112,8 +2112,8 @@
     "noSpace": "空间不足，无法写入 {0}。",
     "writeFailed": "无法写入“{0}”。",
     "notPutBack": "“{0}”已被清空，且无法还原其内容。",
-    "openedContentGone": "“{0}”已不再包含之前的内容。",
-    "replacedContentGone": "“{0}”已不再包含之前的内容。",
+    "openedContentGone": "“{0}”的内容已更改。",
+    "replacedContentGone": "“{0}”的内容已更改。",
     "title": "保存项目文件",
     "titleAs": "另存为",
     "history": "历史记录",
@@ -2308,7 +2308,7 @@
     "newerOnDisk": "磁盘上有更新版本",
     "notConfirmed": "下载未确认",
     "changedOnDiskName": "“{0}”在此处打开或保存后，已在磁盘上更改。",
-    "newerOnDiskName": "“{0}”：磁盘上有更新版本。",
+    "newerOnDiskName": "磁盘上有“{0}”的更新版本。",
     "notStored": "未存储"
   },
   "confirm": {

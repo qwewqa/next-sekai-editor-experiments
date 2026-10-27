@@ -109,19 +109,19 @@
         "scaleBeat": {
             "title": "Scale Beats…",
             "dialogTitle": "Scale Beats",
-            "noSelected": "Select at least two objects at different beats to scale",
+            "noSelected": "Select at least two objects at different beats",
             "scaled": "Scaled beats of {0} object|Scaled beats of {0} objects"
         },
         "scaleWidth": {
             "title": "Scale Width…",
             "dialogTitle": "Scale Width",
-            "noSelected": "Select objects with a horizontal span to scale",
+            "noSelected": "Select objects with a horizontal span",
             "scaled": "Scaled width of {0} object|Scaled width of {0} objects"
         },
         "scaleElevation": {
             "title": "Scale Elevations…",
             "dialogTitle": "Scale Elevations",
-            "noSelected": "Select at least two notes or stage transforms with different elevations to scale",
+            "noSelected": "Select at least two notes or stage transform events with different elevations",
             "scaled": "Scaled elevations of {0} object|Scaled elevations of {0} objects"
         },
         "scaleSelection": {
@@ -262,7 +262,7 @@
                 "newer": "This level was made for a newer engine revision than this editor supports. Some parts may not display or save correctly."
             },
             "refusals": {
-                "dynamicStages": "the level uses dynamic stage features, but dynamic stages are disabled",
+                "dynamicStages": "it uses dynamic stages but does not enable them",
                 "cyclicEventRef": "circular event reference “{0}”",
                 "cyclicSlideRef": "circular slide reference “{0}”",
                 "refNotFound": "reference “{0}” not found",
@@ -278,9 +278,9 @@
                 "invalidBpm": "BPM must be positive and finite",
                 "missingValue": "{0} has no {1}",
                 "missingNote": "{0} has a missing note",
-                "ticksPerBeat": "missing or unexpected ticks per beat",
-                "offset": "unexpected offset",
-                "timeScaleChange": "unexpected time scale change",
+                "ticksPerBeat": "missing or invalid ticks per beat",
+                "offset": "invalid offset",
+                "timeScaleChange": "invalid time scale change",
                 "meter": "invalid meter",
                 "missingMeter": "no meter for measure {0}"
             },
@@ -304,7 +304,7 @@
             "title": "Redo",
             "noState": "Nothing to redo",
             "failed": "Could not redo",
-            "redid": "Redid \"{0}\""
+            "redid": "Redid “{0}”"
         },
         "reset": {
             "title": "New"
@@ -392,7 +392,7 @@
             "title": "Undo",
             "noState": "Nothing to undo",
             "failed": "Could not undo",
-            "undid": "Undid \"{0}\""
+            "undid": "Undid “{0}”"
         },
         "utilities": {
             "title": "Utilities"
@@ -420,19 +420,19 @@
         "zooms": {
             "zoomXIn": {
                 "title": "Zoom In X",
-                "zoomed": "Zoomed in X by 10%"
+                "zoomed": "Zoomed in horizontally by 10%"
             },
             "zoomXOut": {
                 "title": "Zoom Out X",
-                "zoomed": "Zoomed out X by 10%"
+                "zoomed": "Zoomed out horizontally by 10%"
             },
             "zoomYIn": {
                 "title": "Zoom In Y",
-                "zoomed": "Zoomed in Y by 10%"
+                "zoomed": "Zoomed in vertically by 10%"
             },
             "zoomYOut": {
                 "title": "Zoom Out Y",
-                "zoomed": "Zoomed out Y by 10%"
+                "zoomed": "Zoomed out vertically by 10%"
             }
         },
         "bpm": {
@@ -489,9 +489,9 @@
             },
             "fallback": {
                 "panel": "{0}: using {1}. {2}",
-                "panelStored": "{0}: using \"{1}\". {2}",
+                "panelStored": "{0}: using “{1}”. {2}",
                 "row": "Using {0}. {1}",
-                "rowStored": "Using \"{0}\". {1}"
+                "rowStored": "Using “{0}”. {1}"
             },
             "reason": {
                 "fileGone": "The {0} file is no longer stored in this browser.",
@@ -509,12 +509,12 @@
             "chooseBackground": "Choose a Background",
             "chooseEffect": "Choose Sound Effects",
             "use": "Use",
-            "alsoFile": "Also use the {0} \"{1}\" from this file",
+            "alsoFile": "Also use the {0} “{1}” from this file",
             "remove": "Remove",
             "removeStored": "Remove…",
             "inUse": "In use",
             "removeInUse": "Remove “{0}”? The preview will use the Default option instead.",
-            "removeUnused": "Remove \"{0}\"?",
+            "removeUnused": "Remove “{0}”?",
             "removeFailed": "This item could not be removed.",
             "chooseAgain": "Choose Again…",
             "noneInFile": "This file has no {0}.",
@@ -554,8 +554,8 @@
                 "tooManyEffects": "This file’s {0} data has more than {1} effects.",
                 "tooManyParticles": "This file’s {0} data has more than {1} particles.",
                 "tooManyGroups": "This file’s {0} data has more than {1} particle groups.",
-                "particleCount": "This file’s {0} effect \"{1}\" has more than {2} particles.",
-                "effectGroups": "This file’s {0} effect \"{1}\" has more than {2} particle groups.",
+                "particleCount": "This file’s {0} effect “{1}” has more than {2} particles.",
+                "effectGroups": "This file’s {0} effect “{1}” has more than {2} particle groups.",
                 "noPerfect": "This file’s {0} audio has no usable #PERFECT clip.",
                 "audioLength": "This file’s {0} audio is longer than {1} seconds in total.",
                 "packageTooLarge": "This item is larger than {0} once stored.",
@@ -567,7 +567,7 @@
             "connect": "Connect",
             "search": "Search…",
             "more": "More",
-            "alsoServerItem": "Also use the {0} \"{1}\" from this server",
+            "alsoServerItem": "Also use the {0} “{1}” from this server",
             "noneFound": "No items found",
             "server": {
                 "unreachable": "Could not reach this server. Check the address, or try again later.",
@@ -575,7 +575,7 @@
                 "insecure": "HTTP server addresses are not supported.",
                 "checksum": "The downloaded content does not match the server’s checksum.",
                 "notFound": "This server does not have that item.",
-                "invalid": "This address is not a Sonolus server.",
+                "invalid": "The server returned data that the editor could not read.",
                 "status": "This server returned an error ({0}).",
                 "filesFailed": "Could not download this item’s files from {0}.",
                 "addressEmpty": "Enter a server address.",
@@ -592,12 +592,12 @@
                 "noNoteSprites": "This item’s {0} has no note sprites.",
                 "tooManySprites": "This item’s {0} data has more than {1} sprites.",
                 "tooManyEffects": "This item’s {0} data has more than {1} effects.",
-                "particleCount": "This item’s {0} effect \"{1}\" has more than {2} particles.",
+                "particleCount": "This item’s {0} effect “{1}” has more than {2} particles.",
                 "noPerfect": "This item’s {0} audio has no usable #PERFECT clip.",
                 "audioLength": "This item’s {0} audio is longer than {1} seconds in total.",
                 "tooManyParticles": "This item’s {0} data has more than {1} particles.",
                 "tooManyGroups": "This item’s {0} data has more than {1} particle groups.",
-                "effectGroups": "This item’s {0} effect \"{1}\" has more than {2} particle groups.",
+                "effectGroups": "This item’s {0} effect “{1}” has more than {2} particle groups.",
                 "ratio": "This item’s {0} {1} expands to more than {2} times its compressed size."
             }
         },
@@ -921,7 +921,7 @@
             "title": "Toolbar",
             "quickSwitch": "Quick Switch",
             "add": "Add Tool…",
-            "remove": "Remove \"{0}\" from Toolbar",
+            "remove": "Remove “{0}” from Toolbar",
             "modal": {
                 "title": "Select Tool"
             }
@@ -950,7 +950,7 @@
             "notices": "Third-Party Notices",
             "privacy": "Privacy",
             "usageStatistics": "Send Usage Statistics",
-            "usageStatisticsNote": "Usage statistics include tool use, main settings, file types and sizes, and how long actions take. See Privacy for details.",
+            "usageStatisticsNote": "Usage statistics include which tools you use, some editor settings, file types and sizes, and how long actions take. See Privacy for details.",
             "usageStatisticsSignal": "Off by default because this browser sends a Do Not Track or Global Privacy Control signal.",
             "diagnostics": "Copy Diagnostic Info…",
             "diagnosticsTitle": "Diagnostic Info",
@@ -966,12 +966,12 @@
             "discardConfirm": "Discard",
             "cannotOpen": "(cannot be opened in this version)",
             "discardAutoSave": "Discard the old auto save ({0})?",
-            "discardUnreadable": "Discard the unreadable recovered work from {0} ({1})?",
+            "discardUnreadable": "Discard the recovered work from {0} ({1})? It cannot be opened.",
             "recovery": {
                 "journal": "Unsaved work from an earlier visit · {0} · {1}",
                 "journalUndated": "Unsaved work from an earlier visit · {0}",
                 "autoSave": "Old auto save · {0}",
-                "unreadable": "Unreadable recovered work · {0} · {1}",
+                "unreadable": "Recovered work that cannot be opened · {0} · {1}",
                 "listFailed": "Recovered work could not be read.",
                 "downloadFailed": "The recovered work could not be downloaded."
             },
@@ -1186,7 +1186,7 @@
         }
     },
     "startup": {
-        "opening": "Opening \"{0}\"…",
+        "opening": "Opening “{0}”…",
         "openingBlank": "Opening…",
         "slow": "This is taking longer than usual.",
         "error": "The editor could not open your stored work.",
@@ -1204,24 +1204,24 @@
         "upgradeBlocked": "Close other {0} tabs to open your stored work.",
         "olderVersion": "A newer version of the editor has been opened in this browser. Reload, or save to keep your work.",
         "tryAgain": "Try Again",
-        "continued": "Continued \"{0}\" from {1}.",
+        "continued": "Continued “{0}” from {1}.",
         "continuedUntitled": "Continued your session from {0}.",
-        "continuedUndated": "Continued \"{0}\".",
+        "continuedUndated": "Continued “{0}”.",
         "cleared": "Work from earlier visits is missing. The browser cleared this site’s storage.",
         "inAppBrowser": "This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your usual browser.",
-        "journalKept": "A recovered change to \"{0}\" was kept as a separate session.",
+        "journalKept": "A recovered change to “{0}” was kept as a separate session.",
         "fallback": "Recovered unsaved work from an earlier visit.",
         "fallbackLocal": "Unsaved work from an earlier visit is in Local Data.",
         "migrationFailed": "The old auto save could not be restored.",
-        "autoSave": "Continued \"{0}\" from the old auto save.",
-        "journal": "Recovered your last change to \"{0}\".",
+        "autoSave": "Continued “{0}” from the old auto save.",
+        "journal": "Recovered your last change to “{0}”.",
         "journalLater": "A recovered change requires a newer version of the editor.",
-        "openElsewhere": "\"{0}\" was not restored here because it is open in another tab or window.",
+        "openElsewhere": "“{0}” was not restored here because it is open in another tab or window.",
         "restoreAsCopy": "Restore as a Copy",
         "sessionDeleted": "This session was deleted in another tab or window.",
-        "autoSaveKept": "Kept \"{0}\" from the old auto save as a separate session.",
+        "autoSaveKept": "Kept “{0}” from the old auto save as a separate session.",
         "autoSaveOpened": "Opened the old auto save.",
-        "journalFailed": "A recovered change could not be stored in its session. It is available in Local Data.",
+        "journalFailed": "A recovered change could not be stored in its session. It is in Local Data.",
         "storageNearlyFull": "Browser storage is almost full.",
         "journalsFull": "Unsaved work from earlier visits is filling browser storage.",
         "sessionLater": "This session requires a newer version of the editor.",
@@ -1363,7 +1363,7 @@
         "savedOn": "Saved on {0}",
         "savedWeb": "Saved in the web editor ({0})",
         "savedWebAny": "Saved in the web editor",
-        "quoted": "\"{0}\"",
+        "quoted": "“{0}”",
         "quotedField": "{0}",
         "continuedFrom": "Continued from {0}",
         "announceViewing": "Viewing {0}",
@@ -1379,7 +1379,7 @@
             "loadFailed": "Recent Sessions could not be loaded.",
             "thisTab": "This tab",
             "elsewhere": "Another tab",
-            "actions": "More Actions for \"{0}\"",
+            "actions": "More Actions for “{0}”",
             "saveToFile": "Save…",
             "delete": "Delete",
             "openReason": "It is open in another tab or window."
@@ -1896,8 +1896,8 @@
             "play": "Play Preview",
             "back": "Back {0} ms",
             "forward": "Forward {0} ms",
-            "holdBackward": "Hold for {0}× Backward",
-            "holdForward": "Hold for {0}× Forward",
+            "holdBackward": "Hold to Move Backward at {0}× Speed",
+            "holdForward": "Hold to Move Forward at {0}× Speed",
             "stepSize": "Step Size: {0} ms"
         }
     },
@@ -2063,9 +2063,9 @@
         "placeholder": "LevelData",
         "export": "Export",
         "exported": "Exported to {0}",
-        "notLevelData": "\"{0}\" is not level data.",
+        "notLevelData": "“{0}” is not level data.",
         "fileType": "Next SEKAI level data",
-        "unsupportedParts": "\"{0}\" has parts that this version of the editor does not support."
+        "unsupportedParts": "“{0}” has parts that this version of the editor does not support."
     },
     "peek": {
         "loadingShort": "Loading…",
@@ -2075,7 +2075,7 @@
         "unavailable": "Changes unavailable",
         "loadingChanges": "Loading changes…",
         "addedRemoved": "Added {0} · Removed {1}",
-        "exportsCurrent": "Exports the current version.",
+        "exportsCurrent": "Exports the version marked Now in the Timeline.",
         "overlay": "Viewing history · read-only",
         "backToNow": "Back to Now",
         "restore": "Restore",
@@ -2090,7 +2090,7 @@
         "changesBelow": "Changes Below: {0}",
         "changesAboveAny": "Changes Above",
         "changesBelowAny": "Changes Below",
-        "savesCurrent": "Saves the current version.",
+        "savesCurrent": "Saves the version marked Now in the Timeline.",
         "showEdits": "Show Edits",
         "changeOptions": "Options for Changes"
     },
@@ -2104,16 +2104,16 @@
         "preparing": "Preparing {0}… {1}",
         "ready": "Ready: {0} · {1}",
         "download": "Download",
-        "buildFailed": "\"{0}\" could not be prepared.",
-        "readFailed": "\"{0}\" could not be read.",
-        "changedWhileWriting": "\"{0}\" changed while it was being written.",
-        "downloadFailed": "\"{0}\" could not be downloaded.",
-        "notLocal": "\"{0}\" is not available on this device yet.",
+        "buildFailed": "“{0}” could not be prepared.",
+        "readFailed": "“{0}” could not be read.",
+        "changedWhileWriting": "“{0}” changed while it was being written.",
+        "downloadFailed": "“{0}” could not be downloaded.",
+        "notLocal": "“{0}” is not available on this device yet.",
         "noSpace": "There is not enough space to write {0}.",
-        "writeFailed": "\"{0}\" could not be written.",
-        "notPutBack": "\"{0}\" was emptied and its contents could not be restored.",
-        "openedContentGone": "The contents of \"{0}\" have changed.",
-        "replacedContentGone": "The contents of \"{0}\" have changed.",
+        "writeFailed": "“{0}” could not be written.",
+        "notPutBack": "“{0}” was emptied and its contents could not be restored.",
+        "openedContentGone": "The contents of “{0}” have changed.",
+        "replacedContentGone": "The contents of “{0}” have changed.",
         "title": "Save Project File",
         "titleAs": "Save As",
         "history": "History",
@@ -2123,8 +2123,8 @@
         "exportHintFirst": "Project files (.nxsp) are only for this editor. To create level data you can upload to a Sonolus server, use Export Level Data…",
         "exportHintNames": "Level data files may have no extension or end in .nsld or .json.gz.",
         "openExport": "Export Level Data…",
-        "readOnly": "\"{0}\" cannot be written to.",
-        "notProject": "\"{0}\" is not a project file.",
+        "readOnly": "“{0}” cannot be written to.",
+        "notProject": "“{0}” is not a project file.",
         "notKept": "Not saved. “{0}” could not be read in full.",
         "notKeptSafe": "Not saved. Files cannot be replaced in safe mode.",
         "notKeptFull": "Not saved. Browser storage is full. Delete sessions in Settings › Local Data, then save again.",
@@ -2162,10 +2162,10 @@
         "title": "Check File and History",
         "checkingFile": "Checking {0}…",
         "checkingStored": "Checking stored history…",
-        "changed": "\"{0}\" changed while it was being checked. Try again.",
-        "stillOpening": "\"{0}\" is still being opened. Try again.",
+        "changed": "“{0}” changed while it was being checked. Try again.",
+        "stillOpening": "“{0}” is still being opened. Try again.",
         "noDamage": "No damage found.",
-        "scopeBoth": "Checked \"{0}\" and the history stored in this browser.",
+        "scopeBoth": "Checked “{0}” and the history stored in this browser.",
         "scopeStored": "Checked the history stored in this browser.",
         "fileDamaged": "“{0}” is damaged. Saving will create a separate file.",
         "repaired": "Repaired {0} Timeline step.|Repaired {0} Timeline steps.",
@@ -2182,15 +2182,15 @@
         "discard": "Discard changes to Level Info?"
     },
     "conflict": {
-        "exportTitle": "\"{0}\" Changed",
+        "exportTitle": "“{0}” Changed",
         "exportBody": "“{0}” has changed since your last export.",
         "exportBodyOpened": "“{0}” has changed since you opened it here.",
         "replace": "Replace",
-        "title": "\"{0}\" Changed",
+        "title": "“{0}” Changed",
         "body": "“{0}” has changed since you opened or saved it here.",
         "saved": "{0}, {1} · {2}.",
         "savedNoNotes": "{0}, {1}.",
-        "otherProject": "A different project file, \"{0}\".",
+        "otherProject": "A different project file, “{0}”.",
         "otherProjectUnnamed": "A different project file.",
         "notDescendant": "The version saved on {0} is not based on your version.",
         "separate": "Save as a Separate File…",
@@ -2207,18 +2207,18 @@
         "invalidChar": "A name cannot contain {0}",
         "controlChar": "A name cannot contain control characters",
         "edgeDotSpace": "A name cannot start or end with a dot or a space",
-        "reserved": "A name cannot be \"{0}\"",
+        "reserved": "A name cannot be “{0}”",
         "tooLong": "The name is too long"
     },
     "notice": {
         "useOpenFile": "To open a file, use Open…",
-        "sameFileElsewhere": "\"{0}\" is open in another tab or window, so this is a separate copy.",
+        "sameFileElsewhere": "“{0}” is open in another tab or window, so this is a separate copy.",
         "storageUnavailable": "The editor could not access this browser’s storage. Try again.",
         "chooseAudio": "Choose Audio…",
-        "bgmDiffers": "This is a different file from the original BGM, \"{0}\".",
+        "bgmDiffers": "This is a different file from the original BGM, “{0}”.",
         "bgmDiffersUnnamed": "This is a different file from the original BGM.",
         "newLevel": "New level",
-        "reopen": "Reopen \"{0}\"",
+        "reopen": "Reopen “{0}”",
         "reopenUntitled": "Reopen Session from {0}",
         "readOnlyPeek": "Read-only while viewing history",
         "restoredTo": "Restored to {0}",
@@ -2242,12 +2242,12 @@
     },
     "session": {
         "untitled": "Untitled · {0}",
-        "restored": "Restored \"{0}\"",
-        "restoredCopy": "Restored a copy of \"{0}\"",
+        "restored": "Restored “{0}”",
+        "restoredCopy": "Restored a copy of “{0}”",
         "deletedMany": "Deleted {0} session|Deleted {0} sessions",
-        "deleted": "Deleted \"{0}\"",
-        "deleteRefused": "Not deleted. \"{0}\" is in use in a tab or window.",
-        "deleteFailed": "\"{0}\" could not be deleted.",
+        "deleted": "Deleted “{0}”",
+        "deleteRefused": "Not deleted. “{0}” is in use in a tab or window.",
+        "deleteFailed": "“{0}” could not be deleted.",
         "undoLost": "Deleted “{0}”. This deletion can no longer be undone."
     },
     "prompt": {
@@ -2287,7 +2287,7 @@
         "newerMajorNote": "Only the level can be opened from this file.",
         "openLevel": "Open the Level",
         "newerValues": {
-            "title": "\"{0}\" Uses Newer Features",
+            "title": "“{0}” Uses Newer Features",
             "body": "This level uses values that this version of the editor does not support. Opening a separate copy replaces those values with defaults.",
             "openCopy": "Open a Copy"
         },
@@ -2298,7 +2298,7 @@
         "damagedHistory": "The history in {0} is damaged. Saving will create a separate file."
     },
     "file": {
-        "replacedElsewhere": "\"{0}\" was replaced from another tab or window.",
+        "replacedElsewhere": "“{0}” was replaced from another tab or window.",
         "downloaded": "{0} · downloaded {1}",
         "opened": "{0} · opened {1}"
     },
@@ -2308,7 +2308,7 @@
         "newerOnDisk": "Newer on disk",
         "notConfirmed": "Download not confirmed",
         "changedOnDiskName": "“{0}” has changed on disk since you opened or saved it here.",
-        "newerOnDiskName": "\"{0}\": a newer version is on disk.",
+        "newerOnDiskName": "A newer version of “{0}” is on disk.",
         "notStored": "Not stored"
     },
     "confirm": {

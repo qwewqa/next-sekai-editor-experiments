@@ -262,7 +262,7 @@
         "newer": "この譜面は、このエディターが対応しているものより新しいエンジンのリビジョン向けに作成されています。一部が正しく表示または保存されない可能性があります。"
       },
       "refusals": {
-        "dynamicStages": "動的ステージが無効なのに動的ステージの機能を使用しています",
+        "dynamicStages": "動的ステージを使用していますが、有効になっていません",
         "cyclicEventRef": "イベントの参照「{0}」が循環しています",
         "cyclicSlideRef": "スライドの参照「{0}」が循環しています",
         "refNotFound": "参照「{0}」が見つかりません",
@@ -278,9 +278,9 @@
         "invalidBpm": "BPM は正の有限の値である必要があります",
         "missingValue": "{0} に {1} がありません",
         "missingNote": "{0} のノーツが見つかりません",
-        "ticksPerBeat": "1 拍あたりの tick 数がないか、想定外の値です",
-        "offset": "オフセットが想定外の値です",
-        "timeScaleChange": "ハイスピード変化が想定外の値です",
+        "ticksPerBeat": "1 拍あたりの tick 数がないか、無効な値です",
+        "offset": "オフセットが無効な値です",
+        "timeScaleChange": "ハイスピード変化が無効な値です",
         "meter": "拍子が無効です",
         "missingMeter": "小節 {0} の拍子がありません"
       },
@@ -428,7 +428,7 @@
       },
       "zoomYIn": {
         "title": "縦方向にズームイン",
-        "zoomed": "縦方向に10%拡大しました"
+        "zoomed": "縦方向に10%ズームインしました"
       },
       "zoomYOut": {
         "title": "縦方向にズームアウト",
@@ -575,7 +575,7 @@
         "insecure": "HTTPのサーバーアドレスには対応していません。",
         "checksum": "ダウンロードした内容がサーバーのチェックサムと一致しません。",
         "notFound": "このサーバーにその項目はありません。",
-        "invalid": "このアドレスはSonolusサーバーではありません。",
+        "invalid": "サーバーから返されたデータをエディターで読み込めませんでした。",
         "status": "サーバーがエラー({0})を返しました。",
         "filesFailed": "この項目のファイルを{0}からダウンロードできませんでした。",
         "addressEmpty": "サーバーのアドレスを入力してください。",
@@ -950,7 +950,7 @@
       "notices": "サードパーティライセンス",
       "privacy": "プライバシー",
       "usageStatistics": "使用状況の統計を送信",
-      "usageStatisticsNote": "使用状況の統計には、使用するツール、主な設定、ファイルの種類とサイズ、操作にかかる時間が含まれます。詳しくは「プライバシー」を参照してください。",
+      "usageStatisticsNote": "使用状況の統計には、使用するツール、エディターの一部の設定、ファイルの種類とサイズ、操作にかかる時間が含まれます。詳しくは「プライバシー」を参照してください。",
       "usageStatisticsSignal": "このブラウザーがDo Not TrackまたはGlobal Privacy Controlの信号を送信するため、初期状態ではオフです。",
       "diagnostics": "診断情報をコピー…",
       "diagnosticsTitle": "診断情報",
@@ -966,12 +966,12 @@
       "discardConfirm": "破棄",
       "cannotOpen": "(このバージョンでは開けません)",
       "discardAutoSave": "以前の自動保存 ({0}) を破棄しますか？",
-      "discardUnreadable": "{0}の読み取れない回復済みの作業 ({1}) を破棄しますか？",
+      "discardUnreadable": "{0}の回復済みの作業 ({1}) を破棄しますか？この作業は開くことができません。",
       "recovery": {
         "journal": "以前の訪問時の未保存の作業 · {0} · {1}",
         "journalUndated": "以前の訪問時の未保存の作業 · {0}",
         "autoSave": "以前の自動保存 · {0}",
-        "unreadable": "読み取れない回復済みの作業 · {0} · {1}",
+        "unreadable": "開くことができない回復済みの作業 · {0} · {1}",
         "listFailed": "回復済みの作業を読み取れませんでした。",
         "downloadFailed": "回復済みの作業をダウンロードできませんでした。"
       },
@@ -1221,7 +1221,7 @@
     "sessionDeleted": "このセッションは別のタブまたはウィンドウで削除されました。",
     "autoSaveKept": "以前の自動保存の「{0}」を別のセッションとして保持しました。",
     "autoSaveOpened": "以前の自動保存を開きました。",
-    "journalFailed": "回復された変更を元のセッションに保管できませんでした。ローカルデータから利用できます。",
+    "journalFailed": "回復された変更を元のセッションに保管できませんでした。ローカルデータにあります。",
     "storageNearlyFull": "ブラウザーのストレージがほぼいっぱいです。",
     "journalsFull": "以前の訪問時の未保存の作業がブラウザーのストレージを圧迫しています。",
     "sessionLater": "このセッションには、より新しいバージョンのエディターが必要です。",
@@ -2075,7 +2075,7 @@
     "unavailable": "変更を取得できません",
     "loadingChanges": "変更を読み込み中…",
     "addedRemoved": "追加 {0} · 削除 {1}",
-    "exportsCurrent": "現在のバージョンを出力します。",
+    "exportsCurrent": "タイムラインで「現在」と表示されているバージョンを出力します。",
     "overlay": "履歴を表示中 · 読み取り専用",
     "backToNow": "現在に戻る",
     "restore": "復元",
@@ -2090,7 +2090,7 @@
     "changesBelow": "画面下側の変更：{0}",
     "changesAboveAny": "画面上側の変更",
     "changesBelowAny": "画面下側の変更",
-    "savesCurrent": "現在のバージョンを保存します。",
+    "savesCurrent": "タイムラインで「現在」と表示されているバージョンを保存します。",
     "showEdits": "変更を表示",
     "changeOptions": "変更の表示オプション"
   },
@@ -2112,8 +2112,8 @@
     "noSpace": "{0} を書き込むための空き容量が足りません。",
     "writeFailed": "「{0}」に書き込めませんでした。",
     "notPutBack": "「{0}」は空になり、内容を復元できませんでした。",
-    "openedContentGone": "「{0}」には、以前の内容がもうありません。",
-    "replacedContentGone": "「{0}」には、以前の内容がもうありません。",
+    "openedContentGone": "「{0}」の内容が変更されています。",
+    "replacedContentGone": "「{0}」の内容が変更されています。",
     "title": "プロジェクトファイルを保存",
     "titleAs": "名前を付けて保存",
     "history": "履歴",
@@ -2308,7 +2308,7 @@
     "newerOnDisk": "ディスク上のほうが新しい",
     "notConfirmed": "ダウンロード未確認",
     "changedOnDiskName": "「{0}」はここで開いた後または保存した後にディスク上で変更されています。",
-    "newerOnDiskName": "「{0}」: ディスク上により新しいバージョンがあります。",
+    "newerOnDiskName": "ディスク上に「{0}」のより新しいバージョンがあります。",
     "notStored": "未保管"
   },
   "confirm": {

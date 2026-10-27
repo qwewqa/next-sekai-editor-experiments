@@ -115,13 +115,13 @@
     "scaleWidth": {
       "title": "Redimensionner la largeur…",
       "dialogTitle": "Redimensionner la largeur",
-      "noSelected": "Sélectionnez des objets avec une étendue horizontale à redimensionner",
+      "noSelected": "Sélectionnez des objets avec une étendue horizontale",
       "scaled": "Largeur de {0} objet redimensionnée|Largeur de {0} objets redimensionnée"
     },
     "scaleElevation": {
       "title": "Mettre les élévations à l’échelle…",
       "dialogTitle": "Mettre les élévations à l’échelle",
-      "noSelected": "Sélectionnez au moins deux notes ou transformations de scène à des élévations différentes",
+      "noSelected": "Sélectionnez au moins deux notes ou événements de transformation de scène à des élévations différentes",
       "scaled": "Élévation de {0} objet mise à l’échelle|Élévations de {0} objets mises à l’échelle"
     },
     "scaleSelection": {
@@ -262,10 +262,10 @@
         "newer": "Ce niveau a été créé pour une révision du moteur plus récente que celle prise en charge par cet éditeur. Certaines parties risquent de ne pas s’afficher ou de ne pas être sauvegardées correctement."
       },
       "refusals": {
-        "dynamicStages": "le niveau utilise des fonctionnalités de scènes dynamiques, mais les scènes dynamiques sont désactivées",
-        "cyclicEventRef": "référence d’événement circulaire “{0}”",
-        "cyclicSlideRef": "référence de slide circulaire “{0}”",
-        "refNotFound": "référence “{0}” introuvable",
+        "dynamicStages": "le niveau utilise des scènes dynamiques sans les activer",
+        "cyclicEventRef": "référence d’événement circulaire \"{0}\"",
+        "cyclicSlideRef": "référence de slide circulaire \"{0}\"",
+        "refNotFound": "référence \"{0}\" introuvable",
         "dataNotFound": "donnée {0} introuvable",
         "dataNoValue": "la donnée {0} n’a pas de valeur",
         "dataNoRef": "la donnée {0} n’a pas de référence",
@@ -278,9 +278,9 @@
         "invalidBpm": "le BPM doit être positif et fini",
         "missingValue": "{0} n’a pas de {1}",
         "missingNote": "il manque une note à {0}",
-        "ticksPerBeat": "ticks par temps manquants ou inattendus",
-        "offset": "décalage inattendu",
-        "timeScaleChange": "changement d’échelle de temps inattendu",
+        "ticksPerBeat": "ticks par temps manquants ou invalides",
+        "offset": "décalage invalide",
+        "timeScaleChange": "changement d’échelle de temps invalide",
         "meter": "temps par mesure non valide",
         "missingMeter": "aucun temps par mesure pour la mesure {0}"
       },
@@ -420,19 +420,19 @@
     "zooms": {
       "zoomXIn": {
         "title": "Zoom avant sur l’axe X",
-        "zoomed": "Zoom avant sur l’axe X de 10 %"
+        "zoomed": "Zoom avant sur l’axe X de 10 %"
       },
       "zoomXOut": {
         "title": "Zoom arrière sur l’axe X",
-        "zoomed": "Zoom arrière sur l’axe X de 10 %"
+        "zoomed": "Zoom arrière sur l’axe X de 10 %"
       },
       "zoomYIn": {
         "title": "Zoom avant sur l’axe Y",
-        "zoomed": "Zoom avant sur l’axe Y de 10 %"
+        "zoomed": "Zoom avant sur l’axe Y de 10 %"
       },
       "zoomYOut": {
         "title": "Zoom arrière sur l’axe Y",
-        "zoomed": "Zoom arrière sur l’axe Y de 10 %"
+        "zoomed": "Zoom arrière sur l’axe Y de 10 %"
       }
     },
     "bpm": {
@@ -513,7 +513,7 @@
       "remove": "Supprimer",
       "removeStored": "Supprimer…",
       "inUse": "Utilisé",
-      "removeInUse": "Supprimer “{0}” ? L’aperçu utilisera l’option Par défaut à la place.",
+      "removeInUse": "Supprimer \"{0}\" ? L’aperçu utilisera l’option Par défaut à la place.",
       "removeUnused": "Supprimer \"{0}\" ?",
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau…",
@@ -575,7 +575,7 @@
         "insecure": "Les adresses de serveur HTTP ne sont pas prises en charge.",
         "checksum": "Le contenu téléchargé ne correspond pas à la somme de contrôle du serveur.",
         "notFound": "Ce serveur n’a pas cet élément.",
-        "invalid": "Cette adresse n’est pas celle d’un serveur Sonolus.",
+        "invalid": "Le serveur a renvoyé des données que l’éditeur n’a pas pu lire.",
         "status": "Ce serveur a renvoyé une erreur ({0}).",
         "filesFailed": "Impossible de télécharger les fichiers de cet élément depuis {0}.",
         "addressEmpty": "Saisissez l’adresse d’un serveur.",
@@ -950,7 +950,7 @@
       "notices": "Mentions des composants tiers",
       "privacy": "Confidentialité",
       "usageStatistics": "Envoyer des statistiques d’utilisation",
-      "usageStatisticsNote": "Les statistiques d’utilisation comprennent les outils utilisés, les principaux paramètres, le type et la taille des fichiers, et la durée des actions. Consultez Confidentialité pour en savoir plus.",
+      "usageStatisticsNote": "Les statistiques d’utilisation comprennent les outils utilisés, certains paramètres de l’éditeur, le type et la taille des fichiers, et la durée des actions. Consultez Confidentialité pour en savoir plus.",
       "usageStatisticsSignal": "Désactivé par défaut, car ce navigateur envoie un signal Do Not Track ou Global Privacy Control.",
       "diagnostics": "Copier les infos de diagnostic…",
       "diagnosticsTitle": "Informations de diagnostic",
@@ -966,12 +966,12 @@
       "discardConfirm": "Abandonner",
       "cannotOpen": "(ne peut pas être ouvert dans cette version)",
       "discardAutoSave": "Abandonner l’ancienne sauvegarde automatique ({0}) ?",
-      "discardUnreadable": "Abandonner le travail récupéré illisible du {0} ({1}) ?",
+      "discardUnreadable": "Abandonner le travail récupéré du {0} ({1}) ? Il ne peut pas être ouvert.",
       "recovery": {
         "journal": "Travail non sauvegardé d’une visite précédente · {0} · {1}",
         "journalUndated": "Travail non sauvegardé d’une visite précédente · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
-        "unreadable": "Travail récupéré illisible · {0} · {1}",
+        "unreadable": "Travail récupéré qui ne peut pas être ouvert · {0} · {1}",
         "listFailed": "Le travail récupéré n’a pas pu être lu.",
         "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé."
       },
@@ -1221,7 +1221,7 @@
     "sessionDeleted": "Cette session a été supprimée dans un autre onglet ou une autre fenêtre.",
     "autoSaveKept": "\"{0}\" de l’ancienne sauvegarde automatique a été conservé dans une session séparée.",
     "autoSaveOpened": "Ancienne sauvegarde automatique ouverte.",
-    "journalFailed": "Une modification récupérée n’a pas pu être stockée dans sa session. Elle est disponible dans Données locales.",
+    "journalFailed": "Une modification récupérée n’a pas pu être stockée dans sa session. Elle se trouve dans Données locales.",
     "storageNearlyFull": "Le stockage du navigateur est presque plein.",
     "journalsFull": "Du travail non sauvegardé de visites précédentes remplit le stockage du navigateur.",
     "sessionLater": "Cette session nécessite une version plus récente de l’éditeur.",
@@ -2075,7 +2075,7 @@
     "unavailable": "Modifications indisponibles",
     "loadingChanges": "Chargement des modifications…",
     "addedRemoved": "Ajouts : {0} · suppressions : {1}",
-    "exportsCurrent": "Exporte la version actuelle.",
+    "exportsCurrent": "Exporte la version marquée \"Maintenant\" dans la Chronologie.",
     "overlay": "Consultation de l’historique · lecture seule",
     "backToNow": "Revenir à l’état actuel",
     "restore": "Restaurer",
@@ -2090,7 +2090,7 @@
     "changesBelow": "Modifications en bas : {0}",
     "changesAboveAny": "Modifications en haut",
     "changesBelowAny": "Modifications en bas",
-    "savesCurrent": "Sauvegarde la version actuelle.",
+    "savesCurrent": "Sauvegarde la version marquée \"Maintenant\" dans la Chronologie.",
     "showEdits": "Afficher les modifications",
     "changeOptions": "Options des modifications"
   },
@@ -2099,7 +2099,7 @@
     "chooseAnother": "Choisir un autre…",
     "tryAgain": "Réessayer",
     "denied": "Le navigateur n’a pas autorisé l’écriture dans {0}.",
-    "notFound": "“{0}” est introuvable.",
+    "notFound": "\"{0}\" est introuvable.",
     "downloadStarted": "Téléchargement lancé : {0} · {1}",
     "preparing": "Préparation de {0}… {1}",
     "ready": "Prêt : {0} · {1}",
@@ -2112,8 +2112,8 @@
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "\"{0}\" n’a pas pu être écrit.",
     "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
-    "openedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
-    "replacedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
+    "openedContentGone": "Le contenu de \"{0}\" a changé.",
+    "replacedContentGone": "Le contenu de \"{0}\" a changé.",
     "title": "Sauvegarder le fichier de projet",
     "titleAs": "Sauvegarder sous",
     "history": "Historique",
@@ -2125,7 +2125,7 @@
     "openExport": "Exporter les données de niveau…",
     "readOnly": "Impossible d’écrire dans \"{0}\".",
     "notProject": "\"{0}\" n’est pas un fichier de projet.",
-    "notKept": "Non sauvegardé. “{0}” n’a pas pu être lu entièrement.",
+    "notKept": "Non sauvegardé. \"{0}\" n’a pas pu être lu entièrement.",
     "notKeptSafe": "Non sauvegardé. Les fichiers ne peuvent pas être remplacés en mode sans échec.",
     "notKeptFull": "Non sauvegardé. Le stockage du navigateur est plein. Supprimez des sessions dans Paramètres › Données locales, puis sauvegardez à nouveau.",
     "saved": "Sauvegardé dans {0}",
@@ -2142,7 +2142,7 @@
     "noChangesSaved": "Aucune modification depuis la sauvegarde de {0}",
     "noChangesOpened": "Aucune modification depuis l’ouverture de {0}",
     "downloadAgain": "Télécharger à nouveau",
-    "unreadable": "“{0}” n’a pas pu être lu entièrement.",
+    "unreadable": "\"{0}\" n’a pas pu être lu entièrement.",
     "tooLarge": "Le fichier est trop volumineux.",
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
@@ -2167,7 +2167,7 @@
     "noDamage": "Aucun dommage trouvé.",
     "scopeBoth": "\"{0}\" et l’historique stocké dans ce navigateur ont été vérifiés.",
     "scopeStored": "L’historique stocké dans ce navigateur a été vérifié.",
-    "fileDamaged": "“{0}” est endommagé. La sauvegarde créera un fichier séparé.",
+    "fileDamaged": "\"{0}\" est endommagé. La sauvegarde créera un fichier séparé.",
     "repaired": "{0} étape de la chronologie réparée.|{0} étapes de la chronologie réparées.",
     "storedDamaged": "{0} étape de la chronologie stockée dans ce navigateur est endommagée.|{0} étapes de la chronologie stockées dans ce navigateur sont endommagées.",
     "mediaDamaged": "La copie de {0} stockée dans ce navigateur était endommagée."
@@ -2183,11 +2183,11 @@
   },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",
-    "exportBody": "“{0}” a changé depuis votre dernière exportation.",
-    "exportBodyOpened": "“{0}” a changé depuis que vous l’avez ouvert ici.",
+    "exportBody": "\"{0}\" a changé depuis votre dernière exportation.",
+    "exportBodyOpened": "\"{0}\" a changé depuis que vous l’avez ouvert ici.",
     "replace": "Remplacer",
     "title": "\"{0}\" a changé",
-    "body": "“{0}” a changé depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "body": "\"{0}\" a changé depuis que vous l’avez ouvert ou sauvegardé ici.",
     "saved": "{0}, {1} · {2}.",
     "savedNoNotes": "{0}, {1}.",
     "otherProject": "Un autre fichier de projet, \"{0}\".",
@@ -2248,7 +2248,7 @@
     "deleted": "\"{0}\" supprimée",
     "deleteRefused": "Non supprimée. \"{0}\" est utilisée dans un onglet ou une fenêtre.",
     "deleteFailed": "\"{0}\" n’a pas pu être supprimée.",
-    "undoLost": "“{0}” supprimée. Cette suppression ne peut plus être annulée."
+    "undoLost": "\"{0}\" supprimée. Cette suppression ne peut plus être annulée."
   },
   "prompt": {
     "title": "Modifications non stockées",
@@ -2307,8 +2307,8 @@
     "changedOnDisk": "Modifié sur le disque",
     "newerOnDisk": "Plus récent sur le disque",
     "notConfirmed": "Téléchargement non confirmé",
-    "changedOnDiskName": "“{0}” a changé sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
-    "newerOnDiskName": "\"{0}\" : une version plus récente est sur le disque.",
+    "changedOnDiskName": "\"{0}\" a changé sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "newerOnDiskName": "Une version plus récente de \"{0}\" est sur le disque.",
     "notStored": "Non stocké"
   },
   "confirm": {
