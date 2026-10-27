@@ -2115,14 +2115,6 @@ export const fileSaveAs = () =>
         if (env) await notFoundSaveAs(env)
     })
 
-/** Download Again: builds and downloads the bound file once more. */
-export const fileDownloadAgain = () =>
-    exclusive('fileDownloadAgain', async () => {
-        const env = environment()
-        const file = env && quickBinding(env).file
-        if (env && file) await downloadAgain(env, file)
-    })
-
 /**
  * Open the Other Version: the file on disk as a new session in place of this one, which
  * keeps its changes. It asks first when this session's work is not stored. A file that can't
