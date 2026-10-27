@@ -55,7 +55,10 @@ export const createVisibility = (
 
         notify(
             interpolate(
-                () => i18n.value.commands.visibilities.toggle.toggled,
+                () =>
+                    visibility
+                        ? i18n.value.commands.visibilities.toggle.on
+                        : i18n.value.commands.visibilities.toggle.off,
                 () => i18n.value.commands.visibilities.toggle.types[key],
             ),
         )

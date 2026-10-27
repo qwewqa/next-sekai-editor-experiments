@@ -41,7 +41,6 @@ export const fullscreen: Command = {
                     await document.body.webkitRequestFullscreen({ navigationUI: 'hide' })
                 }
             }
-            notify(() => i18n.value.commands.fullscreen.toggled)
         } catch {
             notify(() => i18n.value.commands.fullscreen.unsupported)
         }

@@ -149,7 +149,6 @@
         },
         "fullscreen": {
             "title": "Fullscreen",
-            "toggled": "Toggled fullscreen",
             "unsupported": "Fullscreen is not supported on this device"
         },
         "groups": {
@@ -383,7 +382,8 @@
         },
         "toggleVolume": {
             "title": "Toggle {0} Volume",
-            "toggled": "Toggled {0} volume",
+            "muted": "{0} muted",
+            "unmuted": "{0} unmuted",
             "type": {
                 "bgm": "BGM",
                 "sfx": "SFX"
@@ -401,11 +401,13 @@
         "visibilities": {
             "cycle": {
                 "title": "Cycle Object Visibilities",
-                "cycled": "Cycled object visibilities"
+                "all": "Visibility: all objects",
+                "only": "Visibility: {0} only"
             },
             "toggle": {
                 "title": "Toggle {0} Visibility",
-                "toggled": "Toggled {0} visibility",
+                "on": "{0} visibility on",
+                "off": "{0} visibility off",
                 "types": {
                     "note": "Note",
                     "cameraEvent": "Camera Event",

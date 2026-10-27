@@ -2,6 +2,7 @@ import { dynamicStagesVisibilityTypes, nonDynamicStagesVisibilityTypes } from '.
 import type { Command } from '..'
 import { isDynamicStages } from '../../../history/dynamicStages.ts'
 import { i18n } from '../../../i18n'
+import { interpolate } from '../../../utils/interpolate'
 import { notify } from '../../notification'
 import { view } from '../../view'
 import CycleVisibilityIcon from './CycleVisibilityIcon.vue'
@@ -50,6 +51,22 @@ export const cycleVisibilities: Command = {
 
         view.visibilities = visibilities
 
-        notify(() => i18n.value.commands.visibilities.cycle.cycled)
+        const visibleKey = Object.entries(visibilityTypes).find(([, types]) =>
+            types.some((type) => visibilities[type]),
+        )?.[0] as keyof typeof dynamicStagesVisibilityTypes | undefined
+        const allVisible = Object.values(visibilityTypes).every((types) =>
+            types.every((type) => visibilities[type]),
+        )
+
+        if (allVisible || !visibleKey) {
+            notify(() => i18n.value.commands.visibilities.cycle.all)
+        } else {
+            notify(
+                interpolate(
+                    () => i18n.value.commands.visibilities.cycle.only,
+                    () => i18n.value.commands.visibilities.toggle.types[visibleKey],
+                ),
+            )
+        }
     },
 }

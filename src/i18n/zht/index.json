@@ -149,7 +149,6 @@
     },
     "fullscreen": {
       "title": "全螢幕",
-      "toggled": "已切換全螢幕模式",
       "unsupported": "此裝置不支援全螢幕"
     },
     "groups": {
@@ -383,7 +382,8 @@
     },
     "toggleVolume": {
       "title": "切換 {0} 音量",
-      "toggled": "已切換 {0} 音量",
+      "muted": "已將 {0} 靜音",
+      "unmuted": "已取消 {0} 靜音",
       "type": {
         "bgm": "BGM",
         "sfx": "音效"
@@ -401,11 +401,13 @@
     "visibilities": {
       "cycle": {
         "title": "循環切換物件顯示狀態",
-        "cycled": "已循環切換物件顯示狀態"
+        "all": "已顯示所有物件",
+        "only": "已僅顯示 {0}"
       },
       "toggle": {
         "title": "切換 {0} 顯示狀態",
-        "toggled": "已切換 {0} 顯示狀態",
+        "on": "已顯示 {0}",
+        "off": "已隱藏 {0}",
         "types": {
           "note": "音符",
           "cameraEvent": "攝影機事件",
