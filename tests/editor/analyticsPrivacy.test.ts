@@ -312,9 +312,8 @@ const disclosures: Record<string, RegExp[]> = {
     hosting: [/GitHub/, /Amazon Web Services \(AWS\)/, /United States/, /email provider/],
     contact: [/email address, message and any attachments/, /delete it once the problem is fixed/],
     basis: [
-        /Legitimate interest/,
-        /understand how the editor is used and improve it/,
-        /respond when you contact us/,
+        /Legitimate interest: improving the editor and answering your messages/,
+        /Legal obligation: answering requests to exercise your data protection rights/,
     ],
     choices: [
         /access, correct or delete/,
@@ -329,9 +328,12 @@ test('the privacy page keeps its disclosures', () => {
             assert.match(sectionText(id), pattern, `the ${id} section no longer covers ${pattern}`)
 })
 
-test('the legal basis is one legitimate interest, and the rights include the complaint', () => {
-    assert.match(sectionText('basis'), /Legal Basis Legitimate interest: /)
-    assert.equal(sectionHtml('basis').match(/<li\b/g)?.length, 1)
+test('the legal basis names legitimate interest once and a legal obligation, and the rights include the complaint', () => {
+    const basis = sectionText('basis')
+    assert.equal(sectionHtml('basis').match(/<li\b/g)?.length, 2)
+    assert.equal(basis.match(/Legitimate interest/g)?.length, 1)
+    assert.match(basis, /Legitimate interest: improving the editor and answering your messages/)
+    assert.match(basis, /Legal obligation: .*data protection rights/)
     assert.match(sectionText('choices'), /You also have the right to complain to /)
 })
 
