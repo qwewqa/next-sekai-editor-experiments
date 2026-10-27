@@ -2059,7 +2059,7 @@
     "download": "다운로드",
     "buildFailed": "“{0}”을(를) 준비하지 못했습니다.",
     "readFailed": "“{0}”을(를) 읽지 못했습니다.",
-    "changedWhileWriting": "“{0}”이(가) 쓰는 중에 변경되었습니다.",
+    "changedWhileWriting": "“{0}”에 쓰는 도중 파일이 변경되었습니다.",
     "downloadFailed": "“{0}”을(를) 다운로드하지 못했습니다.",
     "notLocal": "“{0}”이(가) 아직 이 기기에 없습니다.",
     "noSpace": "{0}을(를) 쓸 공간이 부족합니다.",
