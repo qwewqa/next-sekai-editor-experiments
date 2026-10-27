@@ -145,7 +145,7 @@ test('one row for each chain, newest first, and a click peeks it with a bar that
     await rowFor(page, 'Alpha').click()
     await expect.poll(() => peekedLife(page)).toBe(990)
     const bar = peekBar(page)
-    await expect(bar.locator('[data-peek-session]')).toContainText('"Alpha"')
+    await expect(bar.locator('[data-peek-session]')).toContainText('“Alpha”')
     await expect(bar.locator('[data-peek-restore]')).toHaveText(messages.open.restoreIt)
     // No steps in a session’s peek: no arrows, no Step Details.
     await expect(bar.locator('[data-peek-details]')).toHaveCount(0)
@@ -155,7 +155,7 @@ test('one row for each chain, newest first, and a click peeks it with a bar that
     await rowFor(page, 'Alpha').focus()
     await page.keyboard.press('ArrowUp')
     await expect.poll(() => peekedLife(page)).toBe(980)
-    await expect(bar.locator('[data-peek-session]')).toContainText('"Beta"')
+    await expect(bar.locator('[data-peek-session]')).toContainText('“Beta”')
 
     await bar.locator('[data-peek-back]').click()
     await expect(bar).toHaveCount(0)
@@ -184,7 +184,7 @@ test('Restore Session in the peek bar opens the session, shows the Timeline and 
     await expect(page.locator('[data-history-surface="dialog"]')).toBeVisible()
     await expect(peekBar(page)).toHaveCount(0)
     // The switch card names the session and offers Reopen of what was left.
-    const card = notice(page, 'Restored "Alpha"')
+    const card = notice(page, 'Restored “Alpha”')
     await expect(card).toBeVisible()
     await expect(card.getByRole('button', { name: /^Reopen/ })).toBeVisible()
 })
@@ -224,7 +224,7 @@ test('the ⋯ button has no tab stop and a label, and Shift+F10 opens the same m
     await openSessions(page)
     const more = rowFor(page, 'Alpha').locator('[data-sessions-more]')
     await expect(more).toHaveAttribute('tabindex', '-1')
-    await expect(more).toHaveAttribute('aria-label', 'More Actions for "Alpha"')
+    await expect(more).toHaveAttribute('aria-label', 'More Actions for “Alpha”')
     await expect(more).toHaveAttribute('aria-haspopup', 'menu')
 
     await more.click()
@@ -358,7 +358,7 @@ test('a session open in another tab has the badge, offers Restore as a Copy and 
     await expect.poll(() => lifeOf(other)).toBe(990)
     const copy = await flushIds(other)
     expect(copy.chainId).not.toBe(original.chainId)
-    await expect(notice(other, 'Restored a copy of "Alpha"')).toBeVisible()
+    await expect(notice(other, 'Restored a copy of “Alpha”')).toBeVisible()
     // The tab that has it open is untouched.
     expect((await flushIds(page)).chainId).toBe(original.chainId)
     expect(await lifeOf(page)).toBe(990)
@@ -387,7 +387,7 @@ test('a row whose chain another tab continued since the list was drawn opens a c
     // The copy is of the session the row named, not of what the other tab has made of it since.
     await expect.poll(() => lifeOf(page)).toBe(990)
     expect((await flushIds(page)).chainId).not.toBe(alpha.chainId)
-    await expect(notice(page, 'Restored a copy of "Alpha"')).toBeVisible()
+    await expect(notice(page, 'Restored a copy of “Alpha”')).toBeVisible()
 })
 
 test('restoring the chain’s latest session continues it with its file', async ({ page }) => {
@@ -416,7 +416,7 @@ test('restoring the chain’s latest session continues it with its file', async 
     await page.keyboard.press('Enter')
     await expect.poll(() => lifeOf(page)).toBe(990)
     await openedChain(page).toBe(alpha.chainId)
-    await expect(notice(page, 'Restored "coconut"')).toBeVisible()
+    await expect(notice(page, 'Restored “coconut”')).toBeVisible()
     await expect(page.getByText('coconut.nxsp').last()).toBeVisible()
 })
 

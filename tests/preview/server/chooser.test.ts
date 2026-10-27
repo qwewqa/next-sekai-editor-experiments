@@ -547,7 +547,10 @@ test('an address with no Sonolus server behind it says so', async () => {
     const chooser = createServerChooser('skin', deps('skin'))
     chooser.address.value = 'https://server.test/api/elsewhere'
     await chooser.connect()
-    assert.equal(serverErrorText(chooser.error.value!, en), 'This address is not a Sonolus server.')
+    assert.equal(
+        serverErrorText(chooser.error.value!, en),
+        'The server returned data that the editor could not read.',
+    )
 })
 
 test('cancelling while connecting leaves nothing behind', async () => {

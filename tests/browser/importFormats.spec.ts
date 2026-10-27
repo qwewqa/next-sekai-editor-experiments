@@ -329,7 +329,7 @@ test('level data with a value its format refuses names it, and is refused', asyn
     const withValue = await levelWithValue(page)
     for (const [name, value, message] of [
         // A value of a choice field this build doesn't know asks first.
-        ['connectorEase', 99, '"level-data" Uses Newer Features'],
+        ['connectorEase', 99, '“level-data” Uses Newer Features'],
         ['#BEAT', -1, 'Invalid level: invalid value for #BEAT'],
     ] as const) {
         await page.reload()
@@ -351,7 +351,7 @@ test('refusals read in the chosen language', async ({ page }) => {
         [
             'chart.sus',
             Buffer.from(sus.replace('ticks_per_beat 480', 'ticks_per_beat 1e999')),
-            'Partition non valide : ticks par temps manquants ou inattendus',
+            'Partition non valide : ticks par temps manquants ou invalides',
         ],
     ] as const) {
         await page.reload()
@@ -521,23 +521,23 @@ for (const [label, edit, message] of [
         'an infinite time scale',
         (chart: string) => `${chart}
 #TIL00: "0'480:1e999"`,
-        'Invalid chart: unexpected time scale change',
+        'Invalid chart: invalid time scale change',
     ],
     [
         'a malformed time scale segment',
         (chart: string) => `${chart}
 #TIL00: "abc"`,
-        'Invalid chart: unexpected time scale change',
+        'Invalid chart: invalid time scale change',
     ],
     [
         'an infinite offset',
         (chart: string) => chart.replace('#WAVEOFFSET 0', '#WAVEOFFSET 1e999'),
-        'Invalid chart: unexpected offset',
+        'Invalid chart: invalid offset',
     ],
     [
         'an infinite tick resolution',
         (chart: string) => chart.replace('ticks_per_beat 480', 'ticks_per_beat 1e999'),
-        'Invalid chart: missing or unexpected ticks per beat',
+        'Invalid chart: missing or invalid ticks per beat',
     ],
     // A beat no number holds, from a section shift past any measure.
     [

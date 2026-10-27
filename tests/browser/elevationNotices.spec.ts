@@ -257,7 +257,7 @@ for (const [kind, prepare, from, to, label] of [
                     ],
         )
         await page.keyboard.press('Control+z')
-        expect(await notice(page)).toBe(`Undid "${label}"`)
+        expect(await notice(page)).toBe(`Undid “${label}”`)
     })
 
 test('the Note tool names its moves and elevation changes as the chart does', async ({ page }) => {

@@ -275,7 +275,7 @@ test('the file replaced between the write and the read-back leaves the binding a
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await pressSave(page)
-    await expect(saveDialog(page, '"coconut.nxsp" Changed')).toBeVisible()
+    await expect(saveDialog(page, '“coconut.nxsp” Changed')).toBeVisible()
     expect(await readFile(page, 'coconut.nxsp')).toEqual(other)
 })
 

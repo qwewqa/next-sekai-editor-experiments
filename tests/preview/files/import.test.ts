@@ -442,7 +442,7 @@ test('a particle effect over 512 particles is refused', async () => {
         'particle',
         valid('particle', { resources: { data: gz(particleData({ effects: [over] })) } }),
         'particleCount',
-        'This file’s particle effect "Sekai Note Tap" has more than 512 particles.',
+        'This file’s particle effect “Sekai Note Tap” has more than 512 particles.',
     )
     // Exactly at the cap is fine.
     const pkg = await openSourcePackage(
@@ -487,7 +487,7 @@ test('particle shapes that dodge count × particles are refused', async () => {
         'particle',
         particleWith([{ count: 1e15, particles: [] }]),
         'particleCount',
-        'This file’s particle effect "Sekai Note Tap" has more than 512 particles.',
+        'This file’s particle effect “Sekai Note Tap” has more than 512 particles.',
     )
     // A tiny count over many particles: counts are whole numbers, and the particles are capped.
     await expectRefused(
@@ -519,7 +519,7 @@ test('particle shapes that dodge count × particles are refused', async () => {
         'particle',
         particleWith(Array.from({ length: 513 }, () => ({ count: 0, particles: [] }))),
         'effectGroups',
-        'This file’s particle effect "Sekai Note Tap" has more than 512 particle groups.',
+        'This file’s particle effect “Sekai Note Tap” has more than 512 particle groups.',
     )
     // Under the per-effect caps, the totals across effects still apply.
     await expectRefused(

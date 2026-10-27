@@ -415,7 +415,7 @@ test.describe('the label and the title', () => {
             expect(targets[3]!.top).toBe(targets[2]!.top)
             const dialogs = [
                 'Level Info',
-                '"coconut.nxsp" Changed',
+                '“coconut.nxsp” Changed',
                 'Manage Groups',
                 'Manage Stages',
             ]
@@ -807,7 +807,7 @@ test.describe('the chip', () => {
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'changedOnDisk')
         await expect(label(page)).toContainText('changed on disk')
         await chip(page).click()
-        const dialog = page.getByRole('dialog', { name: '"coconut.nxsp" Changed' })
+        const dialog = page.getByRole('dialog', { name: '“coconut.nxsp” Changed' })
         await expect(dialog).toContainText(
             '“coconut.nxsp” has changed since you opened or saved it here.',
         )
@@ -932,7 +932,7 @@ test.describe('the chip', () => {
             await expect(chipShown(page)).toHaveCount(0)
             await expect(chip(page)).toHaveAttribute('data-file-chip', 'newerOnDisk')
             await expect(chip(page)).toHaveAccessibleName(
-                /une version plus récente est sur le disque\./,
+                /Une version plus récente de "coconut-long-working-copy\.nxsp" est sur le disque\./,
             )
             const geometry = await statusGeometry(page)
             expect(geometry.bar.height).toBe(32)

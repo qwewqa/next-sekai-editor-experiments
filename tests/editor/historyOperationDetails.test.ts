@@ -428,12 +428,12 @@ test('titles use the quantity-free form when nothing changed', () => {
     assert.equal(byId('owner.moveMany.zero').description, 'Moved groups out of folders')
     assert.equal(
         byId('owner.moveMany.zero.into').description,
-        'Moved groups into folder "Folder One"',
+        'Moved groups into folder “Folder One”',
     )
     assert.equal(byId('owner.moveMany.zero.stages').description, 'Moved stages out of folders')
     assert.equal(
         byId('owner.moveMany.zero.stagesInto').description,
-        'Moved stages into folder "Folder S"',
+        'Moved stages into folder “Folder S”',
     )
     for (const spec of cases) {
         const { description } = check(spec, 'en').details
@@ -453,7 +453,7 @@ test('property steps show the before value, in the editor words', () => {
     )
     const group = byId('property.note.group.beforeName')
     // The new group has an empty name: a group, so its name reads quoted empty, not Not set.
-    assert.equal(change(group, 'groupId'), 'Old Group > ""')
+    assert.equal(change(group, 'groupId'), 'Old Group > “”')
     const objects = byId('brush.objects.varying')
     assert.deepEqual(items(objects, 'changed'), ['2 notes', '3 time scales'])
     const critical = byId('brush.note.1field')
@@ -492,7 +492,7 @@ test('owner records use Not set, one term, and 1-based positions', () => {
     )
     assert.equal(
         multi.description,
-        'Changed Generate Sim Lines, From Start, and Until End for stage "Left"',
+        'Changed Generate Sim Lines, From Start, and Until End for stage “Left”',
     )
     assert.equal(change(multi, 'isFromStart'), 'Disabled > Enabled')
     assert.equal(change(byId('owner.move.reorder.indexes'), 'order'), '3 > 1')
@@ -511,18 +511,18 @@ test('owner records use Not set, one term, and 1-based positions', () => {
         kind: 'value',
         key: 'folder',
         label: 'Folder',
-        value: { text: '""' },
+        value: { text: '“”' },
     })
     assert.deepEqual(items(byId('owner.ungroup.3'), 'released'), ['3 groups'])
     assert.deepEqual(byId('owner.ungroup.stage0').rows, [])
-    assert.equal(byId('owner.create.group.emptyName').description, 'Added group ""')
+    assert.equal(byId('owner.create.group.emptyName').description, 'Added group “”')
 })
 
 test('cascades and replacements are recorded in the dialog only', () => {
     const del = byId('owner.delete.cascade')
-    assert.equal(del.description, 'Deleted group "Alpha"')
+    assert.equal(del.description, 'Deleted group “Alpha”')
     assert.deepEqual(items(del, 'removed'), ['1 group', '800 notes', '12 time scales'])
-    assert.deepEqual(del.facts, ['Added group "Group 1"'])
+    assert.deepEqual(del.facts, ['Added group “Group 1”'])
     const folder = byId('owner.delete.cascade.stageFolder')
     assert.deepEqual(items(folder, 'removed'), [
         '2 stages',
@@ -532,7 +532,7 @@ test('cascades and replacements are recorded in the dialog only', () => {
     assert.deepEqual(byId('owner.delete.folderOnly').rows, [])
     assert.deepEqual(byId('owner.delete.counts.noCascade').rows, [])
     const copy = byId('owner.duplicate.cascade')
-    assert.equal(copy.description, 'Duplicated group "Alpha"')
+    assert.equal(copy.description, 'Duplicated group “Alpha”')
     assert.deepEqual(items(copy, 'added'), ['1 group', '120 notes', '1 time scale'])
     assert.deepEqual(byId('owner.duplicate.folderOnly').rows, [])
 })
@@ -673,11 +673,11 @@ test('undo and redo parents list their steps without the repeated prefix', () =>
 
 test('names and field labels are quoted the way each locale quotes them', () => {
     const title = (id: string, locale: string) => byId(id, locale).description
-    assert.match(title('owner.rename.group', 'en'), /"Alpha".*"Beta"/)
+    assert.match(title('owner.rename.group', 'en'), /“Alpha”.*“Beta”/)
     assert.match(title('owner.rename.group', 'fr'), /"Alpha".*"Beta"/)
     assert.match(title('owner.rename.group', 'ja'), /「Alpha」.*「Beta」/)
     assert.match(title('owner.rename.group', 'zhs'), /“Alpha”.*“Beta”/)
-    assert.match(title('owner.rename.group', 'zht'), /"Alpha".*"Beta"/)
+    assert.match(title('owner.rename.group', 'zht'), /「Alpha」.*「Beta」/)
     // A field label in a sentence is quoted in Japanese only, so a trailing を cannot double.
     assert.match(title('property.note.lane', 'ja'), /「レーン」/)
     assert.match(title('owner.set.group.speed', 'ja'), /「ノーツ速度を固定」を1\.5に/)

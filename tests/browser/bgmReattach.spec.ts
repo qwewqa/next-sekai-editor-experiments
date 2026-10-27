@@ -330,7 +330,7 @@ test.describe('with a stored BGM', () => {
 
         await chooseAudio(page, 'other.wav', wav(0.6, 9))
         await expect(
-            page.getByText('This is a different file from the original BGM, "pick.wav".'),
+            page.getByText('This is a different file from the original BGM, “pick.wav”.'),
         ).toBeVisible()
         const changed = await liveBgm(page)
         expect(changed).toMatchObject({

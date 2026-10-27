@@ -127,7 +127,7 @@ test('with storing paused, a takeover is refused: nothing is written, and the ow
     await submitSave(a)
     // The ordinary failed-save dialog, naming the file; the work stays in A.
     const dialog = a.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" could not be written.')
+    await expect(dialog).toContainText('“coconut.nxsp” could not be written.')
     await expect(dialog).not.toContainText('safe mode')
     expect(await readFile(a, 'coconut.nxsp')).toEqual([])
     expect((await sessionOf(a)).file).toBeUndefined()
@@ -172,7 +172,7 @@ test('a write-back that finds itself revoked opens the Save dialog with the reas
     await edit(b, 3)
     await pressSave(b)
     await expect(saveDialog(b)).toContainText(
-        '"coconut.nxsp" was replaced from another tab or window.',
+        '“coconut.nxsp” was replaced from another tab or window.',
     )
     await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
 })
@@ -239,12 +239,12 @@ test('Save as a Separate File… picking the chain’s own changed file puts tha
     await edit(page, 2)
     await pressSave(page)
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     await afterGuard(page)
     await queuePicks(page, ['coconut.nxsp'])
     await dialog.getByRole('button', { name: 'Save as a Separate File…' }).click()
     // The version on disk is back, and the dialog asks again.
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
 })
 
@@ -255,13 +255,13 @@ test('a version on disk that cannot be put back is offered as a download', async
     await edit(page, 2)
     await pressSave(page)
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     await failWrites(page, 'recovery')
     await afterGuard(page)
     await queuePicks(page, ['coconut.nxsp'])
     await dialog.getByRole('button', { name: 'Save as a Separate File…' }).click()
     const offer = page.getByRole('dialog').filter({ hasText: 'could not be restored' })
-    await expect(offer).toContainText('"coconut.nxsp" was emptied')
+    await expect(offer).toContainText('“coconut.nxsp” was emptied')
     await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()
 })
 
@@ -363,7 +363,7 @@ test('a Save that throws while reserved leaves the next Save able to run', async
     await pressSave(page)
     await submitSave(page, 'coconut')
     // The throw is shown as a failed Save, and the queue is free for the next one.
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await pressSave(page)
@@ -427,7 +427,7 @@ test('Export’s picker: the chain’s own file changed on disk is put back, and
     // The read before the picker has time to finish.
     await page.waitForTimeout(500)
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
 })
 
@@ -445,7 +445,7 @@ test('Export’s picker: the chain’s own file that could not be written again 
     await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
     await page.keyboard.press('Enter')
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" could not be written.')
+    await expect(dialog).toContainText('“coconut.nxsp” could not be written.')
     await expect(dialog).not.toContainText('is not level data')
 })
 
@@ -606,7 +606,7 @@ test('Export refuses a takeover while storing is paused', async ({ context }) =>
         exporter.getByRole('dialog').filter({ hasText: 'Export Level Data' }),
     ).toBeVisible()
     await exporter.keyboard.press('Enter')
-    await expect(exporter.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
+    await expect(exporter.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
     expect(await readFile(owner, 'coconut.nxsp')).toEqual([])
     expect((await chainOf(owner)).file).toMatchObject({ name: 'coconut.nxsp' })
     await owner.bringToFront()

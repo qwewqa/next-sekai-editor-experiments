@@ -232,7 +232,7 @@ test('all native IDs render current-language singleton descriptions and complete
     assert.equal(describeOperation(fixture[7], en), 'Pasted 3 objects')
     assert.equal(describeOperation(fixture[16], en), 'Set Lane to 0 on 2 notes')
     assert.equal(describeOperation(fixture[18], en), 'Changed BGM file')
-    assert.equal(describeOperation(fixture[22], en), 'Set Force Note Speed to 0 for group "A"')
+    assert.equal(describeOperation(fixture[22], en), 'Set Force Note Speed to 0 for group “A”')
 })
 
 const samples: Record<FieldId, FieldValue<FieldId>> = {
@@ -662,8 +662,8 @@ test('rename groups use exact first/last names and identical titles carry no ide
     })
     const a = recipe([rename(1, 'A', 'B'), rename(1, 'B', 'A')])
     const b = recipe([rename(2, 'A', 'B'), rename(2, 'B', 'A')])
-    assert.equal(renderOperationRecipe(a, en), 'Renamed group "A"')
-    assert.equal(renderOperationRecipe(b, en), 'Renamed group "A"')
+    assert.equal(renderOperationRecipe(a, en), 'Renamed group “A”')
+    assert.equal(renderOperationRecipe(b, en), 'Renamed group “A”')
     assert(!('qualifiers' in a))
     assert(Object.isFrozen(a.members) && Object.isFrozen(a.group?.fields ?? a.group))
     const long = 'x'.repeat(257)

@@ -123,7 +123,7 @@ test('the file rewritten with the same size and time gives the conflict dialog',
     await edit(page, 2)
     await pressSave(page)
     const dialog = choice(page)
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     await expect(dialog.getByRole('button', { name: 'Save as a Separate File…' })).toBeFocused()
     // Nothing was written over it.
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
@@ -139,7 +139,7 @@ test('an unchanged session with a changed file still gets the dialog on p', asyn
     ]
     await writeFile(page, 'coconut.nxsp', other)
     await pressSave(page)
-    await expect(choice(page)).toContainText('"coconut.nxsp" Changed')
+    await expect(choice(page)).toContainText('“coconut.nxsp” Changed')
 })
 
 test('a touched file (the same bytes, a new time) is appended to with no dialog', async ({
@@ -336,7 +336,7 @@ test('a write that never landed leaves no marker, and a load drops markers of ch
         localStorage.removeItem('nse.test.savePause')
         window.nseSaveTest?.release()
     })
-    await expect(choice(page)).toContainText('"coconut.nxsp" Changed')
+    await expect(choice(page)).toContainText('“coconut.nxsp” Changed')
     expect(await page.evaluate((key) => localStorage.getItem(key), marker)).toBeNull()
 
     // A marker whose chain storage no longer holds goes at a later load.

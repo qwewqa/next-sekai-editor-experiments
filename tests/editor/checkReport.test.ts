@@ -30,7 +30,7 @@ const text = (found: Findings) => reportLines(found, strings).map((line) => line
 test('nothing found: "No damage found." first, then the scope', () => {
     assert.deepEqual(text({ file: { name: 'coconut.nxsp' }, repaired: 0, damaged: 0, media: [] }), [
         'No damage found.',
-        'Checked "coconut.nxsp" and the history stored in this browser.',
+        'Checked “coconut.nxsp” and the history stored in this browser.',
     ])
 })
 
@@ -61,7 +61,7 @@ test('the lines keep their order, with plural counts and each media kind once', 
         'The BGM stored in this browser was damaged.',
         'The cover stored in this browser was damaged.',
         'The preview audio stored in this browser was damaged.',
-        'Checked "coconut.nxsp" and the history stored in this browser.',
+        'Checked “coconut.nxsp” and the history stored in this browser.',
     ])
 })
 
@@ -88,6 +88,6 @@ test('a chain this build cannot judge says so, never that storage is unavailable
     for (const reason of ['unreadableHead', 'order'] as const)
         assert.equal(
             refusalLine(reason, 'coconut.nxsp', strings)(),
-            '"coconut.nxsp" could not be read.',
+            '“coconut.nxsp” could not be read.',
         )
 })
