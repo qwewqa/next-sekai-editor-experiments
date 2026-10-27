@@ -117,7 +117,14 @@ test('a shard writes flaky-list/<label>.json from flaky/raw.json, and succeeds w
         /1 flaky and 1 failed of 3 tests, from 1 reports/,
     )
     assert.match(run(dir, 'collect', 'nothing-here').stdout, /from 0 reports/)
-    assert.notEqual(run(dir, 'shard').status, 0)
+    const usage = run(dir, 'shard')
+    assert.equal(usage.status, 0)
+    assert.match(usage.stdout, /^flaky-report: Usage: /)
+    writeFileSync(join(dir, 'flaky', 'raw.json'), '{ not json')
+    const broken = run(dir, 'shard', 'broken')
+    assert.equal(broken.status, 0)
+    assert.equal(broken.stdout.trim().split('\n').length, 1)
+    assert.match(broken.stdout, /^flaky-report: /)
 })
 
 test('a file suite titled with a Windows path adds nothing to a test title', () => {

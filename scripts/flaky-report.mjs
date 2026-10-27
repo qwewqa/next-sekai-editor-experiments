@@ -14,7 +14,7 @@ import { pathToFileURL } from 'node:url'
 //   node scripts/flaky-report.mjs shard <label> [--excluded]   one job: write flaky-list/<label>.json and a summary
 //   node scripts/flaky-report.mjs collect <dir>                the jobs' lists in <dir>: one summary
 // The summary goes to $GITHUB_STEP_SUMMARY, or to the output when that is not set. The script never fails
-// a job; the Playwright step has already done that when a test failed.
+// a job: an error prints one line and exits 0.
 
 const rawFile = 'flaky/raw.json'
 const listDir = 'flaky-list'
@@ -218,5 +218,11 @@ function main([command, ...args]) {
     }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-    main(process.argv.slice(2))
+// The report is a courtesy: whatever goes wrong here, the job's own result stays what the tests made it.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+    try {
+        main(process.argv.slice(2))
+    } catch (error) {
+        console.log(`flaky-report: ${error instanceof Error ? error.message : error}`)
+    }
+}

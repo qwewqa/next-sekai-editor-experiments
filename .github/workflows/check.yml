@@ -90,9 +90,11 @@ jobs:
             # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
             - name: List flaky tests
               if: ${{ !cancelled() }}
+              continue-on-error: true
               run: node scripts/flaky-report.mjs shard "compatibility"
             - name: Upload the flaky test list
               if: ${{ !cancelled() }}
+              continue-on-error: true
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: flaky-compatibility
@@ -134,9 +136,11 @@ jobs:
             # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
             - name: List flaky tests
               if: ${{ !cancelled() }}
+              continue-on-error: true
               run: node scripts/flaky-report.mjs shard "formats"
             - name: Upload the flaky test list
               if: ${{ !cancelled() }}
+              continue-on-error: true
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: flaky-formats
@@ -189,9 +193,11 @@ jobs:
             # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
             - name: List flaky tests
               if: ${{ !cancelled() }}
+              continue-on-error: true
               run: node scripts/flaky-report.mjs shard "${{ matrix.engine }} storage ${{ matrix.shard }}"
             - name: Upload the flaky test list
               if: ${{ !cancelled() }}
+              continue-on-error: true
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: flaky-compatibility-storage-${{ strategy.job-index }}

@@ -81,9 +81,11 @@ jobs:
             # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
             - name: List flaky tests
               if: ${{ !cancelled() }}
+              continue-on-error: true
               run: node scripts/flaky-report.mjs shard "${{ matrix.engine }} storage ${{ matrix.shard }}"
             - name: Upload the flaky test list
               if: ${{ !cancelled() }}
+              continue-on-error: true
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: flaky-storage-${{ strategy.job-index }}
@@ -152,9 +154,11 @@ jobs:
             # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
             - name: List flaky tests
               if: ${{ !cancelled() }}
+              continue-on-error: true
               run: node scripts/flaky-report.mjs shard "chromium ${{ matrix.shard }}"
             - name: Upload the flaky test list
               if: ${{ !cancelled() }}
+              continue-on-error: true
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: flaky-chromium-${{ strategy.job-index }}
@@ -200,9 +204,11 @@ jobs:
             # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
             - name: List flaky tests
               if: ${{ !cancelled() }}
+              continue-on-error: true
               run: node scripts/flaky-report.mjs shard "excluded" --excluded
             - name: Upload the flaky test list
               if: ${{ !cancelled() }}
+              continue-on-error: true
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: flaky-excluded

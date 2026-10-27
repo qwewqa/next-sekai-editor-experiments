@@ -245,8 +245,23 @@ test('every Playwright job lists its flaky tests, and a last job collects them i
             const body = section(text, name)
             assert.match(body, /run: node scripts\/flaky-report\.mjs shard "[^"]+"/, name)
             // After a failed test too, and apart from the failure details artifact.
-            assert.match(body, /name: List flaky tests\n\s+if: \$\{\{ !cancelled\(\) \}\}/, name)
+            // Neither step can fail the job, which may be a release gate; the test step stays blocking.
+            assert.match(
+                body,
+                /name: List flaky tests\n\s+if: \$\{\{ !cancelled\(\) \}\}\n\s+continue-on-error: true\n/,
+                name,
+            )
+            assert.match(
+                body,
+                /name: Upload the flaky test list\n\s+if: \$\{\{ !cancelled\(\) \}\}\n\s+continue-on-error: true\n\s+uses: actions\/upload-artifact@/,
+                name,
+            )
             assert.match(body, /name: flaky-[\w-]+(?:-\$\{\{ strategy.job-index \}\})?\n/, name)
+            assert.match(
+                body,
+                /- run: (?:xvfb-run -a )?npx playwright test [^\n]*\n(?! +continue-on-error)/,
+                name,
+            )
             assert.match(body, /path: flaky-list\/\*\.json/, name)
         }
         const flaky = section(text, 'flaky')
