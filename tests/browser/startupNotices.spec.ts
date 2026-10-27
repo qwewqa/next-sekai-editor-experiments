@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import { confirmNew, confirmWhenReady } from './confirmWhenReady'
+import en from '../../src/i18n/en/index.json' with { type: 'json' }
+import { confirmNew, confirmWhenReady, newDialog } from './confirmWhenReady'
 import { closePage } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
@@ -104,7 +105,16 @@ const run = (page: Page, id: string) =>
         await runCommand(commands[id as keyof typeof commands], 'button')
     }, id)
 
-const unsaved = (page: Page) => page.getByRole('dialog', { name: 'Unsaved Changes' })
+const unsaved = newDialog
+
+/** A time as the interface shows a chain's start, in the test browser's locale. */
+const shownAt = (time: number) =>
+    new Date(time).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    })
 
 /** New on a chart with unsaved changes: it asks first, and New goes on. */
 const runNew = async (page: Page) => {
@@ -839,13 +849,7 @@ test.describe('Reopen', () => {
         const reopen = next
             .locator('.notification-pill')
             .getByRole('button', { name: /^Reopen Session from / })
-        const at = (time: number) =>
-            new Date(time).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-            })
+        const at = shownAt
         const plain = (text: string) => text.replace(/\s/g, ' ')
         await expect
             .poll(async () => plain((await reopen.textContent()) ?? ''))
@@ -1020,7 +1024,7 @@ test.describe('New with unsaved changes', () => {
         await expect(unsaved(page)).toBeVisible()
         // New (danger), then Cancel, the default, on the right: a stray Enter replaces nothing.
         await expect(unsaved(page).locator('[data-choice-buttons] button')).toHaveText([
-            'New',
+            en.prompt.newChart,
             'Cancel',
         ])
         await expect(unsaved(page).getByRole('button', { name: 'Cancel' })).toBeFocused()
@@ -1033,6 +1037,48 @@ test.describe('New with unsaved changes', () => {
         await expect(notice).toContainText('New level')
         await notice.getByRole('button', { name: /^Reopen / }).click()
         await expect.poll(() => lifeOf(page)).toBe(990)
+    })
+
+    test('the question names a session that has a name', async ({ page }) => {
+        await visit(page)
+        await edit(page, 990)
+        await page.evaluate(async () => {
+            const { session } =
+                (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+            session.value = { ...session.value, name: 'Coconut (Master)' }
+        })
+        await settled(page)
+        await page.keyboard.press('n')
+        await expect(unsaved(page)).toBeVisible()
+        await expect(unsaved(page)).toContainText(
+            en.prompt.newMessage.replace('{0}', 'Coconut (Master)'),
+        )
+        await confirmWhenReady(unsaved(page).getByRole('button', { name: 'Cancel' }), unsaved(page))
+        expect(await lifeOf(page)).toBe(990)
+    })
+
+    test('the question dates an untitled session by the start of its chain', async ({
+        page,
+        context,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        const began = await page.evaluate(() => window.nseFlushTest!.flusher.session!.startedAt)
+        await closePage(page, { runBeforeUnload: false })
+        const next = await context.newPage()
+        // The next visit starts ten minutes later by its clock.
+        await next.clock.setFixedTime(began + 10 * 60_000)
+        await visit(next)
+        expect(await lifeOf(next)).toBe(990)
+        await edit(next, 980)
+        await next.keyboard.press('n')
+        await expect(unsaved(next)).toBeVisible()
+        await expect(unsaved(next)).toContainText(
+            en.prompt.newMessageUntitled.replace('{0}', shownAt(began)),
+        )
+        await confirmWhenReady(unsaved(next).getByRole('button', { name: 'Cancel' }), unsaved(next))
+        expect(await lifeOf(next)).toBe(980)
     })
 
     test('n on a fresh level, and right after New, does not ask', async ({ page }) => {

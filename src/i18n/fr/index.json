@@ -2208,7 +2208,10 @@
   },
   "prompt": {
     "title": "Modifications non stockées",
-    "unsaved": "Modifications non sauvegardées",
+    "newTitle": "Créer une nouvelle partition ?",
+    "newMessage": "« {0} » contient des modifications non sauvegardées dans un fichier de projet. Vous pouvez rouvrir cette session depuis « Récentes ».",
+    "newMessageUntitled": "La session du {0} contient des modifications non sauvegardées dans un fichier de projet. Vous pouvez rouvrir cette session depuis « Récentes ».",
+    "newChart": "Nouvelle partition",
     "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Elles seront perdues si vous quittez.",
     "save": "Sauvegarder",
     "leaveAnyway": "Quitter quand même"

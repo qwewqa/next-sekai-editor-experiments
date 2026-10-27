@@ -25,8 +25,11 @@ export const confirmKeyWhenReady = (target: Locator | Page, key: string, dialog:
         dialog,
     )
 
-/** Answers New's "Unsaved Changes" question with New. */
+/** New's question when the chart has edits no file holds. */
+export const newDialog = (page: Page) => page.getByRole('dialog', { name: 'Start a New Chart?' })
+
+/** Answers New's question with New Chart. */
 export const confirmNew = (page: Page) => {
-    const dialog = page.getByRole('dialog', { name: 'Unsaved Changes' })
-    return confirmWhenReady(dialog.getByRole('button', { name: 'New' }), dialog)
+    const dialog = newDialog(page)
+    return confirmWhenReady(dialog.getByRole('button', { name: 'New Chart' }), dialog)
 }
