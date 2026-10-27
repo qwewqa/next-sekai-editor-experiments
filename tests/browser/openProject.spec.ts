@@ -1159,6 +1159,39 @@ declare global {
     }
 }
 
+test('a project file over 256 MB asks first: Cancel opens nothing, Open Anyway reads it', async ({
+    page,
+}) => {
+    test.skip(memoryFiles(page), 'the handle fixture holds small files only')
+    await start(page)
+    await page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory()
+        const handle = await root.getFileHandle('huge.nxsp', { create: true })
+        const writable = await handle.createWritable()
+        await writable.truncate(257 * 1024 * 1024)
+        await writable.write({ type: 'write', position: 0, data: new Uint8Array([80, 75, 3, 4]) })
+        await writable.close()
+    })
+    const before = await sessionOf(page)
+    await openFile(page, 'huge.nxsp')
+    const dialog = page.getByRole('dialog').filter({ hasText: 'huge.nxsp' })
+    await expect(dialog).toContainText(said(en.open.large.title, 'huge.nxsp'))
+    await expect(dialog).toContainText(said(en.open.large.body, '269 MB'))
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
+    await expect(dialog).toHaveCount(0)
+    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
+    expect((await rows(page, ['sessions'])).sessions).toHaveLength(0)
+
+    await openFile(page, 'huge.nxsp')
+    await expect(dialog).toHaveCount(1)
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Open Anyway' }), dialog)
+    // The reader refuses the file: it is the project reader's own answer, past the confirm.
+    await expect(
+        page.getByRole('dialog').filter({ hasText: /damaged|not a project file/ }),
+    ).toBeVisible()
+})
+
 /** Records the sizes of the bytes the page decodes as audio. */
 const spyOnDecoding = (page: Page) =>
     page.addInitScript(() => {

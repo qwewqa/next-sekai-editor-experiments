@@ -43,6 +43,7 @@ import type { State } from '../../../state'
 import { getFilename } from '../../../utils/file'
 import { inlineName } from '../../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
+import { formatSize } from '../../../utils/size'
 import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
 import { confirmFile, fileChanged } from '../../file/state'
@@ -71,6 +72,9 @@ import { endOpen } from './report'
 // is partial or the file is open in another tab, with the open's notice and its background import.
 
 const title = () => i18n.value.commands.open.dialogTitle
+
+/** A project file over this size asks before it is read: the open can take long and fills storage. */
+const LARGE_PROJECT_BYTES = 256 * 1024 * 1024
 
 /** Refused before anything opens, with the message the loading dialog shows. */
 class OpenRefused extends Error {}
@@ -323,6 +327,20 @@ const openWithNotices = async (
     const project = await import('../../../local/open/project')
     const { previousSession } = await import('../../../local/startup/events')
     if (!request.isCurrent()) return
+
+    // A very large file asks before the full read; Cancel opens nothing.
+    if (file.size > LARGE_PROJECT_BYTES) {
+        const open = await showChoice({
+            title: interpolate(() => i18n.value.open.large.title, inlineName(file.name)),
+            message: interpolate(() => i18n.value.open.large.body, formatSize(file.size)),
+            choices: [{ value: true, label: () => i18n.value.open.large.open }],
+            cancelIsDefault: true,
+        })
+        if (!open || !request.isCurrent()) {
+            endOpen('cancelled')
+            return
+        }
+    }
 
     // Read and checked in the worker, the level parsed here.
     let read: NxspReply | undefined

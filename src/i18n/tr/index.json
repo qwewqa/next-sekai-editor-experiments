@@ -255,6 +255,7 @@
       "importedUsc": "USC çizelgesi içe aktarıldı",
       "importedSus": "SUS çizelgesi içe aktarıldı",
       "unsupported": "Desteklenmeyen dosya. Proje dosyası, seviye verisi, Chart Cyanvas seviyesi ya da USC veya SUS çizelgesi açın.",
+      "tooLarge": "Bu dosya açılamayacak kadar büyük.",
       "invalidLevel": "Geçersiz seviye: {0}",
       "invalidChart": "Geçersiz çizelge: {0}",
       "revision": {
@@ -2296,6 +2297,11 @@
       "title": "\"{0}\" Daha Yeni Özellikler Kullanıyor",
       "body": "Bu seviye, editörün bu sürümünün desteklemediği değerler kullanıyor. Ayrı bir kopya açıldığında bu değerler varsayılanlarla değiştirilir.",
       "openCopy": "Kopya Aç"
+    },
+    "large": {
+      "title": "\"{0}\" Çok Büyük",
+      "body": "Bu dosyanın boyutu {0}. Açılması uzun sürebilir ve bu tarayıcının depolama alanında çok yer kaplayabilir.",
+      "open": "Yine de Aç"
     },
     "unsavedChanges": "{0} açıldı. Bu dosyada kaydedilmemiş değişiklikleriniz var ({1}).",
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",

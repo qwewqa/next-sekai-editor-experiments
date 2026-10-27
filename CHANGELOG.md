@@ -8,6 +8,7 @@
 - **When you open the editor, it continues where you left off,** as auto save did. The first time after this update, it continues from your old auto save. Work is stored in this browser as sessions. Save to keep your work.
 - If a session did not finish opening last time, the editor asks before it opens it again: **Start Blank** or **Try Again**. The session stays in Recent Sessions.
 - Audio can be up to 90 minutes long.
+- Opening a project file over 256 MB asks first. Level files over 64 MB are not opened.
 - **History (Shift+H)** has two tabs. Timeline lists each change; you can view the chart at any step and **Restore** it. **Find Edits Here**, in the chart’s menu, shows only the Timeline steps that changed the selected beats, or the beats in view. Recent Sessions lists earlier sessions; select one to view or restore it, or use its menu to Save… or Delete. Delete can be undone. Recent Sessions has a **Delete Sessions…** button (a trash can with a clock) to delete many sessions at once.
 - Undo goes back up to 1,000 steps, including after a reload. Earlier Timeline steps are in History.
 - When browser storage runs low, the editor deletes audio and covers used only by earlier Timeline steps. When it is full, new changes are not stored until you free space, for example with **Settings › Local Data › Delete Sessions…**

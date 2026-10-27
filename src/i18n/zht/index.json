@@ -255,6 +255,7 @@
       "importedUsc": "已匯入 USC 譜面",
       "importedSus": "已匯入 SUS 譜面",
       "unsupported": "不支援的檔案。請開啟專案檔案、關卡資料、Chart Cyanvas 關卡，或 USC、SUS 譜面。",
+      "tooLarge": "此檔案過大，無法開啟。",
       "invalidLevel": "無效的關卡：{0}",
       "invalidChart": "無效的譜面：{0}",
       "revision": {
@@ -2296,6 +2297,11 @@
       "title": "\"{0}\" 使用了較新的功能",
       "body": "此關卡使用了此版本編輯器不支援的值。開啟獨立的副本時，這些值會改為預設值。",
       "openCopy": "開啟副本"
+    },
+    "large": {
+      "title": "「{0}」的檔案大小非常大",
+      "body": "此檔案的大小為 {0}。開啟它可能需要很長時間，並占用此瀏覽器的大量儲存空間。",
+      "open": "仍然開啟"
     },
     "unsavedChanges": "已開啟 {0}。您在 {1} 對它有未儲存的變更。",
     "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在「最近工作階段」中。",

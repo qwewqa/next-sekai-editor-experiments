@@ -255,6 +255,7 @@
       "importedUsc": "已导入 USC 谱面",
       "importedSus": "已导入 SUS 谱面",
       "unsupported": "不支持的文件。请打开项目文件、关卡数据、Chart Cyanvas 关卡，或 USC、SUS 谱面。",
+      "tooLarge": "此文件过大，无法打开。",
       "invalidLevel": "无效的关卡：{0}",
       "invalidChart": "无效的谱面：{0}",
       "revision": {
@@ -2296,6 +2297,11 @@
       "title": "“{0}”使用了更新的功能",
       "body": "此关卡使用了此版本编辑器不支持的值。打开单独的副本时，这些值会替换为默认值。",
       "openCopy": "打开副本"
+    },
+    "large": {
+      "title": "“{0}”的文件大小非常大",
+      "body": "此文件的大小为 {0}。打开它可能需要很长时间，并占用此浏览器的大量存储空间。",
+      "open": "仍然打开"
     },
     "unsavedChanges": "已打开 {0}。您在 {1} 对它有未保存的更改。",
     "unsavedEarlier": "对 {0} 早期版本的未保存更改（{1}）在“最近会话”中。",

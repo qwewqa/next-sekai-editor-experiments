@@ -255,6 +255,7 @@
       "importedUsc": "Partition USC importée",
       "importedSus": "Partition SUS importée",
       "unsupported": "Fichier non pris en charge. Ouvrez un fichier de projet, des données de niveau, un niveau Chart Cyanvas, ou une partition USC ou SUS.",
+      "tooLarge": "Ce fichier est trop volumineux pour être ouvert.",
       "invalidLevel": "Niveau non valide : {0}",
       "invalidChart": "Partition non valide : {0}",
       "revision": {
@@ -2296,6 +2297,11 @@
       "title": "\"{0}\" utilise des fonctionnalités plus récentes",
       "body": "Ce niveau utilise des valeurs que cette version de l’éditeur ne prend pas en charge. L’ouverture d’une copie séparée remplace ces valeurs par les valeurs par défaut.",
       "openCopy": "Ouvrir une copie"
+    },
+    "large": {
+      "title": "\"{0}\" est très volumineux",
+      "body": "Ce fichier fait {0}. Son ouverture peut prendre beaucoup de temps et utiliser beaucoup d’espace de stockage dans ce navigateur.",
+      "open": "Ouvrir quand même"
     },
     "unsavedChanges": "{0} ouvert. Ce fichier a des modifications non sauvegardées ({1}).",
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans les sessions récentes.",

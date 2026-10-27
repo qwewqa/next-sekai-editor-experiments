@@ -255,6 +255,7 @@
             "importedUsc": "Imported USC chart",
             "importedSus": "Imported SUS chart",
             "unsupported": "Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.",
+            "tooLarge": "This file is too large to open.",
             "invalidLevel": "Invalid level: {0}",
             "invalidChart": "Invalid chart: {0}",
             "revision": {
@@ -2296,6 +2297,11 @@
             "title": "\"{0}\" Uses Newer Features",
             "body": "This level uses values that this version of the editor does not support. Opening a separate copy replaces those values with defaults.",
             "openCopy": "Open a Copy"
+        },
+        "large": {
+            "title": "“{0}” Is Very Large",
+            "body": "This file is {0}. Opening it may take a long time and use a lot of this browser’s storage.",
+            "open": "Open Anyway"
         },
         "unsavedChanges": "Opened {0}. You have unsaved changes to it from {1}.",
         "unsavedEarlier": "You have unsaved changes to an earlier version of {0} ({1}). They are in Recent Sessions.",
