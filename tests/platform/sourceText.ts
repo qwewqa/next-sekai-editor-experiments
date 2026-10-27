@@ -26,7 +26,7 @@ const scriptWithout = (text: string, strings: boolean) => {
     }
     visit(file)
     literals.sort((a, b) => a.from - b.from)
-    const chars = [...text]
+    const chars = text.split('')
     if (strings) for (const { inner } of literals) blank(chars, inner[0], inner[1])
     let next = 0
     for (let i = 0; i < text.length;) {

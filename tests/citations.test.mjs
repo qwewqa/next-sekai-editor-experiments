@@ -28,7 +28,7 @@ const DOC = new RegExp(
 const SECTION = String.raw`(?:§ ?|\b[Ss]ections? |\b[Ii]nvariants? |\b[Rr]ules? )\d+(?:\.\d+)*[a-z]?(?:(?:,| and| or) \d+(?:\.\d+)*)*`
 // A section or rule number right after, or right before, a named repository document.
 const DOC_REFERENCE = new RegExp(
-    `${DOC.source}[ ,:(]{0,3}${SECTION}|${SECTION} (?:of|in) ${DOC.source}`,
+    `${DOC.source}[ ,:()\`\\]]{0,4}${SECTION}|${SECTION} (?:of|in) ${DOC.source}`,
     'gi',
 )
 
@@ -47,9 +47,8 @@ const RULES = [
     },
     {
         name: 'a decision or entry id',
-        // Not a quoted label in test data, or a CIE illuminant (D50, D65) in a color comment.
-        pattern: /(?<!['"`])\b(?:D(?!65\b)|U)\d{1,3}\b|\bX-\d+\b|\bI-\d+\b/,
-        applies: (path, line) => !/white ?point|illuminant|\bCIE\b/i.test(line),
+        // Not a quoted label in test data, or the CIE illuminants D50 and D65.
+        pattern: /(?<!['"`])\b(?:D(?!(?:50|65)\b)|U)\d{1,3}\b|\bX-\d+\b|\bI-\d+\b/,
     },
     {
         name: 'a review finding id',
@@ -92,12 +91,21 @@ const SCANNED =
 
 /** The text with every character that fails `kept` replaced by a space, line breaks aside. */
 const keepOnly = (text, kept) =>
-    [...text].map((char, i) => (char === '\n' || char === '\r' || kept(i) ? char : ' ')).join('')
+    text
+        .split('')
+        .map((char, i) => (char === '\n' || char === '\r' || kept(i) ? char : ' '))
+        .join('')
 
 /** The comments of one file, in place; a doc is all comment. */
 export const commentsOf = (path, text) => {
     if (path.endsWith('.md')) return text
-    if (/\.(?:ts|mts|mjs|cjs|js|vue|html)$/.test(path)) {
+    // Accepted residuals: a `#` inside a quoted shell or Python string reads as a comment, and the
+    // attribute text of a Vue template is not scanned apart from its HTML comments.
+    if (path.endsWith('.html')) {
+        const spans = [...text.matchAll(/<!--[\s\S]*?-->/g)]
+        return keepOnly(text, (i) => spans.some((s) => i >= s.index && i < s.index + s[0].length))
+    }
+    if (/\.(?:ts|mts|mjs|cjs|js|vue)$/.test(path)) {
         // A comment is what the source loses when its comments are blanked.
         const without = sourceWithout(path, text, false)
         return keepOnly(text, (i) => without[i] !== text[i])
@@ -174,6 +182,33 @@ const probes = [
         '// See writing.md and section 1.6.11.',
         ['a three-level section'],
     ],
+    ['a doc in backticks and a section', 'src/c.ts', '// See `docs/analytics.md` §1 for it.', []],
+    [
+        'a doc as a Markdown link and an invariant',
+        'docs/c.md',
+        'See [History format](history-format.md), invariant 1.',
+        [],
+    ],
+    ['an illuminant name', 'src/c.ts', '// The D50 and D65 white points.', []],
+    [
+        'a decision id beside a white point',
+        'src/c.ts',
+        '// White point behavior follows D12.',
+        ['a decision or entry id'],
+    ],
+    [
+        'a citation after an emoji',
+        'src/c.ts',
+        '// 😀😀\n// See work/STATE.md.',
+        ['a path outside the repository'],
+    ],
+    [
+        'a citation in an HTML comment',
+        'privacy/index.html',
+        '<!-- See work/STATE.md. -->',
+        ['a path outside the repository'],
+    ],
+    ['a path in HTML text', 'privacy/index.html', '<p>See work/STATE.md.</p>', []],
     ['a decision id', 'src/c.ts', '// Kept as decided (D12).', ['a decision or entry id']],
     ['a workspace path', 'src/c.ts', '// See work/STATE.md.', ['a path outside the repository']],
     ['a workspace path in a string', 'src/c.ts', "const path = 'work/STATE.md'", []],

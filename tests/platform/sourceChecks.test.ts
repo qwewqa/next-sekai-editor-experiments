@@ -43,6 +43,8 @@ test('comments and the inside of strings do not read as calls', () => {
     const cases: [string, string, boolean][] = [
         ['a.ts', 'window.open(url)', true],
         ['a.ts', 'open("x")', true],
+        ['a.ts', '// 😀😀\nwindow.open(url)', true],
+        ['a.ts', 'const a = "😀"; window.open(url)', true],
         ['a.ts', '// A peek is open (`readOnly`).\nopen("x")', true],
         ['a.ts', '// A peek is open (`readOnly`), not window.open(url).', false],
         ['a.ts', '/* open("x") */ const a = 1', false],

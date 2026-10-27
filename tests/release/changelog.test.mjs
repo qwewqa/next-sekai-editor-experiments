@@ -36,6 +36,11 @@ test('a code span may hold an apostrophe or a contraction, and the prose around 
     )
     assert.notEqual(span, valid)
     assert.deepEqual(checkChangelog(span), [])
+    const double = valid.replace(
+        '- Something else.',
+        "- Fixed importing ``O'Connor`` and ``a`b'c``.",
+    )
+    assert.deepEqual(checkChangelog(double), [])
     const prose = span.replace('Fixed importing', "Fixed importing, as it isn't, ")
     assert.ok(checkChangelog(prose).some((problem) => problem.includes('contractions')))
     const mixed = span.replace('author named', "author's name")
