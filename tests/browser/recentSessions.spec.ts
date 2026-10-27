@@ -13,7 +13,7 @@ import {
     peekRow,
     placeTap,
 } from './historyJourney'
-import { submitSave } from './saveFlows'
+import { projectOf, queuePicks, submitSave } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -802,6 +802,51 @@ test("Recent Sessions' Save… says it saved to the file, not the current versio
     await expect(notice(page).filter({ hasText: 'Saved to alpha.nxsp' })).toBeVisible()
     await expect(notice(page).filter({ hasText: 'Saved the current version' })).toHaveCount(0)
 })
+
+for (const [code, line, button, label] of [
+    ['denied', 'did not allow writing', messages.save.tryAgain, 'Try Again'],
+    ['no-space', 'not enough space', messages.commands.saveAs.title, 'Save As'],
+] as const)
+    test(`Recent Sessions' Save: ${label} after a failed write (${code}) saves that session, not the open one`, async ({
+        page,
+    }) => {
+        errorsFail(page)
+        await load(page, { platform: { fileSystemAccess: 'opfs' } })
+        await closedChain(page, { title: 'Alpha', life: 990 })
+        await edit(page, { title: 'Beta', life: 980 })
+        // The first write to failed.nxsp fails.
+        await page.evaluate(async (code) => {
+            const module =
+                (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
+            const own = module.platform
+            let failed = false
+            module.setPlatformForTests({
+                ...own,
+                saveFile: (request) => {
+                    const target = request.target
+                    if (failed || target?.kind !== 'handle' || target.handle.name !== 'failed.nxsp')
+                        return own.saveFile(request)
+                    failed = true
+                    return Promise.reject(new module.FileError(code, 'The write failed'))
+                },
+            })
+        }, code)
+        await queuePicks(page, ['failed.nxsp', 'alpha.nxsp'])
+        await openSessions(page)
+        await rowFor(page, 'Alpha').locator('[data-sessions-more]').click()
+        await page.getByRole('menuitem', { name: sessions.saveToFile }).click()
+        await submitSave(page, 'failed')
+        const failure = page.getByRole('dialog').filter({ hasText: line })
+        await expect(failure).toBeVisible()
+        // A choice ignores a press in its first 300 ms.
+        await page.waitForTimeout(350)
+        await failure.getByRole('button', { name: button }).click()
+        await submitSave(page, 'alpha')
+        await expect(notice(page).filter({ hasText: 'Saved to alpha.nxsp' })).toBeVisible()
+        // The file holds the session chosen in Recent Sessions.
+        const project = await projectOf(page, 'alpha.nxsp')
+        expect((project.metadata as { title?: string } | undefined)?.title).toBe('Alpha')
+    })
 
 test("Recent Sessions' Save… of a session that is gone does not point to Export Level Data", async ({
     page,

@@ -334,7 +334,9 @@ export const withSaveAttempt = async <T>(
         }
         // Shown as a failure, which records it; logged as a Save's own throw always was.
         console.error('A Save failed', error)
-        return { kind: 'failed', error: fileError(error), name: spec.name }
+        const failure = fileError(error)
+        // A picked file's failure names that file, not the name typed for it.
+        return { kind: 'failed', error: failure, name: failure.fileName ?? spec.name }
     } finally {
         closeDialog()
         // Whatever the body left held: kept if a write of it started, else let go.

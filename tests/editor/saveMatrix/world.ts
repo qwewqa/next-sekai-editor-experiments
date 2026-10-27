@@ -562,6 +562,7 @@ const createWorld = async (setup: Setup = {}) => {
         notPutBack: [] as ('download' | undefined)[],
         notFound: [] as ('saveAs' | undefined)[],
         denied: [] as ('saveAs' | 'tryAgain' | undefined)[],
+        readOnly: [] as ('saveAs' | undefined)[],
         failed: [] as ('saveAs' | undefined)[],
     }
     const shown = <T>(kind: string, args: unknown[], queue: T[], fallback: T) => {
@@ -652,7 +653,7 @@ const createWorld = async (setup: Setup = {}) => {
         },
         notFound: (name) => shown('notFound', [name], answers.notFound, undefined),
         denied: (name) => shown('denied', [name], answers.denied, undefined),
-        readOnly: (name) => shown('readOnly', [name], [], undefined),
+        readOnly: (name) => shown('readOnly', [name], answers.readOnly, undefined),
         failed: (name) => shown('failed', [name], answers.failed, undefined),
         refused: (name, reason) => shown('refused', [name, reason], answers.refused, undefined),
         notPutBack: (name, emptied) =>

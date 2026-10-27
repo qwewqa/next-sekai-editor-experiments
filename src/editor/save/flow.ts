@@ -1328,15 +1328,18 @@ const separateFile = async (
 
 /**
  * Shows what an outcome needs: a follow-up dialog, or nothing. `again` is a refusal's Choose
- * Another…: the same Save once more, with its own read of the chain's file first; without
- * it, the Save dialog.
+ * Another: the same Save once more, with its own read of the chain's file first; without
+ * it, the Save dialog. `of` is `stored` for Recent Sessions' Save of a session that is not open.
+ * Its Try Again and Save As are then `again` too, so no button acts on the open session.
  */
 export const afterOutcome = async (
     env: Env,
     outcome: Outcome | { kind: 'noChanges' },
     again: () => Promise<void> = () => dialogSave(env, 'save'),
+    of: 'open' | 'stored' = 'open',
 ): Promise<void> => {
     finishSave(outcome)
+    const stored = of === 'stored'
     switch (outcome.kind) {
         case 'done':
         case 'cancelled':
@@ -1368,7 +1371,9 @@ export const afterOutcome = async (
             await conflictFlow(env, outcome.binding, outcome.handle)
             return
         case 'refused': {
-            const choice = await saveUi.refused(outcome.name, outcome.reason)
+            // Export Level Data exports the open session, so a stored session's refusal omits it.
+            const reason = stored && outcome.reason === 'levelData' ? 'notProject' : outcome.reason
+            const choice = await saveUi.refused(outcome.name, reason)
             if (choice === 'chooseAnother') await again()
             else if (choice === 'export') {
                 await openExport()
@@ -1380,18 +1385,21 @@ export const afterOutcome = async (
             recordError(error)
             console.warn('A Save failed', error)
             const writable = !!platform.pickSaveFile
+            const saveAs = stored ? again : () => dialogSave(env, 'saveAs')
             let choice: 'saveAs' | 'tryAgain' | undefined
             switch (error.code) {
                 case 'not-found':
-                    setDiskFinding('missing')
+                    // Only the file the session is bound to now is marked, never a pick that the
+                    // binding did not move to or a stored session's pick.
+                    if (!stored && quickBinding(env).file?.name === name) setDiskFinding('missing')
                     choice = await saveUi.notFound(name)
-                    if (choice === 'saveAs') await notFoundSaveAs(env)
+                    if (choice === 'saveAs') await (stored ? again() : notFoundSaveAs(env))
                     return
                 case 'denied':
                     choice = await saveUi.denied(name)
                     // Try Again asks for permission again, on this press.
-                    if (choice === 'tryAgain') await saveNow(env)
-                    else if (choice === 'saveAs') await dialogSave(env, 'saveAs')
+                    if (choice === 'tryAgain') await (stored ? again() : saveNow(env))
+                    else if (choice === 'saveAs') await saveAs()
                     return
                 case 'no-space':
                 case 'not-local':
@@ -1402,7 +1410,7 @@ export const afterOutcome = async (
             }
             if (error.code === 'read-only') choice = await saveUi.readOnly(name)
             else choice = await saveUi.failed(name, () => fileErrorText(name, error), writable)
-            if (choice === 'saveAs') await dialogSave(env, 'saveAs')
+            if (choice === 'saveAs') await saveAs()
             return
         }
     }
@@ -1921,8 +1929,9 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
             ...(ownRead ? { read: ownRead } : {}),
         }),
     )
-    // Choose Another… is Recent Sessions' Save… for this session again, never the open one's Save.
-    await afterOutcome(env, outcome, () => saveToFileNow(env, sessionId))
+    // Choose Another, Try Again and Save As are Recent Sessions' Save for this session again,
+    // never the open one's Save.
+    await afterOutcome(env, outcome, () => saveToFileNow(env, sessionId), 'stored')
 }
 
 /** Holds a session's lock shared while it's written, when no tab holds it exclusively. */
@@ -1974,6 +1983,32 @@ const writeSessionFile = async (env: Env, request: SessionFileRequest): Promise<
     return ended.kind === 'dismissed' ? { kind: 'cancelled' } : ended
 }
 
+/** The session as a new document `docId`, in a file named `fileName`. */
+const buildSession = (env: Env, request: SessionFileRequest, docId: string, fileName: string) =>
+    env.worker.call(
+        'buildSave',
+        {
+            chainId: request.chainId,
+            target: { kind: 'new', docId, sessionId: request.sessionId },
+            options: {
+                history: request.history,
+                bgm: request.bgm,
+                fileName,
+                save: {
+                    time: Date.now(),
+                    operation: saveOperation(fileName, !platform.pickSaveFile),
+                },
+                context: {
+                    now: Date.now(),
+                    device: deviceSource(),
+                    appVersion: appVersion().appVersion,
+                },
+                sessionId: request.sessionId,
+            },
+        },
+        { timeoutMs: 10 * 60_000 },
+    )
+
 const sessionFileBody = async (
     session: PickSession,
     env: Env,
@@ -1983,33 +2018,7 @@ const sessionFileBody = async (
     const built = await session
         .preparing(() => {
             began = performance.now()
-            return env.worker.call(
-                'buildSave',
-                {
-                    chainId: request.chainId,
-                    target: {
-                        kind: 'new',
-                        docId: crypto.randomUUID(),
-                        sessionId: request.sessionId,
-                    },
-                    options: {
-                        history: request.history,
-                        bgm: request.bgm,
-                        fileName: request.fileName,
-                        save: {
-                            time: Date.now(),
-                            operation: saveOperation(request.fileName, !platform.pickSaveFile),
-                        },
-                        context: {
-                            now: Date.now(),
-                            device: deviceSource(),
-                            appVersion: appVersion().appVersion,
-                        },
-                        sessionId: request.sessionId,
-                    },
-                },
-                { timeoutMs: 10 * 60_000 },
-            )
+            return buildSession(env, request, crypto.randomUUID(), request.fileName)
         })
         .catch((error: unknown) => fileError(error))
     if (began) builtIn(performance.now() - began)
@@ -2047,11 +2056,32 @@ const sessionFileBody = async (
     return withoutOffered(session, picked)
 }
 
+/**
+ * The session built again for the same document, under the name the picker gave its file. When
+ * the rebuild fails or is refused, the first build is written under the typed name, since the
+ * picked file is already empty and that build was verified.
+ */
+const renamedBuild = async (
+    env: Env,
+    request: SessionFileRequest,
+    first: BuiltSave,
+    name: string,
+) => {
+    try {
+        const built = await buildSession(env, request, first.identity.docId, name)
+        if (!('refused' in built)) return built
+        recordError(new BuildRefused(built))
+    } catch (error) {
+        recordError(error)
+    }
+    return first
+}
+
 /** The pick, inside the session's hold, for a file that binds nothing. */
 const sessionFilePicked = async (
     env: Env,
     request: SessionFileRequest,
-    built: BuiltSave,
+    first: BuiltSave,
     picked: PickedFile,
 ): Promise<Outcome> => {
     const { target, filled, identity } = picked
@@ -2071,6 +2101,10 @@ const sessionFilePicked = async (
             error: new FileError('conflict', `${name} changed`, undefined, 'check'),
             name,
         }
+    // A picker that renamed the file: its own name goes into the `save` entry and
+    // `revision.fileName`, as a Save's does. Rebuilt after the checks above and before anything
+    // is revoked.
+    const built = name === request.fileName ? first : await renamedBuild(env, request, first, name)
     let tookOver = false
     if (identity.kind !== 'unknown') {
         // It binds nothing: the chain bound to the file loses it.
