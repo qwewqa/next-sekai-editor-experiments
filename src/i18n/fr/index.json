@@ -259,7 +259,7 @@
       "invalidChart": "Partition non valide : {0}",
       "revision": {
         "older": "Ce niveau a été créé pour une révision plus ancienne du moteur et utilise maintenant la révision actuelle. Vérifiez qu’il s’affiche et se joue toujours comme prévu.",
-        "newer": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel."
+        "newer": "Ce niveau a été créé pour une révision du moteur plus récente que celle prise en charge par cet éditeur. Certaines parties risquent de ne pas s’afficher ou de ne pas être sauvegardées correctement."
       },
       "refusals": {
         "dynamicStages": "le niveau utilise des fonctionnalités de scènes dynamiques, mais les scènes dynamiques sont désactivées",
@@ -1208,7 +1208,7 @@
     "continuedUntitled": "Votre session a été reprise ({0}).",
     "continuedUndated": "Session reprise : \"{0}\".",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
-    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel.",
     "journalKept": "Une modification récupérée de \"{0}\" a été conservée dans une session séparée.",
     "fallback": "Travail non sauvegardé d’une visite précédente récupéré.",
     "fallbackLocal": "Du travail non sauvegardé d’une visite précédente se trouve dans Données locales.",
@@ -1245,7 +1245,7 @@
     },
     "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez pour conserver votre travail.",
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez pour conserver votre travail.",
-    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel.",
     "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
     "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail."
   },

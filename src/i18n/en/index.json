@@ -259,7 +259,7 @@
             "invalidChart": "Invalid chart: {0}",
             "revision": {
                 "older": "This level was made for an older engine revision and now uses the current one. Check that it still looks and plays as expected.",
-                "newer": "This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your usual browser."
+                "newer": "This level was made for a newer engine revision than this editor supports. Some parts may not display or save correctly."
             },
             "refusals": {
                 "dynamicStages": "the level uses dynamic stage features, but dynamic stages are disabled",
@@ -1208,7 +1208,7 @@
         "continuedUntitled": "Continued your session from {0}.",
         "continuedUndated": "Continued \"{0}\".",
         "cleared": "Work from earlier visits is missing. The browser cleared this site’s storage.",
-        "inAppBrowser": "This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your browser.",
+        "inAppBrowser": "This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your usual browser.",
         "journalKept": "A recovered change to \"{0}\" was kept as a separate session.",
         "fallback": "Recovered unsaved work from an earlier visit.",
         "fallbackLocal": "Unsaved work from an earlier visit is in Local Data.",
@@ -1245,7 +1245,7 @@
         },
         "unavailable": "The editor cannot store changes in this browser. Save to keep your work.",
         "private": "If this is a private window, everything stored here is lost when it closes. Save to keep your work.",
-        "inAppBrowser": "This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your browser.",
+        "inAppBrowser": "This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your usual browser.",
         "ios": "This browser deletes stored work after 7 days without a visit. Save to keep your work.",
         "safari": "Safari deletes stored work after 7 days without a visit. Save to keep your work."
     },

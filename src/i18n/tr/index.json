@@ -259,7 +259,7 @@
       "invalidChart": "Geçersiz çizelge: {0}",
       "revision": {
         "older": "Bu seviye daha eski bir motor revizyonu için yapılmış ve artık güncel revizyonu kullanıyor. Hâlâ beklendiği gibi göründüğünü ve oynandığını kontrol edin.",
-        "newer": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Bazı özellikler çalışmayabilir ve saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı normalde kullandığınız tarayıcıda açın."
+        "newer": "Bu seviye, bu editörün desteklediğinden daha yeni bir motor revizyonu için yapılmış. Bazı kısımlar doğru görüntülenmeyebilir veya kaydedilmeyebilir."
       },
       "refusals": {
         "dynamicStages": "seviye dinamik sahne özelliklerini kullanıyor ancak dinamik sahneler devre dışı",
@@ -1208,7 +1208,7 @@
     "continuedUntitled": "Oturumunuz devam ettirildi ({0}).",
     "continuedUndated": "\"{0}\" devam ettirildi.",
     "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
-    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Bazı özellikler çalışmayabilir ve saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
+    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Bazı özellikler çalışmayabilir ve saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı normalde kullandığınız tarayıcıda açın.",
     "journalKept": "\"{0}\" üzerindeki kurtarılan bir değişiklik ayrı bir oturum olarak saklandı.",
     "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
     "fallbackLocal": "Önceki bir ziyaretten kaydedilmemiş çalışma Yerel Veriler’de.",
@@ -1245,7 +1245,7 @@
     },
     "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için kaydedin.",
     "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için kaydedin.",
-    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
+    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı normalde kullandığınız tarayıcıda açın.",
     "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin.",
     "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin."
   },
