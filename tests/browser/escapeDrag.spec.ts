@@ -295,7 +295,10 @@ test('a paste drag whose release asks to enable dynamic stages still pastes', as
     await page.mouse.up()
     const dialog = page.locator('dialog[open]')
     await expect(dialog).toBeVisible()
-    await confirmWhenReady(dialog.getByRole('button', { name: 'Confirm', exact: true }), dialog)
+    await confirmWhenReady(
+        dialog.getByRole('button', { name: 'Enable Dynamic Stages', exact: true }),
+        dialog,
+    )
     await expect(dialog).toHaveCount(0)
     await expect(page.locator('.notification')).toHaveText('Pasted 4 objects')
     expect(await undoCount(page)).toBe(2)

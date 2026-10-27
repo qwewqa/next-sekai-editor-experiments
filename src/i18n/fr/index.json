@@ -2067,6 +2067,7 @@
     "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
     "openedContentGone": "Le contenu de \"{0}\" a changé.",
     "replacedContentGone": "Le contenu de \"{0}\" a changé.",
+    "downloadPreviousContents": "Vous pouvez télécharger une copie du contenu précédent.",
     "title": "Sauvegarder le fichier de projet",
     "titleAs": "Sauvegarder sous",
     "history": "Historique",
@@ -2153,6 +2154,7 @@
     "replaceNote": "La version sur le disque sera conservée dans les sessions récentes.",
     "keptName": "{0} (remplacé le {1})",
     "replaceNewer": "Ce fichier a été créé par une version plus récente de {0}.",
+    "replaceDamaged": "Ce fichier est endommagé.",
     "replaceHoldsEarlier": "Il contient des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
     "replaceMayHoldEarlier": "Il contient peut-être des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
     "keepEditing": "Continuer à modifier"

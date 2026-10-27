@@ -2067,6 +2067,7 @@
         "notPutBack": "“{0}” was emptied and its contents could not be restored.",
         "openedContentGone": "The contents of “{0}” have changed.",
         "replacedContentGone": "The contents of “{0}” have changed.",
+        "downloadPreviousContents": "You can download a copy of the previous contents.",
         "title": "Save Project File",
         "titleAs": "Save As",
         "history": "History",
@@ -2153,6 +2154,7 @@
         "replaceNote": "The version on disk will be kept in Recent Sessions.",
         "keptName": "{0} (replaced {1})",
         "replaceNewer": "This file was created by a newer version of {0}.",
+        "replaceDamaged": "This file is damaged.",
         "replaceHoldsEarlier": "It contains earlier Timeline steps that are no longer stored in this browser.",
         "replaceMayHoldEarlier": "It may contain earlier Timeline steps that are no longer stored in this browser.",
         "keepEditing": "Keep Editing"

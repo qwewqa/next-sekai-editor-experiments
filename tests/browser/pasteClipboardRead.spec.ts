@@ -535,7 +535,10 @@ test('the clipboard wait ends before a valid Dynamic Stages enable and Paste', a
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await expect.poll(() => waiting(page)).toBe(false)
-    await confirmWhenReady(dialog.getByRole('button', { name: 'Confirm', exact: true }), dialog)
+    await confirmWhenReady(
+        dialog.getByRole('button', { name: 'Enable Dynamic Stages', exact: true }),
+        dialog,
+    )
     await expect.poll(() => pastedBeats(page)).toEqual([6])
     const after = await pasteEffects(page)
     expect(after.steps).toBe(before.steps + 2)

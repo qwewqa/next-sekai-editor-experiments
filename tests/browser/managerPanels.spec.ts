@@ -452,7 +452,7 @@ for (const [device, options] of Object.entries(viewports)) {
             await press(enable)
             await expect(dialog).toBeVisible()
             await confirmWhenReady(
-                dialog.getByRole('button', { name: 'Confirm' }),
+                dialog.getByRole('button', { name: 'Enable Dynamic Stages' }),
                 dialog,
                 device === 'phone' ? 'tap' : 'click',
             )
@@ -948,7 +948,10 @@ test('stages dialog fallback shows the disabled state', async ({ page }) => {
     // Enabling stacks the confirmation over the manager, which then lists stages.
     await dialog.getByRole('button', { name: 'Enable Dynamic Stages' }).click()
     await expect(dialog).toHaveCount(2)
-    await confirmWhenReady(dialog.nth(1).getByRole('button', { name: 'Confirm' }), dialog.nth(1))
+    await confirmWhenReady(
+        dialog.nth(1).getByRole('button', { name: 'Enable Dynamic Stages' }),
+        dialog.nth(1),
+    )
     await expect(dialog).toHaveCount(1)
     expect(await page.evaluate(() => window.editorTest.history.state.value.isDynamicStages)).toBe(
         true,
@@ -1200,7 +1203,7 @@ test('the disabled stages band keeps the heading row layout', async ({ page }) =
     await panel.getByRole('button', { name: 'Enable Dynamic Stages' }).click()
     await expect(page.locator('dialog')).toBeVisible()
     await confirmWhenReady(
-        page.locator('dialog').getByRole('button', { name: 'Confirm' }),
+        page.locator('dialog').getByRole('button', { name: 'Enable Dynamic Stages' }),
         page.locator('dialog'),
     )
     await expect(panel.locator('.manager-entry')).not.toHaveCount(0)

@@ -36,6 +36,7 @@ export const requestDynamicStages = async (
         const result = await showModal(ConfirmModal, {
             title: () => i18n.value.history.dynamicStages.title,
             message: () => i18n.value.history.dynamicStages.message,
+            confirm: () => i18n.value.workspace.stages.enable,
         })
         if (!guard.isCurrent() || !isCurrent()) return 'stale'
         if (!result) return 'declined'

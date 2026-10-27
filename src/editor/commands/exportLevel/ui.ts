@@ -51,7 +51,7 @@ export const showNotPutBack = async (
     }
     return showChoice({
         title: dialogTitle,
-        message,
+        lines: () => [message(), i18n.value.save.downloadPreviousContents],
         choices: [
             {
                 value: 'download' as const,

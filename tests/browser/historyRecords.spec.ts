@@ -152,7 +152,10 @@ test('Dynamic Stages records the default events it adds', async ({ page }) => {
     })
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await confirmWhenReady(dialog.getByRole('button', { name: 'Confirm', exact: true }), dialog)
+    await confirmWhenReady(
+        dialog.getByRole('button', { name: 'Enable Dynamic Stages', exact: true }),
+        dialog,
+    )
     expect(
         await page.evaluate(() => (window as unknown as { outcome: Promise<string> }).outcome),
     ).toBe('enabled')
