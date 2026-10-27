@@ -915,7 +915,7 @@
       "showOtherStages": "Lorsqu’une scène est ciblée, les objets des autres scènes s’affichent estompés.",
       "showOtherObjects": "Les objets d’un type que vous avez masqué s’affichent estompés.",
       "nameContrast": "Entoure les noms des groupes et des scènes d’un contour noir.",
-      "dragToPanY": "Faire glisser près du haut ou du bas de la partition la fait défiler vers le haut ou vers le bas.",
+      "dragToPanY": "Faire glisser près du bord supérieur ou inférieur de la partition la fait défiler vers le haut ou vers le bas.",
       "dragToPanX": "Faire glisser près du bord gauche ou droit de la partition la fait défiler horizontalement, jusqu’au Défilement horizontal maximal.",
       "previewRenderScale": "Ajuste la résolution de rendu de l’aperçu. Des valeurs plus basses réduisent les détails et le travail de rendu.",
       "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Cela peut réduire les ralentissements de la partition pendant la lecture. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
@@ -1467,7 +1467,7 @@
       "listJoin": "{0}, {1}",
       "sentenceJoin": "{0}. {1}",
       "notSet": "Non défini",
-      "about": "À propos de {0}",
+      "about": "Informations sur {0}",
       "anchor": {
         "label": "Ancrage",
         "default": "Par défaut",
