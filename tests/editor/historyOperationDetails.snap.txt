@@ -383,7 +383,7 @@ R: Added [created]: 1 stage mask event / 1 stage pivot event / 1 stage style eve
 T: Added group “New Group”
 
 #owner.create.group fr
-T: Groupe "New Group" ajouté
+T: Groupe « New Group » ajouté
 
 #owner.create.group ja
 T: 「New Group」グループを追加しました
@@ -419,7 +419,7 @@ Line two	tab”
 T: Renamed group “Alpha” to “Beta”
 
 #owner.rename.group fr
-T: Groupe "Alpha" renommé en "Beta"
+T: Groupe « Alpha » renommé en « Beta »
 
 #owner.rename.group ja
 T: グループ「Alpha」の名前を「Beta」に変更しました
@@ -445,7 +445,7 @@ T: Set Force Note Speed to 1.5 for group “Alpha”
 R: Force Note Speed [forceNoteSpeed]: ~Not set > 1.5
 
 #owner.set.group.speed fr
-T: Imposer la vitesse des notes : valeur 1,5 appliquée au groupe "Alpha"
+T: Imposer la vitesse des notes : valeur 1,5 appliquée au groupe « Alpha »
 R: Imposer la vitesse des notes [forceNoteSpeed]: ~Non défini > 1,5
 
 #owner.set.group.speed ja
@@ -474,7 +474,7 @@ T: Moved group “Alpha”
 R: Order [order]: 3 > 1
 
 #owner.move.reorder.indexes fr
-T: Groupe "Alpha" déplacé
+T: Groupe « Alpha » déplacé
 R: Ordre [order]: 3 > 1
 
 #owner.move.reorder.indexes ja
@@ -513,7 +513,7 @@ T: Moved groups out of folders
 T: Duplicated group “Alpha”
 
 #owner.duplicate.group fr
-T: Groupe "Alpha" dupliqué
+T: Groupe « Alpha » dupliqué
 
 #owner.duplicate.group ja
 T: 「Alpha」グループを複製しました
@@ -532,7 +532,7 @@ T: Duplicated stage “Left”
 T: Deleted group “Alpha”
 
 #owner.delete.group fr
-T: Groupe "Alpha" supprimé
+T: Groupe « Alpha » supprimé
 
 #owner.delete.group ja
 T: 「Alpha」グループを削除しました
@@ -552,7 +552,7 @@ T: Ungrouped folder “Folder One”
 R: Moved Out of Folder [released]: 3 groups
 
 #owner.ungroup.3 fr
-T: Dossier "Folder One" dissous
+T: Dossier « Folder One » dissous
 R: Sortie du dossier [released]: 3 groupes
 
 #owner.ungroup.3 ja
@@ -1073,11 +1073,11 @@ S: 3 steps
   - Renamed group “A” to “B”
 
 #group.ownerRename.chain fr
-T: Groupe "A" renommé
+T: Groupe « A » renommé
 S: 3 steps
-  - Groupe "C" renommé en "A"
-  - Groupe "B" renommé en "C"
-  - Groupe "A" renommé en "B"
+  - Groupe « C » renommé en « A »
+  - Groupe « B » renommé en « C »
+  - Groupe « A » renommé en « B »
 
 #group.ownerRename.chain ja
 T: グループ「A」の名前を変更しました
@@ -1248,9 +1248,9 @@ R: Removed [removed]: 1 group / 800 notes / 12 time scales
 F: Added group “Group 1”
 
 #owner.delete.cascade fr
-T: Groupe "Alpha" supprimé
+T: Groupe « Alpha » supprimé
 R: Supprimé [removed]: 1 groupe / 800 notes / 12 échelles de temps
-F: Groupe "Group 1" ajouté
+F: Groupe « Group 1 » ajouté
 
 #owner.delete.cascade ja
 T: 「Alpha」グループを削除しました
@@ -1280,7 +1280,7 @@ R: Generate Sim Lines [generateSimLines]: Global > Isolated
 R: From Start [isFromStart]: Disabled > Enabled
 
 #owner.set.group.twoFields fr
-T: Générer les lignes de simultanéité et Depuis le début : propriétés de la scène "Left" modifiées
+T: Générer les lignes de simultanéité et Depuis le début : propriétés de la scène « Left » modifiées
 R: Générer les lignes de simultanéité [generateSimLines]: Globalement > Par scène
 R: Depuis le début [isFromStart]: Désactivé > Activé
 

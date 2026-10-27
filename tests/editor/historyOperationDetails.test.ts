@@ -674,7 +674,9 @@ test('undo and redo parents list their steps without the repeated prefix', () =>
 test('names and field labels are quoted the way each locale quotes them', () => {
     const title = (id: string, locale: string) => byId(id, locale).description
     assert.match(title('owner.rename.group', 'en'), /“Alpha”.*“Beta”/)
-    assert.match(title('owner.rename.group', 'fr'), /"Alpha".*"Beta"/)
+    assert.match(title('owner.rename.group', 'fr'), /«\u00a0Alpha\u00a0».*«\u00a0Beta\u00a0»/)
+    assert.match(title('owner.rename.group', 'ko'), /“Alpha”.*“Beta”/)
+    assert.match(title('owner.rename.group', 'tr'), /“Alpha”.*“Beta”/)
     assert.match(title('owner.rename.group', 'ja'), /「Alpha」.*「Beta」/)
     assert.match(title('owner.rename.group', 'zhs'), /“Alpha”.*“Beta”/)
     assert.match(title('owner.rename.group', 'zht'), /「Alpha」.*「Beta」/)

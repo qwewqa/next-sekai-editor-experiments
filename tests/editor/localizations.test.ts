@@ -351,6 +351,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'conflict.savedNoNotes',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
@@ -389,6 +390,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'conflict.savedNoNotes',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
@@ -571,7 +573,11 @@ test('Step Details quoting wrappers and count phrases exist in every locale', ()
         for (const key of ['history.quoted', 'history.quotedField'])
             assert.equal(placeholders(messages[key]!).join(), '{0}', `${locale} ${key}`)
         // A name is always quoted; only Japanese also quotes a field label (to end a doubled を).
-        assert.match(messages['history.quoted']!, /^["“「]\{0\}["”」]$/, locale)
+        assert.match(
+            messages['history.quoted']!,
+            /^(?:“\{0\}”|「\{0\}」|«\u00a0\{0\}\u00a0»)$/,
+            locale,
+        )
         assert.equal(messages['history.quotedField'] !== '{0}', locale === 'ja', locale)
         for (const kind of [
             'note',
@@ -593,4 +599,14 @@ test('Step Details quoting wrappers and count phrases exist in every locale', ()
             )
         }
     }
+})
+
+test('messages use no straight quotes, and French guillemets hold a no-break space inside', () => {
+    for (const locale of readdirSync(directory, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name))
+        for (const [key, text] of Object.entries(read(locale)))
+            assert.ok(!text.includes('"'), `${locale} ${key}`)
+    for (const [key, text] of Object.entries(read('fr')))
+        assert.doesNotMatch(text, /«(?!\u00a0)|(?<!\u00a0)»/u, key)
 })
