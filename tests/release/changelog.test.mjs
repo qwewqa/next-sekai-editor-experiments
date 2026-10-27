@@ -29,6 +29,19 @@ test('a changelog in the documented form passes, with 0.10.0 above 0.9.0', () =>
     assert.deepEqual(checkChangelog('# Changelog\n\n## Unreleased\n'), [])
 })
 
+test('a code span may hold an apostrophe or a contraction, and the prose around it may not', () => {
+    const span = valid.replace(
+        '- Something else.',
+        "- Fixed importing an author named `O'Connor` and the literal `'`.",
+    )
+    assert.notEqual(span, valid)
+    assert.deepEqual(checkChangelog(span), [])
+    const prose = span.replace('Fixed importing', "Fixed importing, as it isn't, ")
+    assert.ok(checkChangelog(prose).some((problem) => problem.includes('contractions')))
+    const mixed = span.replace('author named', "author's name")
+    assert.ok(checkChangelog(mixed).some((problem) => problem.includes('apostrophe')))
+})
+
 // Each case is a slip a hand edit could make; the last item is a part of the expected problem.
 const broken = [
     [

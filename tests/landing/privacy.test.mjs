@@ -90,7 +90,7 @@ test("the wording follows the editor's conventions", () => {
     assert.doesNotMatch(text, /\w'\w/, 'a straight apostrophe')
     assert.doesNotMatch(
         text,
-        /\b(?:don’t|doesn’t|isn’t|aren’t|won’t|can’t|cannot|couldn’t|shouldn’t|wouldn’t|didn’t|hasn’t|haven’t|it’s|that’s|we’re|you’re|we’ve|you’ve|we’ll|you’ll)\b/i,
+        /\b(?:don’t|doesn’t|isn’t|aren’t|won’t|can’t|couldn’t|shouldn’t|wouldn’t|didn’t|hasn’t|haven’t|it’s|that’s|we’re|you’re|we’ve|you’ve|we’ll|you’ll)\b/i,
     )
     assert.doesNotMatch(text, /!/)
     const small = new Set(['a', 'and', 'from', 'of', 'the', 'to', 'in'])

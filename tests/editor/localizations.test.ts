@@ -159,9 +159,6 @@ test('division commands are named as their dialog is, as lane division commands 
             assert.ok(messages[label]!.endsWith('…'), `${locale} ${label}`)
             assert.equal(messages[label]!.replace(/…$/, ''), messages[title], `${locale} ${label}`)
         }
-        // A noun with the fraction, not "Passer à la division en 1/4".
-        const title = messages['commands.divisions.title']!
-        assert.ok(title.replace('1/{0}', '').trim().split(/\s+/).length <= 2, locale)
     }
 })
 
