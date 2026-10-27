@@ -20,3 +20,4 @@ infra/** text eol=lf
 scripts/ci/** text eol=lf
 tests/fonts/selawik/*.ttf binary
 tests/fonts/inter/*.ttf binary
+tests/fonts/fonts.conf text eol=lf

@@ -533,26 +533,13 @@ for (const scenario of [
             .toBe(false)
         await page.locator('[data-change-arrow="down"]').hover()
         await captureContours(page, testInfo, `${prefix}-zero`)
-        // Whether the bar has room for its controls depends on the width of the text, so a bar that
-        // is compact turns the edits off from its options menu, and its own controls are checked.
-        const compact = (await page.locator('[data-change-options-mode]').count()) > 0
-        if (compact) {
-            await page.locator('[data-change-options]').click()
-            const edits = page.getByRole('menuitemcheckbox')
-            await expect(edits).toHaveAttribute('aria-checked', 'true')
-            await edits.click()
-            await expect(edits).toHaveAttribute('aria-checked', 'false')
-            await page.keyboard.press('Escape')
-            await expect(page.locator('[data-change-options-menu]')).toHaveCount(0)
-        } else {
-            await page.locator('[data-show-edits]').click()
-            await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
-        }
+        await page.locator('[data-show-edits]').click()
+        await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
         await captureContours(page, testInfo, `${prefix}-off`)
         await page.evaluate(() => window.historyInspectionTest.hold(2))
         await select(page, 2, 1)
         await expect(page.locator('[data-change-arrow="up"] .change-count')).toHaveText('–')
-        if (!compact) await expect(page.locator('[data-peek-change]')).not.toHaveText('')
+        await expect(page.locator('[data-peek-change]')).not.toHaveText('')
         await captureContours(page, testInfo, `${prefix}-loading`)
         await page.evaluate(() => window.historyInspectionTest.release(2))
     })

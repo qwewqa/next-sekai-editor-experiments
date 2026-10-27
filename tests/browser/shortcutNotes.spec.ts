@@ -6,7 +6,6 @@ const ja = JSON.parse(
     readFileSync(new URL('../../src/i18n/ja/index.json', import.meta.url), 'utf8'),
 ) as {
     commands: Record<'save' | 'copy', { title: string }> & { slide: { title: { default: string } } }
-    modals: { form: { key: { alsoRuns: string } } }
 }
 
 test("shared-binding notes list commands in the locale's punctuation", async ({ page }) => {
@@ -30,10 +29,6 @@ test("shared-binding notes list commands in the locale's punctuation", async ({ 
             }),
         })
     await expect(row.locator('.form-field-notes')).toHaveText(
-        // The commands are listed with the locale's separator, in the message's own sentence.
-        ja.modals.form.key.alsoRuns.replace(
-            '{0}',
-            `${ja.commands.save.title}、${ja.commands.copy.title}`,
-        ),
+        `${ja.commands.save.title}、${ja.commands.copy.title}も実行されます`,
     )
 })

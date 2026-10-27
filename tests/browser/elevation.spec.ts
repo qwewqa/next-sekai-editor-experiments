@@ -222,7 +222,7 @@ test.describe('phone elevation scale', () => {
             expect(label.anchor, text).toBe(28)
             expect(label.right, text).toBeGreaterThan(25)
             // The ink may run a pixel or so past the anchor, by an amount that depends on the font.
-            expect(label.right, text).toBeLessThan(30)
+            expect(label.right, text).toBeLessThanOrEqual(29.5)
             expect(Math.abs(label.middle - label.grid), text).toBeLessThanOrEqual(0.5)
         }
         await page.screenshot({

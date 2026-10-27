@@ -1,6 +1,6 @@
 import vue from '@vitejs/plugin-vue'
 import autoprefixer from 'autoprefixer'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
@@ -119,18 +119,34 @@ export default defineConfig(({ mode }) => ({
             name: 'test-font',
             apply: (_config, { command }) =>
                 command === 'serve' && process.env.NSE_TEST_FONT === '1',
+            // A script that blocks the page adds the fonts from their bytes, which a font face takes
+            // at once, so no text is laid out in a fallback font first.
+            configureServer(server) {
+                server.middlewares.use('/__test-font.js', (_req, res) => {
+                    const faces = [
+                        ['400', 'Regular'],
+                        ['600', 'Semibold'],
+                        ['700', 'Bold'],
+                    ].map(
+                        ([weight, name]) =>
+                            `add(${weight}, '${readFileSync(resolve(root, `tests/fonts/selawik/Selawik-${name}.ttf`)).toString('base64')}')`,
+                    )
+                    res.setHeader('Content-Type', 'text/javascript')
+                    res.end(
+                        `const add = (weight, text) => {
+                            const bytes = Uint8Array.from(atob(text), (char) => char.charCodeAt(0))
+                            document.fonts.add(new FontFace('Selawik', bytes, { weight: String(weight) }))
+                        }
+                        ${faces.join(';')}`,
+                    )
+                })
+            },
             transformIndexHtml: () => [
-                ...['Regular', 'Semibold', 'Bold'].map((weight) => ({
-                    tag: 'link',
-                    attrs: {
-                        rel: 'preload',
-                        as: 'font',
-                        type: 'font/ttf',
-                        crossorigin: '',
-                        href: `/tests/fonts/selawik/Selawik-${weight}.ttf`,
-                    },
-                    injectTo: 'head' as const,
-                })),
+                {
+                    tag: 'script',
+                    attrs: { src: '/__test-font.js' },
+                    injectTo: 'head-prepend' as const,
+                },
                 {
                     tag: 'link',
                     attrs: { rel: 'stylesheet', href: '/tests/fonts/test-font.css' },
