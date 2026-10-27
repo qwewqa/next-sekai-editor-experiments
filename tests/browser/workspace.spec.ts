@@ -578,3 +578,209 @@ test.describe('default side docks', () => {
         }
     })
 })
+
+test.describe('Groups and Stages side by side', () => {
+    const tile = (page: Page, id: 'preview' | 'groups' | 'stages') =>
+        page.locator(`#workspace-panel-${id}`)
+    const box = async (page: Page, id: 'preview' | 'groups' | 'stages') => {
+        const { x, y, width, height } = (await tile(page, id).boundingBox())!
+        return { x: Math.round(x), y: Math.round(y), width: Math.round(width), height }
+    }
+    // Groups and Stages share a row: the same top, Stages to the right of Groups.
+    const sideBySide = async (page: Page) => {
+        const [groups, stages] = [await box(page, 'groups'), await box(page, 'stages')]
+        return groups.y === stages.y && stages.x === groups.x + groups.width + 4
+    }
+
+    test.beforeEach(async ({ page }) => {
+        await page.setViewportSize({ width: 2560, height: 1440 })
+        await setSettings(page, {
+            showPreview: true,
+            showGroups: true,
+            showStages: true,
+            leftDockWidth: 500,
+        })
+        await settle(page)
+    })
+
+    test('a drag of the panel edge puts them side by side from 540 px, and Escape stacks them again', async ({
+        page,
+    }) => {
+        expect(await sideBySide(page)).toBe(false)
+        const handle = dock(page, 'left').getByRole('separator', { name: 'Resize Left Panels' })
+        const edge = (await handle.boundingBox())!
+        const [x, y] = [edge.x + edge.width / 2, edge.y + 700]
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 39, y, { steps: 3 })
+        await settle(page)
+        expect(await dockWidth(page, 'left')).toBe(539)
+        expect(await sideBySide(page)).toBe(false)
+        const preview = await box(page, 'preview')
+        await page.mouse.move(x + 40, y)
+        await settle(page)
+        expect(await sideBySide(page)).toBe(true)
+        expect((await box(page, 'groups')).width).toBe(268)
+        expect((await box(page, 'stages')).width).toBe(268)
+        // Preview keeps its height across the change, but for the 1 px it widened.
+        expect(Math.abs((await box(page, 'preview')).height - preview.height)).toBeLessThan(1)
+
+        // Escape during the drag restores the width, and so the stack.
+        await page.keyboard.press('Escape')
+        await page.mouse.move(x + 120, y, { steps: 2 })
+        await page.mouse.up()
+        await settle(page)
+        expect(await dockWidth(page, 'left')).toBe(500)
+        expect(await sideBySide(page)).toBe(false)
+        expect(await getSettings(page, ['leftDockWidth'])).toEqual({ leftDockWidth: 500 })
+
+        // A drag that ends wide keeps them side by side; one back below 540 stacks them.
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 100, y, { steps: 4 })
+        await page.mouse.up()
+        await settle(page)
+        expect(await sideBySide(page)).toBe(true)
+        expect(await getSettings(page, ['leftDockWidth'])).toEqual({ leftDockWidth: 600 })
+        await page.mouse.move(x + 100, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 20, y, { steps: 4 })
+        await page.mouse.up()
+        await settle(page)
+        expect(await sideBySide(page)).toBe(false)
+        expect(await getSettings(page, ['leftDockWidth'])).toEqual({ leftDockWidth: 520 })
+    })
+
+    test('the divider between them resizes by pointer and keys, resets, and survives reload', async ({
+        page,
+    }) => {
+        await setSettings(page, { leftDockWidth: 760 })
+        await settle(page)
+        const divider = dock(page, 'left').getByRole('separator', {
+            name: 'Resize Groups and Stages',
+        })
+        await expect(divider).toHaveAttribute('aria-orientation', 'vertical')
+        await expect(divider).toHaveAttribute('aria-valuenow', '378')
+        await expect(divider).toHaveAttribute('aria-valuemin', '260')
+        await expect(divider).toHaveAttribute('aria-valuemax', '496')
+        const weights = await getSettings(page, ['panelWeights'])
+
+        const line = (await divider.boundingBox())!
+        const [x, y] = [line.x + line.width / 2, line.y + line.height / 2]
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + 60, y, { steps: 4 })
+        await settle(page)
+        expect((await box(page, 'groups')).width).toBe(438)
+        expect(await getSettings(page, ['groupsStagesSplit'])).toEqual({ groupsStagesSplit: 0.5 })
+        await page.mouse.up()
+        await settle(page)
+        expect((await box(page, 'stages')).width).toBe(756 - 438)
+        expect(await getSettings(page, ['panelWeights'])).toEqual(weights)
+
+        // Escape during a drag keeps the saved width.
+        await page.mouse.move(x + 60, y)
+        await page.mouse.down()
+        await page.mouse.move(x - 100, y, { steps: 4 })
+        await page.keyboard.press('Escape')
+        await page.mouse.up()
+        await settle(page)
+        expect((await box(page, 'groups')).width).toBe(438)
+
+        await divider.focus()
+        await page.keyboard.press('ArrowLeft')
+        await expect(divider).toHaveAttribute('aria-valuenow', '422')
+        await page.keyboard.press('Shift+ArrowRight')
+        await expect(divider).toHaveAttribute('aria-valuenow', '486')
+        await page.keyboard.press('End')
+        await expect(divider).toHaveAttribute('aria-valuenow', '496')
+        expect((await box(page, 'stages')).width).toBe(260)
+        await page.keyboard.press('Home')
+        await expect(divider).toHaveAttribute('aria-valuenow', '260')
+        await page.keyboard.press('ArrowRight')
+        await expect(divider).toHaveAttribute('aria-valuenow', '276')
+        expect(await getSettings(page, ['panelWeights'])).toEqual(weights)
+
+        await page.reload()
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await setSettings(page, { showPreview: true })
+        await expect(divider).toHaveAttribute('aria-valuenow', '276')
+        expect((await box(page, 'groups')).width).toBe(276)
+
+        // Enter and a double click both make the widths equal.
+        await divider.focus()
+        await page.keyboard.press('Enter')
+        await expect(divider).toHaveAttribute('aria-valuenow', '378')
+        await page.keyboard.press('ArrowLeft')
+        await expect(divider).toHaveAttribute('aria-valuenow', '362')
+        await divider.dblclick()
+        await expect(divider).toHaveAttribute('aria-valuenow', '378')
+        expect(await getSettings(page, ['groupsStagesSplit'])).toEqual({ groupsStagesSplit: 0.5 })
+    })
+
+    test('a drag on the divider between them ends when the divider turns', async ({ page }) => {
+        const divider = dock(page, 'left').getByRole('separator', {
+            name: 'Resize Groups and Stages',
+        })
+        const saved = await getSettings(page, ['panelWeights', 'groupsStagesSplit'])
+        const line = (await divider.boundingBox())!
+        const [x, y] = [line.x + 100, line.y + line.height / 2]
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x, y + 40, { steps: 2 })
+        await setSettings(page, { leftDockWidth: 760 })
+        await settle(page)
+        await expect(divider).toHaveAttribute('aria-orientation', 'vertical')
+        await page.mouse.move(x + 80, y + 80, { steps: 2 })
+        await page.mouse.up()
+        await settle(page)
+        expect(await getSettings(page, ['panelWeights', 'groupsStagesSplit'])).toEqual(saved)
+        await expect(divider).toHaveAttribute('aria-valuenow', '378')
+    })
+
+    test('the dividers above and below them resize both at once and reset all they changed', async ({
+        page,
+    }) => {
+        await setSettings(page, {
+            leftDockWidth: 760,
+            propertiesPosition: 'left',
+            showSidebar: true,
+        })
+        await settle(page)
+        const above = dock(page, 'left').getByRole('separator', {
+            name: 'Resize Preview, Groups and Stages',
+        })
+        const below = dock(page, 'left').getByRole('separator', {
+            name: 'Resize Groups, Stages and Properties',
+        })
+        const groups = await box(page, 'groups')
+        const line = (await above.boundingBox())!
+        const [x, y] = [line.x + 200, line.y + line.height / 2]
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x, y + 80, { steps: 4 })
+        await page.mouse.up()
+        await settle(page)
+        const after = await box(page, 'groups')
+        expect(Math.round(after.height - groups.height)).toBe(-80)
+        expect(Math.round((await box(page, 'stages')).height)).toBe(Math.round(after.height))
+
+        await below.focus()
+        await page.keyboard.press('ArrowDown')
+        await settle(page)
+        expect(Math.round((await box(page, 'stages')).height - after.height)).toBe(16)
+        const { panelWeights } = (await getSettings(page, ['panelWeights'])) as {
+            panelWeights: Record<string, number>
+        }
+        // The two keep the proportion they had.
+        expect(panelWeights.groups).toBeCloseTo(panelWeights.stages ?? 0, 9)
+
+        await above.dblclick()
+        await settle(page)
+        const reset = (await getSettings(page, ['panelWeights'])) as {
+            panelWeights: Record<string, number>
+        }
+        expect(Object.keys(reset.panelWeights)).toEqual(['properties'])
+    })
+})

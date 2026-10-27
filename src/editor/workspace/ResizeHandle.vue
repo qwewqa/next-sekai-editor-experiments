@@ -93,6 +93,9 @@ watch(interruptsDrags, (interrupted) => {
     if (interrupted) cancel()
 })
 
+// A handle that turns, as the one between Groups and Stages does, ends its drag.
+watch(() => props.axis, cancel)
+
 onUnmounted(() => {
     if (!drag) return
     stop()

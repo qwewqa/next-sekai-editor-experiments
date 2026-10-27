@@ -62,6 +62,7 @@ coarseQuery.addEventListener('change', () => {
  */
 export const dockSizeDrafts = shallowRef<Partial<Record<DockSide, number>>>({})
 export const panelWeightsDraft = shallowRef<Partial<Record<PanelId, number>>>()
+export const groupsStagesSplitDraft = shallowRef<number>()
 
 /** The workspace's layout viewport size, measured by the app shell. */
 export const workspaceSize = shallowRef({
@@ -166,6 +167,8 @@ const layoutInput = (state: WorkspaceToggleState) => ({
     previewOverlay: settings.previewTransportPosition === 'overlay',
     rootFontSize: rootFontSize.value,
     toolbarWidth: toolbarWidth.value + minimapRoomFor(isMinimapShown.value),
+    groupsStagesSideBySide: settings.groupsStagesSideBySide,
+    groupsShare: groupsStagesSplitDraft.value ?? settings.groupsStagesSplit,
 })
 
 const layoutOf = (state: WorkspaceToggleState) => computeWorkspaceLayout(layoutInput(state))

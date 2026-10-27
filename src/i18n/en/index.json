@@ -1926,6 +1926,7 @@
             "minimap": "Resize Minimap"
         },
         "resizeTiles": "Resize {0} and {1}",
+        "resizeTileRow": "Resize {0}, {1} and {2}",
         "dock": {
             "auto": "Dock Automatically",
             "left": "Dock Left",

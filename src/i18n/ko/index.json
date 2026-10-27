@@ -1926,6 +1926,7 @@
       "minimap": "미니맵 크기 조절"
     },
     "resizeTiles": "{0} 및 {1} 크기 조절",
+    "resizeTileRow": "{0}, {1} 및 {2} 크기 조절",
     "dock": {
       "auto": "자동으로 배치",
       "left": "좌측에 배치",

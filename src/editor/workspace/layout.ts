@@ -54,6 +54,7 @@ const minTopBody = 176
 const sideBySidePanels = ['preview', 'groups', 'stages'] as const
 export const sideBySideWidth =
     minTileLength.horizontal.groups + separatorSize + minTileLength.horizontal.stages + 16
+export const defaultGroupsShare = 0.5
 
 export type WorkspaceLayoutInput = {
     width: number
@@ -311,7 +312,7 @@ const layoutDock = (
     const across = size.value - separatorSize
     const min = minTileLength.horizontal.groups
     const max = across - minTileLength.horizontal.stages
-    const groups = clamp(Math.round((input.groupsShare ?? 0.5) * across), min, max)
+    const groups = clamp(Math.round((input.groupsShare ?? defaultGroupsShare) * across), min, max)
 
     return {
         side,

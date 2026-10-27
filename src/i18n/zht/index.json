@@ -1926,6 +1926,7 @@
       "minimap": "調整小地圖大小"
     },
     "resizeTiles": "調整{0}和{1}的大小",
+    "resizeTileRow": "調整{0}、{1}和{2}的大小",
     "dock": {
       "auto": "自動停靠",
       "left": "停靠在左邊",

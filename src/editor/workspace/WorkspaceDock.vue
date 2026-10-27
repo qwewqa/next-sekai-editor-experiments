@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, defineComponent, h, type Component } from 'vue'
+import {
+    computed,
+    defineAsyncComponent,
+    defineComponent,
+    h,
+    type Component,
+    type CSSProperties,
+} from 'vue'
 import { recordError } from '../../diagnostics'
 import { i18n } from '../../i18n'
 import { settings } from '../../settings'
@@ -8,6 +15,7 @@ import { clamp } from '../../utils/math'
 import {
     dockSizeDrafts,
     drawerSide,
+    groupsStagesSplitDraft,
     panelWeightsDraft,
     resetPanelWeights,
     setDockSize,
@@ -17,7 +25,7 @@ import {
     type DockSide,
     type PanelId,
 } from '.'
-import { resizeTilePair, separatorSize, type DockTile } from './layout'
+import { defaultGroupsShare, resizeTileUnits, separatorSize, type DockTile } from './layout'
 import PanelRail from './PanelRail.vue'
 import { panelTileId, panelTitle } from './panels'
 import GroupsPanel from './panels/GroupsPanel.vue'
@@ -95,40 +103,143 @@ const setDisplayedDockSize = (size: number) => {
     setDockSize(props.side, clampDockSize(size))
 }
 
-// Resizing between adjacent tiles adjusts only that pair's relative weights.
-let tileDrag: { a: DockTile; b: DockTile } | undefined
-const pair = (index: number) => {
-    const a = dock.value?.tiles[index]
-    const b = dock.value?.tiles[index + 1]
-    return a && b ? ([{ ...a }, { ...b }] as const) : undefined
+const isPaired = (id: PanelId) => id === 'groups' || id === 'stages'
+// The tiles on one side of a separator: one tile, or Groups and Stages side by side.
+const unitAt = (index: number) => {
+    const tiles = dock.value?.tiles ?? []
+    const tile = tiles[index]
+    if (!tile) return []
+    return dock.value?.sideBySide && isPaired(tile.id)
+        ? tiles.filter(({ id }) => isPaired(id))
+        : [tile]
 }
-const onTileStart = (index: number) => {
-    const tiles = pair(index)
-    if (tiles) tileDrag = { a: tiles[0], b: tiles[1] }
+const unitsAround = (index: number) => {
+    const a = unitAt(index).map((tile) => ({ ...tile }))
+    const b = unitAt(index + 1).map((tile) => ({ ...tile }))
+    return a.length && b.length ? { a, b } : undefined
 }
-const onTileMove = (delta: number) => {
-    if (!tileDrag) return
-    panelWeightsDraft.value = {
-        ...settings.panelWeights,
-        ...resizeTilePair(tileDrag.a, tileDrag.b, tileDrag.a.size + delta),
+// The separator after Groups is the divider between Groups and Stages side by side.
+const isSplit = (index: number) =>
+    !!dock.value?.sideBySide && dock.value.tiles[index]?.id === 'groups'
+
+type Separator = { axis: 'x' | 'y'; label: string; value: number; min: number; max: number }
+const separators = computed(() =>
+    (dock.value?.tiles ?? []).slice(0, -1).map((_, index): Separator => {
+        const beside = dock.value?.sideBySide
+        if (beside && isSplit(index))
+            return {
+                axis: 'x',
+                label: interpolateRaw(
+                    i18n.value.workspace.resizeTiles,
+                    panelTitle('groups'),
+                    panelTitle('stages'),
+                ),
+                value: beside.groups,
+                min: beside.min,
+                max: beside.max,
+            }
+        const a = unitAt(index)
+        const b = unitAt(index + 1)
+        const names = [...a, ...b].map(({ id }) => panelTitle(id))
+        return {
+            axis: row.value ? 'x' : 'y',
+            label: interpolateRaw(
+                names.length > 2
+                    ? i18n.value.workspace.resizeTileRow
+                    : i18n.value.workspace.resizeTiles,
+                ...names,
+            ),
+            value: a[0]?.size ?? 0,
+            min: Math.max(...a.map((tile) => tile.min)),
+            max: (a[0]?.size ?? 0) + (b[0]?.size ?? 0),
+        }
+    }),
+)
+
+// Side by side, the body is a grid: Groups, the divider and Stages share a row, and
+// every other tile and separator spans it. The sections stay the same elements, so
+// the panels keep their state when the arrangement changes.
+const grid = computed(() => {
+    const current = dock.value
+    if (!current?.sideBySide) return
+    const rows: string[] = []
+    const cell = (column: string): CSSProperties => ({
+        gridRow: String(rows.length),
+        gridColumn: column,
+    })
+    const tiles: CSSProperties[] = []
+    const after: CSSProperties[] = []
+    for (const [index, tile] of current.tiles.entries()) {
+        if (tile.id !== 'stages') rows.push(`${tile.size}px`)
+        tiles.push(cell(tile.id === 'groups' ? '1' : tile.id === 'stages' ? '3' : '1 / -1'))
+        if (tile.id === 'groups') after.push(cell('2'))
+        else if (index < current.tiles.length - 1) {
+            rows.push(`${separatorSize}px`)
+            after.push(cell('1 / -1'))
+        }
     }
+    const { groups, stages } = current.sideBySide
+    return {
+        body: {
+            gridTemplateRows: rows.join(' '),
+            gridTemplateColumns: `${groups}px ${separatorSize}px ${stages}px`,
+        },
+        tiles,
+        separators: after,
+    }
+})
+
+// A separator between stacked tiles adjusts only their relative weights, and the
+// divider between Groups and Stages side by side sets Groups' share of the width.
+// A drag shows a draft and saves it only when it ends.
+let tileDrag: { a: DockTile[]; b: DockTile[] } | undefined
+let splitDrag: { base: number } | undefined
+const splitShare = (width: number) => {
+    const current = dock.value
+    if (!current?.sideBySide) return defaultGroupsShare
+    const { min, max } = current.sideBySide
+    return clamp(width, min, max) / (current.size - separatorSize)
 }
-const onTileEnd = () => {
+const onSeparatorStart = (index: number) => {
+    if (isSplit(index)) splitDrag = { base: dock.value?.sideBySide?.groups ?? 0 }
+    else tileDrag = unitsAround(index)
+}
+const onSeparatorMove = (delta: number) => {
+    if (splitDrag) groupsStagesSplitDraft.value = splitShare(splitDrag.base + delta)
+    else if (tileDrag)
+        panelWeightsDraft.value = {
+            ...settings.panelWeights,
+            ...resizeTileUnits(tileDrag.a, tileDrag.b, (tileDrag.a[0]?.size ?? 0) + delta),
+        }
+}
+const onSeparatorCancel = () => {
+    tileDrag = undefined
+    splitDrag = undefined
+    panelWeightsDraft.value = undefined
+    groupsStagesSplitDraft.value = undefined
+}
+const onSeparatorEnd = () => {
+    if (splitDrag && groupsStagesSplitDraft.value !== undefined)
+        settings.groupsStagesSplit = groupsStagesSplitDraft.value
     if (tileDrag && panelWeightsDraft.value) settings.panelWeights = panelWeightsDraft.value
-    tileDrag = undefined
-    panelWeightsDraft.value = undefined
+    onSeparatorCancel()
 }
-const onTileCancel = () => {
-    tileDrag = undefined
-    panelWeightsDraft.value = undefined
+const onSeparatorStep = (index: number, delta: number) => {
+    const beside = dock.value?.sideBySide
+    if (beside && isSplit(index)) {
+        settings.groupsStagesSplit = splitShare(beside.groups + delta)
+        return
+    }
+    const units = unitsAround(index)
+    if (units) setPanelWeights(resizeTileUnits(units.a, units.b, (units.a[0]?.size ?? 0) + delta))
 }
-const onTileStep = (index: number, delta: number) => {
-    const tiles = pair(index)
-    if (tiles) setPanelWeights(resizeTilePair(tiles[0], tiles[1], tiles[0].size + delta))
-}
-const onTileReset = (index: number) => {
-    const tiles = pair(index)
-    if (tiles) resetPanelWeights([tiles[0].id, tiles[1].id])
+const onSeparatorReset = (index: number) => {
+    if (isSplit(index)) {
+        settings.groupsStagesSplit = defaultGroupsShare
+        return
+    }
+    const units = unitsAround(index)
+    if (units) resetPanelWeights([...units.a, ...units.b].map(({ id }) => id))
 }
 
 // A drawer opens above the editor and the top dock.
@@ -152,22 +263,25 @@ const isDrawerOpen = computed(() => drawerSide.value === props.side)
 
         <div
             v-if="dock.visible.length"
-            class="workspace-dock-body flex min-h-0 min-w-0 shrink-0"
+            class="workspace-dock-body min-h-0 min-w-0 shrink-0"
             :class="[
-                row ? 'flex-row' : 'flex-col',
+                grid ? 'grid' : ['flex', row ? 'flex-row' : 'flex-col'],
                 `workspace-dock-body-${side}`,
                 dock.overlay
                     ? ['absolute inset-y-0', side === 'left' ? 'left-full' : 'right-full']
                     : 'relative',
             ]"
-            :style="thickness(dock.size)"
+            :style="[thickness(dock.size), grid?.body]"
         >
             <template v-for="(tile, index) in dock.tiles" :key="tile.id">
                 <section
                     :id="panelTileId(tile.id)"
                     class="workspace-tile relative min-h-0 min-w-0 shrink-0"
-                    :class="tile.id === 'preview' ? 'z-10' : 'overflow-hidden'"
-                    :style="length(tile.size)"
+                    :class="[
+                        tile.id === 'preview' ? 'z-10' : 'overflow-hidden',
+                        { 'workspace-tile-split': grid && tile.id === 'groups' },
+                    ]"
+                    :style="grid?.tiles[index] ?? length(tile.size)"
                     :aria-label="panelTitle(tile.id)"
                 >
                     <component :is="components[tile.id]" />
@@ -175,30 +289,24 @@ const isDrawerOpen = computed(() => drawerSide.value === props.side)
                 <!-- Tiles sit apart on the dock's chrome, like the rail beside
                 them, so the handle between them shows the same white line states as the dock edge handle. -->
                 <div
-                    v-if="index < dock.tiles.length - 1"
+                    v-if="separators[index]"
                     class="relative z-20 shrink-0 bg-preview"
-                    :style="length(separatorSize)"
+                    :style="grid?.separators[index] ?? length(separatorSize)"
                 >
                     <ResizeHandle
-                        :axis="row ? 'x' : 'y'"
-                        :class="row ? 'left-1/2' : 'top-1/2'"
-                        :label="
-                            interpolateRaw(
-                                i18n.workspace.resizeTiles,
-                                panelTitle(tile.id),
-                                panelTitle(dock.tiles[index + 1]?.id ?? tile.id),
-                            )
-                        "
-                        :value="tile.size"
-                        :min="tile.min"
-                        :max="tile.size + (dock.tiles[index + 1]?.size ?? 0)"
-                        @start="onTileStart(index)"
-                        @move="onTileMove"
-                        @end="onTileEnd"
-                        @cancel="onTileCancel"
-                        @step="onTileStep(index, $event)"
-                        @set="onTileStep(index, $event - tile.size)"
-                        @reset="onTileReset(index)"
+                        :axis="separators[index].axis"
+                        :class="separators[index].axis === 'x' ? 'left-1/2' : 'top-1/2'"
+                        :label="separators[index].label"
+                        :value="separators[index].value"
+                        :min="separators[index].min"
+                        :max="separators[index].max"
+                        @start="onSeparatorStart(index)"
+                        @move="onSeparatorMove"
+                        @end="onSeparatorEnd"
+                        @cancel="onSeparatorCancel"
+                        @step="onSeparatorStep(index, $event)"
+                        @set="onSeparatorStep(index, $event - separators[index].value)"
+                        @reset="onSeparatorReset(index)"
                     />
                 </div>
             </template>
@@ -250,8 +358,10 @@ const isDrawerOpen = computed(() => drawerSide.value === props.side)
         0 6px 12px -6px rgb(0 0 0 / 0.45);
 }
 
-/* Overlay scrollbars keep clear of the resize handle's half over the dock. */
-.workspace-dock-body-left {
+/* Overlay scrollbars keep clear of the resize handle's half over the dock, and
+   Groups' keeps clear of the divider beside Stages. */
+.workspace-dock-body-left,
+.workspace-tile-split {
     --overlay-scrollbar-inset: 0.375rem;
 }
 </style>

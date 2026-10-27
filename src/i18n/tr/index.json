@@ -1926,6 +1926,7 @@
       "minimap": "Mini haritayı yeniden boyutlandır"
     },
     "resizeTiles": "{0} ve {1} panellerini yeniden boyutlandır",
+    "resizeTileRow": "{0}, {1} ve {2} panellerini yeniden boyutlandır",
     "dock": {
       "auto": "Otomatik Yerleştir",
       "left": "Sola Yerleştir",

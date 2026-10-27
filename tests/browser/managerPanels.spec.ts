@@ -680,6 +680,54 @@ test('a rename keeps the typed name while its row and list update', async ({ pag
     expect((await groupState(page)).names).toEqual(['Default', 'Typed more', 'Third'])
 })
 
+test('a rename, the scroll and the focus stay as Groups and Stages go side by side and back', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 2560, height: 1440 })
+    await seedGroups(page, manyGroups)
+    const panel = await openGroups(page)
+    await page.evaluate(() => {
+        Object.assign(window.editorTest.settings, {
+            showPreview: true,
+            showStages: true,
+            leftDockWidth: 500,
+        })
+    })
+    const list = panel.locator('.manager-entries')
+    await list.evaluate((element) => {
+        element.scrollTop = 300
+    })
+    await nameButton(panel, 'Group 12').focus()
+    await page.keyboard.press('F2')
+    const input = panel.locator('.manager-rename')
+    await page.keyboard.type('Typed')
+    await input.evaluate((element: HTMLInputElement) => element.setSelectionRange(1, 3))
+    const scrolled = await list.evaluate((element) => element.scrollTop)
+    const entries = await list.elementHandle()
+    const stages = page.locator('#workspace-panel-stages')
+
+    for (const leftDockWidth of [760, 500]) {
+        const top = (await stages.boundingBox())!.y
+        await page.evaluate((leftDockWidth) => {
+            window.editorTest.settings.leftDockWidth = leftDockWidth
+        }, leftDockWidth)
+        await expect.poll(async () => (await stages.boundingBox())!.y !== top).toBe(true)
+        // The same list, not a new one in its place.
+        expect(await entries?.evaluate((element) => element.isConnected)).toBe(true)
+        await expect(input).toBeFocused()
+        await expect(input).toHaveValue('Typed')
+        expect(
+            await input.evaluate((element: HTMLInputElement) => [
+                element.selectionStart,
+                element.selectionEnd,
+            ]),
+        ).toEqual([1, 3])
+        expect(await list.evaluate((element) => element.scrollTop)).toBe(scrolled)
+    }
+    await page.keyboard.press('Enter')
+    expect((await groupState(page)).names).toContain('Typed')
+})
+
 test('Ctrl+Z in a rename stays with the field, even before any typing', async ({ page }) => {
     await seedGroups(page, ['Default', 'Other group', 'Third'])
     const panel = await openGroups(page)

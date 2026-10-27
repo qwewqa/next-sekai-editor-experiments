@@ -1926,6 +1926,7 @@
       "minimap": "Redimensionner la minicarte"
     },
     "resizeTiles": "Redimensionner {0} et {1}",
+    "resizeTileRow": "Redimensionner {0}, {1} et {2}",
     "dock": {
       "auto": "Ancrer automatiquement",
       "left": "Ancrer à gauche",
