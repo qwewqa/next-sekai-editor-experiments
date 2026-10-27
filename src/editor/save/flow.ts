@@ -391,18 +391,32 @@ const knownNames = async (env: Env) => {
 }
 
 /**
- * A suggestion made valid and, where a save picker suggests it and a stored binding or target has
- * its name, numbered upward: "coconut (2)", then "coconut (3)". A download takes nothing over, and
- * the browser renames a clash, so a suggestion is for pickers only.
+ * Suggestions made valid and, where a save picker suggests them and a stored binding or target has
+ * the name, numbered upward: "coconut (2)", then "coconut (3)". A download takes nothing over, and
+ * the browser renames a clash, so a suggestion is for pickers only. An empty one stays empty.
  */
-const suggestion = async (env: Env, stem: string) => {
-    const base = validName(stem)
-    if (!platform.pickSaveFile) return base
-    const known = await knownNames(env)
+const suggestions = async (env: Env, stems: string[]) => {
+    const known = platform.pickSaveFile ? await knownNames(env) : new Set<string>()
     const taken = (name: string) => known.has(nameKey(`${name}.nxsp`))
-    let name = base
-    while (taken(name)) name = nextCopyName(name)
-    return name
+    return stems.map((stem) => {
+        let name = validName(stem)
+        while (name && taken(name)) name = nextCopyName(name)
+        return name
+    })
+}
+
+const suggestion = async (env: Env, stem: string) => (await suggestions(env, [stem]))[0] ?? ''
+
+/**
+ * File Name's prefill and its placeholder, which an empty field saves: both suggestions, so
+ * "Untitled" is numbered as a name is.
+ */
+const fieldNames = async (env: Env, stem: string) => {
+    const [name = '', placeholder = ''] = await suggestions(env, [
+        stem,
+        i18n.value.save.placeholder,
+    ])
+    return { name, placeholder }
 }
 
 /** The displayed name as a file name, or empty for the date fallback. */
@@ -1450,8 +1464,7 @@ const notFoundSaveAs = async (env: Env) => {
     const stem = binding.file
         ? copyStem(stemOf(binding.file.name), true)
         : copyStem(shownStem(env, savedState()), false)
-    const name = await suggestion(env, stem)
-    const input = await dialogInput(env, 'saveAs', name, [])
+    const input = await dialogInput(env, 'saveAs', await fieldNames(env, stem), [])
     const result = await saveUi.saveDialog(input)
     if (result?.action === 'export') {
         await openExport()
@@ -1524,7 +1537,7 @@ const sessionBgmRow = (estimate: SaveSizeEstimate | undefined): BgmRow => {
 const dialogInput = async (
     env: Env,
     kind: SaveDialogKind,
-    name: string,
+    names: { name: string; placeholder: string },
     lines: (() => string)[],
 ): Promise<SaveDialogInput> => {
     const state = savedState()
@@ -1540,7 +1553,7 @@ const dialogInput = async (
     const cached = knownEstimate(env.chainId, key())
     const input: SaveDialogInput = {
         kind,
-        name,
+        ...names,
         lines,
         // Hashing needs a secure context: elsewhere a file holds no history.
         history: globalThis.isSecureContext
@@ -1639,7 +1652,7 @@ const dialogSave = async (
         currentSession.value.copyOf !== undefined ||
         exportMemory.partial === true
     const stem = shownStem(env, state) || (binding.replaced ? stemOf(binding.replaced.name) : '')
-    const name = await suggestion(env, copy ? copyStem(stem, !!binding.file) : stem)
+    const names = await fieldNames(env, copy ? copyStem(stem, !!binding.file) : stem)
     const replaced = binding.replaced
     const replacedLine = replaced
         ? [interpolate(() => i18n.value.file.replacedElsewhere, inlineName(replaced.name))]
@@ -1647,7 +1660,7 @@ const dialogSave = async (
     // This chain's own file read first, when it may hold what storage lacks: for every kind,
     // since any picker may return it.
     const read = binding.file && platform.pickSaveFile ? readOwnFile(env, binding) : undefined
-    const input = await dialogInput(env, kind, name, [...lines, ...replacedLine])
+    const input = await dialogInput(env, kind, names, [...lines, ...replacedLine])
     const result = await saveUi.saveDialog(input)
     if (!result) return
     if (result.action === 'export') {
@@ -1872,7 +1885,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
     const stem = prefillOf(displayName(namePartsOf(read.chain)))
     const updatedAt =
         typeof read.session.updatedAt === 'number' ? read.session.updatedAt : Date.now()
-    const name = await suggestion(
+    const names = await fieldNames(
         env,
         stem ? interpolateRaw(i18n.value.save.restoredName, stem, formatDate(updatedAt)) : '',
     )
@@ -1882,7 +1895,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
         .catch(failedEstimate)
     const input: SaveDialogInput = {
         kind: 'saveToFile',
-        name,
+        ...names,
         lines: [],
         history: globalThis.isSecureContext
             ? { kind: 'available', ticked: true, locked: false }
