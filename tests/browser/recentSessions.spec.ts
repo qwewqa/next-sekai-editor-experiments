@@ -803,11 +803,11 @@ test("Recent Sessions' Save… says it saved to the file, not the current versio
     await expect(notice(page).filter({ hasText: 'Saved the current version' })).toHaveCount(0)
 })
 
-for (const [code, line, button] of [
-    ['denied', 'did not allow writing', messages.save.tryAgain],
-    ['no-space', 'not enough space', messages.commands.saveAs.title],
+for (const [code, line, button, label] of [
+    ['denied', 'did not allow writing', messages.save.tryAgain, 'Try Again'],
+    ['no-space', 'not enough space', messages.commands.saveAs.title, 'Save As'],
 ] as const)
-    test(`Recent Sessions' Save…: ${button} after a failed write (${code}) saves that session, not the open one`, async ({
+    test(`Recent Sessions' Save: ${label} after a failed write (${code}) saves that session, not the open one`, async ({
         page,
     }) => {
         errorsFail(page)

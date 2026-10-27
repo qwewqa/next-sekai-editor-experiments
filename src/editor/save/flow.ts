@@ -1328,9 +1328,9 @@ const separateFile = async (
 
 /**
  * Shows what an outcome needs: a follow-up dialog, or nothing. `again` is a refusal's Choose
- * Another…: the same Save once more, with its own read of the chain's file first; without
- * it, the Save dialog. `of` is `stored` for Recent Sessions' Save… of a session that is not open.
- * Its Try Again and Save As… are then `again` too, so no button acts on the open session.
+ * Another: the same Save once more, with its own read of the chain's file first; without
+ * it, the Save dialog. `of` is `stored` for Recent Sessions' Save of a session that is not open.
+ * Its Try Again and Save As are then `again` too, so no button acts on the open session.
  */
 export const afterOutcome = async (
     env: Env,
@@ -1371,7 +1371,7 @@ export const afterOutcome = async (
             await conflictFlow(env, outcome.binding, outcome.handle)
             return
         case 'refused': {
-            // Export Level Data… exports the open session, so a stored session's refusal omits it.
+            // Export Level Data exports the open session, so a stored session's refusal omits it.
             const reason = stored && outcome.reason === 'levelData' ? 'notProject' : outcome.reason
             const choice = await saveUi.refused(outcome.name, reason)
             if (choice === 'chooseAnother') await again()
@@ -1389,8 +1389,9 @@ export const afterOutcome = async (
             let choice: 'saveAs' | 'tryAgain' | undefined
             switch (error.code) {
                 case 'not-found':
-                    // A stored session's picked file is not the open session's.
-                    if (!stored) setDiskFinding('missing')
+                    // Only the file the session is bound to now is marked, never a pick that the
+                    // binding did not move to or a stored session's pick.
+                    if (!stored && quickBinding(env).file?.name === name) setDiskFinding('missing')
                     choice = await saveUi.notFound(name)
                     if (choice === 'saveAs') await (stored ? again() : notFoundSaveAs(env))
                     return
@@ -1928,7 +1929,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
             ...(ownRead ? { read: ownRead } : {}),
         }),
     )
-    // Choose Another…, Try Again and Save As… are Recent Sessions' Save… for this session again,
+    // Choose Another, Try Again and Save As are Recent Sessions' Save for this session again,
     // never the open one's Save.
     await afterOutcome(env, outcome, () => saveToFileNow(env, sessionId), 'stored')
 }
@@ -2057,7 +2058,8 @@ const sessionFileBody = async (
 
 /**
  * The session built again for the same document, under the name the picker gave its file. When
- * the rebuild fails or is refused, the first build stands, as it differs only in that name.
+ * the rebuild fails or is refused, the first build is written under the typed name, since the
+ * picked file is already empty and that build was verified.
  */
 const renamedBuild = async (
     env: Env,

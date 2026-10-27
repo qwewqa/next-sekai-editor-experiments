@@ -5,9 +5,9 @@ import { createWorld, flow, sameBytes, settle, type Setup, type World } from './
 const { FileError } = await import('../../../src/platform')
 const { diskFinding, setDiskFinding } = await import('../../../src/editor/file/state')
 
-// Recent Sessions' Save… of a session that is not open: every button after a failed write or a
+// In Recent Sessions' Save of a session that is not open, every button after a failed write or a
 // refused pick acts on that session, and the file records the name the picker gave it. Try Again
-// and Save As… used to save the open session and report success.
+// and Save As used to save the open session and report success.
 
 type Build = {
     chainId: string
@@ -50,14 +50,14 @@ const onlyStored = async (r: Awaited<ReturnType<typeof world>>) => {
     assert.deepEqual(await r.w.fileBytes('own.nxsp'), r.own)
 }
 
-for (const [code, dialog, choice] of [
-    ['denied', 'denied', 'tryAgain'],
-    ['denied', 'denied', 'saveAs'],
-    ['no-space', 'failed', 'saveAs'],
-    ['read-only', 'readOnly', 'saveAs'],
-    ['not-found', 'notFound', 'saveAs'],
+for (const [code, dialog, choice, label] of [
+    ['denied', 'denied', 'tryAgain', 'Try Again'],
+    ['denied', 'denied', 'saveAs', 'Save As'],
+    ['no-space', 'failed', 'saveAs', 'Save As'],
+    ['read-only', 'readOnly', 'saveAs', 'Save As'],
+    ['not-found', 'notFound', 'saveAs', 'Save As'],
 ] as const)
-    test(`Recent Sessions' Save…: after a failed write (${code}), ${choice} saves the same session again`, async () => {
+    test(`Recent Sessions' Save: after a failed write (${code}), ${label} saves the same session again`, async () => {
         const r = await world()
         const { w } = r
         failOnce(w, 'fresh.nxsp', () => new FileError(code, 'The write failed'))
@@ -76,7 +76,7 @@ for (const [code, dialog, choice] of [
         assert.deepEqual(kinds(w, 'saved'), [['unknown.nxsp']])
     })
 
-test("Recent Sessions' Save…: a picked file that is not found leaves the open session's file state", async () => {
+test("Recent Sessions' Save: a picked file that is not found leaves the open session's file state", async () => {
     const { w } = await world()
     failOnce(w, 'fresh.nxsp', () => new FileError('not-found', 'Not found'))
     w.pick('fresh.nxsp')
@@ -87,7 +87,7 @@ test("Recent Sessions' Save…: a picked file that is not found leaves the open 
     assert.equal(diskFinding.value, undefined)
 })
 
-test("Recent Sessions' Save…: a refused level data file offers no Export, which exports the open session", async () => {
+test("Recent Sessions' Save: a refused level data file offers no Export Level Data", async () => {
     const r = await world({ opened: 'levelData' })
     const { w } = r
     w.pick('opened.nsld', 'unknown.nxsp')
@@ -101,7 +101,7 @@ test("Recent Sessions' Save…: a refused level data file offers no Export, whic
     assert.deepEqual(kinds(w, 'saved'), [['unknown.nxsp']])
 })
 
-/** Recent Sessions' Save… with "suggested" typed and `fresh.nxsp` picked. */
+/** Recent Sessions' Save with "suggested" typed and `fresh.nxsp` picked. */
 const renamed = async (rebuild?: 'throw' | { refuse: string }) => {
     const r = await world()
     const { w } = r
@@ -115,7 +115,7 @@ const renamed = async (rebuild?: 'throw' | { refuse: string }) => {
     return { ...r, written: (await w.fileBytes('fresh.nxsp'))! }
 }
 
-test("Recent Sessions' Save…: a picker that renames the file writes the picked name into it", async () => {
+test("Recent Sessions' Save: a picker that renames the file writes the picked name into it", async () => {
     const { w, builds, written } = await renamed()
     const at = w.builtLog.findIndex((built) => sameBytes(built.bytes, written))
     assert.ok(at > 0, 'the build under the picked name is written')
@@ -131,7 +131,7 @@ for (const [how, rebuild] of [
     ['throws', 'throw'],
     ['is refused', { refuse: 'unreadableHead' }],
 ] as const)
-    test(`Recent Sessions' Save…: a rebuild under the picked name that ${how} writes the first build`, async () => {
+    test(`Recent Sessions' Save: a rebuild under the picked name that ${how} writes the first build`, async () => {
         const { w, builds, written } = await renamed(rebuild)
         assert.deepEqual(
             builds.map((build) => build.options.fileName),
