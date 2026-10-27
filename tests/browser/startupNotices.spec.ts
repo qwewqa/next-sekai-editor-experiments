@@ -1314,7 +1314,7 @@ test.describe('Settings › Local Data', () => {
             await expect(rows).toHaveCount(2)
             const journal = later.locator('[data-recovery-row="journal"]')
             await expect(journal).toContainText(
-                /Unsaved work from an earlier visit, [A-Z][a-z]{2} \d/,
+                /Unsaved work from an earlier visit · [A-Z][a-z]{2} \d/,
             )
             await expect(journal.getByRole('button')).toHaveText(['Open', 'Download'])
             const autoSave = later.locator('[data-recovery-row="autoSave"]')
@@ -1485,9 +1485,9 @@ test('safe mode opens read-only on purpose, so its pill has no "newer version" l
 // with Copy Link, and a storage line in Settings › Local Data.
 test.describe('the in-app browser line', () => {
     const inApp =
-        'This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your browser.'
+        'This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your usual browser.'
     const inAppStorage =
-        'This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your browser.'
+        'This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your usual browser.'
     const androidWebView =
         'Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/128.0.6613.127 Mobile Safari/537.36'
     const iosWebView =

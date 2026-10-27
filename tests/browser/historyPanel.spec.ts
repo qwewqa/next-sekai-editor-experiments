@@ -1237,7 +1237,7 @@ test.describe('keys with focus in the list', () => {
         await openTab(page)
         await list(page).focus()
         await page.keyboard.press('c')
-        await expect(page.getByText('No object selected to copy').first()).toBeVisible()
+        await expect(page.getByText('Select an object to copy').first()).toBeVisible()
         expect(await isPlaying()).toBe(false)
         await page.keyboard.press('Space')
         await expect.poll(isPlaying).toBe(true)

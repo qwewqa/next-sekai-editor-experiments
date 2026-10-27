@@ -30,7 +30,7 @@ for (const names of [['a'], ['a', 'b']]) {
         }, names)
 
         expect(result.visits).toBe(names.length)
-        expect(result.error).toContain('cyclic event ref "a"')
+        expect(result.error).toContain('circular event reference “a”')
     })
 }
 
@@ -99,7 +99,7 @@ for (const names of [['a'], ['a', 'b']]) {
             }
         }, names)
 
-        expect(result).toContain(`cyclic slide ref "a"`)
+        expect(result).toContain(`circular slide reference “a”`)
     })
 }
 

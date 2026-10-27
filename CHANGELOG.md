@@ -2,34 +2,39 @@
 
 ## Unreleased
 
-- **Save (P) now saves a project file (.nxsp), not level data.** It contains the chart and Level Info, and can include the history and BGM. Ctrl/Cmd+S also saves. Open… (O) opens project files.
-- **For Sonolus, use Export Level Data… (Shift+P).**
-- Later saves and exports write to the same file in Chrome and Edge on a computer, and in Chrome 132 or later on Android. Other browsers download a new file each time.
-- **When you open the editor, it continues where you left off,** as auto save did. The first time after this update, it continues from your old auto save. Work is stored in this browser as sessions. Save to keep your work.
-- **History (Shift+H)** has two tabs. Timeline lists each change; you can view the chart at any step and **Restore** it. **Find Edits Here**, in the chart’s menu, shows only the Timeline steps that changed the selected beats, or the beats in view. Recent Sessions lists earlier sessions; select one to view or restore it, or use its menu to Save… or Delete. Delete can be undone. Recent Sessions has a **Delete Sessions…** button (a trash can with a clock) to delete many sessions at once.
-- Undo goes back up to 1,000 steps, including after a reload. Earlier Timeline steps are in History.
-- When browser storage runs low, the editor deletes audio and covers used only by earlier Timeline steps. When it is full, new changes are not stored until you free space, for example with **Settings › Local Data › Delete Sessions…**
-- Except on iPhone and iPad, the editor asks first when you close the tab with unsaved changes, even after an export. To turn this off, use **Settings › Local Data › Ask Before Closing with Unsaved Changes**. Settings › Local Data replaces the Auto Save settings.
-- **Reset is now New (N).** It asks first when the chart has unsaved changes. The previous level stays in Recent Sessions; Reopen in the notice goes back to it.
-- **Level Properties is now Level Info**, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file.
-- The BGM dialog has **Download BGM**. When the BGM is not loaded, **Choose Audio…** in the notice attaches the audio file.
-- **Check** in Level Info checks the project file and the history stored in this browser. It repairs what it can from the file and lists what is still damaged. In Settings › Toolbar and Settings › Keyboard Shortcuts it is Check File and History.
-- Use **Preview Assets** to choose the skin, particle, background and sound effects. It is in the toolbar and the Preview panel’s menu. The web editor includes the Next SEKAI 02 skin and sound effects.
-- The **Minimap**, a strip beside the chart, shows the whole chart. Click or drag in it to scroll. While you view a step in History, it marks that step’s changes. It is shown in wide windows; turn it on or off with the Minimap tool or **Settings › Editor › Show Minimap**. Drag its left edge to resize it.
-- Stage style events have a **Lane Color**. A lane color change follows the event’s easing. The judgment line keeps its opacity during color changes.
-- In the preview, hit effects stay on their notes when the camera moves, and notes attached across stages line up as in Sonolus.
-- **Middle click** in the chart or the Elevation Editor, then move the mouse to scroll. Click to stop.
-- With **Settings › Toolbar › Quick Switch** on, you can hold a tool and slide along its toolbar row to pick another one.
-- Ctrl/Cmd+R reloads the page and Ctrl/Cmd+F opens the browser’s find bar, unless you assign them to a command in **Settings › Keyboard Shortcuts**. Before, they ran the commands assigned to R and F.
-- On iPhone and iPad, playback is heard in silent mode.
-- Names with dots, such as "feat. Miku", are no longer cut at the first dot.
-- Settings has an About section with the version and **Copy Diagnostic Info…**.
-- The web editor sends usage statistics, unless the browser sends Do Not Track or Global Privacy Control. Turn them off in **Settings › About › Send Usage Statistics**. The privacy page lists what is sent and how long it is kept.
-- The preview is now rendered in parallel with the rest of the editor, so the chart stays smoother during playback and edits, especially on dense charts. If the preview looks wrong or does not appear, turn off **Settings › Preview › Parallel Rendering**.
-- The editor is now named "Next SEKAI Editor" (formerly "Sonolus Next SEKAI Editor").
-- **Safari 17 or later is required** (iOS 17 or later on iPhone and iPad).
-- If the editor does not start, add `?safe` to its address to open it in safe mode.
+- Sonolus Next SEKAI Editor is now named “Next SEKAI Editor”.
+- (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.
+- (Web) By default, the editor now sends usage statistics unless Do Not Track or Global Privacy Control is enabled in your browser. To stop sending them, turn off Settings › About › Send Usage Statistics. The privacy page lists what is sent and how long it is kept.
+- Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open… (O) opens project files.
+- Export Level Data… (Shift+P) exports level data for Sonolus.
+- (Web) In desktop Chrome and Edge, and in Chrome 132 or later on Android, saving again updates the project file and exporting again updates the exported file. Other browsers download a new file each time.
+- (Web) The editor stores your work in your browser as sessions and resumes your last session when you return. On the first launch after this update, it opens your old auto save. Save a project file to keep your work.
+- Reset is now New (N). New asks for confirmation when the chart has unsaved changes. The previous session stays in Recent Sessions. The notice shown after New has a Reopen button to return to it.
+- Added History (Shift+H), with Timeline and Recent Sessions tabs. Timeline lists each change. You can view the chart at any Timeline step and choose Restore to return to that version.
+- Recent Sessions lists earlier sessions. Select one to view or restore it, or use its menu to save it as a project file or delete it. You can undo the deletion.
+- Recent Sessions has a Delete Sessions… button (trash can and clock icon) for deleting several sessions at once.
+- Added Find Edits Here to the chart’s context menu. It filters the Timeline to steps that changed the selected beats or the beats in view.
+- Undo now supports up to 1,000 steps, even after you reload the page. Earlier Timeline steps are available in History.
+- (Web) When browser storage runs low, the editor deletes audio and cover images used only by earlier Timeline steps. Once storage is full, new changes are not stored until you free up space, for example with Delete Sessions… in Settings › Local Data.
+- Settings › Local Data replaces the Auto Save settings.
+- (Web) Except on iPhone and iPad, the editor asks for confirmation when you close a tab with unsaved changes. This also applies after an export. To turn this off, use Settings › Local Data › Ask Before Closing with Unsaved Changes.
+- Level Properties is now Level Info, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file.
+- The BGM dialog now has a Download BGM button. When the BGM is not loaded, a notice offers Choose Audio… to load an audio file.
+- Level Info now has a Check button for the project file and the history stored in your browser. It uses the file to repair damaged history where possible and reports any remaining damage. In Settings › Toolbar and Settings › Keyboard Shortcuts, the command is named Check File and History.
+- Added Preview Assets to the toolbar and the Preview panel’s menu for choosing the skin, particle effects, background and sound effects.
+- (Web) The editor now also includes the Next SEKAI 02 skin and sound effects.
+- Added a Minimap beside the chart. It shows the whole chart and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its left edge to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap.
+- Stage style events now support Lane Color. Color transitions use the event’s easing. The judgment line keeps its opacity during color transitions.
+- You can now middle-click in the chart or the Elevation Editor and move the mouse to scroll. Click again to stop.
+- With Settings › Toolbar › Quick Switch enabled, you can now press and hold a tool button, then drag along its toolbar row to select another tool.
+- (Web) Ctrl/Cmd+R now reloads the page and Ctrl/Cmd+F opens the browser’s find bar. Previously, these shortcuts ran the commands assigned to R and F. You can assign either shortcut to a command in Settings › Keyboard Shortcuts.
+- Added an About section in Settings with the editor version and a Copy Diagnostic Info… button.
+- The preview now renders in parallel with the rest of the editor. This makes chart rendering smoother during playback and editing, especially with dense charts. If the preview looks wrong or does not appear, turn off Settings › Preview › Parallel Rendering.
+- In the preview, hit effects now stay on their notes when the camera moves, and notes attached across stages line up as they do in Sonolus.
+- On iPhone and iPad, audio now plays in silent mode.
+- Session names and suggested file names containing dots, such as “feat. Miku”, are no longer cut off at the first dot.
+- (Web) Added safe mode. If the editor does not start, add ?safe to its address.
 
 ## 0.5.22 (2026-10-17)
 
-- Version numbers now follow release tags.
+- Version numbers now match release tags.

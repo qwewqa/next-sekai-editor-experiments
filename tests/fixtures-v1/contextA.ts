@@ -526,7 +526,7 @@ export const stepA9 = async (a: A, tab: Tab) => {
     const crafted = await craftedCopy(products.bytes('step6.nxsp'))
     await writeOpfs(tab.page, copyName, crafted)
     await tab.open(copyName)
-    await expect(tab.notice('Made by a newer version')).toBeVisible()
+    await expect(tab.notice('This file was created by a newer version')).toBeVisible()
     await expect
         .poll(
             async () =>

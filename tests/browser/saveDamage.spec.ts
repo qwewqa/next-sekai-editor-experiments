@@ -64,7 +64,7 @@ test('a bad stored head chunk never refuses a Save: the head is written from the
     await pressSave(page)
     await submitSave(page, 'coconut')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await expect(notice(page).filter({ hasText: 'could not be read completely' })).toHaveCount(0)
+    await expect(notice(page).filter({ hasText: 'could not be read in full' })).toHaveCount(0)
     const project = await projectOf(page, 'coconut.nxsp')
     expect((project.revision as Row).id).toBeTruthy()
 })

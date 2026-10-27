@@ -125,8 +125,8 @@ test('the wording follows the platform module’s WebKit rule, on every user age
                 assert.equal(
                     gate.message(win),
                     webkit
-                        ? 'This editor requires Safari 17 or later (iOS 17 or later on iPhone and iPad).'
-                        : 'This browser is too old for the editor.',
+                        ? 'The editor requires Safari 17 or later. On iPhone and iPad, it requires iOS 17 or later.'
+                        : 'This browser does not support the features required by the editor. Update it, or open the editor in another browser.',
                 )
             }
         }
@@ -194,7 +194,7 @@ test('the gate lists the auto save and the unreadable one, and never a journal',
     const files = gate.recoveryFiles(storage)
     assert.deepEqual(
         files.map((file) => file.label),
-        ['Download Your Last Auto Save', 'Download Unreadable Auto Save'],
+        ['Download Last Auto Save', 'Download Unreadable Auto Save'],
     )
     assert.deepEqual(
         files.map((file) => file.name),
@@ -369,13 +369,16 @@ test('an unsupported browser flags the bundle to stop and says why', () => {
     assert.equal(win.documentElement.attributes['data-gate'], 'unsupported')
     const main = win.document.body.children[0]
     assert.equal(main?.tag, 'main')
-    assert.equal(main?.children[0]?.textContent, 'This browser is too old for the editor.')
+    assert.equal(
+        main?.children[0]?.textContent,
+        'This browser does not support the features required by the editor. Update it, or open the editor in another browser.',
+    )
     assert.equal(buttonsOf(win).length, 0)
     const iphone = noLocks({ userAgent: uas.iphoneSafari })
     gate.run(iphone)
     assert.equal(
         iphone.document.body.children[0]?.children[0]?.textContent,
-        'This editor requires Safari 17 or later (iOS 17 or later on iPhone and iPad).',
+        'The editor requires Safari 17 or later. On iPhone and iPad, it requires iOS 17 or later.',
     )
 })
 
@@ -395,7 +398,7 @@ test('unavailable storage still shows the message', () => {
     assert.equal(buttonsOf(win).length, 0)
     assert.equal(
         win.document.body.children[0]?.children[0]?.textContent,
-        'This browser is too old for the editor.',
+        'This browser does not support the features required by the editor. Update it, or open the editor in another browser.',
     )
 })
 
@@ -409,7 +412,7 @@ test('a button downloads its file, the same bytes as the stored work', async () 
     const buttons = buttonsOf(win)
     assert.deepEqual(
         buttons.map((button) => button.textContent),
-        ['Download Your Last Auto Save', 'Download Unreadable Auto Save'],
+        ['Download Last Auto Save', 'Download Unreadable Auto Save'],
     )
     assert.ok(buttons.every((button) => button.type === 'button'))
     const downloads: { name: string; bytes: Buffer }[] = []

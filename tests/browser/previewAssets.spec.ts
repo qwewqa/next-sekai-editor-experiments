@@ -460,7 +460,7 @@ test.describe('fallbacks', () => {
             {
                 seed: { previewAssets: { skin: { source: 'builtin' } } },
                 fail: ['builtin-skin' as const],
-                reason: 'Built-in could not be loaded.',
+                reason: 'The built-in asset could not be loaded.',
                 using: 'Next SEKAI 01',
             },
             {
@@ -848,10 +848,12 @@ test.describe('the review fixes', () => {
             .getByRole('radio', { name: /^Built-in/ })
             .check()
         await expect(dialog(page).locator('[data-asset-note]')).toHaveText(
-            'Using Next SEKAI 01. Built-in could not be loaded.',
+            'Using Next SEKAI 01. The built-in asset could not be loaded.',
         )
         expect(await skinTitle(page)).toBe('Fixture')
-        await expect(fallbackLine(page, 'skin')).toContainText('Built-in could not be loaded.')
+        await expect(fallbackLine(page, 'skin')).toContainText(
+            'The built-in asset could not be loaded.',
+        )
     })
 
     test('Built-in for all never downloads the Default background', async ({ page }) => {

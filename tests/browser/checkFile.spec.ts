@@ -204,7 +204,9 @@ test('a chunk damaged in the file after it was opened: damaged, unlinked, the fi
     const before = await readFile(page, 'coconut.nxsp')
     await runCheck(page)
     const dialog = checkDialog(page)
-    await expect(dialog).toContainText('"coconut.nxsp" is damaged. Saving makes a separate file.')
+    await expect(dialog).toContainText(
+        '“coconut.nxsp” is damaged. Saving will create a separate file.',
+    )
     await expect(dialog).toContainText(
         'Checked "coconut.nxsp" and the history stored in this browser.',
     )
@@ -418,5 +420,5 @@ test('unbound work with a stored step damaged: Check marks it, and Save As… st
     await submitSave(page, 'coconut')
     // The marked step never refuses the Save: it is written, without that step's own state.
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await expect(notice(page).filter({ hasText: 'could not be read completely' })).toHaveCount(0)
+    await expect(notice(page).filter({ hasText: 'could not be read in full' })).toHaveCount(0)
 })

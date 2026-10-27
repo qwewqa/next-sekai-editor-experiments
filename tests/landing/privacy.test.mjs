@@ -35,7 +35,6 @@ test('every link is on the site or on the allow-list', () => {
         /^https:\/\/github\.com\/%GITHUB_REPOSITORY%(?:\/issues|\/blob\/main\/CHANGELOG\.md)?$/,
         /^https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md$/,
         /^https:\/\/docs\.github\.com\/en\/site-policy\/privacy-policies\/github-general-privacy-statement$/,
-        /^https:\/\/aws\.amazon\.com\/service-terms\/$/,
         /^mailto:nse@qwewqa\.dev$/,
         /^https:\/\/nse\.qwewqa\.dev\/privacy\/$/,
         /^\/(?:LICENSE\.txt|THIRD_PARTY_NOTICES\.txt)?$/,
@@ -80,6 +79,11 @@ test('the date is valid and its text matches', () => {
         }),
         shown,
     )
+})
+
+test('the page is titled Privacy Notice', () => {
+    assert.match(html, /<title>Privacy Notice – %PRODUCT_NAME%<\/title>/)
+    assert.match(html, /<h1\b[^>]*>\s*Privacy Notice\s*<\/h1>/)
 })
 
 test('the wording follows the editor’s conventions', () => {

@@ -1054,7 +1054,7 @@ test('ungrouping keeps members; deleting a folder confirms and removes them', as
     await expect(remove).toHaveClass(/text-danger/)
     await remove.click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Delete the Verse folder, its groups (2)')
+    await expect(dialog).toContainText('Delete folder Verse, its groups (2)')
     // Cancel changes nothing.
     await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     expect(await tree(page)).toBe('Default [Verse: Lead Fill] [Ending: Outro]')
