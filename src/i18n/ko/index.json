@@ -149,7 +149,6 @@
     },
     "fullscreen": {
       "title": "전체 화면",
-      "toggled": "전체 화면 전환됨",
       "unsupported": "이 기기에서는 전체 화면 모드가 지원되지 않습니다."
     },
     "groups": {
@@ -383,7 +382,8 @@
     },
     "toggleVolume": {
       "title": "{0} 켜기/끄기",
-      "toggled": "{0} 음량 전환됨",
+      "muted": "{0} 음소거됨",
+      "unmuted": "{0} 음소거 해제됨",
       "type": {
         "bgm": "배경음",
         "sfx": "효과음"
@@ -401,11 +401,13 @@
     "visibilities": {
       "cycle": {
         "title": "객체 표시 순환",
-        "cycled": "객체 표시 순환됨"
+        "all": "모든 객체 표시됨",
+        "only": "{0}만 표시됨"
       },
       "toggle": {
         "title": "{0} 표시 여부 전환",
-        "toggled": "{0} 표시 전환됨",
+        "on": "{0} 표시 켜짐",
+        "off": "{0} 표시 꺼짐",
         "types": {
           "note": "노트",
           "cameraEvent": "카메라 이벤트",

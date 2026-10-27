@@ -22,11 +22,15 @@ export const toggleBgmVolume: Command = {
     readOnly: true,
 
     execute() {
-        isBgmEnabled.value = !isBgmEnabled.value
+        const enabled = !isBgmEnabled.value
+        isBgmEnabled.value = enabled
 
         notify(
             interpolate(
-                () => i18n.value.commands.toggleVolume.toggled,
+                () =>
+                    enabled
+                        ? i18n.value.commands.toggleVolume.unmuted
+                        : i18n.value.commands.toggleVolume.muted,
                 () => i18n.value.commands.toggleVolume.type.bgm,
             ),
         )

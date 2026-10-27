@@ -149,7 +149,6 @@
     },
     "fullscreen": {
       "title": "Plein écran",
-      "toggled": "Mode plein écran modifié",
       "unsupported": "Cet appareil ne prend pas en charge le plein écran"
     },
     "groups": {
@@ -383,7 +382,8 @@
     },
     "toggleVolume": {
       "title": "Activer/désactiver le son : {0}",
-      "toggled": "Son {0} activé/désactivé",
+      "muted": "Son coupé : {0}",
+      "unmuted": "Son rétabli : {0}",
       "type": {
         "bgm": "Musique",
         "sfx": "Effets sonores"
@@ -401,11 +401,13 @@
     "visibilities": {
       "cycle": {
         "title": "Changer la visibilité des objets",
-        "cycled": "Visibilité des objets modifiée"
+        "all": "Objets affichés : tous",
+        "only": "Objets affichés : {0} uniquement"
       },
       "toggle": {
         "title": "Visibilité : {0}",
-        "toggled": "Visibilité modifiée : {0}",
+        "on": "Visibilité activée : {0}",
+        "off": "Visibilité désactivée : {0}",
         "types": {
           "note": "Note",
           "cameraEvent": "Événement de caméra",

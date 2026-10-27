@@ -22,11 +22,15 @@ export const toggleSfxVolume: Command = {
     readOnly: true,
 
     execute() {
-        isSfxEnabled.value = !isSfxEnabled.value
+        const enabled = !isSfxEnabled.value
+        isSfxEnabled.value = enabled
 
         notify(
             interpolate(
-                () => i18n.value.commands.toggleVolume.toggled,
+                () =>
+                    enabled
+                        ? i18n.value.commands.toggleVolume.unmuted
+                        : i18n.value.commands.toggleVolume.muted,
                 () => i18n.value.commands.toggleVolume.type.sfx,
             ),
         )
