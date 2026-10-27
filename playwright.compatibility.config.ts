@@ -50,6 +50,14 @@ export default defineConfig({
     use: {
         ...config.use,
         launchOptions: {},
+        // As in the main config: no startup guard question unless a spec tests the guard.
+        storageState: {
+            cookies: [],
+            origins: [String(config.use?.baseURL), previewUrl].map((origin) => ({
+                origin,
+                localStorage: [{ name: 'nse.test.noOpeningGuard', value: 'true' }],
+            })),
+        },
     },
     projects: [
         { name: 'firefox', use: { browserName: 'firefox' } },
