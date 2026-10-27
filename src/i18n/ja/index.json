@@ -2102,6 +2102,7 @@
     "restoredName": "{0}（{1} に復元）",
     "fileType": "Next SEKAI プロジェクトファイル",
     "unavailable": "保存されませんでした。「レベルデータを出力」を使ってください。",
+    "sessionUnavailable": "このセッションは保存できませんでした。",
     "storageUnavailable": "保存されませんでした。このブラウザーのストレージにアクセスできませんでした。もう一度試すか、「名前を付けて保存」を使ってください。",
     "include": "含める",
     "historySize": "{0} 操作 · {1}",
@@ -2169,6 +2170,7 @@
   "notice": {
     "useOpenFile": "ファイルを開くには「ファイルを開く」を使ってください。",
     "sameFileElsewhere": "「{0}」は別のタブまたはウィンドウで開かれているため、これは別のコピーです。",
+    "separateCopyOf": "「{0}」の別のコピーを開きました。",
     "storageUnavailable": "このブラウザーのストレージにアクセスできませんでした。もう一度お試しください。",
     "chooseAudio": "音声を選択…",
     "bgmMayBeTooLong": "BGM は読み込まれませんでした。音源の長さの上限は{0}分です。",

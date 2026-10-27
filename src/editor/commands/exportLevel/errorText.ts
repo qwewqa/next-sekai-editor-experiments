@@ -5,6 +5,7 @@ export type FileErrorKey =
     | 'buildFailed'
     | 'readFailed'
     | 'changedWhileWriting'
+    | 'openedContentGone'
     | 'downloadFailed'
     | 'denied'
     | 'notFound'
@@ -25,8 +26,9 @@ export const fileErrorKey = (error: FileError): FileErrorKey => {
         case 'read':
             return 'readFailed'
         case 'readBack':
-        case 'check':
             return 'changedWhileWriting'
+        case 'check':
+            return 'openedContentGone'
         case 'download':
             return 'downloadFailed'
         case undefined:

@@ -59,8 +59,12 @@ export type LoadEvent =
     | { kind: 'openElsewhere'; name: ShownName; sessionId: string }
     /** The reload's session was deleted in the gap: "This session was deleted in another tab or window." */
     | { kind: 'deletedElsewhere' }
-    /** A separate copy at load: "{0} is open in another tab or window, so this is a separate copy." */
-    | { kind: 'separateCopy'; of: CopyOf }
+    /**
+     * A separate copy at load. `elsewhere`: another tab is known to hold it ("{0} is open in
+     * another tab or window, so this is a separate copy."); otherwise the notice only says a
+     * separate copy was opened.
+     */
+    | { kind: 'separateCopy'; of: CopyOf; elsewhere?: true }
     /** The session continued or recovered at load has a head whose BGM isn't held. */
     | { kind: 'bgmNotLoaded' }
 

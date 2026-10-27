@@ -634,6 +634,7 @@ test("a new visit whose most recent session's file is bound in another tab's ope
         {
             kind: 'separateCopy',
             of: { name: 'coconut.nxsp', bound: true },
+            elsewhere: true,
         },
     )
     const target = await readOpen(visit.page, bound.id)

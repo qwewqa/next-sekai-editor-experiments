@@ -174,7 +174,10 @@ export const loadNoticeOf: Handlers = {
         order: LOAD_ORDER.separateCopy,
         severity: 'info',
         message: interpolate(
-            () => i18n.value.notice.sameFileElsewhere,
+            () =>
+                event.elsewhere
+                    ? i18n.value.notice.sameFileElsewhere
+                    : i18n.value.notice.separateCopyOf,
             () => copySourceName(event.of),
         ),
     }),

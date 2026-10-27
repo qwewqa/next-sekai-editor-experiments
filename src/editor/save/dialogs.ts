@@ -137,6 +137,8 @@ export type SavedFeedback = {
     tooLarge: MediaKind[]
     /** Recent Sessions' Save… of a session open in another tab wrote its committed state. */
     committedState?: boolean
+    /** Recent Sessions' Save…: the file holds that session, not the open one. */
+    ofStored?: boolean
 }
 
 export type SaveUi = {
@@ -388,7 +390,7 @@ export const defaultSaveUi: SaveUi = {
         // confirm is where the user is looking; its announcement names the chip.
         const unconfirmed = feedback.kind === 'download' && downloadNotConfirmed.value
         const text =
-            feedback.kind === 'saved' && isPeeking.value && simple(feedback)
+            feedback.kind === 'saved' && isPeeking.value && !feedback.ofStored && simple(feedback)
                 ? interpolate(() => i18n.value.notice.savedCurrent, inlineName(feedback.name))
                 : () => savedText(feedback)
         // The chip it names is only shown when no higher state (Not stored) takes its place.
