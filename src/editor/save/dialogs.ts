@@ -42,6 +42,11 @@ export type SaveDialogInput = {
     kind: SaveDialogKind
     /** The File Name field's first value, without `.nxsp`; empty shows the placeholder. */
     name: string
+    /**
+     * The placeholder, "Untitled" or numbered as a name is ("Untitled (2)"). An empty field
+     * saves it.
+     */
+    placeholder: string
     /** Lines shown first, such as `file.replacedElsewhere` or `open.damagedHistory`. */
     lines: (() => string)[]
     history: HistoryRow
@@ -61,7 +66,7 @@ export type SaveDialogInput = {
 }
 
 export type SaveDialogResult =
-    /** `fileName` ends in `.nxsp`, a valid name; an empty field gives `Untitled.nxsp`. */
+    /** `fileName` ends in `.nxsp`, a valid name; an empty field gives `<placeholder>.nxsp`. */
     | { action: 'save'; fileName: string; history: boolean; bgm: boolean }
     /** The Export line's link: this dialog closes and Export's opens. */
     | { action: 'export' }

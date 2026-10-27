@@ -55,6 +55,7 @@ type Input = Parameters<typeof import('../../src/editor/save/dialogs').defaultSa
 const base: Input = {
     kind: 'save',
     name: 'Coconut (Master)',
+    placeholder: 'Untitled',
     lines: [],
     history: { kind: 'available', ticked: true, locked: false },
     bgm: { kind: 'held', name: 'coconut.mp3', ticked: true },

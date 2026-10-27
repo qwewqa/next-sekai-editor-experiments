@@ -212,6 +212,41 @@ test('suggestions never name a known file: a taken "(2)" gets one more', async (
     await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('coconut (3)')
 })
 
+test('an empty File Name saves its placeholder, numbered past a known file as a name is', async ({
+    page,
+}) => {
+    await start(page)
+    await edit(page, 1)
+    await pressSave(page)
+    const field = saveDialog(page).getByRole('textbox', { name: 'File Name' })
+    await expect(field).toHaveAttribute('placeholder', 'Untitled')
+    await submitSave(page)
+    await expect(notice(page).filter({ hasText: 'Saved to Untitled.nxsp' })).toBeVisible()
+    await expect
+        .poll(async () => (await chainOf(page)).file)
+        .toMatchObject({ name: 'Untitled.nxsp', event: 'saved' })
+    const first = await chainOf(page)
+    // A second untitled chart.
+    await page.evaluate(async () => {
+        const { resetState } = await import('/src/history/index.ts')
+        resetState(false)
+    })
+    await edit(page, 2)
+    await pressSave(page)
+    await expect(field).toHaveValue('')
+    await expect(field).toHaveAttribute('placeholder', 'Untitled (2)')
+    await submitSave(page)
+    await expect(notice(page).filter({ hasText: 'Saved to Untitled (2).nxsp' })).toBeVisible()
+    expect((await pickerCalls(page)).map((call) => call.suggestedName)).toEqual([
+        'Untitled.nxsp',
+        'Untitled (2).nxsp',
+    ])
+    // The first chart keeps its file.
+    const kept = (await chainById(page, first.chainId))!
+    expect(kept.file).toMatchObject({ name: 'Untitled.nxsp' })
+    expect(kept.replaced).toBeUndefined()
+})
+
 test('the project picker lists .nxsp only, and a build that outlasted the press asks for Save', async ({
     page,
 }) => {

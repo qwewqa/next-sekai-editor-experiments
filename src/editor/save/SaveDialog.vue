@@ -25,8 +25,7 @@ const field = useTemplateRef<HTMLInputElement>('field')
 
 // --- File Name. A typed ".nxsp" is not doubled; an empty field means its placeholder.
 const value = ref(props.input.name)
-const placeholder = computed(() => i18n.value.save.placeholder)
-const stem = computed(() => (value.value || placeholder.value).replace(/\.nxsp$/i, ''))
+const stem = computed(() => (value.value || props.input.placeholder).replace(/\.nxsp$/i, ''))
 const problem = computed(() => nameProblem(value.value.replace(/\.nxsp$/i, '')))
 
 // A forbidden character or a reserved name shows at once; the edge and length reasons after a
@@ -195,7 +194,7 @@ const boxClass =
                             type="text"
                             spellcheck="false"
                             autocomplete="off"
-                            :placeholder="placeholder"
+                            :placeholder="input.placeholder"
                             :aria-invalid="!!shownProblem"
                             :aria-describedby="described"
                             data-save-name

@@ -84,6 +84,8 @@ export type Setup = {
     platform?: 'picker' | 'download'
     /** `bound`: bound to own.nxsp; `unbound`: no file; `missing`: bound, the file gone. */
     own?: 'bound' | 'unbound' | 'missing'
+    /** The own file's name in place of own.nxsp. */
+    ownFile?: string
     /** Whether storage holds all the own file holds (the read-first is then not needed). */
     storage?: 'holds' | 'lacks'
     /** `ahead`: the own file changed on disk since the binding. */
@@ -96,6 +98,8 @@ export type Setup = {
     read?: 'granted' | 'prompt' | 'denied'
     /** Another chain bound to other.nxsp. */
     other?: boolean
+    /** The name of the other chain's file, in place of other.nxsp. */
+    otherFile?: string
     /** Another chain's Export target, target.nsld. */
     target?: boolean
     /** The session was opened from opened.nsld: a chart, level data, or a partial import. */
@@ -131,8 +135,6 @@ export type PickerOpening = {
 }
 
 type ReservationLog = { reservation: SaveReservation; ends: { kept: boolean; entry: boolean }[] }
-
-const OWN = 'own.nxsp'
 
 /**
  * The bytes a partial open copied into the origin private file system, by chain (`nse-kept`): a
@@ -180,12 +182,14 @@ const createWorld = async (setup: Setup = {}) => {
     const s = {
         platform: setup.platform ?? 'picker',
         own: setup.own ?? 'bound',
+        ownFile: setup.ownFile ?? 'own.nxsp',
         storage: setup.storage ?? 'lacks',
         ownDisk: setup.ownDisk ?? 'base',
         unchanged: setup.unchanged ?? false,
         held: setup.held ?? true,
         read: setup.read ?? 'granted',
         other: setup.other ?? true,
+        otherFile: setup.otherFile ?? 'other.nxsp',
         target: setup.target ?? true,
         opened: setup.opened,
         damaged: setup.damaged ?? false,
@@ -280,9 +284,9 @@ const createWorld = async (setup: Setup = {}) => {
             },
             getFile: async () => {
                 log.push(`getFile:${name}`)
-                if (tune.readDelayMs && name === OWN)
+                if (tune.readDelayMs && name === s.ownFile)
                     await new Promise((resolve) => setTimeout(resolve, tune.readDelayMs))
-                if (tune.readWaitsForDialog && name === OWN)
+                if (tune.readWaitsForDialog && name === s.ownFile)
                     await world.until(() => preparing.some((p) => p.open), 'Preparing…', 8000)
                 if (readFails.has(name) || readFailsOnce.delete(name))
                     throw new DOMException('Not readable', 'NotReadableError')
@@ -698,18 +702,18 @@ const createWorld = async (setup: Setup = {}) => {
     const otherBlob = await nxsp('rev-other', 'another chain’s file')
     const targetBlob = levelData('another chain’s export')
     if (s.own !== 'unbound') {
-        await put(OWN, ownBlob)
-        const disk = await nxspDiskState(await handle(OWN).getFile(), 0)
+        await put(s.ownFile, ownBlob)
+        const disk = await nxspDiskState(await handle(s.ownFile).getFile(), 0)
         // The binding's disk is the file as saved; `ahead` changes the file after it.
-        if (s.ownDisk === 'ahead') await put(OWN, ownAhead)
-        else mock.files.set(OWN, ownBlob)
+        if (s.ownDisk === 'ahead') await put(s.ownFile, ownAhead)
+        else mock.files.set(s.ownFile, ownBlob)
         chains.set(ownSession.chainId, {
             chainId: ownSession.chainId,
             docId: 'doc-own',
             head: ownSession.id,
             revision: { id: 'rev-own', n: 1, ancestors: [] },
             file: {
-                name: OWN,
+                name: s.ownFile,
                 event: 'saved',
                 at: 1000,
                 hash: s.unchanged ? fromHex16(rootOf(liveState.value)) : new Uint8Array(16).fill(7),
@@ -723,10 +727,10 @@ const createWorld = async (setup: Setup = {}) => {
                 },
             },
         })
-        handleRows.set(`${ownSession.chainId}:file`, handle(OWN))
-        if (s.held) env.rememberHandle(ownSession.chainId, handle(OWN))
-        readState.set(OWN, s.read)
-        if (s.own === 'missing') mock.files.delete(OWN)
+        handleRows.set(`${ownSession.chainId}:file`, handle(s.ownFile))
+        if (s.held) env.rememberHandle(ownSession.chainId, handle(s.ownFile))
+        readState.set(s.ownFile, s.read)
+        if (s.own === 'missing') mock.files.delete(s.ownFile)
     } else {
         chains.set(ownSession.chainId, {
             chainId: ownSession.chainId,
@@ -736,20 +740,20 @@ const createWorld = async (setup: Setup = {}) => {
     }
     ;(ownSession as { identity?: unknown }).identity = undefined
     if (s.other) {
-        await put('other.nxsp', otherBlob)
-        const disk = await nxspDiskState(await handle('other.nxsp').getFile(), 0)
+        await put(s.otherFile, otherBlob)
+        const disk = await nxspDiskState(await handle(s.otherFile).getFile(), 0)
         chains.set('chain-other', {
             chainId: 'chain-other',
             docId: 'doc-other',
             file: {
-                name: 'other.nxsp',
+                name: s.otherFile,
                 event: 'saved',
                 at: 2000,
                 hash: new Uint8Array(16).fill(9),
                 disk,
             },
         })
-        handleRows.set('chain-other:file', handle('other.nxsp'))
+        handleRows.set('chain-other:file', handle(s.otherFile))
     }
     if (s.target) {
         await put('target.nsld', targetBlob)

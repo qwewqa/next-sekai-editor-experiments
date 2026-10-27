@@ -164,6 +164,7 @@ const saveLineLeads = (page: Page) =>
         void saveUi.saveDialog({
             kind: 'save',
             name: 'Coconut',
+            placeholder: 'Untitled',
             lines: [],
             history: { kind: 'available', ticked: true, locked: false },
             bgm: { kind: 'none' },
