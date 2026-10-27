@@ -15,6 +15,7 @@ import {
     removeFile,
     rows,
     saveDialog,
+    saveStored,
     sessionOf,
     start,
     submitSave,
@@ -68,6 +69,7 @@ test('Save binds, the status shows the file name, and a second Save writes in pl
             ancestors: [firstRevision.id],
             n: 2,
         })
+    await saveStored(page)
     expect(await pickerCalls(page)).toHaveLength(1)
 
     // Each Save's `save` entry, with its revision and device.
