@@ -40,6 +40,7 @@ export default defineConfig({
         'waveform.spec.ts',
         'recordVectors.spec.ts',
         'assetSelectGap.spec.ts',
+        'openActivation.spec.ts',
     ],
     outputDir: 'test-results-compatibility',
     // Firefox under xvfb sometimes fails to create its first WebGL2 context. A test that passes
@@ -61,7 +62,12 @@ export default defineConfig({
     },
     projects: [
         { name: 'firefox', use: { browserName: 'firefox' } },
-        { name: 'webkit', use: { browserName: 'webkit' } },
+        // Not openActivation.spec.ts: its picker call is showPicker(), which WebKit's chooser event misses.
+        {
+            name: 'webkit',
+            testIgnore: ['openActivation.spec.ts'],
+            use: { browserName: 'webkit' },
+        },
         // The preview drawn in its worker: its handovers, and its pixels against the main thread's.
         {
             name: 'firefox-preview-worker',
