@@ -1108,26 +1108,12 @@ test.describe('Help', () => {
         return page.getByRole('dialog', { name: 'Help' })
     }
 
-    test('the file section says how to move work, and the .crswap line shows where files are written in place', async ({
-        page,
-        context,
-    }) => {
+    test('the file section says how to move work', async ({ page, context }) => {
         await seed(context)
         await visit(page)
         const dialog = await help(page)
         await expect(dialog).toContainText(
             'To move work to another device, save it as a .nxsp file, then open the file there.',
         )
-        await expect(dialog).toContainText(
-            'A crash while saving can leave a .crswap file next to the project file. You can delete it.',
-        )
-    })
-
-    test('a download browser leaves the .crswap line out', async ({ page, context }) => {
-        await seed(context, { fileSystemAccess: false })
-        await visit(page)
-        const dialog = await help(page)
-        await expect(dialog).toContainText('To move work to another device')
-        await expect(dialog).not.toContainText('.crswap')
     })
 })

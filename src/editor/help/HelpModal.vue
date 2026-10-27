@@ -1,178 +1,95 @@
 <script setup lang="ts">
 import { i18n } from '../../i18n'
-import { platform } from '../../platform'
 import BaseModal from '../../modals/BaseModal.vue'
+import { isCoarsePointer } from '../workspace'
+import HelpInputSections from './HelpInputSections.vue'
 import HelpSection from './HelpSection.vue'
 </script>
 
 <template>
     <BaseModal :title="i18n.help.modal.title">
-        <HelpSection :title="i18n.help.modal.touchscreen.title">
-            <li>{{ i18n.help.modal.touchscreen.tap }}</li>
-            <li>{{ i18n.help.modal.touchscreen.drag }}</li>
-            <li>{{ i18n.help.modal.touchscreen.quickScroll }}</li>
-            <li>{{ i18n.help.modal.touchscreen.minimap }}</li>
-            <li>{{ i18n.help.modal.touchscreen.deselect }}</li>
-            <li>{{ i18n.help.modal.touchscreen.scrollY }}</li>
-            <li>{{ i18n.help.modal.touchscreen.scrollX }}</li>
-            <li>{{ i18n.help.modal.touchscreen.zoomY }}</li>
-            <li>{{ i18n.help.modal.touchscreen.zoomX }}</li>
-            <li>{{ i18n.help.modal.touchscreen.play }}</li>
+        <HelpSection :title="i18n.help.modal.gettingStarted.title">
+            <li>{{ i18n.help.modal.gettingStarted.bgm }}</li>
+            <li>{{ i18n.help.modal.gettingStarted.bpm }}</li>
+            <li>{{ i18n.help.modal.gettingStarted.notes }}</li>
+            <li>{{ i18n.help.modal.gettingStarted.save }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.mouse.title">
-            <li>{{ i18n.help.modal.mouse.tapPrimary }}</li>
-            <li>{{ i18n.help.modal.mouse.dragPrimary }}</li>
-            <li>{{ i18n.help.modal.mouse.tapSecondary }}</li>
-            <li>{{ i18n.help.modal.mouse.dragSecondary }}</li>
-            <li>{{ i18n.help.modal.mouse.scrollY }}</li>
-            <li>{{ i18n.help.modal.mouse.scrollX }}</li>
-            <li>{{ i18n.help.modal.mouse.autoscroll }}</li>
-            <li>{{ i18n.help.modal.mouse.minimap }}</li>
-            <li>{{ i18n.help.modal.mouse.zoomY }}</li>
-            <li>{{ i18n.help.modal.mouse.zoomX }}</li>
-        </HelpSection>
-
-        <HelpSection :title="i18n.help.modal.keyboard.title">
-            <li>{{ i18n.help.modal.keyboard.single }}</li>
-            <li>{{ i18n.help.modal.keyboard.multiple }}</li>
-            <li>{{ i18n.help.altN }}</li>
-            <li>{{ i18n.help.shiftF10 }}</li>
-        </HelpSection>
+        <HelpInputSections :input="isCoarsePointer ? 'touch' : 'pointer'" />
 
         <HelpSection :title="i18n.help.fileTitle">
             <li>{{ i18n.help.moveBetweenDevices }}</li>
             <li>{{ i18n.help.recentSessions }}</li>
-            <!-- Only a browser that writes through a swap file leaves one. -->
-            <li v-if="platform.capabilities.writeBack">{{ i18n.help.crswap }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.selectTool.title" command="select">
+        <HelpSection command="select">
             <li>{{ i18n.help.modal.selectTool.select }}</li>
-            <li>{{ i18n.help.modal.selectTool.deselect }}</li>
-            <li>{{ i18n.help.modal.selectTool.move }}</li>
             <li>{{ i18n.help.modal.selectTool.selectMultiple }}</li>
-            <li>{{ i18n.help.modal.selectTool.ctrl }}</li>
-            <li>{{ i18n.help.modal.selectTool.shift }}</li>
+            <li>{{ i18n.help.modal.selectTool.move }}</li>
+            <li>{{ i18n.help.modal.selectTool.resize }}</li>
+            <li>{{ i18n.help.modal.selectTool.modifiers }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.eraserTool.title" command="eraser">
+        <HelpSection command="eraser">
             <li>{{ i18n.help.modal.eraserTool.erase }}</li>
-            <li>{{ i18n.help.modal.eraserTool.deselect }}</li>
-            <li>{{ i18n.help.modal.eraserTool.eraseMultiple }}</li>
+            <li>{{ i18n.help.modal.eraserTool.selection }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.brushTool.title" command="brush">
+        <HelpSection command="brush">
+            <li>{{ i18n.help.modal.brushTool.properties }}</li>
             <li>{{ i18n.help.modal.brushTool.brush }}</li>
-            <li>{{ i18n.help.modal.brushTool.deselect }}</li>
-            <li>{{ i18n.help.modal.brushTool.brushMultiple }}</li>
             <li>{{ i18n.help.modal.brushTool.shift }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.pasteTool.title" command="paste">
+        <HelpSection command="paste">
             <li>{{ i18n.help.modal.pasteTool.paste }}</li>
-            <li>{{ i18n.help.modal.pasteTool.shift }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.noteTool.title" command="note">
-            <li>{{ i18n.help.modal.noteTool.select }}</li>
-            <li>{{ i18n.help.modal.noteTool.edit }}</li>
-            <li>{{ i18n.help.modal.noteTool.add }}</li>
-            <li>{{ i18n.help.modal.noteTool.move }}</li>
-            <li>{{ i18n.help.modal.noteTool.ctrl }}</li>
-            <li>{{ i18n.help.modal.noteTool.shift }}</li>
-            <li>{{ i18n.help.modal.noteTool.properties }}</li>
-        </HelpSection>
-
-        <HelpSection :title="i18n.help.modal.slideTool.title" command="slide">
-            <li>{{ i18n.help.modal.slideTool.select }}</li>
-            <li>{{ i18n.help.modal.slideTool.edit }}</li>
-            <li>{{ i18n.help.modal.slideTool.add }}</li>
-            <li>{{ i18n.help.modal.slideTool.connect }}</li>
-            <li>{{ i18n.help.modal.slideTool.move }}</li>
-            <li>{{ i18n.help.modal.slideTool.ctrl }}</li>
-            <li>{{ i18n.help.modal.slideTool.shift }}</li>
-            <li>{{ i18n.help.modal.slideTool.properties }}</li>
-        </HelpSection>
-
-        <HelpSection :title="i18n.commands.splitHold.title" command="splitHold">
-            <li>{{ i18n.help.modal.splitSlide.split }}</li>
-            <li>{{ i18n.help.modal.splitSlide.tail }}</li>
-        </HelpSection>
-
-        <HelpSection
-            :title="i18n.help.modal.generateSlideNotesTool.title"
-            command="generateSlideNotes"
-        >
+        <HelpSection command="generateSlideNotes">
             <li>{{ i18n.help.modal.generateSlideNotesTool.generate }}</li>
             <li>{{ i18n.help.modal.generateSlideNotesTool.generateMultiple }}</li>
-            <li>{{ i18n.help.modal.generateSlideNotesTool.deselect }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.bpmTool.title" command="bpm">
-            <li>{{ i18n.help.modal.bpmTool.select }}</li>
-            <li>{{ i18n.help.modal.bpmTool.edit }}</li>
-            <li>{{ i18n.help.modal.bpmTool.add }}</li>
-            <li>{{ i18n.help.modal.bpmTool.move }}</li>
-            <li>{{ i18n.help.modal.bpmTool.ctrl }}</li>
+        <HelpSection :title="i18n.help.modal.adding.title">
+            <li>{{ i18n.help.modal.adding.add }}</li>
+            <li>{{ i18n.help.modal.adding.edit }}</li>
+            <li>{{ i18n.help.modal.adding.move }}</li>
+            <li>{{ i18n.help.modal.adding.resize }}</li>
+            <li>{{ i18n.help.modal.adding.modifiers }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.timeScaleTool.title" command="timeScale">
-            <li>{{ i18n.help.modal.timeScaleTool.select }}</li>
-            <li>{{ i18n.help.modal.timeScaleTool.edit }}</li>
-            <li>{{ i18n.help.modal.timeScaleTool.add }}</li>
-            <li>{{ i18n.help.modal.timeScaleTool.move }}</li>
-            <li>{{ i18n.help.modal.timeScaleTool.ctrl }}</li>
+        <HelpSection command="note">
+            <li>{{ i18n.help.modal.noteTool.presets }}</li>
+            <li>{{ i18n.help.modal.noteTool.quickEdit }}</li>
+        </HelpSection>
+
+        <HelpSection command="slide">
+            <li>{{ i18n.help.modal.slideTool.connect }}</li>
+            <li>{{ i18n.help.modal.slideTool.presets }}</li>
+            <li>{{ i18n.help.modal.slideTool.quickEdit }}</li>
+            <li>{{ i18n.help.modal.slideTool.splitCombine }}</li>
+        </HelpSection>
+
+        <HelpSection command="bpm">
+            <li>{{ i18n.help.modal.bpmTool.first }}</li>
+            <li>{{ i18n.help.modal.bpmTool.replace }}</li>
+        </HelpSection>
+
+        <HelpSection command="timeScale">
             <li>{{ i18n.help.modal.timeScaleTool.markers }}</li>
             <li>{{ i18n.help.modal.timeScaleTool.ease }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.cameraEventTool.title" command="cameraEvent">
-            <li>{{ i18n.help.modal.cameraEventTool.select }}</li>
-            <li>{{ i18n.help.modal.cameraEventTool.edit }}</li>
-            <li>{{ i18n.help.modal.cameraEventTool.add }}</li>
-            <li>{{ i18n.help.modal.cameraEventTool.move }}</li>
-            <li>{{ i18n.help.modal.cameraEventTool.ctrl }}</li>
-            <li>{{ i18n.help.modal.cameraEventTool.properties }}</li>
+        <HelpSection command="event">
+            <li>{{ i18n.help.modal.event.next }}</li>
+            <li>{{ i18n.help.modal.event.defaults }}</li>
+            <li>{{ i18n.help.modal.event.quickEdit }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.stageMaskEventTool.title" command="stageMaskEvent">
-            <li>{{ i18n.help.modal.stageMaskEventTool.select }}</li>
-            <li>{{ i18n.help.modal.stageMaskEventTool.edit }}</li>
-            <li>{{ i18n.help.modal.stageMaskEventTool.add }}</li>
-            <li>{{ i18n.help.modal.stageMaskEventTool.move }}</li>
-            <li>{{ i18n.help.modal.stageMaskEventTool.ctrl }}</li>
-            <li>{{ i18n.help.modal.stageMaskEventTool.properties }}</li>
+        <HelpSection command="offset">
+            <li>{{ i18n.help.modal.offset.drag }}</li>
         </HelpSection>
 
-        <HelpSection :title="i18n.help.modal.stagePivotEventTool.title" command="stagePivotEvent">
-            <li>{{ i18n.help.modal.stagePivotEventTool.select }}</li>
-            <li>{{ i18n.help.modal.stagePivotEventTool.edit }}</li>
-            <li>{{ i18n.help.modal.stagePivotEventTool.add }}</li>
-            <li>{{ i18n.help.modal.stagePivotEventTool.move }}</li>
-            <li>{{ i18n.help.modal.stagePivotEventTool.ctrl }}</li>
-            <li>{{ i18n.help.modal.stagePivotEventTool.properties }}</li>
-        </HelpSection>
-
-        <HelpSection :title="i18n.help.modal.stageStyleEventTool.title" command="stageStyleEvent">
-            <li>{{ i18n.help.modal.stageStyleEventTool.select }}</li>
-            <li>{{ i18n.help.modal.stageStyleEventTool.edit }}</li>
-            <li>{{ i18n.help.modal.stageStyleEventTool.add }}</li>
-            <li>{{ i18n.help.modal.stageStyleEventTool.move }}</li>
-            <li>{{ i18n.help.modal.stageStyleEventTool.ctrl }}</li>
-            <li>{{ i18n.help.modal.stageStyleEventTool.properties }}</li>
-        </HelpSection>
-
-        <HelpSection
-            :title="i18n.help.modal.stageTransformEventTool.title"
-            command="stageTransformEvent"
-        >
-            <li>{{ i18n.help.modal.stageTransformEventTool.select }}</li>
-            <li>{{ i18n.help.modal.stageTransformEventTool.edit }}</li>
-            <li>{{ i18n.help.modal.stageTransformEventTool.add }}</li>
-            <li>{{ i18n.help.modal.stageTransformEventTool.move }}</li>
-            <li>{{ i18n.help.modal.stageTransformEventTool.ctrl }}</li>
-            <li>{{ i18n.help.modal.stageTransformEventTool.properties }}</li>
-        </HelpSection>
+        <HelpInputSections :input="isCoarsePointer ? 'pointer' : 'touch'" />
     </BaseModal>
 </template>

@@ -617,165 +617,95 @@
     "help": {
         "modal": {
             "title": "Help",
+            "gettingStarted": {
+                "title": "Getting Started",
+                "bgm": "Choose BGM to load the music and set its offset.",
+                "bpm": "Choose BPM and tap the BPM change at the start of the chart. Tap it again to edit its BPM.",
+                "notes": "Choose Note and tap to add a note. For a slide, choose Deselect, then Slide, and tap where the slide starts and where it ends.",
+                "save": "Choose Save to keep your work in a project file (.nxsp). To create level data for upload to a Sonolus server, use Export Level Data…"
+            },
             "touchscreen": {
                 "title": "Touchscreen",
-                "tap": "One-finger tap to use the current tool.",
-                "drag": "One-finger drag to use the current tool.",
-                "quickScroll": "One-finger drag in the quick scroll zone to scroll.",
-                "minimap": "One-finger tap in the minimap to scroll there, or drag the box that marks the visible area.",
-                "deselect": "Two-finger tap to deselect.",
-                "scrollY": "Two-finger pan vertically to scroll.",
-                "scrollX": "Two-finger pan horizontally to scroll.",
-                "zoomY": "Two-finger pinch vertically to zoom Y.",
-                "zoomX": "Two-finger pinch horizontally to zoom X.",
-                "play": "Three-finger tap to play."
+                "longPress": "Long press an object to open the context menu.",
+                "scroll": "Drag with two fingers to scroll. Pinch vertically or horizontally to zoom in that direction.",
+                "quickScroll": "To scroll with one finger, drag in the quick scroll zone at the right edge of the chart.",
+                "gestures": "Tap with two fingers to deselect. Tap with three fingers to start or stop playback."
             },
             "mouse": {
                 "title": "Mouse",
-                "tapPrimary": "Left click to tap with primary tool.",
-                "dragPrimary": "Left click and drag to drag with primary tool.",
-                "tapSecondary": "Right click to tap with secondary tool.",
-                "dragSecondary": "Right click and drag to drag with secondary tool.",
-                "scrollY": "Wheel scroll to scroll vertically.",
-                "scrollX": "Wheel scroll with Shift key to scroll horizontally.",
-                "autoscroll": "Middle click, then move the mouse to scroll. Click to stop.",
-                "minimap": "Left click or drag in the minimap to scroll there.",
-                "zoomY": "Wheel scroll with Ctrl key to zoom vertically.",
-                "zoomX": "Wheel scroll with Ctrl and Shift keys to zoom horizontally."
+                "contextMenu": "Right-click an object to open the context menu. Drag with the right button to use Select.",
+                "secondary": "Click or drag with the right button to use {0}.",
+                "scrollX": "Hold Shift and turn the wheel to scroll horizontally.",
+                "zoom": "Hold Ctrl and turn the wheel to zoom vertically. Hold Ctrl and Shift to zoom horizontally.",
+                "autoscroll": "Middle-click, then move the mouse to scroll. Click again to stop."
             },
             "keyboard": {
                 "title": "Keyboard",
-                "single": "Single press to execute.",
-                "multiple": "Hold a key to repeat scrolling, zooming, undo, redo, or changing note size, playback speed, group or stage."
+                "settings": "View and change shortcuts in Settings › Keyboard Shortcuts."
             },
             "selectTool": {
-                "title": "Select Tool",
-                "select": "Tap objects to select 1 object, cycling between overlapped objects.",
-                "deselect": "Tap empty space to deselect all objects.",
-                "move": "Drag objects to move multiple objects.",
-                "selectMultiple": "Drag empty space to select multiple objects.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "shift": "Hold Shift to include other notes in the same slide."
+                "select": "Where objects overlap, each tap selects the next one.",
+                "selectMultiple": "Drag from empty space to select the objects in the box.",
+                "move": "Drag a selected object to move the whole selection.",
+                "resize": "Drag the edge of a note, camera event or stage mask event to resize it. A selection of one type resizes together.",
+                "modifiers": "Hold Ctrl (Cmd on macOS) to add objects to the selection or remove them. Hold Shift to select whole slides."
             },
             "eraserTool": {
-                "title": "Eraser Tool",
-                "erase": "Tap objects to erase.",
-                "deselect": "Tap empty space to deselect all objects.",
-                "eraseMultiple": "Drag to erase multiple objects."
+                "erase": "Tap an object to erase it, or drag a box to erase everything in it.",
+                "selection": "Tap a selected object to erase the whole selection."
             },
             "brushTool": {
-                "title": "Brush Tool",
-                "brush": "Tap objects to brush.",
-                "deselect": "Tap empty space to deselect all objects.",
-                "brushMultiple": "Drag to brush multiple objects.",
-                "shift": "Hold Shift to include other notes in the same slide."
+                "properties": "Choose Brush to set the properties it applies.",
+                "brush": "Tap an object or drag a box to apply the brush. Tap a selected object to apply it to the whole selection.",
+                "shift": "Hold Shift to apply the brush to whole slides."
             },
             "pasteTool": {
-                "title": "Paste Tool",
-                "paste": "Tap to paste.",
-                "shift": "Use Shift key to flip objects."
-            },
-            "noteTool": {
-                "title": "Note Tool",
-                "select": "Tap notes to select 1 note.",
-                "edit": "Tap 1 note to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 note to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "shift": "Hold Shift to include other notes in the same slide.",
-                "properties": "Switch to Note Tool again to change preset or default properties."
-            },
-            "slideTool": {
-                "title": "Slide Tool",
-                "select": "Tap notes to select 1 note.",
-                "edit": "Tap 1 note to edit.",
-                "add": "Tap empty space to add.",
-                "connect": "Tap empty space with 1 note selected to connect.",
-                "move": "Drag 1 note to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "shift": "Hold Shift to include other notes in the same slide.",
-                "properties": "Switch to Slide Tool again to change preset or default properties."
-            },
-            "splitSlide": {
-                "split": "Cuts the connection from each selected note to the next note.",
-                "tail": "The last note of a slide has no connection to cut."
+                "paste": "Tap or drag to place the copied objects. Hold Shift to flip them horizontally."
             },
             "generateSlideNotesTool": {
-                "title": "Generate Slide Notes Tool",
-                "generate": "Tap or drag to select 1 note and generate notes for its entire slide.",
-                "generateMultiple": "Tap or drag to select 2 or more notes and generate notes between them.",
-                "deselect": "Tap empty space to deselect all objects."
+                "generate": "Tap a note to fill its slide with attached notes, one on each free line of the current division.",
+                "generateMultiple": "Drag a box over two or more notes of a slide to fill only between them. Tapping a selected note does the same for each slide in the selection."
+            },
+            "adding": {
+                "title": "Adding Objects",
+                "add": "Tap empty space to add an object. Drag across empty space to set a new note’s width.",
+                "edit": "Tap a selected object to show its properties.",
+                "move": "Drag an object to move it alone. Use Select to move several objects together.",
+                "resize": "Drag the edge of a note, camera event or stage mask event to resize it.",
+                "modifiers": "Hold Ctrl (Cmd on macOS) and tap to add an object to the selection or remove it. Hold Shift and tap a note to select its whole slide."
+            },
+            "noteTool": {
+                "presets": "Note #1 to Note #4 are presets. Choose Note again to change the preset or its default properties.",
+                "quickEdit": "With the Properties panel shown, tapping a selected note also sets or cycles the preset’s properties on all selected notes. By default, Note #2 turns Critical on or off."
+            },
+            "slideTool": {
+                "connect": "With notes from one slide selected, tap empty space to add another note to that slide. Choose Deselect before starting a new slide.",
+                "presets": "Slide #1 to Slide #5 are presets. Choose Slide again to change the preset or its default properties.",
+                "quickEdit": "With the Properties panel shown, tapping a selected note also sets or cycles the preset’s properties on all selected notes. By default, Slide #1 changes Connector Ease.",
+                "splitCombine": "Split Slide cuts the connection from each selected note to the next note. Combine into Slide joins the slides of the selected notes into one slide."
             },
             "bpmTool": {
-                "title": "BPM Tool",
-                "select": "Tap BPM changes to select 1 BPM change.",
-                "edit": "Tap 1 BPM change to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 BPM change to move.",
-                "ctrl": "Use Ctrl key to add objects to selection."
+                "first": "The chart always starts with a BPM change. Dragging it adds a copy where you drop it.",
+                "replace": "Moving a BPM change onto another replaces the one already there."
             },
             "timeScaleTool": {
-                "title": "Time Scale Tool",
-                "select": "Tap time scales to select 1 time scale.",
-                "edit": "Tap 1 time scale to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 time scale to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
                 "markers": "Diamond markers use the Scroll transition. Hollow markers on dotted lines hide notes.",
                 "ease": "The curve shows easing to the next change in the group."
             },
-            "cameraEventTool": {
-                "title": "Camera Event Tool",
-                "select": "Tap camera events to select 1 camera event.",
-                "edit": "Tap 1 camera event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 camera event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Camera Event Tool again to change default properties."
+            "event": {
+                "next": "Choose Event to switch to an event tool. Choose it again to cycle through the event tools.",
+                "defaults": "Choose an event tool again, such as Camera Event, to edit its default properties.",
+                "quickEdit": "With the Properties panel shown, tapping a selected event also changes its ease."
             },
-            "stageMaskEventTool": {
-                "title": "Stage Mask Event Tool",
-                "select": "Tap stage mask events to select 1 stage mask event.",
-                "edit": "Tap 1 stage mask event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 stage mask event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Stage Mask Event Tool again to change default properties."
-            },
-            "stagePivotEventTool": {
-                "title": "Stage Pivot Event Tool",
-                "select": "Tap stage pivot events to select 1 stage pivot event.",
-                "edit": "Tap 1 stage pivot event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 stage pivot event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Stage Pivot Event Tool again to change default properties."
-            },
-            "stageStyleEventTool": {
-                "title": "Stage Style Event Tool",
-                "select": "Tap stage style events to select 1 stage style event.",
-                "edit": "Tap 1 stage style event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 stage style event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Stage Style Event Tool again to change default properties."
-            },
-            "stageTransformEventTool": {
-                "title": "Stage Transform Event Tool",
-                "select": "Tap stage transform events to select 1 stage transform event.",
-                "edit": "Tap 1 stage transform event to edit.",
-                "add": "Tap empty space to add.",
-                "move": "Drag 1 stage transform event to move.",
-                "ctrl": "Use Ctrl key to add objects to selection.",
-                "properties": "Switch to Stage Transform Event Tool again to change default properties."
+            "offset": {
+                "drag": "Drag up or down to change the BGM offset."
             }
         },
-        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.",
+        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Press Esc to close it.",
         "shiftF10": "Shift+F10 or the Menu key opens the menu of the focused item.",
-        "recentSessions": "Unsaved work is in History › Recent Sessions.",
+        "recentSessions": "Unsaved work stored in this browser is in History › Recent Sessions.",
         "fileTitle": "Files",
-        "moveBetweenDevices": "To move work to another device, save it as a .nxsp file, then open the file there.",
-        "crswap": "A crash while saving can leave a .crswap file next to the project file. You can delete it."
+        "moveBetweenDevices": "To move work to another device, save it as a .nxsp file, then open the file there."
     },
     "elevation": {
         "edit": "Edit Elevations",

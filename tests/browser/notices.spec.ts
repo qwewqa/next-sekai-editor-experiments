@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import type english from '../../src/i18n/en/index.json'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+
+const messages = JSON.parse(
+    readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
+) as typeof english
 
 // Notice cards, quick feedback, the live region and Alt+N.
 
@@ -251,11 +257,7 @@ test('Help lists Alt+N', async ({ page }) => {
         }>('/src/editor/help/HelpModal.vue')
         void showModal(HelpModal, {})
     })
-    await expect(
-        page.getByText(
-            'Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.',
-        ),
-    ).toBeVisible()
+    await expect(page.getByText(messages.help.altN)).toBeVisible()
 })
 
 test.describe('the update line', () => {
