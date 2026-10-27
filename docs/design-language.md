@@ -254,7 +254,7 @@ Section 8 describes the notice card and the quick toast. This part says which on
 
 ### The first-visit dialog
 
-- The first-visit dialog (`src/editor/firstVisit/`) shows the version, Language, Theme, Show Quick Scroll Zone on touch screens, and Send Usage Statistics with its note and the privacy link. It shows once per browser.
+- The first-visit dialog (`src/editor/firstVisit/`) shows the version, Language, Theme, and Send Usage Statistics with its note and the privacy link. It shows once per browser.
 - It is a notice, not a consent prompt. Its one button is Close, and the switch keeps its value.
 - It never opens over the startup gate, or over a start-up card with a line the user may need. Only Continued and the in-app browser line may stay on the card under it. Any other load notice defers the dialog to a later load, or closes it if the notice comes while it is open. The card then shows for its full time.
 

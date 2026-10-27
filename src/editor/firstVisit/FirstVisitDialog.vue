@@ -8,10 +8,8 @@ import { stackLongValuesKey } from '../../modals/form/fieldLayout'
 import { appVersion } from '../../platform'
 import { PRODUCT_NAME } from '../../product'
 import { interpolateRaw } from '../../utils/interpolate'
-import { hasTouchScreen } from '../quickScroll'
 import AboutLinks from '../settings/AboutLinks.vue'
 import LanguageField from '../settings/LanguageField.vue'
-import QuickScrollShowField from '../settings/QuickScrollShowField.vue'
 import ThemeField from '../settings/ThemeField.vue'
 import UsageStatisticsField from '../settings/UsageStatisticsField.vue'
 
@@ -37,7 +35,6 @@ provide(stackLongValuesKey, true)
         <div class="flex flex-col gap-3">
             <LanguageField />
             <ThemeField />
-            <QuickScrollShowField v-if="hasTouchScreen" />
         </div>
 
         <div class="flex flex-col gap-3">

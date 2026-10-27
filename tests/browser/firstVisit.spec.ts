@@ -146,8 +146,7 @@ test.describe('a first visit', () => {
             '/privacy/',
         )
         await expect(shown.locator('[data-about-link]')).toHaveCount(1)
-        // A mouse: no quick scroll row.
-        await expect(shown.locator('[data-field-info]')).toHaveCount(0)
+        await expect(shown.getByRole('combobox')).toHaveCount(2)
         await expect(footerClose(page)).toHaveText('Close')
         await expect(footerClose(page)).toBeFocused()
         expect(await mark(page)).toBe('1')
@@ -450,35 +449,6 @@ test.describe('visibility and tabs', () => {
         const other = await context.newPage()
         await visit(other)
         await expect(dialog(other)).toHaveCount(0)
-    })
-})
-
-test.describe('on a touch screen', () => {
-    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
-
-    test.beforeEach(async ({ context }) => {
-        await seed(context)
-    })
-
-    test('the quick scroll row and its info button show, and Off hides the zone', async ({
-        page,
-    }) => {
-        await visit(page)
-        const shown = dialog(page)
-        const row = shown.getByRole('combobox', { name: 'Show Quick Scroll Zone' })
-        await expect(row).toBeVisible()
-        await expect(shown.locator('[data-field-info]')).toHaveAccessibleName(
-            'About Show Quick Scroll Zone',
-        )
-        const zone = () =>
-            page.evaluate(async () => {
-                const { isQuickScrollZoneShown } =
-                    (await import('/src/editor/quickScroll.ts')) as typeof import('../../src/editor/quickScroll')
-                return isQuickScrollZoneShown.value
-            })
-        expect(await zone()).toBe(true)
-        await row.selectOption('off')
-        expect(await zone()).toBe(false)
     })
 })
 
