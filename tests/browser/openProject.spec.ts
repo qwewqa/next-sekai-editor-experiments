@@ -822,9 +822,7 @@ test('a newer major version asks first, then opens only the level, unbound', asy
     const dialog = page
         .getByRole('dialog')
         .filter({ hasText: 'Only the level can be opened from this file.' })
-    await expect(dialog).toContainText(
-        'This file was created by a newer version of Next SEKAI Editor.',
-    )
+    await expect(dialog).toContainText('File Created by a Newer Version of Next SEKAI Editor')
     await expect(dialog.getByRole('button', { name: 'Open the Level' })).toBeFocused()
     await confirmWhenReady(dialog.getByRole('button', { name: 'Open the Level' }), dialog)
     await expect.poll(async () => (await sessionOf(page)).sessionId).not.toBe(before.sessionId)
@@ -856,7 +854,8 @@ test('a newer major version whose level is refused is an error card', async ({ p
         .filter({ hasText: 'Only the level can be opened from this file.' })
     await confirmWhenReady(dialog.getByRole('button', { name: 'Open the Level' }), dialog)
     const card = notice(page).filter({
-        hasText: 'This file was created by a newer version of Next SEKAI Editor.',
+        hasText:
+            'This file was created by a newer version of Next SEKAI Editor and cannot be opened.',
     })
     await expect(card).toBeVisible()
     await expect(card.locator('svg[data-severity]')).toHaveAttribute('data-severity', 'error')

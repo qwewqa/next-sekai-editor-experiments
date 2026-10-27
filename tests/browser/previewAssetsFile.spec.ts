@@ -721,7 +721,7 @@ test.describe('the Stored tab', () => {
         await spark.locator('[data-stored-remove]').click()
         const unused = page.locator('dialog[open]').nth(1)
         await expect(unused).toContainText('Remove "Spark"?')
-        await expect(unused).not.toContainText('Default is used instead.')
+        await expect(unused).not.toContainText('The preview will use the Default option instead.')
         await expect(unused.getByRole('button', { name: 'Cancel' })).toBeFocused()
         await confirmWhenReady(unused.getByRole('button', { name: 'Cancel' }), unused)
         await expect(page.locator('dialog[open]')).toHaveCount(1)
@@ -1163,7 +1163,7 @@ test.describe('looks', () => {
                     .locator('[data-stored-remove]')
                     .click()
                 await expect(page.locator('dialog[open]').last()).toContainText(
-                    'Remove "First Skin"?',
+                    'Remove “First Skin”?',
                 )
                 await shot(page, name('stored-remove'), page.locator('dialog[open]').last())
             })

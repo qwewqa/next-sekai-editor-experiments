@@ -35,7 +35,9 @@ for (const where of ['entity', 'data', 'value and ref'])
         await writeFile(page, 'coconut.nxsp', bytes)
         await queuePicks(page, ['coconut.nxsp'])
         await page.keyboard.press('o')
-        await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toBeVisible()
+        await expect(
+            notice(page).filter({ hasText: 'This file was created by a newer version' }),
+        ).toBeVisible()
         const chain = await chainOf(page)
         expect(chain.file).toBeUndefined()
         expect(chain.revision).toBeUndefined()
@@ -73,8 +75,10 @@ test('a newer patch alone opens bound with its history, says so once, and saving
     await flushed(page)
     const { entries } = await rows(page, ['entries'])
     expect(entries!.length).toBeGreaterThan(1)
-    // The open's line is the only one: not a partial open's "Saving makes a separate file".
-    await expect(notice(page).filter({ hasText: 'Saving makes a separate file' })).toHaveCount(0)
+    // The open's line is the only one: not a partial open's "Saving will create a separate file".
+    await expect(
+        notice(page).filter({ hasText: 'Saving will create a separate file' }),
+    ).toHaveCount(0)
     // Saving writes the file again, with the patch this build writes.
     await edit(page, 3)
     await pressSave(page)
@@ -93,8 +97,12 @@ test('a newer patch beside another unknown thing is one line, the partial openâ€
     await writeFile(page, 'coconut.nxsp', [...new Uint8Array(await file.arrayBuffer())])
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toHaveCount(1)
-    await expect(notice(page).filter({ hasText: 'Saving makes a separate file' })).toBeVisible()
+    await expect(
+        notice(page).filter({ hasText: 'This file was created by a newer version' }),
+    ).toHaveCount(1)
+    await expect(
+        notice(page).filter({ hasText: 'Saving will create a separate file' }),
+    ).toBeVisible()
     const chain = await chainOf(page)
     expect(chain.file).toBeUndefined()
 })

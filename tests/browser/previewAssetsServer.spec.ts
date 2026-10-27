@@ -1047,7 +1047,7 @@ test.describe('looks', () => {
                 await expect(errorOf(page)).toContainText('returned an error (503)')
                 await shot(page, name('error-status'))
                 await connect(page, 'http://server.test/api')
-                await expect(errorOf(page)).toContainText('http servers')
+                await expect(errorOf(page)).toContainText('HTTP server addresses')
                 await shot(page, name('error-http'))
                 await context.setOffline(true)
                 await connect(page, BASE)

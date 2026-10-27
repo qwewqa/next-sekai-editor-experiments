@@ -501,7 +501,9 @@ test('a partial open’s file picked in the project picker is refused and put ba
     await writeFile(page, 'coconut.nxsp', bytes)
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toBeVisible()
+    await expect(
+        notice(page).filter({ hasText: 'This file was created by a newer version' }),
+    ).toBeVisible()
     await edit(page, 3)
     await queuePicks(page, ['coconut.nxsp'])
     await pressSave(page)

@@ -292,7 +292,9 @@ for (const lifecycle of ['reload', 'reload gap', 'switch and reopen']) {
         await writeFile(page, 'coconut.nxsp', bytes)
         await queuePicks(page, ['coconut.nxsp'])
         await page.keyboard.press('o')
-        await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toBeVisible()
+        await expect(
+            notice(page).filter({ hasText: 'This file was created by a newer version' }),
+        ).toBeVisible()
         await edit(page, 3)
         await flushed(page)
         if (lifecycle === 'switch and reopen') {
