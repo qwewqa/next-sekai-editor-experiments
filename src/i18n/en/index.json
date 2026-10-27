@@ -622,7 +622,7 @@
                 "bgm": "Choose BGM to load the music and set its offset.",
                 "bpm": "Choose BPM and tap the BPM change at the start of the chart. Tap it again to edit its BPM.",
                 "notes": "Choose Note and tap the chart to add a note. To add a slide, choose Deselect, then Slide, and tap at its start and its end.",
-                "save": "Choose Save to keep your work in a project file (.nxsp). To create level data you can upload to a Sonolus server, use Export Level Data…"
+                "save": "Choose Save to keep your work in a project file (.nxsp). To create level data you can upload to a Sonolus server, use Export Level Data."
             },
             "touchscreen": {
                 "title": "Touchscreen",
@@ -1663,7 +1663,7 @@
                 "unassigned": "Unassigned",
                 "reserved": "{0} is reserved by the browser or system. Press another key.",
                 "altGraph": "{0} is used to type characters on many keyboard layouts. Press another key.",
-                "alsoRuns": "Also runs {0}",
+                "alsoRuns": "Also runs {0}.",
                 "names": {
                     "space": "Space",
                     "escape": "Esc",
@@ -2050,6 +2050,7 @@
         "bgm": "BGM",
         "placeholder": "Untitled",
         "exportHint": "For Sonolus, use Export Level Data…",
+        "exportHintText": "For Sonolus, use Export Level Data.",
         "exportHintFirst": "Project files (.nxsp) are only for this editor. To create level data you can upload to a Sonolus server, use Export Level Data…",
         "exportHintNames": "Level data files may have no extension or end in .nsld or .json.gz.",
         "openExport": "Export Level Data…",
@@ -2076,8 +2077,8 @@
         "tooLarge": "The file is too large.",
         "restoredName": "{0} (restored {1})",
         "fileType": "Next SEKAI project file",
-        "unavailable": "Not saved. Use Export Level Data…",
-        "storageUnavailable": "Not saved. The editor could not access this browser’s storage. Try again, or use Save As…",
+        "unavailable": "Not saved. Use Export Level Data.",
+        "storageUnavailable": "Not saved. The editor could not access this browser’s storage. Try again, or use Save As.",
         "include": "Include",
         "historySize": "{0} step · {1}|{0} steps · {1}",
         "historyNote": "Anyone with the file can view its history.",
@@ -2141,7 +2142,7 @@
         "tooLong": "The name is too long"
     },
     "notice": {
-        "useOpenFile": "To open a file, use Open…",
+        "useOpenFile": "To open a file, use Open.",
         "sameFileElsewhere": "“{0}” is open in another tab or window, so this is a separate copy.",
         "storageUnavailable": "The editor could not access this browser’s storage. Try again.",
         "chooseAudio": "Choose Audio…",

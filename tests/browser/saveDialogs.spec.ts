@@ -908,7 +908,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await visit(page)
         await open(page, { kind: 'refused', name: 'LevelData', reason: 'levelData' })
         await expect(dialog(page)).toContainText('“LevelData” is not a project file.')
-        await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data…')
+        await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data.')
         await expect(buttons(page)).toHaveText(['Cancel', 'Export Level Data…', 'Choose Another…'])
         await expect(dialog(page).getByRole('button', { name: 'Choose Another…' })).toBeFocused()
         await guard(page)

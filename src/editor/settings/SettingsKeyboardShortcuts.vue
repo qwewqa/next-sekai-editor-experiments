@@ -5,6 +5,7 @@ import KeyField from '../../modals/form/KeyField.vue'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import { commands, isCommandName, type CommandName } from '../commands'
+import { withoutEllipsis } from '../commands/withoutEllipsis'
 import { normalizeBinding } from '../controls/bindings'
 import SettingsSection from './SettingsSection.vue'
 
@@ -46,7 +47,7 @@ const notes = computed(() => {
                         messages.alsoRuns,
                         // Joined in the locale's punctuation, as "、" in Japanese.
                         others
-                            .map((other) => commands[other].title())
+                            .map((other) => withoutEllipsis(commands[other].title()))
                             .reduce((text, title) => interpolateRaw(listJoin, text, title)),
                     ),
                 )

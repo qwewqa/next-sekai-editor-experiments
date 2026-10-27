@@ -364,7 +364,7 @@ export const defaultSaveUi: SaveUi = {
                   ? () => i18n.value.save.notKeptSafe
                   : reason === 'levelData'
                     ? () =>
-                          `${interpolate(() => i18n.value.save.notProject, inlineName(name))()}\n${save.exportHint}`
+                          `${interpolate(() => i18n.value.save.notProject, inlineName(name))()}\n${save.exportHintText}`
                     : interpolate(() => i18n.value.save.notProject, inlineName(name))
         return showChoice<'chooseAnother' | 'export'>({
             title,

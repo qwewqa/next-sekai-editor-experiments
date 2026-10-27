@@ -622,7 +622,7 @@
         "bgm": "Müziği yüklemek ve zaman kaymasını ayarlamak için Arka Plan Müziği komutunu seçin.",
         "bpm": "BPM komutunu seçin ve çizelgenin başındaki BPM değişikliğine dokunun. BPM değerini düzenlemek için tekrar dokunun.",
         "notes": "Nota komutunu seçin ve bir nota eklemek için çizelgeye dokunun. Kaydırma eklemek için önce Seçimi Kaldır, ardından Kaydırma komutunu seçin ve kaydırmanın başlangıç ve bitiş noktalarına dokunun.",
-        "save": "Çalışmanızı bir proje dosyasında (.nxsp) saklamak için Kaydet komutunu seçin. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar… komutunu kullanın."
+        "save": "Çalışmanızı bir proje dosyasında (.nxsp) saklamak için Kaydet komutunu seçin. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar komutunu kullanın."
       },
       "touchscreen": {
         "title": "Dokunmatik Ekran",
@@ -1663,7 +1663,7 @@
         "unassigned": "Atanmamış",
         "reserved": "{0} tarayıcıya veya sisteme ayrılmıştır; başka bir tuşa basın.",
         "altGraph": "{0} birçok klavye düzeninde karakter yazmak için kullanılır. Başka bir tuşa basın.",
-        "alsoRuns": "{0} komutunu da çalıştırır",
+        "alsoRuns": "{0} komutunu da çalıştırır.",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -2050,6 +2050,7 @@
     "bgm": "Arka Plan Müziği",
     "placeholder": "Adsız",
     "exportHint": "Sonolus için Seviye Verisini Dışa Aktar… komutunu kullanın.",
+    "exportHintText": "Sonolus için Seviye Verisini Dışa Aktar komutunu kullanın.",
     "exportHintFirst": "Proje dosyaları (.nxsp) yalnızca bu editörde kullanılır. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar… komutunu kullanın.",
     "exportHintNames": "Seviye verisi dosyaları uzantısız olabilir veya .nsld ya da .json.gz ile bitebilir.",
     "openExport": "Seviye Verisini Dışa Aktar…",
@@ -2076,8 +2077,8 @@
     "tooLarge": "Dosya çok büyük.",
     "restoredName": "{0} ({1} geri yüklendi)",
     "fileType": "Next SEKAI proje dosyası",
-    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar… komutunu kullanın.",
-    "storageUnavailable": "Kaydedilmedi. Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin veya Farklı Kaydet… komutunu kullanın.",
+    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar komutunu kullanın.",
+    "storageUnavailable": "Kaydedilmedi. Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin veya Farklı Kaydet komutunu kullanın.",
     "include": "Dahil Edilecekler",
     "historySize": "{0} adım · {1}",
     "historyNote": "Dosyaya sahip herkes dosyanın geçmişini görebilir.",
@@ -2141,7 +2142,7 @@
     "tooLong": "Ad çok uzun"
   },
   "notice": {
-    "useOpenFile": "Bir dosya açmak için Aç… komutunu kullanın.",
+    "useOpenFile": "Bir dosya açmak için Aç komutunu kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",

@@ -622,7 +622,7 @@
         "bgm": "选择“背景音乐”以加载音乐并设置偏移。",
         "bpm": "选择“BPM”，然后点击谱面开头的 BPM 变化。再次点击即可编辑其 BPM。",
         "notes": "选择“音符”，然后点击谱面即可添加音符。要添加长按音符，请先选择“取消选择”，再选择“长按音符”，然后点击长按音符的起点和终点。",
-        "save": "选择“保存”，将内容保存为项目文件（.nxsp）。要生成上传到 Sonolus 服务器的关卡数据，请使用“导出关卡数据…”。"
+        "save": "选择“保存”，将内容保存为项目文件（.nxsp）。要生成上传到 Sonolus 服务器的关卡数据，请使用“导出关卡数据”。"
       },
       "touchscreen": {
         "title": "触控屏",
@@ -1663,7 +1663,7 @@
         "unassigned": "未设置",
         "reserved": "{0} 由浏览器或系统保留，请按其他键。",
         "altGraph": "{0} 在许多键盘布局中用于输入字符。请按其他键。",
-        "alsoRuns": "同时执行{0}",
+        "alsoRuns": "同时执行{0}。",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -2050,6 +2050,7 @@
     "bgm": "背景音乐",
     "placeholder": "未命名",
     "exportHint": "如需 Sonolus 关卡数据，请使用“导出关卡数据…”。",
+    "exportHintText": "如需 Sonolus 关卡数据，请使用“导出关卡数据”。",
     "exportHintFirst": ".nxsp 项目文件仅供本编辑器使用。要生成上传到 Sonolus 服务器的关卡数据，请使用“导出关卡数据…”。",
     "exportHintNames": "关卡数据文件可能没有扩展名，或以 .nsld 或 .json.gz 结尾。",
     "openExport": "导出关卡数据…",
@@ -2076,8 +2077,8 @@
     "tooLarge": "文件过大。",
     "restoredName": "{0}（{1} 还原）",
     "fileType": "Next SEKAI 项目文件",
-    "unavailable": "未保存。请使用“导出关卡数据…”。",
-    "storageUnavailable": "未保存。编辑器无法访问此浏览器的存储。请重试，或使用“另存为…”。",
+    "unavailable": "未保存。请使用“导出关卡数据”。",
+    "storageUnavailable": "未保存。编辑器无法访问此浏览器的存储。请重试，或使用“另存为”。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "拥有该文件的人可以查看其中的历史记录。",
@@ -2141,7 +2142,7 @@
     "tooLong": "名称过长"
   },
   "notice": {
-    "useOpenFile": "要打开文件，请使用“打开…”。",
+    "useOpenFile": "要打开文件，请使用“打开”。",
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
     "storageUnavailable": "编辑器无法访问此浏览器的存储。请重试。",
     "chooseAudio": "选择音频…",
