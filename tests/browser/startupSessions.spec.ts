@@ -873,7 +873,9 @@ test('Reopen Closed Tab: the lock coming free within the wait is a reload; held 
     expect(await loadEvents(copy)).toEqual(['separateCopy'])
     await copy.close({ runBeforeUnload: false })
 
-    // It closes within the wait: a reload of the same session.
+    // It closes within the wait: a reload of the same session. The key is shared by the origin's
+    // pages and read as a tab claims, so only this half's tab waits long; the fork above needed 2 s.
+    await page.evaluate(() => localStorage.setItem('nse.test.markerWait', '60000'))
     const reopened = await reopenedTab(context, record)
     const visiting = visit(reopened)
     await waitsForLock(page, sessionId)

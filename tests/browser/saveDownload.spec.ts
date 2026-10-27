@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { waitForStartup } from './editorFixture'
+import { closePage, waitForStartup } from './editorFixture'
 import {
     builds,
     chainById,
@@ -274,7 +274,7 @@ test('the next visit opening the download it saved keeps the session too', async
     await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
     // A new visit: another tab after this one closed continues the chain as a new session.
     const context = page.context()
-    await page.close()
+    await closePage(page, { runBeforeUnload: false })
     const next = await context.newPage()
     await start(next, { fileSystemAccess: false })
     await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
