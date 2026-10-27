@@ -64,7 +64,7 @@ test('the toolbar step puts Export Level Data before Save in whichever group has
     assert.equal(insertExportLevel(already), already)
 })
 
-test('names compare as file systems do, whatever the system language', () => {
+test('suggestions compare names the same way whatever the system language', () => {
     const original = String.prototype.toLocaleLowerCase
     // A Turkish system lowercases "I" to a dotless "ı" when no language is named.
     String.prototype.toLocaleLowerCase = function (this: string, locales?: string | string[]) {
