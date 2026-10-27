@@ -55,7 +55,7 @@ const withoutWebLocks = async (fn: () => Promise<void>) => {
     }
 }
 
-test('a fork’s missing stack is rebuilt over its parent as it was forked, not as the parent went on', async () => {
+test("a fork's missing stack is rebuilt over its parent as it was forked, not as the parent went on", async () => {
     const world = createWorld({ seed: 1 })
     const page = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
@@ -96,7 +96,7 @@ test('a fork’s missing stack is rebuilt over its parent as it was forked, not 
     )
 })
 
-test('a rebuilt window never starts below the stored parent’s own window', async () => {
+test("a rebuilt window never starts below the stored parent's own window", async () => {
     const world = createWorld({ seed: 2 })
     const page = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
@@ -130,7 +130,7 @@ test('a rebuilt window never starts below the stored parent’s own window', asy
     assert.ok(rebuilt.stack.slots.every((slot) => slot !== undefined))
 })
 
-test('a continuation’s journal over a parent window of two blocks keeps every slot', async () => {
+test("a continuation's journal over a parent window of two blocks keeps every slot", async () => {
     const world = createWorld({ seed: 3 })
     const storage = new MemoryStorage()
     const first = await openJournalPage(world, 'first', storage)
@@ -164,7 +164,7 @@ test('a continuation’s journal over a parent window of two blocks keeps every 
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a continuation’s journal whose parent took its own journal first is kept as a recovery chain', async () => {
+test("a continuation's journal whose parent took its own journal first is kept as a recovery chain", async () => {
     const world = createWorld({ seed: 4 })
     const storage = new MemoryStorage()
     // The parent's tab dies with edits only its journal holds.
@@ -201,7 +201,7 @@ test('a continuation’s journal whose parent took its own journal first is kept
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a reload over its own failed journal holds the session’s lock until its continuation stores', async () => {
+test("a reload over its own failed journal holds the session's lock until its continuation stores", async () => {
     const world = createWorld({ seed: 5 })
     const storage = new MemoryStorage()
     const tab: TabStorage = new Map()
@@ -228,7 +228,7 @@ test('a reload over its own failed journal holds the session’s lock until its 
     assert.equal(await other.run(() => claimSessionLock(other.locks, session.id)), undefined)
 })
 
-test('a reload’s own journal it can’t load goes to Local Data', async () => {
+test("a reload's own journal it can't load goes to Local Data", async () => {
     const world = createWorld({ seed: 6 })
     const storage = new MemoryStorage()
     const tab: TabStorage = new Map()
@@ -255,7 +255,7 @@ test('a reload’s own journal it can’t load goes to Local Data', async () => 
     assert.ok(reload.events.some((event) => event.kind === 'unsavedInLocalData'))
 })
 
-test('without Web Locks, every other journal is offered even where the page’s lock service says held', async () => {
+test("without Web Locks, every other journal is offered even where the page's lock service says held", async () => {
     const world = createWorld({ seed: 7 })
     const storage = new MemoryStorage()
     const unavailable = { flags: { noStorage: true } }

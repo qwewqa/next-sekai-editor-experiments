@@ -196,7 +196,7 @@ test('ticks between same-beat anchors keep their stored elevation and place', ()
     assertSamePlaces(source, combined)
 })
 
-test('a slide at a tick’s anchor beat keeps the tick attached only when ordered outside its anchors', () => {
+test("a slide at a tick's anchor beat keeps the tick attached only when ordered outside its anchors", () => {
     const slides = (elevation: number) => [
         [note(2, 0, { connectorEase: 'inQuad' }), tick(2, { elevation: 1 }), tick(3), note(4, 4)],
         [note(2, -3, { elevation }), note(6, 1)],

@@ -104,7 +104,7 @@ const collection = () =>
         ['effect', named('neon', 'Neon Sounds')],
     ] satisfies [AssetType, ScpOptions][]
 
-test('connecting lists the type’s items, remembers the server and takes its address', async () => {
+test("connecting lists the type's items, remembers the server and takes its address", async () => {
     const { server, deps, remembered } = setup(collection())
     const chooser = createServerChooser('skin', deps('skin'))
     assert.equal(chooser.mode.value, 'file')
@@ -228,7 +228,7 @@ test('the stored package is a standard single-item package the file chooser woul
     assert.ok(record!.size > 0 && record!.size === record!.bytes.size)
 })
 
-test('an item whose checksum does not match is refused with the server’s wording, and nothing is stored', async () => {
+test("an item whose checksum does not match is refused with the server's wording, and nothing is stored", async () => {
     const { deps, server, store, applied } = setup([
         ['skin', { ...named('neon', 'Neon'), hashes: 'bad' }],
     ])
@@ -281,7 +281,7 @@ test('a ticked item that fails stores nothing, not even the selected one', async
     assert.equal(chooser.useError.value?.kind, 'item')
 })
 
-test('a resource that is missing is the item’s, and one that cannot be fetched is the server’s', async () => {
+test("a resource that is missing is the item's, and one that cannot be fetched is the server's", async () => {
     const missing = setup([['skin', named('neon', 'Neon')]], {
         handler: (url) => (url.pathname.includes('/repository/') ? { status: 404 } : undefined),
     })
@@ -339,7 +339,7 @@ test('a share link to an item the server lacks says so and still lists', async (
     assert.deepEqual(chooser.error.value, { kind: 'server', code: 'notFound', status: 404 })
 })
 
-test('a share link to another type’s item goes to that type’s chooser', async () => {
+test("a share link to another type's item goes to that type's chooser", async () => {
     const { deps, server, handedOver } = setup(collection())
     const chooser = createServerChooser('skin', deps('skin'))
     chooser.address.value = `${server.base}/particles/neon`
@@ -587,7 +587,7 @@ test('cancelling during Use stores nothing', async () => {
     assert.equal(refreshed, 0)
 })
 
-test('late server cancellation preserves another caller’s verified choice and a newer connection', async (t) => {
+test("late server cancellation preserves another caller's verified choice and a newer connection", async (t) => {
     const { deps, server, store, applied, closed } = setup([['skin', named('neon', 'Neon')]])
     const reading = deferred()
     const release = deferred()
@@ -694,7 +694,7 @@ const stuckLookups = (server: ReturnType<typeof setup>['server']) => {
     return { client, stopped }
 }
 
-test('moving to another row stops the last row’s lookups, and Use does not wait for any', async () => {
+test("moving to another row stops the last row's lookups, and Use does not wait for any", async () => {
     const parts = setup([
         ['skin', named('a', 'First')],
         ['skin', named('b', 'Second')],
@@ -734,7 +734,7 @@ test('Use does not ask again for the details a lookup found', async () => {
     assert.equal(asked.length, 1)
 })
 
-test('a server effect whose audio expands too far is refused as the item’s', async () => {
+test("a server effect whose audio expands too far is refused as the item's", async () => {
     const { deps, server } = setup([
         [
             'effect',
@@ -755,7 +755,7 @@ test('a server effect whose audio expands too far is refused as the item’s', a
     )
 })
 
-test('details too large for an item are the item’s, and details the server lacks say so', async () => {
+test("details too large for an item are the item's, and details the server lacks say so", async () => {
     const big = setup([['skin', named('neon', 'Neon')]], {
         handler: (url) =>
             url.pathname === '/api/sonolus/skins/neon'
@@ -804,7 +804,7 @@ test('files that cannot be fetched from another host name that host', async () =
     })
     assert.equal(
         serverErrorText(chooser.useError.value!, en),
-        'Could not download this item’s files from cdn.test.',
+        "Could not download this item's files from cdn.test.",
     )
 })
 

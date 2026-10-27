@@ -51,8 +51,8 @@ test('Delete marks and hides a chain, the sweep removes it whole once the mark i
 test('a chain is refused while any holder has one of its sessions, and never marked', async () => {
     const holders: [string, (id: string) => string, 'exclusive' | 'shared'][] = [
         ['an open session', sessionLock, 'exclusive'],
-        ['an unstored continuation’s hold on its parent', sessionLock, 'shared'],
-        ['Recent Sessions’ Save…’s hold', sessionLock, 'shared'],
+        ["an unstored continuation's hold on its parent", sessionLock, 'shared'],
+        ["Recent Sessions' Save…'s hold", sessionLock, 'shared'],
         ['an import', importLock, 'exclusive'],
     ]
     for (const [what, lock, mode] of holders) {
@@ -151,7 +151,7 @@ test('Undo clears only its own mark: a newer Delete of the same chain stays', as
     assert.notEqual(rows(world, 'chains').get(first.chainId)?.deleting, undefined)
 })
 
-test('Delete applies a crashed tab’s journal before the mark: Undo shows that state, and nothing replays twice', async () => {
+test("Delete applies a crashed tab's journal before the mark: Undo shows that state, and nothing replays twice", async () => {
     const world = createWorld({ seed: 6 })
     const storage = new MemoryStorage()
     const { second } = await closedChain(world, storage, true)

@@ -13,7 +13,7 @@ import { append, beginSession, openJournalPage } from './harness'
 // stored stack rather than leave one behind `lastSeq` (replay rebuilds a missing one):
 // the page forgets its window, the journal keeps nothing, and the next flush writes it whole.
 
-test('entries the stack model can’t follow remove the stored stack, and the next flush writes it whole', async () => {
+test("entries the stack model can't follow remove the stored stack, and the next flush writes it whole", async () => {
     const world = createWorld({ seed: 1 })
     const page = await openJournalPage(world, 'a')
     const a = stateOf(goldenChart())

@@ -345,7 +345,7 @@ for (const [kind, name] of kinds) {
         playwright,
         browserName,
     }, testInfo) => {
-        test.skip(browserName !== 'chromium', 'CDP Page.crash is Chromium’s')
+        test.skip(browserName !== 'chromium', "CDP Page.crash is Chromium's")
         // Two browser starts over one profile on disk.
         test.setTimeout(120_000)
         const { baseURL } = testInfo.project.use

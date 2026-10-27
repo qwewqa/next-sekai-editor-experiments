@@ -390,7 +390,7 @@ export type HistoryForm = {
     /** Where each chunk's stored form is in `chunks.bin`. */
     index: Map<string, { offset: number; length: number }>
     undoStack: UndoStackForm
-    /** The head snapshot: `undoStack.slots[index − base].snapshot`. */
+    /** The head snapshot: `undoStack.slots[index - base].snapshot`. */
     head: string
 }
 

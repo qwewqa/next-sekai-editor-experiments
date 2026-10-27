@@ -123,7 +123,7 @@ test('the first header of a new day says its day, and a today at the top says no
     assert.deepEqual(textsOf(at(2026, 10, 15, 21, 5)), ['Yesterday · 9 PM'])
 })
 
-test('Go To’s day label follows the calendar it is given, not the host zone or the real clock', () => {
+test("Go To's day label follows the calendar it is given, not the host zone or the real clock", () => {
     inLocale('en')
     // 2026-10-16 02:30 UTC is Oct 15 at 10:30 PM in New York and Oct 16 in Tokyo.
     const instant = Date.UTC(2026, 9, 16, 2, 30)

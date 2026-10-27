@@ -322,7 +322,7 @@ test('Delete is refused for a chain open in another tab, with its reason in the 
 })
 
 // A copy keeps its parent held until its first write, so the refusal is not about another tab.
-test('Delete is refused while this tab’s unstored copy holds the chain, in words that fit', async ({
+test("Delete is refused while this tab's unstored copy holds the chain, in words that fit", async ({
     page,
 }) => {
     errorsFail(page)
@@ -344,7 +344,7 @@ test('Delete is refused while this tab’s unstored copy holds the chain, in wor
     expect(await stored(page, alpha.chainId)).toBe(true)
 })
 
-test('the Delete key works only in the list: the chart’s Delete deletes the note, the list’s the chain', async ({
+test("the Delete key works only in the list: the chart's Delete deletes the note, the list's the chain", async ({
     page,
 }) => {
     errorsFail(page)

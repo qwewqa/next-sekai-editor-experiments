@@ -13,7 +13,7 @@ import { workerCore } from './harness'
 // Session locks on the main thread, this tab's client id, parent locks for unstored
 // continuations, and the days-of-use counter.
 
-test('a session lock is held until released; another tab can’t take it meanwhile', async () => {
+test("a session lock is held until released; another tab can't take it meanwhile", async () => {
     const world = createWorld({ seed: 1 })
     const a = world.tab('a')
     const b = world.tab('b')
@@ -27,7 +27,7 @@ test('a session lock is held until released; another tab can’t take it meanwhi
     assert.equal(await tryTake(), true)
 })
 
-test('a killed tab’s session lock is released, as Web Locks are', async () => {
+test("a killed tab's session lock is released, as Web Locks are", async () => {
     const world = createWorld({ seed: 2 })
     const a = world.tab('a')
     const b = world.tab('b')
@@ -41,7 +41,7 @@ test('a killed tab’s session lock is released, as Web Locks are', async () => 
     assert.equal(got, true)
 })
 
-test('a parent lock is shared: the parent counts as open, and can’t be taken exclusively', async () => {
+test("a parent lock is shared: the parent counts as open, and can't be taken exclusively", async () => {
     const world = createWorld({ seed: 3 })
     const a = world.tab('a')
     const b = world.tab('b')
@@ -58,7 +58,7 @@ test('a parent lock is shared: the parent counts as open, and can’t be taken e
     await world.idle()
 })
 
-test('this tab’s client id is read from its own nse-client lock', async () => {
+test("this tab's client id is read from its own nse-client lock", async () => {
     const world = createWorld({ seed: 4 })
     const a = world.tab('a')
     const b = world.tab('b')

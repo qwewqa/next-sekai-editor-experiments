@@ -1337,7 +1337,7 @@ test('a chart reset closes inspection and cannot leave focus in a removed contro
     await page.screenshot({ path: testInfo.outputPath('reset-closed-inspection.png') })
 })
 
-test('a header-only step’s comparison opens for its own entry once it shows', async ({ page }) => {
+test("a header-only step's comparison opens for its own entry once it shows", async ({ page }) => {
     await page.clock.install()
     await page.clock.pauseAt(new Date(Date.now() + 60_000))
     await page.evaluate(async () => {

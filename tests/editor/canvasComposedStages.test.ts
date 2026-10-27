@@ -210,7 +210,7 @@ test('composed stage surfaces take the tint of their lane color', () => {
     // Default keeps the usual tint, and colors with swatches of their own get theirs.
     assert.ok(tinted('default').every((color) => color === '#83b6d0'))
     assert.ok(tinted('red').every((color) => color === '#d6737b'))
-    // Cyan and Blue are not the faint guide colors, which Default’s tint would hide.
+    // Cyan and Blue are not the faint guide colors, which Default's tint would hide.
     assert.ok(tinted('cyan').every((color) => color === '#40e0d0'))
 
     // A fade passes through the tints between, and ends on the last one.

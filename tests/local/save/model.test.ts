@@ -72,7 +72,7 @@ test('the append assertion fails a plan whose prefix a hook altered, as a plan e
     }
 })
 
-test('a reduced bound session saved to its file keeps the file’s full history', async () => {
+test("a reduced bound session saved to its file keeps the file's full history", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -120,7 +120,7 @@ test('a bound chain whose opening session was deleted writes back every row once
     assert.equal(after.at(-1)?.split('|')[0], 'save')
 })
 
-test('the cut’s own session deleted: a write-back still writes every row once', async () => {
+test("the cut's own session deleted: a write-back still writes every row once", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -160,7 +160,7 @@ test('sessions sharing a start are ordered by their parent links, or the write f
     assert.throws(() => orderSessions([a, c]), ModelError)
 })
 
-test('downloads carry the base’s completeFrom until a row the base held is reduced, once', async () => {
+test("downloads carry the base's completeFrom until a row the base held is reduced, once", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -191,7 +191,7 @@ test('downloads carry the base’s completeFrom until a row the base held is red
     }
 })
 
-test('a download that isn’t carried writes its own id, never its oldest ancestor', async () => {
+test("a download that isn't carried writes its own id, never its oldest ancestor", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -297,7 +297,7 @@ test('a byte flipped in the built chunks.bin fails the post-build check; nothing
     }
 })
 
-test('Recent Sessions’ Save… of a session with a damaged head refuses; nothing is written', async () => {
+test("Recent Sessions' Save… of a session with a damaged head refuses; nothing is written", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(5)
@@ -313,7 +313,7 @@ test('Recent Sessions’ Save… of a session with a damaged head refuses; nothi
     assert.equal(built.refused, 'unreadableHead')
 })
 
-test('a stored BGM gone bad is marked damaged; a write-back copies the file’s own bgm entry', async () => {
+test("a stored BGM gone bad is marked damaged; a write-back copies the file's own bgm entry", async () => {
     const { fixture, file } = await bound()
     await fixture.edit(2)
     await fixture.flush()
@@ -331,7 +331,7 @@ test('a stored BGM gone bad is marked damaged; a write-back copies the file’s 
     assert.equal(read.media.bgm?.form.sha256, BGM.sha256)
 })
 
-test('Recent Sessions’ Save… changes nothing on the chain; a later write-back holds every row once', async () => {
+test("Recent Sessions' Save… changes nothing on the chain; a later write-back holds every row once", async () => {
     const { fixture, file } = await bound()
     await fixture.edit(2)
     await fixture.flush()
@@ -450,7 +450,7 @@ test('a long chain is written in segments of 500, and a write-back copies them w
     }
 })
 
-test('Replace writes the chain’s chronology with `replaces`, and the line when not carried', async () => {
+test("Replace writes the chain's chronology with `replaces`, and the line when not carried", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -472,7 +472,7 @@ test('Replace writes the chain’s chronology with `replaces`, and the line when
     assert.equal(read.project?.revision?.completeFrom, plan.revisionId)
 })
 
-test('an append that meets damage in the chain’s own file writes nothing and says so', async () => {
+test("an append that meets damage in the chain's own file writes nothing and says so", async () => {
     const { fixture, file } = await bound()
     await fixture.edit(2)
     await fixture.flush()

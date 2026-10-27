@@ -54,7 +54,7 @@ test('rows keep the read order under one day header for each day', () => {
     )
 })
 
-test('only this tab’s chain has the This tab badge, and no chain has two badges', () => {
+test("only this tab's chain has the This tab badge, and no chain has two badges", () => {
     // This tab holds its own head's lock, so the other-tab query never lists it; a chain open in
     // both would still show one badge.
     const rows = chainRows(
@@ -76,8 +76,8 @@ test('only this tab’s chain has the This tab badge, and no chain has two badge
     )
 })
 
-test('a continuation that has not stored yet keeps its chain’s row as This tab', () => {
-    // Its session is not stored, so the head is the parent’s: the chain id carries the badge.
+test("a continuation that has not stored yet keeps its chain's row as This tab", () => {
+    // Its session is not stored, so the head is the parent's: the chain id carries the badge.
     const rows = chainRows(buildRows([chain('own', HOUR)], context({ thisChain: 'own' })))
     assert.equal(rows[0]?.thisTab, true)
 })
@@ -230,7 +230,7 @@ test('a read that lands while the pointer is over the list is kept for later', a
     assert.equal(list.deferred(), true)
 })
 
-test('the user’s own action applies at once, whatever holds the rows', async () => {
+test("the user's own action applies at once, whatever holds the rows", async () => {
     const reads = [value([chain('a', HOUR)]), value([])]
     const list = listOf(() => Promise.resolve(reads.shift() ?? failure))
     await list.refresh()

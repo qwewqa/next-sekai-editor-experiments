@@ -23,7 +23,7 @@ test('an entry row without a note count reads without one, never as 0', async ()
     assert.equal(readEntryRow({ ...without, noteCount: 7 })?.noteCount, 7)
 })
 
-test('a Save writes a row without a count with its state’s count from the root', async () => {
+test("a Save writes a row without a count with its state's count from the root", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)

@@ -87,7 +87,7 @@ const changeHeadHeader = (items: Item[], change: (header: RecordValue[]) => Reco
 }
 
 test(
-    'the checker passes the builder golden’s output and every conformance expected.nxsp',
+    "the checker passes the builder golden's output and every conformance expected.nxsp",
     { skip: !hasUv },
     () => {
         const result = check(join(golden, 'write-1.nxsp'), join(golden, 'write-2.nxsp'))
@@ -414,7 +414,7 @@ test('the checker fails each crafted file for its reason', { skip: !hasUv }, asy
             assert.equal(result.status, 1, `${name} passed: ${result.output}`)
             assert.ok(
                 result.output.includes(reason),
-                `${name}: expected “${reason}”, got ${result.output}`,
+                `${name}: expected "${reason}", got ${result.output}`,
             )
         }
     } finally {

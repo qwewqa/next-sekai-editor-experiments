@@ -53,7 +53,7 @@ const titlesAndDeltas = (page: Page) =>
                 })),
         )
 
-test('a save made on another device names it; this browser’s own does not', async ({ page }) => {
+test("a save made on another device names it; this browser's own does not", async ({ page }) => {
     test.slow()
     errorsFail(page)
     await load(page, { platform: opfs })
@@ -109,7 +109,7 @@ const ownSaves = async (page: Page, names: string[]) => {
     await expect(timeline(page)).toBeHidden()
 }
 
-test('this browser’s saves stay its own after Save As… and reopening; two documents differ', async ({
+test("this browser's saves stay its own after Save As… and reopening; two documents differ", async ({
     page,
 }) => {
     test.slow()

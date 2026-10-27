@@ -113,7 +113,7 @@ const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.has
 const originsOf = (world: World) =>
     new Map([...rows(world, 'sessions').entries()].map(([id, row]) => [id, row.origin]))
 
-test('a flush, a continuation, a fork and a Save’s recording keep every session’s origin', async () => {
+test("a flush, a continuation, a fork and a Save's recording keep every session's origin", async () => {
     const seen = await guarded(async () => {
         const world = createWorld({ seed: 51 })
         const page = await openPage(world, world.tab('a'))
@@ -220,7 +220,7 @@ test('a journal apply and a recovery session keep their origins', async () => {
     assert.ok(seen.puts >= 3, `${seen.puts} session writes judged`)
 })
 
-test('an open’s head, its batches, an ended import and an abandoned one: a file’s rows, only in a file’s session', async () => {
+test("an open's head, its batches, an ended import and an abandoned one: a file's rows, only in a file's session", async () => {
     const ids = (n: number) => ({
         chainId: `chain-${n}`,
         sessionId: `session-${n}`,
@@ -296,7 +296,7 @@ test('an open’s head, its batches, an ended import and an abandoned one: a fil
     assert.ok(seen.puts >= 8, `${seen.puts} session writes judged`)
 })
 
-test('Try Again’s move into the database keeps the origin of every session it copies', async () => {
+test("Try Again's move into the database keeps the origin of every session it copies", async () => {
     const seen = await guarded(async () => {
         const world = createWorld({ seed: 54 })
         const frozen = world.tab('frozen')
@@ -325,7 +325,7 @@ test('Try Again’s move into the database keeps the origin of every session it 
     assert.deepEqual(seen.violations, [])
 })
 
-test('the guard names an origin that changes and a file’s rows in a session of its own', async () => {
+test("the guard names an origin that changes and a file's rows in a session of its own", async () => {
     const seen = await guarded(async (_, copying) => {
         const world = createWorld({ seed: 55 })
         const page = await openPage(world, world.tab('a'))

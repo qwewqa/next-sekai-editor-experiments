@@ -149,7 +149,7 @@ for (const [name, record, change] of [
         assert.equal(chain.name, 'Coconut (Master)')
     })
 
-test('a record with no revision and no file takes a first Save’s binding', async () => {
+test("a record with no revision and no file takes a first Save's binding", async () => {
     const { chain, handle: kept } = await replayWith(5, {}, writeBack)
     assert.deepEqual(chain.revision, { id: 'r2', n: 2, ancestors: ['r1'] })
     const file = chain.file as Row
@@ -173,7 +173,7 @@ test('a record with no revision and no file still refuses a binding a save picke
     assert.equal(chain.file, undefined)
 })
 
-test('a binding newer than the record’s replaced mark is taken', async () => {
+test("a binding newer than the record's replaced mark is taken", async () => {
     const { chain } = await replayWith(
         4,
         { ...bound, replaced: { by: 'other-chain', at: 150, name: 'coconut.nxsp' } },

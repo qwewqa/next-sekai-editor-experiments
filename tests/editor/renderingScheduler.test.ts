@@ -125,7 +125,7 @@ test('after a long pause, drawing again waits for quiet time, not the ceiling', 
     assert.ok(passes.every(({ inFrame }) => !inFrame))
 })
 
-test('a pass never comes so long after its renderer’s last render that it unloads what it drew', (t) => {
+test("a pass never comes so long after its renderer's last render that it unloads what it drew", (t) => {
     const { activity, advance } = clock(t)
     const shown = withGc(activity)
     const other = withGc(activity)

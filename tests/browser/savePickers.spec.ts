@@ -136,7 +136,7 @@ test('a self-pick at the base keeps the docId and ancestry, with no line', async
     await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps' })).toHaveCount(0)
 })
 
-test('a self-pick’s file is empty from the pick until the write closes, then holds the next revision', async ({
+test("a self-pick's file is empty from the pick until the write closes, then holds the next revision", async ({
     page,
 }) => {
     await start(page)
@@ -157,7 +157,7 @@ test('a self-pick’s file is empty from the pick until the write closes, then h
     expect(project.id).toBe(first.id)
 })
 
-test('the chain’s own file changed on disk: a pick puts its bytes back and opens the conflict dialog', async ({
+test("the chain's own file changed on disk: a pick puts its bytes back and opens the conflict dialog", async ({
     page,
 }) => {
     await start(page)
@@ -231,7 +231,7 @@ test('the project picker lists .nxsp only, and a build that outlasted the press 
 // Export compresses on the browser's stream; a file written at level 9 (an older export, or Firefox
 // before 113) is rebuilt too.
 for (const [compression, variant] of [
-    ['the browser’s stream', 0],
+    ["the browser's stream", 0],
     ['level 9', 1],
 ] as const)
     test(`level data gzipped by ${compression}, opened in this tab and picked in the project picker, is refused and put back`, async ({
@@ -310,7 +310,7 @@ test('a fork has no binding, and its first Save suggests "<name> (2)"', async ({
     await expect(saveDialog(a).getByRole('textbox')).toHaveValue('coconut (2)')
 })
 
-test('Export’s picker: the chain’s own project file is refused and written again, keeping its identity', async ({
+test("Export's picker: the chain's own project file is refused and written again, keeping its identity", async ({
     page,
 }) => {
     await start(page)
@@ -327,7 +327,7 @@ test('Export’s picker: the chain’s own project file is refused and written a
     expect((after.revision as Row).parent).toBe((before.revision as Row).id)
 })
 
-test('with storing paused, a takeover writes nothing, and the owner’s binding stands across its reload', async ({
+test("with storing paused, a takeover writes nothing, and the owner's binding stands across its reload", async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -354,7 +354,7 @@ test('with storing paused, a takeover writes nothing, and the owner’s binding 
     expect(after.replaced).toBeUndefined()
 })
 
-test('Recent Sessions’ Save… writes a session that isn’t open as a new file, binding nothing', async ({
+test("Recent Sessions' Save… writes a session that isn't open as a new file, binding nothing", async ({
     page,
 }) => {
     await start(page)
@@ -425,7 +425,7 @@ test('a kill after the revocation: the reload is bound to the emptied file, and 
     expect((await readFile(next, 'coconut.nxsp'))!.length).toBeGreaterThan(0)
 })
 
-test('B mid-write: A’s pick waits for B to finish, then takes the file over', async ({
+test("B mid-write: A's pick waits for B to finish, then takes the file over", async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -462,7 +462,7 @@ test('B mid-write: A’s pick waits for B to finish, then takes the file over', 
     expect(revoked.file).toBeUndefined()
 })
 
-test('B frozen while A takes its file: once shown, B’s label goes and its Save asks', async ({
+test("B frozen while A takes its file: once shown, B's label goes and its Save asks", async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -490,7 +490,7 @@ test('B frozen while A takes its file: once shown, B’s label goes and its Save
     )
 })
 
-test('a partial open’s file picked in the project picker is refused and put back', async ({
+test("a partial open's file picked in the project picker is refused and put back", async ({
     page,
 }) => {
     await start(page)

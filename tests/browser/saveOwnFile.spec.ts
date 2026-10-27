@@ -54,7 +54,7 @@ const shortChain = async (page: Page) => {
     return { before, bytes }
 }
 
-test('Save As…’s Choose Another… after a refused pick reads the chain’s own file again and stays Save As…', async ({
+test("Save As…'s Choose Another… after a refused pick reads the chain's own file again and stays Save As…", async ({
     page,
 }) => {
     const { before } = await shortChain(page)
@@ -90,7 +90,7 @@ test('Save As…’s Choose Another… after a refused pick reads the chain’s 
     expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
 })
 
-test('Export’s Choose Another… after its dialog closed reads the chain’s own file again before its picker', async ({
+test("Export's Choose Another… after its dialog closed reads the chain's own file again before its picker", async ({
     page,
 }) => {
     const { before } = await shortChain(page)
@@ -118,7 +118,7 @@ test('Export’s Choose Another… after its dialog closed reads the chain’s o
     expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
 })
 
-test('Export’s pick of the chain’s own file that is not written again gets the bytes read back', async ({
+test("Export's pick of the chain's own file that is not written again gets the bytes read back", async ({
     page,
 }) => {
     const { bytes } = await shortChain(page)
@@ -174,7 +174,7 @@ test('the bytes read go back under the same nse-bind exclusive lock as the pick'
     ).toContain('nse-bind:exclusive')
 })
 
-test('the chain’s own file filled by another write after the pick: the bytes read are offered, then the conflict shows', async ({
+test("the chain's own file filled by another write after the pick: the bytes read are offered, then the conflict shows", async ({
     page,
 }) => {
     await shortChain(page)
@@ -203,7 +203,7 @@ test('the chain’s own file filled by another write after the pick: the bytes r
     expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
 })
 
-test('a stale reservation’s release never ends a later Save’s reservation of the same seq', async ({
+test("a stale reservation's release never ends a later Save's reservation of the same seq", async ({
     page,
 }) => {
     await shortChain(page)
@@ -271,7 +271,7 @@ const openFile = async (page: Page, name: string) => {
     await expect(notice(page).filter({ hasText: name }).first()).toBeVisible()
 }
 
-test('the Save dialog shows no count while an open’s import runs, and counts once it ends', async ({
+test("the Save dialog shows no count while an open's import runs, and counts once it ends", async ({
     page,
 }) => {
     await start(page)
@@ -367,7 +367,7 @@ test('a Save whose import startup never resumed resumes it and saves, never "cou
     await expect(page.getByText('could not be prepared')).toHaveCount(0)
 })
 
-test('a pick of the chain’s own file that storage can’t place is still the own file: the bytes read are appended to', async ({
+test("a pick of the chain's own file that storage can't place is still the own file: the bytes read are appended to", async ({
     page,
 }) => {
     const { before } = await shortChain(page)
@@ -444,7 +444,7 @@ test('a put-back over a file filled meanwhile learns it from its size, never rea
     expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
 })
 
-test('Export waits for an open’s import before its picker, so a pick of the file never stops the import', async ({
+test("Export waits for an open's import before its picker, so a pick of the file never stops the import", async ({
     page,
 }) => {
     await start(page)
@@ -474,7 +474,7 @@ test('Export waits for an open’s import before its picker, so a pick of the fi
     expect(sessions!.some((row) => row.value.importPending === true)).toBe(false)
 })
 
-test('Recent Sessions’ Save… shows no count while an open’s import runs, and counts once it ends', async ({
+test("Recent Sessions' Save… shows no count while an open's import runs, and counts once it ends", async ({
     page,
 }) => {
     await start(page)

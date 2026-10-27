@@ -8,7 +8,7 @@ import { rawZip } from '../../zip/rawZip'
 // whatever order the chunks are asked in, and a copy of its own, never a view of the window
 // (a view, stored as it is, would write out the whole window).
 
-test('chunks read through windows are the file’s bytes at their places, each a copy', async () => {
+test("chunks read through windows are the file's bytes at their places, each a copy", async () => {
     const size = 5 * 1024 * 1024 + 123
     const data = new Uint8Array(size)
     for (let i = 0; i < size; i++) data[i] = (i * 2654435761) >>> 24
@@ -22,7 +22,7 @@ test('chunks read through windows are the file’s bytes at their places, each a
     const entry = reader.get('history/chunks.bin')
     assert.ok(entry)
 
-    // In file order, out of order, across a window’s end, larger than a window, and the last.
+    // In file order, out of order, across a window's end, larger than a window, and the last.
     const places: [number, number][] = []
     for (let at = 0; at + 70_000 <= size; at += 70_000) places.push([at, 70_000])
     places.push(

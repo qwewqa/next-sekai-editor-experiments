@@ -164,7 +164,7 @@ test('the storage worker runs as a classic worker and restarts from its Blob cop
     test.skip(
         browserName === 'webkit' &&
             !(await page.evaluate(() => typeof OffscreenCanvas !== 'undefined')),
-        'This WebKit build lacks OffscreenCanvas, so the editor’s support gate refuses to start',
+        "This WebKit build lacks OffscreenCanvas, so the editor's support gate refuses to start",
     )
     const errors = await watch(page)
     await page.addInitScript(() => {
@@ -205,8 +205,8 @@ test('the storage worker runs as a classic worker and restarts from its Blob cop
 for (const [name, setting, system] of [
     ['light', 'light', 'dark'],
     ['dark', 'dark', 'light'],
-    ['the system’s dark', undefined, 'dark'],
-    ['the system’s light', undefined, 'light'],
+    ["the system's dark", undefined, 'dark'],
+    ["the system's light", undefined, 'light'],
 ] as const) {
     test(`the hashed theme script applies ${name} before the app loads`, async ({ page }) => {
         await watch(page)
@@ -244,7 +244,7 @@ test.describe('a policy that lacks a source shows up as a violation', () => {
         )
     })
 
-    test('without the theme script’s hash the script is blocked', async ({ page }) => {
+    test("without the theme script's hash the script is blocked", async ({ page }) => {
         await watch(page)
         await rewritePolicy(page, (policy) => policy.replace(/ 'sha256-[^']*'/, ''))
         await page.route('**/assets/index-*.js', (route) => route.abort())

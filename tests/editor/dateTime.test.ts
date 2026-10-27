@@ -90,7 +90,7 @@ test('a clock range never throws', () => {
     assert.doesNotThrow(() => formatClockRange('en', at(10, 16, 16, 33), at(10, 16, 16, 16)))
 })
 
-test('a time without a zone follows a change of the engine’s zone', () => {
+test("a time without a zone follows a change of the engine's zone", () => {
     const original = process.env.TZ
     const instant = Date.UTC(2026, 10, 5, 1, 30)
     try {

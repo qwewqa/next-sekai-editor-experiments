@@ -202,7 +202,7 @@ test('a server without a list of a type has no items of it', async () => {
     assert.deepEqual(await client.list(server.base, 'background'), { items: [], next: undefined })
 })
 
-test('details are the item object of the item’s own address', async () => {
+test("details are the item object of the item's own address", async () => {
     const { server, client } = setup({
         files: {
             '/sonolus/skins/neon%20night': json({ item: { name: 'neon night', title: 'Neon' } }),
@@ -447,7 +447,7 @@ test('Cancel stops a request at once, even one whose fetch ignores the signal', 
     }
 })
 
-test('a caller’s abort is an abort, not a failure', async () => {
+test("a caller's abort is an abort, not a failure", async () => {
     const controller = new AbortController()
     const client = createServerClient({
         language: () => 'en',
@@ -484,7 +484,7 @@ const heldFetch = () => {
     return { asked, fetch, releaseAll }
 }
 
-test('the user’s requests go before background ones', async () => {
+test("the user's requests go before background ones", async () => {
     const held = heldFetch()
     const client = createServerClient({ language: () => 'en', fetch: held.fetch, concurrency: 1 })
     const all = [

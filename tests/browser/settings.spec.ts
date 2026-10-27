@@ -278,7 +278,7 @@ test.describe('on Apple devices', () => {
     })
 })
 
-test('visibility toggles list kinds in the tools’ order everywhere', async ({ page }) => {
+test("visibility toggles list kinds in the tools' order everywhere", async ({ page }) => {
     const kinds = ['Note', 'BPM', 'Time Scale', 'Camera Event', 'Stage Mask Event']
     // The keyboard shortcut list, whose rows mount in the frames after the dialog opens.
     await expect(page.getByRole('dialog').locator('[data-settings-section="about"]')).toBeAttached()
@@ -896,7 +896,7 @@ test('a Toolbar tool is named by what pressing it does', async ({ page }) => {
     expect(await has()).toBe(false)
 })
 
-test('the dialog fills the viewport at v0.5.22’s width, and a mouse sees every section pill', async ({
+test("the dialog fills the viewport at v0.5.22's width, and a mouse sees every section pill", async ({
     page,
 }) => {
     await page.setViewportSize({ width: 1440, height: 1100 })

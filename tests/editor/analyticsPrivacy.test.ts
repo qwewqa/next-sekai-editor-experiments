@@ -35,7 +35,7 @@ headings.forEach((heading, i) => {
 })
 const section = (title: string) => {
     const body = sections.get(title)
-    assert.ok(body !== undefined, `docs/usage-statistics.md has no section “${title}”`)
+    assert.ok(body !== undefined, `docs/usage-statistics.md has no section "${title}"`)
     return body
 }
 
@@ -126,7 +126,7 @@ const formatFits = (prop: unknown, row: Row, unusedValues: readonly string[] = [
 
 const measuredKeys = ['cores', 'deviceMemory', 'engine', 'touch', 'dpr', 'viewport'] as const
 
-test('the reference covers the catalogue’s fields and leaves out what nothing sends', () => {
+test("the reference covers the catalogue's fields and leaves out what nothing sends", () => {
     const events = [...Object.keys(catalogue), 'usage']
     for (const event of events) {
         const eventRows = rows(section(event))
@@ -221,7 +221,7 @@ test('the reference states the exact values, the caps and the ranges', () => {
     ])
         assert.ok(exact.includes(words), words)
 
-    // The exact values the sentences name are the scales’ own.
+    // The exact values the sentences name are the scales' own.
     assert.deepEqual(scales.counts.slice(0, 10), ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
     assert.deepEqual(
         scales.cores.slice(0, 32),

@@ -142,7 +142,7 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
             if (!chainIds.includes(target))
                 add(
                     'I9',
-                    `${name} is bound to ${chainIds.join(', ')} and is ${target}’s Export target`,
+                    `${name} is bound to ${chainIds.join(', ')} and is ${target}'s Export target`,
                 )
     }
 

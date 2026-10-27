@@ -44,7 +44,7 @@ test('after a reload, an export by download keeps the stored target it has no ha
     assert.deepEqual(persisted, [{ exportName: 'Coconut (Master)', partialImport: true }])
 })
 
-test('the stored target’s handle is read when Export needs it, never when the session opens', async () => {
+test("the stored target's handle is read when Export needs it, never when the session opens", async () => {
     const handle = { kind: 'file', name: 'LevelData' } as unknown as FileSystemFileHandle
     let reads = 0
     setExportHandleReader(() => {
@@ -71,7 +71,7 @@ test('without a stored handle, Export has no target and asks where', async () =>
     assert.equal(await loadExportTarget(), undefined)
 })
 
-test('the opened file’s target names the picker’s suggestion, and a new chart forgets it', () => {
+test("the opened file's target names the picker's suggestion, and a new chart forgets it", () => {
     restoreExportMemory({ exportTarget: { ...stored.exportTarget, opened: true } })
     assert.equal(exportMemory.sourceName, 'LevelData')
     clearExportMemory()
@@ -88,7 +88,7 @@ test('the opened file’s target names the picker’s suggestion, and a new char
 
 const failed = { storedRead: 'failed', storedError: new Error('stopped (export test)') } as const
 
-test('a failed read of the stored target’s handle is no target: the picker asks where', async () => {
+test("a failed read of the stored target's handle is no target: the picker asks where", async () => {
     setExportHandleReader(() => Promise.resolve(failed))
     restoreExportMemory(stored)
     assert.equal(await loadExportTarget(), undefined)

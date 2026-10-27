@@ -57,7 +57,7 @@ const withBound = (
     binding: { ...facts.binding!, file: { ...facts.binding!.file!, ...bound } },
 })
 
-test('the session’s own last write, unchanged, matches with or without handles', () => {
+test("the session's own last write, unchanged, matches with or without handles", () => {
     assert.equal(reopensOwnFile(download()), true)
     assert.equal(reopensOwnFile(picked()), true)
 })
@@ -65,7 +65,7 @@ test('the session’s own last write, unchanged, matches with or without handles
 test('each fact that does not hold sends the open the usual way', () => {
     const cases: [string, ReopenFacts][] = [
         ['a partial open, or one bound in another tab', { ...download(), identity: false }],
-        ['a level that is not its history’s head', { ...download(), asHead: false }],
+        ["a level that is not its history's head", { ...download(), asHead: false }],
         ['a binding that could not be read', { ...download(), binding: undefined }],
         [
             'a session with no binding',

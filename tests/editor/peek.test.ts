@@ -167,7 +167,7 @@ test('a peek starts with no selection and the live audio', async () => {
     assert.equal(state.value.bgm.offset, 2)
 })
 
-test('a session’s peek plays without the live audio, while it loads and once shown', async () => {
+test("a session's peek plays without the live audio, while it loads and once shown", async () => {
     const buffer = {} as AudioBuffer
     const waveform = {} as State['bgm']['waveform']
     resetStates({
@@ -183,7 +183,7 @@ test('a session’s peek plays without the live audio, while it loads and once s
     assert.equal(state.value.bgm.buffer, undefined)
     assert.equal(state.value.bgm.waveform, undefined)
     assert.equal(state.value.bgm.offset, 2)
-    // The live state keeps its audio, and a step’s peek still shows with it.
+    // The live state keeps its audio, and a step's peek still shows with it.
     assert.equal(liveState.value.bgm.buffer, buffer)
     await peekEntry(key(1))
     assert.equal(state.value.bgm.buffer, buffer)
@@ -763,7 +763,7 @@ test('pushState while peeking throws in tests, and nothing changes', async () =>
     assert.equal(nameOf(liveState.value), 'live')
 })
 
-test('Restore pushes a restore entry with the snapshot’s chart and offset and the live audio', async () => {
+test("Restore pushes a restore entry with the snapshot's chart and offset and the live audio", async () => {
     const buffer = {} as AudioBuffer
     resetStates({
         isDirty: false,
@@ -822,7 +822,7 @@ test('Restore after a BGM change keeps the current offset with the current audio
     assert.equal(liveState.value.bgm.offset, 7)
 })
 
-test('Restore with an unchanged BGM restores the step’s offset', async () => {
+test("Restore with an unchanged BGM restores the step's offset", async () => {
     resetStates({
         isDirty: false,
         step: initialStep(),
@@ -834,7 +834,7 @@ test('Restore with an unchanged BGM restores the step’s offset', async () => {
     assert.equal(liveState.value.bgm.offset, 3)
 })
 
-test('a step’s peek plays with its offset only when its BGM is the current one', async () => {
+test("a step's peek plays with its offset only when its BGM is the current one", async () => {
     const buffer = {} as AudioBuffer
     resetStates({
         isDirty: false,
@@ -846,7 +846,7 @@ test('a step’s peek plays with its offset only when its BGM is the current one
         [key(2)]: { state: fake('same', 0, { bgm: bgmOf('new', 5) }), time: 2 },
     })
     await peekEntry(key(1))
-    // The peek shows the step’s offset; playback keeps the live one with the live audio.
+    // The peek shows the step's offset; playback keeps the live one with the live audio.
     assert.equal(state.value.bgm.offset, 3)
     assert.equal(playbackBgm.value.offset, 7)
     assert.equal(playbackBgm.value.buffer, buffer)

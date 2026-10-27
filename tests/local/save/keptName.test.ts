@@ -43,7 +43,7 @@ const owner = (fixture: Fixture, name: string) => ({
     handle: false,
 })
 
-test('a takeover leaves the chain its file’s stem, dots and all', async () => {
+test("a takeover leaves the chain its file's stem, dots and all", async () => {
     const fixture = await boundChain('feat. Miku.nxsp')
     const done = await fixture.store.write(BIND_STORES, (tx) =>
         takeOver(tx, { owner: owner(fixture, 'feat. Miku.nxsp'), by: 'other', at: 9 }),
@@ -54,7 +54,7 @@ test('a takeover leaves the chain its file’s stem, dots and all', async () => 
     assert.equal(chain.name, 'feat. Miku')
 })
 
-test('an unlink after damage, Check’s included, leaves the chain its file’s stem', async () => {
+test("an unlink after damage, Check's included, leaves the chain its file's stem", async () => {
     const fixture = await boundChain('coconut.nxsp')
     const record = await fixture.store.write(['chains', 'entries', 'handles'], (tx) =>
         writeUnlink(tx, {
@@ -71,7 +71,7 @@ test('an unlink after damage, Check’s included, leaves the chain its file’s 
     assert.equal((await chainOf(fixture)).name, 'coconut')
 })
 
-test('a fork later saved as a file takes that file’s stem over its "(2)" name when it loses it', async () => {
+test('a fork later saved as a file takes that file\'s stem over its "(2)" name when it loses it', async () => {
     // A fork "Coconut (2)" saved as melt.nxsp, then taken over or unlinked: it reads "melt".
     const taken = await boundChain('melt.nxsp', 'Coconut (2)')
     await taken.store.write(BIND_STORES, (tx) =>
@@ -92,7 +92,7 @@ test('a fork later saved as a file takes that file’s stem over its "(2)" name 
     assert.equal((await chainOf(unlinked)).name, 'melt')
 })
 
-test('the web’s Save writes no project name: its names are automatic, and the apps would show one', async () => {
+test("the web's Save writes no project name: its names are automatic, and the apps would show one", async () => {
     const fixture = await Fixture.create(92)
     await fixture.start(0)
     await fixture.edit(1)

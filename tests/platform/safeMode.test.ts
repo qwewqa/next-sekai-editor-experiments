@@ -23,7 +23,7 @@ import { storageKey } from '../../src/storage'
 
 // Safe mode's rule and the startup gate's state.
 
-test('safe mode writes only settings and keys outside the editor’s own', () => {
+test("safe mode writes only settings and keys outside the editor's own", () => {
     registerSettingKeys(['theme', 'locale'])
     for (const key of ['theme', 'locale', 'toolbarExportMigrated'])
         assert.equal(safeModeMayWrite(storageKey(key)), true, key)
@@ -38,7 +38,7 @@ test('safe mode writes only settings and keys outside the editor’s own', () =>
         'notASetting',
     ])
         assert.equal(safeModeMayWrite(storageKey(key)), false, key)
-    // A key the editor doesn’t own, such as a test flag, isn’t its to refuse.
+    // A key the editor doesn't own, such as a test flag, isn't its to refuse.
     assert.equal(safeModeMayWrite('nse.test.platform'), true)
 })
 
@@ -78,7 +78,7 @@ test('the startup gate lifts when startup resolves and says so when it fails', a
     assert.equal(startupGate.phase, 'opening')
     setOpeningName('Coconut (Master)')
     assert.equal(startupGate.name, 'Coconut (Master)')
-    // A failure keeps the gate, with the error’s own text.
+    // A failure keeps the gate, with the error's own text.
     const log = console.error
     console.error = () => undefined
     try {
@@ -94,7 +94,7 @@ test('the startup gate lifts when startup resolves and says so when it fails', a
     assert.equal(rawExport()?.label(), 'Export Raw Data')
     finishStartup()
     assert.equal(startupGate.phase, 'done')
-    // Done stays done: a late failure doesn’t close the editor again.
+    // Done stays done: a late failure doesn't close the editor again.
     console.error = () => undefined
     try {
         failStartup(new Error('late'))
@@ -135,7 +135,7 @@ test('tracked startup resolves to done, rejects to the error, and Start Blank ru
     }
 })
 
-test('the error state’s Export Raw Data shows the line its run returns, and clears it on the next press', async () => {
+test("the error state's Export Raw Data shows the line its run returns, and clears it on the next press", async () => {
     const log = console.error
     const notes = ['The stored work could not be read.', undefined]
     setRawExport({ label: () => 'Export Raw Data', run: () => Promise.resolve(notes.shift()) })
@@ -159,7 +159,7 @@ test('the error state’s Export Raw Data shows the line its run returns, and cl
     setRawExport(undefined)
 })
 
-test('the gate’s line names the file when the download failed, and the stored work when it was left out', () => {
+test("the gate's line names the file when the download failed, and the stored work when it was left out", () => {
     const texts = {
         downloadFailed: '"{0}" could not be downloaded.',
         unreadable: 'The stored work could not be read.',

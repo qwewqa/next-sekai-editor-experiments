@@ -166,7 +166,7 @@ test('camera lane and size do not independently pan or stretch the background', 
     )
 })
 
-test('a background’s aspect ratio and fit place its image before camera motion', () => {
+test("a background's aspect ratio and fit place its image before camera motion", () => {
     const half = (quad: ReturnType<typeof layoutBackground>) => ({
         width: quad.tr.x,
         height: quad.tr.y,

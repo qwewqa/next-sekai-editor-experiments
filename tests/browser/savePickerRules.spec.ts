@@ -177,7 +177,7 @@ test('a write-back that finds itself revoked opens the Save dialog with the reas
     await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
 })
 
-test('a pre-bind shows at once, ends a revocation, and carries Save As…’s new docId', async ({
+test("a pre-bind shows at once, ends a revocation, and carries Save As…'s new docId", async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -229,7 +229,7 @@ test('a pre-bind shows at once, ends a revocation, and carries Save As…’s ne
     expect((await projectOf(b, 'melt.nxsp')).id).toBe(saveAs.docId)
 })
 
-test('Save as a Separate File… picking the chain’s own changed file puts that version back', async ({
+test("Save as a Separate File… picking the chain's own changed file puts that version back", async ({
     page,
 }) => {
     await start(page)
@@ -414,7 +414,7 @@ for (const dialogOpen of [false, true]) {
     })
 }
 
-test('Export’s picker: the chain’s own file changed on disk is put back, and the conflict dialog opens', async ({
+test("Export's picker: the chain's own file changed on disk is put back, and the conflict dialog opens", async ({
     page,
 }) => {
     await start(page)
@@ -431,7 +431,7 @@ test('Export’s picker: the chain’s own file changed on disk is put back, and
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
 })
 
-test('Export’s picker: the chain’s own file that could not be written again says so', async ({
+test("Export's picker: the chain's own file that could not be written again says so", async ({
     page,
 }) => {
     await start(page)
@@ -449,7 +449,7 @@ test('Export’s picker: the chain’s own file that could not be written again 
     await expect(dialog).not.toContainText('is not level data')
 })
 
-test('in safe mode Save writes from this tab, refusing only to take over another session’s file', async ({
+test("in safe mode Save writes from this tab, refusing only to take over another session's file", async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -540,7 +540,7 @@ test('ordinary Save As clears Export destination and name in the file and after 
 })
 
 for (const how of ['a new visit', 'Reopen']) {
-    test(`${how} that continues the session offers Export’s remembered target before any edit`, async ({
+    test(`${how} that continues the session offers Export's remembered target before any edit`, async ({
         context,
     }) => {
         const first = await context.newPage()

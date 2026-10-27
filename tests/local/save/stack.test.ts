@@ -30,7 +30,7 @@ test('a chain whose first session was deleted is renumbered from its own first e
     assert.equal(await checkStack(file), 'replay')
 })
 
-test('a chain replay can’t follow writes the head alone, and says so in the log', async (t) => {
+test("a chain replay can't follow writes the head alone, and says so in the log", async (t) => {
     const warn = t.mock.method(console, 'warn', () => undefined)
     const fixture = await Fixture.create()
     await fixture.start(0)
@@ -74,7 +74,7 @@ test('write-backs after deleted sessions keep a stack replay defines', async () 
     assert.equal(stateAt(3).hex, ok(built).saveEntry.snapshot)
 })
 
-test('a chain whose middle session was deleted writes replay’s stack, not the session’s', async (t) => {
+test("a chain whose middle session was deleted writes replay's stack, not the session's", async (t) => {
     t.mock.method(console, 'warn', () => undefined)
     const fixture = await Fixture.create()
     await fixture.start(0)
@@ -93,7 +93,7 @@ test('a chain whose middle session was deleted writes replay’s stack, not the 
     assert.equal(await checkStack(file), 'replay')
 })
 
-test('a Save from the tab’s unflushed stack writes its newest 1,000 slots', async () => {
+test("a Save from the tab's unflushed stack writes its newest 1,000 slots", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.flush()

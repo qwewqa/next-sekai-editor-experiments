@@ -20,7 +20,7 @@ import type { SessionOrigin } from './records/unknownValues'
 /** Slots in one `stackBlocks` row. */
 export const BLOCK_SLOTS = 256
 
-/** A session row's `stack`: the stored slots `base … base + length − 1` and the index. */
+/** A session row's `stack`: the stored slots `base .. base + length - 1` and the index. */
 export type StackWindow = { readonly base: number; readonly length: number; readonly index: number }
 
 /**
@@ -40,7 +40,7 @@ export const windowBlocks = (window: StackWindow) => ({
     last: blockOf(window.base + window.length - 1),
 })
 
-/** The slots `first … end − 1` of a block inside a window. */
+/** The slots `first .. end - 1` of a block inside a window. */
 export const blockSpan = (window: StackWindow, block: number) => ({
     first: Math.max(block * BLOCK_SLOTS, window.base),
     end: Math.min((block + 1) * BLOCK_SLOTS, window.base + window.length),
@@ -65,7 +65,7 @@ export const chainFlagsAtCreation = (origin: SessionOrigin) => ({
 
 export type ReplaySlot = { readonly snapshot: Uint8Array; readonly step: UndoableStep }
 
-/** A `recovered` entry's `stack`: slots `0 … keep − 1` kept, then `push`, at `index`. */
+/** A `recovered` entry's `stack`: slots `0 .. keep - 1` kept, then `push`, at `index`. */
 export type RecoveredStack = {
     readonly keep: number
     readonly push: readonly ReplaySlot[]
@@ -338,7 +338,7 @@ const applyKind = <S>(
     }
 }
 
-/** A block a flush rewrites: its slots `first … end − 1`. */
+/** A block a flush rewrites: its slots `first .. end - 1`. */
 export type BlockWrite = { readonly block: number; readonly first: number; readonly end: number }
 
 /** A flush's stack: the window after its last entry, and the blocks it rewrites. */
@@ -371,7 +371,7 @@ export class SessionStack<E> {
     committed = new SlotStack<ModelSlot<E>>(0, [], -1)
     /** The window as stored; undefined until the first write. */
     window: StackWindow | undefined
-    /** Each stored block's slots `first … end − 1`. */
+    /** Each stored block's slots `first .. end - 1`. */
     readonly blocks = new Map<number, { first: number; end: number }>()
     /** False when the stored blocks may differ from `blocks`: the next flush rewrites them all. */
     synced = true

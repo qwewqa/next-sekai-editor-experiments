@@ -141,7 +141,7 @@ const pausedSave = async (
     return { built, file, identity: next }
 }
 
-test('with storing paused, a second Save appends to the first’s file through the binding in memory (major 4)', async () => {
+test("with storing paused, a second Save appends to the first's file through the binding in memory (major 4)", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1, noteAdd(1))
@@ -231,7 +231,7 @@ const writeBack = async (
     return [ok(built), written]
 }
 
-test('a write-back with History unticked keeps its file’s history', async () => {
+test("a write-back with History unticked keeps its file's history", async () => {
     const { fixture, file } = await boundWith(true)
     const [built, written] = await writeBack(fixture, file, false)
     assert.ok(built.identity.entry)
@@ -241,7 +241,7 @@ test('a write-back with History unticked keeps its file’s history', async () =
     assert.equal(after.length, before.length + 2)
 })
 
-test('a write-back to a file without history adds the chain’s history, never a conflict (nit 17)', async () => {
+test("a write-back to a file without history adds the chain's history, never a conflict (nit 17)", async () => {
     const { fixture, file } = await boundWith(false)
     const [built, written] = await writeBack(fixture, file, true)
     assert.ok(built.identity.entry)
@@ -317,7 +317,7 @@ test('a write-back to an opened file without history writes history from the ope
     }
 })
 
-test('a pending row for a stored slot has no note count of its own, and the file gets the root’s', async () => {
+test("a pending row for a stored slot has no note count of its own, and the file gets the root's", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(3, noteAdd(1))

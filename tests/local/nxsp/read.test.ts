@@ -530,7 +530,7 @@ test('a field another entry kind has is an unknown key', async () => {
     assert.equal(read.history, undefined)
 })
 
-test('an entry’s time is a safe integer of at least 0', async () => {
+test("an entry's time is a safe integer of at least 0", async () => {
     for (const time of [1.5, -1, 2 ** 53, '1']) {
         const read = nxsp(await changeManifest((m) => (m.entries[0].time = time)))
         assert.deepEqual(
@@ -952,7 +952,7 @@ test('a key no carrier knows, inside a step, is newer content: unknown-key, not 
     assert.ok(hasReason(both, 'history-unreadable', 'manifest.undoStack.slots[0].step'))
 })
 
-test('a save entry’s appVersion is optional on read, a string, and only on a save', async () => {
+test("a save entry's appVersion is optional on read, a string, and only on a save", async () => {
     const saved = (m: Loose) => m.entries.find((e: Loose) => e.kind === 'save')
     const present = nxsp(await changeManifest(() => undefined))
     assert.equal(

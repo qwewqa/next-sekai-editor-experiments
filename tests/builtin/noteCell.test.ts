@@ -160,7 +160,7 @@ test('a one lane note is square on screen at stage tilt 0', () => {
 // no band, so its face is the cell: the mark sits over the middle third of the cell.
 const baseMark = { from: 0.069, to: 0.236, bottom: 1 / 3, top: 2 / 3 }
 
-test('note marks fill the end of the note the way the base’s do', () => {
+test("note marks fill the end of the note the way the base's do", () => {
     const hex = (color: string) => [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16))
     for (const [name, accent] of [
         ['Sekai Normal Note Left', '#8394f6'],
@@ -187,12 +187,12 @@ test('note marks fill the end of the note the way the base’s do', () => {
         for (const key of ['from', 'to'] as const)
             assert.ok(
                 Math.abs(got[key] - baseMark[key]) <= 0.01,
-                `${name}: mark ${key} ${got[key].toFixed(3)} lane, the base’s ${baseMark[key]}`,
+                `${name}: mark ${key} ${got[key].toFixed(3)} lane, the base's ${baseMark[key]}`,
             )
         for (const key of ['bottom', 'top'] as const)
             assert.ok(
                 Math.abs(got[key] - baseMark[key]) <= 0.02,
-                `${name}: mark ${key} ${got[key].toFixed(3)} of the cell, the base’s ${baseMark[key].toFixed(3)}`,
+                `${name}: mark ${key} ${got[key].toFixed(3)} of the cell, the base's ${baseMark[key].toFixed(3)}`,
             )
     }
 })

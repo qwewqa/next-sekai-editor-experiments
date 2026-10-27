@@ -6,7 +6,7 @@ import { createWorld } from './world'
 // Export's pick of another chain's file: a file filled after the pick is
 // known to be filled before anything is taken from its owner, so its owner keeps its binding.
 
-test('Export’s pick of another chain’s file that was filled meanwhile revokes nothing and writes nothing', async () => {
+test("Export's pick of another chain's file that was filled meanwhile revokes nothing and writes nothing", async () => {
     const w = await createWorld({ own: 'bound', storage: 'lacks' })
     w.pick('other.nxsp')
     // Another tab, or a sync client, writes into the picked file after the pick.

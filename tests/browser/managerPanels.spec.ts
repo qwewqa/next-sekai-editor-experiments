@@ -1761,7 +1761,7 @@ test('Select Objects leaves out objects of hidden types', async ({ page }) => {
     expect(await selected()).toEqual(['bpm', 'bpm'])
 })
 
-test('closing Properties opened from a row’s inline button returns focus to the row', async ({
+test("closing Properties opened from a row's inline button returns focus to the row", async ({
     page,
 }) => {
     await seedGroups(page, ['Default', 'Other group'])

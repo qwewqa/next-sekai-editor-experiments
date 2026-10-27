@@ -181,7 +181,7 @@ test.describe('ways in', () => {
         )
     })
 
-    test('the toolbar keeps it first in the playback group’s flyout', async ({ page }) => {
+    test("the toolbar keeps it first in the playback group's flyout", async ({ page }) => {
         await start(page)
         const toolbar = await page.evaluate(() => window.editorTest.settings.toolbar)
         const group = toolbar.find((group) => group.includes('play'))!
@@ -217,7 +217,7 @@ test.describe('ways in', () => {
         await expect(selectedTab(page)).toContainText('Particle')
     })
 
-    test('the Preview panel’s tab menu opens it', async ({ page }) => {
+    test("the Preview panel's tab menu opens it", async ({ page }) => {
         await start(page)
         await page.locator('[data-panel-tab="preview"]').click({ button: 'right' })
         const menu = page.getByRole('menu')
@@ -231,7 +231,7 @@ test.describe('ways in', () => {
         await expect(page.getByRole('menuitem', { name: 'Preview Assets' })).toHaveCount(0)
     })
 
-    test('the panel’s fallback line opens it on that type’s tab', async ({ page }) => {
+    test("the panel's fallback line opens it on that type's tab", async ({ page }) => {
         await start(page, { fail: ['default-particle'] })
         const line = fallbackLine(page, 'particle')
         await expect(line).toContainText(
@@ -426,7 +426,7 @@ test.describe('fallbacks', () => {
         await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(0)
     })
 
-    test('a tab’s accessible name joins its type and reason as the language does', async ({
+    test("a tab's accessible name joins its type and reason as the language does", async ({
         page,
     }) => {
         await start(page, { fail: ['default-skin'] })
@@ -439,7 +439,7 @@ test.describe('fallbacks', () => {
         )
     })
 
-    test('the panel’s line and the dialog’s row give one reason for each case', async ({
+    test("the panel's line and the dialog's row give one reason for each case", async ({
         browser,
     }) => {
         const cases = [
@@ -720,7 +720,7 @@ test('the toolbar migration adds the command to an unchanged playback group, onc
     expect((await toolbar())[1]).toEqual(former)
 })
 
-test('a background’s colour, blur, mask, aspect ratio and fit are drawn', async ({ page }) => {
+test("a background's colour, blur, mask, aspect ratio and fit are drawn", async ({ page }) => {
     await start(page)
     await expect.poll(() => skinTitle(page)).toBe('Fixture')
     const viewport = page.locator('.preview-viewport').first()
@@ -776,7 +776,7 @@ test('a background’s colour, blur, mask, aspect ratio and fit are drawn', asyn
 })
 
 test.describe('the review fixes', () => {
-    test('the panel’s lines sit under the image and leave its settings button clickable', async ({
+    test("the panel's lines sit under the image and leave its settings button clickable", async ({
         page,
     }) => {
         await start(page, { fail: ['default-skin', 'default-particle'] })
@@ -897,7 +897,7 @@ test.describe('the review fixes', () => {
 test.describe('the review fixes, narrow', () => {
     test.use({ viewport: { width: 360, height: 740 } })
 
-    test('the reason’s lines align with the row’s name, and the tab strip shows it scrolls', async ({
+    test("the reason's lines align with the row's name, and the tab strip shows it scrolls", async ({
         page,
     }) => {
         await start(page, { fail: ['default-skin'] })
@@ -1054,7 +1054,7 @@ test.describe('Next SEKAI 02', () => {
         )
     })
 
-    test('the chooser shows both skins’ pictures and the author, read by ranges', async ({
+    test("the chooser shows both skins' pictures and the author, read by ranges", async ({
         page,
     }) => {
         await start(page)

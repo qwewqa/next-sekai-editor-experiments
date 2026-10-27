@@ -357,7 +357,7 @@ test('Show Change steps through the changes in chart order and wraps', async ({ 
     expect((await changes(page)).time).toBe(time)
 })
 
-test('the row menu’s Show Change peeks the row and brings its change into view', async ({
+test("the row menu's Show Change peeks the row and brings its change into view", async ({
     page,
 }) => {
     await edit(page, 'Added 1 note', { kind: 'add', beats: [60] })
@@ -400,7 +400,7 @@ test('a header-only change dims nothing; an entry that changed nothing says so',
     await expect(peekLine(page)).toHaveText('Set Initial Life to 1,001')
 })
 
-test('a Restore’s change is against the state just before it', async ({ page }) => {
+test("a Restore's change is against the state just before it", async ({ page }) => {
     await edit(page, 'Moved A', { kind: 'move', beats: [5] })
     await edit(page, 'Moved B', { kind: 'move', beats: [7] })
     await stored(page)
@@ -525,7 +525,7 @@ test('Edits Here from Go To lists the entries that changed the beats in view', a
     await expect(row(page, 'Added far')).toBeVisible()
 })
 
-test('Find Edits Here from the chart’s menu, and No edits here', async ({ page }) => {
+test("Find Edits Here from the chart's menu, and No edits here", async ({ page }) => {
     await edit(page, 'Moved near', { kind: 'move', beats: [5] })
     await stored(page)
     await viewAt(page, 6)
@@ -1528,7 +1528,7 @@ const chooseHere = async (page: Page) => {
     )
 }
 
-test('closing the History dialog does not stop the docked panel’s Edits Here scan', async ({
+test("closing the History dialog does not stop the docked panel's Edits Here scan", async ({
     page,
 }) => {
     await edit(page, 'Moved near', { kind: 'move', beats: [5] })
@@ -1859,7 +1859,7 @@ test('Try Again and Show All by keys hand focus on as they go', async ({ page })
     await expect(list(page).locator('[data-history-row][tabindex="0"]')).toBeFocused()
 })
 
-test('an outside press that closes Go To or a row’s menu gives focus back to its opener', async ({
+test("an outside press that closes Go To or a row's menu gives focus back to its opener", async ({
     page,
 }) => {
     await edit(page, 'Moved A', { kind: 'move', beats: [5] })
@@ -1890,7 +1890,7 @@ test('an outside press that closes Go To or a row’s menu gives focus back to i
         .toBe(true)
 })
 
-test('Edits Here’s range names its first and last beats, for a selection and for the view (X-B 1, 6)', async ({
+test("Edits Here's range names its first and last beats, for a selection and for the view (X-B 1, 6)", async ({
     page,
 }) => {
     await edit(page, 'Moved near', { kind: 'move', beats: [5] })
@@ -1956,7 +1956,7 @@ test('Edits Here’s range names its first and last beats, for a selection and f
 // The view never goes below the chart's start, so a sheet over more than half the pane leaves a
 // first stretch of the chart that no scroll can bring into the band. A change there is reachable
 // by neither arrow: it counts in neither direction, and no button is enabled for it.
-test('a change under the sheet at the chart’s start counts in neither direction and enables no arrow', async ({
+test("a change under the sheet at the chart's start counts in neither direction and enables no arrow", async ({
     page,
 }) => {
     await page.setViewportSize({ width: 390, height: 844 })
@@ -2002,7 +2002,7 @@ test('a change under the sheet at the chart’s start counts in neither directio
     await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
 })
 
-test('Go To’s Edits Here line follows the view while open, so a pick matches the banner', async ({
+test("Go To's Edits Here line follows the view while open, so a pick matches the banner", async ({
     page,
 }) => {
     await edit(page, 'Moved near', { kind: 'move', beats: [5] })

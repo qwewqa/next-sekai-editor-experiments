@@ -247,7 +247,7 @@ test('headers carry the local day of their time', () => {
     assert.equal(header?.time, old.time)
 })
 
-test('rows are cut by the calendar’s zone, not the host’s', () => {
+test("rows are cut by the calendar's zone, not the host's", () => {
     // 18:10Z and 18:20Z are the same New York hour (14:10 and 14:20). In Kathmandu (+5:45) they
     // are 23:55 on the 16th and 00:05 on the 17th: two days, two hours, two rows.
     const now = Date.UTC(2026, 9, 17, 3)

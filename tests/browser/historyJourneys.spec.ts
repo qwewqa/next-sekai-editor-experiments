@@ -543,7 +543,7 @@ test('a crash while peeking recovers the live chart, never the peeked one', asyn
     playwright,
     browserName,
 }, testInfo) => {
-    test.skip(browserName !== 'chromium', 'CDP Page.crash is Chromium’s')
+    test.skip(browserName !== 'chromium', "CDP Page.crash is Chromium's")
     // Two browser starts over one profile on disk.
     test.setTimeout(120_000)
     const directory = await mkdtemp(join(tmpdir(), 'nse-journey-'))

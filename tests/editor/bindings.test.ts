@@ -166,7 +166,7 @@ test('the browser keeps its reserved chords, per platform', () => {
     assert.equal(isReservedChord(press('s', 'c'), false), false)
 })
 
-test('a plain letter binding does not take the browser’s reload and find', () => {
+test("a plain letter binding does not take the browser's reload and find", () => {
     const plain = { select: 'f', reload: 'r', hard: 'R', undo: 'z', shifted: 'F' }
     assert.deepEqual(matchBindings(plain, press('r', 'c'), false).names, [])
     assert.deepEqual(matchBindings(plain, press('r', 'm'), true).names, [])
@@ -179,7 +179,7 @@ test('a plain letter binding does not take the browser’s reload and find', () 
     assert.deepEqual(matchBindings(plain, press('r'), false).names, ['reload'])
 })
 
-test('a binding of the browser’s chord itself takes it', () => {
+test("a binding of the browser's chord itself takes it", () => {
     const chords = { reload: 'Mod+r', hard: 'Mod+Shift+r', select: 'Mod+f' }
     assert.deepEqual(matchBindings(chords, press('r', 'c'), false), {
         names: ['reload'],
@@ -264,7 +264,7 @@ test('named keys read as on the keycap, for display only', () => {
     ])
 })
 
-test('bindings show the locale’s key and modifier names', () => {
+test("bindings show the locale's key and modifier names", () => {
     const english = {
         space: 'Space',
         escape: 'Esc',

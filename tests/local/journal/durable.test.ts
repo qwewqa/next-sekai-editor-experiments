@@ -62,7 +62,7 @@ test('a relaxed commit counts as stored, with no journal', async () => {
     assert.equal(notDurableReason(inputs(page)), undefined)
 })
 
-test('with localStorage full the journal can’t be written, so the session isn’t stored', async () => {
+test("with localStorage full the journal can't be written, so the session isn't stored", async () => {
     const { page, a } = await start(2)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     await page.flusher.flush({ strict: true })
@@ -88,7 +88,7 @@ test('storage unavailable or paused is never durably stored', async () => {
         )
 })
 
-test('a failed flush with unflushed entries isn’t durably stored, whatever the journal', async () => {
+test("a failed flush with unflushed entries isn't durably stored, whatever the journal", async () => {
     const { page, a } = await start(4)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     await page.flusher.flush({ strict: true })
@@ -102,7 +102,7 @@ test('a failed flush with unflushed entries isn’t durably stored, whatever the
     assert.equal(notDurableReason(inputs(page)), 'flushFailed')
 })
 
-test('the head’s media the store refused leaves the session not durably stored', async () => {
+test("the head's media the store refused leaves the session not durably stored", async () => {
     const { page, a } = await start(5)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed BGM')) }, widen(a))
     await page.flusher.flush({ strict: true })

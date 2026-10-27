@@ -221,7 +221,7 @@ test('Reload with work that is stored nowhere asks first, and Cancel keeps the p
     await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
 })
 
-test('Local Data’s Reload asks first about work that is stored nowhere', async ({
+test("Local Data's Reload asks first about work that is stored nowhere", async ({
     page,
     context,
 }) => {

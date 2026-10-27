@@ -42,7 +42,7 @@ const heldShared = async (page: Page, sessionId: string) =>
         (lock) => lock.name === sessionLock(sessionId) && lock.mode === 'shared',
     )
 
-test('a continuation stores nothing until its first edit, which moves the chain’s head from its parent', async () => {
+test("a continuation stores nothing until its first edit, which moves the chain's head from its parent", async () => {
     const world = createWorld({ seed: 1 })
     const { session: parent, states } = await storedSession(world)
     const page = await openPage(world, world.tab('next'))
@@ -135,7 +135,7 @@ test('two tabs continuing one session at once: one continues the chain, the othe
     }
 })
 
-test('tab B continues the chain while tab A’s lock was lost: A’s next flush isn’t the head and forks', async () => {
+test("tab B continues the chain while tab A's lock was lost: A's next flush isn't the head and forks", async () => {
     const world = createWorld({ seed: 3 })
     const forks: FlushSession[] = []
     const first = await openPage(world, world.tab('a'), { onFork: (fork) => forks.push(fork) })
@@ -170,7 +170,7 @@ test('tab B continues the chain while tab A’s lock was lost: A’s next flush 
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a seeded chain record’s unknown field: a continuation keeps it, and a fork’s record carries it without the binding', async () => {
+test("a seeded chain record's unknown field: a continuation keeps it, and a fork's record carries it without the binding", async () => {
     const world = createWorld({ seed: 4 })
     const { session: parent, states } = await storedSession(world)
     const other = world.tab('seeder')
@@ -235,7 +235,7 @@ test('a seeded chain record’s unknown field: a continuation keeps it, and a fo
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a continuation of a 20,000-step stack copies only its window’s 5 block rows', async () => {
+test("a continuation of a 20,000-step stack copies only its window's 5 block rows", async () => {
     const world = createWorld({ seed: 5 })
     const first = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
@@ -319,7 +319,7 @@ test('chain fields: an unstored continuation commits its first row with them, an
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('chain fields from a session that isn’t the head any more go to a fork', async () => {
+test("chain fields from a session that isn't the head any more go to a fork", async () => {
     const world = createWorld({ seed: 8 })
     const forks: FlushSession[] = []
     const first = await openPage(world, world.tab('a'), {
@@ -347,7 +347,7 @@ test('chain fields from a session that isn’t the head any more go to a fork', 
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a worker killed mid-flush in one tab: another tab’s load can’t continue the session while the lock is held', async () => {
+test("a worker killed mid-flush in one tab: another tab's load can't continue the session while the lock is held", async () => {
     const world = createWorld({ seed: 9 })
     const page = await openSplitPage(world, { name: 'a' })
     const a = stateOf(goldenChart())

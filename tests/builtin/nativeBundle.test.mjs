@@ -104,7 +104,7 @@ test('the native page has no og tags, icon link or support gate and keeps its th
     assert.throws(() => nativeIndexHtml('<html><head></head></html>'), /title/)
 })
 
-test('a page’s local references are found', () => {
+test("a page's local references are found", () => {
     assert.deepEqual(
         localReferences(
             '<script src="/theme.js"></script><link href="/assets/a.css?x=1" rel="stylesheet"><img src="https://x/y.png"><script src="//cdn/z.js"></script>',

@@ -14,7 +14,7 @@ const props = defineProps<{ compact: boolean }>()
 // The status bar's label: the displayed name, then the bound file or why there is
 // none, and a "•" when the file has changes. It takes the warning colour while changes are not
 // stored, and opens Level Info. On phones the reason is left out first, except where it is the
-// lasting sign that stored work can be deleted: a suspected private window, an app’s built-in
+// lasting sign that stored work can be deleted: a suspected private window, an app's built-in
 // browser, Safari, iPhone and iPad.
 const keepState = ref(false)
 onMounted(async () => {

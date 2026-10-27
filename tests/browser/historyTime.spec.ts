@@ -368,7 +368,7 @@ const peekedTime = (page: Page) =>
         return peekedInfo.value?.time
     })
 
-test('a group never spans midnight, and Go To’s Yesterday counts and peeks yesterday', async ({
+test("a group never spans midnight, and Go To's Yesterday counts and peeks yesterday", async ({
     browser,
 }) => {
     test.slow()
@@ -590,7 +590,7 @@ const headerDays = (list: Line[]) => {
     return days
 }
 
-test('an opened file whose times run out of order lists Go To’s days as the headers count them', async ({
+test("an opened file whose times run out of order lists Go To's days as the headers count them", async ({
     browser,
 }) => {
     test.slow()

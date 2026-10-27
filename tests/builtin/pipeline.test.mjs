@@ -18,7 +18,7 @@ before(async () => {
     skinTexture = decode(skin.resource('texture'))
 })
 
-test('the committed outputs are the build’s outputs', () => {
+test("the committed outputs are the build's outputs", () => {
     for (const [path, bytes] of first.files)
         assert.ok(
             readFileSync(new URL(`../../${path}`, import.meta.url)).equals(bytes),

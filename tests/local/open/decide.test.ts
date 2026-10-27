@@ -36,7 +36,7 @@ test('a fresh file matches its head, with thirds of a lane and a default-coloure
     assert.equal(matchesHead(level.entities, level.bgmOffset, project, head), true)
 })
 
-test('an edited title is a change: level.json and project.json win, keeping the head’s BGM when bgm is absent', async () => {
+test("an edited title is a change: level.json and project.json win, keeping the head's BGM when bgm is absent", async () => {
     const file = await crafted(
         (items) => {
             const project = jsonOf(items, 'project.json')
@@ -70,7 +70,7 @@ test('a file without bgm whose head records one still matches: it was saved with
     assert.equal(matchesHead(level.entities, level.bgmOffset, project, head), true)
 })
 
-test('a metadata-only bgm is the head’s BGM, included but not held', async () => {
+test("a metadata-only bgm is the head's BGM, included but not held", async () => {
     const file = await crafted(
         (items) => {
             const project = jsonOf(items, 'project.json')
@@ -89,7 +89,7 @@ test('a metadata-only bgm is the head’s BGM, included but not held', async () 
     assert.equal(matchesHead(level.entities, level.bgmOffset, project, head), true)
 })
 
-test('the partial open’s line: damage, then history, then newer content, then media', () => {
+test("the partial open's line: damage, then history, then newer content, then media", () => {
     const item = (reason: Parameters<typeof partialLine>[0][number]['reason'], media?: 'bgm') => ({
         reason,
         path: '',
@@ -168,7 +168,7 @@ test('a file with a newer patch alone opens whole: bound, history read, and one 
     assert.deepEqual(partialLine(read.report, new LevelDataReport()), { kind: 'newerPatch' })
 })
 
-test('a download binds by the name its revision recorded, without the browser’s suffix', () => {
+test("a download binds by the name its revision recorded, without the browser's suffix", () => {
     assert.equal(bindingName('coconut (3).nxsp', 'coconut.nxsp', false), 'coconut.nxsp')
     assert.equal(bindingName('coconut(3).nxsp', 'coconut.nxsp', false), 'coconut.nxsp')
     assert.equal(bindingName('coconut.nxsp', 'coconut.nxsp', false), 'coconut.nxsp')
@@ -227,7 +227,7 @@ test('earlier sessions on the file are recognised by revision', () => {
     assert.equal(earlierNotice(undefined, [same]), undefined)
 })
 
-test('a bound chain’s pending journal counts as a change', () => {
+test("a bound chain's pending journal counts as a change", () => {
     const base = { changed: false, bound: { handle: true }, sessionId: 's' }
     assert.equal(changedOf(base, new Set()), false)
     assert.equal(changedOf(base, new Set(['s'])), true)

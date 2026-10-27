@@ -103,7 +103,7 @@ test('a Built-in choice that fails uses Default and says why', async (t) => {
     assert.deepEqual(result?.status, { active: 'default', reason: 'unavailable' })
 })
 
-test('with Default and Built-in both failing, the chain rejects with Default’s error', async (t) => {
+test("with Default and Built-in both failing, the chain rejects with Default's error", async (t) => {
     t.mock.method(console, 'error', () => {})
     const failure = new AssetError('unavailable', 'offline')
     const loader = createAssetLoader({

@@ -68,7 +68,7 @@ const textsOf = (zone: typeof newYork) => {
     }
 }
 
-test('every history format follows the calendar’s zone, with the cache warm, and not the engine’s', () => {
+test("every history format follows the calendar's zone, with the cache warm, and not the engine's", () => {
     // New York, Tokyo, New York again, Tokyo again: a formatter cached for one zone must not be
     // reused for the other.
     for (const zone of [newYork, tokyo, newYork, tokyo, newYork]) {
@@ -78,7 +78,7 @@ test('every history format follows the calendar’s zone, with the cache warm, a
     }
 })
 
-test('an entry from another day carries its date, and another year its year, in the calendar’s zone', () => {
+test("an entry from another day carries its date, and another year its year, in the calendar's zone", () => {
     const newer = calendarAt(Date.UTC(2026, 9, 25, 12), newYork)
     const format = historyFormat(newer, 'en')
     assert.equal(nbsp(format.entryTime(at)), 'Oct 20, 2:41:07 PM')
@@ -100,7 +100,7 @@ test('a zone that is not on the hour keeps its half and quarter hours', () => {
     assert.equal(format.day(dayKey(at, kathmandu)), 'Oct 21')
 })
 
-test('the peek bar’s text follows the calendar’s zone in each of its three forms', () => {
+test("the peek bar's text follows the calendar's zone in each of its three forms", () => {
     // 09:00Z: Oct 20 in New York (5 AM), and in Tokyo (6 PM), Oct 20 23:00 on the Kiritimati host.
     const now = Date.UTC(2026, 9, 20, 9, 0, 0)
     for (const zone of [newYork, tokyo, newYork]) {
@@ -124,7 +124,7 @@ test('the peek bar’s text follows the calendar’s zone in each of its three f
     }
 })
 
-test('the peek bar’s year follows the calendar’s zone at New Year', () => {
+test("the peek bar's year follows the calendar's zone at New Year", () => {
     // 2026-01-01 03:00Z is still 2025 in New York (10 PM on Dec 31) and 2026 in Tokyo (noon, Jan 1);
     // the Kiritimati host is on Jan 1 2026 (5 PM).
     const entry = Date.UTC(2026, 0, 1, 3, 0, 0)
@@ -133,7 +133,7 @@ test('the peek bar’s year follows the calendar’s zone at New Year', () => {
     assert.equal(nbsp(peekText(calendarAt(now, tokyo), 'en', entry, true)), 'Jan 1, 12:00:00 PM')
 })
 
-test('operation times follow the context’s zone, and a time beyond the domain still reads', () => {
+test("operation times follow the context's zone, and a time beyond the domain still reads", () => {
     for (const zone of [newYork, tokyo, newYork]) {
         const context = { locale: 'en', strings, now: at, zone }
         assert.equal(
@@ -147,7 +147,7 @@ test('operation times follow the context’s zone, and a time beyond the domain 
     assert.match(operationTime(Number.NaN, context), /^Jan 1,/)
 })
 
-test('the zone is the last parameter, and leaving it out keeps the engine’s zone', () => {
+test("the zone is the last parameter, and leaving it out keeps the engine's zone", () => {
     // The host is in Kiritimati: 18:41:07Z is 08:41:07 on the 21st there.
     assert.equal(nbsp(dateTime.formatClockSeconds('en', at)), '8:41:07 AM')
     assert.equal(nbsp(dateTime.formatClockSeconds('en', at, newYork)), '2:41:07 PM')
@@ -176,7 +176,7 @@ test('a day names its own date in a zone at +13 or +14, where UTC noon is the ne
     assert.equal(historyFormat(calendarAt(at, samoa), 'en').day(dayKey(at, samoa)), 'Oct 20')
 })
 
-test('a day carries its year when it is not the calendar’s year, including the day before 1970', () => {
+test("a day carries its year when it is not the calendar's year, including the day before 1970", () => {
     const now = Date.UTC(2026, 5, 1, 12)
     const zone = resolveZone('Pacific/Kiritimati')
     const format = historyFormat(calendarAt(now, zone), 'en')
@@ -187,7 +187,7 @@ test('a day carries its year when it is not the calendar’s year, including the
     assert.equal(format.day(dayKey(0, newYork)), 'Dec 31, 1969')
 })
 
-test('the year check follows the calendar’s zone for every dated text, not the engine’s', () => {
+test("the year check follows the calendar's zone for every dated text, not the engine's", () => {
     // 2026-01-01 03:00Z is still 2025 in New York (10 PM on Dec 31); the Kiritimati host is in 2026.
     const entry = Date.UTC(2026, 0, 1, 3, 0, 0)
     const now = Date.UTC(2026, 5, 1, 12)

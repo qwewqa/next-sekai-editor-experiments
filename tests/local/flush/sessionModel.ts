@@ -1549,7 +1549,7 @@ const REGRESSIONS: readonly Regression[] = [
                 const saves = [...rows(run.world, 'entries').values()].filter(
                     (row) => row.kind === 'save' && own.has(row.sessionId),
                 )
-                assert.equal(saves.length, 0, 'the Save’s entry went nowhere')
+                assert.equal(saves.length, 0, "the Save's entry went nowhere")
             },
         },
         {

@@ -121,7 +121,7 @@ test('after a long undo and a push, the window is the newest 1,000 slots of the 
     assertStack(world, session.id)
 })
 
-test('a 20,000-step stack’s flush rewrites only the block it touches', async () => {
+test("a 20,000-step stack's flush rewrites only the block it touches", async () => {
     const world = createWorld({ seed: 5 })
     const page = await openPage(world, world.tab('a'))
     const [a, b] = states()

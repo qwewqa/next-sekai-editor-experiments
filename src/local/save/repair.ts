@@ -90,7 +90,7 @@ const repairChunks = async (
             const stored = new Uint8Array(await file.slice(place.start, place.end).arrayBuffer())
             chunks.push(await verifyChunk({ hash: fromHex16(hex), stored }))
         } catch (error) {
-            console.error('A chunk in the chain’s file could not be put back', hex, error)
+            console.error("A chunk in the chain's file could not be put back", hex, error)
         }
     }
     if (!chunks.length) return []
@@ -239,7 +239,7 @@ const repairRecords = async (store: SaveStore, source: PinnedSource, bad: Readon
                 const row = await recordRow(store, hex, json)
                 if (row) rows.push([hex, row])
             } catch (error) {
-                console.error('A record in the chain’s file could not be put back', hex, error)
+                console.error("A record in the chain's file could not be put back", hex, error)
             }
         }
         if (!rows.length) continue
@@ -314,7 +314,7 @@ const repairMedia = async (
                 },
             })
         } catch (error) {
-            console.error('A media item in the chain’s file could not be put back', hash, error)
+            console.error("A media item in the chain's file could not be put back", hash, error)
         }
     }
     if (!items.length) return []
@@ -355,7 +355,7 @@ export const repairFromSource = async (
         try {
             done.push(...(await run()))
         } catch (error) {
-            console.error(`Putting ${kind} in storage right from the chain’s file failed`, error)
+            console.error(`Putting ${kind} in storage right from the chain's file failed`, error)
         }
     }
     if (still.size) {
@@ -363,6 +363,6 @@ export const repairFromSource = async (
         await step('records', () => repairRecords(store, source, still))
     }
     await step('media', () => repairMedia(store, source, file, known))
-    if (done.length) console.info('Damage in storage put right from the chain’s file', done)
+    if (done.length) console.info("Damage in storage put right from the chain's file", done)
     return done
 }

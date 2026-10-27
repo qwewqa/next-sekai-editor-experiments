@@ -81,7 +81,7 @@ test('copies sit right after their sources, in the same folder', () => {
     assert.deepEqual(entriesInTreeOrder(tree), [1, 2, 3, 4, 5])
 })
 
-test('a folder copy follows its folder, holding its members’ copies in order', () => {
+test("a folder copy follows its folder, holding its members' copies in order", () => {
     const next = insertCopiesInTree(
         tree,
         new Map([

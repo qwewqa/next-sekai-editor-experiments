@@ -37,7 +37,7 @@ const handleViolations = (world: World) =>
 const disk = { fingerprint: 'sha256:ab', size: 10, lastModified: 1 }
 const target = { name: 'LevelData', disk }
 
-test('an open stores the binding’s handle in its own store, and an unlink removes it', async () => {
+test("an open stores the binding's handle in its own store, and an unlink removes it", async () => {
     const world = createWorld({ seed: 1 })
     const page = await openPage(world, world.tab('a'))
     const context: WorkerContext = { core: page.core, test: true, emit: () => undefined }
@@ -100,7 +100,7 @@ test('an open stores the binding’s handle in its own store, and an unlink remo
     assert.deepEqual(handleViolations(world), [])
 })
 
-test('Export’s target keeps its handle beside the record, until the target changes or goes', async () => {
+test("Export's target keeps its handle beside the record, until the target changes or goes", async () => {
     const world = createWorld({ seed: 2 })
     const page: Page = await openPage(world, world.tab('a'), {
         writeChain: (request) => page.tab.run(() => handlersOf(page).writeChainFields(request)),
@@ -159,7 +159,7 @@ test('Export’s target keeps its handle beside the record, until the target cha
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('startup and recovery read no stored handle; a Save’s write-back after them finds it', async () => {
+test("startup and recovery read no stored handle; a Save's write-back after them finds it", async () => {
     const world = createWorld({ seed: 3 })
     const first = await openJournalPage(world, 'first')
     const a = stateOf(goldenChart())

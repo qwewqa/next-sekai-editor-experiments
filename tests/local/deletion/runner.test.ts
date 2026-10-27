@@ -88,7 +88,7 @@ const setup = ({ persist }: { persist?: () => unknown } = {}) => {
     }
 }
 
-test('the load’s run finishes with persist() never answering, and only the load asks for it', async () => {
+test("the load's run finishes with persist() never answering, and only the load asks for it", async () => {
     const { runner, log } = setup()
     await runner.start()
     assert.deepEqual(log, ['reclaim', 'sweep', 'gcPass', 'atLoad', 'persist'])
@@ -137,7 +137,7 @@ test('persist() is asked for wherever the browser has it, Firefox included', () 
     assert.equal(persistStorage(undefined), undefined)
 })
 
-test('the pressure check follows GC at load only, and a full browser’s cleanup runs on its own trigger', async () => {
+test("the pressure check follows GC at load only, and a full browser's cleanup runs on its own trigger", async () => {
     const { runner, log } = setup()
     await runner.start()
     await runner.trigger()
@@ -205,7 +205,7 @@ test('a busy run tries again 30 s later; a hidden page waits until it is visible
     assert.equal(log.filter((each) => each === 'sweep').length, 2, 'at most once a minute')
 })
 
-test('a Delete’s sweep runs when its mark is old enough', async () => {
+test("a Delete's sweep runs when its mark is old enough", async () => {
     const { runner, log, advance } = setup()
     runner.sweepAt(600_000)
     runner.sweepAt(300_000)
@@ -235,7 +235,7 @@ test('GC is asked for after every sweep, and a busy or stopped pass is tried aga
     }
 })
 
-test('a load in a hidden page runs nothing but persist(); the page’s first visibility runs the jobs and the load’s pressure check', async () => {
+test("a load in a hidden page runs nothing but persist(); the page's first visibility runs the jobs and the load's pressure check", async () => {
     const { runner, log, clock } = setup()
     clock.visible = false
     await runner.start()

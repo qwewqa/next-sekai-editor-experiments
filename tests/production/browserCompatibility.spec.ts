@@ -230,7 +230,7 @@ test('WebGL2 note rendering works without native Canvas2D shape drawing', async 
             const gl = canvas.getContext('webgl2')
             return gl?.getParameter(gl.VERSION) as string | undefined
         })
-    // Below 800px wide the Elevation Editor replaces the chart, so read the chart’s first.
+    // Below 800px wide the Elevation Editor replaces the chart, so read the chart's first.
     expect(await version('canvas.editor-chart')).toMatch(/^WebGL 2\.0/)
     await page.keyboard.press('t')
     await expect(page.locator('.elevation-canvas')).toBeVisible()

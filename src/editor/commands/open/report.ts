@@ -1,6 +1,6 @@
 import { busy, record } from '../../../analytics/tally'
 
-// The usage statistics’ `open` event: one per chart file opened with Open File…, recorded where
+// The usage statistics' `open` event: one per chart file opened with Open File…, recorded where
 // the open ends. The facts gather in a module value while it runs, so the several paths of the
 // open each add a line. One open runs at a time (`withSwitchRequest`).
 
@@ -15,7 +15,7 @@ export const startOpen = (file: File) => {
     current = { size: file.size, since: performance.now(), format: 'other' }
 }
 
-/** The file’s format, once known. */
+/** The file's format, once known. */
 export const openFormat = (format: Format) => {
     if (current) current.format = format
 }

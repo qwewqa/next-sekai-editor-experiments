@@ -101,7 +101,7 @@ test('rows above lastSeq by the page that holds the lock are clean', () => {
     assert.deepEqual(transitionViolations(report), [])
 })
 
-test('rows created without the page holding the session’s lock are named', () => {
+test("rows created without the page holding the session's lock are named", () => {
     const report = commit(
         base(),
         { entries: [entry('S', 3)], sessions: [session('S', { lastSeq: 3 })] },
@@ -111,7 +111,7 @@ test('rows created without the page holding the session’s lock are named', () 
     assert.deepEqual(transitionViolations(report, { lock: false }), [])
 })
 
-test('the transaction that creates the session, or an import’s batch, needs no lock', () => {
+test("the transaction that creates the session, or an import's batch, needs no lock", () => {
     const born = commit(
         { chains: [chain('N')] },
         { sessions: [session('N', { lastSeq: 1 })], entries: [entry('N', 1)] },
@@ -162,7 +162,7 @@ test('rows at or below lastSeq, or a lastSeq that is not the highest created, ar
     )
 })
 
-test('a session that is not its chain’s head changes only by kept flips', () => {
+test("a session that is not its chain's head changes only by kept flips", () => {
     const frozen = {
         sessions: [session('S'), session('C', { chainId: 'c', lastSeq: 1 })],
         entries: [entry('S', 1), entry('S', 2)],
@@ -225,7 +225,7 @@ test('the world reports a flusher whose page holds no lock, and none when it hol
         const world = createWorld({ seed: 5, checks: { lock: true } })
         const page = await openPage(world, world.tab('a'))
         const id = testId()
-        // A start with its own hold keeps it: this one holds nothing, or another’s name.
+        // A start with its own hold keeps it: this one holds nothing, or another's name.
         const release = held ? world.locks.holdNow(page.tab.actor, sessionLock(id)) : undefined
         const first = stateOf(goldenChart())
         page.flusher.begin({
@@ -250,12 +250,12 @@ test('the world reports a flusher whose page holds no lock, and none when it hol
     }
 })
 
-test('a worker’s transaction is judged by the locks of the page that owns it', async () => {
+test("a worker's transaction is judged by the locks of the page that owns it", async () => {
     for (const owned of [true, false]) {
         const world = createWorld({ seed: 6, checks: { lock: true } })
         const page = world.tab('page')
         const worker = world.tab('worker', owned ? { owner: page } : {})
-        // The page holds the session’s lock, as the flusher’s page does; the worker writes.
+        // The page holds the session's lock, as the flusher's page does; the worker writes.
         world.locks.holdNow(page.actor, sessionLock('S'))
         const core = workerCore(world, worker)
         await worker.run(() => core.start())
@@ -282,7 +282,7 @@ test('a worker’s transaction is judged by the locks of the page that owns it',
     }
 })
 
-test('an opened session’s import fills at or below the file’s last seq; the page’s own rows keep every rule', () => {
+test("an opened session's import fills at or below the file's last seq; the page's own rows keep every rule", () => {
     const open = session('F', { origin: 'nxsp', importPending: true, lastSeq: 7, entryCount: 3 })
     const state = {
         sessions: [open],
@@ -328,7 +328,7 @@ test('an opened session’s import fills at or below the file’s last seq; the 
     assert.deepEqual(transitionViolations(unlocked, {}), [])
 })
 
-test('an opened session that is not the head keeps its rows but for the import’s fill', () => {
+test("an opened session that is not the head keeps its rows but for the import's fill", () => {
     const open = session('F', { origin: 'nxsp', importPending: true, lastSeq: 7, entryCount: 3 })
     const state = {
         sessions: [open, session('K', { chainId: 'c', lastSeq: 1 })],

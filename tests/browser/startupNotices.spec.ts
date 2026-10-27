@@ -223,7 +223,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect.poll(() => lifeOf(next)).toBe(990)
     })
 
-    test('each event is a line of its own with the table’s English, and its action', async ({
+    test("each event is a line of its own with the table's English, and its action", async ({
         page,
     }) => {
         await visit(page)
@@ -773,7 +773,7 @@ test.describe('the status bar label', () => {
         await expect(next).toHaveTitle(/^Untitled · .+ · separate copy – Next SEKAI Editor$/)
     })
 
-    test('pressing it opens the level’s dialog, and it describes itself', async ({ page }) => {
+    test("pressing it opens the level's dialog, and it describes itself", async ({ page }) => {
         await visit(page)
         await expect(button(page)).toHaveAccessibleDescription('Opens Level Info')
         await expect(button(page)).toHaveAccessibleName(/ · unsaved$/)
@@ -1121,7 +1121,7 @@ test.describe('the not-stored prompt', () => {
         await expect(page.locator('.notification')).toHaveText('New level')
     })
 
-    test('Save runs this session’s Save and leaves the switch for the user to repeat', async ({
+    test("Save runs this session's Save and leaves the switch for the user to repeat", async ({
         page,
     }) => {
         await page.addInitScript(() => {
@@ -1327,7 +1327,7 @@ test.describe('Settings › Local Data', () => {
             ])
         })
 
-        test('Open puts a readable old auto save’s chart in this tab, and its key stays', async ({
+        test("Open puts a readable old auto save's chart in this tab, and its key stays", async ({
             page,
             context,
         }) => {
@@ -1410,7 +1410,7 @@ test.describe('Settings › Local Data', () => {
             await expect(card.locator('svg[data-severity="error"]')).toHaveCount(1)
         })
 
-        test('Open puts the journal’s work in this tab', async ({ page, context }) => {
+        test("Open puts the journal's work in this tab", async ({ page, context }) => {
             const later = await earlierVisit(page, context)
             await later.evaluate(async () => {
                 const { openSettings } =
@@ -1481,7 +1481,7 @@ test('safe mode opens read-only on purpose, so its pill has no "newer version" l
     )
 })
 
-// An app’s built-in browser: one more line on the start-up card
+// An app's built-in browser: one more line on the start-up card
 // with Copy Link, and a storage line in Settings › Local Data.
 test.describe('the in-app browser line', () => {
     const inApp =

@@ -229,7 +229,7 @@ test('the field tables match fields-v1.json', () => {
     })
 })
 
-test('the ease value sets are the model’s', () => {
+test("the ease value sets are the model's", () => {
     assert.deepEqual(Object.keys(fields.enums.ease), eases)
     assert.deepEqual(
         Object.keys(fields.enums.timeScaleEase),

@@ -88,7 +88,7 @@ test('a pinned file other than the append source is never read, so never damage'
     }
 })
 
-test('an append source that changed after its check and doesn’t read is a conflict, not damage', async () => {
+test("an append source that changed after its check and doesn't read is a conflict, not damage", async () => {
     const { fixture, file } = await bound()
     const source = await sourceOf(file)
     // Replaced by bytes that aren't a ZIP: its fingerprint now isn't the pinned one.
@@ -132,7 +132,7 @@ test('a pinned file that changed under the built file is a conflict at the post-
     }
 })
 
-test('a write-back to a file whose completeFrom can’t be placed writes the target’s own id', async () => {
+test("a write-back to a file whose completeFrom can't be placed writes the target's own id", async () => {
     const { fixture, file: first } = await bound()
     // A second revision, so the target has an older ancestor a clamp would take instead.
     const second = await save(
@@ -170,7 +170,7 @@ test('a write-back to a file whose completeFrom can’t be placed writes the tar
     assert.equal(ok(built).identity.completeFrom, project.revision.id)
 })
 
-test('a head input for another state is ignored: the file holds the stack’s head', async () => {
+test("a head input for another state is ignored: the file holds the stack's head", async () => {
     const fixture = await chain()
     const stale = headInput(stateAt(5).state)
     const { built } = await save(
@@ -201,7 +201,7 @@ test('a chain whose open is still importing refuses until the import is done', a
     assert.equal(built.refused, 'importing')
 })
 
-test('a root of a version this build doesn’t read refuses with "Needs a newer version"', async () => {
+test('a root of a version this build doesn\'t read refuses with "Needs a newer version"', async () => {
     const fixture = await chain()
     const key = hashKey(fromHex16(stateAt(0).hex))
     await fixture.store.write(['nodes'], async (tx) => {

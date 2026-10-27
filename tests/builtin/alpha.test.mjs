@@ -59,7 +59,7 @@ function interior(texture, { x, y, w, h }, core = 0) {
     return out
 }
 
-test('skin sprites have opaque interiors unless the base skin’s same sprite is translucent', () => {
+test("skin sprites have opaque interiors unless the base skin's same sprite is translucent", () => {
     const skin = readBuiltinItem('skin')
     const texture = decode(skin.resource('texture'))
     const failures = []

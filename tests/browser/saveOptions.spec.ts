@@ -175,7 +175,7 @@ test('a History untick on a first Save does not carry to the next plain Save', a
     expect((await writeBack(page)).history).toBeDefined()
 })
 
-test('Save As… with History ticked onto the chain’s own file without history includes it', async ({
+test("Save As… with History ticked onto the chain's own file without history includes it", async ({
     page,
 }) => {
     await start(page)
@@ -189,7 +189,7 @@ test('Save As… with History ticked onto the chain’s own file without history
     expect(written.id).toBe(plain.id)
 })
 
-test('Save As… with BGM ticked onto the chain’s own file that left its BGM out includes it', async ({
+test("Save As… with BGM ticked onto the chain's own file that left its BGM out includes it", async ({
     page,
 }) => {
     await start(page)

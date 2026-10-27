@@ -115,7 +115,7 @@ const area = (points) =>
         }, 0),
     ) / 2
 
-test('sprites land where the base skin’s do in the engine’s quads', () => {
+test("sprites land where the base skin's do in the engine's quads", () => {
     for (const [name, target] of Object.entries(targets)) {
         const got = extent(name)
         for (let i = 0; i < 4; i++)
@@ -126,7 +126,7 @@ test('sprites land where the base skin’s do in the engine’s quads', () => {
     }
 })
 
-test('flick arrows ink about as much as the base’s, within its span and above its lower edge', () => {
+test("flick arrows ink about as much as the base's, within its span and above its lower edge", () => {
     for (const [direction, base] of Object.entries(baseArrows))
         for (const flipped of [direction, direction.replace('Up', 'Down')])
             for (let width = 1; width <= 6; width++) {

@@ -31,7 +31,7 @@ test('the gate is plain ES5', async () => {
     assert.throws(() => acorn.parse('const a = () => 1', { ecmaVersion: 5 }))
 })
 
-test('the gate reads the keys under the editor’s own prefix', () => {
+test("the gate reads the keys under the editor's own prefix", () => {
     assert.equal(gate.PREFIX, storageKey(''))
     assert.equal(gate.PREFIX, prefix)
 })
@@ -106,7 +106,7 @@ const uas = {
     linuxFirefox: 'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0',
 }
 
-test('the wording follows the platform module’s WebKit rule, on every user agent', () => {
+test("the wording follows the platform module's WebKit rule, on every user agent", () => {
     for (const [name, userAgent] of Object.entries(uas)) {
         for (const touch of [0, 5]) {
             for (const gestureEvent of [false, true]) {
@@ -152,7 +152,7 @@ const texts = {
     empty: '',
 }
 
-test('the gate offers an old auto save as the bundle’s recovery file does, in each form', async () => {
+test("the gate offers an old auto save as the bundle's recovery file does, in each form", async () => {
     for (const [name, text] of Object.entries(texts)) {
         const real = toRecoveryFile(text)
         const mine = gate.toRecoveryFile(text)

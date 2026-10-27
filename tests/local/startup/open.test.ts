@@ -90,7 +90,7 @@ const failedReload = (world: World, storage: MemoryStorage, tab: TabStorage) =>
         }),
     )
 
-test('a reload whose own journal fails to apply continues its session from the journal’s state, and says it recovered it', async () => {
+test("a reload whose own journal fails to apply continues its session from the journal's state, and says it recovered it", async () => {
     const world = createWorld({ seed: 1 })
     const storage = new MemoryStorage()
     const { tab, session, root } = await journalledOnly(world, storage)
@@ -130,7 +130,7 @@ test('a reload whose own journal fails to apply continues its session from the j
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a failed own journal’s key goes once the continuation’s commit holds its work', async () => {
+test("a failed own journal's key goes once the continuation's commit holds its work", async () => {
     const world = createWorld({ seed: 17 })
     const storage = new MemoryStorage()
     const { tab, session, root } = await journalledOnly(world, storage)
@@ -254,7 +254,7 @@ test('an unstored continuation killed before its first flush: its journal is app
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('an unstored continuation’s journal whose chain moved on is kept as a recovery chain', async () => {
+test("an unstored continuation's journal whose chain moved on is kept as a recovery chain", async () => {
     const world = createWorld({ seed: 6 })
     const storage = new MemoryStorage()
     const first = await openJournalPage(world, 'first', storage)
@@ -387,7 +387,7 @@ test('a page without Web Locks: the claim is a reload only with the marker, and 
     }
 })
 
-test('the claim: a held lock released within the marker’s wait is a reload; held past it, a Duplicate Tab', async () => {
+test("the claim: a held lock released within the marker's wait is a reload; held past it, a Duplicate Tab", async () => {
     const world = createWorld({ seed: 9 })
     const tab: TabStorage = new Map()
     recordTab(tab, { sessionId: 'S', start: 'stored' })
@@ -447,7 +447,7 @@ test('a load never opens a stored session over a chart made meanwhile', async ()
     assert.equal(rows(world, 'chains').get(stored.chainId)?.head, stored.id)
 })
 
-test('the migrated auto save’s line says whether it’s the session that opened', async () => {
+test("the migrated auto save's line says whether it's the session that opened", async () => {
     const world = createWorld({ seed: 11 })
     const storage = new MemoryStorage()
     // A reload of another stored session opens that one; the migrated session is kept.
@@ -483,7 +483,7 @@ const tamper = async (world: World, change: (tx: KvTx) => Promise<void>) => {
     )
 }
 
-test('a session this build can’t open is never passed over silently: a reload’s own, and a new visit’s newest', async () => {
+test("a session this build can't open is never passed over silently: a reload's own, and a new visit's newest", async () => {
     const world = createWorld({ seed: 12 })
     const storage = new MemoryStorage()
     const first = await openJournalPage(world, 'first', storage)
@@ -590,7 +590,7 @@ const boundElsewhereSetup = async (seed: number) => {
     return { world, storage, bound, lock }
 }
 
-test('a new visit whose most recent session’s file is bound in another tab’s open session forks it', async () => {
+test("a new visit whose most recent session's file is bound in another tab's open session forks it", async () => {
     const { world, storage, bound, lock } = await boundElsewhereSetup(14)
     // The store holds plain values: the reads carry fake handles, one file for both.
     let failBindings = false
@@ -763,7 +763,7 @@ test('a separate copy of a chart named by its song names its source by the song'
     assert.deepEqual(event, { kind: 'separateCopy', of: { name: 'song', bound: false } })
 })
 
-test('a copy’s source is its file, else its own name, else the date it started', () => {
+test("a copy's source is its file, else its own name, else the date it started", () => {
     assert.deepEqual(sessionCopyOf('Coconut', 5), { name: 'Coconut', bound: false })
     assert.deepEqual(sessionCopyOf(undefined, 5), { name: '', bound: false, at: 5 })
     assert.deepEqual(sessionCopyOf('', undefined), { name: '', bound: false })
@@ -893,7 +893,7 @@ test('a failed own journal a flush covered since goes, and the reload takes up t
     )
 })
 
-test('a still-failing second reload of an unstored continuation shows its journal’s state again', async () => {
+test("a still-failing second reload of an unstored continuation shows its journal's state again", async () => {
     const world = createWorld({ seed: 21 })
     const storage = new MemoryStorage()
     const { tab, session, root } = await journalledOnly(world, storage)

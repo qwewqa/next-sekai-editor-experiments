@@ -28,7 +28,7 @@ test('collectNames takes the sorted union over the engine data', () => {
     assert.deepEqual(names, { sprites: ['a', 'b', 'c'], particles: ['p'], clips: ['k'] })
 })
 
-test('the manifest expands to the engine’s names and the counts of the design', () => {
+test("the manifest expands to the engine's names and the counts of the design", () => {
     const fixture = readFixture()
     const { sprites, groups } = skinSprites()
     assert.deepEqual(

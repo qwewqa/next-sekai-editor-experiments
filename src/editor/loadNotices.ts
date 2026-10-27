@@ -199,7 +199,7 @@ const add = (event: LoadEvent) => {
 for (const event of loadEvents.value) add(event)
 onLoadEvent(add)
 
-// An app’s built-in browser, best effort: said at every load it is found, and not
+// An app's built-in browser, best effort: said at every load it is found, and not
 // a load event, which are what the storage startup found.
 if (platform.capabilities.likelyInAppBrowser)
     addLoadNotice(

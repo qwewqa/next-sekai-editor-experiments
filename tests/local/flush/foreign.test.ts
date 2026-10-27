@@ -96,7 +96,7 @@ test('foreign data still missing parts after two retries fails with nothing writ
     assert.equal(rows(world, 'chunks').size, 0)
 })
 
-test('foreign bytes that don’t hash to their hash are refused before any write', async () => {
+test("foreign bytes that don't hash to their hash are refused before any write", async () => {
     const world = createWorld({ seed: 3 })
     const page = await openPage(world, world.tab('a'))
     const snapshot = encodeSnapshot(toRecords(stateOf(edgeChart())))
@@ -117,7 +117,7 @@ test('foreign bytes that don’t hash to their hash are refused before any write
     assert.equal(rows(world, 'chunks').size, 0)
 })
 
-test('a part already stored needn’t come again', async () => {
+test("a part already stored needn't come again", async () => {
     const world = createWorld({ seed: 4 })
     const page = await openPage(world, world.tab('a'))
     const snapshot = encodeSnapshot(toRecords(stateOf(edgeChart())))

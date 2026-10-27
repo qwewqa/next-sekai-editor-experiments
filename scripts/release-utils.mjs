@@ -412,7 +412,7 @@ async function checkStylesheet(directory, files) {
     const missing = layoutUtilities.filter(
         (name) => !new RegExp(String.raw`\.${name}(?![\w-])`).test(css),
     )
-    if (missing.length) throw new Error(`The editor’s stylesheet lacks .${missing.join(' and .')}`)
+    if (missing.length) throw new Error(`The editor's stylesheet lacks .${missing.join(' and .')}`)
 }
 
 // The apps' bridge and the dev-only sample seeder (src/local/seed.ts) must not reach the web build.

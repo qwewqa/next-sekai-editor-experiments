@@ -90,7 +90,7 @@ test('a newer tab: the current tab closes its connection and pauses storing', as
     await expect(pill(old)).toHaveCount(0)
 })
 
-test('upgradeWanted alone closes a current tab’s connection', async ({ context }) => {
+test("upgradeWanted alone closes a current tab's connection", async ({ context }) => {
     const old = await context.newPage()
     await boot(old)
     await expect.poll(() => status(old)).toEqual({ mode: 'stored' })
@@ -102,7 +102,7 @@ test('upgradeWanted alone closes a current tab’s connection', async ({ context
     await expect.poll(() => status(old)).toEqual({ mode: 'stored', reason: 'upgrading' })
 })
 
-test('onversionchange alone closes a current tab’s connection, so an upgrade is never blocked', async ({
+test("onversionchange alone closes a current tab's connection, so an upgrade is never blocked", async ({
     context,
 }) => {
     const old = await context.newPage()

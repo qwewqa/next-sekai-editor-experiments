@@ -36,7 +36,7 @@ test('the arrows count changes wholly beyond the band; a band shortened by a she
     assert.deepEqual(countOff(places, { top: 10, bottom: 6 }), { above: 1, below: 2 })
 })
 
-test('Show Change steps up from the band’s middle and wraps; arrows take the nearest that way', () => {
+test("Show Change steps up from the band's middle and wraps; arrows take the nearest that way", () => {
     const stops = stopsOf(at(2, 20, 40), 5)
     const band = (middle: number) => ({ top: middle + 2.5, bottom: middle - 2.5 })
     assert.equal(nextStop(stops, band(2))?.from, 20)
@@ -72,7 +72,7 @@ test('old and new footprints count once per object in each direction', () => {
 
 // The view never goes below the chart's start, so a band shortened by a sheet at view time 0
 // can never show what lies before its floor. Such a change counts in neither direction.
-test('a change before the band’s floor is unreachable: it counts in neither direction and is no stop', () => {
+test("a change before the band's floor is unreachable: it counts in neither direction and is no stop", () => {
     const places = at(0.2, 3, 20)
     // At view time 0 the band is 0.57 to 9: its bottom is its floor.
     const atStart = { top: 9, bottom: 0.57, floor: 0.57 }

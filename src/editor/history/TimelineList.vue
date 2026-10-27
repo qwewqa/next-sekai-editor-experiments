@@ -184,7 +184,7 @@ const recipeOf = (row: EntryRow) =>
         : (recipes.value.get(row.id) ?? recipeOfRow(row))
 
 // --- Geometry: rows have fixed heights per kind, so the window needs no measuring. The heights are
-// px at the 16 px rem; k, the root font size / 16, scales them as the rows’ classes scale (a larger
+// px at the 16 px rem; k, the root font size / 16, scales them as the rows' classes scale (a larger
 // browser text size). It follows a change of the text size while the list is open.
 const rootFontSize = useRootFontSize()
 const k = computed(() => rootFontSize.value / 16)
@@ -1946,7 +1946,7 @@ defineExpose({
     @apply inset-y-2 z-0 rounded-full;
 }
 
-/* Unavailable: the marks and text fade; the reason, the disclosure’s face and every focus ring stay strong. */
+/* Unavailable: the marks and text fade; the reason, the disclosure's face and every focus ring stay strong. */
 .timeline-row-disabled
     :is(
         .timeline-leading,

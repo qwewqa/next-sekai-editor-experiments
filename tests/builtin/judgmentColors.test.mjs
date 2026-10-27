@@ -52,11 +52,11 @@ const close = (name, got, want) => {
     const d = deltaE(got, rgb(want))
     assert.ok(
         d <= limit,
-        `${name}: ${got.slice(0, 3)} against the base’s ${want}, ΔE ${d.toFixed(2)}`,
+        `${name}: ${got.slice(0, 3)} against the base's ${want}, ΔE ${d.toFixed(2)}`,
     )
 }
 
-test('judgment line colours match the base’s within a small ΔE', () => {
+test("judgment line colours match the base's within a small ΔE", () => {
     for (const [color, [edge, centre, ...gradient]] of Object.entries(base)) {
         close(`Edge ${color}`, sample(`Sekai Judgment Edge ${color}`), edge)
         close(`Center ${color}`, sample(`Sekai Judgment Center ${color}`), centre)

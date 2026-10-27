@@ -35,7 +35,7 @@ const fields = JSON.parse(
 
 const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex')
 
-test('every fixture matches its folder’s SHA256SUMS, and every file is listed', () => {
+test("every fixture matches its folder's SHA256SUMS, and every file is listed", () => {
     // Catches a regeneration by a later build (the files would then prove nothing: they must be the
     // v0.6.0 code's output), a file edited by hand, and one added without a checksum.
     // The SHA256SUMS files are rewritten by every run of the writer, so each is itself pinned in the
@@ -90,10 +90,10 @@ const dumpFiles = async () =>
                 readFileSync(join(webDir, 'nse-local-data-download.json'), 'utf8'),
             ) as unknown,
         ],
-        ['raw-export.zip’s dump.json', await rawExportDump()],
+        ["raw-export.zip's dump.json", await rawExportDump()],
     ] as const
 
-test('readDump accepts both dumps and the raw export’s dump.json, and seedDump writes each into an empty database', async () => {
+test("readDump accepts both dumps and the raw export's dump.json, and seedDump writes each into an empty database", async () => {
     // Catches a dump reader or seeder that refuses a v1 dump: a maintainer could then not load a
     // user's data to get their work out (docs/release/storage-bug.md).
     for (const [name, json] of await dumpFiles()) {
@@ -730,7 +730,7 @@ test('the download dump holds a downloaded, confirmed binding and badChunks', ()
     assert.equal(valuesOf(dump, 'handles').length, 0)
 })
 
-test('saving-marker-file.nxsp is the write the dump’s saving marker names', async () => {
+test("saving-marker-file.nxsp is the write the dump's saving marker names", async () => {
     // Catches a fixture pair that drifted apart: the browser spec relies on the marker and the file
     // describing one Save, and on a binding that does not yet hold its revision.
     const dump = readDump(JSON.parse(readFileSync(join(webDir, 'nse-local-data.json'), 'utf8')))
@@ -829,9 +829,9 @@ const saveDevices = (dump: Dump) => {
         })
 }
 
-test('a file’s device id is per document: own saves match the install’s derivation, foreign ones do not', async () => {
-    // Catches a later change to the derivation (HMAC-SHA-256 of the lineage under the install’s
-    // `deviceId`, as a UUIDv8): every v1 save would then read as another device’s, the user’s own
+test("a file's device id is per document: own saves match the install's derivation, foreign ones do not", async () => {
+    // Catches a later change to the derivation (HMAC-SHA-256 of the lineage under the install's
+    // `deviceId`, as a UUIDv8): every v1 save would then read as another device's, the user's own
     // completed Save would meet a conflict dialog and a download would stop confirming. The browser
     // specs pin it too, but only the Node tests run on every push.
     const main = saveDevices(
@@ -851,7 +851,7 @@ test('a file’s device id is per document: own saves match the install’s deri
     const byLineage = new Map(main.map((save) => [save.lineage, save.id]))
     assert.ok(byLineage.size > 1)
     assert.equal(new Set(byLineage.values()).size, byLineage.size)
-    // The marker file’s Save is this install’s own for its lineage.
+    // The marker file's Save is this install's own for its lineage.
     const dump = readDump(JSON.parse(readFileSync(join(webDir, 'nse-local-data.json'), 'utf8')))
     const marker = await readNxsp(new Blob([readFileSync(join(webDir, 'saving-marker-file.nxsp'))]))
     assert.equal(marker.kind, 'nxsp')
@@ -863,7 +863,7 @@ test('a file’s device id is per document: own saves match the install’s deri
     )
 })
 
-test('every state of the main dump decodes through the reader, and each entry’s noteCount is its state’s', async () => {
+test("every state of the main dump decodes through the reader, and each entry's noteCount is its state's", async () => {
     // Catches a later decoder that misreads an earlier stored state while the head still decodes
     // (a wrong peek, Restore or Undo). Only the chunk the writer damaged on purpose may fail.
     const json = JSON.parse(readFileSync(join(webDir, 'nse-local-data.json'), 'utf8')) as unknown

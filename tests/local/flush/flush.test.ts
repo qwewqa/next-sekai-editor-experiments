@@ -187,7 +187,7 @@ test('a blank start replaced without an edit stores nothing and lets its lock go
     assert.equal(rows(world, 'sessions').size, 0)
 })
 
-test('a replaced session’s pending entries are flushed strictly, then its lock goes', async () => {
+test("a replaced session's pending entries are flushed strictly, then its lock goes", async () => {
     const world = createWorld({ seed: 4 })
     const page = await openPage(world, world.tab('a'))
     let released = 0
@@ -608,7 +608,7 @@ test(
     },
 )
 
-test('a routine flush commits with default durability, and a hide’s flush strictly', async () => {
+test("a routine flush commits with default durability, and a hide's flush strictly", async () => {
     // Firefox runs 'relaxed' with synchronous = OFF, which a power loss can corrupt.
     const world = createWorld({ seed: 18 })
     const page = await openPage(world, world.tab('a'))
@@ -801,7 +801,7 @@ test('a fork after a reply lost to a kill keeps the entries already stored out o
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a fork starts after its parent’s last entry, even one stamped past the stored clock', async () => {
+test("a fork starts after its parent's last entry, even one stamped past the stored clock", async () => {
     const world = createWorld({ seed: 12 })
     const forks: FlushSession[] = []
     const page = await openPage(world, world.tab('a'), { onFork: (fork) => forks.push(fork) })

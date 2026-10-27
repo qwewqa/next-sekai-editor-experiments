@@ -48,13 +48,13 @@ test('every link is on the site or on the allow-list', () => {
         )
 })
 
-test('the icon is the app icon, and never the editor’s favicon or thumbnail', () => {
+test("the icon is the app icon, and never the editor's favicon or thumbnail", () => {
     assert.match(html, /<link rel="icon"[^>]*app-icon-32\.png/)
     assert.match(html, /<link rel="apple-touch-icon"[^>]*app-icon-180\.png/)
     assert.doesNotMatch(html, /thumbnail\.png|favicon\.ico/)
 })
 
-test('the page loads no script and has the theme script’s placeholders', () => {
+test("the page loads no script and has the theme script's placeholders", () => {
     assert.doesNotMatch(html, /<script\b[^>]*\bsrc=/)
     assert.equal(html.match(/<script\b/g)?.length, 1)
     assert.equal(html.match(/THEMES\.includes/g)?.length, 1)
@@ -86,7 +86,7 @@ test('the page is titled Privacy Notice', () => {
     assert.match(html, /<h1\b[^>]*>\s*Privacy Notice\s*<\/h1>/)
 })
 
-test('the wording follows the editor’s conventions', () => {
+test("the wording follows the editor's conventions", () => {
     assert.doesNotMatch(text, /\w'\w/, 'a straight apostrophe')
     assert.doesNotMatch(
         text,
@@ -108,7 +108,7 @@ test('the placeholders are the ones the build fills', () => {
     assert.deepEqual([...names].sort(), ['%GITHUB_REPOSITORY%', '%PRODUCT_NAME%'])
 })
 
-test('the landing config shares the editor’s colours and shadows, and reads the page', () => {
+test("the landing config shares the editor's colours and shadows, and reads the page", () => {
     const shared = require('../../tailwind.colors.js')
     const editor = require('../../tailwind.config.js')
     const landing = require('../../tailwind.landing.config.js')

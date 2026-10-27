@@ -228,7 +228,7 @@ const knownToAnother = async () => {
     return { fixture, file, hex }
 }
 
-test('known damage the own file holds is put right by the append, so the next Save isn’t short', async () => {
+test("known damage the own file holds is put right by the append, so the next Save isn't short", async () => {
     const { fixture, file, hex } = await knownToAnother()
     const appended = await save(
         fixture,
@@ -253,7 +253,7 @@ test('known damage the own file holds is put right by the append, so the next Sa
     assert.equal(chain.badChunks.length, 16)
 })
 
-test('a chunk in the file that doesn’t hash to its key is never stored', async () => {
+test("a chunk in the file that doesn't hash to its key is never stored", async () => {
     const { fixture, file, hex } = await knownToAnother()
     const source = await inspectNxsp(file, {
         token: 'target',

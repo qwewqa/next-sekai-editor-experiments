@@ -296,7 +296,7 @@ const assertTriples = (source: State, restored: State, name: string) => {
     }
 }
 
-test('the auto save, the journal’s level data and the clipboard keep same-beat order', () => {
+test("the auto save, the journal's level data and the clipboard keep same-beat order", () => {
     const source = triples()
     for (const kind of kinds) assertKept(source, kind, 4, [3, 1, 2])
     const levelData = levelDataOf(source)

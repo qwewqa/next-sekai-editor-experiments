@@ -41,7 +41,7 @@ export const KNOWN: Known[] = [
     {
         id: 'R8-owners',
         kind: 'accepted',
-        title: 'storage fails when the pick is identified: the owners are unread, so another chain keeps its binding, or its Export target, on a file that now holds this chain’s project',
+        title: "storage fails when the pick is identified: the owners are unread, so another chain keeps its binding, or its Export target, on a file that now holds this chain's project",
         paths: [
             'save-first',
             'save-as',
@@ -54,12 +54,12 @@ export const KNOWN: Known[] = [
         invariant: 'I9',
         fault: 'identify-fails',
         plans: ['other', 'target'],
-        detail: /is bound to chain-other and chain-own|is chain-target’s Export target/,
+        detail: /is bound to chain-other and chain-own|is chain-target's Export target/,
     },
     {
         id: 'R8-kept',
         kind: 'accepted',
-        title: 'storage fails when the pick is identified after a reload: the partial open’s file is unknown to this tab, and is written over',
+        title: "storage fails when the pick is identified after a reload: the partial open's file is unknown to this tab, and is written over",
         paths: ['save-as/reloaded', 'export/reloaded'],
         invariant: 'I1',
         fault: 'identify-fails',

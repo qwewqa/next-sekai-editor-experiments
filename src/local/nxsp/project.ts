@@ -496,7 +496,7 @@ export const metadataOf = (
 /**
  * The head's `noteCount` and `durationMs`: the time of the latest note beat, summing the segments
  * between BPM changes in beat order with the first BPM applying from beat 0, each segment
- * `(end − start) * 60000 / bpm`, then `Math.round`; `0` without notes or BPM changes.
+ * `(end - start) * 60000 / bpm`, then `Math.round`; `0` without notes or BPM changes.
  */
 export const summaryOf = (records: SnapshotRecords) => {
     const noteCount = noteCountOf(records.kinds)

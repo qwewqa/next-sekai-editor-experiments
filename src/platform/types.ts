@@ -20,7 +20,7 @@ export type PlatformCapabilities = {
     readonly mp3Export: boolean
     /** Browsing and downloading from Sonolus servers: the apps only. */
     readonly serverFetch: boolean
-    /** The web found an app’s built-in browser, best effort; never in the apps. */
+    /** The web found an app's built-in browser, best effort; never in the apps. */
     readonly likelyInAppBrowser: boolean
 }
 
@@ -188,7 +188,7 @@ export type JournalStore = {
     read: () => Promise<JournalFound[]>
     /** Drops this page's journal of a session once a committed flush covers its `seq`. */
     clear: (sessionId: string, coveredSeq: number) => void
-    /** A journal this page loaded to go on writing (a same-tab reload’s own). */
+    /** A journal this page loaded to go on writing (a same-tab reload's own). */
     adopt: (found: JournalFound) => void
     /** Whether a session's key still holds the text this page last wrote (or loaded). */
     holds: (sessionId: string) => boolean

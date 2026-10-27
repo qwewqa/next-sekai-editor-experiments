@@ -192,7 +192,7 @@ test('the migration: a readable slot becomes a session, and the key goes after t
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('the migration runs on every load: an old tab’s write-back makes no second session, and a newer slot makes one', async () => {
+test("the migration runs on every load: an old tab's write-back makes no second session, and a newer slot makes one", async () => {
     const world = createWorld({ seed: 5 })
     const storage = new MemoryStorage()
     const state = stateOf(goldenChart())
@@ -238,7 +238,7 @@ test('the migration deletes the key only if its value is unchanged since it was 
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), newer)
 })
 
-test('an absent slot makes no session, and one this build can’t read whole stays', async () => {
+test("an absent slot makes no session, and one this build can't read whole stays", async () => {
     const world = createWorld({ seed: 7 })
     const storage = new MemoryStorage()
     const absent = await loadIn(world, world.tab('a'), storage)
@@ -323,7 +323,7 @@ test('a failed migration transaction leaves the key, with its load event', async
     assert.equal(rows(world, 'sessions').size, 0)
 })
 
-test('without IndexedDB the old slot and earlier visits’ journals stay for Local Data, never loaded', async () => {
+test("without IndexedDB the old slot and earlier visits' journals stay for Local Data, never loaded", async () => {
     const world = createWorld({ seed: 9 })
     const storage = new MemoryStorage()
     storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(stateOf(goldenChart())))
@@ -372,7 +372,7 @@ test('one load runs all three: the canary, a journal replayed, then the migratio
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a migrated session’s hash is checked in its transaction: a slot migrated meanwhile makes no second session', async () => {
+test("a migrated session's hash is checked in its transaction: a slot migrated meanwhile makes no second session", async () => {
     const world = createWorld({ seed: 11 })
     const storage = new MemoryStorage()
     const text = autoSaveOf(stateOf(goldenChart()))
@@ -424,7 +424,7 @@ test('a journal of a chain marked for Delete becomes a recovery session, never s
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a slot migrated before is never parsed again: an old tab’s write-back only goes', async () => {
+test("a slot migrated before is never parsed again: an old tab's write-back only goes", async () => {
     const world = createWorld({ seed: 13 })
     const storage = new MemoryStorage()
     const text = autoSaveOf(stateOf(goldenChart()))
@@ -444,7 +444,7 @@ test('a slot migrated before is never parsed again: an old tab’s write-back on
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
 })
 
-test('a slot whose batch can’t be made stays, with its load event, and never stops the load', async () => {
+test("a slot whose batch can't be made stays, with its load event, and never stops the load", async () => {
     const world = createWorld({ seed: 14 })
     const storage = new MemoryStorage()
     storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(stateOf(goldenChart())))
@@ -490,7 +490,7 @@ test('the canary: a database without its meta row where localStorage has an id i
     assert.deepEqual(events, [{ kind: 'storageCleared' }])
 })
 
-test('storage unavailable: a live tab’s journal isn’t offered, and earlier journals filling their budget say so', async () => {
+test("storage unavailable: a live tab's journal isn't offered, and earlier journals filling their budget say so", async () => {
     const world = createWorld({ seed: 17 })
     const storage = new MemoryStorage()
     const live = await openJournalPage(world, 'live', storage, {}, { flags: { noStorage: true } })
@@ -519,7 +519,7 @@ test('storage unavailable: a live tab’s journal isn’t offered, and earlier j
     lock.release()
 })
 
-test('a failed worker read in the canary or the migration’s dedupe never stops the load', async () => {
+test("a failed worker read in the canary or the migration's dedupe never stops the load", async () => {
     const world = createWorld({ seed: 19 })
     const storage = new MemoryStorage()
     storage.setItem(key('canary'), JSON.stringify('an earlier database'))
