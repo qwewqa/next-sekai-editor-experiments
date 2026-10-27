@@ -39,7 +39,7 @@ Try the whole cycle in dev first (see Dev below). Deploying prod, in order:
 
 1. Run Stats deploy for `prod`. The first boot takes 5 to 10 minutes.
 2. **First sign-in,** through the tunnel (see The dashboard). Sign in as `admin` / `umami` (Umami’s default login), create a new admin with a generated password kept in a password manager, and delete `admin`.
-3. Create three websites in Umami, using each name as both the Name and the Domain: `nse.qwewqa.dev`, `test.nse.qwewqa.dev` and `monitor`. Then set these variables:
+3. Create three websites in Umami: `nse.qwewqa.dev` and `test.nse.qwewqa.dev`, each with its name as both the Name and the Domain, and `monitor` with the Domain `localhost`. Umami accepts only a host name or `localhost` as a Domain. Then set these variables:
     - in the editor repository, the repository variables `ANALYTICS_ORIGIN` (`https://stats.nse-services.qwewqa.dev`) and `ANALYTICS_WEBSITE_PRODUCTION` (the id of `nse.qwewqa.dev`). The release build passes them to the editor as `NSE_ANALYTICS_ORIGIN` and `NSE_ANALYTICS_WEBSITE`;
     - in `qwewqa/nse-test-site`, the repository variables `ANALYTICS_ORIGIN` (the same origin) and `ANALYTICS_WEBSITE_TEST` (the id of `test.nse.qwewqa.dev`);
     - in the editor repository, the Environment variable `STATS_MONITOR_WEBSITE` on `stats-prod` (the id of `monitor`).
@@ -134,7 +134,7 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
 Dev exists only while an analytics test runs, in `nse-dev`, and is deleted completely afterwards.
 
 1. Run Stats deploy for `dev`.
-2. Run `bash infra/stats/scripts/dashboard.sh dev`, sign in as `admin` / `umami`, and create the website `local`. The dev dashboard is reachable only through the tunnel, so `admin` stays.
+2. Run `bash infra/stats/scripts/dashboard.sh dev`, sign in as `admin` / `umami`, and create the website `local` with the Domain `localhost`. The dev dashboard is reachable only through the tunnel, so `admin` stays.
 3. Point a dev build at it:
 
     ```sh
