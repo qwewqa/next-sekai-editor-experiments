@@ -1067,6 +1067,10 @@ const countHeadReads = () => {
 const name = (page: Page, text: string) =>
     page.evaluate((text) => window.nseFlushTest!.flusher.setChainFields({ name: text }), text)
 
+/** The guard's own specs run under the real guard, which the config's default turns off. */
+const realGuard = (context: BrowserContext) =>
+    context.addInitScript(() => localStorage.removeItem('nse.test.noOpeningGuard'))
+
 const openingKeys = (page: Page) =>
     page.evaluate(
         (prefix) => Object.keys(localStorage).filter((key) => key.startsWith(`${prefix}opening.`)),
@@ -1077,6 +1081,7 @@ test('a tab that finds the session open elsewhere names it from its record and r
     page,
     context,
 }) => {
+    await realGuard(context)
     await visit(page)
     await edit(page, 990)
     await name(page, 'Kiwi')
@@ -1091,7 +1096,9 @@ test('a tab that finds the session open elsewhere names it from its record and r
 
 test('a slow head read after startup keeps the page record until the session shows and settles', async ({
     page,
+    context,
 }) => {
+    await realGuard(context)
     await visit(page)
     await edit(page, 990)
     await name(page, 'Kiwi')

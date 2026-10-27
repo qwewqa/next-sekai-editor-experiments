@@ -14,11 +14,22 @@ const timingSpecs = [
 // (previewWorker.spec.ts sets each host itself).
 const previewHostSpecs = ['preview.spec.ts', 'previewSelection.spec.ts']
 const baseURL = `http://127.0.0.1:${port}`
-// Which host draws the preview, whatever the setting says.
-const previewHost = (value: 'main' | 'worker') => ({
+// Which host draws the preview, whatever the setting says. Every page also starts without the
+// startup guard's question about an opening that did not finish, which a spec that reloads or
+// closes soon after an open would otherwise meet on a slow machine; the guard's own specs clear
+// `nse.test.noOpeningGuard`.
+const seeded = (value: 'main' | 'worker') => ({
     storageState: {
         cookies: [],
-        origins: [{ origin: baseURL, localStorage: [{ name: 'nse.test.previewHost', value }] }],
+        origins: [
+            {
+                origin: baseURL,
+                localStorage: [
+                    { name: 'nse.test.previewHost', value },
+                    { name: 'nse.test.noOpeningGuard', value: 'true' },
+                ],
+            },
+        ],
     },
 })
 
@@ -48,15 +59,15 @@ export default defineConfig({
     projects: [
         // The specs were written for the main host, which these projects keep; the preview's
         // specs run again in the worker host, the default where the browser can run it.
-        { name: 'chromium', testIgnore: timingSpecs, use: previewHost('main') },
-        { name: 'chromium-worker', testMatch: previewHostSpecs, use: previewHost('worker') },
+        { name: 'chromium', testIgnore: timingSpecs, use: seeded('main') },
+        { name: 'chromium-worker', testMatch: previewHostSpecs, use: seeded('worker') },
         // Measures real frame timing, so it runs alone after the parallel batch.
         // In npx playwright test any chromium failure skips it; npm run test:browser
         // runs it after chromium regardless, and npm run test:timing runs it alone.
         {
             name: 'timing',
             testMatch: timingSpecs,
-            use: previewHost('main'),
+            use: seeded('main'),
             dependencies: ['chromium'],
             workers: 1,
             // Its own folder, so running it after chromium keeps chromium's failure output.
