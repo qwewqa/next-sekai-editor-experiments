@@ -49,7 +49,7 @@ const patchChain = (world: World, chain: Chain, patch: Record<string, unknown>) 
         await tx.put('chains', { ...row, ...patch })
     })
 
-/** The head session’s root: what a binding’s hash is compared with. */
+/** The head session's root: what a binding's hash is compared with. */
 const rootOf = async (world: World, chain: Chain) => {
     const tab = world.tab(`root-${chain.second.id}`)
     const core = workerCore(world, tab)
@@ -137,7 +137,7 @@ const byChain = (found: DeleteChain[], chain: Chain) =>
 
 const stored = (world: World, chain: Chain) => rows(world, 'chains').has(chain.first.chainId)
 
-test('ranges count calendar days in the page’s zone: 8 days ago is over 7 and not over 30', async () => {
+test("ranges count calendar days in the page's zone: 8 days ago is over 7 and not over 30", async () => {
     const ages = [2 * 3_600_000, 13 * 3_600_000, 7 * DAY, 8 * DAY, 31 * DAY]
     const { world, chains, read } = await setup(ages.length)
     for (const [n, chain] of chains.entries()) await age(world, chain, NOW - ages[n]!)
@@ -178,11 +178,11 @@ test('the age follows the wall clock, not a clock that ran ahead and was correct
     )
 })
 
-test('the age follows the page’s zone, not 24-hour spans', async () => {
+test("the age follows the page's zone, not 24-hour spans", async () => {
     const { world, chains, deleter, read } = await setup(1, {
         zone: () => resolveZone('Asia/Tokyo'),
     })
-    // 23:00 UTC the day before NOW is 08:00 in Tokyo on NOW’s date (NOW is 21:00 there).
+    // 23:00 UTC the day before NOW is 08:00 in Tokyo on NOW's date (NOW is 21:00 there).
     await age(world, chains[0]!, Date.UTC(2026, 9, 22, 23))
     assert.equal((await read())[0]?.ageDays, 0)
     const utc = createDeleteSessions({
@@ -245,7 +245,7 @@ test('a chain with a session of a newer version is included, flagged and counted
     })
     assert.ok(!stored(world, newer))
     assert.ok(stored(world, plain))
-    // Its bodies go once past the grace period, and GC never reports a newer build’s data.
+    // Its bodies go once past the grace period, and GC never reports a newer build's data.
     await daysPass(world)
     const swept = await deleter.gc()
     assert.equal(swept?.kind, 'done')
@@ -270,7 +270,7 @@ test('a chain is not saved when it has content in no file, or is bound and chang
         hasContent: true,
         file: { name: 'a.nxsp', event: 'saved', ...(await hash(saved)) },
     })
-    // Edited after the file event: the head’s root is not the file’s.
+    // Edited after the file event: the head's root is not the file's.
     await patchChain(world, edited, {
         file: { name: 'b.nxsp', event: 'saved', hash: new Uint8Array(16).fill(7) },
     })
@@ -319,7 +319,7 @@ test('a chain whose file another chain took over counts as not saved', async () 
     assert.equal(byChain(await read(), takenOver)?.notSaved, true)
 })
 
-test('names are the displayed names, with the head’s start for the date fallback', async () => {
+test("names are the displayed names, with the head's start for the date fallback", async () => {
     const { world, chains, read } = await setup(2)
     await patchChain(world, chains[0]!, { name: 'Stage 3' })
     const found = await read()
@@ -382,7 +382,7 @@ test('a chain opened, given a journal, edited or continued since the read is ski
         const row = (await tx.get('chains', edited.first.chainId)) as Record<string, unknown>
         await tx.put('chains', { ...row, updatedAt: (row.updatedAt as number) + 1 })
     })
-    // Another tab’s continuation added a session.
+    // Another tab's continuation added a session.
     await edit(world, async (tx) => {
         const head = (await tx.get('sessions', continued.second.id)) as Record<string, unknown>
         await tx.put('sessions', { ...head, id: 'continuation', startedAt: NOW })
@@ -557,7 +557,7 @@ test('a damaged chain (no head id) is included, counted as not saved, and delete
     await world.idle()
 })
 
-test('a damaged chain whose head session row is missing goes with that head’s entries and blocks', async () => {
+test("a damaged chain whose head session row is missing goes with that head's entries and blocks", async () => {
     const { world, chains, read, remove } = await setup(2)
     const [damaged, plain] = chains as [Chain, Chain]
     const head = damaged.second.id
@@ -589,7 +589,7 @@ test('a chain counted as saved whose file is taken over or rebound after the rea
         })
     const found = await read()
     assert.ok(found.every((chain) => !chain.notSaved))
-    // Another tab’s picker overwrote the file: `takeOver` drops the binding, as it leaves `updatedAt`.
+    // Another tab's picker overwrote the file: `takeOver` drops the binding, as it leaves `updatedAt`.
     await edit(world, async (tx) => {
         const row = (await tx.get('chains', takenOver.first.chainId)) as Record<string, unknown>
         const rest = { ...row }
@@ -706,7 +706,7 @@ const recentPerChain = async (tx: KvTx) => {
     return out
 }
 
-test('the candidates and Recent Sessions’ list read in one cursor are the ones read chain by chain, damage and all', async () => {
+test("the candidates and Recent Sessions' list read in one cursor are the ones read chain by chain, damage and all", async () => {
     const { world, chains, deleter } = await setup(9)
     const [marked, headless, missingHead, newer, unsupported, bound, changed, extra] =
         chains as Chain[] as [Chain, Chain, Chain, Chain, Chain, Chain, Chain, Chain]

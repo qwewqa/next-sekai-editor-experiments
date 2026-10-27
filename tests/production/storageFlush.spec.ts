@@ -104,7 +104,7 @@ test('the release build stores an import at once, a BGM pick with its bytes, and
     expect(errors).toEqual([])
 })
 
-test('the release build ignores the dbVersion test flag, so it can’t upgrade the real database', async ({
+test("the release build ignores the dbVersion test flag, so it can't upgrade the real database", async ({
     page,
 }) => {
     await page.addInitScript(() => {

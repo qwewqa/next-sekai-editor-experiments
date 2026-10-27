@@ -227,7 +227,7 @@ test('edits, zoom, pixel ratio, scope, lane division and the renderer release ev
     }
 })
 
-test('a pan within the tiles’ lane margin reuses them; a farther pan builds them again', () => {
+test("a pan within the tiles' lane margin reuses them; a farther pan builds them again", () => {
     const chart = setup(() => stageProps())
     const { context } = chart
     chart.draw()

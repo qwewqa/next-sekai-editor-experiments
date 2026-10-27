@@ -495,7 +495,7 @@ test('a Lane Color edit repaints a stage the composed layout has already drawn',
     await settle(page)
     const after = await canvas.screenshot()
     expect(after.equals(before)).toBe(false)
-    // The tint moves from Default’s blue-green to red: pixels gain red and lose blue.
+    // The tint moves from Default's blue-green to red: pixels gain red and lose blue.
     const moved = await page.evaluate(
         async ({ before, after }) => {
             const read = async (base64: string) => {

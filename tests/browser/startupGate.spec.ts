@@ -218,7 +218,7 @@ test.describe('the startup gate', () => {
         await expect(gate(page).locator('svg')).toHaveCSS('animation-name', 'pulse')
     })
 
-    test('the session’s name is told once it is known', async ({ page }) => {
+    test("the session's name is told once it is known", async ({ page }) => {
         await startupFlags(page, { hold: true })
         await boot(page)
         await page.evaluate(installEditorFixture)
@@ -272,7 +272,7 @@ test.describe('the startup gate', () => {
         await expect(page.locator('[data-safe-bar]')).toBeVisible()
     })
 
-    test('a startup that throws shows the error’s own text, and the way out', async ({ page }) => {
+    test("a startup that throws shows the error's own text, and the way out", async ({ page }) => {
         const errors: string[] = []
         page.on('console', (message) => {
             if (message.type() === 'error') errors.push(message.text())
@@ -369,7 +369,7 @@ test.describe('the startup gate', () => {
         await expect(gate(page)).toBeVisible()
     })
 
-    test('a download that cannot start says so on the gate, with the file’s name', async ({
+    test("a download that cannot start says so on the gate, with the file's name", async ({
         page,
     }) => {
         await startupFlags(page, { fail: 'A row could not be read' })
@@ -384,7 +384,7 @@ test.describe('the startup gate', () => {
         )
     })
 
-    test('an export whose code does not load says so on the gate, with the file’s name', async ({
+    test("an export whose code does not load says so on the gate, with the file's name", async ({
         page,
     }) => {
         await page.route('**/src/local/rawExport.ts*', (route) => route.abort())
@@ -635,7 +635,7 @@ test.describe('safe mode', () => {
         await expect(page).toHaveURL(/\/$/)
     })
 
-    test('a registered guard, the not-stored prompt’s, is asked instead', async ({ page }) => {
+    test("a registered guard, the not-stored prompt's, is asked instead", async ({ page }) => {
         await boot(page, '/?safe')
         await page.evaluate(installEditorFixture)
         await page.evaluate(async () => {

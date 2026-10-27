@@ -32,14 +32,14 @@ test('a page sends only with a target, the switch on, and on its own host', () =
     assert.ok(!shouldSend({ ...on, safeMode: true }), 'safe mode')
     assert.ok(!shouldSend({ ...on, saveData: true }), 'save data')
     assert.ok(!shouldSend({ ...on, webdriver: true }), 'an automated browser')
-    assert.ok(shouldSend({ ...on, webdriver: true, fromTestKey: true }), 'a spec’s mock')
+    assert.ok(shouldSend({ ...on, webdriver: true, fromTestKey: true }), "a spec's mock")
     assert.ok(
         shouldSend({
             ...on,
             webdriver: true,
             target: { origin: 'http://127.0.0.1:5361', website: 'w' },
         }),
-        'a perf run’s mock',
+        "a perf run's mock",
     )
     assert.ok(!shouldSend({ ...on, hostname: 'copy.example.com' }), 'a copy on another host')
     assert.ok(!shouldSend({ ...on, hostname: 'nse.qwewqa.dev', site: 'test' }), 'the wrong site')

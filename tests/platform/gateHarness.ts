@@ -25,7 +25,7 @@ export const loadGate = (): Gate => {
     const context = { module: { exports: {} as unknown }, atob }
     vm.runInNewContext(source, context)
     const loaded = context.module.exports as Gate
-    // Arrays made in the script’s realm compare as foreign to deepEqual.
+    // Arrays made in the script's realm compare as foreign to deepEqual.
     return {
         ...loaded,
         missingFeatures: (win) => Array.from(loaded.missingFeatures(win)),

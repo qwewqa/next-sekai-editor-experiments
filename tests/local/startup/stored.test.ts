@@ -96,7 +96,7 @@ test('a session without a stored stack has it rebuilt by replay', async () => {
     assert.deepEqual(read.stack.blocks, [])
 })
 
-test('the most recent session skips chains being deleted and chains this build can’t read', async () => {
+test("the most recent session skips chains being deleted and chains this build can't read", async () => {
     const world = createWorld({ seed: 4 })
     const { page, older, newer } = await twoChains(world)
     const newest = () => page.tab.run(() => handlersOf(page).readNewestSession(undefined))
@@ -118,7 +118,7 @@ test('the most recent session skips chains being deleted and chains this build c
     assert.equal(rows(world, 'chains').size, 2)
 })
 
-test('a continuation’s missing stack is rebuilt over its parent’s stored one, not the whole chain’s replay', async () => {
+test("a continuation's missing stack is rebuilt over its parent's stored one, not the whole chain's replay", async () => {
     const world = createWorld({ seed: 5 })
     const { page, newer } = await twoChains(world)
     const read = await readOpen(page, newer.id)

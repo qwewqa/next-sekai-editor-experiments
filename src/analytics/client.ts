@@ -70,7 +70,7 @@ const countEdit = (action: HistoryAction) => {
     if (key) tally.bump(`edits.${key}`)
 }
 
-/** How the visit began, from the load events and the tab’s claim. */
+/** How the visit began, from the load events and the tab's claim. */
 const startOf = () =>
     startKind(
         status.isSafeMode(),
@@ -85,7 +85,7 @@ const navigationTypes = {
     prerender: 'other',
 } as const
 
-/** How the document came: a guess from the browser’s timing entry, `unknown` when unclear. */
+/** How the document came: a guess from the browser's timing entry, `unknown` when unclear. */
 const documentDelivery = (
     entry: PerformanceNavigationTiming | undefined,
 ): NonNullable<EventData<'startup'>['documentDelivery']> => {

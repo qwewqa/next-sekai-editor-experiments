@@ -843,7 +843,7 @@ const chartShot = async (page: Page) => {
     throw new Error('The chart did not settle')
 }
 
-test('a step’s peek from before a BGM change draws the live waveform at the live offset', async ({
+test("a step's peek from before a BGM change draws the live waveform at the live offset", async ({
     page,
 }) => {
     await page.evaluate(() => (window.editorTest.settings.waveform = 'volume'))
@@ -853,10 +853,10 @@ test('a step’s peek from before a BGM change draws the live waveform at the li
     const current = await newestSeq(page)
     expect(current).toBe(earlier + 1)
 
-    // A step with the current BGM draws it at the step’s offset, here the live one.
+    // A step with the current BGM draws it at the step's offset, here the live one.
     await peek(page, current)
     const live = await chartShot(page)
-    // The earlier BGM’s offset does not fit the current audio, so the live offset stays.
+    // The earlier BGM's offset does not fit the current audio, so the live offset stays.
     await peek(page, earlier)
     expect((await chartShot(page)).equals(live), 'the waveform moved').toBe(true)
     await leave(page)

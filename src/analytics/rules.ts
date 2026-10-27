@@ -24,7 +24,7 @@ export const editKey = (action: HistoryAction) => {
 
 const recoveredKinds = ['journalRecovered', 'unsavedRecovered', 'journalKept']
 
-/** How the visit began, from the load events and the tab’s claim; the first that fits. */
+/** How the visit began, from the load events and the tab's claim; the first that fits. */
 export const startKind = (
     safeMode: boolean,
     loadKinds: ReadonlySet<string>,

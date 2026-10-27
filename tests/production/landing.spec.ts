@@ -63,7 +63,7 @@ test('/privacy/ carries the web policy hashing its one inline script', async ({ 
     expect(meta).toBe(webPolicy(inlineScripts(`<script>${scripts[0]}</script>`), analytics?.origin))
 })
 
-test('/privacy/ uses the app icon, not the editor’s favicon', async ({ page }) => {
+test("/privacy/ uses the app icon, not the editor's favicon", async ({ page }) => {
     await load(page, '/privacy/')
     const icon = await page.locator('link[rel="icon"]').getAttribute('href')
     expect(icon).toMatch(/^(?:\/assets\/app-icon-32-[\w-]+\.png|data:image\/png;base64,)/)
@@ -75,7 +75,7 @@ test('/privacy/ uses the app icon, not the editor’s favicon', async ({ page })
     )
 })
 
-test('/privacy/ links reach the site’s files and the contact address', async ({ page }) => {
+test("/privacy/ links reach the site's files and the contact address", async ({ page }) => {
     await load(page, '/privacy/')
     await expect(page.locator('a[href="mailto:nse@qwewqa.dev"]').first()).toBeVisible()
     for (const href of ['/', '/LICENSE.txt', '/THIRD_PARTY_NOTICES.txt'])
@@ -85,8 +85,8 @@ test('/privacy/ links reach the site’s files and the contact address', async (
 for (const [name, setting, system] of [
     ['the stored light', 'light', 'dark'],
     ['the stored dark', 'dark', 'light'],
-    ['the system’s dark', undefined, 'dark'],
-    ['the system’s light', undefined, 'light'],
+    ["the system's dark", undefined, 'dark'],
+    ["the system's light", undefined, 'light'],
 ] as const) {
     test(`/privacy/ follows ${name} theme before any style loads`, async ({ page }) => {
         await page.emulateMedia({ colorScheme: system })
@@ -114,7 +114,7 @@ test('/privacy/ fits a 360 px phone without scrolling sideways', async ({ page }
 })
 
 test('/privacy redirects to /privacy/', async ({ page }) => {
-    test.skip(!hosted, 'The redirect is Pages’ behaviour')
+    test.skip(!hosted, "The redirect is Pages' behaviour")
     await page.goto('/privacy')
     expect(new URL(page.url()).pathname).toBe('/privacy/')
 })

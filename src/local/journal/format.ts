@@ -21,9 +21,9 @@ export type JournalIds = {
 
 /** The stack the journalled state sits in. */
 export type JournalStack = {
-    /** Slots `0 … keep − 1` of the committed stack stay. */
+    /** Slots `0 .. keep - 1` of the committed stack stay. */
     keep: number
-    /** The hash of slot `keep − 1` as committed, as hex; absent when `keep` is 0. */
+    /** The hash of slot `keep - 1` as committed, as hex; absent when `keep` is 0. */
     lastKept?: string
     /** True when the journalled state becomes a new slot at keep. */
     head: boolean

@@ -54,7 +54,7 @@ test('two documents saved by one install record different devices, neither its d
     }
 })
 
-test('Save As… keeps the lineage, so its file records the device the chain’s first Save did', async () => {
+test("Save As… keeps the lineage, so its file records the device the chain's first Save did", async () => {
     const fixture = await chainOf(93, 'lineage-c')
     const first = await save(fixture, { kind: 'copy' })
     await fixture.edit(2)

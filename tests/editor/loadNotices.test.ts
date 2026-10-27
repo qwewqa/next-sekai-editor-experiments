@@ -22,7 +22,7 @@ test('every load event kind has a load notice', () => {
     assert.deepEqual([...keyed].sort(), [...kinds].sort())
 })
 
-test('every load notice has a place in the table’s order', () => {
+test("every load notice has a place in the table's order", () => {
     const notices = read('editor/loadNotices.ts')
     const order = read('editor/loadOrder.ts')
     for (const [, name] of notices.matchAll(/LOAD_ORDER\.(\w+)/g))

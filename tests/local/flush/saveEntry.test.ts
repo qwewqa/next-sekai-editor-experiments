@@ -179,7 +179,7 @@ test('a Save that wrote nothing lets a trailing seq go, and keeps it when its fi
     assert.equal(page.flusher.unflushed(session), false)
 })
 
-test('a mark the identity unit needs that isn’t stored keeps the binding in memory', async () => {
+test("a mark the identity unit needs that isn't stored keeps the binding in memory", async () => {
     const world = createWorld({ seed: 13 })
     const page = await openPage(world, world.tab('a'))
     const first = stateOf(goldenChart())
@@ -747,7 +747,7 @@ const recognisedInLaterVisit = async (seed: number) => {
     return { world, session }
 }
 
-test('a Save recognised in a later visit writes nothing into the parent past the continuation’s branch point', async () => {
+test("a Save recognised in a later visit writes nothing into the parent past the continuation's branch point", async () => {
     const { world, session } = await recognisedInLaterVisit(41)
     assert.deepEqual(checkStored(world.memory), [])
     assert.deepEqual(world.violations, [])

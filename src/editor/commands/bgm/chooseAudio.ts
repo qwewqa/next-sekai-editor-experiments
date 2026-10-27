@@ -93,9 +93,9 @@ const unheldLine = (): NoticeLine => ({
 })
 
 /**
- * The second line of a switch’s card (Restore Session, Reopen, Restore as a Copy), when the BGM of
+ * The second line of a switch's card (Restore Session, Reopen, Restore as a Copy), when the BGM of
  * the session just shown is not loaded and this has not been said for its hash in this session.
- * It waits for the media store’s answer; a store that cannot be asked gives no line.
+ * It waits for the media store's answer; a store that cannot be asked gives no line.
  */
 export const takeBgmLine = async (): Promise<NoticeLine | undefined> => {
     const live = liveState.value.bgm
@@ -107,7 +107,7 @@ export const takeBgmLine = async (): Promise<NoticeLine | undefined> => {
     return unheldLine()
 }
 
-// Undo or Redo reached audio nothing holds: a card of its own, beside the quick “Undid…” notice.
+// Undo or Redo reached audio nothing holds: a card of its own, beside the quick "Undid…" notice.
 onUnheldAfterMove(() => {
     notify(() => i18n.value.load.bgmNotLoaded, {
         card: true,

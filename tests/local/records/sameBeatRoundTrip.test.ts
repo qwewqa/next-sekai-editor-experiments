@@ -115,7 +115,7 @@ test('same-beat events, BPMs and time scales of every sample level play in one o
 })
 
 test(
-    'coconut’s same-beat mask pair, byte order the reverse of its chain, survives a round trip',
+    "coconut's same-beat mask pair, byte order the reverse of its chain, survives a round trip",
     { skip: !hasCoconut && 'no coconut' },
     () => {
         assert.ok(assertSameBeatRoundTrip(coconutPath).counts.mask, 'a same-beat mask group')

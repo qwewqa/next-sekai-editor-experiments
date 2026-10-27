@@ -20,7 +20,7 @@ test('the committed generated chart is what the script writes', () => {
 })
 
 // The chart parser pulls in .vue files, so the browser memory spec parses it; this checks the file format.
-test('the generated chart is about coconut’s size and level data the editor accepts', () => {
+test("the generated chart is about coconut's size and level data the editor accepts", () => {
     const data = parseLevelData(JSON.parse(committed))
     assert.ok(committed.length > 1_200_000 && committed.length < 1_700_000)
     assert.ok(data.entities.length > 3000 && data.entities.length < 4000)

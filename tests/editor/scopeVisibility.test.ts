@@ -241,7 +241,7 @@ test('scope combinators pick the least and most visible values', () => {
     assert.equal(bestScope('hidden', 'hidden'), 'hidden')
 })
 
-test('entity scope follows each type’s group and stage membership', () => {
+test("entity scope follows each type's group and stage membership", () => {
     const scope = createScopeLookup({
         groupVisibility: groupMask([[groupB, 'hidden']]),
         stageVisibility: stageMask([[stageB, 'hidden']]),

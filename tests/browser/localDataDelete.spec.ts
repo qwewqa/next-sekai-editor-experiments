@@ -159,7 +159,7 @@ test('the dialog opens on over 90 days with the box unticked, and its counts fol
     await expect(page.locator('[data-delete-range="90"] input')).toBeChecked()
     await expect(page.locator('[data-delete-range="90"] input')).toBeFocused()
     await expect(page.locator('[data-delete-include] input')).not.toBeChecked()
-    // Unticked: only the chains with nothing to lose are counted (the fixture’s, 100 days).
+    // Unticked: only the chains with nothing to lose are counted (the fixture's, 100 days).
     expect(await counts(page)).toEqual({ '1': '1', '7': '1', '30': '1', '90': '1', all: '1' })
     // The box has no count of its own: the ranges carry it.
     await expect(page.locator('[data-delete-include] [data-delete-count]')).toHaveCount(0)
@@ -186,7 +186,7 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
     await expect(confirm).toContainText('Delete 5 sessions?')
     // Each sentence is its own paragraph, so they do not run together on a phone.
     await expect(confirm.locator('p')).toHaveCount(3)
-    // Newest first; the fixture’s chain has no work to lose, so it is not named.
+    // Newest first; the fixture's chain has no work to lose, so it is not named.
     await expect(confirm).toContainText(
         '4 sessions have unsaved changes: “Fresh”, “Week”, “Month” and 1 more.',
     )
@@ -209,7 +209,7 @@ test('with the box unticked the unsaved work is kept, and what is deleted leaves
     await seed(page)
     await openLocalData(page)
     await openDelete(page)
-    // Over 90 days, unticked: just the fixture’s chain; its confirm names no work and no newer line.
+    // Over 90 days, unticked: just the fixture's chain; its confirm names no work and no newer line.
     await page.locator('[data-delete-next]').click()
     const confirm = confirmDialog(page)
     await expect(confirm).toContainText('Delete 1 session?')
@@ -470,7 +470,7 @@ test.describe('almost full', () => {
     })
 
     // The notice would be a card turned up while the user is editing.
-    test('an edit made before the load’s run ends leaves it unsaid and unstamped', async ({
+    test("an edit made before the load's run ends leaves it unsaid and unstamped", async ({
         page,
     }) => {
         await countedEstimate(page, nearlyFull, true)

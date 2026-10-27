@@ -190,7 +190,7 @@ test('versions: an older open is a VersionError, a newer one upgrades once other
     )
 })
 
-test('a killed tab’s connection closes, so a blocked upgrade goes ahead', async () => {
+test("a killed tab's connection closes, so a blocked upgrade goes ahead", async () => {
     const world = createWorld()
     const frozen = world.tab('frozen')
     await open(frozen, 1)

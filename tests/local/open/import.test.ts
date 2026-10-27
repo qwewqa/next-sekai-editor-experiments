@@ -269,7 +269,7 @@ test('a chunk failing its hash in the import is damage: the chain unlinks and it
     )
 })
 
-test('an import that can’t go on marks the rows whose states never arrived kept: false', async () => {
+test("an import that can't go on marks the rows whose states never arrived kept: false", async () => {
     const s = await setup(5)
     const { file, hashes } = await freshFile()
     const reply = nxsp(await s.run(() => s.open.openRead(file)))
@@ -330,7 +330,7 @@ test('a resumed import reads the file again and finishes it', async () => {
     for (const hex of hashes) assert.ok(storedRecords(s.world, fromHex16(hex)))
 })
 
-test('a file whose level differs from its history’s head gets "Changed outside the editor"', async () => {
+test('a file whose level differs from its history\'s head gets "Changed outside the editor"', async () => {
     const s = await setup(7)
     const { file, hashes } = await freshFile()
     const edited = stateOf(chartWith({ extraNotes: 3 }))
@@ -439,7 +439,7 @@ const longFile = async (count: number) => {
     return executePlan(planNxsp(long).plan, new Map())
 }
 
-test('a long history’s rows come in batches after the first transaction', async () => {
+test("a long history's rows come in batches after the first transaction", async () => {
     const s = await setup(8)
     const file = await longFile(2100)
     const reply = nxsp(await s.run(() => s.open.openRead(file)))

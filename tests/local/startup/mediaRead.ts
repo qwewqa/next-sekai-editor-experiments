@@ -4,7 +4,7 @@ import { mediaHandlers } from '../../../src/local/worker/mediaHandlers'
 
 // The media store as the page reads it (`readMedia`) on a test core, for the tests of a state that
 // names audio it does not hold. The handler returns its bytes marked for transfer; a direct call
-// sees the mark, and the page’s end the bytes.
+// sees the mark, and the page's end the bytes.
 
 /** The bytes `readMedia` answers, as the page receives them. */
 export const readMediaBytes = async (

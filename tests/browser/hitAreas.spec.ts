@@ -234,13 +234,13 @@ const settingsToolbarMeets = async (page: Page, wraps = true) => {
     await meet(button(wrapped![0]!), button(wrapped![1]!))
 }
 
-test('the settings toolbar editor’s buttons meet', async ({ page }) => {
+test("the settings toolbar editor's buttons meet", async ({ page }) => {
     await settingsToolbarMeets(page)
 })
 
 test.describe('at other root font sizes', () => {
     for (const size of [14, 18, 20])
-        test(`the settings toolbar editor’s buttons meet halfway at ${size}px`, async ({
+        test(`the settings toolbar editor's buttons meet halfway at ${size}px`, async ({
             page,
         }) => {
             await setRootFontSize(page, size)
@@ -269,7 +269,7 @@ test.describe('at other root font sizes', () => {
         })
 
     for (const size of [18, 20])
-        test(`rail tabs and preview steppers reach each other and the track’s edges at ${size}px`, async ({
+        test(`rail tabs and preview steppers reach each other and the track's edges at ${size}px`, async ({
             page,
         }) => {
             await setRootFontSize(page, size)
@@ -454,7 +454,7 @@ test.describe('on a phone', () => {
         await meetHalfway(tabs.nth(0), tabs.nth(1))
     })
 
-    test('the settings toolbar editor’s buttons meet at touch sizes', async ({ page }) => {
+    test("the settings toolbar editor's buttons meet at touch sizes", async ({ page }) => {
         await settingsToolbarMeets(page, false)
     })
 })

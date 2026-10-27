@@ -208,7 +208,7 @@ for (const filter of ['all', 'saves'] as const)
             ['recent', at(9, 20)],
             ['long after', at(60, 3)],
         ] as const)
-            test(`Go To’s days are the Timeline’s header days (${filter}, ${zoneName}, ${label})`, async () => {
+            test(`Go To's days are the Timeline's header days (${filter}, ${zoneName}, ${label})`, async () => {
                 const zone = resolveZone(zoneName)
                 const cal = calendarAt(now, zone)
                 const kinds = filter === 'saves' ? ['save', 'export'] : undefined

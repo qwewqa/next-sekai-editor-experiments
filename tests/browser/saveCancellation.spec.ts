@@ -189,7 +189,7 @@ test('a browser without a save picker downloads, bound by name', async ({ page }
     expect(await bound(page)).toBe('coconut.nxsp')
 })
 
-test('Cancel in a slow write-back’s Preparing… writes nothing, and the next Save writes', async ({
+test("Cancel in a slow write-back's Preparing… writes nothing, and the next Save writes", async ({
     page,
 }) => {
     await start(page)

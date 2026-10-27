@@ -233,7 +233,7 @@ test('an old auto save this build cannot read stays, never loaded, and the load 
     ).toBe(future)
 })
 
-test('the session’s source name survives speculative edits, committed edits, undo and redo', async ({
+test("the session's source name survives speculative edits, committed edits, undo and redo", async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {

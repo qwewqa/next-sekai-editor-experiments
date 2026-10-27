@@ -292,7 +292,7 @@ const filesUnder = (directory: string, extensions: string[]): string[] =>
               : []
     })
 
-test('no-local-time covers all of History’s files, with no allowlist', async () => {
+test("no-local-time covers all of History's files, with no allowlist", async () => {
     const files = [
         ...filesUnder('src/editor/history', ['.ts', '.vue']),
         ...filesUnder('src/history', ['.ts']),
@@ -312,7 +312,7 @@ test('no-local-time covers all of History’s files, with no allowlist', async (
     assert.equal(await enabled('src/editor/history/calendarClock.ts', 'local/no-local-time'), true)
 })
 
-test('history-imports covers History’s files, apart from the four that bridge to the engine', async () => {
+test("history-imports covers History's files, apart from the four that bridge to the engine", async () => {
     const files = [
         ...filesUnder('src/editor/history', ['.ts', '.vue']),
         ...filesUnder('src/history', ['.ts']),

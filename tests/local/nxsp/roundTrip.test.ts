@@ -92,7 +92,7 @@ test('the BGM entry name is ASCII, from the original name', async () => {
     assert.ok(plan.entries.some((e) => e.name === 'bgm/bgm.mp3'))
 })
 
-test('a write-back appends: the source’s chunks.bin is the prefix, its rows carried', async () => {
+test("a write-back appends: the source's chunks.bin is the prefix, its rows carried", async () => {
     const first = fresh()
     const { plan } = planNxsp(first.input)
     const file1 = await executePlan(plan, new Map())

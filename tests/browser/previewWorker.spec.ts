@@ -316,7 +316,7 @@ test('the setting off and on again while the worker stops starts one that draws'
     await expect(page.locator('.preview-viewport canvas')).toHaveCount(2)
 })
 
-test('after a hang, the worker’s last frame shows until the skin is decoded again', async ({
+test("after a hang, the worker's last frame shows until the skin is decoded again", async ({
     page,
 }) => {
     await open(page, 'worker', { hangOnFrame: 2, timeoutMs: 1500 })
@@ -340,7 +340,7 @@ test('after a hang, the worker’s last frame shows until the skin is decoded ag
     await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
 })
 
-test('with the setting on, a failing worker still hands over for the page’s life', async ({
+test("with the setting on, a failing worker still hands over for the page's life", async ({
     page,
 }) => {
     await open(page, { setting: true }, { throwOnFrame: 1 })
@@ -354,7 +354,7 @@ test('with the setting on, a failing worker still hands over for the page’s li
     expect(await page.evaluate(() => window.editorTest.settings.previewInWorker)).toBe(true)
 })
 
-test('a replaced canvas’s context, and a stopped worker, go only after the page draws without them', async ({
+test("a replaced canvas's context, and a stopped worker, go only after the page draws without them", async ({
     page,
 }) => {
     await open(page, { setting: true })

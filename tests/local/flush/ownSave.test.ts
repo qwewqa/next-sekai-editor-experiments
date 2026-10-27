@@ -305,7 +305,7 @@ test('a `save` row a defect lost is still reported: a seq whose end added the en
     assert.match(found[0]!, /rows 2 up to lastSeq 3 are neither stored/)
 })
 
-test('a journal-only reload’s recovered entry is no hole: if it is lost, the checker says so', async () => {
+test("a journal-only reload's recovered entry is no hole: if it is lost, the checker says so", async () => {
     expectViolations(
         /rows 1, 2, 4 up to lastSeq 4 are neither stored/,
         /was removed while the session stays/,
@@ -544,7 +544,7 @@ test('a journal folds the pending save entry into recovered@r, and the cut does 
     assert.equal(carriesNow(world, session.id, session.chainId), false)
 })
 
-test('a recovered row that replaced a pending row the file holds is not the Save’s landing', async () => {
+test("a recovered row that replaced a pending row the file holds is not the Save's landing", async () => {
     const { world, session } = await ar8b(802)
     assert.equal(hasSaveRow(world, session.id, 3), false)
     assert.equal(carriesNow(world, session.id, session.chainId), false)

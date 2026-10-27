@@ -30,8 +30,10 @@ export const formatDate = (date) =>
 function bulletProblems(line) {
     if (!bullet.test(line)) return ['not a "- " bullet with an optional (Web) or (Apps) prefix']
     const problems = []
-    if (line.includes("'")) problems.push('use ’ for an apostrophe')
-    if (contraction.test(line)) problems.push('no contractions')
+    // A code span holds a literal, such as a name that contains an apostrophe: not prose.
+    const prose = line.replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, '')
+    if (prose.includes("'")) problems.push('use ’ for an apostrophe')
+    if (contraction.test(prose)) problems.push('no contractions')
     return problems
 }
 

@@ -91,7 +91,7 @@ const flip = (data: Uint8Array, at: number) => {
     data[at] = (data[at] ?? 0) ^ 0xff
 }
 
-test('a .nxsp’s disk state is its revision id and <cd>; anything else is damaged', async () => {
+test("a .nxsp's disk state is its revision id and <cd>; anything else is damaged", async () => {
     const file = await built()
     const disk = await nxspDiskState(file, 1234.7)
     assert.equal(disk.revisionId, 'r001-0000-4000-8000-000000000000')
@@ -246,7 +246,7 @@ test('the mock pins the File at the check: a read after a change fails as a conf
     assert.deepEqual(await bytes(mock.files.get('coconut.nxsp')!), before)
 })
 
-test('the mock’s faults: a crash before close() writes nothing; a change at close() is a conflict', async () => {
+test("the mock's faults: a crash before close() writes nothing; a change at close() is a conflict", async () => {
     const mock = createMockPlatform()
     const handle = mock.createHandle('coconut.nxsp')
     const original = await built()

@@ -99,7 +99,7 @@ const saveAs = (page: import('@playwright/test').Page) =>
         void runCommand(commands.saveAs, 'button')
     })
 
-test('a pick of the chain’s own file whose append then fails gets the bytes read back', async ({
+test("a pick of the chain's own file whose append then fails gets the bytes read back", async ({
     page,
 }) => {
     await start(page)
@@ -127,7 +127,7 @@ test('a pick of the chain’s own file whose append then fails gets the bytes re
     await builds(page, undefined)
 })
 
-test('Save As… picking the chain’s own file with nothing read: a rebuild that failed once is tried again, keeping the file’s identity and History', async ({
+test("Save As… picking the chain's own file with nothing read: a rebuild that failed once is tried again, keeping the file's identity and History", async ({
     page,
 }) => {
     await start(page)
@@ -156,7 +156,7 @@ test('Save As… picking the chain’s own file with nothing read: a rebuild tha
     expect((after.history as Row | undefined)?.entries).toBeGreaterThan(0)
 })
 
-test('Save As… picking the chain’s own file with nothing read: a rebuild that keeps failing never writes Save As…’s identity, and the next Save fills it', async ({
+test("Save As… picking the chain's own file with nothing read: a rebuild that keeps failing never writes Save As…'s identity, and the next Save fills it", async ({
     page,
 }) => {
     await start(page)

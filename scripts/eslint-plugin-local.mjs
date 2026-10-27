@@ -57,11 +57,11 @@ const noLocalTime = {
         type: 'problem',
         schema: [],
         messages: {
-            local: '{{ name }} reads or writes local time. History takes days, hours and minutes from src/calendar/calendar.ts with the History clock’s zone.',
+            local: "{{ name }} reads or writes local time. History takes days, hours and minutes from src/calendar/calendar.ts with the History clock's zone.",
             construct:
                 'new Date here must take one time in ms. Local dates come from src/calendar/calendar.ts.',
             parse: 'Date.parse reads local time. Parse a time where it comes in, not in History.',
-            intl: 'Intl.DateTimeFormat formats in the engine’s zone. Format through historyFormat.',
+            intl: "Intl.DateTimeFormat formats in the engine's zone. Format through historyFormat.",
             call: 'Date() without new writes the local time as text. Local dates come from src/calendar/calendar.ts.',
             now: 'Date.now() belongs to calendarClock.ts. Read the History calendar; time an interval with performance.now().',
         },
@@ -151,8 +151,8 @@ const historyImports = {
         type: 'problem',
         schema: [],
         messages: {
-            module: '{{ module }} formats in the engine’s zone. History formats through historyFormat, from the History calendar.',
-            name: '{{ name }} reads the engine’s zone or clock. History takes its calendar from calendarClock.ts and its text context from historyOperationContext.',
+            module: "{{ module }} formats in the engine's zone. History formats through historyFormat, from the History calendar.",
+            name: "{{ name }} reads the engine's zone or clock. History takes its calendar from calendarClock.ts and its text context from historyOperationContext.",
         },
     },
     create(context) {

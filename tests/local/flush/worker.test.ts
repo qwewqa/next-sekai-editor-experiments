@@ -125,7 +125,7 @@ test('a current worker that reopens into a newer database writes nothing and is 
     }
 })
 
-test('Try Again’s move racing a flush loses no entry and leaves no dangling ref', async () => {
+test("Try Again's move racing a flush loses no entry and leaves no dangling ref", async () => {
     for (const seed of CI_SEEDS) {
         const world = createWorld({ seed })
         const frozen = world.tab('frozen')
@@ -170,7 +170,7 @@ test('Try Again’s move racing a flush loses no entry and leaves no dangling re
     }
 })
 
-test('rows Try Again moves in take the database’s day of use, not the memory store’s', async () => {
+test("rows Try Again moves in take the database's day of use, not the memory store's", async () => {
     const world = createWorld({ seed: 5 })
     // A long-used database: 40 days of use, the last long ago.
     const setup = world.tab('setup')
@@ -344,7 +344,7 @@ for (const [name, flags] of [
                     [{ lastSeq: 3, entryCount: 3, seqs: [1, 2, 3] }],
                     `killed at ${String(killedAt)}`,
                 )
-                // The killed worker’s nse-maint went with it.
+                // The killed worker's nse-maint went with it.
                 assert.equal(
                     world.locks.snapshot().held.some((lock) => lock.name === 'nse-maint'),
                     false,
@@ -371,7 +371,7 @@ const watchTransactions = (
 })
 
 for (const when of ['before', 'during'] as const)
-    test(`a newer tab asking ${when} Try Again’s copy is answered, and storing steps aside`, async () => {
+    test(`a newer tab asking ${when} Try Again's copy is answered, and storing steps aside`, async () => {
         for (const seed of CI_SEEDS) {
             const world = createWorld({ seed })
             const frozen = world.tab('frozen')
@@ -425,7 +425,7 @@ for (const when of ['before', 'during'] as const)
         }
     })
 
-test('a write held behind Try Again’s move counts the move’s steps as its progress', async () => {
+test("a write held behind Try Again's move counts the move's steps as its progress", async () => {
     const world = createWorld({ seed: 3 })
     const frozen = world.tab('frozen')
     const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
@@ -490,7 +490,7 @@ test('a batch planned before a restart is planned again even where the new store
     }
 })
 
-test('where no database will ever answer, a replaced session’s in-memory history is let go', async () => {
+test("where no database will ever answer, a replaced session's in-memory history is let go", async () => {
     const world = createWorld({ seed: 8 })
     const page = await openSplitPage(world, { flags: { noStorage: true } })
     const released: string[] = []

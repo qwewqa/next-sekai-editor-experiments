@@ -33,7 +33,7 @@ test('while off, nothing is counted or recorded', () => {
     assert.equal(recorded.length, 0)
 })
 
-test('a press counts once: a nested command and a held key’s repeats are not counted', () => {
+test("a press counts once: a nested command and a held key's repeats are not counted", () => {
     tally.enable()
     tally.bumpCommand('save', 'key')
     tally.bumpCommand('save', 'key')

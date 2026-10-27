@@ -44,7 +44,7 @@ test('a row above lastSeq is named', () => {
     ])
 })
 
-test('a seq up to lastSeq with no row is named, unless covered, the binding’s own or let go', () => {
+test("a seq up to lastSeq with no row is named, unless covered, the binding's own or let go", () => {
     const rows = [entry('s', 1, 10), entry('s', 3, 30)]
     const stored = session('s', { entryCount: 2 })
     const [hole] = sessionViolations(dump([stored], rows))
@@ -78,7 +78,7 @@ test('a time past maxSeenTime is named, unless the check is off', () => {
     assert.deepEqual(sessionViolations(dump([session('s')], rows), { maxSeenTime: false }), [])
 })
 
-test('a parent row past a continuation’s uptoSeq is named', () => {
+test("a parent row past a continuation's uptoSeq is named", () => {
     const parent = session('p', { lastSeq: 3, entryCount: 3 })
     const child = session('k', { lastSeq: 1, entryCount: 1, parent: { id: 'p', uptoSeq: 2 } })
     const rows = [entry('p', 1, 10), entry('p', 2, 20), entry('p', 3, 30), entry('k', 1, 40)]
@@ -94,7 +94,7 @@ test('an entryCount that is not the number of rows is named', () => {
     ])
 })
 
-test('a key that is not the row’s own session and seq is named', () => {
+test("a key that is not the row's own session and seq is named", () => {
     const rows = [
         entry('s', 1, 10),
         { ...entry('s', 2, 20), key: ['s', 3] as Key },
@@ -104,7 +104,7 @@ test('a key that is not the row’s own session and seq is named', () => {
     assert.match(mismatch!, /its row says session s seq 2/)
 })
 
-test('a session opened from a file keeps its rows’ own times: no time check', () => {
+test("a session opened from a file keeps its rows' own times: no time check", () => {
     const rows = [entry('s', 1, 10), entry('s', 2, 500), entry('s', 3, 30)]
     for (const origin of ['nxsp', 'replaced'])
         assert.deepEqual(sessionViolations(dump([session('s', { origin })], rows)), [])
@@ -115,7 +115,7 @@ test('a session opened from a file keeps its rows’ own times: no time check', 
 // session's holes are allowed once its import ended, learned holes are allowed, and replay runs
 // for every followable session, stack or not.
 
-test('a fork’s parent may go on as its own chain’s head: no parent rule across chains', () => {
+test("a fork's parent may go on as its own chain's head: no parent rule across chains", () => {
     const parent = session('p', { lastSeq: 3, entryCount: 3 })
     const fork = session('f', {
         chainId: 'other',
@@ -132,7 +132,7 @@ test('a fork’s parent may go on as its own chain’s head: no parent rule acro
     assert.deepEqual(sessionViolations(found), [])
 })
 
-test('rows an ended import never brought are holes that are allowed; a plain session’s are not', () => {
+test("rows an ended import never brought are holes that are allowed; a plain session's are not", () => {
     const rows = [entry('s', 1, 10), entry('s', 3, 30)]
     const stored = (extra: object) => session('s', { entryCount: 2, ...extra })
     for (const origin of ['nxsp', 'replaced'])
@@ -216,7 +216,7 @@ test('a session with no stored stack is replayed: a save that does not land is n
     )
 })
 
-test('an opened session’s own rows keep the hole and time rules; only the file’s rows are exempt', () => {
+test("an opened session's own rows keep the hole and time rules; only the file's rows are exempt", () => {
     const open = (extra: object = {}) =>
         session('s', { origin: 'nxsp', lastSeq: 9, entryCount: 5, ...extra })
     const fileEnd = (id: string) => (id === 's' ? 5 : undefined)
@@ -269,7 +269,7 @@ test('a continue row at the lowest row is whole, also with a hole below nothing'
     )
 })
 
-test('a session that holds a file’s rows, or whose origin is unknown or missing, may hold a continue row anywhere', () => {
+test("a session that holds a file's rows, or whose origin is unknown or missing, may hold a continue row anywhere", () => {
     const rows = [entry('s', 1, 10), entry('s', 2, 20, { kind: 'continue' }), entry('s', 3, 30)]
     for (const origin of ['nxsp', 'replaced', 'future', undefined])
         assert.deepEqual(sessionViolations(dump([session('s', { origin })], rows)), [])

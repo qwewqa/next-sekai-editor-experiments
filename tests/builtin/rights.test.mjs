@@ -98,7 +98,7 @@ test('coconut appears in no locale file', () => {
             )
 })
 
-test('the palette copies match the editor’s note constants', () => {
+test("the palette copies match the editor's note constants", () => {
     const notes = read('src/editor/canvas/notes.ts').toString('utf8')
     const colors = [
         ...Object.values(bodyColors).flat(),

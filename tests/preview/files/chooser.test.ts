@@ -82,7 +82,7 @@ const collection = () =>
         ['effect', named('neon', 'Neon Sounds')],
     ])
 
-test('the items of the chooser’s type are listed, and a lone one is selected', async () => {
+test("the items of the chooser's type are listed, and a lone one is selected", async () => {
     const { deps } = setup()
     const chooser = createAssetChooser('skin', deps)
     chooser.show()
@@ -449,7 +449,7 @@ test('cancelling during validation makes no storage attempt or refresh', async (
     assert.deepEqual(await store.list(), [])
 })
 
-test('late cancellation preserves a second caller’s verified choice and a newer chooser generation', async (t) => {
+test("late cancellation preserves a second caller's verified choice and a newer chooser generation", async (t) => {
     const { deps, store, applied } = setup()
     const reading = deferred()
     const release = deferred()

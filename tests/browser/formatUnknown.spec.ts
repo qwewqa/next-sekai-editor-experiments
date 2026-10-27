@@ -52,7 +52,7 @@ for (const where of ['entity', 'data', 'value and ref'])
         expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
     })
 
-test('a newer patch alone opens bound with its history, says so once, and saving writes this build’s patch', async ({
+test("a newer patch alone opens bound with its history, says so once, and saving writes this build's patch", async ({
     page,
 }) => {
     await start(page)
@@ -86,7 +86,7 @@ test('a newer patch alone opens bound with its history, says so once, and saving
     expect((await projectOf(page, 'coconut.nxsp')).minor).toBe(0)
 })
 
-test('a newer patch beside another unknown thing is one line, the partial open’s', async ({
+test("a newer patch beside another unknown thing is one line, the partial open's", async ({
     page,
 }) => {
     await start(page)

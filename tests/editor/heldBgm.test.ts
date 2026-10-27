@@ -99,7 +99,7 @@ beforeEach(() => {
     show(named('a'))
 })
 
-test('the cache keeps three hashes, drops the least recently used, and never the live head’s', () => {
+test("the cache keeps three hashes, drops the least recently used, and never the live head's", () => {
     show(named('a'))
     cacheHeld('a', parts('a'))
     cacheHeld('b', parts('b'))

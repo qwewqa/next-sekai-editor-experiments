@@ -99,7 +99,7 @@ test('replay of the example: the stack after a save is the one the user had', ()
     )
 })
 
-test('replay takes a recovered entry’s stack as it is, and continues from an inherited one', () => {
+test("replay takes a recovered entry's stack as it is, and continues from an inherited one", () => {
     const entries = [
         entry('init', 1),
         entry('edit', 2),
@@ -146,7 +146,7 @@ test('replay takes a recovered entry’s stack as it is, and continues from an i
     assert.equal(replay([entry('continue', 5)]).slots.length, 1)
 })
 
-test('replay refuses entries that don’t describe a stack', () => {
+test("replay refuses entries that don't describe a stack", () => {
     assert.throws(() => replay([entry('edit', 1)]), ReplayError)
     assert.throws(() => replay([entry('init', 1), entry('undo', 1)]), ReplayError)
     assert.throws(() => replay([entry('init', 1), entry('init', 2)]), ReplayError)

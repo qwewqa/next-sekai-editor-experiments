@@ -232,7 +232,7 @@ export const checkParticleData = (raw: unknown): ParticleData => {
         }
         if (effect.groups.length > LIMITS.particlesPerEffect)
             throw new AssetImportError('effectGroups', detail)
-        // `count × particles` is what an effect can have alive at once; the draw walks every
+        // `count * particles` is what an effect can have alive at once; the draw walks every
         // occurrence of a group, so one with no particles counts as one.
         let alive = 0
         let particles = 0

@@ -447,7 +447,7 @@ test('Reopen continues the session left by New', async ({ page }) => {
     expect((await flushSession(page)).chainId).toBe(original.chainId)
 })
 
-test('the marker clears when the page shows again, so a later Duplicate Tab isn’t a reload', async ({
+test("the marker clears when the page shows again, so a later Duplicate Tab isn't a reload", async ({
     page,
 }) => {
     await visit(page)
@@ -586,7 +586,7 @@ test.describe('storage unavailable', () => {
         expect(journal.header.levelInfo[0]).toBe('both edits')
     })
 
-    test('two tabs keep separate journals, and an earlier visit’s waits in Local Data', async ({
+    test("two tabs keep separate journals, and an earlier visit's waits in Local Data", async ({
         page,
         context,
     }) => {
@@ -791,7 +791,7 @@ test('Start Blank leaves the stored session untouched, and the blank start has i
     expect(await lifeOf(page)).toBe(950)
 })
 
-test('safe mode’s real startup opens blank and read-only, and writes no journal', async ({
+test("safe mode's real startup opens blank and read-only, and writes no journal", async ({
     page,
 }) => {
     await visit(page)
@@ -884,7 +884,7 @@ test('Reopen Closed Tab: the lock coming free within the wait is a reload; held 
     expect(await lifeOf(reopened)).toBe(990)
 })
 
-test('a late flush landing during the marker’s wait is in the session the reload takes up', async ({
+test("a late flush landing during the marker's wait is in the session the reload takes up", async ({
     page,
     context,
 }) => {
@@ -914,7 +914,7 @@ test('a late flush landing during the marker’s wait is in the session the relo
     expect(entries.map((entry) => entry.kind)).toEqual(['init', 'edit', 'edit'])
 })
 
-test('Start Blank, edits, then a reload while startup still runs brings back the blank start’s work', async ({
+test("Start Blank, edits, then a reload while startup still runs brings back the blank start's work", async ({
     page,
 }) => {
     await visit(page)
@@ -942,7 +942,7 @@ test('Start Blank, edits, then a reload while startup still runs brings back the
     expect((await flushSession(page)).chainId).not.toBe(stored.chainId)
 })
 
-test('Start Blank’s edits while the worker hasn’t answered have a journal: a kill keeps them', async ({
+test("Start Blank's edits while the worker hasn't answered have a journal: a kill keeps them", async ({
     page,
     context,
 }) => {
@@ -987,10 +987,10 @@ const seedRecovered = async (page: Page) => {
     })
     // A recovered row's bytes are a Blob, which a private-style context's IndexedDB refuses (WebKit
     // in Playwright, Safari's private windows): there is no row to act on there.
-    test.skip(!kept, 'This browser’s storage refuses Blob rows, so no recovered row can be kept')
+    test.skip(!kept, "This browser's storage refuses Blob rows, so no recovered row can be kept")
 }
 
-test('Local Data’s Download of a recovered row whose read fails shows the card and keeps the row', async ({
+test("Local Data's Download of a recovered row whose read fails shows the card and keeps the row", async ({
     page,
     context,
 }) => {
@@ -1023,7 +1023,7 @@ test('Local Data’s Download of a recovered row whose read fails shows the card
     expect(downloaded).toBe(false)
 })
 
-test('Local Data’s Download of a recovered row gone since it was listed reads the list again', async ({
+test("Local Data's Download of a recovered row gone since it was listed reads the list again", async ({
     page,
     context,
 }) => {

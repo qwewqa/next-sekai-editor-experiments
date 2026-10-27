@@ -1488,7 +1488,7 @@ test('idle time compiles the sections nearest the view, and they replay unchange
     assert.ok(renderer.ranges.every(({ released }) => released))
 })
 
-test('idle compilation uses the frame’s transform, and none when the drawing state changed', () => {
+test("idle compilation uses the frame's transform, and none when the drawing state changed", () => {
     const state = aheadFixture()
     const plan = vectorSections(state)
     const idle = manualIdle()

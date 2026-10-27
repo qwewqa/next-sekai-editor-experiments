@@ -68,7 +68,7 @@ test('a nested folder loads from its records and re-encodes to the same root', (
     assert.equal(toHex(encodeSnapshot(toRecords(back)).root.hash), toHex(encoded.root.hash))
 })
 
-test('the Manager’s tree shows nested folders flat, each with its own members, and loses nothing', () => {
+test("the Manager's tree shows nested folders flat, each with its own members, and loses nothing", () => {
     const { state } = throughSnapshot(nested())
     // Inner has no member: it is listed at the top level, after the folder that holds it.
     let tree = buildFolderTree(state.stages, state.stageFolders)
@@ -135,7 +135,7 @@ test('level data shows the folders flat: no folder entity names another, and it 
     assert.equal(again.entities.filter((e) => e.archetype === stageFolderArchetype).length, 2)
 })
 
-test('a nested state’s file opens: the history head keeps the nesting, level.json is flat and matches it', async () => {
+test("a nested state's file opens: the history head keeps the nesting, level.json is flat and matches it", async () => {
     const { executePlan, planNxsp, readNxsp } = await import('../../../src/local/nxsp')
     const { fresh } = await import('../nxsp/chain')
     const { levelDataMatchesState } = await import('../../../src/local/records/normalised')

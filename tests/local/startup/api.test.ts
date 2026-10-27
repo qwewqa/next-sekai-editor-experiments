@@ -128,7 +128,7 @@ test('Restore as a Copy forks the session open in another tab', async () => {
     lock.release()
 })
 
-test('Local Data’s rows: Discard removes a row only while it holds what was listed, and Open leaves the key', async () => {
+test("Local Data's rows: Discard removes a row only while it holds what was listed, and Open leaves the key", async () => {
     const world = createWorld({ seed: 4 })
     const storage = new MemoryStorage()
     // An earlier visit's journal while storage is unavailable, in the page's localStorage.
@@ -235,7 +235,7 @@ test('a recovery listing that fails is reported as unreadable, never as nothing 
     assert.deepEqual(failed.items, [])
 })
 
-test('a recovered row’s download that fails is failed, and a row gone since it was listed is a value of none', async () => {
+test("a recovered row's download that fails is failed, and a row gone since it was listed is a value of none", async () => {
     const world = createWorld({ seed: 5 })
     const storage = new MemoryStorage()
     storage.setItem('nse.journal.a', '{"damaged":')
@@ -290,7 +290,7 @@ const pendingJournal = async (world: World, storage: MemoryStorage) => {
     return { session, root }
 }
 
-test('Reopen of a session whose journal fails to apply starts from the journal’s state, never the stale one', async () => {
+test("Reopen of a session whose journal fails to apply starts from the journal's state, never the stale one", async () => {
     const world = createWorld({ seed: 6 })
     const storage = new MemoryStorage()
     const loaded = await load(world, 'tab', storage)
@@ -373,7 +373,7 @@ test('Reopen over a failed journal a flush covered since takes up the stored ses
     assert.equal(storage.getItem(`nse.journal.${session.id}`), null)
 })
 
-test('applyPendingJournal applies a dead tab’s journal under the session’s lock, never while another tab holds it', async () => {
+test("applyPendingJournal applies a dead tab's journal under the session's lock, never while another tab holds it", async () => {
     const world = createWorld({ seed: 9 })
     const storage = new MemoryStorage()
     const loaded = await load(world, 'tab', storage)

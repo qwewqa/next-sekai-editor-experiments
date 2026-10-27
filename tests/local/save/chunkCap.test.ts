@@ -21,7 +21,7 @@ const refusal = (built: Awaited<ReturnType<typeof save>>['built']) => {
     return built as { refused: string; limit?: string }
 }
 
-test('a stored chunk past the reader’s cap is refused, not written', async () => {
+test("a stored chunk past the reader's cap is refused, not written", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.editState(oversized(), { id: 'big' })
@@ -34,7 +34,7 @@ test('a stored chunk past the reader’s cap is refused, not written', async () 
     )
 })
 
-test('a pending chunk past the reader’s cap is refused, not written', async () => {
+test("a pending chunk past the reader's cap is refused, not written", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.editState(oversized(), { id: 'big' })

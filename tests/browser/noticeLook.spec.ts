@@ -131,7 +131,7 @@ test.describe('the severity glyph', () => {
         await expect(page.getByRole('status')).toHaveText('This version is older than your data.')
     })
 
-    test('a card with a severity keeps the strip’s 44 px height, 22 px radius and 36 px controls', async ({
+    test("a card with a severity keeps the strip's 44 px height, 22 px radius and 36 px controls", async ({
         page,
     }) => {
         await boot(page)
@@ -193,7 +193,7 @@ test.describe('severity beyond the plain card', () => {
     })
 })
 
-test.describe('the producers’ severities', () => {
+test.describe("the producers' severities", () => {
     test('a save error is an error card', async ({ page }) => {
         await boot(page)
         await page.evaluate(async () => {
@@ -325,7 +325,7 @@ test.describe('the start-up card', () => {
 test.describe('one line, or stacked', () => {
     const long = 'Opened coconut.nxsp. You have unsaved changes to it from Oct 14.'
 
-    test('an action shares the message’s line when both fit, and sits under it when not', async ({
+    test("an action shares the message's line when both fit, and sits under it when not", async ({
         page,
     }) => {
         await boot(page)

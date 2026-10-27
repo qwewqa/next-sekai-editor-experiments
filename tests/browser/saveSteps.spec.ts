@@ -75,7 +75,7 @@ test('Save shows the steps the Timeline counts, and no number before they are kn
     expect(shown).toBe(await timelineSteps(page))
 })
 
-test('Save As shows the steps the Timeline counts, the first Save’s entry among them', async ({
+test("Save As shows the steps the Timeline counts, the first Save's entry among them", async ({
     page,
 }) => {
     await start(page)
@@ -95,7 +95,7 @@ test('Save As shows the steps the Timeline counts, the first Save’s entry amon
     expect(again).toBe(await timelineSteps(page))
 })
 
-test('Recent Sessions’ Save… shows the steps its session holds', async ({ page }) => {
+test("Recent Sessions' Save… shows the steps its session holds", async ({ page }) => {
     await start(page)
     for (let beat = 1; beat <= 4; beat++) await edit(page, beat)
     await pressSave(page)

@@ -19,7 +19,7 @@ const marker = (chainId: string) =>
         unit: { docId: `doc-${chainId}`, file: { hash: 'ab' } },
     }) as never
 
-test('a deleted chain’s marker and kept bytes are removed, and kept when the read fails', async () => {
+test("a deleted chain's marker and kept bytes are removed, and kept when the read fails", async () => {
     localStorage.clear()
     for (const chainId of ['gone', 'held', 'unreadable']) assert.ok(writeMarker(marker(chainId)))
     const copies = new Set(['gone', 'held', 'unreadable', 'goneCopy'])
@@ -66,7 +66,7 @@ test('a binding refresh whose record read fails changes nothing', async () => {
     assert.deepEqual((session.chain as { replaced?: unknown }).replaced, replaced)
 })
 
-test('a binding refresh reads an untouched continuation’s record, and not a new chain’s', async () => {
+test("a binding refresh reads an untouched continuation's record, and not a new chain's", async () => {
     localStorage.clear()
     const replaced = { by: 'other', at: 5, name: 'a.nxsp' }
     const make = (extra: object) => ({

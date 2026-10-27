@@ -126,7 +126,7 @@ test('a picked BGM is stored with the entry first naming it, at once and strictl
     assert.deepEqual(page.batches.at(-1)?.held, [meta.hash])
 })
 
-test('the head’s BGM is stored again when it went missing, while this tab holds it', async () => {
+test("the head's BGM is stored again when it went missing, while this tab holds it", async () => {
     const world = createWorld({ seed: 2 })
     const page = await openPage(world, world.tab('a'))
     const picked = await withSong(stateOf(goldenChart()), 2)
@@ -163,7 +163,7 @@ test('the head’s BGM is stored again when it went missing, while this tab hold
     assert.equal(rows(world, 'media').size, 1)
 })
 
-test('a state whose BGM isn’t held stores its metadata only', async () => {
+test("a state whose BGM isn't held stores its metadata only", async () => {
     const world = createWorld({ seed: 3 })
     const page = await openPage(world, world.tab('a'))
     const notLoaded = await withSong(stateOf(goldenChart()), 3, false)
@@ -226,7 +226,7 @@ test('a media row that reads back wrong twice is removed and pending, and the hi
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a BGM that never reads back right blocks no history, and later flushes don’t carry it', async () => {
+test("a BGM that never reads back right blocks no history, and later flushes don't carry it", async () => {
     const world = createWorld({ seed: 10 })
     const page = await openPage(world, world.tab('a'))
     let reads = 0
@@ -267,7 +267,7 @@ test('a BGM that never reads back right blocks no history, and later flushes don
     }
 })
 
-test('a Blob the database refuses, as WebKit’s private windows do, blocks no history and pauses nothing', async () => {
+test("a Blob the database refuses, as WebKit's private windows do, blocks no history and pauses nothing", async () => {
     const world = createWorld({ seed: 40 })
     const page = await openPage(world, world.tab('a'))
     const statuses: StorageStatus[] = []
@@ -311,7 +311,7 @@ test('a Blob the database refuses, as WebKit’s private windows do, blocks no h
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a media row that can’t be read is kept, and read back again later', async () => {
+test("a media row that can't be read is kept, and read back again later", async () => {
     const world = createWorld({ seed: 11 })
     const page = await openPage(world, world.tab('a'))
     setMediaReadBackHookForTests(() => {
@@ -356,7 +356,7 @@ test('a BGM an earlier load stored and read back is not read back again', async 
     assert.equal(reads, 0)
 })
 
-test('a worker killed between a media flush’s commit and its read-back reads it back once restarted', async () => {
+test("a worker killed between a media flush's commit and its read-back reads it back once restarted", async () => {
     const world = createWorld({ seed: 7 })
     const page = await openSplitPage(world)
     let reads = 0
@@ -385,7 +385,7 @@ test('a worker killed between a media flush’s commit and its read-back reads i
     assert.equal(page.flusher.hasPending, false)
 })
 
-test('media bytes that don’t hash to their hash are refused', async () => {
+test("media bytes that don't hash to their hash are refused", async () => {
     const world = createWorld({ seed: 6 })
     const page = await openPage(world, world.tab('a'))
     const picked = await withSong(stateOf(goldenChart()), 6)
@@ -461,7 +461,7 @@ test('a media item stored alone that fails by anything but the Blob refusal paus
     world.memory.faults.put = undefined
 })
 
-test('an UnknownError on a Blob row is the refusal whatever its message, and on any other row it isn’t', async () => {
+test("an UnknownError on a Blob row is the refusal whatever its message, and on any other row it isn't", async () => {
     const world = createWorld({ seed: 43 })
     const page = await openPage(world, world.tab('a'))
     const picked = await withSong(stateOf(goldenChart()), 43)

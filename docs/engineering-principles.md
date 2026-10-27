@@ -92,11 +92,11 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** No feature or element is free. Each is code to maintain, and one that users almost never need still costs them real estate, clicks or confusion. Such an element wastes effort, adds upkeep and leaves users worse off.
 
-**Example.** The Groups and Stages managers had a collapsed “Current Group” / “Current Stage” row at the top of the list. It only revealed the current item’s path and its shown count, and the status bar’s scope label and the list’s current row already show both; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the “Use only items you are allowed to use.” line the same day.
+**Example.** The Groups and Stages managers had a collapsed "Current Group" / "Current Stage" row at the top of the list. It only revealed the current item’s path and its shown count, and the status bar’s scope label and the list’s current row already show both; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the "Use only items you are allowed to use." line the same day.
 
 ## 12. Users delete history; automatic processes do not
 
-**Rule.** A user's explicit delete always works from the UI: Delete in Recent Sessions and Delete Sessions… remove a chain whatever it holds (a damaged head, a session of a newer version), refusing only while a tab has it open. Automatic processes never remove a user's history: cleanup under pressure removes only cached media that no chain's latest state uses, first stored at least 2 days of use ago (an earlier step whose BGM went then shows “BGM not loaded”, with Choose Audio…), and GC removes only what nothing reaches.
+**Rule.** A user's explicit delete always works from the UI: Delete in Recent Sessions and Delete Sessions… remove a chain whatever it holds (a damaged head, a session of a newer version), refusing only while a tab has it open. Automatic processes never remove a user's history: cleanup under pressure removes only cached media that no chain's latest state uses, first stored at least 2 days of use ago (an earlier step whose BGM went then shows "BGM not loaded", with Choose Audio…), and GC removes only what nothing reaches.
 
 **Why.** History is the safeguard users rely on, so losing it without being asked is the worst failure, and a stored chain the user cannot remove is a dead end when the browser is full. Rules that let an automatic process pick history to drop (by age, by size, by whether a file holds it) kept growing exceptions, each a new way to lose work; one simple split is easy to keep true.
 

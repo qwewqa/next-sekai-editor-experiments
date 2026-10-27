@@ -63,7 +63,7 @@ const edit = (seq: number, k: number): PendingEntry => ({
     dirty: true,
 })
 
-test('a refused head is built again with the live head’s records added to the unflushed ones', async () => {
+test("a refused head is built again with the live head's records added to the unflushed ones", async () => {
     // One unflushed edit with its state, one undo onto a stored slot: its root only.
     const undo: PendingEntry = {
         kind: 'undo',
@@ -98,7 +98,7 @@ test('a refused head is built again with the live head’s records added to the 
     )
 })
 
-test('a refused head with nothing unflushed is built again from the live head’s records alone', async () => {
+test("a refused head with nothing unflushed is built again from the live head's records alone", async () => {
     const { env, calls } = envWith([])
     assert.equal(await runBuild(env, request()), built)
     assert.equal(calls.length, 2)
@@ -108,7 +108,7 @@ test('a refused head with nothing unflushed is built again from the live head’
     assert.ok(pending.records.roots[rootOf(stateAt(3).state)])
 })
 
-test('Recent Sessions’ Save… of a session that isn’t open never builds again: the refusal stands', async () => {
+test("Recent Sessions' Save… of a session that isn't open never builds again: the refusal stands", async () => {
     const { env, calls } = envWith([edit(5, 2)])
     await assert.rejects(
         runBuild(env, request('other')),

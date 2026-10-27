@@ -146,22 +146,22 @@ const dynamic: Record<string, string> = {
     'commands.previewAssets.serverImport.': 'Record<ImportErrorCode> for a server item',
     'commands.previewAssets.part.': 'the part named by the refused entry',
     'commands.previewAssets.server.': 'the server error kinds',
-    'settings.editor.theme.': 'the setting’s options',
-    'settings.preview.position.': 'the setting’s options',
-    'settings.preview.transport.': 'the setting’s options',
-    'settings.preview.controls.': 'the setting’s options',
-    'workspace.dock.': 'the setting’s options',
+    'settings.editor.theme.': "the setting's options",
+    'settings.preview.position.': "the setting's options",
+    'settings.preview.transport.': "the setting's options",
+    'settings.preview.controls.': "the setting's options",
+    'workspace.dock.': "the setting's options",
     'storage.': 'StorageLineKey',
     'save.': 'FileErrorKey',
-    'name.': 'the file name problem’s reason',
+    'name.': "the file name problem's reason",
     'tools.brush.kinds.': 'PropertyKind',
-    'modals.form.key.names.': 'the key’s name from the event',
+    'modals.form.key.names.': "the key's name from the event",
     'modals.loading.': 'TaskFailureKind',
     'peek.loadingShort': 'fixedLines in history/changes.ts, read through fixedLine',
     'open.media.': 'the media name, read as open.media[line.media] in commands/open/project.ts',
     'peek.noChanges': 'fixedLines in history/changes.ts, read through fixedLine',
     'peek.unavailableShort': 'fixedLines in history/changes.ts, read through fixedLine',
-    'commands.open.opened': "levelData: 'opened' in open/index.ts, read as the result’s message",
+    'commands.open.opened': "levelData: 'opened' in open/index.ts, read as the result's message",
     'commands.open.imported': 'the importedChcy/Usc/Sus map in open/index.ts',
     'commands.open.revision.': 'RevisionWarning names, read as revision[message]',
     'commands.scaleBeat.': 'labelKeys in scaleSelection/labels.ts',
@@ -174,13 +174,13 @@ const dynamic: Record<string, string> = {
     'commands.previewAssets.background': 'the asset type, read as strings[type]',
     'commands.previewAssets.effect': 'the asset type, read as strings[type]',
     'commands.divisions.custom.modal.title':
-        'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
+        "the modal's labels, chosen by axis in CustomDivisionModal.vue",
     'commands.laneDivisions.custom.modal.title':
-        'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
+        "the modal's labels, chosen by axis in CustomDivisionModal.vue",
     'commands.divisions.custom.modal.division':
-        'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
+        "the modal's labels, chosen by axis in CustomDivisionModal.vue",
     'commands.laneDivisions.custom.modal.division':
-        'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
+        "the modal's labels, chosen by axis in CustomDivisionModal.vue",
     'tools.bpm.':
         'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
     'tools.timeScale.':
@@ -418,7 +418,7 @@ test('removed messages stay out of every locale', () => {
 // ExportLine.vue links "Export Level Data…" inside `save.exportHint` and `save.exportHintFirst`
 // by finding the command's title in the text, and shows no link when a locale words one without
 // the other.
-test('the Save dialog’s export hint contains the Export command’s title in every locale', () => {
+test("the Save dialog's export hint contains the Export command's title in every locale", () => {
     for (const locale of locales) {
         const messages = read(locale)
         const hint = messages['save.exportHint']!
@@ -437,7 +437,7 @@ test('the Save dialog’s export hint contains the Export command’s title in e
 })
 
 // labelText.ts joins the file line's event to the status label by dropping the leading "{0} · ".
-test('the file line’s opened and downloaded events start with "{0} · " in every locale', () => {
+test('the file line\'s opened and downloaded events start with "{0} · " in every locale', () => {
     for (const locale of locales) {
         const messages = read(locale)
         for (const key of ['file.opened', 'file.downloaded']) {

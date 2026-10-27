@@ -619,7 +619,7 @@ test('random edits and Saves never lose a version, over-claim or repeat the line
 const cases = [
     { name: 'no build has found, without a grant held', granted: false, known: false },
     { name: 'no build has found, with a grant held', granted: true, known: false },
-    { name: 'another chain’s build found, without a grant held', granted: false, known: true },
+    { name: "another chain's build found, without a grant held", granted: false, known: true },
 ]
 
 for (const { name, granted, known } of cases)

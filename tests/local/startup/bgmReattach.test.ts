@@ -63,7 +63,7 @@ const dropMedia = async (world: World, hash: string) => {
 test('a new visit of a session whose BGM is in the media store attaches it and says nothing', async () => {
     const { world, storage, captured } = await stored(1)
     const visit = await load(world, 'visit', storage)
-    // Today’s bug: the BGM is held, yet the state had no audio and the load said "not loaded".
+    // Today's bug: the BGM is held, yet the state had no audio and the load said "not loaded".
     assert.deepEqual(said(visit), [])
     const bgm = liveState.value.bgm
     assert.ok(bgm.buffer, 'the audio is attached')

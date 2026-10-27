@@ -30,7 +30,7 @@ const chart: [RegExp, string][] = [
     [/^src\/modals\/form\/NoteShapeIcon\.vue$/, 'note artwork'],
     [
         /^src\/editor\/commands\/(bpm|timeScale)\.ts$/,
-        'chips that match the chart’s BPM and time-scale colours',
+        "chips that match the chart's BPM and time-scale colours",
     ],
 ]
 

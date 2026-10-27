@@ -109,7 +109,7 @@ export const presentRow = (
 
 /**
  * Fixed heights drive both window offsets and the rendered rows. They are px at the 16 px rem; k (the
- * root font size / 16) scales them as the rows’ classes scale.
+ * root font size / 16) scales them as the rows' classes scale.
  */
 export const heightOf = (row: Row, k = 1) =>
     (row.type === 'header'

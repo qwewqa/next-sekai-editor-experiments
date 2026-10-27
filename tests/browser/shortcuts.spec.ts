@@ -278,7 +278,7 @@ test.describe('chords', () => {
         })
     }
 
-    test('Ctrl+S is Save’s fixed alias; a chord bound to it runs that command instead', async ({
+    test("Ctrl+S is Save's fixed alias; a chord bound to it runs that command instead", async ({
         page,
     }) => {
         await logDefaults(page)
@@ -1027,7 +1027,7 @@ test('held Combine Notes and Make Vertical keys act once', async ({ page }) => {
     expect(counts).toEqual({ combineNotes: 1, makeVertical: 1 })
 })
 
-test('shortcut chips use the locale’s key names', async ({ page }) => {
+test("shortcut chips use the locale's key names", async ({ page }) => {
     await page.evaluate(() => {
         const { settings, history, store } = window.editorTest
         settings.locale = 'fr'

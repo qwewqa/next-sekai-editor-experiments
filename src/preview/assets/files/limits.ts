@@ -23,7 +23,7 @@ export const LIMITS = {
     skinSprites: 20_000,
     particleSprites: 4096,
     particleEffects: 4096,
-    /** `count × particles` of an effect, and its particles and its groups */
+    /** `count * particles` of an effect, and its particles and its groups */
     particlesPerEffect: 512,
     /** The particles, and the groups, of all a particle's effects together */
     particlesInAll: 32_768,

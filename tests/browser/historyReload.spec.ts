@@ -472,7 +472,7 @@ test('after a crash the recovered rows are in the Timeline, and peek and Restore
     playwright,
     browserName,
 }, testInfo) => {
-    test.skip(browserName !== 'chromium', 'CDP Page.crash is Chromium’s')
+    test.skip(browserName !== 'chromium', "CDP Page.crash is Chromium's")
     // Two browser starts over one profile on disk.
     test.setTimeout(120_000)
     const { baseURL } = testInfo.project.use

@@ -254,7 +254,7 @@ test('a file without history opened by name: History is ticked and can be untick
     await expect(history.getByRole('checkbox')).toBeChecked()
 })
 
-test.describe('Recent Sessions’ Save…', () => {
+test.describe("Recent Sessions' Save…", () => {
     const toFile = (page: Page, sessionId: string) =>
         page.evaluate((sessionId) => {
             void import('/src/editor/save/flow.ts').then((flow) => flow.saveToFile(sessionId))
@@ -276,7 +276,7 @@ test.describe('Recent Sessions’ Save…', () => {
         return sessionId
     }
 
-    test('the BGM row names the session’s own BGM, size included in the total', async ({
+    test("the BGM row names the session's own BGM, size included in the total", async ({
         page,
     }) => {
         await start(page, { fileSystemAccess: false })
@@ -296,7 +296,7 @@ test.describe('Recent Sessions’ Save…', () => {
     })
 })
 
-test('a conflict with another project’s file says it is another project, named or not', async ({
+test("a conflict with another project's file says it is another project, named or not", async ({
     page,
 }) => {
     const { executePlan, planNxsp } = await import('../../src/local/nxsp')
@@ -355,7 +355,7 @@ test('a feedback for a session another tab holds says so to assistive technology
 test.describe('a large download on a touch device', () => {
     test.use({ hasTouch: true })
 
-    test('opens “Preparing…” at once with the estimated size', async ({ page }) => {
+    test('opens "Preparing…" at once with the estimated size', async ({ page }) => {
         await start(page, { fileSystemAccess: false })
         await edit(page, 1)
         await setBgm(page, 'song.mp3', 2_500_000)
@@ -385,7 +385,7 @@ test.describe('a large download on a touch device', () => {
         )
     })
 
-    test('“Preparing…” closes when storing the state first fails', async ({ page }) => {
+    test('"Preparing…" closes when storing the state first fails', async ({ page }) => {
         await start(page, { fileSystemAccess: false })
         await edit(page, 1)
         await setBgm(page, 'song.mp3', 2_500_000)
@@ -393,7 +393,7 @@ test.describe('a large download on a touch device', () => {
         await pressSave(page)
         await expect(saveDialog(page).locator('[data-save-total]')).toContainText('about 2.')
         // The state is stored before the file is built, and that fails (a full disk): after
-        // “Preparing…” has opened for the large download.
+        // "Preparing…" has opened for the large download.
         await page.evaluate(() => {
             window.nseFlushTest!.flusher.flush = () => Promise.reject(new Error('The disk is full'))
             const seen: string[] = []
@@ -493,7 +493,7 @@ test.describe('a picker that renames the file', () => {
         })
     }
 
-    test('taking over another tab’s file under a new name writes the picked name into it', async ({
+    test("taking over another tab's file under a new name writes the picked name into it", async ({
         context,
     }) => {
         const b = await context.newPage()

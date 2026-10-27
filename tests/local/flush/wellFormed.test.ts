@@ -30,7 +30,7 @@ test('names typed in the managers, and names from level data, are well formed', 
     assert.equal(folders.get(id)?.name, fixed)
 })
 
-test('file names and the session’s names are well formed', async () => {
+test("file names and the session's names are well formed", async () => {
     assert.equal(getFilename({ name: `${lone}.json` }), fixed)
     assert.equal(createSessionDescriptor({ sourceName: lone, name: lone }).sourceName, fixed)
     const captured = await captureMedia(new ArrayBuffer(8), { name: `${lone}.mp3`, type: '' })

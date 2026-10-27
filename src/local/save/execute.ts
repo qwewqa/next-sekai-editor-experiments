@@ -166,7 +166,7 @@ export const buildSave = async (
         // After the check, so it never changes what was built; a failure is only logged.
         if (source && file)
             await repairFromSource(store, source, file).catch((error: unknown) => {
-                console.error('Putting damage in storage right from the chain’s file failed', error)
+                console.error("Putting damage in storage right from the chain's file failed", error)
             })
     }
     return built

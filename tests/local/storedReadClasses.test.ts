@@ -130,7 +130,7 @@ const covered = (Object.keys(CLASSES) as (keyof typeof CLASSES)[]).filter(
     (key) => CLASSES[key] === 'covered',
 )
 
-test('the gate’s list is the covered class, and the lint rule’s list is the gate’s', () => {
+test("the gate's list is the covered class, and the lint rule's list is the gate's", () => {
     assert.deepEqual([...COVERED_READS].sort(), [...covered].sort())
     const source = readFileSync(
         new URL('../../scripts/eslint-plugin-local.mjs', import.meta.url),

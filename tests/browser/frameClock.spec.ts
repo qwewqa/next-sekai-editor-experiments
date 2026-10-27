@@ -335,7 +335,7 @@ test('a History flush runs the clock until its steps are stored', async ({ page 
 test.describe('touch', () => {
     test.use({ hasTouch: true })
 
-    test('a quick-scroll flick from an idle clock throws at its last 100 ms’ speed and comes to rest', async ({
+    test("a quick-scroll flick from an idle clock throws at its last 100 ms' speed and comes to rest", async ({
         page,
     }) => {
         const touch = await touchInput(page)

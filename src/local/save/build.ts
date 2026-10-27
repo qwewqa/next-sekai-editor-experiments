@@ -187,7 +187,7 @@ export type SaveRefusalReason =
     | 'notAtBase'
     /** The chain's own file is damaged: the session unlinks, and the Save goes on as Save As…. */
     | 'damagedSource'
-    /** The head's state can't be read: “Coconut” could not be read in full. */
+    /** The head's state can't be read: "Coconut" could not be read in full. */
     | 'unreadableHead'
     /** A plan error: a bug, or a file past a reader cap. */
     | 'plan'
@@ -479,7 +479,7 @@ export const planSave = async (
     const appending = !!source?.manifest
     const history = appending || options.history
     if (appending && !options.history)
-        console.error('A write-back’s history option differs from its file’s; the file’s is kept', {
+        console.error("A write-back's history option differs from its file's; the file's is kept", {
             chainId,
         })
     const cutEntry = chain.file?.entry
@@ -715,7 +715,7 @@ export const planSave = async (
             } else {
                 // Sessions removed from the chain's middle: replay of the file gives another
                 // stack than the session's, and replay defines the stack.
-                console.warn('A Save’s undo stack is replay’s of its file', { chainId })
+                console.warn("A Save's undo stack is replay's of its file", { chainId })
                 undoStack = cutStack(
                     capStack({ base: 0, slots: [...file.slots], index: file.index }),
                     held,

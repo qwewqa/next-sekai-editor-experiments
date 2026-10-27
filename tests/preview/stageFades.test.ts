@@ -193,7 +193,7 @@ test('the lane background fades as a pair below the band, with the lane alpha', 
 })
 
 test('a lane color change between sprites a skin shares is drawn once', () => {
-    // Green and Yellow, which this skin has no lane for: both are the skin’s own lane.
+    // Green and Yellow, which this skin has no lane for: both are the skin's own lane.
     const draws = record(
         skinOf(),
         baseProps({ laneColor: { start: 3, end: 5, progress: 0.5 }, laneAlpha: 0.6 }),
@@ -220,7 +220,7 @@ test('lane color shares stay within 0..1 when the ease overshoots', () => {
     }
 })
 
-test('the stages’ draw slots never interleave', () => {
+test("the stages' draw slots never interleave", () => {
     const fading = (order: number) =>
         record(
             skinOf(),

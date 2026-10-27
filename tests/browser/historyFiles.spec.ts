@@ -372,7 +372,7 @@ const dividers = (page: Page) =>
             .map(({ element }) => (element.textContent ?? '').replace(/\s+/g, ' ').trim()),
     )
 
-test('an opened file’s dividers read “Opened <file>” and the time each visit continued from', async ({
+test('an opened file\'s dividers read "Opened <file>" and the time each visit continued from', async ({
     browser,
 }) => {
     test.slow()

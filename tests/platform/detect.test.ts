@@ -51,7 +51,7 @@ const samples: [string, UaEnv, ReturnType<typeof detectFromUa>][] = [
         { engine: 'webkit', os: 'ios' },
     ],
     ['macOS Safari', env(safariMac, { gestureEvent: true }), { engine: 'webkit', os: 'macos' }],
-    ['a Safari UA without WebKit’s GestureEvent', env(safariMac), { engine: 'other', os: 'macos' }],
+    ["a Safari UA without WebKit's GestureEvent", env(safariMac), { engine: 'other', os: 'macos' }],
     [
         'Firefox on Windows',
         env('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0'),

@@ -40,7 +40,7 @@ const ref = (hash: string, filename: string): MediaRef => ({
 })
 const info = (extra: Partial<LevelInfo> = {}): LevelInfo => ({ ...emptyLevelInfo, ...extra })
 
-test('a changed field is one change each, in the dialog’s field order, with Initial Life last', () => {
+test("a changed field is one change each, in the dialog's field order, with Initial Life last", () => {
     const input = levelInfoInput(
         info({ title: 'Old', tags: [{ title: 'a' }], rating: 3 }),
         info({

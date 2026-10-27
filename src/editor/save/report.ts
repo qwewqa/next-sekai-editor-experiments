@@ -1,7 +1,7 @@
 import { busy, chartChanged, record } from '../../analytics/tally'
 import type { Outcome } from './flow'
 
-// The usage statistics’ `save` event: one per Save-family action, recorded where the action ends.
+// The usage statistics' `save` event: one per Save-family action, recorded where the action ends.
 // The facts gather in a module value while it runs (the action, the options, where it wrote), so
 // the many paths of `flow.ts` each add a line rather than a parameter. One action runs at a time.
 

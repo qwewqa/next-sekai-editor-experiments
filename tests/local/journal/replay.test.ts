@@ -58,7 +58,7 @@ const killedAfterEdits = async (seed: number) => {
     return { world, page, session, states: { a, b, c, d } }
 }
 
-test('a killed tab’s journal is applied to its session, keeping the committed stack', async () => {
+test("a killed tab's journal is applied to its session, keeping the committed stack", async () => {
     const { world, page, session, states } = await killedAfterEdits(1)
     const journal = journalOf(page.storage, session.id)
     assert.equal(journal.seq, 4)
@@ -160,7 +160,7 @@ const markDeleting = async (world: World, session: FlushSession) => {
     )
 }
 
-test('a deleted chain’s journal becomes a recovery session in a new chain', async () => {
+test("a deleted chain's journal becomes a recovery session in a new chain", async () => {
     const { world, page, session } = await killedAfterEdits(5)
     await markDeleting(world, session)
     const { outcomes } = await replayAll(world, page.storage)
@@ -179,7 +179,7 @@ test('a deleted chain’s journal becomes a recovery session in a new chain', as
     assert.equal(page.storage.length, 0)
 })
 
-test('a continued session’s journal is never appended to it: a recovery chain', async () => {
+test("a continued session's journal is never appended to it: a recovery chain", async () => {
     const { world, page, session } = await killedAfterEdits(6)
     const other = world.tab('other')
     const core = workerCore(world, other)
@@ -325,7 +325,7 @@ const withFutureArchetype = async (journal: Record<string, unknown>) => {
     journal.levelDataGz = btoa(String.fromCharCode(...bytes))
 }
 
-test('a newer build’s journal whose level data holds an unknown archetype is left in place', async () => {
+test("a newer build's journal whose level data holds an unknown archetype is left in place", async () => {
     const { world, page, session } = await killedAfterEdits(8)
     const key = `nse.journal.${session.id}`
     const journal = JSON.parse(page.storage.getItem(key) ?? '') as Record<string, unknown>
@@ -338,7 +338,7 @@ test('a newer build’s journal whose level data holds an unknown archetype is l
     assert.equal(page.storage.length, 1)
 })
 
-test('this build’s own journal whose level data its parser reports keeps its bytes, never left for later', async () => {
+test("this build's own journal whose level data its parser reports keeps its bytes, never left for later", async () => {
     const { world, page, session } = await killedAfterEdits(14)
     const key = `nse.journal.${session.id}`
     const journal = JSON.parse(page.storage.getItem(key) ?? '') as Record<string, unknown>
@@ -354,7 +354,7 @@ test('this build’s own journal whose level data its parser reports keeps its b
     assert.equal(page.storage.length, 0)
 })
 
-test('a damaged key’s bytes land in the recovered store, and the key goes', async () => {
+test("a damaged key's bytes land in the recovered store, and the key goes", async () => {
     const { world, page, session } = await killedAfterEdits(9)
     const key = `nse.journal.${session.id}`
     const damaged = (page.storage.getItem(key) ?? '').slice(0, 500)
@@ -491,7 +491,7 @@ const killedBeforeRemove = (storage: MemoryStorage) => ({
 
 const chainsOf = (world: World) => [...rows(world, 'chains').values()]
 
-test('a kill between a recovery session’s commit and the key’s delete makes no second one', async () => {
+test("a kill between a recovery session's commit and the key's delete makes no second one", async () => {
     const { world, page, session } = await killedAfterEdits(15)
     await markDeleting(world, session)
     const first = await replayIn(
@@ -531,7 +531,7 @@ test('a kill between a recovery session’s commit and the key’s delete makes 
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a kill between keeping a damaged key’s bytes and the key’s delete keeps one row', async () => {
+test("a kill between keeping a damaged key's bytes and the key's delete keeps one row", async () => {
     const { world, page, session } = await killedAfterEdits(16)
     const key = `nse.journal.${session.id}`
     page.storage.setItem(key, (page.storage.getItem(key) ?? '').slice(0, 500))
@@ -577,7 +577,7 @@ test('an apply that fails by a DOMException that recurs is kept as a recovery se
     assert.equal(page.storage.length, 0)
 })
 
-test('a late flush reaching past a replayed journal leaves no stack that isn’t replay’s', async () => {
+test("a late flush reaching past a replayed journal leaves no stack that isn't replay's", async () => {
     const { world, page, session, states } = await killedAfterEdits(19)
     // One more edit after the journal, never journalled; then the tab dies.
     append(

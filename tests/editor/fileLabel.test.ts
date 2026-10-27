@@ -120,7 +120,7 @@ test('the accessible name says what changed since which event', () => {
     assert.equal(name('saved', false), 'Coconut (Master) · coconut.nxsp')
 })
 
-test('a row built from a chain’s record says what the status bar says for the same session', () => {
+test("a row built from a chain's record says what the status bar says for the same session", () => {
     for (const event of ['saved', 'opened', 'downloaded', 'future']) {
         const state = stateOf(goldenChart())
         resetStates({ state, step: initialStep(), isDirty: false })

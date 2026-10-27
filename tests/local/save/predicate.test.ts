@@ -35,7 +35,7 @@ test('N holds O by ancestry, completeFrom and entry count', () => {
     assert.equal(relation({}, o), 'none')
 })
 
-test('Replace is disabled when the file on disk holds the base and the write wouldn’t carry it', async () => {
+test("Replace is disabled when the file on disk holds the base and the write wouldn't carry it", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -82,7 +82,7 @@ test('Replace is disabled when the file on disk holds the base and the write wou
     )
 })
 
-test('the Replace guard uses the build’s carry test: a flagged row a kept row shares still carries', async () => {
+test("the Replace guard uses the build's carry test: a flagged row a kept row shares still carries", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)

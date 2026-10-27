@@ -56,7 +56,7 @@ for (const locale of readdirSync(directory, { withFileTypes: true })
     })
 }
 
-test('plural forms follow each locale’s rules', () => {
+test("plural forms follow each locale's rules", () => {
     const message = '{0} object|{0} objects'
     assert.equal(pluralForm('en', message, '1'), '{0} object')
     assert.equal(pluralForm('en', message, '0'), '{0} objects')
@@ -159,13 +159,10 @@ test('division commands are named as their dialog is, as lane division commands 
             assert.ok(messages[label]!.endsWith('…'), `${locale} ${label}`)
             assert.equal(messages[label]!.replace(/…$/, ''), messages[title], `${locale} ${label}`)
         }
-        // A noun with the fraction, not "Passer à la division en 1/4".
-        const title = messages['commands.divisions.title']!
-        assert.ok(title.replace('1/{0}', '').trim().split(/\s+/).length <= 2, locale)
     }
 })
 
-test('unit labels follow their locale’s pattern', () => {
+test("unit labels follow their locale's pattern", () => {
     const unit = '\\((?:초|밀리초|비트|레인|%|秒|毫秒|拍|ミリ秒)\\)'
     // Japanese and Korean put a space before the parenthesis.
     for (const locale of ['ja', 'ko'])

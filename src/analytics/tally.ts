@@ -26,7 +26,7 @@ type Recorded = {
     device?: Record<string, unknown>
 }
 let recorded: Recorded[] = []
-/** The client’s read of the device an event ran on; it gives nothing for an event with none. */
+/** The client's read of the device an event ran on; it gives nothing for an event with none. */
 let readDevice: ((name: string) => Record<string, unknown> | undefined) | undefined
 
 export const isEnabled = () => enabled
@@ -120,7 +120,7 @@ export const markStartup = (outcome: Startup['outcome']) => {
 }
 export const startup = () => started
 
-/** Facts the start events report: the tab reloaded its own session; the editor’s graphics failed. */
+/** Facts the start events report: the tab reloaded its own session; the editor's graphics failed. */
 const noted = new Set<'reload' | 'graphicsUnavailable'>()
 export const note = (what: 'reload' | 'graphicsUnavailable') => {
     if (enabled) noted.add(what)

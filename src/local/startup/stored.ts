@@ -28,7 +28,7 @@ type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
-/** A stored stack's window, its slots `base … base + length − 1`, and each stored block's span. */
+/** A stored stack's window, its slots `base .. base + length - 1`, and each stored block's span. */
 export type StackRead = {
     window: StackWindow
     slots: ReplaySlot[]

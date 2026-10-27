@@ -43,7 +43,7 @@ const rootMedia = (world: World, snapshot: EncodedSnapshot) => {
 
 const goldenMedia = [mediaHash('cover'), mediaHash('preview'), mediaHash('bgm')]
 
-test('a foreign root’s media refs are its header’s, whatever the caller passes', async () => {
+test("a foreign root's media refs are its header's, whatever the caller passes", async () => {
     const world = createWorld({ seed: 11 })
     const page = await openPage(world, world.tab('a'))
     const snapshot = encodeSnapshot(toRecords(stateOf(goldenChart())))

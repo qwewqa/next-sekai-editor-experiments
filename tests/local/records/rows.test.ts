@@ -23,7 +23,7 @@ import { edgeChart, goldenChart, mediaHash, stateOf } from './charts'
 const hashOf = (json: Parameters<typeof canonicalBytes>[0]) =>
     toHex(hash16Sync(canonicalBytes(json)))
 
-test('a root row’s JSON form, rebuilt from its refs and kinds, hashes to its key', () => {
+test("a root row's JSON form, rebuilt from its refs and kinds, hashes to its key", () => {
     for (const fixture of [goldenChart(), edgeChart()]) {
         const snapshot = encodeSnapshot(toRecords(stateOf(fixture)))
         const row = rootRow(snapshot.root, useDay(3))

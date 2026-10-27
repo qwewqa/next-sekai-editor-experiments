@@ -130,7 +130,7 @@ test('one row for each chain, newest first, and a click peeks it with a bar that
     await closedChain(page, { title: 'Beta', life: 980 })
     await openSessions(page)
 
-    // The fixture’s own chart is a stored chain too, the oldest.
+    // The fixture's own chart is a stored chain too, the oldest.
     await expect(rowsOf(page)).toHaveCount(3)
     await expect(rowsOf(page).nth(0)).toContainText('Beta')
     await expect(rowsOf(page).nth(1)).toContainText('Alpha')
@@ -147,7 +147,7 @@ test('one row for each chain, newest first, and a click peeks it with a bar that
     const bar = peekBar(page)
     await expect(bar.locator('[data-peek-session]')).toContainText('“Alpha”')
     await expect(bar.locator('[data-peek-restore]')).toHaveText(messages.open.restoreIt)
-    // No steps in a session’s peek: no arrows, no Step Details.
+    // No steps in a session's peek: no arrows, no Step Details.
     await expect(bar.locator('[data-peek-details]')).toHaveCount(0)
     await expect(rowFor(page, 'Alpha')).toHaveAttribute('aria-selected', 'true')
 
@@ -189,7 +189,7 @@ test('Restore Session in the peek bar opens the session, shows the Timeline and 
     await expect(card.getByRole('button', { name: /^Reopen/ })).toBeVisible()
 })
 
-test('this tab’s chain is a row with a badge, its text is live, and a click on it is Back to Now', async ({
+test("this tab's chain is a row with a badge, its text is live, and a click on it is Back to Now", async ({
     page,
 }) => {
     errorsFail(page)
@@ -253,7 +253,7 @@ test('the ⋯ button has no tab stop and a label, and Shift+F10 opens the same m
     await expect.poll(() => lifeOf(page)).toBe(990)
 })
 
-test('a session’s peek has no BGM, and Back to Now returns the audio the open session has', async ({
+test("a session's peek has no BGM, and Back to Now returns the audio the open session has", async ({
     page,
 }) => {
     errorsFail(page)
@@ -269,7 +269,7 @@ test('a session’s peek has no BGM, and Back to Now returns the audio the open 
     expect(await audioOf(page)).toEqual({ peeked: undefined, live: true, playback: true })
 })
 
-test('a session’s peek entered from a step’s peek dims nothing and plays no BGM', async ({
+test("a session's peek entered from a step's peek dims nothing and plays no BGM", async ({
     page,
 }) => {
     errorsFail(page)
@@ -305,7 +305,7 @@ test('a session’s peek entered from a step’s peek dims nothing and plays no 
     expect((await audioOf(page)).playback).toBe(false)
 })
 
-test('Open History from a notice ends a session’s peek, as the Timeline tab does', async ({
+test("Open History from a notice ends a session's peek, as the Timeline tab does", async ({
     page,
 }) => {
     errorsFail(page)
@@ -373,7 +373,7 @@ test('a row whose chain another tab continued since the list was drawn opens a c
     const alpha = await closedChain(page, { title: 'Alpha', life: 990 })
     await openSessions(page)
     await expect(rowFor(page, 'Alpha')).toBeVisible()
-    // The list holds still under the pointer, so the other tab’s write does not change it.
+    // The list holds still under the pointer, so the other tab's write does not change it.
     await rowFor(page, 'Alpha').hover()
     const other = await otherTab(context)
     await expect.poll(() => lifeOf(other)).toBe(990)
@@ -390,7 +390,7 @@ test('a row whose chain another tab continued since the list was drawn opens a c
     await expect(notice(page, 'Restored a copy of “Alpha”')).toBeVisible()
 })
 
-test('restoring the chain’s latest session continues it with its file', async ({ page }) => {
+test("restoring the chain's latest session continues it with its file", async ({ page }) => {
     errorsFail(page)
     await load(page)
     await edit(page, { title: 'Alpha', life: 990 })
@@ -408,7 +408,7 @@ test('restoring the chain’s latest session continues it with its file', async 
     const alpha = await flushIds(page)
     await newSession(page)
     await openSessions(page)
-    // The file part is the status bar’s own, with its “•” for a file the session has changed.
+    // The file part is the status bar's own, with its "•" for a file the session has changed.
     await expect(rowFor(page, 'coconut').locator('[data-sessions-caption]')).toContainText(
         'coconut.nxsp •',
     )
@@ -583,7 +583,7 @@ test('a session written by a newer version is listed but cannot be peeked or res
     await expect(page.getByRole('menu').getByText(messages.load.sessionLater)).toHaveCount(1)
 })
 
-test('moving onto a row that cannot be peeked (arrow, click, ⋯) leaves the previous row’s peek', async ({
+test("moving onto a row that cannot be peeked (arrow, click, ⋯) leaves the previous row's peek", async ({
     page,
 }) => {
     errorsFail(page)
@@ -631,7 +631,7 @@ test('moving onto a row that cannot be peeked (arrow, click, ⋯) leaves the pre
     expect(await lifeOf(page)).toBe(1000)
 })
 
-test('Recent Sessions’ Save… of a closed session opens the save dialog for it', async ({
+test("Recent Sessions' Save… of a closed session opens the save dialog for it", async ({
     page,
 }) => {
     errorsFail(page)
@@ -644,14 +644,14 @@ test('Recent Sessions’ Save… of a closed session opens the save dialog for i
     await expect(page.locator('[data-save-export]')).toHaveCount(0)
 })
 
-test('a session’s peek ends with the tab, and offers no Find Edits Here', async ({ page }) => {
+test("a session's peek ends with the tab, and offers no Find Edits Here", async ({ page }) => {
     errorsFail(page)
     await load(page)
     await closedChain(page, { title: 'Alpha', life: 990 })
     await openSessions(page)
     await rowFor(page, 'Alpha').click()
     await expect.poll(() => peekedLife(page)).toBe(990)
-    // Another chain’s chart says nothing of this Timeline’s beats.
+    // Another chain's chart says nothing of this Timeline's beats.
     await page.locator('[data-history-surface="dialog"] [data-history-close]').click()
     await page.mouse.click(800, 500, { button: 'right' })
     await expect(page.getByRole('menu')).toBeVisible()
@@ -664,7 +664,7 @@ test('a session’s peek ends with the tab, and offers no Find Edits Here', asyn
     await expect(peekBar(page)).toHaveCount(0)
 })
 
-test('Edits Here stays on through a session’s peek and goes back to All when another session opens', async ({
+test("Edits Here stays on through a session's peek and goes back to All when another session opens", async ({
     page,
 }) => {
     errorsFail(page)

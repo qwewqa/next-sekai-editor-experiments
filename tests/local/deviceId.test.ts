@@ -7,7 +7,7 @@ import { toHex } from '../../src/local/hash'
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
-test('the HMAC is RFC 4231’s, for a short key and one longer than a block', () => {
+test("the HMAC is RFC 4231's, for a short key and one longer than a block", () => {
     assert.equal(
         toHex(hmacSha256(bytes('Jefe'), bytes('what do ya want for nothing?'))),
         '5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843',
@@ -33,7 +33,7 @@ test('one install and lineage give one id; another lineage or install gives anot
     assert.notEqual(id, install)
 })
 
-test('the id is pinned: the HMAC’s first 16 bytes, with version 8 and variant 10', () => {
+test("the id is pinned: the HMAC's first 16 bytes, with version 8 and variant 10", () => {
     // Computed apart from this code (Python's hmac); a rewrite that slices or sets bits differently
     // makes every own save read as another device's.
     assert.equal(

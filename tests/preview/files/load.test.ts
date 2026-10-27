@@ -131,7 +131,7 @@ test('SRLs with null or absent hashes load', async () => {
         }
 })
 
-test('a background with no aspect ratio uses its image’s own', async () => {
+test("a background with no aspect ratio uses its image's own", async () => {
     const result = await load('background', scp('background'))
     const background = result?.value as Loaded['background']
     assert.equal(background.aspectRatio, 160 / 90)

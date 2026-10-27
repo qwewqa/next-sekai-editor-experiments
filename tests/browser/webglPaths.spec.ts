@@ -252,7 +252,7 @@ test('WebGL retained paths preserve native Canvas geometry and strokes', async (
     }
 })
 
-test('a frame’s own paths leave the path cache after the frame while passed paths stay', async ({
+test("a frame's own paths leave the path cache after the frame while passed paths stay", async ({
     page,
 }) => {
     await page.addInitScript(() => performance.setResourceTimingBufferSize(5000))

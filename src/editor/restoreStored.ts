@@ -21,7 +21,7 @@ export type RestoreResult =
 
 /**
  * Restore Session, or Restore as a Copy (`mode`), of a stored session: after the not-stored
- * prompt, then the switch card: "Restored "X"" or "Restored a copy of "X"" with Reopen. `name` is
+ * prompt, then the switch card: `session.restored` or `session.restoredCopy` with Reopen. `name` is
  * the row's; without it the name of what opened stands. A session that could not be opened says
  * why. Nothing happens when the request was replaced or the prompt was answered with Cancel.
  */

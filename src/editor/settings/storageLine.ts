@@ -19,7 +19,7 @@ export type StorageFacts = {
     /** Storage unavailable, insecure origins included. */
     unavailable: boolean
     privateSuspected: boolean
-    /** Likely an app’s built-in browser. */
+    /** Likely an app's built-in browser. */
     inAppBrowser: boolean
     os: PlatformOs
     engine: Engine

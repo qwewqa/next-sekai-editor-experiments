@@ -78,14 +78,14 @@ const saveToFileSays = async (readSession: () => Promise<unknown>) => {
     return String(errors[0]?.args[0])
 }
 
-test('Recent Sessions’ Save…: a session read that fails says the storage is not available, without the Save As… hint', async () => {
+test("Recent Sessions' Save…: a session read that fails says the storage is not available, without the Save As… hint", async () => {
     const says = await saveToFileSays(() =>
         Promise.reject(new Error('The storage worker restarted')),
     )
     assert.match(says, /^The editor could not access this browser’s storage\. Try again\.$/)
 })
 
-test('Recent Sessions’ Save…: a session that is gone keeps its own line (control)', async () => {
+test("Recent Sessions' Save…: a session that is gone keeps its own line (control)", async () => {
     const says = await saveToFileSays(() => Promise.resolve({ kind: 'missing' }))
     assert.doesNotMatch(says, /could not access this browser’s storage/)
 })

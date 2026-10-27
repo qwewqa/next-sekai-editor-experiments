@@ -127,7 +127,7 @@ defineExpose({
 // The band is one 48 px line at every width. Go To shows its label while the tabs keep whole labels
 // beside it, else its icon; when even that leaves no room, the tabs step down to 14 px labels in
 // tighter pills, and only then does Recent Sessions truncate. Measured once per language: the
-// tabs’ labels at both sizes and Go To’s label (its pill is 64 px plus the label). The fixed sizes
+// tabs' labels at both sizes and Go To's label (its pill is 64 px plus the label). The fixed sizes
 // are px at the 16 px rem; k scales them with the root font size, as the classes do.
 const fit = shallowRef<{ full: number; small: number; goTo: number; k: number }>()
 const measureFit = () => {

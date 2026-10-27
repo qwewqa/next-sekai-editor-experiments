@@ -91,7 +91,7 @@ test('a second trigger for the same seq writes nothing; a new entry writes again
     })
 })
 
-test('a relaxed commit covering a key’s seq clears it', async () => {
+test("a relaxed commit covering a key's seq clears it", async () => {
     const { page, session, a } = await start(3)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     assert.equal(page.writer.write(), true)
@@ -101,7 +101,7 @@ test('a relaxed commit covering a key’s seq clears it', async () => {
     assert.equal(page.flusher.unflushed(session), false)
 })
 
-test('a commit short of a key’s seq leaves it', async () => {
+test("a commit short of a key's seq leaves it", async () => {
     const { page, session, a } = await start(14)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     // A Save holds 3: the edit after it waits, so the next flush commits 2 only.
@@ -132,7 +132,7 @@ test('a journal for a session the tab no longer has open is never written', asyn
     assert.equal(journalIn(page.storage, next.id), undefined)
 })
 
-test('the descriptor carries the chain as stored, the session’s fields and its flags', async () => {
+test("the descriptor carries the chain as stored, the session's fields and its flags", async () => {
     const { page, session, a } = await start(5)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     page.writer.write()
@@ -166,7 +166,7 @@ test('the descriptor carries the chain as stored, the session’s fields and its
     assert.ok(journal.header.bgm)
 })
 
-test('a write that would pass a size limit isn’t made, and doesn’t verify', async () => {
+test("a write that would pass a size limit isn't made, and doesn't verify", async () => {
     const { page, session, a } = await start(6)
     // Other journals already hold nearly all of the 4 MB.
     page.storage.setItem('nse.journal.other', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 1000))
@@ -179,7 +179,7 @@ test('a write that would pass a size limit isn’t made, and doesn’t verify', 
     assert.ok(JOURNAL_KEY_LIMIT < JOURNAL_TOTAL_LIMIT)
 })
 
-test('localStorage full: the write fails, and the session isn’t covered', async () => {
+test("localStorage full: the write fails, and the session isn't covered", async () => {
     const { page, session, a } = await start(7)
     page.storage.quota = 100
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
@@ -239,7 +239,7 @@ test('a replaced session whose strict sync fails is let go: its entries are comm
     assert.equal(journalIn(page.storage, session.id), undefined)
 })
 
-test('a fork’s journal takes over its old session’s key, with the old chain’s fields', async () => {
+test("a fork's journal takes over its old session's key, with the old chain's fields", async () => {
     const world = createWorld({ seed: 10 })
     const page = await openJournalPage(world, 'a')
     const a = stateOf(goldenChart())
@@ -296,7 +296,7 @@ test('a fork’s journal takes over its old session’s key, with the old chain�
     assert.deepEqual(outcomes, [])
 })
 
-test('the budget counts the old auto save, and leaves it room to grow to the journal’s size', async () => {
+test("the budget counts the old auto save, and leaves it room to grow to the journal's size", async () => {
     const { page, session, a } = await start(11)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
     // The old auto save holds most of the budget: no journal is written over it.

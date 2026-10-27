@@ -188,7 +188,7 @@ test('GC keeps every body a row reaches through refs and the grace period, and s
     assert.equal(meta(world, 'epoch'), epoch + 1)
 })
 
-test('GC removes nothing while a newer build’s data is in use, and sweeps a newer body nothing reaches', async () => {
+test("GC removes nothing while a newer build's data is in use, and sweeps a newer body nothing reaches", async () => {
     const cases: [
         string,
         (h: Awaited<ReturnType<typeof seedBodies>>) => Parameters<typeof tamper>[1],
@@ -338,7 +338,7 @@ test('GC is busy while a writer holds nse-maint, and stops for a waiting writer 
     assert.deepEqual(await deleter.gc(), { kind: 'done', swept: 100 })
 })
 
-test('a writer’s request for nse-maint is seen as waiting by a deleting job', async () => {
+test("a writer's request for nse-maint is seen as waiting by a deleting job", async () => {
     const world = createWorld({ seed: 7 })
     const tab = world.tab('gc')
     const core = workerCore(world, tab)

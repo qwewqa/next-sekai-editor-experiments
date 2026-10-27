@@ -211,9 +211,9 @@ export const sessionViolations = (
             violations.push(
                 `session ${sessionId}: rows ${seqList(holes)} up to lastSeq ${String(lastSeq)} are neither stored, covered by a recovered row, nor the binding’s own Save`,
             )
-        // A session opened from a file holds the file’s rows with their own times, which this
-        // editor did not stamp: only a session’s own rows are checked here, the rows above
-        // the file’s when the world recorded where they end, else none of an nxsp or replaced one.
+        // A session opened from a file holds the file's rows with their own times, which this
+        // editor did not stamp: only a session's own rows are checked here, the rows above
+        // the file's when the world recorded where they end, else none of an nxsp or replaced one.
         const timed = entries.filter((entry) => !filed(Number(entry.seq)))
         for (let at = 1; at < timed.length; at++) {
             const before = record(timed[at - 1])

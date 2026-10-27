@@ -18,7 +18,7 @@ export type PlatformOverride = {
     standalone?: boolean
     persisted?: boolean
     privateSuspected?: boolean
-    /** An app’s built-in browser, which changes wording only. */
+    /** An app's built-in browser, which changes wording only. */
     inAppBrowser?: boolean
     /** False turns the pickers off; 'opfs' makes them return OPFS handles, for Playwright. */
     fileSystemAccess?: boolean | 'opfs'
@@ -187,7 +187,7 @@ export const isStandalone = () => platformOverride().standalone ?? standaloneLat
 let inApp: boolean | undefined
 
 /**
- * Whether this looks like an app’s built-in browser (best effort): latched at startup
+ * Whether this looks like an app's built-in browser (best effort): latched at startup
  * with the rest, the override first. Detection never flags a Home Screen web app.
  */
 export const isLikelyInAppBrowser = () => {

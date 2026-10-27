@@ -109,7 +109,7 @@ export const startField = () => {
         }
     }
     const frames = observe('long-animation-frame', countFrames)
-    // 104 ms is where Event Timing’s 8 ms rounding puts a response of 100 ms or more.
+    // 104 ms is where Event Timing's 8 ms rounding puts a response of 100 ms or more.
     const events = observe('event', countEvents, { durationThreshold: 104 })
 
     return {
@@ -130,7 +130,7 @@ export const startField = () => {
             }
             states.trim(Math.max(lastFrameStart, performance.now() - HISTORY_MS))
         },
-        /** The `perf` event’s other measures, for the time since the last call. */
+        /** The `perf` event's other measures, for the time since the last call. */
         measures: (): EventData<'perf'> => {
             const now = performance.now()
             const visible = visibleTotal + (visibleSince === undefined ? 0 : now - visibleSince)
@@ -144,7 +144,7 @@ export const startField = () => {
                 // A count is capped at 9999 and a time at a day, or a long visit would lose its whole `perf` event.
                 visibleTime: capSeconds(visible - sentVisible),
                 playSeconds: playing.seconds,
-                // Only the browser’s count: the commands run are not a stand-in for interactions.
+                // Only the browser's count: the commands run are not a stand-in for interactions.
                 ...(interactions !== undefined && {
                     interactions: capCount(interactions - sentInteractions),
                 }),

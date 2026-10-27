@@ -461,7 +461,7 @@ test('index.html must load gate.js, a classic script, before the bundle', async 
     await checkRelease(directory, metadata)
 })
 
-test('a release fails when the editor’s stylesheet lacks the layout utilities', async (t) => {
+test("a release fails when the editor's stylesheet lacks the layout utilities", async (t) => {
     const { directory, assets } = await releaseFixture(t)
     // The stylesheet Tailwind generates from the landing pages' content alone.
     await write(directory, 'assets/index-12345678.css', '.flex{display:flex}.fixed{position:fixed}')
@@ -481,7 +481,7 @@ test('the test site build must be the one that is marked as such', async (t) => 
     await assert.rejects(checkRelease(directory), /index.html does not match the site: production/)
 })
 
-test('the apps’ bridge cannot be in a web release', async (t) => {
+test("the apps' bridge cannot be in a web release", async (t) => {
     const { directory, assets } = await releaseFixture(t)
     await write(directory, 'assets/index-12345678.js', 'window.__TAURI_INTERNALS__.invoke()')
     await writeReleaseManifest(directory, metadata, assets)

@@ -285,7 +285,7 @@ test('Cancel before the write starts writes nothing and shows nothing after', as
     assert.equal(mock.files.has('Other.nsld'), false)
 })
 
-test('the conflict dialog’s disk state and its level data check come from one read', async () => {
+test("the conflict dialog's disk state and its level data check come from one read", async () => {
     const target = await openedTarget()
     // A .nxsp in its place, which a sync client shows as level data for one read.
     const zip = new Blob([new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3])])
@@ -455,7 +455,7 @@ test('a cancel once the picker returned a file is written to its end and reporte
     assert.deepEqual((await read(mock, 'Other.nsld')).entities, [{ n: 1 }])
 })
 
-test('a cancel reaches a target’s write until its commit', async () => {
+test("a cancel reaches a target's write until its commit", async () => {
     const target = await openedTarget()
     const controller = new AbortController()
     mock.beforeCommit = () => controller.abort()

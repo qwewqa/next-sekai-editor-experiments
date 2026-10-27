@@ -479,7 +479,7 @@ test('a reload reads no stored handle at startup; a Save or an Export reads it a
     expect(await handleReads(page)).toBe(1)
 })
 
-test('Export’s target keeps its handle across a reload, read when Export opens', async ({
+test("Export's target keeps its handle across a reload, read when Export opens", async ({
     page,
 }) => {
     await start(page)
@@ -1076,7 +1076,7 @@ test('a newer patch beside a BGM that is not loaded: both lines, with Choose Aud
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
 })
 
-test('a newer patch gives way to an earlier session’s unsaved-changes notice, which keeps the work', async ({
+test("a newer patch gives way to an earlier session's unsaved-changes notice, which keeps the work", async ({
     page,
 }) => {
     await start(page)

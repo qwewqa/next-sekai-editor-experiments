@@ -73,7 +73,7 @@ test('held media are written with their bytes; BGM unticked leaves the BGM out',
     assert.equal(read.media.cover?.form.sha256, COVER.sha256)
 })
 
-test('a tab’s copy of the head’s media is used when storage lacks it', async () => {
+test("a tab's copy of the head's media is used when storage lacks it", async () => {
     const fixture = await chain()
     const { built, file } = await save(
         fixture,
@@ -111,11 +111,11 @@ test('after Undo across a BGM change, the file holds the undone-to BGM and never
     assert.equal(
         Object.keys(read.media).length,
         3,
-        'only the head’s BGM, cover and preview are written',
+        "only the head's BGM, cover and preview are written",
     )
 })
 
-test('this tab’s unflushed rows, stack and records are the build’s first source', async () => {
+test("this tab's unflushed rows, stack and records are the build's first source", async () => {
     const fixture = await chain()
     const head = stateAt(4).state
     const session = fixture.session

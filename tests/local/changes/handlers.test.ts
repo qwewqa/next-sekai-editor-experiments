@@ -226,6 +226,6 @@ test('a slice read run again after a lost connection lists its matches once', as
         result.matches.map((match) => match.pos),
         [2],
     )
-    // Both pairs with the second edit’s state.
+    // Both pairs with the second edit's state.
     assert.equal(result.unreadable, 2)
 })
