@@ -343,8 +343,8 @@ test.describe('From a File', () => {
         const also = chooser(page).locator('[data-chooser-also]')
         // One checkbox for the particle and one for the sound effects; the background has another name.
         await expect(also.locator('label')).toHaveCount(2)
-        await expect(also).toContainText('Also use the particle "Neon Particle" from this file')
-        await expect(also).toContainText('Also use the sound effects "Neon Sounds" from this file')
+        await expect(also).toContainText('Also use the particle “Neon Particle” from this file')
+        await expect(also).toContainText('Also use the sound effects “Neon Sounds” from this file')
         await expect(also.locator('input:checked')).toHaveCount(0)
         await also.locator('[data-chooser-also-type="particle"]').check()
         await chooser(page).locator('[data-chooser-use]').click()
@@ -446,7 +446,7 @@ test.describe('From a File', () => {
         await expect(chooser(page).locator('[data-chooser-item]')).toContainText('Neon Particle')
         await expect(chooser(page).locator('[data-chooser-file-name]')).toHaveText('from-open.scp')
         await expect(chooser(page).locator('[data-chooser-also]')).toContainText(
-            'Also use the sound effects "Neon Sounds" from this file',
+            'Also use the sound effects “Neon Sounds” from this file',
         )
     })
 
@@ -720,8 +720,8 @@ test.describe('the Stored tab', () => {
         // One that is not in use asks first too, with Cancel as the default.
         await spark.locator('[data-stored-remove]').click()
         const unused = page.locator('dialog[open]').nth(1)
-        await expect(unused).toContainText('Remove "Spark"?')
-        await expect(unused).not.toContainText('Default is used instead.')
+        await expect(unused).toContainText('Remove “Spark”?')
+        await expect(unused).not.toContainText('The preview will use the Default option instead.')
         await expect(unused.getByRole('button', { name: 'Cancel' })).toBeFocused()
         await confirmWhenReady(unused.getByRole('button', { name: 'Cancel' }), unused)
         await expect(page.locator('dialog[open]')).toHaveCount(1)
@@ -739,7 +739,9 @@ test.describe('the Stored tab', () => {
         // One in use asks first, with Cancel as the default.
         await neon.locator('[data-stored-remove]').click()
         const confirm = page.locator('dialog[open]').nth(1)
-        await expect(confirm).toContainText('Remove "Neon Skin"? Default is used instead.')
+        await expect(confirm).toContainText(
+            'Remove “Neon Skin”? The preview will use the Default option instead.',
+        )
         await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused()
         await confirmWhenReady(confirm.getByRole('button', { name: 'Cancel' }), confirm)
         await expect(page.locator('dialog[open]')).toHaveCount(1)
@@ -909,7 +911,7 @@ test.describe('refusing a file', () => {
                 resources: { texture: new Uint8Array(30_000_000) },
                 deflate: ['texture'],
             }),
-            'This file’s skin texture expands to more than 200 times its size.',
+            'This file’s skin texture expands to more than 200 times its compressed size.',
         )
 
         const unreadable = 'This file’s skin data could not be read.'
@@ -994,7 +996,7 @@ test.describe('refusing a file', () => {
         await refused(
             page,
             await patched('particle', { resources: { data: gzOf(particleData) } }),
-            `This file’s particle effect "${effect.name}" has more than 512 particles.`,
+            `This file’s particle effect “${effect.name}” has more than 512 particles.`,
         )
 
         // Sound effects without #PERFECT.
@@ -1161,7 +1163,7 @@ test.describe('looks', () => {
                     .locator('[data-stored-remove]')
                     .click()
                 await expect(page.locator('dialog[open]').last()).toContainText(
-                    'Remove "First Skin"?',
+                    'Remove “First Skin”?',
                 )
                 await shot(page, name('stored-remove'), page.locator('dialog[open]').last())
             })

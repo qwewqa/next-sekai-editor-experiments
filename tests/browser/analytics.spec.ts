@@ -254,7 +254,9 @@ test('turning the switch off stops at once, pagehide included, and Reset Setting
     const field = await settingsSwitch(page)
     const toggle = field.getByRole('switch', { name: 'Send Usage Statistics' })
     await expect(toggle).toHaveAttribute('aria-checked', 'true')
-    await expect(field).toContainText('Which tools you use, your main settings')
+    await expect(field).toContainText(
+        'Usage statistics include which tools you use, some editor settings',
+    )
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
     await hide(page)
@@ -268,7 +270,7 @@ test('turning the switch off stops at once, pagehide included, and Reset Setting
     const reset = dialog.getByRole('button', { name: 'Reset Settings…', exact: true })
     await reset.click()
     await expect(page.getByRole('dialog').nth(1)).toContainText(
-        'Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting?',
+        'Reset settings to their defaults? Keyboard shortcuts and the Send Usage Statistics setting will be kept.',
     )
     await confirmReset(page, 'Reset Settings')
     await expect(page.getByRole('dialog')).toHaveCount(1)
@@ -323,11 +325,11 @@ for (const signal of ['gpc', 'dnt'] as const)
         const toggle = field.getByRole('switch')
         await expect(toggle).toHaveAttribute('aria-checked', 'false')
         await expect(field).toContainText(
-            'Disabled by default because this browser sends Do Not Track or Global Privacy Control.',
+            'Off by default because this browser sends a Do Not Track or Global Privacy Control signal.',
         )
         expect(await clientLoaded(page)).toBe(0)
         await toggle.click()
-        await expect(field).toContainText('Which tools you use')
+        await expect(field).toContainText('Usage statistics include which tools you use')
         await expect.poll(() => clientLoaded(page)).toBe(3)
         await page.keyboard.press('Escape')
         await interact(page)

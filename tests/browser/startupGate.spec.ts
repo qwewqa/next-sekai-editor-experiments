@@ -127,10 +127,12 @@ test.describe('the support gate', () => {
         )
         await page.goto('/')
         await expect(page.locator('html')).toHaveAttribute('data-gate', 'unsupported')
-        await expect(page.getByText('This browser is too old for the editor.')).toBeVisible()
         await expect(
-            page.getByRole('button', { name: 'Download Your Last Auto Save' }),
+            page.getByText(
+                'This browser does not support the features required by the editor. Update it, or open the editor in another browser.',
+            ),
         ).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Download Last Auto Save' })).toBeVisible()
         await page.waitForTimeout(500)
         expect(errors).toEqual(['This browser is not supported.'])
         await expect(page.locator('#app')).toBeEmpty()
@@ -149,7 +151,7 @@ test.describe('the support gate', () => {
         await page.goto('/')
         await expect(
             page.getByText(
-                'This editor requires Safari 17 or later (iOS 17 or later on iPhone and iPad).',
+                'The editor requires Safari 17 or later. On iPhone and iPad, it requires iOS 17 or later.',
             ),
         ).toBeVisible()
         await expect(page.getByRole('button')).toHaveCount(0)
@@ -227,7 +229,7 @@ test.describe('the startup gate', () => {
                 )
             gate.setOpeningName('Coconut (Master)')
         })
-        await expect(gate(page).getByRole('status')).toHaveText('Opening "Coconut (Master)"…')
+        await expect(gate(page).getByRole('status')).toHaveText('Opening “Coconut (Master)”…')
     })
 
     test('a name with a line break and a direction override is shown on one line', async ({
@@ -378,7 +380,7 @@ test.describe('the startup gate', () => {
         })
         await gate(page).getByRole('button', { name: 'Export Raw Data' }).click()
         await expect(gate(page).locator('[data-raw-export-note]')).toHaveText(
-            /^"Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip" could not be downloaded\.$/,
+            /^“Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip” could not be downloaded\.$/,
         )
     })
 
@@ -390,7 +392,7 @@ test.describe('the startup gate', () => {
         await boot(page)
         await gate(page).getByRole('button', { name: 'Export Raw Data' }).click()
         await expect(gate(page).locator('[data-raw-export-note]')).toHaveText(
-            /^"Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip" could not be downloaded\.$/,
+            /^“Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip” could not be downloaded\.$/,
         )
     })
 

@@ -186,7 +186,7 @@ test('the families the reference names stand for fields the catalogue has', () =
 })
 
 test('the device details are explained once, with the values the catalogue allows', () => {
-    const body = section('Device details on measured events')
+    const body = section('Device Details in Events')
     const named = byName(rows(body))
     for (const key of measuredKeys) {
         const row = named.get(key)
@@ -205,7 +205,7 @@ test('the device details are explained once, with the values the catalogue allow
 })
 
 test('the reference states the exact values, the caps and the ranges', () => {
-    const exact = section('How exact the values are')
+    const exact = section('How Exact the Values Are')
     for (const words of [
         `from 0 to ${COUNT_CAP}`,
         `from 0 to ${MS_CAP}`,
@@ -232,7 +232,7 @@ test('the reference states the exact values, the caps and the ranges', () => {
         ['1', '2', '3'],
     )
 
-    const ranges = rows(section('The ranges'))
+    const ranges = rows(section('The Ranges'))
     const all = ranges.map((row) => row.cells.join(' ')).join('\n')
     // Each scale is in a row that names the fields it is used for, with all of its labels. The
     // chart counts and the cores describe their labels in words, so a few labels stand for them.
@@ -249,7 +249,7 @@ test('the reference states the exact values, the caps and the ranges', () => {
                 assert.ok(row.cells[2]?.includes(`\`${label}\``), `${scale}: ${label}`)
         }
     // The boundary rule names the labels where the code differs from the usual lower-inclusive range.
-    const rule = section('The ranges').split('\n\n')[1] ?? ''
+    const rule = section('The Ranges').split('\n\n')[1] ?? ''
     for (const [scale, value, label] of [
         ['usageShare', 80, '70-80'],
         ['usageShare', 80.5, '80-90'],
@@ -305,17 +305,20 @@ const disclosures: Record<string, RegExp[]> = {
     ],
     who: [/qwewqa/, /nse@qwewqa\.dev/],
     usage: [
-        /legitimate interest/,
         /visitor identifier/,
         /estimate your country/,
         /error logs on the statistics server may contain it/,
     ],
     hosting: [/GitHub/, /Amazon Web Services \(AWS\)/, /United States/, /email provider/],
-    contact: [/legitimate interest/, /required by law/],
+    contact: [/email address, message and any attachments/, /delete it once the problem is fixed/],
+    basis: [
+        /Legitimate interest: improving the editor and answering your messages/,
+        /Legal obligation: answering requests to exercise your data protection rights/,
+    ],
     choices: [
         /access, correct or delete/,
         /copy in a reusable format/,
-        /data protection authority/,
+        /have the right to complain to your local data protection authority/,
     ],
 }
 
@@ -323,6 +326,15 @@ test('the privacy page keeps its disclosures', () => {
     for (const [id, patterns] of Object.entries(disclosures))
         for (const pattern of patterns)
             assert.match(sectionText(id), pattern, `the ${id} section no longer covers ${pattern}`)
+})
+
+test('the legal basis names legitimate interest once and a legal obligation, and the rights include the complaint', () => {
+    const basis = sectionText('basis')
+    assert.equal(sectionHtml('basis').match(/<li\b/g)?.length, 2)
+    assert.equal(basis.match(/Legitimate interest/g)?.length, 1)
+    assert.match(basis, /Legitimate interest: improving the editor and answering your messages/)
+    assert.match(basis, /Legal obligation: .*data protection rights/)
+    assert.match(sectionText('choices'), /You also have the right to complain to /)
 })
 
 test('the hosting section names no transfer clauses', () => {
@@ -368,14 +380,9 @@ test('a separate paragraph offers the objection, and one email link covers the r
 })
 
 test('the privacy page links to the usage statistics reference', () => {
-    const start = html.indexOf('aria-labelledby="usage"')
-    const end = html.indexOf('aria-labelledby="hosting"', start)
-
-    assert.ok(start > 0 && end > start)
-
-    const usage = html.slice(start, end)
+    const usage = sectionHtml('usage')
     const link =
-        /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*What the usage statistics send\s*<\/a\s*>/
+        /<a\s+href="https:\/\/github\.com\/%GITHUB_REPOSITORY%\/blob\/main\/docs\/usage-statistics\.md"[^>]*>\s*What Usage Statistics Contain\s*<\/a\s*>/
 
     assert.match(usage, link)
     assert.doesNotMatch(html, /docs\/analytics\.md/)

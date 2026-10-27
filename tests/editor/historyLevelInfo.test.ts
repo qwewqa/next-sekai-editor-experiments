@@ -157,7 +157,7 @@ const recipeOf = (input: NativeOperationInput, ctx = en) => {
     return captureOperationRecipe([{ description: captureStep({ kind: 'edit', operation }) }])
 }
 
-test('v0.6.0 renders it: the step reads Changed level info, and Details lists each field', () => {
+test('v0.6.0 renders it: the step reads Changed Level Info, and Details lists each field', () => {
     const input = levelInfoInput(
         info({ title: 'Old', tags: [{ title: 'a' }], rating: 3 }),
         info({
@@ -169,9 +169,9 @@ test('v0.6.0 renders it: the step reads Changed level info, and Details lists ea
         { before: 1000, after: 900 },
     )
     assert.ok(input)
-    assert.equal(describeOperation(input, en), 'Changed level info')
+    assert.equal(describeOperation(input, en), 'Changed Level Info')
     const details = operationDetails(recipeOf(input), en)
-    assert.equal(details.description, 'Changed level info')
+    assert.equal(details.description, 'Changed Level Info')
     assert.deepEqual(
         details.rows.map((row) => [row.kind, row.label]),
         [
@@ -244,5 +244,5 @@ test('stored data keeps its fallback: an older reader shows it, a changed shape 
     }
     const read = decodeOperation(future)
     assert.equal(read.status, 'unsupported')
-    assert.equal(read.status === 'unsupported' && read.fallback?.text, 'Changed level info')
+    assert.equal(read.status === 'unsupported' && read.fallback?.text, 'Changed Level Info')
 })

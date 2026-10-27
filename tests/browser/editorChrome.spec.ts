@@ -364,7 +364,7 @@ for (const hasTouch of [false, true]) {
             const bar = page.locator('[data-status-bar]')
             await expect(bar.locator('[data-file-chip]')).toHaveText('')
             await expect(bar.locator('[data-file-chip]')).toHaveAccessibleName(
-                /a newer version is on disk/,
+                /A newer version of “coconut\.nxsp” is on disk/,
             )
             await expect(bar).toHaveCSS('column-gap', '4px')
             expect((await bar.boundingBox())!.width).toBe(360)

@@ -81,7 +81,7 @@ test('a takeover: A picks the file B is bound to; B loses it passively and its n
     expect(await prompts(b)).toBe(true)
     await pressSave(b)
     const dialog = saveDialog(b)
-    await expect(dialog).toContainText('"coconut.nxsp" was replaced from another tab or window.')
+    await expect(dialog).toContainText('“coconut.nxsp” was replaced from another tab or window.')
     await expect(dialog.getByRole('textbox')).toHaveValue('coconut (2)')
     await submitSave(b)
     await expect(notice(b).filter({ hasText: 'Saved to coconut (2).nxsp' })).toBeVisible()
@@ -189,7 +189,7 @@ test('the chain’s own file changed on disk: a pick puts its bytes back and ope
     // The read before the picker has time to finish.
     await page.waitForTimeout(500)
     await submitSave(page, undefined, 'Save As')
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
 })
 
@@ -252,7 +252,7 @@ for (const [compression, variant] of [
         await pressSave(page)
         await submitSave(page, 'LevelData')
         const dialog = page.getByRole('dialog')
-        await expect(dialog).toContainText('"LevelData" is not a project file.')
+        await expect(dialog).toContainText('“LevelData” is not a project file.')
         await expect(dialog.getByRole('button', { name: 'Export Level Data…' })).toBeVisible()
         expect(await readFile(page, 'LevelData')).toEqual(level)
     })
@@ -321,7 +321,7 @@ test('Export’s picker: the chain’s own project file is refused and written a
     const exporting = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
     await expect(exporting.locator('[data-export-name]')).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" is not level data.')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” is not level data.')
     const after = await projectOf(page, 'coconut.nxsp')
     expect(after.id).toBe(before.id)
     expect((after.revision as Row).parent).toBe((before.revision as Row).id)
@@ -344,7 +344,7 @@ test('with storing paused, a takeover writes nothing, and the owner’s binding 
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(a.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
+    await expect(a.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
 
     await b.reload()
     await waitForStartup(b)
@@ -396,7 +396,7 @@ test('a sync client writing into the picked file after the pick: nothing is writ
     await reached(page, 'picked')
     await writeFile(page, 'coconut.nxsp', [1, 2, 3, 4])
     await release(page)
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
     expect(await readFile(page, 'coconut.nxsp')).toEqual([1, 2, 3, 4])
 })
 
@@ -486,7 +486,7 @@ test('B frozen while A takes its file: once shown, B’s label goes and its Save
     await edit(b, 3)
     await pressSave(b)
     await expect(saveDialog(b)).toContainText(
-        '"coconut.nxsp" was replaced from another tab or window.',
+        '“coconut.nxsp” was replaced from another tab or window.',
     )
 })
 
@@ -501,13 +501,15 @@ test('a partial open’s file picked in the project picker is refused and put ba
     await writeFile(page, 'coconut.nxsp', bytes)
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toBeVisible()
+    await expect(
+        notice(page).filter({ hasText: 'This file was created by a newer version' }),
+    ).toBeVisible()
     await edit(page, 3)
     await queuePicks(page, ['coconut.nxsp'])
     await pressSave(page)
     await submitSave(page)
     await expect(page.getByRole('dialog')).toContainText(
-        'Not saved. "coconut.nxsp" could not be read completely.',
+        'Not saved. “coconut.nxsp” could not be read in full.',
     )
     expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
 })

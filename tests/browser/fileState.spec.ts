@@ -415,7 +415,7 @@ test.describe('the label and the title', () => {
             expect(targets[3]!.top).toBe(targets[2]!.top)
             const dialogs = [
                 'Level Info',
-                '"coconut.nxsp" Changed',
+                '“coconut.nxsp” Changed',
                 'Manage Groups',
                 'Manage Stages',
             ]
@@ -807,9 +807,9 @@ test.describe('the chip', () => {
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'changedOnDisk')
         await expect(label(page)).toContainText('changed on disk')
         await chip(page).click()
-        const dialog = page.getByRole('dialog', { name: '"coconut.nxsp" Changed' })
+        const dialog = page.getByRole('dialog', { name: '“coconut.nxsp” Changed' })
         await expect(dialog).toContainText(
-            '"coconut.nxsp" changed since you opened or saved it here.',
+            '“coconut.nxsp” has changed since you opened or saved it here.',
         )
         await expect(dialog).toContainText('Check that coconut.nxsp finished downloading')
         // Keep Editing is the safe default, in Cancel's place.
@@ -837,7 +837,7 @@ test.describe('the chip', () => {
         await finding(page, 'missing')
         await chip(page).click()
         const dialog = page.getByRole('dialog')
-        await expect(dialog).toContainText('"coconut.nxsp" cannot be found.')
+        await expect(dialog).toContainText('“coconut.nxsp” could not be found.')
         await expect(dialog.getByRole('button', { name: 'Save As…' })).toBeFocused()
     })
 
@@ -869,7 +869,7 @@ test.describe('the chip', () => {
             await expect(chipShown(page)).toHaveCount(0)
             expect((await chip(page).boundingBox())!.width).toBe(24)
             await expect(chip(page)).toHaveAccessibleName(
-                '"coconut.nxsp": changed on disk since you opened or saved it here.',
+                '“coconut.nxsp” has changed on disk since you opened or saved it here.',
             )
             const box = (await chip(page).boundingBox())!
             const bar = (await page.locator('.status-chip').first().boundingBox())!
@@ -932,7 +932,7 @@ test.describe('the chip', () => {
             await expect(chipShown(page)).toHaveCount(0)
             await expect(chip(page)).toHaveAttribute('data-file-chip', 'newerOnDisk')
             await expect(chip(page)).toHaveAccessibleName(
-                /une version plus récente est sur le disque\./,
+                /Une version plus récente de "coconut-long-working-copy\.nxsp" est sur le disque\./,
             )
             const geometry = await statusGeometry(page)
             expect(geometry.bar.height).toBe(32)
@@ -969,7 +969,7 @@ test.describe('single-line disclosures', () => {
         const dialog = page.getByRole('dialog', { name: 'Changes Not Stored' })
         await expect(dialog).toContainText('Changes are not being stored in this browser.')
         await expect(dialog).toContainText(
-            '"coconut.nxsp": changed on disk since you opened or saved it here.',
+            '“coconut.nxsp” has changed on disk since you opened or saved it here.',
         )
         await expect(dialog).not.toContainText('Leaving will discard')
         await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(1)
@@ -1108,26 +1108,12 @@ test.describe('Help', () => {
         return page.getByRole('dialog', { name: 'Help' })
     }
 
-    test('the file section says how to move work, and the .crswap line shows where files are written in place', async ({
-        page,
-        context,
-    }) => {
+    test('the file section says how to move work', async ({ page, context }) => {
         await seed(context)
         await visit(page)
         const dialog = await help(page)
         await expect(dialog).toContainText(
-            'To move work to another device, save it as a .nxsp file, then open the file there.',
+            'To move work to another device, save it as a project file, then open the file there.',
         )
-        await expect(dialog).toContainText(
-            'A crash while saving can leave a .crswap file next to the project file. You can delete it.',
-        )
-    })
-
-    test('a download browser leaves the .crswap line out', async ({ page, context }) => {
-        await seed(context, { fileSystemAccess: false })
-        await visit(page)
-        const dialog = await help(page)
-        await expect(dialog).toContainText('To move work to another device')
-        await expect(dialog).not.toContainText('.crswap')
     })
 })

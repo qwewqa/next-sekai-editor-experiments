@@ -280,7 +280,7 @@ test('Save and Export while peeking leave the peek and the rows where they are',
     await page.keyboard.press('Shift+P')
     const dialog = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByText('Exports the current version.')).toBeVisible()
+    await expect(dialog.getByText('Exports the version marked Now in the Timeline.')).toBeVisible()
     await dialog.getByRole('textbox', { name: 'File Name' }).fill('live')
     await page.keyboard.press('Enter')
     await expect(notice(page, 'Exported to live.nsld')).toBeVisible()

@@ -211,7 +211,7 @@ test('note type and SFX fields picture the note', async ({ page }) => {
     const type = field(page, 'Note Type').locator('select')
     await expect(type.locator('.select-option-glyph[aria-hidden=true]')).toHaveCount(6)
     await expect(type.locator('.select-option-glyph svg')).toHaveCount(6)
-    await expect(type.getByRole('option', { name: 'Force Non Tick', exact: true })).toHaveCount(1)
+    await expect(type.getByRole('option', { name: 'Force Non-Tick', exact: true })).toHaveCount(1)
     const sfx = field(page, 'SFX').locator('select')
     await expect(sfx.locator('.select-option-glyph[aria-hidden=true]')).toHaveCount(11)
     await expect(sfx.locator('.select-option-glyph svg')).toHaveCount(10)

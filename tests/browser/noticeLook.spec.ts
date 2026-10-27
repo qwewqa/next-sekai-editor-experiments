@@ -200,9 +200,9 @@ test.describe('the producers’ severities', () => {
             const { defaultSaveUi } = await window.editorTest.appImport<
                 typeof import('../../src/editor/save/dialogs')
             >('/src/editor/save/dialogs.ts')
-            defaultSaveUi.error(() => '"coconut.nxsp" could not be downloaded.')
+            defaultSaveUi.error(() => '“coconut.nxsp” could not be downloaded.')
         })
-        await expect(card(page)).toContainText('"coconut.nxsp" could not be downloaded.')
+        await expect(card(page)).toContainText('“coconut.nxsp” could not be downloaded.')
         await expect(glyphs(page)).toHaveAttribute('data-severity', 'error')
     })
 })

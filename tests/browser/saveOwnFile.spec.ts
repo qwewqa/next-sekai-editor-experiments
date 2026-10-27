@@ -132,7 +132,7 @@ test('Export’s pick of the chain’s own file that is not written again gets t
     await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
     await settle(page)
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
     expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
 })
 
@@ -194,11 +194,11 @@ test('the chain’s own file filled by another write after the pick: the bytes r
     await release(page)
     const offer = page
         .getByRole('dialog')
-        .filter({ hasText: 'The contents of "coconut.nxsp" have changed.' })
+        .filter({ hasText: 'The contents of “coconut.nxsp” have changed.' })
     await expect(offer).toBeVisible()
     await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
     // Nothing was written over the other version.
     expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
 })
@@ -434,7 +434,7 @@ test('a put-back over a file filled meanwhile learns it from its size, never rea
     await release(page)
     const offer = page
         .getByRole('dialog')
-        .filter({ hasText: 'The contents of "coconut.nxsp" have changed.' })
+        .filter({ hasText: 'The contents of “coconut.nxsp” have changed.' })
     await expect(offer).toBeVisible()
     const inspected = await page.evaluate(
         () => (window as unknown as { inspected: [string | null, number][] }).inspected,

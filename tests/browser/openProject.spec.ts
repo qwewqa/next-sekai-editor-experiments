@@ -233,7 +233,8 @@ test('a file with an unknown entry opens as a separate copy with a new docId and
     await openFile(page, 'coconut.nxsp')
     await expect(
         notice(page).filter({
-            hasText: 'Made by a newer version of Next SEKAI Editor. Saving makes a separate file.',
+            hasText:
+                'This file was created by a newer version of Next SEKAI Editor. Saving will create a separate file.',
         }),
     ).toBeVisible()
     await expect(notice(page).locator('svg[data-severity]')).toHaveAttribute(
@@ -272,7 +273,7 @@ test('a level with a value this build does not know asks first; Cancel opens not
     const before = await sessionOf(page)
     await openFile(page, 'coconut.nxsp')
     const dialog = page.getByRole('dialog').filter({ hasText: 'Uses Newer Features' })
-    await expect(dialog).toContainText('"coconut.nxsp" Uses Newer Features')
+    await expect(dialog).toContainText('“coconut.nxsp” Uses Newer Features')
     await expect(dialog.getByRole('button', { name: 'Open a Copy' })).toBeFocused()
     await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     await expect(dialog).toHaveCount(0)
@@ -282,7 +283,9 @@ test('a level with a value this build does not know asks first; Cancel opens not
     await expect(dialog).toHaveCount(1)
     await confirmWhenReady(dialog.getByRole('button', { name: 'Open a Copy' }), dialog)
     await expect(
-        notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' }),
+        notice(page).filter({
+            hasText: 'This file was created by a newer version of Next SEKAI Editor.',
+        }),
     ).toBeVisible()
     await expect(notice(page).locator('svg[data-severity]')).toHaveAttribute(
         'data-severity',
@@ -341,7 +344,7 @@ test('damage found by the import unlinks the session: a new docId, no binding, t
     await openFile(page, 'coconut.nxsp')
     await expect(
         notice(page).filter({
-            hasText: '"coconut.nxsp" has damaged history. Saving makes a separate file.',
+            hasText: 'The history in coconut.nxsp is damaged. Saving will create a separate file.',
         }),
     ).toBeVisible()
     await expect(notice(page).locator('svg[data-severity]')).toHaveAttribute(
@@ -402,7 +405,7 @@ test('damage the import finds before the open is shown still gets its card', asy
     await openFile(page, 'coconut.nxsp')
     await expect(
         notice(page).filter({
-            hasText: '"coconut.nxsp" has damaged history. Saving makes a separate file.',
+            hasText: 'The history in coconut.nxsp is damaged. Saving will create a separate file.',
         }),
     ).toBeVisible()
     expect((await sessionOf(page)).copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
@@ -586,7 +589,7 @@ test('the same file opened in a second tab opens unbound, as a separate copy', a
     await openFile(other, 'coconut.nxsp')
     await expect(
         notice(other).filter({
-            hasText: '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+            hasText: '“coconut.nxsp” is open in another tab or window, so this is a separate copy.',
         }),
     ).toBeVisible()
     await expect(notice(other).locator('svg[data-severity]')).toHaveAttribute(
@@ -834,7 +837,7 @@ test('a newer major version asks first, then opens only the level, unbound', asy
     const dialog = page
         .getByRole('dialog')
         .filter({ hasText: 'Only the level can be opened from this file.' })
-    await expect(dialog).toContainText('Made by a newer version of Next SEKAI Editor.')
+    await expect(dialog).toContainText('File Created by a Newer Version of Next SEKAI Editor')
     await expect(dialog.getByRole('button', { name: 'Open the Level' })).toBeFocused()
     await confirmWhenReady(dialog.getByRole('button', { name: 'Open the Level' }), dialog)
     await expect.poll(async () => (await sessionOf(page)).sessionId).not.toBe(before.sessionId)
@@ -865,7 +868,10 @@ test('a newer major version whose level is refused is an error card', async ({ p
         .getByRole('dialog')
         .filter({ hasText: 'Only the level can be opened from this file.' })
     await confirmWhenReady(dialog.getByRole('button', { name: 'Open the Level' }), dialog)
-    const card = notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' })
+    const card = notice(page).filter({
+        hasText:
+            'This file was created by a newer version of Next SEKAI Editor and cannot be opened.',
+    })
     await expect(card).toBeVisible()
     await expect(card.locator('svg[data-severity]')).toHaveAttribute('data-severity', 'error')
 })
@@ -1010,7 +1016,8 @@ test('any other ZIP is still "not a project file"', async ({ page }) => {
 // A newer `patch` is a line of its own on a whole open: beside what else the
 // open has to say, and given way only to an earlier session's unsaved-changes notice.
 
-const PATCH_LINE = 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.'
+const PATCH_LINE =
+    'This file was created by a newer version of Next SEKAI Editor. Some content may not be shown.'
 
 const patchBytes = async (change?: (items: Item[]) => Item[] | void) => {
     const file = await crafted((items) => {
@@ -1034,7 +1041,7 @@ test('a newer patch beside a file bound in another tab: the separate-copy line a
     await start(other)
     await openFile(other, 'coconut.nxsp')
     const card = notice(other).filter({
-        hasText: '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+        hasText: '“coconut.nxsp” is open in another tab or window, so this is a separate copy.',
     })
     await expect(card).toBeVisible()
     await expect(card).toContainText(PATCH_LINE)

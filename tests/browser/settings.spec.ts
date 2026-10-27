@@ -196,7 +196,7 @@ test('shortcut capture refuses chords the browser keeps and waits for another ke
     await expectRefused(
         page,
         'Save',
-        'Ctrl+Alt+K types characters on many keyboards. Press another key.',
+        'Ctrl+Alt+K is used to type characters on many keyboard layouts. Press another key.',
     )
     expect(await savedShortcut(page, 'save')).toBe('Mod+h')
 
@@ -205,7 +205,7 @@ test('shortcut capture refuses chords the browser keeps and waits for another ke
     await expectRefused(
         page,
         'Save',
-        'Ctrl+Alt+1 types characters on many keyboards. Press another key.',
+        'Ctrl+Alt+1 is used to type characters on many keyboard layouts. Press another key.',
     )
     expect(await savedShortcut(page, 'save')).toBe('Mod+h')
 })
@@ -237,14 +237,24 @@ test('shortcut capture waits past IME and dead keys and ignores Caps Lock', asyn
 test('shared bindings are named under their rows', async ({ page }) => {
     await shortcutButton(page, 'Save').click()
     await page.keyboard.press('s')
-    await expect(shortcutField(page, 'Save')).toContainText('Also runs Slide')
-    await expect(shortcutField(page, 'Slide')).toContainText('Also runs Save')
-    await expect(shortcutButton(page, 'Slide')).toHaveAccessibleDescription(/Also runs Save/)
+    await expect(shortcutField(page, 'Save')).toContainText('Also runs Slide.')
+    await expect(shortcutField(page, 'Slide')).toContainText('Also runs Save.')
+    await expect(shortcutButton(page, 'Slide')).toHaveAccessibleDescription(/Also runs Save\./)
 
     // A binding of Ctrl+R ends the share on r.
     await shortcutButton(page, 'Save').click()
     await page.keyboard.press('Control+r')
     await expect(shortcutField(page, 'Slide')).not.toContainText('Also runs')
+
+    // A command whose title ends in an ellipsis is named without it in the running text.
+    await shortcutButton(page, 'Save').click()
+    await page.keyboard.press('o')
+    await expect(shortcutField(page, 'Save').locator('.form-field-notes')).toHaveText(
+        'Also runs Open.',
+    )
+    await expect(shortcutField(page, 'Open…').locator('.form-field-notes')).toHaveText(
+        'Also runs Save.',
+    )
 })
 
 test.describe('on Apple devices', () => {
@@ -854,7 +864,7 @@ test('the auto save rows are gone, and Beat Display sits with the display rows',
     expect(at('Show Minimap')).toBe(at('Zero-Width Notes') + 1)
     expect(at('Show Edits by Default')).toBe(at('Show Minimap') + 1)
     expect(at('Max Scroll X (lanes)')).toBe(at('Name Contrast') + 1)
-    expect(at('Second Deselect Switches to Select Tool')).toBe(at('Drag to Pan X') + 1)
+    expect(at('Deselect Twice to Switch to Select Tool')).toBe(at('Drag to Pan X') + 1)
     expect(at('Elevation Editor Connector Arrows')).toBe(at('Elevation Editor Side by Side') + 1)
 })
 
@@ -885,7 +895,7 @@ test('on/off fields are switches named by their row', async ({ page }) => {
 })
 
 test('a Toolbar tool is named by what pressing it does', async ({ page }) => {
-    const name = 'Remove "Save" from Toolbar'
+    const name = 'Remove “Save” from Toolbar'
     const tool = page.getByRole('dialog').getByRole('button', { name, exact: true })
     await expect(tool).toHaveAttribute('title', name)
     const has = () =>
@@ -894,6 +904,12 @@ test('a Toolbar tool is named by what pressing it does', async ({ page }) => {
     await tool.click()
     await expect(tool).toHaveCount(0)
     expect(await has()).toBe(false)
+})
+
+test('a Toolbar tool whose title ends in an ellipsis is named without it', async ({ page }) => {
+    const name = 'Remove “Open” from Toolbar'
+    const tool = page.getByRole('dialog').getByRole('button', { name, exact: true })
+    await expect(tool).toHaveAttribute('title', name)
 })
 
 test('the dialog fills the viewport at v0.5.22’s width, and a mouse sees every section pill', async ({
@@ -924,12 +940,12 @@ test('on a short screen the section index scrolls away with the sections', async
 for (const reset of [
     {
         name: 'Reset Settings',
-        message: 'Restore default settings, keeping keyboard shortcuts?',
+        message: 'Reset settings to their defaults? Keyboard shortcuts will be kept.',
         changed: 'previewNoteSpeed',
     },
     {
         name: 'Reset Shortcuts',
-        message: 'Restore default keyboard shortcuts?',
+        message: 'Reset keyboard shortcuts to their defaults?',
         changed: 'save',
     },
 ]) {

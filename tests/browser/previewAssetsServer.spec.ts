@@ -282,9 +282,9 @@ test.describe('From a Server', () => {
         const also = chooser(page).locator('[data-chooser-also]')
         // One checkbox for the particle and one for the sound effects; the background has another name.
         await expect(also.locator('label')).toHaveCount(2)
-        await expect(also).toContainText('Also use the particle "Neon Particle" from this server')
+        await expect(also).toContainText('Also use the particle “Neon Particle” from this server')
         await expect(also).toContainText(
-            'Also use the sound effects "Neon Sounds" from this server',
+            'Also use the sound effects “Neon Sounds” from this server',
         )
         await expect(also.locator('input:checked')).toHaveCount(0)
         // They sit between the list and the footer, before Use.
@@ -577,7 +577,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, 'http://server.test/api')
         await expect(errorOf(page).locator('[data-server-error-text]')).toHaveText(
-            'The editor cannot use http servers.',
+            'HTTP server addresses are not supported.',
         )
         expect(server.state.requests).toEqual([])
         await field(page).fill('')
@@ -600,7 +600,9 @@ test.describe('when a server cannot be used', () => {
         await open(page)
         await chooseServer(page)
         await connect(page, `${BASE}/elsewhere`)
-        await expect(errorOf(page)).toContainText('This address is not a Sonolus server.')
+        await expect(errorOf(page)).toContainText(
+            'The editor could not read Sonolus server data from this address.',
+        )
         await connect(page, `${BASE}/broken`)
         await expect(errorOf(page)).toContainText('This server returned an error (503).')
     })
@@ -617,7 +619,7 @@ test.describe('when a server cannot be used', () => {
         await connect(page, BASE)
         await useButton(page).click()
         await expect(useErrorOf(page)).toContainText(
-            'The server’s checksum for this item does not match what it sent.',
+            'The downloaded content does not match the server’s checksum.',
         )
         await expect(chooser(page)).toBeVisible()
         expect(await stored(page)).toHaveLength(0)
@@ -1047,7 +1049,7 @@ test.describe('looks', () => {
                 await expect(errorOf(page)).toContainText('returned an error (503)')
                 await shot(page, name('error-status'))
                 await connect(page, 'http://server.test/api')
-                await expect(errorOf(page)).toContainText('http servers')
+                await expect(errorOf(page)).toContainText('HTTP server addresses')
                 await shot(page, name('error-http'))
                 await context.setOffline(true)
                 await connect(page, BASE)

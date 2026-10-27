@@ -200,7 +200,7 @@ test('a duplicated tab forks with a divider, and nothing it does reaches the fir
     })
     await page.keyboard.press('z')
     await expect(notice(page, 'Undid')).toBeVisible()
-    expect(await seenNotices(page)).toEqual([expect.stringMatching(/^Undid "/)])
+    expect(await seenNotices(page)).toEqual([expect.stringMatching(/^Undid “/)])
     noErrors(page)
     noErrors(b)
 })

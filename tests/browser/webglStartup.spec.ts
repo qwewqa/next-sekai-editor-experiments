@@ -103,7 +103,7 @@ for (const mode of ['sync', 'async'] as const) {
         await openEditor(page, false)
         const alert = page.locator('.rendering-error')
         // The headline is localized; the raw message is the detail behind the disclosure.
-        await expect(alert).toContainText('Graphics could not be started.')
+        await expect(alert).toContainText('The chart could not be displayed.')
         const message =
             mode === 'sync'
                 ? 'Unable to create the editor WebGL2 context'
@@ -218,7 +218,7 @@ test('preview selection initializes lazily and retries through the existing prev
     await page.evaluate(
         () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
     )
-    await expect(preview).not.toContainText('Preview graphics could not be started.')
+    await expect(preview).not.toContainText('The preview could not be displayed.')
     await page.evaluate(() => {
         const { history } = window.editorTest
         history.replaceState({
@@ -226,12 +226,12 @@ test('preview selection initializes lazily and retries through the existing prev
             selectedEntities: [...history.state.value.store.slides.note.values()].flat(),
         })
     })
-    await expect(preview).toContainText('Preview graphics could not be started.')
+    await expect(preview).toContainText('The preview could not be displayed.')
     await page.evaluate(() => {
         window.rendererInitProbe.mode = 'normal'
     })
     await preview.getByRole('button', { name: 'Reload', exact: true }).click()
     // Read through the renderer: a context the page asked for first would be the renderer's too.
     await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
-    await expect(preview).not.toContainText('Preview graphics could not be started.')
+    await expect(preview).not.toContainText('The preview could not be displayed.')
 })

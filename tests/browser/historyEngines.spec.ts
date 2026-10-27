@@ -9,8 +9,10 @@ import {
     load,
     noErrors,
     openHistory,
+    rowTitles,
     sampleClock,
     timeline,
+    timelineRead,
 } from './historyJourney'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
@@ -337,6 +339,35 @@ test('a live entry arriving keeps the row under the pointer where it was', async
         .toBeGreaterThan(height)
     await stableTop(page, title)
     expect(Math.abs((await topOf(page, title)) - before)).toBeLessThanOrEqual(1)
+})
+
+test('an arrow key moves focus on when the focused row has scrolled out of the rendered rows', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    await synthesise(page, 80)
+    await flush(page)
+    await openHistory(page)
+    await timelineRead(page)
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
+    await expect.poll(() => titleOf(page)).toBe('Life 79')
+    // The list scrolls far from the focused row, which stays rendered as the cursor. The row after
+    // it is not rendered.
+    const list = timeline(page)
+    await list.evaluate((element) => {
+        element.scrollTop = 44 * 40
+    })
+    await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(44 * 30)
+    await expect.poll(async () => (await rowTitles(page)).includes('Life 78')).toBe(false)
+    await expect.poll(async () => (await rowTitles(page)).includes('Life 79')).toBe(true)
+    // The cursor moves to a row that is not rendered, and the focused row leaves the rendered rows
+    // at the same time. Focus follows, and the next key still reaches the list.
+    await page.keyboard.press('ArrowDown')
+    await expect.poll(() => titleOf(page)).toBe('Life 78')
+    await page.keyboard.press('ArrowDown')
+    await expect.poll(() => titleOf(page)).toBe('Life 77')
 })
 
 test('Go To an older day shows its rows, with a gap row that fills without a jump', async ({

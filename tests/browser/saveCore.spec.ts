@@ -123,7 +123,7 @@ test('the file rewritten with the same size and time gives the conflict dialog',
     await edit(page, 2)
     await pressSave(page)
     const dialog = choice(page)
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     await expect(dialog.getByRole('button', { name: 'Save as a Separate File…' })).toBeFocused()
     // Nothing was written over it.
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
@@ -139,7 +139,7 @@ test('an unchanged session with a changed file still gets the dialog on p', asyn
     ]
     await writeFile(page, 'coconut.nxsp', other)
     await pressSave(page)
-    await expect(choice(page)).toContainText('"coconut.nxsp" Changed')
+    await expect(choice(page)).toContainText('“coconut.nxsp” Changed')
 })
 
 test('a touched file (the same bytes, a new time) is appended to with no dialog', async ({
@@ -188,7 +188,7 @@ test('the file deleted gives the not-found dialog; Save As… keeps the docId an
     await edit(page, 2)
     await pressSave(page)
     const dialog = choice(page)
-    await expect(dialog).toContainText('"coconut.nxsp" cannot be found.')
+    await expect(dialog).toContainText('“coconut.nxsp” could not be found.')
     // No hint to pick the moved file: a save picker would empty it.
     await expect(dialog).not.toContainText('moved')
     await page.waitForTimeout(350)
@@ -213,7 +213,7 @@ test('the Export link in the not-found dialog’s Save As… opens Export Level 
     await edit(page, 2)
     await pressSave(page)
     const dialog = choice(page)
-    await expect(dialog).toContainText('"coconut.nxsp" cannot be found.')
+    await expect(dialog).toContainText('“coconut.nxsp” could not be found.')
     await page.waitForTimeout(350)
     await dialog.getByRole('button', { name: 'Save As…' }).click()
     const saveAs = saveDialog(page, 'Save As')
@@ -336,7 +336,7 @@ test('a write that never landed leaves no marker, and a load drops markers of ch
         localStorage.removeItem('nse.test.savePause')
         window.nseSaveTest?.release()
     })
-    await expect(choice(page)).toContainText('"coconut.nxsp" Changed')
+    await expect(choice(page)).toContainText('“coconut.nxsp” Changed')
     expect(await page.evaluate((key) => localStorage.getItem(key), marker)).toBeNull()
 
     // A marker whose chain storage no longer holds goes at a later load.
@@ -393,7 +393,7 @@ test('a Save whose handle read fails over the real client downloads nothing and 
     await expect(
         notice(page).filter({
             hasText:
-                'Not saved. The editor could not access this browser’s storage. Try again, or use Save As…',
+                'Not saved. The editor could not access this browser’s storage. Try again, or use Save As.',
         }),
     ).toBeVisible()
     expect(downloads).toEqual([])
@@ -443,7 +443,7 @@ test('Save As… still saves while every covered storage read fails, as the Not 
     })
     await edit(page, 2)
     await pressSave(page)
-    await expect(notice(page).filter({ hasText: 'Try again, or use Save As…' })).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'Try again, or use Save As.' })).toBeVisible()
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')

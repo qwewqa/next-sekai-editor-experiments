@@ -45,12 +45,12 @@
     },
     "copy": {
       "title": "复制",
-      "noSelected": "未选择要复制的对象",
+      "noSelected": "请选择要复制的对象",
       "copied": "已复制 {0} 个对象"
     },
     "cut": {
       "title": "剪切",
-      "noSelected": "未选择要剪切的对象",
+      "noSelected": "请选择要剪切的对象",
       "cut": "已剪切 {0} 个对象"
     },
     "deselect": {
@@ -99,7 +99,7 @@
     },
     "flip": {
       "title": "水平翻转",
-      "noSelected": "未选择要翻转的对象",
+      "noSelected": "请选择要翻转的对象",
       "flipped": "已翻转 {0} 个对象"
     },
     "flipVertical": {
@@ -109,31 +109,31 @@
     "scaleBeat": {
       "title": "缩放节拍间距…",
       "dialogTitle": "缩放节拍间距",
-      "noSelected": "请选择至少两个位于不同节拍的对象进行缩放",
+      "noSelected": "请选择至少两个位于不同节拍的对象",
       "scaled": "已缩放 {0} 个对象的节拍间距"
     },
     "scaleWidth": {
       "title": "缩放宽度…",
       "dialogTitle": "缩放宽度",
-      "noSelected": "请选择具有横向跨度的对象进行缩放",
+      "noSelected": "请选择具有横向跨度的对象",
       "scaled": "已缩放 {0} 个对象的宽度"
     },
     "scaleElevation": {
       "title": "缩放高度间距…",
       "dialogTitle": "缩放高度间距",
-      "noSelected": "请选择至少两个高度不同的音符或舞台变换进行缩放",
+      "noSelected": "请选择至少两个高度不同的音符或舞台变换事件",
       "scaled": "已缩放 {0} 个对象的高度间距"
     },
     "scaleSelection": {
       "factor": "缩放倍数",
       "apply": "应用",
-      "invalidFactor": "请输入正缩放倍数，使结果保持在编辑器支持的范围内"
+      "invalidFactor": "请输入正缩放倍数，使结果保持在支持的范围内"
     },
     "makeVertical": {
       "title": "转为垂直排列",
       "noSelected": "请选择至少一个音符转为垂直排列",
       "unchanged": "所选音符已垂直排列",
-      "invalid": "无法在编辑器支持的范围内将所选对象转为垂直排列",
+      "invalid": "无法在支持的范围内将所选对象转为垂直排列",
       "made": "已将 {0} 个音符转为垂直排列"
     },
     "splitHold": {
@@ -143,14 +143,14 @@
     },
     "combineNotes": {
       "title": "合并为长按音符",
-      "noSelected": "未选择要合并的音符",
+      "noSelected": "请选择要合并的音符",
       "sameSlide": "所选音符已属于同一条长按音符",
       "combined": "已将 {0} 个音符合并为一条长按音符"
     },
     "fullscreen": {
       "title": "全屏",
       "toggled": "已切换全屏模式",
-      "unsupported": "您的设备不支持全屏"
+      "unsupported": "此设备不支持全屏"
     },
     "groups": {
       "groupAll": {
@@ -259,11 +259,11 @@
       "invalidLevel": "无效的关卡：{0}",
       "invalidChart": "无效的谱面：{0}",
       "revision": {
-        "older": "此关卡是为较旧的引擎修订版制作的。它现在使用当前修订版，请检查其显示和游玩效果是否仍符合预期。",
-        "newer": "此关卡是为较新的引擎修订版制作的，此编辑器尚不支持。部分内容可能无法按预期显示或保存。"
+        "older": "此关卡是为较旧的引擎修订版制作的，现在使用当前修订版。请检查其显示和游玩效果是否仍符合预期。",
+        "newer": "此关卡是为较新的引擎修订版制作的，此编辑器尚不支持。部分内容可能无法正确显示或保存。"
       },
       "refusals": {
-        "dynamicStages": "使用了动态舞台功能，但未启用动态舞台",
+        "dynamicStages": "关卡使用了动态舞台，但未启用",
         "cyclicEventRef": "事件引用“{0}”形成循环",
         "cyclicSlideRef": "长按音符引用“{0}”形成循环",
         "refNotFound": "找不到引用“{0}”",
@@ -279,9 +279,9 @@
         "invalidBpm": "BPM 必须是有限的正数",
         "missingValue": "{0} 没有 {1}",
         "missingNote": "{0} 缺少音符",
-        "ticksPerBeat": "每拍 tick 数缺失或异常",
-        "offset": "偏移异常",
-        "timeScaleChange": "时间尺度变化异常",
+        "ticksPerBeat": "每拍 tick 数缺失或无效",
+        "offset": "偏移无效",
+        "timeScaleChange": "时间尺度变化无效",
         "meter": "每小节拍数无效",
         "missingMeter": "第 {0} 小节没有每小节拍数"
       },
@@ -500,7 +500,7 @@
         "serverFailed": "无法从 {1} 重新下载{0}。",
         "invalid": "无法读取已存储的{0}。",
         "failed": "无法加载{0}。",
-        "builtinFailed": "无法加载内置项。"
+        "builtinFailed": "无法加载内置资源。"
       },
       "offline": "您已离线。",
       "safeMode": "安全模式使用{0}。",
@@ -514,7 +514,7 @@
       "remove": "移除",
       "removeStored": "移除…",
       "inUse": "使用中",
-      "removeInUse": "移除“{0}”？将改用默认项。",
+      "removeInUse": "移除“{0}”？预览将改用默认选项。",
       "removeUnused": "移除“{0}”？",
       "removeFailed": "无法移除此项目。",
       "chooseAgain": "重新选择…",
@@ -542,7 +542,7 @@
         "fileTooLarge": "此文件超过 {0}。",
         "tooManyEntries": "此文件的条目超过 {0} 个。",
         "badName": "此文件包含不允许的条目名称。",
-        "ratio": "此文件的{0}{1}解压后超过其大小的 {2} 倍。",
+        "ratio": "此文件的{0}{1}解压后超过其压缩大小的 {2} 倍。",
         "tooBig": "此文件的{0}{1}超过 {2}。",
         "unreadable": "无法读取此文件的{0}{1}。",
         "missing": "此文件缺少{0}{1}。",
@@ -573,10 +573,10 @@
       "server": {
         "unreachable": "无法连接到此服务器。请检查地址，或稍后再试。",
         "auth": "编辑器无法使用需要登录的服务器。",
-        "insecure": "编辑器无法使用 http 服务器。",
-        "checksum": "此项目的校验和与服务器发送的内容不符。",
+        "insecure": "不支持 HTTP 服务器地址。",
+        "checksum": "下载的内容与服务器的校验和不符。",
         "notFound": "此服务器上没有该项目。",
-        "invalid": "此地址不是 Sonolus 服务器。",
+        "invalid": "编辑器无法从此地址读取 Sonolus 服务器数据。",
         "status": "服务器返回了错误（{0}）。",
         "filesFailed": "无法从 {0} 下载此项目的文件。",
         "addressEmpty": "请输入服务器地址。",
@@ -599,7 +599,7 @@
         "tooManyParticles": "此项目的{0}数据中的粒子超过 {1} 个。",
         "tooManyGroups": "此项目的{0}数据中的粒子组超过 {1} 个。",
         "effectGroups": "此项目的{0}效果“{1}”的粒子组超过 {2} 个。",
-        "ratio": "此项目的{0}{1}解压后超过其大小的 {2} 倍。"
+        "ratio": "此项目的{0}{1}解压后超过其压缩大小的 {2} 倍。"
       }
     },
     "history": {
@@ -618,165 +618,111 @@
   "help": {
     "modal": {
       "title": "帮助",
+      "gettingStarted": {
+        "title": "入门",
+        "bgm": "选择“背景音乐”以加载音乐并设置偏移。",
+        "bpm": "选择“BPM”，然后点击谱面开头的 BPM 变化。再次点击即可编辑其 BPM。",
+        "bpmClick": "选择“BPM”，然后点击谱面开头的 BPM 变化。再次点击即可编辑其 BPM。",
+        "notes": "选择“音符”，然后点击谱面即可添加音符。要添加长按音符，请先选择“取消选择”，再选择“长按音符”，然后点击长按音符的起点和终点。",
+        "notesClick": "选择“音符”，然后点击谱面即可添加音符。要添加长按音符，请先选择“取消选择”，再选择“长按音符”，然后点击长按音符的起点和终点。",
+        "save": "选择“保存”，将内容保存为项目文件（.nxsp）。要生成上传到 Sonolus 服务器的关卡数据，请使用“导出关卡数据”。"
+      },
       "touchscreen": {
         "title": "触控屏",
-        "tap": "单指轻触即可使用当前工具。",
-        "drag": "单指拖动即可使用当前工具。",
-        "quickScroll": "在快速滚动区域内单指拖动即可滚动。",
-        "minimap": "在小地图中单指轻触即可滚动到该位置，或拖动标出可见区域的方框。",
-        "deselect": "双指轻触即可取消选择。",
-        "scrollY": "双指垂直平移即可纵向滚动。",
-        "scrollX": "双指水平平移即可横向滚动。",
-        "zoomY": "双指垂直捏合可纵向缩放。",
-        "zoomX": "双指水平捏合可横向缩放。",
-        "play": "三指轻触即可播放。"
+        "longPress": "长按对象即可打开右键菜单。",
+        "scroll": "双指拖动即可滚动。纵向捏合可纵向缩放，横向捏合可横向缩放。",
+        "quickScroll": "要用单指滚动，请在谱面右边缘的快速滚动区域内拖动。",
+        "gestures": "双指轻触即可取消选择。三指轻触即可开始或停止播放。"
       },
       "mouse": {
         "title": "鼠标",
-        "tapPrimary": "左键单击使用主要工具。",
-        "dragPrimary": "按住左键拖动，使用主要工具进行拖动操作。",
-        "tapSecondary": "右键单击使用辅助工具。",
-        "dragSecondary": "按住右键拖动，使用辅助工具进行拖动操作。",
-        "scrollY": "滚动滚轮即可垂直滚动。",
-        "scrollX": "按下 Shift 键并滚动滚轮以水平滚动。",
-        "autoscroll": "中键单击后移动鼠标即可滚动。单击即可停止。",
-        "minimap": "在小地图中左键单击或拖动即可滚动到该位置。",
-        "zoomY": "按下 Ctrl 键并滚动滚轮以垂直缩放。",
-        "zoomX": "按下 Ctrl 和 Shift 键并滚动滚轮以水平缩放。"
+        "contextMenu": "右键单击对象即可打开右键菜单，按住右键拖动即可使用“选择”。",
+        "secondary": "右键单击或按住右键拖动即可使用“{0}”。",
+        "scrollX": "按住 Shift 并转动鼠标滚轮可横向滚动。",
+        "zoom": "按住 Ctrl 并转动鼠标滚轮可纵向缩放，按住 Ctrl 和 Shift 并转动滚轮可横向缩放。",
+        "autoscroll": "中键单击后移动鼠标即可滚动。再次单击即可停止。"
       },
       "keyboard": {
         "title": "键盘",
-        "single": "按一次即可执行。",
-        "multiple": "按住按键可重复滚动、缩放、撤销、重做，或更改音符尺寸、播放速度、群组或舞台。"
+        "settings": "在“设置 › 键盘快捷键”中查看和更改快捷键。"
       },
       "selectTool": {
-        "title": "选择工具",
-        "select": "点击对象即可选择 1 个对象，重复点击可在重叠对象之间切换。",
-        "deselect": "点击空白处即可取消选择所有对象。",
-        "move": "拖动对象即可移动多个对象。",
-        "selectMultiple": "拖动框选多个对象。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "shift": "按住 Shift 键可同时操作同一条长按音符中的其他音符。"
+        "select": "对象重叠时，每次点击都会选择下一个对象。",
+        "selectClick": "对象重叠时，每次点击都会选择下一个对象。",
+        "move": "拖动已选对象即可移动所有所选对象。",
+        "resize": "拖动音符、镜头事件或舞台遮罩事件的边缘即可调整大小。如果所选对象都是同一种类型，则会一起调整大小。",
+        "modifiers": "按住 Ctrl（macOS 上为 Cmd）可将对象加入选择或从选择中移除。按住 Shift 可选择整条长按音符。",
+        "selectMultiple": "从空白处开始拖动框选，即可选择框内的对象。"
       },
       "eraserTool": {
-        "title": "橡皮擦工具",
-        "erase": "点击要擦除的对象。",
-        "deselect": "点击空白处即可取消选择所有对象。",
-        "eraseMultiple": "拖动以框选擦除多个对象。"
+        "erase": "点击对象即可擦除，或拖动框选以擦除框内的所有对象。",
+        "eraseClick": "点击对象即可擦除，或拖动框选以擦除框内的所有对象。",
+        "selection": "点击已选对象即可擦除所有所选对象。",
+        "selectionClick": "点击已选对象即可擦除所有所选对象。"
       },
       "brushTool": {
-        "title": "笔刷工具",
-        "brush": "点击要刷的对象。",
-        "deselect": "点击空白处即可取消选择所有对象。",
-        "brushMultiple": "拖动框选以刷多个对象。",
-        "shift": "按住 Shift 键可同时操作同一条长按音符中的其他音符。"
+        "properties": "选择“笔刷”，然后设置要应用的属性。",
+        "brush": "点击对象或拖动框选即可应用笔刷。点击已选对象会将笔刷应用于所有所选对象。",
+        "brushClick": "点击对象或拖动框选即可应用笔刷。点击已选对象会将笔刷应用于所有所选对象。",
+        "shift": "按住 Shift 可将笔刷应用于整条长按音符。"
       },
       "pasteTool": {
-        "title": "粘贴工具",
-        "paste": "点击即可粘贴。",
-        "shift": "按下 Shift 键翻转对象。"
+        "paste": "点击或拖动可放置已复制的对象。按住 Shift 可将其水平翻转。",
+        "pasteClick": "点击或拖动可放置已复制的对象。按住 Shift 可将其水平翻转。"
       },
       "noteTool": {
-        "title": "音符工具",
-        "select": "点击音符以选择 1 个音符。",
-        "edit": "点击 1 个音符进行编辑。",
-        "add": "点击空白处即可添加音符。",
-        "move": "拖动 1 个音符进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "shift": "按住 Shift 键可同时操作同一条长按音符中的其他音符。",
-        "properties": "再次切换音符工具即可更改预设或默认属性。"
+        "presets": "再次选择“音符”可显示默认属性，并在“音符 #1”至“音符 #4”的预设之间切换。",
+        "quickEdit": "显示“属性”面板时，点击已选音符可为所有所选音符设置当前预设中的属性，或依次切换这些属性的值。例如，默认的“音符 #2”预设会开启或关闭“关键”。",
+        "quickEditClick": "显示“属性”面板时，点击已选音符可为所有所选音符设置当前预设中的属性，或依次切换这些属性的值。例如，默认的“音符 #2”预设会开启或关闭“关键”。"
       },
       "slideTool": {
-        "title": "长按音符工具",
-        "select": "点击音符以选择 1 个音符。",
-        "edit": "点击 1 个音符进行编辑。",
-        "add": "点击空白处即可添加音符。",
-        "connect": "选择 1 个音符后，点击空白处即可添加并连接音符。",
-        "move": "拖动 1 个音符进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "shift": "按住 Shift 键可同时操作同一条长按音符中的其他音符。",
-        "properties": "再次切换长按音符工具即可更改预设或默认属性。"
-      },
-      "splitSlide": {
-        "split": "切断每个所选音符到下一个音符的连接。",
-        "tail": "长按音符的最后一个节点没有可切断的连接。"
+        "connect": "选中同一条长按音符中的音符后，点击空白处即可向该长按音符添加另一个音符。开始新的长按音符前，请选择“取消选择”。",
+        "connectClick": "选中同一条长按音符中的音符后，点击空白处即可向该长按音符添加另一个音符。开始新的长按音符前，请选择“取消选择”。",
+        "presets": "再次选择“长按音符”可显示默认属性，并在“长按音符 #1”至“长按音符 #5”的预设之间切换。",
+        "quickEdit": "与“音符”工具一样，点击已选音符可为所有所选音符设置当前预设中的属性，或依次切换这些属性的值。例如，默认的“长按音符 #1”预设会更改“连接缓动”。",
+        "quickEditClick": "与“音符”工具一样，点击已选音符可为所有所选音符设置当前预设中的属性，或依次切换这些属性的值。例如，默认的“长按音符 #1”预设会更改“连接缓动”。",
+        "splitCombine": "“拆分长按音符”会切断每个所选音符到下一个音符的连接。“合并为长按音符”会将所选音符所属的长按音符合并为一条长按音符。"
       },
       "generateSlideNotesTool": {
-        "title": "生成长按节点工具",
-        "generate": "点击或拖动选择 1 个音符，即可为整条长按音符生成节点。",
-        "generateMultiple": "点击或拖动选择至少 2 个音符，即可在它们之间生成节点。",
-        "deselect": "点击空白处即可取消选择所有对象。"
+        "generate": "点击音符可为其所属的整条长按音符生成启用“依附”的节点，每条空白分割线上各生成一个。",
+        "generateClick": "点击音符可为其所属的整条长按音符生成启用“依附”的节点，每条空白分割线上各生成一个。",
+        "generateMultiple": "拖动框选同一条长按音符中的至少两个音符，只在它们之间生成节点。点击已选音符，即可为选择中的每条长按音符生成节点。如果某条长按音符中只有一个音符被选中，则会为整条长按音符生成节点。",
+        "generateMultipleClick": "拖动框选同一条长按音符中的至少两个音符，只在它们之间生成节点。点击已选音符，即可为选择中的每条长按音符生成节点。如果某条长按音符中只有一个音符被选中，则会为整条长按音符生成节点。"
+      },
+      "adding": {
+        "title": "添加对象",
+        "add": "使用“音符”“长按音符”“BPM”“时间尺度”或“事件”时，点击空白处即可添加对象。使用“音符”或“长按音符”时，在空白处拖动可添加与拖动范围同宽的音符。",
+        "addClick": "使用“音符”“长按音符”“BPM”“时间尺度”或“事件”时，点击空白处即可添加对象。使用“音符”或“长按音符”时，在空白处拖动可添加与拖动范围同宽的音符。",
+        "edit": "点击已选对象即可显示其属性。",
+        "editClick": "点击已选对象即可显示其属性。",
+        "move": "拖动对象只会移动该对象。要同时移动多个对象，请使用“选择”。",
+        "resize": "拖动音符、镜头事件或舞台遮罩事件的边缘即可调整大小。",
+        "modifiers": "按住 Ctrl（macOS 上为 Cmd）并点击，可将对象加入选择或从选择中移除。按住 Shift 并点击音符，可选择其所属的整条长按音符。",
+        "modifiersClick": "按住 Ctrl（macOS 上为 Cmd）并点击，可将对象加入选择或从选择中移除。按住 Shift 并点击音符，可选择其所属的整条长按音符。"
       },
       "bpmTool": {
-        "title": "BPM 工具",
-        "select": "点击 BPM 以选择 1 个 BPM。",
-        "edit": "点击 1 个 BPM 进行编辑。",
-        "add": "点击空白处即可添加 BPM。",
-        "move": "拖动 1 个 BPM 进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。"
+        "first": "谱面始终以一个 BPM 变化开头。拖动它会在松开的位置添加一个副本。",
+        "replace": "将一个 BPM 变化移到另一个 BPM 变化上，会替换该位置原有的 BPM 变化。"
       },
       "timeScaleTool": {
-        "title": "时间尺度工具",
-        "select": "点击时间尺度以选择 1 个时间尺度。",
-        "edit": "点击 1 个时间尺度进行编辑。",
-        "add": "点击空白处即可添加。",
-        "move": "拖动 1 个时间尺度进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "markers": "菱形标记使用滚动过渡。虚线上的空心标记会隐藏音符。",
+        "markers": "菱形标记表示“滚动”过渡。虚线上的空心标记表示音符已隐藏。",
         "ease": "曲线表示到同一群组中下一个变化的缓动。"
       },
-      "cameraEventTool": {
-        "title": "镜头事件工具",
-        "select": "点击镜头事件即可选择 1 个镜头事件。",
-        "edit": "点击 1 个镜头事件进行编辑。",
-        "add": "点击空白处即可添加。",
-        "move": "拖动 1 个镜头事件进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "properties": "再次切换到镜头事件工具即可更改默认属性。"
+      "event": {
+        "next": "选择“事件”可切换到事件工具。再次选择可依次切换事件工具。",
+        "defaults": "要编辑事件工具的默认属性，请按名称再次选择该工具，例如“镜头事件”。",
+        "quickEdit": "显示“属性”面板时，点击已选事件还会更改其缓动。",
+        "quickEditClick": "显示“属性”面板时，点击已选事件还会更改其缓动。"
       },
-      "stageMaskEventTool": {
-        "title": "舞台遮罩事件工具",
-        "select": "点击舞台遮罩事件即可选择 1 个舞台遮罩事件。",
-        "edit": "点击 1 个舞台遮罩事件进行编辑。",
-        "add": "点击空白处即可添加。",
-        "move": "拖动 1 个舞台遮罩事件进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "properties": "再次切换到舞台遮罩事件工具即可更改默认属性。"
-      },
-      "stagePivotEventTool": {
-        "title": "舞台支点事件工具",
-        "select": "点击舞台支点事件即可选择 1 个舞台支点事件。",
-        "edit": "点击 1 个舞台支点事件进行编辑。",
-        "add": "点击空白处即可添加。",
-        "move": "拖动 1 个舞台支点事件进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "properties": "再次切换到舞台支点事件工具即可更改默认属性。"
-      },
-      "stageStyleEventTool": {
-        "title": "舞台样式事件工具",
-        "select": "点击舞台样式事件即可选择 1 个舞台样式事件。",
-        "edit": "点击 1 个舞台样式事件进行编辑。",
-        "add": "点击空白处即可添加。",
-        "move": "拖动 1 个舞台样式事件进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "properties": "再次切换到舞台样式事件工具即可更改默认属性。"
-      },
-      "stageTransformEventTool": {
-        "title": "舞台变换事件工具",
-        "select": "点击舞台变换事件即可选择 1 个舞台变换事件。",
-        "edit": "点击 1 个舞台变换事件进行编辑。",
-        "add": "点击空白处即可添加。",
-        "move": "拖动 1 个舞台变换事件进行移动。",
-        "ctrl": "按下 Ctrl 键并点击对象即可添加到选择中。",
-        "properties": "再次切换到舞台变换事件工具即可更改默认属性。"
+      "offset": {
+        "drag": "向上或向下拖动可更改背景音乐偏移。"
       }
     },
-    "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知。之后按 Esc 可将其关闭。",
+    "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至持续显示在屏幕上的通知。按 Esc 可将其关闭。",
     "shiftF10": "按 Shift+F10 或菜单键可打开当前焦点项的菜单。",
-    "recentSessions": "未保存的内容在“历史记录 › 最近会话”中。",
+    "recentSessions": "要查找此浏览器中保留的未保存内容，请打开“历史记录 › 最近会话”。",
     "fileTitle": "文件",
-    "moveBetweenDevices": "要将内容移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
-    "crswap": "保存时发生崩溃，可能会在项目文件旁留下 .crswap 文件。可以删除。"
+    "moveBetweenDevices": "要将内容移到另一台设备，请保存为项目文件，然后在那台设备上打开该文件。"
   },
   "elevation": {
     "edit": "编辑高度",
@@ -811,9 +757,9 @@
     "resetSettingsTitle": "重置设置",
     "resetKeybinds": "重置快捷键…",
     "resetKeybindsTitle": "重置快捷键",
-    "resetSettingsMessage": "要还原默认设置并保留键盘快捷键吗？",
-    "resetSettingsMessageStatistics": "要还原默认设置并保留键盘快捷键和“发送使用统计”吗？",
-    "resetKeybindsMessage": "要还原默认键盘快捷键吗？",
+    "resetSettingsMessage": "要将设置重置为默认值吗？键盘快捷键会保留。",
+    "resetSettingsMessageStatistics": "要将设置重置为默认值吗？键盘快捷键和“发送使用统计”设置会保留。",
+    "resetKeybindsMessage": "要将键盘快捷键重置为默认值吗？",
     "editor": {
       "title": "编辑器",
       "locale": "语言",
@@ -850,7 +796,7 @@
       "showOtherStages": "显示其他舞台",
       "nameContrast": "名称对比度",
       "showOtherObjects": "显示其他对象",
-      "deselectSwitchesToSelect": "连续取消选择切换到选择工具",
+      "deselectSwitchesToSelect": "取消选择两次以切换到选择工具",
       "beatDisplay": {
         "title": "节拍显示",
         "beat": "节拍",
@@ -951,8 +897,8 @@
       "notices": "第三方声明",
       "privacy": "隐私",
       "usageStatistics": "发送使用统计",
-      "usageStatisticsNote": "使用的工具、主要设置、文件类型和大小，以及操作所需的时间。参见“隐私”。",
-      "usageStatisticsSignal": "默认禁用，因为此浏览器发送了 Do Not Track 或 Global Privacy Control。",
+      "usageStatisticsNote": "使用统计包括您使用的工具、部分编辑器设置、文件类型和大小，以及操作所需的时间。详情参见“隐私”。",
+      "usageStatisticsSignal": "默认关闭，因为此浏览器发送了 Do Not Track 或 Global Privacy Control 信号。",
       "diagnostics": "复制诊断信息…",
       "diagnosticsTitle": "诊断信息",
       "diagnosticsNote": "诊断信息可能包含文件名和文件夹名。分享前请先检查。",
@@ -967,12 +913,12 @@
       "discardConfirm": "放弃",
       "cannotOpen": "（此版本无法打开）",
       "discardAutoSave": "要放弃旧的自动保存（{0}）吗？",
-      "discardUnreadable": "要放弃 {0} 无法读取的已恢复内容（{1}）吗？",
+      "discardUnreadable": "要放弃 {0} 的已恢复内容（{1}）吗？这些内容无法打开。",
       "recovery": {
-        "journal": "以往访问中未保存的内容，{0} · {1}",
+        "journal": "以往访问中未保存的内容 · {0} · {1}",
         "journalUndated": "以往访问中未保存的内容 · {0}",
         "autoSave": "旧的自动保存 · {0}",
-        "unreadable": "无法读取的已恢复内容，{0} · {1}",
+        "unreadable": "无法打开的已恢复内容 · {0} · {1}",
         "listFailed": "无法读取已恢复的内容。",
         "downloadFailed": "无法下载已恢复的内容。"
       },
@@ -1211,7 +1157,7 @@
     "continuedUntitled": "已继续 {0} 的会话。",
     "continuedUndated": "已继续“{0}”。",
     "cleared": "以往访问的内容已丢失。浏览器清除了此网站的存储。",
-    "inAppBrowser": "这似乎是应用内浏览器。部分功能可能无法使用，已存储的内容也可能被删除。如需保留内容，请在浏览器中打开此页面。",
+    "inAppBrowser": "这似乎是应用内浏览器。部分功能可能无法使用，已存储的内容也可能被删除。如需保留内容，请在常用浏览器中打开此页面。",
     "journalKept": "已将对“{0}”的已恢复更改保留为单独的会话。",
     "fallback": "已恢复以往访问中未保存的内容。",
     "fallbackLocal": "以往访问中未保存的内容在本地数据中。",
@@ -1224,7 +1170,7 @@
     "sessionDeleted": "此会话已在另一个标签页或窗口中删除。",
     "autoSaveKept": "已将旧的自动保存中的“{0}”保留为单独的会话。",
     "autoSaveOpened": "已打开旧的自动保存。",
-    "journalFailed": "无法存储已恢复的更改。副本在本地数据中。",
+    "journalFailed": "无法将已恢复的更改存储到其会话中。可在本地数据中找到。",
     "storageNearlyFull": "浏览器存储空间几乎已满。",
     "journalsFull": "以往访问中未保存的内容正在占满浏览器存储空间。",
     "sessionLater": "此会话需要更新版本的编辑器。",
@@ -1248,7 +1194,7 @@
     },
     "unavailable": "编辑器无法在此浏览器中存储更改。请保存以保留内容。",
     "private": "如果这是隐私窗口，此处存储的所有内容会在关闭窗口时丢失。请保存以保留内容。",
-    "inAppBrowser": "这似乎是应用内浏览器。已存储的内容可能被删除。如需保留内容，请在浏览器中打开此页面。",
+    "inAppBrowser": "这似乎是应用内浏览器。已存储的内容可能被删除。如需保留内容，请在常用浏览器中打开此页面。",
     "ios": "此浏览器会在 7 天未访问后删除已存储的内容。请保存以保留内容。",
     "safari": "Safari 会在 7 天未访问后删除已存储的内容。请保存以保留内容。"
   },
@@ -1339,7 +1285,7 @@
     "redidSteps": "重做了 {0} 步",
     "dynamicStages": {
       "title": "动态舞台",
-      "message": "此功能需要动态舞台。是否启用动态舞台？",
+      "message": "此功能需要动态舞台。是否启用？",
       "enabled": "已启用动态舞台"
     },
     "title": "历史记录",
@@ -1735,8 +1681,8 @@
         "pressCancel": "按一个键，或按 Esc 取消",
         "unassigned": "未设置",
         "reserved": "{0} 由浏览器或系统保留，请按其他键。",
-        "altGraph": "{0} 在许多键盘上用于输入字符，请按其他键。",
-        "alsoRuns": "同时执行{0}",
+        "altGraph": "{0} 在许多键盘布局中用于输入字符。请按其他键。",
+        "alsoRuns": "同时执行{0}。",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -1887,8 +1833,8 @@
     "showSettings": "显示预览设置",
     "loadingSkin": "正在加载皮肤…",
     "skinUnavailable": "无法加载预览皮肤。",
-    "graphicsUnavailable": "无法启动预览图形。",
-    "chartGraphicsUnavailable": "无法启动图形渲染。",
+    "graphicsUnavailable": "无法显示预览。",
+    "chartGraphicsUnavailable": "无法显示谱面。",
     "graphicsHelp": "请检查浏览器是否已启用图形加速和 WebGL，必要时重启浏览器。",
     "errorDetails": "错误详情",
     "reload": "重新加载",
@@ -2080,7 +2026,7 @@
     "unavailable": "无法获取更改",
     "loadingChanges": "正在加载更改…",
     "addedRemoved": "添加 {0} · 删除 {1}",
-    "exportsCurrent": "导出当前版本。",
+    "exportsCurrent": "导出时间线中标为“现在”的版本。",
     "overlay": "正在查看历史记录 · 只读",
     "backToNow": "返回现在",
     "restore": "还原",
@@ -2095,7 +2041,7 @@
     "changesBelow": "下方的更改：{0}",
     "changesAboveAny": "上方的更改",
     "changesBelowAny": "下方的更改",
-    "savesCurrent": "保存当前版本。",
+    "savesCurrent": "保存时间线中标为“现在”的版本。",
     "showEdits": "显示更改",
     "changeOptions": "更改的显示选项"
   },
@@ -2117,14 +2063,15 @@
     "noSpace": "空间不足，无法写入 {0}。",
     "writeFailed": "无法写入“{0}”。",
     "notPutBack": "“{0}”已被清空，且无法还原其内容。",
-    "openedContentGone": "“{0}”已不再包含之前的内容。",
-    "replacedContentGone": "“{0}”已不再包含之前的内容。",
+    "openedContentGone": "“{0}”的内容已更改。",
+    "replacedContentGone": "“{0}”的内容已更改。",
     "title": "保存项目文件",
     "titleAs": "另存为",
     "history": "历史记录",
     "bgm": "背景音乐",
     "placeholder": "未命名",
     "exportHint": "如需 Sonolus 关卡数据，请使用“导出关卡数据…”。",
+    "exportHintText": "如需 Sonolus 关卡数据，请使用“导出关卡数据”。",
     "exportHintFirst": ".nxsp 项目文件仅供本编辑器使用。要生成上传到 Sonolus 服务器的关卡数据，请使用“导出关卡数据…”。",
     "exportHintNames": "关卡数据文件可能没有扩展名，或以 .nsld 或 .json.gz 结尾。",
     "openExport": "导出关卡数据…",
@@ -2151,8 +2098,8 @@
     "tooLarge": "文件过大。",
     "restoredName": "{0}（{1} 还原）",
     "fileType": "Next SEKAI 项目文件",
-    "unavailable": "未保存。请使用“导出关卡数据…”。",
-    "storageUnavailable": "未保存。编辑器无法访问此浏览器的存储。请重试，或使用“另存为…”。",
+    "unavailable": "未保存。请使用“导出关卡数据”。",
+    "storageUnavailable": "未保存。编辑器无法访问此浏览器的存储。请重试，或使用“另存为”。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "拥有该文件的人可以查看其中的历史记录。",
@@ -2197,13 +2144,13 @@
     "savedNoNotes": "{0}，{1}。",
     "otherProject": "另一个项目文件“{0}”。",
     "otherProjectUnnamed": "另一个项目文件。",
-    "notDescendant": "此版本并非基于您的版本 ({0})。",
+    "notDescendant": "{0} 保存的版本并非基于您的版本。",
     "separate": "另存为单独文件…",
     "openOther": "打开另一个版本",
     "openOtherNote": "您的更改会保留在“最近会话”中。",
     "replaceNote": "磁盘上的版本将保留在“最近会话”中。",
     "keptName": "{0}（{1} 被替换）",
-    "replaceNewer": "由更新版本的 {0} 创建。",
+    "replaceNewer": "此文件由更新版本的 {0} 创建。",
     "replaceHoldsEarlier": "它包含此浏览器中已不再存储的较早时间线步骤。",
     "replaceMayHoldEarlier": "它可能包含此浏览器中已不再存储的较早时间线步骤。",
     "keepEditing": "继续编辑"
@@ -2216,7 +2163,7 @@
     "tooLong": "名称过长"
   },
   "notice": {
-    "useOpenFile": "要打开文件，请使用“打开…”。",
+    "useOpenFile": "要打开文件，请使用“打开”。",
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
     "storageUnavailable": "编辑器无法访问此浏览器的存储。请重试。",
     "chooseAudio": "选择音频…",
@@ -2255,7 +2202,7 @@
     "deleted": "已删除“{0}”",
     "deleteRefused": "未删除。“{0}”正在某个标签页或窗口中使用。",
     "deleteFailed": "无法删除“{0}”。",
-    "undoLost": "已删除“{0}”。无法再撤销。"
+    "undoLost": "已删除“{0}”。此次删除无法再撤销。"
   },
   "prompt": {
     "title": "更改未存储",
@@ -2281,16 +2228,16 @@
     "damagedUnopened": "此文件已损坏，无法打开。",
     "damaged": "此文件已损坏。已在不含历史记录的情况下打开。",
     "historyUnreadable": "无法读取此文件的历史记录。保存时会创建单独的文件。",
-    "newerVersion": "由更新版本的 {0} 创建。保存时会创建单独的文件。",
-    "newerRefused": "由更新版本的 {0} 创建。",
-    "newerPatch": "由更新版本的 {0} 创建。部分内容可能无法显示。",
+    "newerVersion": "此文件由更新版本的 {0} 创建。保存时会创建单独的文件。",
+    "newerRefused": "此文件由更新版本的 {0} 创建，无法打开。",
+    "newerPatch": "此文件由更新版本的 {0} 创建。部分内容可能无法显示。",
     "mediaBad": "无法读取此文件的{0}。保存时会创建单独的文件。",
     "media": {
       "bgm": "背景音乐",
       "cover": "封面",
       "preview": "预览音频"
     },
-    "newerMajor": "由更新版本的 {0} 创建。",
+    "newerMajor": "由更新版本的 {0} 创建的文件",
     "newerMajorNote": "只能打开此文件中的关卡。",
     "openLevel": "打开关卡",
     "newerValues": {
@@ -2319,8 +2266,8 @@
     "changedOnDisk": "磁盘上已更改",
     "newerOnDisk": "磁盘上有更新版本",
     "notConfirmed": "下载未确认",
-    "changedOnDiskName": "“{0}”：自您在此处打开或保存后，磁盘上的文件已更改。",
-    "newerOnDiskName": "“{0}”：磁盘上有更新版本。",
+    "changedOnDiskName": "“{0}”在此处打开或保存后，已在磁盘上更改。",
+    "newerOnDiskName": "磁盘上有“{0}”的更新版本。",
     "notStored": "未存储"
   },
   "confirm": {

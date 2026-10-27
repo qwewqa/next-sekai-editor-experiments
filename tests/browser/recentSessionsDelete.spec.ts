@@ -92,7 +92,7 @@ const rowFor = (page: Page, title: string): Locator =>
     })
 const deletedRows = (page: Page) => page.locator('[data-sessions-deleted]')
 const deletedFor = (page: Page, title: string): Locator =>
-    deletedRows(page).filter({ hasText: `Deleted "${title}"` })
+    deletedRows(page).filter({ hasText: `Deleted “${title}”` })
 
 const card = (page: Page, text: string | RegExp) => notice(page, text)
 
@@ -181,7 +181,7 @@ test('Delete from the menu turns the row into an inline Undo row; its Undo bring
     const inline = deletedFor(page, 'Alpha')
     await expect(inline).toHaveCount(1)
     await expect(rowsOf(page).nth(1)).toHaveAttribute('data-sessions-deleted', '')
-    await expect(page.locator('[data-sessions-live]')).toHaveText('Deleted "Alpha"')
+    await expect(page.locator('[data-sessions-live]')).toHaveText('Deleted “Alpha”')
     await expect(page.locator('[data-notice-card]')).toHaveCount(0)
     expect(await stored(page, alpha.chainId)).toBe(true)
 
@@ -314,7 +314,7 @@ test('Delete is refused for a chain open in another tab, with its reason in the 
     // The key is refused by the core, which asks the locks, not the badge.
     await rowFor(other, 'Alpha').focus()
     await other.keyboard.press('Delete')
-    await expect(card(other, 'Not deleted. "Alpha" is in use in a tab or window.')).toBeVisible()
+    await expect(card(other, 'Not deleted. “Alpha” is in use in a tab or window.')).toBeVisible()
     await expect(deletedRows(other)).toHaveCount(0)
     await expect(rowFor(other, 'Alpha')).toHaveCount(1)
     expect(await stored(other, alpha.chainId)).toBe(true)
@@ -339,7 +339,7 @@ test('Delete is refused while this tab’s unstored copy holds the chain, in wor
     await openSessions(page)
     await rowFor(page, 'Alpha').focus()
     await page.keyboard.press('Delete')
-    await expect(card(page, 'Not deleted. "Alpha" is in use in a tab or window.')).toBeVisible()
+    await expect(card(page, 'Not deleted. “Alpha” is in use in a tab or window.')).toBeVisible()
     await expect(deletedRows(page)).toHaveCount(0)
     expect(await stored(page, alpha.chainId)).toBe(true)
 })
@@ -397,9 +397,11 @@ test('Undo after the sweep says the chain can no longer be undone', async ({ pag
         .getByRole('button', { name: messages.commands.undo.title })
         .click()
     // The inline row says so, with no Undo left, and the live region reads it.
-    await expect(deletedRows(page)).toContainText('Deleted "Alpha". It can no longer be undone.')
+    await expect(deletedRows(page)).toContainText(
+        'Deleted “Alpha”. This deletion can no longer be undone.',
+    )
     await expect(page.locator('[data-sessions-live]')).toHaveText(
-        'Deleted "Alpha". It can no longer be undone.',
+        'Deleted “Alpha”. This deletion can no longer be undone.',
     )
     await expect(deletedRows(page).getByRole('button')).toHaveCount(0)
     await expect(rowFor(page, 'Alpha')).toHaveCount(0)
@@ -460,7 +462,7 @@ test('a failed Delete is reported and leaves the row', async ({ page }) => {
     await page.keyboard.press('Delete')
     await hold.reached()
     await hold.release(true)
-    await expect(card(page, '"Alpha" could not be deleted.')).toBeVisible()
+    await expect(card(page, '“Alpha” could not be deleted.')).toBeVisible()
     await expect(rowFor(page, 'Alpha')).toHaveCount(1)
     await expect(deletedRows(page)).toHaveCount(0)
 })
@@ -528,7 +530,7 @@ test('a fork whose parent chain was deleted ends its Timeline with a line, and R
     await openSessions(other)
     await rowFor(other, 'Alpha').locator('[data-sessions-more]').click()
     await other.getByRole('menuitem', { name: messages.load.restoreAsCopy }).click()
-    await expect(notice(other, 'Restored a copy of "Alpha"')).toBeVisible()
+    await expect(notice(other, 'Restored a copy of “Alpha”')).toBeVisible()
     await expect.poll(() => lifeOf(other)).toBe(990)
     await edit(other, { title: 'Alpha', life: 950 })
     await flush(other)

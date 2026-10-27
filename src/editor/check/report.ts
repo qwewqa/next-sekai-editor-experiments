@@ -37,7 +37,7 @@ export const refusalLine = (
 export type Findings = {
     /** The file checked in full; absent when only the stored history was. */
     file?: { name: string }
-    /** The file read as damaged: "Saving makes a separate file." */
+    /** The file read as damaged: "Saving will create a separate file." */
     fileDamaged?: { name: string }
     /** Why the file was not checked, when a reason applies. */
     reason?: () => string

@@ -45,12 +45,12 @@
     },
     "copy": {
       "title": "複製",
-      "noSelected": "未選取要複製的物件",
+      "noSelected": "請選取要複製的物件",
       "copied": "已複製 {0} 個物件"
     },
     "cut": {
       "title": "剪下",
-      "noSelected": "未選取要剪下的物件",
+      "noSelected": "請選取要剪下的物件",
       "cut": "已剪下 {0} 個物件"
     },
     "deselect": {
@@ -99,7 +99,7 @@
     },
     "flip": {
       "title": "水平翻轉",
-      "noSelected": "未選取要翻轉的物件",
+      "noSelected": "請選取要翻轉的物件",
       "flipped": "已翻轉 {0} 個物件"
     },
     "flipVertical": {
@@ -109,31 +109,31 @@
     "scaleBeat": {
       "title": "縮放節拍間距…",
       "dialogTitle": "縮放節拍間距",
-      "noSelected": "請選取至少兩個位於不同節拍的物件進行縮放",
+      "noSelected": "請選取至少兩個位於不同節拍的物件",
       "scaled": "已縮放 {0} 個物件的節拍間距"
     },
     "scaleWidth": {
       "title": "縮放寬度…",
       "dialogTitle": "縮放寬度",
-      "noSelected": "請選取具有橫向跨度的物件進行縮放",
+      "noSelected": "請選取具有橫向跨度的物件",
       "scaled": "已縮放 {0} 個物件的寬度"
     },
     "scaleElevation": {
       "title": "縮放高度間距…",
       "dialogTitle": "縮放高度間距",
-      "noSelected": "請選取至少兩個高度不同的音符或舞台變換進行縮放",
+      "noSelected": "請選取至少兩個高度不同的音符或舞台變換事件",
       "scaled": "已縮放 {0} 個物件的高度間距"
     },
     "scaleSelection": {
       "factor": "縮放倍率",
       "apply": "套用",
-      "invalidFactor": "請輸入正縮放倍率，使結果保持在編輯器支援的範圍內"
+      "invalidFactor": "請輸入正縮放倍率，使結果保持在支援的範圍內"
     },
     "makeVertical": {
       "title": "轉為垂直排列",
       "noSelected": "請選取至少一個音符轉為垂直排列",
       "unchanged": "所選音符已垂直排列",
-      "invalid": "無法在編輯器支援的範圍內將所選物件轉為垂直排列",
+      "invalid": "無法在支援的範圍內將所選物件轉為垂直排列",
       "made": "已將 {0} 個音符轉為垂直排列"
     },
     "splitHold": {
@@ -143,14 +143,14 @@
     },
     "combineNotes": {
       "title": "合併為滑條",
-      "noSelected": "未選取要合併的音符",
+      "noSelected": "請選取要合併的音符",
       "sameSlide": "選取的音符已屬於同一條滑條",
       "combined": "已將 {0} 個音符合併為一條滑條"
     },
     "fullscreen": {
       "title": "全螢幕",
       "toggled": "已切換全螢幕模式",
-      "unsupported": "您的裝置不支援全螢幕"
+      "unsupported": "此裝置不支援全螢幕"
     },
     "groups": {
       "groupAll": {
@@ -259,14 +259,14 @@
       "invalidLevel": "無效的關卡：{0}",
       "invalidChart": "無效的譜面：{0}",
       "revision": {
-        "older": "此關卡是為較舊的引擎修訂版製作的。它現在使用目前的修訂版，請檢查其顯示和遊玩效果是否仍符合預期。",
-        "newer": "此關卡是為較新的引擎修訂版製作的，此編輯器尚不支援。部分內容可能無法如預期顯示或儲存。"
+        "older": "此關卡是為較舊的引擎修訂版製作的，現在使用目前的修訂版。請檢查其顯示和遊玩效果是否仍符合預期。",
+        "newer": "此關卡是為較新的引擎修訂版製作的，此編輯器尚不支援。部分內容可能無法正確顯示或儲存。"
       },
       "refusals": {
-        "dynamicStages": "使用了動態舞台功能，但未啟用動態舞台",
-        "cyclicEventRef": "事件參照 \"{0}\" 形成循環",
-        "cyclicSlideRef": "滑條參照 \"{0}\" 形成循環",
-        "refNotFound": "找不到參照 \"{0}\"",
+        "dynamicStages": "關卡使用了動態舞台，但未啟用",
+        "cyclicEventRef": "事件參照「{0}」形成循環",
+        "cyclicSlideRef": "滑條參照「{0}」形成循環",
+        "refNotFound": "找不到參照「{0}」",
         "dataNotFound": "找不到資料 {0}",
         "dataNoValue": "資料 {0} 沒有值",
         "dataNoRef": "資料 {0} 沒有參照",
@@ -279,9 +279,9 @@
         "invalidBpm": "BPM 必須是有限的正數",
         "missingValue": "{0} 沒有 {1}",
         "missingNote": "{0} 缺少音符",
-        "ticksPerBeat": "每拍 tick 數缺失或異常",
-        "offset": "偏移異常",
-        "timeScaleChange": "時間倍率變化異常",
+        "ticksPerBeat": "每拍 tick 數缺失或無效",
+        "offset": "偏移無效",
+        "timeScaleChange": "時間倍率變化無效",
         "meter": "每小節拍數無效",
         "missingMeter": "第 {0} 小節沒有每小節拍數"
       },
@@ -305,7 +305,7 @@
       "title": "重做",
       "noState": "無需重做",
       "failed": "無法重做",
-      "redid": "已重做 \"{0}\""
+      "redid": "已重做「{0}」"
     },
     "reset": {
       "title": "新增"
@@ -393,7 +393,7 @@
       "title": "撤銷",
       "noState": "無需撤銷",
       "failed": "無法撤銷",
-      "undid": "已撤銷 \"{0}\""
+      "undid": "已撤銷「{0}」"
     },
     "utilities": {
       "title": "工具"
@@ -421,19 +421,19 @@
     "zooms": {
       "zoomXIn": {
         "title": "放大X軸",
-        "zoomed": "放大X軸 10%"
+        "zoomed": "橫向放大 10%"
       },
       "zoomXOut": {
         "title": "縮小X軸",
-        "zoomed": "縮小X軸 10%"
+        "zoomed": "橫向縮小 10%"
       },
       "zoomYIn": {
         "title": "放大Y軸",
-        "zoomed": "放大Y軸 10%"
+        "zoomed": "縱向放大 10%"
       },
       "zoomYOut": {
         "title": "縮小Y軸",
-        "zoomed": "縮小Y軸 10%"
+        "zoomed": "縱向縮小 10%"
       }
     },
     "bpm": {
@@ -490,9 +490,9 @@
       },
       "fallback": {
         "panel": "{0}：正在使用{1}。{2}",
-        "panelStored": "{0}：正在使用 \"{1}\"。{2}",
+        "panelStored": "{0}：正在使用「{1}」。{2}",
         "row": "正在使用{0}。{1}",
-        "rowStored": "正在使用 \"{0}\"。{1}"
+        "rowStored": "正在使用「{0}」。{1}"
       },
       "reason": {
         "fileGone": "{0}檔案已不再存放在此瀏覽器中。",
@@ -500,7 +500,7 @@
         "serverFailed": "無法從 {1} 重新下載{0}。",
         "invalid": "無法讀取已存放的{0}。",
         "failed": "無法載入{0}。",
-        "builtinFailed": "無法載入內建項。"
+        "builtinFailed": "無法載入內建資源。"
       },
       "offline": "您已離線。",
       "safeMode": "安全模式使用{0}。",
@@ -510,12 +510,12 @@
       "chooseBackground": "選擇背景",
       "chooseEffect": "選擇音效",
       "use": "使用",
-      "alsoFile": "同時使用此檔案中的{0} \"{1}\"",
+      "alsoFile": "同時使用此檔案中的{0}「{1}」",
       "remove": "移除",
       "removeStored": "移除…",
       "inUse": "使用中",
-      "removeInUse": "移除 \"{0}\"？將改用預設項。",
-      "removeUnused": "移除 \"{0}\"？",
+      "removeInUse": "移除「{0}」？預覽將改用預設選項。",
+      "removeUnused": "移除「{0}」？",
       "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇…",
       "noneInFile": "此檔案中沒有{0}。",
@@ -542,7 +542,7 @@
         "fileTooLarge": "此檔案超過 {0}。",
         "tooManyEntries": "此檔案的條目超過 {0} 個。",
         "badName": "此檔案包含不允許的條目名稱。",
-        "ratio": "此檔案的{0}{1}解壓縮後超過其大小的 {2} 倍。",
+        "ratio": "此檔案的{0}{1}解壓縮後超過其壓縮大小的 {2} 倍。",
         "tooBig": "此檔案的{0}{1}超過 {2}。",
         "unreadable": "無法讀取此檔案的{0}{1}。",
         "missing": "此檔案缺少{0}{1}。",
@@ -555,8 +555,8 @@
         "tooManyEffects": "此檔案的{0}資料中的效果超過 {1} 個。",
         "tooManyParticles": "此檔案的{0}資料中的粒子超過 {1} 個。",
         "tooManyGroups": "此檔案的{0}資料中的粒子組超過 {1} 個。",
-        "particleCount": "此檔案的{0}效果 \"{1}\" 的粒子超過 {2} 個。",
-        "effectGroups": "此檔案的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
+        "particleCount": "此檔案的{0}效果「{1}」的粒子超過 {2} 個。",
+        "effectGroups": "此檔案的{0}效果「{1}」的粒子組超過 {2} 個。",
         "noPerfect": "此檔案的{0}音訊中沒有可用的 #PERFECT 片段。",
         "audioLength": "此檔案的{0}音訊總長超過 {1} 秒。",
         "packageTooLarge": "此項目存放後超過 {0}。",
@@ -568,15 +568,15 @@
       "connect": "連線",
       "search": "搜尋…",
       "more": "更多",
-      "alsoServerItem": "同時使用此伺服器中的{0} \"{1}\"",
+      "alsoServerItem": "同時使用此伺服器中的{0}「{1}」",
       "noneFound": "找不到項目",
       "server": {
         "unreachable": "無法連線到此伺服器。請檢查位址，或稍後再試。",
         "auth": "編輯器無法使用需要登入的伺服器。",
-        "insecure": "編輯器無法使用 http 伺服器。",
-        "checksum": "此項目的檢查碼與伺服器傳送的內容不符。",
+        "insecure": "不支援 HTTP 伺服器位址。",
+        "checksum": "下載的內容與伺服器的檢查碼不符。",
         "notFound": "此伺服器上沒有該項目。",
-        "invalid": "此位址不是 Sonolus 伺服器。",
+        "invalid": "編輯器無法從此位址讀取 Sonolus 伺服器資料。",
         "status": "伺服器回傳了錯誤（{0}）。",
         "filesFailed": "無法從 {0} 下載此項目的檔案。",
         "addressEmpty": "請輸入伺服器位址。",
@@ -593,13 +593,13 @@
         "noNoteSprites": "此項目的{0}資料中沒有音符精靈。",
         "tooManySprites": "此項目的{0}資料中的精靈超過 {1} 個。",
         "tooManyEffects": "此項目的{0}資料中的效果超過 {1} 個。",
-        "particleCount": "此項目的{0}效果 \"{1}\" 的粒子超過 {2} 個。",
+        "particleCount": "此項目的{0}效果「{1}」的粒子超過 {2} 個。",
         "noPerfect": "此項目的{0}音訊中沒有可用的 #PERFECT 片段。",
         "audioLength": "此項目的{0}音訊總長超過 {1} 秒。",
         "tooManyParticles": "此項目的{0}資料中的粒子超過 {1} 個。",
         "tooManyGroups": "此項目的{0}資料中的粒子組超過 {1} 個。",
-        "effectGroups": "此項目的{0}效果 \"{1}\" 的粒子組超過 {2} 個。",
-        "ratio": "此項目的{0}{1}解壓縮後超過其大小的 {2} 倍。"
+        "effectGroups": "此項目的{0}效果「{1}」的粒子組超過 {2} 個。",
+        "ratio": "此項目的{0}{1}解壓縮後超過其壓縮大小的 {2} 倍。"
       }
     },
     "history": {
@@ -618,165 +618,111 @@
   "help": {
     "modal": {
       "title": "幫助",
+      "gettingStarted": {
+        "title": "開始使用",
+        "bgm": "選擇「BGM」以載入音樂並設定偏移。",
+        "bpm": "選擇「BPM」，然後點選譜面開頭的 BPM 變化。再次點選即可編輯其 BPM。",
+        "bpmClick": "選擇「BPM」，然後按一下譜面開頭的 BPM 變化。再次按一下即可編輯其 BPM。",
+        "notes": "選擇「音符」，然後點選譜面即可新增音符。要新增滑條，請先選擇「取消選取」，再選擇「滑條」，然後點選滑條的起點和終點。",
+        "notesClick": "選擇「音符」，然後按一下譜面即可新增音符。要新增滑條，請先選擇「取消選取」，再選擇「滑條」，然後按一下滑條的起點和終點。",
+        "save": "選擇「儲存」，將內容儲存為專案檔案（.nxsp）。若要產生上傳至 Sonolus 伺服器的關卡資料，請使用「匯出關卡資料」。"
+      },
       "touchscreen": {
         "title": "觸控螢幕",
-        "tap": "單指點擊即可使用目前工具。",
-        "drag": "單指拖曳即可使用目前工具。",
-        "quickScroll": "單指在快速捲動區拖曳即可捲動。",
-        "minimap": "在小地圖中單指點擊即可捲動到該位置，或拖曳標示可見區域的方框。",
-        "deselect": "雙指點選可取消選取。",
-        "scrollY": "用兩根手指垂直平移即可滾動。",
-        "scrollX": "用兩根手指水平平移即可滾動。",
-        "zoomY": "兩根手指垂直捏合可縮放Y軸。",
-        "zoomX": "兩根手指水平捏合可縮放X軸。",
-        "play": "三指點選可播放。"
+        "longPress": "長按物件即可開啟快顯選單。",
+        "scroll": "雙指拖曳即可捲動。垂直捏合可垂直縮放，水平捏合可水平縮放。",
+        "quickScroll": "要用單指捲動，請在譜面右邊緣的快速捲動區內拖曳。",
+        "gestures": "雙指點選可取消選取。三指點選可開始或停止播放。"
       },
       "mouse": {
         "title": "滑鼠",
-        "tapPrimary": "左鍵單擊以使用主要工具進行點擊。",
-        "dragPrimary": "左鍵單擊並拖曳以使用主要工具進行拖曳。",
-        "tapSecondary": "右鍵單擊即可使用輔助工具進行點擊。",
-        "dragSecondary": "右鍵單擊並拖曳以使用輔助工具進行拖曳。",
-        "scrollY": "滾輪滾動可垂直滾動。",
-        "scrollX": "使用 Shift 鍵+滾輪滾動可水平滾動。",
-        "autoscroll": "中鍵單擊後移動滑鼠即可捲動。單擊即可停止。",
-        "minimap": "在小地圖中左鍵單擊或拖曳即可捲動到該位置。",
-        "zoomY": "使用 Ctrl 鍵+滾輪滾動可垂直縮放。",
-        "zoomX": "使用 Ctrl 和 Shift 鍵滾動滾輪可水平縮放。"
+        "contextMenu": "以右鍵按一下物件即可開啟快顯選單，按住右鍵拖曳即可使用「選取」。",
+        "secondary": "以右鍵按一下或按住右鍵拖曳即可使用「{0}」。",
+        "scrollX": "按住 Shift 並轉動滑鼠滾輪可水平捲動。",
+        "zoom": "按住 Ctrl 並轉動滑鼠滾輪可垂直縮放，按住 Ctrl 和 Shift 並轉動滾輪可水平縮放。",
+        "autoscroll": "以中鍵按一下後移動滑鼠即可捲動。再按一下即可停止。"
       },
       "keyboard": {
         "title": "鍵盤",
-        "single": "單擊以觸發功能。",
-        "multiple": "按住按鍵可重複滾動、縮放、撤銷、重做，或變更音符尺寸、播放速度、圖層或舞台。"
+        "settings": "在「設定 › 鍵盤快捷鍵」中檢視及變更快捷鍵。"
       },
       "selectTool": {
-        "title": "選取工具",
-        "select": "點選以選取一個物件，在重疊的物件之間循環。",
-        "deselect": "點選空白處可取消選取所有物件。",
-        "move": "拖曳物件來移動多個物件。",
-        "selectMultiple": "拖曳區域以選取多個物件。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。"
+        "select": "物件重疊時，每次點選都會選取下一個物件。",
+        "selectClick": "物件重疊時，每次按一下都會選取下一個物件。",
+        "move": "拖曳已選取的物件即可移動所有所選物件。",
+        "resize": "拖曳音符、攝影機事件或舞台遮罩事件的邊緣即可調整大小。如果所選物件都是同一種類型，就會一起調整大小。",
+        "modifiers": "按住 Ctrl（macOS 上為 Cmd）可將物件加入選取範圍或從中移除。按住 Shift 可選取整條滑條。",
+        "selectMultiple": "從空白處開始拖曳框選，即可選取框內的物件。"
       },
       "eraserTool": {
-        "title": "橡皮擦工具",
-        "erase": "點選以擦除物件。",
-        "deselect": "點選空白處可取消選取所有物件。",
-        "eraseMultiple": "拖曳以刪除多個物件。"
+        "erase": "點選物件即可擦除，或拖曳框選以擦除框內的所有物件。",
+        "eraseClick": "按一下物件即可擦除，或拖曳框選以擦除框內的所有物件。",
+        "selection": "點選已選取的物件即可擦除所有所選物件。",
+        "selectionClick": "按一下已選取的物件即可擦除所有所選物件。"
       },
       "brushTool": {
-        "title": "筆刷工具",
-        "brush": "點選以刷物件。",
-        "deselect": "點選空白處可取消選取所有物件。",
-        "brushMultiple": "拖曳以刷多個物件。",
-        "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。"
+        "properties": "選擇「筆刷」，然後設定要套用的屬性。",
+        "brush": "點選物件或拖曳框選即可套用筆刷。點選已選取的物件會將筆刷套用至所有所選物件。",
+        "brushClick": "按一下物件或拖曳框選即可套用筆刷。按一下已選取的物件會將筆刷套用至所有所選物件。",
+        "shift": "按住 Shift 可將筆刷套用至整條滑條。"
       },
       "pasteTool": {
-        "title": "貼上工具",
-        "paste": "點選以貼上。",
-        "shift": "使用 Shift 鍵翻轉物件。"
+        "paste": "點選或拖曳可放置已複製的物件。按住 Shift 可將其水平翻轉。",
+        "pasteClick": "按一下或拖曳可放置已複製的物件。按住 Shift 可將其水平翻轉。"
       },
       "noteTool": {
-        "title": "音符工具",
-        "select": "點選音符以選取一個音符。",
-        "edit": "點選一個音符進行編輯。",
-        "add": "點選空白處即可新增。",
-        "move": "拖曳一個音符進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。",
-        "properties": "再次切換到音符工具以變更預設組或預設屬性。"
+        "presets": "再次選擇「音符」可顯示預設屬性，並在「音符 #1」至「音符 #4」的預設組之間切換。",
+        "quickEdit": "顯示「屬性」面板時，點選已選取的音符可為所有所選音符設定目前預設組中的屬性，或依序切換這些屬性的值。例如，預設的「音符 #2」預設組會開啟或關閉「金色音符」。",
+        "quickEditClick": "顯示「屬性」面板時，按一下已選取的音符可為所有所選音符設定目前預設組中的屬性，或依序切換這些屬性的值。例如，預設的「音符 #2」預設組會開啟或關閉「金色音符」。"
       },
       "slideTool": {
-        "title": "滑條工具",
-        "select": "點選音符以選取一個音符。",
-        "edit": "點選一個音符進行編輯。",
-        "add": "點選空白處即可新增。",
-        "connect": "選取一個音符後，點選空白處即可連接。",
-        "move": "拖曳一個音符進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "shift": "按住 Shift 鍵可一併操作同一條滑條中的其他音符。",
-        "properties": "再次切換到滑條工具以變更預設組或預設屬性。"
-      },
-      "splitSlide": {
-        "split": "切斷每個所選音符到下一個音符的連接。",
-        "tail": "滑條的最後一個音符沒有可切斷的連接。"
+        "connect": "選取同一條滑條中的音符後，點選空白處即可向該滑條新增另一個音符。開始新的滑條前，請選擇「取消選取」。",
+        "connectClick": "選取同一條滑條中的音符後，按一下空白處即可向該滑條新增另一個音符。開始新的滑條前，請選擇「取消選取」。",
+        "presets": "再次選擇「滑條」可顯示預設屬性，並在「滑條 #1」至「滑條 #5」的預設組之間切換。",
+        "quickEdit": "與「音符」工具相同，點選已選取的音符可為所有所選音符設定目前預設組中的屬性，或依序切換這些屬性的值。例如，預設的「滑條 #1」預設組會變更「連接線緩動」。",
+        "quickEditClick": "與「音符」工具相同，按一下已選取的音符可為所有所選音符設定目前預設組中的屬性，或依序切換這些屬性的值。例如，預設的「滑條 #1」預設組會變更「連接線緩動」。",
+        "splitCombine": "「拆分滑條」會切斷每個所選音符到下一個音符的連接。「合併為滑條」會將所選音符所屬的滑條合併為一條滑條。"
       },
       "generateSlideNotesTool": {
-        "title": "滑條音符生成工具",
-        "generate": "點選或拖曳選取一個音符，為整條滑條生成音符。",
-        "generateMultiple": "點選或拖曳選取至少兩個音符，在它們之間生成音符。",
-        "deselect": "點選空白處可取消選取所有物件。"
+        "generate": "點選音符可為其所屬的整條滑條生成啟用「依附」的音符，每條空白分割線上各生成一個。",
+        "generateClick": "按一下音符可為其所屬的整條滑條生成啟用「依附」的音符，每條空白分割線上各生成一個。",
+        "generateMultiple": "拖曳框選同一條滑條中的至少兩個音符，只在它們之間生成音符。點選已選取的音符，即可為選取範圍中的每條滑條生成音符。如果某條滑條中只有一個音符被選取，則會為整條滑條生成音符。",
+        "generateMultipleClick": "拖曳框選同一條滑條中的至少兩個音符，只在它們之間生成音符。按一下已選取的音符，即可為選取範圍中的每條滑條生成音符。如果某條滑條中只有一個音符被選取，則會為整條滑條生成音符。"
+      },
+      "adding": {
+        "title": "新增物件",
+        "add": "使用「音符」「滑條」「BPM」「時間倍率」或「事件」時，點選空白處即可新增物件。使用「音符」或「滑條」時，在空白處拖曳可新增與拖曳範圍同寬的音符。",
+        "addClick": "使用「音符」「滑條」「BPM」「時間倍率」或「事件」時，按一下空白處即可新增物件。使用「音符」或「滑條」時，在空白處拖曳可新增與拖曳範圍同寬的音符。",
+        "edit": "點選已選取的物件即可顯示其屬性。",
+        "editClick": "按一下已選取的物件即可顯示其屬性。",
+        "move": "拖曳物件只會移動該物件。要一起移動多個物件，請使用「選取」。",
+        "resize": "拖曳音符、攝影機事件或舞台遮罩事件的邊緣即可調整大小。",
+        "modifiers": "按住 Ctrl（macOS 上為 Cmd）並點選，可將物件加入選取範圍或從中移除。按住 Shift 並點選音符，可選取其所屬的整條滑條。",
+        "modifiersClick": "按住 Ctrl（macOS 上為 Cmd）並按一下，可將物件加入選取範圍或從中移除。按住 Shift 並按一下音符，可選取其所屬的整條滑條。"
       },
       "bpmTool": {
-        "title": "BPM工具",
-        "select": "點選 BPM 以選取一個 BPM。",
-        "edit": "點選一個 BPM 進行編輯。",
-        "add": "點選空白處即可新增。",
-        "move": "拖曳一個 BPM 進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。"
+        "first": "譜面一開始一定有一個 BPM 變化。拖曳它會在放開的位置新增一個副本。",
+        "replace": "將一個 BPM 變化移到另一個 BPM 變化上，會取代該位置原有的 BPM 變化。"
       },
       "timeScaleTool": {
-        "title": "時間倍率工具",
-        "select": "點選時間倍率以選取一個時間倍率。",
-        "edit": "點選一個時間倍率進行編輯。",
-        "add": "點選空白處即可新增。",
-        "move": "拖曳一個時間倍率進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "markers": "菱形標記使用捲動過渡。虛線上的空心標記會隱藏音符。",
+        "markers": "菱形標記表示「捲動」過渡。虛線上的空心標記表示音符已隱藏。",
         "ease": "曲線表示到同一圖層中下一個變化的緩動。"
       },
-      "cameraEventTool": {
-        "title": "攝影機事件工具",
-        "select": "點選攝影機事件以選取一個攝影機事件。",
-        "edit": "點選一個攝影機事件進行編輯。",
-        "add": "點選空白處即可新增。",
-        "move": "拖曳一個攝影機事件進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "properties": "再次切換到攝影機事件工具以變更預設屬性。"
+      "event": {
+        "next": "選擇「事件」可切換到事件工具。再次選擇可依序切換事件工具。",
+        "defaults": "要編輯事件工具的預設屬性，請依名稱再次選擇該工具，例如「攝影機事件」。",
+        "quickEdit": "顯示「屬性」面板時，點選已選取的事件還會變更其緩動。",
+        "quickEditClick": "顯示「屬性」面板時，按一下已選取的事件還會變更其緩動。"
       },
-      "stageMaskEventTool": {
-        "title": "舞台遮罩事件工具",
-        "select": "點選舞台遮罩事件以選取一個舞台遮罩事件。",
-        "edit": "點選一個舞台遮罩事件進行編輯。",
-        "add": "點選空白處即可新增。",
-        "move": "拖曳一個舞台遮罩事件進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "properties": "再次切換到舞台遮罩事件工具以變更預設屬性。"
-      },
-      "stagePivotEventTool": {
-        "title": "舞台樞軸事件工具",
-        "select": "點選舞台樞軸事件以選取一個舞台樞軸事件。",
-        "edit": "點選一個舞台樞軸事件進行編輯。",
-        "add": "點選空白處即可新增。",
-        "move": "拖曳一個舞台樞軸事件進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "properties": "再次切換到舞台樞軸事件工具以變更預設屬性。"
-      },
-      "stageStyleEventTool": {
-        "title": "舞台樣式事件工具",
-        "select": "點選舞台樣式事件以選取一個舞台樣式事件。",
-        "edit": "點選一個舞台樣式事件進行編輯。",
-        "add": "點選空白處即可新增。",
-        "move": "拖曳一個舞台樣式事件進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "properties": "再次切換到舞台樣式事件工具以變更預設屬性。"
-      },
-      "stageTransformEventTool": {
-        "title": "舞台變換事件工具",
-        "select": "點選舞台變換事件以選取一個舞台變換事件。",
-        "edit": "點選一個舞台變換事件進行編輯。",
-        "add": "點選空白處即可新增。",
-        "move": "拖曳一個舞台變換事件進行移動。",
-        "ctrl": "使用 Ctrl 鍵將物件加入選取範圍。",
-        "properties": "再次切換到舞台變換事件工具以變更預設屬性。"
+      "offset": {
+        "drag": "向上或向下拖曳可變更 BGM 偏移。"
       }
     },
-    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知。之後按 Esc 可將其關閉。",
+    "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至持續顯示在畫面上的通知。按 Esc 可將其關閉。",
     "shiftF10": "按 Shift+F10 或功能表鍵可開啟目前焦點所在項目的選單。",
-    "recentSessions": "未儲存的內容在「歷史記錄 › 最近工作階段」中。",
+    "recentSessions": "要尋找此瀏覽器中保留的未儲存內容，請開啟「歷史記錄 › 最近工作階段」。",
     "fileTitle": "檔案",
-    "moveBetweenDevices": "要將內容移到另一台裝置，請儲存為 .nxsp 檔案，然後在那台裝置上開啟該檔案。",
-    "crswap": "儲存時發生當機，可能會在專案檔案旁留下 .crswap 檔案。可以刪除。"
+    "moveBetweenDevices": "要將內容移到另一台裝置，請儲存為專案檔案，然後在那台裝置上開啟該檔案。"
   },
   "elevation": {
     "edit": "編輯高度",
@@ -811,9 +757,9 @@
     "resetSettingsTitle": "重置設定",
     "resetKeybinds": "重置快捷鍵…",
     "resetKeybindsTitle": "重置快捷鍵",
-    "resetSettingsMessage": "要還原預設設定並保留鍵盤快捷鍵嗎？",
-    "resetSettingsMessageStatistics": "要還原預設設定並保留鍵盤快捷鍵和「傳送使用統計」嗎？",
-    "resetKeybindsMessage": "要還原預設鍵盤快捷鍵嗎？",
+    "resetSettingsMessage": "要將設定重設為預設值嗎？鍵盤快捷鍵會保留。",
+    "resetSettingsMessageStatistics": "要將設定重設為預設值嗎？鍵盤快捷鍵和「傳送使用統計」設定會保留。",
+    "resetKeybindsMessage": "要將鍵盤快捷鍵重設為預設值嗎？",
     "editor": {
       "title": "編輯器",
       "locale": "語言",
@@ -850,7 +796,7 @@
       "showOtherStages": "顯示其他舞台",
       "nameContrast": "名稱對比度",
       "showOtherObjects": "顯示其他物件",
-      "deselectSwitchesToSelect": "連續取消選取切換到選取工具",
+      "deselectSwitchesToSelect": "取消選取兩次以切換到選取工具",
       "beatDisplay": {
         "title": "節拍顯示",
         "beat": "節拍",
@@ -951,8 +897,8 @@
       "notices": "第三方聲明",
       "privacy": "隱私",
       "usageStatistics": "傳送使用統計",
-      "usageStatisticsNote": "使用的工具、主要設定、檔案類型和大小，以及操作所需的時間。請參閱「隱私」。",
-      "usageStatisticsSignal": "預設停用，因為此瀏覽器傳送了 Do Not Track 或 Global Privacy Control。",
+      "usageStatisticsNote": "使用統計包括您使用的工具、部分編輯器設定、檔案類型和大小，以及操作所需的時間。詳情請參閱「隱私」。",
+      "usageStatisticsSignal": "預設關閉，因為此瀏覽器傳送了 Do Not Track 或 Global Privacy Control 訊號。",
       "diagnostics": "複製診斷資訊…",
       "diagnosticsTitle": "診斷資訊",
       "diagnosticsNote": "診斷資訊可能包含檔案名稱與資料夾名稱。分享前請先檢查。",
@@ -967,12 +913,12 @@
       "discardConfirm": "捨棄",
       "cannotOpen": "（此版本無法開啟）",
       "discardAutoSave": "要捨棄舊的自動儲存（{0}）嗎？",
-      "discardUnreadable": "要捨棄 {0} 無法讀取的已恢復內容（{1}）嗎？",
+      "discardUnreadable": "要捨棄 {0} 的已恢復內容（{1}）嗎？這些內容無法開啟。",
       "recovery": {
-        "journal": "先前造訪中未儲存的內容，{0} · {1}",
+        "journal": "先前造訪中未儲存的內容 · {0} · {1}",
         "journalUndated": "先前造訪中未儲存的內容 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
-        "unreadable": "無法讀取的已恢復內容，{0} · {1}",
+        "unreadable": "無法開啟的已恢復內容 · {0} · {1}",
         "listFailed": "無法讀取已恢復的內容。",
         "downloadFailed": "無法下載已恢復的內容。"
       },
@@ -1187,7 +1133,7 @@
     }
   },
   "startup": {
-    "opening": "正在開啟 \"{0}\"…",
+    "opening": "正在開啟「{0}」…",
     "openingBlank": "正在開啟…",
     "slow": "耗時比平常更久。",
     "error": "編輯器無法開啟已存放的內容。",
@@ -1207,24 +1153,24 @@
     "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已存放的內容。",
     "olderVersion": "此瀏覽器中已開啟過較新版本的編輯器。請重新載入，或儲存以保留內容。",
     "tryAgain": "重試",
-    "continued": "已從 {1} 繼續 \"{0}\"。",
+    "continued": "已從 {1} 繼續「{0}」。",
     "continuedUntitled": "已繼續 {0} 的工作階段。",
-    "continuedUndated": "已繼續 \"{0}\"。",
+    "continuedUndated": "已繼續「{0}」。",
     "cleared": "先前造訪的內容已遺失。瀏覽器清除了此網站的儲存空間。",
-    "inAppBrowser": "這似乎是應用程式內建瀏覽器。部分功能可能無法使用，已存放的內容也可能被刪除。如需保留內容，請在瀏覽器中開啟此頁面。",
-    "journalKept": "已將對 \"{0}\" 的已恢復變更保留為獨立的工作階段。",
+    "inAppBrowser": "這似乎是應用程式內建瀏覽器。部分功能可能無法使用，已存放的內容也可能被刪除。如需保留內容，請在常用瀏覽器中開啟此頁面。",
+    "journalKept": "已將對「{0}」的已恢復變更保留為獨立的工作階段。",
     "fallback": "已恢復先前造訪中未儲存的內容。",
     "fallbackLocal": "先前造訪中未儲存的內容在本機資料中。",
     "migrationFailed": "無法還原舊的自動儲存。",
-    "autoSave": "已從舊的自動儲存繼續 \"{0}\"。",
-    "journal": "已恢復對 \"{0}\" 的最後變更。",
+    "autoSave": "已從舊的自動儲存繼續「{0}」。",
+    "journal": "已恢復對「{0}」的最後變更。",
     "journalLater": "已恢復的變更需要較新版本的編輯器。",
-    "openElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此未在此處還原。",
+    "openElsewhere": "「{0}」已在另一個分頁或視窗中開啟，因此未在此處還原。",
     "restoreAsCopy": "還原為副本",
     "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
-    "autoSaveKept": "已將舊的自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
+    "autoSaveKept": "已將舊的自動儲存中的「{0}」保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
-    "journalFailed": "無法存放已恢復的變更。副本在本機資料中。",
+    "journalFailed": "無法將已恢復的變更存放到其工作階段中。可在本機資料中找到。",
     "storageNearlyFull": "瀏覽器儲存空間幾乎已滿。",
     "journalsFull": "先前造訪中未儲存的內容正在佔滿瀏覽器儲存空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",
@@ -1248,7 +1194,7 @@
     },
     "unavailable": "編輯器無法在此瀏覽器中存放變更。請儲存以保留內容。",
     "private": "如果這是無痕視窗，此處存放的所有內容會在關閉視窗時遺失。請儲存以保留內容。",
-    "inAppBrowser": "這似乎是應用程式內建瀏覽器。已存放的內容可能被刪除。如需保留內容，請在瀏覽器中開啟此頁面。",
+    "inAppBrowser": "這似乎是應用程式內建瀏覽器。已存放的內容可能被刪除。如需保留內容，請在常用瀏覽器中開啟此頁面。",
     "ios": "此瀏覽器會在 7 天未造訪後刪除已存放的內容。請儲存以保留內容。",
     "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請儲存以保留內容。"
   },
@@ -1339,7 +1285,7 @@
     "redidSteps": "重做了 {0} 步",
     "dynamicStages": {
       "title": "動態舞台",
-      "message": "此功能需要動態舞台。要啟用動態舞台嗎？",
+      "message": "此功能需要動態舞台。要啟用嗎？",
       "enabled": "已啟用動態舞台"
     },
     "title": "歷史記錄",
@@ -1366,7 +1312,7 @@
     "savedOn": "儲存於 {0}",
     "savedWeb": "儲存於網頁編輯器 ({0})",
     "savedWebAny": "儲存於網頁編輯器",
-    "quoted": "\"{0}\"",
+    "quoted": "「{0}」",
     "quotedField": "{0}",
     "continuedFrom": "從 {0} 繼續",
     "announceViewing": "正在檢視 {0}",
@@ -1382,7 +1328,7 @@
       "loadFailed": "無法載入最近工作階段。",
       "thisTab": "此分頁",
       "elsewhere": "其他分頁",
-      "actions": "\"{0}\" 的更多操作",
+      "actions": "「{0}」的更多操作",
       "saveToFile": "儲存…",
       "delete": "刪除",
       "openReason": "已在另一個分頁或視窗中開啟。"
@@ -1735,8 +1681,8 @@
         "pressCancel": "按一個鍵，或按 Esc 取消",
         "unassigned": "未設定",
         "reserved": "{0} 由瀏覽器或系統保留，請按其他鍵。",
-        "altGraph": "{0} 在許多鍵盤上用於輸入字元，請按其他鍵。",
-        "alsoRuns": "同時執行{0}",
+        "altGraph": "{0} 在許多鍵盤配置中用於輸入字元。請按其他鍵。",
+        "alsoRuns": "同時執行{0}。",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -1887,8 +1833,8 @@
     "showSettings": "顯示預覽設定",
     "loadingSkin": "正在載入外觀…",
     "skinUnavailable": "無法載入預覽外觀。",
-    "graphicsUnavailable": "無法啟動預覽圖形。",
-    "chartGraphicsUnavailable": "無法啟動圖形渲染。",
+    "graphicsUnavailable": "無法顯示預覽。",
+    "chartGraphicsUnavailable": "無法顯示譜面。",
     "graphicsHelp": "請確認瀏覽器已啟用圖形加速和 WebGL，必要時重新啟動瀏覽器。",
     "errorDetails": "錯誤詳細資訊",
     "reload": "重新載入",
@@ -2068,9 +2014,9 @@
     "placeholder": "LevelData",
     "export": "匯出",
     "exported": "已匯出至 {0}",
-    "notLevelData": "\"{0}\" 不是關卡資料。",
+    "notLevelData": "「{0}」不是關卡資料。",
     "fileType": "Next SEKAI 關卡資料",
-    "unsupportedParts": "\"{0}\" 包含此版本編輯器不支援的部分。"
+    "unsupportedParts": "「{0}」包含此版本編輯器不支援的部分。"
   },
   "peek": {
     "loadingShort": "載入中…",
@@ -2080,7 +2026,7 @@
     "unavailable": "無法取得變更",
     "loadingChanges": "正在載入變更…",
     "addedRemoved": "新增 {0} · 刪除 {1}",
-    "exportsCurrent": "匯出目前版本。",
+    "exportsCurrent": "匯出時間軸中標為「現在」的版本。",
     "overlay": "正在檢視歷史記錄 · 唯讀",
     "backToNow": "返回現在",
     "restore": "還原",
@@ -2095,7 +2041,7 @@
     "changesBelow": "下方的變更：{0}",
     "changesAboveAny": "上方的變更",
     "changesBelowAny": "下方的變更",
-    "savesCurrent": "儲存目前版本。",
+    "savesCurrent": "儲存時間軸中標為「現在」的版本。",
     "showEdits": "顯示變更",
     "changeOptions": "變更的顯示選項"
   },
@@ -2104,33 +2050,34 @@
     "chooseAnother": "選擇其他檔案…",
     "tryAgain": "重試",
     "denied": "瀏覽器不允許寫入 {0}。",
-    "notFound": "找不到 \"{0}\"。",
+    "notFound": "找不到「{0}」。",
     "downloadStarted": "已開始下載：{0} · {1}",
     "preparing": "正在準備 {0}… {1}",
     "ready": "已準備好：{0} · {1}",
     "download": "下載",
-    "buildFailed": "無法準備 \"{0}\"。",
-    "readFailed": "無法讀取 \"{0}\"。",
-    "changedWhileWriting": "\"{0}\" 在寫入時已變更。",
-    "downloadFailed": "無法下載 \"{0}\"。",
-    "notLocal": "\"{0}\" 尚不在此裝置上。",
+    "buildFailed": "無法準備「{0}」。",
+    "readFailed": "無法讀取「{0}」。",
+    "changedWhileWriting": "「{0}」在寫入時已變更。",
+    "downloadFailed": "無法下載「{0}」。",
+    "notLocal": "「{0}」尚不在此裝置上。",
     "noSpace": "空間不足，無法寫入 {0}。",
-    "writeFailed": "無法寫入 \"{0}\"。",
-    "notPutBack": "\"{0}\" 已被清空，且無法還原其內容。",
-    "openedContentGone": "\"{0}\" 已不再包含先前的內容。",
-    "replacedContentGone": "\"{0}\" 已不再包含先前的內容。",
+    "writeFailed": "無法寫入「{0}」。",
+    "notPutBack": "「{0}」已被清空，且無法還原其內容。",
+    "openedContentGone": "「{0}」的內容已變更。",
+    "replacedContentGone": "「{0}」的內容已變更。",
     "title": "儲存專案檔案",
     "titleAs": "另存新檔",
     "history": "歷史記錄",
     "bgm": "BGM",
     "placeholder": "未命名",
     "exportHint": "如需 Sonolus 關卡資料，請使用「匯出關卡資料…」。",
+    "exportHintText": "如需 Sonolus 關卡資料，請使用「匯出關卡資料」。",
     "exportHintFirst": ".nxsp 專案檔案僅供本編輯器使用。若要產生上傳至 Sonolus 伺服器的關卡資料，請使用「匯出關卡資料…」。",
     "exportHintNames": "關卡資料檔案可能沒有副檔名，或以 .nsld 或 .json.gz 結尾。",
     "openExport": "匯出關卡資料…",
-    "readOnly": "無法寫入 \"{0}\"。",
-    "notProject": "\"{0}\" 不是專案檔案。",
-    "notKept": "未儲存。無法完整讀取 \"{0}\"。",
+    "readOnly": "無法寫入「{0}」。",
+    "notProject": "「{0}」不是專案檔案。",
+    "notKept": "未儲存。無法完整讀取「{0}」。",
     "notKeptSafe": "未儲存。安全模式下無法取代檔案。",
     "notKeptFull": "未儲存。瀏覽器儲存空間已滿。請在「設定 › 本機資料」中刪除工作階段，然後重新儲存。",
     "saved": "已儲存到 {0}",
@@ -2147,12 +2094,12 @@
     "noChangesSaved": "自儲存 {0} 以來沒有變更",
     "noChangesOpened": "自開啟 {0} 以來沒有變更",
     "downloadAgain": "再次下載",
-    "unreadable": "無法完整讀取 \"{0}\"。",
+    "unreadable": "無法完整讀取「{0}」。",
     "tooLarge": "檔案過大。",
     "restoredName": "{0}（{1} 還原）",
     "fileType": "Next SEKAI 專案檔案",
-    "unavailable": "未儲存。請使用「匯出關卡資料…」。",
-    "storageUnavailable": "未儲存。編輯器無法存取此瀏覽器的儲存空間。請重試，或使用「另存新檔…」。",
+    "unavailable": "未儲存。請使用「匯出關卡資料」。",
+    "storageUnavailable": "未儲存。編輯器無法存取此瀏覽器的儲存空間。請重試，或使用「另存新檔」。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "擁有該檔案的人可以查看其中的歷史記錄。",
@@ -2167,12 +2114,12 @@
     "title": "檢查檔案和歷史記錄",
     "checkingFile": "正在檢查 {0}…",
     "checkingStored": "正在檢查已存放的歷史記錄…",
-    "changed": "\"{0}\" 在檢查期間已變更。請重試。",
-    "stillOpening": "\"{0}\" 仍在開啟中。請重試。",
+    "changed": "「{0}」在檢查期間已變更。請重試。",
+    "stillOpening": "「{0}」仍在開啟中。請重試。",
     "noDamage": "未發現損毀。",
-    "scopeBoth": "已檢查 \"{0}\" 和此瀏覽器中存放的歷史記錄。",
+    "scopeBoth": "已檢查「{0}」和此瀏覽器中存放的歷史記錄。",
     "scopeStored": "已檢查此瀏覽器中存放的歷史記錄。",
-    "fileDamaged": "\"{0}\" 已損毀。儲存時會建立獨立的檔案。",
+    "fileDamaged": "「{0}」已損毀。儲存時會建立獨立的檔案。",
     "repaired": "已修復 {0} 個時間軸步驟。",
     "storedDamaged": "此瀏覽器中存放的 {0} 個時間軸步驟已損毀。",
     "mediaDamaged": "此瀏覽器中存放的{0}已損毀。"
@@ -2187,23 +2134,23 @@
     "discard": "要捨棄對關卡資訊的變更嗎？"
   },
   "conflict": {
-    "exportTitle": "\"{0}\" 已變更",
-    "exportBody": "\"{0}\" 在上次匯出後已變更。",
-    "exportBodyOpened": "\"{0}\" 在此處開啟後已變更。",
+    "exportTitle": "「{0}」已變更",
+    "exportBody": "「{0}」在上次匯出後已變更。",
+    "exportBodyOpened": "「{0}」在此處開啟後已變更。",
     "replace": "取代",
-    "title": "\"{0}\" 已變更",
-    "body": "\"{0}\" 在此處開啟或儲存後已變更。",
+    "title": "「{0}」已變更",
+    "body": "「{0}」在此處開啟或儲存後已變更。",
     "saved": "{0}，{1} · {2}。",
     "savedNoNotes": "{0}，{1}。",
-    "otherProject": "另一個專案檔案 \"{0}\"。",
+    "otherProject": "另一個專案檔案「{0}」。",
     "otherProjectUnnamed": "另一個專案檔案。",
-    "notDescendant": "此版本並非基於您的版本 ({0})。",
+    "notDescendant": "{0} 儲存的版本並非基於您的版本。",
     "separate": "另存為獨立檔案…",
     "openOther": "開啟另一個版本",
     "openOtherNote": "您的變更會保留在「最近工作階段」中。",
     "replaceNote": "磁碟上的版本將保留在「最近工作階段」中。",
     "keptName": "{0}（{1} 被取代）",
-    "replaceNewer": "由較新版本的 {0} 建立。",
+    "replaceNewer": "此檔案由較新版本的 {0} 建立。",
     "replaceHoldsEarlier": "它包含此瀏覽器中已不再存放的較早時間軸步驟。",
     "replaceMayHoldEarlier": "它可能包含此瀏覽器中已不再存放的較早時間軸步驟。",
     "keepEditing": "繼續編輯"
@@ -2212,20 +2159,20 @@
     "invalidChar": "名稱不能包含 {0}",
     "controlChar": "名稱不能包含控制字元",
     "edgeDotSpace": "名稱不能以句點或空格開頭或結尾",
-    "reserved": "名稱不能是 \"{0}\"",
+    "reserved": "名稱不能是「{0}」",
     "tooLong": "名稱過長"
   },
   "notice": {
-    "useOpenFile": "要開啟檔案，請使用「開啟…」。",
-    "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
+    "useOpenFile": "要開啟檔案，請使用「開啟」。",
+    "sameFileElsewhere": "「{0}」已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
     "bgmMayBeTooLong": "BGM 未載入。音訊長度不能超過 {0} 分鐘。",
     "bgmTooLong": "BGM 的長度超過 {0} 分鐘，未載入。",
-    "bgmDiffers": "這與原本的 BGM \"{0}\" 不是同一個檔案。",
+    "bgmDiffers": "這與原本的 BGM「{0}」不是同一個檔案。",
     "bgmDiffersUnnamed": "這與原本的 BGM 不是同一個檔案。",
     "newLevel": "新關卡",
-    "reopen": "重新開啟 \"{0}\"",
+    "reopen": "重新開啟「{0}」",
     "reopenUntitled": "重新開啟 {0} 的工作階段",
     "readOnlyPeek": "檢視歷史記錄時為唯讀",
     "restoredTo": "已還原到 {0}",
@@ -2249,13 +2196,13 @@
   },
   "session": {
     "untitled": "未命名 · {0}",
-    "restored": "已還原 \"{0}\"",
-    "restoredCopy": "已還原 \"{0}\" 的副本",
+    "restored": "已還原「{0}」",
+    "restoredCopy": "已還原「{0}」的複本",
     "deletedMany": "已刪除 {0} 個工作階段",
-    "deleted": "已刪除 \"{0}\"",
-    "deleteRefused": "未刪除。\"{0}\" 正在某個分頁或視窗中使用。",
-    "deleteFailed": "無法刪除 \"{0}\"。",
-    "undoLost": "已刪除 \"{0}\"。無法再撤銷。"
+    "deleted": "已刪除「{0}」",
+    "deleteRefused": "未刪除。「{0}」正在某個分頁或視窗中使用。",
+    "deleteFailed": "無法刪除「{0}」。",
+    "undoLost": "已刪除「{0}」。此次刪除無法再撤銷。"
   },
   "prompt": {
     "title": "變更未存放",
@@ -2281,20 +2228,20 @@
     "damagedUnopened": "此檔案已損毀，無法開啟。",
     "damaged": "此檔案已損毀。已在不含歷史記錄的情況下開啟。",
     "historyUnreadable": "無法讀取此檔案的歷史記錄。儲存時會建立獨立的檔案。",
-    "newerVersion": "由較新版本的 {0} 建立。儲存時會建立獨立的檔案。",
-    "newerRefused": "由較新版本的 {0} 建立。",
-    "newerPatch": "由較新版本的 {0} 建立。部分內容可能無法顯示。",
+    "newerVersion": "此檔案由較新版本的 {0} 建立。儲存時會建立獨立的檔案。",
+    "newerRefused": "此檔案由較新版本的 {0} 建立，無法開啟。",
+    "newerPatch": "此檔案由較新版本的 {0} 建立。部分內容可能無法顯示。",
     "mediaBad": "無法讀取此檔案的{0}。儲存時會建立獨立的檔案。",
     "media": {
       "bgm": "BGM",
       "cover": "封面",
       "preview": "預覽音訊"
     },
-    "newerMajor": "由較新版本的 {0} 建立。",
+    "newerMajor": "由較新版本的 {0} 建立的檔案",
     "newerMajorNote": "只能開啟此檔案中的關卡。",
     "openLevel": "開啟關卡",
     "newerValues": {
-      "title": "\"{0}\" 使用了較新的功能",
+      "title": "「{0}」使用了較新的功能",
       "body": "此關卡使用了此版本編輯器不支援的值。開啟獨立的副本時，這些值會改為預設值。",
       "openCopy": "開啟副本"
     },
@@ -2307,10 +2254,10 @@
     "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在「最近工作階段」中。",
     "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在「最近工作階段」中。",
     "restoreIt": "還原工作階段",
-    "damagedHistory": "\"{0}\" 的歷史記錄已損毀。儲存時會建立獨立的檔案。"
+    "damagedHistory": "「{0}」的歷史記錄已損毀。儲存時會建立獨立的檔案。"
   },
   "file": {
-    "replacedElsewhere": "\"{0}\" 已從另一個分頁或視窗被取代。",
+    "replacedElsewhere": "「{0}」已從另一個分頁或視窗被取代。",
     "downloaded": "{0} · {1} 已下載",
     "opened": "{0} · {1} 已開啟"
   },
@@ -2319,8 +2266,8 @@
     "changedOnDisk": "磁碟上已變更",
     "newerOnDisk": "磁碟上有較新版本",
     "notConfirmed": "下載未確認",
-    "changedOnDiskName": "\"{0}\"：自您在此處開啟或儲存後，磁碟上的檔案已變更。",
-    "newerOnDiskName": "\"{0}\"：磁碟上有較新版本。",
+    "changedOnDiskName": "「{0}」在此處開啟或儲存後，已在磁碟上變更。",
+    "newerOnDiskName": "磁碟上有「{0}」的較新版本。",
     "notStored": "未存放"
   },
   "confirm": {

@@ -45,12 +45,12 @@
     },
     "copy": {
       "title": "Copier",
-      "noSelected": "Aucun objet sélectionné à copier",
+      "noSelected": "Sélectionnez un objet à copier",
       "copied": "{0} objet copié|{0} objets copiés"
     },
     "cut": {
       "title": "Couper",
-      "noSelected": "Aucun objet sélectionné à couper",
+      "noSelected": "Sélectionnez un objet à couper",
       "cut": "{0} objet coupé|{0} objets coupés"
     },
     "deselect": {
@@ -99,7 +99,7 @@
     },
     "flip": {
       "title": "Retourner horizontalement",
-      "noSelected": "Aucun objet sélectionné à retourner",
+      "noSelected": "Sélectionnez un objet à retourner",
       "flipped": "{0} objet retourné horizontalement|{0} objets retournés horizontalement"
     },
     "flipVertical": {
@@ -115,25 +115,25 @@
     "scaleWidth": {
       "title": "Redimensionner la largeur…",
       "dialogTitle": "Redimensionner la largeur",
-      "noSelected": "Sélectionnez des objets avec une étendue horizontale à redimensionner",
+      "noSelected": "Sélectionnez des objets avec une étendue horizontale",
       "scaled": "Largeur de {0} objet redimensionnée|Largeur de {0} objets redimensionnée"
     },
     "scaleElevation": {
       "title": "Mettre les élévations à l’échelle…",
       "dialogTitle": "Mettre les élévations à l’échelle",
-      "noSelected": "Sélectionnez au moins deux notes ou transformations de scène à des élévations différentes",
+      "noSelected": "Sélectionnez au moins deux notes ou événements de transformation de scène à des élévations différentes",
       "scaled": "Élévation de {0} objet mise à l’échelle|Élévations de {0} objets mises à l’échelle"
     },
     "scaleSelection": {
       "factor": "Facteur d’échelle",
       "apply": "Appliquer",
-      "invalidFactor": "Saisissez un facteur d’échelle positif qui maintient le résultat dans les limites prises en charge par l’éditeur"
+      "invalidFactor": "Saisissez un facteur d’échelle positif qui maintient le résultat dans les limites prises en charge"
     },
     "makeVertical": {
       "title": "Disposer verticalement",
       "noSelected": "Sélectionnez au moins une note à disposer verticalement",
       "unchanged": "Les notes sélectionnées sont déjà disposées verticalement",
-      "invalid": "La sélection ne peut pas être disposée verticalement dans les limites prises en charge par l’éditeur",
+      "invalid": "La sélection ne peut pas être disposée verticalement dans les limites prises en charge",
       "made": "{0} note disposée verticalement|{0} notes disposées verticalement"
     },
     "splitHold": {
@@ -143,14 +143,14 @@
     },
     "combineNotes": {
       "title": "Combiner en slide",
-      "noSelected": "Aucune note sélectionnée à combiner",
+      "noSelected": "Sélectionnez les notes à combiner",
       "sameSlide": "Les notes sélectionnées appartiennent déjà au même slide",
       "combined": "{0} notes combinées en un slide"
     },
     "fullscreen": {
       "title": "Plein écran",
       "toggled": "Mode plein écran modifié",
-      "unsupported": "Votre appareil ne prend pas en charge le plein écran"
+      "unsupported": "Cet appareil ne prend pas en charge le plein écran"
     },
     "groups": {
       "groupAll": {
@@ -259,11 +259,11 @@
       "invalidLevel": "Niveau non valide : {0}",
       "invalidChart": "Partition non valide : {0}",
       "revision": {
-        "older": "Ce niveau a été créé pour une révision plus ancienne du moteur. Il utilise maintenant la révision actuelle, alors vérifiez qu’il s’affiche et se joue toujours comme prévu.",
-        "newer": "Ce niveau a été créé pour une révision du moteur plus récente que celle prise en charge par cet éditeur. Certaines parties risquent de ne pas s’afficher ou de ne pas être enregistrées comme prévu."
+        "older": "Ce niveau a été créé pour une révision plus ancienne du moteur et utilise maintenant la révision actuelle. Vérifiez qu’il s’affiche et se joue toujours comme prévu.",
+        "newer": "Ce niveau a été créé pour une révision du moteur plus récente que celle prise en charge par cet éditeur. Certaines parties risquent de ne pas s’afficher ou de ne pas être sauvegardées correctement."
       },
       "refusals": {
-        "dynamicStages": "fonctionnalités de scènes dynamiques utilisées sans être activées",
+        "dynamicStages": "le niveau utilise des scènes dynamiques sans les activer",
         "cyclicEventRef": "référence d’événement circulaire \"{0}\"",
         "cyclicSlideRef": "référence de slide circulaire \"{0}\"",
         "refNotFound": "référence \"{0}\" introuvable",
@@ -279,9 +279,9 @@
         "invalidBpm": "le BPM doit être positif et fini",
         "missingValue": "{0} n’a pas de {1}",
         "missingNote": "il manque une note à {0}",
-        "ticksPerBeat": "ticks par temps manquants ou inattendus",
-        "offset": "décalage inattendu",
-        "timeScaleChange": "changement d’échelle de temps inattendu",
+        "ticksPerBeat": "ticks par temps manquants ou invalides",
+        "offset": "décalage invalide",
+        "timeScaleChange": "changement d’échelle de temps invalide",
         "meter": "temps par mesure non valide",
         "missingMeter": "aucun temps par mesure pour la mesure {0}"
       },
@@ -514,7 +514,7 @@
       "remove": "Supprimer",
       "removeStored": "Supprimer…",
       "inUse": "Utilisé",
-      "removeInUse": "Supprimer \"{0}\" ? L’élément par défaut est utilisé à la place.",
+      "removeInUse": "Supprimer \"{0}\" ? L’aperçu utilisera l’option Par défaut à la place.",
       "removeUnused": "Supprimer \"{0}\" ?",
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau…",
@@ -542,7 +542,7 @@
         "fileTooLarge": "Ce fichier dépasse {0}.",
         "tooManyEntries": "Ce fichier contient plus de {0} entrées.",
         "badName": "Ce fichier contient un nom d’entrée non autorisé.",
-        "ratio": "Dans ce fichier, {1} ({0}) : taux de décompression supérieur à {2} pour 1.",
+        "ratio": "Dans ce fichier, la taille de {1} ({0}) après décompression dépasse {2} fois sa taille compressée.",
         "tooBig": "Dans ce fichier, {1} ({0}) : plus de {2}.",
         "unreadable": "Impossible de lire {1} ({0}) dans ce fichier.",
         "missing": "Il manque {1} ({0}) dans ce fichier.",
@@ -573,10 +573,10 @@
       "server": {
         "unreachable": "Impossible de joindre ce serveur. Vérifiez l’adresse ou réessayez plus tard.",
         "auth": "L’éditeur ne peut pas utiliser les serveurs qui nécessitent une connexion à un compte.",
-        "insecure": "L’éditeur ne peut pas utiliser les serveurs http.",
-        "checksum": "La somme de contrôle du serveur pour cet élément ne correspond pas à ce qu’il a envoyé.",
+        "insecure": "Les adresses de serveur HTTP ne sont pas prises en charge.",
+        "checksum": "Le contenu téléchargé ne correspond pas à la somme de contrôle du serveur.",
         "notFound": "Ce serveur n’a pas cet élément.",
-        "invalid": "Cette adresse n’est pas celle d’un serveur Sonolus.",
+        "invalid": "L’éditeur n’a pas pu lire les données d’un serveur Sonolus depuis cette adresse.",
         "status": "Ce serveur a renvoyé une erreur ({0}).",
         "filesFailed": "Impossible de télécharger les fichiers de cet élément depuis {0}.",
         "addressEmpty": "Saisissez l’adresse d’un serveur.",
@@ -599,7 +599,7 @@
         "tooManyParticles": "Dans cet élément, les données ({0}) contiennent plus de {1} particules.",
         "tooManyGroups": "Dans cet élément, les données ({0}) contiennent plus de {1} groupes de particules.",
         "effectGroups": "Dans cet élément, l’effet \"{1}\" ({0}) contient plus de {2} groupes de particules.",
-        "ratio": "Dans cet élément, {1} ({0}) : taux de décompression supérieur à {2} pour 1."
+        "ratio": "Dans cet élément, la taille de {1} ({0}) après décompression dépasse {2} fois sa taille compressée."
       }
     },
     "history": {
@@ -618,165 +618,111 @@
   "help": {
     "modal": {
       "title": "Aide",
+      "gettingStarted": {
+        "title": "Premiers pas",
+        "bgm": "Choisissez Musique pour charger la musique et régler son décalage.",
+        "bpm": "Choisissez BPM et appuyez sur le changement de BPM au début de la partition. Appuyez à nouveau dessus pour modifier son BPM.",
+        "bpmClick": "Choisissez BPM et cliquez sur le changement de BPM au début de la partition. Cliquez à nouveau dessus pour modifier son BPM.",
+        "notes": "Choisissez Note et appuyez sur la partition pour ajouter une note. Pour ajouter un slide, choisissez Désélectionner, puis Slide, et appuyez à son point de départ et à son point de fin.",
+        "notesClick": "Choisissez Note et cliquez sur la partition pour ajouter une note. Pour ajouter un slide, choisissez Désélectionner, puis Slide, et cliquez à son point de départ et à son point de fin.",
+        "save": "Choisissez Sauvegarder pour conserver votre travail dans un fichier de projet (.nxsp). Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau."
+      },
       "touchscreen": {
         "title": "Écran tactile",
-        "tap": "Appuyez avec un doigt pour utiliser l’outil actuel.",
-        "drag": "Glissez d’un seul doigt pour utiliser l’outil actuel.",
-        "quickScroll": "Glissez un doigt dans la zone de défilement rapide pour faire défiler.",
-        "minimap": "Appuyez avec un doigt sur la minicarte pour faire défiler jusqu’à cet endroit, ou faites glisser le cadre qui indique la zone visible.",
-        "deselect": "Appuyez avec deux doigts pour désélectionner.",
-        "scrollY": "Glissez deux doigts verticalement pour faire défiler.",
-        "scrollX": "Glissez deux doigts horizontalement pour faire défiler.",
-        "zoomY": "Pincez verticalement avec deux doigts pour zoomer l’axe Y.",
-        "zoomX": "Pincez horizontalement avec deux doigts pour zoomer l’axe X.",
-        "play": "Appuyez avec trois doigts pour lancer la lecture."
+        "longPress": "Appuyez longuement sur un objet pour ouvrir le menu contextuel.",
+        "scroll": "Faites glisser deux doigts pour faire défiler. Pincez verticalement pour zoomer verticalement, ou horizontalement pour zoomer horizontalement.",
+        "quickScroll": "Pour faire défiler avec un doigt, faites-le glisser dans la zone de défilement rapide au bord droit de la partition.",
+        "gestures": "Appuyez avec deux doigts pour désélectionner. Appuyez avec trois doigts pour lancer ou arrêter la lecture."
       },
       "mouse": {
         "title": "Souris",
-        "tapPrimary": "Cliquez avec le bouton gauche pour utiliser l’outil principal.",
-        "dragPrimary": "Cliquez avec le bouton gauche et glissez pour utiliser l’outil principal.",
-        "tapSecondary": "Cliquez avec le bouton droit pour utiliser l’outil secondaire.",
-        "dragSecondary": "Cliquez avec le bouton droit et glissez pour utiliser l’outil secondaire.",
-        "scrollY": "Utilisez la molette pour faire défiler verticalement.",
-        "scrollX": "Utilisez la molette avec la touche Maj pour faire défiler horizontalement.",
-        "autoscroll": "Cliquez avec le bouton du milieu, puis déplacez la souris pour faire défiler. Cliquez pour arrêter.",
-        "minimap": "Cliquez avec le bouton gauche ou glissez sur la minicarte pour faire défiler jusqu’à cet endroit.",
-        "zoomY": "Utilisez la molette avec la touche Ctrl pour zoomer verticalement.",
-        "zoomX": "Utilisez la molette avec les touches Ctrl et Maj pour zoomer horizontalement."
+        "contextMenu": "Faites un clic droit sur un objet pour ouvrir le menu contextuel, ou faites glisser avec le bouton droit pour utiliser Sélectionner.",
+        "secondary": "Cliquez ou faites glisser avec le bouton droit pour utiliser {0}.",
+        "scrollX": "Maintenez Maj et utilisez la molette de la souris pour faire défiler horizontalement.",
+        "zoom": "Maintenez Ctrl et utilisez la molette de la souris pour zoomer verticalement, ou Ctrl et Maj pour zoomer horizontalement.",
+        "autoscroll": "Cliquez avec le bouton du milieu, puis déplacez la souris pour faire défiler. Cliquez à nouveau pour arrêter."
       },
       "keyboard": {
         "title": "Clavier",
-        "single": "Appuyez une fois pour exécuter.",
-        "multiple": "Maintenez une touche pour répéter le défilement, le zoom, l’annulation, le rétablissement, ou le changement de taille des notes, de vitesse de lecture, de groupe ou de scène."
+        "settings": "Consultez et modifiez les raccourcis dans Paramètres › Raccourcis clavier."
       },
       "selectTool": {
-        "title": "Outil Sélection",
-        "select": "Appuyez sur un objet pour le sélectionner. Réappuyez pour sélectionner le suivant si les objets sont superposés.",
-        "deselect": "Appuyez sur une zone vide pour désélectionner tous les objets.",
-        "move": "Glissez des objets pour les déplacer.",
-        "selectMultiple": "Glissez une zone vide pour sélectionner plusieurs objets.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "shift": "Maintenez la touche Maj pour inclure les autres notes du même slide."
+        "select": "Lorsque des objets se superposent, chaque appui sélectionne le suivant.",
+        "selectClick": "Lorsque des objets se superposent, chaque clic sélectionne le suivant.",
+        "move": "Faites glisser un objet sélectionné pour déplacer toute la sélection.",
+        "resize": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner. Si tous les objets sélectionnés sont du même type, ils sont redimensionnés ensemble.",
+        "modifiers": "Maintenez Ctrl (Cmd sous macOS) pour ajouter des objets à la sélection ou les en retirer. Maintenez Maj pour sélectionner des slides entiers.",
+        "selectMultiple": "Tracez un cadre en faisant glisser depuis une zone vide pour sélectionner les objets à l’intérieur."
       },
       "eraserTool": {
-        "title": "Outil Gomme",
-        "erase": "Appuyez sur les objets pour les effacer.",
-        "deselect": "Appuyez sur une zone vide pour désélectionner tous les objets.",
-        "eraseMultiple": "Glissez pour effacer plusieurs objets."
+        "erase": "Appuyez sur un objet pour l’effacer, ou tracez un cadre en faisant glisser pour effacer tout ce qu’il contient.",
+        "eraseClick": "Cliquez sur un objet pour l’effacer, ou tracez un cadre en faisant glisser pour effacer tout ce qu’il contient.",
+        "selection": "Appuyez sur un objet sélectionné pour effacer toute la sélection.",
+        "selectionClick": "Cliquez sur un objet sélectionné pour effacer toute la sélection."
       },
       "brushTool": {
-        "title": "Outil Pinceau",
-        "brush": "Appuyez sur des objets pour les peindre.",
-        "deselect": "Appuyez sur une zone vide pour désélectionner tous les objets.",
-        "brushMultiple": "Glissez pour peindre plusieurs objets.",
-        "shift": "Maintenez la touche Maj pour inclure les autres notes du même slide."
+        "properties": "Choisissez Pinceau, puis définissez les propriétés à appliquer.",
+        "brush": "Appuyez sur un objet ou tracez un cadre en faisant glisser pour appliquer le pinceau. Appuyez sur un objet sélectionné pour l’appliquer à toute la sélection.",
+        "brushClick": "Cliquez sur un objet ou tracez un cadre en faisant glisser pour appliquer le pinceau. Cliquez sur un objet sélectionné pour l’appliquer à toute la sélection.",
+        "shift": "Maintenez Maj pour appliquer le pinceau à des slides entiers."
       },
       "pasteTool": {
-        "title": "Outil Coller",
-        "paste": "Appuyez pour coller.",
-        "shift": "Utilisez la touche Maj pour retourner des objets."
+        "paste": "Appuyez ou faites glisser pour placer les objets copiés. Maintenez Maj pour les retourner horizontalement.",
+        "pasteClick": "Cliquez ou faites glisser pour placer les objets copiés. Maintenez Maj pour les retourner horizontalement."
       },
       "noteTool": {
-        "title": "Outil Note",
-        "select": "Appuyez sur des notes pour sélectionner 1 note.",
-        "edit": "Appuyez sur 1 note pour la modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter.",
-        "move": "Glissez 1 note pour la déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "shift": "Maintenez la touche Maj pour inclure les autres notes du même slide.",
-        "properties": "Passez à l’outil Note de nouveau pour changer le préréglage ou les propriétés par défaut."
+        "presets": "Choisissez à nouveau Note pour afficher les propriétés par défaut et passer d’un préréglage à l’autre, de Note n° 1 à Note n° 4.",
+        "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Note n° 2 par défaut active ou désactive Critique.",
+        "quickEditClick": "Lorsque le panneau Propriétés est affiché, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Note n° 2 par défaut active ou désactive Critique."
       },
       "slideTool": {
-        "title": "Outil Slide",
-        "select": "Appuyez sur des notes pour sélectionner 1 note.",
-        "edit": "Appuyez sur 1 note pour la modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter.",
-        "connect": "Appuyez sur une zone vide avec une note sélectionnée pour la connecter.",
-        "move": "Glissez 1 note pour la déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "shift": "Maintenez la touche Maj pour inclure les autres notes du même slide.",
-        "properties": "Passez à l’outil Slide de nouveau pour changer le préréglage ou les propriétés par défaut."
-      },
-      "splitSlide": {
-        "split": "Coupe la connexion de chaque note sélectionnée vers la note suivante.",
-        "tail": "La dernière note d’un slide n’a pas de connexion à couper."
+        "connect": "Lorsque des notes d’un même slide sont sélectionnées, appuyez sur une zone vide pour ajouter une autre note à ce slide. Choisissez Désélectionner avant de commencer un nouveau slide.",
+        "connectClick": "Lorsque des notes d’un même slide sont sélectionnées, cliquez sur une zone vide pour ajouter une autre note à ce slide. Choisissez Désélectionner avant de commencer un nouveau slide.",
+        "presets": "Choisissez à nouveau Slide pour afficher les propriétés par défaut et passer d’un préréglage à l’autre, de Slide n° 1 à Slide n° 5.",
+        "quickEdit": "Comme avec Note, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
+        "quickEditClick": "Comme avec Note, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
+        "splitCombine": "Scinder le slide coupe la connexion de chaque note sélectionnée vers la note suivante. Combiner en slide réunit les slides des notes sélectionnées en un seul slide."
       },
       "generateSlideNotesTool": {
-        "title": "Outil Générer les notes de slide",
-        "generate": "Appuyez ou glissez pour sélectionner une note et générer les notes de tout le slide.",
-        "generateMultiple": "Appuyez ou glissez pour sélectionner deux notes ou plus et générer les notes entre elles.",
-        "deselect": "Appuyez sur une zone vide pour désélectionner tous les objets."
+        "generate": "Appuyez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide.",
+        "generateClick": "Cliquez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide.",
+        "generateMultiple": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Appuyez sur une note sélectionnée pour remplir chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier.",
+        "generateMultipleClick": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Cliquez sur une note sélectionnée pour remplir chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier."
+      },
+      "adding": {
+        "title": "Ajouter des objets",
+        "add": "Avec Note, Slide, BPM, Échelle de temps ou Événement, appuyez sur une zone vide pour ajouter un objet. Avec Note ou Slide, faites glisser dans une zone vide pour ajouter une note de cette largeur.",
+        "addClick": "Avec Note, Slide, BPM, Échelle de temps ou Événement, cliquez sur une zone vide pour ajouter un objet. Avec Note ou Slide, faites glisser dans une zone vide pour ajouter une note de cette largeur.",
+        "edit": "Appuyez sur un objet sélectionné pour afficher ses propriétés.",
+        "editClick": "Cliquez sur un objet sélectionné pour afficher ses propriétés.",
+        "move": "Faites glisser un objet pour déplacer uniquement cet objet. Pour déplacer plusieurs objets ensemble, utilisez Sélectionner.",
+        "resize": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner.",
+        "modifiers": "Maintenez Ctrl (Cmd sous macOS) et appuyez sur un objet pour l’ajouter à la sélection ou l’en retirer. Maintenez Maj et appuyez sur une note pour sélectionner son slide entier.",
+        "modifiersClick": "Maintenez Ctrl (Cmd sous macOS) et cliquez sur un objet pour l’ajouter à la sélection ou l’en retirer. Maintenez Maj et cliquez sur une note pour sélectionner son slide entier."
       },
       "bpmTool": {
-        "title": "Outil BPM",
-        "select": "Appuyez sur des changements de BPM pour en sélectionner 1.",
-        "edit": "Appuyez sur 1 changement de BPM pour le modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter.",
-        "move": "Glissez 1 changement de BPM pour le déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection."
+        "first": "La partition commence toujours par un changement de BPM. Le faire glisser ajoute une copie à l’endroit où vous le déposez.",
+        "replace": "Déplacer un changement de BPM sur un autre remplace celui qui s’y trouve déjà."
       },
       "timeScaleTool": {
-        "title": "Outil Échelle de temps",
-        "select": "Appuyez sur des échelles de temps pour en sélectionner 1.",
-        "edit": "Appuyez sur 1 échelle de temps pour la modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter.",
-        "move": "Glissez 1 échelle de temps pour la déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "markers": "Les marqueurs en losange utilisent la transition Défilement. Les marqueurs creux sur des lignes pointillées masquent les notes.",
+        "markers": "Un marqueur en losange indique la transition Défilement. Un marqueur creux sur une ligne pointillée indique que les notes sont masquées.",
         "ease": "La courbe indique l’interpolation vers le prochain changement du groupe."
       },
-      "cameraEventTool": {
-        "title": "Outil Événement de caméra",
-        "select": "Appuyez sur un événement pour le sélectionner.",
-        "edit": "Appuyez sur un événement pour le modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter un événement.",
-        "move": "Glissez un événement pour le déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "properties": "Passez à nouveau à l’outil Événement de caméra pour modifier les propriétés par défaut."
+      "event": {
+        "next": "Choisissez Événement pour passer à un outil d’événement. Choisissez-le à nouveau pour parcourir les outils d’événement.",
+        "defaults": "Pour modifier les propriétés par défaut d’un outil d’événement, choisissez à nouveau son nom, par exemple Événement de caméra.",
+        "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyer sur un événement sélectionné modifie aussi son interpolation.",
+        "quickEditClick": "Lorsque le panneau Propriétés est affiché, cliquer sur un événement sélectionné modifie aussi son interpolation."
       },
-      "stageMaskEventTool": {
-        "title": "Outil Événement de masque de scène",
-        "select": "Appuyez sur un événement pour le sélectionner.",
-        "edit": "Appuyez sur un événement pour le modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter un événement.",
-        "move": "Glissez un événement pour le déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "properties": "Passez à nouveau à l’outil Événement de masque de scène pour modifier les propriétés par défaut."
-      },
-      "stagePivotEventTool": {
-        "title": "Outil Événement de pivot de scène",
-        "select": "Appuyez sur un événement pour le sélectionner.",
-        "edit": "Appuyez sur un événement pour le modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter un événement.",
-        "move": "Glissez un événement pour le déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "properties": "Passez à nouveau à l’outil Événement de pivot de scène pour modifier les propriétés par défaut."
-      },
-      "stageStyleEventTool": {
-        "title": "Outil Événement de style de scène",
-        "select": "Appuyez sur un événement pour le sélectionner.",
-        "edit": "Appuyez sur un événement pour le modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter un événement.",
-        "move": "Glissez un événement pour le déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "properties": "Passez à nouveau à l’outil Événement de style de scène pour modifier les propriétés par défaut."
-      },
-      "stageTransformEventTool": {
-        "title": "Outil Événement de transformation de scène",
-        "select": "Appuyez sur un événement pour le sélectionner.",
-        "edit": "Appuyez sur un événement pour le modifier.",
-        "add": "Appuyez sur une zone vide pour ajouter un événement.",
-        "move": "Glissez un événement pour le déplacer.",
-        "ctrl": "Utilisez la touche Ctrl pour ajouter des objets à la sélection.",
-        "properties": "Passez à nouveau à l’outil Événement de transformation de scène pour modifier les propriétés par défaut."
+      "offset": {
+        "drag": "Faites glisser vers le haut ou vers le bas pour modifier le décalage de la musique."
       }
     },
-    "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite.",
+    "altN": "Alt+N (Option+N sous macOS) place le focus sur une notification qui reste à l’écran. Appuyez sur Esc pour la fermer.",
     "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de l’élément qui a le focus.",
-    "recentSessions": "Le travail non sauvegardé se trouve dans Historique › Récentes.",
+    "recentSessions": "Pour retrouver le travail non sauvegardé conservé dans ce navigateur, ouvrez Historique › Récentes.",
     "fileTitle": "Fichiers",
-    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil.",
-    "crswap": "Un plantage pendant la sauvegarde peut laisser un fichier .crswap à côté du fichier de projet. Vous pouvez le supprimer."
+    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier de projet, puis ouvrez ce fichier sur l’autre appareil."
   },
   "elevation": {
     "edit": "Modifier les élévations",
@@ -811,9 +757,9 @@
     "resetSettingsTitle": "Réinitialiser les paramètres",
     "resetKeybinds": "Réinitialiser les raccourcis…",
     "resetKeybindsTitle": "Réinitialiser les raccourcis",
-    "resetSettingsMessage": "Restaurer les paramètres par défaut en conservant les raccourcis clavier ?",
-    "resetSettingsMessageStatistics": "Restaurer les paramètres par défaut en conservant les raccourcis clavier et le paramètre Envoyer des statistiques d’utilisation ?",
-    "resetKeybindsMessage": "Restaurer les raccourcis clavier par défaut ?",
+    "resetSettingsMessage": "Réinitialiser les paramètres par défaut ? Les raccourcis clavier seront conservés.",
+    "resetSettingsMessageStatistics": "Réinitialiser les paramètres par défaut ? Les raccourcis clavier et le paramètre Envoyer des statistiques d’utilisation seront conservés.",
+    "resetKeybindsMessage": "Réinitialiser les raccourcis clavier par défaut ?",
     "editor": {
       "title": "Éditeur",
       "locale": "Langue",
@@ -850,7 +796,7 @@
       "showOtherStages": "Afficher les autres scènes",
       "nameContrast": "Contraste des noms",
       "showOtherObjects": "Afficher les autres objets",
-      "deselectSwitchesToSelect": "Double désélection : outil Sélection",
+      "deselectSwitchesToSelect": "Désélectionner deux fois pour passer à l’outil Sélection",
       "beatDisplay": {
         "title": "Affichage des temps",
         "beat": "Temps",
@@ -951,8 +897,8 @@
       "notices": "Mentions des composants tiers",
       "privacy": "Confidentialité",
       "usageStatistics": "Envoyer des statistiques d’utilisation",
-      "usageStatisticsNote": "Les outils utilisés, les principaux paramètres, le type et la taille des fichiers, et la durée des actions. Voir Confidentialité.",
-      "usageStatisticsSignal": "Désactivé par défaut, car ce navigateur envoie Do Not Track ou Global Privacy Control.",
+      "usageStatisticsNote": "Les statistiques d’utilisation comprennent les outils utilisés, certains paramètres de l’éditeur, le type et la taille des fichiers, et la durée des actions. Consultez Confidentialité pour en savoir plus.",
+      "usageStatisticsSignal": "Désactivé par défaut, car ce navigateur envoie un signal Do Not Track ou Global Privacy Control.",
       "diagnostics": "Copier les infos de diagnostic…",
       "diagnosticsTitle": "Informations de diagnostic",
       "diagnosticsNote": "Les informations de diagnostic peuvent inclure des noms de fichiers et de dossiers. Vérifiez-les avant de les partager.",
@@ -967,12 +913,12 @@
       "discardConfirm": "Abandonner",
       "cannotOpen": "(ne peut pas être ouvert dans cette version)",
       "discardAutoSave": "Abandonner l’ancienne sauvegarde automatique ({0}) ?",
-      "discardUnreadable": "Abandonner le travail récupéré illisible du {0} ({1}) ?",
+      "discardUnreadable": "Abandonner le travail récupéré du {0} ({1}) ? Il ne peut pas être ouvert.",
       "recovery": {
-        "journal": "Travail non sauvegardé d’une visite précédente, {0} · {1}",
+        "journal": "Travail non sauvegardé d’une visite précédente · {0} · {1}",
         "journalUndated": "Travail non sauvegardé d’une visite précédente · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
-        "unreadable": "Travail récupéré illisible, {0} · {1}",
+        "unreadable": "Travail récupéré qui ne peut pas être ouvert · {0} · {1}",
         "listFailed": "Le travail récupéré n’a pas pu être lu.",
         "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé."
       },
@@ -1211,7 +1157,7 @@
     "continuedUntitled": "Votre session a été reprise ({0}).",
     "continuedUndated": "Session reprise : \"{0}\".",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
-    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel.",
     "journalKept": "Une modification récupérée de \"{0}\" a été conservée dans une session séparée.",
     "fallback": "Travail non sauvegardé d’une visite précédente récupéré.",
     "fallbackLocal": "Du travail non sauvegardé d’une visite précédente se trouve dans Données locales.",
@@ -1224,7 +1170,7 @@
     "sessionDeleted": "Cette session a été supprimée dans un autre onglet ou une autre fenêtre.",
     "autoSaveKept": "\"{0}\" de l’ancienne sauvegarde automatique a été conservé dans une session séparée.",
     "autoSaveOpened": "Ancienne sauvegarde automatique ouverte.",
-    "journalFailed": "Une modification récupérée n’a pas pu être stockée. Une copie se trouve dans Données locales.",
+    "journalFailed": "Une modification récupérée n’a pas pu être stockée dans sa session. Elle se trouve dans Données locales.",
     "storageNearlyFull": "Le stockage du navigateur est presque plein.",
     "journalsFull": "Du travail non sauvegardé de visites précédentes remplit le stockage du navigateur.",
     "sessionLater": "Cette session nécessite une version plus récente de l’éditeur.",
@@ -1248,7 +1194,7 @@
     },
     "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez pour conserver votre travail.",
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez pour conserver votre travail.",
-    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel.",
     "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
     "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail."
   },
@@ -1339,7 +1285,7 @@
     "redidSteps": "{0} étapes rétablies",
     "dynamicStages": {
       "title": "Scènes dynamiques",
-      "message": "Cette fonctionnalité nécessite les scènes dynamiques. Voulez-vous les activer ?",
+      "message": "Cette fonctionnalité nécessite les scènes dynamiques. Les activer ?",
       "enabled": "Scènes dynamiques activées"
     },
     "title": "Historique",
@@ -1735,8 +1681,8 @@
         "pressCancel": "Appuyez sur une touche ou sur Échap pour annuler",
         "unassigned": "Non attribué",
         "reserved": "{0} est réservé au navigateur ou au système ; appuyez sur une autre touche.",
-        "altGraph": "{0} sert à taper des caractères sur de nombreux claviers ; appuyez sur une autre touche.",
-        "alsoRuns": "Exécute aussi {0}",
+        "altGraph": "{0} sert à saisir des caractères dans de nombreuses dispositions de clavier. Appuyez sur une autre touche.",
+        "alsoRuns": "Exécute aussi {0}.",
         "names": {
           "space": "Espace",
           "escape": "Échap",
@@ -1887,8 +1833,8 @@
     "showSettings": "Afficher les paramètres de l’aperçu",
     "loadingSkin": "Chargement du skin…",
     "skinUnavailable": "Le skin de l’aperçu n’a pas pu être chargé.",
-    "graphicsUnavailable": "Le rendu de l’aperçu n’a pas pu démarrer.",
-    "chartGraphicsUnavailable": "Le rendu n’a pas pu démarrer.",
+    "graphicsUnavailable": "L’aperçu n’a pas pu être affiché.",
+    "chartGraphicsUnavailable": "Le niveau n’a pas pu être affiché.",
     "graphicsHelp": "Vérifiez que l’accélération graphique et WebGL sont activés dans votre navigateur, puis redémarrez-le si nécessaire.",
     "errorDetails": "Détails de l’erreur",
     "reload": "Recharger",
@@ -2080,7 +2026,7 @@
     "unavailable": "Modifications indisponibles",
     "loadingChanges": "Chargement des modifications…",
     "addedRemoved": "Ajouts : {0} · suppressions : {1}",
-    "exportsCurrent": "Exporte la version actuelle.",
+    "exportsCurrent": "Exporte la version marquée \"Maintenant\" dans la Chronologie.",
     "overlay": "Consultation de l’historique · lecture seule",
     "backToNow": "Revenir à l’état actuel",
     "restore": "Restaurer",
@@ -2095,7 +2041,7 @@
     "changesBelow": "Modifications en bas : {0}",
     "changesAboveAny": "Modifications en haut",
     "changesBelowAny": "Modifications en bas",
-    "savesCurrent": "Sauvegarde la version actuelle.",
+    "savesCurrent": "Sauvegarde la version marquée \"Maintenant\" dans la Chronologie.",
     "showEdits": "Afficher les modifications",
     "changeOptions": "Options des modifications"
   },
@@ -2117,14 +2063,15 @@
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "\"{0}\" n’a pas pu être écrit.",
     "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
-    "openedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
-    "replacedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
+    "openedContentGone": "Le contenu de \"{0}\" a changé.",
+    "replacedContentGone": "Le contenu de \"{0}\" a changé.",
     "title": "Sauvegarder le fichier de projet",
     "titleAs": "Sauvegarder sous",
     "history": "Historique",
     "bgm": "Musique",
     "placeholder": "Sans titre",
     "exportHint": "Pour Sonolus, utilisez Exporter les données de niveau…",
+    "exportHintText": "Pour Sonolus, utilisez Exporter les données de niveau.",
     "exportHintFirst": "Les fichiers de projet (.nxsp) sont réservés à cet éditeur. Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau…",
     "exportHintNames": "Les fichiers de données de niveau peuvent être sans extension ou se terminer par .nsld ou .json.gz.",
     "openExport": "Exporter les données de niveau…",
@@ -2151,8 +2098,8 @@
     "tooLarge": "Le fichier est trop volumineux.",
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
-    "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau…",
-    "storageUnavailable": "Non sauvegardé. L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez, ou utilisez Sauvegarder sous…",
+    "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau.",
+    "storageUnavailable": "Non sauvegardé. L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez, ou utilisez Sauvegarder sous.",
     "include": "Inclure",
     "historySize": "{0} étape · {1}|{0} étapes · {1}",
     "historyNote": "Toute personne disposant du fichier peut consulter son historique.",
@@ -2172,7 +2119,7 @@
     "noDamage": "Aucun dommage trouvé.",
     "scopeBoth": "\"{0}\" et l’historique stocké dans ce navigateur ont été vérifiés.",
     "scopeStored": "L’historique stocké dans ce navigateur a été vérifié.",
-    "fileDamaged": "\"{0}\" est endommagé. La sauvegarde crée un fichier séparé.",
+    "fileDamaged": "\"{0}\" est endommagé. La sauvegarde créera un fichier séparé.",
     "repaired": "{0} étape de la chronologie réparée.|{0} étapes de la chronologie réparées.",
     "storedDamaged": "{0} étape de la chronologie stockée dans ce navigateur est endommagée.|{0} étapes de la chronologie stockées dans ce navigateur sont endommagées.",
     "mediaDamaged": "La copie de {0} stockée dans ce navigateur était endommagée."
@@ -2197,13 +2144,13 @@
     "savedNoNotes": "{0}, {1}.",
     "otherProject": "Un autre fichier de projet, \"{0}\".",
     "otherProjectUnnamed": "Un autre fichier de projet.",
-    "notDescendant": "Cette version n’a pas été créée à partir de la vôtre ({0}).",
+    "notDescendant": "La version sauvegardée le {0} n’est pas basée sur votre version.",
     "separate": "Sauvegarder dans un fichier séparé…",
     "openOther": "Ouvrir l’autre version",
     "openOtherNote": "Vos modifications restent dans les sessions récentes.",
     "replaceNote": "La version sur le disque sera conservée dans les sessions récentes.",
     "keptName": "{0} (remplacé le {1})",
-    "replaceNewer": "Créé par une version plus récente de {0}.",
+    "replaceNewer": "Ce fichier a été créé par une version plus récente de {0}.",
     "replaceHoldsEarlier": "Il contient des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
     "replaceMayHoldEarlier": "Il contient peut-être des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
     "keepEditing": "Continuer à modifier"
@@ -2216,7 +2163,7 @@
     "tooLong": "Le nom est trop long"
   },
   "notice": {
-    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir…",
+    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir.",
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
@@ -2255,7 +2202,7 @@
     "deleted": "\"{0}\" supprimée",
     "deleteRefused": "Non supprimée. \"{0}\" est utilisée dans un onglet ou une fenêtre.",
     "deleteFailed": "\"{0}\" n’a pas pu être supprimée.",
-    "undoLost": "\"{0}\" supprimée. Cette action ne peut plus être annulée."
+    "undoLost": "\"{0}\" supprimée. Cette suppression ne peut plus être annulée."
   },
   "prompt": {
     "title": "Modifications non stockées",
@@ -2280,17 +2227,17 @@
     "openPreviewAssets": "Ressources d’aperçu",
     "damagedUnopened": "Ce fichier est endommagé et n’a pas pu être ouvert.",
     "damaged": "Ce fichier est endommagé. Il a été ouvert sans son historique.",
-    "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde crée un fichier séparé.",
-    "newerVersion": "Créé par une version plus récente de {0}. La sauvegarde crée un fichier séparé.",
-    "newerRefused": "Créé par une version plus récente de {0}.",
-    "newerPatch": "Créé par une version plus récente de {0}. Certains contenus peuvent ne pas s’afficher.",
-    "mediaBad": "Impossible de lire {0} de ce fichier. La sauvegarde crée un fichier séparé.",
+    "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde créera un fichier séparé.",
+    "newerVersion": "Ce fichier a été créé par une version plus récente de {0}. La sauvegarde créera un fichier séparé.",
+    "newerRefused": "Ce fichier a été créé par une version plus récente de {0} et ne peut pas être ouvert.",
+    "newerPatch": "Ce fichier a été créé par une version plus récente de {0}. Certains contenus peuvent ne pas s’afficher.",
+    "mediaBad": "Impossible de lire {0} de ce fichier. La sauvegarde créera un fichier séparé.",
     "media": {
       "bgm": "la musique",
       "cover": "la couverture",
       "preview": "l’aperçu audio"
     },
-    "newerMajor": "Créé par une version plus récente de {0}.",
+    "newerMajor": "Fichier créé par une version plus récente de {0}",
     "newerMajorNote": "Seul le niveau contenu dans ce fichier peut être ouvert.",
     "openLevel": "Ouvrir le niveau",
     "newerValues": {
@@ -2307,7 +2254,7 @@
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans les sessions récentes.",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente ({1}) est dans les sessions récentes.",
     "restoreIt": "Restaurer la session",
-    "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
+    "damagedHistory": "L’historique de {0} est endommagé. La sauvegarde créera un fichier séparé."
   },
   "file": {
     "replacedElsewhere": "\"{0}\" a été remplacé depuis un autre onglet ou une autre fenêtre.",
@@ -2319,8 +2266,8 @@
     "changedOnDisk": "Modifié sur le disque",
     "newerOnDisk": "Plus récent sur le disque",
     "notConfirmed": "Téléchargement non confirmé",
-    "changedOnDiskName": "\"{0}\" : modifié sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
-    "newerOnDiskName": "\"{0}\" : une version plus récente est sur le disque.",
+    "changedOnDiskName": "\"{0}\" a changé sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "newerOnDiskName": "Une version plus récente de \"{0}\" est sur le disque.",
     "notStored": "Non stocké"
   },
   "confirm": {

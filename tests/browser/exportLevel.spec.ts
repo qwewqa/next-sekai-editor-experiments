@@ -300,8 +300,8 @@ test('a changed target meets the conflict dialog’s Export form; Replace keeps 
     await openExport(page)
     await page.keyboard.press('Enter')
     const conflict = dialog(page)
-    await expect(conflict).toHaveAccessibleName('"LevelData" Changed')
-    await expect(conflict).toContainText('"LevelData" changed since you opened it here.')
+    await expect(conflict).toHaveAccessibleName('“LevelData” Changed')
+    await expect(conflict).toContainText('“LevelData” has changed since you opened it here.')
     await expect(conflict).toContainText(/[\d.]+\skB.* · /)
     const buttons = conflict.locator('[data-choice-buttons] button')
     await expect(buttons).toHaveText(['Cancel', 'Replace', 'Choose Another…'])
@@ -321,7 +321,7 @@ test('a changed target meets the conflict dialog’s Export form; Replace keeps 
         'LevelData (your last export)',
     )
     await page.keyboard.press('Enter')
-    await expect(dialog(page)).toContainText('"LevelData" changed since your last export.')
+    await expect(dialog(page)).toContainText('“LevelData” has changed since your last export.')
     await page.waitForTimeout(350)
     await dialog(page).getByRole('button', { name: 'Cancel' }).click()
     await expect(dialog(page)).toHaveCount(0)
@@ -335,7 +335,7 @@ test('Choose Another… in the conflict dialog exports to the picked file', asyn
     await writeFile(page, 'LevelData', { bgmOffset: 3 })
     await openExport(page)
     await page.keyboard.press('Enter')
-    await expect(dialog(page)).toHaveAccessibleName('"LevelData" Changed')
+    await expect(dialog(page)).toHaveAccessibleName('“LevelData” Changed')
     await queuePicks(page, ['Copy.nsld'])
     await page.waitForTimeout(350)
     await page.keyboard.press('Enter')
@@ -351,7 +351,7 @@ test('Export refuses to write over a .nxsp in its target’s place', async ({ pa
     await writeFile(page, 'LevelData', { raw: [0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0] })
     await openExport(page)
     await page.keyboard.press('Enter')
-    await expect(dialog(page)).toContainText('"LevelData" is not level data.')
+    await expect(dialog(page)).toContainText('“LevelData” is not level data.')
     await expect(dialog(page).locator('[data-choice-buttons] button')).toHaveText([
         'Cancel',
         'Choose Another…',
@@ -416,7 +416,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('Enter')
     await expect(dialog(page)).toContainText(
-        '"LevelData" has parts that this version of the editor does not support.',
+        '“LevelData” has parts that this version of the editor does not support.',
     )
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     await page.waitForTimeout(350)
@@ -428,8 +428,8 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('p')
     await saveProjectFile(page)
-    await expect(dialog(page)).toContainText('"LevelData" is not a project file.')
-    await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data…')
+    await expect(dialog(page)).toContainText('“LevelData” is not a project file.')
+    await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data.')
     expect((await pickerCalls(page)).at(-1)).toMatchObject({ picker: 'save', id: 'nse-project' })
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     expect(await opfsNames(page)).toEqual(['LevelData'])
@@ -544,7 +544,7 @@ test('p’s failed download of a refused pick’s bytes says so in its own words
     await page.keyboard.press('p')
     await saveProjectFile(page)
     await expect(
-        page.getByText('"LevelData" was emptied and its contents could not be restored.'),
+        page.getByText('“LevelData” was emptied and its contents could not be restored.'),
     ).toBeVisible()
     await page.evaluate(() => {
         URL.createObjectURL = () => {
@@ -553,7 +553,7 @@ test('p’s failed download of a refused pick’s bytes says so in its own words
     })
     await page.waitForTimeout(350)
     await page.getByRole('button', { name: 'Download' }).click()
-    await expect(page.getByText('"LevelData" could not be downloaded.')).toBeVisible()
+    await expect(page.getByText('“LevelData” could not be downloaded.')).toBeVisible()
     await expect(page.getByText(/createObjectURL/)).toHaveCount(0)
 })
 
@@ -700,7 +700,9 @@ test('plain-JSON level data gets no Export target', async ({ page }) => {
 test('while peeking, Export says it exports the current version', async ({ page }) => {
     await start(page, opfs)
     await openExport(page)
-    await expect(dialog(page).getByText('Exports the current version.')).toHaveCount(0)
+    await expect(
+        dialog(page).getByText('Exports the version marked Now in the Timeline.'),
+    ).toHaveCount(0)
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
     await page.evaluate(async () => {
@@ -711,7 +713,9 @@ test('while peeking, Export says it exports the current version', async ({ page 
         peek.value = { source: 'test', state: state.value }
     })
     await openExport(page)
-    await expect(dialog(page).getByText('Exports the current version.')).toBeVisible()
+    await expect(
+        dialog(page).getByText('Exports the version marked Now in the Timeline.'),
+    ).toBeVisible()
 })
 
 test('an opened gzipped LevelData: p saves a project file, and Shift+P exports to the target', async ({
@@ -823,7 +827,7 @@ test('a dropped file opens nothing and leaves the page where it is', async ({ pa
         return { dragover: fire('dragover'), drop: fire('drop') }
     })
     expect(result).toEqual({ dragover: true, drop: true })
-    await expect(notice(page)).toHaveText('To open a file, use Open…')
+    await expect(notice(page)).toHaveText('To open a file, use Open.')
     expect(page.url()).toBe(url)
     await expect(dialog(page)).toHaveCount(0)
 })

@@ -49,7 +49,6 @@ export type SaveDialogInput = {
     bgm: BgmRow
     /** Safari, iPhone and iPad, the first Save: the storage line's first sentence. */
     storageLine?: () => string
-    /** "Saves the current version." */
     peeking: boolean
     /**
      * The size preview: a cached estimate shows at once; `load` refreshes it (never blocking). An
@@ -365,7 +364,7 @@ export const defaultSaveUi: SaveUi = {
                   ? () => i18n.value.save.notKeptSafe
                   : reason === 'levelData'
                     ? () =>
-                          `${interpolate(() => i18n.value.save.notProject, inlineName(name))()}\n${save.exportHint}`
+                          `${interpolate(() => i18n.value.save.notProject, inlineName(name))()}\n${save.exportHintText}`
                     : interpolate(() => i18n.value.save.notProject, inlineName(name))
         return showChoice<'chooseAnother' | 'export'>({
             title,

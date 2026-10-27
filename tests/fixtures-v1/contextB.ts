@@ -61,7 +61,7 @@ export const runB = async (browser: Browser, products: Products) => {
     await tapAt(tab, 0, 1504)
     await tab.page.keyboard.press('p')
     const dialog = tab.page.getByRole('dialog')
-    await expect(dialog).toContainText(`"${fileName}" Changed`)
+    await expect(dialog).toContainText(`“${fileName}” Changed`)
     // Past the dialog's activation guard.
     await tab.page.waitForTimeout(400)
     await dialog.getByRole('button', { name: 'Replace' }).click()

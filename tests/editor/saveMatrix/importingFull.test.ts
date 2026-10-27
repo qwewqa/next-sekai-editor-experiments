@@ -37,7 +37,7 @@ test('a Save refused for an import still running keeps the line about the file',
         { mode: 'memory' },
         undefined,
     ] as const)
-        assert.match(await refusedLine(status), /^Not saved\. ".*" could not be read completely\.$/)
+        assert.match(await refusedLine(status), /^Not saved\. “.*” could not be read in full\.$/)
 })
 
 test('a Save refused for a pending import after a failed store does not call the file unread', async () => {
@@ -45,5 +45,5 @@ test('a Save refused for a pending import after a failed store does not call the
         { mode: 'stored', reason: 'failed' },
         { mode: 'memory', reason: 'failed' },
     ] as const)
-        assert.match(await refusedLine(status), /^".*" could not be prepared\.$/)
+        assert.match(await refusedLine(status), /^“.*” could not be prepared\.$/)
 })

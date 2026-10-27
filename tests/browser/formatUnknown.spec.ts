@@ -35,7 +35,9 @@ for (const where of ['entity', 'data', 'value and ref'])
         await writeFile(page, 'coconut.nxsp', bytes)
         await queuePicks(page, ['coconut.nxsp'])
         await page.keyboard.press('o')
-        await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toBeVisible()
+        await expect(
+            notice(page).filter({ hasText: 'This file was created by a newer version' }),
+        ).toBeVisible()
         const chain = await chainOf(page)
         expect(chain.file).toBeUndefined()
         expect(chain.revision).toBeUndefined()
@@ -45,7 +47,7 @@ for (const where of ['entity', 'data', 'value and ref'])
         await pressSave(page)
         await submitSave(page)
         await expect(page.getByRole('dialog')).toContainText(
-            'Not saved. "coconut.nxsp" could not be read completely.',
+            'Not saved. “coconut.nxsp” could not be read in full.',
         )
         expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
     })
@@ -61,7 +63,8 @@ test('a newer patch alone opens bound with its history, says so once, and saving
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('o')
     const line = notice(page).filter({
-        hasText: 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.',
+        hasText:
+            'This file was created by a newer version of Next SEKAI Editor. Some content may not be shown.',
     })
     await expect(line).toHaveCount(1)
     // Bound to its file, as a whole open is, and its History kept (the file's own chronology).
@@ -72,8 +75,10 @@ test('a newer patch alone opens bound with its history, says so once, and saving
     await flushed(page)
     const { entries } = await rows(page, ['entries'])
     expect(entries!.length).toBeGreaterThan(1)
-    // The open's line is the only one: not a partial open's "Saving makes a separate file".
-    await expect(notice(page).filter({ hasText: 'Saving makes a separate file' })).toHaveCount(0)
+    // The open's line is the only one: not a partial open's "Saving will create a separate file".
+    await expect(
+        notice(page).filter({ hasText: 'Saving will create a separate file' }),
+    ).toHaveCount(0)
     // Saving writes the file again, with the patch this build writes.
     await edit(page, 3)
     await pressSave(page)
@@ -92,8 +97,12 @@ test('a newer patch beside another unknown thing is one line, the partial open�
     await writeFile(page, 'coconut.nxsp', [...new Uint8Array(await file.arrayBuffer())])
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toHaveCount(1)
-    await expect(notice(page).filter({ hasText: 'Saving makes a separate file' })).toBeVisible()
+    await expect(
+        notice(page).filter({ hasText: 'This file was created by a newer version' }),
+    ).toHaveCount(1)
+    await expect(
+        notice(page).filter({ hasText: 'Saving will create a separate file' }),
+    ).toBeVisible()
     const chain = await chainOf(page)
     expect(chain.file).toBeUndefined()
 })
@@ -130,7 +139,8 @@ test('a newer-patch file that holds newer content: a bound Save keeps what it ca
     // Whole: the line, no partial open's, bound.
     await expect(
         notice(page).filter({
-            hasText: 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.',
+            hasText:
+                'This file was created by a newer version of Next SEKAI Editor. Some content may not be shown.',
         }),
     ).toHaveCount(1)
     expect((await chainOf(page)).file).toBeDefined()
