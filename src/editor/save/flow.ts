@@ -1047,8 +1047,9 @@ const writeBack = async (
     /** Replace: the revision of the version on disk, kept first. */
     replaces?: string,
 ): Promise<Outcome> => {
-    // From here the file is written. A continuation not stored yet commits its first row now, so a
-    // Save that ends earlier (no changes, a conflict, a missing file) leaves the visit unstored.
+    // From here the file is written. A continuation not stored yet tries to commit its first row
+    // now, so a Save that ends earlier (no changes, a conflict, a missing file) leaves the visit
+    // unstored. The write's own check can still find the file missing or changed after the commit.
     if (!(await commitFirst(env))) return { kind: 'forked' }
     // Inside the hold of `nse-bind`: a reservation another flow holds is not waited for.
     const reserved = await attempt.reserve(false)
@@ -1273,7 +1274,7 @@ const replace = async (
         return
     }
     // One attempt, as for the write-back. It waits for the chain's imports before it writes over
-    // the file, and `writeBack` commits a continuation's first row before the write.
+    // the file, and `writeBack` tries to commit a continuation's first row before the write.
     const outcome = await withSaveAttempt(
         {
             env,
@@ -1776,8 +1777,8 @@ const saveNow = async (env: Env) => {
     // The gesture's first call.
     const permission = requestWrite(handle)
     permission.catch(() => undefined)
-    // The attempt waits for the permission and for the chain's imports. The check, the commit of a
-    // continuation's first row and the write then run with `nse-bind` held shared.
+    // The attempt waits for the permission and for the chain's imports. The check, the attempted
+    // commit of a continuation's first row and the write then run with `nse-bind` held shared.
     const outcome = await withSaveAttempt(
         {
             env,

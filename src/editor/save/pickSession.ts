@@ -349,9 +349,9 @@ export type PickedFile = {
     /** The slot, when the pick is the file it was read from. */
     readonly pre: PreRead | undefined
     /**
-     * Export's own pick, which rewrites the chain's project: commits a continuation's first row,
-     * then takes the reservation without waiting. Undefined when the commit forked the session or
-     * a Save holds the reservation.
+     * Export's own pick, which rewrites the chain's project: tries to commit a continuation's
+     * first row, then takes the reservation without waiting. Undefined when the commit forked the
+     * session or a Save holds the reservation.
      */
     reserve(): Promise<Reserved | undefined>
     /** The one write to the picked file, over `found`. A failure is thrown. */

@@ -275,6 +275,15 @@ test.describe('toolbar flyouts', () => {
         }
     })
 
+    test('a toolbar face is named by its title, not its text icon', async ({ page }) => {
+        await boot(page)
+        // The BPM face and the division in use show text icons.
+        await expect(tools(page).and(page.locator('[title="BPM"]'))).toHaveText('BPM')
+        await expect(tools(page).filter({ hasText: '1/4' })).toHaveCount(1)
+        for (const face of await tools(page).all())
+            await expect(face).toHaveAccessibleName((await face.getAttribute('title'))!)
+    })
+
     test('Escape closes an open flyout and returns focus to its tool', async ({ page }) => {
         await boot(page)
         const first = tools(page).first()

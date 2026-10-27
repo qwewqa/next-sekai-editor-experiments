@@ -91,7 +91,13 @@ const shortcut = computed(() =>
         >
             <component :is="commands[name].icon.is" class="h-4 w-auto min-w-4" v-bind="iconProps" />
         </span>
-        <component :is="commands[name].icon.is" v-else class="size-4" v-bind="iconProps" />
+        <component
+            :is="commands[name].icon.is"
+            v-else
+            class="size-4"
+            aria-hidden="true"
+            v-bind="iconProps"
+        />
         <template v-if="showLabel">
             <span class="ml-2 flex-grow text-left text-sm">{{ title }}</span>
             <span

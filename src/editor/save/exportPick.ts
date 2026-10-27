@@ -171,8 +171,8 @@ const shown = (env: Env, outcome: Outcome): PickedLevelData => ({
 })
 
 /**
- * A pick of this chain's own `.nxsp`: written again like a Save, with a continuation's
- * first row committed first. When that cannot be done the file is left empty for the session to put
+ * A pick of this chain's own `.nxsp`: written again like a Save, after trying to commit a
+ * continuation's first row. When that cannot be done the file is left empty for the session to put
  * back what it read, and the Save core says why.
  */
 const ownProject = async (
