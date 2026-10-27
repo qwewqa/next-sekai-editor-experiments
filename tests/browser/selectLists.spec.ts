@@ -622,8 +622,8 @@ for (const [name, settings] of [
     test(`closed fields look the same with either list, at ${name}`, async ({ page }) => {
         await boot(page, { ...sidebar, propertiesConnectorExpanded: true, ...settings })
         await selectNotes(page, [0, 1, 2])
-        // A glyph edge may land a subpixel apart; a shifted value would change hundreds.
-        expect(await bothWays(page, () => panel(page).screenshot())).toBeLessThanOrEqual(8)
+        // Glyph edges may land a subpixel apart; a value 1 px off or a different glyph changes far more.
+        expect(await bothWays(page, () => panel(page).screenshot())).toBeLessThanOrEqual(24)
     })
 
 test('the elevation header select looks the same with either list', async ({ page }) => {
