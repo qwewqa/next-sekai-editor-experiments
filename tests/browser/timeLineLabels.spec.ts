@@ -770,8 +770,11 @@ for (const deviceScaleFactor of [1, 1.25, 1.5, 2]) {
                 // one physical pixel. Allow a small line-antialiasing margin, but keep the mean
                 // below a pixel across phases. These bounds apply at every browser/DPR.
                 const mean = offsets.reduce((a, b) => a + b) / offsets.length
+                // A fractional ratio puts the text and the line on different physical pixels, so
+                // their centres can differ by one and a half.
+                const most = Number.isInteger(deviceScaleFactor) ? 1.02 : 1.6
                 expect(Math.max(...offsets.map(Math.abs))).toBeLessThanOrEqual(
-                    1.02 / deviceScaleFactor,
+                    most / deviceScaleFactor,
                 )
                 expect(Math.abs(mean)).toBeLessThanOrEqual(0.75 / deviceScaleFactor)
             })

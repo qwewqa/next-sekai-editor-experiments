@@ -28,11 +28,6 @@ const ciExclusions: CiExclusion[] = [
         reason: 'the Linux fonts have no tabular digits',
     },
     {
-        spec: 'timeLineLabels.spec.ts',
-        title: '(1.25x and 16|1.5x and 20) pixel text.*the hover labels centre',
-        reason: 'the ink of a figure sits differently in the Linux fonts',
-    },
-    {
         spec: 'preview.spec.ts',
         title: 'same-beat elevation connectors keep identical geometry',
         project: 'chromium-worker',
@@ -48,16 +43,6 @@ const ciExclusions: CiExclusion[] = [
         spec: 'previewWorker.spec.ts',
         title: 'after a hang, the worker’s last frame shows',
         reason: 'a 1.5 s hang timer, which a loaded runner passes before the page is ready',
-    },
-    {
-        spec: 'textAlignment.spec.ts',
-        title: 'WebGL text matches SVG alignment',
-        reason: 'the Linux fonts rasterise WebGL and SVG text differently',
-    },
-    {
-        spec: 'textRaster.spec.ts',
-        title: 'WebGL text sprites preserve browser glyphs',
-        reason: 'the Linux fonts rasterise WebGL and 2D canvas text differently',
     },
     {
         spec: 'bgmReattach.spec.ts',
