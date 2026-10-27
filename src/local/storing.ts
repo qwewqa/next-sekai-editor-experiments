@@ -28,7 +28,7 @@ import { keepClockWhile } from '../time'
 import { chainStartOf } from './chainFields'
 import { postSessionUpdated } from './channel'
 import { runSliced } from './chunks'
-import { isDurablyStoredWith } from './durable'
+import { isDurablyStoredWith, notDurableReason } from './durable'
 import {
     Flusher,
     flushTimeoutMs,
@@ -149,14 +149,26 @@ let storingWorker: StorageWorker | undefined
  * Whether leaving the open session can lose it. The journal is written
  * first when it's due, as the leave and switch triggers do; its verification decides.
  */
+const durabilityInputs = () => ({
+    status: storingWorker?.status,
+    flusher,
+    journal: journalWriter,
+    media: heldMediaOf(liveState.value).map((item) => item.hash),
+})
+
 export const isDurablyStored = () => {
     journalWriter?.write()
-    return isDurablyStoredWith({
-        status: storingWorker?.status,
-        flusher,
-        journal: journalWriter,
-        media: heldMediaOf(liveState.value).map((item) => item.hash),
-    })
+    return isDurablyStoredWith(durabilityInputs())
+}
+
+/**
+ * Runs the strict flush when the only thing missing is the first write: an edit made within the
+ * flush delay of a visit's start is not stored yet, and the flush is due. A storing that is
+ * paused or unavailable gets none, and a flush that fails leaves the reason in place.
+ */
+export const flushFirstWrite = async () => {
+    if (notDurableReason(durabilityInputs()) !== 'notWritten') return
+    await flusher?.flush({ strict: true })
 }
 
 let watching = false

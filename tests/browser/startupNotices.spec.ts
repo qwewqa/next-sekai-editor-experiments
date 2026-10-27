@@ -1074,6 +1074,57 @@ test.describe('New with unsaved changes', () => {
         })
 })
 
+// The first write of a visit is due about a second after the first edit. A switch inside that
+// second flushes first, and asks only when the write does not happen.
+test.describe('a switch right after the first edit of a visit', () => {
+    const prompt = (page: Page) => page.getByRole('dialog', { name: 'Changes Not Stored' })
+
+    /** An edit, and New started in the same turn, while the session has not been written yet. */
+    const editThenNew = (page: Page) =>
+        page.evaluate(async () => {
+            const { pushState, state } =
+                (await import('/src/history/index.ts')) as typeof import('../../src/history')
+            const { initialLife: operation } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            const { commands } =
+                (await import('/src/editor/commands/index.ts')) as typeof import('../../src/editor/commands')
+            const { runCommand } =
+                (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
+            pushState(operation(state.value.initialLife, 990), {
+                ...state.value,
+                initialLife: 990,
+            })
+            const stored = window.nseFlushTest!.flusher.session!.stored
+            void runCommand(commands.reset, 'button')
+            return stored
+        })
+
+    test('asks nothing while storing works, and the work is stored', async ({ page }) => {
+        await visit(page)
+        expect(await editThenNew(page)).toBe(false)
+        await confirmNew(page)
+        await expect.poll(() => lifeOf(page)).toBe(1000)
+        await expect(prompt(page)).toHaveCount(0)
+        const notice = page.locator('.notification-pill')
+        await expect(notice.getByRole('button', { name: /^Reopen Session from / })).toBeVisible()
+        await notice.getByRole('button', { name: /^Reopen / }).click()
+        await expect.poll(() => lifeOf(page)).toBe(990)
+    })
+
+    test('still asks when storing fails', async ({ page, context }) => {
+        await context.addInitScript(() => {
+            localStorage.setItem('nse.test.storage', JSON.stringify({ forceQuota: true }))
+        })
+        await visit(page)
+        expect(await editThenNew(page)).toBe(false)
+        await expect(prompt(page)).toContainText(
+            'Your changes are not being stored in this browser. Leaving will discard them.',
+        )
+        await confirmWhenReady(prompt(page).getByRole('button', { name: 'Cancel' }), prompt(page))
+        expect(await lifeOf(page)).toBe(990)
+    })
+})
+
 test.describe('the not-stored prompt', () => {
     test.beforeEach(async ({ context }) => {
         // Storage unavailable: nothing is durably stored.

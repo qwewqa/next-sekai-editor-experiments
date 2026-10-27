@@ -33,11 +33,14 @@ import { withSwitchRequest, type SwitchRequest } from './switchRequest'
  * isn't durably stored. The journal is written first, as every switch does.
  */
 const wouldLoseWork = async () => {
-    const { flusher, isDurablyStored } = await loadStoring()
+    const { flusher, isDurablyStored, flushFirstWrite } = await loadStoring()
     const session = flusher?.session
     // Before storing starts, or in safe mode, nothing is stored: `isDirty` decides.
     const edited = session ? session.edited && isDirty.value : isDirty.value
     if (!edited) return false
+    // The first write of a visit is due about a second after the first edit, and the switch
+    // flushes strictly anyway: only a write that does not happen asks.
+    if (session) await flushFirstWrite()
     // A file that holds the work (a Save, an open) is as good as a store; an unconfirmed download is not.
     return !(session && isDurablyStored()) && hasChangesNotInFile()
 }
