@@ -233,7 +233,7 @@ const frame = () =>
         requestAnimationFrame(done)
     })
 
-/** The longest the settle waits for an idle period after the first frame. */
+/** The idle callback's timeout after the first frame. */
 const IDLE_WAIT_MS = 2000
 
 const idle = () =>
