@@ -61,7 +61,7 @@ const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: '
     .split('\0')
     .filter(Boolean)
 
-const media = /\.(?:png|ico|mp3|wav|scp|wasm|jpe?g|gif|webp|woff2?)$/i
+const media = /\.(?:png|ico|mp3|wav|scp|wasm|jpe?g|gif|webp|woff2?|ttf)$/i
 const isMedia = (file) => media.test(file) || /(?:^|\/)badges\/.*\.svg$/.test(file)
 
 test('REUSE.toml parses and its default annotation is MIT', () => {
