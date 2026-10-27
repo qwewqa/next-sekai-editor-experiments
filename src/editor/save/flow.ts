@@ -1258,7 +1258,7 @@ const replace = async (
             kept === 'newer'
                 ? replaceNewerLine
                 : kept === 'damaged'
-                  ? () => i18n.value.open.damaged
+                  ? () => i18n.value.conflict.replaceDamaged
                   : () => i18n.value.notSaving.bar,
         )
         return
