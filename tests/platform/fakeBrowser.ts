@@ -49,6 +49,9 @@ export const installFakeBrowser = (storage: Record<string, string> = {}) => {
     const doc = new EventTarget() as FakeDocument
     doc.visibilityState = 'visible'
     let nextInputFile: File | undefined
+    // Unset, inputs have no showPicker. 'refuses' throws, as when the press's activation has expired.
+    let showPicker: 'opens' | 'refuses' | undefined
+    const inputCalls: string[] = []
     doc.body = { append: () => undefined }
     doc.createElement = (tag) => {
         if (tag === 'a') {
@@ -72,19 +75,31 @@ export const installFakeBrowser = (storage: Record<string, string> = {}) => {
             }
             return link
         }
+        const open = () => {
+            queueMicrotask(() => {
+                if (nextInputFile) {
+                    input.files = [nextInputFile]
+                    input.onchange?.()
+                } else input.oncancel?.()
+            })
+        }
         const input = {
             type: '',
             files: undefined as File[] | undefined,
             onchange: undefined as (() => void) | undefined,
             oncancel: undefined as (() => void) | undefined,
             click: () => {
-                queueMicrotask(() => {
-                    if (nextInputFile) {
-                        input.files = [nextInputFile]
-                        input.onchange?.()
-                    } else input.oncancel?.()
-                })
+                inputCalls.push('click')
+                open()
             },
+            ...(showPicker && {
+                showPicker: () => {
+                    inputCalls.push('showPicker')
+                    if (showPicker === 'refuses')
+                        throw new DOMException('No user activation', 'NotAllowedError')
+                    open()
+                },
+            }),
         }
         return input
     }
@@ -103,6 +118,10 @@ export const installFakeBrowser = (storage: Record<string, string> = {}) => {
         setInputFile: (file: File | undefined) => {
             nextInputFile = file
         },
+        setShowPicker: (mode: typeof showPicker) => {
+            showPicker = mode
+        },
+        inputCalls,
     }
 }
 

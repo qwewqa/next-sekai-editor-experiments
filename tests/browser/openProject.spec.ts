@@ -12,10 +12,11 @@ import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
 import { en, said } from './messages'
 import { holdImport } from './saveFlows'
-import { skipWhereTheEditorCannotStart } from './webkitSupport'
+import { pickWithClickInWebKit, skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
+pickWithClickInWebKit()
 
 // Opening a `.nxsp`: a new session stored at once and bound to the file, its
 // history imported in the background, Undo where the file left off, and the partial opens that

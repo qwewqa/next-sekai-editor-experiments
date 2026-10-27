@@ -1,13 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { StorageStatus } from '../../src/local/worker/core'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { skipWhereTheEditorCannotStart } from './webkitSupport'
+import { pickWithClickInWebKit, skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // Storing: every change is an entry, and the
 // flush stores the session, its chain record and the snapshots in IndexedDB.
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
+pickWithClickInWebKit()
 
 const boot = async (page: Page, flags: object = {}) => {
     await page.addInitScript(installCanvasCounters)

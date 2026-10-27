@@ -22,3 +22,17 @@ export const skipWhereTheEditorCannotStart = () => {
         }
     })
 }
+
+/**
+ * The editor opens a file input with showPicker(), and Playwright's WebKit reports a file chooser
+ * only for click(). Call this at the top of a spec that waits for a `filechooser` event. In
+ * WebKit it removes showPicker from the spec's pages, so the editor calls click().
+ */
+export const pickWithClickInWebKit = () => {
+    test.beforeEach(async ({ context, browserName }) => {
+        if (browserName !== 'webkit') return
+        await context.addInitScript(() => {
+            delete (HTMLInputElement.prototype as Partial<HTMLInputElement>).showPicker
+        })
+    })
+}
