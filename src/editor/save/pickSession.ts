@@ -267,6 +267,12 @@ const refusedTarget = (env: Env, picked: Picked): Exclude<Picked, { kind: 'targe
         ? { kind: 'refused', reason: 'levelData', bytes: targetBytes(env, picked.owner) }
         : picked
 
+/** A file failure without a file name takes the picked file's, as a write's does. */
+const named = (error: unknown, name: string) =>
+    error instanceof FileError && error.fileName === undefined
+        ? new FileError(error.code, error.message, error.disk, error.step, name)
+        : error
+
 /** Writes bytes back into a picked file while it's still empty; true when it holds them. */
 const putBack = async (target: FileTarget, bytes: ArrayBuffer | Blob) => {
     try {
@@ -613,7 +619,7 @@ export const withPickSession = <T>(
                 offered = { emptied: offer.emptied }
                 if (choice === 'download' && offer.bytes) await spec.ui.download(name, offer.bytes)
             }
-            if (failure) throw failure.error
+            if (failure) throw named(failure.error, name)
             return result as R
         }
 
