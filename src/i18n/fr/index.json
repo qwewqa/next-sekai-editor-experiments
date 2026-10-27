@@ -621,33 +621,33 @@
         "title": "Premiers pas",
         "bgm": "Choisissez Musique pour charger la musique et régler son décalage.",
         "bpm": "Choisissez BPM et appuyez sur le changement de BPM au début de la partition. Appuyez à nouveau dessus pour modifier son BPM.",
-        "notes": "Choisissez Note et appuyez pour ajouter une note. Pour un slide, choisissez Désélectionner, puis Slide, et appuyez aux endroits où le slide commence et se termine.",
+        "notes": "Choisissez Note et appuyez sur la partition pour ajouter une note. Pour ajouter un slide, choisissez Désélectionner, puis Slide, et appuyez à son point de départ et à son point de fin.",
         "save": "Choisissez Sauvegarder pour conserver votre travail dans un fichier de projet (.nxsp). Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau…"
       },
       "touchscreen": {
         "title": "Écran tactile",
         "longPress": "Appuyez longuement sur un objet pour ouvrir le menu contextuel.",
-        "scroll": "Faites glisser deux doigts pour faire défiler. Pincez verticalement ou horizontalement pour zoomer dans cette direction.",
+        "scroll": "Faites glisser deux doigts pour faire défiler. Pincez verticalement pour zoomer verticalement, ou horizontalement pour zoomer horizontalement.",
         "quickScroll": "Pour faire défiler avec un doigt, faites-le glisser dans la zone de défilement rapide au bord droit de la partition.",
         "gestures": "Appuyez avec deux doigts pour désélectionner. Appuyez avec trois doigts pour lancer ou arrêter la lecture."
       },
       "mouse": {
         "title": "Souris",
-        "contextMenu": "Faites un clic droit sur un objet pour ouvrir le menu contextuel. Faites glisser avec le bouton droit pour utiliser Sélectionner.",
+        "contextMenu": "Faites un clic droit sur un objet pour ouvrir le menu contextuel, ou faites glisser avec le bouton droit pour utiliser Sélectionner.",
         "secondary": "Cliquez ou faites glisser avec le bouton droit pour utiliser {0}.",
-        "scrollX": "Maintenez Maj et tournez la molette pour faire défiler horizontalement.",
-        "zoom": "Maintenez Ctrl et tournez la molette pour zoomer verticalement. Maintenez Ctrl et Maj pour zoomer horizontalement.",
+        "scrollX": "Maintenez Maj et utilisez la molette de la souris pour faire défiler horizontalement.",
+        "zoom": "Maintenez Ctrl et utilisez la molette de la souris pour zoomer verticalement, ou Ctrl et Maj pour zoomer horizontalement.",
         "autoscroll": "Cliquez avec le bouton du milieu, puis déplacez la souris pour faire défiler. Cliquez à nouveau pour arrêter."
       },
       "keyboard": {
         "title": "Clavier",
-        "settings": "Consultez et modifiez les raccourcis dans Paramètres > Raccourcis clavier."
+        "settings": "Consultez et modifiez les raccourcis dans Paramètres › Raccourcis clavier."
       },
       "selectTool": {
         "select": "Lorsque des objets se superposent, chaque appui sélectionne le suivant.",
-        "selectMultiple": "Faites glisser depuis une zone vide pour sélectionner les objets dans le cadre.",
+        "selectMultiple": "Tracez un cadre en faisant glisser depuis une zone vide pour sélectionner les objets à l’intérieur.",
         "move": "Faites glisser un objet sélectionné pour déplacer toute la sélection.",
-        "resize": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner. Si la sélection ne contient qu’un seul type d’objet, tous les objets sélectionnés sont redimensionnés ensemble.",
+        "resize": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner. Si tous les objets sélectionnés sont du même type, ils sont redimensionnés ensemble.",
         "modifiers": "Maintenez Ctrl (Cmd sous macOS) pour ajouter des objets à la sélection ou les en retirer. Maintenez Maj pour sélectionner des slides entiers."
       },
       "eraserTool": {
@@ -655,7 +655,7 @@
         "selection": "Appuyez sur un objet sélectionné pour effacer toute la sélection."
       },
       "brushTool": {
-        "properties": "Choisissez Pinceau pour définir les propriétés à appliquer.",
+        "properties": "Choisissez Pinceau, puis définissez les propriétés à appliquer.",
         "brush": "Appuyez sur un objet ou tracez un cadre en faisant glisser pour appliquer le pinceau. Appuyez sur un objet sélectionné pour l’appliquer à toute la sélection.",
         "shift": "Maintenez Maj pour appliquer le pinceau à des slides entiers."
       },
@@ -663,25 +663,25 @@
         "paste": "Appuyez ou faites glisser pour placer les objets copiés. Maintenez Maj pour les retourner horizontalement."
       },
       "generateSlideNotesTool": {
-        "generate": "Appuyez sur une note pour remplir son slide de notes attachées, une sur chaque ligne libre de la division actuelle.",
-        "generateMultiple": "Tracez un cadre autour d’au moins deux notes d’un même slide pour remplir uniquement l’espace entre elles. Appuyer sur une note sélectionnée fait de même pour chaque slide de la sélection."
+        "generate": "Appuyez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide.",
+        "generateMultiple": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Appuyez sur une note sélectionnée pour remplir chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier."
       },
       "adding": {
         "title": "Ajouter des objets",
-        "add": "Appuyez sur une zone vide pour ajouter un objet. Faites glisser dans une zone vide pour définir la largeur d’une nouvelle note.",
+        "add": "Avec Note, Slide, BPM, Échelle de temps ou Événement, appuyez sur une zone vide pour ajouter un objet. Avec Note ou Slide, faites glisser dans une zone vide pour ajouter une note de cette largeur.",
         "edit": "Appuyez sur un objet sélectionné pour afficher ses propriétés.",
-        "move": "Faites glisser un objet pour le déplacer seul. Utilisez Sélectionner pour déplacer plusieurs objets ensemble.",
+        "move": "Faites glisser un objet pour déplacer uniquement cet objet. Pour déplacer plusieurs objets ensemble, utilisez Sélectionner.",
         "resize": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner.",
         "modifiers": "Maintenez Ctrl (Cmd sous macOS) et appuyez sur un objet pour l’ajouter à la sélection ou l’en retirer. Maintenez Maj et appuyez sur une note pour sélectionner son slide entier."
       },
       "noteTool": {
-        "presets": "Note n° 1 à Note n° 4 sont des préréglages. Choisissez à nouveau Note pour changer le préréglage ou ses propriétés par défaut.",
-        "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyer sur une note sélectionnée définit aussi les propriétés du préréglage ou fait défiler leurs valeurs sur toutes les notes sélectionnées. Par défaut, Note n° 2 active ou désactive Critique."
+        "presets": "Choisissez à nouveau Note pour afficher les propriétés par défaut et passer d’un préréglage à l’autre, de Note n° 1 à Note n° 4.",
+        "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Note n° 2 par défaut active ou désactive Critique."
       },
       "slideTool": {
-        "connect": "Avec des notes d’un même slide sélectionnées, appuyez sur une zone vide pour ajouter une autre note à ce slide. Choisissez Désélectionner avant de commencer un nouveau slide.",
-        "presets": "Slide n° 1 à Slide n° 5 sont des préréglages. Choisissez à nouveau Slide pour changer le préréglage ou ses propriétés par défaut.",
-        "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyer sur une note sélectionnée définit aussi les propriétés du préréglage ou fait défiler leurs valeurs sur toutes les notes sélectionnées. Par défaut, Slide n° 1 modifie Interpolation du connecteur.",
+        "connect": "Lorsque des notes d’un même slide sont sélectionnées, appuyez sur une zone vide pour ajouter une autre note à ce slide. Choisissez Désélectionner avant de commencer un nouveau slide.",
+        "presets": "Choisissez à nouveau Slide pour afficher les propriétés par défaut et passer d’un préréglage à l’autre, de Slide n° 1 à Slide n° 5.",
+        "quickEdit": "Comme avec Note, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
         "splitCombine": "Scinder le slide coupe la connexion de chaque note sélectionnée vers la note suivante. Combiner en slide réunit les slides des notes sélectionnées en un seul slide."
       },
       "bpmTool": {
@@ -689,23 +689,23 @@
         "replace": "Déplacer un changement de BPM sur un autre remplace celui qui s’y trouve déjà."
       },
       "timeScaleTool": {
-        "markers": "Les marqueurs en losange indiquent la transition Défilement. Les marqueurs creux sur des lignes pointillées indiquent que les notes sont masquées.",
+        "markers": "Un marqueur en losange indique la transition Défilement. Un marqueur creux sur une ligne pointillée indique que les notes sont masquées.",
         "ease": "La courbe indique l’interpolation vers le prochain changement du groupe."
       },
       "event": {
         "next": "Choisissez Événement pour passer à un outil d’événement. Choisissez-le à nouveau pour parcourir les outils d’événement.",
-        "defaults": "Choisissez à nouveau un outil d’événement, comme Événement de caméra, pour modifier ses propriétés par défaut.",
+        "defaults": "Pour modifier les propriétés par défaut d’un outil d’événement, choisissez à nouveau son nom, par exemple Événement de caméra.",
         "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyer sur un événement sélectionné modifie aussi son interpolation."
       },
       "offset": {
         "drag": "Faites glisser vers le haut ou vers le bas pour modifier le décalage de la musique."
       }
     },
-    "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Appuyez sur Esc pour la fermer.",
+    "altN": "Alt+N (Option+N sous macOS) place le focus sur une notification qui reste à l’écran. Appuyez sur Esc pour la fermer.",
     "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de l’élément qui a le focus.",
-    "recentSessions": "Le travail non sauvegardé conservé dans ce navigateur se trouve dans Historique > Récentes.",
+    "recentSessions": "Pour retrouver le travail non sauvegardé conservé dans ce navigateur, ouvrez Historique › Récentes.",
     "fileTitle": "Fichiers",
-    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil."
+    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier de projet, puis ouvrez ce fichier sur l’autre appareil."
   },
   "elevation": {
     "edit": "Modifier les élévations",

@@ -40,10 +40,15 @@ const shortcut = computed(() =>
                 />
             </span>
             {{ text }}
+            <!-- Right-aligned and styled as in the toolbar flyout and the context menu. -->
             <kbd
                 v-if="shortcut"
-                class="font-sans text-sm text-fg/80"
-                :class="isPunctuationShortcut(shortcut) ? 'font-bold' : 'font-normal'"
+                class="ml-auto font-sans"
+                :class="
+                    isPunctuationShortcut(shortcut)
+                        ? 'text-sm font-bold leading-4'
+                        : 'text-xs font-normal opacity-80'
+                "
                 >{{ shortcut }}</kbd
             >
         </h2>

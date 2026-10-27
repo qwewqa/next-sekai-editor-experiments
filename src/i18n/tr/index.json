@@ -621,31 +621,31 @@
         "title": "Başlarken",
         "bgm": "Müziği yüklemek ve zaman kaymasını ayarlamak için Arka Plan Müziği komutunu seçin.",
         "bpm": "BPM komutunu seçin ve çizelgenin başındaki BPM değişikliğine dokunun. BPM değerini düzenlemek için tekrar dokunun.",
-        "notes": "Nota komutunu seçin ve bir nota eklemek için dokunun. Kaydırma oluşturmak için önce Seçimi Kaldır, ardından Kaydırma komutunu seçin ve kaydırmanın başlayacağı ve biteceği yerlere dokunun.",
+        "notes": "Nota komutunu seçin ve bir nota eklemek için çizelgeye dokunun. Kaydırma eklemek için önce Seçimi Kaldır, ardından Kaydırma komutunu seçin ve kaydırmanın başlangıç ve bitiş noktalarına dokunun.",
         "save": "Çalışmanızı bir proje dosyasında (.nxsp) saklamak için Kaydet komutunu seçin. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar… komutunu kullanın."
       },
       "touchscreen": {
         "title": "Dokunmatik Ekran",
         "longPress": "Bağlam menüsünü açmak için bir nesneye uzun basın.",
-        "scroll": "Kaydırmak için iki parmakla sürükleyin. Dikey veya yatay yakınlaştırma için parmaklarınızı o yönde birbirine yaklaştırın veya birbirinden uzaklaştırın.",
+        "scroll": "Kaydırmak için iki parmakla sürükleyin. Dikey yakınlaştırma için parmaklarınızı dikey yönde, yatay yakınlaştırma için yatay yönde birbirine yaklaştırın veya birbirinden uzaklaştırın.",
         "quickScroll": "Tek parmakla kaydırmak için çizelgenin sağ kenarındaki hızlı kaydırma alanında sürükleyin.",
         "gestures": "Seçimi kaldırmak için iki parmakla dokunun. Oynatmayı başlatmak veya durdurmak için üç parmakla dokunun."
       },
       "mouse": {
         "title": "Fare",
-        "contextMenu": "Bağlam menüsünü açmak için bir nesneye sağ tıklayın. Seçim aracını kullanmak için sağ tuşla sürükleyin.",
-        "secondary": "{0} aracını kullanmak için sağ tuşla tıklayın veya sürükleyin.",
-        "scrollX": "Yatay kaydırmak için Shift tuşunu basılı tutarak tekerleği çevirin.",
-        "zoom": "Dikey yakınlaştırma için Ctrl tuşunu basılı tutarak tekerleği çevirin. Yatay yakınlaştırma için Ctrl ve Shift tuşlarını basılı tutun.",
+        "contextMenu": "Bağlam menüsünü açmak için bir nesneye sağ tıklayın veya Seçim aracını kullanmak için sağ tuşla sürükleyin.",
+        "secondary": "{0} aracını kullanmak için sağ tıklayın veya sağ tuşla sürükleyin.",
+        "scrollX": "Yatay kaydırmak için Shift tuşunu basılı tutarak fare tekerleğini kullanın.",
+        "zoom": "Fare tekerleğini kullanırken dikey yakınlaştırma için Ctrl, yatay yakınlaştırma için Ctrl ve Shift tuşlarını basılı tutun.",
         "autoscroll": "Orta tuşla tıklayın, ardından kaydırmak için fareyi hareket ettirin. Durdurmak için tekrar tıklayın."
       },
       "keyboard": {
         "title": "Klavye",
-        "settings": "Kısayolları Ayarlar > Klavye Kısayolları bölümünde görüntüleyebilir ve değiştirebilirsiniz."
+        "settings": "Kısayolları Ayarlar › Klavye Kısayolları bölümünde görüntüleyebilir ve değiştirebilirsiniz."
       },
       "selectTool": {
         "select": "Nesnelerin üst üste geldiği yerlerde her dokunuş bir sonraki nesneyi seçer.",
-        "selectMultiple": "Çerçeve içindeki nesneleri seçmek için boş alandan başlayarak sürükleyin.",
+        "selectMultiple": "İçindeki nesneleri seçmek için boş alandan başlayıp sürükleyerek bir çerçeve çizin.",
         "move": "Seçimin tamamını taşımak için seçili bir nesneyi sürükleyin.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin. Seçili nesnelerin tümü aynı türdeyse boyutları birlikte değişir.",
         "modifiers": "Seçime nesne eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutun. Kaydırmaların tamamını seçmek için Shift tuşunu basılı tutun."
@@ -655,7 +655,7 @@
         "selection": "Seçimin tamamını silmek için seçili bir nesneye dokunun."
       },
       "brushTool": {
-        "properties": "Uygulanacak özellikleri ayarlamak için Fırça komutunu seçin.",
+        "properties": "Fırça komutunu seçin, ardından uygulanacak özellikleri ayarlayın.",
         "brush": "Fırçayı uygulamak için bir nesneye dokunun veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye dokunun.",
         "shift": "Fırçayı kaydırmaların tamamına uygulamak için Shift tuşunu basılı tutun."
       },
@@ -663,25 +663,25 @@
         "paste": "Kopyalanan nesneleri yerleştirmek için dokunun veya sürükleyin. Yatay çevirmek için Shift tuşunu basılı tutun."
       },
       "generateSlideNotesTool": {
-        "generate": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine dokunun. Geçerli bölüm ayarındaki her boş çizgiye bir nota eklenir.",
-        "generateMultiple": "Yalnızca aralarını doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Seçili bir notaya dokunmak, seçimdeki her kaydırma için aynı işlemi yapar."
+        "generate": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine dokunun. Her boş bölüm çizgisine bir nota eklenir.",
+        "generateMultiple": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Seçimdeki her kaydırmayı doldurmak için seçili bir notaya dokunun. Yalnızca bir notası seçili olan kaydırmanın tamamı doldurulur."
       },
       "adding": {
         "title": "Nesne Ekleme",
-        "add": "Bir nesne eklemek için boş alana dokunun. Yeni bir notanın genişliğini ayarlamak için boş alanda sürükleyin.",
+        "add": "Nota, Kaydırma, BPM, Zaman Ölçeği veya Olay aracında bir nesne eklemek için boş alana dokunun. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
         "edit": "Özelliklerini göstermek için seçili bir nesneye dokunun.",
-        "move": "Bir nesneyi tek başına taşımak için sürükleyin. Birden fazla nesneyi birlikte taşımak için Seçim aracını kullanın.",
+        "move": "Bir nesneyi sürüklediğinizde yalnızca o nesne taşınır. Birden fazla nesneyi birlikte taşımak için Seçim aracını kullanın.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin.",
         "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun."
       },
       "noteTool": {
-        "presets": "Nota #1 ile Nota #4 arasındaki seçenekler ön ayarlardır. Ön ayarı veya varsayılan özelliklerini değiştirmek için Nota komutunu tekrar seçin.",
-        "quickEdit": "Özellikler paneli görünürken seçili bir notaya dokunmak, seçili tüm notalarda ön ayarın özelliklerini de ayarlar veya bu özelliklerin değerleri arasında sırayla geçiş yapar. Varsayılan olarak Nota #2, Kritik özelliğini açar veya kapatır."
+        "presets": "Varsayılan özellikleri göstermek ve Nota #1 ile Nota #4 arasındaki ön ayarlar arasında geçiş yapmak için Nota komutunu tekrar seçin.",
+        "quickEdit": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Nota #2 ön ayarı Kritik özelliğini açar veya kapatır."
       },
       "slideTool": {
         "connect": "Aynı kaydırmanın notaları seçiliyken o kaydırmaya başka bir nota eklemek için boş alana dokunun. Yeni bir kaydırmaya başlamadan önce Seçimi Kaldır komutunu seçin.",
-        "presets": "Kaydırma #1 ile Kaydırma #5 arasındaki seçenekler ön ayarlardır. Ön ayarı veya varsayılan özelliklerini değiştirmek için Kaydırma komutunu tekrar seçin.",
-        "quickEdit": "Özellikler paneli görünürken seçili bir notaya dokunmak, seçili tüm notalarda ön ayarın özelliklerini de ayarlar veya bu özelliklerin değerleri arasında sırayla geçiş yapar. Varsayılan olarak Kaydırma #1, Bağlayıcı Yumuşatma özelliğini değiştirir.",
+        "presets": "Varsayılan özellikleri göstermek ve Kaydırma #1 ile Kaydırma #5 arasındaki ön ayarlar arasında geçiş yapmak için Kaydırma komutunu tekrar seçin.",
+        "quickEdit": "Nota aracında olduğu gibi, geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Kaydırma #1 ön ayarı Bağlayıcı Yumuşatma özelliğini değiştirir.",
         "splitCombine": "Kaydırmayı Böl, seçilen her notanın sonraki notayla bağlantısını keser. Kaydırmada Birleştir, seçili notaların ait olduğu kaydırmaları tek bir kaydırmada birleştirir."
       },
       "bpmTool": {
@@ -689,23 +689,23 @@
         "replace": "Bir BPM değişikliğini başka bir BPM değişikliğinin üzerine taşımak, orada bulunanı değiştirir."
       },
       "timeScaleTool": {
-        "markers": "Elmas işaretçiler Kaydırma geçişini gösterir. Noktalı çizgilerdeki içi boş işaretçiler notaların gizlendiğini gösterir.",
+        "markers": "Elmas şeklindeki işaretçi Kaydırma geçişini gösterir. Noktalı çizgi üzerindeki içi boş işaretçi, notaların gizli olduğunu gösterir.",
         "ease": "Eğri, gruptaki bir sonraki değişikliğe geçişi gösterir."
       },
       "event": {
         "next": "Bir olay aracına geçmek için Olay komutunu seçin. Olay araçları arasında sırayla geçiş yapmak için tekrar seçin.",
-        "defaults": "Varsayılan özelliklerini düzenlemek için Kamera Olayı gibi bir olay aracını tekrar seçin.",
-        "quickEdit": "Özellikler paneli görünürken seçili bir olaya dokunmak, olayın yumuşatmasını da değiştirir."
+        "defaults": "Bir olay aracının varsayılan özelliklerini düzenlemek için Kamera Olayı gibi kendi adını tekrar seçin.",
+        "quickEdit": "Özellikler paneli görünürken seçili bir olaya dokunduğunuzda olayın yumuşatması da değişir."
       },
       "offset": {
         "drag": "Arka plan müziğinin zaman kaymasını değiştirmek için yukarı veya aşağı sürükleyin."
       }
     },
-    "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Kapatmak için Esc tuşuna basın.",
+    "altN": "Alt+N (macOS’ta Option+N) odağı ekranda kalan bir bildirime taşır. Kapatmak için Esc tuşuna basın.",
     "shiftF10": "Shift+F10 veya Menü tuşu, odaktaki öğenin menüsünü açar.",
-    "recentSessions": "Bu tarayıcıda tutulan kaydedilmemiş çalışma, Geçmiş > Son Oturumlar bölümündedir.",
+    "recentSessions": "Bu tarayıcıda tutulan kaydedilmemiş çalışmayı bulmak için Geçmiş › Son Oturumlar bölümünü açın.",
     "fileTitle": "Dosyalar",
-    "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için .nxsp dosyası olarak kaydedin, ardından dosyayı orada açın."
+    "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için proje dosyası olarak kaydedin, ardından dosyayı orada açın."
   },
   "elevation": {
     "edit": "Yükseklikleri Düzenle",

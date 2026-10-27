@@ -1113,7 +1113,7 @@ test.describe('Help', () => {
         await visit(page)
         const dialog = await help(page)
         await expect(dialog).toContainText(
-            'To move work to another device, save it as a .nxsp file, then open the file there.',
+            'To move work to another device, save it as a project file, then open the file there.',
         )
     })
 })

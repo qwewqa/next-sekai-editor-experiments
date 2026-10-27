@@ -64,7 +64,7 @@ test.describe('with a fine pointer', () => {
         await boot(page)
         const dialog = await openHelp(page)
         await expect(dialog).toContainText(modal.mouse.contextMenu)
-        await expect(dialog).not.toContainText('Click or drag with the right button')
+        await expect(dialog).not.toContainText(modal.mouse.secondary.split('{0}')[0])
 
         await page.evaluate(() => (window.editorTest.settings.mouseSecondaryTool = 'select'))
         await expect(dialog).toContainText(

@@ -621,22 +621,22 @@
                 "title": "Getting Started",
                 "bgm": "Choose BGM to load the music and set its offset.",
                 "bpm": "Choose BPM and tap the BPM change at the start of the chart. Tap it again to edit its BPM.",
-                "notes": "Choose Note and tap to add a note. For a slide, choose Deselect, then Slide, and tap where the slide starts and where it ends.",
-                "save": "Choose Save to keep your work in a project file (.nxsp). To create level data for upload to a Sonolus server, use Export Level Data…"
+                "notes": "Choose Note and tap the chart to add a note. To add a slide, choose Deselect, then Slide, and tap at its start and its end.",
+                "save": "Choose Save to keep your work in a project file (.nxsp). To create level data you can upload to a Sonolus server, use Export Level Data…"
             },
             "touchscreen": {
                 "title": "Touchscreen",
-                "longPress": "Long press an object to open the context menu.",
-                "scroll": "Drag with two fingers to scroll. Pinch vertically or horizontally to zoom in that direction.",
+                "longPress": "Long-press an object to open the context menu.",
+                "scroll": "Drag with two fingers to scroll. Pinch vertically to zoom vertically, or horizontally to zoom horizontally.",
                 "quickScroll": "To scroll with one finger, drag in the quick scroll zone at the right edge of the chart.",
                 "gestures": "Tap with two fingers to deselect. Tap with three fingers to start or stop playback."
             },
             "mouse": {
                 "title": "Mouse",
-                "contextMenu": "Right-click an object to open the context menu. Drag with the right button to use Select.",
-                "secondary": "Click or drag with the right button to use {0}.",
-                "scrollX": "Hold Shift and turn the wheel to scroll horizontally.",
-                "zoom": "Hold Ctrl and turn the wheel to zoom vertically. Hold Ctrl and Shift to zoom horizontally.",
+                "contextMenu": "Right-click an object to open the context menu, or right-drag to use Select.",
+                "secondary": "Right-click or right-drag to use {0}.",
+                "scrollX": "Hold Shift and use the mouse wheel to scroll horizontally.",
+                "zoom": "Hold Ctrl and use the mouse wheel to zoom vertically, or Ctrl and Shift to zoom horizontally.",
                 "autoscroll": "Middle-click, then move the mouse to scroll. Click again to stop."
             },
             "keyboard": {
@@ -645,9 +645,9 @@
             },
             "selectTool": {
                 "select": "Where objects overlap, each tap selects the next one.",
-                "selectMultiple": "Drag from empty space to select the objects in the box.",
+                "selectMultiple": "Drag a box from empty space to select the objects in it.",
                 "move": "Drag a selected object to move the whole selection.",
-                "resize": "Drag the edge of a note, camera event or stage mask event to resize it. A selection of one type resizes together.",
+                "resize": "Drag the edge of a note, camera event or stage mask event to resize it. If all selected objects are the same type, they resize together.",
                 "modifiers": "Hold Ctrl (Cmd on macOS) to add objects to the selection or remove them. Hold Shift to select whole slides."
             },
             "eraserTool": {
@@ -655,7 +655,7 @@
                 "selection": "Tap a selected object to erase the whole selection."
             },
             "brushTool": {
-                "properties": "Choose Brush to set the properties it applies.",
+                "properties": "Choose Brush, then set the properties to apply.",
                 "brush": "Tap an object or drag a box to apply the brush. Tap a selected object to apply it to the whole selection.",
                 "shift": "Hold Shift to apply the brush to whole slides."
             },
@@ -663,25 +663,25 @@
                 "paste": "Tap or drag to place the copied objects. Hold Shift to flip them horizontally."
             },
             "generateSlideNotesTool": {
-                "generate": "Tap a note to fill its slide with attached notes, one on each free line of the current division.",
-                "generateMultiple": "Drag a box over two or more notes of a slide to fill only between them. Tapping a selected note does the same for each slide in the selection."
+                "generate": "Tap a note to fill its slide with attached notes, one on each empty division line.",
+                "generateMultiple": "Drag a box over two or more notes of a slide to fill only the part between them. Tap a selected note to fill each slide in the selection. For a slide with only one selected note, this fills the whole slide."
             },
             "adding": {
                 "title": "Adding Objects",
-                "add": "Tap empty space to add an object. Drag across empty space to set a new note’s width.",
+                "add": "With Note, Slide, BPM, Time Scale or Event, tap empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
                 "edit": "Tap a selected object to show its properties.",
-                "move": "Drag an object to move it alone. Use Select to move several objects together.",
+                "move": "Drag an object to move only that object. To move several objects together, use Select.",
                 "resize": "Drag the edge of a note, camera event or stage mask event to resize it.",
                 "modifiers": "Hold Ctrl (Cmd on macOS) and tap to add an object to the selection or remove it. Hold Shift and tap a note to select its whole slide."
             },
             "noteTool": {
-                "presets": "Note #1 to Note #4 are presets. Choose Note again to change the preset or its default properties.",
-                "quickEdit": "With the Properties panel shown, tapping a selected note also sets or cycles the preset’s properties on all selected notes. By default, Note #2 turns Critical on or off."
+                "presets": "Choose Note again to show the default properties and switch between the presets, Note #1 to Note #4.",
+                "quickEdit": "When the Properties panel is shown, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Note #2 preset turns Critical on or off."
             },
             "slideTool": {
-                "connect": "With notes from one slide selected, tap empty space to add another note to that slide. Choose Deselect before starting a new slide.",
-                "presets": "Slide #1 to Slide #5 are presets. Choose Slide again to change the preset or its default properties.",
-                "quickEdit": "With the Properties panel shown, tapping a selected note also sets or cycles the preset’s properties on all selected notes. By default, Slide #1 changes Connector Ease.",
+                "connect": "When notes of one slide are selected, tap empty space to add another note to that slide. Choose Deselect before starting a new slide.",
+                "presets": "Choose Slide again to show the default properties and switch between the presets, Slide #1 to Slide #5.",
+                "quickEdit": "As with Note, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
                 "splitCombine": "Split Slide cuts the connection from each selected note to the next note. Combine into Slide joins the slides of the selected notes into one slide."
             },
             "bpmTool": {
@@ -689,23 +689,23 @@
                 "replace": "Moving a BPM change onto another replaces the one already there."
             },
             "timeScaleTool": {
-                "markers": "Diamond markers indicate the Scroll transition. Hollow markers on dotted lines indicate that notes are hidden.",
+                "markers": "A diamond marker means the Scroll transition. A hollow marker on a dotted line means that notes are hidden.",
                 "ease": "The curve shows easing to the next change in the group."
             },
             "event": {
                 "next": "Choose Event to switch to an event tool. Choose it again to cycle through the event tools.",
-                "defaults": "Choose an event tool again, such as Camera Event, to edit its default properties.",
-                "quickEdit": "With the Properties panel shown, tapping a selected event also changes its ease."
+                "defaults": "To edit an event tool’s default properties, choose it again by name, such as Camera Event.",
+                "quickEdit": "When the Properties panel is shown, tapping a selected event also changes its ease."
             },
             "offset": {
                 "drag": "Drag up or down to change the BGM offset."
             }
         },
-        "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Press Esc to close it.",
+        "altN": "Alt+N (Option+N on macOS) moves focus to a notice that stays on screen. Press Esc to close it.",
         "shiftF10": "Shift+F10 or the Menu key opens the menu of the focused item.",
-        "recentSessions": "Unsaved work stored in this browser is in History › Recent Sessions.",
+        "recentSessions": "To find unsaved work stored in this browser, open History › Recent Sessions.",
         "fileTitle": "Files",
-        "moveBetweenDevices": "To move work to another device, save it as a .nxsp file, then open the file there."
+        "moveBetweenDevices": "To move work to another device, save it as a project file, then open the file there."
     },
     "elevation": {
         "edit": "Edit Elevations",
