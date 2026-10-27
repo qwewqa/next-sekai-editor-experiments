@@ -601,7 +601,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, `${BASE}/elsewhere`)
         await expect(errorOf(page)).toContainText(
-            'The server returned data that the editor could not read.',
+            'The editor could not read Sonolus server data from this address.',
         )
         await connect(page, `${BASE}/broken`)
         await expect(errorOf(page)).toContainText('This server returned an error (503).')

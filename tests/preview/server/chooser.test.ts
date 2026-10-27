@@ -549,7 +549,7 @@ test('an address with no Sonolus server behind it says so', async () => {
     await chooser.connect()
     assert.equal(
         serverErrorText(chooser.error.value!, en),
-        'The server returned data that the editor could not read.',
+        'The editor could not read Sonolus server data from this address.',
     )
 })
 

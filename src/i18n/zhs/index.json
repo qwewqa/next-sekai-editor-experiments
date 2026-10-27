@@ -575,7 +575,7 @@
         "insecure": "不支持 HTTP 服务器地址。",
         "checksum": "下载的内容与服务器的校验和不符。",
         "notFound": "此服务器上没有该项目。",
-        "invalid": "服务器返回的数据无法由编辑器读取。",
+        "invalid": "编辑器无法从此地址读取 Sonolus 服务器数据。",
         "status": "服务器返回了错误（{0}）。",
         "filesFailed": "无法从 {0} 下载此项目的文件。",
         "addressEmpty": "请输入服务器地址。",

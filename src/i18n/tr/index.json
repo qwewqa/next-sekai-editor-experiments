@@ -575,7 +575,7 @@
         "insecure": "HTTP sunucu adresleri desteklenmiyor.",
         "checksum": "İndirilen içerik sunucunun sağlama toplamıyla eşleşmiyor.",
         "notFound": "Bu sunucuda böyle bir öğe yok.",
-        "invalid": "Sunucu, editörün okuyamadığı veriler döndürdü.",
+        "invalid": "Editör bu adresten Sonolus sunucu verilerini okuyamadı.",
         "status": "Sunucu bir hata döndürdü ({0}).",
         "filesFailed": "Bu öğenin dosyaları {0} adresinden indirilemedi.",
         "addressEmpty": "Bir sunucu adresi girin.",

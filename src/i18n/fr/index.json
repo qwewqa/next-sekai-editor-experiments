@@ -575,7 +575,7 @@
         "insecure": "Les adresses de serveur HTTP ne sont pas prises en charge.",
         "checksum": "Le contenu téléchargé ne correspond pas à la somme de contrôle du serveur.",
         "notFound": "Ce serveur n’a pas cet élément.",
-        "invalid": "Le serveur a renvoyé des données que l’éditeur n’a pas pu lire.",
+        "invalid": "L’éditeur n’a pas pu lire les données d’un serveur Sonolus depuis cette adresse.",
         "status": "Ce serveur a renvoyé une erreur ({0}).",
         "filesFailed": "Impossible de télécharger les fichiers de cet élément depuis {0}.",
         "addressEmpty": "Saisissez l’adresse d’un serveur.",

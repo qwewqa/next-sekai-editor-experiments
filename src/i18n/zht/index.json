@@ -575,7 +575,7 @@
         "insecure": "不支援 HTTP 伺服器位址。",
         "checksum": "下載的內容與伺服器的檢查碼不符。",
         "notFound": "此伺服器上沒有該項目。",
-        "invalid": "伺服器傳回的資料無法由編輯器讀取。",
+        "invalid": "編輯器無法從此位址讀取 Sonolus 伺服器資料。",
         "status": "伺服器回傳了錯誤（{0}）。",
         "filesFailed": "無法從 {0} 下載此項目的檔案。",
         "addressEmpty": "請輸入伺服器位址。",

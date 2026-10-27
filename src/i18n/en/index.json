@@ -575,7 +575,7 @@
                 "insecure": "HTTP server addresses are not supported.",
                 "checksum": "The downloaded content does not match the server’s checksum.",
                 "notFound": "This server does not have that item.",
-                "invalid": "The server returned data that the editor could not read.",
+                "invalid": "The editor could not read Sonolus server data from this address.",
                 "status": "This server returned an error ({0}).",
                 "filesFailed": "Could not download this item’s files from {0}.",
                 "addressEmpty": "Enter a server address.",
