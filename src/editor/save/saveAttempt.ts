@@ -26,7 +26,8 @@ export class Cancelled extends Error {
 }
 
 /**
- * A continuation not stored yet commits its first row before its first file write. Returns false
+ * A continuation not stored yet tries to commit its first row before its first file write; when
+ * storage fails, the write still goes ahead. Returns false
  * when another session is open after the commit, as when the commit forked the session. Nothing is
  * written for this one then.
  */
