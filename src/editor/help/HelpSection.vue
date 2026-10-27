@@ -10,6 +10,8 @@ const props = defineProps<{
     title?: string
     /** The toolbar command this section explains, shown by its icon and shortcut. */
     command?: CommandName
+    /** The content is not a list of lines, so it sits under the heading in a plain block. */
+    plain?: boolean
 }>()
 
 const text = computed(() => props.title ?? (props.command && commands[props.command].title()))
@@ -53,7 +55,10 @@ const shortcut = computed(() =>
             >
         </h2>
 
-        <ul class="mt-2 list-outside list-disc pl-5">
+        <div v-if="plain" class="mt-2">
+            <slot />
+        </div>
+        <ul v-else class="mt-2 list-outside list-disc pl-5">
             <slot />
         </ul>
     </section>
