@@ -8,7 +8,7 @@ declare global {
         previewTest: {
             uploads: number
             frames: number
-            /** Worker renderers that released their context. */
+            /** Renderers that released their context. */
             releases?: number
             bitmaps: number
             closes: number
@@ -66,11 +66,21 @@ test.beforeEach(async ({ page }, testInfo) => {
         const isPreview = (gl: WebGL2RenderingContext) =>
             gl.canvas instanceof HTMLCanvasElement &&
             gl.canvas.matches('.preview-viewport > canvas:not(.preview-selection)')
+        const previewContexts = new WeakSet<WebGL2RenderingContext>()
         const upload = WebGL2RenderingContext.prototype.texImage2D
         WebGL2RenderingContext.prototype.texImage2D = function (...args: unknown[]) {
-            if (isPreview(this) && args.some((arg) => arg instanceof ImageBitmap))
+            if (isPreview(this) && args.some((arg) => arg instanceof ImageBitmap)) {
                 window.previewTest.uploads++
+                previewContexts.add(this)
+            }
             return Reflect.apply(upload, this, args)
+        }
+        // A renderer deletes its program when it releases its context.
+        const deleteProgram = WebGL2RenderingContext.prototype.deleteProgram
+        WebGL2RenderingContext.prototype.deleteProgram = function (program) {
+            if (previewContexts.has(this))
+                window.previewTest.releases = (window.previewTest.releases ?? 0) + 1
+            deleteProgram.call(this, program)
         }
         const uniformNames = new WeakMap<WebGLUniformLocation, string>()
         const getUniformLocation = WebGL2RenderingContext.prototype.getUniformLocation
@@ -2991,7 +3001,7 @@ test.describe('preview panel lifecycle', () => {
     test('reopening the preview leaves no listeners, observers or contexts behind', async ({
         page,
     }) => {
-        // Startup adds page listeners once, late on a loaded machine: the baseline follows it.
+        // Wait for startup to register its page listeners before counting.
         await expect
             .poll(() => page.evaluate(() => window.nseStartupTest !== undefined), {
                 timeout: 20_000,
@@ -2999,32 +3009,47 @@ test.describe('preview panel lifecycle', () => {
             .toBe(true)
         await page.evaluate(() => {
             const listeners = new Map<string, number>()
-            const name = (target: EventTarget) =>
-                target === window ? 'window' : target === document ? 'document' : 'visual'
-            for (const target of [window, document, window.visualViewport!] as EventTarget[]) {
-                const add = target.addEventListener.bind(target)
-                const remove = target.removeEventListener.bind(target)
-                const seen = new Set<unknown>()
-                target.addEventListener = (
-                    type: string,
-                    listener: EventListenerOrEventListenerObject | null,
-                    options?: boolean | AddEventListenerOptions,
-                ) => {
-                    const key = `${name(target)}:${type}`
-                    if (listener && !seen.has(listener)) {
-                        seen.add(listener)
-                        listeners.set(key, (listeners.get(key) ?? 0) + 1)
-                    }
-                    add(type, listener, options)
+            const nameOf = (target: EventTarget) =>
+                target === window
+                    ? 'window'
+                    : target === document
+                      ? 'document'
+                      : target === window.visualViewport
+                        ? 'visual'
+                        : `media ${(target as MediaQueryList).media}`
+            // The browser keeps one listener for each target, type, callback and capture flag.
+            const registered = new Map<EventTarget, Map<unknown, Set<string>>>()
+            const track = (
+                target: EventTarget,
+                added: boolean,
+                type: string,
+                listener: EventListenerOrEventListenerObject | null,
+                options?: boolean | EventListenerOptions,
+            ) => {
+                if (!listener) return
+                const capture = typeof options === 'boolean' ? options : !!options?.capture
+                const callbacks = registered.get(target) ?? new Map<unknown, Set<string>>()
+                registered.set(target, callbacks)
+                const flags = callbacks.get(listener) ?? new Set<string>()
+                callbacks.set(listener, flags)
+                const id = `${type} ${capture}`
+                if (flags.has(id) === added) return
+                if (added) flags.add(id)
+                else flags.delete(id)
+                const key = `${nameOf(target)}:${type}`
+                listeners.set(key, (listeners.get(key) ?? 0) + (added ? 1 : -1))
+            }
+            const owners = [window, document, window.visualViewport!, MediaQueryList.prototype]
+            for (const owner of owners as EventTarget[]) {
+                const add = owner.addEventListener
+                const remove = owner.removeEventListener
+                owner.addEventListener = function (this: EventTarget, type, listener, options) {
+                    track(this, true, type, listener, options)
+                    Reflect.apply(add, this, [type, listener, options])
                 }
-                target.removeEventListener = (
-                    type: string,
-                    listener: EventListenerOrEventListenerObject | null,
-                    options?: boolean | EventListenerOptions,
-                ) => {
-                    const key = `${name(target)}:${type}`
-                    if (seen.delete(listener)) listeners.set(key, (listeners.get(key) ?? 0) - 1)
-                    remove(type, listener, options)
+                owner.removeEventListener = function (this: EventTarget, type, listener, options) {
+                    track(this, false, type, listener, options)
+                    Reflect.apply(remove, this, [type, listener, options])
                 }
             }
             const observed = new Map<ResizeObserver, Set<Element>>()
@@ -3060,6 +3085,14 @@ test.describe('preview panel lifecycle', () => {
         const first = await state()
         for (let i = 0; i < 8; i++) await cycle()
         expect(await state()).toEqual(first)
+        // Every open uploads two atlases to a new context. Only the shown preview should hold one.
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => window.previewTest.uploads / 2 - (window.previewTest.releases ?? 0),
+                ),
+            )
+            .toBe(1)
         // The preview still renders after many contexts were created and released.
         const frames = await page.evaluate(() => window.previewTest.frames)
         await page.evaluate(() => (window.editorTest.view.cursorTime += 0.25))
