@@ -63,25 +63,71 @@ test('a type visibility says off, then on', async ({ page }) => {
     await expect(notice(page)).toHaveText(fill(visibilities.toggle.on, label))
 })
 
-test('the cycle names the one visible group, then all', async ({ page }) => {
-    const seen: string[] = []
-    for (let i = 0; i < 10; i++) {
+const groupTypes = {
+    note: ['note', 'connector'],
+    bpm: ['bpm'],
+    timeScale: ['timeScale'],
+    cameraEvent: ['cameraEventJoint', 'cameraEventConnection'],
+    stageMaskEvent: ['stageMaskEventJoint', 'stageMaskEventConnection'],
+    stagePivotEvent: ['stagePivotEventJoint', 'stagePivotEventConnection'],
+    stageStyleEvent: ['stageStyleEventJoint', 'stageStyleEventConnection'],
+    stageTransformEvent: ['stageTransformEventJoint', 'stageTransformEventConnection'],
+} as const
+
+type Group = keyof typeof groupTypes
+
+for (const [mode, dynamic, groups] of [
+    ['without dynamic stages', false, ['note', 'bpm', 'timeScale']],
+    [
+        'with dynamic stages',
+        true,
+        [
+            'note',
+            'bpm',
+            'timeScale',
+            'cameraEvent',
+            'stageMaskEvent',
+            'stagePivotEvent',
+            'stageStyleEvent',
+            'stageTransformEvent',
+        ],
+    ],
+] as [string, boolean, Group[]][]) {
+    test(`the cycle names each visible group in turn, then all, ${mode}`, async ({ page }) => {
+        if (dynamic) {
+            await page.evaluate(() => {
+                const { history } = window.editorTest
+                history.replaceState({ ...history.state.value, isDynamicStages: true })
+            })
+        }
+        const flags = () => page.evaluate(() => ({ ...window.editorTest.view.visibilities }))
+
+        for (const group of groups) {
+            await run(page, 'cycleVisibilities')
+            await expect(notice(page)).toHaveText(
+                fill(visibilities.cycle.only, visibilities.toggle.types[group]),
+            )
+            const shown = new Set<string>(groupTypes[group])
+            const current = await flags()
+            for (const other of groups) {
+                for (const type of groupTypes[other]) {
+                    expect(current[type as keyof typeof current], `${group}: ${type}`).toBe(
+                        shown.has(type),
+                    )
+                }
+            }
+        }
+
         await run(page, 'cycleVisibilities')
-        const text = (await notice(page).textContent()) ?? ''
-        seen.push(text)
-        if (text === visibilities.cycle.all) break
-    }
-    expect(seen.at(-1)).toBe(visibilities.cycle.all)
-    expect(seen.length).toBeGreaterThan(2)
-    expect(seen[0]).toBe(fill(visibilities.cycle.only, visibilities.toggle.types.note))
-    for (const text of seen.slice(0, -1)) {
-        const label = Object.values(visibilities.toggle.types).find(
-            (type) => text === fill(visibilities.cycle.only, type),
-        )
-        expect(label, text).toBeDefined()
-    }
-    expect(new Set(seen).size).toBe(seen.length)
-})
+        await expect(notice(page)).toHaveText(visibilities.cycle.all)
+        const current = await flags()
+        for (const other of groups) {
+            for (const type of groupTypes[other]) {
+                expect(current[type as keyof typeof current], type).toBe(true)
+            }
+        }
+    })
+}
 
 test.describe('fullscreen', () => {
     const settle = (page: Page) =>
