@@ -853,7 +853,7 @@ test.describe('the chip', () => {
             await expect(chipShown(page)).toHaveCount(0)
             await expect(chip(page)).toHaveAttribute('data-file-chip', 'newerOnDisk')
             await expect(chip(page)).toHaveAccessibleName(
-                /Une version plus récente de "coconut-long-working-copy\.nxsp" est sur le disque\./,
+                /Une version plus récente de «\scoconut-long-working-copy\.nxsp\s» est sur le disque\./,
             )
             const geometry = await statusGeometry(page)
             expect(geometry.bar.height).toBe(32)
