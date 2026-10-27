@@ -6,6 +6,7 @@ import ToggleField from '../../../modals/form/ToggleField.vue'
 import { settings } from '../../../settings'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { commands, isCommandName, type CommandName } from '../../commands'
+import { withoutEllipsis } from '../../commands/withoutEllipsis'
 import LevelEditorToolbarTool from '../../toolbar/LevelEditorToolbarTool.vue'
 import SettingsSection from '../SettingsSection.vue'
 import SettingsSelectToolModal from './SettingsSelectToolModal.vue'
@@ -26,7 +27,7 @@ const onRemoveFromGroup = (i: number, j: number) => {
 
 // A press removes the tool, so its name and hover title say that.
 const removeLabel = (name: CommandName) =>
-    interpolateRaw(i18n.value.settings.toolbar.remove, commands[name].title())
+    interpolateRaw(i18n.value.settings.toolbar.remove, withoutEllipsis(commands[name].title()))
 
 // The tool that was removed leaves focus on its group's Add button.
 const groupAddButton = (group: number) =>

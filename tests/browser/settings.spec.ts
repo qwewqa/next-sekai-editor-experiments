@@ -237,14 +237,24 @@ test('shortcut capture waits past IME and dead keys and ignores Caps Lock', asyn
 test('shared bindings are named under their rows', async ({ page }) => {
     await shortcutButton(page, 'Save').click()
     await page.keyboard.press('s')
-    await expect(shortcutField(page, 'Save')).toContainText('Also runs Slide')
-    await expect(shortcutField(page, 'Slide')).toContainText('Also runs Save')
-    await expect(shortcutButton(page, 'Slide')).toHaveAccessibleDescription(/Also runs Save/)
+    await expect(shortcutField(page, 'Save')).toContainText('Also runs Slide.')
+    await expect(shortcutField(page, 'Slide')).toContainText('Also runs Save.')
+    await expect(shortcutButton(page, 'Slide')).toHaveAccessibleDescription(/Also runs Save\./)
 
     // A binding of Ctrl+R ends the share on r.
     await shortcutButton(page, 'Save').click()
     await page.keyboard.press('Control+r')
     await expect(shortcutField(page, 'Slide')).not.toContainText('Also runs')
+
+    // A command whose title ends in an ellipsis is named without it in the running text.
+    await shortcutButton(page, 'Save').click()
+    await page.keyboard.press('o')
+    await expect(shortcutField(page, 'Save').locator('.form-field-notes')).toHaveText(
+        'Also runs Open.',
+    )
+    await expect(shortcutField(page, 'Open…').locator('.form-field-notes')).toHaveText(
+        'Also runs Save.',
+    )
 })
 
 test.describe('on Apple devices', () => {
@@ -894,6 +904,12 @@ test('a Toolbar tool is named by what pressing it does', async ({ page }) => {
     await tool.click()
     await expect(tool).toHaveCount(0)
     expect(await has()).toBe(false)
+})
+
+test('a Toolbar tool whose title ends in an ellipsis is named without it', async ({ page }) => {
+    const name = 'Remove “Open” from Toolbar'
+    const tool = page.getByRole('dialog').getByRole('button', { name, exact: true })
+    await expect(tool).toHaveAttribute('title', name)
 })
 
 test('the dialog fills the viewport at v0.5.22’s width, and a mouse sees every section pill', async ({
