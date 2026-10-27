@@ -131,7 +131,7 @@ test('toolbar settings show tools without a pressed state', async ({ page }) => 
     await run(page, 'settings')
     const dialog = page.locator('dialog[open]')
     await expect(
-        dialog.getByTitle('Remove "Select" from Toolbar', { exact: true }).first(),
+        dialog.getByTitle('Remove “Select” from Toolbar', { exact: true }).first(),
     ).toBeVisible()
     await expect(dialog.locator('[aria-pressed]')).toHaveCount(0)
 })

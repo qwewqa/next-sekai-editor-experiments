@@ -159,7 +159,7 @@ const nameOf = (row: ChainRow) =>
         ? liveRow.value.name
         : namedBy(displayName(row.chain.nameParts), row.chain.head.startedAt)
 
-/** The inline row's text: Deleted "X", or that it can no longer be undone. */
+/** The inline row's text: Deleted “X”, or that it can no longer be undone. */
 const deletedLabel = (row: DeletedRow) =>
     row.status === 'failed'
         ? [deletedText(row), i18n.value.commands.undo.failed].join(', ')

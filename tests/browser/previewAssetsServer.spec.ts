@@ -282,9 +282,9 @@ test.describe('From a Server', () => {
         const also = chooser(page).locator('[data-chooser-also]')
         // One checkbox for the particle and one for the sound effects; the background has another name.
         await expect(also.locator('label')).toHaveCount(2)
-        await expect(also).toContainText('Also use the particle "Neon Particle" from this server')
+        await expect(also).toContainText('Also use the particle “Neon Particle” from this server')
         await expect(also).toContainText(
-            'Also use the sound effects "Neon Sounds" from this server',
+            'Also use the sound effects “Neon Sounds” from this server',
         )
         await expect(also.locator('input:checked')).toHaveCount(0)
         // They sit between the list and the footer, before Use.
@@ -600,7 +600,9 @@ test.describe('when a server cannot be used', () => {
         await open(page)
         await chooseServer(page)
         await connect(page, `${BASE}/elsewhere`)
-        await expect(errorOf(page)).toContainText('This address is not a Sonolus server.')
+        await expect(errorOf(page)).toContainText(
+            'The editor could not read Sonolus server data from this address.',
+        )
         await connect(page, `${BASE}/broken`)
         await expect(errorOf(page)).toContainText('This server returned an error (503).')
     })

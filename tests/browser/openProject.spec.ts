@@ -270,7 +270,7 @@ test('a level with a value this build does not know asks first; Cancel opens not
     const before = await sessionOf(page)
     await openFile(page, 'coconut.nxsp')
     const dialog = page.getByRole('dialog').filter({ hasText: 'Uses Newer Features' })
-    await expect(dialog).toContainText('"coconut.nxsp" Uses Newer Features')
+    await expect(dialog).toContainText('“coconut.nxsp” Uses Newer Features')
     await expect(dialog.getByRole('button', { name: 'Open a Copy' })).toBeFocused()
     await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     await expect(dialog).toHaveCount(0)
@@ -586,7 +586,7 @@ test('the same file opened in a second tab opens unbound, as a separate copy', a
     await openFile(other, 'coconut.nxsp')
     await expect(
         notice(other).filter({
-            hasText: '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+            hasText: '“coconut.nxsp” is open in another tab or window, so this is a separate copy.',
         }),
     ).toBeVisible()
     await expect(notice(other).locator('svg[data-severity]')).toHaveAttribute(
@@ -1026,7 +1026,7 @@ test('a newer patch beside a file bound in another tab: the separate-copy line a
     await start(other)
     await openFile(other, 'coconut.nxsp')
     const card = notice(other).filter({
-        hasText: '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+        hasText: '“coconut.nxsp” is open in another tab or window, so this is a separate copy.',
     })
     await expect(card).toBeVisible()
     await expect(card).toContainText(PATCH_LINE)

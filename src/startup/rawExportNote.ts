@@ -13,7 +13,7 @@ export type RawExportRun =
     | { kind: 'cancelled' }
 
 export type RawExportTexts = {
-    /** `save.downloadFailed`: ""{0}" could not be downloaded." */
+    /** `save.downloadFailed`: "“{0}” could not be downloaded." */
     downloadFailed: string
     /** `settings.localData.exportRawUnreadable`. */
     unreadable: string

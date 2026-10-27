@@ -139,7 +139,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(pill(next)).toContainText('Next SEKAI Editor')
         await expect(pill(next)).toContainText('Version 0.6.0')
         await expect(pill(next)).toContainText(
-            /Continued "coconut" from (\d{1,2}:\d{2}|[A-Z][a-z]{2}\u00A0\d{1,2})/,
+            /Continued “coconut” from (\d{1,2}:\d{2}|[A-Z][a-z]{2}\u00A0\d{1,2})/,
         )
         // No storage line at load, on any override.
         await expect(pill(next)).not.toContainText(/stored|browser|Recent Sessions/i)
@@ -164,7 +164,7 @@ test.describe('load notices in the start-up pill', () => {
         await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await visit(next)
-        await expect(pill(next)).toContainText(/Continued ".+" from the old auto save\./)
+        await expect(pill(next)).toContainText(/Continued “.+” from the old auto save\./)
         await expect(pill(next)).not.toContainText(/ from [A-Z][a-z]{2} \d/)
     })
 
@@ -178,7 +178,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(pill(next)).toContainText(
             /Continued your session from (\d{1,2}:\d{2}|[A-Z][a-z]{2}\u00A0\d{1,2})/,
         )
-        await expect(pill(next)).not.toContainText('Continued "')
+        await expect(pill(next)).not.toContainText('Continued “')
     })
 
     test('a continued session whose time is unknown names no time, never 1970', async ({
@@ -190,11 +190,11 @@ test.describe('load notices in the start-up pill', () => {
             kind: 'continued',
             name: { name: { kind: 'name', text: 'coconut' } },
         })
-        await expect(lines.nth(1)).toContainText('Continued "coconut".')
+        await expect(lines.nth(1)).toContainText('Continued “coconut”.')
         await expect(pill(page)).not.toContainText('1970')
         // An untitled one has no date to show in its name either.
         await addEvent(page, { kind: 'continued', name: { name: { kind: 'date' } } })
-        await expect(pill(page)).toContainText('Continued "Untitled".')
+        await expect(pill(page)).toContainText('Continued “Untitled”.')
         await expect(pill(page)).not.toContainText(/1970|Untitled · /)
     })
 
@@ -238,7 +238,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(lines).toHaveText([
             'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
-            'Continued "Coconut (Master)" from the old auto save.',
+            'Continued “Coconut (Master)” from the old auto save.',
             'A recovered change requires a newer version of the editor.',
         ])
     })
@@ -296,7 +296,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(lines.nth(1)).toContainText('Work from earlier visits is missing.')
         await expect(lines.nth(2)).toContainText('The old auto save could not be restored.')
         await expect(lines.nth(3)).toContainText(
-            'Recovered your last change to "Coconut (Master)".',
+            'Recovered your last change to “Coconut (Master)”.',
         )
         await expect(lines.nth(4)).toContainText('and 2 more in Local Data')
         // Local Data is offered once, on the last line, and Alt+N reaches it.
@@ -315,7 +315,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(atLoad.locator('li')).toHaveText([
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'The old auto save could not be restored.',
-            'Recovered your last change to "Coconut (Master)".',
+            'Recovered your last change to “Coconut (Master)”.',
             'A recovered change requires a newer version of the editor.',
             'The BGM is not loaded.',
         ])
@@ -719,7 +719,7 @@ test.describe('the status bar label', () => {
         await visit(duplicate)
         await expect(label(duplicate)).toHaveText('coconut (2) · separate copy of coconut.nxsp')
         await expect(pill(duplicate)).toContainText(
-            '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+            '“coconut.nxsp” is open in another tab or window, so this is a separate copy.',
         )
     })
 
@@ -745,9 +745,9 @@ test.describe('the status bar label', () => {
         )
         await visit(duplicate)
         await expect(pill(duplicate)).toContainText(
-            /"Untitled · [^"]+" is open in another tab or window, so this is a separate copy./,
+            /“Untitled · [^”]+” is open in another tab or window, so this is a separate copy./,
         )
-        await expect(pill(duplicate)).not.toContainText('"" is open')
+        await expect(pill(duplicate)).not.toContainText('“” is open')
         await expect(label(duplicate)).toHaveText(/^Untitled · .+ · separate copy$/)
         await expect(duplicate).toHaveTitle(/^Untitled · .+ · separate copy – Next SEKAI Editor$/)
         const copyOf = await duplicate.evaluate(async () => {
@@ -1550,7 +1550,7 @@ test.describe('the in-app browser line', () => {
             'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             inApp,
-            'Continued "Coconut (Master)" from the old auto save.',
+            'Continued “Coconut (Master)” from the old auto save.',
         ])
     })
 

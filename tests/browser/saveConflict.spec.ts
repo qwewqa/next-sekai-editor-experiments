@@ -51,7 +51,7 @@ const conflict = async (page: Page) => {
     await edit(page, 2)
     await pressSave(page)
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     // Past the dialog's activation guard.
     await page.waitForTimeout(350)
     return dialog
@@ -64,7 +64,7 @@ test('Replace keeps the version on disk as a session first, then writes with rep
     await savedOnce(page)
     const own = await chainOf(page)
     const dialog = await conflict(page)
-    await expect(dialog).toContainText('A different project file, "Coconut (Master)".')
+    await expect(dialog).toContainText('A different project file, “Coconut (Master)”.')
     await dialog.getByRole('button', { name: 'Replace' }).click()
     await expect
         .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).replaces, {
@@ -161,7 +161,7 @@ test('a file changed again while Replace keeps it gives the dialog again, not a 
     const dialog = await conflict(page)
     await writeFile(page, 'coconut.nxsp', [1, 2, 3])
     await dialog.getByRole('button', { name: 'Replace' }).click()
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
     await expect(page.getByRole('dialog')).not.toContainText('not being stored')
     expect(await readFile(page, 'coconut.nxsp')).toEqual([1, 2, 3])
 })
@@ -221,7 +221,7 @@ test('Open the Other Version, then Save in its prompt, gives the conflict dialog
     await page.waitForTimeout(350)
     await prompt.getByRole('button', { name: 'Save', exact: true }).click()
     // The prompt's Save runs after the Save that raised the first dialog has finished.
-    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
     await page.waitForTimeout(350)
     await page.getByRole('button', { name: 'Save as a Separate File…' }).click()
     await expect(notice(page).filter({ hasText: /Saved to coconut \(Chrome, / })).toBeVisible()
@@ -234,7 +234,7 @@ test('Open the Other Version says when the file cannot be read', async ({ page }
     await removeFile(page, 'coconut.nxsp')
     await dialog.getByRole('button', { name: 'Open the Other Version' }).click()
     await expect(
-        notice(page).filter({ hasText: '"coconut.nxsp" could not be read.' }),
+        notice(page).filter({ hasText: '“coconut.nxsp” could not be read.' }),
     ).toBeVisible()
 })
 
@@ -268,7 +268,7 @@ test('the Replace guard: a file holding the base this browser lost rows of is ne
     await edit(next, 11)
     await pressSave(next)
     const dialog = next.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     // A thinned root is a flag the chain can't show it holds: the uncertain reason. Rows gone from
     // the chain give the definite one (`replaceDecision` units).
     await expect(dialog).toContainText(
@@ -312,7 +312,7 @@ test('Replace is offered for a file on disk with a newer patch, and keeps it fir
     await edit(page, 2)
     await pressSave(page)
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     await page.waitForTimeout(350)
     // A newer patch is not "This file was created by a newer version": nothing it holds is unread.
     await expect(dialog.getByRole('button', { name: 'Replace' })).toBeEnabled()
@@ -356,7 +356,7 @@ for (const reload of [false, true])
         await expect(
             notice(b).filter({
                 hasText:
-                    '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+                    '“coconut.nxsp” is open in another tab or window, so this is a separate copy.',
             }),
         ).toBeVisible()
         expect((await sessionOf(b)).file).toBeUndefined()
@@ -383,6 +383,6 @@ for (const reload of [false, true])
         await edit(a, 9)
         await pressSave(a)
         await expect(saveDialog(a)).toContainText(
-            '"coconut.nxsp" was replaced from another tab or window.',
+            '“coconut.nxsp” was replaced from another tab or window.',
         )
     })

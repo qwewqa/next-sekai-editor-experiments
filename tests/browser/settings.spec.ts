@@ -885,7 +885,7 @@ test('on/off fields are switches named by their row', async ({ page }) => {
 })
 
 test('a Toolbar tool is named by what pressing it does', async ({ page }) => {
-    const name = 'Remove "Save" from Toolbar'
+    const name = 'Remove “Save” from Toolbar'
     const tool = page.getByRole('dialog').getByRole('button', { name, exact: true })
     await expect(tool).toHaveAttribute('title', name)
     const has = () =>

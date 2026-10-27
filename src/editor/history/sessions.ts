@@ -27,7 +27,7 @@ export type ChainRow = {
 }
 
 /**
- * A chain this tab marked for Delete, standing where its row was: "Deleted "X"" with Undo, or,
+ * A chain this tab marked for Delete, standing where its row was: "Deleted “X”" with Undo, or,
  * once the sweep has removed it, that it can no longer be undone.
  */
 export type DeletedRow = {
