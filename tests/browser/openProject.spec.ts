@@ -455,6 +455,66 @@ test('a reload mid-import resumes it from the bound handle', async ({ page }) =>
     ])
 })
 
+// The damage comes after the startup gate lifts, while the first-visit dialog is open on a load
+// where it is due: it closes the dialog, and the card says so.
+test('damage a resumed import finds closes the first-visit dialog, and its card shows', async ({
+    page,
+}) => {
+    test.skip(memoryFiles(page), 'the held read needs the OPFS handle')
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await damagedBytes())
+    // No batch runs before the reload, so the reload finds the whole import pending.
+    await holdImport(page)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    const session = await sessionOf(page)
+    const chain = await chainOf(page, session.sessionId)
+    const token = (await handleToken(page, chain.chainId as string, 'file'))!
+    // The resume reads the file only once the spec lets it, so the damage comes after the dialog
+    // has opened, as on a slow disk.
+    await page.addInitScript(
+        ({ token, name }) => {
+            let release = () => {}
+            const held = new Promise<void>((resolve) => (release = resolve))
+            ;(window as unknown as { releaseFile: () => void }).releaseFile = release
+            const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
+            const handle = {
+                kind: 'file',
+                name,
+                getFile: async () => {
+                    await held
+                    return (await opfs()).getFile()
+                },
+                queryPermission: () => Promise.resolve('granted'),
+                isSameEntry: (other: { name?: string }) => Promise.resolve(other.name === name),
+            }
+            window.nseTestHandles = new Map([[token, handle as unknown as FileSystemFileHandle]])
+        },
+        { token, name: 'coconut.nxsp' },
+    )
+    // The next load has no first-visit mark, so the dialog is due.
+    await page.addInitScript(() => {
+        localStorage.removeItem('sonolus-next-sekai-editor.firstVisitShown')
+    })
+    await page.reload()
+    await waitForStartup(page, { firstVisit: true })
+    const dialog = page.getByRole('dialog', { name: 'Next SEKAI Editor' })
+    await expect(dialog).toBeVisible()
+    await page.evaluate(() => (window as unknown as { releaseFile: () => void }).releaseFile())
+    await imported(page)
+    await expect(dialog).toHaveCount(0)
+    await expect(
+        page.locator('.notification-pill').filter({
+            hasText: 'The history in coconut.nxsp is damaged. Saving will create a separate file.',
+        }),
+    ).toBeVisible()
+    expect(
+        await page.evaluate(() =>
+            localStorage.getItem('sonolus-next-sekai-editor.firstVisitShown'),
+        ),
+    ).toBe('1')
+})
+
 test('a reload reads no stored handle at startup; a Save or an Export reads it after', async ({
     page,
 }) => {

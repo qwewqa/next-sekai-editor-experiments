@@ -161,12 +161,22 @@ const ARM_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const
 const listenOptions = { capture: true, passive: true } as const
 let armedAt: number | undefined
 const armListeners = new Set<() => void>()
+let armingHeld = false
 
 const arm = (event: Event) => {
-    if (!event.isTrusted || document.visibilityState !== 'visible') return
+    // While held the listeners stay, for the input after the release.
+    if (armingHeld || !event.isTrusted || document.visibilityState !== 'visible') return
     armedAt = performance.now()
     for (const type of ARM_EVENTS) window.removeEventListener(type, arm, listenOptions)
     for (const listener of [...armListeners]) listener()
+}
+
+/**
+ * While held, no input arms the visit: on a load where the first-visit dialog is due, from
+ * module evaluation until the dialog is skipped or closed.
+ */
+export const holdArming = (held: boolean) => {
+    armingHeld = held
 }
 
 /** When the visit was armed, by `performance.now()`; undefined until then. */

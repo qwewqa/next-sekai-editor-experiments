@@ -91,6 +91,19 @@ test('a count stops at the cap however many bumps follow', () => {
     assert.equal(tally.collect().counts.get('usage.save.key'), 9999)
 })
 
+test('while arming is held, turning off still discards what was counted', () => {
+    tally.holdArming(true)
+    tally.enable()
+    tally.bump('notices.error')
+    tally.record('check', { outcome: 'ok' })
+    tally.disable()
+    tally.holdArming(false)
+    const { counts, recorded } = tally.collect()
+    assert.equal(counts.size, 0)
+    assert.equal(recorded.length, 0)
+    assert.equal(tally.armedTime(), undefined)
+})
+
 test('the first trusted input on a visible page arms the visit, and the listener goes', () => {
     assert.equal(tally.armedTime(), undefined)
     let armed = 0
@@ -108,6 +121,13 @@ test('the first trusted input on a visible page arms the visit, and the listener
     input({ isTrusted: true } as Event)
     page.visibilityState = 'visible'
     assert.equal(armed, 0, 'an untrusted input, and one while hidden')
+    // While the first-visit dialog holds it, an input arms nothing, and the listeners stay.
+    tally.holdArming(true)
+    input({ isTrusted: true } as Event)
+    assert.equal(armed, 0, 'an input while held')
+    assert.equal(tally.armedTime(), undefined)
+    assert.equal(listeners.size, 4)
+    tally.holdArming(false)
     input({ isTrusted: true } as Event)
     assert.equal(armed, 1)
     assert.notEqual(tally.armedTime(), undefined)

@@ -15,6 +15,8 @@ const slots = defineSlots<{
     default(): unknown
     /** Replaces the visible title, e.g. with tabs; the title still names the dialog. */
     header?(): unknown
+    /** Buttons pinned under the body, which stay in view while the body scrolls. */
+    footer?(): unknown
 }>()
 
 // Only the editor's tool-modal host provides a title; its panels use the
@@ -65,5 +67,8 @@ const titleId = useId()
     </div>
     <div v-else v-scroll-edges class="relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
         <slot />
+    </div>
+    <div v-if="slots.footer" class="flex shrink-0 justify-end gap-2 px-4 pb-4" data-modal-footer>
+        <slot name="footer" />
     </div>
 </template>

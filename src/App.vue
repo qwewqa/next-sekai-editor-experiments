@@ -26,6 +26,9 @@ import { settings } from './settings'
 import { startupGate } from './startup/gate'
 import SafeModeBar from './startup/SafeModeBar.vue'
 import StartupGate from './startup/StartupGate.vue'
+// Last: on a load where the first-visit dialog is due, it holds the usage statistics' arming from
+// here, before index.ts starts them.
+import './editor/firstVisit/firstVisit'
 
 watch(
     () => settings.locale,

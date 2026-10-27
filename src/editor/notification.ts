@@ -10,7 +10,7 @@ import { PRODUCT_NAME } from '../product'
 import { startupGate } from '../startup/gate'
 import { interpolate } from '../utils/interpolate'
 import { formatCount } from '../utils/size'
-import { noticeDuration, RESUME_MIN_MS } from './noticeTiming'
+import { createStartupWindow, noticeDuration, RESUME_MIN_MS } from './noticeTiming'
 
 /** A card's one button. */
 export type NoticeAction = { label: () => string; run: () => void }
@@ -205,13 +205,10 @@ const pillLines = (): NoticeLine[] => {
     })
 }
 
-/** How long after the startup gate lifts its start-up toast may still become the start-up card. */
-const STARTUP_WINDOW_MS = 12_000
-
-// When the gate lifted, which starts the window: a slow startup does not use it up.
-let gateLiftedAt: number | undefined
+// The window starts when the gate lifts: a slow startup does not use it up.
+const startupWindow = createStartupWindow()
 const noteGateLifted = () => {
-    gateLiftedAt ??= performance.now()
+    startupWindow.start(performance.now())
 }
 if (startupGate.phase === 'done') noteGateLifted()
 
@@ -231,7 +228,15 @@ export const startupNoticeCurrent = () =>
     noticeCard.value?.startup === true ||
     (notification.value.startup === true &&
         !workedSinceLoad &&
-        (gateLiftedAt === undefined || performance.now() - gateLiftedAt < STARTUP_WINDOW_MS))
+        startupWindow.isOpen(performance.now()))
+
+/**
+ * Keeps the start-up toast current while the first-visit dialog covers the page; at the release
+ * its 12 s start, since the page only then becomes usable.
+ */
+export const holdStartupWindow = (held: boolean) => {
+    startupWindow.hold(held, performance.now())
+}
 
 // The start-up notice, not yet replaced by another: what the gate's lifting shows again.
 const startupKept = () => notification.value.startup === true || noticeCard.value?.startup === true

@@ -107,15 +107,27 @@ onUnmounted(() => {
     window.removeEventListener('keydown', onKeyDown, true)
 })
 
+// Ids for what describes a dialog, which has none of its own.
+let describedId = 0
+
 const vOpen = {
     mounted(el: HTMLDialogElement) {
         const title = el.querySelector('[data-modal-title]')
         if (title) el.setAttribute('aria-labelledby', title.id)
-        // The body's primary action always takes focus, as a confirm button must.
-        const body = [...el.children]
-            .filter((child) => !child.hasAttribute('data-notice-layer'))
-            .pop()
-        const primary = body?.querySelector<HTMLElement>('[data-autofocus]')
+        const described = [...el.querySelectorAll<HTMLElement>('[data-modal-description]')]
+        if (described.length)
+            el.setAttribute(
+                'aria-describedby',
+                described
+                    .map((element) => (element.id ||= `modal-description-${describedId++}`))
+                    .join(' '),
+            )
+        // The primary action always takes focus, as a confirm button must, in the body or a footer.
+        const content = [...el.children].filter((child) => !child.hasAttribute('data-notice-layer'))
+        const body = content.filter((child) => !child.hasAttribute('data-modal-footer')).pop()
+        const primary = content
+            .map((child) => child.querySelector<HTMLElement>('[data-autofocus]'))
+            .find((found) => found !== null)
         const focusDialog = byPointer && !primary
         // Firefox hides a scripted focus ring after an earlier pointer open.
         const focusVisible = !byPointer

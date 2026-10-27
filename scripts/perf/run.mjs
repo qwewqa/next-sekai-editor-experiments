@@ -1173,7 +1173,7 @@ const openChart = async (page, group) => {
         () =>
             new Promise((resolve) =>
                 requestAnimationFrame(() =>
-                    resolve(document.querySelector('dialog[data-first-visit]') !== null),
+                    resolve(document.querySelector('[data-first-visit]') !== null),
                 ),
             ),
     )

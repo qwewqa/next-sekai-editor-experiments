@@ -129,13 +129,17 @@ export const withFirstVisitMark = async (context: BrowserContext) => {
  */
 const expectNoFirstVisit = async (page: Page) => {
     const state = await page.evaluate(async () => {
-        const url = performance
-            .getEntriesByType('resource')
-            .map((entry) => entry.name)
-            .find((name) => new URL(name).pathname === '/src/editor/firstVisit/firstVisit.ts')
-        // STAGE1: the module arrives with the dialog.
-        if (url === undefined) return 'notDue'
-        const { firstVisitState } = (await import(url)) as { firstVisitState: { value: string } }
+        // The app's own copy of the module, under the URL it was loaded by.
+        const url =
+            performance
+                .getEntriesByType('resource')
+                .map((entry) => entry.name)
+                .find(
+                    (name) => new URL(name).pathname === '/src/editor/firstVisit/firstVisit.ts',
+                ) ?? '/src/editor/firstVisit/firstVisit.ts'
+        const { firstVisitState } = (await import(
+            url
+        )) as typeof import('../../src/editor/firstVisit/firstVisit')
         return firstVisitState.value
     })
     if (state !== 'notDue' && state !== 'done')
@@ -205,14 +209,10 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
     if (window.nseStartupError) throw new Error(`Startup failed: ${window.nseStartupError}`)
     // A spec that forgets the first-visit mark fails here, not behind the dialog.
     if (!held && !/"fail"/.test(flags)) {
-        // STAGE1: the module arrives with the dialog.
-        const state = moduleUrls.has('/src/editor/firstVisit/firstVisit.ts')
-            ? (
-                  await appImport<{ firstVisitState: { value: string } }>(
-                      '/src/editor/firstVisit/firstVisit.ts',
-                  )
-              ).firstVisitState.value
-            : 'notDue'
+        const { firstVisitState } = await appImport<
+            typeof import('../../src/editor/firstVisit/firstVisit')
+        >('/src/editor/firstVisit/firstVisit.ts')
+        const state = firstVisitState.value
         if (state !== 'notDue' && state !== 'done')
             throw new Error(
                 `The first-visit dialog is ${state}: seed sonolus-next-sekai-editor.firstVisitShown`,
