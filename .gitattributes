@@ -19,3 +19,4 @@ tests/zip/plan-conformance-v1/** -text
 infra/** text eol=lf
 scripts/ci/** text eol=lf
 tests/fonts/selawik/*.ttf binary
+tests/fonts/inter/*.ttf binary

@@ -282,12 +282,24 @@ test('a day with a step not stored yet can be picked', async ({ page }) => {
     await expect(selected(page)).toContainText('Fresh 1')
 })
 
-// The config gives every context a zone, which a second override cannot replace: this context has none.
+// The config gives every context a zone, which a second override cannot replace: this context has
+// none. Its page starts in UTC, set before the app loads, and the test changes the zone from the same
+// session.
+const zones = new WeakMap<Page, (zone: string) => Promise<unknown>>()
 const unzoned = test.extend({
     context: async ({ browser }, use) => {
         const context = await browser.newContext({ timezoneId: undefined })
         await use(context)
         await context.close()
+    },
+    page: async ({ context }, use) => {
+        const page = await context.newPage()
+        const session = await context.newCDPSession(page)
+        const set = (timezoneId: string) =>
+            session.send('Emulation.setTimezoneOverride', { timezoneId })
+        await set('UTC')
+        zones.set(page, set)
+        await use(page)
     },
 })
 
@@ -313,10 +325,7 @@ unzoned(
         // A zone change drops the list until the days are read for the new zone.
         const hold2 = await holdWorker(page, 'readTimelineIndex')
         try {
-            const cdp = await page.context().newCDPSession(page)
-            await cdp.send('Emulation.setTimezoneOverride', {
-                timezoneId: 'Pacific/Kiritimati',
-            })
+            await zones.get(page)!('Pacific/Kiritimati')
             await page.evaluate(() => window.dispatchEvent(new Event('focus')))
             await hold2.reached()
             await expect(goTo(page).locator('[data-goto-loading]').first()).toBeVisible()

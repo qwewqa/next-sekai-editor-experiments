@@ -11,3 +11,7 @@ The fonts are for tests only. They are never bundled, so they are not in `THIRD_
 in any context it creates. Canvas labels read the page's computed font, so they follow. CJK text has no glyphs in
 Selawik and falls back to the machine's own fonts, so specs on those languages check fit and overflow, never exact
 widths or wrap points. `tests/browser/testEnvironment.spec.ts` checks that the font is the one drawn.
+
+`inter/` holds Inter 4.1 Regular (<https://github.com/rsms/inter>, SIL Open Font License 1.1, `inter/OFL.txt`), subset to
+basic Latin with its `tnum` feature kept. It has proportional digits by default and tabular digits on request, which
+`selectionProperties.spec.ts` needs. That spec loads it itself.

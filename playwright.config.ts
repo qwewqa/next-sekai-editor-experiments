@@ -21,11 +21,6 @@ const previewHostSpecs = ['preview.spec.ts', 'previewSelection.spec.ts']
 type CiExclusion = { spec: string; title?: string; project?: string; reason: string }
 const ciExclusions: CiExclusion[] = [
     {
-        spec: 'selectionProperties.spec.ts',
-        title: 'coverage keeps its width as only its digits change',
-        reason: 'the Linux fonts have no tabular digits',
-    },
-    {
         spec: 'preview.spec.ts',
         title: 'same-beat elevation connectors keep identical geometry',
         project: 'chromium-worker',

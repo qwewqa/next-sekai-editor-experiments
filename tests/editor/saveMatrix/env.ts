@@ -80,6 +80,10 @@ Object.assign(globalThis, {
     }),
 })
 
+// The catalogue below holds English only, so the default language must be English whatever the
+// machine's language is: src/i18n/locale.ts reads it from the browser.
+Object.defineProperty(globalThis.navigator, 'language', { value: 'en-US', configurable: true })
+
 const here = (path: string) => new URL(path, import.meta.url).href
 const src = (path: string) => here(`../../../src/${path}`)
 

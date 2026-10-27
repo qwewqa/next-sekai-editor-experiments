@@ -308,13 +308,14 @@ test.describe('mixed values', () => {
         expect(found).toEqual({ en: [], fr: [], tr: [], ko: [] })
     })
 
-    test('coverage keeps its width as only its digits change, whatever the font', async ({
-        page,
-    }) => {
-        // Fonts whose default digits differ in width, as Segoe UI Variable's do, or kern, as Arial's.
+    test('coverage keeps its width as only its digits change', async ({ page }) => {
+        // A font whose default digits differ in width and which has tabular digits (tests/fonts/inter),
+        // so the test does not depend on the fonts a machine has.
         await page.addStyleTag({
-            content: 'body { font-family: "Segoe UI Variable Text", Arial !important }',
+            content: `@font-face { font-family: 'Inter Test'; src: url('/tests/fonts/inter/Inter-Regular-subset.ttf') }
+                body { font-family: 'Inter Test' !important }`,
         })
+        await page.evaluate(() => document.fonts.load("16px 'Inter Test'", '0123456789'))
         const chip = selection(page)
             .locator('.form-field')
             .filter({ has: page.getByText('Attached', { exact: true }) })
@@ -328,7 +329,10 @@ test.describe('mixed values', () => {
                     return element.getBoundingClientRect().width
                 })
             }, numeric)
-        test.skip(new Set(await widths('normal')).size === 1, 'No font with proportional digits')
+        expect(
+            new Set(await widths('normal')).size,
+            'proportional digits to start from',
+        ).toBeGreaterThan(1)
         expect(new Set(await widths('')).size).toBe(1)
     })
 
