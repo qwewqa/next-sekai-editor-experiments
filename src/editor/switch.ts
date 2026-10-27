@@ -29,6 +29,12 @@ import { withSwitchRequest, type SwitchRequest } from './switchRequest'
 // switch runs.
 
 /**
+ * How long a switch waits for the first write of a visit before it asks. A longer wait could
+ * outlast the click that Open's file picker needs.
+ */
+export const FIRST_WRITE_WAIT_MS = 1000
+
+/**
  * Whether leaving the open session loses work: it has changes no file holds, and it
  * isn't durably stored. The journal is written first, as every switch does.
  */
@@ -39,8 +45,17 @@ const wouldLoseWork = async () => {
     const edited = session ? session.edited && isDirty.value : isDirty.value
     if (!edited) return false
     // The first write of a visit is due about a second after the first edit, and the switch
-    // flushes strictly anyway: only a write that does not happen asks.
-    if (session) await flushFirstWrite()
+    // flushes strictly anyway: only a write that does not happen in time asks.
+    if (session) {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        await Promise.race([
+            flushFirstWrite(),
+            new Promise<void>((resolve) => {
+                timer = setTimeout(resolve, FIRST_WRITE_WAIT_MS)
+            }),
+        ])
+        clearTimeout(timer)
+    }
     // A file that holds the work (a Save, an open) is as good as a store; an unconfirmed download is not.
     return !(session && isDurablyStored()) && hasChangesNotInFile()
 }

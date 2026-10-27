@@ -1123,6 +1123,53 @@ test.describe('a switch right after the first edit of a visit', () => {
         await confirmWhenReady(prompt(page).getByRole('button', { name: 'Cancel' }), prompt(page))
         expect(await lifeOf(page)).toBe(990)
     })
+
+    test('Open right after the first edit reaches the file picker without a prompt', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            const w = window as unknown as { pickerCalls: number; showOpenFilePicker: () => never }
+            w.pickerCalls = 0
+            w.showOpenFilePicker = () => {
+                w.pickerCalls++
+                throw new DOMException('Cancelled', 'AbortError')
+            }
+        })
+        await visit(page)
+        await page.evaluate(async () => {
+            const { pushState, state } =
+                (await import('/src/history/index.ts')) as typeof import('../../src/history')
+            const { initialLife: operation } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            pushState(operation(state.value.initialLife, 990), {
+                ...state.value,
+                initialLife: 990,
+            })
+        })
+        await run(page, 'open')
+        expect(
+            await page.evaluate(() => (window as unknown as { pickerCalls: number }).pickerCalls),
+        ).toBe(1)
+        await expect(prompt(page)).toHaveCount(0)
+    })
+
+    test('a first write that stays pending asks after about a second, and Cancel stays', async ({
+        page,
+    }) => {
+        await visit(page)
+        await page.evaluate(() => {
+            window.nseFlushTest!.stall = true
+        })
+        const began = Date.now()
+        expect(await editThenNew(page)).toBe(false)
+        await expect(prompt(page)).toBeVisible()
+        expect(Date.now() - began).toBeLessThan(5000)
+        await confirmWhenReady(prompt(page).getByRole('button', { name: 'Cancel' }), prompt(page))
+        expect(await lifeOf(page)).toBe(990)
+        await page.evaluate(() => {
+            window.nseFlushTest!.stall = false
+        })
+    })
 })
 
 test.describe('the not-stored prompt', () => {
