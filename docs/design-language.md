@@ -81,11 +81,17 @@ Icons are Font Awesome fills (`fill-current`): `size-4` for actions and rows, an
 
 Colour, elevation, hover, press and focus of every button family come from the recipes in `src/controls.css`, described in [color-system.md](color-system.md) section 6. This section is the geometry that stays at the call site.
 
-- **Raised button** (`btn btn-secondary`, `btn-primary`, `btn-danger`, `btn-danger-quiet`): `h-9 min-w-24 max-w-full truncate rounded-full px-4`, normal weight, 16 px (14 px in a strip). Dialog footers are `flex justify-end gap-2`, the one filled button last and focused (`data-autofocus`, see `ConfirmModal.vue`). Weight stays normal: bold is for titles, band labels, tabs and section headings.
+- **Raised button** (`btn btn-secondary`, `btn-primary`, `btn-danger`, `btn-danger-quiet`): `h-9 min-w-24 max-w-full truncate rounded-full px-4`, normal weight, 16 px (14 px in a strip). Dialog footers are `flex justify-end gap-2`, the one filled button last and focused (`data-autofocus`, see `ConfirmModal.vue`). A footer that must stay in view while a long body scrolls goes in `BaseModal`'s `footer` slot (`px-4 pb-4`, outside the scroller), as in the first-visit dialog. Weight stays normal: bold is for titles, band labels, tabs and section headings.
 - **Ghost** (`ghost`): no face until pointed at. On a band it is `ghost ghost-band`, on the dark chrome `ghost ghost-chrome`. `BaseModal`'s close is the pattern: `ghost ghost-band size-9 rounded-full`.
 - **On/off** (`btn-toggle` with `aria-pressed`): mint and flat when on. The toolbar tool in use and Show Edits are examples.
 - **Floating pill with an icon:** `.manager-add` is `btn btn-secondary rounded-full p-0.5 pr-4`, the icon in a 36 px slot.
 - **Fields** (`field`): raised like a secondary button, `rounded-full`; `aria-invalid` adds a red ring that is separate from the focus ring.
+- **Info button** (`FieldInfo.vue`): the ⓘ after a described setting's label, `ghost holds-open focus-out size-6 rounded-full text-fg/70` with a 44 px `::before` target.
+  - It sits after the label's text, so the text wraps 28 px earlier and the control keeps its column.
+  - Hover or keyboard focus shows the description after 400 ms. A click, tap, Enter or Space pins it.
+  - The bubble is the menu surface (`.popup-surface`, `px-3 py-2 text-sm`, at most 20 rem), teleported into the dialog. It goes under the whole field, or above it when there is no room below, so it never covers its own row. When it fits neither side, it takes the roomier one and scrolls inside, by touch, wheel or the scroll keys on the ⓘ.
+  - A press, drag or scroll elsewhere closes it, as do Escape and opening another ⓘ.
+  - The full text is also the field's screen-reader description.
 - **Disabled:** `opacity-40` with no pointer events (the recipes do this), or `aria-disabled` with the same opacity when the control should stay focusable.
 - **Hover is pointer-only.** Tailwind is configured with `hoverOnlyWhenSupported` and the recipes sit under `(hover: hover) and (pointer: fine)`, so a tap leaves no hover look behind.
 - **Focus** is one rule: a 2 px ring drawn 2 px inside the face in the face's own ink, so the face shows on both sides of it. Faces under 32 px use `focus-out`; rows and menu rows use `focus-edge`. Outlines rest transparent so forced colours can paint them; `controls.css` and `index.css` thicken them to 4 px there. Do not suppress an outline without replacing it.
@@ -245,6 +251,12 @@ Section 8 describes the notice card and the quick toast. This part says which on
 - **Empty is not failed and not loading.** A list that can be empty has its own line for it, apart from its failure line (with Try Again) and its loading form (engineering principle 4). A list that stops short because an older page failed to load ends in the failure line with Try Again, rather than stopping at the last row with no line.
 - A fragment names what is missing and has no full stop: "No stored items", "No changes yet". A full sentence has one: "This file has no skins."
 - The line is `text-fg/80`: `text-sm` in a list pane, the dialog's body size in a dialog. In a list that fills its pane, centre it in a block of fixed height (Timeline, Recent Sessions). In a dialog, start it at the text column like the lines around it (Preview Assets).
+
+### The first-visit dialog
+
+- The first-visit dialog (`src/editor/firstVisit/`) shows the version, Language, Theme, Show Quick Scroll Zone on touch screens, and Send Usage Statistics with its note and the privacy link. It shows once per browser.
+- It is a notice, not a consent prompt. Its one button is Close, and the switch keeps its value.
+- It never opens over the startup gate, or over a start-up card with a line the user may need. Only Continued and the in-app browser line may stay on the card under it. Any other load notice defers the dialog to a later load, or closes it if the notice comes while it is open. The card then shows for its full time.
 
 ### Confirmations
 

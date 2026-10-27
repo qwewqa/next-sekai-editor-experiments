@@ -5,6 +5,8 @@
 - Sonolus Next SEKAI Editor is now named “Next SEKAI Editor”.
 - (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.
 - (Web) By default, the editor now sends usage statistics unless Do Not Track or Global Privacy Control is enabled in your browser. To stop sending them, turn off Settings › About › Send Usage Statistics. The privacy page lists what is sent and how long it is kept.
+- (Web) The first time it can, the editor shows a window with the version, Language, Theme, Show Quick Scroll Zone on touch screens, and the Send Usage Statistics setting with a link to the privacy page. When this window is shown, no usage statistics are sent until it is closed and you use the editor.
+- Some settings now have an info button that shows what the setting does.
 - Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open… (O) opens project files.
 - Export Level Data… (Shift+P) exports level data for Sonolus.
 - (Web) In desktop Chrome and Edge, and in Chrome 132 or later on Android, saving again updates the project file and exporting again updates the exported file. Other browsers download a new file each time.
