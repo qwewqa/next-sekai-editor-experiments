@@ -76,7 +76,7 @@ const isInToolDialog = (element: Element | null) => !!element?.closest('[data-to
 const movesFocus = (element: Element, key: string) =>
     /^(Arrow|Home$|End$)/.test(key) && element.matches('input[type="radio"], [role="toolbar"] *')
 
-// Only the commands Help lists repeat when held; the rest act once per press.
+// Scrolls, zooms, undo and redo, and value steps repeat when held; other commands act once per press.
 export const repeatsWhenHeld = new Set<CommandName>([
     'scrollLeft',
     'scrollRight',

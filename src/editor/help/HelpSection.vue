@@ -1,11 +1,25 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { settings } from '../../settings'
 import { commands, type CommandName } from '../commands'
+import { formatShortcut, isPunctuationShortcut } from '../controls/bindings'
+import { isCoarsePointer } from '../workspace'
 
-defineProps<{
-    title: string
-    /** The toolbar command this section explains, shown by its icon. */
+const props = defineProps<{
+    /** Defaults to the name of the command. */
+    title?: string
+    /** The toolbar command this section explains, shown by its icon and shortcut. */
     command?: CommandName
 }>()
+
+const text = computed(() => props.title ?? (props.command && commands[props.command].title()))
+
+// A coarse pointer has no keyboard to press the shortcut on, as in the toolbar.
+const shortcut = computed(() =>
+    props.command && !isCoarsePointer.value
+        ? formatShortcut(settings.keyboardShortcuts[props.command])
+        : undefined,
+)
 </script>
 
 <template>
@@ -25,7 +39,18 @@ defineProps<{
                     v-bind="commands[command].icon.props"
                 />
             </span>
-            {{ title }}
+            {{ text }}
+            <!-- Right-aligned and styled as in the toolbar flyout and the context menu. -->
+            <kbd
+                v-if="shortcut"
+                class="ml-auto font-sans"
+                :class="
+                    isPunctuationShortcut(shortcut)
+                        ? 'text-sm font-bold leading-4'
+                        : 'text-xs font-normal opacity-80'
+                "
+                >{{ shortcut }}</kbd
+            >
         </h2>
 
         <ul class="mt-2 list-outside list-disc pl-5">

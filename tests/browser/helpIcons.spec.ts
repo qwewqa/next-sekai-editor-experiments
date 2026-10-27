@@ -22,21 +22,17 @@ test('Help marks each tool section with its toolbar icon', async ({ page }) => {
     )
     const iconed = icons.filter(([, icon]) => icon).map(([title]) => title)
     expect(iconed).toEqual([
-        'Select Tool',
-        'Eraser Tool',
-        'Brush Tool',
-        'Paste Tool',
-        'Note Tool',
-        'Slide Tool',
-        'Split Slide',
-        'Generate Slide Notes Tool',
-        'BPM Tool',
-        'Time Scale Tool',
-        'Camera Event Tool',
-        'Stage Mask Event Tool',
-        'Stage Pivot Event Tool',
-        'Stage Style Event Tool',
-        'Stage Transform Event Tool',
+        'Select',
+        'Eraser',
+        'Brush',
+        'Paste',
+        'Generate Slide Notes',
+        'Note',
+        'Slide',
+        'BPM',
+        'Time Scale',
+        'Event',
+        'Offset',
     ])
     // Wide glyphs such as BPM fit the chip, so every iconed title starts at one edge.
     const starts = await headings.evaluateAll((elements) =>
@@ -44,13 +40,17 @@ test('Help marks each tool section with its toolbar icon', async ({ page }) => {
             .filter((heading) => heading.querySelector(':scope > [aria-hidden="true"]'))
             .map((heading) => {
                 const range = document.createRange()
-                range.selectNodeContents(heading.lastChild!)
+                // The title is the heading's text node; a shortcut follows it in a <kbd>.
+                const title = [...heading.childNodes].find(
+                    (node) => node.nodeType === Node.TEXT_NODE && node.textContent!.trim(),
+                )!
+                range.selectNodeContents(title)
                 return range.getBoundingClientRect().left
             }),
     )
     expect(Math.max(...starts) - Math.min(...starts)).toBeLessThanOrEqual(0.5)
-    // Input sections have no single tool.
+    // Getting Started, Mouse and Keyboard have no single tool.
     expect(icons.slice(0, 3).every(([, icon]) => !icon)).toBe(true)
-    // The icon is decorative; the heading keeps its name.
-    await expect(dialog.getByRole('heading', { name: 'BPM Tool', exact: true })).toBeVisible()
+    // The icon is decorative; the heading keeps its name, followed by the shortcut.
+    await expect(dialog.getByRole('heading', { name: /^BPM( |$)/ })).toBeVisible()
 })
