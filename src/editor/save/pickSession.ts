@@ -17,7 +17,7 @@ import { hasActivation, reportsActivation } from '../../platform/detect'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
 import { savePoint } from '../../platform/testPause'
 import { exportMemory, sameEntry, type OpenedSource } from '../commands/exportLevel/memory'
-import { bindingHandle, environment, quickBinding, type Binding, type Env } from './binding'
+import { bindingHandle, quickBinding, type Binding, type Env } from './binding'
 import type { RefusedReason } from './dialogs'
 import { heldHandle, savedState, withBind, type SaveMarker } from './env'
 import { pause, PREPARING_MS } from './imports'
@@ -513,10 +513,8 @@ export const withPickSession = <T>(
                         identity,
                         pre: identity.kind === 'own' ? slot : undefined,
                         reserve: async () => {
-                            if (!env) return
-                            await commitFirst(env)
                             // A fork leaves the session another one: nothing is written for it.
-                            if (environment()?.session !== env.session) return
+                            if (!env || !(await commitFirst(env))) return
                             return attempt.reserve(false)
                         },
                         write: async (request) => {

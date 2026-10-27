@@ -31,6 +31,7 @@ const { liveState, resetStates } = await import('../../../src/history/stack')
 const { chartState } = await import('../chartFixture')
 const { initialStep } = await import('../../helpers/historySteps')
 const { readValue } = await import('../../../src/local/storedRead')
+const { fromHex16 } = await import('../../../src/local/hash')
 const { clearExportMemory, exportMemory, setExportPersister, setExportTargetReader } =
     await import('../../../src/editor/commands/exportLevel/memory')
 const exportPick = await import('../../../src/editor/commands/exportLevel/targetLock')
@@ -87,6 +88,8 @@ export type Setup = {
     storage?: 'holds' | 'lacks'
     /** `ahead`: the own file changed on disk since the binding. */
     ownDisk?: 'base' | 'ahead'
+    /** The binding matches the live chart, so nothing changed since own.nxsp was saved. */
+    unchanged?: boolean
     /** This tab holds the own handle in memory (else it is read from storage, as after a reload). */
     held?: boolean
     /** Read permission on the own handle. */
@@ -179,6 +182,7 @@ const createWorld = async (setup: Setup = {}) => {
         own: setup.own ?? 'bound',
         storage: setup.storage ?? 'lacks',
         ownDisk: setup.ownDisk ?? 'base',
+        unchanged: setup.unchanged ?? false,
         held: setup.held ?? true,
         read: setup.read ?? 'granted',
         other: setup.other ?? true,
@@ -707,7 +711,7 @@ const createWorld = async (setup: Setup = {}) => {
                 name: OWN,
                 event: 'saved',
                 at: 1000,
-                hash: new Uint8Array(16).fill(7),
+                hash: s.unchanged ? fromHex16(rootOf(liveState.value)) : new Uint8Array(16).fill(7),
                 disk,
                 entry: {
                     sessionId: 'session-old',
@@ -996,9 +1000,9 @@ const createWorld = async (setup: Setup = {}) => {
         setup0: s,
     }
     // The real storage handlers under the record and handle methods; the maps above are the view.
-    await useRealDoor(world, kept)
+    const door = await useRealDoor(world, kept)
     ownSession.chain = chains.get(ownSession.chainId)
-    return world
+    return Object.assign(world, { door })
 }
 
 export type World = Awaited<ReturnType<typeof createWorld>>

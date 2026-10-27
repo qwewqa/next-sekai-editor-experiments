@@ -354,6 +354,52 @@ test('continuation keeps its own rule and is never a peek target', () => {
     assert.ok(!selectableRows(rows).some((row) => row.id === `s:${divider.seq}`))
 })
 
+test("a visit stored with nothing after its continuation has no divider; the top one and an open's stay", () => {
+    const continued = (sessionId: string) =>
+        entry(
+            {
+                kind: 'continue',
+                operation: nativeOperation(
+                    { id: 'nse.continue', data: { fromTime: noon - 99 } },
+                    'Continued',
+                ),
+            },
+            noon,
+            { sessionId },
+        )
+    const opened = (sessionId: string) =>
+        entry({ kind: 'continue', operation: originOperation('import') }, noon, { sessionId })
+    const at = (sessionId: string) => ({ sessionId })
+    const open = continued('open')
+    const nothing = continued('nothing')
+    const edited = continued('edited')
+    const file = opened('file')
+    // Oldest first: a file opened and never edited, a visit with an edit, a visit that only
+    // stored its continuation, and the open visit, not edited yet.
+    const chain = newestFirst(
+        entry(add(), noon, at('file')),
+        file,
+        edited,
+        entry(add(), noon, at('edited')),
+        nothing,
+        open,
+    )
+    const dividers = (rows: Row[]) =>
+        rows.flatMap((row) => (row.type === 'divider' ? [row.entry.sessionId] : []))
+    assert.deepEqual(dividers(buildRows(chain, options)), ['open', 'edited', 'file'])
+    assert.deepEqual(dividers(buildRows(chain, { ...options, filter: 'saves' })), [
+        'open',
+        'edited',
+        'file',
+    ])
+    // After a jump the window's first divider stays, because its newer entries are not loaded.
+    assert.deepEqual(dividers(buildRows(chain.slice(1), { ...options, gap: 3 })), [
+        'nothing',
+        'edited',
+        'file',
+    ])
+})
+
 test('jump gaps are passive and do not fabricate entries before a loaded window', () => {
     const rows = buildRows([entry(add())], { ...options, gap: 1206 })
     assert.deepEqual(

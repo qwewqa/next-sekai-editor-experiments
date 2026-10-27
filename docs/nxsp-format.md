@@ -589,7 +589,7 @@ A `kept: false` row whose root is present may still be decoded; the editor label
 
 ### 10.5 What the editor shows
 
-The editor's Timeline lists entries newest first, one row per entry, titled by the operation (§11.2; for `undo` and `redo`, the crossed step's title prefixed "Undo ·" or "Redo ·"), with a divider at each `continue` ("Continued from {time}") and a mark on each save and export. Adjacent rows whose operations share a group key (`operationGroup`, `src/history/operations/grouping.ts`) may collapse into one row, a display choice a viewer may skip. Rows `kept: false` read "not kept" or damaged.
+The editor's Timeline lists entries newest first, one row per entry, titled by the operation (§11.2; for `undo` and `redo`, the crossed step's title prefixed "Undo ·" or "Redo ·"), with a divider at each `continue` ("Continued from {time}"; left out for a session with no entry after it) and a mark on each save and export. Adjacent rows whose operations share a group key (`operationGroup`, `src/history/operations/grouping.ts`) may collapse into one row, a display choice a viewer may skip. Rows `kept: false` read "not kept" or damaged.
 
 ### 10.6 The head, and what an open adds
 

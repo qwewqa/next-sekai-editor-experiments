@@ -1,3 +1,4 @@
+import type { Flusher } from '../../../src/local/flush'
 import { HANDLES, type HandleRole } from '../../../src/local/handleRows'
 import { createWorld as createCoreWorld, type Tab } from '../../../src/local/testing/world'
 import { bindHandlers } from '../../../src/local/worker/bindHandlers'
@@ -51,7 +52,7 @@ type Kept = { chainId: string; name: string; handle: FileSystemFileHandle }
 export const useRealDoor = async (
     world: DoorWorld,
     kept: readonly Kept[] = [],
-): Promise<{ core: StorageCore; tab: Tab }> => {
+): Promise<{ core: StorageCore; tab: Tab; flusher: Flusher }> => {
     // `blobTasks: false`: the matrix's timings were tuned without the browser-like Blob latency, and
     // the option keeps the patch off `Blob.prototype` for the whole process.
     const core = createCoreWorld({ blobTasks: false, checks: false })
@@ -187,5 +188,5 @@ export const useRealDoor = async (
         await world.fire(`worker:${method}:after`, out)
         return out
     }
-    return { core: page.core, tab }
+    return { core: page.core, tab, flusher: page.flusher }
 }
