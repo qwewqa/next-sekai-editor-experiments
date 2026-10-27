@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test'
+import english from '../../src/i18n/en/index.json' with { type: 'json' }
+import japanese from '../../src/i18n/ja/index.json' with { type: 'json' }
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 test.beforeEach(async ({ page }) => {
@@ -353,31 +355,25 @@ test('localized Split Slide works in the elevation editor on a phone', async ({
     ).toEqual([[0, 1, 2, 3]])
 })
 
-test('Help explains outgoing cuts and final notes in English and Japanese on a phone', async ({
+test('Help explains Split Slide and Combine into Slide in English and Japanese on a phone', async ({
     page,
 }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByRole('button', { name: 'Help', exact: true }).click()
-    const section = page.locator('section').filter({
-        has: page.getByRole('heading', { name: 'Split Slide', exact: true }),
-    })
-    await section.scrollIntoViewIfNeeded()
-    await expect(section).toBeVisible()
-    await expect(section.locator('li')).toHaveText([
-        'Cuts the connection from each selected note to the next note.',
-        'The last note of a slide has no connection to cut.',
-    ])
-    const bounds = await section.boundingBox()
-    expect(bounds!.x).toBeGreaterThanOrEqual(0)
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390)
+    const check = async (heading: string, text: string) => {
+        const section = page.locator('section').filter({
+            has: page.getByRole('heading', { name: new RegExp(`^${heading}( |$)`) }),
+        })
+        await section.scrollIntoViewIfNeeded()
+        const line = section.locator('li').filter({ hasText: text })
+        await expect(line).toBeVisible()
+        const bounds = await section.boundingBox()
+        expect(bounds!.x).toBeGreaterThanOrEqual(0)
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390)
+    }
+    await check('Slide', english.help.modal.slideTool.splitCombine)
     await page.evaluate(() => {
         window.editorTest.settings.locale = 'ja'
     })
-    const translated = page.locator('section').filter({
-        has: page.getByRole('heading', { name: 'スライドを分割', exact: true }),
-    })
-    await expect(translated.locator('li')).toHaveText([
-        '選択した各ノーツから次のノーツへの接続を切ります。',
-        'スライドの最後のノーツには切る接続がありません。',
-    ])
+    await check(japanese.commands.slide.title.default, japanese.help.modal.slideTool.splitCombine)
 })
