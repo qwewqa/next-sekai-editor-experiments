@@ -170,8 +170,9 @@ test('Undo right after a reload mid-import waits for the resumed import', async 
     await deferResume(page)
     await page.reload()
     await waitForStartup(page)
-    // The resumed import is held too, so it still runs when Undo needs a snapshot it brings.
-    await holdImport(page)
+    // The resumed import is held before it opens the file, which the worker would also read a
+    // snapshot from: until then the missing snapshot has to wait for the import.
+    await holdImport(page, 'resume')
     await resumeImport(page)
     const notes = () =>
         page.evaluate(async () => {
@@ -208,9 +209,11 @@ test('a Save waiting for a held, multi-batch import shows its progress, and fini
     await expect(preparing).toBeVisible()
     const bar = preparing.getByRole('progressbar')
     await expect(bar).toBeVisible()
-    const now = Number(await bar.getAttribute('aria-valuenow'))
-    expect(now).toBeGreaterThan(0)
-    expect(now).toBeLessThan(100)
+    // The first batch commits at its own pace; the second is held.
+    await expect
+        .poll(async () => Number(await bar.getAttribute('aria-valuenow')))
+        .toBeGreaterThan(0)
+    expect(Number(await bar.getAttribute('aria-valuenow'))).toBeLessThan(100)
     await releaseImport(page)
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible({
         timeout: 15_000,

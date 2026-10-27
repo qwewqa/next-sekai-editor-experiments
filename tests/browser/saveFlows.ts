@@ -136,11 +136,12 @@ export const pickerCalls = (page: Page) =>
     page.evaluate(() => JSON.parse(localStorage.getItem('nse.test.pickerCalls') ?? '[]') as Row[])
 
 /**
- * Holds the open's import at batch `n` (the first by default) until `releaseImport`, however slow
- * the page is. A spec that never releases it reloads or closes the page with the import pending.
+ * Holds the open's import until `releaseImport`, however slow the page is: at batch `n` (the
+ * first by default), or with `'resume'` at a resumed import's read of the file, before the worker
+ * has opened it. A spec that never releases it reloads or closes the page with the import pending.
  */
-export const holdImport = (page: Page, n = 0) =>
-    page.evaluate(async (n) => {
+export const holdImport = (page: Page, at: number | 'resume' = 0) =>
+    page.evaluate(async (at) => {
         const { storageWorker } = await import('/src/local/start.ts')
         const worker = storageWorker!
         const call = worker.call.bind(worker)
@@ -148,10 +149,14 @@ export const holdImport = (page: Page, n = 0) =>
         const gate = new Promise<void>((resolve) => (release = resolve))
         ;(window as unknown as { releaseImport: () => void }).releaseImport = release
         worker.call = (async (method: string, ...rest: unknown[]) => {
-            if (method === 'openBatch' && (rest[0] as { n: number }).n === n) await gate
+            const held =
+                at === 'resume'
+                    ? method === 'openResume'
+                    : method === 'openBatch' && (rest[0] as { n: number }).n === at
+            if (held) await gate
             return (call as (...args: unknown[]) => unknown)(method, ...rest)
         }) as typeof worker.call
-    }, n)
+    }, at)
 
 export const releaseImport = (page: Page) =>
     page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
