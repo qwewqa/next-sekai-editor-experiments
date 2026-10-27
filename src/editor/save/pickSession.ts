@@ -17,7 +17,7 @@ import { hasActivation, reportsActivation } from '../../platform/detect'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
 import { savePoint } from '../../platform/testPause'
 import { exportMemory, sameEntry, type OpenedSource } from '../commands/exportLevel/memory'
-import { bindingHandle, environment, quickBinding, type Binding, type Env } from './binding'
+import { bindingHandle, quickBinding, type Binding, type Env } from './binding'
 import type { RefusedReason } from './dialogs'
 import { heldHandle, savedState, withBind, type SaveMarker } from './env'
 import { pause, PREPARING_MS } from './imports'
@@ -349,9 +349,9 @@ export type PickedFile = {
     /** The slot, when the pick is the file it was read from. */
     readonly pre: PreRead | undefined
     /**
-     * Export's own pick, which rewrites the chain's project: commits a continuation's first row,
-     * then takes the reservation without waiting. Undefined when the commit forked the session or
-     * a Save holds the reservation.
+     * Export's own pick, which rewrites the chain's project: tries to commit a continuation's
+     * first row, then takes the reservation without waiting. Undefined when the commit forked the
+     * session or a Save holds the reservation.
      */
     reserve(): Promise<Reserved | undefined>
     /** The one write to the picked file, over `found`. A failure is thrown. */
@@ -513,10 +513,8 @@ export const withPickSession = <T>(
                         identity,
                         pre: identity.kind === 'own' ? slot : undefined,
                         reserve: async () => {
-                            if (!env) return
-                            await commitFirst(env)
                             // A fork leaves the session another one: nothing is written for it.
-                            if (environment()?.session !== env.session) return
+                            if (!env || !(await commitFirst(env))) return
                             return attempt.reserve(false)
                         },
                         write: async (request) => {

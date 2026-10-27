@@ -748,7 +748,7 @@ export class Flusher {
     /**
      * Sets chain fields of the current session (a rename, Export's target and name),
      * `undefined` removing one. A session not stored yet commits its first row with them, as a
-     * continuation commits before it writes a file; a stored one writes them as the chain's head,
+     * continuation tries to before it writes a file; a stored one writes them as the chain's head,
      * and one that isn't the head any more goes on as a fork, which takes them. Resolves whether
      * they're stored.
      */

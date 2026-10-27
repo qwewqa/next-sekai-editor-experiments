@@ -252,17 +252,36 @@ test.describe('toolbar', () => {
 })
 
 test.describe('toolbar flyouts', () => {
-    test('a flyout row is named by its title, not its shortcut', async ({ page }) => {
+    test('a flyout row is named by its title, not its shortcut or text icon', async ({ page }) => {
         await boot(page)
-        await tools(page).first().focus()
-        await page.keyboard.press('Enter')
-        await expect(flyout(page)).toBeVisible()
-        const rows = flyout(page).locator('button[title]')
-        await expect(rows.first()).toBeVisible()
-        const hints = flyout(page).locator('button > span[aria-hidden="true"]')
-        expect(await hints.count()).toBeGreaterThan(0)
-        for (const row of await rows.all())
-            await expect(row).toHaveAccessibleName((await row.getAttribute('title'))!)
+        // The first group's rows have shortcut hints; BPM's have text icons.
+        const groups = [
+            { tool: tools(page).first(), extra: 'button > span[aria-hidden="true"]:last-child' },
+            {
+                tool: tools(page).and(page.locator('[title="BPM"]')),
+                extra: '[data-icon-column]:has-text("BPM")',
+            },
+        ]
+        for (const { tool, extra } of groups) {
+            await tool.focus()
+            await page.keyboard.press('Enter')
+            await expect(flyout(page)).toBeVisible()
+            await expect(flyout(page).locator(extra).first()).toBeVisible()
+            const rows = flyout(page).locator('button[title]')
+            for (const row of await rows.all())
+                await expect(row).toHaveAccessibleName((await row.getAttribute('title'))!)
+            await page.keyboard.press('Escape')
+            await expect(flyout(page)).toHaveCount(0)
+        }
+    })
+
+    test('a toolbar face is named by its title, not its text icon', async ({ page }) => {
+        await boot(page)
+        // The BPM face and the division in use show text icons.
+        await expect(tools(page).and(page.locator('[title="BPM"]'))).toHaveText('BPM')
+        await expect(tools(page).filter({ hasText: '1/4' })).toHaveCount(1)
+        for (const face of await tools(page).all())
+            await expect(face).toHaveAccessibleName((await face.getAttribute('title'))!)
     })
 
     test('Escape closes an open flyout and returns focus to its tool', async ({ page }) => {
