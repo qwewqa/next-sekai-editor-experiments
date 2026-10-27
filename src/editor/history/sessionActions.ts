@@ -13,8 +13,8 @@ import { historyTab } from './state'
 
 // What Recent Sessions' rows do: Restore Session, Restore as a Copy
 // and Save…, from the menu, Enter, the peek bar or a load notice. Each runs the checks
-// `openSession` makes (lock, head, binding, journal first); the row's badge only picks the label,
-// and a stale one never decides anything.
+// `openSession` makes (lock, head, binding, journal first). The row's badge picks Restore Session
+// or Restore as a Copy for Enter and the peek bar. The menu checks who holds the head as it opens.
 
 /** A menu item of ManagerMenu, with the reason it is off as its `description` line. */
 export type SessionMenuItem = {
@@ -64,8 +64,8 @@ export const sessionMenuItems = (
 ): SessionMenuItem[] => {
     if (row.thisTab) return []
     const strings = i18n.value
-    // The head may be held since the list was read: the item reads as of now.
-    const elsewhere = row.badge === 'elsewhere' || held.has(row.chain.head.sessionId)
+    // The items follow who holds the head as the menu opens, never the badge of an earlier read.
+    const elsewhere = held.has(row.chain.head.sessionId)
     const mode = safe || elsewhere ? 'copy' : 'restore'
     // A row that needs a newer version says why once, under Restore; Save… is off the same way.
     const off = row.readable === 'newer' ? { disabled: true } : {}

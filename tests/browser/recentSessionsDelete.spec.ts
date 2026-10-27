@@ -358,6 +358,37 @@ test('Delete is refused for a chain open in another tab, with its reason in the 
     expect(await lifeOf(page)).toBe(990)
 })
 
+test('the menu of a row whose tab closed since the list was read offers Restore Session and Delete, and the badge goes', async ({
+    page,
+    context,
+}) => {
+    errorsFail(page)
+    await load(page)
+    await edit(page, { title: 'Alpha', life: 990 })
+    await flush(page)
+    const other = await otherTab(context)
+    await openSessions(other)
+    const row = rowFor(other, 'Alpha')
+    const badge = row.locator('[data-sessions-badge]')
+    await expect(badge).toHaveText(sessions.elsewhere)
+    // The list holds still under the pointer, so the badge stays as the list read it.
+    await row.hover()
+    await closePage(page, { runBeforeUnload: false })
+    await expect(badge).toHaveText(sessions.elsewhere)
+
+    await row.locator('[data-sessions-more]').click()
+    const menu = other.getByRole('menu')
+    await expect(menu.getByRole('menuitem')).toHaveText([
+        messages.open.restoreIt,
+        sessions.saveToFile,
+        sessions.delete,
+    ])
+    await expect(menu.getByRole('menuitem', { name: sessions.delete })).toBeEnabled()
+    await expect(menu).not.toContainText(sessions.openReason)
+    // The list reads again, so the row agrees with its menu.
+    await expect(badge).toHaveCount(0)
+})
+
 // A copy keeps its parent held until its first write, so the refusal is not about another tab.
 test("Delete is refused while this tab's unstored copy holds the chain, in words that fit", async ({
     page,
