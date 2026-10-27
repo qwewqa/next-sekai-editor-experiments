@@ -25,11 +25,11 @@ import {
 export const NOW = Date.UTC(2026, 9, 16, 5, 41, 7, 250)
 
 /** A chain of three states, written fresh: the second BGM and cover held, the preview as metadata. */
-export const fresh = () => {
+export const fresh = (bgm: typeof BGM_2 = BGM_2) => {
     const store = new Store()
     const a = stateOf(chartWith())
     const b = stateOf(chartWith({ extraNotes: 1 }))
-    const c = stateOf(chartWith({ bgm: BGM_2, cover: COVER_2, extraNotes: 1 }))
+    const c = stateOf(chartWith({ bgm, cover: COVER_2, extraNotes: 1 }))
     const [ha, hb, hc] = [store.add(a), store.add(b), store.add(c)]
     const imported = originOperation('import')
     const added = editStep(noteAdd(1))
@@ -67,10 +67,10 @@ export const fresh = () => {
         ...headInput(c),
         media: {
             bgm: {
-                bytes: BGM_2.bytes,
-                sha256: BGM_2.sha256,
+                bytes: bgm.bytes,
+                sha256: bgm.sha256,
                 type: 'audio/mpeg',
-                filename: BGM_2.ref.filename,
+                filename: bgm.ref.filename,
             },
             cover: {
                 bytes: COVER_2.bytes,

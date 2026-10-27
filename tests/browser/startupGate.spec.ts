@@ -1,8 +1,14 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { inflateRawSync } from 'node:zlib'
 import { confirmWhenReady } from './confirmWhenReady'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import {
+    closePage,
+    installCanvasCounters,
+    installEditorFixture,
+    waitForStartup,
+} from './editorFixture'
+import { en, said } from './messages'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // The support gate, the startup gate and safe mode in a real browser.
@@ -224,6 +230,24 @@ test.describe('the startup gate', () => {
             gate.setOpeningName('Coconut (Master)')
         })
         await expect(gate(page).getByRole('status')).toHaveText('Opening “Coconut (Master)”…')
+    })
+
+    test('a name with a line break and a direction override is shown on one line', async ({
+        page,
+    }) => {
+        await startupFlags(page, { hold: true })
+        await boot(page)
+        await page.evaluate(installEditorFixture)
+        await page.evaluate(async () => {
+            const gate =
+                await window.editorTest.appImport<typeof import('../../src/startup/gate')>(
+                    '/src/startup/gate.ts',
+                )
+            gate.setOpeningName('Kiwi\n\u202Eevil')
+        })
+        await expect(gate(page).getByRole('status')).toHaveText(
+            said(en.startup.opening, 'Kiwi evil'),
+        )
     })
 
     test('after a while it adds the slow text with Start Blank and Open in Safe Mode', async ({
@@ -625,5 +649,167 @@ test.describe('safe mode', () => {
         await expect(page).toHaveURL(/\?safe$/)
         await leave(page).click()
         await expect(page).toHaveURL(/\/$/)
+    })
+})
+
+test.describe('a session that did not finish opening', () => {
+    const recordKey = (page: string) => `${prefix}opening.${page}`
+
+    test.beforeEach(async ({ context }) => {
+        await context.addInitScript(() => {
+            localStorage.setItem('nse.test.storage', '{}')
+            localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
+            localStorage.setItem('sonolus-next-sekai-editor.showSidebar', 'false')
+        })
+    })
+
+    const lifeOf = (page: Page) =>
+        page.evaluate(async () => {
+            const { state } =
+                (await import('/src/history/index.ts')) as typeof import('../../src/history')
+            return state.value.initialLife
+        })
+
+    const openingKeys = (page: Page) =>
+        page.evaluate(
+            (prefix) =>
+                Object.keys(localStorage).filter((key) => key.startsWith(`${prefix}opening.`)),
+            prefix,
+        )
+
+    /** Stores a session named "Kiwi" with an edit, closes its tab, and returns its id. */
+    const storeSession = async (page: Page, title = 'Kiwi') => {
+        await page.goto('/')
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await waitForStartup(page)
+        await page.evaluate(async (title) => {
+            const { pushState, state } =
+                (await import('/src/history/index.ts')) as typeof import('../../src/history')
+            const { initialLife } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            pushState(initialLife(state.value.initialLife, 990), {
+                ...state.value,
+                initialLife: 990,
+            })
+            window.nseFlushTest!.flusher.setChainFields({ name: title })
+        }, title)
+        await expect
+            .poll(() =>
+                page.evaluate(() => {
+                    const flusher = window.nseFlushTest!.flusher
+                    return !flusher.hasPending && !!flusher.session?.stored
+                }),
+            )
+            .toBe(true)
+        const id = await page.evaluate(() => window.nseFlushTest!.flusher.session!.id)
+        page.on('dialog', (dialog) => void dialog.accept())
+        await closePage(page, { runBeforeUnload: true })
+        return id
+    }
+
+    /** A record of a page that died while opening `id`: its lock is held by nothing. */
+    const seedDead = (page: Page, id: string, name = 'died') =>
+        page.evaluate(({ key, id }) => localStorage.setItem(key, JSON.stringify({ ids: [id] })), {
+            key: recordKey(name),
+            id,
+        })
+
+    const stored = async (context: BrowserContext) => {
+        const first = await context.newPage()
+        const id = await storeSession(first)
+        const page = await context.newPage()
+        await page.goto('/privacy/')
+        await seedDead(page, id)
+        return { page, id }
+    }
+
+    const question = (page: Page) => gate(page).getByText(said(en.startup.unfinished, 'Kiwi'))
+
+    test('Start Blank opens blank, keeps the session in Recent Sessions and asks again on the next visit', async ({
+        context,
+    }) => {
+        const { page, id } = await stored(context)
+        await page.goto('/')
+        await expect(question(page)).toBeVisible()
+        const blank = gate(page).getByRole('button', { name: 'Start Blank' })
+        await expect(blank).toBeFocused()
+        await expect(gate(page).getByRole('button', { name: 'Try Again' })).toBeVisible()
+        await blank.click()
+        await waitForStartup(page)
+        expect(await lifeOf(page)).toBe(1000)
+        const heads = await page.evaluate(async () => {
+            const found = (await window.nseStorageTest!.worker.call('testRows', [
+                'chains',
+            ])) as unknown as Record<string, { value: { head: string } }[]>
+            return found.chains!.map((row) => row.value.head)
+        })
+        expect(heads).toEqual([id])
+        // Nothing was edited: the blank start is not stored, and the next visit asks again.
+        await page.reload()
+        await expect(question(page)).toBeVisible()
+        expect(await openingKeys(page)).toContain(recordKey('died'))
+    })
+
+    test('a name with a line break and a direction override shows on one line, unreordered', async ({
+        context,
+    }) => {
+        const first = await context.newPage()
+        const id = await storeSession(first, 'Kiwi\n\u202Eevil')
+        const page = await context.newPage()
+        await page.goto('/privacy/')
+        await seedDead(page, id)
+        await page.goto('/')
+        await expect(gate(page).getByRole('status')).toHaveText(
+            said(en.startup.unfinished, 'Kiwi evil'),
+        )
+    })
+
+    test('Try Again opens the session, and no record is left once it settles', async ({
+        context,
+    }) => {
+        const { page } = await stored(context)
+        await page.goto('/')
+        await gate(page).getByRole('button', { name: 'Try Again' }).click()
+        await waitForStartup(page)
+        expect(await lifeOf(page)).toBe(990)
+        await expect.poll(() => openingKeys(page)).toEqual([])
+    })
+
+    test('safe mode neither asks nor drops the record, and Leave Safe Mode asks', async ({
+        context,
+    }) => {
+        const { page } = await stored(context)
+        await page.goto('/?safe')
+        await waitForStartup(page)
+        await expect(gate(page)).toHaveCount(0)
+        expect(await openingKeys(page)).toEqual([recordKey('died')])
+        await page
+            .locator('[data-safe-bar]')
+            .getByRole('button', { name: 'Leave Safe Mode' })
+            .click()
+        await expect(question(page)).toBeVisible()
+    })
+
+    test('a record whose page is still open asks nothing', async ({ context }) => {
+        const first = await context.newPage()
+        const id = await storeSession(first)
+        // Another page holds the lock a live record names.
+        const holder = await context.newPage()
+        await holder.goto('/privacy/')
+        await holder.evaluate(
+            () =>
+                new Promise<void>((granted) => {
+                    void navigator.locks.request('nse-client:alive', () => {
+                        granted()
+                        return new Promise(() => undefined)
+                    })
+                }),
+        )
+        await seedDead(holder, id, 'alive')
+        const page = await context.newPage()
+        await page.goto('/')
+        await waitForStartup(page)
+        expect(await lifeOf(page)).toBe(990)
+        await expect(gate(page)).toHaveCount(0)
     })
 })

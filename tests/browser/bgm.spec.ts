@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { BGM_MAX_MINUTES } from '../../src/utils/bgmLimit'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { en, said } from './messages'
 
 declare global {
     interface Window {
@@ -614,4 +616,40 @@ test('confirming the BGM dialog keeps a loaded offset exactly', async ({ page })
     await dialogs.getByRole('button', { name: 'Confirm' }).click()
     await expect(dialogs).toHaveCount(0)
     expect(await page.evaluate(() => window.editorTest.history.state.value.bgm.offset)).toBe(0.0041)
+})
+
+test('a BGM longer than 90 minutes is refused before decoding, and the BGM is unchanged', async ({
+    page,
+}) => {
+    await page.addInitScript(() => {
+        const decoded: number[] = []
+        ;(window as unknown as { decoded: number[] }).decoded = decoded
+        const decode = BaseAudioContext.prototype.decodeAudioData
+        BaseAudioContext.prototype.decodeAudioData = function (...args) {
+            decoded.push(args[0].byteLength)
+            return Reflect.apply(decode, this, args) as Promise<AudioBuffer>
+        }
+    })
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    // A silent MPEG 2.5 stream at 8 kbps: 72-byte frames of 0.072 s, 90 minutes and a second.
+    const frames = 75_020
+    const mp3 = Buffer.alloc(frames * 72)
+    for (let i = 0; i < frames; i++) mp3.set([0xff, 0xe3, 0x18, 0xc0], i * 72)
+
+    await page.keyboard.press('m')
+    const modal = page.getByRole('dialog')
+    const choosing = page.waitForEvent('filechooser')
+    await modal.locator('input[type="button"]').click()
+    await (await choosing).setFiles({ name: 'long.mp3', mimeType: 'audio/mpeg', buffer: mp3 })
+    await expect(
+        page.getByText(said(en.modals.loading.audioMayBeTooLong, BGM_MAX_MINUTES)),
+    ).toBeVisible()
+    expect(
+        await page.evaluate(() => (window as unknown as { decoded: number[] }).decoded),
+    ).not.toContain(mp3.length)
+    expect(await page.evaluate(() => window.editorTest.history.state.value.bgm.buffer)).toBe(
+        undefined,
+    )
 })

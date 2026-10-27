@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { measureClip } from '../../../src/preview/assets/files/audioLength'
 import { AssetImportError } from '../../../src/preview/assets/files/errors'
 import { importItem } from '../../../src/preview/assets/files/importer'
 import { openSourcePackage } from '../../../src/preview/assets/files/package'
+import { measureClip } from '../../../src/utils/audioLength'
 import {
     audioZip,
     blobOf,

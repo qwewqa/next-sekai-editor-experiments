@@ -1,4 +1,3 @@
-import { ungzip } from 'pako'
 import { AssertError } from 'typebox/value'
 import type { Command } from '..'
 import type { Chart } from '../../../chart'
@@ -15,6 +14,8 @@ import { captureName } from '../../../history/operations'
 import { leavePeek } from '../../../history/peek'
 import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
+import { LEVEL_FILE_MAX_BYTES } from '../../../levelData/fileLimit'
+import { inflateCapped, isGzip, LevelFileTooLarge } from '../../../levelData/gzip'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
 import {
@@ -142,6 +143,8 @@ export const open: Command = {
                     try {
                         yield () => i18n.value.commands.open.loading
 
+                        // Refused by size before it is read; a gzip is checked as it inflates.
+                        if (file.size > LEVEL_FILE_MAX_BYTES) throw new FileTooLargeError()
                         const buffer = await file.arrayBuffer()
                         sourceBuffer = buffer
                         signal.throwIfAborted()
@@ -224,7 +227,10 @@ export const open: Command = {
                         await opened(handle, buffer, type, partial, request)
                     } catch (error) {
                         if (request.isCurrent()) {
-                            if (error instanceof UnsupportedFileError)
+                            if (
+                                error instanceof UnsupportedFileError ||
+                                error instanceof FileTooLargeError
+                            )
                                 endOpen('refused', 'unsupported')
                             else if (error instanceof RefusedFileError)
                                 endOpen('refused', 'invalid')
@@ -366,6 +372,12 @@ class UnsupportedFileError extends Error {
     }
 }
 
+class FileTooLargeError extends Error {
+    constructor() {
+        super(i18n.value.commands.open.tooLarge)
+    }
+}
+
 // SUS, USC and Chart Cyanvas files are charts rather than levels.
 class RefusedFileError extends Error {
     constructor(type: 'levelData' | 'chcy' | 'usc' | 'sus', refusal: ImportRefusal) {
@@ -383,15 +395,18 @@ class RefusedFileError extends Error {
 const isLevelDataLike = (data: unknown) =>
     typeof data === 'object' && data !== null && 'entities' in data
 
-const isGzip = (buffer: ArrayBuffer) => {
-    const bytes = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength))
-    return bytes[0] === 0x1f && bytes[1] === 0x8b
-}
-
 const tryParseJson = (buffer: ArrayBuffer): unknown => {
     const bytes = new Uint8Array(buffer)
+    let text: string
     try {
-        return JSON.parse(new TextDecoder().decode(isGzip(buffer) ? ungzip(bytes) : bytes))
+        text = new TextDecoder().decode(isGzip(buffer) ? inflateCapped(bytes) : bytes)
+    } catch (error) {
+        // The refusal is not a file that is not JSON: it must not fall through to SUS.
+        if (error instanceof LevelFileTooLarge) throw new FileTooLargeError()
+        return
+    }
+    try {
+        return JSON.parse(text)
     } catch {
         return
     }

@@ -6,7 +6,9 @@ import type { BatchMedia } from '../../local/flushWrite'
 import type { StorageWorker } from '../../local/worker/client'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
+import { TaskFailure } from '../../utils/error'
 import { releaseWaveform, type Waveform } from '../../waveform'
+import type { NoticeLine } from '../notification'
 
 // The BGMs this tab holds, one `Bgm` per hash. A state read from storage names its audio by hash
 // and holds none; this brings the bytes back from memory or the media store, and attaches them to
@@ -30,6 +32,8 @@ export const CACHE_ENTRIES = 3
 
 const cache = new Map<string, HeldParts>()
 const told = new Set<string>()
+/** The hashes refused for their length in this session, with why: never decoded again. */
+const refused = new Map<string, BgmRefusal>()
 /** The reads in flight, by hash: one read and decode however many places ask. */
 const fetching = new Map<string, Fetch>()
 
@@ -58,6 +62,109 @@ let unheldNotice: ((hash: string) => void) | undefined
 /** What says so when Undo or Redo reaches a BGM nothing holds (the editor side registers it). */
 export const onUnheldAfterMove = (say: (hash: string) => void) => {
     unheldNotice = say
+}
+
+/** Why a BGM was refused for its length: the container's bound, or the decoded duration. */
+export type BgmRefusal = 'audioMayBeTooLong' | 'audioTooLong'
+
+let refusedNotice: ((hash: string, kind: BgmRefusal) => void) | undefined
+
+/** What says so when a BGM that is not picked now is refused for its length (the editor side registers it). */
+export const onBgmRefused = (say: (hash: string, kind: BgmRefusal) => void) => {
+    refusedNotice = say
+}
+
+/** The refusal an error carries, if it is one. */
+export const refusalOf = (error: unknown): BgmRefusal | undefined =>
+    error instanceof TaskFailure &&
+    (error.kind === 'audioMayBeTooLong' || error.kind === 'audioTooLong')
+        ? error.kind
+        : undefined
+
+type Waiting = { id: string; hash: string; kind: BgmRefusal }
+
+let holds = 0
+const waiting: Waiting[] = []
+/** The refusal said for the session shown: a card raised later carries it as a row. */
+let known: { id: string; kind: BgmRefusal } | undefined
+/** A card that can take a refusal as a row while it shows (an open's, a damage warning). */
+let rowCard: { id: string; shown: () => boolean; raise: () => void } | undefined
+
+let refusalLineOf: ((kind: BgmRefusal) => NoticeLine) | undefined
+
+/** How a refusal reads as a row of a card (the editor side registers it). */
+export const onRefusalLine = (build: (kind: BgmRefusal) => NoticeLine) => {
+    refusalLineOf = build
+}
+
+/** The row for the refusal said for the session now shown, if any. */
+export const knownRefusalLine = (): NoticeLine | undefined => {
+    const kind = knownRefusal()
+    return kind ? refusalLineOf?.(kind) : undefined
+}
+
+/** The refusal said for the session now shown, if any. */
+export const knownRefusal = (): BgmRefusal | undefined =>
+    known?.id === session.value.sessionId ? known.kind : undefined
+
+/**
+ * Registers the card just raised for the session shown: while `shown` holds, a refusal that
+ * comes later is added to it by `raise` (which composes the card again with `knownRefusal`),
+ * instead of a card of its own replacing it.
+ */
+export const hostRefusalRow = (host: { shown: () => boolean; raise: () => void }) => {
+    rowCard = { id: session.value.sessionId, ...host }
+}
+
+const sayRefusal = ({ id, hash, kind }: Waiting) => {
+    if (session.value.sessionId !== id) return
+    if (rowCard?.id === id && rowCard.shown()) {
+        rowCard.raise()
+        return
+    }
+    refusedNotice?.(hash, kind)
+}
+
+/**
+ * Keeps refusal cards back while an open composes its own notice, which a later card would
+ * replace. `claimRefusal` takes the refusal of the session now shown out of the queue and
+ * returns it, to add as a row of the open's card; `release` says any that is left, as a card of
+ * its own. A refusal of another session is dropped.
+ */
+export const holdRefusalNotices = () => {
+    holds++
+    let released = false
+    return {
+        claimRefusal: (): BgmRefusal | undefined => {
+            const id = session.value.sessionId
+            for (let at = waiting.findIndex((entry) => entry.id === id); at !== -1;)
+                at = (waiting.splice(at, 1), waiting.findIndex((entry) => entry.id === id))
+            return knownRefusal()
+        },
+        release: () => {
+            if (released) return
+            released = true
+            if (--holds === 0) for (const entry of waiting.splice(0)) sayRefusal(entry)
+        },
+    }
+}
+
+/** Says a refusal once per hash per session, for the session shown. */
+const announceRefusal = (hash: string, kind: BgmRefusal) => {
+    if (!claimNotice(hash)) return
+    const entry = { id: session.value.sessionId, hash, kind }
+    known = { id: entry.id, kind }
+    if (holds) waiting.push(entry)
+    else sayRefusal(entry)
+}
+
+/** Remembers a refusal for the session and says it once. Returns whether the error was one. */
+export const noticeRefused = (hash: string, error: unknown) => {
+    const kind = refusalOf(error)
+    if (!kind) return false
+    refused.set(hash, kind)
+    announceRefusal(hash, kind)
+    return true
 }
 
 const liveHash = () => liveState.value.bgm.meta?.hash
@@ -183,7 +290,8 @@ const fetchHeld = (hash: string, size: number | undefined): Fetch => {
     const fetch: Fetch = {
         stored: read.then((result) => (result.kind === 'bytes' ? 'held' : result.kind)),
         parts: read.then(async (result) => {
-            if (result.kind !== 'bytes' || !env) return
+            // A hash refused for its length is never decoded again; its status stays as read.
+            if (result.kind !== 'bytes' || !env || refused.has(hash)) return
             try {
                 const source = result.bytes.slice(0)
                 const decoded = await env.decode(result.bytes)
@@ -199,6 +307,13 @@ const fetchHeld = (hash: string, size: number | undefined): Fetch => {
                 cacheHeld(hash, parts)
                 return parts
             } catch (error) {
+                // A refusal for length is remembered for the session that began the decode, and
+                // passed up to the caller that says it.
+                const kind = refusalOf(error)
+                if (kind) {
+                    if (session.value.sessionId === started) refused.set(hash, kind)
+                    throw error
+                }
                 // A cancelled waveform is the session changing; anything else is recorded.
                 if (!(error instanceof DOMException && error.name === 'AbortError'))
                     recordError(error)
@@ -228,6 +343,13 @@ let lastBgm: Bgm | undefined
 const reattach = async (id: string, bgm: Bgm, moved: boolean) => {
     const meta = bgm.meta
     if (!meta) return
+    const why = refused.get(meta.hash)
+    if (why) {
+        // Back at refused audio whose notice was not said while it was away.
+        if (session.value.sessionId === id && liveState.value.bgm.meta?.hash === meta.hash)
+            announceRefusal(meta.hash, why)
+        return
+    }
     const cached = cachedHeld(meta.hash)
     if (cached) {
         attachHeld(id, meta.hash, cached)
@@ -249,7 +371,15 @@ const reattach = async (id: string, bgm: Bgm, moved: boolean) => {
         return
     }
     if (stored !== 'held') return
-    const parts = await fetch.parts
+    let parts: HeldParts | undefined
+    try {
+        parts = await fetch.parts
+    } catch (error) {
+        // Said for the session shown, where the hash is still the live one.
+        if (session.value.sessionId === id && liveState.value.bgm.meta?.hash === meta.hash)
+            noticeRefused(meta.hash, error)
+        return
+    }
     if (parts) attachHeld(id, meta.hash, parts)
 }
 
@@ -293,7 +423,12 @@ export const resetHeldBgmForTests = () => {
     environment = undefined
     cache.clear()
     told.clear()
+    refused.clear()
+    known = undefined
+    rowCard = undefined
     fetching.clear()
+    holds = 0
+    waiting.length = 0
     lastSession = undefined
     lastBgm = undefined
 }
@@ -304,6 +439,9 @@ watch(
     () => {
         cache.clear()
         told.clear()
+        refused.clear()
+        known = undefined
+        rowCard = undefined
         fetching.clear()
     },
     { flush: 'sync' },
