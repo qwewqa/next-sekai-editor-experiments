@@ -121,6 +121,7 @@ export const seededContext = async (
             localStorage.setItem(`${prefix}showMinimap`, 'false')
             // The first-visit dialog counts as shown.
             localStorage.setItem(`${prefix}firstVisitShown`, '1')
+            localStorage.setItem(`${prefix}agreement`, '{"terms":999,"privacy":999}')
         },
         { files, prefix },
     )

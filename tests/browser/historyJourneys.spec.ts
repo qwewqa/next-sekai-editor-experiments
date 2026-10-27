@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type en from '../../src/i18n/en/index.json'
-import { withFirstVisitMark } from './editorFixture'
+import { withAgreement } from './editorFixture'
 import {
     chartOf,
     closePage,
@@ -559,7 +559,7 @@ test('a crash while peeking recovers the live chart, never the peeked one', asyn
                     ? { executablePath: launchOptions.executablePath }
                     : {}),
             })
-            .then(withFirstVisitMark)
+            .then(withAgreement)
     let context = await launch()
     try {
         const page = await context.newPage()

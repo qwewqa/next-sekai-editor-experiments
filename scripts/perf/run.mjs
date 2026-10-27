@@ -1540,6 +1540,10 @@ try {
                 )
                 // The first-visit dialog counts as shown.
                 localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+                localStorage.setItem(
+                    'sonolus-next-sekai-editor.agreement',
+                    '{"terms":999,"privacy":999}',
+                )
             })
             // A seeded group continues the seeded session; the others start blank.
             if (!group.seed)

@@ -91,6 +91,7 @@ export const installCanvasCounters = (legacyCanvas = false) => {
     localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
     // The first-visit dialog counts as shown; its own specs remove the mark.
     localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+    localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     // Only the explicitly configured historical parity server uses this path.
     // A missing GPU module in the current app must fail rather than silently
     // make its rendering assertions exercise a different implementation.
@@ -115,10 +116,11 @@ export const installCanvasCounters = (legacyCanvas = false) => {
 /** The localStorage key that marks the first-visit dialog as shown. */
 export const FIRST_VISIT_MARK = 'sonolus-next-sekai-editor.firstVisitShown'
 
-/** Marks the first-visit dialog as shown in a profile that the config's storageState does not reach. */
-export const withFirstVisitMark = async (context: BrowserContext) => {
+/** Seeds the agreement record (and the first-visit mark) in a profile that the config's storageState does not reach. */
+export const withAgreement = async (context: BrowserContext) => {
     await context.addInitScript(() => {
         localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+        localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     })
     return context
 }

@@ -35,6 +35,7 @@ const start = async (page: Page) => {
         )
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
         localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+        localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     })
     await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' as const })
     await page.goto('/')

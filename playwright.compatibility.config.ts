@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import config from './playwright.config'
+import { AGREED, AGREEMENT_KEY } from './tests/helpers/agreement'
 
 // Parallel local runs can each choose a free preview server port.
 // CI runs under xvfb-run, which gives headless Firefox a WebGL2 context.
@@ -60,6 +61,7 @@ export default defineConfig({
                 localStorage: [
                     { name: 'nse.test.noOpeningGuard', value: 'true' },
                     { name: 'sonolus-next-sekai-editor.firstVisitShown', value: '1' },
+                    { name: AGREEMENT_KEY, value: AGREED },
                 ],
             })),
         },

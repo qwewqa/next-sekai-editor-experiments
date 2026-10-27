@@ -70,6 +70,7 @@ const start = async (page: Page, fileSystemAccess: boolean | 'opfs' = 'opfs', ur
         )
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
         localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+        localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     })
     if (memoryFiles(page)) await page.addInitScript(installMemoryFiles)
     await page.addInitScript(installTestPlatform, { fileSystemAccess })

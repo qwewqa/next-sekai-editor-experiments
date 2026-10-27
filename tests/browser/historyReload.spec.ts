@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type english from '../../src/i18n/en/index.json'
-import { useTool, waitForStartup, withFirstVisitMark } from './editorFixture'
+import { useTool, waitForStartup, withAgreement } from './editorFixture'
 import {
     backToNow,
     chartOf,
@@ -489,7 +489,7 @@ test('after a crash the recovered rows are in the Timeline, and peek and Restore
                     : {}),
                 args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
             })
-            .then(withFirstVisitMark)
+            .then(withAgreement)
     let context = await launch()
     try {
         const first = await context.newPage()

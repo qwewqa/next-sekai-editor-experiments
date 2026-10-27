@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test'
+import { AGREED, AGREEMENT_KEY } from './tests/helpers/agreement'
 
 // The specs build dates in Node and read them from the page: both run in UTC, whatever the machine uses.
 process.env.TZ = 'UTC'
@@ -123,6 +124,7 @@ const seeded = (value: 'main' | 'worker') => ({
                     { name: 'nse.test.previewHost', value },
                     { name: 'nse.test.noOpeningGuard', value: 'true' },
                     { name: 'sonolus-next-sekai-editor.firstVisitShown', value: '1' },
+                    { name: AGREEMENT_KEY, value: AGREED },
                 ],
             },
         ],

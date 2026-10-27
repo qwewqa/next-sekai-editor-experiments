@@ -73,6 +73,7 @@ export const seedContext = (context: BrowserContext) =>
         localStorage.setItem('nse.test.platform', JSON.stringify({ fileSystemAccess: false }))
         // The first-visit dialog counts as shown, as in a profile that has seen it.
         localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+        localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     })
 
 /** Waits until startup has opened the session this load continues. */

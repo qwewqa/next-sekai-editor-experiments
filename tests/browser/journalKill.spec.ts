@@ -7,7 +7,7 @@ import {
     closePage,
     installCanvasCounters,
     installEditorFixture,
-    withFirstVisitMark,
+    withAgreement,
 } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
@@ -357,7 +357,7 @@ for (const [kind, name] of kinds) {
         const profile = await onDisk((dir) =>
             playwright.chromium
                 .launchPersistentContext(dir, { ...(baseURL ? { baseURL } : {}) })
-                .then(withFirstVisitMark),
+                .then(withAgreement),
         )
         try {
             await killAndRecover(profile, kind, killByCrash)
