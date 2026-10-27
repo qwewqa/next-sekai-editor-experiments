@@ -420,19 +420,19 @@
     "zooms": {
       "zoomXIn": {
         "title": "Zoom avant sur l’axe X",
-        "zoomed": "Zoom avant sur l’axe X de 10 %"
+        "zoomed": "Zoom avant sur l’axe X de 10 %"
       },
       "zoomXOut": {
         "title": "Zoom arrière sur l’axe X",
-        "zoomed": "Zoom arrière sur l’axe X de 10 %"
+        "zoomed": "Zoom arrière sur l’axe X de 10 %"
       },
       "zoomYIn": {
         "title": "Zoom avant sur l’axe Y",
-        "zoomed": "Zoom avant sur l’axe Y de 10 %"
+        "zoomed": "Zoom avant sur l’axe Y de 10 %"
       },
       "zoomYOut": {
         "title": "Zoom arrière sur l’axe Y",
-        "zoomed": "Zoom arrière sur l’axe Y de 10 %"
+        "zoomed": "Zoom arrière sur l’axe Y de 10 %"
       }
     },
     "bpm": {
