@@ -235,3 +235,74 @@ test('a release needs a passed browsers-full run and says how to start one', () 
     assert.match(tag, /\['check.yml', 'deploy-pages.yml', 'browsers-full.yml'\]/)
     assert.match(tag, /gh workflow run \$\{workflow\} --ref main/)
 })
+
+test('every Playwright job lists its flaky tests, and a last job collects them into one summary', () => {
+    for (const [text, names] of [
+        [check, ['compatibility', 'formats', 'compatibility-storage']],
+        [full, ['storage', 'chromium', 'excluded']],
+    ]) {
+        for (const name of names) {
+            const body = section(text, name)
+            assert.match(body, /run: node scripts\/flaky-report\.mjs shard "[^"]+"/, name)
+            // After a failed test too, and apart from the failure details artifact.
+            assert.match(body, /name: List flaky tests\n\s+if: \$\{\{ !cancelled\(\) \}\}/, name)
+            assert.match(body, /name: flaky-[\w-]+(?:-\$\{\{ strategy.job-index \}\})?\n/, name)
+            assert.match(body, /path: flaky-list\/\*\.json/, name)
+        }
+        const flaky = section(text, 'flaky')
+        assert.ok(flaky)
+        // Never fails the run, and runs when a shard failed.
+        assert.match(flaky, /continue-on-error: true/)
+        assert.match(flaky, /if: \$\{\{ !cancelled\(\) && /)
+        for (const name of names)
+            assert.match(flaky, new RegExp(String.raw`needs: \[(?:.*, )?${name}[,\]]`))
+        assert.match(flaky, /pattern: flaky-\*\n\s+path: flaky-lists\n\s+merge-multiple: true/)
+        assert.match(flaky, /run: node scripts\/flaky-report\.mjs collect flaky-lists/)
+    }
+    // Artifact names are unique within a run: the two sharded jobs of a workflow differ by name.
+    const names = [...full.matchAll(/^ {18}name: (flaky-.+)$/gm)].map((match) => match[1])
+    assert.equal(new Set(names).size, names.length)
+})
+
+test('the reporter writes the JSON report on CI, and the summary script reads the same file', () => {
+    const config = readFileSync(new URL('../../playwright.config.ts', import.meta.url), 'utf8')
+    const script = readFileSync(new URL('../../scripts/flaky-report.mjs', import.meta.url), 'utf8')
+    assert.match(
+        config,
+        /\[\s*\['list'\],\s*\['json', \{ outputFile: 'flaky\/raw\.json' \}\],?\s*\]/,
+    )
+    assert.match(script, /const rawFile = 'flaky\/raw\.json'/)
+    // The secondary configs spread the main one, so they report the same way.
+    const compatibility = readFileSync(
+        new URL('../../playwright.compatibility.config.ts', import.meta.url),
+        'utf8',
+    )
+    assert.match(compatibility, /\.\.\.config,/)
+    assert.doesNotMatch(compatibility, /reporter:/)
+})
+
+test('browsers-full runs the CI exclusions in a job that does not block, on a schedule and by hand', () => {
+    const excluded = section(full, 'excluded')
+    assert.ok(excluded)
+    assert.match(excluded, /continue-on-error: true/)
+    assert.match(excluded, /NSE_RUN_EXCLUDED: '1'/)
+    assert.match(excluded, /needs: changed\n/)
+    const expression = excluded.match(/^ {8}if: (.+)$/m)?.[1]
+    assert.ok(expression)
+    const runs = (event, output = 'true') =>
+        runInNewContext(expression.replace(/^\$\{\{\s*|\s*\}\}$/g, ''), {
+            github: { event_name: event },
+            needs: { changed: { outputs: { run: output } } },
+        })
+    assert.equal(runs('schedule'), true)
+    assert.equal(runs('workflow_dispatch'), true)
+    assert.equal(runs('push'), false)
+    assert.equal(runs('schedule', 'false'), false)
+    assert.match(excluded, /run: node scripts\/flaky-report\.mjs shard "excluded" --excluded/)
+    // The blocking jobs never set it, so they keep leaving the exclusions out.
+    assert.doesNotMatch(section(full, 'chromium'), /NSE_RUN_EXCLUDED/)
+    assert.doesNotMatch(check, /NSE_RUN_EXCLUDED/)
+    const config = readFileSync(new URL('../../playwright.config.ts', import.meta.url), 'utf8')
+    assert.match(config, /grep: runExcluded \? ciExcluded : undefined/)
+    assert.match(config, /grepInvert: ciExcluded\.length && !runExcluded \? ciExcluded : undefined/)
+})

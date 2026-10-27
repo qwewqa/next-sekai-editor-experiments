@@ -39,6 +39,7 @@ It holds only what is specific to agents. Read the project's own docs first:
 - Run `npm test`. It runs in UTC and US English whatever the machine uses (`tests/setup/utc.mjs`).
 - Run the browser specs for the area you touched, by path: `npx playwright test tests/browser/<name>.spec.ts --project=chromium`; for a preview change also `--project=chromium-worker`. Playwright reads a bare word as a pattern over the whole path, so it can match a folder name and run every spec.
 - Run the full browser suite once per batch of changes. It is slow, and running it beside other runs makes tests flaky.
+- Run a new or changed spec three times before you merge it (`--repeat-each=3`). Fix a test that passed only on a retry; do not ignore it.
 - Give each concurrent run its own `PLAYWRIGHT_PORT`.
 
 ## Reviews
