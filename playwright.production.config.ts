@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
+// The specs build dates in Node and read them from the page: both run in UTC, whatever the machine uses.
+process.env.TZ = 'UTC'
+
 // Build with `npm run build:release` first, or set PRODUCTION_TEST_URL to check
 // the deployed site. Neither mode loads Vite development modules.
 const hostedUrl = process.env.PRODUCTION_TEST_URL
@@ -22,6 +25,7 @@ export default defineConfig({
         browserName: 'chromium',
         baseURL: hostedUrl ?? previewUrl,
         locale: 'en-US',
+        timezoneId: 'UTC',
         viewport: { width: 1600, height: 1000 },
         deviceScaleFactor: 1.25,
         trace: 'retain-on-failure',

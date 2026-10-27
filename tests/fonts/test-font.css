@@ -1,0 +1,23 @@
+/* Test runs only: the app's sans text in Selawik on every machine (README.md). */
+@font-face {
+    font-family: 'Selawik';
+    font-weight: 400;
+    font-display: block;
+    src: url('/tests/fonts/selawik/Selawik-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Selawik';
+    font-weight: 600;
+    font-display: block;
+    src: url('/tests/fonts/selawik/Selawik-Semibold.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Selawik';
+    font-weight: 700;
+    font-display: block;
+    src: url('/tests/fonts/selawik/Selawik-Bold.ttf') format('truetype');
+}
+:root,
+.font-sans {
+    font-family: 'Selawik', sans-serif !important;
+}

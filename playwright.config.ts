@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
+// The specs build dates in Node and read them from the page: both run in UTC, whatever the machine uses.
+process.env.TZ = 'UTC'
+
 // NSE_DEV_CSP=1 serves the web policy, and editorFixture.ts fails a spec on a violation.
 // Parallel local runs can each choose a free development server port.
 const port = process.env.PLAYWRIGHT_PORT ?? '5210'
@@ -18,11 +21,6 @@ const previewHostSpecs = ['preview.spec.ts', 'previewSelection.spec.ts']
 type CiExclusion = { spec: string; title?: string; project?: string; reason: string }
 const ciExclusions: CiExclusion[] = [
     {
-        spec: 'localizations.spec.ts',
-        title: 'fr elevation controls fit on a 320px',
-        reason: 'the French label is 80 px of text in 76 px in the Linux font, a clipping the product still has',
-    },
-    {
         spec: 'selectionProperties.spec.ts',
         title: 'coverage keeps its width as only its digits change',
         reason: 'the Linux fonts have no tabular digits',
@@ -31,7 +29,7 @@ const ciExclusions: CiExclusion[] = [
         spec: 'preview.spec.ts',
         title: 'same-beat elevation connectors keep identical geometry',
         project: 'chromium-worker',
-        reason: 'the worker draws on its own clock, which the page’s fake clock does not hold',
+        reason: 'the worker draws on its own clock, which the fake clock of the page does not hold',
     },
     {
         spec: 'preview.spec.ts',
@@ -41,12 +39,12 @@ const ciExclusions: CiExclusion[] = [
     },
     {
         spec: 'previewWorker.spec.ts',
-        title: 'after a hang, the worker’s last frame shows',
+        title: 'after a hang, the worker.s last frame shows',
         reason: 'a 1.5 s hang timer, which a loaded runner passes before the page is ready',
     },
     {
         spec: 'bgmReattach.spec.ts',
-        title: '(Choose Audio….with the same file brings|the BGM dialog with the same file attaches|Choose Audio….with another file is one BGM change|opening the download it saved, with its BGM lost|the BGM dialog says a BGM nothing holds)',
+        title: '(Choose Audio. with the same file brings|the BGM dialog with the same file attaches|Choose Audio. with another file is one BGM change|opening the download it saved, with its BGM lost|the BGM dialog says a BGM nothing holds)',
         reason: 'a load notice shows only while the page is under 12 s old, and a reload on the runner takes longer',
     },
     {
@@ -57,7 +55,7 @@ const ciExclusions: CiExclusion[] = [
     {
         spec: 'startupSessions.spec.ts',
         title: 'a late flush landing during the marker.s wait',
-        reason: 'the reload waits 2 s for the old page’s lock, and the steps between the test’s two page calls can outlast that on the runner',
+        reason: 'the reload waits 2 s for the old page to give up its lock, and the steps between two page calls of the test can outlast that on the runner',
     },
     {
         spec: 'historyThemes.spec.ts',
@@ -66,7 +64,7 @@ const ciExclusions: CiExclusion[] = [
     },
     {
         spec: 'levelInfo.spec.ts',
-        title: 'Make from BGM… and Edit in Cover Editor',
+        title: 'Make from BGM. and Edit in Cover Editor',
         reason: 'Generate in the Cover Editor does not finish within 15 s on the runner; whether it is slow or has failed is not known',
     },
 ]
@@ -108,6 +106,9 @@ export default defineConfig({
     use: {
         browserName: 'chromium',
         baseURL,
+        // The app picks its language from the browser's, and dates follow the time zone.
+        locale: 'en-US',
+        timezoneId: 'UTC',
         viewport: { width: 1600, height: 1000 },
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
@@ -141,5 +142,6 @@ export default defineConfig({
         url: `http://127.0.0.1:${port}`,
         reuseExistingServer: false,
         timeout: 30_000,
+        env: { NSE_TEST_FONT: '1' },
     },
 })

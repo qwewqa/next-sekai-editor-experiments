@@ -73,9 +73,6 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            # Selawik for the sans-serif stack, so the layout specs see the widths of Segoe UI (tests/fonts/README.md).
-            - name: Install the test fonts
-              run: scripts/ci/install-test-fonts.sh
             # The five locked preview packages, as build:release stages them. Without them the build is Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
@@ -136,8 +133,6 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
-            - name: Install the test fonts
-              run: scripts/ci/install-test-fonts.sh
             # The five locked preview packages, as build:release stages them. Without them the preview specs fall back to Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"

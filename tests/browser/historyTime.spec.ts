@@ -438,7 +438,11 @@ test('a zone change while History and Go To are open moves every time to the new
     browser,
 }) => {
     test.slow()
-    const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
+    // No zone at creation: the config gives every context one, which `zoned` could not replace.
+    const context = await browser.newContext({
+        viewport: { width: 1600, height: 1000 },
+        timezoneId: undefined,
+    })
     // 08:30 in Tokyo is 19:30 the day before in New York, and 13:30 in Tokyo is 00:30 there.
     const clock = await sampleClock(context, Date.parse('2026-06-10T08:30:00+09:00'))
     const first = await context.newPage()

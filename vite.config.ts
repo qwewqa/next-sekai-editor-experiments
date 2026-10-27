@@ -114,6 +114,31 @@ export default defineConfig(({ mode }) => ({
             },
         },
         {
+            // Test runs only (webServer in playwright.config.ts): every page draws its sans text in the
+            // one font tests/fonts holds, so layout tests see the same widths on every machine.
+            name: 'test-font',
+            apply: (_config, { command }) =>
+                command === 'serve' && process.env.NSE_TEST_FONT === '1',
+            transformIndexHtml: () => [
+                ...['Regular', 'Semibold', 'Bold'].map((weight) => ({
+                    tag: 'link',
+                    attrs: {
+                        rel: 'preload',
+                        as: 'font',
+                        type: 'font/ttf',
+                        crossorigin: '',
+                        href: `/tests/fonts/selawik/Selawik-${weight}.ttf`,
+                    },
+                    injectTo: 'head' as const,
+                })),
+                {
+                    tag: 'link',
+                    attrs: { rel: 'stylesheet', href: '/tests/fonts/test-font.css' },
+                    injectTo: 'head' as const,
+                },
+            ],
+        },
+        {
             // The apps' page has no web-only tags or icon.
             name: 'native-html',
             apply: () => mode === 'native',
