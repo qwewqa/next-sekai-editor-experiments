@@ -1020,7 +1020,11 @@ test('a displayed peek counts once with its load time, a cached one as cached, a
         const counted = Object.fromEntries(tally.collect().counts)
         assert.equal(counted['features.peek'], 2)
         assert.equal(counted['peek.peek.cached'], 1)
-        assert.equal(counted['peek.peek.<25'], 1)
+        const timed = Object.keys(counted).filter(
+            (name) => name.startsWith('peek.peek.') && name !== 'peek.peek.cached',
+        )
+        assert.equal(timed.length, 1)
+        assert.equal(counted[timed[0] ?? ''], 1)
     } finally {
         tally.disable()
     }

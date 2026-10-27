@@ -788,7 +788,7 @@ $weekly_rows"
 done
 expect actions 'open|||256K-512K|1|400|400'
 expect peek 'cached|5'
-expect peek '25-50|3'
+expect peek '25-40|3'
 # A website with no events: every query still runs, and the share left out of the frames is empty, not an error.
 EMPTY=$(cat /proc/sys/kernel/random/uuid)
 sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$EMPTY', 'empty', 'nse.qwewqa.dev')"

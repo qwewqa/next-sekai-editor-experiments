@@ -57,19 +57,33 @@ test('each range starts at its limit and ends just below the next', () => {
         ['viewport', 100, '<360'],
         ['viewport', 360, '360-400'],
         ['viewport', 1439.5, '1100-1440'],
-        ['viewport', 2560, '2560+'],
+        ['viewport', 2560, '2560-2880'],
+        ['viewport', 2880, '2880-3440'],
+        ['viewport', 3439, '2880-3440'],
+        ['viewport', 3840, '3840-5120'],
+        ['viewport', 5120, '5120+'],
         ['viewportHeight', 399, '<400'],
         ['viewportHeight', 500, '500-600'],
         ['viewportHeight', 1439.5, '1080-1440'],
-        ['viewportHeight', 1440, '1440+'],
-        ['viewportAspect', 0.49, '<0.5'],
-        ['viewportAspect', 0.85, '0.85-1'],
-        ['viewportAspect', 1, '1-1.15'],
-        ['viewportAspect', 2.3, '2.3+'],
+        ['viewportHeight', 1440, '1440-2160'],
+        ['viewportHeight', 2160, '2160+'],
+        ['viewportAspect', 0.39, '<0.4'],
+        ['viewportAspect', 0.85, '0.8-0.9'],
+        ['viewportAspect', 1, '1-1.1'],
+        ['viewportAspect', 1.78, '1.7-1.8'],
+        ['viewportAspect', 2.3, '2.2-2.4'],
+        ['viewportAspect', 2.4, '2.4-2.6'],
+        ['viewportAspect', 3.6, '3.5-4'],
+        ['viewportAspect', 4, '4+'],
+        ['viewportAspect', 3, '3-3.5'],
         ['dpr', 0.75, '<1'],
         ['dpr', 1, '1'],
-        ['dpr', 1.25, '1-1.5'],
-        ['dpr', 1.5, '1.5-2'],
+        ['dpr', 1.1, '1-1.25'],
+        ['dpr', 1.25, '1.25'],
+        ['dpr', 1.3, '1.25-1.5'],
+        ['dpr', 1.5, '1.5'],
+        ['dpr', 1.75, '1.75'],
+        ['dpr', 1.8, '1.75-2'],
         ['dpr', 2, '2'],
         ['dpr', 2.25, '2-2.5'],
         ['dpr', 2.625, '2.5-3'],
@@ -82,11 +96,13 @@ test('each range starts at its limit and ends just below the next', () => {
         ['noteSpeed', 10.5, '10.5-11'],
         ['noteSpeed', 11.5, '11.5-12'],
         ['noteSpeed', 12, '11.5-12'],
-        ['peek', 24.9, '<25'],
-        ['peek', 25, '25-50'],
-        ['peek', 150, '150-200'],
-        ['peek', 29_999, '10k-30k'],
-        ['peek', 30_000, '30k+'],
+        ['peek', 9.9, '<10'],
+        ['peek', 25, '25-40'],
+        ['peek', 150, '100-160'],
+        ['peek', 1200, '1k-1.6k'],
+        ['peek', 6300, '6.3k-10k'],
+        ['peek', 24_999, '16k-25k'],
+        ['peek', 25_000, '25k+'],
         ['frame', 50, '50-100'],
         ['frame', 999, '500-1000'],
         ['frame', 2000, '2000+'],
@@ -110,7 +126,7 @@ test('the scales have the ranges the spec lists', () => {
     assert.equal(scales.counts.length, 10 + 40 + 1)
     assert.equal(scales.audio.length, 1 + 21 + 1)
     assert.equal(scales.size.length, 1 + 20 + 1)
-    assert.equal(scales.peek.length, 13)
+    assert.equal(scales.peek.length, 19)
     assert.equal(scales.cores.length, 32 + 5)
     assert.equal(scales.counts.at(-2), '80000-99999')
 })
@@ -150,7 +166,7 @@ test('the Undo window and the Recent Sessions count are exact', () => {
 test('perf and peek stay within their key budgets', () => {
     // 45 is the most an event may carry; the figures here are the most each is built to populate.
     assert.equal(Object.keys(catalogue.perf).length, 39)
-    assert.equal(Object.keys(catalogue.peek).length, 22)
+    assert.equal(Object.keys(catalogue.peek).length, 28)
     assert.ok(Object.keys(catalogue.perf).length <= MAX_KEYS)
     const every = (name: 'perf' | 'peek') =>
         Object.fromEntries(
@@ -172,7 +188,7 @@ test('perf and peek stay within their key budgets', () => {
 })
 
 test('an event passes only with known properties, each in its set', () => {
-    assert.ok(isValidEvent('visit', { site: 'test', standalone: false, viewport: '2560+' }))
+    assert.ok(isValidEvent('visit', { site: 'test', standalone: false, viewport: '2560-2880' }))
     assert.ok(isValidEvent('visit', { version: '0.6.0', browserLanguage: 'other' }))
     assert.ok(!isValidEvent('visits', {}), 'an unknown event')
     assert.ok(!isValidEvent('visit', { title: 'Coconut' }), 'an unknown property')
@@ -234,7 +250,7 @@ test('docs/analytics.md lists the catalogue', () => {
             [...props.matchAll(/`([^`]+)`/g)].map(
                 ([, prop = '']) =>
                     new RegExp(
-                        `^${prop.replace(/[.]/g, '\\.').replace(/<[^>]+>/g, '[^.]+(?:\\.[^.]+)?')}$`,
+                        `^${prop.replace(/[.]/g, '\\.').replace(/<[^>]+>/g, '[^.]+(?:\\.[^.]+)*')}$`,
                     ),
             ),
         )

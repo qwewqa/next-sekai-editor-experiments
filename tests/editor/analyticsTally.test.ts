@@ -127,8 +127,8 @@ test('a Timeline step shown counts as a peek, with its time as a range or as cac
     tally.peekShown(undefined)
     assert.deepEqual(counts(), {
         'features.peek': 4,
-        'peek.peek.25-50': 2,
-        'peek.peek.1k-2k': 1,
+        'peek.peek.25-40': 2,
+        'peek.peek.1k-1.6k': 1,
         'peek.peek.cached': 1,
     })
 })
@@ -221,27 +221,27 @@ test('an event after a resize to portrait carries the new ranges and an aspect b
     assert.deepEqual(landscape, {
         viewport: '1440-1920',
         viewportHeight: '900-1080',
-        viewportAspect: '1.45-1.7',
+        viewportAspect: '1.6-1.7',
     })
     assert.deepEqual(portrait, {
         viewport: '480-640',
         viewportHeight: '900-1080',
-        viewportAspect: '0.5-0.65',
+        viewportAspect: '0.5-0.6',
     })
     assert.ok(isValidEvent('save', { outcome: 'done', ...portrait }))
     tally.watchDevice(undefined)
 })
 
 test('the aspect edge at 1 is exact, and a size that is not a number sends nothing', () => {
-    assert.equal(viewportDetails(799, 800).viewportAspect, '0.85-1')
-    assert.equal(viewportDetails(800, 800).viewportAspect, '1-1.15')
-    assert.equal(viewportDetails(801, 800).viewportAspect, '1-1.15')
-    assert.equal(viewportDetails(300, 1440).viewportHeight, '1440+')
+    assert.equal(viewportDetails(799, 800).viewportAspect, '0.9-1')
+    assert.equal(viewportDetails(800, 800).viewportAspect, '1-1.1')
+    assert.equal(viewportDetails(801, 800).viewportAspect, '1-1.1')
+    assert.equal(viewportDetails(300, 1440).viewportHeight, '1440-2160')
     assert.equal(viewportDetails(300, 500).viewportHeight, '500-600')
     assert.deepEqual(viewportDetails(400, 399.5), {
         viewport: '400-480',
         viewportHeight: '<400',
-        viewportAspect: '1-1.15',
+        viewportAspect: '1-1.1',
     })
     assert.deepEqual(viewportDetails(Number.NaN, 700), { viewportHeight: '600-768' })
     assert.deepEqual(viewportDetails(700, 0), { viewport: '640-768', viewportHeight: '<400' })

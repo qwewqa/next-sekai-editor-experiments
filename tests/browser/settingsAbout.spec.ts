@@ -1,10 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { REPOSITORY } from './sourceRepository'
 
 // Settings › About. The dev server serves no LICENSE.txt, so
 // the links are checked by href and never fetched.
-
-const REPOSITORY = 'qwewqa/next-sekai-editor-experiments'
 
 const boot = async (page: Page, version?: { appVersion: string; atTag: boolean }) => {
     await page.addInitScript(installCanvasCounters)

@@ -27,7 +27,7 @@ Most numeric values are sent as ranges.
 - **Durations** are whole milliseconds, from 0 to 600000 (ten minutes). A longer duration is sent as 600000.
 - **Time spent** (`playSeconds` and `visibleTime`) is measured since the previous batch and reported in whole seconds from 0 to 86400 (one day).
 - **Processor cores** are exact from 1 to 32, then in ranges.
-- **Pixel density** is exact for 1, 2 and 3, and a range otherwise.
+- **Pixel density** is exact for 1, 1.25, 1.5, 1.75, 2 and 3, and a range otherwise.
 - **Screen size** is exact, in pixels.
 - **Chart counts** are exact from 0 to 9, then in ranges.
 - **Undo history** (`historySteps`) is an exact number of steps, up to 1000.
@@ -39,7 +39,7 @@ Chart counts and file-size ranges can sometimes identify a published chart when 
 
 ### The Ranges
 
-Most ranges include the lower value and exclude the upper value. Chart-count and processor-core ranges include both endpoints. Single-value labels are exact. For `usageShare`, `70-80` includes 80, so `80-90` starts above 80. Pixel-density ranges that start at 1, 2 or 3 exclude that value. The note-speed range `10-10.5` starts above 10, and `11.5-12` includes 12.
+Most ranges include the lower value and exclude the upper value. Chart-count and processor-core ranges include both endpoints. Single-value labels are exact. For `usageShare`, `70-80` includes 80, so `80-90` starts above 80. Pixel-density ranges that start at 1, 1.25, 1.5, 1.75, 2 or 3 exclude that value. The note-speed range `10-10.5` starts above 10, and `11.5-12` includes 12.
 
 | Range | Used for | Labels |
 | --- | --- | --- |
@@ -48,13 +48,13 @@ Most ranges include the lower value and exclude the upper value. Chart-count and
 | File size and storage used | `size`, `usage` | `<16K`, `16K-32K`, `32K-64K`, `64K-128K`, `128K-256K`, `256K-512K`, `512K-1M`, `1M-2M`, `2M-4M`, `4M-8M`, `8M-16M`, `16M-32M`, `32M-64M`, `64M-128M`, `128M-256M`, `256M-512M`, `512M-1G`, `1G-2G`, `2G-4G`, `4G-8G`, `8G-16G`, `16G+`. K is 1024 bytes, M is 1024 K and G is 1024 M |
 | Storage limit | `quota` | `<256M`, `256M-1G`, `1G-4G`, `4G-16G`, `16G-64G`, `64G-256G`, `256G+` |
 | Share of the storage limit used, in percent | `usageShare` | `<50`, `50-70`, `70-80`, `80-90`, `90-95`, `95-100`, `100+` |
-| Workspace width, in pixels | `viewport` | `<360`, `360-400`, `400-480`, `480-640`, `640-768`, `768-1000`, `1000-1100`, `1100-1440`, `1440-1920`, `1920-2560`, `2560+` |
-| Workspace height, in pixels | `viewportHeight` | `<400`, `400-500`, `500-600`, `600-768`, `768-900`, `900-1080`, `1080-1440`, `1440+` |
-| Workspace width divided by height | `viewportAspect` | `<0.5`, `0.5-0.65`, `0.65-0.85`, `0.85-1`, `1-1.15`, `1.15-1.45`, `1.45-1.7`, `1.7-1.9`, `1.9-2.3`, `2.3+` |
-| Pixel density | `dpr` | `<1`, `1`, `1-1.5`, `1.5-2`, `2`, `2-2.5`, `2.5-3`, `3`, `3+` |
+| Workspace width, in pixels | `viewport` | `<360`, `360-400`, `400-480`, `480-640`, `640-768`, `768-1000`, `1000-1100`, `1100-1440`, `1440-1920`, `1920-2560`, `2560-2880`, `2880-3440`, `3440-3840`, `3840-5120`, `5120+` |
+| Workspace height, in pixels | `viewportHeight` | `<400`, `400-500`, `500-600`, `600-768`, `768-900`, `900-1080`, `1080-1440`, `1440-2160`, `2160+` |
+| Workspace width divided by height | `viewportAspect` | `<0.4`, `0.4-0.5`, `0.5-0.6`, `0.6-0.7`, `0.7-0.8`, `0.8-0.9`, `0.9-1`, `1-1.1`, `1.1-1.2`, `1.2-1.3`, `1.3-1.4`, `1.4-1.5`, `1.5-1.6`, `1.6-1.7`, `1.7-1.8`, `1.8-1.9`, `1.9-2`, `2-2.2`, `2.2-2.4`, `2.4-2.6`, `2.6-2.8`, `2.8-3`, `3-3.5`, `3.5-4`, `4+` |
+| Pixel density | `dpr` | `<1`, `1`, `1-1.25`, `1.25`, `1.25-1.5`, `1.5`, `1.5-1.75`, `1.75`, `1.75-2`, `2`, `2-2.5`, `2.5-3`, `3`, `3+` |
 | Processor cores | `cores` | `1` to `32` exactly, then `33-48`, `49-64`, `65-96`, `97-128`, `129+` |
 | Preview note speed | `previewNoteSpeed` | `1-5`, `5-8`, `8-9`, `9-10`, `10`, `10-10.5`, `10.5-11`, `11-11.5`, `11.5-12` |
-| Duration of loading a Timeline step, in milliseconds | `peek.<time>` | `<25`, `25-50`, `50-100`, `100-150`, `150-200`, `200-300`, `300-500`, `500-1k`, `1k-2k`, `2k-5k`, `5k-10k`, `10k-30k`, `30k+` |
+| Duration of loading a Timeline step, in milliseconds | `peek.<time>` | `<10`, `10-16`, `16-25`, `25-40`, `40-63`, `63-100`, `100-160`, `160-250`, `250-400`, `400-630`, `630-1k`, `1k-1.6k`, `1.6k-2.5k`, `2.5k-4k`, `4k-6.3k`, `6.3k-10k`, `10k-16k`, `16k-25k`, `25k+` |
 | Duration of a long frame, in milliseconds | `frames.<state>.<length>` | `50-100`, `100-200`, `200-500`, `500-1000`, `1000-2000`, `2000+` |
 | Duration of a slow response, in milliseconds | `slowEvents.<length>` | `104-200`, `200-500`, `500-1000`, `1000+` |
 
@@ -85,7 +85,7 @@ The events `startup`, `open`, `save`, `export`, `check`, `bgm`, `peek` and `perf
 | `deviceMemory` | The device memory in GB, as rounded by the browser | `0.25`, `0.5`, `1`, `2`, `4`, `8`, `16+`, or `other` for any other value. Omitted when the browser reports none |
 | `engine` | The browser engine, detected by the editor from the browser’s user agent | `chromium`, `webkit`, `firefox` or `other` |
 | `touch` | Whether the primary pointing device has limited precision, as with a touch screen | Yes or no |
-| `dpr` | The pixel density of the screen | Exact for 1, 2 and 3, a range otherwise |
+| `dpr` | The pixel density of the screen | Exact for 1, 1.25, 1.5, 1.75, 2 and 3, a range otherwise |
 | `viewport` | The width of the editor’s workspace in pixels | Range |
 | `viewportHeight` | The height of the editor’s workspace in pixels | Range |
 | `viewportAspect` | The workspace’s width divided by its height. Below 1, it is taller than it is wide | Range |
@@ -111,7 +111,7 @@ Recorded once when statistics collection starts.
 | `viewport` | The width of the editor’s workspace | Range |
 | `viewportHeight` | The height of the editor’s workspace | Range |
 | `viewportAspect` | The workspace’s width divided by its height | Range |
-| `dpr` | The pixel density of the screen | Exact for 1, 2 and 3, a range otherwise |
+| `dpr` | The pixel density of the screen | Exact for 1, 1.25, 1.5, 1.75, 2 and 3, a range otherwise |
 | `cores` | The number of processor cores | Exact from 1 to 32, then a range |
 | `deviceMemory` | The memory reported by the browser | As above |
 | `browserLanguage` | The browser’s language without its region or script, such as `en` or `ja`. The editor’s own language is in `language` | Two or three letters, or `other` |
