@@ -621,7 +621,9 @@
                 "title": "Getting Started",
                 "bgm": "Choose BGM to load the music and set its offset.",
                 "bpm": "Choose BPM and tap the BPM change at the start of the chart. Tap it again to edit its BPM.",
+                "bpmClick": "Choose BPM and click the BPM change at the start of the chart. Click it again to edit its BPM.",
                 "notes": "Choose Note and tap the chart to add a note. To add a slide, choose Deselect, then Slide, and tap at its start and its end.",
+                "notesClick": "Choose Note and click the chart to add a note. To add a slide, choose Deselect, then Slide, and click at its start and its end.",
                 "save": "Choose Save to keep your work in a project file (.nxsp). To create level data you can upload to a Sonolus server, use Export Level Data."
             },
             "touchscreen": {
@@ -645,6 +647,7 @@
             },
             "selectTool": {
                 "select": "Where objects overlap, each tap selects the next one.",
+                "selectClick": "Where objects overlap, each click selects the next one.",
                 "selectMultiple": "Drag a box from empty space to select the objects in it.",
                 "move": "Drag a selected object to move the whole selection.",
                 "resize": "Drag the edge of a note, camera event or stage mask event to resize it. If all selected objects are the same type, they resize together.",
@@ -652,36 +655,48 @@
             },
             "eraserTool": {
                 "erase": "Tap an object to erase it, or drag a box to erase everything in it.",
-                "selection": "Tap a selected object to erase the whole selection."
+                "eraseClick": "Click an object to erase it, or drag a box to erase everything in it.",
+                "selection": "Tap a selected object to erase the whole selection.",
+                "selectionClick": "Click a selected object to erase the whole selection."
             },
             "brushTool": {
                 "properties": "Choose Brush, then set the properties to apply.",
                 "brush": "Tap an object or drag a box to apply the brush. Tap a selected object to apply it to the whole selection.",
+                "brushClick": "Click an object or drag a box to apply the brush. Click a selected object to apply it to the whole selection.",
                 "shift": "Hold Shift to apply the brush to whole slides."
             },
             "pasteTool": {
-                "paste": "Tap or drag to place the copied objects. Hold Shift to flip them horizontally."
+                "paste": "Tap or drag to place the copied objects. Hold Shift to flip them horizontally.",
+                "pasteClick": "Click or drag to place the copied objects. Hold Shift to flip them horizontally."
             },
             "generateSlideNotesTool": {
                 "generate": "Tap a note to fill its slide with attached notes, one on each empty division line.",
-                "generateMultiple": "Drag a box over two or more notes of a slide to fill only the part between them. Tap a selected note to fill each slide in the selection. For a slide with only one selected note, this fills the whole slide."
+                "generateClick": "Click a note to fill its slide with attached notes, one on each empty division line.",
+                "generateMultiple": "Drag a box over two or more notes of a slide to fill only the part between them. Tap a selected note to fill each slide in the selection. For a slide with only one selected note, this fills the whole slide.",
+                "generateMultipleClick": "Drag a box over two or more notes of a slide to fill only the part between them. Click a selected note to fill each slide in the selection. For a slide with only one selected note, this fills the whole slide."
             },
             "adding": {
                 "title": "Adding Objects",
                 "add": "With Note, Slide, BPM, Time Scale or Event, tap empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
+                "addClick": "With Note, Slide, BPM, Time Scale or Event, click empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
                 "edit": "Tap a selected object to show its properties.",
+                "editClick": "Click a selected object to show its properties.",
                 "move": "Drag an object to move only that object. To move several objects together, use Select.",
                 "resize": "Drag the edge of a note, camera event or stage mask event to resize it.",
-                "modifiers": "Hold Ctrl (Cmd on macOS) and tap to add an object to the selection or remove it. Hold Shift and tap a note to select its whole slide."
+                "modifiers": "Hold Ctrl (Cmd on macOS) and tap to add an object to the selection or remove it. Hold Shift and tap a note to select its whole slide.",
+                "modifiersClick": "Hold Ctrl (Cmd on macOS) and click to add an object to the selection or remove it. Hold Shift and click a note to select its whole slide."
             },
             "noteTool": {
                 "presets": "Choose Note again to show the default properties and switch between the presets, Note #1 to Note #4.",
-                "quickEdit": "When the Properties panel is shown, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Note #2 preset turns Critical on or off."
+                "quickEdit": "When the Properties panel is shown, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Note #2 preset turns Critical on or off.",
+                "quickEditClick": "When the Properties panel is shown, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Note #2 preset turns Critical on or off."
             },
             "slideTool": {
                 "connect": "When notes of one slide are selected, tap empty space to add another note to that slide. Choose Deselect before starting a new slide.",
+                "connectClick": "When notes of one slide are selected, click empty space to add another note to that slide. Choose Deselect before starting a new slide.",
                 "presets": "Choose Slide again to show the default properties and switch between the presets, Slide #1 to Slide #5.",
                 "quickEdit": "As with Note, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
+                "quickEditClick": "As with Note, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
                 "splitCombine": "Split Slide cuts the connection from each selected note to the next note. Combine into Slide joins the slides of the selected notes into one slide."
             },
             "bpmTool": {
@@ -695,7 +710,8 @@
             "event": {
                 "next": "Choose Event to switch to an event tool. Choose it again to cycle through the event tools.",
                 "defaults": "To edit an event tool’s default properties, choose it again by name, such as Camera Event.",
-                "quickEdit": "When the Properties panel is shown, tapping a selected event also changes its ease."
+                "quickEdit": "When the Properties panel is shown, tapping a selected event also changes its ease.",
+                "quickEditClick": "When the Properties panel is shown, clicking a selected event also changes its ease."
             },
             "offset": {
                 "drag": "Drag up or down to change the BGM offset."
