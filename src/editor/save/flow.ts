@@ -1047,9 +1047,9 @@ const writeBack = async (
     /** Replace: the revision of the version on disk, kept first. */
     replaces?: string,
 ): Promise<Outcome> => {
-    // From here the file is written. A continuation not stored yet tries to commit its first row
-    // now, so a Save that ends earlier (no changes, a conflict, a missing file) leaves the visit
-    // unstored. The write's own check can still find the file missing or changed after the commit.
+    // A continuation not stored yet tries to commit its first row here, before the reservation, the
+    // build and the write. A Save that ends earlier (no changes, a conflict, a missing file) leaves
+    // the visit unstored; one that ends later can leave it stored.
     if (!(await commitFirst(env))) return { kind: 'forked' }
     // Inside the hold of `nse-bind`: a reservation another flow holds is not waited for.
     const reserved = await attempt.reserve(false)
