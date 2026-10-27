@@ -135,6 +135,27 @@ export const queuePicks = (page: Page, picks: (string | null)[]) =>
 export const pickerCalls = (page: Page) =>
     page.evaluate(() => JSON.parse(localStorage.getItem('nse.test.pickerCalls') ?? '[]') as Row[])
 
+/**
+ * Holds the open's import at batch `n` (the first by default) until `releaseImport`, however slow
+ * the page is. A spec that never releases it reloads or closes the page with the import pending.
+ */
+export const holdImport = (page: Page, n = 0) =>
+    page.evaluate(async (n) => {
+        const { storageWorker } = await import('/src/local/start.ts')
+        const worker = storageWorker!
+        const call = worker.call.bind(worker)
+        let release = () => {}
+        const gate = new Promise<void>((resolve) => (release = resolve))
+        ;(window as unknown as { releaseImport: () => void }).releaseImport = release
+        worker.call = (async (method: string, ...rest: unknown[]) => {
+            if (method === 'openBatch' && (rest[0] as { n: number }).n === n) await gate
+            return (call as (...args: unknown[]) => unknown)(method, ...rest)
+        }) as typeof worker.call
+    }, n)
+
+export const releaseImport = (page: Page) =>
+    page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+
 export const rows = (page: Page, stores: string[]) =>
     page.evaluate(
         (stores) =>

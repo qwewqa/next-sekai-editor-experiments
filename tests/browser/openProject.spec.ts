@@ -11,6 +11,7 @@ import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
 import { en, said } from './messages'
+import { holdImport } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -517,7 +518,8 @@ test('a reload mid-import without a handle marks the rows that never arrived kep
     page,
 }) => {
     await start(page, false)
-    await slowImport(page, 1500)
+    // No batch runs before the reload.
+    await holdImport(page)
     const bytes = await freshBytes()
     const choosing = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
@@ -531,9 +533,6 @@ test('a reload mid-import without a handle marks the rows that never arrived kep
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const session = await sessionOf(page)
     expect(session.file?.name).toBe('coconut.nxsp')
-    await page.evaluate(() => {
-        localStorage.removeItem('nse.test.importDelay')
-    })
     // The import is still running; the open itself has settled, so the reload is not an unfinished open.
     await openingSettled(page)
     await page.reload()
@@ -552,7 +551,7 @@ test('a Save waits for the import: whenImported resolves once the last batch com
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await slowImport(page, 500)
+    await holdImport(page)
     await openFile(page, 'coconut.nxsp')
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const outcome = await page.evaluate(async () => {
@@ -560,7 +559,10 @@ test('a Save waits for the import: whenImported resolves once the last batch com
             (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
         const { whenImported } =
             (await import('/src/local/open/importLoop.ts')) as typeof import('../../src/local/open/importLoop')
-        const result = await whenImported(session.value.sessionId)
+        const waiting = whenImported(session.value.sessionId)
+        // Released once the wait has begun.
+        ;(window as unknown as { releaseImport: () => void }).releaseImport()
+        const result = await waiting
         const found = (await window.nseStorageTest!.worker.call('testRows', [
             'sessions',
         ])) as unknown as {

@@ -7,6 +7,7 @@ import {
     chainOf,
     edit,
     editPastUndo,
+    holdImport,
     notice,
     pauseAt,
     pickerCalls,
@@ -17,6 +18,7 @@ import {
     reached,
     readFile,
     release,
+    releaseImport,
     rows,
     saveDialog,
     sessionOf,
@@ -246,22 +248,6 @@ test("a stale reservation's release never ends a later Save's reservation of the
     expect(same).toBe(true)
 })
 
-/** An open whose import is held at its second batch until `releaseImport`. */
-const heldImport = async (page: Page) => {
-    await page.evaluate(async () => {
-        const { storageWorker } = await import('/src/local/start.ts')
-        const worker = storageWorker!
-        const call = worker.call.bind(worker)
-        let release = () => {}
-        const gate = new Promise<void>((resolve) => (release = resolve))
-        ;(window as unknown as { releaseImport: () => void }).releaseImport = release
-        worker.call = (async (method: string, ...rest: unknown[]) => {
-            if (method === 'openBatch' && (rest[0] as { n: number }).n === 1) await gate
-            return (call as (...args: unknown[]) => unknown)(method, ...rest)
-        }) as typeof worker.call
-    })
-}
-
 const freshBytes = async () =>
     new Uint8Array(await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer())
 
@@ -276,7 +262,7 @@ test("the Save dialog shows no count while an open's import runs, and counts onc
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await heldImport(page)
+    await holdImport(page, 1)
     await openFile(page, 'coconut.nxsp')
     await saveAs(page)
     const dialog = saveDialog(page, 'Save As')
@@ -286,18 +272,16 @@ test("the Save dialog shows no count while an open's import runs, and counts onc
     await page.waitForTimeout(1500)
     await expect(total).toHaveText('Estimating size…')
     await expect(dialog).not.toContainText(/\d steps? ·/)
-    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await releaseImport(page)
     await expect(total).toHaveText(/^Total: about /, { timeout: 15_000 })
     await expect(dialog).toContainText(/\d steps? ·/)
 })
 
-/** Opens coconut.nxsp with a slow import, then reloads mid-import with its handle readable. */
+/** Opens coconut.nxsp with its import held, then reloads mid-import with its handle readable. */
 const reloadMidImport = async (page: Page, resume: 'late' | 'never') => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await page.evaluate(() => {
-        localStorage.setItem('nse.test.importDelay', '1500')
-    })
+    await holdImport(page)
     await openFile(page, 'coconut.nxsp')
     const chain = await chainOf(page)
     const { handles } = await rows(page, ['handles'])
@@ -449,7 +433,7 @@ test("Export waits for an open's import before its picker, so a pick of the file
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await heldImport(page)
+    await holdImport(page, 1)
     await openFile(page, 'coconut.nxsp')
     const calls = (await pickerCalls(page)).length
     await queuePicks(page, ['coconut.nxsp'])
@@ -463,7 +447,7 @@ test("Export waits for an open's import before its picker, so a pick of the file
     await page.waitForTimeout(500)
     // No picker while the import reads the file.
     expect((await pickerCalls(page)).length).toBe(calls)
-    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await releaseImport(page)
     await expect
         .poll(async () => (await pickerCalls(page)).length, { timeout: 15_000 })
         .toBe(calls + 1)
@@ -479,7 +463,7 @@ test("Recent Sessions' Save… shows no count while an open's import runs, and c
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await heldImport(page)
+    await holdImport(page, 1)
     await openFile(page, 'coconut.nxsp')
     const { sessionId } = await sessionOf(page)
     await page.evaluate((sessionId) => {
@@ -492,7 +476,7 @@ test("Recent Sessions' Save… shows no count while an open's import runs, and c
     await page.waitForTimeout(1500)
     await expect(total).toHaveText('Estimating size…')
     await expect(dialog).not.toContainText(/\d steps? ·/)
-    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await releaseImport(page)
     await expect(total).toHaveText(/^Total: about /, { timeout: 15_000 })
     await expect(dialog).toContainText(/\d steps? ·/)
 })
