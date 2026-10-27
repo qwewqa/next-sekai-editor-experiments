@@ -81,7 +81,7 @@ Icons are Font Awesome fills (`fill-current`): `size-4` for actions and rows, an
 
 Colour, elevation, hover, press and focus of every button family come from the recipes in `src/controls.css`, described in [color-system.md](color-system.md) section 6. This section is the geometry that stays at the call site.
 
-- **Raised button** (`btn btn-secondary`, `btn-primary`, `btn-danger`, `btn-danger-quiet`): `h-9 min-w-24 max-w-full truncate rounded-full px-4`, normal weight, 16 px (14 px in a strip). Dialog footers are `flex justify-end gap-2`, the one filled button last and focused (`data-autofocus`, see `ConfirmModal.vue`). A footer that must stay in view while a long body scrolls goes in `BaseModal`'s `footer` slot (`px-4 pb-4`, outside the scroller), as in the first-visit dialog. Weight stays normal: bold is for titles, band labels, tabs and section headings.
+- **Raised button** (`btn btn-secondary`, `btn-primary`, `btn-danger`, `btn-danger-quiet`): `h-9 min-w-24 max-w-full truncate rounded-full px-4`, normal weight, 16 px (14 px in a strip). Dialog footers are `flex justify-end gap-2`, the one filled button last and focused (`data-autofocus`, see `ConfirmModal.vue`). A footer that must stay in view while a long body scrolls goes in `BaseModal`'s `footer` slot (`px-4 pb-4`, outside the scroller), as in the agreement dialog. Weight stays normal: bold is for titles, band labels, tabs and section headings.
 - **Ghost** (`ghost`): no face until pointed at. On a band it is `ghost ghost-band`, on the dark chrome `ghost ghost-chrome`. `BaseModal`'s close is the pattern: `ghost ghost-band size-9 rounded-full`.
 - **On/off** (`btn-toggle` with `aria-pressed`): mint and flat when on. The toolbar tool in use and Show Edits are examples.
 - **Floating pill with an icon:** `.manager-add` is `btn btn-secondary rounded-full p-0.5 pr-4`, the icon in a 36 px slot.
@@ -252,11 +252,12 @@ Section 8 describes the notice card and the quick toast. This part says which on
 - A fragment names what is missing and has no full stop: "No stored items", "No changes yet". A full sentence has one: "This file has no skins."
 - The line is `text-fg/80`: `text-sm` in a list pane, the dialog's body size in a dialog. In a list that fills its pane, centre it in a block of fixed height (Timeline, Recent Sessions). In a dialog, start it at the text column like the lines around it (Preview Assets).
 
-### The first-visit dialog
+### The agreement dialog
 
-- The first-visit dialog (`src/editor/firstVisit/`) shows the version, Language, Theme, and Send Usage Statistics with its note and the privacy link. It shows once per browser.
-- It is a notice, not a consent prompt. Its one button is Close, and the switch keeps its value.
-- It never opens over the startup gate, or over a start-up card with a line the user may need. Only Continued and the in-app browser line may stay on the card under it. Any other load notice defers the dialog to a later load, or closes it if the notice comes while it is open. The card then shows for its full time.
+- The agreement dialog (`src/editor/agreement/`) shows the version, Language, Theme, and Send Usage Statistics with its note. When a page has changed since the user last agreed, a line at the top names it.
+- Its one button is Agree. It has no × button. Escape and the backdrop do nothing, and a close by the browser opens it again (`Modal.persistent`). Agree does not change the Send Usage Statistics switch.
+- It opens when the startup gate lifts, never over the startup error. Load notices stay on the start-up card under it with their timers held, and show for their full time after Agree.
+- The agreement sentence and Agree are pinned in the footer. The sentence names the Terms of Service and the Privacy Notice as inline links, styled as the Save dialog's Export link (`ExportLine.vue`), with the characters touching each link kept on its line (`utils/linkParts.ts`).
 
 ### Confirmations
 

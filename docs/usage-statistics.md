@@ -6,7 +6,7 @@ The web editor sends usage statistics to a server run by the maintainer. The [pr
 
 - The editor can collect statistics before your first interaction. Statistics are sent only after you click, press a key, touch the screen or scroll while the page is visible.
 - The first request is sent when the page becomes hidden, or one minute after that first interaction if the page stays visible. Later requests are sent when the page becomes hidden, at most once a minute. A final request may be sent when the page closes, even within that minute.
-- If the editor shows a window with the Send Usage Statistics setting when it starts, no statistics are sent until that window is closed and you use the editor.
+- The editor asks you to agree to the Terms of Service before you first use it, and again after some changes to the Terms of Service or the Privacy Notice. Statistics are sent only after you agree. The one exception is the page shown to unsupported browsers. It cannot ask, so it may send its report before you agree (see [`unsupported`](#unsupported)).
 - Turning off **Settings › About › Send Usage Statistics** stops collection and discards unsent statistics in every open tab.
 - The setting is on by default unless the browser sends Do Not Track or Global Privacy Control. Your choice is stored only in your browser. Clearing the editor’s site data resets the setting to its default.
 - The editor disables statistics in safe mode, when the browser’s data saver is on, in automated browsers and in copies of the editor hosted on another site.

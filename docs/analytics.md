@@ -16,7 +16,7 @@ The code is in `src/analytics/`:
 
 Usage statistics must never make the editor worse to use. These rules hold for every change here:
 
-- **No UI** but the switch in Settings › About and the note under it. The first-visit dialog also shows both. No other notice, prompt or console output in any state.
+- **No UI** but the switch in Settings › About and the note under it. The agreement dialog also shows both. No other notice, prompt or console output in any state.
 - **Nothing per frame.** No code in a frame callback, the clock or the draw paths. The lint forbids importing `src/analytics/` from `src/frame.ts`, `src/rendering/` and `src/preview/engine/`.
 - **O(1) on the edit, flush, Save and startup paths.** A hook is one `bump` or `bumpCommand`: a `Map` increment behind one boolean, with no await or I/O.
 - **The client loads after startup.** It loads once startup has ended, with the session open or with the gate's error, and the page is idle.
@@ -34,9 +34,9 @@ A change that adds work to a hot path is measured with the perf tools, with stat
 
 Nothing is sent from a visit, not even the pageview, until its first trusted `pointerdown`, `keydown`, `touchstart` or `wheel` while the page is visible. One passive listener waits for it and is removed once the visit is armed. Events measured before then wait in memory with the time they were captured. A visit that never arms sends nothing. So Umami's pageviews count visits where someone used the editor.
 
-The startup gate blocks input until the session is open, so input during startup does not arm a visit. When startup ends in an error, the client loads all the same, because a failed startup is the signal that matters most. The gate still blocks keys and clicks outside itself, so only a click on the error page's own buttons or text arms the visit, and then the `startup` event reports the failure. In safe mode nothing is sent.
+The startup gate blocks input until the session is open, so input during startup does not arm a visit. When startup ends in an error, the client loads all the same, because a failed startup is the signal that matters most. The gate still blocks keys and clicks outside itself, so only a click on the error page's own buttons or text arms the visit, and then the `startup` event reports the failure. A load where agreement is due arms nothing before Agree, so its failed startup is not reported. In safe mode nothing is sent.
 
-When the first-visit dialog is due on a load (`src/editor/firstVisit/`), `tally.holdArming` holds arming from module evaluation until the dialog is skipped or closed. The hold starts before `startAnalytics()` adds the listener. A press on the gate's own controls or in the dialog arms nothing, so nothing is sent until the dialog is closed and the editor is used. When a load skips the dialog, the gate's error included, the hold is released then, and the next input arms as before.
+When agreement is due on a load (`src/editor/agreement/`), `tally.holdArming` holds arming from module evaluation until Agree, in this tab or another. The hold starts before `startAnalytics()` adds the listener. A press on the gate's own controls or in the dialog arms nothing, so nothing is sent until Agree and the next input. On a load that ends at the gate's error the hold stays, and nothing is sent. The unsupported-browser page (`public/gate.js`) cannot show the dialog, so its `unsupported` event is the one report sent without agreement; `usage-statistics.md` and the privacy page say so.
 
 ## The hooks
 
