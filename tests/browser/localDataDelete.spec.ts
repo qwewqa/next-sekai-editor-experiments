@@ -188,7 +188,7 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
     await expect(confirm.locator('p')).toHaveCount(3)
     // Newest first; the fixture’s chain has no work to lose, so it is not named.
     await expect(confirm).toContainText(
-        '4 sessions have unsaved changes: "Fresh", "Week", "Month" and 1 more.',
+        '4 sessions have unsaved changes: “Fresh”, “Week”, “Month” and 1 more.',
     )
     await expect(confirm).toContainText(
         'Some of these sessions require a newer version of the editor.',
@@ -243,9 +243,9 @@ test('ticking the box deletes the unsaved work too, including a chain from a new
     await page.locator('[data-delete-next]').click()
     const confirm = confirmDialog(page)
     await expect(confirm).toContainText('Delete 3 sessions?')
-    await expect(confirm).toContainText('"Month"')
-    await expect(confirm).toContainText('"Later"')
-    await expect(confirm).not.toContainText('"Week"')
+    await expect(confirm).toContainText('“Month”')
+    await expect(confirm).toContainText('“Later”')
+    await expect(confirm).not.toContainText('“Week”')
     await confirmWhenReady(
         confirm.getByRole('button', { name: messages.modals.confirm.delete }),
         confirm,

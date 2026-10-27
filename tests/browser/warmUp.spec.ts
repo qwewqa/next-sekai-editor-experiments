@@ -134,7 +134,7 @@ test.describe('code that loads inside a Save', () => {
             await edit(page, 2)
             await pressSave(page)
             const dialog = page.getByRole('dialog')
-            await expect(dialog).toContainText('"coconut.nxsp" Changed')
+            await expect(dialog).toContainText('“coconut.nxsp” Changed')
             // Past the dialog's activation guard.
             await page.waitForTimeout(350)
             const session = await sessionOf(page)

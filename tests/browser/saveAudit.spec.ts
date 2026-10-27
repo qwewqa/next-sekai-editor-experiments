@@ -321,10 +321,10 @@ test('a conflict with another project’s file says it is another project, named
     await edit(page, 2)
     await pressSave(page)
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     await expect(dialog).toContainText('A different project file.')
     await expect(dialog).not.toContainText('Saved in the web editor')
-    await expect(dialog).not.toContainText('"Coconut (Master)"')
+    await expect(dialog).not.toContainText('“Coconut (Master)”')
 })
 
 test('a feedback for a session another tab holds says so to assistive technology', async ({
@@ -410,7 +410,7 @@ test.describe('a large download on a touch device', () => {
             .toBeGreaterThan(0)
         // The failure is shown, and "Preparing…" is gone.
         await expect(page.locator('[data-save-preparing]')).toHaveCount(0)
-        await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
+        await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
     })
 })
 
@@ -446,7 +446,7 @@ test('our own file gone back to an older revision says it does not continue ours
     await edit(page, 3)
     await pressSave(page)
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await expect(dialog).toContainText('“coconut.nxsp” Changed')
     await expect(dialog).toContainText(/The version saved on .+ is not based on your version\./)
     await expect(dialog).not.toContainText('Saved in the web editor')
 })

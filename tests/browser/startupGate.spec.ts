@@ -223,7 +223,7 @@ test.describe('the startup gate', () => {
                 )
             gate.setOpeningName('Coconut (Master)')
         })
-        await expect(gate(page).getByRole('status')).toHaveText('Opening "Coconut (Master)"…')
+        await expect(gate(page).getByRole('status')).toHaveText('Opening “Coconut (Master)”…')
     })
 
     test('after a while it adds the slow text with Start Blank and Open in Safe Mode', async ({
@@ -356,7 +356,7 @@ test.describe('the startup gate', () => {
         })
         await gate(page).getByRole('button', { name: 'Export Raw Data' }).click()
         await expect(gate(page).locator('[data-raw-export-note]')).toHaveText(
-            /^"Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip" could not be downloaded\.$/,
+            /^“Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip” could not be downloaded\.$/,
         )
     })
 
@@ -368,7 +368,7 @@ test.describe('the startup gate', () => {
         await boot(page)
         await gate(page).getByRole('button', { name: 'Export Raw Data' }).click()
         await expect(gate(page).locator('[data-raw-export-note]')).toHaveText(
-            /^"Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip" could not be downloaded\.$/,
+            /^“Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip” could not be downloaded\.$/,
         )
     })
 

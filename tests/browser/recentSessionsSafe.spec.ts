@@ -75,12 +75,12 @@ test('safe mode lists the stored sessions, peeks them, and Restore as a Copy ope
     // The row is peeked; its bar offers the copy, the only way in.
     await row(page, 'Alpha').click()
     const bar = page.locator('[data-peek-bar]')
-    await expect(bar.locator('[data-peek-session]')).toContainText('"Alpha"')
+    await expect(bar.locator('[data-peek-session]')).toContainText('“Alpha”')
     await expect(bar.locator('[data-peek-restore]')).toHaveText(messages.load.restoreAsCopy)
     await bar.locator('[data-peek-restore]').click()
 
     await expect.poll(() => lifeOf(page)).toBe(990)
-    await expect(notice(page, 'Restored a copy of "Alpha"')).toBeVisible()
+    await expect(notice(page, 'Restored a copy of “Alpha”')).toBeVisible()
     await expect(page.getByRole('tab', { name: messages.history.timeline })).toHaveAttribute(
         'aria-selected',
         'true',

@@ -258,7 +258,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'export.placeholder',
         // These French labels have the same spelling as English.
         'history.details.counts.note',
-        'history.quoted',
         'history.quotedField',
         'historyChanges.fields.description',
         'historyChanges.fields.tags',
@@ -355,7 +354,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'conflict.savedNoNotes',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
-        'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
@@ -394,7 +392,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'conflict.savedNoNotes',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
-        'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
@@ -429,6 +426,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
@@ -463,7 +461,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
-        'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',

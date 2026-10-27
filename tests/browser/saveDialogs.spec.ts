@@ -194,7 +194,7 @@ test.describe('the Save dialog', () => {
         await expect(problem).toHaveText('A name cannot start or end with a dot or a space')
         await expect(save).toBeDisabled()
         await field.fill('con')
-        await expect(problem).toHaveText('A name cannot be "con"')
+        await expect(problem).toHaveText('A name cannot be “con”')
     })
 
     test('Enter on an invalid name shows its reason and saves nothing', async ({
@@ -361,18 +361,18 @@ test.describe('the Save dialog', () => {
         await seed(context)
         await visit(page)
         await openSave(page, {
-            lines: ['"coconut.nxsp" was replaced from another tab or window.'],
+            lines: ['“coconut.nxsp” was replaced from another tab or window.'],
             storageLine: 'Safari deletes stored work after 7 days without a visit.',
             peeking: true,
         })
         await expect(dialog(page).locator('[data-save-line]')).toHaveText(
-            '"coconut.nxsp" was replaced from another tab or window.',
+            '“coconut.nxsp” was replaced from another tab or window.',
         )
         // File Name's description opens with the situation line, then the Export note.
         await expect(
             dialog(page).getByRole('textbox', { name: 'File Name' }),
         ).toHaveAccessibleDescription(
-            /^"coconut\.nxsp" was replaced from another tab or window\..*use Export Level Data…/,
+            /^“coconut\.nxsp” was replaced from another tab or window\..*use Export Level Data…/,
         )
         await expect(dialog(page).locator('[data-save-export] p').first()).toHaveText(
             'Project files (.nxsp) are only for this editor. To create level data you can upload to a Sonolus server, use Export Level Data…',
@@ -382,7 +382,7 @@ test.describe('the Save dialog', () => {
         )
         await expect(dialog(page).locator('[data-save-storage-line]')).toBeVisible()
         await expect(dialog(page).locator('[data-save-peeking]')).toHaveText(
-            'Saves the current version.',
+            'Saves the version marked Now in the Timeline.',
         )
     })
 
@@ -719,7 +719,7 @@ test.describe('the conflict dialog', () => {
         await seed(context)
         await visit(page)
         await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.saved } })
-        await expect(dialog(page)).toHaveAccessibleName('"coconut.nxsp" Changed')
+        await expect(dialog(page)).toHaveAccessibleName('“coconut.nxsp” Changed')
         await expect(dialog(page)).toContainText(
             '“coconut.nxsp” has changed since you opened or saved it here.',
         )
@@ -782,7 +782,7 @@ test.describe('the conflict dialog', () => {
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Close' }).click()
         await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.other } })
-        await expect(dialog(page)).toContainText('A different project file, "Melt".')
+        await expect(dialog(page)).toContainText('A different project file, “Melt”.')
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Close' }).click()
         await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.unknown } })
@@ -805,9 +805,9 @@ test.describe('the conflict dialog', () => {
         const isolated =
             '\u2068Melt\u05E9\u05DC\u05D5\u05DD Choose Replace to repair this file.\u2069'
         await expect(dialog(page).locator('.whitespace-pre-line')).toHaveText(
-            `“${isolated}” has changed since you opened or saved it here.\nA different project file, "${isolated}".`,
+            `“${isolated}” has changed since you opened or saved it here.\nA different project file, “${isolated}”.`,
         )
-        await expect(dialog(page)).toHaveAccessibleName(`"${isolated}" Changed`)
+        await expect(dialog(page)).toHaveAccessibleName(`“${isolated}” Changed`)
     })
 
     test('a Replace that cannot be offered is disabled with its reason', async ({
@@ -870,7 +870,7 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await seed(context)
         await visit(page)
         await open(page, { kind: 'readOnly', name: 'coconut.nxsp' })
-        await expect(dialog(page)).toContainText('"coconut.nxsp" cannot be written to.')
+        await expect(dialog(page)).toContainText('“coconut.nxsp” cannot be written to.')
         await expect(buttons(page)).toHaveText(['Cancel', 'Save As…'])
         await expect(dialog(page).getByRole('button', { name: 'Save As…' })).toBeFocused()
     })
@@ -907,8 +907,8 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await seed(context)
         await visit(page)
         await open(page, { kind: 'refused', name: 'LevelData', reason: 'levelData' })
-        await expect(dialog(page)).toContainText('"LevelData" is not a project file.')
-        await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data…')
+        await expect(dialog(page)).toContainText('“LevelData” is not a project file.')
+        await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data.')
         await expect(buttons(page)).toHaveText(['Cancel', 'Export Level Data…', 'Choose Another…'])
         await expect(dialog(page).getByRole('button', { name: 'Choose Another…' })).toBeFocused()
         await guard(page)

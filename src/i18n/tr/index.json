@@ -109,19 +109,19 @@
     "scaleBeat": {
       "title": "Vuruşları Ölçekle…",
       "dialogTitle": "Vuruşları Ölçekle",
-      "noSelected": "Ölçeklemek için farklı vuruşlarda en az iki nesne seçin",
+      "noSelected": "Farklı vuruşlarda en az iki nesne seçin",
       "scaled": "{0} nesnenin vuruşları ölçeklendi"
     },
     "scaleWidth": {
       "title": "Genişliği Ölçekle…",
       "dialogTitle": "Genişliği Ölçekle",
-      "noSelected": "Ölçeklemek için yatay genişliği olan nesneler seçin",
+      "noSelected": "Yatay genişliği olan nesneler seçin",
       "scaled": "{0} nesnenin genişliği ölçeklendi"
     },
     "scaleElevation": {
       "title": "Yükseklikleri Ölçekle…",
       "dialogTitle": "Yükseklikleri Ölçekle",
-      "noSelected": "Ölçeklemek için farklı yüksekliklerde en az iki nota veya sahne dönüşümü seçin",
+      "noSelected": "Farklı yüksekliklerde en az iki nota veya sahne dönüşüm olayı seçin",
       "scaled": "{0} nesnenin yükseklikleri ölçeklendi"
     },
     "scaleSelection": {
@@ -262,10 +262,10 @@
         "newer": "Bu seviye, bu editörün desteklediğinden daha yeni bir motor revizyonu için yapılmış. Bazı kısımlar doğru görüntülenmeyebilir veya kaydedilmeyebilir."
       },
       "refusals": {
-        "dynamicStages": "seviye dinamik sahne özelliklerini kullanıyor ancak dinamik sahneler devre dışı",
-        "cyclicEventRef": "döngüsel olay referansı “{0}”",
-        "cyclicSlideRef": "döngüsel kaydırma referansı “{0}”",
-        "refNotFound": "“{0}” referansı bulunamadı",
+        "dynamicStages": "seviye dinamik sahneleri kullanıyor ancak etkinleştirmiyor",
+        "cyclicEventRef": "döngüsel olay referansı \"{0}\"",
+        "cyclicSlideRef": "döngüsel kaydırma referansı \"{0}\"",
+        "refNotFound": "\"{0}\" referansı bulunamadı",
         "dataNotFound": "{0} verisi bulunamadı",
         "dataNoValue": "{0} verisinin değeri yok",
         "dataNoRef": "{0} verisinin referansı yok",
@@ -278,9 +278,9 @@
         "invalidBpm": "BPM pozitif ve sonlu olmalıdır",
         "missingValue": "{0} içinde {1} yok",
         "missingNote": "{0} içinde eksik nota var",
-        "ticksPerBeat": "vuruş başına tick sayısı eksik veya beklenmedik",
-        "offset": "beklenmedik zaman kayması",
-        "timeScaleChange": "beklenmedik zaman ölçeği değişikliği",
+        "ticksPerBeat": "vuruş başına tick sayısı eksik veya geçersiz",
+        "offset": "geçersiz zaman kayması",
+        "timeScaleChange": "geçersiz zaman ölçeği değişikliği",
         "meter": "geçersiz ölçü",
         "missingMeter": "{0}. ölçünün ölçü değeri yok"
       },
@@ -513,7 +513,7 @@
       "remove": "Kaldır",
       "removeStored": "Kaldır…",
       "inUse": "Kullanımda",
-      "removeInUse": "“{0}” kaldırılsın mı? Önizleme bunun yerine Varsayılan seçeneğini kullanacak.",
+      "removeInUse": "\"{0}\" kaldırılsın mı? Önizleme bunun yerine Varsayılan seçeneğini kullanacak.",
       "removeUnused": "\"{0}\" kaldırılsın mı?",
       "removeFailed": "Bu öğe kaldırılamadı.",
       "chooseAgain": "Tekrar Seç…",
@@ -575,7 +575,7 @@
         "insecure": "HTTP sunucu adresleri desteklenmiyor.",
         "checksum": "İndirilen içerik sunucunun sağlama toplamıyla eşleşmiyor.",
         "notFound": "Bu sunucuda böyle bir öğe yok.",
-        "invalid": "Bu adres bir Sonolus sunucusu değil.",
+        "invalid": "Editör bu adresten Sonolus sunucu verilerini okuyamadı.",
         "status": "Sunucu bir hata döndürdü ({0}).",
         "filesFailed": "Bu öğenin dosyaları {0} adresinden indirilemedi.",
         "addressEmpty": "Bir sunucu adresi girin.",
@@ -621,8 +621,10 @@
         "title": "Başlarken",
         "bgm": "Müziği yüklemek ve zaman kaymasını ayarlamak için Arka Plan Müziği komutunu seçin.",
         "bpm": "BPM komutunu seçin ve çizelgenin başındaki BPM değişikliğine dokunun. BPM değerini düzenlemek için tekrar dokunun.",
+        "bpmClick": "BPM komutunu seçin ve çizelgenin başındaki BPM değişikliğine tıklayın. BPM değerini düzenlemek için tekrar tıklayın.",
         "notes": "Nota komutunu seçin ve bir nota eklemek için çizelgeye dokunun. Kaydırma eklemek için önce Seçimi Kaldır, ardından Kaydırma komutunu seçin ve kaydırmanın başlangıç ve bitiş noktalarına dokunun.",
-        "save": "Çalışmanızı bir proje dosyasında (.nxsp) saklamak için Kaydet komutunu seçin. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar… komutunu kullanın."
+        "notesClick": "Nota komutunu seçin ve bir nota eklemek için çizelgeye tıklayın. Kaydırma eklemek için önce Seçimi Kaldır, ardından Kaydırma komutunu seçin ve kaydırmanın başlangıç ve bitiş noktalarına tıklayın.",
+        "save": "Çalışmanızı bir proje dosyasında (.nxsp) saklamak için Kaydet komutunu seçin. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar komutunu kullanın."
       },
       "touchscreen": {
         "title": "Dokunmatik Ekran",
@@ -645,6 +647,7 @@
       },
       "selectTool": {
         "select": "Nesnelerin üst üste geldiği yerlerde her dokunuş bir sonraki nesneyi seçer.",
+        "selectClick": "Nesnelerin üst üste geldiği yerlerde her tıklama bir sonraki nesneyi seçer.",
         "selectMultiple": "İçindeki nesneleri seçmek için boş alandan başlayıp sürükleyerek bir çerçeve çizin.",
         "move": "Seçimin tamamını taşımak için seçili bir nesneyi sürükleyin.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin. Seçili nesnelerin tümü aynı türdeyse boyutları birlikte değişir.",
@@ -652,36 +655,48 @@
       },
       "eraserTool": {
         "erase": "Bir nesneyi silmek için ona dokunun veya içindeki her şeyi silmek için sürükleyerek bir çerçeve çizin.",
-        "selection": "Seçimin tamamını silmek için seçili bir nesneye dokunun."
+        "eraseClick": "Bir nesneyi silmek için ona tıklayın veya içindeki her şeyi silmek için sürükleyerek bir çerçeve çizin.",
+        "selection": "Seçimin tamamını silmek için seçili bir nesneye dokunun.",
+        "selectionClick": "Seçimin tamamını silmek için seçili bir nesneye tıklayın."
       },
       "brushTool": {
         "properties": "Fırça komutunu seçin, ardından uygulanacak özellikleri ayarlayın.",
         "brush": "Fırçayı uygulamak için bir nesneye dokunun veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye dokunun.",
+        "brushClick": "Fırçayı uygulamak için bir nesneye tıklayın veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye tıklayın.",
         "shift": "Fırçayı kaydırmaların tamamına uygulamak için Shift tuşunu basılı tutun."
       },
       "pasteTool": {
-        "paste": "Kopyalanan nesneleri yerleştirmek için dokunun veya sürükleyin. Yatay çevirmek için Shift tuşunu basılı tutun."
+        "paste": "Kopyalanan nesneleri yerleştirmek için dokunun veya sürükleyin. Yatay çevirmek için Shift tuşunu basılı tutun.",
+        "pasteClick": "Kopyalanan nesneleri yerleştirmek için tıklayın veya sürükleyin. Yatay çevirmek için Shift tuşunu basılı tutun."
       },
       "generateSlideNotesTool": {
         "generate": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine dokunun. Her boş bölüm çizgisine bir nota eklenir.",
-        "generateMultiple": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Seçimdeki her kaydırmayı doldurmak için seçili bir notaya dokunun. Yalnızca bir notası seçili olan kaydırmanın tamamı doldurulur."
+        "generateClick": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine tıklayın. Her boş bölüm çizgisine bir nota eklenir.",
+        "generateMultiple": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Seçimdeki her kaydırmayı doldurmak için seçili bir notaya dokunun. Yalnızca bir notası seçili olan kaydırmanın tamamı doldurulur.",
+        "generateMultipleClick": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Seçimdeki her kaydırmayı doldurmak için seçili bir notaya tıklayın. Yalnızca bir notası seçili olan kaydırmanın tamamı doldurulur."
       },
       "adding": {
         "title": "Nesne Ekleme",
         "add": "Nota, Kaydırma, BPM, Zaman Ölçeği veya Olay aracında bir nesne eklemek için boş alana dokunun. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
+        "addClick": "Nota, Kaydırma, BPM, Zaman Ölçeği veya Olay aracında bir nesne eklemek için boş alana tıklayın. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
         "edit": "Özelliklerini göstermek için seçili bir nesneye dokunun.",
+        "editClick": "Özelliklerini göstermek için seçili bir nesneye tıklayın.",
         "move": "Bir nesneyi sürüklediğinizde yalnızca o nesne taşınır. Birden fazla nesneyi birlikte taşımak için Seçim aracını kullanın.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin.",
-        "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun."
+        "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun.",
+        "modifiersClick": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak tıklayın. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya tıklayın."
       },
       "noteTool": {
         "presets": "Varsayılan özellikleri göstermek ve Nota #1 ile Nota #4 arasındaki ön ayarlar arasında geçiş yapmak için Nota komutunu tekrar seçin.",
-        "quickEdit": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Nota #2 ön ayarı Kritik özelliğini açar veya kapatır."
+        "quickEdit": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Nota #2 ön ayarı Kritik özelliğini açar veya kapatır.",
+        "quickEditClick": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya tıklayın. Örneğin, varsayılan Nota #2 ön ayarı Kritik özelliğini açar veya kapatır."
       },
       "slideTool": {
         "connect": "Aynı kaydırmanın notaları seçiliyken o kaydırmaya başka bir nota eklemek için boş alana dokunun. Yeni bir kaydırmaya başlamadan önce Seçimi Kaldır komutunu seçin.",
+        "connectClick": "Aynı kaydırmanın notaları seçiliyken o kaydırmaya başka bir nota eklemek için boş alana tıklayın. Yeni bir kaydırmaya başlamadan önce Seçimi Kaldır komutunu seçin.",
         "presets": "Varsayılan özellikleri göstermek ve Kaydırma #1 ile Kaydırma #5 arasındaki ön ayarlar arasında geçiş yapmak için Kaydırma komutunu tekrar seçin.",
         "quickEdit": "Nota aracında olduğu gibi, geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Kaydırma #1 ön ayarı Bağlayıcı Yumuşatma özelliğini değiştirir.",
+        "quickEditClick": "Nota aracında olduğu gibi, geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya tıklayın. Örneğin, varsayılan Kaydırma #1 ön ayarı Bağlayıcı Yumuşatma özelliğini değiştirir.",
         "splitCombine": "Kaydırmayı Böl, seçilen her notanın sonraki notayla bağlantısını keser. Kaydırmada Birleştir, seçili notaların ait olduğu kaydırmaları tek bir kaydırmada birleştirir."
       },
       "bpmTool": {
@@ -695,7 +710,8 @@
       "event": {
         "next": "Bir olay aracına geçmek için Olay komutunu seçin. Olay araçları arasında sırayla geçiş yapmak için tekrar seçin.",
         "defaults": "Bir olay aracının varsayılan özelliklerini düzenlemek için Kamera Olayı gibi kendi adını tekrar seçin.",
-        "quickEdit": "Özellikler paneli görünürken seçili bir olaya dokunduğunuzda olayın yumuşatması da değişir."
+        "quickEdit": "Özellikler paneli görünürken seçili bir olaya dokunduğunuzda olayın yumuşatması da değişir.",
+        "quickEditClick": "Özellikler paneli görünürken seçili bir olaya tıkladığınızda olayın yumuşatması da değişir."
       },
       "offset": {
         "drag": "Arka plan müziğinin zaman kaymasını değiştirmek için yukarı veya aşağı sürükleyin."
@@ -880,7 +896,7 @@
       "notices": "Üçüncü Taraf Lisansları",
       "privacy": "Gizlilik",
       "usageStatistics": "Kullanım İstatistiklerini Gönder",
-      "usageStatisticsNote": "Kullanım istatistikleri araç kullanımını, temel ayarları, dosya türlerini ve boyutlarını ve işlemlerin ne kadar sürdüğünü içerir. Ayrıntılar için Gizlilik’e bakın.",
+      "usageStatisticsNote": "Kullanım istatistikleri kullandığınız araçları, bazı editör ayarlarını, dosya türlerini ve boyutlarını ve işlemlerin ne kadar sürdüğünü içerir. Ayrıntılar için Gizlilik’e bakın.",
       "usageStatisticsSignal": "Bu tarayıcı Do Not Track veya Global Privacy Control sinyali gönderdiği için varsayılan olarak kapalı.",
       "diagnostics": "Tanılama Bilgilerini Kopyala…",
       "diagnosticsTitle": "Tanılama Bilgileri",
@@ -896,12 +912,12 @@
       "discardConfirm": "Sil",
       "cannotOpen": "(bu sürümde açılamıyor)",
       "discardAutoSave": "Eski otomatik kaydetme verisi ({0}) silinsin mi?",
-      "discardUnreadable": "{0} tarihli okunamayan kurtarılmış çalışma ({1}) silinsin mi?",
+      "discardUnreadable": "{0} tarihli kurtarılmış çalışma ({1}) silinsin mi? Bu çalışma açılamıyor.",
       "recovery": {
         "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0} · {1}",
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
-        "unreadable": "Okunamayan kurtarılmış çalışma · {0} · {1}",
+        "unreadable": "Açılamayan kurtarılmış çalışma · {0} · {1}",
         "listFailed": "Kurtarılmış çalışma okunamadı.",
         "downloadFailed": "Kurtarılmış çalışma indirilemedi."
       },
@@ -1151,7 +1167,7 @@
     "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
     "autoSaveKept": "Eski otomatik kaydetme verisindeki \"{0}\" ayrı bir oturum olarak saklandı.",
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
-    "journalFailed": "Kurtarılan bir değişiklik oturumunda saklanamadı. Yerel Veriler’den erişilebilir.",
+    "journalFailed": "Kurtarılan bir değişiklik oturumunda saklanamadı. Yerel Veriler’de bulunabilir.",
     "storageNearlyFull": "Tarayıcının depolama alanı neredeyse dolu.",
     "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma tarayıcının depolama alanını dolduruyor.",
     "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
@@ -1663,7 +1679,7 @@
         "unassigned": "Atanmamış",
         "reserved": "{0} tarayıcıya veya sisteme ayrılmıştır; başka bir tuşa basın.",
         "altGraph": "{0} birçok klavye düzeninde karakter yazmak için kullanılır. Başka bir tuşa basın.",
-        "alsoRuns": "{0} komutunu da çalıştırır",
+        "alsoRuns": "{0} komutunu da çalıştırır.",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -2005,7 +2021,7 @@
     "unavailable": "Değişiklikler kullanılamıyor",
     "loadingChanges": "Değişiklikler yükleniyor…",
     "addedRemoved": "{0} eklendi · {1} kaldırıldı",
-    "exportsCurrent": "Güncel sürümü dışa aktarır.",
+    "exportsCurrent": "Zaman Çizgisi’nde Şimdi olarak işaretlenen sürümü dışa aktarır.",
     "overlay": "Geçmiş görüntüleniyor · salt okunur",
     "backToNow": "Şimdiye Dön",
     "restore": "Geri Yükle",
@@ -2020,7 +2036,7 @@
     "changesBelow": "Aşağıdaki değişiklikler: {0}",
     "changesAboveAny": "Yukarıdaki değişiklikler",
     "changesBelowAny": "Aşağıdaki değişiklikler",
-    "savesCurrent": "Güncel sürümü kaydeder.",
+    "savesCurrent": "Zaman Çizgisi’nde Şimdi olarak işaretlenen sürümü kaydeder.",
     "showEdits": "Değişiklikleri Göster",
     "changeOptions": "Değişiklik Seçenekleri"
   },
@@ -2029,7 +2045,7 @@
     "chooseAnother": "Başka Birini Seç…",
     "tryAgain": "Tekrar Dene",
     "denied": "Tarayıcı {0} dosyasına yazmaya izin vermedi.",
-    "notFound": "“{0}” bulunamadı.",
+    "notFound": "\"{0}\" bulunamadı.",
     "downloadStarted": "İndirme başlatıldı: {0} · {1}",
     "preparing": "{0} hazırlanıyor… {1}",
     "ready": "Hazır: {0} · {1}",
@@ -2042,20 +2058,21 @@
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "\"{0}\" yazılamadı.",
     "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi.",
-    "openedContentGone": "\"{0}\" artık önceki içeriğini içermiyor.",
-    "replacedContentGone": "\"{0}\" artık önceki içeriğini içermiyor.",
+    "openedContentGone": "\"{0}\" içeriği değişti.",
+    "replacedContentGone": "\"{0}\" içeriği değişti.",
     "title": "Proje Dosyasını Kaydet",
     "titleAs": "Farklı Kaydet",
     "history": "Geçmiş",
     "bgm": "Arka Plan Müziği",
     "placeholder": "Adsız",
     "exportHint": "Sonolus için Seviye Verisini Dışa Aktar… komutunu kullanın.",
+    "exportHintText": "Sonolus için Seviye Verisini Dışa Aktar komutunu kullanın.",
     "exportHintFirst": "Proje dosyaları (.nxsp) yalnızca bu editörde kullanılır. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar… komutunu kullanın.",
     "exportHintNames": "Seviye verisi dosyaları uzantısız olabilir veya .nsld ya da .json.gz ile bitebilir.",
     "openExport": "Seviye Verisini Dışa Aktar…",
     "readOnly": "\"{0}\" dosyasına yazılamıyor.",
     "notProject": "\"{0}\" bir proje dosyası değil.",
-    "notKept": "Kaydedilmedi. “{0}” tamamen okunamadı.",
+    "notKept": "Kaydedilmedi. \"{0}\" tamamen okunamadı.",
     "notKeptSafe": "Kaydedilmedi. Güvenli modda dosyalar değiştirilemez.",
     "notKeptFull": "Kaydedilmedi. Tarayıcının depolama alanı dolu. Ayarlar › Yerel Veriler’den oturumları silin, ardından yeniden kaydedin.",
     "saved": "{0} dosyasına kaydedildi",
@@ -2072,12 +2089,12 @@
     "noChangesSaved": "{0} kaydedildiğinden beri değişiklik yok",
     "noChangesOpened": "{0} açıldığından beri değişiklik yok",
     "downloadAgain": "Tekrar İndir",
-    "unreadable": "“{0}” tamamen okunamadı.",
+    "unreadable": "\"{0}\" tamamen okunamadı.",
     "tooLarge": "Dosya çok büyük.",
     "restoredName": "{0} ({1} geri yüklendi)",
     "fileType": "Next SEKAI proje dosyası",
-    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar… komutunu kullanın.",
-    "storageUnavailable": "Kaydedilmedi. Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin veya Farklı Kaydet… komutunu kullanın.",
+    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar komutunu kullanın.",
+    "storageUnavailable": "Kaydedilmedi. Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin veya Farklı Kaydet komutunu kullanın.",
     "include": "Dahil Edilecekler",
     "historySize": "{0} adım · {1}",
     "historyNote": "Dosyaya sahip herkes dosyanın geçmişini görebilir.",
@@ -2097,7 +2114,7 @@
     "noDamage": "Hasar bulunamadı.",
     "scopeBoth": "\"{0}\" ile bu tarayıcıda saklanan geçmiş denetlendi.",
     "scopeStored": "Bu tarayıcıda saklanan geçmiş denetlendi.",
-    "fileDamaged": "“{0}” hasarlı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
+    "fileDamaged": "\"{0}\" hasarlı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
     "repaired": "{0} Zaman Çizgisi adımı onarıldı.",
     "storedDamaged": "Bu tarayıcıda saklanan {0} Zaman Çizgisi adımı hasarlı.",
     "mediaDamaged": "Bu tarayıcıda saklanan seviyenin {0} hasarlıydı."
@@ -2113,11 +2130,11 @@
   },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",
-    "exportBody": "“{0}”, son dışa aktarmanızdan bu yana değişti.",
-    "exportBodyOpened": "“{0}”, burada açtığınızdan bu yana değişti.",
+    "exportBody": "\"{0}\", son dışa aktarmanızdan bu yana değişti.",
+    "exportBodyOpened": "\"{0}\", burada açtığınızdan bu yana değişti.",
     "replace": "Üzerine Yaz",
     "title": "\"{0}\" Değişti",
-    "body": "“{0}”, burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
+    "body": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
     "saved": "{0}, {1} · {2}.",
     "savedNoNotes": "{0}, {1}.",
     "otherProject": "Farklı bir proje dosyası: \"{0}\".",
@@ -2141,7 +2158,7 @@
     "tooLong": "Ad çok uzun"
   },
   "notice": {
-    "useOpenFile": "Bir dosya açmak için Aç… komutunu kullanın.",
+    "useOpenFile": "Bir dosya açmak için Aç komutunu kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",
@@ -2178,7 +2195,7 @@
     "deleted": "\"{0}\" silindi",
     "deleteRefused": "Silinmedi. \"{0}\" bir sekmede veya pencerede kullanımda.",
     "deleteFailed": "\"{0}\" silinemedi.",
-    "undoLost": "“{0}” silindi. Bu silme işlemi artık geri alınamaz."
+    "undoLost": "\"{0}\" silindi. Bu silme işlemi artık geri alınamaz."
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
@@ -2237,8 +2254,8 @@
     "changedOnDisk": "Diskte değişti",
     "newerOnDisk": "Diskte daha yeni",
     "notConfirmed": "İndirme onaylanmadı",
-    "changedOnDiskName": "“{0}”, burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
-    "newerOnDiskName": "\"{0}\": diskte daha yeni bir sürüm var.",
+    "changedOnDiskName": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
+    "newerOnDiskName": "Diskte \"{0}\" için daha yeni bir sürüm var.",
     "notStored": "Saklanmıyor"
   },
   "confirm": {

@@ -332,7 +332,7 @@ test.describe('with a stored BGM', () => {
         await expect(
             page
                 .locator('[data-notice-card]')
-                .getByText('This is a different file from the original BGM, "pick.wav".'),
+                .getByText('This is a different file from the original BGM, “pick.wav”.'),
         ).toBeVisible()
         const changed = await liveBgm(page)
         expect(changed).toMatchObject({

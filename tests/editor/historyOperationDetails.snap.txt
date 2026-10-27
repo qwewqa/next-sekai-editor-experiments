@@ -178,28 +178,28 @@ T: Changed Lane on 8 notes
 R: Lane [left]: 0 > ~Varies
 
 #property.note.group en
-T: Set Group to "Main Group" on 2 notes
+T: Set Group to “Main Group” on 2 notes
 R: Group [groupId]: ~Varies > Main Group
 
 #property.note.group.longName en
-T: Set Group to "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going ax" on 2 notes
+T: Set Group to “A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going ax” on 2 notes
 R: Group [groupId]: ~Varies > A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going ax
 
 #property.note.group.truncated en
-T: Set Group to "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…" on 2 notes
+T: Set Group to “A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…” on 2 notes
 R: Group [groupId]: ~Varies > A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an… [shortened]
 F: Text shortened for display
 
 #property.note.group.emptyName en
-T: Set Group to "" on 2 notes
-R: Group [groupId]: ~Varies > ""
+T: Set Group to “” on 2 notes
+R: Group [groupId]: ~Varies > “”
 
 #property.note.stage en
-T: Set Stage to "Left Stage" on 2 notes
+T: Set Stage to “Left Stage” on 2 notes
 R: Stage [stageId]: ~Varies > Left Stage
 
 #property.note.group.qualified en
-T: Set Group to "Group A" on 2 notes
+T: Set Group to “Group A” on 2 notes
 R: Group [groupId]: ~Varies > Group A
 
 #property.timeScale.ease en
@@ -380,7 +380,7 @@ T: Enabled dynamic stages
 R: Added [created]: 1 stage mask event / 1 stage pivot event / 1 stage style event
 
 #owner.create.group en
-T: Added group "New Group"
+T: Added group “New Group”
 
 #owner.create.group fr
 T: Groupe "New Group" ajouté
@@ -389,34 +389,34 @@ T: Groupe "New Group" ajouté
 T: 「New Group」グループを追加しました
 
 #owner.create.stage en
-T: Added stage "New Stage"
+T: Added stage “New Stage”
 
 #owner.create.group.inFolder en
-T: Added group "In Folder"
+T: Added group “In Folder”
 R: Folder [folder]: Folder One
 
 #owner.create.groupFolder.gathered3 en
-T: Created folder "Folder One" with 3 groups
+T: Created folder “Folder One” with 3 groups
 
 #owner.create.groupFolder.gathered0 en
-T: Added group folder "Folder One"
+T: Added group folder “Folder One”
 
 #owner.create.stageFolder.gathered2 en
-T: Created folder "Stage Folder" with 2 stages
+T: Created folder “Stage Folder” with 2 stages
 
 #owner.create.group.emptyName en
-T: Added group ""
+T: Added group “”
 
 #owner.create.group.longName en
-T: Added group "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…"
+T: Added group “A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…”
 F: Text shortened for display
 
 #owner.create.group.newlineName en
-T: Added group "Line one
-Line two	tab"
+T: Added group “Line one
+Line two	tab”
 
 #owner.rename.group en
-T: Renamed group "Alpha" to "Beta"
+T: Renamed group “Alpha” to “Beta”
 
 #owner.rename.group fr
 T: Groupe "Alpha" renommé en "Beta"
@@ -425,23 +425,23 @@ T: Groupe "Alpha" renommé en "Beta"
 T: グループ「Alpha」の名前を「Beta」に変更しました
 
 #owner.rename.same en
-T: Renamed group "Alpha" to "Alpha"
+T: Renamed group “Alpha” to “Alpha”
 
 #owner.rename.fromEmpty en
-T: Renamed stage "" to "Beta"
+T: Renamed stage “” to “Beta”
 
 #owner.rename.toEmpty en
-T: Renamed stage "Beta" to ""
+T: Renamed stage “Beta” to “”
 
 #owner.rename.long en
-T: Renamed group "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an" to "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…"
+T: Renamed group “A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an” to “A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…”
 F: Text shortened for display
 
 #owner.rename.folder en
-T: Renamed group folder "Old Folder" to "New Folder"
+T: Renamed group folder “Old Folder” to “New Folder”
 
 #owner.set.group.speed en
-T: Set Force Note Speed to 1.5 for group "Alpha"
+T: Set Force Note Speed to 1.5 for group “Alpha”
 R: Force Note Speed [forceNoteSpeed]: ~Not set > 1.5
 
 #owner.set.group.speed fr
@@ -453,24 +453,24 @@ T: グループ「Alpha」の「ノーツ速度を固定」を1.5に設定しま
 R: ノーツ速度を固定 [forceNoteSpeed]: ~未設定 > 1.5
 
 #owner.set.group.speedCleared en
-T: Cleared Force Note Speed for group "Alpha"
+T: Cleared Force Note Speed for group “Alpha”
 R: Force Note Speed [forceNoteSpeed]: 1.5 > ~Not set
 
 #owner.set.group.speedNoChange en
-T: Set Force Note Speed to 1.5 for group "Alpha"
+T: Set Force Note Speed to 1.5 for group “Alpha”
 
 #owner.set.stage.multi en
-T: Changed Generate Sim Lines, From Start, and Until End for stage "Left"
+T: Changed Generate Sim Lines, From Start, and Until End for stage “Left”
 R: Generate Sim Lines [generateSimLines]: Global > Isolated
 R: From Start [isFromStart]: Disabled > Enabled
 R: Until End [isUntilEnd]: Enabled > Disabled
 
 #owner.set.stage.qualified en
-T: Set Until End to Enabled for stage "Left"
+T: Set Until End to Enabled for stage “Left”
 R: Until End [isUntilEnd]: Disabled > Enabled
 
 #owner.move.reorder.indexes en
-T: Moved group "Alpha"
+T: Moved group “Alpha”
 R: Order [order]: 3 > 1
 
 #owner.move.reorder.indexes fr
@@ -482,26 +482,26 @@ T: 「Alpha」グループを移動しました
 R: 順序 [order]: 3 > 1
 
 #owner.move.reorder.noIndexes en
-T: Moved group "Alpha"
+T: Moved group “Alpha”
 
 #owner.move.reorder.fromOnly en
-T: Moved group "Alpha"
+T: Moved group “Alpha”
 
 #owner.move.reorder.sameIndex en
-T: Moved group "Alpha"
+T: Moved group “Alpha”
 
 #owner.move.intoFolder en
-T: Moved group "Alpha" into folder "Folder One"
+T: Moved group “Alpha” into folder “Folder One”
 
 #owner.move.outOfFolder en
-T: Moved stage "Left" out of its folder
+T: Moved stage “Left” out of its folder
 
 #owner.move.folderReorder en
-T: Moved group folder "Folder One"
+T: Moved group folder “Folder One”
 R: Order [order]: 2 > 1
 
 #owner.moveMany.groups.into en
-T: Moved 5 groups into folder "Folder One"
+T: Moved 5 groups into folder “Folder One”
 
 #owner.moveMany.stages.out en
 T: Moved 2 stages out of folders
@@ -510,7 +510,7 @@ T: Moved 2 stages out of folders
 T: Moved groups out of folders
 
 #owner.duplicate.group en
-T: Duplicated group "Alpha"
+T: Duplicated group “Alpha”
 
 #owner.duplicate.group fr
 T: Groupe "Alpha" dupliqué
@@ -522,14 +522,14 @@ T: 「Alpha」グループを複製しました
 T: Duplicated 3 groups
 
 #owner.duplicate.folderWith en
-T: Duplicated group folder "Folder One"
+T: Duplicated group folder “Folder One”
 R: Added [added]: 2 groups / 1 group folder
 
 #owner.duplicate.stage en
-T: Duplicated stage "Left"
+T: Duplicated stage “Left”
 
 #owner.delete.group en
-T: Deleted group "Alpha"
+T: Deleted group “Alpha”
 
 #owner.delete.group fr
 T: Groupe "Alpha" supprimé
@@ -541,14 +541,14 @@ T: 「Alpha」グループを削除しました
 T: Deleted 4 groups
 
 #owner.delete.folderWith en
-T: Deleted stage folder "Folder S"
+T: Deleted stage folder “Folder S”
 R: Removed [removed]: 2 stages / 1 stage folder
 
 #owner.delete.emptyName en
-T: Deleted group ""
+T: Deleted group “”
 
 #owner.ungroup.3 en
-T: Ungrouped folder "Folder One"
+T: Ungrouped folder “Folder One”
 R: Moved Out of Folder [released]: 3 groups
 
 #owner.ungroup.3 fr
@@ -560,7 +560,7 @@ T: 「Folder One」フォルダーを解除しました
 R: フォルダーから移動 [released]: 3個のグループ
 
 #owner.ungroup.stage0 en
-T: Ungrouped folder "Folder S"
+T: Ungrouped folder “Folder S”
 
 #origin.new en
 T: Started a new level
@@ -702,7 +702,7 @@ T: Undo · Added 2 notes
 T: Redo · Deleted 2 notes
 
 #undo.single.ownerRename en
-T: Undo · Renamed group "Alpha" to "Beta"
+T: Undo · Renamed group “Alpha” to “Beta”
 
 #undo.group.3 en
 T: Undid 3 steps
@@ -1049,28 +1049,28 @@ S: 2 steps
 #group.ownerCreate.group.3 en
 T: Added 3 groups
 S: 3 steps
-  - Added group "G"
-  - Added group "G"
-  - Added group "G"
+  - Added group “G”
+  - Added group “G”
+  - Added group “G”
 
 #group.ownerCreate.stage.2 en
 T: Added 2 stages
 S: 2 steps
-  - Added stage "S"
-  - Added stage "S"
+  - Added stage “S”
+  - Added stage “S”
 
 #group.ownerCreate.groupFolder.2 en
 T: Added 2 group folders
 S: 2 steps
-  - Added group folder "F"
-  - Added group folder "F"
+  - Added group folder “F”
+  - Added group folder “F”
 
 #group.ownerRename.chain en
-T: Renamed group "A"
+T: Renamed group “A”
 S: 3 steps
-  - Renamed group "C" to "A"
-  - Renamed group "B" to "C"
-  - Renamed group "A" to "B"
+  - Renamed group “C” to “A”
+  - Renamed group “B” to “C”
+  - Renamed group “A” to “B”
 
 #group.ownerRename.chain fr
 T: Groupe "A" renommé
@@ -1087,49 +1087,49 @@ S: 3 steps
   - グループ「A」の名前を「B」に変更しました
 
 #group.ownerRename.netZero en
-T: Renamed group "A"
+T: Renamed group “A”
 S: 2 steps
-  - Renamed group "B" to "A"
-  - Renamed group "A" to "B"
+  - Renamed group “B” to “A”
+  - Renamed group “A” to “B”
 
 #group.ownerSet.uniform en
-T: Set Force Note Speed to 2 for group "Alpha"
+T: Set Force Note Speed to 2 for group “Alpha”
 R: Force Note Speed [forceNoteSpeed]: ~Not set > 2
 S: 2 steps
-  + Set Force Note Speed to 2 for group "Alpha"
-  + Set Force Note Speed to 2 for group "Alpha"
+  + Set Force Note Speed to 2 for group “Alpha”
+  + Set Force Note Speed to 2 for group “Alpha”
 
 #group.ownerSet.varying en
-T: Changed Force Note Speed for group "Alpha"
+T: Changed Force Note Speed for group “Alpha”
 R: Force Note Speed [forceNoteSpeed]: ~Not set > 2
 S: 2 steps
-  + Set Force Note Speed to 2 for group "Alpha"
-  + Set Force Note Speed to 1 for group "Alpha"
+  + Set Force Note Speed to 2 for group “Alpha”
+  + Set Force Note Speed to 1 for group “Alpha”
 
 #group.ownerMove.reorder en
-T: Moved group "Alpha"
+T: Moved group “Alpha”
 R: Order [order]: 4 > 1
 S: 2 steps
-  + Moved group "Alpha"
-  + Moved group "Alpha"
+  + Moved group “Alpha”
+  + Moved group “Alpha”
 
 #group.ownerMove.intoFolder en
-T: Moved group "Alpha" into folder "F1"
+T: Moved group “Alpha” into folder “F1”
 S: 2 steps
-  - Moved group "Alpha" into folder "F1"
-  - Moved group "Alpha" into folder "F1"
+  - Moved group “Alpha” into folder “F1”
+  - Moved group “Alpha” into folder “F1”
 
 #group.ownerDuplicate.2 en
 T: Duplicated 2 groups
 S: 2 steps
-  - Duplicated group "Alpha"
-  - Duplicated group "Alpha"
+  - Duplicated group “Alpha”
+  - Duplicated group “Alpha”
 
 #group.ownerDelete.group.2 en
 T: Deleted 2 groups
 S: 2 steps
-  - Deleted group "Alpha"
-  - Deleted group "Alpha"
+  - Deleted group “Alpha”
+  - Deleted group “Alpha”
 
 #group.ownerDelete.withFolders en
 T: Deleted stages (4) and folders (2)
@@ -1145,11 +1145,11 @@ S: 2 steps
   + Deleted 3 objects
 
 #edge.deletedGroupRef en
-T: Set Group to "Deleted Group" on 2 notes
+T: Set Group to “Deleted Group” on 2 notes
 R: Group [groupId]: ~Varies > Deleted Group
 
 #edge.deletedStageRef en
-T: Set Stage to "Deleted Stage" on 1 stage style event
+T: Set Stage to “Deleted Stage” on 1 stage style event
 R: Stage [stageId]: ~Varies > Deleted Stage
 
 #edge.multiSubject.move en
@@ -1157,16 +1157,16 @@ T: Moved 1,234 objects
 R: Changed [changed]: 617 notes / 617 BPM changes
 
 #edge.ownerSet.sameNameQualified en
-T: Renamed group "Group A" to "Group A"
+T: Renamed group “Group A” to “Group A”
 
 #edge.rtl.name en
-T: Added group "مجموعة الأوتار"
+T: Added group “مجموعة الأوتار”
 
 #edge.emoji.name en
-T: Renamed group "🎵 Group" to "🎵 Group 🎶"
+T: Renamed group “🎵 Group” to “🎵 Group 🎶”
 
 #edge.longword.nowrap en
-T: Renamed group "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy" to "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+T: Renamed group “yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy” to “xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx”
 
 #edge.countAtSafeMax en
 T: Added 9,007,199,254,740,991 notes
@@ -1181,8 +1181,8 @@ R: Size [size]: 1 > 2
 T: Set Lane to 1 on 1 note
 
 #property.note.group.beforeName en
-T: Set Group to "" on 2 notes
-R: Group [groupId]: Old Group > ""
+T: Set Group to “” on 2 notes
+R: Group [groupId]: Old Group > “”
 
 #object.edit.note.empty en
 T: Edited notes
@@ -1243,9 +1243,9 @@ R: Paste Location [at]: Chosen Position
 F: Pasted flipped
 
 #owner.delete.cascade en
-T: Deleted group "Alpha"
+T: Deleted group “Alpha”
 R: Removed [removed]: 1 group / 800 notes / 12 time scales
-F: Added group "Group 1"
+F: Added group “Group 1”
 
 #owner.delete.cascade fr
 T: Groupe "Alpha" supprimé
@@ -1258,24 +1258,24 @@ R: 削除 [removed]: 1個のグループ / 800個のノーツ / 12個のハイ�
 F: 「Group 1」グループを追加しました
 
 #owner.delete.cascade.stageFolder en
-T: Deleted stage folder "Folder S"
+T: Deleted stage folder “Folder S”
 R: Removed [removed]: 2 stages / 1 stage folder / 4 stage transform events
 
 #owner.delete.counts.noCascade en
 T: Deleted 4 groups
 
 #owner.delete.folderOnly en
-T: Deleted group folder "Folder One"
+T: Deleted group folder “Folder One”
 
 #owner.duplicate.cascade en
-T: Duplicated group "Alpha"
+T: Duplicated group “Alpha”
 R: Added [added]: 1 group / 120 notes / 1 time scale
 
 #owner.duplicate.folderOnly en
-T: Duplicated group folder "Folder One"
+T: Duplicated group folder “Folder One”
 
 #owner.set.group.twoFields en
-T: Changed Generate Sim Lines and From Start for stage "Left"
+T: Changed Generate Sim Lines and From Start for stage “Left”
 R: Generate Sim Lines [generateSimLines]: Global > Isolated
 R: From Start [isFromStart]: Disabled > Enabled
 
@@ -1290,8 +1290,8 @@ R: 同時押し線の生成 [generateSimLines]: 全体 > 個別
 R: 最初から [isFromStart]: 無効 > 有効
 
 #owner.create.stage.inFolder en
-T: Added stage "In Folder"
-R: Folder [folder]: ""
+T: Added stage “In Folder”
+R: Folder [folder]: “”
 
 #dynamicStages.enable.empty en
 T: Enabled dynamic stages
@@ -1319,7 +1319,7 @@ S: 3 steps
 #group.undo.mixed en
 T: Undid 3 steps
 S: 3 steps (no prefix)
-  - Renamed group "Alpha" to "Beta"
+  - Renamed group “Alpha” to “Beta”
   + Pasted 2 objects
   - Added 2 notes
 
@@ -1328,29 +1328,29 @@ T: Deleted 3 groups
 R: Removed [removed]: 3 groups / 5 notes / 1 time scale
 R: Added [added]: 1 group
 S: 3 steps
-  - Deleted group "Gamma"
-  + Deleted group "Beta"
-  + Deleted group "Alpha"
+  - Deleted group “Gamma”
+  + Deleted group “Beta”
+  + Deleted group “Alpha”
 
 #group.ownerDelete.replacementOnly en
 T: Deleted 2 groups
 R: Added [added]: 1 group
 S: 2 steps
-  + Deleted group "Beta"
-  - Deleted group "Alpha"
+  + Deleted group “Beta”
+  - Deleted group “Alpha”
 
 #group.ownerDuplicate.cascade en
 T: Duplicated 2 groups
 R: Added [added]: 2 groups / 125 notes / 1 time scale
 S: 2 steps
-  + Duplicated group "Alpha"
-  + Duplicated group "Alpha"
+  + Duplicated group “Alpha”
+  + Duplicated group “Alpha”
 
 #owner.moveMany.zero.into en
-T: Moved groups into folder "Folder One"
+T: Moved groups into folder “Folder One”
 
 #owner.moveMany.zero.stages en
 T: Moved stages out of folders
 
 #owner.moveMany.zero.stagesInto en
-T: Moved stages into folder "Folder S"
+T: Moved stages into folder “Folder S”

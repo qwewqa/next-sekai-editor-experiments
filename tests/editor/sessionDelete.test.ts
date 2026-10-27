@@ -84,7 +84,7 @@ test('a Delete makes an inline row, announces it and tells the lists; no notice 
     const t = setup()
     assert.equal(await t.model.remove(chain('a'), 'Alpha'), 'marked')
     assert.deepEqual(statuses(t.model), [['a', 'deleted']])
-    assert.equal(t.model.announcement.value, 'Deleted "Alpha"')
+    assert.equal(t.model.announcement.value, 'Deleted “Alpha”')
     assert.equal(t.log.changed, 1)
     assert.deepEqual(t.log.reports, [])
     // Further Deletes each have their own row.
@@ -156,10 +156,10 @@ test('a chain open elsewhere or a failed write is reported and leaves no row; a 
     const t = setup()
     t.fakes.mark = () => Promise.resolve({ kind: 'open' })
     assert.equal(await t.model.remove(chain('a'), 'Alpha'), 'open')
-    assert.deepEqual(t.log.reports, ['Not deleted. "Alpha" is in use in a tab or window.'])
+    assert.deepEqual(t.log.reports, ['Not deleted. “Alpha” is in use in a tab or window.'])
     t.fakes.mark = () => Promise.resolve({ kind: 'failed' })
     assert.equal(await t.model.remove(chain('a'), 'Alpha'), 'failed')
-    assert.equal(t.log.reports.at(-1), '"Alpha" could not be deleted.')
+    assert.equal(t.log.reports.at(-1), '“Alpha” could not be deleted.')
     t.fakes.mark = () => Promise.resolve({ kind: 'gone' })
     const reports = t.log.reports.length
     const changed = t.log.changed
