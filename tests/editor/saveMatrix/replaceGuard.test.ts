@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import en from '../../../src/i18n/en/index.json' with { type: 'json' }
 import { createWorld, flow, settle } from './world'
 
 const { storageStatus } = await import('../../../src/local/startup/events')
@@ -9,11 +10,11 @@ const { storageStatus } = await import('../../../src/local/startup/events')
 // failed read or no decision used to leave Replace enabled, and the file on disk could be the only
 // holder of earlier Timeline steps.
 
-const reason = async (guard: (w: Awaited<ReturnType<typeof createWorld>>) => void) => {
+const reason = async (guard: (w: Awaited<ReturnType<typeof createWorld>>) => unknown) => {
     const w = await createWorld({ own: 'bound', storage: 'lacks', ownDisk: 'ahead' })
     // Storing works, so the dialog's own reason for a storage that cannot take the file is absent.
     storageStatus.value = { mode: 'stored' }
-    guard(w)
+    await guard(w)
     w.answers.conflict.push(undefined)
     await flow.save()
     await settle()
@@ -45,4 +46,9 @@ test('Replace guard: no decision disables Replace with the uncertain reason', as
         w.decision.value = undefined
     })
     assert.match(String(text), MAY)
+})
+
+test('Replace guard: a file that is not a project file says it is damaged, not that it was opened', async () => {
+    const text = await reason((w) => w.put('own.nxsp', new Blob(['not a project file'])))
+    assert.equal(text, en.conflict.replaceDamaged)
 })

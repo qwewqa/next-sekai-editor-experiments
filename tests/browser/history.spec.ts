@@ -564,7 +564,9 @@ test('undoing dynamic stages leaves the event tools, whose events it could not s
     })
     await expect(page.getByRole('dialog')).toBeVisible()
     await confirmWhenReady(
-        page.getByRole('dialog').getByRole('button', { name: 'Confirm' }),
+        page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Enable Dynamic Stages', exact: true }),
         page.getByRole('dialog'),
     )
     await command

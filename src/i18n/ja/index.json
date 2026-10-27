@@ -2067,6 +2067,7 @@
     "notPutBack": "「{0}」は空になり、内容を復元できませんでした。",
     "openedContentGone": "「{0}」の内容が変更されています。",
     "replacedContentGone": "「{0}」の内容が変更されています。",
+    "downloadPreviousContents": "変更前の内容をコピーとしてダウンロードできます。",
     "title": "プロジェクトファイルを保存",
     "titleAs": "名前を付けて保存",
     "history": "履歴",
@@ -2153,6 +2154,7 @@
     "replaceNote": "ディスク上のバージョンは最近のセッションに保管されます。",
     "keptName": "{0}（{1} に置き換え）",
     "replaceNewer": "このファイルは、より新しいバージョンの{0}で作成されています。",
+    "replaceDamaged": "このファイルは破損しています。",
     "replaceHoldsEarlier": "このブラウザーにはもう保管されていない、タイムラインの以前の操作が含まれています。",
     "replaceMayHoldEarlier": "このブラウザーにはもう保管されていない、タイムラインの以前の操作が含まれている可能性があります。",
     "keepEditing": "編集を続ける"

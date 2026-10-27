@@ -2067,6 +2067,7 @@
     "notPutBack": "「{0}」已被清空，且無法還原其內容。",
     "openedContentGone": "「{0}」的內容已變更。",
     "replacedContentGone": "「{0}」的內容已變更。",
+    "downloadPreviousContents": "您可以下載一份變更前的內容副本。",
     "title": "儲存專案檔案",
     "titleAs": "另存新檔",
     "history": "歷史記錄",
@@ -2153,6 +2154,7 @@
     "replaceNote": "磁碟上的版本將保留在「最近工作階段」中。",
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "此檔案由較新版本的 {0} 建立。",
+    "replaceDamaged": "此檔案已損毀。",
     "replaceHoldsEarlier": "它包含此瀏覽器中已不再存放的較早時間軸步驟。",
     "replaceMayHoldEarlier": "它可能包含此瀏覽器中已不再存放的較早時間軸步驟。",
     "keepEditing": "繼續編輯"

@@ -1180,7 +1180,7 @@ const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileH
  */
 const replaceUnavailable = (facts: DiskFacts, disk: DiskState | undefined) => {
     const project = isRow(facts.projectJson) ? facts.projectJson : undefined
-    if (!disk?.revisionId || !project) return () => i18n.value.open.damaged
+    if (!disk?.revisionId || !project) return () => i18n.value.conflict.replaceDamaged
     if (
         (typeof project.version === 'number' && project.version > NXSP_VERSION) ||
         (typeof project.minor === 'number' && project.minor > NXSP_MINOR)
@@ -1258,7 +1258,7 @@ const replace = async (
             kept === 'newer'
                 ? replaceNewerLine
                 : kept === 'damaged'
-                  ? () => i18n.value.open.damaged
+                  ? () => i18n.value.conflict.replaceDamaged
                   : () => i18n.value.notSaving.bar,
         )
         return

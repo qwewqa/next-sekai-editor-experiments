@@ -2067,6 +2067,7 @@
     "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi.",
     "openedContentGone": "\"{0}\" içeriği değişti.",
     "replacedContentGone": "\"{0}\" içeriği değişti.",
+    "downloadPreviousContents": "Önceki içeriğin bir kopyasını indirebilirsiniz.",
     "title": "Proje Dosyasını Kaydet",
     "titleAs": "Farklı Kaydet",
     "history": "Geçmiş",
@@ -2153,6 +2154,7 @@
     "replaceNote": "Diskteki sürüm Son Oturumlar’da saklanır.",
     "keptName": "{0} ({1} değiştirildi)",
     "replaceNewer": "Bu dosya daha yeni bir {0} sürümüyle oluşturuldu.",
+    "replaceDamaged": "Bu dosya hasarlı.",
     "replaceHoldsEarlier": "Artık bu tarayıcıda saklanmayan önceki Zaman Çizgisi adımlarını içeriyor.",
     "replaceMayHoldEarlier": "Artık bu tarayıcıda saklanmayan önceki Zaman Çizgisi adımlarını içeriyor olabilir.",
     "keepEditing": "Düzenlemeye Devam Et"

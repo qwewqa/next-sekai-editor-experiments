@@ -5,6 +5,7 @@ import type {
     RefusedReason,
     SavedFeedback,
 } from '../../src/editor/save/dialogs'
+import en from '../../src/i18n/en/index.json' with { type: 'json' }
 
 // The Save dialogs: the Save and Save As dialog with File Name's rules, the
 // History and BGM rows and the size preview, the Preparing dialog, the conflict dialog, the
@@ -556,6 +557,7 @@ type DialogRequest =
     | { kind: 'notFound' | 'denied' | 'readOnly'; name: string }
     | { kind: 'failed'; name: string; message: string; saveAs: boolean }
     | { kind: 'refused'; name: string; reason: RefusedReason }
+    | { kind: 'notPutBack'; name: string; emptied: boolean; downloadable: boolean }
 
 const open = (page: Page, input: DialogRequest) =>
     page.evaluate(async (input) => {
@@ -581,6 +583,8 @@ const open = (page: Page, input: DialogRequest) =>
                     return saveUi.failed(input.name, () => input.message, input.saveAs)
                 case 'refused':
                     return saveUi.refused(input.name, input.reason)
+                case 'notPutBack':
+                    return saveUi.notPutBack(input.name, input.emptied, input.downloadable)
             }
         }
         void run().then((result) => {
@@ -915,6 +919,38 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await dialog(page).getByRole('button', { name: 'Export Level Data…' }).click()
         await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe('export')
     })
+
+    for (const emptied of [true, false])
+        test(`a file that could not be put back says what Download gives, only with a copy (emptied: ${emptied})`, async ({
+            page,
+            context,
+        }) => {
+            await seed(context)
+            await visit(page)
+            const message = emptied
+                ? '“coconut.nxsp” was emptied and its contents could not be restored.'
+                : 'The contents of “coconut.nxsp” have changed.'
+            await open(page, {
+                kind: 'notPutBack',
+                name: 'coconut.nxsp',
+                emptied,
+                downloadable: true,
+            })
+            await expect(dialog(page)).toContainText(message)
+            await expect(dialog(page)).toContainText(en.save.downloadPreviousContents)
+            await expect(buttons(page)).toHaveText(['Cancel', 'Download'])
+            await guard(page)
+            await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+            await open(page, {
+                kind: 'notPutBack',
+                name: 'coconut.nxsp',
+                emptied,
+                downloadable: false,
+            })
+            await expect(dialog(page)).toContainText(message)
+            await expect(dialog(page)).not.toContainText(en.save.downloadPreviousContents)
+            await expect(buttons(page)).toHaveText(['OK'])
+        })
 
     test('a refused partial open and safe mode name why', async ({ page, context }) => {
         await seed(context)

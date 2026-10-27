@@ -2067,6 +2067,7 @@
     "notPutBack": "“{0}”已被清空，且无法还原其内容。",
     "openedContentGone": "“{0}”的内容已更改。",
     "replacedContentGone": "“{0}”的内容已更改。",
+    "downloadPreviousContents": "您可以下载一份更改前的内容副本。",
     "title": "保存项目文件",
     "titleAs": "另存为",
     "history": "历史记录",
@@ -2153,6 +2154,7 @@
     "replaceNote": "磁盘上的版本将保留在“最近会话”中。",
     "keptName": "{0}（{1} 被替换）",
     "replaceNewer": "此文件由更新版本的 {0} 创建。",
+    "replaceDamaged": "此文件已损坏。",
     "replaceHoldsEarlier": "它包含此浏览器中已不再存储的较早时间线步骤。",
     "replaceMayHoldEarlier": "它可能包含此浏览器中已不再存储的较早时间线步骤。",
     "keepEditing": "继续编辑"
