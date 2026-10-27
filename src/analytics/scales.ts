@@ -76,43 +76,79 @@ const defined = {
         labels: ['<50', '50-70', '70-80', '80-90', '90-95', '95-100', '100+'],
         limits: [50, 70, { upTo: 80 }, 90, 95, 100],
     },
-    /** The workspace's width in CSS pixels. */
-    viewport: fromEdges([360, 400, 480, 640, 768, 1000, 1100, 1440, 1920, 2560], String),
+    /**
+     * The workspace's width in CSS pixels. 2880 is 3K laptops at 100%, 3440 is 21:9 ultrawide, 3840
+     * is 4K at 100% and 5120 is 5K or 32:9.
+     */
+    viewport: fromEdges(
+        [360, 400, 480, 640, 768, 1000, 1100, 1440, 1920, 2560, 2880, 3440, 3840, 5120],
+        String,
+    ),
     /**
      * The workspace's height in CSS pixels. 500 and 600 are where the notice sheet changes shape
      * (sheetGeometry.ts); 500 is also the Settings index's short-screen limit.
+     * 2160 is 4K's height.
      */
-    viewportHeight: fromEdges([400, 500, 600, 768, 900, 1080, 1440], String),
-    /** The workspace's width divided by its height; 1 is the edge between portrait and landscape. */
-    viewportAspect: fromEdges([0.5, 0.65, 0.85, 1, 1.15, 1.45, 1.7, 1.9, 2.3], String),
+    viewportHeight: fromEdges([400, 500, 600, 768, 900, 1080, 1440, 2160], String),
+    /**
+     * The workspace's width divided by its height, in steps of 0.1 to 2 and then wider. The edges
+     * are regular and not named ratios, because browser toolbars shift every screen's ratio; 1 is
+     * the edge between portrait and landscape.
+     */
+    viewportAspect: fromEdges(
+        [
+            0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.2,
+            2.4, 2.6, 2.8, 3, 3.5, 4,
+        ],
+        String,
+    ),
+    /** The device pixel ratio. 1.25, 1.5 and 1.75 are Windows' 125%, 150% and 175%. */
     dpr: {
-        labels: ['<1', '1', '1-1.5', '1.5-2', '2', '2-2.5', '2.5-3', '3', '3+'],
-        limits: [1, { upTo: 1 }, 1.5, 2, { upTo: 2 }, 2.5, 3, { upTo: 3 }],
+        labels: [
+            '<1',
+            '1',
+            '1-1.25',
+            '1.25',
+            '1.25-1.5',
+            '1.5',
+            '1.5-1.75',
+            '1.75',
+            '1.75-2',
+            '2',
+            '2-2.5',
+            '2.5-3',
+            '3',
+            '3+',
+        ],
+        limits: [
+            1,
+            { upTo: 1 },
+            1.25,
+            { upTo: 1.25 },
+            1.5,
+            { upTo: 1.5 },
+            1.75,
+            { upTo: 1.75 },
+            2,
+            { upTo: 2 },
+            2.5,
+            3,
+            { upTo: 3 },
+        ],
     },
     /** The preview's note speed; 10 is the default. */
     noteSpeed: {
         labels: ['1-5', '5-8', '8-9', '9-10', '10', '10-10.5', '10.5-11', '11-11.5', '11.5-12'],
         limits: [5, 8, 9, 10, { upTo: 10 }, 10.5, 11, 11.5],
     },
-    /** A Timeline step's time to show, in milliseconds. */
-    peek: {
-        labels: [
-            '<25',
-            '25-50',
-            '50-100',
-            '100-150',
-            '150-200',
-            '200-300',
-            '300-500',
-            '500-1k',
-            '1k-2k',
-            '2k-5k',
-            '5k-10k',
-            '10k-30k',
-            '30k+',
+    /** A Timeline step's time to show, in milliseconds, on the R5 preferred numbers. */
+    peek: fromEdges(
+        [
+            10, 16, 25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10_000,
+            16_000, 25_000,
         ],
-        limits: [25, 50, 100, 150, 200, 300, 500, 1000, 2000, 5000, 10_000, 30_000],
-    },
+        (edge) => (edge >= 1000 ? `${edge / 1000}k` : String(edge)),
+    ),
     /** A long animation frame's length, in milliseconds. */
     frame: {
         labels: ['50-100', '100-200', '200-500', '500-1000', '1000-2000', '2000+'],

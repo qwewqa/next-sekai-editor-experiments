@@ -9,6 +9,7 @@ import { analyticsFromEnv, gateTag } from './scripts/analytics.mjs'
 import { devPolicy, injectPolicy, nativePolicy, webPolicy } from './scripts/csp.mjs'
 import { nativeIndexHtml } from './scripts/native.mjs'
 import { previewAssetsMode } from './scripts/preview-assets.mjs'
+import { sourceRepository } from './scripts/repository.mjs'
 import { probePlugin, samplesPlugin } from './scripts/samples.mjs'
 import { applyTestSite, siteFromEnv } from './scripts/site.mjs'
 import { appVersion } from './scripts/version.mjs'
@@ -16,8 +17,9 @@ import { PRODUCT_NAME } from './src/product'
 import { storageKey } from './src/storage'
 import { themes } from './src/themes'
 
-const repository = process.env.GITHUB_REPOSITORY || 'qwewqa/next-sekai-editor-experiments'
 const root = fileURLToPath(new URL('.', import.meta.url))
+// The repository the source came from, not the one a workflow runs in (scripts/repository.mjs).
+const repository = sourceRepository({ cwd: root })
 
 // The Vite entries; the editor's is 'index' to keep its index-* chunk names. The apps' build has the editor only.
 const pages = (mode: string) => ({

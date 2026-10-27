@@ -115,7 +115,7 @@
     {
         "name": "peek",
         "data": {
-            "peek.25-50": 3,
+            "peek.25-40": 3,
             "peek.cached": 5,
             "cores": "8",
             "deviceMemory": "8",
