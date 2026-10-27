@@ -15,6 +15,7 @@ import {
     release,
     rows,
     saveDialog,
+    saveStored,
     sessionOf,
     start,
     submitSave,
@@ -298,6 +299,7 @@ test('a frozen clock across two sessions: each its own start, and a write-back h
     await edit(b, 3)
     await pressSave(b)
     await expect.poll(async () => ((await projectOf(b, 'coconut.nxsp')).revision as Row).n).toBe(2)
+    await saveStored(b)
     const { sessions, entries } = await rows(b, ['sessions', 'entries'])
     const own = sessions!.map((row) => row.value).filter((row) => row.chainId === chainId)
     expect(own).toHaveLength(2)
