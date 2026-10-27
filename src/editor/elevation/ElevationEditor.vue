@@ -2452,6 +2452,13 @@ onUnmounted(() => {
         gap: 0;
     }
 
+    /* The column is 76px wide, so the beat gives up its right padding and a little size to show
+       123.063 in full. Its text still starts where the snap value's does. */
+    .elevation-beat-field .elevation-field {
+        padding-right: 0.25rem;
+        font-size: 0.875rem;
+    }
+
     /* The label may run over the empty cell beside it, so a longer word is not cut short. */
     .elevation-label {
         margin-right: -2.25rem;
