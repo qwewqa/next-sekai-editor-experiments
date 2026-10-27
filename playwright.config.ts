@@ -33,26 +33,6 @@ const ciExclusions: CiExclusion[] = [
         reason: 'the worker draws a frame when the page expects none',
     },
     {
-        spec: 'previewWorker.spec.ts',
-        title: 'after a hang, the worker.s last frame shows',
-        reason: 'a 1.5 s hang timer, which a loaded runner passes before the page is ready',
-    },
-    {
-        spec: 'bgmReattach.spec.ts',
-        title: '(Choose Audio. with the same file brings|the BGM dialog with the same file attaches|Choose Audio. with another file is one BGM change|opening the download it saved, with its BGM lost|the BGM dialog says a BGM nothing holds)',
-        reason: 'a load notice shows only while the page is under 12 s old, and a reload on the runner takes longer',
-    },
-    {
-        spec: 'historyChanges.spec.ts',
-        title: 'the first peek from Now paints no blank line',
-        reason: 'the bar shows its loading line once a read has taken 250 ms, which a read on the runner can exceed',
-    },
-    {
-        spec: 'startupSessions.spec.ts',
-        title: 'a late flush landing during the marker.s wait',
-        reason: 'the reload waits 2 s for the old page to give up its lock, and the steps between two page calls of the test can outlast that on the runner',
-    },
-    {
         spec: 'historyThemes.spec.ts',
         title: 'a root size change with History open and peeking',
         reason: 'a storage write fails on the runner (StoragePausedError on both attempts); the underlying error is not known',

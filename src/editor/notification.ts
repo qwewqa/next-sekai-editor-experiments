@@ -6,6 +6,7 @@ import { i18n } from '../i18n'
 import { launch } from '../launch'
 import { isBlockingModalOpen } from '../modals'
 import { appVersion, platform } from '../platform'
+import { testWindowMs } from '../platform/testKeys'
 import { PRODUCT_NAME } from '../product'
 import { startupGate } from '../startup/gate'
 import { interpolate } from '../utils/interpolate'
@@ -207,6 +208,8 @@ const pillLines = (): NoticeLine[] => {
 
 /** How long after the page loaded its start-up toast may still become the start-up card. */
 const STARTUP_WINDOW_MS = 12_000
+/** A spec sets `nse.test.startupWindow` (ms) to widen or shorten the window. */
+const startupWindowMs = () => testWindowMs('nse.test.startupWindow', STARTUP_WINDOW_MS)
 
 // An edit, undo, redo or restore since load: a card after it would interrupt the work.
 let workedSinceLoad = false
@@ -224,7 +227,7 @@ export const startupNoticeCurrent = () =>
     noticeCard.value?.startup === true ||
     (notification.value.startup === true &&
         !workedSinceLoad &&
-        performance.now() < STARTUP_WINDOW_MS)
+        performance.now() < startupWindowMs())
 
 // The start-up notice, not yet replaced by another: what the gate's lifting shows again.
 const startupKept = () => notification.value.startup === true || noticeCard.value?.startup === true

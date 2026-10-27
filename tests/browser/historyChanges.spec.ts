@@ -747,6 +747,8 @@ test('switching entries keeps the whole peek bar filled, never blank or dashed b
 test('the first peek from Now paints no blank line or dashed counts before its change is read', async ({
     page,
 }) => {
+    // A read that takes 250 ms shows the loading line, which this test does not look at.
+    await page.evaluate(() => localStorage.setItem('nse.test.slowRead', '600000'))
     await edit(page, 'Added A', { kind: 'add', beats: [40, 41] })
     await stored(page)
     await viewAt(page, 6)
