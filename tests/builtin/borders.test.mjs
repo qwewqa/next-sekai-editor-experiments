@@ -79,7 +79,7 @@ function borders(prefix, suffix, width) {
     const face = pixel(middle, mw >> 1, mh >> 1)
     const left = name('Left')
     const { w: lw, h: lh } = sprites.get(left)
-    // The face at the slice’s inner end, on a row clear of the mark.
+    // The face at the slice's inner end, on a row clear of the mark.
     const sideFace = pixel(left, lw - 2, Math.round(lh * 0.3))
     const sx = scale(left, 'Left', width, 0.25)
     const sy = scale(middle, 'Middle', width, 0.25)

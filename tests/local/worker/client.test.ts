@@ -160,14 +160,14 @@ test('the test timeout reaches calls that give their own, as a flush does', asyn
     assert.ok(Date.now() - began < 1000)
 })
 
-test('a worker that doesn’t answer the ping is restarted', async () => {
+test("a worker that doesn't answer the ping is restarted", async () => {
     const { call } = await start()
     await assert.rejects(settled(call('freeze')), { name: 'TimeoutError' })
     await settled(sleep(20))
     assert.equal(FakeWorker.created.length, 2)
 })
 
-test('a flush’s timeout grows with the bytes it carries', () => {
+test("a flush's timeout grows with the bytes it carries", () => {
     const batch = (text: number, media: number[]) =>
         ({
             text: new Uint8Array(text),

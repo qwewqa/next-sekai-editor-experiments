@@ -116,7 +116,7 @@ const measure = async (page: Page, count: number) =>
     }, count)
 
 for (const count of [10_000, 50_000])
-    test(`Go To’s index over an opened file of ${count.toLocaleString('en')} rows: first read, memo hit, extend`, async ({
+    test(`Go To's index over an opened file of ${count.toLocaleString('en')} rows: first read, memo hit, extend`, async ({
         page,
         browserName,
     }, testInfo) => {

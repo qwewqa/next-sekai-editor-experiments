@@ -385,7 +385,7 @@ test('a Save waiting for the import waits through its resume and never resumes i
     assertWhole(s, hashes)
 })
 
-test('Replace’s kept version resumes after a restart', async () => {
+test("Replace's kept version resumes after a restart", async () => {
     const s = await setup(12)
     const { file, hashes } = await freshFile()
     setSessionContext({ worker: s.worker, locks } as never, {} as never)
@@ -410,7 +410,7 @@ test('Replace’s kept version resumes after a restart', async () => {
     assert.ok(!s.calls.includes('openAbandon'))
 })
 
-test('a worker’s own TimeoutError reads the file again and leaves no earlier copy in the worker', async () => {
+test("a worker's own TimeoutError reads the file again and leaves no earlier copy in the worker", async () => {
     const s = await setup(13)
     const { file, hashes } = await freshFile()
     const { job } = await opened(s, file)
@@ -518,7 +518,7 @@ test('an error from the worker keeps the name of the error that caused it', asyn
     })
 })
 
-test('once storing works again after a pause, this tab’s failed import runs again from its file', async () => {
+test("once storing works again after a pause, this tab's failed import runs again from its file", async () => {
     const s = await setup(14)
     const { file, hashes } = await freshFile()
     const { job } = await opened(s, file)

@@ -50,7 +50,7 @@ const openEntry = () =>
         ),
     })
 
-test('a row’s time is the clock in the calendar’s zone, with seconds unless the row is narrow', () => {
+test("a row's time is the clock in the calendar's zone, with seconds unless the row is narrow", () => {
     const wide = historyFormat(calendarAt(at, newYork), 'en')
     assert.equal(nbsp(rowTime(wide, at, false)), '2:41:07 PM')
     assert.equal(nbsp(rowTime(wide, at, true)), '2:41 PM')
@@ -59,7 +59,7 @@ test('a row’s time is the clock in the calendar’s zone, with seconds unless 
     assert.equal(nbsp(rowTime(asia, at, true)), '3:41 AM')
 })
 
-test('a row’s title and name end with the full date and time in the calendar’s zone', () => {
+test("a row's title and name end with the full date and time in the calendar's zone", () => {
     const parts = { label: 'Added 3 notes', flag: undefined as string | undefined }
     const format = historyFormat(calendarAt(Date.UTC(2026, 9, 22), newYork), 'en')
     assert.equal(nbsp(rowTitle(format, at, parts)), 'Added 3 notes · Oct 20, 2:41:07 PM')
@@ -75,7 +75,7 @@ test('a row’s title and name end with the full date and time in the calendar�
     assert.equal(nbsp(rowTitle(asia, at, parts)), 'Added 3 notes · Oct 21, 3:41:07 AM')
 })
 
-test('a divider names the time it continued from in the calendar’s zone, not the engine’s or the real clock’s', () => {
+test("a divider names the time it continued from in the calendar's zone, not the engine's or the real clock's", () => {
     mock.method(Date, 'now', () => Date.UTC(2000, 0, 1))
     try {
         for (const [zone, expected] of [
@@ -102,7 +102,7 @@ test('a divider names the time it continued from in the calendar’s zone, not t
     }
 })
 
-test('a divider’s year follows the calendar’s clock, not the real one', () => {
+test("a divider's year follows the calendar's clock, not the real one", () => {
     mock.method(Date, 'now', () => Date.UTC(2000, 0, 1))
     try {
         const cal = calendarAt(Date.UTC(2029, 5, 1), newYork)

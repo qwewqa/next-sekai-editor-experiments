@@ -5,13 +5,29 @@ import { stackGeneration } from '../../../history/stack'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import LoadingModal from '../../../modals/LoadingModal.vue'
+import { BGM_MAX_MINUTES } from '../../../utils/bgmLimit'
 import { pickFile } from '../../../utils/file'
 import { interpolate } from '../../../utils/interpolate'
 import { releaseWaveform } from '../../../waveform'
 import { bgmOperation } from '../../headerLabels'
+import { LOAD_ORDER } from '../../loadOrder'
 import { applyPick, type PickedBgm } from '../../media/applyPick'
-import { bgmStatus, claimNotice, onUnheldAfterMove } from '../../media/heldBgm'
-import { dropCardAction, notify, type NoticeAction, type NoticeLine } from '../../notification'
+import {
+    bgmStatus,
+    claimNotice,
+    onBgmRefused,
+    onRefusalLine,
+    onUnheldAfterMove,
+    type BgmRefusal,
+} from '../../media/heldBgm'
+import {
+    addLoadNotice,
+    dropCardAction,
+    notify,
+    startupNoticeCurrent,
+    type NoticeAction,
+    type NoticeLine,
+} from '../../notification'
 import { loadPickedBgm } from './loadPicked'
 
 // Choose Audio…: the action of every "BGM not loaded" line.
@@ -77,9 +93,9 @@ const unheldLine = (): NoticeLine => ({
 })
 
 /**
- * The second line of a switch’s card (Restore Session, Reopen, Restore as a Copy), when the BGM of
+ * The second line of a switch's card (Restore Session, Reopen, Restore as a Copy), when the BGM of
  * the session just shown is not loaded and this has not been said for its hash in this session.
- * It waits for the media store’s answer; a store that cannot be asked gives no line.
+ * It waits for the media store's answer; a store that cannot be asked gives no line.
  */
 export const takeBgmLine = async (): Promise<NoticeLine | undefined> => {
     const live = liveState.value.bgm
@@ -91,11 +107,41 @@ export const takeBgmLine = async (): Promise<NoticeLine | undefined> => {
     return unheldLine()
 }
 
-// Undo or Redo reached audio nothing holds: a card of its own, beside the quick “Undid…” notice.
+// Undo or Redo reached audio nothing holds: a card of its own, beside the quick "Undid…" notice.
 onUnheldAfterMove(() => {
     notify(() => i18n.value.load.bgmNotLoaded, {
         card: true,
         severity: 'info',
         action: chooseAudioAction,
+    })
+})
+
+/** The line for a BGM refused for its length: its text, with Choose Audio. */
+export const refusalLine = (kind: BgmRefusal): NoticeLine => ({
+    message: interpolate(
+        () =>
+            kind === 'audioTooLong'
+                ? i18n.value.notice.bgmTooLong
+                : i18n.value.notice.bgmMayBeTooLong,
+        BGM_MAX_MINUTES,
+    ),
+    severity: 'info',
+    action: chooseAudioAction,
+})
+
+onRefusalLine(refusalLine)
+
+// A BGM refused for its length, at a load, a switch or Undo and Redo: a card with Choose Audio.
+onBgmRefused((_hash, kind) => {
+    const { message, severity, action } = refusalLine(kind)
+    // At load, a line of the start-up card while that shows; else a card of its own.
+    if (startupNoticeCurrent()) {
+        addLoadNotice(message, action, LOAD_ORDER.bgmNotLoaded, severity)
+        return
+    }
+    notify(message, {
+        card: true,
+        ...(severity ? { severity } : {}),
+        ...(action ? { action } : {}),
     })
 })

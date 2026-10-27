@@ -64,7 +64,7 @@ test('an import of another session of the chain, running here, is waited for in 
     assert.equal(outcome, 'done')
 })
 
-test('an import running nowhere here is polled for the bound, then left to the build’s refusal', async () => {
+test("an import running nowhere here is polled for the bound, then left to the build's refusal", async () => {
     const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
     w.pendingImports.add('session-before')
     const started = Date.now()

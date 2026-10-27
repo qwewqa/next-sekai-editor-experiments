@@ -231,7 +231,7 @@ test('one Apply that changes the title and Initial Life is one step, and Undo re
     expect(await undoable(page)).toBe(false)
 })
 
-test('Play on the Preview Audio stops the chart’s playback and keeps its position', async ({
+test("Play on the Preview Audio stops the chart's playback and keeps its position", async ({
     page,
 }) => {
     await pickBgm(page, wav(2))

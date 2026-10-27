@@ -34,7 +34,7 @@ const pendingText = dump.localStorage[journalKey[0]!]!
 const unavailableId = (JSON.parse(unavailableText) as Journal).sessionId
 
 const samples = [
-    { name: 'the dump’s pending journal', id: pendingId, text: pendingText },
+    { name: "the dump's pending journal", id: pendingId, text: pendingText },
     {
         name: 'a journal written while storage was unavailable',
         id: unavailableId,
@@ -121,11 +121,11 @@ test('the journal of a later build, or level data this build does not read, is l
     // dropped without a word) or moves it aside as damaged, and one that loses it: it stays for a
     // build that can read it, in the key it was written under.
     const later: Record<string, string> = {
-        'recordsV above this build’s': copy((journal) => (journal.recordsV = RECORDS_V + 1)),
-        'a descriptor v above this build’s': copy(
+        "recordsV above this build's": copy((journal) => (journal.recordsV = RECORDS_V + 1)),
+        "a descriptor v above this build's": copy(
             (journal) => (journal.descriptor.v = SESSION_V + 1),
         ),
-        'a journalVersion above this build’s': copy(
+        "a journalVersion above this build's": copy(
             (journal) => (journal.journalVersion = JOURNAL_VERSION + 1),
         ),
         'an unknown archetype': withLevelData((levelData) =>

@@ -42,7 +42,7 @@ test('every clip peaks at or below -3 dBFS', () => {
     }
 })
 
-test('the clips sit at their targets, matched to the web’s Default clips', () => {
+test("the clips sit at their targets, matched to the web's Default clips", () => {
     for (const [name, file] of Object.entries(clipFiles)) {
         const samples = Float64Array.from(samplesOf(clips().get(file)), (sample) => sample / 32768)
         const level = measure(name, samples)

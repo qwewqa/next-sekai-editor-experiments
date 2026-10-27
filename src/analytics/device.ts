@@ -13,7 +13,7 @@ export type Device = Pick<
     'cores' | 'deviceMemory' | 'engine' | 'touch' | 'dpr' | 'viewport'
 >
 
-/** The browser’s approximate memory in GiB, where it reports one. */
+/** The browser's approximate memory in GiB, where it reports one. */
 const deviceMemory = (): Device['deviceMemory'] => {
     const value = (navigator as { deviceMemory?: unknown }).deviceMemory
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return
@@ -25,7 +25,7 @@ const deviceMemory = (): Device['deviceMemory'] => {
         : 'other'
 }
 
-/** What every measured event repeats: the device it ran on, and the workspace’s width. */
+/** What every measured event repeats: the device it ran on, and the workspace's width. */
 export const device = (): Device => {
     const cores = navigator.hardwareConcurrency
     const memory = deviceMemory()

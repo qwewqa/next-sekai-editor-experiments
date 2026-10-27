@@ -179,7 +179,7 @@ const saveLineLeads = (page: Page) =>
         return leads
     })
 
-test('a finished Export makes the next Save dialog’s line plain; a cancelled one does not', async ({
+test("a finished Export makes the next Save dialog's line plain; a cancelled one does not", async ({
     page,
 }) => {
     await start(page, opfs)
@@ -206,7 +206,7 @@ test('a finished Export makes the next Save dialog’s line plain; a cancelled o
     await expect(dialog(page)).toHaveCount(0)
 })
 
-test('Export suggests the displayed name: the title before the BGM’s', async ({ page }) => {
+test("Export suggests the displayed name: the title before the BGM's", async ({ page }) => {
     await start(page, opfs)
     await page.evaluate(() => {
         const { history, historySteps } = window.editorTest
@@ -288,7 +288,7 @@ test('an opened gzipped LevelData is the target, and the dialog shows only the T
     expect(await opfsNames(page)).toEqual(['LevelData'])
 })
 
-test('a changed target meets the conflict dialog’s Export form; Replace keeps nothing', async ({
+test("a changed target meets the conflict dialog's Export form; Replace keeps nothing", async ({
     page,
 }) => {
     await start(page, opfs)
@@ -344,7 +344,7 @@ test('Choose Another… in the conflict dialog exports to the picked file', asyn
     expect(await readFile(page, 'Copy.nsld')).toBe(0)
 })
 
-test('Export refuses to write over a .nxsp in its target’s place', async ({ page }) => {
+test("Export refuses to write over a .nxsp in its target's place", async ({ page }) => {
     await start(page, opfs)
     await writeFile(page, 'LevelData')
     await openFile(page, 'LevelData')
@@ -535,7 +535,7 @@ test('Cancel during a write to the target closes at once and leaves the target',
     }
 })
 
-test('p’s failed download of a refused pick’s bytes says so in its own words', async ({ page }) => {
+test("p's failed download of a refused pick's bytes says so in its own words", async ({ page }) => {
     await start(page, opfs)
     await openPartial(page, 'LevelData')
     // Putting the bytes back fails, so the file stays as the picker left it.

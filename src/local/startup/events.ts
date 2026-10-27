@@ -13,11 +13,11 @@ import type { StorageStatus } from '../worker/core'
 export type ShownName = { name: DisplayName; at?: number }
 
 export type LoadEvent =
-    /** A new visit continued the most recent session: "Continued "{0}" from {1}." [Open History]. */
+    /** A new visit continued the most recent session: `load.continued`, with [Open History]. */
     | { kind: 'continued'; name: ShownName; from?: number }
-    /** The canary: "Work from earlier visits is missing. The browser cleared this site’s storage." */
+    /** The canary: `load.cleared`. */
     | { kind: 'storageCleared' }
-    /** "A recovered change to "{0}" was kept as a separate session." [Restore Session]. */
+    /** `load.journalKept`, with [Restore Session]. */
     | { kind: 'journalKept'; name: ShownName; sessionId: string }
     /** A journal of an earlier visit recovered as a session: "Recovered unsaved work…" [Restore Session]. */
     | { kind: 'unsavedRecovered'; sessionId: string }
@@ -31,13 +31,13 @@ export type LoadEvent =
      */
     | { kind: 'migrationFailed'; unreadable?: true }
     /**
-     * The auto save migrated: "Continued "{0}" from the old auto save." (no "Continued…" line
+     * The auto save migrated: `load.autoSave` (no `load.continued` line
      * then) when it's the session that opened; otherwise it's kept as a session of its own.
      */
     | { kind: 'migrated'; name: ShownName; sessionId: string; opened: boolean }
     /** The migrated auto save was made for an older engine revision: it opens with a warning. */
     | { kind: 'migratedRevision'; sessionId: string }
-    /** "Recovered your last change to "{0}"." */
+    /** `load.journal`. */
     | { kind: 'journalRecovered'; name: ShownName; sessionId: string }
     /** "A recovered change requires a newer version of the editor." */
     | { kind: 'journalLater' }
@@ -53,8 +53,8 @@ export type LoadEvent =
      */
     | { kind: 'notOpened'; which: 'reload' | 'newest'; why: 'later' | 'damaged' }
     /**
-     * The most recent session is open elsewhere, so the tab starts blank: ""{0}" was not restored
-     * here because it is open in another tab or window." [Restore as a Copy].
+     * The most recent session is open elsewhere, so the tab starts blank: `load.openElsewhere`,
+     * with [Restore as a Copy].
      */
     | { kind: 'openElsewhere'; name: ShownName; sessionId: string }
     /** The reload's session was deleted in the gap: "This session was deleted in another tab or window." */

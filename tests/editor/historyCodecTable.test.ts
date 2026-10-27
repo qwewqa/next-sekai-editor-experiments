@@ -637,7 +637,7 @@ const table: Record<OperationId, Row> = {
                 },
             ],
             [
-                'alphabetical, which is not the dialog’s order',
+                "alphabetical, which is not the dialog's order",
                 {
                     changes: [
                         { field: 'artists', before: name('a'), after: name('b') },
@@ -811,19 +811,19 @@ const table: Record<OperationId, Row> = {
             ['empty objects', { domain: 'group', created: { group: 1 }, objects: {} }],
             ['a stage count in a group duplicate', { domain: 'group', created: { stage: 1 } }],
             [
-                'a camera event among a group’s objects',
+                "a camera event among a group's objects",
                 { domain: 'group', created: { group: 1 }, objects: { note: 1, cameraEvent: 1 } },
             ],
             [
-                'a BPM among a group’s objects',
+                "a BPM among a group's objects",
                 { domain: 'group', created: { group: 1 }, objects: { bpm: 1 } },
             ],
             [
-                'a time scale among a stage’s objects',
+                "a time scale among a stage's objects",
                 { domain: 'stage', created: { stage: 1 }, objects: { timeScale: 1 } },
             ],
             [
-                'a camera event among a stage’s objects',
+                "a camera event among a stage's objects",
                 { domain: 'stage', created: { stage: 1 }, objects: { cameraEvent: 1 } },
             ],
         ],
@@ -871,19 +871,19 @@ const table: Record<OperationId, Row> = {
                 { domain: 'group', removed: { group: 1 }, replacement: groupFolder },
             ],
             [
-                'a camera event among a group’s objects',
+                "a camera event among a group's objects",
                 { domain: 'group', removed: { group: 1 }, objects: { cameraEvent: 1 } },
             ],
             [
-                'a BPM among a group’s objects',
+                "a BPM among a group's objects",
                 { domain: 'group', removed: { group: 1 }, objects: { note: 1, bpm: 1 } },
             ],
             [
-                'a time scale among a stage’s objects',
+                "a time scale among a stage's objects",
                 { domain: 'stage', removed: { stage: 1 }, objects: { timeScale: 1 } },
             ],
             [
-                'a camera event among a stage’s objects',
+                "a camera event among a stage's objects",
                 { domain: 'stage', removed: { stage: 1 }, objects: { cameraEvent: 1 } },
             ],
         ],

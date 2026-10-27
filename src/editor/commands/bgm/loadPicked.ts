@@ -16,7 +16,7 @@ const FORMATS = [
     ['m4a', /m4a|mp4|aac/],
 ] as const
 
-/** The file’s format for the usage statistics, from its type or its extension. */
+/** The file's format for the usage statistics, from its type or its extension. */
 const formatOf = (file: File) => {
     const text = `${file.type} ${file.name.split('.').at(-1) ?? ''}`.toLowerCase()
     return FORMATS.find(([, pattern]) => pattern.test(text))?.[0] ?? 'other'
@@ -32,7 +32,7 @@ export async function* loadPickedBgm(
     cancelled: () => boolean,
     signal: AbortSignal,
 ): AsyncGenerator<() => string, PickedBgm> {
-    // The usage statistics’ `bgm` event, with the load as its time.
+    // The usage statistics' `bgm` event, with the load as its time.
     const began = performance.now()
     const base = { format: formatOf(file), size: file.size } as const
     busy(true)

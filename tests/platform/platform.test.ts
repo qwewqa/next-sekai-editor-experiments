@@ -5,7 +5,7 @@ import * as platformModule from '../../src/platform'
 import { createMockPlatform } from '../../src/platform/mock'
 import { appVersion, parseVersionOverride } from '../../src/platform/version'
 
-test('index.ts exports the build’s platform as a live binding', () => {
+test("index.ts exports the build's platform as a live binding", () => {
     assert.equal(platformModule.platform, buildPlatform)
     const mock = createMockPlatform({ kind: 'native', os: 'macos' })
     platformModule.setPlatformForTests(mock)
@@ -19,7 +19,7 @@ test('index.ts exports the build’s platform as a live binding', () => {
     assert.equal(platformModule.platform, buildPlatform)
 })
 
-test('the mock’s journal writes, reads back, clears what a strict flush covers, and removes', async () => {
+test("the mock's journal writes, reads back, clears what a strict flush covers, and removes", async () => {
     const { journal } = createMockPlatform()
     assert.equal(journal.writeWhole({ sessionId: 's', seq: 3 }), true)
     const [found] = await journal.read()
@@ -70,7 +70,7 @@ test('locks grant in order and list holders and waiters, on the web and in the m
     }
 })
 
-test('the web platform’s capabilities are the web’s set', () => {
+test("the web platform's capabilities are the web's set", () => {
     const { capabilities } = buildPlatform
     assert.equal(capabilities.library, false)
     assert.equal(capabilities.fileJournal, false)

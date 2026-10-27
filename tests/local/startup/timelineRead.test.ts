@@ -51,7 +51,7 @@ const chain = async (world: World) => {
     return { page, next, parent, child }
 }
 
-test('a session’s entries come newest first, then the parent’s from where it was continued', async () => {
+test("a session's entries come newest first, then the parent's from where it was continued", async () => {
     const world = createWorld({ seed: 1 })
     const { next, parent, child } = await chain(world)
     const page = await read(next, { sessionId: child.id, limit: 100 })
@@ -248,7 +248,7 @@ const longChain = () => {
 }
 
 for (const origin of ORIGINS)
-    test(`the index lists each session’s entries per day, across midnight, gaps and continuations (${origin})`, async () => {
+    test(`the index lists each session's entries per day, across midnight, gaps and continuations (${origin})`, async () => {
         const page = await seed(longChain(), undefined, origin)
         const { pieces, path, top, topSession, importing } = await index(page, { sessionId: 'C' })
         assert.equal(top, 49)

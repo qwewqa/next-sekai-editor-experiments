@@ -501,7 +501,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'read-no-handle-once',
-        exit: 'read first: storage fails once reading the file’s handle, and the retry reads',
+        exit: "read first: storage fails once reading the file's handle, and the retry reads",
         applies: (path, p) => onSession(path) && readsFirst(path) && single(p) && last(p) === 'own',
         // The handle comes from storage, as after a reload.
         setup: { held: false },
@@ -683,7 +683,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'reservation-held',
-        exit: 'another Save holds the session’s reservation',
+        exit: "another Save holds the session's reservation",
         applies: (path, p) =>
             (reserves(path) || ['export', 'write-back', 'download-again'].includes(path.id)) &&
             path.id !== 'save-first' &&
@@ -890,7 +890,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'import-picker-while-running',
-        exit: 'this session’s import runs, though Recent Sessions’ Save… waits for the written session’s chain only (waited for at the pick, then picker)',
+        exit: "this session's import runs, though Recent Sessions' Save… waits for the written session's chain only (waited for at the pick, then picker)",
         applies: (path, p) =>
             path.id === 'save-to-file' &&
             single(p) &&
@@ -910,7 +910,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'import-other-running',
-        exit: 'another session’s import runs in this tab (waited for at the pick, then picker)',
+        exit: "another session's import runs in this tab (waited for at the pick, then picker)",
         applies: (path, p) => onSession(path) && single(p) && writesFile(p),
         arm: (w) => {
             const imp = w.startOtherImport()

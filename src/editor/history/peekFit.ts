@@ -33,7 +33,7 @@ export type PeekWidths = {
      * count and its unit), which the strip widens for where the pane has room, without going compact.
      */
     counted: number
-    /** The root font size the widths were measured at: the layout’s fixed sizes scale with it. */
+    /** The root font size the widths were measured at: the layout's fixed sizes scale with it. */
     rem: number
 }
 
@@ -42,7 +42,7 @@ export type PeekLayout = {
     back: 'label' | 'icon'
     /**
      * The date button shows only its glyph: under 300 px panes, and wherever the whole date would not
-     * fit even beside Back to Now’s chevron. The date is never cut to an ambiguous time.
+     * fit even beside Back to Now's chevron. The date is never cut to an ambiguous time.
      */
     tiny: boolean
     /** Under 340 px panes: Restore takes 12 px padding. */

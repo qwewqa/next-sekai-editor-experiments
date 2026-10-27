@@ -188,8 +188,13 @@ export const notifyLeft = (message: () => string, offer = true, line?: NoticeLin
     // The switch ends the session the cards were raised in.
     dismissNoticeCard()
     const left = previousSession.value
+    // A screen reader hears the second row too.
+    const rows = (first: NoticeLine, second: NoticeLine) => ({
+        lines: [first, second],
+        announcement: () => `${message()} ${second.message()}`,
+    })
     const plain = () => {
-        if (line) notify(message, { lines: [{ message }, line] })
+        if (line) notify(message, rows({ message }, line))
         else notify(message)
     }
     if (!left || !offer) {
@@ -197,7 +202,7 @@ export const notifyLeft = (message: () => string, offer = true, line?: NoticeLin
         return
     }
     const shown = line
-        ? notify(message, { lines: [{ message, action: reopenAction(left) }, line] })
+        ? notify(message, rows({ message, action: reopenAction(left) }, line))
         : notify(message, { action: reopenAction(left) })
     // Stops once the card is gone however it went (dismissed, replaced, used), so a switch leaves
     // no watcher behind.

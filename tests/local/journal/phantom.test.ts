@@ -161,7 +161,7 @@ test('an edit and an entry-carrying end raise the journal seq; a reservation or 
     assert.equal(page.flusher.newestSeq(session), 3, 'a let-go reservation is no entry')
 })
 
-test('a trailing Save’s entry is the journal’s seq, and its journal is written at it', async () => {
+test("a trailing Save's entry is the journal's seq, and its journal is written at it", async () => {
     const world = createWorld({ seed: 2905 })
     const storage = new MemoryStorage()
     // Storage never answers: the Save's entry stays pending behind the edit.
@@ -195,7 +195,7 @@ test('a trailing Save’s entry is the journal’s seq, and its journal is writt
     assert.equal((JSON.parse(found!.text) as { seq: number }).seq, 3)
 })
 
-test('a fork’s superseded journal stays until the fork holds all it moved', async () => {
+test("a fork's superseded journal stays until the fork holds all it moved", async () => {
     const world = createWorld({ seed: 2906 })
     const storage = new MemoryStorage()
     const page = await openJournalPage(world, 'a', storage)

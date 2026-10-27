@@ -214,7 +214,7 @@ test('the append assertion fails every alteration of the copied prefix, as a pla
     await refusesEach(await setUp(), alterations)
 })
 
-test('a root the source’s manifest holds, changed in the new manifest, is a plan error', async () => {
+test("a root the source's manifest holds, changed in the new manifest, is a plan error", async () => {
     // A short source: its manifest holds the roots of its rows.
     await refusesEach(await setUp(2), [
         [

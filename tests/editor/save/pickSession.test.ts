@@ -349,7 +349,7 @@ test('a write that landed but whose read-back failed is not offered the bytes it
     assert.deepEqual(t.offers, [], 'the file begins with the bytes that were read')
 })
 
-test('Recent Sessions’ Save… that takes the open chain’s own file offers what was read of it', async () => {
+test("Recent Sessions' Save… that takes the open chain's own file offers what was read of it", async () => {
     const t = await setup()
     t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
     const other = await nxsp('rev-other')
@@ -370,7 +370,7 @@ test('Recent Sessions’ Save… that takes the open chain’s own file offers w
     ])
 })
 
-test('Export’s own pick commits a continuation’s first row before it reserves, and reserves nothing when that forks the session', async () => {
+test("Export's own pick commits a continuation's first row before it reserves, and reserves nothing when that forks the session", async () => {
     const t = await setup()
     t.mock.saveTargets.push(
         { kind: 'handle', handle: t.handle },

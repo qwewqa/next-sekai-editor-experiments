@@ -78,7 +78,7 @@ test('an idle clock requests no frames, and a need wakes it until the tick that 
     }
 })
 
-test('a woken clock’s first frame moves by about one frame, as a running clock’s does', async () => {
+test("a woken clock's first frame moves by about one frame, as a running clock's does", async () => {
     const moving = ref(true)
     const release = keepClockWhile(() => moving.value)
     try {

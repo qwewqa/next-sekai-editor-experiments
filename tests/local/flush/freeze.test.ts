@@ -10,7 +10,7 @@ import { goldenChart, stateOf } from '../records/charts'
 // Outside release builds the undo stack freezes what it publishes (the flush's identity memo
 // relies on states never changing in place), so a change in place throws where it's made.
 
-test('a published state’s maps, sets, arrays and entities refuse a change in place', () => {
+test("a published state's maps, sets, arrays and entities refuse a change in place", () => {
     const state = stateOf(goldenChart())
     resetStates({ isDirty: false, step: initialStep(), state })
     const { grid, slides } = state.store

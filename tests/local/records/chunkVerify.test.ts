@@ -78,7 +78,7 @@ test('verify on write: a deflate output corrupted by the test hook fails, and no
     }
 })
 
-test('outside bytes must hash to the chunk’s hash', async () => {
+test("outside bytes must hash to the chunk's hash", async () => {
     const [a, b] = encodeSnapshot(toRecords(stateOf(goldenChart()))).chunks
     assert.ok(a && b)
     await assert.rejects(
@@ -109,7 +109,7 @@ test('only verifyChunk makes a VerifiedChunk, and its row is a compact copy', as
     assert.equal(row.bytes.buffer.byteLength, stored.length)
 })
 
-test('a verified chunk holds its own copy: the caller’s buffer changing after the call changes nothing', async () => {
+test("a verified chunk holds its own copy: the caller's buffer changing after the call changes nothing", async () => {
     const [chunk] = encodeSnapshot(toRecords(stateOf(goldenChart()))).chunks
     assert.ok(chunk)
     for (const canonical of [chunk.bytes, undefined]) {

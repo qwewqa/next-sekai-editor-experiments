@@ -9,6 +9,11 @@ import {
     cachedHeld,
     claimNotice,
     configureHeldBgm,
+    holdRefusalNotices,
+    hostRefusalRow,
+    knownRefusal,
+    noticeRefused,
+    onBgmRefused,
     onUnheldAfterMove,
     resetHeldBgmForTests,
     settleHeldBgm,
@@ -27,6 +32,7 @@ import {
 } from '../../src/history/stack'
 import type { State } from '../../src/state'
 import type { Bgm } from '../../src/state/bgm'
+import { TaskFailure } from '../../src/utils/error'
 import { initialStep } from '../helpers/historySteps'
 
 // The BGMs this tab holds: one `Bgm` per hash in a small
@@ -81,16 +87,19 @@ const environment = (extra: Partial<HeldEnvironment> = {}) => {
 }
 
 const said: string[] = []
+const refusedWith: string[] = []
 
 beforeEach(() => {
     resetHeldBgmForTests()
     said.length = 0
+    refusedWith.length = 0
     onUnheldAfterMove((hash) => said.push(hash))
+    onBgmRefused((hash, kind) => refusedWith.push(`${hash}:${kind}`))
     setSlotLoader(undefined)
     show(named('a'))
 })
 
-test('the cache keeps three hashes, drops the least recently used, and never the live head’s', () => {
+test("the cache keeps three hashes, drops the least recently used, and never the live head's", () => {
     show(named('a'))
     cacheHeld('a', parts('a'))
     cacheHeld('b', parts('b'))
@@ -252,4 +261,160 @@ test('a read that fails says nothing and is tried again at the next change', asy
     assert.equal(attempts, 2)
     assert.ok(liveState.value.bgm.buffer)
     assert.deepEqual(said, [])
+})
+
+test('a stored BGM refused for its length is said once per hash, with its kind, and not decoded again', async () => {
+    let decodes = 0
+    const { env } = environment({
+        decode: () => {
+            decodes++
+            return Promise.reject(new TaskFailure('audioTooLong', 'longer than the limit'))
+        },
+    })
+    configureHeldBgm(env)
+    await settleHeldBgm()
+    assert.deepEqual(refusedWith, ['a:audioTooLong'])
+    assert.equal(liveState.value.bgm.buffer, undefined)
+    // A later change to the same BGM neither says it again nor decodes the bytes again.
+    const live = liveState.value
+    replaceState({ ...live, bgm: { ...live.bgm } })
+    await settleHeldBgm()
+    assert.deepEqual(refusedWith, ['a:audioTooLong'])
+    assert.equal(decodes, 1)
+    // Neither does a status question, which shares the fetch: its answer is still the store's.
+    assert.equal(await bgmStatus('a', 4), 'held')
+    await settleHeldBgm()
+    assert.equal(decodes, 1)
+    assert.deepEqual(refusedWith, ['a:audioTooLong'])
+})
+
+test('a refused hash whose bytes the store lacks is still reported absent', async () => {
+    const { env } = environment({
+        decode: () => Promise.reject(new TaskFailure('audioTooLong', 'longer than the limit')),
+    })
+    configureHeldBgm(env)
+    await settleHeldBgm()
+    configureHeldBgm({ ...env, read: () => Promise.resolve(undefined) })
+    assert.equal(await bgmStatus('a', 4), 'absent')
+})
+
+test('a stored BGM refused before decoding says its own kind; another failure says nothing', async () => {
+    const { env } = environment({
+        decode: () => Promise.reject(new TaskFailure('audioMayBeTooLong', 'may be too long')),
+    })
+    configureHeldBgm(env)
+    await settleHeldBgm()
+    assert.deepEqual(refusedWith, ['a:audioMayBeTooLong'])
+
+    show(named('b'))
+    const other = environment({
+        decode: () => Promise.reject(new TaskFailure('audioUnreadable', 'cannot decode')),
+    })
+    configureHeldBgm(other.env)
+    await settleHeldBgm()
+    assert.deepEqual(refusedWith, ['a:audioMayBeTooLong'])
+})
+
+test('Open attach says a refusal through the same hook, once per hash', () => {
+    const refusal = new TaskFailure('audioTooLong', 'longer than the limit')
+    assert.equal(noticeRefused('c', refusal), true)
+    assert.equal(noticeRefused('c', refusal), true)
+    assert.equal(noticeRefused('c', new Error('other')), false)
+    assert.deepEqual(refusedWith, ['c:audioTooLong'])
+})
+
+test('a refusal waits for the open notice: it takes it as a row, or says it when released', () => {
+    const refusal = new TaskFailure('audioTooLong', 'longer than the limit')
+    const first = holdRefusalNotices()
+    noticeRefused('c', refusal)
+    assert.deepEqual(refusedWith, [])
+    // The open takes the refusal for its own card: no card of its own follows.
+    assert.equal(first.claimRefusal(), 'audioTooLong')
+    assert.equal(first.claimRefusal(), 'audioTooLong')
+    first.release()
+    assert.deepEqual(refusedWith, [])
+
+    const second = holdRefusalNotices()
+    noticeRefused('d', new TaskFailure('audioMayBeTooLong', 'may be too long'))
+    second.release()
+    assert.deepEqual(refusedWith, ['d:audioMayBeTooLong'])
+})
+
+test('a refusal held for a session that changed is dropped', () => {
+    const held = holdRefusalNotices()
+    noticeRefused('e', new TaskFailure('audioTooLong', 'longer than the limit'))
+    show(named('z'))
+    assert.equal(held.claimRefusal(), undefined)
+    held.release()
+    assert.deepEqual(refusedWith, [])
+})
+
+test('a refusal goes to the card that hosts it while that shows, else to a card of its own', () => {
+    const raised: (string | undefined)[] = []
+    let showing = true
+    hostRefusalRow({
+        shown: () => showing,
+        raise: () => {
+            raised.push(knownRefusal())
+        },
+    })
+    noticeRefused('f', new TaskFailure('audioTooLong', 'longer than the limit'))
+    // The host composes itself again with the refusal known; no card of its own.
+    assert.deepEqual(raised, ['audioTooLong'])
+    assert.deepEqual(refusedWith, [])
+
+    // The host's card is gone: the next refusal is a card of its own.
+    showing = false
+    noticeRefused('g', new TaskFailure('audioMayBeTooLong', 'may be too long'))
+    assert.deepEqual(raised, ['audioTooLong'])
+    assert.deepEqual(refusedWith, ['g:audioMayBeTooLong'])
+    assert.equal(knownRefusal(), 'audioMayBeTooLong')
+    // A session of its own knows none.
+    show(named('z'))
+    assert.equal(knownRefusal(), undefined)
+})
+
+test('a refusal that comes while the shown audio is another one is kept: no second decode on the way back', async () => {
+    const decoded: string[] = []
+    const gate = deferred<{ buffer: AudioBuffer }>()
+    const text = new TextDecoder()
+    const { env } = environment({
+        decode: (data) => {
+            const hash = text.decode(data)
+            decoded.push(hash)
+            return hash === 'a'
+                ? gate.promise
+                : Promise.resolve({ buffer: { hash } as unknown as AudioBuffer })
+        },
+    })
+    configureHeldBgm(env)
+    // Undo reached audio that needs decoding, then Redo moved to another one before it ended.
+    const first = liveState.value
+    await Promise.resolve()
+    replaceState({ ...first, bgm: { offset: 0, meta: meta('b') } })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    gate.reject(new TaskFailure('audioTooLong', 'longer than the limit'))
+    await settleHeldBgm()
+    assert.deepEqual(
+        decoded.filter((hash) => hash === 'a'),
+        ['a'],
+    )
+    assert.deepEqual(refusedWith, [])
+    // Back at the refused audio: said once, never decoded again.
+    replaceState(first)
+    await settleHeldBgm()
+    assert.deepEqual(
+        decoded.filter((hash) => hash === 'a'),
+        ['a'],
+    )
+    assert.deepEqual(refusedWith, ['a:audioTooLong'])
+    replaceState({ ...first, bgm: { offset: 0, meta: meta('b') } })
+    await settleHeldBgm()
+    replaceState(first)
+    await settleHeldBgm()
+    assert.deepEqual(
+        decoded.filter((hash) => hash === 'a'),
+        ['a'],
+    )
+    assert.deepEqual(refusedWith, ['a:audioTooLong'])
 })

@@ -81,7 +81,7 @@ test('the cache is for the BGM the page names: another BGM is a new estimate', a
     )
 })
 
-test('an estimate counted while an open’s import runs is not kept: the next one counts again', async () => {
+test("an estimate counted while an open's import runs is not kept: the next one counts again", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     for (let k = 1; k <= 5; k++) await fixture.edit(k)
@@ -108,7 +108,7 @@ test('an estimate counted while an open’s import runs is not kept: the next on
     assert.deepEqual(cachedEstimate(fixture.chainId, id, lastSeq), after)
 })
 
-test('the worker’s estimate moves its call’s progress at each read, so a slow one is not taken for a hung worker', async () => {
+test("the worker's estimate moves its call's progress at each read, so a slow one is not taken for a hung worker", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     for (let k = 1; k <= 5; k++) await fixture.edit(k)

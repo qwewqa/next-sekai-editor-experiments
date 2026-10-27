@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { closePage, waitForStartup } from './editorFixture'
+import { en, said } from './messages'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -446,7 +447,7 @@ test('Reopen continues the session left by New', async ({ page }) => {
     expect((await flushSession(page)).chainId).toBe(original.chainId)
 })
 
-test('the marker clears when the page shows again, so a later Duplicate Tab isn’t a reload', async ({
+test("the marker clears when the page shows again, so a later Duplicate Tab isn't a reload", async ({
     page,
 }) => {
     await visit(page)
@@ -585,7 +586,7 @@ test.describe('storage unavailable', () => {
         expect(journal.header.levelInfo[0]).toBe('both edits')
     })
 
-    test('two tabs keep separate journals, and an earlier visit’s waits in Local Data', async ({
+    test("two tabs keep separate journals, and an earlier visit's waits in Local Data", async ({
         page,
         context,
     }) => {
@@ -790,7 +791,7 @@ test('Start Blank leaves the stored session untouched, and the blank start has i
     expect(await lifeOf(page)).toBe(950)
 })
 
-test('safe mode’s real startup opens blank and read-only, and writes no journal', async ({
+test("safe mode's real startup opens blank and read-only, and writes no journal", async ({
     page,
 }) => {
     await visit(page)
@@ -883,7 +884,7 @@ test('Reopen Closed Tab: the lock coming free within the wait is a reload; held 
     expect(await lifeOf(reopened)).toBe(990)
 })
 
-test('a late flush landing during the marker’s wait is in the session the reload takes up', async ({
+test("a late flush landing during the marker's wait is in the session the reload takes up", async ({
     page,
     context,
 }) => {
@@ -913,7 +914,7 @@ test('a late flush landing during the marker’s wait is in the session the relo
     expect(entries.map((entry) => entry.kind)).toEqual(['init', 'edit', 'edit'])
 })
 
-test('Start Blank, edits, then a reload while startup still runs brings back the blank start’s work', async ({
+test("Start Blank, edits, then a reload while startup still runs brings back the blank start's work", async ({
     page,
 }) => {
     await visit(page)
@@ -941,7 +942,7 @@ test('Start Blank, edits, then a reload while startup still runs brings back the
     expect((await flushSession(page)).chainId).not.toBe(stored.chainId)
 })
 
-test('Start Blank’s edits while the worker hasn’t answered have a journal: a kill keeps them', async ({
+test("Start Blank's edits while the worker hasn't answered have a journal: a kill keeps them", async ({
     page,
     context,
 }) => {
@@ -986,10 +987,10 @@ const seedRecovered = async (page: Page) => {
     })
     // A recovered row's bytes are a Blob, which a private-style context's IndexedDB refuses (WebKit
     // in Playwright, Safari's private windows): there is no row to act on there.
-    test.skip(!kept, 'This browser’s storage refuses Blob rows, so no recovered row can be kept')
+    test.skip(!kept, "This browser's storage refuses Blob rows, so no recovered row can be kept")
 }
 
-test('Local Data’s Download of a recovered row whose read fails shows the card and keeps the row', async ({
+test("Local Data's Download of a recovered row whose read fails shows the card and keeps the row", async ({
     page,
     context,
 }) => {
@@ -1022,7 +1023,7 @@ test('Local Data’s Download of a recovered row whose read fails shows the card
     expect(downloaded).toBe(false)
 })
 
-test('Local Data’s Download of a recovered row gone since it was listed reads the list again', async ({
+test("Local Data's Download of a recovered row gone since it was listed reads the list again", async ({
     page,
     context,
 }) => {
@@ -1035,4 +1036,101 @@ test('Local Data’s Download of a recovered row gone since it was listed reads 
     await page.evaluate(() => window.nseStorageTest!.worker.call('discardRecovered', 'recovered-1'))
     await row.getByRole('button', { name: 'Download' }).click()
     await expect(row).toHaveCount(0)
+})
+
+declare global {
+    interface Window {
+        headReads: number
+        headReadHeld: boolean
+        releaseHeadRead: () => void
+    }
+}
+
+/** Counts the head reads the storage worker is asked for, from the first call. */
+const countHeadReads = () => {
+    window.headReads = 0
+    let held: unknown
+    Object.defineProperty(window, 'nseStorageTest', {
+        configurable: true,
+        get: () => held,
+        set: (value: { worker: { call: (name: string, ...rest: unknown[]) => unknown } }) => {
+            held = value
+            const call = value.worker.call.bind(value.worker)
+            value.worker.call = (name, ...rest) => {
+                if (name === 'readSnapshot') window.headReads++
+                return call(name, ...rest)
+            }
+        },
+    })
+}
+
+const name = (page: Page, text: string) =>
+    page.evaluate((text) => window.nseFlushTest!.flusher.setChainFields({ name: text }), text)
+
+const openingKeys = (page: Page) =>
+    page.evaluate(
+        (prefix) => Object.keys(localStorage).filter((key) => key.startsWith(`${prefix}opening.`)),
+        prefix,
+    )
+
+test('a tab that finds the session open elsewhere names it from its record and reads no head', async ({
+    page,
+    context,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await name(page, 'Kiwi')
+    await settled(page)
+    const next = await context.newPage()
+    await next.addInitScript(countHeadReads)
+    await visit(next)
+    expect(await loadEvents(next)).toEqual(['openElsewhere'])
+    await expect(next.getByText(said(en.load.openElsewhere, 'Kiwi'), { exact: true })).toBeVisible()
+    expect(await next.evaluate(() => window.headReads)).toBe(0)
+})
+
+test('a slow head read after startup keeps the page record until the session shows and settles', async ({
+    page,
+}) => {
+    await visit(page)
+    await edit(page, 990)
+    await name(page, 'Kiwi')
+    await settled(page)
+    const first = await flushSession(page)
+    await page.evaluate(async () => {
+        const { resetState } =
+            (await import('/src/history/index.ts')) as typeof import('../../src/history')
+        resetState(false)
+    })
+    await edit(page, 980)
+    await settled(page)
+    // Every opening so far has settled: the page keeps no record.
+    await expect.poll(() => openingKeys(page)).toEqual([])
+    // The head read waits until the test lets it go.
+    await page.evaluate(() => {
+        const worker = window.nseStorageTest!.worker
+        const call = worker.call.bind(worker) as (name: string, ...rest: unknown[]) => unknown
+        const held = new Promise<void>((resolve) => {
+            window.releaseHeadRead = resolve
+        })
+        ;(worker as { call: unknown }).call = (name: string, ...rest: unknown[]) => {
+            if (name !== 'readSnapshot') return call(name, ...rest)
+            window.headReadHeld = true
+            return held.then(() => call(name, ...rest))
+        }
+    })
+    const restoring = page.evaluate(async (sessionId) => {
+        const { restoreSession } =
+            (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
+        return restoreSession(sessionId)
+    }, first.id)
+    await expect.poll(() => page.evaluate(() => window.headReadHeld)).toBe(true)
+    // The record was written before the read began, and stays while it is held.
+    const keys = await openingKeys(page)
+    expect(keys).toHaveLength(1)
+    expect(await page.evaluate((key) => localStorage.getItem(key), keys[0]!)).toContain(first.id)
+    await page.evaluate(() => window.releaseHeadRead())
+    expect((await restoring).opened).toBe(true)
+    expect(await lifeOf(page)).toBe(990)
+    await expect.poll(() => openingKeys(page)).toEqual([])
 })

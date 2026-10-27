@@ -105,13 +105,13 @@ const edit = (state: State, change: (transaction: Transaction) => void) => {
     return transaction.commit([])
 }
 
-test('the plan holds exactly the snapshot encoding’s chunks, on the golden and edge charts', () => {
+test("the plan holds exactly the snapshot encoding's chunks, on the golden and edge charts", () => {
     assertMatches(stateOf(goldenChart()), 'golden')
     assertMatches(stateOf(edgeChart()), 'edge')
 })
 
 for (const path of samplePaths)
-    test(`the plan holds exactly the snapshot encoding’s chunks on ${path}`, (t) => {
+    test(`the plan holds exactly the snapshot encoding's chunks on ${path}`, (t) => {
         if (!existsSync(path)) {
             t.skip(`${path} is absent`)
             return

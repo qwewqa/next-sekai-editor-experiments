@@ -10,7 +10,7 @@ const nameOf = (bgm: Bgm) => {
     return `${bgm.filename ?? 'BGM'}${extension ? `.${extension}` : ''}`
 }
 
-/** Downloads the BGM’s original bytes through the platform’s download path, as they were picked. */
+/** Downloads the BGM's original bytes through the platform's download path, as they were picked. */
 export const downloadBgm = async (bgm: Bgm) => {
     const { source } = bgm
     if (!source) return

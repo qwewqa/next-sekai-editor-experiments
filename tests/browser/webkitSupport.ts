@@ -15,7 +15,7 @@ export const skipWhereTheEditorCannotStart = () => {
             const present = await page.evaluate(() => typeof OffscreenCanvas !== 'undefined')
             test.skip(
                 !present,
-                'This WebKit build lacks OffscreenCanvas, so the editor’s support gate refuses to start',
+                "This WebKit build lacks OffscreenCanvas, so the editor's support gate refuses to start",
             )
         } finally {
             await context.close()

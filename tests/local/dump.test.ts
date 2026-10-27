@@ -198,7 +198,7 @@ test('the seeder refuses a database with chains or sessions, and changes nothing
     }
 })
 
-test('into an empty database the build made, meta is the dump’s as one set', async () => {
+test("into an empty database the build made, meta is the dump's as one set", async () => {
     const world = createWorld()
     const tab = world.tab('a')
     const db = await openLocalData(tab)
@@ -231,7 +231,7 @@ test('the seeder refuses a database newer than the dump', async () => {
     await world.idle()
 })
 
-test('the dumper writes a view’s own bytes', () => {
+test("the dumper writes a view's own bytes", () => {
     const buffer = new Uint8Array([0, 1, 2, 3, 4, 5]).buffer
     assert.deepEqual(encodeValue(new Uint8Array(buffer, 2, 2), noBlob), { $u8: b64([2, 3]) })
     assert.deepEqual(encodeValue(buffer, noBlob), { $ab: b64([0, 1, 2, 3, 4, 5]) })
@@ -370,7 +370,7 @@ test('the reader checks tags, base64, key order and in-line keys', () => {
     readDump(JSON.parse(JSON.stringify(sampleDump())))
 })
 
-test('localStorage: only the editor’s keys, in order', () => {
+test("localStorage: only the editor's keys, in order", () => {
     const items: Record<string, string> = {
         'sonolus-next-sekai-editor.b': '2',
         'nse.test.storage': '{}',

@@ -128,7 +128,7 @@ const pausedOnce = (store: SaveStore): SaveStore => {
     }
 }
 
-test('a binding is stored with its write’s marks, so a later reduction never carries', async () => {
+test("a binding is stored with its write's marks, so a later reduction never carries", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -169,7 +169,7 @@ test('a binding is stored with its write’s marks, so a later reduction never c
     assert.equal(d2.stepsLine, 'mayNotBeIncluded')
 })
 
-test('flagged rows’ states are written when storage still holds them whole', async () => {
+test("flagged rows' states are written when storage still holds them whole", async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)

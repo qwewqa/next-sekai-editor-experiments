@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
+import { createHash } from 'node:crypto'
 import { captureEntryDescription } from '../../src/history/operations'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
+import { BGM_MAX_MINUTES } from '../../src/utils/bgmLimit'
 import { buildZip } from '../../src/zip'
 import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson, type Item } from '../local/nxsp/craft'
@@ -8,6 +10,7 @@ import { damagedFile } from '../local/open/files'
 import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
+import { en, said } from './messages'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -476,7 +479,7 @@ test('a reload reads no stored handle at startup; a Save or an Export reads it a
     expect(await handleReads(page)).toBe(1)
 })
 
-test('Export’s target keeps its handle across a reload, read when Export opens', async ({
+test("Export's target keeps its handle across a reload, read when Export opens", async ({
     page,
 }) => {
     await start(page)
@@ -531,6 +534,8 @@ test('a reload mid-import without a handle marks the rows that never arrived kep
     await page.evaluate(() => {
         localStorage.removeItem('nse.test.importDelay')
     })
+    // The import is still running; the open itself has settled, so the reload is not an unfinished open.
+    await openingSettled(page)
     await page.reload()
     await waitForStartup(page)
     await imported(page)
@@ -601,6 +606,16 @@ test('the same file opened in a second tab opens unbound, as a separate copy', a
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
 })
 
+/** The page has finished opening: it keeps no record of an opening, so a reload asks nothing. */
+const openingSettled = (page: Page) =>
+    expect
+        .poll(() =>
+            page.evaluate(() =>
+                Object.keys(localStorage).filter((key) => key.includes('.opening.')),
+            ),
+        )
+        .toEqual([])
+
 test('a separate copy keeps its label after a reload', async ({ page, context }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
@@ -613,6 +628,7 @@ test('a separate copy keeps its label after a reload', async ({ page, context })
     await expect(notice(other).filter({ hasText: 'so this is a separate copy.' })).toBeVisible()
     await imported(other)
     await expect(other.locator('[data-status-text]')).toContainText('separate copy of coconut.nxsp')
+    await openingSettled(other)
     await other.reload()
     await waitForStartup(other)
     await expect
@@ -624,6 +640,7 @@ test('a separate copy keeps its label after a reload', async ({ page, context })
     expect((await sessionOf(other)).file).toBeUndefined()
     await expect(other.locator('[data-status-text]')).toContainText('separate copy of coconut.nxsp')
     // The next reload keeps it too.
+    await openingSettled(other)
     await other.reload()
     await waitForStartup(other)
     await expect(other.locator('[data-status-text]')).toContainText('separate copy of coconut.nxsp')
@@ -1059,7 +1076,7 @@ test('a newer patch beside a BGM that is not loaded: both lines, with Choose Aud
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
 })
 
-test('a newer patch gives way to an earlier session’s unsaved-changes notice, which keeps the work', async ({
+test("a newer patch gives way to an earlier session's unsaved-changes notice, which keeps the work", async ({
     page,
 }) => {
     await start(page)
@@ -1144,3 +1161,208 @@ for (const method of ['readBindings', 'readHandle'])
         // The first tab keeps its binding.
         expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
     })
+
+declare global {
+    interface Window {
+        decoded: number[]
+    }
+}
+
+test('a project file over 256 MB asks first: Cancel opens nothing, Open Anyway reads it', async ({
+    page,
+}) => {
+    test.skip(memoryFiles(page), 'the handle fixture holds small files only')
+    await start(page)
+    await page.evaluate(async () => {
+        const root = await navigator.storage.getDirectory()
+        const handle = await root.getFileHandle('huge.nxsp', { create: true })
+        const writable = await handle.createWritable()
+        await writable.truncate(257 * 1024 * 1024)
+        await writable.write({ type: 'write', position: 0, data: new Uint8Array([80, 75, 3, 4]) })
+        await writable.close()
+    })
+    const before = await sessionOf(page)
+    await openFile(page, 'huge.nxsp')
+    const dialog = page.getByRole('dialog').filter({ hasText: 'huge.nxsp' })
+    await expect(dialog).toContainText(said(en.open.large.title, 'huge.nxsp'))
+    await expect(dialog).toContainText(said(en.open.large.body, '269 MB'))
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
+    await expect(dialog).toHaveCount(0)
+    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
+    expect((await rows(page, ['sessions'])).sessions).toHaveLength(0)
+
+    await openFile(page, 'huge.nxsp')
+    await expect(dialog).toHaveCount(1)
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Open Anyway' }), dialog)
+    // The reader refuses the file: it is the project reader's own answer, past the confirm.
+    await expect(
+        page.getByRole('dialog').filter({ hasText: /damaged|not a project file/ }),
+    ).toBeVisible()
+})
+
+/** Records the sizes of the bytes the page decodes as audio. */
+const spyOnDecoding = (page: Page) =>
+    page.addInitScript(() => {
+        window.decoded = []
+        const decode = BaseAudioContext.prototype.decodeAudioData
+        BaseAudioContext.prototype.decodeAudioData = function (...args) {
+            window.decoded.push(args[0].byteLength)
+            return Reflect.apply(decode, this, args) as Promise<AudioBuffer>
+        }
+    })
+
+/**
+ * Prepares `long.nxsp`, a project file whose BGM is a silent MPEG 2.5 stream at 8 kbps: 72-byte
+ * frames of 0.072 s, 90 minutes and a second. Returns the BGM's size.
+ */
+const writeLongBgmFile = async (page: Page) => {
+    const frames = 75_020
+    const mp3 = new Uint8Array(frames * 72)
+    for (let i = 0; i < frames; i++) mp3.set([0xff, 0xe3, 0x18, 0xc0], i * 72)
+    const sha256 = createHash('sha256').update(mp3).digest('hex')
+    const bgm = {
+        bytes: mp3,
+        sha256,
+        ref: {
+            hash: sha256.slice(0, 32),
+            filename: 'long.mp3',
+            size: mp3.length,
+            type: 'audio/mpeg',
+        },
+    }
+    const file = await executePlan(planNxsp(fresh(bgm).input).plan, new Map())
+    const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
+    await page.evaluate(async (base64) => {
+        const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
+        const root = await navigator.storage.getDirectory()
+        const handle = await root.getFileHandle('long.nxsp', { create: true })
+        const writable = await handle.createWritable()
+        await writable.write(bytes)
+        await writable.close()
+    }, base64)
+    return mp3.length
+}
+
+const REFUSED = said(en.notice.bgmMayBeTooLong, BGM_MAX_MINUTES)
+
+test('a BGM longer than 90 minutes in a project is not decoded, and a card says so with Choose Audio', async ({
+    page,
+}) => {
+    test.skip(memoryFiles(page), 'the handle fixture holds small files only')
+    await spyOnDecoding(page)
+    await start(page)
+    const size = await writeLongBgmFile(page)
+    await openFile(page, 'long.nxsp')
+    const card = notice(page).filter({ hasText: REFUSED })
+    await expect(card).toBeVisible()
+    await expect(card.getByRole('button', { name: en.notice.chooseAudio })).toBeVisible()
+    await imported(page)
+    // The player's own clips decode; the long BGM's bytes never reach the decoder.
+    expect(await page.evaluate(() => window.decoded)).not.toContain(size)
+    // The bytes are kept in storage: Choose Audio is not needed to get them back.
+    const { media } = await rows(page, ['media'])
+    expect(media!.some((row) => JSON.stringify(row.value).includes('long.mp3'))).toBe(true)
+})
+
+test('a refused BGM is a row of the open card, which keeps Restore Session for earlier work', async ({
+    page,
+}) => {
+    test.skip(memoryFiles(page), 'the handle fixture holds small files only')
+    await spyOnDecoding(page)
+    await start(page)
+    await writeLongBgmFile(page)
+    await openFile(page, 'long.nxsp')
+    await expect(notice(page).filter({ hasText: REFUSED })).toBeVisible()
+    await imported(page)
+    await edit(page, 777)
+    await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+    await page.keyboard.press('n')
+    await confirmNew(page)
+    await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
+    await openFile(page, 'long.nxsp')
+    const card = notice(page).filter({
+        hasText: said(en.open.unsavedChanges, 'long.nxsp', '').split(' from')[0],
+    })
+    await expect(card).toBeVisible()
+    await expect(card).toContainText(REFUSED)
+    await expect(card.getByRole('button', { name: en.open.restoreIt })).toBeVisible()
+    await expect(card.getByRole('button', { name: en.notice.chooseAudio })).toBeVisible()
+    // A screen reader hears the earlier-work text and the refusal row.
+    const region = page.locator('[data-notice-region]')
+    await expect(region).toContainText(
+        said(en.open.unsavedChanges, 'long.nxsp', '').split(' from')[0]!,
+    )
+    await expect(region).toContainText(REFUSED)
+})
+
+test('a damage warning and a refused BGM end up in one card, whichever comes first', async ({
+    page,
+}) => {
+    await start(page)
+    const damaged = said(en.open.damagedHistory, 'coconut.nxsp')
+    const refused = said(en.notice.bgmTooLong, BGM_MAX_MINUTES)
+    const warn = () =>
+        page.evaluate(async (message) => {
+            const { notifyWarning } =
+                (await import('/src/editor/media/refusalCard.ts')) as typeof import('../../src/editor/media/refusalCard')
+            notifyWarning(() => message)
+        }, damaged)
+    const refuse = (hash: string) =>
+        page.evaluate(async (hash) => {
+            const { noticeRefused } =
+                (await import('/src/editor/media/heldBgm.ts')) as typeof import('../../src/editor/media/heldBgm')
+            const { TaskFailure } =
+                (await import('/src/utils/error.ts')) as typeof import('../../src/utils/error')
+            noticeRefused(hash, new TaskFailure('audioTooLong', 'longer than the limit'))
+        }, hash)
+    const card = notice(page).filter({ hasText: damaged })
+    const region = page.locator('[data-notice-region]')
+
+    // The warning first, the refusal after: it joins the warning's card.
+    await warn()
+    await expect(card).toBeVisible()
+    await refuse('first')
+    await expect(card).toContainText(refused)
+    await expect(card.getByRole('button', { name: en.notice.chooseAudio })).toBeVisible()
+    await expect(region).toContainText(refused)
+
+    // A new session, the refusal first: the warning keeps its row.
+    await page.evaluate(async () => {
+        const { resetState } =
+            (await import('/src/history/index.ts')) as typeof import('../../src/history')
+        resetState(false)
+    })
+    await refuse('second')
+    await expect(notice(page).filter({ hasText: refused })).toBeVisible()
+    await warn()
+    await expect(card).toContainText(refused)
+    await expect(card.getByRole('button', { name: en.notice.chooseAudio })).toBeVisible()
+    await expect(region).toContainText(damaged)
+    await expect(region).toContainText(refused)
+})
+
+test('at load a refused stored BGM is a row of the start-up card, whose action stays', async ({
+    page,
+    context,
+}) => {
+    test.skip(memoryFiles(page), 'the handle fixture holds small files only')
+    await start(page)
+    await writeLongBgmFile(page)
+    await openFile(page, 'long.nxsp')
+    await expect(notice(page).filter({ hasText: REFUSED })).toBeVisible()
+    await imported(page)
+    await openingSettled(page)
+    await edit(page, 777)
+    await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+    // A new visit continues that session, with its Continued line and Open History.
+    page.on('dialog', (dialog) => void dialog.accept())
+    await closePage(page, { runBeforeUnload: true })
+    const next = await context.newPage()
+    await start(next)
+    const card = notice(next).filter({ hasText: REFUSED })
+    await expect(card).toBeVisible()
+    await expect(card).toContainText(en.load.continued.slice(0, en.load.continued.indexOf('{0}')))
+    await expect(card.getByRole('button', { name: en.notice.chooseAudio })).toBeVisible()
+    await expect(card.getByRole('button', { name: en.load.openHistory })).toBeVisible()
+})

@@ -84,7 +84,7 @@ const formsOf = ({ project }: Fixture) => [
     form(project.metadata?.preview),
 ]
 
-test('the media forms map to the head’s records: sha256 with a file, hash without, absent when left out', async () => {
+test("the media forms map to the head's records: sha256 with a file, hash without, absent when left out", async () => {
     // Catches a later reader that confuses the two hash forms (the full SHA-256 of a held file, the
     // 16-byte hash of one that is not held), or reads an absent `bgm` as a removed one.
     const expected: Record<string, string[]> = {
@@ -139,7 +139,7 @@ test('the media forms map to the head’s records: sha256 with a file, hash with
     assert.deepEqual(live.bgm.meta, head.bgm.meta)
 })
 
-test('completeFrom is placed as written: an ancestor in the carrying files, the file’s own id otherwise', async () => {
+test("completeFrom is placed as written: an ancestor in the carrying files, the file's own id otherwise", async () => {
     // Catches a later reader that misplaces `completeFrom` (a carried one read as the file's own
     // id, so a later Save claims the whole history is in a file that lacks part of it), or one that
     // loses `replaces`.
@@ -340,7 +340,7 @@ test('the independent checker reads every fixture as a whole file', () => {
     assert.equal(strict.status, 0, `${strict.stdout}${strict.stderr}`)
 })
 
-test('every state a file holds decodes through the reader, and each entry’s noteCount is its state’s', async () => {
+test("every state a file holds decodes through the reader, and each entry's noteCount is its state's", async () => {
     // Catches a later decoder that misreads an earlier state (a wrong peek, Restore or Undo, or an
     // earlier BGM read as damage) while the head still decodes. Only the chunk the writer damaged on
     // purpose may fail, and only for a row that is not kept.

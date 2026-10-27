@@ -52,7 +52,7 @@ const openEntry = (source = 'x-a.nxsp', extra: Partial<Entry> = {}) =>
         extra,
     )
 
-test('an open’s divider names the file in every locale', () => {
+test("an open's divider names the file in every locale", () => {
     for (const locale of locales) {
         const ctx = context(locale)
         const text = dividerLabel(openEntry(), ctx, minute(locale))
@@ -90,7 +90,7 @@ test('a continuation names the time it continued from, to the minute, not its ow
     )
 })
 
-test('the open’s divider keeps its name with a parent time; an unknown continuation uses that time', () => {
+test("the open's divider keeps its name with a parent time; an unknown continuation uses that time", () => {
     const en = context('en')
     assert.equal(
         dividerLabel(openEntry('coconut.nxsp', { from: continuedFrom }), en, minute('en')),

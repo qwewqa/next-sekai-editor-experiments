@@ -33,7 +33,7 @@ test('a server address is the base, without a trailing slash, a query or a hash'
     })
 })
 
-test('the address of the server’s own endpoints names the server', () => {
+test("the address of the server's own endpoints names the server", () => {
     assert.equal(
         parseServerUrl('https://example.com/server/sonolus').base,
         'https://example.com/server',
@@ -90,7 +90,7 @@ test('a sonolus:// deep link is rewritten to https', () => {
     assert.deepEqual(parseServerUrl('SONOLUS://example.com'), { base: 'https://example.com' })
 })
 
-test('a level’s link, another type’s item and a list page name the server only', () => {
+test("a level's link, another type's item and a list page name the server only", () => {
     for (const path of [
         'levels/abc',
         'sonolus/levels/abc',
@@ -192,7 +192,7 @@ test('an empty field, other schemes, credentials and a broken address are refuse
     failsWith('https://example.com/skins/%E0%A4%A', 'invalid')
 })
 
-test('the release script’s item links resolve as before', () => {
+test("the release script's item links resolve as before", () => {
     const expected = 'https://example.com/server/sonolus/skins/test?localization=en'
     assert.equal(
         itemDetailsUrl('https://example.com/server/skins/test?localization=en', 'skins'),

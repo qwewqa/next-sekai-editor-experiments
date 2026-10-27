@@ -52,7 +52,7 @@ const visitAgain = async (context: BrowserContext) => {
 
 const noDialog = (page: Page) => expect(page.getByRole('dialog')).toHaveCount(0)
 
-test('a kill after another tab’s pick: the owner’s next Save fills the emptied file, with no dialog', async ({
+test("a kill after another tab's pick: the owner's next Save fills the emptied file, with no dialog", async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -113,7 +113,7 @@ test('a self-pick killed after the pick: the next Save fills the file, keeping t
     expect((after.revision as Row).parent).toBe((before.revision as Row).id)
 })
 
-test('a kill during the picker’s write: the reload is bound to the emptied file, and Save fills it', async ({
+test("a kill during the picker's write: the reload is bound to the emptied file, and Save fills it", async ({
     context,
 }) => {
     const a = await context.newPage()
@@ -135,7 +135,7 @@ test('a kill during the picker’s write: the reload is bound to the emptied fil
     expect((await readFile(next, 'coconut.nxsp'))!.length).toBeGreaterThan(0)
 })
 
-test('a kill after the picker’s close(): the next Save records the binding silently and adds no row, then writes in place', async ({
+test("a kill after the picker's close(): the next Save records the binding silently and adds no row, then writes in place", async ({
     context,
 }) => {
     const a = await context.newPage()
@@ -176,7 +176,7 @@ test('a kill after the picker’s close(): the next Save records the binding sil
     expect(await pickerCalls(next)).toHaveLength(1)
 })
 
-test('a kill after the picker’s close(): the next Save As… says once that earlier steps may not be included', async ({
+test("a kill after the picker's close(): the next Save As… says once that earlier steps may not be included", async ({
     context,
 }) => {
     const a = await context.newPage()

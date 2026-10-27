@@ -400,7 +400,7 @@ test('a client chunk that cannot load leaves the editor as it is', async ({ page
     expect(messages).toEqual([])
 })
 
-test('no request names the chart, its files or the saved file’s size, and every key is in the catalogue', async ({
+test("no request names the chart, its files or the saved file's size, and every key is in the catalogue", async ({
     page,
     context,
 }) => {

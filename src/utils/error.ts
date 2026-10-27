@@ -2,7 +2,8 @@
 export const errorMessage = (error: unknown) =>
     error instanceof Error && error.message ? error.message : String(error)
 
-export type TaskFailureKind = 'audioUnreadable' | 'imageUnreadable' | 'coverFailed'
+export type TaskFailureKind =
+    'audioUnreadable' | 'audioMayBeTooLong' | 'audioTooLong' | 'imageUnreadable' | 'coverFailed'
 
 /**
  * A known failure of a loading task. The message is English technical detail for the console and

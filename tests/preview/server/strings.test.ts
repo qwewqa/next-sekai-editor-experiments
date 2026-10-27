@@ -70,7 +70,7 @@ test('the web-only strings are gone from every locale', () => {
     }
 })
 
-test('the English words follow the editor’s conventions', () => {
+test("the English words follow the editor's conventions", () => {
     const english = previewAssets('en')
     const values = (value: unknown): string[] =>
         typeof value === 'string'

@@ -100,7 +100,7 @@ test('a read that lands after the stack was replaced is not held', async () => {
     assert.equal(restoredLoadedForTests(), 0)
 })
 
-test('a selection-only replacement keeps the slot’s stored root', () => {
+test("a selection-only replacement keeps the slot's stored root", () => {
     loads()
     restore(5, 4)
     const root = headSnapshot.value

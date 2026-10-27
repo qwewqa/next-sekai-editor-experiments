@@ -9,7 +9,7 @@ import { transfer } from './rpc'
 
 export const mediaHandlers = (context: WorkerContext) => ({
     /**
-     * The bytes of a stored media item, re-hashed against its key (and the row’s own digest), as
+     * The bytes of a stored media item, re-hashed against its key (and the row's own digest), as
      * a transferred buffer. Undefined when the row is missing or its bytes are not whole: that is
      * "not held". A read that could not be made rejects, which is not an answer.
      */

@@ -619,7 +619,7 @@ test('names rename inline with double click, F2 and the menu', async ({ page }) 
     expect((await groupState(page)).names).toEqual(['Default', 'Lead', 'Third'])
     await expect(nameButton(panel, 'Lead')).toBeFocused()
     await expect(
-        page.locator('.notification', { hasText: 'Renamed group "Other group" to "Lead"' }),
+        page.locator('.notification', { hasText: 'Renamed group “Other group” to “Lead”' }),
     ).toBeVisible()
     await page.evaluate(() => window.editorTest.history.undoState())
     expect((await groupState(page)).names).toEqual(['Default', 'Other group', 'Third'])
@@ -1761,7 +1761,7 @@ test('Select Objects leaves out objects of hidden types', async ({ page }) => {
     expect(await selected()).toEqual(['bpm', 'bpm'])
 })
 
-test('closing Properties opened from a row’s inline button returns focus to the row', async ({
+test("closing Properties opened from a row's inline button returns focus to the row", async ({
     page,
 }) => {
     await seedGroups(page, ['Default', 'Other group'])

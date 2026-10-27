@@ -38,7 +38,7 @@ test('the storage line is the first condition that holds', () => {
     )
 })
 
-test('an app’s built-in browser beats the browser lines, and loses to unavailable and private', () => {
+test("an app's built-in browser beats the browser lines, and loses to unavailable and private", () => {
     const inApp = { inAppBrowser: true }
     assert.equal(storageLineKey(facts(inApp)), 'inAppBrowser')
     assert.equal(storageLineKey(facts({ ...inApp, os: 'ios', engine: 'webkit' })), 'inAppBrowser')
@@ -47,7 +47,7 @@ test('an app’s built-in browser beats the browser lines, and loses to unavaila
     assert.equal(storageLineKey(facts({ ...inApp, unavailable: true })), 'unavailable')
 })
 
-test('the line describes the browser: safe mode’s read-only open and a wait on older tabs are not "cannot store"', () => {
+test('the line describes the browser: safe mode\'s read-only open and a wait on older tabs are not "cannot store"', () => {
     // No storage at all, and a database from a newer build, are.
     assert.equal(storageUnavailable({ mode: 'memory' }, false), true)
     assert.equal(storageUnavailable({ mode: 'readOnly' }, false), true)

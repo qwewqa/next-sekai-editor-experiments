@@ -149,7 +149,7 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
             '#TIMESCALE_EASE': choice(timeScaleEaseValues, 0, required),
             transitionStyle: choice([0, 1], 0),
             hideNotes: value(),
-            next: ref({ readWhen: 'the entity is in a group’s first chain' }),
+            next: ref({ readWhen: "the entity is in a group's first chain" }),
         },
     },
     Stage: {
@@ -182,7 +182,7 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
         },
     },
     StageMaskChange: {
-        readWhen: eventReadWhen('a Stage’s firstMaskChange'),
+        readWhen: eventReadWhen("a Stage's firstMaskChange"),
         fields: {
             '#BEAT': value(required),
             lane: value(required),
@@ -193,7 +193,7 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
         },
     },
     StagePivotChange: {
-        readWhen: eventReadWhen('a Stage’s firstPivotChange'),
+        readWhen: eventReadWhen("a Stage's firstPivotChange"),
         fields: {
             '#BEAT': value(required),
             lane: value(required),
@@ -206,7 +206,7 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
         },
     },
     StageStyleChange: {
-        readWhen: eventReadWhen('a Stage’s firstStyleChange'),
+        readWhen: eventReadWhen("a Stage's firstStyleChange"),
         fields: {
             '#BEAT': value(required),
             editorLane: value(),
@@ -227,7 +227,7 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
         },
     },
     StageTransformChange: {
-        readWhen: eventReadWhen('a Stage’s firstTransformChange'),
+        readWhen: eventReadWhen("a Stage's firstTransformChange"),
         fields: {
             '#BEAT': value(required),
             rotate: value(required),
@@ -268,8 +268,8 @@ const derivedNoteFields =
 
 /** Archetypes the parser skips whole. */
 export const ignoredArchetypes: Readonly<Record<string, Ignored>> = {
-    Connector: rewritten('Built again from the notes’ next chain and segment fields.'),
-    SimLine: rewritten('Built again from note positions and each stage’s generateSimLines.'),
+    Connector: rewritten("Built again from the notes' next chain and segment fields."),
+    SimLine: rewritten("Built again from note positions and each stage's generateSimLines."),
     TransientHiddenTickNote: rewritten('Hidden ticks are scheduled again from the connectors.'),
     TransientHiddenDamageTickNote: rewritten(
         'Hidden damage ticks are scheduled again from the connectors.',
@@ -280,7 +280,7 @@ export const ignoredArchetypes: Readonly<Record<string, Ignored>> = {
 }
 
 const eventStage = rewritten(
-    'The owning stage, which the Stage’s first change chain already gives; not written on export.',
+    "The owning stage, which the Stage's first change chain already gives; not written on export.",
 )
 
 /** Fields the parser skips on archetypes it otherwise reads. */
@@ -288,7 +288,7 @@ export const ignoredFields: Readonly<Record<string, Readonly<Record<string, Igno
     '#TIMESCALE_GROUP': {
         editorHidden: {
             reason: 'nothing',
-            note: 'Another editor’s display flag for the group; the level plays the same.',
+            note: "Another editor's display flag for the group; the level plays the same.",
         },
     },
     StageMaskChange: { stage: eventStage },

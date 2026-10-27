@@ -29,6 +29,7 @@ import {
 import type { NxspReply } from '../../../local/open/project'
 import { reopensOwnFile, type ReopenFacts } from '../../../local/open/reopen'
 import { noteCountOf, stateFromRecords } from '../../../local/records/records'
+import { beginOpening } from '../../../local/startup/unfinished'
 import { stateBatch } from '../../../local/stateBatch'
 import { storedRead } from '../../../local/storedRead'
 import { showModal } from '../../../modals'
@@ -42,10 +43,19 @@ import type { State } from '../../../state'
 import { getFilename } from '../../../utils/file'
 import { inlineName } from '../../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
+import { formatSize } from '../../../utils/size'
 import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
 import { confirmFile, fileChanged } from '../../file/state'
-import { bgmStatus, claimNotice, isHeldHere } from '../../media/heldBgm'
+import {
+    bgmStatus,
+    claimNotice,
+    holdRefusalNotices,
+    isHeldHere,
+    noticeRefused,
+    runHeld,
+} from '../../media/heldBgm'
+import { raiseWithRefusal } from '../../media/refusalCard'
 import { dismissNoticeCard, notify, type NoticeLine } from '../../notification'
 import { restoreStored } from '../../restoreStored'
 import { bindingHandle, bindingOf, environment, type Env } from '../../save/binding'
@@ -62,6 +72,9 @@ import { endOpen } from './report'
 // is partial or the file is open in another tab, with the open's notice and its background import.
 
 const title = () => i18n.value.commands.open.dialogTitle
+
+/** A project file over this size asks before it is read: the open can take long and fills storage. */
+const LARGE_PROJECT_BYTES = 256 * 1024 * 1024
 
 /** Refused before anything opens, with the message the loading dialog shows. */
 class OpenRefused extends Error {}
@@ -171,14 +184,26 @@ const notifyOpened = (
     notice: EarlierNotice | undefined,
     leftSessionId: string | undefined,
     offer = true,
+    /** A row for the card: a BGM refused for its length. */
+    extra?: NoticeLine,
 ) => {
     // The chain with unsaved changes is the session just left: only Reopen shows.
     if (!notice || (notice.kind === 'unsavedChanges' && notice.chain.sessionId === leftSessionId)) {
-        notifyLeft(openedLine(name), offer)
+        notifyLeft(openedLine(name), offer, extra)
         return
     }
     dismissNoticeCard()
     const message = earlierMessage(notice, name)
+    const action =
+        notice.kind === 'unsavedEarlier' ? undefined : restoreAction(notice.chain.sessionId)
+    if (extra) {
+        notify(message, {
+            lines: [{ message, severity: 'info', ...(action ? { action } : {}) }, extra],
+            // A screen reader hears the refusal row too.
+            announcement: () => `${message()} ${extra.message()}`,
+        })
+        return
+    }
     if (notice.kind === 'unsavedEarlier') notify(message, { card: true, severity: 'info' })
     else notify(message, { action: restoreAction(notice.chain.sessionId), severity: 'info' })
 }
@@ -283,9 +308,39 @@ const openRequestedProject = async (
     handle: FileSystemFileHandle | undefined,
     request: SwitchRequest,
 ) => {
+    // A BGM refused for its length is a row of the open's own notice, which a card raised before
+    // it would be replaced by; one that arrives after is a card of its own.
+    const held = holdRefusalNotices()
+    try {
+        await openWithNotices(file, handle, request, held)
+    } finally {
+        held.release()
+    }
+}
+
+const openWithNotices = async (
+    file: File,
+    handle: FileSystemFileHandle | undefined,
+    request: SwitchRequest,
+    held: ReturnType<typeof holdRefusalNotices>,
+) => {
     const project = await import('../../../local/open/project')
     const { previousSession } = await import('../../../local/startup/events')
     if (!request.isCurrent()) return
+
+    // A very large file asks before the full read; Cancel opens nothing.
+    if (file.size > LARGE_PROJECT_BYTES) {
+        const open = await showChoice({
+            title: interpolate(() => i18n.value.open.large.title, inlineName(file.name)),
+            message: interpolate(() => i18n.value.open.large.body, formatSize(file.size)),
+            choices: [{ value: true, label: () => i18n.value.open.large.open }],
+            cancelIsDefault: true,
+        })
+        if (!open || !request.isCurrent()) {
+            endOpen('cancelled')
+            return
+        }
+    }
 
     // Read and checked in the worker, the level parsed here.
     let read: NxspReply | undefined
@@ -509,24 +564,40 @@ const openRequestedProject = async (
                     },
                     request,
                 )
+                // The opening spans the store, the show and the start of the BGM's decode.
+                const opening = beginOpening()
                 const bgm = opened.media.bgm
-                committing = committing.then((result) => {
-                    if (
-                        result.kind === 'stored' &&
-                        result.shown &&
-                        bgm &&
-                        live.bgm.meta?.hash === mediaHash(bgm.form)
-                    )
-                        void project
-                            .attachOpenedBgm(
-                                bgm.bytes,
-                                live.bgm.meta.hash,
-                                decodeBgm,
-                                result.sessionId,
+                committing = committing.then(
+                    (result) => {
+                        if (result.kind === 'stored') {
+                            void opening.add(result.sessionId)
+                            if (result.shown) opening.published()
+                        }
+                        if (
+                            result.kind === 'stored' &&
+                            result.shown &&
+                            bgm &&
+                            live.bgm.meta?.hash === mediaHash(bgm.form)
+                        ) {
+                            const hash = live.bgm.meta.hash
+                            // A BGM refused for its length is said in a card, once per hash.
+                            runHeld(
+                                project
+                                    .attachOpenedBgm(bgm.bytes, hash, decodeBgm, result.sessionId)
+                                    .catch((error: unknown) => {
+                                        if (session.value.sessionId === result.sessionId)
+                                            noticeRefused(hash, error)
+                                    }),
                             )
-                            .catch(() => undefined)
-                    return result
-                })
+                        }
+                        opening.end(false)
+                        return result
+                    },
+                    (error: unknown) => {
+                        opening.end(true)
+                        throw error
+                    },
+                )
                 request.retainUntil(committing)
                 stored = await committing
             } catch (error) {
@@ -600,28 +671,39 @@ const openRequestedProject = async (
                 ],
             })
     }
-    // A binding check that could not tell (`unknown`) opens the copy with the ordinary notice;
-    // the status bar names the copy.
-    if (bound === 'yes')
-        showRows([
-            {
-                message: interpolate(
-                    () => i18n.value.notice.sameFileElsewhere,
-                    inlineName(file.name),
-                ),
-                severity: 'info',
-            },
-            ...(patchRow ? [patchRow] : []),
-        ])
-    else if (line && line.kind !== 'newerPatch')
-        notify(() => partialMessage(line), { card: true, severity: 'warning' })
-    else if (patchRow && !earlier) {
-        dismissNoticeCard()
-        showRows([patchRow, ...(bgmMissing() ? [bgmRow] : [])])
-    } else if (!earlier && bgmMissing()) {
-        dismissNoticeCard()
-        showRows([bgmRow])
-    } else notifyOpened(name, earlier, left)
+    // The notice is raised again with a refusal row when the refusal comes after it.
+    let missingSaid: boolean | undefined
+    const missingOnce = () => (missingSaid ??= bgmMissing())
+    const raise = (refusalRows: NoticeLine[]) => {
+        // A binding check that could not tell (`unknown`) opens the copy with the ordinary notice;
+        // the status bar names the copy.
+        if (bound === 'yes')
+            showRows([
+                {
+                    message: interpolate(
+                        () => i18n.value.notice.sameFileElsewhere,
+                        inlineName(file.name),
+                    ),
+                    severity: 'info',
+                },
+                ...(patchRow ? [patchRow] : []),
+                ...refusalRows,
+            ])
+        else if (line && line.kind !== 'newerPatch')
+            showRows([{ message: () => partialMessage(line), severity: 'warning' }, ...refusalRows])
+        else if (patchRow && !earlier) {
+            dismissNoticeCard()
+            showRows([patchRow, ...(missingOnce() ? [bgmRow] : []), ...refusalRows])
+        } else if (!earlier && missingOnce()) {
+            dismissNoticeCard()
+            showRows([bgmRow, ...refusalRows])
+        } else notifyOpened(name, earlier, left, true, refusalRows[0])
+    }
+    // A refusal that comes later joins this card while it shows.
+    held.claimRefusal()
+    raiseWithRefusal((refusal) => {
+        raise(refusal ? [refusal] : [])
+    })
     endOpen('done')
     stored.noticed()
 }

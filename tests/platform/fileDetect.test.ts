@@ -112,7 +112,7 @@ test('level data, in each form Open reads, goes to the whole-file path', async (
 })
 
 test('an archive is recognised by its entry names', async () => {
-    // An apps’ backup: a manifest and project files.
+    // An apps' backup: a manifest and project files.
     assert.deepEqual(
         await detectContent(
             await zipFile('Next SEKAI Editor backup 2026-10-17.zip', [

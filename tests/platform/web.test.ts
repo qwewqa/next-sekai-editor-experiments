@@ -190,7 +190,7 @@ test('a precondition on a file of another size is a conflict found without hashi
     assert.equal(hashed, 0)
 })
 
-test('a download’s Blob URL outlasts a late iOS prompt, until the page hides', async () => {
+test("a download's Blob URL outlasts a late iOS prompt, until the page hides", async () => {
     browser.downloads.length = 0
     const revoked: string[] = []
     const revoke = URL.revokeObjectURL.bind(URL)

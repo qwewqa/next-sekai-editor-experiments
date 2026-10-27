@@ -45,7 +45,7 @@ export const checkProject: Command = {
         const abort = new AbortController()
         const message = shallowRef(firstMessage(plan))
         const percent = shallowRef<number>()
-        // From here, once the read access has been asked for, the check is the editor’s own work.
+        // From here, once the read access has been asked for, the check is the editor's own work.
         const began = performance.now()
         busy(true)
         const outcome = startCheck(plan, abort.signal, (next, done) => {

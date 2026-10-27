@@ -32,7 +32,7 @@ async function repository(t) {
     return { cwd, git, commit }
 }
 
-test('without tags the version is the package’s', async (t) => {
+test("without tags the version is the package's", async (t) => {
     const { cwd, commit } = await repository(t)
     commit()
     assert.deepEqual(appVersion({ cwd }), {
@@ -42,7 +42,7 @@ test('without tags the version is the package’s', async (t) => {
     })
 })
 
-test('without commits or git the version is the package’s', async (t) => {
+test("without commits or git the version is the package's", async (t) => {
     const { cwd } = await repository(t)
     assert.equal(appVersion({ cwd }).appVersion, '0.5.22')
     const plain = await mkdtemp(join(tmpdir(), 'sekai-version-test-'))
@@ -55,7 +55,7 @@ test('without commits or git the version is the package’s', async (t) => {
     })
 })
 
-test('at a tag the version is the tag’s, not the package’s', async (t) => {
+test("at a tag the version is the tag's, not the package's", async (t) => {
     const { cwd, git, commit } = await repository(t)
     commit()
     git('tag', 'v0.6.0')
@@ -136,7 +136,7 @@ const run = (tag, stdin) =>
         env: { ...process.env, GITHUB_OUTPUT: '' },
     })
 
-test('the deploy step reads git ls-remote’s list', () => {
+test("the deploy step reads git ls-remote's list", () => {
     const list = [
         'a1\trefs/tags/v0.5.22',
         'b2\trefs/tags/v0.6.0',

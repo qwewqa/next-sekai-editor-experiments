@@ -255,6 +255,7 @@
             "importedUsc": "Imported USC chart",
             "importedSus": "Imported SUS chart",
             "unsupported": "Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.",
+            "tooLarge": "This file is too large to open.",
             "invalidLevel": "Invalid level: {0}",
             "invalidChart": "Invalid chart: {0}",
             "revision": {
@@ -648,10 +649,10 @@
             "selectTool": {
                 "select": "Where objects overlap, each tap selects the next one.",
                 "selectClick": "Where objects overlap, each click selects the next one.",
-                "selectMultiple": "Drag a box from empty space to select the objects in it.",
                 "move": "Drag a selected object to move the whole selection.",
                 "resize": "Drag the edge of a note, camera event or stage mask event to resize it. If all selected objects are the same type, they resize together.",
-                "modifiers": "Hold Ctrl (Cmd on macOS) to add objects to the selection or remove them. Hold Shift to select whole slides."
+                "modifiers": "Hold Ctrl (Cmd on macOS) to add objects to the selection or remove them. Hold Shift to select whole slides.",
+                "selectMultiple": "Drag a box from empty space to select the objects in it."
             },
             "eraserTool": {
                 "erase": "Tap an object to erase it, or drag a box to erase everything in it.",
@@ -669,6 +670,19 @@
                 "paste": "Tap or drag to place the copied objects. Hold Shift to flip them horizontally.",
                 "pasteClick": "Click or drag to place the copied objects. Hold Shift to flip them horizontally."
             },
+            "noteTool": {
+                "presets": "Choose Note again to show the default properties and switch between the presets, Note #1 to Note #4.",
+                "quickEdit": "When the Properties panel is shown, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Note #2 preset turns Critical on or off.",
+                "quickEditClick": "When the Properties panel is shown, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Note #2 preset turns Critical on or off."
+            },
+            "slideTool": {
+                "connect": "When notes of one slide are selected, tap empty space to add another note to that slide. Choose Deselect before starting a new slide.",
+                "connectClick": "When notes of one slide are selected, click empty space to add another note to that slide. Choose Deselect before starting a new slide.",
+                "presets": "Choose Slide again to show the default properties and switch between the presets, Slide #1 to Slide #5.",
+                "quickEdit": "As with Note, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
+                "quickEditClick": "As with Note, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
+                "splitCombine": "Split Slide cuts the connection from each selected note to the next note. Combine into Slide joins the slides of the selected notes into one slide."
+            },
             "generateSlideNotesTool": {
                 "generate": "Tap a note to fill its slide with attached notes, one on each empty division line.",
                 "generateClick": "Click a note to fill its slide with attached notes, one on each empty division line.",
@@ -685,19 +699,6 @@
                 "resize": "Drag the edge of a note, camera event or stage mask event to resize it.",
                 "modifiers": "Hold Ctrl (Cmd on macOS) and tap to add an object to the selection or remove it. Hold Shift and tap a note to select its whole slide.",
                 "modifiersClick": "Hold Ctrl (Cmd on macOS) and click to add an object to the selection or remove it. Hold Shift and click a note to select its whole slide."
-            },
-            "noteTool": {
-                "presets": "Choose Note again to show the default properties and switch between the presets, Note #1 to Note #4.",
-                "quickEdit": "When the Properties panel is shown, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Note #2 preset turns Critical on or off.",
-                "quickEditClick": "When the Properties panel is shown, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Note #2 preset turns Critical on or off."
-            },
-            "slideTool": {
-                "connect": "When notes of one slide are selected, tap empty space to add another note to that slide. Choose Deselect before starting a new slide.",
-                "connectClick": "When notes of one slide are selected, click empty space to add another note to that slide. Choose Deselect before starting a new slide.",
-                "presets": "Choose Slide again to show the default properties and switch between the presets, Slide #1 to Slide #5.",
-                "quickEdit": "As with Note, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
-                "quickEditClick": "As with Note, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
-                "splitCombine": "Split Slide cuts the connection from each selected note to the next note. Combine into Slide joins the slides of the selected notes into one slide."
             },
             "bpmTool": {
                 "first": "The chart always starts with a BPM change. Dragging it adds a copy where you drop it.",
@@ -1136,7 +1137,9 @@
         "openingBlank": "Opening…",
         "slow": "This is taking longer than usual.",
         "error": "The editor could not open your stored work.",
-        "blank": "Start Blank"
+        "blank": "Start Blank",
+        "unfinished": "“{0}” did not finish opening last time.",
+        "unfinishedUntitled": "Your session did not finish opening last time."
     },
     "safe": {
         "bar": "Safe mode: changes are not stored.",
@@ -1817,6 +1820,8 @@
         "loading": {
             "loading": "Loading…",
             "audioUnreadable": "This audio file could not be read.",
+            "audioMayBeTooLong": "This audio file could not be loaded. Audio files can be up to {0} minutes long.",
+            "audioTooLong": "This audio file is longer than {0} minutes and could not be loaded.",
             "imageUnreadable": "This image could not be read.",
             "coverFailed": "The cover could not be generated.",
             "failed": "This could not be completed."
@@ -2162,6 +2167,8 @@
         "sameFileElsewhere": "“{0}” is open in another tab or window, so this is a separate copy.",
         "storageUnavailable": "The editor could not access this browser’s storage. Try again.",
         "chooseAudio": "Choose Audio…",
+        "bgmMayBeTooLong": "The BGM was not loaded. Audio files can be up to {0} minutes long.",
+        "bgmTooLong": "The BGM is longer than {0} minutes and was not loaded.",
         "bgmDiffers": "This is a different file from the original BGM, “{0}”.",
         "bgmDiffersUnnamed": "This is a different file from the original BGM.",
         "newLevel": "New level",
@@ -2237,6 +2244,11 @@
             "title": "“{0}” Uses Newer Features",
             "body": "This level uses values that this version of the editor does not support. Opening a separate copy replaces those values with defaults.",
             "openCopy": "Open a Copy"
+        },
+        "large": {
+            "title": "“{0}” Is Very Large",
+            "body": "This file is {0}. Opening it may take a long time and use a lot of this browser’s storage.",
+            "open": "Open Anyway"
         },
         "unsavedChanges": "Opened {0}. You have unsaved changes to it from {1}.",
         "unsavedEarlier": "You have unsaved changes to an earlier version of {0} ({1}). They are in Recent Sessions.",

@@ -57,7 +57,7 @@ const access = async (history: ReadHistory, t: test.TestContext) => {
     return { chunks: chunkAccess(reader, entry, history.index, NXSP_CAPS), read }
 }
 
-test('the import’s batches keep their chunks and read each in file order', async (t) => {
+test("the import's batches keep their chunks and read each in file order", async (t) => {
     const history = build()
     const plain = [...distinctRootChunks(history, history.roots.keys())]
     const batches = planImport(history, new Set(), true).filter((b) => b.kind === 'chunks')

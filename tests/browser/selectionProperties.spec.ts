@@ -351,7 +351,7 @@ test.describe('mixed values', () => {
         await expect(chips.nth(0)).toBeFocused()
     })
 
-    test('descriptions join coverage and values in each locale’s punctuation', async ({ page }) => {
+    test("descriptions join coverage and values in each locale's punctuation", async ({ page }) => {
         const type = control(page, 'Ease Type')
         await expect(type).toHaveAccessibleDescription(
             'Applies to 2 of 5 selected objects. Mixed: In 1, Out 1',
@@ -898,7 +898,7 @@ test('two-value choices list the values in use while mixed', async ({ page }) =>
     expect(await selectedCount(page)).toBe(2)
 })
 
-test('View picks the current group, apart from the selection’s group', async ({ page }) => {
+test("View picks the current group, apart from the selection's group", async ({ page }) => {
     await showSlides(page, [[{ beat: 0 }]])
     const view = panel(page).locator('#properties-section-view')
     await expect(

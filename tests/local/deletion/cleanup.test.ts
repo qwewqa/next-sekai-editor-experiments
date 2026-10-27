@@ -136,7 +136,7 @@ test('media first stored within the grace period stays: a BGM just picked is not
     assert.equal(media(world).size, 1)
 })
 
-test('a chain marked for Delete keeps its latest state’s BGM: Undo brings it back', async () => {
+test("a chain marked for Delete keeps its latest state's BGM: Undo brings it back", async () => {
     const { world, page, deleter, clean, states } = await stored(4)
     await daysPass(world)
     page.tab.kill()
@@ -147,7 +147,7 @@ test('a chain marked for Delete keeps its latest state’s BGM: Undo brings it b
     assert.deepEqual(media(world), new Set([hashOf(states.head)]))
 })
 
-test('a head session whose stack was removed keeps its last entry’s BGM', async () => {
+test("a head session whose stack was removed keeps its last entry's BGM", async () => {
     const { world, page, clean, states } = await stored(7)
     await daysPass(world)
     page.tab.kill()
@@ -254,7 +254,7 @@ test('cleanup is busy while an import runs or a writer holds nse-maint', async (
     assert.equal(media(world).size, 1)
 })
 
-test('with storing paused for a full browser, cleanup still runs, and the test flag’s full ends', async () => {
+test("with storing paused for a full browser, cleanup still runs, and the test flag's full ends", async () => {
     const { world } = await stored(6)
     await daysPass(world)
     // A tab whose browser is full until something is freed.

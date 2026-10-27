@@ -91,7 +91,7 @@ test('after a worker restart into memory, hides journal the entries only memory 
     assert.equal(journal?.stack.keep, 0)
 })
 
-test('after Try Again’s move the journal stays until a flush commits, and the stack follows lastSeq', async () => {
+test("after Try Again's move the journal stays until a flush commits, and the stack follows lastSeq", async () => {
     for (const seed of CI_SEEDS.slice(0, 4)) {
         const world = createWorld({ seed })
         const frozen = world.tab('frozen')

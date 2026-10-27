@@ -189,7 +189,7 @@ test('a newer engine revision is reported, an equal or missing one is not', () =
 })
 
 // What a new object of each choice gets, as the parser's output shows it.
-test('an unknown choice value gives a report entry and the field’s default', () => {
+test("an unknown choice value gives a report entry and the field's default", () => {
     const unknown = 9999
     const run = (archetype: string, name: string, value = unknown) => {
         const { chart, report } = parse(withData(fullLevel(), archetype, name, value))
@@ -415,7 +415,7 @@ test('every version tag in the table is a version that exists', () => {
 })
 
 // The table is the authority; this is the test-only check that the parser agrees with it.
-test('the parser’s reads agree with the declared table', () => {
+test("the parser's reads agree with the declared table", () => {
     const reads = new Map<string, ParserRead[]>()
     setParserReadHook((read) => {
         const key = `${read.archetype}.${read.name}`
@@ -505,7 +505,7 @@ test('the compiled checks answer as Value.Check does', () => {
             )
 })
 
-test('the editor’s own export of the committed levels reports nothing', () => {
+test("the editor's own export of the committed levels reports nothing", () => {
     for (const entities of committed()) {
         const { chart } = parse(entities)
         const state = createState(chart, 0)
@@ -572,7 +572,7 @@ test('a ref where a value is expected, or a value where a ref is, is reported', 
     ])
 })
 
-test('the table’s note archetypes are the parser’s, both ways', () => {
+test("the table's note archetypes are the parser's, both ways", () => {
     assert.deepEqual([...tableNoteNames].sort(), [...noteArchetypeNames].sort())
     for (const archetype of tableNoteNames)
         assert.ok(isNoteEntity({ archetype, data: [] }), archetype)

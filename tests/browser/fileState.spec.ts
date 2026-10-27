@@ -475,7 +475,7 @@ test.describe('the label and the title', () => {
         }) => {
             await seed(context)
             await visit(page)
-            // The file names the session, so the long identity is the file’s own name.
+            // The file names the session, so the long identity is the file's own name.
             const file = `coconut-${'abcdefghij'.repeat(60)}.nxsp`
             await bindFile(page, { name: file, event: 'saved' })
             await page.evaluate(async () => {

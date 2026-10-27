@@ -146,7 +146,7 @@ const stackProblem = async (
     if (!slot || toHex(slot.snapshot) !== stack.lastKept) return 'its last kept slot differs'
 }
 
-/** The stored slots `first … end − 1` of a session's blocks, or undefined when one is missing. */
+/** The stored slots `first .. end - 1` of a session's blocks, or undefined when one is missing. */
 const readSlots = async (tx: KvTx, sessionId: string, first: number, end: number) => {
     const slots: ReplaySlot[] = []
     const rows = new Map<number, StackBlockRow | undefined>()

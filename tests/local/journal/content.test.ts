@@ -57,7 +57,7 @@ test('a chart at lane division 3 recovers with its ids and a different root', ()
     assert.deepEqual(notes(read.state).sort(), notes(state).sort())
 })
 
-test('ids whose counts don’t match the level give fresh ids, and the state is still recovered', () => {
+test("ids whose counts don't match the level give fresh ids, and the state is still recovered", () => {
     const state = stateOf(goldenChart())
     const read = recover(state, (journal) => {
         journal.header.ids.groups.push(99)
@@ -97,7 +97,7 @@ test('two guides, the default-coloured one created second and earlier, keep thei
     assert.deepEqual(styles(recover(state).state), ['6:default', '8:red'])
 })
 
-test('level data with content this build doesn’t read is left for a later build', () => {
+test("level data with content this build doesn't read is left for a later build", () => {
     const state = stateOf(goldenChart())
     const journal = { ...journalContent(state) } as Journal
     const levelData = journalLevelData(journal)

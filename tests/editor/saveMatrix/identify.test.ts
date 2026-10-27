@@ -38,7 +38,7 @@ test('identify: a failed owner list leaves the pick unknown, and the Save goes o
     assert.deepEqual(r, { placed: false, written: true })
 })
 
-test('identify: an earlier owner’s failed handle read leaves the later owner to place the pick', async () => {
+test("identify: an earlier owner's failed handle read leaves the later owner to place the pick", async () => {
     const read: string[] = []
     const r = await run((w) =>
         w.behaviour.set('readHandle', (_n, arg) => {

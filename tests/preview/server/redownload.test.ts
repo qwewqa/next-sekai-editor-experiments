@@ -155,7 +155,7 @@ test('offline, Default is used, the reason is being offline, and the choice is u
     assert.deepEqual(await parts.store.list(), [])
 })
 
-test('a server that cannot be reached gives Default, with the server’s reason', async (t) => {
+test("a server that cannot be reached gives Default, with the server's reason", async (t) => {
     t.mock.method(console, 'error', () => {})
     const parts = await chosen()
     await evict(parts)

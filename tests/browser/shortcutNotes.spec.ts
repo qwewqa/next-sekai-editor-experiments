@@ -8,7 +8,7 @@ const ja = JSON.parse(
     commands: Record<'save' | 'copy', { title: string }> & { slide: { title: { default: string } } }
 }
 
-test('shared-binding notes list commands in the locale’s punctuation', async ({ page }) => {
+test("shared-binding notes list commands in the locale's punctuation", async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()

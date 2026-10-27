@@ -44,10 +44,12 @@ export type RawExport = { label: () => string; run: () => Promise<string | undef
 
 type GateState = {
     phase: StartupPhase
-    /** The session being opened, once known: "Opening "Coconut (Master)"…". */
+    /** The session being opened, once known: `startup.opening`. */
     name: string | undefined
     /** Startup took longer than SLOW_MS. */
     slow: boolean
+    /** The open of a stored session did not finish last time: asking what to do. */
+    asking: { name: string | undefined } | undefined
     /** The failed startup's own text. */
     error: string
     /** Export Raw Data on the error state, registered by `setRawExport`; undefined until then. */
@@ -62,6 +64,7 @@ export const startupGate = shallowReactive<GateState>({
     phase: 'opening',
     name: undefined,
     slow: false,
+    asking: undefined,
     error: '',
     rawExport: undefined,
     rawExportRunning: false,
@@ -139,7 +142,9 @@ const startSlowTimer = (ms: number) => {
     }, ms)
 }
 
-if (listening) startSlowTimer(readFlags().slowMs ?? SLOW_MS)
+const slowDelay = () => readFlags().slowMs ?? SLOW_MS
+
+if (listening) startSlowTimer(slowDelay())
 
 /**
  * Resolves once startup has ended, whether it opened the session or stopped at an error. Work
@@ -161,7 +166,7 @@ export const startupEnded = () =>
         )
     })
 
-/** The session being opened has a name: "Opening "Coconut (Master)"…". */
+/** The session being opened has a name: `startup.opening`. */
 export const setOpeningName = (name: string | undefined) => {
     startupGate.name = name
 }
@@ -171,6 +176,7 @@ export const finishStartup = () => {
     if (startupGate.phase === 'done') return
     clearTimeout(slowTimer)
     markStartup(startupGate.slow ? 'slow' : 'done')
+    startupGate.asking = undefined
     startupGate.phase = 'done'
     if (listening)
         for (const type of [...POINTER_EVENTS, ...KEY_EVENTS])
@@ -184,6 +190,7 @@ export const failStartup = (error: unknown) => {
     if (startupGate.phase === 'done') return
     clearTimeout(slowTimer)
     markStartup('error')
+    startupGate.asking = undefined
     startupGate.error = errorMessage(error)
     startupGate.phase = 'error'
 }
@@ -222,6 +229,35 @@ export const startBlank = async () => {
         console.error(error)
     }
     finishStartup()
+}
+
+export type UnfinishedAnswer = 'blank' | 'again'
+
+let answerAsk: ((answer: UnfinishedAnswer) => void) | undefined
+
+/**
+ * Asks, before a stored session is read, what to do about one that did not finish opening last
+ * time. The slow timer waits while it asks. Resolves to `blank` when the gate is not asking
+ * (it ended already), the safe side.
+ */
+export const askUnfinished = (name: string | undefined): Promise<UnfinishedAnswer> => {
+    if (startupGate.phase !== 'opening') return Promise.resolve('blank')
+    clearTimeout(slowTimer)
+    startupGate.asking = { name }
+    return new Promise<UnfinishedAnswer>((resolve) => {
+        answerAsk = resolve
+    })
+}
+
+/** The question's buttons: Start Blank lifts the gate as the slow state's does. */
+export const answerUnfinished = async (answer: UnfinishedAnswer) => {
+    const resolve = answerAsk
+    if (!resolve) return
+    answerAsk = undefined
+    if (answer === 'blank') await startBlank()
+    else if (!startupGate.slow) startSlowTimer(slowDelay())
+    startupGate.asking = undefined
+    resolve(answer)
 }
 
 /** Export Raw Data registers here once built, and the error state offers it. */

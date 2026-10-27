@@ -398,7 +398,7 @@ test('a marker without its entry or unit is no marker, and the others are still 
         localStorage.setItem(storageKey('saving.c0'), JSON.stringify(malformed))
         localStorage.setItem(storageKey('saving.c1'), JSON.stringify({ chainId: 'c1', ...valid }))
         assert.equal(readMarker('c0'), undefined)
-        assert.equal(markedSeq('s1'), 7, 'the session still goes past the valid marker’s seq')
+        assert.equal(markedSeq('s1'), 7, "the session still goes past the valid marker's seq")
         removeMarker('c0')
         assert.equal(localStorage.getItem(storageKey('saving.c0')), null)
     }

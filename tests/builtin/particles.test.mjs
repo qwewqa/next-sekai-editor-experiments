@@ -83,7 +83,7 @@ test('every particle stays in bounds, fades within 0 to 1 and ends with its effe
     }
 })
 
-test('the base set’s silent effects stay silent', () => {
+test("the base set's silent effects stay silent", () => {
     const empty = data.effects.filter((effect) => effect.groups.length === 0).map((e) => e.name)
     for (const name of [
         'Sekai Damage Note Circular',

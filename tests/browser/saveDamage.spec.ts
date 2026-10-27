@@ -137,7 +137,7 @@ test('the same damage without a held grant: no prompt before the picker, and the
     ).toBeVisible()
 })
 
-test('the Save dialog opens though the worker doesn’t answer whether it holds the BGM', async ({
+test("the Save dialog opens though the worker doesn't answer whether it holds the BGM", async ({
     page,
 }) => {
     await start(page, { fileSystemAccess: false })
@@ -206,7 +206,7 @@ test('the Save dialog opens though the worker doesn’t answer whether it holds 
     expect(written.size).toBe(4096)
 })
 
-test('Cancel on “Preparing…” while the own file is read before the picker cancels the Save', async ({
+test('Cancel on "Preparing…" while the own file is read before the picker cancels the Save', async ({
     page,
 }) => {
     await start(page)

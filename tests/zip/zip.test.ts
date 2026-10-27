@@ -212,7 +212,7 @@ test('reads an archive made by the operating system: DEFLATE, data descriptors, 
     )
 })
 
-test('reads an archive that is another tool’s: bytes after the end record, a comment holding a signature', async () => {
+test("reads an archive that is another tool's: bytes after the end record, a comment holding a signature", async () => {
     const comment = concat([0x50, 0x4b, 0x05, 0x06], new Uint8Array(30), utf8('tail'))
     const archive = rawZip([{ name: 'a.txt', data: utf8('payload') }], { comment })
     const reader = await ZipReader.open(new Blob([archive]))
@@ -479,7 +479,7 @@ test('names: the UTF-8 flag, UTF-8 without it, and CP437', async () => {
     )
 })
 
-test('a leading U+FEFF stays in a name, flagged or not, as Rust’s from_utf8_lossy keeps it', async () => {
+test("a leading U+FEFF stays in a name, flagged or not, as Rust's from_utf8_lossy keeps it", async () => {
     const bom = [0xef, 0xbb, 0xbf]
     const reader = await ZipReader.open(
         new Blob([

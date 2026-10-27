@@ -41,7 +41,7 @@ test('without the override, detection reads the browser', async ({ page }) => {
     expect(detected).not.toMatchObject({ engine: 'webkit', os: 'ios' })
 })
 
-test('the fixture’s version override sets the shown version', async ({ page }) => {
+test("the fixture's version override sets the shown version", async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
 

@@ -118,7 +118,7 @@ test('the baseline cells reach their picker and write, and a Save cancelled in i
     void bytesOf
 })
 
-test('I9 sees a file bound to two chains, or bound and another chain’s Export target', async () => {
+test("I9 sees a file bound to two chains, or bound and another chain's Export target", async () => {
     const world = await createWorld()
     // The detector reads the store; these rows stand in for what a bug would have stored.
     const rows = new Map<string, Record<string, unknown>>()

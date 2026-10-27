@@ -58,7 +58,7 @@ const recordOf = (
 const record = (fixture: Fixture, request: OwnSaveRecord) =>
     fixture.store.write(BIND_STORES, (tx) => recordOwnSave(tx, request), { durability: 'strict' })
 
-test('recording changes the chain record, its handle row and the write’s marks, and nothing else', async () => {
+test("recording changes the chain record, its handle row and the write's marks, and nothing else", async () => {
     const { fixture, session } = await chainOf()
     const before = await dump(fixture)
     const request = recordOf(fixture, session, { marks: [{ sessionId: session, seq: 2 }] })

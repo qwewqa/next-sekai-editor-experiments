@@ -520,7 +520,7 @@ test('division and lane groups show the value in use on their face', async ({ pa
     await expect(face(3)).not.toHaveAttribute('aria-pressed')
 })
 
-test('a value without a preset in its group shows on that group’s Custom face', async ({
+test("a value without a preset in its group shows on that group's Custom face", async ({
     page,
 }) => {
     await page.evaluate(() => {
@@ -626,7 +626,7 @@ const pick = async (page: Page, face: string, title: string) => {
     await toolbar(page).getByTitle(title, { exact: true }).click()
 }
 
-test('the default toolbar’s faces follow the tool and values in use', async ({ page }) => {
+test("the default toolbar's faces follow the tool and values in use", async ({ page }) => {
     const initial = [
         'Open…',
         'Play',
@@ -808,7 +808,7 @@ const pickAt = async (page: Page, index: number, title: string) => {
         .click()
 }
 
-test('a tool coming into use over a mixed group’s value shows until it ends', async ({ page }) => {
+test("a tool coming into use over a mixed group's value shows until it ends", async ({ page }) => {
     await page.evaluate(() => {
         const { settings } = window.editorTest
         settings.propertiesPosition = 'disabled'
@@ -871,7 +871,7 @@ test('a group of tools keeps the last tool used on its face', async ({ page }) =
     await expectFace('Select')
 })
 
-test('a right press’s tool shows on its group only until the release', async ({ page }) => {
+test("a right press's tool shows on its group only until the release", async ({ page }) => {
     const expectGroup = (face: string) => expect.poll(async () => (await faces(page))[3]).toBe(face)
     const start = await page.evaluate(() => window.editorTest.point(-5, 1))
     // Holds the right button over the chart, with the given face meanwhile, and drags unless it clicks.
@@ -949,7 +949,7 @@ test('a tool switched to during a right press leaves an action face to return, a
     expect((await faces(page))[5]).toBe('Note*')
 })
 
-test('a pick over a tool’s temporary face becomes the face', async ({ page }) => {
+test("a pick over a tool's temporary face becomes the face", async ({ page }) => {
     await page.evaluate(() => {
         window.editorTest.settings.toolbar = [
             ['paste', 'cut', 'copy', 'redo', 'undo'],
@@ -1110,7 +1110,7 @@ test('a group with two value families keeps its face as values change', async ({
     ])
 })
 
-test('a value picked while its group’s tool is in use leaves the tool on the face', async ({
+test("a value picked while its group's tool is in use leaves the tool on the face", async ({
     page,
 }) => {
     await page.evaluate(() => {
@@ -1266,7 +1266,7 @@ test('moving from one tool onto the next opens the next at once, even resting on
     await expect.poll(open).toBe(below)
 })
 
-test('a flyout’s rows meet each other and its tool', async ({ page }) => {
+test("a flyout's rows meet each other and its tool", async ({ page }) => {
     await page.evaluate(() => {
         window.editorTest.settings.toolbar = [['undo', 'redo', 'select']]
     })
@@ -1957,7 +1957,7 @@ test.describe('with touch', () => {
         }
     })
 
-    test('a second touch on the flyout leaves the first touch’s drag closing it', async ({
+    test("a second touch on the flyout leaves the first touch's drag closing it", async ({
         page,
     }) => {
         await page.evaluate(() => {

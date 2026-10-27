@@ -95,7 +95,7 @@ test('chains are listed newest first, a chain marked for Delete is not', async (
     assert.equal(rows[0]?.head.lastSeq, 2)
 })
 
-test('changed compares the head’s root with the file’s hash; a file without one is changed', async () => {
+test("changed compares the head's root with the file's hash; a file without one is changed", async () => {
     const world = createWorld({ seed: 2 })
     const page = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
@@ -126,7 +126,7 @@ test('changed compares the head’s root with the file’s hash; a file without 
     assert.deepEqual(byChain.get(same.chainId)?.file, file)
 })
 
-test('the note count is the summary’s, and absent when unknown, never 0', async () => {
+test("the note count is the summary's, and absent when unknown, never 0", async () => {
     const world = createWorld({ seed: 4 })
     const page = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
@@ -144,7 +144,7 @@ test('the note count is the summary’s, and absent when unknown, never 0', asyn
     assert.equal('noteCount' in row, false)
 })
 
-test('a head this build can’t read is listed as newer or damaged, never hidden', async () => {
+test("a head this build can't read is listed as newer or damaged, never hidden", async () => {
     const world = createWorld({ seed: 5 })
     const page = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
@@ -166,7 +166,7 @@ test('a head this build can’t read is listed as newer or damaged, never hidden
     })
 })
 
-test('a chain with one session this build can’t read is newer, as opening it would say', async () => {
+test("a chain with one session this build can't read is newer, as opening it would say", async () => {
     const world = createWorld({ seed: 6 })
     const page = await openPage(world, world.tab('a'))
     const first = await chainIn(page, stateOf(goldenChart()))

@@ -90,7 +90,7 @@ test('safe mode lists the stored sessions, peeks them, and Restore as a Copy ope
     expect(await storedRows(page)).toBe(before)
 })
 
-test('safe mode’s menu is Restore as a Copy and Save…, and Save… writes the file', async ({
+test("safe mode's menu is Restore as a Copy and Save…, and Save… writes the file", async ({
     page,
 }) => {
     await safePage(page)

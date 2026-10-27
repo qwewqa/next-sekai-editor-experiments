@@ -169,7 +169,7 @@ test('a newer tab: the current tab answers upgradeWanted and onversionchange, cl
     }
 })
 
-test('upgradeWanted alone closes a current tab’s connection and pauses its storing', async () => {
+test("upgradeWanted alone closes a current tab's connection and pauses its storing", async () => {
     const world = createWorld({ seed: 4 })
     const old = world.tab('old')
     const oldStore = core(world, old)
@@ -189,7 +189,7 @@ test('upgradeWanted alone closes a current tab’s connection and pauses its sto
     assert.deepEqual(freshStore.status, { mode: 'stored' })
 })
 
-test('onversionchange alone closes a current tab’s connection, letting the transaction in flight finish', async () => {
+test("onversionchange alone closes a current tab's connection, letting the transaction in flight finish", async () => {
     for (const seed of CI_SEEDS) {
         const world = createWorld({ seed })
         const old = world.tab('old')

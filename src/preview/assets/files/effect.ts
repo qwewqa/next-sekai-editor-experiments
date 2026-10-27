@@ -1,7 +1,7 @@
+import { measureClip, type ClipLength } from '../../../utils/audioLength'
 import { ZipError, ZipReader } from '../../../zip'
 import { ClipsTooLong, decodeEffectClips } from '../effectClips'
 import { AssetError, type LoadContext, type LoadedEffect } from '../types'
-import { measureClip, type ClipLength } from './audioLength'
 import { AssetImportError } from './errors'
 import type { CheckedParts } from './item'
 import { LIMITS } from './limits'

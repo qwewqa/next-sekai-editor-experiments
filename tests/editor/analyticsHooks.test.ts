@@ -74,7 +74,7 @@ test('a command run counts once under its name and source; a command added later
     })
 })
 
-test('a command another command runs, and a held key’s repeat, are not presses', () => {
+test("a command another command runs, and a held key's repeat, are not presses", () => {
     const before = save.runs()
     runCommand(save.command, 'nested')
     runCommand(save.command, 'repeat')

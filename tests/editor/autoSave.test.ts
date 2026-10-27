@@ -47,7 +47,7 @@ test('a recovery with a null guide alpha, as older editors saved, restores it as
 
 const gzipBase64 = (value: unknown) => gzipSync(JSON.stringify(value)).toString('base64')
 
-test('a recovery file is the journal’s or the slot’s gzipped level data as .nsld, raw level data as .json', async () => {
+test("a recovery file is the journal's or the slot's gzipped level data as .nsld, raw level data as .json", async () => {
     const levelData = { bgmOffset: 0, entities: [] }
     const journal = {
         journalVersion: 1,
@@ -81,7 +81,7 @@ test('a recovery file is the journal’s or the slot’s gzipped level data as .
     assert.equal(toRecoveryFile('{"broken').name, 'Recovery.txt')
 })
 
-test('the migration reads a slot this build reads whole, and leaves one it doesn’t', () => {
+test("the migration reads a slot this build reads whole, and leaves one it doesn't", () => {
     const state = stateOf(goldenChart())
     const levelData = serializeToLevelData(
         state.initialLife,

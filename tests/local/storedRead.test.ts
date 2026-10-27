@@ -113,7 +113,7 @@ test('a worker that stopped for good is `failed` at once', async () => {
     assert.equal(read.storedRead, 'failed')
 })
 
-test('over `connect`’s client, the same answers and failures', async () => {
+test("over `connect`'s client, the same answers and failures", async () => {
     const worker = new FakeWorker()
     const client = connect<typeof handlers>(worker as never, {})
     assert.deepEqual(

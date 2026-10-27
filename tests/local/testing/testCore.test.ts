@@ -288,7 +288,7 @@ test('the crash-at-every-await sweep passes an atomic writer and catches a split
     assert.ok(found.length > 0, 'a kill between the two transactions leaves a dangling entry')
 })
 
-test('a killed tab’s locks go to the next in line, and its pending requests go with it', async () => {
+test("a killed tab's locks go to the next in line, and its pending requests go with it", async () => {
     const world = createWorld({ seed: 3 })
     const a = world.tab('a')
     const b = world.tab('b')

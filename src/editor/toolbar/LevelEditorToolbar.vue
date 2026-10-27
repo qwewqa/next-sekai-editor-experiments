@@ -451,7 +451,7 @@ watch(
     },
     { flush: 'sync' },
 )
-// Capturing, as resize handles stop moves from bubbling; it runs before the backdrop’s handler.
+// Capturing, as resize handles stop moves from bubbling; it runs before the backdrop's handler.
 const listeners = [
     ['pointermove', onMoveOutside],
     ['pointerdown', onPressOutside],

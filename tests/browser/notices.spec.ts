@@ -77,7 +77,7 @@ test('a notice with an action sits above the toolbar and runs on click', async (
 test.describe('on a phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
-    test('the action button is 36 px, the peek strip’s control height', async ({ page }) => {
+    test("the action button is 36 px, the peek strip's control height", async ({ page }) => {
         await boot(page)
         await notifyWithAction(page, 'Nothing to undo')
         const button = pill(page).getByRole('button', { name: 'Open History' })
@@ -86,7 +86,7 @@ test.describe('on a phone', () => {
     })
 })
 
-test('every notice is announced once by the page’s one live region', async ({ page }) => {
+test("every notice is announced once by the page's one live region", async ({ page }) => {
     await boot(page)
     const region = page.getByRole('status')
     await expect(region).toHaveCount(1)
@@ -581,7 +581,7 @@ const openBlocking = (page: Page, notice?: string) =>
         })
     }, notice)
 
-test('a notice raised just before a dialog opens is announced by the dialog’s region, after it is ready', async ({
+test("a notice raised just before a dialog opens is announced by the dialog's region, after it is ready", async ({
     page,
 }) => {
     await boot(page, watchRegions)

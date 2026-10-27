@@ -44,7 +44,7 @@ test('a first Save holds the chronology, the media, and its own id as completeFr
     assert.equal((chain.revision as { id: string }).id, built.revisionId)
 })
 
-test('a write-back appends: the old file’s parts copied whole, then the rows after the cut', async () => {
+test("a write-back appends: the old file's parts copied whole, then the rows after the cut", async () => {
     const { fixture, file, built } = await savedChain()
     assert.ok(!('refused' in built))
     await fixture.edit(3)

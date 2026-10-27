@@ -251,7 +251,7 @@ test('incremental redraws equal a full redraw after a move, an Undo, a slide edi
     }
 })
 
-test('an incremental redraw of separate bands does not carry a fake note’s opacity into the next band', async ({
+test("an incremental redraw of separate bands does not carry a fake note's opacity into the next band", async ({
     page,
 }) => {
     await installHarness(page)

@@ -251,7 +251,7 @@ test.describe('From a Server', () => {
         await field(page).fill(`${BASE}/`)
         await field(page).press('Enter')
         await expect(chooser(page).locator('[data-chooser-item]')).toHaveCount(1)
-        // The field shows the server’s address once it is connected.
+        // The field shows the server's address once it is connected.
         await expect(field(page)).toHaveValue(BASE)
         await chooser(page).locator('[data-chooser-cancel]').click()
 
@@ -334,7 +334,7 @@ test.describe('From a Server', () => {
         await expect(chooser(page).locator('[data-chooser-also]')).toContainText('particle')
     })
 
-    test('the next chooser opens on the last server, and a link to another type’s item goes to that tab', async ({
+    test("the next chooser opens on the last server, and a link to another type's item goes to that tab", async ({
         page,
     }) => {
         await start(page)
@@ -378,7 +378,7 @@ test.describe('From a Server', () => {
         await expect(field(page)).toHaveValue(BASE)
     })
 
-    test('a share link to an item of the tab’s type selects it, and one the server lacks says so', async ({
+    test("a share link to an item of the tab's type selects it, and one the server lacks says so", async ({
         page,
     }) => {
         await start(page)
@@ -607,7 +607,7 @@ test.describe('when a server cannot be used', () => {
         await expect(errorOf(page)).toContainText('This server returned an error (503).')
     })
 
-    test('an item with a wrong checksum is refused in the server’s words, and nothing is stored', async ({
+    test("an item with a wrong checksum is refused in the server's words, and nothing is stored", async ({
         page,
     }) => {
         await start(page)
@@ -648,7 +648,7 @@ test.describe('when a server cannot be used', () => {
         expect(await stored(page)).toHaveLength(0)
     })
 
-    test('an item the checks refuse is worded as the server’s item', async ({ page }) => {
+    test("an item the checks refuse is worded as the server's item", async ({ page }) => {
         await start(page)
         const { pngHeader } = await import('../preview/files/fixtures')
         await serve(page, {
@@ -880,7 +880,7 @@ test.describe('narrow', () => {
 test.describe('narrow, downloading', () => {
     test.use({ viewport: { width: 360, height: 740 } })
 
-    test('“Downloading…” takes only the room it needs', async ({ page }) => {
+    test('"Downloading…" takes only the room it needs', async ({ page }) => {
         await start(page)
         await serve(page, {
             files: await files(SKIN),

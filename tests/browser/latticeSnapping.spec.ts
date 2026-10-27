@@ -519,7 +519,7 @@ test('Select: a note moved with all its stage events keeps the wait, unless a te
     }
 })
 
-test('Select: a note and a pivot of another stage snap when the note’s stage lattice moves', async ({
+test("Select: a note and a pivot of another stage snap when the note's stage lattice moves", async ({
     page,
 }) => {
     await load(page, {

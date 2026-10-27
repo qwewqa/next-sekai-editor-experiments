@@ -214,7 +214,7 @@ Pick the form by where the wait is. Every form uses the ink (`fg`, or white over
 
 - **A wait blocks the editor only when the user started it and must see it through.** A file read, a build or a check may be a dialog that blocks the editor, and the dialog can be closed. Any other wait leaves the rest usable and disables only the controls whose press would conflict.
 - **Cancel stops the work at its next safe point.** A blocking wait can be cancelled with the dialog's ×, with Escape, and with Cancel when the dialog has a footer. Work that already finished stays, such as a removed session or a written repair, and the outcome says what happened. Once a step has started that cannot be stopped, such as Check's finish, closing the dialog only hides it.
-- **A wait that cannot be cancelled has a way out once it is clearly slow.** The startup gate adds Start Blank and Open in Safe Mode after 10 s.
+- **A wait that cannot be cancelled has a way out once it is clearly slow.** The startup gate adds Start Blank and Open in Safe Mode after 10 s. A session that did not finish opening last time asks at once, with no spinner: Start Blank (first, focused) or Try Again.
 - **A wait in place needs no cancel.** Moving on ends it: another step, another row, closing the panel.
 - **A press during a wait is not dropped silently.** It takes effect once the result arrives, as the change arrows do, or it is refused with a reason.
 

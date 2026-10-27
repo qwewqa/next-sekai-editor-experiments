@@ -18,7 +18,7 @@ import { rowsOf, seededContext, visit } from './seed'
 // A WebKit build without OffscreenCanvas cannot start the editor; the override's pickers are Chromium's.
 skipWhereTheEditorCannotStart()
 
-test.skip(({ browserName }) => browserName !== 'chromium', 'The write-back uses Chromium’s pickers')
+test.skip(({ browserName }) => browserName !== 'chromium', "The write-back uses Chromium's pickers")
 
 const root = nxspFolder
 const withHistory = readdirSync(root).filter(

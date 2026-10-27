@@ -242,7 +242,7 @@ const flusherWorld = async () => {
     }
 }
 
-test('the index equals the Timeline’s pieces for new, imported, continued and forked sessions', async () => {
+test("the index equals the Timeline's pieces for new, imported, continued and forked sessions", async () => {
     const { world, page, ids } = await flusherWorld()
     expectWhole(world)
     const reader = new Reader(world, page)
@@ -263,7 +263,7 @@ test('the index equals the Timeline’s pieces for new, imported, continued and 
     )
 })
 
-test('own sessions are searched; a filter or a file’s rows are read in full, once, through the memo', async () => {
+test("own sessions are searched; a filter or a file's rows are read in full, once, through the memo", async () => {
     const { world, page, ids } = await flusherWorld()
     const reader = new Reader(world, page)
     const request = { sessionId: ids.continued.id, zone: 'America/New_York' }
@@ -284,7 +284,7 @@ test('own sessions are searched; a filter or a file’s rows are read in full, o
     assert.equal(reader.linear, 0)
 })
 
-test('an own session with an import pending is read in full (P3’s guard)', async () => {
+test("an own session with an import pending is read in full (P3's guard)", async () => {
     const { world, page, ids } = await flusherWorld()
     const reader = new Reader(world, page)
     const request = { sessionId: ids.created.id, zone: 'UTC' }
@@ -313,7 +313,7 @@ test('an own session with an import pending is read in full (P3’s guard)', asy
     assert.equal(done.importing, false)
 })
 
-test('an unknown origin is a file’s: read in full, and the same pieces', async () => {
+test("an unknown origin is a file's: read in full, and the same pieces", async () => {
     const { world, page, ids } = await flusherWorld()
     for (const origin of ['quantum', undefined, 7]) {
         await page.tab.run(() =>
@@ -585,12 +585,12 @@ test('files opened with shuffled times, a changed level, Replace and an import u
     assert.equal(DB_NAME.length > 0, true)
 })
 
-test('an opened session’s pieces keep the file’s times in any order: a day listed again where its rows come back', async () => {
+test("an opened session's pieces keep the file's times in any order: a day listed again where its rows come back", async () => {
     const s = await openedWorld()
     const reader = new Reader(s.world, s.page)
     await openFile(s, 'shuffled', SHUFFLED)
     const result = await reader.expectEquivalent({ sessionId: 'shuffled', zone: 'UTC' }, 'shuffled')
-    // Day 0, day 3, day 2, day 0 (the file’s order, newest seq first), then the open’s rows today.
+    // Day 0, day 3, day 2, day 0 (the file's order, newest seq first), then the open's rows today.
     const days = result.pieces.map((piece) => piece.day)
     assert.equal(new Set(days).size < days.length, true)
 })

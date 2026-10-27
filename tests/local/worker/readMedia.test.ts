@@ -41,7 +41,7 @@ const stored = async (seed: number) => {
     return { world, page, captured, context }
 }
 
-test('a stored item’s bytes come back whole, to the byte', async () => {
+test("a stored item's bytes come back whole, to the byte", async () => {
     const { captured, context, page } = await stored(1)
     const bytes = await page.tab.run(() => readMediaBytes(context, captured.meta.hash))
     assert.deepEqual(new Uint8Array(bytes ?? new ArrayBuffer(0)), new Uint8Array(captured.source))

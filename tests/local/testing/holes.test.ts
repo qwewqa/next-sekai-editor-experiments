@@ -73,9 +73,9 @@ test('an end that adds the entry makes the seq no hole; an end without one, or o
     const flusher = watch(ledger, fake(current))
     const reservation = flusher.reserveSave()
     const ended = flusher.endSave(reservation as never, { wall: 1 } as never)
-    assert.equal(ledger.has('s', 3), false, 'no hole while the end’s flush runs')
+    assert.equal(ledger.has('s', 3), false, "no hole while the end's flush runs")
     assert.equal(await ended, 'added')
-    assert.equal(ledger.has('s', 3), false, 'the Save’s entry is added')
+    assert.equal(ledger.has('s', 3), false, "the Save's entry is added")
     // Learned again by a later marker read, it is still no hole: the entry was added.
     flusher.deps.reservedSeq = () => 3
     ;(flusher.deps.reservedSeq as (id: string) => number | undefined)('s')

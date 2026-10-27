@@ -375,7 +375,7 @@ test('a step of a group shows its own flag after its label', async ({ page }) =>
     await expect(labels.last().locator('span', { hasText: '·' })).toHaveClass(/text-fg\/80/)
 })
 
-test('a step shows its flag only when it differs from the group row’s', async ({ page }) => {
+test("a step shows its flag only when it differs from the group row's", async ({ page }) => {
     const removed = { removed: true, damaged: false }
     const specs = [
         op('nse.note.add', { created: 2 }),

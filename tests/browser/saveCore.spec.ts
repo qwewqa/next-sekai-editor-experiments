@@ -204,7 +204,7 @@ test('the file deleted gives the not-found dialog; Save As… keeps the docId an
     expect((await chainOf(page)).exportTarget).toMatchObject({ name: 'LevelData' })
 })
 
-test('the Export link in the not-found dialog’s Save As… opens Export Level Data', async ({
+test("the Export link in the not-found dialog's Save As… opens Export Level Data", async ({
     page,
 }) => {
     await start(page)
@@ -243,7 +243,7 @@ test('Save As gives a new docId and a revision with no parent', async ({ page })
     expect((await projectOf(page, 'coconut.nxsp')).revision).toEqual(first.revision)
 })
 
-test('Ctrl+S is Save: the keydown’s default is prevented and Save runs', async ({ page }) => {
+test("Ctrl+S is Save: the keydown's default is prevented and Save runs", async ({ page }) => {
     await start(page)
     await edit(page, 1)
     await page.evaluate(() => {
@@ -349,7 +349,7 @@ test('a write that never landed leaves no marker, and a load drops markers of ch
         .toBeNull()
 })
 
-test('after a reload, the bound file’s handle is read on the first edit, ahead of a Save', async ({
+test("after a reload, the bound file's handle is read on the first edit, ahead of a Save", async ({
     page,
 }) => {
     await start(page)

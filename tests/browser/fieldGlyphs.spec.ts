@@ -169,7 +169,7 @@ test('stage style color fields show the judgment line hue', async ({ page }) => 
     await expect(lead(page, 'Judgment Line Color')).toHaveCount(0)
 })
 
-test('Lane Color shows a ring for Default and the color’s swatch for the others', async ({
+test("Lane Color shows a ring for Default and the color's swatch for the others", async ({
     page,
 }) => {
     await open(page)

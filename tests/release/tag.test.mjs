@@ -269,7 +269,7 @@ test('a changelog that breaks its format stops the cut', () => {
     )
 })
 
-test('the cut works on today’s changelog', () => {
+test("the cut works on today's changelog", () => {
     const text = readFileSync(new URL('../../CHANGELOG.md', import.meta.url), 'utf8')
     const notes = ['- A new line.']
     // The new line goes first, whether ## Unreleased already lists lines or not.

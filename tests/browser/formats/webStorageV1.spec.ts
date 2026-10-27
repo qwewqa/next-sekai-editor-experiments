@@ -163,7 +163,7 @@ test('a Save whose file was written but whose binding was not recorded is recogn
     browser,
     browserName,
 }) => {
-    test.skip(browserName !== 'chromium', 'The write-back uses Chromium’s pickers')
+    test.skip(browserName !== 'chromium', "The write-back uses Chromium's pickers")
     // Catches a later build that no longer recognises a v1 `saving.*` marker: the next Save would
     // find its own earlier write changed on disk and offer a conflict, or write over it.
     const markerFile = new Uint8Array(readFileSync(join(webDir, 'saving-marker-file.nxsp')))
@@ -270,7 +270,7 @@ const readTimeline = async (page: Page, until: (seen: Seen) => boolean) => {
 
 type Seen = { labels: Set<string>; dividers: Set<string>; flags: Set<string>; ended: boolean }
 
-test('A’s Timeline shows its dividers, the recovered entry and the damaged row, and Undo walks the stored stack to a BGM cleanup removed', async ({
+test("A's Timeline shows its dividers, the recovered entry and the damaged row, and Undo walks the stored stack to a BGM cleanup removed", async ({
     browser,
     browserName,
 }) => {
@@ -398,7 +398,7 @@ test('Restore Session of Q settles its unfinished import and loses no row', asyn
     await context.close()
 })
 
-test('N is swept and F’s Timeline then ends with the earlier steps not stored; GC past the grace period leaves every kept state readable', async ({
+test("N is swept and F's Timeline then ends with the earlier steps not stored; GC past the grace period leaves every kept state readable", async ({
     browser,
     browserName,
 }) => {
@@ -508,7 +508,7 @@ test('N is swept and F’s Timeline then ends with the earlier steps not stored;
     await context.close()
 })
 
-test('a newer build’s data stays: continuing A, Restore as a Copy, a Save that opens fully', async ({
+test("a newer build's data stays: continuing A, Restore as a Copy, a Save that opens fully", async ({
     browser,
     browserName,
 }) => {
@@ -632,7 +632,7 @@ test('Local Data lists the unreadable recovered work', async ({ browser, browser
     await context.close()
 })
 
-test('raw-export.zip’s dump.json seeds a fresh profile whose Recent Sessions lists its chains', async ({
+test("raw-export.zip's dump.json seeds a fresh profile whose Recent Sessions lists its chains", async ({
     browser,
     browserName,
 }) => {

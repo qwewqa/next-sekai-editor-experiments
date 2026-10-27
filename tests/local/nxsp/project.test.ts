@@ -12,7 +12,7 @@ import type { RecordValue } from '../../../src/local/records/canonical'
 import type { SnapshotRecords } from '../../../src/local/records/records'
 import { emptyLevelInfo, type LevelInfo } from '../../../src/state/levelInfo'
 
-test('metadata’s pinned mapping: empty strings and tags left out, rating 0 kept, filename "" left out', () => {
+test('metadata\'s pinned mapping: empty strings and tags left out, rating 0 kept, filename "" left out', () => {
     const ref = { hash: 'a'.repeat(32), filename: '', size: 3, type: 'image/png' }
     const info: LevelInfo = {
         title: 'T',
@@ -50,7 +50,7 @@ test('metadata’s pinned mapping: empty strings and tags left out, rating 0 kep
     })
 })
 
-test('a bgm’s file name: filename, else the entry name after bgm/, else ""', () => {
+test('a bgm\'s file name: filename, else the entry name after bgm/, else ""', () => {
     const sha256 = 'c'.repeat(64)
     assert.equal(
         bgmFilenameOf({ file: 'bgm/a.mp3', filename: 'Á.mp3', type: '', sha256, size: 1 }),
@@ -114,7 +114,7 @@ const records = (beats: number[], bpms: [number, number][]): SnapshotRecords => 
     ],
 })
 
-test('summary: the latest note’s time over the BPM changes, the first BPM from beat 0, rounded', () => {
+test("summary: the latest note's time over the BPM changes, the first BPM from beat 0, rounded", () => {
     assert.deepEqual(summaryOf(records([], [[0, 120]])), { noteCount: 0, durationMs: 0 })
     assert.deepEqual(summaryOf(records([8], [])), { noteCount: 1, durationMs: 0 })
     assert.equal(summaryOf(records([8], [[0, 120]])).durationMs, 4000)

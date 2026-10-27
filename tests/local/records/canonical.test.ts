@@ -58,7 +58,7 @@ const byItems = (value: RecordValue): string =>
         ? `[${(value as RecordValue[]).map(byItems).join(',')}]`
         : JSON.stringify(value)
 
-test('the encoder’s text equals the rule item by item on every record of the charts and samples', () => {
+test("the encoder's text equals the rule item by item on every record of the charts and samples", () => {
     const states = [stateOf(goldenChart()), stateOf(edgeChart()), ...samplePaths.map(sampleState)]
     for (const state of states) {
         const { header, kinds } = toRecords(state)

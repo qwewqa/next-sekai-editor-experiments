@@ -221,7 +221,7 @@ test('a chunk damaged in the file after it was opened: damaged, unlinked, the fi
     expect(await readFile(page, 'coconut.nxsp')).toEqual(before)
 })
 
-test('with the open’s import still running: the check waits for it, then finds no damage', async ({
+test("with the open's import still running: the check waits for it, then finds no damage", async ({
     page,
 }) => {
     await start(page)

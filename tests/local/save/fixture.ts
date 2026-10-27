@@ -739,10 +739,10 @@ export const checkStack = async (blob: Blob) => {
         return 'head'
     }
     const { slots, index } = replayed
-    assert.equal(undoStack.index, index, 'the stack’s index is replay’s')
+    assert.equal(undoStack.index, index, "the stack's index is replay's")
     for (const [i, slot] of undoStack.slots.entries()) {
         const expected: ReplaySlot | undefined = slots[undoStack.base + i]
-        assert.ok(expected, `slot ${undoStack.base + i} is outside replay’s stack`)
+        assert.ok(expected, `slot ${undoStack.base + i} is outside replay's stack`)
         assert.equal(slot.snapshot, toHex(expected.snapshot))
     }
     return 'replay'
