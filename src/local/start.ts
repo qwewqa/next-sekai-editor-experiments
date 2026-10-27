@@ -1,6 +1,5 @@
 import { note } from '../analytics/tally'
 import { dayKey, hostZone } from '../calendar/calendar'
-import { downloadConfirmed } from '../editor/file/flags'
 import { LOAD_ORDER } from '../editor/loadOrder'
 import {
     addLoadNotice,
@@ -428,8 +427,6 @@ export const startStorage = async () => {
                         worker,
                         locks: platform.locks,
                         removeLocked: maintenance.deletion.removeLocked,
-                        downloadsConfirmed: () =>
-                            downloadConfirmed.value && !platform.capabilities.unconfirmedDownloads,
                         paused: () =>
                             worker.status?.mode === 'stored' ? worker.status.reason : undefined,
                         retryStoring,

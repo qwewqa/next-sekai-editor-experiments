@@ -4,10 +4,8 @@ import { headSnapshot, isDirty, liveState, loadedHeadSnapshot } from '../../hist
 import { keptNameOf } from '../../local/names'
 import { platform } from '../../platform'
 import type { State } from '../../state'
-import { fileActions } from './actions'
 import { chipStates, type ChipKind } from './chip'
 import { sameFileContent } from './content'
-import { confirmDownloads, downloadConfirmed } from './flags'
 import { notStored } from './notStored'
 
 // The passive file state of the open session: what the status label, the chip,
@@ -48,12 +46,6 @@ export const unbindFile = () => {
 /** Sets what a check found on disk for the open session, or clears it. */
 export const setDiskFinding = (kind: DiskFinding['kind'] | undefined) => {
     finding.value = kind && { sessionId: session.value.sessionId, kind }
-}
-
-/** Marks the open session's download as confirmed: I Have the File. */
-export const markConfirmed = () => {
-    const file = session.value.file
-    if (file) session.value = { ...session.value, file: { ...file, confirmed: true } }
 }
 
 export const boundFile = computed(() => session.value.file)
@@ -105,19 +97,8 @@ export const fileChanged = computed(() => {
 })
 
 /**
- * The open session's binding is a download that isn't confirmed: where the platform
- * never confirms one (`unconfirmedDownloads`: iPhone and iPad) it is every download until
- * I Have the File; elsewhere until one is confirmed in this browser.
- */
-export const downloadNotConfirmed = computed(() => {
-    const file = boundFile.value
-    if (!file || fileEvent.value !== 'downloaded' || file.confirmed) return false
-    return platform.capabilities.unconfirmedDownloads || !downloadConfirmed.value
-})
-
-/**
  * Whether the open session has work no file holds: changed since the file event when bound,
- * otherwise any edit. A download counts as the file here, confirmed or not.
+ * otherwise any edit. A download counts as the file here.
  */
 export const workNotInFile = computed(() => (boundFile.value ? fileChanged.value : isDirty.value))
 
@@ -153,7 +134,6 @@ export const chipKinds = computed(() => {
         if (found.value === 'missing') kinds.push('fileMissing')
         if (found.value === 'changed') kinds.push('changedOnDisk')
         if (found.value === 'newer') kinds.push('newerOnDisk')
-        if (downloadNotConfirmed.value && !fileChanged.value) kinds.push('notConfirmed')
     }
     return chipStates(kinds)
 })
@@ -166,13 +146,3 @@ export const chip = computed(() => {
 
 /** What a check found, for the label's fragment and the chip's dialog. */
 export const diskFinding = found
-
-/**
- * I Have the File: the open session's download is confirmed, and so is this browser's way of
- * downloading.
- */
-export const confirmFile = () => {
-    markConfirmed()
-    confirmDownloads()
-    fileActions.persistConfirmed?.()
-}

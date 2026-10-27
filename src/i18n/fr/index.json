@@ -2102,6 +2102,7 @@
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
     "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau.",
+    "sessionUnavailable": "Cette session n’a pas pu être sauvegardée.",
     "storageUnavailable": "Non sauvegardé. L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez, ou utilisez Sauvegarder sous.",
     "include": "Inclure",
     "historySize": "{0} étape · {1}|{0} étapes · {1}",
@@ -2169,6 +2170,7 @@
   "notice": {
     "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir.",
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
+    "separateCopyOf": "Copie séparée de \"{0}\" ouverte.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
     "bgmMayBeTooLong": "La musique n’a pas été chargée. La durée des fichiers audio ne doit pas dépasser {0} minutes.",
@@ -2272,18 +2274,9 @@
     "fileMissing": "Fichier introuvable",
     "changedOnDisk": "Modifié sur le disque",
     "newerOnDisk": "Plus récent sur le disque",
-    "notConfirmed": "Téléchargement non confirmé",
     "changedOnDiskName": "\"{0}\" a changé sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
     "newerOnDiskName": "Une version plus récente de \"{0}\" est sur le disque.",
     "notStored": "Non stocké"
-  },
-  "confirm": {
-    "title": "Téléchargement non confirmé",
-    "body": "Vérifiez que {0} a fini de se télécharger ({1}).",
-    "bodyUndated": "Vérifiez que {0} a fini de se télécharger.",
-    "haveFile": "J’ai le fichier",
-    "downloadAgain": "Télécharger à nouveau",
-    "announce": "{0} Pour le confirmer plus tard, utilisez {1} dans la barre d’état."
   },
   "notSaving": {
     "bar": "Les modifications ne sont pas stockées dans ce navigateur."

@@ -13,7 +13,6 @@ import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
 import { showNotPutBack } from '../commands/exportLevel/ui'
-import { chip, confirmFile, downloadNotConfirmed } from '../file'
 import { savedOnText } from '../history/rowPresentation'
 import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
@@ -137,6 +136,8 @@ export type SavedFeedback = {
     tooLarge: MediaKind[]
     /** Recent Sessions' Save… of a session open in another tab wrote its committed state. */
     committedState?: boolean
+    /** Recent Sessions' Save…: the file holds that session, not the open one. */
+    ofStored?: boolean
 }
 
 export type SaveUi = {
@@ -384,33 +385,16 @@ export const defaultSaveUi: SaveUi = {
     notPutBack: (name, emptied, downloadable, replaced = false) =>
         showNotPutBack(title, name, emptied, downloadable, replaced),
     saved: (feedback) => {
-        // A download that leaves the session not confirmed carries the chip's action, so the
-        // confirm is where the user is looking; its announcement names the chip.
-        const unconfirmed = feedback.kind === 'download' && downloadNotConfirmed.value
         const text =
-            feedback.kind === 'saved' && isPeeking.value && simple(feedback)
+            feedback.kind === 'saved' && isPeeking.value && !feedback.ofStored && simple(feedback)
                 ? interpolate(() => i18n.value.notice.savedCurrent, inlineName(feedback.name))
                 : () => savedText(feedback)
-        // The chip it names is only shown when no higher state (Not stored) takes its place.
-        const pointer = interpolate(
-            () => i18n.value.confirm.announce,
-            text,
-            () => i18n.value.state.notConfirmed,
-        )
-        const announced = unconfirmed
-            ? () => (chip.value?.kind === 'notConfirmed' ? pointer() : text())
-            : undefined
         // Recent Sessions' Save… of a session another tab has open wrote its stored state: said to
         // assistive technology with the notice, not shown as another line.
         const announcement = feedback.committedState
-            ? () => `${(announced ?? text)()} ${i18n.value.save.committedState}`
-            : announced
-        notify(text, {
-            ...(unconfirmed
-                ? { action: { label: () => i18n.value.confirm.haveFile, run: confirmFile } }
-                : {}),
-            ...(announcement ? { announcement } : {}),
-        })
+            ? () => `${text()} ${i18n.value.save.committedState}`
+            : undefined
+        notify(text, announcement ? { announcement } : undefined)
     },
     noChanges: (name, event, downloadAgain) => {
         const key =

@@ -47,17 +47,9 @@ export const originRuleOf = (value: unknown): 'own' | 'file' => {
 export const fileEvents = ['opened', 'saved', 'downloaded'] as const
 export type FileEvent = (typeof fileEvents)[number]
 
-/**
- * `file.event`: an unknown value is `downloaded` without `confirmed`, so it counts as not
- * saved to a file and keeps that protection.
- */
-export const readFileEvent = (
-    event: unknown,
-    confirmed: unknown,
-): { event: FileEvent; confirmed: boolean } =>
-    known(fileEvents, event)
-        ? { event, confirmed: confirmed === true }
-        : { event: 'downloaded', confirmed: false }
+/** `file.event`: an unknown value is `downloaded`. */
+export const readFileEvent = (event: unknown): FileEvent =>
+    known(fileEvents, event) ? event : 'downloaded'
 
 export const mediaKinds = ['bgm', 'cover', 'preview'] as const
 export type MediaKind = (typeof mediaKinds)[number]

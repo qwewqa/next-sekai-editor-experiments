@@ -1,5 +1,4 @@
 import { i18n } from '../../i18n'
-import { formatWhen } from '../../i18n/when'
 import { showChoice, type Choice } from '../../modals/choice'
 import { inlineName } from '../../utils/inlineName'
 import { interpolateRaw } from '../../utils/interpolate'
@@ -10,7 +9,7 @@ import { fileActions } from './actions'
 import type { ChipKind } from './chip'
 import { notStored, type NotStoredCause } from './notStored'
 import { pausedReasonLine } from './notStoredReason'
-import { boundFile, chip, confirmFile } from './state'
+import { boundFile, chip } from './state'
 import { tryStoringAgain } from './tryAgain'
 
 // The chip's text and the dialog a tap opens: the first state's dialog, with the
@@ -26,8 +25,6 @@ export const chipText = (kind: ChipKind) => {
             return state.changedOnDisk
         case 'newerOnDisk':
             return state.newerOnDisk
-        case 'notConfirmed':
-            return state.notConfirmed
         case 'notStored':
             return state.notStored
     }
@@ -37,7 +34,7 @@ export const chipText = (kind: ChipKind) => {
 export const chipSentence = (kind: ChipKind) => {
     const file = boundFile.value
     const name = inlineName(file?.name ?? '')
-    const { state, save, confirm } = i18n.value
+    const { state, save } = i18n.value
     switch (kind) {
         case 'fileMissing':
             return interpolateRaw(save.notFound, name)
@@ -45,10 +42,6 @@ export const chipSentence = (kind: ChipKind) => {
             return interpolateRaw(state.changedOnDiskName, name)
         case 'newerOnDisk':
             return interpolateRaw(state.newerOnDiskName, name)
-        case 'notConfirmed':
-            return file?.at === undefined
-                ? interpolateRaw(confirm.bodyUndated, name)
-                : interpolateRaw(confirm.body, name, formatWhen(file.at))
         case 'notStored':
             return i18n.value.notSaving.bar
     }
@@ -63,7 +56,7 @@ const reasonLine = (cause: NotStoredCause | undefined) => {
     return cause?.kind === 'paused' ? pausedReasonLine(cause.reason) : undefined
 }
 
-type NotStoredChoice = 'localData' | 'retry' | 'reload' | 'confirm' | 'save'
+type NotStoredChoice = 'localData' | 'retry' | 'reload' | 'save'
 
 /** The buttons between Cancel and Save, by cause: a way to get storing going again. */
 const notStoredChoices = (cause: NotStoredCause | undefined): Choice<NotStoredChoice>[] => {
@@ -86,40 +79,22 @@ const notStoredChoices = (cause: NotStoredCause | undefined): Choice<NotStoredCh
 /** The Not stored dialog: why, what to do about it, and Save as the way out. */
 const openNotStored = async (rest: readonly ChipKind[]) => {
     const cause = notStored.value
-    // The chip lists the download line only while nothing has changed since (`chipKinds`).
-    const settling = rest.includes('notConfirmed')
     const choice = await showChoice<NotStoredChoice>({
         title: () => i18n.value.prompt.title,
         // The reason is read again, so a change while the dialog is open shows.
         message: () => lines(chipSentence('notStored'), rest, reasonLine(notStored.value ?? cause)),
         choices: [
             ...notStoredChoices(cause),
-            // The download line is there, so the way to settle it is too. With nothing
-            // changed since, the work is in that file: Save would only offer it again, so the
-            // confirm is the default and Save is left out, as in the leave prompt.
-            ...(settling
-                ? [
-                      {
-                          value: 'confirm',
-                          label: () => i18n.value.confirm.haveFile,
-                          default: true,
-                      } as const,
-                  ]
-                : [
-                      {
-                          value: 'save',
-                          label: () => i18n.value.prompt.save,
-                          default: true,
-                      } as const,
-                  ]),
+            {
+                value: 'save',
+                label: () => i18n.value.prompt.save,
+                default: true,
+            },
         ],
     })
     switch (choice) {
         case 'save':
             await runCommand(save, 'button')
-            return
-        case 'confirm':
-            confirmFile()
             return
         case 'localData':
             void import('../settings/openSettings').then(({ openSettings }) =>
@@ -151,23 +126,6 @@ export const openChipDialog = async () => {
     const file = boundFile.value
     if (!file) return
     switch (kind) {
-        case 'notConfirmed': {
-            const choice = await showChoice<'confirm' | 'again'>({
-                title: () => i18n.value.confirm.title,
-                message: () => lines(chipSentence(kind), rest),
-                choices: [
-                    { value: 'confirm', label: () => i18n.value.confirm.haveFile },
-                    {
-                        value: 'again',
-                        label: () => i18n.value.confirm.downloadAgain,
-                        default: true,
-                    },
-                ],
-            })
-            if (choice === 'confirm') confirmFile()
-            else if (choice === 'again') fileActions.downloadAgain?.()
-            return
-        }
         case 'changedOnDisk':
         case 'newerOnDisk': {
             // Keep Editing is the safe default, in Cancel's place.

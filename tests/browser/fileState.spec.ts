@@ -1,30 +1,21 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 
 // The file state: the label's "•" and title, the one chip slot and
-// its dialogs, "Download not confirmed", the close prompts and their setting, and Help's file lines.
-
-const prefix = 'sonolus-next-sekai-editor.'
+// its dialogs, the close prompts and their setting, and Help's file lines.
 
 /** Seeds every page of the context: the storage hooks, a fixed version, the panels away. */
-const seed = (context: BrowserContext, platform?: object, extra: Record<string, string> = {}) =>
-    context.addInitScript(
-        ({ platform, extra }) => {
-            localStorage.setItem('nse.test.storage', '{}')
-            localStorage.setItem(
-                'nse.test.version',
-                JSON.stringify({ appVersion: '0.6.0', atTag: true }),
-            )
-            localStorage.setItem(
-                'sonolus-next-sekai-editor.lastAppVersion',
-                JSON.stringify('0.6.0'),
-            )
-            localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
-            localStorage.setItem('sonolus-next-sekai-editor.showSidebar', 'false')
-            if (platform) localStorage.setItem('nse.test.platform', JSON.stringify(platform))
-            for (const [key, value] of Object.entries(extra)) localStorage.setItem(key, value)
-        },
-        { platform, extra },
-    )
+const seed = (context: BrowserContext, platform?: object) =>
+    context.addInitScript((platform) => {
+        localStorage.setItem('nse.test.storage', '{}')
+        localStorage.setItem(
+            'nse.test.version',
+            JSON.stringify({ appVersion: '0.6.0', atTag: true }),
+        )
+        localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
+        localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
+        localStorage.setItem('sonolus-next-sekai-editor.showSidebar', 'false')
+        if (platform) localStorage.setItem('nse.test.platform', JSON.stringify(platform))
+    }, platform)
 
 const visit = async (page: Page) => {
     await page.goto('/')
@@ -224,7 +215,7 @@ test.describe('the label and the title', () => {
         page,
         context,
     }) => {
-        await seed(context, { fileSystemAccess: false }, { [`${prefix}downloadConfirmed`]: 'true' })
+        await seed(context, { fileSystemAccess: false })
         await visit(page)
         // Not today, and in this year: a date reads without its year.
         const at = new Date(new Date().getFullYear(), 2, 3, 12).getTime()
@@ -241,11 +232,7 @@ test.describe('the label and the title', () => {
         test.use({ viewport: { width: 360, height: 700 } })
 
         test('the download state is left out, and the bullet stays', async ({ page, context }) => {
-            await seed(
-                context,
-                { fileSystemAccess: false },
-                { [`${prefix}downloadConfirmed`]: 'true' },
-            )
+            await seed(context, { fileSystemAccess: false })
             await visit(page)
             await bindFile(page, { name: 'coconut.nxsp', event: 'downloaded' })
             await edit(page, 990)
@@ -662,94 +649,28 @@ test.describe('the chip', () => {
                 (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
             bindFile({ name: 'coconut.nxsp', event: 'downloaded' }, liveState.value)
         })
-        await expect(chip(page)).toHaveAttribute('data-file-chip', 'notConfirmed')
-        await expect(chip(page)).toHaveAccessibleName(
-            'Check that coconut.nxsp finished downloading.',
-        )
         // The label leaves out an event it cannot date.
         await expect(label(page)).not.toContainText('downloaded')
         await expect(label(page)).not.toContainText('1970')
-    })
-
-    test('a download not yet confirmed in this browser shows the chip, and I Have the File clears it', async ({
-        page,
-        context,
-    }) => {
-        await seed(context, { fileSystemAccess: false })
-        await visit(page)
-        await bindFile(page, { name: 'coconut.nxsp', event: 'downloaded' })
-        await expect(chipShown(page)).toHaveText('Download not confirmed')
-        await expect(chip(page)).toHaveAttribute('data-file-chip', 'notConfirmed')
-        await expect(chip(page)).toHaveAccessibleName(
-            /^Check that coconut\.nxsp finished downloading \(.+\)\.$/,
-        )
-        // Not a change: no bullet.
-        await expect(label(page)).not.toContainText('•')
-
-        await chip(page).click()
-        const dialog = page.getByRole('dialog', { name: 'Download Not Confirmed' })
-        await expect(dialog).toBeVisible()
-        await expect(dialog.getByRole('button', { name: 'Download Again' })).toBeFocused()
-        await afterGuard(page)
-        await dialog.getByRole('button', { name: 'I Have the File' }).click()
-        await expect(chip(page)).toBeHidden()
-        expect(
-            await page.evaluate((key) => localStorage.getItem(key), `${prefix}downloadConfirmed`),
-        ).toBe('true')
-
-        // Later downloads in this browser need no confirming.
-        await bindFile(page, { name: 'melt.nxsp', event: 'downloaded' })
-        await expect(chip(page)).toBeHidden()
-    })
-
-    test('every download on an iPhone or iPad is unconfirmed, whatever the flag says', async ({
-        page,
-        context,
-    }) => {
-        await seed(
-            context,
-            { fileSystemAccess: false, os: 'ios', engine: 'webkit' },
-            { [`${prefix}downloadConfirmed`]: 'true' },
-        )
-        await visit(page)
-        await bindFile(page, { name: 'coconut.nxsp', event: 'downloaded' })
-        await expect(chip(page)).toHaveAttribute('data-file-chip', 'notConfirmed')
-        await chip(page).click()
-        await afterGuard(page)
-        await page
-            .getByRole('dialog', { name: 'Download Not Confirmed' })
-            .getByRole('button', { name: 'I Have the File' })
-            .click()
-        await expect(chip(page)).toBeHidden()
-        // I Have the File is for this session's file only.
-        await bindFile(page, { name: 'melt.nxsp', event: 'downloaded' })
-        await expect(chip(page)).toHaveAttribute('data-file-chip', 'notConfirmed')
     })
 
     for (const [name, platform] of [
         ['macOS Safari', { os: 'macos', engine: 'webkit', fileSystemAccess: false }],
         ['Firefox', { os: 'linux', engine: 'firefox', fileSystemAccess: false }],
         ['Chromium on Android', { os: 'android', engine: 'chromium', fileSystemAccess: false }],
+        ['iPhone', { os: 'ios', engine: 'webkit', fileSystemAccess: false }],
     ] as const)
-        test(`${name}: the first download is unconfirmed until one is confirmed in this browser`, async ({
+        test(`${name}: a download holds the work, so there is no chip and no prompt until an edit`, async ({
             page,
             context,
         }) => {
             await seed(context, platform)
             await visit(page)
             await bindFile(page, { name: 'coconut.nxsp', event: 'downloaded' })
-            await expect(chip(page)).toHaveAttribute('data-file-chip', 'notConfirmed')
-            expect(await prompts(page)).toBe(true)
-            await chip(page).click()
-            await afterGuard(page)
-            await page
-                .getByRole('dialog', { name: 'Download Not Confirmed' })
-                .getByRole('button', { name: 'I Have the File' })
-                .click()
             await expect(chip(page)).toBeHidden()
-            await bindFile(page, { name: 'melt.nxsp', event: 'downloaded' })
-            await expect(chip(page)).toBeHidden()
+            expect(await prompts(page)).toBe(false)
             await edit(page, 990)
+            expect(await prompts(page)).toBe(true)
             await undo(page)
             expect(await prompts(page)).toBe(false)
         })
@@ -782,20 +703,21 @@ test.describe('the chip', () => {
         expect(rest).toEqual(['changedOnDisk'])
     })
 
-    test('an edit moves a download from the chip to "changed since download"', async ({
+    test('a download shows no chip, and an edit marks it "changed since download"', async ({
         page,
         context,
     }) => {
         await seed(context, { fileSystemAccess: false })
         await visit(page)
         await bindFile(page, { name: 'coconut.nxsp', event: 'downloaded' })
-        await expect(chip(page)).toBeVisible()
+        await expect(chip(page)).toBeHidden()
+        await expect(label(page)).not.toContainText('•')
         await edit(page, 990)
         await expect(chip(page)).toBeHidden()
         await expect(label(page)).toContainText('•')
     })
 
-    test('the first state by priority is the chip, and the others are lines in its dialog', async ({
+    test('a changed file opens its dialog, and a finding that ends takes the chip with it', async ({
         page,
         context,
     }) => {
@@ -811,7 +733,6 @@ test.describe('the chip', () => {
         await expect(dialog).toContainText(
             '“coconut.nxsp” has changed since you opened or saved it here.',
         )
-        await expect(dialog).toContainText('Check that coconut.nxsp finished downloading')
         // Keep Editing is the safe default, in Cancel's place.
         await expect(dialog.getByRole('button', { name: 'Keep Editing' })).toBeFocused()
         await expect(dialog.getByRole('button', { name: 'Open the Other Version' })).toBeVisible()
@@ -824,7 +745,7 @@ test.describe('the chip', () => {
         await finding(page, 'newer')
         await expect(chipShown(page)).toHaveText('Newer on disk')
         await finding(page, undefined)
-        await expect(chipShown(page)).toHaveText('Download not confirmed')
+        await expect(chip(page)).toBeHidden()
     })
 
     test('a missing file opens the not-found dialog, which offers Save As…', async ({
@@ -1017,20 +938,6 @@ test.describe('the close prompts', () => {
         expect(await prompts(page)).toBe(true)
     })
 
-    test('an unconfirmed download prompts until I Have the File', async ({ page, context }) => {
-        await seed(context, { fileSystemAccess: false })
-        await visit(page)
-        await bindFile(page, { name: 'coconut.nxsp', event: 'downloaded' })
-        expect(await prompts(page)).toBe(true)
-        await chip(page).click()
-        await afterGuard(page)
-        await page
-            .getByRole('dialog', { name: 'Download Not Confirmed' })
-            .getByRole('button', { name: 'I Have the File' })
-            .click()
-        expect(await prompts(page)).toBe(false)
-    })
-
     test('Settings › Local Data holds the setting, and iPhone and iPad hide it', async ({
         page,
         context,
@@ -1089,8 +996,8 @@ test.describe('the close prompts', () => {
         }
         // The web's own values show it, as before.
         expect(await hidden({})).toBe(false)
-        // Downloads that are never confirmed mean no close prompt to ask about.
-        expect(await hidden({ unconfirmedDownloads: true })).toBe(true)
+        // No close prompt means nothing to ask about.
+        expect(await hidden({ closePrompt: false })).toBe(true)
         // The setting is the web's own: the apps have their own close handling.
         expect(await hidden({ browserStorage: false })).toBe(true)
     })

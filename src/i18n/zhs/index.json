@@ -2102,6 +2102,7 @@
     "restoredName": "{0}（{1} 还原）",
     "fileType": "Next SEKAI 项目文件",
     "unavailable": "未保存。请使用“导出关卡数据”。",
+    "sessionUnavailable": "无法保存此会话。",
     "storageUnavailable": "未保存。编辑器无法访问此浏览器的存储。请重试，或使用“另存为”。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
@@ -2169,6 +2170,7 @@
   "notice": {
     "useOpenFile": "要打开文件，请使用“打开”。",
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
+    "separateCopyOf": "已打开“{0}”的单独副本。",
     "storageUnavailable": "编辑器无法访问此浏览器的存储。请重试。",
     "chooseAudio": "选择音频…",
     "bgmMayBeTooLong": "背景音乐未加载。音频时长不能超过 {0} 分钟。",
@@ -2272,18 +2274,9 @@
     "fileMissing": "文件丢失",
     "changedOnDisk": "磁盘上已更改",
     "newerOnDisk": "磁盘上有更新版本",
-    "notConfirmed": "下载未确认",
     "changedOnDiskName": "“{0}”在此处打开或保存后，已在磁盘上更改。",
     "newerOnDiskName": "磁盘上有“{0}”的更新版本。",
     "notStored": "未存储"
-  },
-  "confirm": {
-    "title": "下载未确认",
-    "body": "请确认 {0} 已下载完成（{1}）。",
-    "bodyUndated": "请确认 {0} 已下载完成。",
-    "haveFile": "我已有该文件",
-    "downloadAgain": "再次下载",
-    "announce": "{0} 以后确认时，请使用状态栏中的“{1}”。"
   },
   "notSaving": {
     "bar": "更改未存储在此浏览器中。"

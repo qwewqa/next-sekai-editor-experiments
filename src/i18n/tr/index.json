@@ -2102,6 +2102,7 @@
     "restoredName": "{0} ({1} geri yüklendi)",
     "fileType": "Next SEKAI proje dosyası",
     "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar komutunu kullanın.",
+    "sessionUnavailable": "Bu oturum kaydedilemedi.",
     "storageUnavailable": "Kaydedilmedi. Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin veya Farklı Kaydet komutunu kullanın.",
     "include": "Dahil Edilecekler",
     "historySize": "{0} adım · {1}",
@@ -2169,6 +2170,7 @@
   "notice": {
     "useOpenFile": "Bir dosya açmak için Aç komutunu kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
+    "separateCopyOf": "\"{0}\" için ayrı bir kopya açıldı.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",
     "bgmMayBeTooLong": "Arka plan müziği yüklenmedi. Ses dosyaları en fazla {0} dakika uzunluğunda olabilir.",
@@ -2272,18 +2274,9 @@
     "fileMissing": "Dosya yok",
     "changedOnDisk": "Diskte değişti",
     "newerOnDisk": "Diskte daha yeni",
-    "notConfirmed": "İndirme onaylanmadı",
     "changedOnDiskName": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
     "newerOnDiskName": "Diskte \"{0}\" için daha yeni bir sürüm var.",
     "notStored": "Saklanmıyor"
-  },
-  "confirm": {
-    "title": "İndirme Onaylanmadı",
-    "body": "{0} dosyasının indirmesinin tamamlandığını kontrol edin ({1}).",
-    "bodyUndated": "{0} dosyasının indirmesinin tamamlandığını kontrol edin.",
-    "haveFile": "Dosya Bende",
-    "downloadAgain": "Tekrar İndir",
-    "announce": "{0} Daha sonra onaylamak için durum çubuğundaki {1} düğmesini kullanın."
   },
   "notSaving": {
     "bar": "Değişiklikler bu tarayıcıda saklanmıyor."

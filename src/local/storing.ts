@@ -483,7 +483,6 @@ export const startStoring = (
     setTargetLock((run) => withBind('shared', run))
     setFileActions({
         saveAs: () => void withFlow((flow) => flow.fileSaveAs()),
-        downloadAgain: () => void withFlow((flow) => flow.fileDownloadAgain()),
         openOtherVersion: () =>
             void withSwitchRequest(undefined, async (request) => {
                 try {
@@ -492,10 +491,6 @@ export const startStoring = (
                 } catch (error) {
                     if (request.isCurrent()) throw error
                 }
-            }),
-        persistConfirmed: () =>
-            void withFlow((flow) => {
-                flow.persistConfirmed()
             }),
     })
 

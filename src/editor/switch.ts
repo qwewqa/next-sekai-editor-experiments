@@ -13,9 +13,7 @@ import { interpolate } from '../utils/interpolate'
 import { takeBgmLine } from './commands/bgm/chooseAudio'
 import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
-import { chipSentence } from './file/chipDialogs'
-import { hasChangesNotInFile, hasEditsNotInFile, loadStoring } from './file/closePrompt'
-import { confirmFile, downloadNotConfirmed, fileChanged } from './file/state'
+import { hasEditsNotInFile, loadStoring } from './file/closePrompt'
 import {
     dismissNoticeCard,
     noticeCard,
@@ -60,8 +58,8 @@ const wouldLoseWork = async () => {
         ])
         clearTimeout(timer)
     }
-    // A file that holds the work (a Save, an open) is as good as a store; an unconfirmed download is not.
-    return !(session && isDurablyStored()) && hasChangesNotInFile()
+    // A file that holds the work (a Save, an open) is as good as a store.
+    return !(session && isDurablyStored()) && hasEditsNotInFile()
 }
 
 /**
@@ -115,20 +113,6 @@ const confirmUnsaved = async () => {
  */
 export const confirmSwitch = async ({ unsaved = false } = {}) => {
     if (!(await wouldLoseWork())) return !unsaved || (await confirmUnsaved())
-    // The work is in a download that is not confirmed: Save would only offer it again, so the
-    // way out is the confirm.
-    if (downloadNotConfirmed.value && !fileChanged.value) {
-        const choice = await showChoice<'leave' | 'confirm'>({
-            title: () => i18n.value.confirm.title,
-            message: () => chipSentence('notConfirmed'),
-            choices: [
-                { value: 'leave', label: () => i18n.value.prompt.leaveAnyway, danger: true },
-                { value: 'confirm', label: () => i18n.value.confirm.haveFile, default: true },
-            ],
-        })
-        if (choice === 'confirm') confirmFile()
-        return choice !== undefined
-    }
     const choice = await showChoice<'leave' | 'save'>({
         title: () => i18n.value.prompt.title,
         message: () => i18n.value.prompt.notStored,

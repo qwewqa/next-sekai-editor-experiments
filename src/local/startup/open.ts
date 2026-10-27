@@ -136,7 +136,6 @@ const boundFileOf = (chain: Record<string, unknown>) => {
         name: file.name,
         ...(typeof file.event === 'string' ? { event: file.event } : {}),
         ...(typeof file.at === 'number' ? { at: file.at } : {}),
-        ...(file.confirmed === true ? { confirmed: true } : {}),
         ...(file.hash instanceof Uint8Array
             ? { hash: toHex(file.hash) }
             : typeof file.hash === 'string'
@@ -611,7 +610,11 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
     }
     const bound = await boundElsewhere(deps, read)
     // A check that could not tell forks without a line: the status bar names the copy.
-    if (bound !== 'no') return forked(deps, read, headId, { quiet: bound === 'unknown' })
+    if (bound !== 'no')
+        return forked(deps, read, headId, {
+            quiet: bound === 'unknown',
+            elsewhere: bound === 'yes',
+        })
     const parentLock = await holdShared(deps.locks, headId)
     if (!parentLock) {
         deps.events({ kind: 'openElsewhere', name: shownOf(read), sessionId: headId })
@@ -643,12 +646,15 @@ const forked = async (
         copyOf = copyOfOf(read),
         recovered,
         quiet,
+        elsewhere,
     }: {
         held?: LockLease
         copyOf?: CopyOf
         recovered?: { found: JournalFound; state: State }
         /** No opening notice. */
         quiet?: boolean
+        /** Another tab is known to hold the session or its file. */
+        elsewhere?: boolean
     } = {},
 ): Promise<boolean> => {
     // The hold taken here is released here; a passed one is its creator's.
@@ -665,7 +671,8 @@ const forked = async (
     } finally {
         shared?.release()
     }
-    if (state && !quiet) deps.events({ kind: 'separateCopy', of: copyOf })
+    if (state && !quiet)
+        deps.events({ kind: 'separateCopy', of: copyOf, ...(elsewhere ? { elsewhere: true } : {}) })
     return !!state
 }
 
@@ -900,14 +907,14 @@ const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
         return result.opened
     }
     // A Duplicate Tab: a fork without the binding; of an unstored continuation, a fork
-    // of what it continued.
+    // of what it continued. The other tab still holds the session.
     const read = await deps.worker.call('readSession', record.sessionId)
-    if (read.kind === 'open') return forked(deps, read, record.sessionId)
+    if (read.kind === 'open') return forked(deps, read, record.sessionId, { elsewhere: true })
     if (read.kind !== 'missing') return false
     if (record.start === 'blank') return newVisit(deps)
     if (record.start === 'continuation' && record.parent) {
         const parent = await deps.worker.call('readSession', record.parent)
-        if (parent.kind === 'open') return forked(deps, parent, record.parent)
+        if (parent.kind === 'open') return forked(deps, parent, record.parent, { elsewhere: true })
     }
     return false
 }

@@ -252,6 +252,19 @@ test.describe('toolbar', () => {
 })
 
 test.describe('toolbar flyouts', () => {
+    test('a flyout row is named by its title, not its shortcut', async ({ page }) => {
+        await boot(page)
+        await tools(page).first().focus()
+        await page.keyboard.press('Enter')
+        await expect(flyout(page)).toBeVisible()
+        const rows = flyout(page).locator('button[title]')
+        await expect(rows.first()).toBeVisible()
+        const hints = flyout(page).locator('button > span[aria-hidden="true"]')
+        expect(await hints.count()).toBeGreaterThan(0)
+        for (const row of await rows.all())
+            await expect(row).toHaveAccessibleName((await row.getAttribute('title'))!)
+    })
+
     test('Escape closes an open flyout and returns focus to its tool', async ({ page }) => {
         await boot(page)
         const first = tools(page).first()

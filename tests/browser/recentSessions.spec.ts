@@ -13,6 +13,7 @@ import {
     peekRow,
     placeTap,
 } from './historyJourney'
+import { submitSave } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -786,4 +787,29 @@ test('a long list draws rows as they are needed, and keys and scrolling reach ev
         })
         .toBe(total)
     await expect(page.locator('[data-sessions-footer]')).toBeVisible()
+})
+
+test("Recent Sessions' Save… says it saved to the file, not the current version", async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page, { platform: { fileSystemAccess: 'opfs' } })
+    await closedChain(page, { title: 'Alpha', life: 990 })
+    await openSessions(page)
+    await rowFor(page, 'Alpha').locator('[data-sessions-more]').click()
+    await page.getByRole('menuitem', { name: sessions.saveToFile }).click()
+    await submitSave(page, 'alpha')
+    await expect(notice(page).filter({ hasText: 'Saved to alpha.nxsp' })).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'Saved the current version' })).toHaveCount(0)
+})
+
+test("Recent Sessions' Save… of a session that is gone does not point to Export Level Data", async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    await page.evaluate(() => {
+        void import('/src/editor/save/flow.ts').then((flow) => flow.saveToFile('no-such-session'))
+    })
+    await expect(notice(page).filter({ hasText: messages.save.sessionUnavailable })).toBeVisible()
 })

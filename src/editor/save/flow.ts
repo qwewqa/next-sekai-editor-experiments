@@ -834,7 +834,7 @@ const ownerDisk = async (env: Env, owner: HandleOwner) => {
 /** A picked file holding what nobody here wrote: nothing is written over it. */
 const changedWhilePicked = (name: string): Outcome => ({
     kind: 'failed',
-    error: new FileError('conflict', `${name} changed on disk`),
+    error: new FileError('conflict', `${name} changed on disk`, undefined, 'check'),
     name,
 })
 
@@ -1831,7 +1831,7 @@ export const saveToFile = (sessionId: string) =>
     exclusive(`saveToFile:${sessionId}`, async () => {
         const env = environment()
         if (!env) {
-            saveUi.error(() => i18n.value.save.unavailable)
+            saveUi.error(() => i18n.value.save.sessionUnavailable)
             return
         }
         await tracked('saveToFile', () => saveToFileNow(env, sessionId))
@@ -1856,7 +1856,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
         return
     }
     if (read.kind !== 'open') {
-        saveUi.error(() => i18n.value.save.unavailable)
+        saveUi.error(() => i18n.value.save.sessionUnavailable)
         return
     }
     const chainId = read.session.chainId as string
@@ -2032,6 +2032,7 @@ const sessionFileBody = async (
         saveUi.saved({
             ...savedOf(built, 'download', request.fileName),
             committedState: request.committed,
+            ofStored: true,
         })
         markFirstSaveDone()
         return { kind: 'done' }
@@ -2066,7 +2067,7 @@ const sessionFilePicked = async (
     if (filled)
         return {
             kind: 'failed',
-            error: new FileError('conflict', `${name} changed`),
+            error: new FileError('conflict', `${name} changed`, undefined, 'check'),
             name,
         }
     let tookOver = false
@@ -2100,6 +2101,7 @@ const sessionFilePicked = async (
     saveUi.saved({
         ...savedOf(built, 'saved', name),
         committedState: request.committed,
+        ofStored: true,
     })
     markFirstSaveDone()
     return { kind: 'done' }
@@ -2122,14 +2124,6 @@ export const fileSaveAs = () =>
     exclusive('fileSaveAs', async () => {
         const env = environment()
         if (env) await notFoundSaveAs(env)
-    })
-
-/** Download Again: builds and downloads the bound file once more. */
-export const fileDownloadAgain = () =>
-    exclusive('fileDownloadAgain', async () => {
-        const env = environment()
-        const file = env && quickBinding(env).file
-        if (env && file) await downloadAgain(env, file)
     })
 
 /**
@@ -2192,25 +2186,6 @@ export const openOtherVersion = (supplied?: SwitchRequest) =>
             if (request.isCurrent()) throw error
         }
     })
-
-/** I Have the File: `file.confirmed` stored on the chain record. */
-export const persistConfirmed = () => {
-    const env = environment()
-    if (!env) return
-    const { session } = env
-    if (session.identity) {
-        session.identity = {
-            ...session.identity,
-            file: { ...session.identity.file, confirmed: true },
-        }
-        return
-    }
-    const file = session.chain?.file
-    // When it is stored already (the file this chain downloaded, opened again), nothing is written,
-    // since writing a chain field commits a visit's first row.
-    if (isRow(file) && file.confirmed !== true)
-        void env.flusher.setChainFields({ file: { ...file, confirmed: true } })
-}
 
 // Broadcasts: a takeover tells other tabs to read their record again.
 

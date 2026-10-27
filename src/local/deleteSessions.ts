@@ -48,8 +48,6 @@ export type DeleteSessionsDeps = {
     locks: LockService
     /** The deletion's primitive (`removeLocked`). */
     removeLocked: (request: RemoveRequest) => Promise<RemoveLockedResult>
-    /** Whether downloads count as confirmed here: `downloadConfirmed`, on a platform that confirms. */
-    downloadsConfirmed: () => boolean
     /** Why storing is paused now, if it is. */
     paused: () => PauseReason | undefined
     /** Try Again for storing; called after GC when storing is paused `full`. */
@@ -96,7 +94,6 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
         const chains = read.storedValue
         const zone = (deps.zone ?? hostZone)()
         const today = dayKey(now(), zone)
-        const downloadsConfirmed = deps.downloadsConfirmed()
         const out: DeleteChain[] = []
         for (const chain of chains) {
             if (chain.sessions.some((id) => held.has(id))) continue
@@ -107,7 +104,7 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
                 ...(chain.fileAt === undefined ? {} : { fileAt: chain.fileAt }),
                 sessions: chain.sessions,
                 ageDays: Math.max(0, daysBetween(dayKey(chain.updatedAt, zone), today)),
-                notSaved: notSavedToFile(chain, downloadsConfirmed),
+                notSaved: notSavedToFile(chain),
                 readable: chain.readable,
                 name: { name: displayName(chain.nameParts), at: chain.startedAt },
             })

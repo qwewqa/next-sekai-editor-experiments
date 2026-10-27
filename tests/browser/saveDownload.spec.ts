@@ -124,7 +124,9 @@ test('Download Again pressed after another session opened downloads nothing and 
     expect((await sessionOf(page)).file).toBeUndefined()
 })
 
-test('opening a file this browser downloaded confirms its downloads', async ({ page }) => {
+test('opening a file this browser downloaded opens it, and a later download shows no chip', async ({
+    page,
+}) => {
     await start(page, {
         fileSystemAccess: false,
         override: { os: 'linux', engine: 'firefox' },
@@ -134,7 +136,6 @@ test('opening a file this browser downloaded confirms its downloads', async ({ p
     await pressSave(page)
     await submitSave(page, 'coconut')
     const download = await downloading
-    await expect(page.locator('[data-file-chip="notConfirmed"]')).toBeVisible()
     const bytes = [...(await import('node:fs')).readFileSync((await download.path())!)]
     // From a new session: opened from the session that wrote it, the download keeps that session.
     await page.evaluate(async (bytes) => {
@@ -144,7 +145,7 @@ test('opening a file this browser downloaded confirms its downloads', async ({ p
         await openProject(new File([new Uint8Array(bytes)], 'coconut.nxsp'), undefined)
     }, bytes)
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
-    // Later downloads are confirmed: no chip. The first Save after an open asks.
+    // The first Save after an open asks.
     await edit(page, 2)
     await downloaded(page, async () => {
         await pressSave(page)
@@ -237,7 +238,7 @@ const openBytes = (page: Page, bytes: number[], name: string) =>
         { bytes, name },
     )
 
-test('opening the download just saved keeps the session: one chain, confirmed, no dialog next', async ({
+test('opening the download just saved keeps the session: one chain, no dialog next', async ({
     page,
 }) => {
     await start(page, {
@@ -247,7 +248,6 @@ test('opening the download just saved keeps the session: one chain, confirmed, n
     const bytes = await savedDownload(page)
     const before = await chainOf(page)
     const { sessionId } = await sessionOf(page)
-    await expect(page.locator('[data-file-chip="notConfirmed"]')).toBeVisible()
 
     // The browser renamed the second copy: the name is no fact, the write is.
     await openBytes(page, bytes, 'coconut (1).nxsp')
@@ -257,7 +257,7 @@ test('opening the download just saved keeps the session: one chain, confirmed, n
     expect((await sessionOf(page)).sessionId).toBe(sessionId)
     await expect
         .poll(async () => (await chainOf(page)).file)
-        .toMatchObject({ name: 'coconut.nxsp', event: 'downloaded', confirmed: true })
+        .toMatchObject({ name: 'coconut.nxsp', event: 'downloaded' })
     expect((await chainOf(page)).chainId).toBe(before.chainId)
     await expect(page.locator('[data-file-chip]')).toHaveCount(0)
 

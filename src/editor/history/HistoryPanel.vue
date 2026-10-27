@@ -185,10 +185,12 @@ const tight = computed(() => mode.value === 'small' && props.surface === 'dialog
 
 const filtered = computed(() => historyFilter.value !== 'all')
 // The banner: "Saves and Exports", or "Edits Here · 118.2 – 121.4".
-const filterText = computed(() => {
+const filterRange = computed(() => {
     const range = hereRange.value
-    if (historyFilter.value === 'here' && range)
-        return `${i18n.value.history.filterHere} · ${hereRangeText(range)}`
+    return historyFilter.value === 'here' && range ? hereRangeText(range) : undefined
+})
+const filterText = computed(() => {
+    if (filterRange.value) return `${i18n.value.history.filterHere} · ${filterRange.value}`
     return historyFilter.value === 'here'
         ? i18n.value.history.filterHere
         : i18n.value.history.filterSaves
@@ -416,7 +418,14 @@ const goToButtonTitle = computed(() =>
             class="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-fg/15 pl-[1.125rem] pr-1.5 text-xs"
             data-history-filter-banner
         >
-            <span class="min-w-0 truncate" :title="filterText">{{ filterText }}</span>
+            <span v-if="filterRange" class="flex min-w-0 flex-col" :title="filterText">
+                <span class="truncate leading-4">{{ i18n.history.filterHere }}</span>
+                <span class="sr-only">{{ ' · ' }}</span>
+                <span class="truncate leading-4 text-fg/80" data-banner-range>{{
+                    filterRange
+                }}</span>
+            </span>
+            <span v-else class="min-w-0 truncate" :title="filterText">{{ filterText }}</span>
             <button
                 type="button"
                 class="btn btn-secondary relative flex h-8 shrink-0 items-center rounded-full px-4 text-sm before:absolute before:-inset-1"

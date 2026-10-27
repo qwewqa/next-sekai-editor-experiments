@@ -25,7 +25,7 @@ const storedRow = (w: World, store: 'chains' | 'sessions' | 'entries', key: unkn
     )
 
 /** A new visit to chain-own: a continuation of its head, not stored yet, as a load opens it. */
-const visit = async (w: World, fields: Row = {}) => {
+const visit = async (w: World) => {
     const record = w.chains.get('chain-own')!
     const head = String(record.head)
     const parent = (await storedRow(w, 'sessions', head))!
@@ -43,7 +43,7 @@ const visit = async (w: World, fields: Row = {}) => {
             slots: [{ hash: last.snapshot as Uint8Array, step: initialStep() }],
             index: 0,
         },
-        chain: { ...record, ...fields },
+        chain: { ...record },
         operation: createHistoryOperation({
             id: 'nse.continue',
             data: { fromTime: Number(parent.updatedAt) },
@@ -134,24 +134,3 @@ test('a commit before the write that forks the session writes nothing and opens 
     assert.equal(w.writes.length, 0, 'nothing is written')
     assert.ok(ended(w, 'saveDialog'), 'the Save dialog, for the fork')
 })
-
-for (const confirmed of [true, false])
-    test(`I Have the File on a visit not stored yet, the download ${confirmed ? 'confirmed' : 'not confirmed'} before`, async () => {
-        const w = await createWorld({ storage: 'holds' })
-        const file = { ...(w.chains.get('chain-own')!.file as Row), event: 'downloaded' }
-        const session = await visit(w, { file: confirmed ? { ...file, confirmed: true } : file })
-        flow.persistConfirmed()
-        await w.door.flusher.flush()
-        const record = await storedRow(w, 'chains', 'chain-own')
-        if (confirmed) {
-            // Stored already, so nothing is written and the visit stays unstored.
-            assert.equal(session.stored, false)
-            assert.equal(await storedRow(w, 'sessions', 'session-visit'), undefined)
-            assert.equal(record?.head, 'session-own')
-        } else {
-            // Only the chain's head writes a chain field, so the visit's first row commits with it.
-            assert.equal(session.stored, true)
-            assert.equal(record?.head, 'session-visit')
-            assert.equal((record?.file as Row | undefined)?.confirmed, true)
-        }
-    })

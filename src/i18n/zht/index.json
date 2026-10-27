@@ -2102,6 +2102,7 @@
     "restoredName": "{0}（{1} 還原）",
     "fileType": "Next SEKAI 專案檔案",
     "unavailable": "未儲存。請使用「匯出關卡資料」。",
+    "sessionUnavailable": "無法儲存此工作階段。",
     "storageUnavailable": "未儲存。編輯器無法存取此瀏覽器的儲存空間。請重試，或使用「另存新檔」。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
@@ -2169,6 +2170,7 @@
   "notice": {
     "useOpenFile": "要開啟檔案，請使用「開啟」。",
     "sameFileElsewhere": "「{0}」已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
+    "separateCopyOf": "已開啟「{0}」的獨立副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
     "bgmMayBeTooLong": "BGM 未載入。音訊長度不能超過 {0} 分鐘。",
@@ -2272,18 +2274,9 @@
     "fileMissing": "檔案遺失",
     "changedOnDisk": "磁碟上已變更",
     "newerOnDisk": "磁碟上有較新版本",
-    "notConfirmed": "下載未確認",
     "changedOnDiskName": "「{0}」在此處開啟或儲存後，已在磁碟上變更。",
     "newerOnDiskName": "磁碟上有「{0}」的較新版本。",
     "notStored": "未存放"
-  },
-  "confirm": {
-    "title": "下載未確認",
-    "body": "請確認 {0} 已下載完成（{1}）。",
-    "bodyUndated": "請確認 {0} 已下載完成。",
-    "haveFile": "我已有該檔案",
-    "downloadAgain": "再次下載",
-    "announce": "{0} 之後要確認時，請使用狀態列中的「{1}」。"
   },
   "notSaving": {
     "bar": "變更未存放在此瀏覽器中。"

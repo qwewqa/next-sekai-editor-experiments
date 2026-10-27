@@ -9,7 +9,8 @@ export type PlatformOs = 'windows' | 'macos' | 'linux' | 'ios' | 'android' | 'ot
 /** What this build and device can do; feature code asks these, never `kind`. */
 export type PlatformCapabilities = {
     readonly writeBack: boolean
-    readonly unconfirmedDownloads: boolean
+    /** The page shows the browser's leave prompt (iPhone and iPad never do). */
+    readonly closePrompt: boolean
     readonly library: boolean
     readonly fileJournal: boolean
     readonly updates: 'none' | 'desktop' | 'store' | 'apk-line'

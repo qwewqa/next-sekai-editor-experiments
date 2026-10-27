@@ -95,7 +95,7 @@ const defaults = (kind: PlatformKind): PlatformCapabilities =>
     kind === 'web'
         ? {
               writeBack: true,
-              unconfirmedDownloads: false,
+              closePrompt: true,
               library: false,
               fileJournal: false,
               updates: 'none',
@@ -109,7 +109,7 @@ const defaults = (kind: PlatformKind): PlatformCapabilities =>
           }
         : {
               writeBack: true,
-              unconfirmedDownloads: false,
+              closePrompt: false,
               library: true,
               fileJournal: true,
               updates: 'desktop',

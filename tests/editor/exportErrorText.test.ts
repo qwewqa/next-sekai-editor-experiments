@@ -16,7 +16,7 @@ test('a failed step names the step, whatever its code', () => {
         read: 'readFailed',
         readBack: 'changedWhileWriting',
         download: 'downloadFailed',
-        check: 'changedWhileWriting',
+        check: 'openedContentGone',
     }
     for (const [step, key] of Object.entries(steps))
         for (const code of ['io', 'denied'] as const)
@@ -42,7 +42,7 @@ test('a failure without a step is told by its code', () => {
 
 test('every message is a save message naming its file', () => {
     const keys = new Set<string>()
-    for (const step of [undefined, 'build', 'read', 'readBack', 'download'] as const)
+    for (const step of [undefined, 'build', 'read', 'readBack', 'download', 'check'] as const)
         for (const code of [
             'denied',
             'not-found',

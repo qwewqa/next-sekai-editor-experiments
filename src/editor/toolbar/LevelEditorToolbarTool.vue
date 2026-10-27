@@ -91,6 +91,7 @@ const shortcut = computed(() =>
             <span class="ml-2 flex-grow text-left text-sm">{{ title }}</span>
             <span
                 v-if="shortcut"
+                aria-hidden="true"
                 class="ml-4"
                 :class="[
                     isPunctuationShortcut(shortcut)
