@@ -43,7 +43,7 @@ const titles = (dialog: ReturnType<Page['locator']>) =>
     )
 
 const heading = (dialog: ReturnType<Page['locator']>, title: string) =>
-    dialog.locator('h2').filter({ hasText: new RegExp(`^${title}( |$)`) })
+    dialog.getByRole('heading', { level: 2, name: new RegExp(`^${title}( |$)`) })
 
 test.describe('with a fine pointer', () => {
     test('Getting Started, Mouse and Keyboard come first and Touchscreen is last', async ({
