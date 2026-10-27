@@ -39,6 +39,12 @@ test.beforeEach(async ({ page }, testInfo) => {
     const transport = testInfo.titlePath.includes('preview transport')
     // Touch never opens the settings on its own in the default dock.
     const touch = testInfo.titlePath.some((title) => title.startsWith('on touch'))
+    // The storage test flag makes the end of the page's startup visible to the listener spec.
+    const counting = testInfo.title.startsWith('reopening the preview leaves no listeners')
+    if (counting)
+        await page.addInitScript(() => {
+            sessionStorage.setItem('nse.test.storage', '{}')
+        })
     if (transport) await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') })
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
     await page.route('**/resource/particle.scp*', (route) =>
@@ -2985,6 +2991,12 @@ test.describe('preview panel lifecycle', () => {
     test('reopening the preview leaves no listeners, observers or contexts behind', async ({
         page,
     }) => {
+        // Startup adds page listeners once, late on a loaded machine: the baseline follows it.
+        await expect
+            .poll(() => page.evaluate(() => window.nseStartupTest !== undefined), {
+                timeout: 20_000,
+            })
+            .toBe(true)
         await page.evaluate(() => {
             const listeners = new Map<string, number>()
             const name = (target: EventTarget) =>
