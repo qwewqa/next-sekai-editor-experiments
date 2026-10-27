@@ -769,6 +769,79 @@ test('a separate copy of a chart named by its song names its source by the song'
     })
 })
 
+// A closing page can hold its lock past the marker's wait and release it while the load runs. The
+// reload still opens a separate copy, and its notice says the session is open elsewhere only while
+// another tab holds it.
+test("a reload that finds its session held past the marker's wait says it is open elsewhere only while it is still held", async () => {
+    const world = createWorld({ seed: 18 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const stored = beginSession(first, stateOf(goldenChart()))
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const closing = world.tab('closing')
+    const reloadHeld = async (name: string, released: boolean) => {
+        const tab: TabStorage = new Map()
+        recordTab(tab, { sessionId: stored.id, start: 'stored' })
+        markUnloaded(tab, stored.id)
+        const lock = holdSessionLock(closing.locks, stored.id)
+        await closing.run(() => lock.granted)
+        const reload = await load(world, name, storage, {
+            tab,
+            meanwhile: () => {
+                if (released) lock.release()
+            },
+        })
+        lock.release()
+        assert.equal(reload.claim.kind, 'duplicate')
+        const copy = openSession(reload)
+        assert.notEqual(copy.forkOf, undefined)
+        assert.equal(copy.parent?.id, stored.id)
+        const event = reload.events.find((each) => each.kind === 'separateCopy')
+        reload.page.tab.kill()
+        return event
+    }
+    const released = await reloadHeld('released', true)
+    assert.ok(released)
+    assert.equal('elsewhere' in released, false)
+    assert.equal((await reloadHeld('held', false))?.elsewhere, true)
+})
+
+test("a reload of an unstored continuation held past the marker's wait says it is open elsewhere only while it is still held", async () => {
+    const world = createWorld({ seed: 19 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const parent = beginSession(first, stateOf(goldenChart()))
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const reloadHeld = async (name: string, released: boolean) => {
+        // The closing page holds its continuation's lock until it is killed.
+        const closing = await load(world, `${name} closing`, storage)
+        const continuation = openSession(closing)
+        assert.equal(continuation.parent?.id, parent.id)
+        const tab = new Map(closing.tab)
+        markUnloaded(tab, continuation.id)
+        const reload = await load(world, name, storage, {
+            tab,
+            meanwhile: () => {
+                if (released) closing.page.tab.kill()
+            },
+        })
+        closing.page.tab.kill()
+        assert.equal(reload.claim.kind, 'duplicate')
+        const copy = openSession(reload)
+        assert.notEqual(copy.forkOf, undefined)
+        assert.equal(copy.parent?.id, parent.id)
+        const event = reload.events.find((each) => each.kind === 'separateCopy')
+        reload.page.tab.kill()
+        return event
+    }
+    const released = await reloadHeld('released', true)
+    assert.ok(released)
+    assert.equal('elsewhere' in released, false)
+    assert.equal((await reloadHeld('held', false))?.elsewhere, true)
+})
+
 test("a copy's source is its file, else its own name, else the date it started", () => {
     assert.deepEqual(sessionCopyOf('Coconut', 5), { name: 'Coconut', bound: false })
     assert.deepEqual(sessionCopyOf(undefined, 5), { name: '', bound: false, at: 5 })
