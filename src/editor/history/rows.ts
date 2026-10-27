@@ -119,6 +119,13 @@ const groupKey = (entry: Entry, flags: Flags) => {
     if (descriptor) return `edit:${flag}:${descriptor.key}`
 }
 
+/** True for a visit's divider ("Continued from"). An open's ("Opened coconut.nxsp") marks a file event. */
+const isContinuation = (entry: Entry) => {
+    if (entry.kind !== 'continue') return false
+    const decoded = decodeOperation(entry.operation)
+    return decoded.status === 'known' && decoded.operation.id === 'nse.continue'
+}
+
 export type BuildOptions = {
     filter: Filter
     /** The groups shown open, by their newest entry's id. */
@@ -186,6 +193,14 @@ export const buildRows = (
             deltas.set(entryId(entry), now - before)
     }
 
+    // A visit stored with no entry after its `continue` (a Save cancelled at its picker) lists no
+    // entry of its own, so its divider is left out. The top divider stays. It is the open visit's,
+    // or the window's after a jump, and the window's newer entries are not loaded.
+    const empty = new Set<string>()
+    if (filter !== 'here')
+        for (const [i, entry] of newestFirst.entries())
+            if (i > 0 && newestFirst[i - 1]?.sessionId !== entry.sessionId && isContinuation(entry))
+                empty.add(entryId(entry))
     const items: (EntryRow | { type: 'divider'; id: string; entry: Entry })[] = []
     const shown = newestFirst.filter(
         (entry) =>
@@ -198,7 +213,8 @@ export const buildRows = (
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const entry = shown[i]!
         if (entry.kind === 'continue') {
-            items.push({ type: 'divider', id: entryId(entry), entry })
+            if (!empty.has(entryId(entry)))
+                items.push({ type: 'divider', id: entryId(entry), entry })
             continue
         }
         const flags = flagsOf(entry)

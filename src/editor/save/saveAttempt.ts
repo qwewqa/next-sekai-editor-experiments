@@ -25,11 +25,16 @@ export class Cancelled extends Error {
     }
 }
 
-/** A continuation not stored yet commits its first row before its first file write. */
+/**
+ * A continuation not stored yet commits its first row before its first file write. Returns false
+ * when another session is open after the commit, as when the commit forked the session. Nothing is
+ * written for this one then.
+ */
 export const commitFirst = async (env: Env) => {
     const { session } = env
     if (!session.stored) session.atOnce = true
     await env.flusher.flush({ strict: true })
+    return environment()?.session === env.session
 }
 
 export type AttemptSpec = {
@@ -290,12 +295,9 @@ export const withSaveAttempt = async <T>(
 
     try {
         if (spec.estimated !== undefined) openPreparing(slot).built(spec.estimated)
-        if (env && spec.commitFirst) {
-            await commitFirst(env)
-            // A continuation's first commit can fork the session, or another session can be open
-            // by now: nothing is written, and the Save dialog opens for the one that is.
-            if (environment()?.session !== env.session) return { kind: 'forked' }
-        }
+        // A continuation's first commit can fork the session, or another session can be open by
+        // now: nothing is written, and the Save dialog opens for the one that is.
+        if (env && spec.commitFirst && !(await commitFirst(env))) return { kind: 'forked' }
         if (spec.permission) {
             let granted: PermissionState
             try {

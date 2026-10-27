@@ -104,7 +104,13 @@ import {
 } from './preview'
 import { exclusive } from './queue'
 import { builtIn, finishSave, savedSize, startSave, startWrite, tracked } from './report'
-import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './saveAttempt'
+import {
+    Cancelled,
+    commitFirst,
+    withSaveAttempt,
+    type Reserved,
+    type SaveAttempt,
+} from './saveAttempt'
 import { unlinkSession } from './unlink'
 import { refreshBinding } from './watch'
 
@@ -1041,6 +1047,9 @@ const writeBack = async (
     /** Replace: the revision of the version on disk, kept first. */
     replaces?: string,
 ): Promise<Outcome> => {
+    // From here the file is written. A continuation not stored yet commits its first row now, so a
+    // Save that ends earlier (no changes, a conflict, a missing file) leaves the visit unstored.
+    if (!(await commitFirst(env))) return { kind: 'forked' }
     // Inside the hold of `nse-bind`: a reservation another flow holds is not waited for.
     const reserved = await attempt.reserve(false)
     if (!reserved) return { kind: 'cancelled' }
@@ -1263,15 +1272,15 @@ const replace = async (
         )
         return
     }
-    // One attempt, as the write-back's: it commits a continuation's first row and waits for the
-    // chain's imports before it writes over the file.
+    // One attempt, as for the write-back. It waits for the chain's imports before it writes over
+    // the file, and `writeBack` commits a continuation's first row before the write.
     const outcome = await withSaveAttempt(
         {
             env,
             name: handle.name,
             surface: 'save',
             ui: preparingUi,
-            commitFirst: true,
+            commitFirst: false,
             importWait: 'chain',
         },
         (attempt): Promise<Outcome> => {
@@ -1767,15 +1776,15 @@ const saveNow = async (env: Env) => {
     // The gesture's first call.
     const permission = requestWrite(handle)
     permission.catch(() => undefined)
-    // The commit of a continuation's first row, the permission and the wait for the chain's
-    // imports are the attempt's; the check and the write follow under `nse-bind` shared.
+    // The attempt waits for the permission and for the chain's imports. The check, the commit of a
+    // continuation's first row and the write then run with `nse-bind` held shared.
     const outcome = await withSaveAttempt(
         {
             env,
             name: file.name,
             surface: 'save',
             ui: preparingUi,
-            commitFirst: true,
+            commitFirst: false,
             importWait: 'chain',
             permission,
         },
@@ -2197,7 +2206,10 @@ export const persistConfirmed = () => {
         return
     }
     const file = session.chain?.file
-    if (isRow(file)) void env.flusher.setChainFields({ file: { ...file, confirmed: true } })
+    // When it is stored already (the file this chain downloaded, opened again), nothing is written,
+    // since writing a chain field commits a visit's first row.
+    if (isRow(file) && file.confirmed !== true)
+        void env.flusher.setChainFields({ file: { ...file, confirmed: true } })
 }
 
 // Broadcasts: a takeover tells other tabs to read their record again.
