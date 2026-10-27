@@ -59,6 +59,7 @@ for (const locale of ['en', 'fr', 'tr']) {
             const banner = page.locator('[data-history-filter-banner]')
             const bannerWidth = await banner.evaluate((element) => element.clientWidth)
             expect(Math.abs(bannerWidth - width)).toBeLessThan(40)
+            await expect(banner.locator('[data-banner-range]')).toBeVisible()
             const clipped = await banner.evaluate((element) =>
                 [...element.querySelectorAll('[data-banner-range]')]
                     .filter((span) => span.scrollWidth > span.clientWidth)

@@ -83,7 +83,12 @@ const shortcut = computed(() =>
             </svg>
         </span>
         <!-- Beside a label, icons share a 20px column so names line up. -->
-        <span v-if="showLabel" class="flex w-5 shrink-0 justify-center" data-icon-column>
+        <span
+            v-if="showLabel"
+            class="flex w-5 shrink-0 justify-center"
+            aria-hidden="true"
+            data-icon-column
+        >
             <component :is="commands[name].icon.is" class="h-4 w-auto min-w-4" v-bind="iconProps" />
         </span>
         <component :is="commands[name].icon.is" v-else class="size-4" v-bind="iconProps" />
