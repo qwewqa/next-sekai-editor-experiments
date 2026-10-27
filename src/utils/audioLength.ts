@@ -1,8 +1,10 @@
-// How long a clip is, read from its container before anything decodes it: a few
-// MB of compressed audio can decode to GB of samples, so the 120 s cap is checked first. Each
-// reader takes the most a decoder could make of the bytes, never what a header merely claims:
-// a WAV's bytes after `data`, the frames of an MP3, ADTS or FLAC stream, the packets of an Ogg
-// stream, the sample count of an MP4 track.
+// How long a clip is, read from its container before anything decodes it: a few MB of compressed
+// audio can decode to GB of samples, so a limit on length is checked first. It serves the effect
+// clips of a Preview Assets package (120 s) and the BGM (90 minutes, `decodeWithinLimit`). Each
+// reader takes the most a decoder could make of the bytes, never what a header merely claims: a
+// WAV's bytes after `data`, the frames of an MP3, ADTS or FLAC stream, the packets of an Ogg
+// stream, the sample count of an MP4 track. The result is a bound that may overstate the length,
+// not a duration.
 
 export type ClipLength = { seconds: number; channels: number }
 

@@ -1873,6 +1873,8 @@
         "loading": {
             "loading": "Loading…",
             "audioUnreadable": "This audio file could not be read.",
+            "audioMayBeTooLong": "This audio file could not be loaded. Audio files can be up to {0} minutes long.",
+            "audioTooLong": "This audio file is longer than {0} minutes and could not be loaded.",
             "imageUnreadable": "This image could not be read.",
             "coverFailed": "The cover could not be generated.",
             "failed": "This could not be completed."
@@ -2217,6 +2219,8 @@
         "sameFileElsewhere": "\"{0}\" is open in another tab or window, so this is a separate copy.",
         "storageUnavailable": "The editor could not access this browser’s storage. Try again.",
         "chooseAudio": "Choose Audio…",
+        "bgmMayBeTooLong": "The BGM was not loaded. Audio files can be up to {0} minutes long.",
+        "bgmTooLong": "The BGM is longer than {0} minutes and was not loaded.",
         "bgmDiffers": "This is a different file from the original BGM, \"{0}\".",
         "bgmDiffersUnnamed": "This is a different file from the original BGM.",
         "newLevel": "New level",

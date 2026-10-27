@@ -1873,6 +1873,8 @@
     "loading": {
       "loading": "載入中…",
       "audioUnreadable": "無法讀取此音訊檔案。",
+      "audioMayBeTooLong": "無法載入此音訊檔案。音訊長度不能超過 {0} 分鐘。",
+      "audioTooLong": "此音訊檔案的長度超過 {0} 分鐘，無法載入。",
       "imageUnreadable": "無法讀取此圖像。",
       "coverFailed": "無法產生封面。",
       "failed": "無法完成此操作。"
@@ -2217,6 +2219,8 @@
     "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
+    "bgmMayBeTooLong": "BGM 未載入。音訊長度不能超過 {0} 分鐘。",
+    "bgmTooLong": "BGM 的長度超過 {0} 分鐘，未載入。",
     "bgmDiffers": "這與原本的 BGM \"{0}\" 不是同一個檔案。",
     "bgmDiffersUnnamed": "這與原本的 BGM 不是同一個檔案。",
     "newLevel": "新關卡",

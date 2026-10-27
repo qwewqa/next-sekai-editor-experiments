@@ -1873,6 +1873,8 @@
     "loading": {
       "loading": "Chargement…",
       "audioUnreadable": "Ce fichier audio n’a pas pu être lu.",
+      "audioMayBeTooLong": "Ce fichier audio n’a pas pu être chargé. La durée des fichiers audio ne doit pas dépasser {0} minutes.",
+      "audioTooLong": "Ce fichier audio dure plus de {0} minutes et n’a pas pu être chargé.",
       "imageUnreadable": "Cette image n’a pas pu être lue.",
       "coverFailed": "La couverture n’a pas pu être générée.",
       "failed": "L’opération n’a pas pu aboutir."
@@ -2217,6 +2219,8 @@
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
+    "bgmMayBeTooLong": "La musique n’a pas été chargée. La durée des fichiers audio ne doit pas dépasser {0} minutes.",
+    "bgmTooLong": "La musique dure plus de {0} minutes et n’a pas été chargée.",
     "bgmDiffers": "Ce fichier est différent de la musique d’origine, \"{0}\".",
     "bgmDiffersUnnamed": "Ce fichier est différent de la musique d’origine.",
     "newLevel": "Nouveau niveau",

@@ -1873,6 +1873,8 @@
     "loading": {
       "loading": "加载中…",
       "audioUnreadable": "无法读取此音频文件。",
+      "audioMayBeTooLong": "无法加载此音频文件。音频时长不能超过 {0} 分钟。",
+      "audioTooLong": "此音频文件的时长超过 {0} 分钟，无法加载。",
       "imageUnreadable": "无法读取此图像。",
       "coverFailed": "无法生成封面。",
       "failed": "无法完成此操作。"
@@ -2217,6 +2219,8 @@
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
     "storageUnavailable": "编辑器无法访问此浏览器的存储。请重试。",
     "chooseAudio": "选择音频…",
+    "bgmMayBeTooLong": "背景音乐未加载。音频时长不能超过 {0} 分钟。",
+    "bgmTooLong": "背景音乐的时长超过 {0} 分钟，未加载。",
     "bgmDiffers": "这与原来的背景音乐“{0}”不是同一个文件。",
     "bgmDiffersUnnamed": "这与原来的背景音乐不是同一个文件。",
     "newLevel": "新关卡",

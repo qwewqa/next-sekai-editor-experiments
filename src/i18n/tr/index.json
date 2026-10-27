@@ -1873,6 +1873,8 @@
     "loading": {
       "loading": "Yükleniyor…",
       "audioUnreadable": "Bu ses dosyası okunamadı.",
+      "audioMayBeTooLong": "Bu ses dosyası yüklenemedi. Ses dosyaları en fazla {0} dakika uzunluğunda olabilir.",
+      "audioTooLong": "Bu ses dosyası {0} dakikadan uzun olduğu için yüklenemedi.",
       "imageUnreadable": "Bu görsel okunamadı.",
       "coverFailed": "Kapak oluşturulamadı.",
       "failed": "İşlem tamamlanamadı."
@@ -2217,6 +2219,8 @@
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",
+    "bgmMayBeTooLong": "Arka plan müziği yüklenmedi. Ses dosyaları en fazla {0} dakika uzunluğunda olabilir.",
+    "bgmTooLong": "Arka plan müziği {0} dakikadan uzun olduğu için yüklenmedi.",
     "bgmDiffers": "Bu, özgün arka plan müziği olan \"{0}\" dosyasından farklı bir dosya.",
     "bgmDiffersUnnamed": "Bu, özgün arka plan müziği dosyasından farklı bir dosya.",
     "newLevel": "Yeni seviye",

@@ -1873,6 +1873,8 @@
     "loading": {
       "loading": "불러오는 중…",
       "audioUnreadable": "이 오디오 파일을 읽지 못했습니다.",
+      "audioMayBeTooLong": "이 오디오 파일을 불러오지 못했습니다. 오디오 파일의 길이는 {0}분 이하여야 합니다.",
+      "audioTooLong": "이 오디오 파일은 {0}분을 초과하여 불러오지 못했습니다.",
       "imageUnreadable": "이 이미지를 읽지 못했습니다.",
       "coverFailed": "커버를 생성하지 못했습니다.",
       "failed": "작업을 완료하지 못했습니다."
@@ -2217,6 +2219,8 @@
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
     "storageUnavailable": "편집기가 이 브라우저의 저장 공간에 접근하지 못했습니다. 다시 시도하세요.",
     "chooseAudio": "오디오 선택…",
+    "bgmMayBeTooLong": "배경음을 불러오지 않았습니다. 오디오 파일의 길이는 {0}분 이하여야 합니다.",
+    "bgmTooLong": "배경음이 {0}분을 초과하여 불러오지 않았습니다.",
     "bgmDiffers": "이 파일은 원래 배경음 \"{0}\"과(와) 다른 파일입니다.",
     "bgmDiffersUnnamed": "이 파일은 원래 배경음과 다른 파일입니다.",
     "newLevel": "새 레벨",
