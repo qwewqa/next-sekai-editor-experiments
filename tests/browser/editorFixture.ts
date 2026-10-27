@@ -89,6 +89,8 @@ export const installCanvasCounters = (legacyCanvas = false) => {
     // Seeded settings make every profile an existing user, who would see "Updated to version" with
     // an action over the canvas; the last version seen is the override's, so specs see "Version X".
     localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
+    // The first-visit dialog counts as shown; its own specs remove the mark.
+    localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
     // Only the explicitly configured historical parity server uses this path.
     // A missing GPU module in the current app must fail rather than silently
     // make its rendering assertions exercise a different implementation.
@@ -110,12 +112,45 @@ export const installCanvasCounters = (legacyCanvas = false) => {
     }
 }
 
+/** The localStorage key that marks the first-visit dialog as shown. */
+export const FIRST_VISIT_MARK = 'sonolus-next-sekai-editor.firstVisitShown'
+
+/** Marks the first-visit dialog as shown in a profile that the config's storageState does not reach. */
+export const withFirstVisitMark = async (context: BrowserContext) => {
+    await context.addInitScript(() => {
+        localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+    })
+    return context
+}
+
+/**
+ * Fails while the first-visit dialog is open or its decision is pending: a spec that builds its own
+ * profile seeds the mark, and the first-visit specs opt out.
+ */
+const expectNoFirstVisit = async (page: Page) => {
+    const state = await page.evaluate(async () => {
+        const url = performance
+            .getEntriesByType('resource')
+            .map((entry) => entry.name)
+            .find((name) => new URL(name).pathname === '/src/editor/firstVisit/firstVisit.ts')
+        // STAGE1: the module arrives with the dialog.
+        if (url === undefined) return 'notDue'
+        const { firstVisitState } = (await import(url)) as { firstVisitState: { value: string } }
+        return firstVisitState.value
+    })
+    if (state !== 'notDue' && state !== 'done')
+        throw new Error(
+            `The first-visit dialog is ${state}: seed ${FIRST_VISIT_MARK}, or pass { firstVisit: true }`,
+        )
+}
+
 /**
  * Waits until the startup gate lifts: until the session is open, input is
  * swallowed. Specs without the fixture hook (`installCanvasCounters`) wait before their first input.
+ * It then fails if the first-visit dialog is open or still to be decided, unless `firstVisit` is set.
  */
-export const waitForStartup = (page: Page) =>
-    expect
+export const waitForStartup = async (page: Page, { firstVisit = false } = {}) => {
+    await expect
         .poll(
             () =>
                 page.evaluate(async () => {
@@ -134,6 +169,8 @@ export const waitForStartup = (page: Page) =>
             { timeout: 20_000 },
         )
         .toBe('done')
+    if (!firstVisit) await expectNoFirstVisit(page)
+}
 
 /** Seeds the platform override: pass it to addInitScript with the override. */
 export const installTestPlatform = (override: PlatformOverride) => {
@@ -166,6 +203,21 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
     if (!held && !/"fail"/.test(flags) && startupGate.phase !== 'done')
         throw new Error(`Startup did not finish: ${startupGate.phase}`)
     if (window.nseStartupError) throw new Error(`Startup failed: ${window.nseStartupError}`)
+    // A spec that forgets the first-visit mark fails here, not behind the dialog.
+    if (!held && !/"fail"/.test(flags)) {
+        // STAGE1: the module arrives with the dialog.
+        const state = moduleUrls.has('/src/editor/firstVisit/firstVisit.ts')
+            ? (
+                  await appImport<{ firstVisitState: { value: string } }>(
+                      '/src/editor/firstVisit/firstVisit.ts',
+                  )
+              ).firstVisitState.value
+            : 'notDue'
+        if (state !== 'notDue' && state !== 'done')
+            throw new Error(
+                `The first-visit dialog is ${state}: seed sonolus-next-sekai-editor.firstVisitShown`,
+            )
+    }
     if (window.installEditorRendering) {
         // Use the exact module instance the app loaded, including a Vite HMR
         // timestamp. Importing during addInitScript could create a second class

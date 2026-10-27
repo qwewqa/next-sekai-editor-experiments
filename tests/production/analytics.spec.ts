@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { analyticsOf } from './analytics'
+import { editorReady } from './fixtures'
 
 // Usage statistics in the release build. An automated browser sends nothing, whatever the build's
 // target, and a build without one has no client to load.
@@ -22,7 +23,7 @@ test('an automated visit loads no client and sends nothing, after input and a hi
         if (request.resourceType() === 'script') scripts.push(new URL(request.url()).pathname)
     })
     await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
     await page.keyboard.press('Shift')
     await page.evaluate(() => {
         Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })

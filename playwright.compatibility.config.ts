@@ -51,12 +51,16 @@ export default defineConfig({
     use: {
         ...config.use,
         launchOptions: {},
-        // As in the main config: no startup guard question unless a spec tests the guard.
+        // As in the main config: no startup guard question unless a spec tests the guard, and the
+        // first-visit dialog counts as shown.
         storageState: {
             cookies: [],
             origins: [String(config.use?.baseURL), previewUrl].map((origin) => ({
                 origin,
-                localStorage: [{ name: 'nse.test.noOpeningGuard', value: 'true' }],
+                localStorage: [
+                    { name: 'nse.test.noOpeningGuard', value: 'true' },
+                    { name: 'sonolus-next-sekai-editor.firstVisitShown', value: '1' },
+                ],
             })),
         },
     },

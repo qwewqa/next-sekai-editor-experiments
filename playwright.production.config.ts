@@ -9,6 +9,7 @@ const hostedUrl = process.env.PRODUCTION_TEST_URL
 // Parallel local runs can each choose a free preview server port.
 const previewPort = process.env.PLAYWRIGHT_PREVIEW_PORT ?? '5211'
 const previewUrl = `http://127.0.0.1:${previewPort}`
+const baseURL = hostedUrl ?? previewUrl
 
 export default defineConfig({
     testDir: './tests/production',
@@ -24,7 +25,19 @@ export default defineConfig({
     outputDir: 'test-results-production',
     use: {
         browserName: 'chromium',
-        baseURL: hostedUrl ?? previewUrl,
+        baseURL,
+        // The first-visit dialog counts as shown; its own spec starts without the mark.
+        storageState: {
+            cookies: [],
+            origins: [
+                {
+                    origin: new URL(baseURL).origin,
+                    localStorage: [
+                        { name: 'sonolus-next-sekai-editor.firstVisitShown', value: '1' },
+                    ],
+                },
+            ],
+        },
         locale: 'en-US',
         timezoneId: 'UTC',
         viewport: { width: 1600, height: 1000 },

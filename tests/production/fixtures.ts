@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 // A real imported USC chart keeps this smoke independent of app modules or
 // test-only state hooks. BPM 60 places its note at 250 ms for simple mouse input.
 export const chart = Buffer.from(
@@ -255,4 +255,28 @@ export const diagnostics = (page: Page) =>
 export const seedVersion = () => {
     localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
     localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
+    // The first-visit dialog counts as shown.
+    localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
+}
+
+/**
+ * Waits for the editor and its startup, then fails if the first-visit dialog shows: the mark is
+ * missing (the config's storageState and seedVersion seed it).
+ */
+export const editorReady = async (page: Page) => {
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await expect(page.locator('[data-startup-gate]')).toHaveCount(0)
+    // The dialog opens in the task that lifts the gate, before the next frame.
+    const open = await page.evaluate(
+        () =>
+            new Promise<boolean>((resolve) => {
+                requestAnimationFrame(() =>
+                    resolve(document.querySelector('dialog[data-first-visit]') !== null),
+                )
+            }),
+    )
+    if (open)
+        throw new Error(
+            'The first-visit dialog is open: seed sonolus-next-sekai-editor.firstVisitShown',
+        )
 }

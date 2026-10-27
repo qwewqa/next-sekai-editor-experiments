@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type english from '../../src/i18n/en/index.json'
-import { useTool, waitForStartup } from './editorFixture'
+import { useTool, waitForStartup, withFirstVisitMark } from './editorFixture'
 import {
     backToNow,
     chartOf,
@@ -480,14 +480,16 @@ test('after a crash the recovered rows are in the Timeline, and peek and Restore
     // A renderer crash takes the context down with it, so the next visit is the browser started
     // again over the same profile.
     const launch = () =>
-        playwright.chromium.launchPersistentContext(dir, {
-            ...(baseURL ? { baseURL } : {}),
-            viewport: { width: 1600, height: 1000 },
-            ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-                ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
-                : {}),
-            args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-        })
+        playwright.chromium
+            .launchPersistentContext(dir, {
+                ...(baseURL ? { baseURL } : {}),
+                viewport: { width: 1600, height: 1000 },
+                ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+                    ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+                    : {}),
+                args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+            })
+            .then(withFirstVisitMark)
     let context = await launch()
     try {
         const first = await context.newPage()

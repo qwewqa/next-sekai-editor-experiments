@@ -63,7 +63,7 @@ export class SampleClock {
     }
 }
 
-/** Seeds every page: the storage hooks, downloads for file actions. */
+/** Seeds every page: the storage hooks, downloads for file actions, the first visit's mark. */
 export const seedContext = (context: BrowserContext) =>
     context.addInitScript(() => {
         performance.setResourceTimingBufferSize(5000)
@@ -71,6 +71,8 @@ export const seedContext = (context: BrowserContext) =>
         localStorage.setItem('nse.test.storage', '{}')
         // Download browsers' file actions: Open through a file input, Export as a download.
         localStorage.setItem('nse.test.platform', JSON.stringify({ fileSystemAccess: false }))
+        // The first-visit dialog counts as shown, as in a profile that has seen it.
+        localStorage.setItem('sonolus-next-sekai-editor.firstVisitShown', '1')
     })
 
 /** Waits until startup has opened the session this load continues. */
