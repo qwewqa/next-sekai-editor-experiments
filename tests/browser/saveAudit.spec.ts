@@ -294,6 +294,39 @@ test.describe("Recent Sessions' Save…", () => {
         await expect(dialog.locator('[data-save-row="history"]')).toBeVisible()
         await expect(dialog.locator('[data-save-row="bgm"]')).toHaveCount(0)
     })
+
+    test('a picked file with another name is the name in the entry and in revision.fileName', async ({
+        page,
+    }) => {
+        await start(page)
+        const sessionId = await earlierSession(page)
+        await queuePicks(page, ['actual.nxsp'])
+        await toFile(page, sessionId)
+        await submitSave(page, 'suggested')
+        await expect(notice(page).filter({ hasText: 'Saved to actual.nxsp' })).toBeVisible()
+        const project = await projectOf(page, 'actual.nxsp')
+        expect((project.revision as Row).fileName).toBe('actual.nxsp')
+        // The file's last entry is its `save` entry.
+        const entry = await page.evaluate(async () => {
+            const root = await navigator.storage.getDirectory()
+            const { ZipReader } =
+                (await import('/src/zip/reader.ts')) as typeof import('../../src/zip/reader')
+            const reader = await ZipReader.open(
+                await (await root.getFileHandle('actual.nxsp')).getFile(),
+            )
+            const read = async (name: string) =>
+                JSON.parse(
+                    new TextDecoder().decode(
+                        await reader.read(reader.get(name)!, { maxSize: 4_000_000 }),
+                    ),
+                ) as Row
+            const { history } = (await read('project.json')) as { history: { manifest: string } }
+            return ((await read(history.manifest)).entries as Row[]).at(-1)
+        })
+        expect(entry?.kind).toBe('save')
+        expect(JSON.stringify(entry)).toContain('actual.nxsp')
+        expect(JSON.stringify(entry)).not.toContain('suggested.nxsp')
+    })
 })
 
 test("a conflict with another project's file says it is another project, named or not", async ({
