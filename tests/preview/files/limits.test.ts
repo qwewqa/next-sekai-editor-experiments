@@ -97,7 +97,7 @@ test('a list or details entry over 4 MB is refused', async () => {
         'skin',
         rawZip(entries),
         'tooBig',
-        'This file’s skin details is larger than 4 MB.',
+        'This file’s skin detail entry is larger than 4 MB.',
     )
 })
 

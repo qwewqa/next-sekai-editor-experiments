@@ -526,7 +526,7 @@
             },
             "part": {
                 "list": "list",
-                "details": "details",
+                "details": "detail entry",
                 "data": "data",
                 "texture": "texture",
                 "image": "image",

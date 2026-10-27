@@ -765,7 +765,7 @@ test('details too large for an item are the item’s, and details the server lac
     await first.use()
     assert.equal(
         first.useError.value?.kind === 'item' && first.useError.value.message,
-        'This item’s skin details is larger than 4000000 bytes.',
+        'This item’s skin detail entry is larger than 4000000 bytes.',
     )
     // Gone from the server between the list and Use.
     const gone = setup([['skin', named('neon', 'Neon')]])
