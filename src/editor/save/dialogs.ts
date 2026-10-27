@@ -144,7 +144,7 @@ export type SaveUi = {
     /** `export`: Export's picker waiting for an open's import, titled and pressed as Export. */
     preparing: (name: string, kind?: 'save' | 'export') => Preparing
     conflict: (input: ConflictInput) => Promise<ConflictChoice | undefined>
-    /** ""coconut.nxsp" cannot be found." `[Cancel]` `[Save As…]` (focused). */
+    /** `save.notFound`: `[Cancel]` `[Save As…]` (focused). */
     notFound: (name: string) => Promise<'saveAs' | undefined>
     /** The permission prompt refused: `[Cancel]` `[Save As…]` `[Try Again]` (focused). */
     denied: (name: string) => Promise<'saveAs' | 'tryAgain' | undefined>
