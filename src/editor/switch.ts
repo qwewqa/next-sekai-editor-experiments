@@ -180,7 +180,7 @@ export const restoreCopy = (sessionId: string) =>
     })
 
 /**
- * The notice after a switch: its message, and Reopen “<previous>” while the session left can be
+ * The notice after a switch: its message, and Reopen "<previous>" while the session left can be
  * reopened, unless `offer` is false. When it turns out not to be (Leave Anyway), the
  * notice is plain. `line` is a second row of the card (the BGM that is not loaded).
  */

@@ -2,7 +2,7 @@
 import type { AssetType } from '../../../preview/assets'
 import type { AlsoOption } from '../../../preview/assets/files/chooser'
 
-// "Also use the particle “Neon” from this server": one unticked checkbox for each other type found.
+// "Also use the particle "Neon" from this server": one unticked checkbox for each other type found.
 defineProps<{
     options: AlsoOption[]
     text: (option: AlsoOption) => string
