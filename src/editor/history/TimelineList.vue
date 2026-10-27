@@ -308,6 +308,9 @@ const visibleRows = computed(() => {
     )
     const focused = rows.value.findIndex((row) => row.id === cursorId.value)
     if (focused >= 0) indexes.add(focused)
+    // The row that held focus stays until focus has moved on from it.
+    const outgoing = rows.value.findIndex((row) => row.id === handoffRowId.value)
+    if (outgoing >= 0) indexes.add(outgoing)
     return [...indexes]
         .sort((a, b) => a - b)
         .flatMap((index) => {
@@ -378,6 +381,7 @@ type FocusRequest = Readonly<{
 }>
 let latestFocus: FocusRequest | undefined
 let focusHandoff: { request: FocusRequest; outgoing: Element } | undefined
+const handoffRowId = shallowRef<string>()
 type DetailsReturn = {
     dialog?: HTMLDialogElement
     returned: boolean
@@ -436,6 +440,7 @@ const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = t
     latestFocus = request
     const outgoing = timelineRow(document.activeElement)
     focusHandoff = outgoing ? { request, outgoing } : undefined
+    handoffRowId.value = rows.value.find((row) => domId(row.id) === outgoing?.id)?.id
     cursorId.value = id
     focusPart.value = request.part
     try {
@@ -444,7 +449,10 @@ const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = t
         if (!ownsFocus(request) || menu.value || !canFocusHistory(props.surface)) return
         focusElement(id, request.part)?.focus({ preventScroll: true })
     } finally {
-        if (focusHandoff?.request === request) focusHandoff = undefined
+        if (focusHandoff?.request === request) {
+            focusHandoff = undefined
+            handoffRowId.value = undefined
+        }
     }
 }
 const onRowFocus = (event: FocusEvent, row: Row) => {
