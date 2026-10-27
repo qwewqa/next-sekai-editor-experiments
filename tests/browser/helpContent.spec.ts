@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import type english from '../../src/i18n/en/index.json'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { REPOSITORY } from './sourceRepository'
 
 // Help: the order of its sections by pointer, and the lines and shortcuts that depend on the
 // settings.
@@ -86,7 +87,7 @@ const heading = (dialog: ReturnType<Page['locator']>, title: string) =>
     dialog.getByRole('heading', { level: 2, name: new RegExp(`^${title}( |$)`) })
 
 test.describe('with a fine pointer', () => {
-    test('Getting Started, Mouse and Keyboard come first and Touchscreen is last', async ({
+    test('Getting Started, Mouse and Keyboard come first and Touchscreen is before About', async ({
         page,
     }) => {
         await boot(page)
@@ -97,7 +98,7 @@ test.describe('with a fine pointer', () => {
             modal.keyboard.title,
             messages.help.fileTitle,
         ])
-        expect(all.at(-1)).toBe(modal.touchscreen.title)
+        expect(all.slice(-2)).toEqual([modal.touchscreen.title, messages.settings.about.title])
     })
 
     test('the shared lines say click, and only the Touchscreen section says tap', async ({
@@ -171,7 +172,7 @@ test.describe('with a fine pointer', () => {
 test.describe('with a coarse pointer', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
-    test('Touchscreen comes after Getting Started, and Mouse and Keyboard are last', async ({
+    test('Touchscreen comes after Getting Started, and Mouse and Keyboard are before About', async ({
         page,
     }) => {
         await boot(page)
@@ -182,7 +183,11 @@ test.describe('with a coarse pointer', () => {
             modal.touchscreen.title,
             messages.help.fileTitle,
         ])
-        expect(all.slice(-2)).toEqual([modal.mouse.title, modal.keyboard.title])
+        expect(all.slice(-3)).toEqual([
+            modal.mouse.title,
+            modal.keyboard.title,
+            messages.settings.about.title,
+        ])
     })
 
     test('the shared lines say tap, and only the Mouse section says click', async ({ page }) => {
@@ -201,5 +206,109 @@ test.describe('with a coarse pointer', () => {
         const dialog = await openHelp(page)
         await expect(heading(dialog, messages.commands.note.title.default)).toBeVisible()
         await expect(dialog.locator('h2 kbd')).toHaveCount(0)
+    })
+
+    test('the About links wrap inside the dialog', async ({ page }) => {
+        await boot(page)
+        const dialog = await openHelp(page)
+        const links = dialog.locator('[data-about-link]')
+        await links.last().scrollIntoViewIfNeeded()
+        const box = await dialog.boundingBox()
+        for (const link of await links.all()) {
+            const linkBox = (await link.boundingBox())!
+            expect(linkBox.x).toBeGreaterThanOrEqual(box!.x)
+            expect(linkBox.x + linkBox.width).toBeLessThanOrEqual(box!.x + box!.width)
+        }
+        // The dialog body scrolls vertically only.
+        expect(
+            await links.first().evaluate((link) => {
+                const body = link.closest('.overflow-y-auto')!
+                return body.scrollWidth <= body.clientWidth
+            }),
+        ).toBe(true)
+    })
+})
+
+// The About section ends Help with the links of Settings › About; settingsAbout.spec.ts checks
+// that the two rows agree.
+test.describe('About', () => {
+    const aboutTitle = messages.settings.about.title
+    const aboutOf = (dialog: ReturnType<Page['locator']>) =>
+        dialog.locator('section').filter({
+            has: dialog.page().getByRole('heading', { name: aboutTitle, exact: true }),
+        })
+
+    test('is the last section, holds only the links and is laid out like the others', async ({
+        page,
+    }) => {
+        await boot(page)
+        const dialog = await openHelp(page)
+        const sections = dialog.locator('section')
+        const about = aboutOf(dialog)
+        await expect(about).toHaveCount(1)
+        await expect(sections.last()).toContainText(aboutTitle)
+        await expect(about.locator('[data-about-link]').first()).toBeVisible()
+        await expect(about.locator('ul, li')).toHaveCount(0)
+        await expect(
+            about.locator(
+                'button, input, [data-about-name], [data-about-version], [data-about-usage-statistics], [data-about-diagnostics]',
+            ),
+        ).toHaveCount(0)
+
+        const layout = await sections.evaluateAll((all) =>
+            all.map((section) => {
+                const heading = section.querySelector('h2')!
+                const style = getComputedStyle(heading)
+                return {
+                    type: [style.fontSize, style.fontWeight, style.lineHeight].join(' '),
+                    left: heading.getBoundingClientRect().left,
+                    headingToContent:
+                        heading.nextElementSibling!.getBoundingClientRect().top -
+                        heading.getBoundingClientRect().bottom,
+                    top: section.getBoundingClientRect().top,
+                    bottom: section.getBoundingClientRect().bottom,
+                }
+            }),
+        )
+        const gaps = layout.slice(1).map((section, i) => section.top - layout[i]!.bottom)
+        expect(new Set(layout.map((section) => section.type)).size).toBe(1)
+        expect(new Set(layout.map((section) => section.left)).size).toBe(1)
+        expect(new Set(layout.map((section) => section.headingToContent)).size).toBe(1)
+        expect(new Set(gaps).size).toBe(1)
+    })
+
+    test('the links come last in Tab order and keep their names', async ({ page }) => {
+        await boot(page)
+        const dialog = await openHelp(page)
+        const links = aboutOf(dialog).getByRole('link')
+        const count = await links.count()
+        expect(count).toBeGreaterThan(1)
+        // The arrow is hidden from the name, so each name is the label alone.
+        await expect(dialog.getByRole('link', { name: 'Source Code', exact: true })).toBeVisible()
+
+        const stops = await dialog
+            .locator('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+            .evaluateAll((all) => all.map((element) => element.hasAttribute('data-about-link')))
+        expect(stops.slice(-count).every(Boolean)).toBe(true)
+        expect(stops.slice(0, -count).some(Boolean)).toBe(false)
+
+        await links.first().focus()
+        for (let i = 0; i < count; i++) {
+            await expect(links.nth(i)).toBeFocused()
+            if (i < count - 1) await page.keyboard.press('Tab')
+        }
+    })
+
+    test('a link opens in a new page and leaves Help open', async ({ page, context }) => {
+        await context.route('https://github.com/**', (route) =>
+            route.fulfill({ body: 'ok', contentType: 'text/html' }),
+        )
+        await boot(page)
+        const dialog = await openHelp(page)
+        const popup = page.waitForEvent('popup')
+        await dialog.getByRole('link', { name: 'Source Code', exact: true }).click()
+        expect((await popup).url()).toBe(`https://github.com/${REPOSITORY}`)
+        expect(page.url()).toMatch(/127\.0\.0\.1/)
+        await expect(dialog).toBeVisible()
     })
 })

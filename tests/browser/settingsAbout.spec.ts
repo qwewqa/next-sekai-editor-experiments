@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { REPOSITORY } from './sourceRepository'
 
@@ -70,6 +70,48 @@ test('a build with no tag behind its version has no Release Notes', async ({ pag
     await expect(about(page).locator('[data-about-link="releaseNotes"]')).toHaveCount(0)
     await expect(about(page).locator('[data-about-link="source"]')).toBeVisible()
 })
+
+// The key, the label (without the arrow) and the address of each link in a row.
+const rowOf = (row: Locator) =>
+    row
+        .locator('[data-about-link]')
+        .evaluateAll((all) =>
+            all.map((link) => [
+                link.getAttribute('data-about-link'),
+                link.textContent.replace('↗', '').trim(),
+                link.getAttribute('href'),
+            ]),
+        )
+
+for (const [name, version, keys] of [
+    ['a tagged build', undefined, ['releaseNotes', 'source', 'license', 'notices', 'privacy']],
+    [
+        'a build with no release tag',
+        { appVersion: '0.5.22', atTag: false },
+        ['source', 'license', 'notices', 'privacy'],
+    ],
+] as const) {
+    test(`Help ends with the same links as Settings in ${name}`, async ({ page }) => {
+        await boot(page, version)
+        // The later sections mount in short tasks after the first frame.
+        await expect(about(page).locator('[data-about-link]').first()).toBeVisible()
+        const settingsRow = await rowOf(about(page))
+        expect(settingsRow.map(([key]) => key)).toEqual(keys)
+        expect(settingsRow.find(([key]) => key === 'source')![2]).toBe(
+            `https://github.com/${REPOSITORY}`,
+        )
+
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog', { name: 'Settings', exact: true })).toHaveCount(0)
+        await page.getByRole('button', { name: 'Help', exact: true }).click()
+        const help = page.getByRole('dialog', { name: 'Help', exact: true })
+        const helpAbout = help.locator('section').filter({
+            has: page.getByRole('heading', { name: 'About', exact: true }),
+        })
+        await expect(helpAbout.locator('[data-about-link]').first()).toBeVisible()
+        expect(await rowOf(helpAbout)).toEqual(settingsRow)
+    })
+}
 
 test('a link opens in a new page and leaves the editor where it was', async ({ page, context }) => {
     await context.route('https://github.com/**', (route) =>

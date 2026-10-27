@@ -2,41 +2,22 @@
 import { computed } from 'vue'
 import { analyticsTarget, browserSignalSet } from '../../analytics/start'
 import { preference } from '../../analytics/config'
-import {
-    GITHUB_REPOSITORY,
-    HAS_PRIVACY_PAGE,
-    RELEASE_NOTES_URL,
-    SITE,
-    TEST_SITE_ABOUT,
-} from '../../buildInfo'
+import { SITE, TEST_SITE_ABOUT } from '../../buildInfo'
 import { i18n } from '../../i18n'
 import { showModal } from '../../modals'
 import ToggleField from '../../modals/form/ToggleField.vue'
-import { appVersion, platform } from '../../platform'
+import { appVersion } from '../../platform'
 import { PRODUCT_NAME } from '../../product'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
+import AboutLinks, { aboutButtonClass } from './AboutLinks.vue'
 import { collectDiagnosticText } from './diagnosticInfo'
 import DiagnosticsModal from './DiagnosticsModal.vue'
 import SettingsSection from './SettingsSection.vue'
 
 const about = computed(() => i18n.value.settings.about)
 
-// Release Notes is CHANGELOG.md on main; a build with no release tag behind its version has none.
-const { atTag, appVersion: shown } = appVersion()
-const hasReleaseTag = atTag || shown.includes('+')
-
-const links = computed(() => [
-    ...(hasReleaseTag
-        ? [{ key: 'releaseNotes', label: about.value.releaseNotes, href: RELEASE_NOTES_URL }]
-        : []),
-    { key: 'source', label: about.value.source, href: `https://github.com/${GITHUB_REPOSITORY}` },
-    { key: 'license', label: about.value.license, href: '/LICENSE.txt' },
-    { key: 'notices', label: about.value.notices, href: '/THIRD_PARTY_NOTICES.txt' },
-    ...(HAS_PRIVACY_PAGE
-        ? [{ key: 'privacy', label: about.value.privacy, href: '/privacy/' }]
-        : []),
-])
+const { appVersion: shown } = appVersion()
 
 // Send Usage Statistics, only in a build that has somewhere to send them. It
 // shows the user's choice, else off where the browser sends Do Not Track or Global Privacy Control.
@@ -49,13 +30,6 @@ const usageStatisticsNote = computed(() =>
         ? about.value.usageStatisticsSignal
         : about.value.usageStatisticsNote,
 )
-
-const buttonClass =
-    'btn btn-secondary inline-flex h-9 min-w-24 max-w-full items-center gap-1 rounded-full px-4'
-
-const open = (href: string) => {
-    platform.openExternal(new URL(href, location.href).href)
-}
 
 const diagnostics = async () => {
     await showModal(DiagnosticsModal, { text: await collectDiagnosticText() })
@@ -77,24 +51,15 @@ const diagnostics = async () => {
             data-about-usage-statistics
         />
 
-        <div class="flex flex-wrap gap-2" data-about-links>
-            <a
-                v-for="link in links"
-                :key="link.key"
-                :href="link.href"
-                target="_blank"
-                rel="noopener"
-                :data-about-link="link.key"
-                :class="buttonClass"
-                @click.prevent="open(link.href)"
-            >
-                <span class="truncate">{{ link.label }}</span>
-                <span aria-hidden="true">↗</span>
-            </a>
-        </div>
+        <AboutLinks />
 
         <div class="flex">
-            <button type="button" data-about-diagnostics :class="buttonClass" @click="diagnostics">
+            <button
+                type="button"
+                data-about-diagnostics
+                :class="aboutButtonClass"
+                @click="diagnostics"
+            >
                 <span class="truncate">{{ about.diagnostics }}</span>
             </button>
         </div>

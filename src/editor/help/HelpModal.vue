@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
+import AboutLinks from '../settings/AboutLinks.vue'
 import { isCoarsePointer } from '../workspace'
 import HelpInputSections from './HelpInputSections.vue'
 import HelpSection from './HelpSection.vue'
@@ -151,5 +152,9 @@ const say = (tap: string, click: string) => (isCoarsePointer.value ? tap : click
         </HelpSection>
 
         <HelpInputSections :input="isCoarsePointer ? 'pointer' : 'touch'" />
+
+        <HelpSection :title="i18n.settings.about.title" plain>
+            <AboutLinks />
+        </HelpSection>
     </BaseModal>
 </template>
