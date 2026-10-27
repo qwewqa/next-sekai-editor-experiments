@@ -12,10 +12,10 @@ export const testKeysOpen =
 
 /**
  * A product timing window in ms, or `normal`: a spec widens or shortens it through the
- * `nse.test.*` key it names. Read on each use, and only in builds that read test keys.
+ * `nse.test.*` key it names. Read on each use. Callers read it behind `testKeysOpen`, so a
+ * release bundle does not name the key.
  */
 export const testWindowMs = (key: string, normal: number) => {
-    if (!testKeysOpen) return normal
     try {
         const set = localStorage.getItem(key)
         const ms = set === null ? Number.NaN : Number(set)

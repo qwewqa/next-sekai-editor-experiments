@@ -36,7 +36,7 @@ import {
 } from '../../local/records/records'
 import type { KindName } from '../../local/records/schema'
 import { storageWorker } from '../../local/start'
-import { testWindowMs } from '../../platform/testKeys'
+import { testKeysOpen, testWindowMs } from '../../platform/testKeys'
 import { settings } from '../../settings'
 import { createState, type State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
@@ -312,7 +312,7 @@ watch(
                     slowTimer = undefined
                     slowRead.value = true
                 },
-                testWindowMs('nse.test.slowRead', SLOW_READ_MS),
+                testKeysOpen ? testWindowMs('nse.test.slowRead', SLOW_READ_MS) : SLOW_READ_MS,
             )
     },
     { immediate: true, flush: 'sync' },

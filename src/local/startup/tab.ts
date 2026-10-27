@@ -1,5 +1,5 @@
 import { platform } from '../../platform'
-import { testWindowMs } from '../../platform/testKeys'
+import { testKeysOpen, testWindowMs } from '../../platform/testKeys'
 import type { LockService } from '../../platform/types'
 import { storageKey } from '../../storage'
 import { sessionLock } from '../locks'
@@ -115,7 +115,8 @@ export const watchMarker = (current: () => string | undefined) => {
 export const MARKER_WAIT_MS = 2000
 
 /** A spec sets `nse.test.markerWait` (ms) to widen or shorten the wait. */
-export const markerWaitMs = () => testWindowMs('nse.test.markerWait', MARKER_WAIT_MS)
+export const markerWaitMs = () =>
+    testKeysOpen ? testWindowMs('nse.test.markerWait', MARKER_WAIT_MS) : MARKER_WAIT_MS
 
 /**
  * Takes a session's lock exclusively, as a reload does: at once when free, or with `waitMs`, a
