@@ -606,15 +606,20 @@ test('the same file opened in a second tab opens unbound, as a separate copy', a
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
 })
 
-/** The page has finished opening: it keeps no record of an opening, so a reload asks nothing. */
-const openingSettled = (page: Page) =>
-    expect
+/**
+ * The page has finished opening: it keeps no record of an opening, so a reload asks nothing. The
+ * reload after it runs under the real guard, which the config's default turns off.
+ */
+const openingSettled = async (page: Page) => {
+    await expect
         .poll(() =>
             page.evaluate(() =>
                 Object.keys(localStorage).filter((key) => key.includes('.opening.')),
             ),
         )
         .toEqual([])
+    await page.evaluate(() => localStorage.removeItem('nse.test.noOpeningGuard'))
+}
 
 test('a separate copy keeps its label after a reload', async ({ page, context }) => {
     await start(page)

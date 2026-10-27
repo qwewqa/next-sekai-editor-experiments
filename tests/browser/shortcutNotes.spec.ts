@@ -29,6 +29,6 @@ test("shared-binding notes list commands in the locale's punctuation", async ({ 
             }),
         })
     await expect(row.locator('.form-field-notes')).toHaveText(
-        `${ja.commands.save.title}、${ja.commands.copy.title}も実行されます`,
+        `${ja.commands.save.title}、${ja.commands.copy.title}も実行されます。`,
     )
 })

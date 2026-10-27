@@ -482,7 +482,7 @@ test('a checked folder duplicates whole beside other entries, in one step', asyn
         'Default Other [Verse: Lead Fill] [Verse (2): Lead Fill] Bass Drums [Outro: Pad]',
     )
     await expect(
-        page.locator('.notification', { hasText: 'Duplicated group folder "Verse"' }),
+        page.locator('.notification', { hasText: 'Duplicated group folder “Verse”' }),
     ).toBeVisible()
 })
 
