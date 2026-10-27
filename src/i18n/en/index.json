@@ -2208,7 +2208,10 @@
     },
     "prompt": {
         "title": "Changes Not Stored",
-        "unsaved": "Unsaved Changes",
+        "newTitle": "Start a New Chart?",
+        "newMessage": "“{0}” has changes that are not saved to a project file. You can reopen it from Recent Sessions.",
+        "newMessageUntitled": "The session from {0} has changes that are not saved to a project file. You can reopen it from Recent Sessions.",
+        "newChart": "New Chart",
         "notStored": "Your changes are not being stored in this browser. Leaving will discard them.",
         "save": "Save",
         "leaveAnyway": "Leave Anyway"
