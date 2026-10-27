@@ -1052,9 +1052,7 @@ test('shortcut chips use the locale’s key names', async ({ page }) => {
         expect(chips).not.toContain(english)
 })
 
-test('the commands Help says repeat when held all repeat', async ({ page }) => {
-    // Help: "Hold a key to repeat scrolling, zooming, undo, redo, or changing note size,
-    // playback speed, group or stage."
+test('the commands that repeat when held all repeat', async ({ page }) => {
     const names = [
         'scrollLeft',
         'scrollRight',
