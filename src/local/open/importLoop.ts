@@ -1,5 +1,4 @@
 import { recordDiagnostic, recordError } from '../../diagnostics'
-import { testKeysOpen } from '../../platform/testKeys'
 import type { DiskState, LockService } from '../../platform/types'
 import { zipFingerprint } from '../../zip/fingerprint'
 import { handleOf, readableWithoutPrompt } from '../handles'
@@ -126,19 +125,6 @@ export const onImportProgress = (
     }
 }
 
-/** A spec slows the import by this many ms a batch, to act while it runs. */
-export const IMPORT_DELAY_TEST_KEY = 'nse.test.importDelay'
-
-const testDelay = async () => {
-    let ms = 0
-    try {
-        ms = testKeysOpen ? Number(localStorage.getItem(IMPORT_DELAY_TEST_KEY) ?? 0) : 0
-    } catch {
-        // No localStorage: no hook.
-    }
-    if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 /** Resolves once the session's import ends in this tab; `none` when none runs here. */
 export const whenImported = (sessionId: string, signal?: AbortSignal): Promise<ImportOutcome> => {
     const job = running.get(sessionId)
@@ -251,7 +237,6 @@ const runBatches = async (job: ImportJob, reread = false): Promise<ImportOutcome
         if (reread && !(await readAgain())) return await stop()
         for (let n = 0; n < batches; n++) {
             report(sessionId, { done: n, total: batches })
-            await testDelay()
             if (!(await unchanged(source, false))) return await stop()
             const outcome = await unlessRestarted(
                 worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS }),
