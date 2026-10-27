@@ -1450,6 +1450,7 @@
       "listJoin": "{0}、{1}",
       "sentenceJoin": "{0}。{1}",
       "notSet": "未设置",
+      "about": "关于{0}",
       "anchor": {
         "label": "对齐基准",
         "default": "默认",

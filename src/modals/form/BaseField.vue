@@ -22,6 +22,7 @@ import { formatNumber } from '../../utils/formatNumber'
 import { useFieldReadOnly } from './fieldReadOnly'
 import { mixedValues, useFieldUsage, type MixedValue } from './fieldUsage'
 import { formatCount } from '../../utils/size'
+import FieldInfo from './FieldInfo.vue'
 
 const props = defineProps<{
     label: string
@@ -31,6 +32,8 @@ const props = defineProps<{
     mixed?: MixedValue[]
     /** Short remarks under the field, such as a shortcut's conflicts. */
     notes?: string[]
+    /** What the setting does, behind an ⓘ after the label. */
+    description?: string
 }>()
 
 const field = useFieldUsage()
@@ -67,11 +70,13 @@ const values = computed(
 const join = (template: string, parts: string[]) =>
     parts.length ? parts.reduce((text, part) => interpolateRaw(template, text, part)) : ''
 
-const description = computed(() => {
+// What screen readers hear after the control's name: the setting's description first.
+const spoken = computed(() => {
     const messages = i18n.value.modals.form
     return join(
         messages.sentenceJoin,
         [
+            props.description,
             coverage.value &&
                 interpolateRaw(
                     messages.coverage,
@@ -104,7 +109,7 @@ const overTwoLines = (text: HTMLElement) =>
     text.clientHeight > parseFloat(getComputedStyle(text).lineHeight) * 2 + 1
 const controlOf = () =>
     row.value?.querySelector<HTMLSelectElement | HTMLButtonElement | HTMLInputElement>(
-        ':scope > select, :scope > button, :scope > input[type="button"], :scope > input[type="number"], :scope > .form-field-select > select, :scope > .form-field-toggle > input',
+        ':scope > select, :scope > button:not([data-field-info]), :scope > input[type="button"], :scope > input[type="number"], :scope > .form-field-select > select, :scope > .form-field-toggle > input',
     )
 const shownValue = (control: ReturnType<typeof controlOf>) =>
     control instanceof HTMLSelectElement
@@ -276,7 +281,9 @@ const narrow = async (value: Chip, event: MouseEvent) => {
     await nextTick()
     if (chip.isConnected) return
     row.value
-        ?.querySelector<HTMLElement>('input:checked, select, input, button, [tabindex]')
+        ?.querySelector<HTMLElement>(
+            ':is(input:checked, select, input, button, [tabindex]):not([data-field-info])',
+        )
         ?.focus()
 }
 
@@ -372,10 +379,28 @@ onBeforeUnmount(() => {
 // The control is slotted, so it is linked to the description here.
 watchEffect(
     () => {
-        const control = row.value?.querySelector('[role="radiogroup"], input, select, button')
+        const control = row.value?.querySelector(
+            ':is([role="radiogroup"], input, select, button):not([data-field-info])',
+        )
         if (!control) return
-        if (description.value) control.setAttribute('aria-describedby', descriptionId)
+        if (spoken.value) control.setAttribute('aria-describedby', descriptionId)
         else control.removeAttribute('aria-describedby')
+    },
+    { flush: 'post' },
+)
+
+// With an ⓘ in the label, the label names its control by id, which would otherwise be the ⓘ, the
+// first control inside it; the control's name is the label's text alone.
+const controlId = ref<string>()
+const fallbackControlId = useId()
+watchEffect(
+    () => {
+        if (!props.description) return
+        const control = controlOf()
+        if (!control) return
+        control.id ||= fallbackControlId
+        controlId.value = control.id
+        control.setAttribute('aria-labelledby', textId.value)
     },
     { flush: 'post' },
 )
@@ -391,15 +416,23 @@ watchEffect(
                 :is="labelId === undefined ? 'label' : 'div'"
                 ref="row"
                 class="form-field-row"
+                :for="description && labelId === undefined ? controlId : undefined"
             >
-                <span ref="labelRow" class="form-field-label"
+                <span
+                    ref="labelRow"
+                    class="form-field-label"
+                    :class="{ 'form-field-label-info': description }"
                     ><slot name="icon" /><span :id="textId" class="form-field-text"
                         >{{ labelParts.text
                         }}<span v-if="labelParts.nowrap" class="form-field-unit">{{
                             labelParts.nowrap
                         }}</span></span
-                    ></span
-                >
+                    ><FieldInfo
+                        v-if="description"
+                        :label
+                        :description
+                        :described-by="descriptionId"
+                /></span>
                 <slot :text-id="textId" />
             </component>
             <!-- Which objects the field covers and which values they hold; each chip
@@ -436,7 +469,7 @@ watchEffect(
         <div v-if="notes?.length" class="form-field-notes" aria-hidden="true">
             <p v-for="note in notes" :key="note">{{ note }}</p>
         </div>
-        <span v-if="description" :id="descriptionId" class="sr-only">{{ description }}</span>
+        <span v-if="spoken" :id="descriptionId" class="sr-only">{{ spoken }}</span>
     </div>
 </template>
 
@@ -667,6 +700,12 @@ watchEffect(
 
 .form-field-unit {
     white-space: nowrap;
+}
+
+/* The ⓘ follows the label's text, outside its clipping, centred on the lines. */
+.form-field-label-info {
+    display: flex;
+    align-items: center;
 }
 
 /* Label and control share a row once the control keeps a usable width. */

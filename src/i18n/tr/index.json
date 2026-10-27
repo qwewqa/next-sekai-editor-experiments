@@ -1450,6 +1450,7 @@
       "listJoin": "{0}, {1}",
       "sentenceJoin": "{0}. {1}",
       "notSet": "Ayarlanmadı",
+      "about": "{0} hakkında",
       "anchor": {
         "label": "Sabit Nokta",
         "default": "Varsayılan",

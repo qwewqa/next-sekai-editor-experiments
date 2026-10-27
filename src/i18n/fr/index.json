@@ -1450,6 +1450,7 @@
       "listJoin": "{0}, {1}",
       "sentenceJoin": "{0}. {1}",
       "notSet": "Non défini",
+      "about": "À propos de {0}",
       "anchor": {
         "label": "Ancrage",
         "default": "Par défaut",

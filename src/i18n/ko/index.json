@@ -1450,6 +1450,7 @@
       "listJoin": "{0}, {1}",
       "sentenceJoin": "{0}. {1}",
       "notSet": "설정 안 함",
+      "about": "{0} 정보",
       "anchor": {
         "label": "앵커",
         "default": "기본",

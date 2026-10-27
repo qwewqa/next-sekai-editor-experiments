@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// The Step Details glyph: Font Awesome's circle-info. The caller sets its size.
+// Font Awesome's circle-info: the Step Details glyph, and the info button of a setting with a
+// description. The caller sets its size.
 </script>
 
 <template>
