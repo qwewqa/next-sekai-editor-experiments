@@ -8,7 +8,12 @@ module.exports = {
     },
     content: {
         relative: true,
-        files: ['./app/index.html', './privacy/index.html', './src/landing/**/*.{ts,css}'],
+        files: [
+            './app/index.html',
+            './privacy/index.html',
+            './terms/index.html',
+            './src/landing/**/*.{ts,css}',
+        ],
     },
     theme: {
         extend: {

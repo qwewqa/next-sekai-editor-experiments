@@ -898,6 +898,7 @@
       "license": "许可证",
       "notices": "第三方声明",
       "privacy": "隐私",
+      "terms": "使用条款",
       "usageStatistics": "发送使用统计",
       "usageStatisticsNote": "我们根据使用统计决定改进哪些功能、加快哪些操作。使用统计包括您使用的工具、部分编辑器设置、文件类型和大小，以及操作所需的时间。详情参见“隐私”。",
       "usageStatisticsSignal": "默认关闭，因为此浏览器发送了 Do Not Track 或 Global Privacy Control 信号。",

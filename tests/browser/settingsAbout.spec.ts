@@ -36,13 +36,21 @@ test('About is the last section, with the name, the version and the links in ord
         await links.evaluateAll((all) =>
             all.map((link) => link.textContent.replace('↗', '').trim()),
         ),
-    ).toEqual(['Release Notes', 'Source Code', 'License', 'Third-Party Notices', 'Privacy'])
+    ).toEqual([
+        'Release Notes',
+        'Source Code',
+        'License',
+        'Third-Party Notices',
+        'Privacy',
+        'Terms',
+    ])
     expect(await links.evaluateAll((all) => all.map((link) => link.getAttribute('href')))).toEqual([
         `https://github.com/${REPOSITORY}/blob/main/CHANGELOG.md`,
         `https://github.com/${REPOSITORY}`,
         '/LICENSE.txt',
         '/THIRD_PARTY_NOTICES.txt',
         '/privacy/',
+        '/terms/',
     ])
     for (const link of await links.all()) {
         await expect(link).toHaveAttribute('target', '_blank')
@@ -84,11 +92,15 @@ const rowOf = (row: Locator) =>
         )
 
 for (const [name, version, keys] of [
-    ['a tagged build', undefined, ['releaseNotes', 'source', 'license', 'notices', 'privacy']],
+    [
+        'a tagged build',
+        undefined,
+        ['releaseNotes', 'source', 'license', 'notices', 'privacy', 'terms'],
+    ],
     [
         'a build with no release tag',
         { appVersion: '0.5.22', atTag: false },
-        ['source', 'license', 'notices', 'privacy'],
+        ['source', 'license', 'notices', 'privacy', 'terms'],
     ],
 ] as const) {
     test(`Help ends with the same links as Settings in ${name}`, async ({ page }) => {

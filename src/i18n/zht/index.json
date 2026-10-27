@@ -898,6 +898,7 @@
       "license": "授權條款",
       "notices": "第三方聲明",
       "privacy": "隱私",
+      "terms": "使用條款",
       "usageStatistics": "傳送使用統計",
       "usageStatisticsNote": "我們根據使用統計決定改善哪些功能、加快哪些操作。使用統計包括您使用的工具、部分編輯器設定、檔案類型和大小，以及操作所需的時間。詳情請參閱「隱私」。",
       "usageStatisticsSignal": "預設關閉，因為此瀏覽器傳送了 Do Not Track 或 Global Privacy Control 訊號。",

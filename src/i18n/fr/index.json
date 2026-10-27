@@ -898,6 +898,7 @@
       "license": "Licence",
       "notices": "Mentions des composants tiers",
       "privacy": "Confidentialité",
+      "terms": "Conditions d’utilisation",
       "usageStatistics": "Envoyer des statistiques d’utilisation",
       "usageStatisticsNote": "Nous utilisons les statistiques d’utilisation pour décider quelles fonctionnalités améliorer et quelles actions accélérer. Les statistiques d’utilisation comprennent les outils utilisés, certains paramètres de l’éditeur, le type et la taille des fichiers, et la durée des actions. Consultez Confidentialité pour en savoir plus.",
       "usageStatisticsSignal": "Désactivé par défaut, car ce navigateur envoie un signal Do Not Track ou Global Privacy Control.",

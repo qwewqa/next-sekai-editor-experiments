@@ -898,6 +898,7 @@
             "license": "License",
             "notices": "Third-Party Notices",
             "privacy": "Privacy",
+            "terms": "Terms",
             "usageStatistics": "Send Usage Statistics",
             "usageStatisticsNote": "We use usage statistics to decide which features to improve and which actions to speed up. They include which tools you use, some editor settings, file types and sizes, and how long actions take. See Privacy for details.",
             "usageStatisticsSignal": "Off by default because this browser sends a Do Not Track or Global Privacy Control signal.",
