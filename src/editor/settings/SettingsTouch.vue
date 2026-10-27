@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { i18n } from '../../i18n'
 import NumberField from '../../modals/form/NumberField.vue'
-import SelectField from '../../modals/form/SelectField.vue'
 import ToggleField from '../../modals/form/ToggleField.vue'
 import { settings } from '../../settings'
+import QuickScrollShowField from './QuickScrollShowField.vue'
 import SettingsSection from './SettingsSection.vue'
 </script>
 
@@ -17,15 +17,7 @@ import SettingsSection from './SettingsSection.vue'
             step="any"
         />
 
-        <SelectField
-            v-model="settings.touchQuickScrollShow"
-            :label="i18n.settings.touch.showQuickScroll.title"
-            :options="[
-                [i18n.settings.touch.showQuickScroll.on, 'on'],
-                [i18n.settings.touch.showQuickScroll.off, 'off'],
-                [i18n.settings.touch.showQuickScroll.touch, 'touch'],
-            ]"
-        />
+        <QuickScrollShowField />
 
         <ToggleField
             v-model="settings.touchScrollInertia"

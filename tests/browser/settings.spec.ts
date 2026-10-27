@@ -370,7 +370,7 @@ for (const locale of ['fr', 'tr', 'en']) {
             .locator('.form-field.form-field-value-stacked')
             .evaluateAll((fields) => fields.length)
         expect(stacked).toBeGreaterThan(0)
-        expect(stacked).toBeLessThan(12)
+        expect(stacked).toBeLessThan(13)
     })
 }
 

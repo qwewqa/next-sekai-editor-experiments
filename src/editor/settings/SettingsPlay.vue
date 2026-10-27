@@ -39,6 +39,7 @@ import SettingsSection from './SettingsSection.vue'
         <NumberField
             v-model="settings.playFollowPosition"
             :label="i18n.settings.play.followPosition"
+            :description="i18n.settings.descriptions.playFollowPosition"
             :min="0"
             :max="100"
             step="any"
@@ -47,6 +48,7 @@ import SettingsSection from './SettingsSection.vue'
         <NumberField
             v-model="settings.playPreviewDuration"
             :label="i18n.settings.play.previewDuration"
+            :description="i18n.settings.descriptions.playPreviewDuration"
             :min="0"
             :max="1000"
             step="any"

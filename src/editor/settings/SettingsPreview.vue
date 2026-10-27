@@ -61,6 +61,7 @@ const openAssets = () => {
         <NumberField
             v-model="settings.previewRenderScale"
             :label="i18n.settings.preview.renderScale"
+            :description="i18n.settings.descriptions.previewRenderScale"
             :min="previewRenderScale.min"
             :max="previewRenderScale.max"
             :step="previewRenderScale.step"
@@ -70,6 +71,7 @@ const openAssets = () => {
             v-if="workerHostSupported"
             v-model="settings.previewInWorker"
             :label="i18n.settings.preview.parallelRendering"
+            :description="i18n.settings.descriptions.previewInWorker"
         />
         <SelectField
             v-model="settings.previewTransportPosition"

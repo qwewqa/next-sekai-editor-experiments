@@ -907,6 +907,23 @@
       "copy": "复制",
       "copied": "已复制"
     },
+    "descriptions": {
+      "waveform": "“音量”在谱面上显示背景音乐的响度，“快速傅里叶变换”显示其频率。",
+      "zeroWidthNotes": "设置哪些音符的宽度可以设为 0 条轨道。",
+      "dimUnchangedObjects": "设置查看时间线中的步骤时，“显示更改”最初是否开启。可以在时间线中更改。",
+      "showOtherGroups": "聚焦群组时，其他群组中的对象以淡色显示。",
+      "showOtherStages": "聚焦舞台时，其他舞台上的对象以淡色显示。",
+      "showOtherObjects": "已隐藏类型的对象以淡色显示。",
+      "nameContrast": "为群组名称和舞台名称加上黑色描边。",
+      "dragToPanY": "在谱面顶部或底部附近拖动时，谱面会向上或向下滚动。",
+      "dragToPanX": "在谱面左侧或右侧附近拖动时，谱面会横向滚动，最远到“最大横向滚动范围”。",
+      "previewRenderScale": "缩放预览的渲染分辨率。数值越低，细节越少，渲染工作量也越小。",
+      "previewInWorker": "与编辑器的其他部分并行绘制预览。这可以减少播放时谱面的延迟。如果预览显示异常或没有显示，请关闭此项。",
+      "toolbarQuickSwitch": "按住工具按钮并沿其所在行拖动，即可选择其他工具。",
+      "playFollowPosition": "开启“跟随”时，播放期间光标会停留在此高度，谱面底部为 0，顶部为 100。",
+      "playPreviewDuration": "移动光标或选择对象时，背景音乐会播放这么长时间。",
+      "mouseSecondaryTool": "设置右键单击和按住右键拖动的操作。"
+    },
     "sections": "分区",
     "localData": {
       "title": "本地数据",

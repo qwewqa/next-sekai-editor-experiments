@@ -907,6 +907,23 @@
       "copy": "Kopyala",
       "copied": "Kopyalandı"
     },
+    "descriptions": {
+      "waveform": "Ses, arka plan müziğinin ses yüksekliğini çizelgede gösterir. FFT ise frekanslarını gösterir.",
+      "zeroWidthNotes": "Hangi notaların sıfır şerit genişliğinde olabileceğini belirler.",
+      "dimUnchangedObjects": "Zaman Çizgisi’ndeki adımları görüntülerken Değişiklikleri Göster’in açık başlayıp başlamayacağını belirler. Bunu Zaman Çizgisi’nde değiştirebilirsiniz.",
+      "showOtherGroups": "Bir gruba odaklanırken diğer gruplardaki nesneler soluk görünür.",
+      "showOtherStages": "Bir sahneye odaklanırken diğer sahnelerdeki nesneler soluk görünür.",
+      "showOtherObjects": "Gizlediğiniz bir türdeki nesneler soluk görünür.",
+      "nameContrast": "Grup ve sahne adlarının çevresine siyah bir kontur ekler.",
+      "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklemek onu yukarı veya aşağı kaydırır.",
+      "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklemek onu En Fazla X Kaydırması’na kadar yana kaydırır.",
+      "previewRenderScale": "Önizlemenin çizim çözünürlüğünü ölçekler. Daha düşük değerler ayrıntıyı ve çizim yükünü azaltır.",
+      "previewInWorker": "Önizlemeyi editörün geri kalanıyla paralel olarak çizer. Bu, oynatma sırasında çizelgedeki gecikmeleri azaltabilir. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
+      "toolbarQuickSwitch": "Bir araç düğmesini basılı tutup satırı boyunca sürükleyerek başka bir araç seçmenizi sağlar.",
+      "playFollowPosition": "Takip Et açıkken imleç oynatma sırasında bu yükseklikte kalır. Çizelgenin altı 0, üstü 100’dür.",
+      "playPreviewDuration": "İmleci taşıdığınızda veya bir nesne seçtiğinizde arka plan müziği bu süre boyunca çalar.",
+      "mouseSecondaryTool": "Sağ tıklamanın ve sağ tuşla sürüklemenin ne yapacağını belirler."
+    },
     "sections": "Bölümler",
     "localData": {
       "title": "Yerel Veriler",

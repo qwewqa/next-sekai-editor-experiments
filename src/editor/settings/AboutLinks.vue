@@ -9,6 +9,11 @@ import { GITHUB_REPOSITORY, HAS_PRIVACY_PAGE, RELEASE_NOTES_URL } from '../../bu
 import { i18n } from '../../i18n'
 import { appVersion, platform } from '../../platform'
 
+const props = defineProps<{
+    /** The links to show, by key, as `['privacy']`; all of them when unset. */
+    only?: readonly ('releaseNotes' | 'source' | 'license' | 'notices' | 'privacy')[]
+}>()
+
 const about = computed(() => i18n.value.settings.about)
 
 // Release Notes is CHANGELOG.md on main; a build with no release tag behind its version has none.
@@ -27,6 +32,12 @@ const links = computed(() => [
         : []),
 ])
 
+const listed = computed(() =>
+    links.value.filter(
+        (link) => !props.only || (props.only as readonly string[]).includes(link.key),
+    ),
+)
+
 const open = (href: string) => {
     platform.openExternal(new URL(href, location.href).href)
 }
@@ -35,7 +46,7 @@ const open = (href: string) => {
 <template>
     <div class="flex flex-wrap gap-2" data-about-links>
         <a
-            v-for="link in links"
+            v-for="link in listed"
             :key="link.key"
             :href="link.href"
             target="_blank"

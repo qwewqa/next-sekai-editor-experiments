@@ -907,6 +907,23 @@
             "copy": "Copy",
             "copied": "Copied"
         },
+        "descriptions": {
+            "waveform": "Volume shows the BGM’s loudness on the chart, and FFT shows its frequencies.",
+            "zeroWidthNotes": "Sets which notes can be made zero lanes wide.",
+            "dimUnchangedObjects": "Sets whether Show Edits starts on when you view Timeline steps. You can change it in the Timeline.",
+            "showOtherGroups": "While a group is focused, objects in other groups show faded.",
+            "showOtherStages": "While a stage is focused, objects on other stages show faded.",
+            "showOtherObjects": "Objects of a type you have hidden show faded.",
+            "nameContrast": "Outlines group and stage names in black.",
+            "dragToPanY": "Dragging near the top or bottom of the chart scrolls it up or down.",
+            "dragToPanX": "Dragging near the left or right of the chart scrolls it sideways, up to Max Scroll X.",
+            "previewRenderScale": "Scales the preview’s rendering resolution. Lower values reduce detail and rendering work.",
+            "previewInWorker": "Draws the preview in parallel with the rest of the editor. This can reduce delays in the chart during playback. If the preview looks wrong or does not appear, turn this off.",
+            "toolbarQuickSwitch": "Lets you hold a tool button and drag along its row to choose another tool.",
+            "playFollowPosition": "With Follow on, the cursor stays at this height during playback, from 0 at the bottom of the chart to 100 at the top.",
+            "playPreviewDuration": "The BGM plays for this long when you move the cursor or select an object.",
+            "mouseSecondaryTool": "Sets what right-click and right-drag do."
+        },
         "sections": "Sections",
         "localData": {
             "title": "Local Data",

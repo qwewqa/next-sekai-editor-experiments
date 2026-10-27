@@ -907,6 +907,23 @@
       "copy": "Copier",
       "copied": "Copié"
     },
+    "descriptions": {
+      "waveform": "Volume affiche l’intensité sonore de la musique sur la partition, et FFT affiche ses fréquences.",
+      "zeroWidthNotes": "Définit les notes qui peuvent avoir une largeur de zéro voie.",
+      "dimUnchangedObjects": "Définit si Afficher les modifications est activé au départ lorsque vous consultez des étapes de la chronologie. Vous pouvez le modifier dans la chronologie.",
+      "showOtherGroups": "Lorsqu’un groupe est ciblé, les objets des autres groupes s’affichent estompés.",
+      "showOtherStages": "Lorsqu’une scène est ciblée, les objets des autres scènes s’affichent estompés.",
+      "showOtherObjects": "Les objets d’un type que vous avez masqué s’affichent estompés.",
+      "nameContrast": "Entoure les noms des groupes et des scènes d’un contour noir.",
+      "dragToPanY": "Faire glisser près du haut ou du bas de la partition la fait défiler vers le haut ou vers le bas.",
+      "dragToPanX": "Faire glisser près du bord gauche ou droit de la partition la fait défiler horizontalement, jusqu’au Défilement horizontal maximal.",
+      "previewRenderScale": "Ajuste la résolution de rendu de l’aperçu. Des valeurs plus basses réduisent les détails et le travail de rendu.",
+      "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Cela peut réduire les ralentissements de la partition pendant la lecture. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
+      "toolbarQuickSwitch": "Permet de maintenir un bouton d’outil et de faire glisser le long de sa rangée pour choisir un autre outil.",
+      "playFollowPosition": "Quand Suivre est activé, le curseur reste à cette hauteur pendant la lecture, de 0 en bas de la partition à 100 en haut.",
+      "playPreviewDuration": "La musique est lue pendant cette durée lorsque vous déplacez le curseur ou sélectionnez un objet.",
+      "mouseSecondaryTool": "Définit l’action du clic droit et du glissement avec le bouton droit."
+    },
     "sections": "Rubriques",
     "localData": {
       "title": "Données locales",
