@@ -182,9 +182,9 @@ const onEscape = (event: KeyboardEvent) => {
     // The bubble closes, and the dialog under it stays.
     event.preventDefault()
     event.stopImmediatePropagation()
-    const focused = !!bubble.value?.contains(document.activeElement)
+    // Focus goes back first, while the bubble is open, so the focus does not show it again.
+    if (bubble.value?.contains(document.activeElement)) button.value?.focus()
     close()
-    if (focused) button.value?.focus()
 }
 
 const onScroll = (event: Event) => {

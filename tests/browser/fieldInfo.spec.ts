@@ -231,6 +231,23 @@ test.describe('in Settings', () => {
         await expect(bubble(page)).toHaveCount(0)
     })
 
+    test('Escape after a click inside the bubble closes it for good and focuses the button', async ({
+        page,
+    }) => {
+        const dialog = await openSettings(page)
+        const { info } = field(dialog, 'Zero-Width Notes')
+        await info.click()
+        const scroller = bubble(page).locator('[tabindex="-1"]')
+        await scroller.click()
+        await expect(scroller).toBeFocused()
+        await page.keyboard.press('Escape')
+        await expect(bubble(page)).toHaveCount(0)
+        await expect(info).toBeFocused()
+        // Past the 400 ms a keyboard focus waits before it shows the bubble.
+        await page.waitForTimeout(600)
+        await expect(bubble(page)).toHaveCount(0)
+    })
+
     test('one bubble at a time, never over its own field, and nothing around it moves', async ({
         page,
     }) => {
