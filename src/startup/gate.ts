@@ -44,7 +44,7 @@ export type RawExport = { label: () => string; run: () => Promise<string | undef
 
 type GateState = {
     phase: StartupPhase
-    /** The session being opened, once known: "Opening "Coconut (Master)"…". */
+    /** The session being opened, once known: "Opening “Coconut (Master)”…". */
     name: string | undefined
     /** Startup took longer than SLOW_MS. */
     slow: boolean
@@ -161,7 +161,7 @@ export const startupEnded = () =>
         )
     })
 
-/** The session being opened has a name: "Opening "Coconut (Master)"…". */
+/** The session being opened has a name: "Opening “Coconut (Master)”…". */
 export const setOpeningName = (name: string | undefined) => {
     startupGate.name = name
 }

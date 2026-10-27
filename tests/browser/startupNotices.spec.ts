@@ -747,7 +747,7 @@ test.describe('the status bar label', () => {
         await expect(pill(duplicate)).toContainText(
             /“Untitled · [^”]+” is open in another tab or window, so this is a separate copy./,
         )
-        await expect(pill(duplicate)).not.toContainText('"" is open')
+        await expect(pill(duplicate)).not.toContainText('“” is open')
         await expect(label(duplicate)).toHaveText(/^Untitled · .+ · separate copy$/)
         await expect(duplicate).toHaveTitle(/^Untitled · .+ · separate copy – Next SEKAI Editor$/)
         const copyOf = await duplicate.evaluate(async () => {

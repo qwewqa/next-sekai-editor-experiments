@@ -13,11 +13,11 @@ import type { StorageStatus } from '../worker/core'
 export type ShownName = { name: DisplayName; at?: number }
 
 export type LoadEvent =
-    /** A new visit continued the most recent session: "Continued "{0}" from {1}." [Open History]. */
+    /** A new visit continued the most recent session: "Continued “{0}” from {1}." [Open History]. */
     | { kind: 'continued'; name: ShownName; from?: number }
     /** The canary: "Work from earlier visits is missing. The browser cleared this site’s storage." */
     | { kind: 'storageCleared' }
-    /** "A recovered change to "{0}" was kept as a separate session." [Restore Session]. */
+    /** "A recovered change to “{0}” was kept as a separate session." [Restore Session]. */
     | { kind: 'journalKept'; name: ShownName; sessionId: string }
     /** A journal of an earlier visit recovered as a session: "Recovered unsaved work…" [Restore Session]. */
     | { kind: 'unsavedRecovered'; sessionId: string }
@@ -31,13 +31,13 @@ export type LoadEvent =
      */
     | { kind: 'migrationFailed'; unreadable?: true }
     /**
-     * The auto save migrated: "Continued "{0}" from the old auto save." (no "Continued…" line
+     * The auto save migrated: "Continued “{0}” from the old auto save." (no "Continued…" line
      * then) when it's the session that opened; otherwise it's kept as a session of its own.
      */
     | { kind: 'migrated'; name: ShownName; sessionId: string; opened: boolean }
     /** The migrated auto save was made for an older engine revision: it opens with a warning. */
     | { kind: 'migratedRevision'; sessionId: string }
-    /** "Recovered your last change to "{0}"." */
+    /** "Recovered your last change to “{0}”." */
     | { kind: 'journalRecovered'; name: ShownName; sessionId: string }
     /** "A recovered change requires a newer version of the editor." */
     | { kind: 'journalLater' }
