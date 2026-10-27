@@ -1,7 +1,7 @@
 import { watch } from 'vue'
 import { SITE } from '../buildInfo'
 import { builtInCommandNames } from '../editor/commands/names'
-import { isPanelVisible, workspaceSize } from '../editor/workspace'
+import { isPanelVisible } from '../editor/workspace'
 import { onHistoryAction, type HistoryAction } from '../history/actions'
 import { STACK_CAP } from '../history/cap'
 import { liveState, stackLength } from '../history/stack'
@@ -47,15 +47,16 @@ const referrerOrigin = () => {
 
 const visit = (): EventData<'visit'> => {
     const language = navigator.language.split('-')[0]?.toLowerCase() ?? ''
-    const { width, height } = workspaceSize.value
-    const { cores, deviceMemory, dpr, viewport } = device()
+    const { cores, deviceMemory, dpr, viewport, viewportHeight, viewportAspect } = device()
     return {
         version: launch.release,
         site: SITE === 'test' ? 'test' : 'production',
         ...detection(),
         standalone: isStandalone(),
         touch: matchMedia('(pointer: coarse)').matches,
-        ...(viewport && { viewport, viewportPortrait: height > width }),
+        ...(viewport && { viewport }),
+        ...(viewportHeight && { viewportHeight }),
+        ...(viewportAspect && { viewportAspect }),
         ...(dpr && { dpr }),
         ...(cores && { cores }),
         ...(deviceMemory && { deviceMemory }),

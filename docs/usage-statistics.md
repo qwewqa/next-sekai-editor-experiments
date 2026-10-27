@@ -49,6 +49,8 @@ Most ranges include the lower value and exclude the upper value. Chart-count and
 | Storage limit | `quota` | `<256M`, `256M-1G`, `1G-4G`, `4G-16G`, `16G-64G`, `64G-256G`, `256G+` |
 | Share of the storage limit used, in percent | `usageShare` | `<50`, `50-70`, `70-80`, `80-90`, `90-95`, `95-100`, `100+` |
 | Workspace width, in pixels | `viewport` | `<360`, `360-400`, `400-480`, `480-640`, `640-768`, `768-1000`, `1000-1100`, `1100-1440`, `1440-1920`, `1920-2560`, `2560+` |
+| Workspace height, in pixels | `viewportHeight` | `<400`, `400-500`, `500-600`, `600-768`, `768-900`, `900-1080`, `1080-1440`, `1440+` |
+| Workspace width divided by height | `viewportAspect` | `<0.5`, `0.5-0.65`, `0.65-0.85`, `0.85-1`, `1-1.15`, `1.15-1.45`, `1.45-1.7`, `1.7-1.9`, `1.9-2.3`, `2.3+` |
 | Pixel density | `dpr` | `<1`, `1`, `1-1.5`, `1.5-2`, `2`, `2-2.5`, `2.5-3`, `3`, `3+` |
 | Processor cores | `cores` | `1` to `32` exactly, then `33-48`, `49-64`, `65-96`, `97-128`, `129+` |
 | Preview note speed | `previewNoteSpeed` | `1-5`, `5-8`, `8-9`, `9-10`, `10`, `10-10.5`, `10.5-11`, `11-11.5`, `11.5-12` |
@@ -85,6 +87,8 @@ The events `startup`, `open`, `save`, `export`, `check`, `bgm`, `peek` and `perf
 | `touch` | Whether the primary pointing device has limited precision, as with a touch screen | Yes or no |
 | `dpr` | The pixel density of the screen | Exact for 1, 2 and 3, a range otherwise |
 | `viewport` | The width of the editor’s workspace in pixels | Range |
+| `viewportHeight` | The height of the editor’s workspace in pixels | Range |
+| `viewportAspect` | The workspace’s width divided by its height. Below 1, it is taller than it is wide | Range |
 
 For `open`, `save`, `export`, `check` and `bgm`, device details are recorded when the action ends. For `startup`, they are recorded when statistics collection starts. For `peek` and `perf`, they are recorded when the events are sent.
 
@@ -105,7 +109,8 @@ Recorded once when statistics collection starts.
 | `standalone` | Whether the editor runs in a window of its own, such as an installed web app | Yes or no |
 | `touch` | Whether the primary pointing device has limited precision | Yes or no |
 | `viewport` | The width of the editor’s workspace | Range |
-| `viewportPortrait` | Whether the workspace is taller than it is wide | Yes or no |
+| `viewportHeight` | The height of the editor’s workspace | Range |
+| `viewportAspect` | The workspace’s width divided by its height | Range |
 | `dpr` | The pixel density of the screen | Exact for 1, 2 and 3, a range otherwise |
 | `cores` | The number of processor cores | Exact from 1 to 32, then a range |
 | `deviceMemory` | The memory reported by the browser | As above |
@@ -154,7 +159,7 @@ Recorded once when statistics collection starts, with the startup result.
 | `navigation` | How the page was loaded | `navigate`, `reload`, `back_forward`, `other` or `unknown` |
 | `documentDelivery` | Where the page was loaded from, as estimated from the browser’s timing data. A cached page does not mean that scripts or stored data were already loaded | `cache`, `network`, `serviceWorker` or `unknown` |
 | `wasDiscarded` | Whether the browser had discarded this page earlier to free memory. Sent only when the browser reports it | Yes or no |
-| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 Each of the following fields is included and set to yes when its condition applies during startup. Other fields in this list are omitted.
 
@@ -235,7 +240,7 @@ Recorded when an attempt to open a chart through **Open File…** ends. Opening 
 | `outcome` | The result of opening the file | `done`, `cancelled`, `refused` or `failed` |
 | `reason` | Why the file was refused | `unsupported` or `invalid` |
 | `took` | How long opening took, measured from when the file was chosen | Milliseconds |
-| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `save`
 
@@ -252,7 +257,7 @@ Recorded when a **Save**, **Save As…**, **Download Again** or **Save…** acti
 | `outcome` | How the action ended | `done`, `cancelled`, `noChanges`, `forked`, `unlinked`, `refused`, `conflict`, `failed` or `error` |
 | `reason` | Why saving failed or was refused: a file error, a session that is not kept, a file that is not a project file, level data or safe mode | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only`, `io`, `notKept`, `notProject`, `levelData` or `safeMode` |
 | `step` | The part of saving that failed | `build`, `read`, `readBack`, `download` or `check` |
-| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `export`
 
@@ -267,7 +272,7 @@ Recorded when writing an export succeeds or fails. Cancelling an export is not r
 | `buildMs` | How long building the file took | Milliseconds |
 | `outcome` | How the export ended | `done` or `failed` |
 | `reason` | The file error that caused the export to fail | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only` or `io` |
-| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `check`
 
@@ -279,7 +284,7 @@ Recorded when **Check File and History** finishes, unless it was cancelled.
 | `took` | How long the check took | Milliseconds |
 | `scope` | Whether the check covered only the stored History or also a file | `stored` or `fileAndStored` |
 | `size` | The size of the file checked. Sent only when a file was checked | Range |
-| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `bgm`
 
@@ -292,7 +297,7 @@ Recorded each time music is chosen.
 | `length` | The music’s length. Sent only when the music loaded | Range |
 | `took` | How long loading took | Milliseconds |
 | `outcome` | The result of loading the music | `done`, `cancelled` or `failed` |
-| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### Activity Counts
 
@@ -353,7 +358,7 @@ Sent with `perf` when Timeline steps were viewed since the previous batch.
 | --- | --- | --- |
 | `peek.<time>` | The number of Timeline steps in each duration range. Timing starts when loading begins, after any initial delay, and ends when the step is shown with its change | Count for each range |
 | `peek.cached` | The number of steps shown from the cache and not timed | Count |
-| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `perf`
 
@@ -371,7 +376,7 @@ Sent with every batch. Measurements cover the interval since the previous batch,
 | `visibleTime` | The time the page was visible since the previous batch | Seconds |
 | `previewHost` | The thread used to draw the preview during this interval. `none` means the preview was not shown, `mixed` means the value changed, and `unknown` means the thread could not be determined | `main`, `worker`, `none`, `mixed` or `unknown` |
 | `previewRenderScale` | The preview’s render scale during this interval, with `mixed` when it changed | `0.25`, `0.5`, `0.75`, `1`, `1.25`, `1.5`, `1.75`, `2`, `mixed` or `unknown` |
-| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport` | The device details above | As above |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `unsupported`
 

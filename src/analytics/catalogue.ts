@@ -73,6 +73,8 @@ const device = {
     touch: 'boolean',
     dpr: scale('dpr'),
     viewport: scale('viewport'),
+    viewportHeight: scale('viewportHeight'),
+    viewportAspect: scale('viewportAspect'),
 } as const
 
 const position = oneOf('auto', 'left', 'right', 'top', 'disabled')
@@ -128,7 +130,8 @@ export const catalogue = {
         standalone: 'boolean',
         touch: 'boolean',
         viewport: scale('viewport'),
-        viewportPortrait: 'boolean',
+        viewportHeight: scale('viewportHeight'),
+        viewportAspect: scale('viewportAspect'),
         dpr: scale('dpr'),
         cores: scale('cores'),
         deviceMemory: device.deviceMemory,

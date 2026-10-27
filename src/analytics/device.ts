@@ -1,7 +1,8 @@
 import { workspaceSize } from '../editor/workspace'
 import { detection } from '../platform/detect'
 import type { EventData } from './catalogue'
-import { bucket, measured } from './scales'
+import { bucket } from './scales'
+import { viewportDetails } from './viewport'
 
 // The device an event ran on. The recorded events (open, save, export, check, bgm) take it as the
 // action ends, through the reader that start.ts gives `tally.record`, so a resize or a move to
@@ -10,7 +11,14 @@ import { bucket, measured } from './scales'
 
 export type Device = Pick<
     EventData<'perf'>,
-    'cores' | 'deviceMemory' | 'engine' | 'touch' | 'dpr' | 'viewport'
+    | 'cores'
+    | 'deviceMemory'
+    | 'engine'
+    | 'touch'
+    | 'dpr'
+    | 'viewport'
+    | 'viewportHeight'
+    | 'viewportAspect'
 >
 
 /** The browser's approximate memory in GiB, where it reports one. */
@@ -25,19 +33,18 @@ const deviceMemory = (): Device['deviceMemory'] => {
         : 'other'
 }
 
-/** What every measured event repeats: the device it ran on, and the workspace's width. */
+/** What every measured event repeats: the device it ran on, and the workspace's size. */
 export const device = (): Device => {
     const cores = navigator.hardwareConcurrency
     const memory = deviceMemory()
     const dpr = devicePixelRatio
-    const viewport = measured('viewport', workspaceSize.value.width)
     return {
         ...(cores > 0 && { cores: bucket('cores', cores) }),
         ...(memory && { deviceMemory: memory }),
         engine: detection().engine,
         touch: matchMedia('(pointer: coarse)').matches,
         ...(dpr > 0 && { dpr: bucket('dpr', dpr) }),
-        ...(viewport && { viewport }),
+        ...viewportDetails(workspaceSize.value.width, workspaceSize.value.height),
     }
 }
 

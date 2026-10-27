@@ -510,6 +510,8 @@ test('a scripted visit counts each press once by name and source, and sends the 
     })
     expect(['main', 'worker', 'none']).toContain(dataOf(first, 'perf')?.previewHost)
     expect(dataOf(first, 'perf')).toHaveProperty('viewport')
+    expect(dataOf(first, 'perf')).toHaveProperty('viewportHeight')
+    expect(dataOf(first, 'perf')).toHaveProperty('viewportAspect')
     expect(dataOf(first, 'perf')).toHaveProperty('previewRenderScale')
     expect(stray).toEqual([])
     expect(messages).toEqual([])
@@ -592,6 +594,8 @@ test('a startup that ends in an error is reported once the error page is used', 
     expect(startup).not.toHaveProperty('ready')
     expect(startup).toHaveProperty('navigation')
     expect(startup).toHaveProperty('viewport')
+    expect(startup).toHaveProperty('viewportHeight')
+    expect(startup).toHaveProperty('viewportAspect')
 })
 
 test('opening History and its Recent Sessions tab are counted as features', async ({
