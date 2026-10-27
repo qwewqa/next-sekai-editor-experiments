@@ -515,14 +515,14 @@ test('owner records use Not set, one term, and 1-based positions', () => {
     })
     assert.deepEqual(items(byId('owner.ungroup.3'), 'released'), ['3 groups'])
     assert.deepEqual(byId('owner.ungroup.stage0').rows, [])
-    assert.equal(byId('owner.create.group.emptyName').description, 'Added "" group')
+    assert.equal(byId('owner.create.group.emptyName').description, 'Added group ""')
 })
 
 test('cascades and replacements are recorded in the dialog only', () => {
     const del = byId('owner.delete.cascade')
-    assert.equal(del.description, 'Deleted "Alpha" group')
+    assert.equal(del.description, 'Deleted group "Alpha"')
     assert.deepEqual(items(del, 'removed'), ['1 group', '800 notes', '12 time scales'])
-    assert.deepEqual(del.facts, ['Added "Group 1" group'])
+    assert.deepEqual(del.facts, ['Added group "Group 1"'])
     const folder = byId('owner.delete.cascade.stageFolder')
     assert.deepEqual(items(folder, 'removed'), [
         '2 stages',
@@ -532,7 +532,7 @@ test('cascades and replacements are recorded in the dialog only', () => {
     assert.deepEqual(byId('owner.delete.folderOnly').rows, [])
     assert.deepEqual(byId('owner.delete.counts.noCascade').rows, [])
     const copy = byId('owner.duplicate.cascade')
-    assert.equal(copy.description, 'Duplicated "Alpha" group')
+    assert.equal(copy.description, 'Duplicated group "Alpha"')
     assert.deepEqual(items(copy, 'added'), ['1 group', '120 notes', '1 time scale'])
     assert.deepEqual(byId('owner.duplicate.folderOnly').rows, [])
 })

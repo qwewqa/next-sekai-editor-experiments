@@ -188,7 +188,7 @@ test('Escape with changes asks, Keep Editing keeps them, and without changes it 
 
     await openLevelInfo(page)
     await type(field(form, 'Title'), 'Changed')
-    const ask = page.getByRole('dialog', { name: 'Discard changes to level info?', exact: true })
+    const ask = page.getByRole('dialog', { name: 'Discard changes to Level Info?', exact: true })
     for (const leave of ['Escape', 'Close']) {
         if (leave === 'Escape') await page.keyboard.press('Escape')
         else await form.getByRole('button', { name: leave, exact: true }).click()
@@ -283,7 +283,7 @@ test('Escape in the description asks before it throws the typed text away', asyn
     // Typed, not left: the text is already part of what the dialog guards.
     await description.fill('Typed but not left')
     await page.keyboard.press('Escape')
-    const ask = page.getByRole('dialog', { name: 'Discard changes to level info?', exact: true })
+    const ask = page.getByRole('dialog', { name: 'Discard changes to Level Info?', exact: true })
     await expect(ask).toBeVisible()
     await confirmWhenReady(ask.getByRole('button', { name: 'Keep Editing', exact: true }), ask)
     await expect(description).toHaveValue('Typed but not left')
@@ -384,7 +384,7 @@ test('a cover that is not loaded says so, and the same file brings it back witho
     })
     await expect(form.locator('[data-level-info-cover]')).toContainText('other.png')
     await page.keyboard.press('Escape')
-    const ask = page.getByRole('dialog', { name: 'Discard changes to level info?' })
+    const ask = page.getByRole('dialog', { name: 'Discard changes to Level Info?' })
     await confirmWhenReady(ask.getByRole('button', { name: 'Discard', exact: true }), ask)
     await expect(dialog(page)).toHaveCount(0)
 
@@ -431,7 +431,7 @@ test('a cover the dialog replaces or discards is released, and one it applies is
 
     // Discarded: nothing the dialog picked stays.
     await page.keyboard.press('Escape')
-    const ask = page.getByRole('dialog', { name: 'Discard changes to level info?' })
+    const ask = page.getByRole('dialog', { name: 'Discard changes to Level Info?' })
     await confirmWhenReady(ask.getByRole('button', { name: 'Discard', exact: true }), ask)
     await expect(dialog(page)).toHaveCount(0)
     expect(await holds(page, second)).toBe(false)

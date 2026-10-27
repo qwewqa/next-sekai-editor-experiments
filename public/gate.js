@@ -39,8 +39,8 @@
 
     function message(win) {
         return isWebKit(win)
-            ? 'This editor requires Safari 17 or later (iOS 17 or later on iPhone and iPad).'
-            : 'This browser is too old for the editor.'
+            ? 'The editor requires Safari 17 or later. On iPhone and iPad, it requires iOS 17 or later.'
+            : 'This browser does not support the features required by the editor. Update it, or open the editor in another browser.'
     }
 
     function decodeBase64(text) {
@@ -98,7 +98,7 @@
     function recoveryFiles(storage) {
         var files = []
         var autoSave = [
-            ['autoSave.levelData', 'Download Your Last Auto Save'],
+            ['autoSave.levelData', 'Download Last Auto Save'],
             ['autoSave.unreadable', 'Download Unreadable Auto Save'],
         ]
         for (var i = 0; i < autoSave.length; i++) {

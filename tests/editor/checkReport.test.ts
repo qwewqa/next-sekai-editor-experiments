@@ -55,7 +55,7 @@ test('the lines keep their order, with plural counts and each media kind once', 
         media: [['preview', 'bgm'], ['cover'], ['cover']],
     })
     assert.deepEqual(lines, [
-        '"coconut.nxsp" is damaged. Saving makes a separate file.',
+        '“coconut.nxsp” is damaged. Saving will create a separate file.',
         'Repaired 1 Timeline step.',
         '3 Timeline steps stored in this browser are damaged.',
         'The BGM stored in this browser was damaged.',
@@ -67,7 +67,7 @@ test('the lines keep their order, with plural counts and each media kind once', 
 
 test('a history-only check says so, and a reason line follows the scope', () => {
     const lines = text({
-        reason: () => '"coconut.nxsp": changed on disk since you opened or saved it here.',
+        reason: () => '“coconut.nxsp” has changed on disk since you opened or saved it here.',
         repaired: 2,
         damaged: 1,
         media: [],
@@ -76,7 +76,7 @@ test('a history-only check says so, and a reason line follows the scope', () => 
         'Repaired 2 Timeline steps.',
         '1 Timeline step stored in this browser is damaged.',
         'Checked the history stored in this browser.',
-        '"coconut.nxsp": changed on disk since you opened or saved it here.',
+        '“coconut.nxsp” has changed on disk since you opened or saved it here.',
     ])
 })
 

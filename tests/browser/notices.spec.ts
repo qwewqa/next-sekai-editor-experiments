@@ -253,7 +253,7 @@ test('Help lists Alt+N', async ({ page }) => {
     })
     await expect(
         page.getByText(
-            'Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.',
+            'Alt+N (Option+N on macOS) moves focus to the latest notice. Press Esc to close it.',
         ),
     ).toBeVisible()
 })

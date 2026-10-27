@@ -232,7 +232,7 @@ test('all native IDs render current-language singleton descriptions and complete
     assert.equal(describeOperation(fixture[7], en), 'Pasted 3 objects')
     assert.equal(describeOperation(fixture[16], en), 'Set Lane to 0 on 2 notes')
     assert.equal(describeOperation(fixture[18], en), 'Changed BGM file')
-    assert.equal(describeOperation(fixture[22], en), 'Set Force Note Speed of "A" group to 0')
+    assert.equal(describeOperation(fixture[22], en), 'Set Force Note Speed to 0 for group "A"')
 })
 
 const samples: Record<FieldId, FieldValue<FieldId>> = {

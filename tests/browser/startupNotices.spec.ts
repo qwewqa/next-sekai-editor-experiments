@@ -1314,7 +1314,7 @@ test.describe('Settings › Local Data', () => {
             await expect(rows).toHaveCount(2)
             const journal = later.locator('[data-recovery-row="journal"]')
             await expect(journal).toContainText(
-                /Unsaved work from an earlier visit, [A-Z][a-z]{2} \d/,
+                /Unsaved work from an earlier visit · [A-Z][a-z]{2} \d/,
             )
             await expect(journal.getByRole('button')).toHaveText(['Open', 'Download'])
             const autoSave = later.locator('[data-recovery-row="autoSave"]')

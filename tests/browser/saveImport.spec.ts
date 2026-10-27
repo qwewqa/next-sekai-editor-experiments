@@ -82,7 +82,7 @@ test('damage the import finds while a Save waits: the session unlinks, and Save 
     await pressSave(page)
     const saveAs = saveDialog(page, 'Save As')
     await expect(saveAs).toContainText(
-        '"coconut.nxsp" has damaged history. Saving makes a separate file.',
+        'The history in coconut.nxsp is damaged. Saving will create a separate file.',
         { timeout: 15_000 },
     )
     await expect(saveAs.getByRole('textbox')).toHaveValue(/\(2\)$/)
