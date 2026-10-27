@@ -255,6 +255,7 @@
       "importedUsc": "USC çizelgesi içe aktarıldı",
       "importedSus": "SUS çizelgesi içe aktarıldı",
       "unsupported": "Desteklenmeyen dosya. Proje dosyası, seviye verisi, Chart Cyanvas seviyesi ya da USC veya SUS çizelgesi açın.",
+      "tooLarge": "Bu dosya açılamayacak kadar büyük.",
       "invalidLevel": "Geçersiz seviye: {0}",
       "invalidChart": "Geçersiz çizelge: {0}",
       "revision": {
@@ -621,8 +622,10 @@
         "title": "Başlarken",
         "bgm": "Müziği yüklemek ve zaman kaymasını ayarlamak için Arka Plan Müziği komutunu seçin.",
         "bpm": "BPM komutunu seçin ve çizelgenin başındaki BPM değişikliğine dokunun. BPM değerini düzenlemek için tekrar dokunun.",
+        "bpmClick": "BPM komutunu seçin ve çizelgenin başındaki BPM değişikliğine tıklayın. BPM değerini düzenlemek için tekrar tıklayın.",
         "notes": "Nota komutunu seçin ve bir nota eklemek için çizelgeye dokunun. Kaydırma eklemek için önce Seçimi Kaldır, ardından Kaydırma komutunu seçin ve kaydırmanın başlangıç ve bitiş noktalarına dokunun.",
-        "save": "Çalışmanızı bir proje dosyasında (.nxsp) saklamak için Kaydet komutunu seçin. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar… komutunu kullanın."
+        "notesClick": "Nota komutunu seçin ve bir nota eklemek için çizelgeye tıklayın. Kaydırma eklemek için önce Seçimi Kaldır, ardından Kaydırma komutunu seçin ve kaydırmanın başlangıç ve bitiş noktalarına tıklayın.",
+        "save": "Çalışmanızı bir proje dosyasında (.nxsp) saklamak için Kaydet komutunu seçin. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar komutunu kullanın."
       },
       "touchscreen": {
         "title": "Dokunmatik Ekran",
@@ -645,44 +648,57 @@
       },
       "selectTool": {
         "select": "Nesnelerin üst üste geldiği yerlerde her dokunuş bir sonraki nesneyi seçer.",
-        "selectMultiple": "İçindeki nesneleri seçmek için boş alandan başlayıp sürükleyerek bir çerçeve çizin.",
+        "selectClick": "Nesnelerin üst üste geldiği yerlerde her tıklama bir sonraki nesneyi seçer.",
         "move": "Seçimin tamamını taşımak için seçili bir nesneyi sürükleyin.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin. Seçili nesnelerin tümü aynı türdeyse boyutları birlikte değişir.",
-        "modifiers": "Seçime nesne eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutun. Kaydırmaların tamamını seçmek için Shift tuşunu basılı tutun."
+        "modifiers": "Seçime nesne eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutun. Kaydırmaların tamamını seçmek için Shift tuşunu basılı tutun.",
+        "selectMultiple": "İçindeki nesneleri seçmek için boş alandan başlayıp sürükleyerek bir çerçeve çizin."
       },
       "eraserTool": {
         "erase": "Bir nesneyi silmek için ona dokunun veya içindeki her şeyi silmek için sürükleyerek bir çerçeve çizin.",
-        "selection": "Seçimin tamamını silmek için seçili bir nesneye dokunun."
+        "eraseClick": "Bir nesneyi silmek için ona tıklayın veya içindeki her şeyi silmek için sürükleyerek bir çerçeve çizin.",
+        "selection": "Seçimin tamamını silmek için seçili bir nesneye dokunun.",
+        "selectionClick": "Seçimin tamamını silmek için seçili bir nesneye tıklayın."
       },
       "brushTool": {
         "properties": "Fırça komutunu seçin, ardından uygulanacak özellikleri ayarlayın.",
         "brush": "Fırçayı uygulamak için bir nesneye dokunun veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye dokunun.",
+        "brushClick": "Fırçayı uygulamak için bir nesneye tıklayın veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye tıklayın.",
         "shift": "Fırçayı kaydırmaların tamamına uygulamak için Shift tuşunu basılı tutun."
       },
       "pasteTool": {
-        "paste": "Kopyalanan nesneleri yerleştirmek için dokunun veya sürükleyin. Yatay çevirmek için Shift tuşunu basılı tutun."
+        "paste": "Kopyalanan nesneleri yerleştirmek için dokunun veya sürükleyin. Yatay çevirmek için Shift tuşunu basılı tutun.",
+        "pasteClick": "Kopyalanan nesneleri yerleştirmek için tıklayın veya sürükleyin. Yatay çevirmek için Shift tuşunu basılı tutun."
+      },
+      "noteTool": {
+        "presets": "Varsayılan özellikleri göstermek ve Nota #1 ile Nota #4 arasındaki ön ayarlar arasında geçiş yapmak için Nota komutunu tekrar seçin.",
+        "quickEdit": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Nota #2 ön ayarı Kritik özelliğini açar veya kapatır.",
+        "quickEditClick": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya tıklayın. Örneğin, varsayılan Nota #2 ön ayarı Kritik özelliğini açar veya kapatır."
+      },
+      "slideTool": {
+        "connect": "Aynı kaydırmanın notaları seçiliyken o kaydırmaya başka bir nota eklemek için boş alana dokunun. Yeni bir kaydırmaya başlamadan önce Seçimi Kaldır komutunu seçin.",
+        "connectClick": "Aynı kaydırmanın notaları seçiliyken o kaydırmaya başka bir nota eklemek için boş alana tıklayın. Yeni bir kaydırmaya başlamadan önce Seçimi Kaldır komutunu seçin.",
+        "presets": "Varsayılan özellikleri göstermek ve Kaydırma #1 ile Kaydırma #5 arasındaki ön ayarlar arasında geçiş yapmak için Kaydırma komutunu tekrar seçin.",
+        "quickEdit": "Nota aracında olduğu gibi, geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Kaydırma #1 ön ayarı Bağlayıcı Yumuşatma özelliğini değiştirir.",
+        "quickEditClick": "Nota aracında olduğu gibi, geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya tıklayın. Örneğin, varsayılan Kaydırma #1 ön ayarı Bağlayıcı Yumuşatma özelliğini değiştirir.",
+        "splitCombine": "Kaydırmayı Böl, seçilen her notanın sonraki notayla bağlantısını keser. Kaydırmada Birleştir, seçili notaların ait olduğu kaydırmaları tek bir kaydırmada birleştirir."
       },
       "generateSlideNotesTool": {
         "generate": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine dokunun. Her boş bölüm çizgisine bir nota eklenir.",
-        "generateMultiple": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Seçimdeki her kaydırmayı doldurmak için seçili bir notaya dokunun. Yalnızca bir notası seçili olan kaydırmanın tamamı doldurulur."
+        "generateClick": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine tıklayın. Her boş bölüm çizgisine bir nota eklenir.",
+        "generateMultiple": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Seçimdeki her kaydırmayı doldurmak için seçili bir notaya dokunun. Yalnızca bir notası seçili olan kaydırmanın tamamı doldurulur.",
+        "generateMultipleClick": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Seçimdeki her kaydırmayı doldurmak için seçili bir notaya tıklayın. Yalnızca bir notası seçili olan kaydırmanın tamamı doldurulur."
       },
       "adding": {
         "title": "Nesne Ekleme",
         "add": "Nota, Kaydırma, BPM, Zaman Ölçeği veya Olay aracında bir nesne eklemek için boş alana dokunun. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
+        "addClick": "Nota, Kaydırma, BPM, Zaman Ölçeği veya Olay aracında bir nesne eklemek için boş alana tıklayın. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
         "edit": "Özelliklerini göstermek için seçili bir nesneye dokunun.",
+        "editClick": "Özelliklerini göstermek için seçili bir nesneye tıklayın.",
         "move": "Bir nesneyi sürüklediğinizde yalnızca o nesne taşınır. Birden fazla nesneyi birlikte taşımak için Seçim aracını kullanın.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin.",
-        "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun."
-      },
-      "noteTool": {
-        "presets": "Varsayılan özellikleri göstermek ve Nota #1 ile Nota #4 arasındaki ön ayarlar arasında geçiş yapmak için Nota komutunu tekrar seçin.",
-        "quickEdit": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Nota #2 ön ayarı Kritik özelliğini açar veya kapatır."
-      },
-      "slideTool": {
-        "connect": "Aynı kaydırmanın notaları seçiliyken o kaydırmaya başka bir nota eklemek için boş alana dokunun. Yeni bir kaydırmaya başlamadan önce Seçimi Kaldır komutunu seçin.",
-        "presets": "Varsayılan özellikleri göstermek ve Kaydırma #1 ile Kaydırma #5 arasındaki ön ayarlar arasında geçiş yapmak için Kaydırma komutunu tekrar seçin.",
-        "quickEdit": "Nota aracında olduğu gibi, geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Kaydırma #1 ön ayarı Bağlayıcı Yumuşatma özelliğini değiştirir.",
-        "splitCombine": "Kaydırmayı Böl, seçilen her notanın sonraki notayla bağlantısını keser. Kaydırmada Birleştir, seçili notaların ait olduğu kaydırmaları tek bir kaydırmada birleştirir."
+        "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun.",
+        "modifiersClick": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak tıklayın. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya tıklayın."
       },
       "bpmTool": {
         "first": "Çizelge her zaman bir BPM değişikliğiyle başlar. Bunu sürüklediğinizde bıraktığınız yere bir kopyası eklenir.",
@@ -695,7 +711,8 @@
       "event": {
         "next": "Bir olay aracına geçmek için Olay komutunu seçin. Olay araçları arasında sırayla geçiş yapmak için tekrar seçin.",
         "defaults": "Bir olay aracının varsayılan özelliklerini düzenlemek için Kamera Olayı gibi kendi adını tekrar seçin.",
-        "quickEdit": "Özellikler paneli görünürken seçili bir olaya dokunduğunuzda olayın yumuşatması da değişir."
+        "quickEdit": "Özellikler paneli görünürken seçili bir olaya dokunduğunuzda olayın yumuşatması da değişir.",
+        "quickEditClick": "Özellikler paneli görünürken seçili bir olaya tıkladığınızda olayın yumuşatması da değişir."
       },
       "offset": {
         "drag": "Arka plan müziğinin zaman kaymasını değiştirmek için yukarı veya aşağı sürükleyin."
@@ -1120,7 +1137,9 @@
     "openingBlank": "Açılıyor…",
     "slow": "Bu işlem her zamankinden uzun sürüyor.",
     "error": "Editör saklanan çalışmanızı açamadı.",
-    "blank": "Boş Başlat"
+    "blank": "Boş Başlat",
+    "unfinished": "Geçen sefer \"{0}\" açılırken işlem yarım kaldı.",
+    "unfinishedUntitled": "Geçen sefer oturumunuz açılırken işlem yarım kaldı."
   },
   "safe": {
     "bar": "Güvenli mod: değişiklikler saklanmıyor.",
@@ -1663,7 +1682,7 @@
         "unassigned": "Atanmamış",
         "reserved": "{0} tarayıcıya veya sisteme ayrılmıştır; başka bir tuşa basın.",
         "altGraph": "{0} birçok klavye düzeninde karakter yazmak için kullanılır. Başka bir tuşa basın.",
-        "alsoRuns": "{0} komutunu da çalıştırır",
+        "alsoRuns": "{0} komutunu da çalıştırır.",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -1801,6 +1820,8 @@
     "loading": {
       "loading": "Yükleniyor…",
       "audioUnreadable": "Bu ses dosyası okunamadı.",
+      "audioMayBeTooLong": "Bu ses dosyası yüklenemedi. Ses dosyaları en fazla {0} dakika uzunluğunda olabilir.",
+      "audioTooLong": "Bu ses dosyası {0} dakikadan uzun olduğu için yüklenemedi.",
       "imageUnreadable": "Bu görsel okunamadı.",
       "coverFailed": "Kapak oluşturulamadı.",
       "failed": "İşlem tamamlanamadı."
@@ -2050,6 +2071,7 @@
     "bgm": "Arka Plan Müziği",
     "placeholder": "Adsız",
     "exportHint": "Sonolus için Seviye Verisini Dışa Aktar… komutunu kullanın.",
+    "exportHintText": "Sonolus için Seviye Verisini Dışa Aktar komutunu kullanın.",
     "exportHintFirst": "Proje dosyaları (.nxsp) yalnızca bu editörde kullanılır. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar… komutunu kullanın.",
     "exportHintNames": "Seviye verisi dosyaları uzantısız olabilir veya .nsld ya da .json.gz ile bitebilir.",
     "openExport": "Seviye Verisini Dışa Aktar…",
@@ -2076,8 +2098,8 @@
     "tooLarge": "Dosya çok büyük.",
     "restoredName": "{0} ({1} geri yüklendi)",
     "fileType": "Next SEKAI proje dosyası",
-    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar… komutunu kullanın.",
-    "storageUnavailable": "Kaydedilmedi. Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin veya Farklı Kaydet… komutunu kullanın.",
+    "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar komutunu kullanın.",
+    "storageUnavailable": "Kaydedilmedi. Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin veya Farklı Kaydet komutunu kullanın.",
     "include": "Dahil Edilecekler",
     "historySize": "{0} adım · {1}",
     "historyNote": "Dosyaya sahip herkes dosyanın geçmişini görebilir.",
@@ -2141,10 +2163,12 @@
     "tooLong": "Ad çok uzun"
   },
   "notice": {
-    "useOpenFile": "Bir dosya açmak için Aç… komutunu kullanın.",
+    "useOpenFile": "Bir dosya açmak için Aç komutunu kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",
+    "bgmMayBeTooLong": "Arka plan müziği yüklenmedi. Ses dosyaları en fazla {0} dakika uzunluğunda olabilir.",
+    "bgmTooLong": "Arka plan müziği {0} dakikadan uzun olduğu için yüklenmedi.",
     "bgmDiffers": "Bu, özgün arka plan müziği olan \"{0}\" dosyasından farklı bir dosya.",
     "bgmDiffersUnnamed": "Bu, özgün arka plan müziği dosyasından farklı bir dosya.",
     "newLevel": "Yeni seviye",
@@ -2220,6 +2244,11 @@
       "title": "\"{0}\" Daha Yeni Özellikler Kullanıyor",
       "body": "Bu seviye, editörün bu sürümünün desteklemediği değerler kullanıyor. Ayrı bir kopya açıldığında bu değerler varsayılanlarla değiştirilir.",
       "openCopy": "Kopya Aç"
+    },
+    "large": {
+      "title": "\"{0}\" Çok Büyük",
+      "body": "Bu dosyanın boyutu {0}. Açılması uzun sürebilir ve bu tarayıcının depolama alanında çok yer kaplayabilir.",
+      "open": "Yine de Aç"
     },
     "unsavedChanges": "{0} açıldı. Bu dosyada kaydedilmemiş değişiklikleriniz var ({1}).",
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",

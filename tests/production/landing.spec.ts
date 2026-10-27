@@ -31,7 +31,7 @@ test('/privacy/ loads with one h1, no errors and no request to another origin', 
     baseURL,
 }) => {
     const { errors, origins } = await load(page, '/privacy/')
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Privacy Notice')
     await expect(page.getByRole('heading', { level: 2 }).first()).toBeVisible()
     expect(errors).toEqual([])
     expect([...origins]).toEqual([new URL(baseURL ?? '').origin])
@@ -43,7 +43,7 @@ test('/privacy/ loads with one h1, no errors and no request to another origin', 
         site: string
     }
     await expect(page).toHaveTitle(
-        `${site === 'test' ? testTitlePrefix : ''}Privacy – Next SEKAI Editor`,
+        `${site === 'test' ? testTitlePrefix : ''}Privacy Notice – Next SEKAI Editor`,
     )
     await expect(page.locator('header')).toContainText('Next SEKAI Editor')
 })

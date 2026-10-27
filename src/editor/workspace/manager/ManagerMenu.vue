@@ -9,6 +9,8 @@ import {
     useTemplateRef,
     type Component,
 } from 'vue'
+import { languageTag } from '../../../i18n/plural'
+import { settings } from '../../../settings'
 import { vScrollEdges } from '../../../directives/scrollEdges'
 import { menuKeyIndex } from '../../../utils/menuKeys'
 import { holdsChord, holdsCharacter } from '../../controls/heldKeys'
@@ -237,7 +239,7 @@ const onScroll = (event: Event) => {
     emit('close', false)
 }
 
-const typeAhead = createTypeAhead()
+const typeAhead = createTypeAhead(() => languageTag(settings.locale))
 
 const onKeydown = (event: KeyboardEvent) => {
     // An open menu holds chords from the browser, such as Ctrl+S saving the page.

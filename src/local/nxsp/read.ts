@@ -1,3 +1,4 @@
+import { LEVEL_FILE_MAX_BYTES } from '../../levelData/fileLimit'
 import { LEVEL_VERSION } from '../../levelData/levelVersion'
 import { isIgnoredEntry, type ZipEntry } from '../../zip/directory'
 import { ZipError } from '../../zip/error'
@@ -40,7 +41,7 @@ export type NxspCaps = {
 
 export const NXSP_CAPS: NxspCaps = {
     project: 1024 * 1024,
-    level: 64 * 1024 * 1024,
+    level: LEVEL_FILE_MAX_BYTES,
     manifest: 256 * 1024 * 1024,
     history: 512 * 1024 * 1024,
     chunksBin: 2 * 1024 * 1024 * 1024,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
     NAME_BYTE_LIMIT,
+    nameKey,
     nameProblem,
     showsAtOnce,
     validName,
@@ -61,4 +62,19 @@ test('the toolbar step puts Export Level Data before Save in whichever group has
     assert.equal(insertExportLevel(without), without)
     const already = [['exportLevel'], ['save']]
     assert.equal(insertExportLevel(already), already)
+})
+
+test('suggestions compare names the same way whatever the system language', () => {
+    const original = String.prototype.toLocaleLowerCase
+    // A Turkish system lowercases "I" to a dotless "ı" when no language is named.
+    String.prototype.toLocaleLowerCase = function (this: string, locales?: string | string[]) {
+        return original.call(this, locales ?? 'tr')
+    }
+    try {
+        assert.equal(nameKey('INDEX.nxsp'), nameKey('index.nxsp'))
+        assert.equal(nameKey('INDEX.nxsp'), 'index.nxsp')
+        assert.equal(nameKey('Café'), nameKey('CAFÉ'))
+    } finally {
+        String.prototype.toLocaleLowerCase = original
+    }
 })

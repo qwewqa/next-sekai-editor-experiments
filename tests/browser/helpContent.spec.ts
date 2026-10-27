@@ -42,6 +42,46 @@ const titles = (dialog: ReturnType<Page['locator']>) =>
         ),
     )
 
+// The shared lines that name a pointer: each has a Click sibling key for a mouse.
+const pointerKeys = [
+    ['gettingStarted', 'bpm'],
+    ['gettingStarted', 'notes'],
+    ['selectTool', 'select'],
+    ['eraserTool', 'erase'],
+    ['eraserTool', 'selection'],
+    ['brushTool', 'brush'],
+    ['pasteTool', 'paste'],
+    ['generateSlideNotesTool', 'generate'],
+    ['generateSlideNotesTool', 'generateMultiple'],
+    ['adding', 'add'],
+    ['adding', 'edit'],
+    ['adding', 'modifiers'],
+    ['noteTool', 'quickEdit'],
+    ['slideTool', 'connect'],
+    ['slideTool', 'quickEdit'],
+    ['event', 'quickEdit'],
+] as const
+
+const lineText = (group: string, key: string) =>
+    (modal as unknown as Record<string, Record<string, string>>)[group]![key]!
+
+/** The text of the lines in every section except those with the given titles. */
+const linesOutside = (dialog: ReturnType<Page['locator']>, skipped: string[]) =>
+    dialog
+        .locator('section')
+        .evaluateAll(
+            (sections, skipped) =>
+                sections
+                    .filter(
+                        (section) =>
+                            !skipped.includes(section.querySelector('h2')!.textContent!.trim()),
+                    )
+                    .flatMap((section) =>
+                        [...section.querySelectorAll('li')].map((li) => li.textContent!),
+                    ),
+            skipped,
+        )
+
 const heading = (dialog: ReturnType<Page['locator']>, title: string) =>
     dialog.getByRole('heading', { level: 2, name: new RegExp(`^${title}( |$)`) })
 
@@ -58,6 +98,19 @@ test.describe('with a fine pointer', () => {
             messages.help.fileTitle,
         ])
         expect(all.at(-1)).toBe(modal.touchscreen.title)
+    })
+
+    test('the shared lines say click, and only the Touchscreen section says tap', async ({
+        page,
+    }) => {
+        await boot(page)
+        const dialog = await openHelp(page)
+        for (const [group, key] of pointerKeys) {
+            await expect(dialog).toContainText(lineText(group, `${key}Click`))
+            await expect(dialog).not.toContainText(lineText(group, key))
+        }
+        const lines = await linesOutside(dialog, [modal.touchscreen.title])
+        expect(lines.filter((line) => /\btap/i.test(line))).toEqual([])
     })
 
     test('the right button line follows the Secondary Tool setting', async ({ page }) => {
@@ -130,6 +183,17 @@ test.describe('with a coarse pointer', () => {
             messages.help.fileTitle,
         ])
         expect(all.slice(-2)).toEqual([modal.mouse.title, modal.keyboard.title])
+    })
+
+    test('the shared lines say tap, and only the Mouse section says click', async ({ page }) => {
+        await boot(page)
+        const dialog = await openHelp(page)
+        for (const [group, key] of pointerKeys) {
+            await expect(dialog).toContainText(lineText(group, key))
+            await expect(dialog).not.toContainText(lineText(group, `${key}Click`))
+        }
+        const lines = await linesOutside(dialog, [modal.mouse.title])
+        expect(lines.filter((line) => /\bclick/i.test(line))).toEqual([])
     })
 
     test('headings show no shortcuts', async ({ page }) => {

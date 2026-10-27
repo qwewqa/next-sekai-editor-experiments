@@ -393,7 +393,7 @@ test('a Save whose handle read fails over the real client downloads nothing and 
     await expect(
         notice(page).filter({
             hasText:
-                'Not saved. The editor could not access this browser’s storage. Try again, or use Save As…',
+                'Not saved. The editor could not access this browser’s storage. Try again, or use Save As.',
         }),
     ).toBeVisible()
     expect(downloads).toEqual([])
@@ -443,7 +443,7 @@ test('Save As… still saves while every covered storage read fails, as the Not 
     })
     await edit(page, 2)
     await pressSave(page)
-    await expect(notice(page).filter({ hasText: 'Try again, or use Save As…' })).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'Try again, or use Save As.' })).toBeVisible()
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')

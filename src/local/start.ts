@@ -19,6 +19,7 @@ import { isSafeMode } from '../safe'
 import { storageGet, storageKey, storageSet } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { createDeleteSessions, setDeleteSessions } from './deleteSessions'
+import { hasWebLocks } from './locks'
 import { startMaintenance } from './maintenance'
 import { noticeIfNearlyFull } from './nearlyFull'
 import { resumeWhenStoring } from './open/importLoop'
@@ -31,6 +32,7 @@ import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open
 import { showSession, showState } from './startup/show'
 import { replaySessionJournal, runRecovery, type RecoveryContext } from './startup/steps'
 import { watchMarker } from './startup/tab'
+import { watchOpenings } from './startup/unfinished'
 import {
     flusher,
     journalWriter,
@@ -337,6 +339,23 @@ export const startStorage = async () => {
         await recovered
         if (answered && tabClient && recovery) {
             const own = recovery.ownOutcome
+            // Stored mode with Web Locks, not safe mode: the sessions whose last opening did not
+            // finish, and the record of this page's openings from now on.
+            const unfinished =
+                !safe && status.mode === 'stored' && hasWebLocks()
+                    ? await watchOpenings({
+                          storage: () => {
+                              try {
+                                  return localStorage
+                              } catch {
+                                  return undefined
+                              }
+                          },
+                          locks: platform.locks,
+                          clientLock: tabClient.lock.name,
+                          granted: tabClient.lock.granted,
+                      })
+                    : undefined
             const deps: OpenDeps = {
                 worker,
                 status,
@@ -353,6 +372,7 @@ export const startStorage = async () => {
                     : {}),
                 keptForLocalData: recovery.keptForLocalData,
                 flusher: () => flusher,
+                ...(unfinished ? { unfinished } : {}),
                 show: showSession,
                 showState,
                 onLeft: offerReopen,

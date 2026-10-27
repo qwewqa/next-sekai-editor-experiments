@@ -6,7 +6,8 @@ import {
 } from '../../editor/commands/exportLevel/memory'
 import { LOAD_ORDER } from '../../editor/loadOrder'
 import { attachHeld, cachedHeld, cacheHeld, type HeldParts } from '../../editor/media/heldBgm'
-import { addLoadNotice, notify } from '../../editor/notification'
+import { notifyWarning } from '../../editor/media/refusalCard'
+import { addLoadNotice } from '../../editor/notification'
 import type { SwitchRequest } from '../../editor/switchRequest'
 import type { JsonValue } from '../../history/operations'
 import { session as currentSession } from '../../history/session'
@@ -442,8 +443,10 @@ export const storeKept = async (keep: KeepVersion) => {
 
 const damagedMessage = (name: string) =>
     interpolate(() => i18n.value.open.damagedHistory, inlineName(name))
-const notifyDamaged = (name: string) =>
-    notify(damagedMessage(name), { card: true, severity: 'warning' })
+// A BGM refused for its length joins the warning as a row, before or after it.
+const notifyDamaged = (name: string) => {
+    notifyWarning(damagedMessage(name))
+}
 
 /**
  * Damage found after the open unlinked the chain: when the session is open in this
