@@ -26,6 +26,7 @@
 - Added Preview Assets to the toolbar and the Preview panel’s menu for choosing the skin, particle effects, background and sound effects.
 - (Web) The editor now also includes the Next SEKAI 02 skin and sound effects.
 - Added a Minimap beside the chart. It shows the whole chart and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its left edge to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap.
+- When Preview, Groups and Stages are all in the left panels or all in the right panels, and those panels are at least 540 px wide, Groups and Stages are now shown side by side below Preview. To widen the panels, drag the edge between the panels and the chart. To turn this off, use Settings › Panels › Groups and Stages Side by Side.
 - Stage style events now support Lane Color. Color transitions use the event’s easing. The judgment line keeps its opacity during color transitions.
 - You can now middle-click in the chart or the Elevation Editor and move the mouse to scroll. Click again to stop.
 - With Settings › Toolbar › Quick Switch enabled, you can now press and hold a tool button, then drag along its toolbar row to select another tool.
