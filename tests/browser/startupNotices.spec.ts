@@ -422,14 +422,22 @@ test.describe('load notices in the start-up pill', () => {
         page,
         context,
     }) => {
-        await seed(context, {
-            'nse.test.startup': JSON.stringify({ hold: true }),
-            'nse.test.startupWindow': '1000',
+        await seed(context, { 'nse.test.startup': JSON.stringify({ hold: true }) })
+        // The page clock the notice code reads can stand still at a chosen page age.
+        await page.addInitScript(() => {
+            const real = performance.now.bind(performance)
+            const clock = { frozen: undefined as number | undefined }
+            ;(window as unknown as { pageClock: typeof clock }).pageClock = clock
+            performance.now = () => clock.frozen ?? real()
         })
         await page.goto('/')
-        await expect.poll(() => page.evaluate(() => performance.now())).toBeGreaterThan(1500)
         await expect.poll(() => page.evaluate(() => !!window.nseStartupRelease)).toBe(true)
-        await page.evaluate(() => window.nseStartupRelease?.())
+        // Startup ends at a page age of 13 s, past the 12 s the window once counted from load, and
+        // the clock stays there until the notice is added.
+        await page.evaluate(() => {
+            ;(window as unknown as { pageClock: { frozen: number } }).pageClock.frozen = 13_000
+            window.nseStartupRelease?.()
+        })
         await opened(page)
         await expect(pill(page)).toHaveCount(0)
         await addEvent(page, { kind: 'storageCleared' })
