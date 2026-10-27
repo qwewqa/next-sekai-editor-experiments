@@ -59,7 +59,19 @@ const pickWithInput = () =>
         }
 
         pickingInputs.add(input)
-        input.click()
+        // After a worker's reply, WebKit's click() opens no picker but showPicker() does.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!input.showPicker) {
+            input.click()
+            return
+        }
+        try {
+            input.showPicker()
+        } catch {
+            // Without the press's activation it throws, and the pick ends as a cancel.
+            pickingInputs.delete(input)
+            resolve(undefined)
+        }
     })
 
 const pickFiles = async ({ id, handles }: PickOptions): Promise<OpenedFile[]> => {

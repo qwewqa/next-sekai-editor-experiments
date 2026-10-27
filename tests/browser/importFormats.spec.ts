@@ -237,7 +237,7 @@ for (const [label, content] of [
 test('a file picked after a garbage collection still opens', async ({ page }) => {
     // Skip the native picker and hold the input weakly, so only the app keeps it alive.
     await page.evaluate(() => {
-        HTMLInputElement.prototype.click = function () {
+        HTMLInputElement.prototype.showPicker = function () {
             ;(window as unknown as { picking: WeakRef<HTMLInputElement> }).picking = new WeakRef(
                 this,
             )

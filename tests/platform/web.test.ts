@@ -546,6 +546,22 @@ test('picking without handles uses a file input', async () => {
     assert.deepEqual(await platform.pickFiles({}), [])
 })
 
+test('a file input opens with showPicker where it has one, and one it refuses is a cancel', async () => {
+    const file = new File(['x'], 'cover.png')
+    browser.setInputFile(file)
+    browser.setShowPicker('opens')
+    browser.inputCalls.length = 0
+    try {
+        assert.deepEqual(await platform.pickFiles({}), [{ file }])
+        browser.setShowPicker('refuses')
+        assert.deepEqual(await platform.pickFiles({}), [])
+        assert.deepEqual(browser.inputCalls, ['showPicker', 'showPicker'])
+    } finally {
+        browser.setShowPicker(undefined)
+        browser.setInputFile(undefined)
+    }
+})
+
 test('a close handler keeps the page only by answering false synchronously', () => {
     let answer: boolean | Promise<boolean> = false
     const stop = platform.onCloseRequested(() => answer)

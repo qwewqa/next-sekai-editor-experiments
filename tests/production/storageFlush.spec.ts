@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { skipWhereTheEditorCannotStart } from '../browser/webkitSupport'
+import { pickWithClickInWebKit, skipWhereTheEditorCannotStart } from '../browser/webkitSupport'
 import { chart, instrumentRendering, stereoWav } from './fixtures'
 
 // The flush in the release build: the classic (iife) worker deflates, verifies,
@@ -8,6 +8,7 @@ import { chart, instrumentRendering, stereoWav } from './fixtures'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
+pickWithClickInWebKit()
 
 type Row = { key: unknown; value: Record<string, unknown> }
 
