@@ -11,6 +11,7 @@ import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
 import { en, said } from './messages'
+import { holdImport } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -411,27 +412,20 @@ test('damage the import finds before the open is shown still gets its card', asy
     expect((await sessionOf(page)).copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
 })
 
-/** Slows the import, so a spec acts while it runs. */
-const slowImport = (page: Page, ms: number) =>
-    page.evaluate((ms) => {
-        localStorage.setItem('nse.test.importDelay', String(ms))
-    }, ms)
-
 test('a reload mid-import resumes it from the bound handle', async ({ page }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await slowImport(page, 1500)
+    // No batch runs before the reload, so the reload finds the whole import pending.
+    await holdImport(page)
     await openFile(page, 'coconut.nxsp')
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const session = await sessionOf(page)
     const chain = await chainOf(page, session.sessionId)
     const token = (await handleToken(page, chain.chainId as string, 'file'))!
-    await page.addInitScript(() => localStorage.removeItem('nse.test.importDelay'))
     // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
     if (!memoryFiles(page))
         await page.addInitScript(
             ({ token, name }) => {
-                localStorage.removeItem('nse.test.importDelay')
                 const opfs = async () =>
                     (await navigator.storage.getDirectory()).getFileHandle(name)
                 const handle = {
@@ -517,7 +511,8 @@ test('a reload mid-import without a handle marks the rows that never arrived kep
     page,
 }) => {
     await start(page, false)
-    await slowImport(page, 1500)
+    // No batch runs before the reload.
+    await holdImport(page)
     const bytes = await freshBytes()
     const choosing = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
@@ -531,9 +526,6 @@ test('a reload mid-import without a handle marks the rows that never arrived kep
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const session = await sessionOf(page)
     expect(session.file?.name).toBe('coconut.nxsp')
-    await page.evaluate(() => {
-        localStorage.removeItem('nse.test.importDelay')
-    })
     // The import is still running; the open itself has settled, so the reload is not an unfinished open.
     await openingSettled(page)
     await page.reload()
@@ -552,7 +544,7 @@ test('a Save waits for the import: whenImported resolves once the last batch com
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await slowImport(page, 500)
+    await holdImport(page)
     await openFile(page, 'coconut.nxsp')
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const outcome = await page.evaluate(async () => {
@@ -560,7 +552,10 @@ test('a Save waits for the import: whenImported resolves once the last batch com
             (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
         const { whenImported } =
             (await import('/src/local/open/importLoop.ts')) as typeof import('../../src/local/open/importLoop')
-        const result = await whenImported(session.value.sessionId)
+        const waiting = whenImported(session.value.sessionId)
+        // Released once the wait has begun.
+        ;(window as unknown as { releaseImport: () => void }).releaseImport()
+        const result = await waiting
         const found = (await window.nseStorageTest!.worker.call('testRows', [
             'sessions',
         ])) as unknown as {

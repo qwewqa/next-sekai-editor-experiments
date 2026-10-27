@@ -5,8 +5,11 @@ import { waitForStartup } from './editorFixture'
 import {
     builds,
     chainOf,
+    deferResume,
     edit,
     editPastUndo,
+    holdImport,
+    importing,
     notice,
     pauseAt,
     pickerCalls,
@@ -17,6 +20,8 @@ import {
     reached,
     readFile,
     release,
+    releaseImport,
+    resumeImport,
     rows,
     saveDialog,
     sessionOf,
@@ -246,22 +251,6 @@ test("a stale reservation's release never ends a later Save's reservation of the
     expect(same).toBe(true)
 })
 
-/** An open whose import is held at its second batch until `releaseImport`. */
-const heldImport = async (page: Page) => {
-    await page.evaluate(async () => {
-        const { storageWorker } = await import('/src/local/start.ts')
-        const worker = storageWorker!
-        const call = worker.call.bind(worker)
-        let release = () => {}
-        const gate = new Promise<void>((resolve) => (release = resolve))
-        ;(window as unknown as { releaseImport: () => void }).releaseImport = release
-        worker.call = (async (method: string, ...rest: unknown[]) => {
-            if (method === 'openBatch' && (rest[0] as { n: number }).n === 1) await gate
-            return (call as (...args: unknown[]) => unknown)(method, ...rest)
-        }) as typeof worker.call
-    })
-}
-
 const freshBytes = async () =>
     new Uint8Array(await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer())
 
@@ -276,7 +265,7 @@ test("the Save dialog shows no count while an open's import runs, and counts onc
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await heldImport(page)
+    await holdImport(page, 1)
     await openFile(page, 'coconut.nxsp')
     await saveAs(page)
     const dialog = saveDialog(page, 'Save As')
@@ -286,18 +275,19 @@ test("the Save dialog shows no count while an open's import runs, and counts onc
     await page.waitForTimeout(1500)
     await expect(total).toHaveText('Estimating size…')
     await expect(dialog).not.toContainText(/\d steps? ·/)
-    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await releaseImport(page)
     await expect(total).toHaveText(/^Total: about /, { timeout: 15_000 })
     await expect(dialog).toContainText(/\d steps? ·/)
 })
 
-/** Opens coconut.nxsp with a slow import, then reloads mid-import with its handle readable. */
+/**
+ * Opens coconut.nxsp with its import held, then reloads mid-import with its handle readable. The
+ * resumed import is held too; the startup resume waits for `resumeImport` ('late') or never runs.
+ */
 const reloadMidImport = async (page: Page, resume: 'late' | 'never') => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await page.evaluate(() => {
-        localStorage.setItem('nse.test.importDelay', '1500')
-    })
+    await holdImport(page)
     await openFile(page, 'coconut.nxsp')
     const chain = await chainOf(page)
     const { handles } = await rows(page, ['handles'])
@@ -307,8 +297,7 @@ const reloadMidImport = async (page: Page, resume: 'late' | 'never') => {
         }
     ).testHandle
     await page.addInitScript(
-        ({ token, name, resume }) => {
-            localStorage.setItem('nse.test.importDelay', '300')
+        ({ token, name }) => {
             const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
             const handle = {
                 kind: 'file',
@@ -318,33 +307,36 @@ const reloadMidImport = async (page: Page, resume: 'late' | 'never') => {
                 isSameEntry: (other: { name?: string }) => Promise.resolve(other.name === name),
             }
             window.nseTestHandles = new Map([[token, handle as unknown as FileSystemFileHandle]])
-            // The resume after startup (an idle callback with a 2 s timeout) starts late, or not.
-            const idle = window.requestIdleCallback.bind(window)
-            window.requestIdleCallback = (callback, options) => {
-                if (callback.name !== 'run' || options?.timeout !== 2000)
-                    return idle(callback, options)
-                if (resume === 'late')
-                    setTimeout(() => callback({ didTimeout: true, timeRemaining: () => 0 }), 1500)
-                return 0
-            }
         },
-        { token, name: 'coconut.nxsp', resume },
+        { token, name: 'coconut.nxsp' },
     )
+    await deferResume(page, { never: resume === 'never' })
     await page.reload()
     await waitForStartup(page)
+    // Nothing has resumed the import yet, so the hold is in place before any batch.
+    await holdImport(page)
     const { sessions } = await rows(page, ['sessions'])
     expect(sessions!.some((row) => row.value.importPending === true)).toBe(true)
 }
+
+/** A Save's "Preparing…" wait for an import. */
+const preparing = (page: Page) =>
+    page.getByRole('dialog').filter({ has: page.locator('[data-save-preparing]') })
 
 test('a Save right after a reload mid-import waits for the resumed import, then saves', async ({
     page,
 }) => {
     await reloadMidImport(page, 'late')
+    // The startup resume runs, and the Save finds its import running.
+    await resumeImport(page)
+    await expect.poll(() => importing(page)).toBe(true)
     await saveAs(page)
     await expect(saveDialog(page, 'Save As')).toBeVisible()
     await settle(page)
     await queuePicks(page, ['other.nxsp'])
     await submitSave(page, 'other', 'Save As')
+    await expect(preparing(page)).toBeVisible()
+    await releaseImport(page)
     await expect(notice(page).filter({ hasText: 'Saved to other.nxsp' })).toBeVisible({
         timeout: 20_000,
     })
@@ -361,6 +353,9 @@ test('a Save whose import startup never resumed resumes it and saves, never "cou
     await queuePicks(page, ['other.nxsp'])
     await submitSave(page, 'other', 'Save As')
     // No tab runs the import, so the Save's wait resumes it as a reload would.
+    await expect(preparing(page)).toBeVisible()
+    await expect.poll(() => importing(page)).toBe(true)
+    await releaseImport(page)
     await expect(notice(page).filter({ hasText: 'Saved to other.nxsp' })).toBeVisible({
         timeout: 20_000,
     })
@@ -449,7 +444,7 @@ test("Export waits for an open's import before its picker, so a pick of the file
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await heldImport(page)
+    await holdImport(page, 1)
     await openFile(page, 'coconut.nxsp')
     const calls = (await pickerCalls(page)).length
     await queuePicks(page, ['coconut.nxsp'])
@@ -463,7 +458,7 @@ test("Export waits for an open's import before its picker, so a pick of the file
     await page.waitForTimeout(500)
     // No picker while the import reads the file.
     expect((await pickerCalls(page)).length).toBe(calls)
-    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await releaseImport(page)
     await expect
         .poll(async () => (await pickerCalls(page)).length, { timeout: 15_000 })
         .toBe(calls + 1)
@@ -479,7 +474,7 @@ test("Recent Sessions' Save… shows no count while an open's import runs, and c
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await heldImport(page)
+    await holdImport(page, 1)
     await openFile(page, 'coconut.nxsp')
     const { sessionId } = await sessionOf(page)
     await page.evaluate((sessionId) => {
@@ -492,7 +487,7 @@ test("Recent Sessions' Save… shows no count while an open's import runs, and c
     await page.waitForTimeout(1500)
     await expect(total).toHaveText('Estimating size…')
     await expect(dialog).not.toContainText(/\d steps? ·/)
-    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await releaseImport(page)
     await expect(total).toHaveText(/^Total: about /, { timeout: 15_000 })
     await expect(dialog).toContainText(/\d steps? ·/)
 })

@@ -135,6 +135,60 @@ export const queuePicks = (page: Page, picks: (string | null)[]) =>
 export const pickerCalls = (page: Page) =>
     page.evaluate(() => JSON.parse(localStorage.getItem('nse.test.pickerCalls') ?? '[]') as Row[])
 
+/**
+ * Holds the open's import until `releaseImport`, however slow the page is: at batch `n` (the
+ * first by default), or with `'resume'` at a resumed import's read of the file, before the worker
+ * has opened it. A spec that never releases it reloads or closes the page with the import pending.
+ */
+export const holdImport = (page: Page, at: number | 'resume' = 0) =>
+    page.evaluate(async (at) => {
+        const { storageWorker } = await import('/src/local/start.ts')
+        const worker = storageWorker!
+        const call = worker.call.bind(worker)
+        let release = () => {}
+        const gate = new Promise<void>((resolve) => (release = resolve))
+        ;(window as unknown as { releaseImport: () => void }).releaseImport = release
+        worker.call = (async (method: string, ...rest: unknown[]) => {
+            const held =
+                at === 'resume'
+                    ? method === 'openResume'
+                    : method === 'openBatch' && (rest[0] as { n: number }).n === at
+            if (held) await gate
+            return (call as (...args: unknown[]) => unknown)(method, ...rest)
+        }) as typeof worker.call
+    }, at)
+
+export const releaseImport = (page: Page) =>
+    page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+
+/**
+ * From the next load on, the resume after startup (an idle callback with a 2 s timeout) waits
+ * for `resumeImport`, or with `never` does not run.
+ */
+export const deferResume = (page: Page, { never = false } = {}) =>
+    page.addInitScript((never) => {
+        const idle = window.requestIdleCallback.bind(window)
+        window.requestIdleCallback = (callback, options) => {
+            if (callback.name !== 'run' || options?.timeout !== 2000) return idle(callback, options)
+            if (!never)
+                (window as unknown as { resumeImport: () => void }).resumeImport = () =>
+                    callback({ didTimeout: true, timeRemaining: () => 0 })
+            return 0
+        }
+    }, never)
+
+/** Runs the startup resume that `deferResume` kept. */
+export const resumeImport = (page: Page) =>
+    page.evaluate(() => (window as unknown as { resumeImport: () => void }).resumeImport())
+
+/** Whether this tab runs the open session's import. */
+export const importing = (page: Page) =>
+    page.evaluate(async () => {
+        const { session } = await import('/src/history/session.ts')
+        const { isImporting } = await import('/src/local/open/importLoop.ts')
+        return isImporting(session.value.sessionId)
+    })
+
 export const rows = (page: Page, stores: string[]) =>
     page.evaluate(
         (stores) =>

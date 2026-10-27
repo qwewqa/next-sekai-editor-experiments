@@ -8,11 +8,13 @@ import {
     chainOf,
     edit,
     flushed,
+    holdImport,
     notice,
     pressSave,
     queuePicks,
     reached,
     readFile,
+    releaseImport,
     rows,
     saveDialog,
     sessionOf,
@@ -226,13 +228,12 @@ test("with the open's import still running: the check waits for it, then finds n
 }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await page.evaluate(() => {
-        localStorage.setItem('nse.test.importDelay', '700')
-    })
+    await holdImport(page)
     await open(page, 'coconut.nxsp')
     await runCheck(page)
     const dialog = checkDialog(page)
     await expect(dialog).toContainText('Checking coconut.nxsp')
+    await releaseImport(page)
     await expect(dialog).toContainText('No damage found.', { timeout: 20_000 })
     // It did not finish before the import: every row was imported when the report came.
     const { sessions } = await rows(page, ['sessions'])

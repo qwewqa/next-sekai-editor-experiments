@@ -6,11 +6,16 @@ import { damagedFile } from '../local/open/files'
 import { closePage, waitForStartup } from './editorFixture'
 import {
     chainOf,
+    deferResume,
     edit,
+    holdImport,
+    importing,
     notice,
     pressSave,
     projectOf,
     queuePicks,
+    releaseImport,
+    resumeImport,
     rows,
     saveDialog,
     sessionOf,
@@ -32,11 +37,6 @@ const freshBytes = async () =>
 
 const damagedBytes = async () => new Uint8Array(await (await damagedFile()).file.arrayBuffer())
 
-const slowImport = (page: Page, ms: number) =>
-    page.evaluate((ms) => {
-        localStorage.setItem('nse.test.importDelay', String(ms))
-    }, ms)
-
 const open = async (page: Page, name: string) => {
     await queuePicks(page, [name])
     await page.keyboard.press('o')
@@ -54,7 +54,7 @@ const imported = (page: Page) =>
 test('a Save waits for the import, then appends to the file', async ({ page }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await slowImport(page, 700)
+    await holdImport(page)
     await open(page, 'coconut.nxsp')
     await edit(page, 9)
     await pressSave(page)
@@ -62,6 +62,7 @@ test('a Save waits for the import, then appends to the file', async ({ page }) =
     await expect(
         page.getByRole('dialog').filter({ hasText: 'Preparing coconut.nxsp' }),
     ).toBeVisible()
+    await releaseImport(page)
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible({
         timeout: 15_000,
     })
@@ -76,10 +77,15 @@ test('damage the import finds while a Save waits: the session unlinks, and Save 
     await start(page)
     await writeFile(page, 'coconut.nxsp', await damagedBytes())
     const before = [...(await damagedBytes())]
-    await slowImport(page, 700)
+    // Held before any batch, so the Save is waiting when the import finds the damage.
+    await holdImport(page)
     await open(page, 'coconut.nxsp')
     await edit(page, 9)
     await pressSave(page)
+    await expect(
+        page.getByRole('dialog').filter({ hasText: 'Preparing coconut.nxsp' }),
+    ).toBeVisible()
+    await releaseImport(page)
     const saveAs = saveDialog(page, 'Save As')
     await expect(saveAs).toContainText(
         'The history in coconut.nxsp is damaged. Saving will create a separate file.',
@@ -136,7 +142,8 @@ test('a kill right after the unlink, with a pending journal, comes back unlinked
 test('Undo right after a reload mid-import waits for the resumed import', async ({ page }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await slowImport(page, 1500)
+    // No batch runs before the reload, so the earlier states' chunks are all still to come.
+    await holdImport(page)
     await open(page, 'coconut.nxsp')
     const chain = await chainOf(page)
     const { handles } = await rows(page, ['handles'])
@@ -148,7 +155,6 @@ test('Undo right after a reload mid-import waits for the resumed import', async 
     // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
     await page.addInitScript(
         ({ token, name }) => {
-            localStorage.setItem('nse.test.importDelay', '300')
             const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
             const handle = {
                 kind: 'file',
@@ -161,17 +167,31 @@ test('Undo right after a reload mid-import waits for the resumed import', async 
         },
         { token, name: 'coconut.nxsp' },
     )
+    await deferResume(page)
     await page.reload()
     await waitForStartup(page)
+    // The resumed import is held before it opens the file, which the worker would also read a
+    // snapshot from: until then the missing snapshot has to wait for the import.
+    await holdImport(page, 'resume')
+    await resumeImport(page)
     const notes = () =>
         page.evaluate(async () => {
             const { state } = await import('/src/history/index.ts')
             return [...state.value.store.slides.note.values()].flat().length
         })
     const before = await notes()
-    // At once: the earlier states' chunks may not be imported yet.
+    // At once: the earlier states' chunks are not imported.
     await page.keyboard.press('Control+z')
     await page.keyboard.press('Control+z')
+    // The moves are queued behind the slot's load, which waits for the import.
+    await expect
+        .poll(() =>
+            page.evaluate(async () => (await import('/src/history/stack.ts')).slotLoading.value),
+        )
+        .toBe(true)
+    expect(await importing(page)).toBe(true)
+    expect(await notes()).toBe(before)
+    await releaseImport(page)
     await expect.poll(notes, { timeout: 15_000 }).toBe(before - 1)
 })
 
@@ -181,24 +201,7 @@ test('a Save waiting for a held, multi-batch import shows its progress, and fini
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
     // The import's second batch is held, so the first has committed and the rest has not.
-    await page.evaluate(async () => {
-        const { storageWorker } = await import('/src/local/start.ts')
-        const worker = storageWorker!
-        const call = worker.call.bind(worker)
-        let release = () => {}
-        const gate = new Promise<void>((resolve) => (release = resolve))
-        const seen = window as unknown as { releaseImport: () => void; batches: number[] }
-        seen.releaseImport = release
-        seen.batches = []
-        worker.call = (async (method: string, ...rest: unknown[]) => {
-            if (method === 'openBatch') {
-                const n = (rest[0] as { n: number }).n
-                seen.batches.push(n)
-                if (n === 1) await gate
-            }
-            return (call as (...args: unknown[]) => unknown)(method, ...rest)
-        }) as typeof worker.call
-    })
+    await holdImport(page, 1)
     await open(page, 'coconut.nxsp')
     await edit(page, 9)
     await pressSave(page)
@@ -206,10 +209,12 @@ test('a Save waiting for a held, multi-batch import shows its progress, and fini
     await expect(preparing).toBeVisible()
     const bar = preparing.getByRole('progressbar')
     await expect(bar).toBeVisible()
-    const now = Number(await bar.getAttribute('aria-valuenow'))
-    expect(now).toBeGreaterThan(0)
-    expect(now).toBeLessThan(100)
-    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    // The first batch commits at its own pace; the second is held.
+    await expect
+        .poll(async () => Number(await bar.getAttribute('aria-valuenow')))
+        .toBeGreaterThan(0)
+    expect(Number(await bar.getAttribute('aria-valuenow'))).toBeLessThan(100)
+    await releaseImport(page)
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible({
         timeout: 15_000,
     })
@@ -261,8 +266,8 @@ test('a worker restart during the import of a file picked without a handle: a Sa
     page,
 }) => {
     await start(page, { fileSystemAccess: false })
-    await slowImport(page, 600)
-    // Once armed, the next batch's call is cut off by a restart as soon as it is posted.
+    // The import's first batch waits for `arm`, then its call is cut off by a restart as soon as
+    // it is posted.
     await page.evaluate(async () => {
         const { storageWorker } = await import('/src/local/start.ts')
         const worker = storageWorker!
@@ -271,11 +276,16 @@ test('a worker restart during the import of a file picked without a handle: a Sa
             restart: (generation: number, why: string) => void
             generation: number
         }
-        const seen = window as unknown as { armed?: boolean; cutOff?: string }
+        const seen = window as unknown as { arm: () => void; cutOff?: string }
+        const armed = new Promise<void>((resolve) => (seen.arm = resolve))
+        let cut = false
         worker.call = (async (method: string, ...rest: unknown[]) => {
+            if (method !== 'openBatch' || cut) {
+                return (call as (...args: unknown[]) => Promise<unknown>)(method, ...rest)
+            }
+            cut = true
+            await armed
             const reply = (call as (...args: unknown[]) => Promise<unknown>)(method, ...rest)
-            if (method !== 'openBatch' || !seen.armed) return reply
-            seen.armed = false
             // The call is posted after the client's wait for a ready worker, a few microtasks on.
             for (let i = 0; i < 10; i++) await Promise.resolve()
             inner.restart(inner.generation, 'a test restarted it')
@@ -296,9 +306,7 @@ test('a worker restart during the import of a file picked without a handle: a Sa
     })
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     // Armed once the open is shown, so the restart cuts off only the import's call.
-    await page.evaluate(() => {
-        ;(window as unknown as { armed?: boolean }).armed = true
-    })
+    await page.evaluate(() => (window as unknown as { arm: () => void }).arm())
     await edit(page, 9)
     const downloading = page.waitForEvent('download')
     await pressSave(page)
