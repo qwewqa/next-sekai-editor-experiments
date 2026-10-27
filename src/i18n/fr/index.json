@@ -624,7 +624,7 @@
         "bpmClick": "Choisissez BPM et cliquez sur le changement de BPM au début de la partition. Cliquez à nouveau dessus pour modifier son BPM.",
         "notes": "Choisissez Note et appuyez sur la partition pour ajouter une note. Pour ajouter un slide, choisissez Désélectionner, puis Slide, et appuyez à son point de départ et à son point de fin.",
         "notesClick": "Choisissez Note et cliquez sur la partition pour ajouter une note. Pour ajouter un slide, choisissez Désélectionner, puis Slide, et cliquez à son point de départ et à son point de fin.",
-        "save": "Choisissez Sauvegarder pour conserver votre travail dans un fichier de projet (.nxsp). Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau…"
+        "save": "Choisissez Sauvegarder pour conserver votre travail dans un fichier de projet (.nxsp). Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau."
       },
       "touchscreen": {
         "title": "Écran tactile",
@@ -1679,7 +1679,7 @@
         "unassigned": "Non attribué",
         "reserved": "{0} est réservé au navigateur ou au système ; appuyez sur une autre touche.",
         "altGraph": "{0} sert à saisir des caractères dans de nombreuses dispositions de clavier. Appuyez sur une autre touche.",
-        "alsoRuns": "Exécute aussi {0}",
+        "alsoRuns": "Exécute aussi {0}.",
         "names": {
           "space": "Espace",
           "escape": "Échap",
@@ -2066,6 +2066,7 @@
     "bgm": "Musique",
     "placeholder": "Sans titre",
     "exportHint": "Pour Sonolus, utilisez Exporter les données de niveau…",
+    "exportHintText": "Pour Sonolus, utilisez Exporter les données de niveau.",
     "exportHintFirst": "Les fichiers de projet (.nxsp) sont réservés à cet éditeur. Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau…",
     "exportHintNames": "Les fichiers de données de niveau peuvent être sans extension ou se terminer par .nsld ou .json.gz.",
     "openExport": "Exporter les données de niveau…",
@@ -2092,8 +2093,8 @@
     "tooLarge": "Le fichier est trop volumineux.",
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
-    "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau…",
-    "storageUnavailable": "Non sauvegardé. L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez, ou utilisez Sauvegarder sous…",
+    "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau.",
+    "storageUnavailable": "Non sauvegardé. L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez, ou utilisez Sauvegarder sous.",
     "include": "Inclure",
     "historySize": "{0} étape · {1}|{0} étapes · {1}",
     "historyNote": "Toute personne disposant du fichier peut consulter son historique.",
@@ -2157,7 +2158,7 @@
     "tooLong": "Le nom est trop long"
   },
   "notice": {
-    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir…",
+    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir.",
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",

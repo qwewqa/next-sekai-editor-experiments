@@ -624,7 +624,7 @@
         "bpmClick": "選擇「BPM」，然後按一下譜面開頭的 BPM 變化。再次按一下即可編輯其 BPM。",
         "notes": "選擇「音符」，然後點選譜面即可新增音符。要新增滑條，請先選擇「取消選取」，再選擇「滑條」，然後點選滑條的起點和終點。",
         "notesClick": "選擇「音符」，然後按一下譜面即可新增音符。要新增滑條，請先選擇「取消選取」，再選擇「滑條」，然後按一下滑條的起點和終點。",
-        "save": "選擇「儲存」，將內容儲存為專案檔案（.nxsp）。若要產生上傳至 Sonolus 伺服器的關卡資料，請使用「匯出關卡資料…」。"
+        "save": "選擇「儲存」，將內容儲存為專案檔案（.nxsp）。若要產生上傳至 Sonolus 伺服器的關卡資料，請使用「匯出關卡資料」。"
       },
       "touchscreen": {
         "title": "觸控螢幕",
@@ -1679,7 +1679,7 @@
         "unassigned": "未設定",
         "reserved": "{0} 由瀏覽器或系統保留，請按其他鍵。",
         "altGraph": "{0} 在許多鍵盤配置中用於輸入字元。請按其他鍵。",
-        "alsoRuns": "同時執行{0}",
+        "alsoRuns": "同時執行{0}。",
         "names": {
           "space": "Space",
           "escape": "Esc",
@@ -2066,6 +2066,7 @@
     "bgm": "BGM",
     "placeholder": "未命名",
     "exportHint": "如需 Sonolus 關卡資料，請使用「匯出關卡資料…」。",
+    "exportHintText": "如需 Sonolus 關卡資料，請使用「匯出關卡資料」。",
     "exportHintFirst": ".nxsp 專案檔案僅供本編輯器使用。若要產生上傳至 Sonolus 伺服器的關卡資料，請使用「匯出關卡資料…」。",
     "exportHintNames": "關卡資料檔案可能沒有副檔名，或以 .nsld 或 .json.gz 結尾。",
     "openExport": "匯出關卡資料…",
@@ -2092,8 +2093,8 @@
     "tooLarge": "檔案過大。",
     "restoredName": "{0}（{1} 還原）",
     "fileType": "Next SEKAI 專案檔案",
-    "unavailable": "未儲存。請使用「匯出關卡資料…」。",
-    "storageUnavailable": "未儲存。編輯器無法存取此瀏覽器的儲存空間。請重試，或使用「另存新檔…」。",
+    "unavailable": "未儲存。請使用「匯出關卡資料」。",
+    "storageUnavailable": "未儲存。編輯器無法存取此瀏覽器的儲存空間。請重試，或使用「另存新檔」。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "擁有該檔案的人可以查看其中的歷史記錄。",
@@ -2157,7 +2158,7 @@
     "tooLong": "名稱過長"
   },
   "notice": {
-    "useOpenFile": "要開啟檔案，請使用「開啟…」。",
+    "useOpenFile": "要開啟檔案，請使用「開啟」。",
     "sameFileElsewhere": "「{0}」已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",

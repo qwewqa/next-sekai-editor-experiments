@@ -22,6 +22,22 @@ test('the page has one h1 and the landmarks', () => {
     assert.match(html, /<html lang="en">/)
 })
 
+test('the sections come in order, each with a heading of its own', () => {
+    const ids = [...html.matchAll(/<section\b[^>]*aria-labelledby="([^"]+)"/g)].map(([, id]) => id)
+    assert.deepEqual(ids, [
+        'summary',
+        'who',
+        'usage',
+        'contact',
+        'basis',
+        'hosting',
+        'keep',
+        'choices',
+        'changes',
+    ])
+    for (const id of ids) assert.match(html, new RegExp(`<h2 id="${id}"`), id)
+})
+
 test('the contact address is nse@qwewqa.dev, the only one', () => {
     assert.deepEqual(
         [...new Set(attributes('href').filter((href) => href.startsWith('mailto:')))],

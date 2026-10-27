@@ -429,7 +429,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await page.keyboard.press('p')
     await saveProjectFile(page)
     await expect(dialog(page)).toContainText('“LevelData” is not a project file.')
-    await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data…')
+    await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data.')
     expect((await pickerCalls(page)).at(-1)).toMatchObject({ picker: 'save', id: 'nse-project' })
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     expect(await opfsNames(page)).toEqual(['LevelData'])
@@ -827,7 +827,7 @@ test('a dropped file opens nothing and leaves the page where it is', async ({ pa
         return { dragover: fire('dragover'), drop: fire('drop') }
     })
     expect(result).toEqual({ dragover: true, drop: true })
-    await expect(notice(page)).toHaveText('To open a file, use Open…')
+    await expect(notice(page)).toHaveText('To open a file, use Open.')
     expect(page.url()).toBe(url)
     await expect(dialog(page)).toHaveCount(0)
 })
