@@ -6,13 +6,16 @@ import { damagedFile } from '../local/open/files'
 import { closePage, waitForStartup } from './editorFixture'
 import {
     chainOf,
+    deferResume,
     edit,
     holdImport,
+    importing,
     notice,
     pressSave,
     projectOf,
     queuePicks,
     releaseImport,
+    resumeImport,
     rows,
     saveDialog,
     sessionOf,
@@ -33,11 +36,6 @@ const freshBytes = async () =>
     new Uint8Array(await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer())
 
 const damagedBytes = async () => new Uint8Array(await (await damagedFile()).file.arrayBuffer())
-
-const slowImport = (page: Page, ms: number) =>
-    page.evaluate((ms) => {
-        localStorage.setItem('nse.test.importDelay', String(ms))
-    }, ms)
 
 const open = async (page: Page, name: string) => {
     await queuePicks(page, [name])
@@ -144,7 +142,8 @@ test('a kill right after the unlink, with a pending journal, comes back unlinked
 test('Undo right after a reload mid-import waits for the resumed import', async ({ page }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await slowImport(page, 1500)
+    // No batch runs before the reload, so the earlier states' chunks are all still to come.
+    await holdImport(page)
     await open(page, 'coconut.nxsp')
     const chain = await chainOf(page)
     const { handles } = await rows(page, ['handles'])
@@ -156,7 +155,6 @@ test('Undo right after a reload mid-import waits for the resumed import', async 
     // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
     await page.addInitScript(
         ({ token, name }) => {
-            localStorage.setItem('nse.test.importDelay', '300')
             const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
             const handle = {
                 kind: 'file',
@@ -169,17 +167,30 @@ test('Undo right after a reload mid-import waits for the resumed import', async 
         },
         { token, name: 'coconut.nxsp' },
     )
+    await deferResume(page)
     await page.reload()
     await waitForStartup(page)
+    // The resumed import is held too, so it still runs when Undo needs a snapshot it brings.
+    await holdImport(page)
+    await resumeImport(page)
     const notes = () =>
         page.evaluate(async () => {
             const { state } = await import('/src/history/index.ts')
             return [...state.value.store.slides.note.values()].flat().length
         })
     const before = await notes()
-    // At once: the earlier states' chunks may not be imported yet.
+    // At once: the earlier states' chunks are not imported.
     await page.keyboard.press('Control+z')
     await page.keyboard.press('Control+z')
+    // The moves are queued behind the slot's load, which waits for the import.
+    await expect
+        .poll(() =>
+            page.evaluate(async () => (await import('/src/history/stack.ts')).slotLoading.value),
+        )
+        .toBe(true)
+    expect(await importing(page)).toBe(true)
+    expect(await notes()).toBe(before)
+    await releaseImport(page)
     await expect.poll(notes, { timeout: 15_000 }).toBe(before - 1)
 })
 

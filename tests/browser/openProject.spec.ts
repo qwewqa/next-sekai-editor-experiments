@@ -412,27 +412,20 @@ test('damage the import finds before the open is shown still gets its card', asy
     expect((await sessionOf(page)).copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
 })
 
-/** Slows the import, so a spec acts while it runs. */
-const slowImport = (page: Page, ms: number) =>
-    page.evaluate((ms) => {
-        localStorage.setItem('nse.test.importDelay', String(ms))
-    }, ms)
-
 test('a reload mid-import resumes it from the bound handle', async ({ page }) => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
-    await slowImport(page, 1500)
+    // No batch runs before the reload, so the reload finds the whole import pending.
+    await holdImport(page)
     await openFile(page, 'coconut.nxsp')
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const session = await sessionOf(page)
     const chain = await chainOf(page, session.sessionId)
     const token = (await handleToken(page, chain.chainId as string, 'file'))!
-    await page.addInitScript(() => localStorage.removeItem('nse.test.importDelay'))
     // The next load reads the handle back as a fake one: a spec cannot hold a real OPFS handle.
     if (!memoryFiles(page))
         await page.addInitScript(
             ({ token, name }) => {
-                localStorage.removeItem('nse.test.importDelay')
                 const opfs = async () =>
                     (await navigator.storage.getDirectory()).getFileHandle(name)
                 const handle = {

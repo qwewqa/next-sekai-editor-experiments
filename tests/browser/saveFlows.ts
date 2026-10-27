@@ -156,6 +156,34 @@ export const holdImport = (page: Page, n = 0) =>
 export const releaseImport = (page: Page) =>
     page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
 
+/**
+ * From the next load on, the resume after startup (an idle callback with a 2 s timeout) waits
+ * for `resumeImport`, or with `never` does not run.
+ */
+export const deferResume = (page: Page, { never = false } = {}) =>
+    page.addInitScript((never) => {
+        const idle = window.requestIdleCallback.bind(window)
+        window.requestIdleCallback = (callback, options) => {
+            if (callback.name !== 'run' || options?.timeout !== 2000) return idle(callback, options)
+            if (!never)
+                (window as unknown as { resumeImport: () => void }).resumeImport = () =>
+                    callback({ didTimeout: true, timeRemaining: () => 0 })
+            return 0
+        }
+    }, never)
+
+/** Runs the startup resume that `deferResume` kept. */
+export const resumeImport = (page: Page) =>
+    page.evaluate(() => (window as unknown as { resumeImport: () => void }).resumeImport())
+
+/** Whether this tab runs the open session's import. */
+export const importing = (page: Page) =>
+    page.evaluate(async () => {
+        const { session } = await import('/src/history/session.ts')
+        const { isImporting } = await import('/src/local/open/importLoop.ts')
+        return isImporting(session.value.sessionId)
+    })
+
 export const rows = (page: Page, stores: string[]) =>
     page.evaluate(
         (stores) =>

@@ -5,9 +5,11 @@ import { waitForStartup } from './editorFixture'
 import {
     builds,
     chainOf,
+    deferResume,
     edit,
     editPastUndo,
     holdImport,
+    importing,
     notice,
     pauseAt,
     pickerCalls,
@@ -19,6 +21,7 @@ import {
     readFile,
     release,
     releaseImport,
+    resumeImport,
     rows,
     saveDialog,
     sessionOf,
@@ -277,7 +280,10 @@ test("the Save dialog shows no count while an open's import runs, and counts onc
     await expect(dialog).toContainText(/\d steps? ·/)
 })
 
-/** Opens coconut.nxsp with its import held, then reloads mid-import with its handle readable. */
+/**
+ * Opens coconut.nxsp with its import held, then reloads mid-import with its handle readable. The
+ * resumed import is held too; the startup resume waits for `resumeImport` ('late') or never runs.
+ */
 const reloadMidImport = async (page: Page, resume: 'late' | 'never') => {
     await start(page)
     await writeFile(page, 'coconut.nxsp', await freshBytes())
@@ -291,8 +297,7 @@ const reloadMidImport = async (page: Page, resume: 'late' | 'never') => {
         }
     ).testHandle
     await page.addInitScript(
-        ({ token, name, resume }) => {
-            localStorage.setItem('nse.test.importDelay', '300')
+        ({ token, name }) => {
             const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
             const handle = {
                 kind: 'file',
@@ -302,33 +307,36 @@ const reloadMidImport = async (page: Page, resume: 'late' | 'never') => {
                 isSameEntry: (other: { name?: string }) => Promise.resolve(other.name === name),
             }
             window.nseTestHandles = new Map([[token, handle as unknown as FileSystemFileHandle]])
-            // The resume after startup (an idle callback with a 2 s timeout) starts late, or not.
-            const idle = window.requestIdleCallback.bind(window)
-            window.requestIdleCallback = (callback, options) => {
-                if (callback.name !== 'run' || options?.timeout !== 2000)
-                    return idle(callback, options)
-                if (resume === 'late')
-                    setTimeout(() => callback({ didTimeout: true, timeRemaining: () => 0 }), 1500)
-                return 0
-            }
         },
-        { token, name: 'coconut.nxsp', resume },
+        { token, name: 'coconut.nxsp' },
     )
+    await deferResume(page, { never: resume === 'never' })
     await page.reload()
     await waitForStartup(page)
+    // Nothing has resumed the import yet, so the hold is in place before any batch.
+    await holdImport(page)
     const { sessions } = await rows(page, ['sessions'])
     expect(sessions!.some((row) => row.value.importPending === true)).toBe(true)
 }
+
+/** A Save's "Preparing…" wait for an import. */
+const preparing = (page: Page) =>
+    page.getByRole('dialog').filter({ has: page.locator('[data-save-preparing]') })
 
 test('a Save right after a reload mid-import waits for the resumed import, then saves', async ({
     page,
 }) => {
     await reloadMidImport(page, 'late')
+    // The startup resume runs, and the Save finds its import running.
+    await resumeImport(page)
+    await expect.poll(() => importing(page)).toBe(true)
     await saveAs(page)
     await expect(saveDialog(page, 'Save As')).toBeVisible()
     await settle(page)
     await queuePicks(page, ['other.nxsp'])
     await submitSave(page, 'other', 'Save As')
+    await expect(preparing(page)).toBeVisible()
+    await releaseImport(page)
     await expect(notice(page).filter({ hasText: 'Saved to other.nxsp' })).toBeVisible({
         timeout: 20_000,
     })
@@ -345,6 +353,9 @@ test('a Save whose import startup never resumed resumes it and saves, never "cou
     await queuePicks(page, ['other.nxsp'])
     await submitSave(page, 'other', 'Save As')
     // No tab runs the import, so the Save's wait resumes it as a reload would.
+    await expect(preparing(page)).toBeVisible()
+    await expect.poll(() => importing(page)).toBe(true)
+    await releaseImport(page)
     await expect(notice(page).filter({ hasText: 'Saved to other.nxsp' })).toBeVisible({
         timeout: 20_000,
     })
