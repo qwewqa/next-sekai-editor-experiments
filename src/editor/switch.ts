@@ -1,8 +1,12 @@
 import { watch } from 'vue'
 import { isDirty } from '../history'
+import { session } from '../history/session'
+import { liveState } from '../history/stack'
 import { i18n } from '../i18n'
 import { formatDateTime } from '../i18n/when'
-import { previousSession } from '../local/startup/events'
+import { chainStartOf } from '../local/chainFields'
+import { displayName, namePartsOf } from '../local/names'
+import { previousSession, type ShownName } from '../local/startup/events'
 import { showChoice } from '../modals/choice'
 import { setLeaveSafeModeGuard } from '../safe'
 import { interpolate } from '../utils/interpolate'
@@ -61,16 +65,48 @@ const wouldLoseWork = async () => {
 }
 
 /**
- * New asks before it replaces a chart with edits no file holds: "Unsaved Changes"
- * [New] [Cancel], Cancel being the default, so a stray `n` replaces nothing.
+ * The open session as Reopen will name it: the displayed name, and for a date-named one the
+ * chain's first start, not this visit's.
  */
-const confirmUnsaved = async () =>
-    !hasEditsNotInFile() ||
-    !!(await showChoice({
-        title: () => i18n.value.prompt.unsaved,
-        choices: [{ value: true, label: () => i18n.value.commands.reset.title, danger: true }],
+const openName = async (): Promise<ShownName> => {
+    const open = session.value
+    const parts = namePartsOf(
+        {
+            name: open.name,
+            sourceName: open.sourceName,
+            ...(open.file ? { file: { name: open.file.name } } : {}),
+        },
+        liveState.value,
+    )
+    const stored = (await loadStoring()).flusher?.session
+    const at = chainStartOf(stored?.chain, stored?.startedAt ?? open.startedAt)
+    return { name: displayName(parts), ...(at === undefined ? {} : { at }) }
+}
+
+/**
+ * New asks before it replaces a chart with edits no file holds: "Start a New Chart?" naming the
+ * session, [New Chart] [Cancel], Cancel being the default, so a stray `n` replaces nothing.
+ */
+const confirmUnsaved = async () => {
+    if (!hasEditsNotInFile()) return true
+    const name = await openName()
+    const { at } = name
+    return !!(await showChoice({
+        title: () => i18n.value.prompt.newTitle,
+        message:
+            name.name.kind === 'date' && at !== undefined
+                ? interpolate(
+                      () => i18n.value.prompt.newMessageUntitled,
+                      () => formatDateTime(at),
+                  )
+                : interpolate(
+                      () => i18n.value.prompt.newMessage,
+                      () => shownName(name),
+                  ),
+        choices: [{ value: true, label: () => i18n.value.prompt.newChart, danger: true }],
         cancelIsDefault: true,
     }))
+}
 
 /**
  * Asks before a switch that would lose work: "Your changes are not being stored in this browser.

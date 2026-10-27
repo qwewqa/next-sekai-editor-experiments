@@ -2208,7 +2208,10 @@
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
-    "unsaved": "Kaydedilmemiş Değişiklikler",
+    "newTitle": "Yeni Bir Çizelge Başlatılsın mı?",
+    "newMessage": "\"{0}\" oturumunda bir proje dosyasına kaydedilmemiş değişiklikler var. Bu oturumu Son Oturumlar’dan yeniden açabilirsiniz.",
+    "newMessageUntitled": "{0} tarihli oturumda bir proje dosyasına kaydedilmemiş değişiklikler var. Bu oturumu Son Oturumlar’dan yeniden açabilirsiniz.",
+    "newChart": "Yeni Çizelge",
     "notStored": "Değişiklikleriniz bu tarayıcıda saklanmıyor. Ayrılırsanız bu değişiklikler kaybolur.",
     "save": "Kaydet",
     "leaveAnyway": "Yine de Ayrıl"
