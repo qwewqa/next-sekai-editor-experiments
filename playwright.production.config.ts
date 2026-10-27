@@ -19,7 +19,8 @@ export default defineConfig({
     retries: process.env.CI ? 2 : 0,
     timeout: 60_000,
     expect: { timeout: 10_000 },
-    reporter: 'list',
+    // On CI the JSON report feeds scripts/flaky-report.mjs, which lists the tests that passed only on a retry.
+    reporter: process.env.CI ? [['list'], ['json', { outputFile: 'flaky/raw.json' }]] : 'list',
     outputDir: 'test-results-production',
     use: {
         browserName: 'chromium',

@@ -16,3 +16,5 @@ public/resource/*.scp
 /playwright.*.local.config.ts
 
 __pycache__/
+flaky/
+flaky-list/

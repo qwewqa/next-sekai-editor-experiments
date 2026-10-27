@@ -78,6 +78,20 @@ jobs:
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npm run build
             - run: xvfb-run -a npx playwright test --config playwright.compatibility.config.ts --project=${{ matrix.engine }}-storage --project=${{ matrix.engine }}-production-storage --shard=${{ matrix.shard }}
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "${{ matrix.engine }} storage ${{ matrix.shard }}"
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-storage-${{ strategy.job-index }}
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -140,6 +154,20 @@ jobs:
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
             - run: npx playwright test --project=chromium --project=chromium-worker --shard=${{ matrix.shard }} --workers=4
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "chromium ${{ matrix.shard }}"
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-chromium-${{ strategy.job-index }}
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
             - name: Upload browser failure details
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -148,3 +176,64 @@ jobs:
                   path: test-results/
                   if-no-files-found: ignore
                   retention-days: 7
+
+    # The tests that chromium leaves out (ciExclusions in playwright.config.ts), run once each, on every nightly and
+    # manual run. A failure here does not fail the run. The summary lists the ones that pass now, which can be dropped.
+    excluded:
+        needs: changed
+        if: ${{ needs.changed.outputs.run == 'true' && github.event_name != 'push' }}
+        continue-on-error: true
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        container:
+            image: mcr.microsoft.com/playwright:v1.63.0-noble
+            options: --ipc=host
+        env:
+            HOME: /root
+            NSE_RUN_EXCLUDED: '1'
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - run: npm ci
+            # The five locked preview packages, as build:release stages them. Without them the preview specs fall back to Built-in only.
+            - name: Fetch the preview assets
+              run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
+            - run: npx playwright test --project=chromium --project=chromium-worker --workers=2
+            # The tests that passed only on a retry, and each failure: a summary of this job, and a list for the flaky job.
+            - name: List flaky tests
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              run: node scripts/flaky-report.mjs shard "excluded" --excluded
+            - name: Upload the flaky test list
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: flaky-excluded
+                  path: flaky-list/*.json
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    # One table of every flaky test and failure in this run, from the lists of the jobs above. It never fails the run.
+    flaky:
+        needs: [changed, storage, chromium, excluded]
+        if: ${{ !cancelled() && needs.changed.outputs.run == 'true' }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        continue-on-error: true
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              continue-on-error: true
+              with:
+                  pattern: flaky-*
+                  path: flaky-lists
+                  merge-multiple: true
+            - run: node scripts/flaky-report.mjs collect flaky-lists

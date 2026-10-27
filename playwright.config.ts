@@ -114,16 +114,20 @@ const ciExclusions: CiExclusion[] = [
     },
 ]
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-const ciExcluded = process.env.CI
-    ? ciExclusions.map(
-          ({ spec, title, project }) =>
-              new RegExp(
-                  [project && escapeRegExp(project), escapeRegExp(spec), title]
-                      .filter((part) => part !== undefined)
-                      .join('.*'),
-              ),
-      )
-    : []
+// NSE_RUN_EXCLUDED=1 runs only those tests, once each, and CI sets it in a job of its own (Browsers Full) that
+// does not block: its summary lists the ones that pass now, which can be dropped from the list.
+const runExcluded = process.env.NSE_RUN_EXCLUDED === '1'
+const ciExcluded =
+    process.env.CI || runExcluded
+        ? ciExclusions.map(
+              ({ spec, title, project }) =>
+                  new RegExp(
+                      [project && escapeRegExp(project), escapeRegExp(spec), title]
+                          .filter((part) => part !== undefined)
+                          .join('.*'),
+                  ),
+          )
+        : []
 const baseURL = `http://127.0.0.1:${port}`
 // Which host draws the preview, whatever the setting says.
 const previewHost = (value: 'main' | 'worker') => ({
@@ -144,9 +148,11 @@ export default defineConfig({
     // reported as flaky.
     timeout: process.env.CI ? 90_000 : 30_000,
     expect: { timeout: process.env.CI ? 15_000 : 5_000 },
-    retries: process.env.CI ? 2 : 0,
-    grepInvert: ciExcluded.length ? ciExcluded : undefined,
-    reporter: 'list',
+    retries: process.env.CI && !runExcluded ? 2 : 0,
+    grep: runExcluded ? ciExcluded : undefined,
+    grepInvert: ciExcluded.length && !runExcluded ? ciExcluded : undefined,
+    // On CI the JSON report feeds scripts/flaky-report.mjs, which lists the tests that passed only on a retry.
+    reporter: process.env.CI ? [['list'], ['json', { outputFile: 'flaky/raw.json' }]] : 'list',
     outputDir: 'test-results',
     use: {
         browserName: 'chromium',
