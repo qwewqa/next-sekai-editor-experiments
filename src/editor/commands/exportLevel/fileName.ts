@@ -64,3 +64,9 @@ export const validName = (name: string) => {
     }
     return result.normalize('NFC')
 }
+
+/**
+ * A file name as file systems compare it: composed and in lower case, with no locale rules, so
+ * "INDEX" and "index" are one name on a Turkish system too.
+ */
+export const nameKey = (name: string) => name.normalize('NFC').toLowerCase()
