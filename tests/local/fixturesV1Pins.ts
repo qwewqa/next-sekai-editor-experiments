@@ -14,7 +14,7 @@ export const FIXTURE_BUILDS: readonly string[] = ['0.5.22+98fb393c']
  * `npm run release:tag -- 0.6.0` stops when a format path changed since it (scripts/release/rules.mjs
  * `fixturePaths`), and when it is not in the history of the commit tagged: merge with a merge commit.
  */
-export const FIXTURES_CONFIRMED_AT = '98fb393c'
+export const FIXTURES_CONFIRMED_AT = 'f734cd55'
 
 /** The SHA-256 of each folder's SHA256SUMS file. */
 export const SUMS_DIGESTS: Readonly<Record<'nxsp-v1' | 'web-storage-v1', string>> = {
