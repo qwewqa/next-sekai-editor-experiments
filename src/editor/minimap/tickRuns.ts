@@ -15,7 +15,7 @@ export const HAIRLINE_MAX_RUNS = 24
 /** The hairline's opacity over the notes. */
 export const HAIRLINE_ALPHA = 0.45
 
-/** One merged run of changed rows, in CSS px from the strip top. */
+/** One merged run of changed rows, in CSS px from the canvas top. */
 export type TickRun = { top: number; height: number }
 
 /** The runs that get a full-width hairline: only short ones, and only while there are few runs. */
