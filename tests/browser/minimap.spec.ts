@@ -386,7 +386,7 @@ test.describe('placement, command and setting', () => {
         await expect(page.locator('[data-minimap]')).toHaveCount(0)
         await settle(page)
         const off = await layout()
-        // The docks gave the strip's 40 px to the chart, so it keeps its width and its row.
+        // The docks gave the strip's width to the chart, so it keeps its width and its row.
         expect(on.tabs.length).toBeGreaterThan(1)
         expect(off.tabs).toEqual(on.tabs)
         expect(on.toolbar).toBe(off.toolbar)

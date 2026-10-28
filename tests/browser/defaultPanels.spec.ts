@@ -247,7 +247,7 @@ for (const viewport of [
         expect(withStrip.minimap).toBe(1)
         expect(withStrip.tabs).toEqual(without.tabs)
         expect(withStrip.toolbar).toBe(without.toolbar)
-        // The docks gave the strip its 40 px, so the chart keeps its width.
+        // The docks gave the strip its width, so the chart keeps its width.
         expect(Math.abs(withStrip.pane! - without.pane!)).toBeLessThan(2)
         expect(await stored(other)).toEqual({})
     })
