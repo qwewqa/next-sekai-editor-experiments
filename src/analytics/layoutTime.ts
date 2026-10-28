@@ -1,5 +1,5 @@
 import type { WorkspaceLayout } from '../editor/workspace/layout'
-import type { EventData } from './catalogue'
+import { SECONDS_CAP, type EventData } from './catalogue'
 import { takeSeconds } from './intervals'
 import { measured } from './scales'
 
@@ -76,17 +76,16 @@ export const createLayoutTime = (now: () => number, visible: boolean, first: rea
         /** The event for the time since the last call; nothing while that time rounds to no seconds. */
         take: (): EventData<'layout'> | undefined => {
             credit()
-            const visibleTime = takeSeconds(pending.get('visibleTime') ?? 0, 0)
-            if (!visibleTime.seconds) return
-            const data: Record<string, number> = { visibleTime: visibleTime.seconds }
-            pending.set('visibleTime', (pending.get('visibleTime') ?? 0) - visibleTime.sent)
+            const visible = takeSeconds(pending.get('visibleTime') ?? 0, 0).seconds
+            if (!visible) return
+            const data: Record<string, number> = {}
             for (const [key, ms] of pending) {
-                if (key === 'visibleTime') continue
                 const taken = takeSeconds(ms, 0)
-                if (!taken.seconds) continue
-                data[key] = taken.seconds
+                if (taken.seconds) data[key] = taken.seconds
                 pending.set(key, ms - taken.sent)
             }
+            // A capped interval is dropped whole: its left-over would skew the next one.
+            if (visible >= SECONDS_CAP) pending.clear()
             return data
         },
     }

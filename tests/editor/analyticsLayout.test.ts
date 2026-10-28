@@ -342,12 +342,32 @@ test('a counter under half a second is left out, not sent as zero', () => {
     assert.ok(data && Object.values(data).every((value) => value > 0))
 })
 
-test('a counter is capped at a day, and the rest stays', () => {
+test('an interval past a day is dropped whole, so the next batch starts clean', () => {
     const { time, now } = clock()
     const layout = createLayoutTime(now, true, left)
-    time.ms = (SECONDS_CAP + 5) * 1000
-    assert.equal(layout.take()?.visibleTime, SECONDS_CAP)
-    assert.equal(layout.take()?.visibleTime, 5)
+    // 13 h on the left, then 12 h on the top, and 0.4 s over the second: 25 h in all.
+    time.ms = 13 * 3_600_000
+    layout.change(top)
+    time.ms += 12 * 3_600_000 + 400
+    assert.deepEqual(layout.take(), {
+        visibleTime: SECONDS_CAP,
+        'panelSeconds.preview.left': 46_800,
+        'dockSizeSeconds.left.280-400': 46_800,
+        'panelSeconds.preview.top': 43_200,
+        'dockSizeSeconds.top.0-280': 43_200,
+    })
+    // A minute and 0.1 s later: none of the hour past the cap, and not the 0.4 s of the top.
+    time.ms += 60_100
+    assert.deepEqual(layout.take(), {
+        visibleTime: 60,
+        'panelSeconds.preview.top': 60,
+        'dockSizeSeconds.top.0-280': 60,
+    })
+    // An interval that is short of the cap still carries its fractions.
+    time.ms += 300
+    assert.equal(layout.take(), undefined)
+    time.ms += 700
+    assert.equal(layout.take()?.visibleTime, 1)
 })
 
 test('the event has 44 properties, under the key limit, and the full event is valid and small', () => {
