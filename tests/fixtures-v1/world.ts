@@ -43,11 +43,15 @@ export class Profile {
         readonly files: ProfileOptions['files'],
     ) {}
 
+    /** Whether the profile has pressed Agree: the first editor page of each profile does. */
+    private agreed = false
+
     static async create(browser: Browser, { start, files }: ProfileOptions) {
         const context = await browser.newContext({ timezoneId: 'UTC', locale: 'en-US' })
         const clock = new SampleClock(context, start)
         await clock.install()
-        await seedContext(context)
+        // No agreement record: the app writes it when the first page agrees, as a visitor's does.
+        await seedContext(context, { agreement: false })
         // After seedContext: the platform for this device, the storage flags a step sets on the
         // profile (`nse.fixtures.flags`, never dumped), and the preview panel out of the way.
         await context.addInitScript(
@@ -84,6 +88,10 @@ export class Profile {
         const page = await this.context.newPage()
         this.clock.track(page)
         await page.goto('/')
+        if (!this.agreed) {
+            await page.getByRole('button', { name: 'Agree' }).click()
+            this.agreed = true
+        }
         const tab = new Tab(page, this)
         await tab.ready()
         return tab

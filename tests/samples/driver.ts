@@ -63,17 +63,24 @@ export class SampleClock {
     }
 }
 
-/** Seeds every page: the storage hooks, downloads for file actions, the agreement. */
-export const seedContext = (context: BrowserContext) =>
-    context.addInitScript(() => {
+/**
+ * Seeds every page: the storage hooks, downloads for file actions, the agreement (unless
+ * `agreement` is false: the profile then agrees through the dialog).
+ */
+export const seedContext = (context: BrowserContext, { agreement = true } = {}) =>
+    context.addInitScript((agreement) => {
         performance.setResourceTimingBufferSize(5000)
         // The storage worker for specs (`nseFlushTest`, `nseStorageTest`); `nse.*` keys are not dumped.
         localStorage.setItem('nse.test.storage', '{}')
         // Download browsers' file actions: Open through a file input, Export as a download.
         localStorage.setItem('nse.test.platform', JSON.stringify({ fileSystemAccess: false }))
         // The agreement counts as given, as in a profile that has agreed.
-        localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
-    })
+        if (agreement)
+            localStorage.setItem(
+                'sonolus-next-sekai-editor.agreement',
+                '{"terms":999,"privacy":999}',
+            )
+    }, agreement)
 
 /** Waits until startup has opened the session this load continues. */
 export const waitForStartup = (page: Page) =>
