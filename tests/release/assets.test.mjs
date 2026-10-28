@@ -80,9 +80,48 @@ test('a server hash mismatch fails instead of packaging modified resources', asy
     )
 })
 
-test('failed item and resource requests fail the build', async (t) => {
-    t.mock.method(globalThis, 'fetch', async () => new Response('', { status: 503 }))
+test('failed item and resource requests fail the build at once', async (t) => {
+    let calls = 0
+    t.mock.method(globalThis, 'fetch', async () => {
+        calls++
+        return new Response('', { status: 503 })
+    })
     await assert.rejects(downloadPackage('https://example.com/skins/test', 'skins'), /503/)
+    assert.equal(calls, 1)
+})
+
+test('a timeout while reading and a network failure try again', async (t) => {
+    server(t)
+    const fixture = globalThis.fetch
+    let dataAttempts = 0
+    t.mock.method(globalThis, 'fetch', async (input) => {
+        if (!new URL(input).pathname.endsWith('/data')) return fixture(input)
+        dataAttempts++
+        if (dataAttempts === 1)
+            return {
+                ok: true,
+                arrayBuffer: async () => {
+                    throw new DOMException('slow', 'TimeoutError')
+                },
+            }
+        if (dataAttempts === 2) throw new TypeError('fetch failed')
+        return fixture(input)
+    })
+    const result = await downloadPackage('https://example.com/server/skins/test', 'skins')
+    assert.equal(result.bytes.readUInt32LE(0), 0x04034b50)
+    assert.equal(dataAttempts, 3)
+})
+
+test('three timeouts in a row fail the build', async (t) => {
+    let calls = 0
+    t.mock.method(globalThis, 'fetch', async () => {
+        calls++
+        throw new DOMException('slow', 'TimeoutError')
+    })
+    await assert.rejects(downloadPackage('https://example.com/skins/test', 'skins'), {
+        name: 'TimeoutError',
+    })
+    assert.equal(calls, 3)
 })
 
 test('refresh pins Coconut resources and default staging uses the lock without item requests', async (t) => {

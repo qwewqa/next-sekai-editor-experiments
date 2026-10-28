@@ -31,10 +31,20 @@ const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 // Shared with the editor, so the script and the chooser read item links alike.
 export { itemDetailsUrl }
 
-async function download(url) {
-    const response = await fetch(url, { signal: AbortSignal.timeout(30_000) })
-    if (!response.ok) throw new Error(`Preview download failed: ${response.status} ${url}`)
-    return response
+// The server is sometimes slow: a timeout or a network failure, while connecting or reading,
+// tries again, up to three attempts. An HTTP error does not.
+async function download(url, read) {
+    for (let attempt = 1; ; attempt++) {
+        try {
+            const response = await fetch(url, { signal: AbortSignal.timeout(30_000) })
+            if (!response.ok) throw new Error(`Preview download failed: ${response.status} ${url}`)
+            return { response, body: await read(response) }
+        } catch (error) {
+            const name = error?.name
+            if (attempt >= 3 || !['TimeoutError', 'AbortError', 'TypeError'].includes(name))
+                throw error
+        }
+    }
 }
 
 function resourceReference(reference, base, requireHash = false) {
@@ -49,7 +59,9 @@ function resourceReference(reference, base, requireHash = false) {
 
 async function resource(reference) {
     const url = reference.url
-    const bytes = Buffer.from(await (await download(url)).arrayBuffer())
+    const { body: bytes } = await download(url, async (response) =>
+        Buffer.from(await response.arrayBuffer()),
+    )
     if (reference.hash && createHash('sha1').update(bytes).digest('hex') !== reference.hash)
         throw new Error(`Preview resource hash mismatch: ${url}`)
     return bytes
@@ -95,8 +107,8 @@ export function createScp(entries) {
 
 async function resolveItem(source, category) {
     const url = itemDetailsUrl(source, category)
-    const response = await download(url)
-    const { item } = await response.json()
+    const { response, body } = await download(url, (response) => response.json())
+    const { item } = body
     return { source: url, item: normalizeItem(item, response.url || url, category) }
 }
 
