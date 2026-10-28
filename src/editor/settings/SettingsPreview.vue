@@ -36,6 +36,7 @@ const openAssets = () => {
         <NumberField
             v-model="settings.previewNoteSpeed"
             :label="i18n.settings.preview.noteSpeed"
+            :description="i18n.settings.descriptions.previewNoteSpeed"
             :min="previewNoteSpeed.min"
             :max="previewNoteSpeed.max"
             :step="previewNoteSpeed.step"
@@ -47,10 +48,12 @@ const openAssets = () => {
         <ToggleField
             v-model="settings.previewShowHitboxes"
             :label="i18n.settings.preview.showHitboxes"
+            :description="i18n.settings.descriptions.previewShowHitboxes"
         />
         <ToggleField
             v-model="settings.previewShowEffects"
             :label="i18n.settings.preview.showEffects"
+            :description="i18n.settings.descriptions.previewShowEffects"
         />
         <ToggleField v-model="settings.previewShowTime" :label="i18n.settings.preview.showTime" />
         <SelectField
@@ -61,24 +64,32 @@ const openAssets = () => {
         <NumberField
             v-model="settings.previewRenderScale"
             :label="i18n.settings.preview.renderScale"
+            :description="i18n.settings.descriptions.previewRenderScale"
             :min="previewRenderScale.min"
             :max="previewRenderScale.max"
             :step="previewRenderScale.step"
         />
-        <ToggleField v-model="settings.previewAntialias" :label="i18n.settings.preview.antialias" />
+        <ToggleField
+            v-model="settings.previewAntialias"
+            :label="i18n.settings.preview.antialias"
+            :description="i18n.settings.descriptions.previewAntialias"
+        />
         <ToggleField
             v-if="workerHostSupported"
             v-model="settings.previewInWorker"
             :label="i18n.settings.preview.parallelRendering"
+            :description="i18n.settings.descriptions.previewInWorker"
         />
         <SelectField
             v-model="settings.previewTransportPosition"
             :label="i18n.settings.preview.transport.title"
+            :description="i18n.settings.descriptions.previewTransportPosition"
             :options="previewTransportOptions"
         />
         <SelectField
             v-model="settings.previewControls"
             :label="i18n.settings.preview.controls.title"
+            :description="i18n.settings.descriptions.previewControls"
             :options="previewControlOptions"
         />
     </SettingsSection>

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
 import { analyticsOf } from './analytics'
-import { instrumentRendering, previewInWorker, previewPixels } from './fixtures'
+import { editorReady, instrumentRendering, previewInWorker, previewPixels } from './fixtures'
 
 // The release build under its exact policy.
 
@@ -121,7 +121,7 @@ for (const inWorker of [false, true])
         await page.goto('/')
 
         // Pixi init throws without pixi.js/unsafe-eval, so the chart never draws.
-        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await editorReady(page)
         await expect
             .poll(() => page.evaluate(() => window.productionSmoke.chart))
             .toBeGreaterThan(0)

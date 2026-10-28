@@ -254,9 +254,7 @@ test('turning the switch off stops at once, pagehide included, and Reset Setting
     const field = await settingsSwitch(page)
     const toggle = field.getByRole('switch', { name: 'Send Usage Statistics' })
     await expect(toggle).toHaveAttribute('aria-checked', 'true')
-    await expect(field).toContainText(
-        'Usage statistics include which tools you use, some editor settings',
-    )
+    await expect(field).toContainText('They include which tools you use, some editor settings')
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
     await hide(page)
@@ -329,7 +327,7 @@ for (const signal of ['gpc', 'dnt'] as const)
         )
         expect(await clientLoaded(page)).toBe(0)
         await toggle.click()
-        await expect(field).toContainText('Usage statistics include which tools you use')
+        await expect(field).toContainText('They include which tools you use')
         await expect.poll(() => clientLoaded(page)).toBe(3)
         await page.keyboard.press('Escape')
         await interact(page)
@@ -662,4 +660,270 @@ test('a preview host or render scale that changed and came back within one tick 
     // The next interval begins from the value then, and nothing changed in it.
     expect(steady).toMatchObject({ previewHost: 'none' })
     expect(steady.previewRenderScale).not.toBe('mixed')
+})
+
+test.describe('with the agreement dialog', () => {
+    // These pages start without the record the config's storageState seeds, so agreement is due.
+    test.use({
+        storageState: {
+            cookies: [],
+            origins: [
+                {
+                    origin: `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? '5210'}`,
+                    localStorage: [
+                        { name: 'nse.test.previewHost', value: 'main' },
+                        { name: 'nse.test.noOpeningGuard', value: 'true' },
+                    ],
+                },
+            ],
+        },
+    })
+
+    const KEY = 'sonolus-next-sekai-editor.agreement'
+    const gateDialog = (page: Page) => page.getByRole('dialog', { name: 'Next SEKAI Editor' })
+    const agree = (page: Page) => gateDialog(page).getByRole('button', { name: 'Agree' }).click()
+
+    /** The pages of the context: a fixed version and the panels away, without the record. */
+    const seed = (context: BrowserContext) =>
+        context.addInitScript(() => {
+            // The client's modules are found in the resource timing entries.
+            performance.setResourceTimingBufferSize(5000)
+            localStorage.setItem('nse.test.storage', '{}')
+            localStorage.setItem(
+                'nse.test.version',
+                JSON.stringify({ appVersion: '0.6.0', atTag: true }),
+            )
+            localStorage.setItem(
+                'sonolus-next-sekai-editor.lastAppVersion',
+                JSON.stringify('0.6.0'),
+            )
+            localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
+            localStorage.setItem('sonolus-next-sekai-editor.showSidebar', 'false')
+        })
+
+    /** The startup test flags for the tab's first load. */
+    const startupFlags = (page: Page, flags: object) =>
+        page.addInitScript((flags) => {
+            if (sessionStorage.getItem('agr.flagsSet')) return
+            sessionStorage.setItem('agr.flagsSet', '1')
+            sessionStorage.setItem('nse.test.startup', JSON.stringify(flags))
+        }, flags)
+
+    const agreementState = (page: Page) =>
+        page.evaluate(async () => {
+            const { agreementState } =
+                (await import('/src/editor/agreement/agreement.ts')) as typeof import('../../src/editor/agreement/agreement')
+            return agreementState.value
+        })
+
+    /** A real pointer press on the chart. */
+    const clickChart = async (page: Page) => {
+        const box = (await page.locator('canvas.editor-chart').boundingBox())!
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    }
+
+    const shownVisit = async (page: Page) => {
+        await page.goto('/')
+        await expect(gateDialog(page)).toBeVisible()
+        await expect.poll(() => clientLoaded(page), { timeout: 15_000 }).toBe(3)
+    }
+
+    /** Hides the page until the first batch arrives: up to 60 s for the client to load. */
+    const sends = (page: Page, batches: Item[][]) =>
+        expect
+            .poll(
+                async () => {
+                    await hide(page)
+                    return batches.length
+                },
+                { timeout: 60_000 },
+            )
+            .toBe(1)
+
+    test.beforeEach(async ({ page, context }) => {
+        await seed(context)
+        await installAnalytics(page)
+    })
+
+    test('nothing under the gate arms or sends: a Start Blank press, the links, a hide, pagehide and the minute; after Agree the next input does', async ({
+        page,
+        context,
+    }) => {
+        const { batches, stray } = await mock(context)
+        await startupFlags(page, { hold: true, slowMs: 50 })
+        await page.clock.install()
+        await page.goto('/')
+        const gate = page.locator('dialog[data-startup-gate]')
+        await gate.getByRole('button', { name: 'Start Blank' }).click()
+        await expect(gateDialog(page)).toBeVisible()
+        // Each link opens in a new tab; the page is then hidden, and goes away.
+        for (const name of ['Terms of Service', 'Privacy Notice']) {
+            const popup = page.waitForEvent('popup')
+            await gateDialog(page).getByRole('link', { name }).click()
+            await (await popup).close()
+        }
+        await hide(page)
+        await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+        // The client has loaded, and its minute passes with the dialog open. The fake clock
+        // replaces getEntriesByType, so the entries are read through an observer.
+        await page.clock.runFor(15_000)
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    (client) =>
+                        new Promise<boolean>((resolve) => {
+                            new PerformanceObserver((list, observer) => {
+                                observer.disconnect()
+                                resolve(
+                                    list
+                                        .getEntries()
+                                        .some((entry) => new URL(entry.name).pathname === client),
+                                )
+                            }).observe({ type: 'resource', buffered: true })
+                        }),
+                    CLIENT,
+                ),
+            )
+            .toBe(true)
+        await page.clock.runFor(61_000)
+        await hide(page)
+        expect(batches).toEqual([])
+        expect(
+            await page.evaluate(
+                (key) => JSON.parse(localStorage.getItem(key) ?? '[]') as unknown[],
+                BEACONS,
+            ),
+        ).toEqual([])
+        await agree(page)
+        await clickChart(page)
+        await sends(page, batches)
+        expect(startOf(batches[0] ?? [])).toEqual([...START])
+        expect(stray).toEqual([])
+    })
+
+    test('a press on a field in the dialog arms nothing', async ({ page, context }) => {
+        const { batches } = await mock(context)
+        await shownVisit(page)
+        await gateDialog(page).getByRole('combobox', { name: 'Theme' }).click()
+        await page.keyboard.press('Escape')
+        for (let i = 0; i < 3; i++) await hide(page)
+        await page.waitForTimeout(500)
+        expect(batches).toEqual([])
+    })
+
+    test('turned off in the dialog, nothing is ever sent', async ({ page, context }) => {
+        const { batches } = await mock(context)
+        await shownVisit(page)
+        const toggle = gateDialog(page).getByRole('switch', { name: 'Send Usage Statistics' })
+        await expect(toggle).toHaveAttribute('aria-checked', 'true')
+        await expect(gateDialog(page)).toContainText(
+            'They include which tools you use, some editor settings',
+        )
+        await toggle.click()
+        await expect(toggle).toHaveAttribute('aria-checked', 'false')
+        await agree(page)
+        await interact(page)
+        await clickChart(page)
+        for (let i = 0; i < 3; i++) await hide(page)
+        expect(await leave(page)).toEqual([])
+        expect(batches).toEqual([])
+    })
+
+    test('a startup that fails where agreement is due is never reported, as nothing arms', async ({
+        page,
+        context,
+    }) => {
+        const { batches } = await mock(context)
+        await startupFlags(page, { fail: 'A row could not be read' })
+        await page.goto('/')
+        const gate = page.locator('dialog[data-startup-gate]')
+        await expect(gate.getByRole('alert')).toBeVisible()
+        await expect.poll(() => agreementState(page)).toBe('done')
+        await expect.poll(() => clientLoaded(page), { timeout: 15_000 }).toBe(3)
+        await gate.getByRole('alert').click()
+        for (let i = 0; i < 3; i++) await hide(page)
+        await page.waitForTimeout(500)
+        expect(batches).toEqual([])
+        expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBeNull()
+    })
+
+    test('a startup that fails with a current record is reported once the error page is used', async ({
+        page,
+        context,
+    }) => {
+        const { batches } = await mock(context)
+        await page.addInitScript(
+            (key) => localStorage.setItem(key, '{"terms":999,"privacy":999}'),
+            KEY,
+        )
+        await startupFlags(page, { fail: 'A row could not be read' })
+        await page.goto('/')
+        const gate = page.locator('dialog[data-startup-gate]')
+        await expect(gate.getByRole('alert')).toBeVisible()
+        expect(await agreementState(page)).toBe('notDue')
+        await gate.getByRole('alert').click()
+        await sends(page, batches)
+        expect(dataOf(batches[0] ?? [], 'startup')).toMatchObject({ outcome: 'error' })
+    })
+
+    test('where the record cannot be stored, Agree still lets the next input arm', async ({
+        page,
+        context,
+    }) => {
+        const { batches } = await mock(context)
+        await page.addInitScript((key) => {
+            const setItem = Storage.prototype.setItem
+            Storage.prototype.setItem = function (name, value) {
+                if (name === key) throw new DOMException('Full', 'QuotaExceededError')
+                setItem.call(this, name, value)
+            }
+        }, KEY)
+        await shownVisit(page)
+        await agree(page)
+        await clickChart(page)
+        await sends(page, batches)
+    })
+
+    test('Agree in another tab lets the next input here arm', async ({ page, context }) => {
+        const { batches } = await mock(context)
+        await shownVisit(page)
+        const other = await context.newPage()
+        await other.goto('/')
+        await expect(gateDialog(other)).toBeVisible()
+        await agree(other)
+        await other.close()
+        await expect(gateDialog(page)).toHaveCount(0)
+        await expect.poll(() => agreementState(page)).toBe('done')
+        await clickChart(page)
+        await sends(page, batches)
+    })
+
+    test('a hidden page holds it too, and the visit arms after Agree', async ({
+        page,
+        context,
+    }) => {
+        const { batches } = await mock(context)
+        await page.addInitScript(() => {
+            Object.defineProperty(document, 'visibilityState', {
+                configurable: true,
+                get: () => 'hidden',
+            })
+        })
+        await page.goto('/')
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await expect.poll(() => clientLoaded(page), { timeout: 15_000 }).toBe(3)
+        // The dialog opens in a hidden page too: nothing is stored before Agree.
+        await expect.poll(() => agreementState(page)).toBe('open')
+        await page.evaluate(() => {
+            delete (document as { visibilityState?: unknown }).visibilityState
+            document.dispatchEvent(new Event('visibilitychange'))
+        })
+        await expect(gateDialog(page)).toBeVisible()
+        await interact(page)
+        for (let i = 0; i < 3; i++) await hide(page)
+        expect(batches).toEqual([])
+        await agree(page)
+        await clickChart(page)
+        await sends(page, batches)
+    })
 })

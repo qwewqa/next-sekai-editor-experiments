@@ -3,7 +3,12 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { StorageStatus } from '../../src/local/worker/core'
-import { closePage, installCanvasCounters, installEditorFixture } from './editorFixture'
+import {
+    closePage,
+    installCanvasCounters,
+    installEditorFixture,
+    withAgreement,
+} from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // The journal kill tests: edits that only the journal holds
@@ -350,7 +355,9 @@ for (const [kind, name] of kinds) {
         test.setTimeout(120_000)
         const { baseURL } = testInfo.project.use
         const profile = await onDisk((dir) =>
-            playwright.chromium.launchPersistentContext(dir, { ...(baseURL ? { baseURL } : {}) }),
+            playwright.chromium
+                .launchPersistentContext(dir, { ...(baseURL ? { baseURL } : {}) })
+                .then(withAgreement),
         )
         try {
             await killAndRecover(profile, kind, killByCrash)

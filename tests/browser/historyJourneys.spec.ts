@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type en from '../../src/i18n/en/index.json'
+import { withAgreement } from './editorFixture'
 import {
     chartOf,
     closePage,
@@ -549,14 +550,16 @@ test('a crash while peeking recovers the live chart, never the peeked one', asyn
     const directory = await mkdtemp(join(tmpdir(), 'nse-journey-'))
     const { baseURL, launchOptions } = testInfo.project.use
     const launch = () =>
-        playwright.chromium.launchPersistentContext(directory, {
-            ...(baseURL ? { baseURL } : {}),
-            viewport: { width: 1600, height: 1000 },
-            ...(launchOptions?.args ? { args: launchOptions.args } : {}),
-            ...(launchOptions?.executablePath
-                ? { executablePath: launchOptions.executablePath }
-                : {}),
-        })
+        playwright.chromium
+            .launchPersistentContext(directory, {
+                ...(baseURL ? { baseURL } : {}),
+                viewport: { width: 1600, height: 1000 },
+                ...(launchOptions?.args ? { args: launchOptions.args } : {}),
+                ...(launchOptions?.executablePath
+                    ? { executablePath: launchOptions.executablePath }
+                    : {}),
+            })
+            .then(withAgreement)
     let context = await launch()
     try {
         const page = await context.newPage()

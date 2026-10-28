@@ -12,6 +12,7 @@ import SettingsSection from './SettingsSection.vue'
         <NumberField
             v-model="settings.touchQuickScrollWidth"
             :label="i18n.settings.touch.quickScrollWidth"
+            :description="i18n.settings.descriptions.touchQuickScrollWidth"
             :min="0"
             :max="200"
             step="any"
@@ -20,6 +21,7 @@ import SettingsSection from './SettingsSection.vue'
         <SelectField
             v-model="settings.touchQuickScrollShow"
             :label="i18n.settings.touch.showQuickScroll.title"
+            :description="i18n.help.modal.touchscreen.quickScroll"
             :options="[
                 [i18n.settings.touch.showQuickScroll.on, 'on'],
                 [i18n.settings.touch.showQuickScroll.off, 'off'],
@@ -30,6 +32,7 @@ import SettingsSection from './SettingsSection.vue'
         <ToggleField
             v-model="settings.touchScrollInertia"
             :label="i18n.settings.touch.scrollInertia"
+            :description="i18n.settings.descriptions.touchScrollInertia"
         />
 
         <ToggleField

@@ -63,6 +63,10 @@ const onBackdropUp = (event: PointerEvent) => {
 
 // Escape ends the busy task first, wherever focus is.
 const onCancel = (event: Event, modal: Modal) => {
+    if (modal.persistent) {
+        event.preventDefault()
+        return
+    }
     const busy = (event.currentTarget as HTMLElement).querySelector('[data-modal-busy]')
     if (busy) {
         event.preventDefault()
@@ -83,11 +87,25 @@ const onClick = (event: MouseEvent, modal: Modal) => {
         keepOpen = false
         return
     }
-    if (keepOpen) {
+    if (keepOpen || modal.persistent) {
         keepOpen = false
         return
     }
 
+    closeModal(modal)
+}
+
+// What opens each dialog and gives its default focus.
+const openers = new WeakMap<HTMLDialogElement, () => void>()
+
+// A persistent dialog that the browser closes anyway (an Escape the page cannot refuse) opens
+// again; the editor under it stays inert meanwhile.
+const onClose = (event: Event, modal: Modal) => {
+    const dialog = event.currentTarget as HTMLDialogElement
+    if (modal.persistent && modals.includes(modal) && dialog.isConnected && !dialog.open) {
+        openers.get(dialog)?.()
+        return
+    }
     closeModal(modal)
 }
 
@@ -107,39 +125,55 @@ onUnmounted(() => {
     window.removeEventListener('keydown', onKeyDown, true)
 })
 
+// Ids for what describes a dialog, which has none of its own.
+let describedId = 0
+
 const vOpen = {
     mounted(el: HTMLDialogElement) {
         const title = el.querySelector('[data-modal-title]')
         if (title) el.setAttribute('aria-labelledby', title.id)
-        // The body's primary action always takes focus, as a confirm button must.
-        const body = [...el.children]
-            .filter((child) => !child.hasAttribute('data-notice-layer'))
-            .pop()
-        const primary = body?.querySelector<HTMLElement>('[data-autofocus]')
-        const focusDialog = byPointer && !primary
-        // Firefox hides a scripted focus ring after an earlier pointer open.
-        const focusVisible = !byPointer
-        el.toggleAttribute('autofocus', focusDialog)
-        const focusDefault = () => {
-            if (focusDialog) {
-                el.focus({ preventScroll: true })
-                return
+        const described = [...el.querySelectorAll<HTMLElement>('[data-modal-description]')]
+        if (described.length)
+            el.setAttribute(
+                'aria-describedby',
+                described
+                    .map((element) => (element.id ||= `modal-description-${describedId++}`))
+                    .join(' '),
+            )
+        // The primary action always takes focus, as a confirm button must, in the body or a footer.
+        const content = [...el.children].filter((child) => !child.hasAttribute('data-notice-layer'))
+        const body = content.filter((child) => !child.hasAttribute('data-modal-footer')).pop()
+        const primary = content
+            .map((child) => child.querySelector<HTMLElement>('[data-autofocus]'))
+            .find((found) => found !== null)
+        const open = () => {
+            const focusDialog = byPointer && !primary
+            // Firefox hides a scripted focus ring after an earlier pointer open.
+            const focusVisible = !byPointer
+            el.toggleAttribute('autofocus', focusDialog)
+            const focusDefault = () => {
+                if (focusDialog) {
+                    el.focus({ preventScroll: true })
+                    return
+                }
+                // Otherwise its first field or button.
+                const label = body?.querySelector('label')
+                const target = primary ?? label?.control ?? label ?? body?.querySelector('button')
+                target?.focus({ focusVisible })
+                // A prefilled name is selected, so typing replaces it.
+                if (target instanceof HTMLInputElement && target.type === 'text') target.select()
             }
-            // Otherwise its first field or button.
-            const label = body?.querySelector('label')
-            const target = primary ?? label?.control ?? label ?? body?.querySelector('button')
-            target?.focus({ focusVisible })
-            // A prefilled name is selected, so typing replaces it.
-            if (target instanceof HTMLInputElement && target.type === 'text') target.select()
+            el.showModal()
+            // showModal lands on the first button, the close ×, so the default takes focus in the
+            // same task, before a key can reach the ×.
+            focusDefault()
+            setTimeout(() => {
+                // Focus lost to a node that moved is restored; one moved by a click or key stays.
+                if (document.activeElement === document.body) focusDefault()
+            }, 0)
         }
-        el.showModal()
-        // showModal lands on the first button, the close ×, so the default takes focus in the same
-        // task, before a key can reach the ×.
-        focusDefault()
-        setTimeout(() => {
-            // Focus lost to a node that moved is restored; one moved by a click or key stays.
-            if (document.activeElement === document.body) focusDefault()
-        }, 0)
+        openers.set(el, open)
+        open()
     },
     // Closing first returns focus to the opener, as Escape does.
     beforeUnmount(el: HTMLDialogElement) {
@@ -165,14 +199,15 @@ const vOpen = {
         :style="modal.size === 'large' ? largeStyle(modal) : undefined"
         :data-size="modal.size"
         :data-tall="modal.tall || undefined"
+        :closedby="modal.persistent ? 'none' : undefined"
         @pointerdown.capture="onBackdropDown"
         @pointerup.capture="onBackdropUp"
         @click="onClick($event, modal)"
         @cancel="onCancel($event, modal)"
-        @close="closeModal(modal)"
+        @close="onClose($event, modal)"
     >
         <!-- The page behind a dialog is inert, so each dialog carries a region; only the top one is reachable. -->
-        <NoticeRegion />
+        <NoticeRegion :over-only="modal.persistent" />
         <component :is="modal.is" v-bind="modal.props" @close="closeModal(modal, $event)" />
         <div
             v-if="

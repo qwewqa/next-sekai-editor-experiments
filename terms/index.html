@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Terms for using the %PRODUCT_NAME% website and web editor."
+        />
+        <meta name="theme-color" content="#77efdc" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#232539" media="(prefers-color-scheme: dark)" />
+        <link rel="icon" type="image/png" href="/builtin-assets/out/icon/app-icon-32.png" />
+        <link rel="apple-touch-icon" href="/builtin-assets/out/icon/app-icon-180.png" />
+        <link rel="canonical" href="https://nse.qwewqa.dev/terms/" />
+        <link rel="stylesheet" href="/src/landing/landing.css" />
+        <title>Terms of Service – %PRODUCT_NAME%</title>
+        <script>
+            // The theme before first paint, from the editor's stored choice.
+            {
+                let theme = 'system'
+                try {
+                    theme = JSON.parse(localStorage.getItem(THEME_KEY)) ?? theme
+                } catch {}
+                document.documentElement.dataset.theme = THEMES.includes(theme)
+                    ? theme
+                    : matchMedia('(prefers-color-scheme: dark)').matches
+                      ? 'dark'
+                      : 'light'
+            }
+        </script>
+    </head>
+    <body class="bg-bg text-fg">
+        <div class="flex min-h-screen flex-col sm:px-4 sm:py-8">
+            <div
+                class="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden bg-modal sm:flex-none sm:rounded-xl sm:shadow-xl"
+            >
+                <header
+                    class="flex h-12 shrink-0 items-center justify-between gap-2 bg-header pl-4 pr-1.5 [@media(pointer:coarse)]:h-[52px]"
+                >
+                    <div class="flex min-w-0 items-center gap-2 text-lg font-bold">
+                        <img
+                            src="/builtin-assets/out/icon/app-icon-32.png"
+                            alt=""
+                            width="24"
+                            height="24"
+                            class="size-6 shrink-0"
+                        />
+                        <span class="truncate">%PRODUCT_NAME%</span>
+                    </div>
+                    <a href="/" class="band-button">
+                        <span class="max-sm:hidden">Open the Web Editor</span>
+                        <span class="sm:hidden">Web Editor</span>
+                    </a>
+                </header>
+
+                <main class="flex flex-col gap-8 p-4 sm:p-6">
+                    <div class="flex flex-col gap-1">
+                        <h1 class="text-2xl font-bold text-fg-strong sm:text-3xl">
+                            Terms of Service
+                        </h1>
+                        <p class="text-sm text-fg/80">
+                            Last updated:
+                            <time datetime="2026-10-27" data-revision="1">October 27, 2026</time>
+                        </p>
+                    </div>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="about">
+                        <h2 id="about" class="text-lg font-bold text-fg-strong">
+                            About These Terms
+                        </h2>
+                        <p>
+                            %PRODUCT_NAME% is an open-source project run by qwewqa. In these terms,
+                            “we” means the project operator.
+                        </p>
+                        <p>
+                            These terms cover this website and the editor we serve from it. You must
+                            be 13 or older to use the site and editor.
+                        </p>
+                        <p>
+                            Our <a href="/privacy/" class="link">Privacy Notice</a> explains how we
+                            handle data, including usage statistics and messages you send us.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="editor">
+                        <h2 id="editor" class="text-lg font-bold text-fg-strong">The Editor</h2>
+                        <p>
+                            We provide a free, open-source editor with no account required. You can
+                            open and import level data and project files, edit charts, choose music
+                            and cover images, save project files and export level data for Sonolus.
+                        </p>
+                        <p>
+                            The source code is licensed under the
+                            <a href="/LICENSE.txt" class="link" target="_blank" rel="noopener"
+                                >MIT License</a
+                            >. The built-in art and app icon are available under CC0 1.0.
+                            Third-party components have their own licenses, listed in
+                            <a
+                                href="/THIRD_PARTY_NOTICES.txt"
+                                class="link"
+                                target="_blank"
+                                rel="noopener"
+                                >Third-Party Notices</a
+                            >.
+                        </p>
+                        <p>
+                            These terms cover your use of the hosted site. They do not change the
+                            rights those licenses give you.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="content">
+                        <h2 id="content" class="text-lg font-bold text-fg-strong">Your Content</h2>
+                        <p>
+                            You keep any rights you have in your charts, music, images and other
+                            files. We do not claim ownership of them.
+                        </p>
+                        <p>
+                            The editor processes your files on your device. If you email us a file
+                            for support, we handle it as described in our
+                            <a href="/privacy/" class="link">Privacy Notice</a>.
+                        </p>
+                        <p>
+                            You are responsible for having the rights or permission needed for the
+                            music, images and other material you use and share.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="work">
+                        <h2 id="work" class="text-lg font-bold text-fg-strong">
+                            Keeping Your Work
+                        </h2>
+                        <p>
+                            Work stored in your browser can be lost if you clear browser data or
+                            storage fails. Save project files to keep copies of your work.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="use">
+                        <h2 id="use" class="text-lg font-bold text-fg-strong">Acceptable Use</h2>
+                        <p>
+                            Do not misuse our site or statistics server, including by interfering
+                            with their operation or sending false usage data at scale.
+                        </p>
+                    </section>
+
+                    <section
+                        class="flex max-w-[65ch] flex-col gap-3"
+                        aria-labelledby="availability"
+                    >
+                        <h2 id="availability" class="text-lg font-bold text-fg-strong">
+                            Availability
+                        </h2>
+                        <p>We may change the site and editor or stop providing them at any time.</p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="warranty">
+                        <h2 id="warranty" class="text-lg font-bold text-fg-strong">
+                            Warranty and Liability
+                        </h2>
+                        <p>
+                            To the extent the law allows, we provide the site and editor “as is”,
+                            without warranties. We do not guarantee that they will always be
+                            available, work without errors or meet your needs.
+                        </p>
+                        <p>
+                            To the extent the law allows, we are not liable for loss or damage
+                            resulting from your use of, or inability to use, the site or editor,
+                            including lost work.
+                        </p>
+                        <p>
+                            These terms do not limit any rights you have or liability we have that
+                            the law does not allow us to exclude or limit.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="affiliation">
+                        <h2 id="affiliation" class="text-lg font-bold text-fg-strong">
+                            Trademarks and Affiliation
+                        </h2>
+                        <p>
+                            We are not affiliated with or endorsed by SEGA, Colorful Palette or the
+                            Sonolus team. Trademarks belong to their respective owners.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="law">
+                        <h2 id="law" class="text-lg font-bold text-fg-strong">Governing Law</h2>
+                        <p>
+                            These terms are governed by the laws of the State of Washington, USA.
+                            You keep any consumer protections that must apply under the law where
+                            you live, regardless of this choice of law.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="changes">
+                        <h2 id="changes" class="text-lg font-bold text-fg-strong">
+                            Changes to These Terms
+                        </h2>
+                        <p>
+                            We may update these terms and will publish the changes and revised date
+                            on this page. The editor asks you to agree to these terms before you
+                            first use it, and again after changes to these terms or the
+                            <a href="/privacy/" class="link">Privacy Notice</a> that need agreement.
+                        </p>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="contact">
+                        <h2 id="contact" class="text-lg font-bold text-fg-strong">Contact</h2>
+                        <p>
+                            Send questions about these terms to
+                            <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
+                        </p>
+                    </section>
+                </main>
+
+                <footer class="mt-auto border-t border-fg/15 px-4 py-4 text-sm text-fg/80 sm:px-6">
+                    <p>
+                        Open source under the
+                        <a href="/LICENSE.txt" class="link" target="_blank" rel="noopener"
+                            >MIT License</a
+                        >.
+                    </p>
+                    <p class="mt-1 flex flex-wrap gap-x-2">
+                        <a
+                            href="https://github.com/%GITHUB_REPOSITORY%"
+                            class="link"
+                            target="_blank"
+                            rel="noopener"
+                            >Source Code</a
+                        >
+                        <span aria-hidden="true">·</span>
+                        <a
+                            href="/THIRD_PARTY_NOTICES.txt"
+                            class="link"
+                            target="_blank"
+                            rel="noopener"
+                            >Third-Party Notices</a
+                        >
+                        <span aria-hidden="true">·</span>
+                        <a href="/privacy/" class="link">Privacy Notice</a>
+                    </p>
+                </footer>
+            </div>
+        </div>
+    </body>
+</html>

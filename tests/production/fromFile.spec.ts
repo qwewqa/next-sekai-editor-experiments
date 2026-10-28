@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { editorReady } from './fixtures'
 
 // From a File in the release build under its exact policy: a
 // package is checked, repacked and stored (the storage worker, a Blob in IndexedDB, an object URL
@@ -56,7 +57,7 @@ test('a package is picked, stored and chosen again after a reload, under the rel
         )
     })
     await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
 
     await openAssets(page)
     await importBuiltin(page, 'skin', 'Skin')
@@ -66,7 +67,7 @@ test('a package is picked, stored and chosen again after a reload, under the rel
     await page.keyboard.press('Escape')
 
     await page.reload()
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
     await openAssets(page)
     const dialog = page.locator('dialog[open]')
     await dialog.getByRole('tab', { name: 'Skin' }).click()

@@ -28,17 +28,23 @@ import SettingsSection from './SettingsSection.vue'
         <SelectField
             v-model="settings.playStartPosition"
             :label="i18n.settings.play.startPosition.title"
+            :description="i18n.settings.descriptions.playStartPosition"
             :options="[
                 [i18n.settings.play.startPosition.view, 'view'],
                 [i18n.settings.play.startPosition.cursor, 'cursor'],
             ]"
         />
 
-        <ToggleField v-model="settings.playFollow" :label="i18n.settings.play.follow" />
+        <ToggleField
+            v-model="settings.playFollow"
+            :label="i18n.settings.play.follow"
+            :description="i18n.settings.descriptions.playFollow"
+        />
 
         <NumberField
             v-model="settings.playFollowPosition"
             :label="i18n.settings.play.followPosition"
+            :description="i18n.settings.descriptions.playFollowPosition"
             :min="0"
             :max="100"
             step="any"
@@ -47,6 +53,7 @@ import SettingsSection from './SettingsSection.vue'
         <NumberField
             v-model="settings.playPreviewDuration"
             :label="i18n.settings.play.previewDuration"
+            :description="i18n.settings.descriptions.playPreviewDuration"
             :min="0"
             :max="1000"
             step="any"

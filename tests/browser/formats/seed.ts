@@ -119,6 +119,8 @@ export const seededContext = async (
             )
             localStorage.setItem(`${prefix}showPreview`, 'false')
             localStorage.setItem(`${prefix}showMinimap`, 'false')
+            // The agreement counts as given.
+            localStorage.setItem(`${prefix}agreement`, '{"terms":999,"privacy":999}')
         },
         { files, prefix },
     )

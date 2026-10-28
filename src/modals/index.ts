@@ -17,6 +17,8 @@ export type Modal = {
     cap?: string
     /** A tool dialog that leaves the tool as it is: the History sheet over the live chart. */
     sheet?: boolean
+    /** Only its own button closes it: Escape and the backdrop do nothing, and a close by the browser opens it again. */
+    persistent?: boolean
 }
 
 export const modals = shallowReactive<Modal[]>([])
@@ -35,6 +37,9 @@ export const isToolDialogOpen = computed(() =>
 export const isBlockingModalOpen = computed(() =>
     modals.some((modal) => modal.presentation !== 'tool'),
 )
+
+/** A persistent dialog is open: the page under it stays inert even while the browser closes it. */
+export const isPersistentModalOpen = computed(() => modals.some((modal) => modal.persistent))
 
 export const closeModal = (modal: Modal, result?: never) => {
     const index = modals.indexOf(modal)
@@ -55,7 +60,10 @@ type ModalResult<T extends Component> = ComponentInstance<T>['$emit'] extends (
 export const showModal = <T extends Component>(
     component: T,
     props: ModalProps<T>,
-    options?: Pick<Modal, 'presentation' | 'pane' | 'size' | 'tall' | 'cap' | 'sheet'>,
+    options?: Pick<
+        Modal,
+        'presentation' | 'pane' | 'size' | 'tall' | 'cap' | 'sheet' | 'persistent'
+    >,
 ) =>
     new Promise<ModalResult<T> | undefined>((resolve) => {
         modals.push({

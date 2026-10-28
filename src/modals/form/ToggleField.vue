@@ -8,6 +8,8 @@ defineProps<{
     label: string
     /** Short remarks under the field. */
     notes?: string[]
+    /** What the setting does, behind an ⓘ after the label. */
+    description?: string
 }>()
 
 const modelValue = defineModel<boolean>({ required: true })
@@ -20,7 +22,7 @@ const shown = computed(() =>
 </script>
 
 <template>
-    <BaseField :label :notes>
+    <BaseField :label :notes :description>
         <!-- A switch named by its row; the shown state stays its text. -->
         <template #default="{ textId }">
             <div class="form-field-toggle">

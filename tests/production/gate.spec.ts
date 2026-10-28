@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
+import { editorReady } from './fixtures'
 
 // The support gate on the release build: /gate.js is a staged file
 // the page loads ahead of the bundle, and it works under the exact policy.
@@ -80,6 +81,6 @@ test('a browser without a needed feature gets the plain page and its downloads, 
 
 test('a browser with the features gets the editor, not the gate', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
     await expect(page.locator('html')).not.toHaveAttribute('data-gate', /.*/)
 })

@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import config from './playwright.config'
+import { AGREED, AGREEMENT_KEY } from './tests/helpers/agreement'
 
 // Parallel local runs can each choose a free preview server port.
 // CI runs under xvfb-run, which gives headless Firefox a WebGL2 context.
@@ -51,12 +52,16 @@ export default defineConfig({
     use: {
         ...config.use,
         launchOptions: {},
-        // As in the main config: no startup guard question unless a spec tests the guard.
+        // As in the main config: no startup guard question unless a spec tests the guard, and the
+        // agreement counts as given.
         storageState: {
             cookies: [],
             origins: [String(config.use?.baseURL), previewUrl].map((origin) => ({
                 origin,
-                localStorage: [{ name: 'nse.test.noOpeningGuard', value: 'true' }],
+                localStorage: [
+                    { name: 'nse.test.noOpeningGuard', value: 'true' },
+                    { name: AGREEMENT_KEY, value: AGREED },
+                ],
             })),
         },
     },

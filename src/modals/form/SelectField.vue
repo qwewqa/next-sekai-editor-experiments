@@ -14,6 +14,8 @@ const props = defineProps<{
     disabled?: boolean
     /** Each value's picture in the shared list. */
     optionGlyph?: OptionGlyph<NoInfer<T>>
+    /** What the setting does, behind an ⓘ after the label. */
+    description?: string
 }>()
 
 const modelValue = defineModel<T>({ required: true })
@@ -31,7 +33,7 @@ const glyphs = computed(() =>
 </script>
 
 <template>
-    <BaseField :label>
+    <BaseField :label :description>
         <div class="form-field-select group" :class="{ 'opacity-40': disabled }">
             <select
                 v-model.lazy="modelValue"

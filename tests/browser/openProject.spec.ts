@@ -69,6 +69,7 @@ const start = async (page: Page, fileSystemAccess: boolean | 'opfs' = 'opfs', ur
             JSON.stringify({ appVersion: '0.6.0', atTag: true }),
         )
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
+        localStorage.setItem('sonolus-next-sekai-editor.agreement', '{"terms":999,"privacy":999}')
     })
     if (memoryFiles(page)) await page.addInitScript(installMemoryFiles)
     await page.addInitScript(installTestPlatform, { fileSystemAccess })
@@ -452,6 +453,63 @@ test('a reload mid-import resumes it from the bound handle', async ({ page }) =>
         [4, true],
         [5, true],
     ])
+})
+
+// The damage comes after the startup gate lifts, while the agreement dialog is open on a load
+// where it is due: it waits under the dialog, and the card says so after Agree.
+test('damage a resumed import finds waits under the agreement dialog, and its card shows after Agree', async ({
+    page,
+}) => {
+    test.skip(memoryFiles(page), 'the held read needs the OPFS handle')
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await damagedBytes())
+    // No batch runs before the reload, so the reload finds the whole import pending.
+    await holdImport(page)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    const session = await sessionOf(page)
+    const chain = await chainOf(page, session.sessionId)
+    const token = (await handleToken(page, chain.chainId as string, 'file'))!
+    // The resume reads the file only once the spec lets it, so the damage comes after the dialog
+    // has opened, as on a slow disk.
+    await page.addInitScript(
+        ({ token, name }) => {
+            let release = () => {}
+            const held = new Promise<void>((resolve) => (release = resolve))
+            ;(window as unknown as { releaseFile: () => void }).releaseFile = release
+            const opfs = async () => (await navigator.storage.getDirectory()).getFileHandle(name)
+            const handle = {
+                kind: 'file',
+                name,
+                getFile: async () => {
+                    await held
+                    return (await opfs()).getFile()
+                },
+                queryPermission: () => Promise.resolve('granted'),
+                isSameEntry: (other: { name?: string }) => Promise.resolve(other.name === name),
+            }
+            window.nseTestHandles = new Map([[token, handle as unknown as FileSystemFileHandle]])
+        },
+        { token, name: 'coconut.nxsp' },
+    )
+    // The next load has no agreement record, so the dialog is due.
+    await page.addInitScript(() => {
+        localStorage.removeItem('sonolus-next-sekai-editor.agreement')
+    })
+    await page.reload()
+    await waitForStartup(page, { agreement: true })
+    const dialog = page.getByRole('dialog', { name: 'Next SEKAI Editor' })
+    await expect(dialog).toBeVisible()
+    await page.evaluate(() => (window as unknown as { releaseFile: () => void }).releaseFile())
+    await imported(page)
+    const damaged = page.locator('.notification-pill').filter({
+        hasText: 'The history in coconut.nxsp is damaged. Saving will create a separate file.',
+    })
+    await expect(damaged).toBeAttached()
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: 'Agree' }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(damaged).toBeVisible()
 })
 
 test('a reload reads no stored handle at startup; a Save or an Export reads it after', async ({

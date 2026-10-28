@@ -38,6 +38,11 @@ test('the sections come in order, each with a heading of its own', () => {
     for (const id of ids) assert.match(html, new RegExp(`<h2 id="${id}"`), id)
 })
 
+test('the footer links to the Terms of Service', () => {
+    const footer = /<footer\b[\s\S]*<\/footer>/.exec(html)?.[0] ?? ''
+    assert.match(footer, /<a href="\/terms\/" class="link">Terms of Service<\/a>/)
+})
+
 test('the contact address is nse@qwewqa.dev, the only one', () => {
     assert.deepEqual(
         [...new Set(attributes('href').filter((href) => href.startsWith('mailto:')))],
@@ -53,7 +58,7 @@ test('every link is on the site or on the allow-list', () => {
         /^https:\/\/docs\.github\.com\/en\/site-policy\/privacy-policies\/github-general-privacy-statement$/,
         /^mailto:nse@qwewqa\.dev$/,
         /^https:\/\/nse\.qwewqa\.dev\/privacy\/$/,
-        /^\/(?:LICENSE\.txt|THIRD_PARTY_NOTICES\.txt)?$/,
+        /^\/(?:LICENSE\.txt|THIRD_PARTY_NOTICES\.txt|terms\/)?$/,
         /^\/builtin-assets\/out\/icon\/app-icon-(?:32|180)\.png$/,
         /^\/src\/landing\/landing\.css$/,
     ]
@@ -82,8 +87,9 @@ test('the page allows zoom', () => {
     assert.equal(viewport, 'width=device-width, initial-scale=1.0')
 })
 
-test('the date is valid and its text matches', () => {
-    const [, iso, shown] = /<time datetime="([^"]+)">([^<]+)<\/time>/.exec(html) ?? []
+test('the date is valid, its text matches, and it carries the revision', () => {
+    const [, iso, shown] =
+        /<time datetime="([^"]+)" data-revision="[1-9]\d*">([^<]+)<\/time>/.exec(html) ?? []
     assert.match(iso, /^\d{4}-\d{2}-\d{2}$/)
     const date = new Date(`${iso}T00:00:00Z`)
     assert.equal(

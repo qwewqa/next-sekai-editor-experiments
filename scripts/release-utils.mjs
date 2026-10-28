@@ -279,6 +279,7 @@ function validateFileNames(files, assets) {
     const exact = new Set([
         'index.html',
         'privacy/index.html',
+        'terms/index.html',
         'release-manifest.json',
         ...staticFiles,
         ...noticeFiles,
@@ -373,8 +374,8 @@ function validAppVersion(manifest) {
     )
 }
 
-// The Vite entries, /privacy/ and /app/ included; the third-party notice pages are static documents.
-const pageEntries = /^(?:index|privacy\/index|app\/index)\.html$/
+// The Vite entries, /privacy/, /terms/ and /app/ included; the third-party notice pages are static documents.
+const pageEntries = /^(?:index|privacy\/index|terms\/index|app\/index)\.html$/
 
 // The support gate is a plain classic script with no async or defer, ahead of every module script.
 function gateComesFirst(html) {

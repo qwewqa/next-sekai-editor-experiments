@@ -5,16 +5,23 @@ import CloseIcon from '../editor/workspace/CloseIcon.vue'
 import { i18n } from '../i18n'
 import { modalTitleKey } from './title'
 
-const props = defineProps<{
-    title: string
-    /** The body neither pads nor scrolls; its content fills it and scrolls itself. */
-    fill?: boolean
-}>()
+const props = withDefaults(
+    defineProps<{
+        title: string
+        /** The body neither pads nor scrolls; its content fills it and scrolls itself. */
+        fill?: boolean
+        /** False for a dialog that only its own button closes; it then has no close button. */
+        closable?: boolean
+    }>(),
+    { closable: true },
+)
 
 const slots = defineSlots<{
     default(): unknown
     /** Replaces the visible title, e.g. with tabs; the title still names the dialog. */
     header?(): unknown
+    /** Buttons pinned under the body, which stay in view while the body scrolls. */
+    footer?(): unknown
 }>()
 
 // Only the editor's tool-modal host provides a title; its panels use the
@@ -37,8 +44,12 @@ const titleId = useId()
 
 <template>
     <div
-        class="flex min-h-12 shrink-0 items-center justify-between gap-2 bg-header pr-1.5 font-bold"
-        :class="[modalTitle ? 'text-base' : 'text-lg', slots.header ? 'pl-1.5' : 'pl-4']"
+        class="flex min-h-12 shrink-0 items-center justify-between gap-2 bg-header font-bold"
+        :class="[
+            modalTitle ? 'text-base' : 'text-lg',
+            slots.header ? 'pl-1.5' : 'pl-4',
+            closable ? 'pr-1.5' : 'pr-4',
+        ]"
     >
         <span
             :id="titleId"
@@ -50,6 +61,7 @@ const titleId = useId()
         >
         <slot name="header" />
         <button
+            v-if="closable"
             type="button"
             class="ghost ghost-band flex size-9 shrink-0 items-center justify-center rounded-full"
             :aria-label="i18n.modals.close"
@@ -65,5 +77,8 @@ const titleId = useId()
     </div>
     <div v-else v-scroll-edges class="relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
         <slot />
+    </div>
+    <div v-if="slots.footer" class="flex shrink-0 justify-end gap-2 px-4 pb-4" data-modal-footer>
+        <slot name="footer" />
     </div>
 </template>

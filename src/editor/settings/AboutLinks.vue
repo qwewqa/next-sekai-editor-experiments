@@ -5,7 +5,14 @@ export const aboutButtonClass =
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { GITHUB_REPOSITORY, HAS_PRIVACY_PAGE, RELEASE_NOTES_URL } from '../../buildInfo'
+import {
+    GITHUB_REPOSITORY,
+    HAS_PRIVACY_PAGE,
+    HAS_TERMS_PAGE,
+    PRIVACY_PATH,
+    RELEASE_NOTES_URL,
+    TERMS_PATH,
+} from '../../buildInfo'
 import { i18n } from '../../i18n'
 import { appVersion, platform } from '../../platform'
 
@@ -23,8 +30,9 @@ const links = computed(() => [
     { key: 'license', label: about.value.license, href: '/LICENSE.txt' },
     { key: 'notices', label: about.value.notices, href: '/THIRD_PARTY_NOTICES.txt' },
     ...(HAS_PRIVACY_PAGE
-        ? [{ key: 'privacy', label: about.value.privacy, href: '/privacy/' }]
+        ? [{ key: 'privacy', label: about.value.privacy, href: PRIVACY_PATH }]
         : []),
+    ...(HAS_TERMS_PAGE ? [{ key: 'terms', label: about.value.terms, href: TERMS_PATH }] : []),
 ])
 
 const open = (href: string) => {

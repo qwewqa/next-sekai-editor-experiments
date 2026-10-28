@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { pickWithClickInWebKit, skipWhereTheEditorCannotStart } from '../browser/webkitSupport'
-import { chart, instrumentRendering, stereoWav } from './fixtures'
+import { chart, editorReady, instrumentRendering, stereoWav } from './fixtures'
 
 // The flush in the release build: the classic (iife) worker deflates, verifies,
 // hashes and stores an import at once and a BGM pick with its bytes, under the web policy, and
@@ -43,7 +43,7 @@ test('the release build stores an import at once, a BGM pick with its bytes, and
     })
     await page.addInitScript(instrumentRendering)
     await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
     await expect.poll(() => page.evaluate(() => window.nseStartupTest !== undefined)).toBe(true)
 
     const opening = page.waitForEvent('filechooser')

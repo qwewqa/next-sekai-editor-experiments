@@ -17,6 +17,10 @@ test('a profile with only a migration flag is a new user', () => {
     )
 })
 
+test('the agreement record alone is not an existing user', () => {
+    assert.equal(isExistingUser(stored('agreement'), prefix), false)
+})
+
 test('a stored lastAppVersion makes an existing user', () => {
     assert.equal(isExistingUser(stored('lastAppVersion'), prefix), true)
 })

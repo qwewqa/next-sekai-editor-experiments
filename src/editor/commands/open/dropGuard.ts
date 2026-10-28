@@ -1,4 +1,5 @@
 import { i18n } from '../../../i18n'
+import { isPersistentModalOpen } from '../../../modals'
 import { notify } from '../../notification'
 
 // No drag-and-drop to open. Without a handler the browser would navigate
@@ -22,8 +23,9 @@ const onDrop = (event: DragEvent) => {
     const files = carriesFiles(event)
     if (!files && intoField(event)) return
     event.preventDefault()
-    // Nothing is read or opened.
-    if (files) notify(() => i18n.value.notice.useOpenFile)
+    // Nothing is read or opened. Under a persistent dialog no notice shows either, because it would
+    // replace the start-up notice that the load's other notices wait on.
+    if (files && !isPersistentModalOpen.value) notify(() => i18n.value.notice.useOpenFile)
 }
 
 let installed = false

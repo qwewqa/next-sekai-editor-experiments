@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { noteStyles } from '../../src/chart/noteStyle'
 import { parseGzippedJson, parseScp } from '../../src/preview/scp'
-import { chart, instrumentRendering, seedVersion, stereoWav } from './fixtures'
+import { chart, editorReady, instrumentRendering, seedVersion, stereoWav } from './fixtures'
 
 const siteUrl = new URL(process.env.PRODUCTION_SITE_URL ?? 'https://nse.qwewqa.dev/').href
 
@@ -38,7 +38,7 @@ test('Preview Settings open by themselves at first load where they fit', async (
         localStorage.setItem('sonolus-next-sekai-editor.showStages', 'false')
     })
     await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
     await expect(page.locator('.preview-controls')).toBeVisible()
     await expect(
         page.getByRole('button', { name: 'Preview Settings', exact: true }),
@@ -183,7 +183,7 @@ test('release assets, preview, chart editing and FFT audio work in the productio
     })
 
     await test.step('load actual release packages and deployed metadata', async () => {
-        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await editorReady(page)
         // Groups and Stages, open by default, leave too little room for the form to open itself.
         await showPreviewSettings(page)
         await expect(page.locator('.preview-controls input[type="number"]').first()).toHaveValue(

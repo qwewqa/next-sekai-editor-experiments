@@ -4,7 +4,8 @@
     "*.config.ts",
     "src/themes.ts",
     "src/storage.ts",
-    "src/product.ts"
+    "src/product.ts",
+    "tests/helpers/agreement.ts"
   ],
   "compilerOptions": {
     "composite": true,

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { i18n } from '../../i18n'
+import { linkParts } from '../../utils/linkParts'
 import SeverityIcon from '../SeverityIcon.vue'
 
 // The Save dialog's Export line: "Export Level Data…" in it is the link. A character touching it
@@ -14,22 +15,7 @@ const emit = defineEmits<{ export: [] }>()
 const hint = computed(() =>
     props.emphasis ? i18n.value.save.exportHintFirst : i18n.value.save.exportHint,
 )
-const link = computed(() => i18n.value.commands.exportLevel.title)
-const hintParts = computed(() => {
-    const at = hint.value.indexOf(link.value)
-    if (at < 0) return undefined
-    const before = hint.value.slice(0, at)
-    const after = hint.value.slice(at + link.value.length)
-    const lead = /\S$/u.exec(before)?.[0] ?? ''
-    const trail = /^\S/u.exec(after)?.[0] ?? ''
-    return {
-        before: before.slice(0, before.length - lead.length),
-        lead,
-        link: link.value,
-        trail,
-        after: after.slice(trail.length),
-    }
-})
+const hintParts = computed(() => linkParts(hint.value, [i18n.value.commands.exportLevel.title]))
 </script>
 
 <template>
@@ -41,17 +27,19 @@ const hintParts = computed(() => {
         <SeverityIcon v-if="emphasis" severity="info" class="absolute left-0 top-1 size-4" />
         <p>
             <template v-if="hintParts"
-                >{{ hintParts.before
-                }}<span class="whitespace-nowrap"
-                    >{{ hintParts.lead
-                    }}<button
-                        type="button"
-                        class="focus-out whitespace-normal rounded-sm underline outline outline-2 outline-transparent"
-                        @click="emit('export')"
-                    >
-                        {{ hintParts.link }}</button
-                    >{{ hintParts.trail }}</span
-                >{{ hintParts.after }}</template
+                ><template v-for="(part, i) in hintParts" :key="i"
+                    ><template v-if="'text' in part">{{ part.text }}</template
+                    ><span v-else class="whitespace-nowrap"
+                        >{{ part.lead
+                        }}<button
+                            type="button"
+                            class="focus-out whitespace-normal rounded-sm underline outline outline-2 outline-transparent"
+                            @click="emit('export')"
+                        >
+                            {{ part.name }}</button
+                        >{{ part.trail }}</span
+                    ></template
+                ></template
             >
             <button
                 v-else

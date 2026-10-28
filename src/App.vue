@@ -19,13 +19,16 @@ import {
 } from './editor/workspace'
 import WorkspaceDock from './editor/workspace/WorkspaceDock.vue'
 import { languageTag } from './i18n/plural'
-import { modals } from './modals'
+import { isPersistentModalOpen, modals } from './modals'
 import ModalManager from './modals/ModalManager.vue'
 import { isSafeMode } from './safe'
 import { settings } from './settings'
 import { startupGate } from './startup/gate'
 import SafeModeBar from './startup/SafeModeBar.vue'
 import StartupGate from './startup/StartupGate.vue'
+// Last: on a load where agreement is due, it holds the usage statistics' arming from here, before
+// index.ts starts them.
+import './editor/agreement/agreement'
 
 watch(
     () => settings.locale,
@@ -123,10 +126,12 @@ watch(root, (element, _, onCleanup) => {
 </script>
 
 <template>
-    <SafeModeBar v-if="isSafeMode()" />
+    <!-- Inert under a persistent dialog even while the browser closes it, before it opens again. -->
+    <SafeModeBar v-if="isSafeMode()" :inert="isPersistentModalOpen" />
     <div
         ref="root"
         class="flex h-screen w-screen overflow-hidden"
+        :inert="isPersistentModalOpen"
         :class="
             isSafeMode() &&
             'mt-[var(--safe-bar-height,2.5rem)] !h-[calc(100vh_-_var(--safe-bar-height,2.5rem))]'

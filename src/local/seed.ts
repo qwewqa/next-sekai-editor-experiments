@@ -1,3 +1,5 @@
+import { AGREEMENT_KEY } from '../editor/agreement/rules'
+import { storageKey } from '../storage'
 import { ZipReader } from '../zip'
 import { DB_NAME } from './db'
 import { decodeValue, DumpError, readDump, type Dump } from './dump'
@@ -92,7 +94,9 @@ export const seedDump = async (
     } finally {
         db.close()
     }
-    for (const [key, value] of Object.entries(dump.localStorage)) storage.setItem(key, value)
+    // A sample does not copy the agreement record, so each profile agrees for itself.
+    for (const [key, value] of Object.entries(dump.localStorage))
+        if (key !== storageKey(AGREEMENT_KEY)) storage.setItem(key, value)
     return { seeded: true }
 }
 

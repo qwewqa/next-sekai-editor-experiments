@@ -1,12 +1,13 @@
 import vue from '@vitejs/plugin-vue'
 import autoprefixer from 'autoprefixer'
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
 import { defaultClientConditions, defineConfig } from 'vite'
 import { analyticsFromEnv, gateTag } from './scripts/analytics.mjs'
 import { devPolicy, injectPolicy, nativePolicy, webPolicy } from './scripts/csp.mjs'
+import { LEGAL_PAGES, legalPages, type LegalPage } from './scripts/legal.mjs'
 import { nativeIndexHtml } from './scripts/native.mjs'
 import { previewAssetsMode } from './scripts/preview-assets.mjs'
 import { sourceRepository } from './scripts/repository.mjs'
@@ -24,9 +25,12 @@ const repository = sourceRepository({ cwd: root })
 // The Vite entries; the editor's is 'index' to keep its index-* chunk names. The apps' build has the editor only.
 const pages = (mode: string) => ({
     index: resolve(root, 'index.html'),
-    ...(mode !== 'native' && existsSync(resolve(root, 'privacy/index.html'))
-        ? { privacy: resolve(root, 'privacy/index.html') }
-        : {}),
+    ...Object.fromEntries(
+        Object.keys(legalPages(root, mode)).map((name) => [
+            name,
+            resolve(root, LEGAL_PAGES[name as LegalPage]),
+        ]),
+    ),
 })
 
 // Usage statistics: off unless both variables are set. The apps' build fails with them
@@ -206,7 +210,8 @@ export default defineConfig(({ mode }) => ({
         __NSE_SITE__: JSON.stringify(siteFromEnv()),
         // NSE_PERF=1: a perf build with the frame probes (docs/performance-testing.md).
         __NSE_PERF__: JSON.stringify(process.env.NSE_PERF === '1'),
-        __HAS_PRIVACY_PAGE__: JSON.stringify('privacy' in pages(mode)),
+        // Read at the dev server's start: restart it after a revision changes.
+        __LEGAL_PAGES__: JSON.stringify(legalPages(root, mode)),
         __NATIVE__: JSON.stringify(mode === 'native'),
         __NSE_BUILTIN_ONLY__: JSON.stringify(builtinOnly(mode)),
         __APP_VERSION__: JSON.stringify(appVersion({ cwd: root }).appVersion),

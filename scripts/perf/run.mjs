@@ -1168,6 +1168,19 @@ const openChart = async (page, group) => {
     await page.waitForFunction(() => window.nsePerf?.startup() === 'done', null, {
         timeout: 300_000,
     })
+    // A run never measures behind the agreement dialog, which opens as the gate lifts.
+    const agreement = await page.evaluate(
+        () =>
+            new Promise((resolve) =>
+                requestAnimationFrame(() =>
+                    resolve(document.querySelector('[data-agreement]') !== null),
+                ),
+            ),
+    )
+    if (agreement)
+        throw new Error(
+            'The agreement dialog is open: seed sonolus-next-sekai-editor.agreement = {"terms":999,"privacy":999}',
+        )
     await page.mouse.move(5, 5)
     await page.waitForTimeout(1000)
     if (group.chart) await openLevel(page, group)
@@ -1524,6 +1537,11 @@ try {
                 localStorage.setItem(
                     'sonolus-next-sekai-editor.lastAppVersion',
                     JSON.stringify('0.6.0'),
+                )
+                // The agreement counts as given.
+                localStorage.setItem(
+                    'sonolus-next-sekai-editor.agreement',
+                    '{"terms":999,"privacy":999}',
                 )
             })
             // A seeded group continues the seeded session; the others start blank.

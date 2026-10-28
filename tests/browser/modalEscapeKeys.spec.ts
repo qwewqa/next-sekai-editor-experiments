@@ -249,3 +249,177 @@ test('Escape returns focus to the opener once, before the next key', async ({ pa
     expect(await page.evaluate(() => document.activeElement?.id)).toBe('opener')
     expect(await closedCounts(page)).toEqual({ First: 1 })
 })
+
+// A persistent dialog closes only by its own button. The browser may still close it, on an Escape
+// it does not let the page refuse; it then opens again, and the editor under it stays inert in the
+// task between, so input queued there reaches nothing.
+
+/** Opens a persistent information dialog named `name`, and counts its native `close` events. */
+const openPersistent = async (page: Page, name: string) => {
+    await page.evaluate(async (name) => {
+        const { showModal } =
+            await window.editorTest.appImport<typeof import('../../src/modals/index')>(
+                '/src/modals/index.ts',
+            )
+        const { default: InfoModal } = await window.editorTest.appImport<
+            typeof import('../../src/modals/InfoModal.vue')
+        >('/src/modals/InfoModal.vue')
+        const closed = (Reflect.get(window, 'dialogsClosed') ?? {}) as Record<string, number>
+        Reflect.set(window, 'dialogsClosed', closed)
+        closed[name] = 0
+        void showModal(
+            InfoModal,
+            { title: () => name, message: () => 'Message' },
+            { persistent: true },
+        ).then(() => {
+            closed[name] = (closed[name] ?? 0) + 1
+        })
+    }, name)
+    await expect(page.getByRole('dialog', { name })).toBeVisible()
+    await page.evaluate(() => {
+        Reflect.set(window, 'nativeCloses', 0)
+        document.querySelector('dialog')!.addEventListener('close', () => {
+            Reflect.set(window, 'nativeCloses', (Reflect.get(window, 'nativeCloses') as number) + 1)
+        })
+    })
+}
+
+const nativeCloses = (page: Page) =>
+    page.evaluate(() => Reflect.get(window, 'nativeCloses') as number)
+
+const isOpen = (page: Page) => page.evaluate(() => document.querySelector('dialog')?.open === true)
+
+test.describe('a persistent dialog', () => {
+    test('stays open on Escape and a backdrop press, and the editor takes no key', async ({
+        page,
+    }) => {
+        await boot(page)
+        await pushStep(page)
+        const start = await lifeOf(page)
+        await openPersistent(page, 'Kept')
+        const dialog = page.getByRole('dialog', { name: 'Kept' })
+
+        // The second Escape has no user activation left to refuse it with, and it does nothing
+        // either. Nothing runs in the page between them, since an evaluation counts as activation.
+        await page.keyboard.press('Escape')
+        await page.keyboard.press('Escape')
+        await settle(page)
+        await activate(page, 'Kept')
+        await burst(page, ['Escape', 'z'])
+        await settle(page)
+        const box = (await dialog.boundingBox())!
+        await page.mouse.click(box.x + box.width / 2, box.y / 2)
+        await settle(page)
+
+        await expect(dialog).toBeVisible()
+        expect(await nativeCloses(page)).toBe(0)
+        expect(await closedCounts(page)).toEqual({ Kept: 0 })
+        expect(await modalCount(page)).toBe(1)
+        expect(await lifeOf(page)).toBe(start)
+        await expect(dialog).toHaveAttribute('closedby', 'none')
+    })
+
+    test('refuses Escape where the browser lets it, and opens again where it does not', async ({
+        page,
+    }) => {
+        await boot(page)
+        await pushStep(page)
+        const start = await lifeOf(page)
+        // As in a browser without `closedby`.
+        await page.evaluate(() => {
+            const { showModal } = HTMLDialogElement.prototype
+            HTMLDialogElement.prototype.showModal = function () {
+                this.removeAttribute('closedby')
+                showModal.call(this)
+            }
+        })
+        await openPersistent(page, 'Kept')
+        const dialog = page.getByRole('dialog', { name: 'Kept' })
+
+        // The page refuses the first Escape, which uses up its user activation (an evaluation counts
+        // as one). The browser then closes it on the next Escape regardless, and it opens again.
+        await page.keyboard.press('Escape')
+        await page.keyboard.press('Escape')
+        await page.keyboard.press('z')
+        await settle(page)
+        expect(await nativeCloses(page)).toBe(1)
+        expect(await isOpen(page)).toBe(true)
+        await expect(dialog.getByRole('button', { name: 'OK' })).toBeFocused()
+
+        // With new activation the cancel is refused again.
+        await activate(page, 'Kept')
+        await burst(page, ['Escape', 'z'])
+        await settle(page)
+        expect(await nativeCloses(page)).toBe(1)
+        expect(await isOpen(page)).toBe(true)
+
+        expect(await closedCounts(page)).toEqual({ Kept: 0 })
+        expect(await modalCount(page)).toBe(1)
+        expect(await lifeOf(page)).toBe(start)
+
+        // Its own button still closes it, once.
+        await dialog.getByRole('button', { name: 'OK' }).click()
+        await expect(dialog).toHaveCount(0)
+        await settle(page)
+        expect(await closedCounts(page)).toEqual({ Kept: 1 })
+        expect(await modalCount(page)).toBe(0)
+    })
+
+    test('a press queued while the browser closes it reaches nothing under it', async ({
+        page,
+    }) => {
+        await boot(page)
+        await pushStep(page)
+        const start = await lifeOf(page)
+        const undo = page
+            .locator('.chart-pane [data-editor-toolbar]')
+            .getByRole('button', { name: 'Undo', exact: true })
+        const box = (await undo.boundingBox())!
+        await openPersistent(page, 'Kept')
+
+        // A key whose handler closes the dialog, as a browser would, then holds the main thread, so
+        // the press on Undo is queued before the close event that opens the dialog again.
+        await page.evaluate(() => {
+            const targets: string[] = []
+            Reflect.set(window, 'pressTargets', targets)
+            for (const type of ['pointerdown', 'click'])
+                addEventListener(
+                    type,
+                    (event) => {
+                        if (event.target instanceof Element)
+                            targets.push(event.target.id || event.target.nodeName)
+                    },
+                    true,
+                )
+            const close = (event: KeyboardEvent) => {
+                if (event.key !== 'F9') return
+                removeEventListener('keydown', close, true)
+                document.querySelector('dialog')!.close()
+                const end = performance.now() + 400
+                while (performance.now() < end);
+            }
+            addEventListener('keydown', close, true)
+        })
+        const cdp = await page.context().newCDPSession(page)
+        const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        const key = { key: 'F9', code: 'F9', windowsVirtualKeyCode: 120 }
+        const mouse = { ...at, button: 'left' as const, clickCount: 1 }
+        await Promise.all([
+            cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...key }),
+            cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...key }),
+            cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...mouse }),
+            cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...mouse }),
+        ])
+        await cdp.detach()
+        await settle(page)
+
+        expect(await nativeCloses(page)).toBe(1)
+        expect(await isOpen(page)).toBe(true)
+        expect(await lifeOf(page)).toBe(start)
+        expect(await modalCount(page)).toBe(1)
+        // The press landed on the page around the editor, never on its Undo.
+        const targets = await page.evaluate(() => Reflect.get(window, 'pressTargets') as string[])
+        expect(targets.length).toBeGreaterThan(0)
+        for (const target of targets) expect(['app', 'BODY', 'HTML']).toContain(target)
+    })
+})

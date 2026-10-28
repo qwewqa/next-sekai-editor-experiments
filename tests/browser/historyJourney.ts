@@ -194,6 +194,7 @@ export const load = async (page: Page, opts: LoadOptions = {}) => {
                 JSON.stringify({ appVersion: '0.6.0', atTag: true }),
             )
             localStorage.setItem(`${prefix}lastAppVersion`, JSON.stringify('0.6.0'))
+            localStorage.setItem(`${prefix}agreement`, '{"terms":999,"privacy":999}')
             for (const [key, value] of Object.entries(local)) localStorage.setItem(key, value)
         },
         { prefix, storage, local, sidebar },

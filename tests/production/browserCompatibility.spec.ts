@@ -6,6 +6,7 @@ import { pickWithClickInWebKit, skipWhereTheEditorCannotStart } from '../browser
 import {
     chart,
     diagnostics,
+    editorReady,
     instrumentRendering,
     previewInWorker,
     previewPixels,
@@ -81,7 +82,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await page.addInitScript(seedVersion)
     await page.addInitScript(instrumentRendering)
     await page.goto('/')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
     await page.evaluate(
         () =>
             new Promise<void>((resolve) =>
@@ -190,7 +191,7 @@ test('WebGL2 note rendering works without native Canvas2D shape drawing', async 
         } as typeof getContext
     })
     await page.reload()
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
     const opening = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
     await (
@@ -280,7 +281,7 @@ test('preview decodes textures and renders after opening and resizing', async ({
         localStorage.setItem('sonolus-next-sekai-editor.previewInWorker', 'false'),
     )
     await page.reload()
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await editorReady(page)
     await page.setViewportSize({ width: 1600, height: 1000 })
     await page.getByRole('tab', { name: 'Preview', exact: true }).click()
     await expect.poll(() => page.evaluate(() => window.productionSmoke.uploads)).toBe(2)

@@ -71,6 +71,7 @@ const onAddGroup = async () => {
         <ToggleField
             v-model="settings.toolbarQuickSwitch"
             :label="i18n.settings.toolbar.quickSwitch"
+            :description="i18n.settings.descriptions.toolbarQuickSwitch"
         />
     </SettingsSection>
 </template>

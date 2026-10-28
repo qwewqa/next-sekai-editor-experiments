@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test'
+import { AGREED, AGREEMENT_KEY } from './tests/helpers/agreement'
 
 // The specs build dates in Node and read them from the page: both run in UTC, whatever the machine uses.
 process.env.TZ = 'UTC'
@@ -112,7 +113,7 @@ const baseURL = `http://127.0.0.1:${port}`
 // Which host draws the preview, whatever the setting says. Every page also starts without the
 // startup guard's question about an opening that did not finish, which a spec that reloads or
 // closes soon after an open would otherwise meet on a slow machine; the guard's own specs clear
-// `nse.test.noOpeningGuard`.
+// `nse.test.noOpeningGuard`. The agreement counts as given; its own specs remove the record.
 const seeded = (value: 'main' | 'worker') => ({
     storageState: {
         cookies: [],
@@ -122,6 +123,7 @@ const seeded = (value: 'main' | 'worker') => ({
                 localStorage: [
                     { name: 'nse.test.previewHost', value },
                     { name: 'nse.test.noOpeningGuard', value: 'true' },
+                    { name: AGREEMENT_KEY, value: AGREED },
                 ],
             },
         ],

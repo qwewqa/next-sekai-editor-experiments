@@ -8,6 +8,8 @@ defineProps<{
     min?: number
     max?: number
     step?: number | 'any'
+    /** What the setting does, behind an ⓘ after the label. */
+    description?: string
 }>()
 
 const input: Ref<HTMLInputElement | null> = useTemplateRef('input')
@@ -25,7 +27,7 @@ const onFocus = (event: FocusEvent) => {
 </script>
 
 <template>
-    <BaseField :label>
+    <BaseField :label :description>
         <input
             ref="input"
             v-model.lazy="modelValue"

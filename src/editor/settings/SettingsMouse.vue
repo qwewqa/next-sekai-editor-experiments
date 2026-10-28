@@ -11,6 +11,7 @@ import SettingsSection from './SettingsSection.vue'
         <SelectField
             v-model="settings.mouseSecondaryTool"
             :label="i18n.settings.mouse.secondaryTool.title"
+            :description="i18n.settings.descriptions.mouseSecondaryTool"
             :options="[
                 [i18n.settings.mouse.secondaryTool.eraser, 'eraser'],
                 [i18n.settings.mouse.secondaryTool.select, 'select'],

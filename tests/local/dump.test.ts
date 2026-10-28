@@ -157,6 +157,20 @@ test('a seeded dump reads back equal', async () => {
     await world.idle()
 })
 
+test("a sample's agreement record is not seeded: the profile agrees for itself", async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const storage = fakeStorage()
+    const dump = sampleDump()
+    const agreement = 'sonolus-next-sekai-editor.agreement'
+    const seeded = { ...dump, localStorage: { ...dump.localStorage, [agreement]: '{"terms":999}' } }
+    assert.deepEqual(await tab.run(() => seedDump(tab.kv, readDump(seeded), storage)), {
+        seeded: true,
+    })
+    assert.deepEqual(Object.fromEntries(storage.items), dump.localStorage)
+    await world.idle()
+})
+
 test('a Blob the export could not read seeds as an empty Blob of its type, in its row', async () => {
     const world = createWorld()
     const tab = world.tab('a')
