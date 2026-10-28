@@ -90,8 +90,8 @@ const statsOf = (page: Page) =>
     })
 
 /**
- * The strip, its range and the mapping between rows and times. The range starts 14 px below the
- * strip's top, under the edge mark's 10 px, and ends 4 px above its bottom.
+ * The strip, its range and the mapping between rows and times. The range starts 17 px below the
+ * strip's top, under the edge mark's 13 px, and ends 4 px above its bottom.
  */
 const minimapStrip = (page: Page) => {
     const el = page.locator('[data-minimap]')
@@ -99,15 +99,15 @@ const minimapStrip = (page: Page) => {
     const metrics = async () => {
         const rect = (await el.boundingBox())!
         const { end } = await statsOf(page)
-        const ih = rect.height - 18
+        const ih = rect.height - 21
         return {
             rect,
             end,
             /** Seconds per CSS px. */
             row: end / ih,
             x: rect.x + rect.width / 2,
-            yOf: (time: number) => rect.y + 14 + ih * (1 - Math.min(1, Math.max(0, time / end))),
-            timeOf: (y: number) => end * (1 - (y - rect.y - 14) / ih),
+            yOf: (time: number) => rect.y + 17 + ih * (1 - Math.min(1, Math.max(0, time / end))),
+            timeOf: (y: number) => end * (1 - (y - rect.y - 17) / ih),
         }
     }
     return { el, box, metrics }
@@ -127,7 +127,7 @@ const overflow = (page: Page, state: Overflow) =>
         ])
         const { end } = minimapStats
         const half = times.value.max - view.time
-        const row = end / (document.querySelector('[data-minimap]')!.clientHeight - 18)
+        const row = end / (document.querySelector('[data-minimap]')!.clientHeight - 21)
         const middle = end / 2
         const past = end + half + 10
         const [time, cursor] = {
@@ -218,7 +218,7 @@ const topRows = async (page: Page, rows: number) => {
 
 /** The middle of the edge mark as drawn, in CSS px from the strip's left. */
 const markCentre = async (page: Page) => {
-    const { width, ratio, change } = await changeInTopRows(page, 8, '[data-minimap-edge]')
+    const { width, ratio, change } = await changeInTopRows(page, 11, '[data-minimap-edge]')
     let total = 0
     let sum = 0
     change.forEach((value, i) => {
@@ -573,14 +573,14 @@ test.describe('mouse', () => {
         await page.mouse.click(m.x, m.rect.y + 1)
         expect(await viewTime(page)).toBe(m.end)
 
-        // The whole view past the end: the box is 8 px tall, 10 px from the top.
+        // The whole view past the end: the box is 8 px tall, 13 px from the top.
         const past = await overflow(page, 'full')
         await settle(page)
-        expect((await strip.box.boundingBox())!.y).toBe(m.rect.y + 10)
-        await page.mouse.move(m.x, m.rect.y + 4)
+        expect((await strip.box.boundingBox())!.y).toBe(m.rect.y + 13)
+        await page.mouse.move(m.x, m.rect.y + 7)
         await page.mouse.down()
         expect(await viewTime(page)).toBe(past)
-        await page.mouse.move(m.x, m.rect.y + 24)
+        await page.mouse.move(m.x, m.rect.y + 27)
         expect(Math.abs((await viewTime(page)) - (m.end - 20 * m.row))).toBeLessThan(m.row * 0.01)
         await page.mouse.up()
     })
@@ -748,12 +748,12 @@ test.describe('touch', () => {
         await frames(page, 3)
         expect(await viewTime(page)).toBe(20)
 
-        // The whole view past the end: the box is 8 px tall, 10 px from the top, so its middle is at
-        // 14. A touch 10 px above or below that grabs it, and a slide moves the view by the distance.
-        for (const y of [m.rect.y + 4, m.rect.y + 24]) {
+        // The whole view past the end: the box is 8 px tall, 13 px from the top, so its middle is at
+        // 17. A touch 10 px above or below that grabs it, and a slide moves the view by the distance.
+        for (const y of [m.rect.y + 7, m.rect.y + 27]) {
             const past = await overflow(page, 'full')
             await settle(page)
-            expect((await strip.box.boundingBox())!.y).toBe(m.rect.y + 10)
+            expect((await strip.box.boundingBox())!.y).toBe(m.rect.y + 13)
             await touch('touchStart', [[m.x, y]])
             expect(await viewTime(page)).toBe(past)
             await touch('touchMove', [[m.x, y + 20]])
@@ -933,11 +933,11 @@ test.describe('indicator', () => {
         await settle(page)
         await expect(edgeOf(page)).toBeVisible()
         const pinned = await overlay(page)
-        expect(pinned.cursorY).toBe(m.rect.y + 14)
+        expect(pinned.cursorY).toBe(m.rect.y + 17)
         // With Follow the box can still reach below the line; its top is at the top row or the line.
-        expect(pinned.boxY).toBeGreaterThanOrEqual(m.rect.y + 10)
-        expect(pinned.boxY).toBeLessThanOrEqual(m.rect.y + 14)
-        expect((await edgeOf(page).boundingBox())!.y).toBe(m.rect.y + 1)
+        expect(pinned.boxY).toBeGreaterThanOrEqual(m.rect.y + 13)
+        expect(pinned.boxY).toBeLessThanOrEqual(m.rect.y + 17)
+        expect((await edgeOf(page).boundingBox())!.y).toBe(m.rect.y + 4)
 
         await scrubTo(page, 20)
         await settle(page)
@@ -970,7 +970,7 @@ test.describe('indicator', () => {
         await expect(edgeOf(page)).toBeHidden()
     })
 
-    test("past the range end the edge mark has the strip's top 10 px, clear of the box and the cursor, centred on whole pixels, at 24, 40, 41 and 160 px", async ({
+    test("past the range end the edge mark has the strip's top 13 px, clear of the box and the cursor, centred on whole pixels, at 24, 40, 41 and 160 px", async ({
         page,
     }) => {
         await setup(page, { follow: false, cursor: 10 })
@@ -1000,9 +1000,9 @@ test.describe('indicator', () => {
                 expect(box.x + box.width / 2 - outer.x, at).toBe(width / 2 + 1)
                 // The content covers the whole strip, so its lane rules run to the top.
                 expect(canvas, at).toEqual(outer)
-                // 11 by 6 px, 1 px from the top and off the tick column. On a whole pixel, so its
+                // 11 by 6 px, 4 px from the top and off the tick column. On a whole pixel, so its
                 // tip is one pixel wide, at the strip's middle or half a pixel right of it.
-                expect([edge.y - outer.y, edge.width, edge.height], at).toEqual([1, 11, 6])
+                expect([edge.y - outer.y, edge.width, edge.height], at).toEqual([4, 11, 6])
                 expect(edge.x - outer.x, at).toBe(Math.ceil(width / 2 - 5.5))
                 expect(edge.x, at).toBeGreaterThanOrEqual(outer.x + 5)
                 if (state === 'cursor')
@@ -1010,19 +1010,19 @@ test.describe('indicator', () => {
                 // At least 2 px from the box's 1 px outline and from the cursor.
                 expect(box.y - 1 - (edge.y + edge.height), at).toBeGreaterThanOrEqual(2)
                 expect(cursor.y - (edge.y + edge.height), at).toBeGreaterThanOrEqual(2)
-                if (state === 'full' || state === 'combined') expect(box.y, at).toBe(outer.y + 10)
+                if (state === 'full' || state === 'combined') expect(box.y, at).toBe(outer.y + 13)
                 if (state === 'cursor' || state === 'combined')
-                    expect(cursor.y, at).toBe(outer.y + 14)
-                // The screenshots agree. Only the lane rules show in the strip's top 9 rows, and the
-                // box's outline starts in the 10th once the box is at the top.
-                expect(await topRows(page, 9), at).toEqual({ rules: true, other: 0 })
-                if (state === 'full') expect((await topRows(page, 10)).other, at).toBeGreaterThan(0)
+                    expect(cursor.y, at).toBe(outer.y + 17)
+                // The screenshots agree. Only the lane rules show in the strip's top 12 rows, and the
+                // box's outline starts in the 13th once the box is at the top.
+                expect(await topRows(page, 12), at).toEqual({ rules: true, other: 0 })
+                if (state === 'full') expect((await topRows(page, 13)).other, at).toBeGreaterThan(0)
             }
             // Hidden, the mark leaves its rows to the lane rules: no note, box or cursor reaches them.
             await overflow(page, 'none')
             await settle(page)
             await expect(edgeOf(page)).toBeHidden()
-            expect(await topRows(page, 10)).toEqual({ rules: true, other: 0 })
+            expect(await topRows(page, 13)).toEqual({ rules: true, other: 0 })
         }
     })
 
@@ -1149,7 +1149,7 @@ test.describe('peek', () => {
                 const ctx = canvas.getContext('2d')!
                 const cssHeight = canvas.clientHeight
                 const scale = canvas.height / cssHeight
-                const y = (14 + (cssHeight - 18) * (1 - time / minimapStats.end)) * scale
+                const y = (17 + (cssHeight - 21) * (1 - time / minimapStats.end)) * scale
                 const data = ctx.getImageData(
                     0,
                     Math.max(0, Math.floor(y - 4 * scale)),
@@ -1370,7 +1370,7 @@ test.describe('peek', () => {
     const rowOf = async (page: Page, time: number) => {
         const { end } = await statsOf(page)
         const height = await page.locator('[data-minimap]').evaluate((el) => el.clientHeight)
-        return 14 + (height - 18) * (1 - time / end)
+        return 17 + (height - 21) * (1 - time / end)
     }
 
     const near = (runs: [number, number][], y: number) =>
@@ -1503,12 +1503,12 @@ test.describe('peek', () => {
             const [strip, content, annotations] = await surfaces()
             expect(content, resize).toEqual(strip)
             expect(annotations, resize).toEqual(strip)
-            await expect.poll(async () => near(await tickRows(page), 14), resize).toBe(true)
+            await expect.poll(async () => near(await tickRows(page), 17), resize).toBe(true)
             expect(
-                (await tickRows(page)).every(([top]) => top >= 10),
+                (await tickRows(page)).every(([top]) => top >= 13),
                 resize,
             ).toBe(true)
-            expect(await topRows(page, 10), resize).toEqual({ rules: true, other: 0 })
+            expect(await topRows(page, 13), resize).toEqual({ rules: true, other: 0 })
         }
         await act(page, 'leavePeek')
     })
