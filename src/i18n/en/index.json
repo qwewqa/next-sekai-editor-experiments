@@ -683,7 +683,7 @@
                 "presets": "Choose Slide again to show the default properties and switch between the presets, Slide #1 to Slide #5.",
                 "quickEdit": "As with Note, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
                 "quickEditClick": "As with Note, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
-                "splitCombine": "Split Slide cuts the connection from each selected note to the next note. Combine into Slide joins the slides of the selected notes into one slide."
+                "splitCombine": "Split Slide cuts the connection after each selected note. Combine into Slide joins the slides containing the selected notes."
             },
             "generateSlideNotesTool": {
                 "generate": "Tap a note to fill its slide with attached notes, one on each empty division line.",
@@ -707,7 +707,7 @@
                 "replace": "Moving a BPM change onto another replaces the one already there."
             },
             "timeScaleTool": {
-                "markers": "A diamond marker means the Scroll transition. A hollow marker on a dotted line means that notes are hidden.",
+                "markers": "A diamond marks a Scroll transition. A hollow marker on a dotted line means that notes are hidden.",
                 "ease": "The curve shows easing to the next change in the group."
             },
             "event": {
@@ -915,39 +915,61 @@
             "copied": "Copied"
         },
         "descriptions": {
-            "waveform": "Volume shows the BGM’s loudness on the chart, and FFT shows its frequencies.",
+            "waveform": "Shows the BGM’s loudness (Volume) or its frequencies (FFT) on the chart.",
             "zeroWidthNotes": "Sets which notes can be made zero lanes wide.",
-            "dimUnchangedObjects": "Sets the default for Show Edits when you view Timeline steps. You can override it in the Timeline.",
-            "showOtherGroups": "While a group is focused, objects in other groups appear faded.",
-            "showOtherStages": "While a stage is focused, objects on other stages appear faded.",
-            "showOtherObjects": "Objects of a type you have hidden appear faded.",
+            "dimUnchangedObjects": "Sets the default for Show Edits when you view Timeline steps.",
+            "showOtherGroups": "Shows objects in other groups, faded, while a group is focused.",
+            "showOtherStages": "Shows objects on other stages, faded, while a stage is focused.",
+            "showOtherObjects": "Shows objects of the types you have hidden, faded.",
             "nameContrast": "Outlines group and stage names in black and brightens stage names.",
-            "dragToPanY": "Dragging near the top or bottom edge of the chart scrolls it up or down.",
-            "dragToPanX": "Dragging near the left or right edge of the chart scrolls it sideways.",
+            "dragToPanY": "Scrolls the chart up or down when you drag near its top or bottom edge.",
+            "dragToPanX": "Scrolls the chart sideways when you drag near its left or right edge.",
             "previewRenderScale": "Scales the preview’s rendering resolution. Lower values reduce detail and rendering work.",
             "previewInWorker": "Draws the preview in parallel with the rest of the editor. Turn this off if the preview looks wrong or does not appear.",
             "toolbarQuickSwitch": "Lets you hold a tool button and drag along its row to choose another tool.",
-            "playFollowPosition": "With Follow on, the cursor stays at this height during playback, from 0 at the bottom of the chart to 100 at the top.",
-            "playPreviewDuration": "The BGM plays for this long when you move the cursor or select an object.",
+            "playFollowPosition": "Sets where Follow keeps the cursor during playback, from 0 at the bottom of the chart to 100 at the top.",
+            "playPreviewDuration": "Sets how long the BGM plays when you move the cursor or select an object.",
             "mouseSecondaryTool": "Sets what right-click and right-drag do.",
-            "beatDisplay": "Beat counts beats from 1 across the chart. Measure shows the measure and the beat within it, and Both shows both. Measure and Both also align snapping to measures.",
+            "beatDisplay": {
+                "intro": "Sets how beat positions are numbered.",
+                "choices": {
+                    "beat": "Shows a continuous count from 1 across the chart.",
+                    "measure": "Shows the measure and the beat within it, and aligns snapping to measures.",
+                    "both": "Shows the two formats together, and aligns snapping to measures."
+                }
+            },
             "showGroupName": "Shows group names beside notes and time scale changes outside the default group.",
             "showStageName": "Shows stage names beside notes and stage events when Dynamic Stages is on.",
             "maxScrollX": "Sets how far you can scroll left or right from the chart’s center. In Composed layout, you can scroll farther to reach notes and stages.",
-            "elevationEditorSideBySide": "Auto opens the Elevation Editor beside the chart when there is room. With Always, they stay side by side. With Never, the Elevation Editor replaces the chart.",
-            "elevationConnectorArrows": "Arrows point from each connector’s start to its end on selected or hovered slides. They appear where there is room between the notes.",
-            "groupsStagesSideBySide": "When Preview, Groups and Stages are all shown in the left panels or all in the right panels, Auto shows Groups and Stages side by side below Preview when the panels are wide. Enabled also does this in narrower panels, when both fit. Disabled keeps them stacked.",
+            "elevationEditorSideBySide": {
+                "intro": "Sets whether the Elevation Editor opens beside the chart or in place of it.",
+                "choices": {
+                    "auto": "Opens it beside the chart when there is room.",
+                    "allow": "Opens it beside the chart even when the chart gets narrow.",
+                    "disallow": "Opens it in place of the chart."
+                }
+            },
+            "elevationConnectorArrows": "Shows arrows from each connector’s start to its end on selected or hovered slides, where there is room between the notes.",
+            "groupsStagesSideBySide": {
+                "intro": "Sets when Groups and Stages are shown side by side below Preview. This applies when all three are shown in the left panels or all in the right panels.",
+                "choices": {
+                    "auto": "Puts them side by side when the panels are wide.",
+                    "enabled": "Puts them side by side whenever both fit.",
+                    "disabled": "Keeps them stacked."
+                }
+            },
             "confirmCloseUnsavedFile": "Asks before the page closes while changes are not saved to a project file, even when they are stored in this browser. When closing would lose edits, the editor always asks.",
             "previewNoteSpeed": "Higher values make notes approach faster in the preview. If a group’s Force Note Speed is above 0, it overrides this value.",
-            "previewShowHitboxes": "Shows the areas used to judge notes and slides. They appear shortly before notes are hit and while slides are active.",
+            "previewShowHitboxes": "Shows the areas used to judge notes and slides, shortly before notes are hit and while slides are active.",
             "previewShowEffects": "Shows particles and glows when notes are hit and while slides are held in the preview.",
             "previewAntialias": "Smooths jagged edges in the preview.",
-            "previewTransportPosition": "Below puts the controls under the preview, and Overlay puts them over its lower edge. Auto uses Below when the preview fits without shrinking, and Overlay otherwise.",
-            "previewControls": "While playback is stopped, Expanded shows the preview settings and Collapsed shows a button that opens them. With a mouse, Auto starts expanded when the settings fit in the preview panel.",
-            "playStartPosition": "Cursor starts Play at the cursor. View starts it at the bottom of the visible chart, or at Follow Position when Follow is on.",
+            "previewTransportPosition": "Places the playback controls below the preview or over its lower edge. With Auto, they go below when the preview fits without shrinking, and over it otherwise.",
+            "previewControls": "Sets whether the preview settings are expanded or collapsed to a button while playback is stopped. With Auto, they start expanded when you use a mouse and they fit in the preview panel.",
+            "playStartPosition": "Sets where Play starts. With View, it starts at the bottom of the visible chart, or at Follow Position when Follow is on.",
             "playFollow": "Scrolls the chart during playback to keep the cursor at Follow Position.",
-            "touchQuickScrollWidth": "A value of 0 turns off one-finger scrolling at the chart’s right edge.",
-            "touchScrollInertia": "After a two-finger pan or a drag in the quick scroll zone, the chart keeps scrolling and slows down gradually."
+            "touchQuickScrollWidth": "Sets the width of the zone at the chart’s right edge where you can scroll with one finger. A value of 0 turns it off.",
+            "touchQuickScrollShow": "Shades the zone at the chart’s right edge where you can scroll with one finger.",
+            "touchScrollInertia": "Lets the chart keep scrolling and slow down gradually after a two-finger pan or a drag in the quick scroll zone."
         },
         "sections": "Sections",
         "localData": {
@@ -1504,6 +1526,7 @@
             "mixedValues": "Mixed: {0}",
             "listJoin": "{0}, {1}",
             "sentenceJoin": "{0}. {1}",
+            "choiceLine": "{0}: {1}",
             "notSet": "Not Set",
             "about": "About {0}",
             "anchor": {

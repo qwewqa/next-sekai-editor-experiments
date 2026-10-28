@@ -23,6 +23,7 @@ import { useFieldReadOnly } from './fieldReadOnly'
 import { mixedValues, useFieldUsage, type MixedValue } from './fieldUsage'
 import { formatCount } from '../../utils/size'
 import FieldInfo from './FieldInfo.vue'
+import { descriptionText, type FieldDescription } from './fieldDescription'
 
 const props = defineProps<{
     label: string
@@ -33,7 +34,7 @@ const props = defineProps<{
     /** Short remarks under the field, such as a shortcut's conflicts. */
     notes?: string[]
     /** What the setting does, behind an ⓘ after the label. */
-    description?: string
+    description?: FieldDescription
 }>()
 
 const field = useFieldUsage()
@@ -76,7 +77,7 @@ const spoken = computed(() => {
     return join(
         messages.sentenceJoin,
         [
-            props.description,
+            props.description && descriptionText(props.description),
             coverage.value &&
                 interpolateRaw(
                     messages.coverage,

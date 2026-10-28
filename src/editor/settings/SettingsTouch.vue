@@ -21,7 +21,7 @@ import SettingsSection from './SettingsSection.vue'
         <SelectField
             v-model="settings.touchQuickScrollShow"
             :label="i18n.settings.touch.showQuickScroll.title"
-            :description="i18n.help.modal.touchscreen.quickScroll"
+            :description="i18n.settings.descriptions.touchQuickScrollShow"
             :options="[
                 [i18n.settings.touch.showQuickScroll.on, 'on'],
                 [i18n.settings.touch.showQuickScroll.off, 'off'],

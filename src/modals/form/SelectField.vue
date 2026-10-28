@@ -7,6 +7,7 @@ import { resyncSelect } from './resync'
 import SelectValue from './SelectValue.vue'
 import { isUnknownValue, optionName } from './fieldUsage'
 import { unknownLabel } from './unknownLabel'
+import type { ChoiceDescription, FieldDescription } from './fieldDescription'
 
 const props = defineProps<{
     label: string
@@ -14,8 +15,8 @@ const props = defineProps<{
     disabled?: boolean
     /** Each value's picture in the shared list. */
     optionGlyph?: OptionGlyph<NoInfer<T>>
-    /** What the setting does, behind an ⓘ after the label. */
-    description?: string
+    /** What the setting does, behind an ⓘ after the label; with choices, a line for each option. */
+    description?: string | ChoiceDescription<Extract<NoInfer<T>, string>>
 }>()
 
 const modelValue = defineModel<T>({ required: true })
@@ -24,6 +25,18 @@ const unknown = computed(() => isUnknownValue(modelValue.value, props.options))
 const shown = computed(() =>
     unknown.value ? unknownLabel(modelValue.value) : optionName(modelValue.value, props.options),
 )
+// Each line is named and ordered as the options are.
+const described = computed((): FieldDescription | undefined => {
+    const description = props.description
+    if (typeof description !== 'object') return description
+    return {
+        intro: description.intro,
+        lines: props.options.map(([name, value]) => ({
+            name,
+            text: description.choices[value as Extract<NoInfer<T>, string>],
+        })),
+    }
+})
 const glyphs = computed(() =>
     hasGlyphColumn(
         props.optionGlyph,
@@ -33,7 +46,7 @@ const glyphs = computed(() =>
 </script>
 
 <template>
-    <BaseField :label :description>
+    <BaseField :label :description="described">
         <div class="form-field-select group" :class="{ 'opacity-40': disabled }">
             <select
                 v-model.lazy="modelValue"

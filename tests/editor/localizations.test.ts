@@ -56,6 +56,14 @@ for (const locale of readdirSync(directory, { withFileTypes: true })
     })
 }
 
+// A choice's line is split where its text starts, so the name comes first and the text last.
+test('the choice line template puts the name first and the text last in every locale', () => {
+    for (const locale of readdirSync(directory, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name))
+        assert.match(read(locale)['modals.form.choiceLine']!, /^\{0\}[^{}]+\{1\}$/, locale)
+})
+
 test("plural forms follow each locale's rules", () => {
     const message = '{0} object|{0} objects'
     assert.equal(pluralForm('en', message, '1'), '{0} object')
@@ -355,6 +363,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
+        // The same colon as English.
+        'modals.form.choiceLine',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
         'modals.form.key.names.ctrl',
@@ -394,6 +404,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
+        // The same colon as English.
+        'modals.form.choiceLine',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
         'modals.form.key.names.ctrl',

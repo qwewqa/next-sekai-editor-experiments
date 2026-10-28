@@ -152,6 +152,12 @@ const dynamic: Record<string, string> = {
     'settings.preview.transport.': "the setting's options",
     'settings.preview.controls.': "the setting's options",
     'settings.panels.groupsStagesSideBySide.': "the setting's options",
+    'settings.descriptions.beatDisplay.':
+        "the description's lines, read as choices[value] for each option in SelectField.vue",
+    'settings.descriptions.elevationEditorSideBySide.':
+        "the description's lines, read as choices[value] for each option in SelectField.vue",
+    'settings.descriptions.groupsStagesSideBySide.':
+        "the description's lines, read as choices[value] for each option in SelectField.vue",
     'workspace.dock.': "the setting's options",
     'storage.': 'StorageLineKey',
     'save.': 'FileErrorKey',

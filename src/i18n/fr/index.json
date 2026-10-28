@@ -683,7 +683,7 @@
         "presets": "Choisissez à nouveau Slide pour afficher les propriétés par défaut et passer d’un préréglage à l’autre, de Slide n° 1 à Slide n° 5.",
         "quickEdit": "Comme avec Note, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
         "quickEditClick": "Comme avec Note, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
-        "splitCombine": "Scinder le slide coupe la connexion de chaque note sélectionnée vers la note suivante. Combiner en slide réunit les slides des notes sélectionnées en un seul slide."
+        "splitCombine": "Scinder le slide coupe la connexion après chaque note sélectionnée. Combiner en slide réunit les slides contenant les notes sélectionnées."
       },
       "generateSlideNotesTool": {
         "generate": "Appuyez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide.",
@@ -707,7 +707,7 @@
         "replace": "Déplacer un changement de BPM sur un autre remplace celui qui s’y trouve déjà."
       },
       "timeScaleTool": {
-        "markers": "Un marqueur en losange indique la transition Défilement. Un marqueur creux sur une ligne pointillée indique que les notes sont masquées.",
+        "markers": "Un losange indique une transition Défilement. Un marqueur creux sur une ligne pointillée indique que les notes sont masquées.",
         "ease": "La courbe indique l’interpolation vers le prochain changement du groupe."
       },
       "event": {
@@ -915,39 +915,61 @@
       "copied": "Copié"
     },
     "descriptions": {
-      "waveform": "Volume affiche l’intensité sonore de la musique sur la partition, et FFT affiche ses fréquences.",
+      "waveform": "Affiche l’intensité sonore de la musique (Volume) ou ses fréquences (FFT) sur la partition.",
       "zeroWidthNotes": "Définit les notes qui peuvent avoir une largeur de zéro voie.",
-      "dimUnchangedObjects": "Définit la valeur par défaut d’Afficher les modifications lorsque vous consultez des étapes de la chronologie. Vous pouvez la modifier dans la chronologie.",
-      "showOtherGroups": "Lorsqu’un groupe est ciblé, les objets des autres groupes s’affichent estompés.",
-      "showOtherStages": "Lorsqu’une scène est ciblée, les objets des autres scènes s’affichent estompés.",
-      "showOtherObjects": "Les objets d’un type que vous avez masqué s’affichent estompés.",
+      "dimUnchangedObjects": "Définit la valeur par défaut d’Afficher les modifications lorsque vous consultez des étapes de la chronologie.",
+      "showOtherGroups": "Affiche les objets des autres groupes en les estompant lorsqu’un groupe est ciblé.",
+      "showOtherStages": "Affiche les objets des autres scènes en les estompant lorsqu’une scène est ciblée.",
+      "showOtherObjects": "Affiche les objets des types que vous avez masqués en les estompant.",
       "nameContrast": "Entoure les noms des groupes et des scènes d’un contour noir et éclaircit les noms des scènes.",
-      "dragToPanY": "Faire glisser près du bord supérieur ou inférieur de la partition la fait défiler vers le haut ou vers le bas.",
-      "dragToPanX": "Faire glisser près du bord gauche ou droit de la partition la fait défiler horizontalement.",
+      "dragToPanY": "Fait défiler la partition vers le haut ou vers le bas lorsque vous faites glisser près de son bord supérieur ou inférieur.",
+      "dragToPanX": "Fait défiler la partition horizontalement lorsque vous faites glisser près de son bord gauche ou droit.",
       "previewRenderScale": "Ajuste la résolution de rendu de l’aperçu. Des valeurs plus basses réduisent les détails et le travail de rendu.",
       "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
       "toolbarQuickSwitch": "Permet de maintenir un bouton d’outil et de faire glisser le long de sa rangée pour choisir un autre outil.",
-      "playFollowPosition": "Quand Suivre est activé, le curseur reste à cette hauteur pendant la lecture, de 0 en bas de la partition à 100 en haut.",
-      "playPreviewDuration": "La musique est lue pendant cette durée lorsque vous déplacez le curseur ou sélectionnez un objet.",
+      "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur pendant la lecture, de 0 en bas de la partition à 100 en haut.",
+      "playPreviewDuration": "Définit la durée de lecture de la musique lorsque vous déplacez le curseur ou sélectionnez un objet.",
       "mouseSecondaryTool": "Définit l’action du clic droit et du glissement avec le bouton droit.",
-      "beatDisplay": "Temps compte les temps à partir de 1 sur toute la partition. Mesure affiche la mesure et le temps dans celle-ci, et Les deux affiche les deux formats. Avec Mesure et Les deux, l’alignement se fait aussi par rapport aux mesures.",
+      "beatDisplay": {
+        "intro": "Définit la numérotation des positions des temps.",
+        "choices": {
+          "beat": "Affiche une numérotation continue à partir de 1 sur toute la partition.",
+          "measure": "Affiche la mesure et le temps dans celle-ci, et règle l’alignement par rapport aux mesures.",
+          "both": "Affiche les deux formats ensemble et règle l’alignement par rapport aux mesures."
+        }
+      },
       "showGroupName": "Affiche les noms des groupes à côté des notes et des changements d’échelle de temps qui ne sont pas dans le groupe par défaut.",
       "showStageName": "Affiche les noms des scènes à côté des notes et des événements de scène lorsque Scènes dynamiques est activé.",
       "maxScrollX": "Définit jusqu’où vous pouvez faire défiler la partition à gauche ou à droite de son centre. Avec la disposition Composée, vous pouvez aller plus loin pour atteindre les notes et les scènes.",
-      "elevationEditorSideBySide": "Auto ouvre l’Éditeur d’élévation à côté de la partition lorsque la place le permet. Avec Toujours, ils restent côte à côte. Avec Jamais, l’Éditeur d’élévation remplace la partition.",
-      "elevationConnectorArrows": "Sur les slides sélectionnés ou survolés, les flèches vont du début à la fin de chaque connecteur. Elles apparaissent là où il y a de la place entre les notes.",
-      "groupsStagesSideBySide": "Lorsque les panneaux Aperçu, Groupes et Scènes sont tous affichés à gauche ou tous affichés à droite, Auto affiche Groupes et Scènes côte à côte sous Aperçu lorsque les panneaux sont larges. Avec Activé, ils s’affichent aussi côte à côte dans des panneaux plus étroits, lorsque les deux y tiennent. Avec Désactivé, ils restent l’un au-dessus de l’autre.",
+      "elevationEditorSideBySide": {
+        "intro": "Définit si l’Éditeur d’élévation s’ouvre à côté de la partition ou à sa place.",
+        "choices": {
+          "auto": "L’ouvre à côté de la partition lorsque la place le permet.",
+          "allow": "L’ouvre à côté de la partition même lorsque celle-ci devient étroite.",
+          "disallow": "L’ouvre à la place de la partition."
+        }
+      },
+      "elevationConnectorArrows": "Affiche des flèches du début à la fin de chaque connecteur sur les slides sélectionnés ou survolés, là où il y a de la place entre les notes.",
+      "groupsStagesSideBySide": {
+        "intro": "Définit quand Groupes et Scènes s’affichent côte à côte sous Aperçu. Ce réglage s’applique lorsque ces trois panneaux sont tous affichés à gauche ou tous à droite.",
+        "choices": {
+          "auto": "Les place côte à côte lorsque les panneaux sont larges.",
+          "enabled": "Les place côte à côte dès que les deux y tiennent.",
+          "disabled": "Les garde l’un au-dessus de l’autre."
+        }
+      },
       "confirmCloseUnsavedFile": "Demande confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet, même si elles sont stockées dans ce navigateur. Si la fermeture entraîne la perte de modifications, l’éditeur demande toujours confirmation.",
       "previewNoteSpeed": "Plus la valeur est élevée, plus les notes approchent rapidement dans l’aperçu. Si le paramètre Imposer la vitesse des notes d’un groupe est supérieur à 0, sa valeur remplace celle-ci.",
-      "previewShowHitboxes": "Affiche les zones utilisées pour juger les notes et les slides. Elles apparaissent peu avant que les notes soient touchées et pendant que les slides sont actifs.",
+      "previewShowHitboxes": "Affiche les zones utilisées pour juger les notes et les slides, peu avant que les notes soient touchées et pendant que les slides sont actifs.",
       "previewShowEffects": "Affiche des particules et des lueurs lorsque les notes sont touchées et pendant que les slides sont maintenus dans l’aperçu.",
       "previewAntialias": "Lisse les contours en escalier dans l’aperçu.",
-      "previewTransportPosition": "En dessous place les commandes sous l’aperçu, et Superposées les place sur son bord inférieur. Auto utilise En dessous lorsque l’aperçu tient sans être réduit, et Superposées dans le cas contraire.",
-      "previewControls": "Lorsque la lecture est arrêtée, Déployé affiche les paramètres de l’aperçu et Réduit affiche un bouton pour les ouvrir. Avec une souris, Auto les affiche au départ s’ils tiennent dans le panneau d’aperçu.",
-      "playStartPosition": "Curseur lance la commande Lire à la position du curseur. Vue la lance au bas de la partie visible de la partition, ou à la hauteur définie par Suivre la position lorsque Suivre est activé.",
+      "previewTransportPosition": "Place les commandes de lecture sous l’aperçu ou sur son bord inférieur. Avec Auto, elles se placent en dessous lorsque l’aperçu tient sans être réduit, et sur son bord inférieur dans le cas contraire.",
+      "previewControls": "Définit si les paramètres de l’aperçu sont déployés ou réduits à un bouton lorsque la lecture est arrêtée. Avec Auto, ils sont déployés au départ lorsque vous utilisez une souris et qu’ils tiennent dans le panneau d’aperçu.",
+      "playStartPosition": "Définit où la commande Lire démarre. Avec Vue, elle démarre au bas de la partie visible de la partition, ou à la hauteur définie par Suivre la position lorsque Suivre est activé.",
       "playFollow": "Fait défiler la partition pendant la lecture pour maintenir le curseur à la hauteur définie par Suivre la position.",
-      "touchQuickScrollWidth": "Une valeur de 0 désactive le défilement à un doigt au bord droit de la partition.",
-      "touchScrollInertia": "Après un déplacement à deux doigts ou un glissement dans la zone de défilement rapide, la partition continue de défiler et ralentit progressivement."
+      "touchQuickScrollWidth": "Définit la largeur de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt. Une valeur de 0 désactive cette zone.",
+      "touchQuickScrollShow": "Colore le fond de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt.",
+      "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après un déplacement à deux doigts ou un glissement dans la zone de défilement rapide."
     },
     "sections": "Rubriques",
     "localData": {
@@ -1504,6 +1526,7 @@
       "mixedValues": "Mixte : {0}",
       "listJoin": "{0}, {1}",
       "sentenceJoin": "{0}. {1}",
+      "choiceLine": "{0} : {1}",
       "notSet": "Non défini",
       "about": "Informations sur {0}",
       "anchor": {
