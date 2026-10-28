@@ -268,6 +268,7 @@ test.describe('a first agreement', () => {
         await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
         await shown.getByRole('combobox', { name: 'Language' }).selectOption('fr')
         await expect(shown.getByRole('button', { name: 'Accepter' })).toBeVisible()
+        await expect(shown).toHaveAccessibleName('Bienvenue dans Next SEKAI Editor')
         await expect(shown.getByRole('link', { name: 'Conditions d’utilisation' })).toBeVisible()
         await expect(page.locator('html')).toHaveAttribute('lang', /^fr/)
         await shown.getByRole('button', { name: 'Accepter' }).click()
@@ -277,11 +278,15 @@ test.describe('a first agreement', () => {
         await expect(settings.getByRole('combobox', { name: 'Thème' })).toHaveValue('dark')
     })
 
-    test('its name and description: the title, and the line and the sentence', async ({ page }) => {
+    test('its name and description: the welcome title, and the line and the sentence', async ({
+        page,
+    }) => {
         await visit(page)
-        await expect(dialog(page)).toHaveAccessibleName('Next SEKAI Editor')
+        await expect(dialog(page)).toHaveAccessibleName('Welcome to Next SEKAI Editor')
         await expect(dialog(page)).toHaveAccessibleDescription(`${en.agreement.intro} ${SENTENCE}`)
-        await expect(dialog(page).locator('[data-modal-title]')).toHaveText('Next SEKAI Editor')
+        await expect(dialog(page).locator('[data-modal-title]')).toHaveText(
+            'Welcome to Next SEKAI Editor',
+        )
     })
 
     test('a link opens its page in a new tab, and the dialog stays', async ({ page }) => {
@@ -313,9 +318,11 @@ test.describe('a changed page', () => {
             await visit(page)
             const shown = dialog(page)
             await expect(shown.locator('[data-agreement-change]')).toHaveText(line)
-            // The changed page's line takes the first visit's place.
+            // The changed page's line takes the first visit's place, and the title is the name.
             await expect(shown.locator('[data-agreement-intro]')).toHaveCount(0)
             await expect(shown).not.toContainText(en.agreement.intro)
+            await expect(shown).toHaveAccessibleName('Next SEKAI Editor')
+            await expect(shown.locator('[data-modal-title]')).toHaveText('Next SEKAI Editor')
             await expect(shown).toHaveAccessibleDescription(`${line} ${SENTENCE}`)
             await agree(page)
             expect(await record(page)).toEqual({ terms: 1, privacy: 1 })
@@ -374,7 +381,8 @@ test.describe('loads that show it, and loads that do not', () => {
             .locator('[data-safe-bar]')
             .getByRole('button', { name: 'Leave Safe Mode' })
             .click()
-        await expect.poll(() => new URL(page.url()).search).toBe('')
+        // The page it loads, as a visit's goto waits for it.
+        await page.waitForURL((url) => url.search === '')
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await waitForStartup(page, { agreement: true })
         await decided(page)

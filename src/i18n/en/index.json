@@ -906,7 +906,7 @@
             "privacy": "Privacy",
             "terms": "Terms",
             "usageStatistics": "Send Usage Statistics",
-            "usageStatisticsNote": "We use usage statistics to decide which features to improve and which actions to speed up. They include which tools you use, some editor settings, file types and sizes, and how long actions take. See the Privacy Notice for details.",
+            "usageStatisticsNote": "We use usage statistics to decide which features to improve. They include which tools you use, some editor settings, file types and sizes, and how long actions take. See the Privacy Notice for details.",
             "usageStatisticsSignal": "Off by default because this browser sends a Do Not Track or Global Privacy Control signal.",
             "diagnostics": "Copy Diagnostic Info…",
             "diagnosticsTitle": "Diagnostic Info",
@@ -1191,7 +1191,8 @@
         "open": "Open in Safe Mode"
     },
     "agreement": {
-        "intro": "This is a free, open-source editor for Next SEKAI charts in Sonolus.",
+        "welcome": "Welcome to {0}",
+        "intro": "Review these options. You can change them later in Settings.",
         "terms": "Terms of Service",
         "privacy": "Privacy Notice",
         "agree": "Agree",

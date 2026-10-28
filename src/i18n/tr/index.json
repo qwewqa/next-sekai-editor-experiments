@@ -906,7 +906,7 @@
       "privacy": "Gizlilik",
       "terms": "Kullanım Koşulları",
       "usageStatistics": "Kullanım İstatistiklerini Gönder",
-      "usageStatisticsNote": "Kullanım istatistiklerini hangi özellikleri iyileştireceğimize ve hangi işlemleri hızlandıracağımıza karar vermek için kullanıyoruz. Kullanım istatistikleri kullandığınız araçları, bazı editör ayarlarını, dosya türlerini ve boyutlarını ve işlemlerin ne kadar sürdüğünü içerir. Ayrıntılar için Gizlilik Bildirimi’ne bakın.",
+      "usageStatisticsNote": "Kullanım istatistiklerini hangi özellikleri iyileştireceğimize karar vermek için kullanıyoruz. Kullanım istatistikleri kullandığınız araçları, bazı editör ayarlarını, dosya türlerini ve boyutlarını ve işlemlerin ne kadar sürdüğünü içerir. Ayrıntılar için Gizlilik Bildirimi’ne bakın.",
       "usageStatisticsSignal": "Bu tarayıcı Do Not Track veya Global Privacy Control sinyali gönderdiği için varsayılan olarak kapalı.",
       "diagnostics": "Tanılama Bilgilerini Kopyala…",
       "diagnosticsTitle": "Tanılama Bilgileri",
@@ -1191,7 +1191,8 @@
     "open": "Güvenli Modda Aç"
   },
   "agreement": {
-    "intro": "Bu, Sonolus’taki Next SEKAI çizelgeleri için ücretsiz ve açık kaynaklı bir editördür.",
+    "welcome": "{0}’e hoş geldiniz",
+    "intro": "Bu seçenekleri gözden geçirin. Daha sonra Ayarlar’dan değiştirebilirsiniz.",
     "terms": "Kullanım Koşulları",
     "privacy": "Gizlilik Bildirimi",
     "agree": "Kabul Et",

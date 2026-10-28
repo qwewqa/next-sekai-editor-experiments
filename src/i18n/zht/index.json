@@ -906,7 +906,7 @@
       "privacy": "隱私",
       "terms": "使用條款",
       "usageStatistics": "傳送使用統計",
-      "usageStatisticsNote": "我們根據使用統計決定改善哪些功能、加快哪些操作。使用統計包括您使用的工具、部分編輯器設定、檔案類型和大小，以及操作所需的時間。詳情請參閱「隱私權聲明」。",
+      "usageStatisticsNote": "我們根據使用統計決定改善哪些功能。使用統計包括您使用的工具、部分編輯器設定、檔案類型和大小，以及操作所需的時間。詳情請參閱「隱私權聲明」。",
       "usageStatisticsSignal": "預設關閉，因為此瀏覽器傳送了 Do Not Track 或 Global Privacy Control 訊號。",
       "diagnostics": "複製診斷資訊…",
       "diagnosticsTitle": "診斷資訊",
@@ -1191,7 +1191,8 @@
     "open": "以安全模式開啟"
   },
   "agreement": {
-    "intro": "這是用來編輯 Sonolus 中 Next SEKAI 譜面的免費開放原始碼編輯器。",
+    "welcome": "歡迎使用 {0}",
+    "intro": "請檢視以下選項。稍後可在「設定」中變更。",
     "terms": "使用條款",
     "privacy": "隱私權聲明",
     "agree": "同意",

@@ -29,7 +29,10 @@ provide(stackLongValuesKey, true)
 </script>
 
 <template>
-    <BaseModal :title="PRODUCT_NAME" :closable="false">
+    <BaseModal
+        :title="change ? PRODUCT_NAME : interpolateRaw(i18n.agreement.welcome, PRODUCT_NAME)"
+        :closable="false"
+    >
         <div class="flex flex-col gap-1">
             <div v-if="change" class="text-fg-strong" data-modal-description data-agreement-change>
                 {{ i18n.agreement.updated[change] }}
