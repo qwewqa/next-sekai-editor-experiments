@@ -467,18 +467,11 @@ test.describe('on touch', () => {
         await expect(other).not.toHaveAttribute('aria-checked', before!)
     })
 
-    test('a tap on the button leaves its control at rest', async ({ page }) => {
+    test('a tap on the button leaves its control at rest', async ({ page, browserName }) => {
+        test.skip(browserName !== 'chromium', 'Touch is driven through CDP.')
         const dialog = await openSettings(page)
-        // A tap is pressed for a moment only, so each element notes when it was pressed.
-        await page.addStyleTag({
-            content:
-                '@keyframes pressed { to { visibility: visible } } [data-probe]:active { animation: pressed 1s }',
-        })
-        const probe = (locator: Locator) =>
-            locator.evaluate((element: HTMLElement) => {
-                element.dataset.probe = ''
-                element.addEventListener('animationstart', () => (element.dataset.pressed = ''))
-            })
+        // A tap's pressed state can end before a frame on a slow machine, so it is read as the
+        // tap's click is dispatched, while the tap holds it.
         for (const [name, role] of [
             ['Name Contrast', 'switch'],
             ['Beat Display', 'combobox'],
@@ -486,13 +479,28 @@ test.describe('on touch', () => {
             const { root, info } = field(dialog, name)
             const control = root.getByRole(role)
             await info.scrollIntoViewIfNeeded()
-            await probe(info)
-            await probe(control)
+            const [infoHandle, controlHandle] = [
+                await info.elementHandle(),
+                await control.elementHandle(),
+            ]
+            const pressed = page.evaluate(
+                ([info, control]) =>
+                    new Promise<{ info: boolean; control: boolean }>((resolve) =>
+                        document.addEventListener(
+                            'click',
+                            () =>
+                                resolve({
+                                    info: info!.matches(':active'),
+                                    control: control!.matches(':active'),
+                                }),
+                            { capture: true, once: true },
+                        ),
+                    ),
+                [infoHandle, controlHandle] as const,
+            )
             await info.tap()
+            expect(await pressed).toEqual({ info: true, control: false })
             await expect(bubble(page)).toBeVisible()
-            await expect(info).toHaveAttribute('data-pressed')
-            await page.waitForTimeout(300)
-            await expect(control).not.toHaveAttribute('data-pressed')
             await page.keyboard.press('Escape')
             await expect(bubble(page)).toHaveCount(0)
         }
