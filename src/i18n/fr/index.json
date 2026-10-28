@@ -1185,7 +1185,7 @@
   },
   "agreement": {
     "welcome": "Bienvenue dans {0}",
-    "intro": "Vous pourrez modifier ces choix plus tard dans les Paramètres.",
+    "intro": "Vérifiez ces choix. Vous pourrez les modifier plus tard dans les Paramètres.",
     "terms": "Conditions d’utilisation",
     "privacy": "Avis de confidentialité",
     "agree": "Accepter",

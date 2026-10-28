@@ -1185,7 +1185,7 @@
     },
     "agreement": {
         "welcome": "Welcome to {0}",
-        "intro": "You can change these later in Settings.",
+        "intro": "Review these options. You can change them later in Settings.",
         "terms": "Terms of Service",
         "privacy": "Privacy Notice",
         "agree": "Agree",
