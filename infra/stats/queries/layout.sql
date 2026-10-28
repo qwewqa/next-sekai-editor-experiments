@@ -2,9 +2,9 @@
 -- leaves out a counter that was 0, which counts as 0. Events whose visibleTime reached the cap of a day are
 -- left out of every figure. Divide by visibleTime, the time the layout was counted, and not by perf's.
 -- A row stands for 10 or more distinct sessions (`sessions`, a stand-in for people). A cell with fewer is left out,
--- and the size and share distributions print percentages of the cells that are printed, not seconds. This keeps thin
--- cells out of the reading. Like the other queries here, it reads the raw events the maintainer already holds, and
--- figures from different outputs can sometimes be combined to give back a left-out cell.
+-- and the size and share distributions print percentages of the cells that are printed, not seconds.
+-- This query reads raw events the maintainer already holds. Figures from different outputs can sometimes be
+-- combined to recover a left-out cell.
 
 -- Each panel on each side, or covered (open, with no room to show it), as a share of the time counted.
 WITH counted AS (
