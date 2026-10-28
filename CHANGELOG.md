@@ -5,7 +5,7 @@
 - Sonolus Next SEKAI Editor is now named “Next SEKAI Editor”.
 - (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.
 - (Web) By default, the editor now sends usage statistics unless Do Not Track or Global Privacy Control is enabled in your browser. To stop sending them, turn off Settings › About › Send Usage Statistics. The privacy page lists what is sent and how long it is kept.
-- (Web) Before you first use the editor, it asks you to agree to the Terms of Service in a window that also says what the editor is and has Language, Theme and the Send Usage Statistics setting. It asks again after some changes to the Terms of Service or the Privacy Notice. Usage statistics are sent only after you agree.
+- (Web) Before you first use the editor, it asks you to agree to the Terms of Service in a window that also says what the editor is and has Language, Theme and the Send Usage Statistics setting. It asks again after some changes to the Terms of Service or the Privacy Notice. Usage statistics from the editor are sent only after you agree. The unsupported-browser page may send a browser report before you agree.
 - (Web) Added the Terms of Service, linked from Settings › About, Help and the privacy page.
 - Some settings now have an info button that shows what the setting does.
 - Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open… (O) opens project files.
