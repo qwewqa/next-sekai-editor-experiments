@@ -69,21 +69,10 @@ export type EntryPlace<K> =
     { folder: FolderId; before?: K } | { folder?: undefined; before?: FolderTreeRef<K> }
 
 export type FolderStrings = {
-    /** Moving an entry within its folder or the top level. */
-    movedEntry: string
     deleteFolderTitle: string
     deleteFolderMessage: string
-    /** Moving selected entries ({0}: their count) into a folder ({1}), or out. */
-    movedSelectedInto: string
-    movedSelectedOut: string
-    /** Duplicating an entry ({0}: its name), or several ({0}: their count). */
+    /** Duplicating an entry ({0}: its name). */
     duplicated: string
-    duplicatedSelected: string
-    /** Duplicating selected folders ({0}: their count) and entries ({1}: all copied). */
-    duplicatedSelectedFolders: string
-    /** Deleting selected entries ({0}: their count), or folders ({0}) and entries ({1}). */
-    deletedSelected: string
-    deletedSelectedFolders: string
 }
 
 /** Folder editing for one collection; every change is one undoable step. */

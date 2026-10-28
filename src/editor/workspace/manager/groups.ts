@@ -154,16 +154,9 @@ export const groupFolderOps = createFolderOps({
         duplicateOwnedWithReceipt(state, { key: 'groupId', copies }),
     owner: 'groupId',
     strings: () => ({
-        movedEntry: i18n.value.commands.manageGroups.modal.moved,
         deleteFolderTitle: i18n.value.workspace.groups.deleteFolderTitle,
         deleteFolderMessage: i18n.value.workspace.groups.deleteFolderMessage,
-        movedSelectedInto: i18n.value.workspace.groups.movedSelectedInto,
-        movedSelectedOut: i18n.value.workspace.groups.movedSelectedOut,
         duplicated: i18n.value.workspace.groups.duplicated,
-        duplicatedSelected: i18n.value.workspace.groups.duplicatedSelected,
-        duplicatedSelectedFolders: i18n.value.workspace.groups.duplicatedSelectedFolders,
-        deletedSelected: i18n.value.workspace.groups.deletedSelected,
-        deletedSelectedFolders: i18n.value.workspace.groups.deletedSelectedFolders,
     }),
 })
 
