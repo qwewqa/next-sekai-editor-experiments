@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
         />
         <svg
             ref="edge"
-            class="pointer-events-none absolute top-px text-white forced-colors:text-[CanvasText]"
+            class="pointer-events-none absolute top-1 text-white forced-colors:text-[CanvasText]"
             width="11"
             height="6"
             viewBox="0 0 11 6"

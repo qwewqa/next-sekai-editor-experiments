@@ -23,7 +23,7 @@ export const PAD_Y = 4
  * The rows at the strip's top kept for the edge mark (`Minimap.vue`). Only the lane rules run
  * through them.
  */
-export const MARK_ROWS = 10
+export const MARK_ROWS = 13
 /** Lanes drawn linearly (−6 to 6). */
 export const CORE = 6
 /** The share of the width the core lanes take. */
