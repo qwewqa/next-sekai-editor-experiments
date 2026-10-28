@@ -9,7 +9,7 @@
             "theme": "dark",
             "showMinimap": "on",
             "previewAssets.skin": "bundled",
-            "groupsStagesSideBySide": true
+            "groupsStagesSideBySide": "auto"
         }
     },
     {

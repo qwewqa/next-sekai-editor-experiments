@@ -498,7 +498,7 @@ test('a scripted visit counts each press once by name and source, and sends the 
     // The desktop snapshot: the 24 settings, 26 keys, and no touch options.
     const settings = dataOf(first, 'settings') ?? {}
     expect(Object.keys(settings)).toHaveLength(26)
-    expect(settings).toHaveProperty('groupsStagesSideBySide', true)
+    expect(settings).toHaveProperty('groupsStagesSideBySide', 'auto')
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
     expect(dataOf(first, 'storage')).toMatchObject({ mode: 'stored' })
@@ -510,7 +510,7 @@ test('a scripted visit counts each press once by name and source, and sends the 
     expect(dataOf(first, 'perf')).toHaveProperty('viewportHeight')
     expect(dataOf(first, 'perf')).toHaveProperty('viewportAspect')
     expect(dataOf(first, 'perf')).toHaveProperty('previewRenderScale')
-    // The setting is on, but Preview is closed.
+    // The setting allows it, but Preview is closed.
     expect(dataOf(first, 'perf')).toHaveProperty('groupsStagesSideBySide', 'off')
     expect(stray).toEqual([])
     expect(messages).toEqual([])
@@ -683,8 +683,8 @@ test('Groups and Stages count as side by side only while shown so, and mixed whe
         showPreview: true,
         showGroups: true,
         showStages: true,
-        leftDockWidth: 760,
-        groupsStagesSideBySide: false,
+        leftDockWidth: 800,
+        groupsStagesSideBySide: 'disabled',
     })
     await expect(divider).toHaveAttribute('aria-orientation', 'horizontal')
     const measured = await page.evaluate(async () => {
@@ -694,14 +694,14 @@ test('Groups and Stages count as side by side only while shown so, and mixed whe
             (await import('/src/settings.ts')) as typeof import('../../src/settings')
         const field = startField()
         const take = () => field.measures().groupsStagesSideBySide
-        // Wide enough, with the setting off.
+        // Wide enough, with the setting Disabled.
         const off = take()
-        settings.groupsStagesSideBySide = true
+        settings.groupsStagesSideBySide = 'auto'
         const turnedOn = take()
         const on = take()
-        // Narrower than 540 px and back, within one tick.
-        settings.leftDockWidth = 500
+        // Narrower than 772 px and back, within one tick.
         settings.leftDockWidth = 760
+        settings.leftDockWidth = 800
         const narrowed = take()
         field.stop()
         return { off, turnedOn, on, narrowed }

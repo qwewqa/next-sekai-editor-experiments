@@ -101,8 +101,11 @@ const settingsProperties = {
                 ) as Partial<Record<PanelId, number>>,
         )
         .Encode((value) => value),
-    // Groups and Stages side by side below Preview, where a side dock is wide enough.
-    groupsStagesSideBySide: Type.Boolean({ default: true }),
+    // When Groups and Stages sit side by side below Preview in a side dock.
+    groupsStagesSideBySide: Type.Union(
+        [Type.Literal('auto'), Type.Literal('enabled'), Type.Literal('disabled')],
+        { default: 'auto' },
+    ),
     // Groups' share of the width it shares with Stages side by side.
     groupsStagesSplit: number(defaultGroupsShare, 0, 1),
 

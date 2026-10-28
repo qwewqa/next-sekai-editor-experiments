@@ -150,6 +150,7 @@ const dynamic: Record<string, string> = {
     'settings.preview.position.': "the setting's options",
     'settings.preview.transport.': "the setting's options",
     'settings.preview.controls.': "the setting's options",
+    'settings.panels.groupsStagesSideBySide.': "the setting's options",
     'workspace.dock.': "the setting's options",
     'storage.': 'StorageLineKey',
     'save.': 'FileErrorKey',

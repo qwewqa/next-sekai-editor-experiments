@@ -167,7 +167,7 @@ export const catalogue = {
         touchQuickScrollShow: oneOf('on', 'off', 'touch'),
         touchLongPressContextMenu: 'boolean',
         confirmCloseUnsavedFile: 'boolean',
-        groupsStagesSideBySide: 'boolean',
+        groupsStagesSideBySide: oneOf('auto', 'enabled', 'disabled'),
     },
     startup: {
         start: oneOf('continued', 'reload', 'recovered', 'launchFile', 'blank', 'safeMode'),

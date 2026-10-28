@@ -49,11 +49,24 @@ const previewNatural = (
 const minSideBody = 220
 const minTopBody = 176
 
-// Groups and Stages sit side by side below Preview from this side dock width: each at its
-// width in a row of tiles, the separator between them and a keyboard step to spare.
+// A side dock's default width, in rem.
+const sideDockRem = 24
+
+export const sideBySideChoices = ['auto', 'enabled', 'disabled'] as const
+export type SideBySideChoice = (typeof sideBySideChoices)[number]
+
 const sideBySidePanels = ['preview', 'groups', 'stages'] as const
-export const sideBySideWidth =
-    minTileLength.horizontal.groups + separatorSize + minTileLength.horizontal.stages + 16
+/**
+ * The side dock width from which Groups and Stages sit side by side below Preview. Enabled
+ * needs room for both at their width in a row of tiles; Auto waits until each can be as wide
+ * as a side dock's default, so larger text never pairs them at the default width.
+ */
+export const sideBySideWidth = (choice: SideBySideChoice | undefined, rem = 16) => {
+    const fit = minTileLength.horizontal.groups + separatorSize + minTileLength.horizontal.stages
+    if (choice === 'enabled') return fit
+    if (choice === 'auto') return Math.max(fit, 2 * sideDockRem * rem + separatorSize)
+    return Infinity
+}
 export const defaultGroupsShare = 0.5
 
 export type WorkspaceLayoutInput = {
@@ -79,8 +92,8 @@ export type WorkspaceLayoutInput = {
     rootFontSize?: number
     /** Narrowest editor that keeps the floating toolbar on one row. */
     toolbarWidth?: number
-    /** Whether Groups and Stages may sit side by side below Preview in a wide side dock. */
-    groupsStagesSideBySide?: boolean
+    /** When Groups and Stages sit side by side below Preview in a side dock; never if unset. */
+    groupsStagesSideBySide?: SideBySideChoice
     /** Groups' share of the width it shares with Stages side by side; half by default. */
     groupsShare?: number
 }
@@ -182,7 +195,7 @@ export const defaultDockSize = (
 ) =>
     side === 'top'
         ? Math.round(clamp(height * 0.38, 180, 420))
-        : Math.floor(Math.max(260, Math.min(24 * rem, (width - 2 * rail - toolbar) / 2)))
+        : Math.floor(Math.max(260, Math.min(sideDockRem * rem, (width - 2 * rail - toolbar) / 2)))
 
 /**
  * Distributes `length` between tiles by weight while honoring each tile's
@@ -272,10 +285,9 @@ const layoutDock = (
     // The panels chosen above are only arranged: Groups and Stages share one row,
     // which stacks as one tile with their weights.
     const sideBySide =
-        !!input.groupsStagesSideBySide &&
         axis === 'vertical' &&
         !overlay &&
-        size.value >= sideBySideWidth &&
+        size.value >= sideBySideWidth(input.groupsStagesSideBySide, input.rootFontSize) &&
         sideBySidePanels.every((id) => visible.includes(id))
     const stacked = sideBySide ? visible.filter((id) => id !== 'stages') : visible
 
@@ -488,7 +500,7 @@ export const hasRoomFor = (input: WorkspaceLayoutInput, ids: readonly PanelId[])
         open: { ...input.open, ...Object.fromEntries(ids.map((id) => [id, true])) },
         sizes: { left: 0, right: 0, top: 0 },
         weights: {},
-        groupsStagesSideBySide: false,
+        groupsStagesSideBySide: 'disabled',
     })
     return ids.every((id) => {
         const side = layout.sides[id]

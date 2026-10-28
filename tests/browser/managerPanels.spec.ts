@@ -706,7 +706,7 @@ test('a rename, the scroll and the focus stay as Groups and Stages go side by si
     const entries = await list.elementHandle()
     const stages = page.locator('#workspace-panel-stages')
 
-    for (const leftDockWidth of [760, 500]) {
+    for (const leftDockWidth of [800, 500]) {
         const top = (await stages.boundingBox())!.y
         await page.evaluate((leftDockWidth) => {
             window.editorTest.settings.leftDockWidth = leftDockWidth
