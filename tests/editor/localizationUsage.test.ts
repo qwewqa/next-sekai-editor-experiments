@@ -211,9 +211,13 @@ const dynamic: Record<string, string> = {
         'the action, read as modal[action] in operationPresentation/format.ts',
     'commands.manageGroups.modal.deleted':
         'the action, read as modal[action] in operationPresentation/format.ts',
+    'commands.manageGroups.modal.moved':
+        'the action, read as modal[action] in operationPresentation/format.ts',
     'commands.manageStages.modal.added':
         'the action, read as modal[action] in operationPresentation/format.ts',
     'commands.manageStages.modal.deleted':
+        'the action, read as modal[action] in operationPresentation/format.ts',
+    'commands.manageStages.modal.moved':
         'the action, read as modal[action] in operationPresentation/format.ts',
     'history.details.pointer':
         "the paste location, read as d[at === 'pointer' ? ...] in details.ts",

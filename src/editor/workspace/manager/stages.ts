@@ -177,16 +177,9 @@ export const stageFolderOps = createFolderOps({
         duplicateOwnedWithReceipt(state, { key: 'stageId', copies }),
     owner: 'stageId',
     strings: () => ({
-        movedEntry: i18n.value.commands.manageStages.modal.moved,
         deleteFolderTitle: i18n.value.workspace.stages.deleteFolderTitle,
         deleteFolderMessage: i18n.value.workspace.stages.deleteFolderMessage,
-        movedSelectedInto: i18n.value.workspace.stages.movedSelectedInto,
-        movedSelectedOut: i18n.value.workspace.stages.movedSelectedOut,
         duplicated: i18n.value.workspace.stages.duplicated,
-        duplicatedSelected: i18n.value.workspace.stages.duplicatedSelected,
-        duplicatedSelectedFolders: i18n.value.workspace.stages.duplicatedSelectedFolders,
-        deletedSelected: i18n.value.workspace.stages.deletedSelected,
-        deletedSelectedFolders: i18n.value.workspace.stages.deletedSelectedFolders,
     }),
 })
 
