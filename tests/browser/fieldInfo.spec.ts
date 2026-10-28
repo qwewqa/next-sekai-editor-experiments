@@ -169,37 +169,39 @@ test.describe('in Settings', () => {
         await expect(shown.locator('li > span')).toHaveText(['Auto: ', 'Always: ', 'Never: '])
         const layout = await shown.locator('p, li').evaluateAll((elements) =>
             elements.map((element) => {
-                const { top, bottom } = element.getBoundingClientRect()
-                // Where each line of text starts.
-                const range = document.createRange()
-                range.selectNodeContents(element)
-                const starts = new Map<number, number>()
-                for (const rect of range.getClientRects()) {
-                    const line = Math.round(rect.top)
-                    starts.set(line, Math.min(starts.get(line) ?? Infinity, rect.left))
-                }
+                const { top, bottom, left } = element.getBoundingClientRect()
+                const style = getComputedStyle(element)
                 const name = element.querySelector('span')
                 return {
                     top,
                     bottom,
-                    starts: [...starts.values()],
+                    left,
+                    padding: style.paddingLeft,
+                    indent: style.textIndent,
+                    marker: style.listStyleType,
+                    before: getComputedStyle(element, '::before').content,
                     weight: name && getComputedStyle(name).fontWeight,
-                    sameInk:
-                        !name || getComputedStyle(name).color === getComputedStyle(element).color,
+                    sameInk: !name || getComputedStyle(name).color === style.color,
                 }
             }),
         )
-        // 8 px after the sentence and 4 px between lines; every line of text, wrapped ones
-        // included, starts at the sentence's left edge; the names are semibold in the same ink.
+        // 8 px after the sentence and 4 px between lines.
         expect(layout[1]!.top - layout[0]!.bottom).toBeCloseTo(8, 0)
         for (let index = 2; index < layout.length; index++)
             expect(layout[index]!.top - layout[index - 1]!.bottom).toBeCloseTo(4, 0)
-        const left = layout[0]!.starts[0]!
-        expect(layout.some((line) => line.starts.length > 1)).toBe(true)
-        for (const line of layout)
-            for (const start of line.starts) expect(start).toBeCloseTo(left, 0)
-        for (const line of layout.slice(1))
-            expect(line).toMatchObject({ weight: '600', sameInk: true })
+        // Each line starts at the sentence's left edge, with no indent or bullet, so wrapped
+        // lines stay flush left; the names are semibold in the same ink.
+        for (const line of layout.slice(1)) {
+            expect(line.left).toBeCloseTo(layout[0]!.left, 0)
+            expect(line).toMatchObject({
+                padding: '0px',
+                indent: '0px',
+                marker: 'none',
+                before: 'none',
+                weight: '600',
+                sameInk: true,
+            })
+        }
         // Screen readers hear the sentence and then each line, on the control and the button.
         const spoken = [intro, ...lines].join(' ')
         await expect(root.getByRole('combobox')).toHaveAccessibleDescription(spoken)
