@@ -333,13 +333,25 @@ test.describe('in Settings', () => {
         const scroller = bubble(page).locator('[tabindex="-1"]')
         await scroller.click()
         await expect(scroller).toBeFocused()
+        // The pointer leaves for the dialog's title bar, where no button could show a bubble.
+        const frame = await box(dialog)
+        const [x, y] = [frame.x + frame.width / 2, frame.y + 20]
+        expect(
+            await page.evaluate(
+                ([x, y]) =>
+                    document
+                        .elementsFromPoint(x!, y!)
+                        .some((el) => el.closest('[data-field-info]')),
+                [x, y],
+            ),
+        ).toBe(false)
+        await page.mouse.move(x, y)
         await page.keyboard.press('Escape')
         await expect(bubble(page)).toHaveCount(0)
         await expect(info).toBeFocused()
         // Past the 400 ms a keyboard focus waits before it shows the bubble.
         await page.waitForTimeout(600)
-        // The pointer rests where the bubble was, which may be over another field's button.
-        await expect(info).toHaveAttribute('aria-expanded', 'false')
+        await expect(bubble(page)).toHaveCount(0)
     })
 
     test('one bubble at a time, never over its own field, and nothing around it moves', async ({
