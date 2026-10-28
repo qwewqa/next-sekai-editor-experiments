@@ -1,9 +1,9 @@
 -- Where the panels were, and how big, as shares of time (not of people). A layout event counts seconds and
 -- leaves out a counter that was 0, which counts as 0. Events whose visibleTime reached the cap of a day are
 -- left out of every figure. Divide by visibleTime, the time the layout was counted, and not by perf's.
--- A row stands for 10 or more distinct sessions (`sessions`, a stand-in for people). A cell with fewer is left out,
--- and the size and share distributions divide by the cells that are printed, so a left-out cell cannot be found by
--- subtraction.
+-- A row stands for 10 or more distinct sessions (`sessions`, a stand-in for people). A cell with fewer is left out.
+-- The size and share distributions print no seconds, only each cell's sessions and its percentage of the cells that
+-- are printed. With the seconds, a left-out cell could be found by subtracting the printed ones from a total above.
 
 -- Each panel on each side, or covered (open, with no room to show it), as a share of the time counted.
 WITH counted AS (
@@ -27,8 +27,8 @@ GROUP BY 1, 2
 HAVING count(DISTINCT c.session_id) >= 10
 ORDER BY 1, 2;
 
--- The width of the left and right panels, or the height of the top panels, by the time spent at each size, as a
--- share of the time that side showed a body, among the sizes printed.
+-- The width of the left and right panels, or the height of the top panels: each size's share of the time that side
+-- showed a body, among the sizes printed.
 WITH counted AS (
     SELECT e.event_id, e.session_id
     FROM website_event e
@@ -46,13 +46,13 @@ WITH counted AS (
     GROUP BY 1, 2
     HAVING count(DISTINCT c.session_id) >= 10
 )
-SELECT side, dock_size, sessions, seconds::int AS seconds,
+SELECT side, dock_size, sessions,
        round(100 * seconds / sum(seconds) OVER (PARTITION BY side), 1) AS percent_of_side
 FROM cells
 ORDER BY side, substring(dock_size from '^[0-9]+')::int;
 
--- Preview's share of the workspace's area, by the time spent at each share, as a share of the time it was shown,
--- among the shares printed.
+-- Preview's share of the workspace's area: each range's share of the time Preview was shown, among the ranges
+-- printed.
 WITH counted AS (
     SELECT e.event_id, e.session_id
     FROM website_event e
@@ -69,7 +69,7 @@ WITH counted AS (
     GROUP BY 1
     HAVING count(DISTINCT c.session_id) >= 10
 )
-SELECT area_share, sessions, seconds::int AS seconds,
+SELECT area_share, sessions,
        round(100 * seconds / sum(seconds) OVER (), 1) AS percent_of_shown
 FROM cells
 ORDER BY substring(area_share from '^[0-9]+')::int;
