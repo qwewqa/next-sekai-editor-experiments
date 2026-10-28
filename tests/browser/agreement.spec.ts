@@ -203,6 +203,11 @@ test.describe('a first agreement', () => {
         )
         await expect(shown.getByRole('link')).toHaveCount(2)
         await expect(shown.locator('[data-agreement-change]')).toHaveCount(0)
+        await expect(shown.locator('[data-agreement-intro]')).toHaveText(en.agreement.intro)
+        // The line comes first, above the version.
+        await expect(shown.locator('.scroll-edges > div').first()).toHaveText(
+            new RegExp(`^${en.agreement.intro.replace(/[.]/g, '\\.')}\\s*Version 0\\.6\\.0$`),
+        )
         await expect(agreeButton(page)).toBeFocused()
         await expect(shown.getByRole('button', { name: /Close|×/ })).toHaveCount(0)
         await expect(shown.getByRole('button')).toHaveCount(1)
@@ -272,10 +277,10 @@ test.describe('a first agreement', () => {
         await expect(settings.getByRole('combobox', { name: 'Thème' })).toHaveValue('dark')
     })
 
-    test('its name and description: the title, and the sentence', async ({ page }) => {
+    test('its name and description: the title, and the line and the sentence', async ({ page }) => {
         await visit(page)
         await expect(dialog(page)).toHaveAccessibleName('Next SEKAI Editor')
-        await expect(dialog(page)).toHaveAccessibleDescription(SENTENCE)
+        await expect(dialog(page)).toHaveAccessibleDescription(`${en.agreement.intro} ${SENTENCE}`)
         await expect(dialog(page).locator('[data-modal-title]')).toHaveText('Next SEKAI Editor')
     })
 
@@ -308,6 +313,9 @@ test.describe('a changed page', () => {
             await visit(page)
             const shown = dialog(page)
             await expect(shown.locator('[data-agreement-change]')).toHaveText(line)
+            // The changed page's line takes the first visit's place.
+            await expect(shown.locator('[data-agreement-intro]')).toHaveCount(0)
+            await expect(shown).not.toContainText(en.agreement.intro)
             await expect(shown).toHaveAccessibleDescription(`${line} ${SENTENCE}`)
             await agree(page)
             expect(await record(page)).toEqual({ terms: 1, privacy: 1 })

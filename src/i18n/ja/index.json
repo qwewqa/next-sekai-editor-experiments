@@ -1184,6 +1184,7 @@
     "open": "セーフモードで開く"
   },
   "agreement": {
+    "intro": "SonolusのNext SEKAI用譜面を編集する無料のオープンソースエディターです。",
     "terms": "利用規約",
     "privacy": "プライバシー通知",
     "agree": "同意する",

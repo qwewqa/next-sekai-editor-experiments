@@ -1184,6 +1184,7 @@
     "open": "Ouvrir en mode sans échec"
   },
   "agreement": {
+    "intro": "C’est un éditeur gratuit et open source de partitions Next SEKAI pour Sonolus.",
     "terms": "Conditions d’utilisation",
     "privacy": "Avis de confidentialité",
     "agree": "Accepter",

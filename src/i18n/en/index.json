@@ -1184,6 +1184,7 @@
         "open": "Open in Safe Mode"
     },
     "agreement": {
+        "intro": "This is a free, open-source editor for Next SEKAI charts in Sonolus.",
         "terms": "Terms of Service",
         "privacy": "Privacy Notice",
         "agree": "Agree",

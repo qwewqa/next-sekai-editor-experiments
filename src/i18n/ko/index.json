@@ -1184,6 +1184,7 @@
     "open": "안전 모드로 열기"
   },
   "agreement": {
+    "intro": "Sonolus의 Next SEKAI 채보를 위한 무료 오픈 소스 편집기입니다.",
     "terms": "이용약관",
     "privacy": "개인정보 처리방침",
     "agree": "동의",

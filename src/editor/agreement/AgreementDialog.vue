@@ -34,6 +34,9 @@ provide(stackLongValuesKey, true)
             <div v-if="change" class="text-fg-strong" data-modal-description data-agreement-change>
                 {{ i18n.agreement.updated[change] }}
             </div>
+            <div v-else class="text-fg-strong" data-modal-description data-agreement-intro>
+                {{ i18n.agreement.intro }}
+            </div>
             <div class="flex flex-col gap-1" data-agreement>
                 <div>{{ interpolateRaw(i18n.settings.about.version, shown) }}</div>
                 <div v-if="SITE === 'test'">{{ TEST_SITE_ABOUT }}</div>
