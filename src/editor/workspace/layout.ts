@@ -49,6 +49,26 @@ const previewNatural = (
 const minSideBody = 220
 const minTopBody = 176
 
+// A side dock's default width, in rem.
+const sideDockRem = 24
+
+export const sideBySideChoices = ['auto', 'enabled', 'disabled'] as const
+export type SideBySideChoice = (typeof sideBySideChoices)[number]
+
+const sideBySidePanels = ['preview', 'groups', 'stages'] as const
+/**
+ * The side dock width from which Groups and Stages sit side by side below Preview. Enabled
+ * needs room for both at their width in a row of tiles; Auto waits until each can be as wide
+ * as a side dock's default, so larger text never pairs them at the default width.
+ */
+export const sideBySideWidth = (choice: SideBySideChoice | undefined, rem = 16) => {
+    const fit = minTileLength.horizontal.groups + separatorSize + minTileLength.horizontal.stages
+    if (choice === 'enabled') return fit
+    if (choice === 'auto') return Math.max(fit, 2 * sideDockRem * rem + separatorSize)
+    return Infinity
+}
+export const defaultGroupsShare = 0.5
+
 export type WorkspaceLayoutInput = {
     width: number
     height: number
@@ -72,6 +92,10 @@ export type WorkspaceLayoutInput = {
     rootFontSize?: number
     /** Narrowest editor that keeps the floating toolbar on one row. */
     toolbarWidth?: number
+    /** When Groups and Stages sit side by side below Preview in a side dock; never if unset. */
+    groupsStagesSideBySide?: SideBySideChoice
+    /** Groups' share of the width it shares with Stages side by side; half by default. */
+    groupsShare?: number
 }
 
 export type DockTile = {
@@ -102,6 +126,11 @@ export type DockLayout = {
      * drawer over the editor instead. Display only; preferences are unchanged.
      */
     overlay: boolean
+    /**
+     * Groups and Stages side by side below Preview: both tiles have the height of
+     * their row, and these widths. Groups' width keeps within `min` and `max`.
+     */
+    sideBySide?: { groups: number; stages: number; min: number; max: number }
     tiles: DockTile[]
     /** Displayed body thickness (width for side docks, height for the top dock). */
     size: number
@@ -166,7 +195,7 @@ export const defaultDockSize = (
 ) =>
     side === 'top'
         ? Math.round(clamp(height * 0.38, 180, 420))
-        : Math.floor(Math.max(260, Math.min(24 * rem, (width - 2 * rail - toolbar) / 2)))
+        : Math.floor(Math.max(260, Math.min(sideDockRem * rem, (width - 2 * rail - toolbar) / 2)))
 
 /**
  * Distributes `length` between tiles by weight while honoring each tile's
@@ -253,7 +282,16 @@ const layoutDock = (
     }
     const visible = panelIds.filter((id) => shown.includes(id))
 
-    const available = length - separatorSize * Math.max(0, visible.length - 1)
+    // The panels chosen above are only arranged: Groups and Stages share one row,
+    // which stacks as one tile with their weights.
+    const sideBySide =
+        axis === 'vertical' &&
+        !overlay &&
+        size.value >= sideBySideWidth(input.groupsStagesSideBySide, input.rootFontSize) &&
+        sideBySidePanels.every((id) => visible.includes(id))
+    const stacked = sideBySide ? visible.filter((id) => id !== 'stages') : visible
+
+    const available = length - separatorSize * Math.max(0, stacked.length - 1)
     const tiles = visible.map((id) => ({
         id,
         min: minTileLength[axis][id],
@@ -267,10 +305,26 @@ const layoutDock = (
         ),
         size: 0,
     }))
-    distribute(available, tiles).forEach((value, index) => {
-        const tile = tiles[index]
-        if (tile) tile.size = value
+    // Each stacked unit: a tile, or Groups with Stages beside it.
+    const units = stacked.map((id) =>
+        tiles.filter(
+            (tile) => tile.id === id || (sideBySide && id === 'groups' && tile.id === 'stages'),
+        ),
+    )
+    distribute(
+        available,
+        units.map((unit) => ({
+            min: Math.max(...unit.map((tile) => tile.min)),
+            weight: unit.reduce((sum, tile) => sum + tile.weight, 0),
+        })),
+    ).forEach((value, index) => {
+        for (const tile of units[index] ?? []) tile.size = value
     })
+
+    const across = size.value - separatorSize
+    const min = minTileLength.horizontal.groups
+    const max = across - minTileLength.horizontal.stages
+    const groups = clamp(Math.round((input.groupsShare ?? defaultGroupsShare) * across), min, max)
 
     return {
         side,
@@ -281,6 +335,7 @@ const layoutDock = (
         collapsed,
         suppressed: suppressed && !input.collapsed?.[side],
         overlay,
+        ...(sideBySide && { sideBySide: { groups, stages: across - groups, min, max } }),
         tiles,
         size: visible.length ? size.value : 0,
         min: size.min,
@@ -445,6 +500,7 @@ export const hasRoomFor = (input: WorkspaceLayoutInput, ids: readonly PanelId[])
         open: { ...input.open, ...Object.fromEntries(ids.map((id) => [id, true])) },
         sizes: { left: 0, right: 0, top: 0 },
         weights: {},
+        groupsStagesSideBySide: 'disabled',
     })
     return ids.every((id) => {
         const side = layout.sides[id]
@@ -468,6 +524,31 @@ export const resizeTilePair = (a: DockTile, b: DockTile, sizeA: number) => {
         [a.id]: (weight * nextA) / total,
         [b.id]: (weight * (total - nextA)) / total,
     } as Partial<Record<PanelId, number>>
+}
+
+/**
+ * As `resizeTilePair`, for the tiles on each side of a separator: one tile, or
+ * Groups and Stages side by side, which resize as one and keep their proportion.
+ */
+export const resizeTileUnits = (
+    a: readonly DockTile[],
+    b: readonly DockTile[],
+    sizeA: number,
+): Partial<Record<PanelId, number>> => {
+    const unit = (tiles: readonly DockTile[]): DockTile => ({
+        id: tiles[0]?.id ?? 'preview',
+        size: tiles[0]?.size ?? 0,
+        min: Math.max(...tiles.map((tile) => tile.min)),
+        weight: tiles.reduce((sum, tile) => sum + tile.weight, 0),
+    })
+    const [first, second] = [unit(a), unit(b)]
+    const weights = resizeTilePair(first, second, sizeA)
+    const share = (tiles: readonly DockTile[], whole: DockTile) =>
+        tiles.map((tile): [PanelId, number] => [
+            tile.id,
+            ((weights[whole.id] ?? 0) * tile.weight) / whole.weight,
+        ])
+    return Object.fromEntries([...share(a, first), ...share(b, second)])
 }
 
 /** Moves a panel to the front of the recency list. */

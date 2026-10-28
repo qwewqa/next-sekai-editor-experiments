@@ -11,12 +11,14 @@ import {
     railSize,
     reduceWorkspace,
     resizeTilePair,
+    resizeTileUnits,
     resolveAutoSide,
     separatorSize,
     tabAction,
     touchRecency,
     type PanelId,
     type PanelPosition,
+    type SideBySideChoice,
     type WorkspaceAction,
     type WorkspaceLayoutInput,
     type WorkspaceToggleState,
@@ -770,4 +772,284 @@ test('History is an ordinary panel: a tab while closed, shown like Groups, gone 
     const disabled = phone({ positions: { ...positions('auto'), history: 'disabled' } })
     assert.equal(disabled.sides.history, undefined)
     assert.equal(disabled.docks.top?.panels.includes('history'), false)
+})
+
+// Preview, Groups and Stages on the left of a wide screen, Properties and History on the right,
+// with Enabled, which sets them side by side at 760 px.
+const sideBySide = (overrides: Partial<WorkspaceLayoutInput> = {}) =>
+    input({
+        width: 2560,
+        height: 1440,
+        positions: { ...positions('right'), preview: 'left', groups: 'left', stages: 'left' },
+        open: { preview: true, groups: true, stages: true, properties: true, history: false },
+        recency: ['preview', 'groups', 'stages', 'properties', 'history'],
+        sizes: { left: 760, right: 0, top: 0 },
+        groupsStagesSideBySide: 'enabled',
+        ...overrides,
+    })
+
+const tileSizes = (dock: { tiles: { id: PanelId; size: number }[] } | undefined) =>
+    Object.fromEntries((dock?.tiles ?? []).map(({ id, size }) => [id, size]))
+
+test('Groups and Stages sit side by side only with Preview, in a wide side dock', () => {
+    const shown = (overrides: Partial<WorkspaceLayoutInput>, side: 'left' | 'right' | 'top') =>
+        computeWorkspaceLayout(sideBySide(overrides)).docks[side]?.sideBySide
+    assert.deepEqual(shown({}, 'left'), { groups: 378, stages: 378, min: 260, max: 496 })
+    assert.equal(shown({ groupsStagesSideBySide: 'disabled' }, 'left'), undefined)
+    assert.equal(shown({ groupsStagesSideBySide: undefined }, 'left'), undefined)
+    // Each of the three must be shown, not only open or placed there.
+    for (const id of ['preview', 'groups', 'stages'] as const) {
+        assert.equal(shown({ open: { ...sideBySide().open, [id]: false } }, 'left'), undefined, id)
+        assert.equal(
+            shown({ positions: { ...sideBySide().positions, [id]: 'right' } }, 'left'),
+            undefined,
+            id,
+        )
+    }
+    // A short dock covers Stages, so the two never sit side by side there.
+    const short = computeWorkspaceLayout(sideBySide({ height: 600 })).docks.left
+    assert.deepEqual(short?.covered, ['stages'])
+    assert.equal(short?.sideBySide, undefined)
+    assert.equal(shown({ collapsed: { left: true } }, 'left'), undefined)
+    // Properties and History below them leave the arrangement as it is.
+    const all = positions('left')
+    assert.ok(shown({ positions: all, open: { ...sideBySide().open, history: true } }, 'left'))
+    // The right side arranges in the same order; the top dock already has a row of tiles.
+    assert.deepEqual(
+        shown({ positions: positions('right'), sizes: { left: 0, right: 760, top: 0 } }, 'right'),
+        { groups: 378, stages: 378, min: 260, max: 496 },
+    )
+    assert.equal(
+        shown({ positions: positions('top'), sizes: { left: 0, right: 0, top: 760 } }, 'top'),
+        undefined,
+    )
+    // A drawer on a narrow screen is at most 306 px wide.
+    const drawer = computeWorkspaceLayout(
+        sideBySide({ width: 390, height: 844, sizes: { left: 5000, right: 0, top: 0 } }),
+    ).docks.left
+    assert.equal(drawer?.overlay, true)
+    assert.equal(drawer?.sideBySide, undefined)
+})
+
+test('Enabled sets them side by side from 524 px, and Auto from 48rem and the separator', () => {
+    const at = (
+        left: number,
+        groupsStagesSideBySide: SideBySideChoice,
+        overrides: Partial<WorkspaceLayoutInput> = {},
+    ) =>
+        computeWorkspaceLayout(
+            sideBySide({ groupsStagesSideBySide, sizes: { left, right: 0, top: 0 }, ...overrides }),
+        ).docks.left?.sideBySide
+    // Enabled: both at their width in a row of tiles.
+    assert.equal(at(523, 'enabled'), undefined)
+    assert.deepEqual(at(524, 'enabled'), { groups: 260, stages: 260, min: 260, max: 260 })
+    // Auto: each as wide as a side dock's default, 24rem.
+    assert.equal(at(771, 'auto'), undefined)
+    assert.deepEqual(at(772, 'auto'), { groups: 384, stages: 384, min: 260, max: 508 })
+    const text = (rem: number) => ({
+        rootFontSize: rem,
+        toolbarWidth: oneRowToolbarWidth(defaultTools, rem, false),
+    })
+    assert.equal(at(963, 'auto', text(20)), undefined)
+    assert.ok(at(964, 'auto', text(20)))
+    // Small text still needs room for both.
+    assert.equal(at(523, 'auto', text(10)), undefined)
+    assert.ok(at(524, 'auto', text(10)))
+    assert.equal(at(2000, 'disabled'), undefined)
+    // A saved width the window cannot show counts as the width shown.
+    const narrow = computeWorkspaceLayout(
+        sideBySide({ width: 1100, sizes: { left: 600, right: 0, top: 0 } }),
+    ).docks.left
+    assert.ok(narrow && narrow.size < 524)
+    assert.equal(narrow.sideBySide, undefined)
+    // At their default width, docks never pair on Auto, whatever the text size.
+    for (const rem of [8, 12, 16, 20, 24, 32]) {
+        const left = computeWorkspaceLayout(
+            sideBySide({
+                ...text(rem),
+                groupsStagesSideBySide: 'auto',
+                sizes: { left: 0, right: 0, top: 0 },
+            }),
+        ).docks.left
+        assert.equal(left?.sideBySide, undefined, String(rem))
+    }
+})
+
+test('the managers side by side change no panel shown, covered or closed', () => {
+    const docks = (overrides: Partial<WorkspaceLayoutInput>) =>
+        Object.values(computeWorkspaceLayout(input(overrides)).docks).map((dock) => ({
+            side: dock.side,
+            visible: dock.visible,
+            covered: dock.covered,
+            collapsed: dock.collapsed,
+        }))
+    const opens = [
+        { preview: true, groups: true, stages: true, properties: true, history: true },
+        { preview: true, groups: true, stages: true, properties: false, history: true },
+        { preview: true, groups: true, stages: true, properties: true, history: false },
+    ]
+    const recencies: PanelId[][] = [
+        ['history', 'properties', 'stages', 'groups', 'preview'],
+        ['preview', 'groups', 'stages', 'properties', 'history'],
+    ]
+    for (const height of [500, 660, 700, 900, 1100, 1440])
+        for (const open of opens)
+            for (const placement of [positions('left'), positions('right')])
+                for (const size of [540, 800])
+                    for (const recency of recencies) {
+                        const screen = {
+                            width: 2560,
+                            height,
+                            positions: placement,
+                            open,
+                            recency,
+                            sizes: { left: size, right: size, top: 0 },
+                        }
+                        for (const choice of ['auto', 'enabled'] as const)
+                            assert.deepEqual(
+                                docks({ ...screen, groupsStagesSideBySide: choice }),
+                                docks({ ...screen, groupsStagesSideBySide: 'disabled' }),
+                                JSON.stringify(screen),
+                            )
+                    }
+
+    // Tabs and closes reach the same states.
+    const actions: WorkspaceAction[] = [
+        { type: 'tab', id: 'properties' },
+        { type: 'tab', id: 'history' },
+        { type: 'close', id: 'groups' },
+        { type: 'show', id: 'groups' },
+        { type: 'toggleDock', side: 'left' },
+        { type: 'toggleDock', side: 'left' },
+    ]
+    const start: WorkspaceToggleState = {
+        open: { preview: true, groups: true, stages: true, properties: false, history: false },
+        recency: ['preview', 'groups', 'stages', 'properties', 'history'],
+        collapsed: unfolded,
+    }
+    const screen = {
+        width: 2560,
+        height: 900,
+        positions: positions('left'),
+        sizes: { left: 760, right: 0, top: 0 },
+    }
+    assert.deepEqual(
+        play({ ...screen, groupsStagesSideBySide: 'enabled' }, start, actions),
+        play({ ...screen, groupsStagesSideBySide: 'disabled' }, start, actions),
+    )
+})
+
+test('the row of Groups and Stages stacks as one tile', () => {
+    const left = computeWorkspaceLayout(sideBySide()).docks.left
+    const sizes = tileSizes(left)
+    assert.equal(sizes.groups, sizes.stages)
+    // One separator below Preview, and one between the managers across the dock.
+    assert.ok(Math.abs((sizes.preview ?? 0) + (sizes.groups ?? 0) + separatorSize - 1440) < 1e-6)
+    assert.equal(
+        (left?.sideBySide?.groups ?? 0) + separatorSize + (left?.sideBySide?.stages ?? 0),
+        760,
+    )
+    // Below them, Properties stacks as usual.
+    const below = computeWorkspaceLayout(sideBySide({ positions: positions('left') })).docks.left
+    const stack = tileSizes(below)
+    assert.deepEqual(below?.visible, ['preview', 'groups', 'stages', 'properties'])
+    const total =
+        (stack.preview ?? 0) + (stack.groups ?? 0) + (stack.properties ?? 0) + 2 * separatorSize
+    assert.ok(Math.abs(total - 1440) < 1e-6)
+    // The row keeps one manager's minimum, not both stacked.
+    const squeezed = tileSizes(
+        computeWorkspaceLayout(sideBySide({ height: 700, weights: { preview: 10 } })).docks.left,
+    )
+    assert.equal(squeezed.groups, 226)
+    assert.equal(squeezed.preview, 700 - separatorSize - 226)
+    // The row weighs as much as both managers.
+    const weighted = tileSizes(
+        computeWorkspaceLayout(sideBySide({ weights: { preview: 2, groups: 1, stages: 3 } })).docks
+            .left,
+    )
+    assert.ok(Math.abs((weighted.preview ?? 0) - (2 / 6) * (1440 - separatorSize)) < 1e-6)
+})
+
+test("Groups' width follows its share, kept clear of both minimums for display", () => {
+    const at = (groupsShare: number | undefined, left = 760) =>
+        computeWorkspaceLayout(sideBySide({ groupsShare, sizes: { left, right: 0, top: 0 } })).docks
+            .left
+    assert.deepEqual(at(0.6)?.sideBySide, { groups: 454, stages: 302, min: 260, max: 496 })
+    assert.equal(at(0.1)?.sideBySide?.groups, 260)
+    assert.equal(at(0.9)?.sideBySide?.stages, 260)
+    assert.equal(at(undefined)?.sideBySide?.groups, 378)
+    // The widths leave the heights alone.
+    assert.deepEqual(tileSizes(at(0.6)), tileSizes(at(0.5)))
+})
+
+test('a separator beside the row resizes it as one and keeps the managers in proportion', () => {
+    const base = sideBySide({ positions: positions('left'), weights: { groups: 1, stages: 3 } })
+    const tiles = computeWorkspaceLayout(base).docks.left?.tiles ?? []
+    const tile = (id: PanelId) => tiles.find((each) => each.id === id)!
+    const [preview, groups, stages, properties] = [
+        tile('preview'),
+        tile('groups'),
+        tile('stages'),
+        tile('properties'),
+    ]
+    const resized = (weights: Partial<Record<PanelId, number>>) =>
+        tileSizes(
+            computeWorkspaceLayout({ ...base, weights: { ...base.weights, ...weights } }).docks
+                .left,
+        )
+
+    const above = resizeTileUnits([preview], [groups, stages], preview.size + 100)
+    assert.ok(Math.abs((above.stages ?? 0) / (above.groups ?? 1) - 3) < 1e-9)
+    const before = preview.weight + groups.weight + stages.weight
+    const after = (above.preview ?? 0) + (above.groups ?? 0) + (above.stages ?? 0)
+    assert.ok(Math.abs(after - before) < 1e-9)
+    assert.ok(Math.abs((resized(above).preview ?? 0) - (preview.size + 100)) < 1e-6)
+    assert.ok(Math.abs((resized(above).properties ?? 0) - properties.size) < 1e-6)
+
+    const below = resizeTileUnits([groups, stages], [properties], groups.size - 50)
+    assert.ok(Math.abs((below.stages ?? 0) / (below.groups ?? 1) - 3) < 1e-9)
+    assert.equal(below.preview, undefined)
+    assert.ok(Math.abs((resized(below).stages ?? 0) - (groups.size - 50)) < 1e-6)
+})
+
+test('Preview keeps its height when the managers move side by side', () => {
+    const preview = (
+        groupsStagesSideBySide: SideBySideChoice,
+        overrides: Partial<WorkspaceLayoutInput>,
+    ) =>
+        tileSizes(
+            computeWorkspaceLayout(sideBySide({ ...overrides, groupsStagesSideBySide })).docks.left,
+        ).preview ?? 0
+    for (const [choice, overrides] of [
+        ['enabled', {}],
+        ['enabled', { sizes: { left: 540, right: 0, top: 0 } }],
+        ['enabled', { width: 1920, height: 1080 }],
+        ['enabled', { weights: { preview: 3 } }],
+        ['auto', { sizes: { left: 800, right: 0, top: 0 } }],
+    ] as const) {
+        assert.ok(
+            computeWorkspaceLayout(sideBySide({ ...overrides, groupsStagesSideBySide: choice }))
+                .docks.left?.sideBySide,
+        )
+        const change = Math.abs(preview(choice, overrides) - preview('disabled', overrides))
+        assert.ok(change <= separatorSize, `${choice} ${JSON.stringify(overrides)}: ${change}`)
+    }
+    assert.ok(Math.abs(preview('enabled', {}) - (760 / (16 / 9) + 52)) < 1e-6)
+})
+
+test('the managers side by side never change which panels open by default', () => {
+    const room = (overrides: Partial<WorkspaceLayoutInput>) => {
+        const screen = input({ positions: positions('auto'), ...overrides })
+        const room = (choice: SideBySideChoice) =>
+            hasRoomFor({ ...screen, groupsStagesSideBySide: choice }, ['groups', 'stages'])
+        for (const choice of ['auto', 'enabled'] as const)
+            assert.equal(room(choice), room('disabled'), `${choice} ${JSON.stringify(overrides)}`)
+        return room('disabled')
+    }
+    // Large text gives a 576 px default dock, where the stacked managers leave Preview short.
+    const large = { rootFontSize: 24, toolbarWidth: oneRowToolbarWidth(defaultTools, 24, false) }
+    assert.ok(!room({ width: 2560, height: 760, ...large }))
+    assert.ok(room({ width: 2560, height: 1000, ...large }))
+    assert.ok(room({ width: 2560, height: 1440 }))
+    assert.ok(!room({ width: 1280, height: 600 }))
 })

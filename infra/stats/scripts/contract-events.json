@@ -8,7 +8,8 @@
         "data": {
             "theme": "dark",
             "showMinimap": "on",
-            "previewAssets.skin": "bundled"
+            "previewAssets.skin": "bundled",
+            "groupsStagesSideBySide": "auto"
         }
     },
     {
@@ -137,6 +138,7 @@
             "visibleTime": 300,
             "previewHost": "worker",
             "previewRenderScale": "1",
+            "groupsStagesSideBySide": "off",
             "cores": "8",
             "deviceMemory": "8",
             "engine": "chromium",
@@ -164,7 +166,8 @@
             "frameAttribution": "full",
             "playSeconds": 60,
             "previewHost": "worker",
-            "previewRenderScale": "2"
+            "previewRenderScale": "2",
+            "groupsStagesSideBySide": "mixed"
         }
     },
     {

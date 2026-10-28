@@ -62,6 +62,7 @@ coarseQuery.addEventListener('change', () => {
  */
 export const dockSizeDrafts = shallowRef<Partial<Record<DockSide, number>>>({})
 export const panelWeightsDraft = shallowRef<Partial<Record<PanelId, number>>>()
+export const groupsStagesSplitDraft = shallowRef<number>()
 
 /** The workspace's layout viewport size, measured by the app shell. */
 export const workspaceSize = shallowRef({
@@ -166,6 +167,8 @@ const layoutInput = (state: WorkspaceToggleState) => ({
     previewOverlay: settings.previewTransportPosition === 'overlay',
     rootFontSize: rootFontSize.value,
     toolbarWidth: toolbarWidth.value + minimapRoomFor(isMinimapShown.value),
+    groupsStagesSideBySide: settings.groupsStagesSideBySide,
+    groupsShare: groupsStagesSplitDraft.value ?? settings.groupsStagesSplit,
 })
 
 const layoutOf = (state: WorkspaceToggleState) => computeWorkspaceLayout(layoutInput(state))
@@ -298,6 +301,11 @@ export const drawerSide = computed(() =>
         const dock = workspaceLayout.value.docks[side]
         return dock?.overlay && dock.visible.length
     }),
+)
+
+/** Whether Groups and Stages are shown side by side below Preview. */
+export const areGroupsStagesSideBySide = computed(() =>
+    Object.values(workspaceLayout.value.docks).some((dock) => !!dock.sideBySide),
 )
 
 /** Whether the panel's body is currently displayed (open and not covered). */

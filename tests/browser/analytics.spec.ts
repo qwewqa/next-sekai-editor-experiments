@@ -495,9 +495,10 @@ test('a scripted visit counts each press once by name and source, and sends the 
         'scrollDown.key': 1,
         'zoomYIn.wheel': 1,
     })
-    // The desktop snapshot: the 23 settings, 25 keys, and no touch options.
+    // The desktop snapshot: the 24 settings, 26 keys, and no touch options.
     const settings = dataOf(first, 'settings') ?? {}
-    expect(Object.keys(settings)).toHaveLength(25)
+    expect(Object.keys(settings)).toHaveLength(26)
+    expect(settings).toHaveProperty('groupsStagesSideBySide', 'auto')
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
     expect(dataOf(first, 'storage')).toMatchObject({ mode: 'stored' })
@@ -509,6 +510,8 @@ test('a scripted visit counts each press once by name and source, and sends the 
     expect(dataOf(first, 'perf')).toHaveProperty('viewportHeight')
     expect(dataOf(first, 'perf')).toHaveProperty('viewportAspect')
     expect(dataOf(first, 'perf')).toHaveProperty('previewRenderScale')
+    // The setting allows it, but Preview is closed.
+    expect(dataOf(first, 'perf')).toHaveProperty('groupsStagesSideBySide', 'off')
     expect(stray).toEqual([])
     expect(messages).toEqual([])
 })
@@ -660,6 +663,50 @@ test('a preview host or render scale that changed and came back within one tick 
     // The next interval begins from the value then, and nothing changed in it.
     expect(steady).toMatchObject({ previewHost: 'none' })
     expect(steady.previewRenderScale).not.toBe('mixed')
+})
+
+test('Groups and Stages count as side by side only while shown so, and mixed when that changed', async ({
+    page,
+}) => {
+    await start(page)
+    await page.setViewportSize({ width: 2560, height: 1440 })
+    const divider = page
+        .locator('[data-workspace-dock="left"]')
+        .getByRole('separator', { name: 'Resize Groups and Stages' })
+    const show = (values: Record<string, unknown>) =>
+        page.evaluate(async (values) => {
+            const { settings } =
+                (await import('/src/settings.ts')) as typeof import('../../src/settings')
+            Object.assign(settings, values)
+        }, values)
+    await show({
+        showPreview: true,
+        showGroups: true,
+        showStages: true,
+        leftDockWidth: 800,
+        groupsStagesSideBySide: 'disabled',
+    })
+    await expect(divider).toHaveAttribute('aria-orientation', 'horizontal')
+    const measured = await page.evaluate(async () => {
+        const { startField } =
+            (await import('/src/analytics/field.ts')) as typeof import('../../src/analytics/field')
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
+        const field = startField()
+        const take = () => field.measures().groupsStagesSideBySide
+        // Wide enough, with the setting Disabled.
+        const off = take()
+        settings.groupsStagesSideBySide = 'auto'
+        const turnedOn = take()
+        const on = take()
+        // Narrower than 772 px and back, within one tick.
+        settings.leftDockWidth = 760
+        settings.leftDockWidth = 800
+        const narrowed = take()
+        field.stop()
+        return { off, turnedOn, on, narrowed }
+    })
+    expect(measured).toEqual({ off: 'off', turnedOn: 'mixed', on: 'on', narrowed: 'mixed' })
 })
 
 test.describe('with the agreement dialog', () => {

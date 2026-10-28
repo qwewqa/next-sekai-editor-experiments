@@ -93,6 +93,9 @@ watch(interruptsDrags, (interrupted) => {
     if (interrupted) cancel()
 })
 
+/** Ends a drag in progress as Escape does. */
+defineExpose({ cancel })
+
 onUnmounted(() => {
     if (!drag) return
     stop()

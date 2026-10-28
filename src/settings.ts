@@ -6,7 +6,7 @@ import type { EaseEdit } from './ease'
 import type { CommandName } from './editor/commands'
 import { normalizeBinding } from './editor/controls/bindings'
 import { migrateToolbar } from './editor/toolbar/migrate'
-import { isPanelId, panelIds, type PanelId } from './editor/workspace/layout'
+import { defaultGroupsShare, isPanelId, panelIds, type PanelId } from './editor/workspace/layout'
 import { defaultLocale } from './i18n/locale'
 import { localizations } from './i18n/localizations'
 import {
@@ -101,6 +101,13 @@ const settingsProperties = {
                 ) as Partial<Record<PanelId, number>>,
         )
         .Encode((value) => value),
+    // When Groups and Stages sit side by side below Preview in a side dock.
+    groupsStagesSideBySide: Type.Union(
+        [Type.Literal('auto'), Type.Literal('enabled'), Type.Literal('disabled')],
+        { default: 'auto' },
+    ),
+    // Groups' share of the width it shares with Stages side by side.
+    groupsStagesSplit: number(defaultGroupsShare, 0, 1),
 
     propertiesSection: Type.Union([
         Type.Literal('selection'),

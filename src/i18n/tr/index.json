@@ -888,7 +888,13 @@
       "longPressContextMenu": "Bağlam Menüsü İçin Uzun Bas"
     },
     "panels": {
-      "title": "Paneller"
+      "title": "Paneller",
+      "groupsStagesSideBySide": {
+        "title": "Grupları ve Sahneleri Yan Yana Göster",
+        "auto": "Otomatik",
+        "enabled": "Etkin",
+        "disabled": "Devre Dışı"
+      }
     },
     "about": {
       "title": "Hakkında",
@@ -930,6 +936,7 @@
       "maxScrollX": "Çizelgenin merkezinden sola veya sağa ne kadar kaydırabileceğinizi belirler. Birleşik düzende notalara ve sahnelere ulaşmak için daha uzağa kaydırabilirsiniz.",
       "elevationEditorSideBySide": "Otomatik, yer olduğunda Yükseklik Editörü’nü çizelgenin yanında açar. Her zaman seçeneğinde ikisi yan yana kalır. Asla seçeneğinde Yükseklik Editörü çizelgenin yerini alır.",
       "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmalarda oklar, her bağlayıcının başlangıcından sonuna doğru yönelir. Notaların arasında yer olan kısımlarda görünürler.",
+      "groupsStagesSideBySide": "Önizleme, Gruplar ve Sahneler panellerinin tümü sol panellerde veya tümü sağ panellerde gösterildiğinde, Otomatik seçeneğinde paneller genişse Gruplar ve Sahneler Önizleme’nin altında yan yana gösterilir. Etkin seçeneğinde, ikisi sığdığında daha dar panellerde de yan yana gösterilir. Devre Dışı seçeneğinde alt alta kalır.",
       "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa, bu tarayıcıda saklanıyor olsalar bile sayfa kapanmadan önce onay ister. Kapatmak değişikliklerin kaybolmasına yol açacaksa editör her zaman onay ister.",
       "previewNoteSpeed": "Daha yüksek değerler, önizlemede notaların daha hızlı yaklaşmasını sağlar. Bir grubun Nota Hızını Sabitle değeri 0’dan büyükse bu değerin yerine kullanılır.",
       "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir. Notalara basılmadan kısa bir süre önce ve kaydırmalar etkinken görünürler.",
@@ -1939,6 +1946,7 @@
       "minimap": "Mini haritayı yeniden boyutlandır"
     },
     "resizeTiles": "{0} ve {1} panellerini yeniden boyutlandır",
+    "resizeTileRow": "{0}, {1} ve {2} panellerini yeniden boyutlandır",
     "dock": {
       "auto": "Otomatik Yerleştir",
       "left": "Sola Yerleştir",

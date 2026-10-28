@@ -165,7 +165,7 @@ test('the Undo window and the Recent Sessions count are exact', () => {
 
 test('perf and peek stay within their key budgets', () => {
     // 45 is the most an event may carry; the figures here are the most each is built to populate.
-    assert.equal(Object.keys(catalogue.perf).length, 39)
+    assert.equal(Object.keys(catalogue.perf).length, 40)
     assert.equal(Object.keys(catalogue.peek).length, 28)
     assert.ok(Object.keys(catalogue.perf).length <= MAX_KEYS)
     const every = (name: 'perf' | 'peek') =>

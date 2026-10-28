@@ -146,6 +146,7 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `touchQuickScrollShow` | When the Quick Scroll Zone is shown. Sent only when the primary pointing device has limited precision | `on`, `off` or `touch` |
 | `touchLongPressContextMenu` | Whether a long press opens the context menu. Sent only when the primary pointing device has limited precision | Yes or no |
 | `confirmCloseUnsavedFile` | Whether the Ask Before Closing with Unsaved Changes setting is on | Yes or no |
+| `groupsStagesSideBySide` | The Groups and Stages Side by Side setting | `auto`, `enabled` or `disabled` |
 
 ### `startup`
 
@@ -377,6 +378,7 @@ Sent with every batch. Measurements cover the interval since the previous batch,
 | `visibleTime` | The time the page was visible since the previous batch | Seconds |
 | `previewHost` | The thread used to draw the preview during this interval. `none` means the preview was not shown, `mixed` means the value changed, and `unknown` means the thread could not be determined | `main`, `worker`, `none`, `mixed` or `unknown` |
 | `previewRenderScale` | The preview’s render scale during this interval, with `mixed` when it changed | `0.25`, `0.5`, `0.75`, `1`, `1.25`, `1.5`, `1.75`, `2`, `mixed` or `unknown` |
+| `groupsStagesSideBySide` | Whether Groups and Stages were shown side by side during this interval, with `mixed` when it changed. `off` also applies when the setting was on but the panels were too narrow, or Preview, Groups and Stages were not all on one side | `on`, `off` or `mixed` |
 | `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `unsupported`
