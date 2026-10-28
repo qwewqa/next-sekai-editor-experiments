@@ -322,12 +322,10 @@ for (const signal of ['gpc', 'dnt'] as const)
         const field = await settingsSwitch(page)
         const toggle = field.getByRole('switch')
         await expect(toggle).toHaveAttribute('aria-checked', 'false')
-        await expect(field).toContainText(
-            'Off by default because this browser sends a Do Not Track or Global Privacy Control signal.',
-        )
+        // The same note as without a signal: what the statistics are for.
+        await expect(field).toContainText('They include which tools you use')
         expect(await clientLoaded(page)).toBe(0)
         await toggle.click()
-        await expect(field).toContainText('They include which tools you use')
         await expect.poll(() => clientLoaded(page)).toBe(3)
         await page.keyboard.press('Escape')
         await interact(page)
