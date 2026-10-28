@@ -798,8 +798,7 @@ expect peek '25-40|3'
 #   cells have nine sessions and stay out. The tenth spends that time in the ranges below. The first sends a second
 #   event with Groups, so Groups has nine sessions and ten events. An eleventh session sends an interval at the cap of
 #   a day, which is left out. The panel query prints Preview as 1000 s. Only 730 s of the Preview shares and 820 s of
-#   the left sizes are printed, and the rest (270 s and 180 s) must not be found by subtraction, so the distributions
-#   print percentages of the cells printed and no seconds.
+#   the left sizes are printed, and the distributions print percentages of the cells printed and no seconds.
 #   LAYOUT9: nine sessions send an event, so nothing is printed. A tenth makes the cells appear.
 LAYOUT=$(cat /proc/sys/kernel/random/uuid)
 LAYOUT9=$(cat /proc/sys/kernel/random/uuid)
