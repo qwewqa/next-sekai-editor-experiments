@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
+import { AGREEMENT_KEY } from '../../src/editor/agreement/rules'
 import { inflateStrict } from '../../src/local/chunkVerify'
 import { hashKey } from '../../src/local/db'
 import { documentDeviceId } from '../../src/local/deviceId'
@@ -16,6 +17,7 @@ import { nodeJsonFromRow, rootJsonFromRow } from '../../src/local/records/rows'
 import { decodeSnapshot } from '../../src/local/records/snapshot'
 import { seedDump, seedRawExport } from '../../src/local/seed'
 import { createWorld } from '../../src/local/testing/world'
+import { storageKey } from '../../src/storage'
 import { ZipReader } from '../../src/zip'
 import { nxspFolder, webFolder } from '../fixtures-v1/folders'
 import { FIXTURE_BUILDS, SUMS_DIGESTS } from './fixturesV1Pins'
@@ -115,7 +117,11 @@ test("readDump accepts both dumps and the raw export's dump.json, and seedDump w
                 : seedDump(tab.kv, dump, storage),
         )
         assert.deepEqual(result, { seeded: true }, name)
-        assert.deepEqual(stored, dump.localStorage, name)
+        // The raw export's dump holds the agreement record; a seed leaves it out, so each profile
+        // agrees for itself.
+        const { [storageKey(AGREEMENT_KEY)]: agreement, ...kept } = dump.localStorage
+        assert.ok(agreement === undefined || name.startsWith('raw-export.zip'), name)
+        assert.deepEqual(stored, kept, name)
         // Every chain is in, and every store holds as many rows as the dump (a handle's row goes
         // whole, since its handle is not in a dump).
         for (const store of dump.stores) {
