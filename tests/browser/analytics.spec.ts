@@ -795,7 +795,12 @@ test('Groups and Stages count as paired only while shown side by side', async ({
     await holdLayoutClock(
         page,
         { width: 2560, height: 1440 },
-        { showGroups: true, showStages: true, leftDockWidth: 760, groupsStagesSideBySide: 'disabled' },
+        {
+            showGroups: true,
+            showStages: true,
+            leftDockWidth: 760,
+            groupsStagesSideBySide: 'disabled',
+        },
     )
     await expect(
         page

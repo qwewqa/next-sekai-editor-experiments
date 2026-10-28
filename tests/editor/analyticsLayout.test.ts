@@ -171,7 +171,9 @@ test('Groups and Stages count as paired only while shown side by side', () => {
     )
     // The panels are shown either way.
     assert.ok(
-        keysOf({ ...wide, groupsStagesSideBySide: 'disabled' }).includes('panelSeconds.groups.left'),
+        keysOf({ ...wide, groupsStagesSideBySide: 'disabled' }).includes(
+            'panelSeconds.groups.left',
+        ),
     )
 })
 

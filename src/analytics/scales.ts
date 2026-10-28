@@ -160,7 +160,7 @@ const defined = {
         limits: [200, 500, 1000],
     },
     cores: coreScale(),
-    /** A dock body's width, or the top dock's height, in CSS pixels. 540 is the side-by-side width. */
+    /** A dock body's width, or the top dock's height, in CSS pixels. */
     dockSize: {
         labels: ['0-280', '280-400', '400-540', '540-760', '760+'],
         limits: [280, 400, 540, 760],
