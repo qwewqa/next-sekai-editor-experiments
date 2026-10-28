@@ -338,7 +338,8 @@ test.describe('in Settings', () => {
         await expect(info).toBeFocused()
         // Past the 400 ms a keyboard focus waits before it shows the bubble.
         await page.waitForTimeout(600)
-        await expect(bubble(page)).toHaveCount(0)
+        // The pointer rests where the bubble was, which may be over another field's button.
+        await expect(info).toHaveAttribute('aria-expanded', 'false')
     })
 
     test('one bubble at a time, never over its own field, and nothing around it moves', async ({
