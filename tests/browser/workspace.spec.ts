@@ -744,7 +744,7 @@ test.describe('Groups and Stages side by side', () => {
         await page.keyboard.press(',')
         await expect(choice()).toHaveValue('auto')
         await expect(choice()).toHaveAccessibleDescription(
-            /^When Preview, Groups and Stages are all shown in the left panels/,
+            /^Sets when Groups and Stages are shown side by side below Preview\. /,
         )
         await choice().selectOption('enabled')
         await page.keyboard.press('Escape')

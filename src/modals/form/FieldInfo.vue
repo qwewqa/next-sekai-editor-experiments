@@ -9,6 +9,7 @@ import { vScrollEdges } from '../../directives/scrollEdges'
 import InfoIcon from '../../editor/history/InfoIcon.vue'
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
+import { choiceLine, type FieldDescription } from './fieldDescription'
 
 // The ⓘ after a setting's label: hover or focus shows its description after a moment, and a
 // click, tap, Enter or Space pins it. The bubble goes under the field, or above it when there is
@@ -16,7 +17,7 @@ import { interpolateRaw } from '../../utils/interpolate'
 
 defineProps<{
     label: string
-    description: string
+    description: FieldDescription
     /** The field's description for screen readers, which starts with this text. */
     describedBy: string
 }>()
@@ -271,7 +272,16 @@ onBeforeUnmount(() => {
                 tabindex="-1"
                 class="min-h-0 select-text overflow-y-auto overscroll-contain px-3 py-2 outline-none [touch-action:pan-y]"
             >
-                {{ description }}
+                <template v-if="typeof description === 'string'">{{ description }}</template>
+                <template v-else>
+                    <p>{{ description.intro }}</p>
+                    <ul class="mt-2 flex flex-col gap-1">
+                        <li v-for="(line, index) in description.lines" :key="index">
+                            <span class="font-semibold">{{ choiceLine(line.name) }}</span
+                            >{{ line.text }}
+                        </li>
+                    </ul>
+                </template>
             </div>
         </div>
     </Teleport>

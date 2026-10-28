@@ -140,6 +140,85 @@ test.describe('in Settings', () => {
         await expect(bubble(page)).toHaveCount(0)
     })
 
+    test("a select's lines follow its sentence, named and ordered as its options", async ({
+        page,
+    }) => {
+        // The locale lists the choices in the reverse of the select's order.
+        await page.evaluate(async () => {
+            const { i18n } =
+                await window.editorTest.appImport<typeof import('../../src/i18n')>(
+                    '/src/i18n/index.ts',
+                )
+            const description = i18n.value.settings.descriptions.elevationEditorSideBySide
+            const { auto, allow, disallow } = description.choices
+            description.choices = { disallow, allow, auto }
+        })
+        const dialog = await openSettings(page)
+        const { root, info } = field(dialog, 'Elevation Editor Side by Side')
+        const intro = 'Sets whether the Elevation Editor opens beside the chart or in place of it.'
+        const lines = [
+            'Auto: Opens it beside the chart when there is room.',
+            'Always: Opens it beside the chart even when the chart gets narrow.',
+            'Never: Opens it in place of the chart.',
+        ]
+        await info.scrollIntoViewIfNeeded()
+        await info.click()
+        const shown = bubble(page)
+        await expect(shown.locator('p')).toHaveText(intro)
+        await expect(shown.locator('li')).toHaveText(lines)
+        await expect(shown.locator('li > span')).toHaveText(['Auto: ', 'Always: ', 'Never: '])
+        const layout = await shown.locator('p, li').evaluateAll((elements) =>
+            elements.map((element) => {
+                const { top, bottom, left } = element.getBoundingClientRect()
+                const style = getComputedStyle(element)
+                const name = element.querySelector('span')
+                return {
+                    top,
+                    bottom,
+                    left,
+                    padding: style.paddingLeft,
+                    indent: style.textIndent,
+                    marker: style.listStyleType,
+                    before: getComputedStyle(element, '::before').content,
+                    weight: name && getComputedStyle(name).fontWeight,
+                    sameInk: !name || getComputedStyle(name).color === style.color,
+                }
+            }),
+        )
+        // 8 px after the sentence and 4 px between lines.
+        expect(layout[1]!.top - layout[0]!.bottom).toBeCloseTo(8, 0)
+        for (let index = 2; index < layout.length; index++)
+            expect(layout[index]!.top - layout[index - 1]!.bottom).toBeCloseTo(4, 0)
+        // Each line starts at the sentence's left edge, with no indent or bullet, so wrapped
+        // lines stay flush left; the names are semibold in the same ink.
+        for (const line of layout.slice(1)) {
+            expect(line.left).toBeCloseTo(layout[0]!.left, 0)
+            expect(line).toMatchObject({
+                padding: '0px',
+                indent: '0px',
+                marker: 'none',
+                before: 'none',
+                weight: '600',
+                sameInk: true,
+            })
+        }
+        // Screen readers hear the sentence and then each line, on the control and the button.
+        const spoken = [intro, ...lines].join(' ')
+        await expect(root.getByRole('combobox')).toHaveAccessibleDescription(spoken)
+        await expect(info).toHaveAccessibleDescription(spoken)
+    })
+
+    test("Show Quick Scroll Zone's description is its own", async ({ page }) => {
+        const dialog = await openSettings(page)
+        const { root, info } = field(dialog, 'Show Quick Scroll Zone')
+        const text =
+            'Shades the zone at the chart’s right edge where you can scroll with one finger.'
+        await expect(root.getByRole('combobox')).toHaveAccessibleDescription(text)
+        await info.scrollIntoViewIfNeeded()
+        await info.click()
+        await expect(bubble(page)).toHaveText(text)
+    })
+
     test('a mouse opens it after 400 ms and closes it 150 ms after leaving; a click pins it', async ({
         page,
     }) => {
@@ -149,7 +228,7 @@ test.describe('in Settings', () => {
         await info.scrollIntoViewIfNeeded()
         await info.hover()
         await expect(bubble(page)).toHaveText(
-            'While a group is focused, objects in other groups appear faded.',
+            'Shows objects in other groups, faded, while a group is focused.',
         )
         await expect(info).toHaveAttribute('aria-expanded', 'true')
         const opened = await times(page)
@@ -282,10 +361,22 @@ test.describe('in Settings', () => {
         await second.info.click()
         await expect(bubble(page)).toHaveCount(1)
         await expect(bubble(page)).toHaveText(
-            'While a stage is focused, objects on other stages appear faded.',
+            'Shows objects on other stages, faded, while a stage is focused.',
         )
         await expect(first.info).toHaveAttribute('aria-expanded', 'false')
     })
+})
+
+test("in Japanese, a choice's name takes the locale's colon", async ({ page }) => {
+    await boot(page, 'ja')
+    const dialog = await openSettings(page)
+    const { root, info } = field(dialog, '高さエディターを並べて表示')
+    await expect(root.getByRole('combobox')).toHaveAccessibleDescription(
+        / 常に：譜面の幅が狭くなっても、譜面の横に開きます。 /,
+    )
+    await info.scrollIntoViewIfNeeded()
+    await info.click()
+    await expect(bubble(page).locator('li > span')).toHaveText(['自動：', '常に：', 'しない：'])
 })
 
 test.describe('on touch', () => {

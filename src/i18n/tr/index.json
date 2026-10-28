@@ -683,7 +683,7 @@
         "presets": "Varsayılan özellikleri göstermek ve Kaydırma #1 ile Kaydırma #5 arasındaki ön ayarlar arasında geçiş yapmak için Kaydırma komutunu tekrar seçin.",
         "quickEdit": "Nota aracında olduğu gibi, geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun. Örneğin, varsayılan Kaydırma #1 ön ayarı Bağlayıcı Yumuşatma özelliğini değiştirir.",
         "quickEditClick": "Nota aracında olduğu gibi, geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya tıklayın. Örneğin, varsayılan Kaydırma #1 ön ayarı Bağlayıcı Yumuşatma özelliğini değiştirir.",
-        "splitCombine": "Kaydırmayı Böl, seçilen her notanın sonraki notayla bağlantısını keser. Kaydırmada Birleştir, seçili notaların ait olduğu kaydırmaları tek bir kaydırmada birleştirir."
+        "splitCombine": "Kaydırmayı Böl, seçili her notadan sonraki bağlantıyı keser. Kaydırmada Birleştir, seçili notaları içeren kaydırmaları birleştirir."
       },
       "generateSlideNotesTool": {
         "generate": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine dokunun. Her boş bölüm çizgisine bir nota eklenir.",
@@ -707,7 +707,7 @@
         "replace": "Bir BPM değişikliğini başka bir BPM değişikliğinin üzerine taşımak, orada bulunanı değiştirir."
       },
       "timeScaleTool": {
-        "markers": "Elmas şeklindeki işaretçi Kaydırma geçişini gösterir. Noktalı çizgi üzerindeki içi boş işaretçi, notaların gizli olduğunu gösterir.",
+        "markers": "Elmas şeklindeki işaretçi bir Kaydırma geçişini gösterir. Noktalı çizgi üzerindeki içi boş işaretçi, notaların gizli olduğunu gösterir.",
         "ease": "Eğri, gruptaki bir sonraki değişikliğe geçişi gösterir."
       },
       "event": {
@@ -915,39 +915,61 @@
       "copied": "Kopyalandı"
     },
     "descriptions": {
-      "waveform": "Ses, arka plan müziğinin ses yüksekliğini çizelgede gösterir. FFT ise frekanslarını gösterir.",
+      "waveform": "Arka plan müziğinin ses yüksekliğini (Ses) veya frekanslarını (FFT) çizelgede gösterir.",
       "zeroWidthNotes": "Hangi notaların sıfır şerit genişliğinde olabileceğini belirler.",
-      "dimUnchangedObjects": "Zaman Çizgisi’ndeki adımları görüntülerken Değişiklikleri Göster’in varsayılan değerini belirler. Bunu Zaman Çizgisi’nde değiştirebilirsiniz.",
-      "showOtherGroups": "Bir gruba odaklanırken diğer gruplardaki nesneler soluk görünür.",
-      "showOtherStages": "Bir sahneye odaklanırken diğer sahnelerdeki nesneler soluk görünür.",
-      "showOtherObjects": "Gizlediğiniz bir türdeki nesneler soluk görünür.",
+      "dimUnchangedObjects": "Zaman Çizgisi’ndeki adımları görüntülerken Değişiklikleri Göster’in varsayılan değerini belirler.",
+      "showOtherGroups": "Bir gruba odaklanırken diğer gruplardaki nesneleri soluk gösterir.",
+      "showOtherStages": "Bir sahneye odaklanırken diğer sahnelerdeki nesneleri soluk gösterir.",
+      "showOtherObjects": "Gizlediğiniz türlerdeki nesneleri soluk gösterir.",
       "nameContrast": "Grup ve sahne adlarının çevresine siyah bir kontur ekler ve sahne adlarını daha parlak gösterir.",
-      "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklemek onu yukarı veya aşağı kaydırır.",
-      "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklemek onu yana kaydırır.",
+      "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklediğinizde çizelgeyi yukarı veya aşağı kaydırır.",
+      "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklediğinizde çizelgeyi yana kaydırır.",
       "previewRenderScale": "Önizlemenin çizim çözünürlüğünü ölçekler. Daha düşük değerler ayrıntıyı ve çizim yükünü azaltır.",
       "previewInWorker": "Önizlemeyi editörün geri kalanıyla paralel olarak çizer. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
       "toolbarQuickSwitch": "Bir araç düğmesini basılı tutup satırı boyunca sürükleyerek başka bir araç seçmenizi sağlar.",
-      "playFollowPosition": "Takip Et açıkken imleç oynatma sırasında bu yükseklikte kalır. Çizelgenin altı 0, üstü 100’dür.",
-      "playPreviewDuration": "İmleci taşıdığınızda veya bir nesne seçtiğinizde arka plan müziği bu süre boyunca çalar.",
+      "playFollowPosition": "Takip Et’in oynatma sırasında imleci hangi yükseklikte tutacağını belirler. Çizelgenin altı 0, üstü 100’dür.",
+      "playPreviewDuration": "İmleci taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin ne kadar süre çalacağını belirler.",
       "mouseSecondaryTool": "Sağ tıklamanın ve sağ tuşla sürüklemenin ne yapacağını belirler.",
-      "beatDisplay": "Vuruş, çizelge boyunca vuruşları 1’den başlayarak sayar. Ölçü, ölçüyü ve içindeki vuruşu gösterir; Her İkisi ise iki gösterimi de gösterir. Ölçü ve Her İkisi seçeneklerinde hizalama da ölçülere göre yapılır.",
+      "beatDisplay": {
+        "intro": "Vuruş konumlarının nasıl numaralandırılacağını belirler.",
+        "choices": {
+          "beat": "Çizelge boyunca 1’den başlayan kesintisiz bir sayım gösterir.",
+          "measure": "Ölçüyü ve içindeki vuruşu gösterir ve hizalamayı ölçülere göre yapar.",
+          "both": "İki gösterimi birlikte gösterir ve hizalamayı ölçülere göre yapar."
+        }
+      },
       "showGroupName": "Varsayılan grubun dışındaki notaların ve zaman ölçeği değişikliklerinin yanında grup adlarını gösterir.",
       "showStageName": "Dinamik Sahneler açıkken notaların ve sahne olaylarının yanında sahne adlarını gösterir.",
       "maxScrollX": "Çizelgenin merkezinden sola veya sağa ne kadar kaydırabileceğinizi belirler. Birleşik düzende notalara ve sahnelere ulaşmak için daha uzağa kaydırabilirsiniz.",
-      "elevationEditorSideBySide": "Otomatik, yer olduğunda Yükseklik Editörü’nü çizelgenin yanında açar. Her zaman seçeneğinde ikisi yan yana kalır. Asla seçeneğinde Yükseklik Editörü çizelgenin yerini alır.",
-      "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmalarda oklar, her bağlayıcının başlangıcından sonuna doğru yönelir. Notaların arasında yer olan kısımlarda görünürler.",
-      "groupsStagesSideBySide": "Önizleme, Gruplar ve Sahneler panellerinin tümü sol panellerde veya tümü sağ panellerde gösterildiğinde, Otomatik seçeneğinde paneller genişse Gruplar ve Sahneler Önizleme’nin altında yan yana gösterilir. Etkin seçeneğinde, ikisi sığdığında daha dar panellerde de yan yana gösterilir. Devre Dışı seçeneğinde alt alta kalır.",
+      "elevationEditorSideBySide": {
+        "intro": "Yükseklik Editörünün çizelgenin yanında mı yoksa yerine mi açılacağını belirler.",
+        "choices": {
+          "auto": "Yer olduğunda çizelgenin yanında açar.",
+          "allow": "Çizelge daralsa bile yanında açar.",
+          "disallow": "Çizelgenin yerine açar."
+        }
+      },
+      "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmalarda, notaların arasında yer olan kısımlarda her bağlayıcının başlangıcından sonuna doğru oklar gösterir.",
+      "groupsStagesSideBySide": {
+        "intro": "Gruplar ve Sahneler panellerinin Önizleme’nin altında ne zaman yan yana gösterileceğini belirler. Bu ayar, üçü de sol panellerde veya üçü de sağ panellerde gösterildiğinde geçerlidir.",
+        "choices": {
+          "auto": "Paneller geniş olduğunda yan yana yerleştirir.",
+          "enabled": "İkisi de sığdığında yan yana yerleştirir.",
+          "disabled": "Alt alta tutar."
+        }
+      },
       "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa, bu tarayıcıda saklanıyor olsalar bile sayfa kapanmadan önce onay ister. Kapatmak değişikliklerin kaybolmasına yol açacaksa editör her zaman onay ister.",
       "previewNoteSpeed": "Daha yüksek değerler, önizlemede notaların daha hızlı yaklaşmasını sağlar. Bir grubun Nota Hızını Sabitle değeri 0’dan büyükse bu değerin yerine kullanılır.",
-      "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir. Notalara basılmadan kısa bir süre önce ve kaydırmalar etkinken görünürler.",
+      "previewShowHitboxes": "Notalara basılmadan kısa bir süre önce ve kaydırmalar etkinken notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir.",
       "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkları ve parlamaları gösterir.",
       "previewAntialias": "Önizlemedeki tırtıklı kenarları yumuşatır.",
-      "previewTransportPosition": "Altta, denetimleri önizlemenin altına yerleştirir. Üzerinde ise alt kenarının üzerine yerleştirir. Otomatik, önizleme küçülmeden sığıyorsa Altta’yı, aksi halde Üzerinde’yi kullanır.",
-      "previewControls": "Oynatma durmuşken Genişletilmiş önizleme ayarlarını, Daraltılmış ise bu ayarları açan bir düğmeyi gösterir. Fare kullanırken Otomatik, ayarlar önizleme paneline sığıyorsa başlangıçta bunları genişletilmiş olarak gösterir.",
-      "playStartPosition": "İmleç, Oynat komutunu imlecin bulunduğu yerden başlatır. Görünüm, çizelgenin görünen kısmının altından veya Takip Et açıkken Pozisyonu Takip Et ayarında belirtilen konumdan başlatır.",
+      "previewTransportPosition": "Oynatma denetimlerini önizlemenin altına veya alt kenarının üzerine yerleştirir. Otomatik seçeneğinde önizleme küçülmeden sığıyorsa altına, aksi halde alt kenarının üzerine yerleştirir.",
+      "previewControls": "Oynatma durmuşken önizleme ayarlarının genişletilmiş mi yoksa bir düğmeye daraltılmış mı olacağını belirler. Otomatik seçeneğinde, fare kullanıyorsanız ve ayarlar önizleme paneline sığıyorsa başlangıçta genişletilmiş olarak gösterilir.",
+      "playStartPosition": "Oynat komutunun nereden başlayacağını belirler. Görünüm seçeneğinde, çizelgenin görünen kısmının altından veya Takip Et açıkken Pozisyonu Takip Et ayarında belirtilen konumdan başlar.",
       "playFollow": "Oynatma sırasında çizelgeyi kaydırarak imleci Pozisyonu Takip Et ayarında belirtilen konumda tutar.",
-      "touchQuickScrollWidth": "0 değeri, çizelgenin sağ kenarında tek parmakla kaydırmayı kapatır.",
-      "touchScrollInertia": "İki parmakla kaydırdıktan veya hızlı kaydırma alanında sürükledikten sonra çizelge kaymaya devam eder ve yavaş yavaş durur."
+      "touchQuickScrollWidth": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanın genişliğini belirler. 0 değeri bu alanı kapatır.",
+      "touchQuickScrollShow": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanı gölgelendirir.",
+      "touchScrollInertia": "İki parmakla kaydırdıktan veya hızlı kaydırma alanında sürükledikten sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar."
     },
     "sections": "Bölümler",
     "localData": {
@@ -1504,6 +1526,7 @@
       "mixedValues": "Karışık: {0}",
       "listJoin": "{0}, {1}",
       "sentenceJoin": "{0}. {1}",
+      "choiceLine": "{0}: {1}",
       "notSet": "Ayarlanmadı",
       "about": "{0} hakkında",
       "anchor": {
