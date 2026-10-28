@@ -134,7 +134,9 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `previewNoteSpeed` | The preview’s note speed | Range |
 | `previewAssets.skin`, `previewAssets.particle`, `previewAssets.background`, `previewAssets.effect` | The source of each kind of preview asset. A package from a server is reported as `file` | `default`, `builtin`, `bundled` or `file` |
 | `showPreview`, `showHistory` | Whether the preview and the History panel are shown | Yes or no |
-| `previewPosition`, `historyPosition` | Where the preview and the History panel are placed | `auto`, `left`, `right`, `top` or `disabled` |
+| `showGroups`, `showStages` | Whether Groups and Stages are shown. `auto` means no choice was made, and the editor shows the panel when there is room | `auto`, `on` or `off` |
+| `showProperties` | Whether the Properties panel is shown | Yes or no |
+| `previewPosition`, `groupsPosition`, `stagesPosition`, `propertiesPosition`, `historyPosition` | Where each panel is placed | `auto`, `left`, `right`, `top` or `disabled` |
 | `showMinimap` | Whether the minimap is shown | `auto`, `on` or `off` |
 | `dimUnchangedObjects` | Whether objects that a Timeline step did not change are dimmed | Yes or no |
 | `waveform` | How the music waveform is drawn | `volume`, `fft` or `off` |

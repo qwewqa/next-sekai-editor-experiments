@@ -78,6 +78,7 @@ const device = {
 } as const
 
 const position = oneOf('auto', 'left', 'right', 'top', 'disabled')
+const autoOnOff = oneOf('auto', 'on', 'off')
 const assetSource = oneOf('default', 'builtin', 'bundled', 'file')
 const fileError = [
     'conflict',
@@ -154,7 +155,13 @@ export const catalogue = {
         'previewAssets.effect': assetSource,
         showPreview: 'boolean',
         previewPosition: position,
-        showMinimap: oneOf('auto', 'on', 'off'),
+        showGroups: autoOnOff,
+        groupsPosition: position,
+        showStages: autoOnOff,
+        stagesPosition: position,
+        showProperties: 'boolean',
+        propertiesPosition: position,
+        showMinimap: autoOnOff,
         showHistory: 'boolean',
         historyPosition: position,
         dimUnchangedObjects: 'boolean',

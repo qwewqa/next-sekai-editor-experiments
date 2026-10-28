@@ -495,9 +495,9 @@ test('a scripted visit counts each press once by name and source, and sends the 
         'scrollDown.key': 1,
         'zoomYIn.wheel': 1,
     })
-    // The desktop snapshot: the 24 settings, 26 keys, and no touch options.
+    // The desktop snapshot: the 30 settings, 32 keys, and no touch options.
     const settings = dataOf(first, 'settings') ?? {}
-    expect(Object.keys(settings)).toHaveLength(26)
+    expect(Object.keys(settings)).toHaveLength(32)
     expect(settings).toHaveProperty('groupsStagesSideBySide', true)
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
@@ -514,6 +514,45 @@ test('a scripted visit counts each press once by name and source, and sends the 
     expect(dataOf(first, 'perf')).toHaveProperty('groupsStagesSideBySide', 'off')
     expect(stray).toEqual([])
     expect(messages).toEqual([])
+})
+
+test('the settings snapshot reports where each panel is placed and which are shown', async ({
+    page,
+}) => {
+    await start(page)
+    const snapshots = await page.evaluate(async () => {
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
+        const { settingsSnapshot } =
+            (await import('/src/analytics/snapshot.ts')) as typeof import('../../src/analytics/snapshot')
+        const take = () => settingsSnapshot(false, false)
+        Object.assign(settings, {
+            showGroups: null,
+            showStages: true,
+            showSidebar: false,
+            groupsPosition: 'right',
+            stagesPosition: 'top',
+            propertiesPosition: 'disabled',
+        })
+        const first = take()
+        Object.assign(settings, { showGroups: false, showStages: null, showSidebar: true })
+        return { first, second: take() }
+    })
+    expect(snapshots.first).toMatchObject({
+        showGroups: 'auto',
+        showStages: 'on',
+        showProperties: false,
+        groupsPosition: 'right',
+        stagesPosition: 'top',
+        propertiesPosition: 'disabled',
+    })
+    expect(snapshots.second).toMatchObject({
+        showGroups: 'off',
+        showStages: 'auto',
+        showProperties: true,
+    })
+    for (const snapshot of Object.values(snapshots))
+        expect(isValidEvent('settings', snapshot)).toBe(true)
 })
 
 test('a Save records its outcome, and a chart with objects is counted once saved', async ({

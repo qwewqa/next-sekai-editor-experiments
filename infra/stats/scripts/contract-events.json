@@ -9,6 +9,9 @@
             "theme": "dark",
             "showMinimap": "on",
             "previewAssets.skin": "bundled",
+            "showGroups": "auto",
+            "groupsPosition": "left",
+            "showProperties": true,
             "groupsStagesSideBySide": true
         }
     },
