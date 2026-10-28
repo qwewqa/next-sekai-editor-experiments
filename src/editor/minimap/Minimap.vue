@@ -33,6 +33,7 @@ let shown = false
 let lastBoxTop = Number.NaN
 let lastCursorY = Number.NaN
 let edgeShown = false
+let edgeLeft = Number.NaN
 const placeOverlay = timed(
     'minimapOverlay',
     (
@@ -71,6 +72,13 @@ const placeOverlay = timed(
         if (cursorY !== lastCursorY) {
             lastCursorY = cursorY
             cursorElement.style.transform = `translateY(${cursorY}px)`
+        }
+        // The mark's apex is 5.5 px into it, so a whole-pixel left keeps the tip one pixel wide: on
+        // the strip's middle, or half a pixel right of it at an even width.
+        const left = Math.ceil(current.geometry.width / 2 - 5.5)
+        if (left !== edgeLeft) {
+            edgeLeft = left
+            edgeElement.style.left = `${left}px`
         }
         // The line and the box stay at the top past the last note; the mark says so.
         const past = cursorTime > current.end || times.value.max > current.end
@@ -170,7 +178,7 @@ onBeforeUnmount(() => {
         />
         <svg
             ref="edge"
-            class="pointer-events-none absolute left-[calc(50%+2px)] top-0 -translate-x-1/2 text-white forced-colors:text-[CanvasText]"
+            class="pointer-events-none absolute top-px text-white forced-colors:text-[CanvasText]"
             width="11"
             height="6"
             viewBox="0 0 11 6"

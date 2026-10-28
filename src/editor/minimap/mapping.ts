@@ -19,6 +19,11 @@ export type MinimapMapping = {
 export const PAD_LEFT = 4
 export const PAD_RIGHT = 2
 export const PAD_Y = 4
+/**
+ * The rows at the strip's top kept for the edge mark (`Minimap.vue`). Only the lane rules run
+ * through them.
+ */
+export const MARK_ROWS = 10
 /** Lanes drawn linearly (−6 to 6). */
 export const CORE = 6
 /** The share of the width the core lanes take. */
@@ -57,10 +62,11 @@ export const laneFraction = (lane: number) => {
 export const createMapping = (geometry: MinimapGeometry, end: number): MinimapMapping => {
     const { width, height, scale } = geometry
     const iw = Math.max(1, width - PAD_LEFT - PAD_RIGHT)
-    const ih = Math.max(1, height - 2 * PAD_Y)
+    const top = MARK_ROWS + PAD_Y
+    const ih = Math.max(1, height - top - PAD_Y)
     const safeEnd = end > 0 ? end : 1
-    const timeToY = (time: number) => PAD_Y + ih * (1 - Math.min(Math.max(time / safeEnd, 0), 1))
-    const yToTime = (y: number) => safeEnd * (1 - Math.min(Math.max((y - PAD_Y) / ih, 0), 1))
+    const timeToY = (time: number) => top + ih * (1 - Math.min(Math.max(time / safeEnd, 0), 1))
+    const yToTime = (y: number) => safeEnd * (1 - Math.min(Math.max((y - top) / ih, 0), 1))
     const laneToX = (lane: number) => PAD_LEFT + iw * (0.5 + laneFraction(lane))
     const minimum = 1 / scale
     const spanToX = (left: number, size: number): [number, number] => {
