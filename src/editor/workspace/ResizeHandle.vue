@@ -93,8 +93,8 @@ watch(interruptsDrags, (interrupted) => {
     if (interrupted) cancel()
 })
 
-// A handle that turns, as the one between Groups and Stages does, ends its drag.
-watch(() => props.axis, cancel)
+/** Ends a drag in progress as Escape does. */
+defineExpose({ cancel })
 
 onUnmounted(() => {
     if (!drag) return

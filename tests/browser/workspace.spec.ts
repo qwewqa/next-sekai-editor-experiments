@@ -751,24 +751,40 @@ test.describe('Groups and Stages side by side', () => {
         expect(await sideBySide(page)).toBe(false)
     })
 
-    test('a drag on the divider between them ends when the divider turns', async ({ page }) => {
-        const divider = dock(page, 'left').getByRole('separator', {
-            name: 'Resize Groups and Stages',
-        })
+    test('a drag between tiles ends when they go side by side or back, as with Escape', async ({
+        page,
+    }) => {
         const saved = await getSettings(page, ['panelWeights', 'groupsStagesSplit'])
-        const line = (await divider.boundingBox())!
-        const [x, y] = [line.x + 100, line.y + line.height / 2]
-        await page.mouse.move(x, y)
-        await page.mouse.down()
-        await page.mouse.move(x, y + 40, { steps: 2 })
-        await setSettings(page, { leftDockWidth: 760 })
-        await settle(page)
-        await expect(divider).toHaveAttribute('aria-orientation', 'vertical')
-        await page.mouse.move(x + 80, y + 80, { steps: 2 })
-        await page.mouse.up()
-        await settle(page)
-        expect(await getSettings(page, ['panelWeights', 'groupsStagesSplit'])).toEqual(saved)
-        await expect(divider).toHaveAttribute('aria-valuenow', '378')
+        const tiles = async () =>
+            Promise.all((['preview', 'groups', 'stages'] as const).map((id) => box(page, id)))
+        // Each separator is dragged, the panels' width crosses 540 px, and the drag goes on.
+        for (const [name, from, to] of [
+            ['Resize Groups and Stages', 500, 760],
+            ['Resize Preview and Groups', 539, 540],
+            ['Resize Preview, Groups and Stages', 540, 539],
+        ] as const) {
+            await setSettings(page, { leftDockWidth: from })
+            await settle(page)
+            const separator = dock(page, 'left').getByRole('separator', { name, exact: true })
+            const line = (await separator.boundingBox())!
+            const [x, y] = [line.x + 100, line.y + line.height / 2]
+            await page.mouse.move(x, y)
+            await page.mouse.down()
+            await page.mouse.move(x, y + 40, { steps: 2 })
+            await setSettings(page, { leftDockWidth: to })
+            await settle(page)
+            // The draft is dropped at once, and the release saves nothing.
+            const dropped = await tiles()
+            await page.mouse.move(x + 20, y + 80, { steps: 2 })
+            await settle(page)
+            expect(await tiles(), name).toEqual(dropped)
+            await page.mouse.up()
+            await settle(page)
+            expect(await getSettings(page, ['panelWeights', 'groupsStagesSplit']), name).toEqual(
+                saved,
+            )
+            expect(await tiles(), name).toEqual(dropped)
+        }
     })
 
     test('the dividers above and below them resize both at once and reset all they changed', async ({

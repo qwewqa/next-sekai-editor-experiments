@@ -4,6 +4,8 @@ import {
     defineAsyncComponent,
     defineComponent,
     h,
+    useTemplateRef,
+    watch,
     type Component,
     type CSSProperties,
 } from 'vue'
@@ -242,6 +244,16 @@ const onSeparatorReset = (index: number) => {
     if (units) resetPanelWeights([...units.a, ...units.b].map(({ id }) => id))
 }
 
+// Going side by side or back changes the tiles beside a separator, so a drag
+// between tiles ends then as with Escape. A drag of the dock edge goes on.
+const separatorHandles = useTemplateRef<{ cancel: () => void }[]>('separatorHandles')
+watch(
+    () => !!dock.value?.sideBySide,
+    () => {
+        for (const handle of separatorHandles.value ?? []) handle.cancel()
+    },
+)
+
 // A drawer opens above the editor and the top dock.
 const isDrawerOpen = computed(() => drawerSide.value === props.side)
 </script>
@@ -294,6 +306,7 @@ const isDrawerOpen = computed(() => drawerSide.value === props.side)
                     :style="grid?.separators[index] ?? length(separatorSize)"
                 >
                     <ResizeHandle
+                        ref="separatorHandles"
                         :axis="separators[index].axis"
                         :class="separators[index].axis === 'x' ? 'left-1/2' : 'top-1/2'"
                         :label="separators[index].label"
