@@ -254,7 +254,7 @@ Section 8 describes the notice card and the quick toast. This part says which on
 
 ### The agreement dialog
 
-- The agreement dialog (`src/editor/agreement/`) shows a line on what the editor is, the version, Language, Theme, and Send Usage Statistics with its note. When a page has changed since the user last agreed, a line naming it takes the first line's place.
+- The agreement dialog (`src/editor/agreement/`) shows the version, Language, Theme, and Send Usage Statistics with its note. On a first agreement its title is "Welcome to Next SEKAI Editor", and a line above the version says these can be changed later in Settings. When a page has changed since the user last agreed, the title is the product name and a line naming the page takes that line's place.
 - Its one button is Agree. It has no × button. Escape and the backdrop do nothing, and a close by the browser opens it again (`Modal.persistent`). Agree does not change the Send Usage Statistics switch.
 - It opens when the startup gate lifts, never over the startup error. Load notices stay on the start-up card under it with their timers held, and show for their full time after Agree.
 - The agreement sentence and Agree are pinned in the footer. The sentence names the Terms of Service and the Privacy Notice as inline links, styled as the Save dialog's Export link (`ExportLine.vue`), with the characters touching each link kept on its line (`utils/linkParts.ts`).

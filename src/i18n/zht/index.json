@@ -1184,7 +1184,8 @@
     "open": "以安全模式開啟"
   },
   "agreement": {
-    "intro": "這是用來編輯 Sonolus 中 Next SEKAI 譜面的免費開放原始碼編輯器。",
+    "welcome": "歡迎使用 {0}",
+    "intro": "您可以稍後在「設定」中變更這些選項。",
     "terms": "使用條款",
     "privacy": "隱私權聲明",
     "agree": "同意",

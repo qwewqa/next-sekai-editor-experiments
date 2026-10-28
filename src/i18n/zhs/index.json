@@ -1184,7 +1184,8 @@
     "open": "以安全模式打开"
   },
   "agreement": {
-    "intro": "这是用于编辑 Sonolus 中 Next SEKAI 谱面的免费开源编辑器。",
+    "welcome": "欢迎使用 {0}",
+    "intro": "您可以稍后在“设置”中更改这些选项。",
     "terms": "使用条款",
     "privacy": "隐私声明",
     "agree": "同意",

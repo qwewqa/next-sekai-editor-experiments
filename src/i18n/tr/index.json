@@ -1184,7 +1184,8 @@
     "open": "Güvenli Modda Aç"
   },
   "agreement": {
-    "intro": "Bu, Sonolus’taki Next SEKAI çizelgeleri için ücretsiz ve açık kaynaklı bir editördür.",
+    "welcome": "{0}’e hoş geldiniz",
+    "intro": "Bu seçenekleri daha sonra Ayarlar’dan değiştirebilirsiniz.",
     "terms": "Kullanım Koşulları",
     "privacy": "Gizlilik Bildirimi",
     "agree": "Kabul Et",
