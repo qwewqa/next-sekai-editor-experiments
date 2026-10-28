@@ -106,16 +106,16 @@ step "a batch from a browser"
 RESPONSE=$(curl -fsS -D /tmp/nse-contract.headers -X POST http://localhost:3000/api/batch \
     -H 'Content-Type: text/plain' -H "User-Agent: $BROWSER" -H 'X-Real-IP: 203.0.113.7' --data "$BATCH")
 echo "$RESPONSE"
-if [ "$(jq .processed <<< "$RESPONSE")" != 17 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
+if [ "$(jq .processed <<< "$RESPONSE")" != 18 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
 grep -qi '^access-control-allow-origin: \*' /tmp/nse-contract.headers || fail "no CORS header on the batch response"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 17 ] || fail "expected 17 stored events"
-[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 94 ] || fail "the event data was not stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 18 ] || fail "expected 18 stored events"
+[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 105 ] || fail "the event data was not stored"
 
 step "a bot User-Agent is dropped"
 BOT=$(curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -H 'User-Agent: python-requests/2.32' \
     --data "$(ev nightly '{}')")
 grep -q beep <<< "$BOT" || fail "a bot User-Agent was not dropped: $BOT"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 17 ] || fail "the bot's event was stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 18 ] || fail "the bot's event was stored"
 
 step "nightly.sh clean"
 sql -c "UPDATE session SET region = 'WA', city = 'Seattle'"
@@ -790,6 +790,14 @@ done
 expect actions 'open|||256K-512K|1|400|400'
 expect peek 'cached|5'
 expect peek '25-40|3'
+expect layout 'preview|left|280|93.3'
+expect layout 'stages|covered|40|13.3'
+expect layout 'left|400-540|120|42.9'
+expect layout 'left|540-760|160|57.1'
+expect layout 'right|280-400|300|100.0'
+expect layout '10-25|120|42.9'
+expect layout 'collapsedSeconds|20|6.7'
+expect layout 'pairedSeconds|90|30.0'
 # A website with no events: every query still runs, and the share left out of the frames is empty, not an error.
 EMPTY=$(cat /proc/sys/kernel/random/uuid)
 sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$EMPTY', 'empty', 'nse.qwewqa.dev')"
