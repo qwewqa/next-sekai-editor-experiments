@@ -907,7 +907,6 @@
       "terms": "利用規約",
       "usageStatistics": "使用状況の統計を送信",
       "usageStatisticsNote": "使用状況の統計をもとに、改善する機能を決めます。使用状況の統計には、使用するツール、エディターの一部の設定、ファイルの種類とサイズ、操作にかかる時間が含まれます。詳しくは「プライバシー通知」を参照してください。",
-      "usageStatisticsSignal": "このブラウザーがDo Not TrackまたはGlobal Privacy Controlの信号を送信するため、初期状態ではオフです。",
       "diagnostics": "診断情報をコピー…",
       "diagnosticsTitle": "診断情報",
       "diagnosticsNote": "診断情報にはファイル名やフォルダー名が含まれる場合があります。共有する前に内容を確認してください。",

@@ -907,7 +907,6 @@
       "terms": "使用条款",
       "usageStatistics": "发送使用统计",
       "usageStatisticsNote": "我们根据使用统计决定改进哪些功能。使用统计包括您使用的工具、部分编辑器设置、文件类型和大小，以及操作所需的时间。详情参见“隐私声明”。",
-      "usageStatisticsSignal": "默认关闭，因为此浏览器发送了 Do Not Track 或 Global Privacy Control 信号。",
       "diagnostics": "复制诊断信息…",
       "diagnosticsTitle": "诊断信息",
       "diagnosticsNote": "诊断信息可能包含文件名和文件夹名。分享前请先检查。",

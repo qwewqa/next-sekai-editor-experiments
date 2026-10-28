@@ -16,13 +16,12 @@ const usageStatistics = computed({
     get: () => preference(settings.usageStatistics, browserSignalSet),
     set: (value: boolean) => (settings.usageStatistics = value),
 })
-const note = computed(() =>
-    settings.usageStatistics === null && browserSignalSet
-        ? about.value.usageStatisticsSignal
-        : about.value.usageStatisticsNote,
-)
 </script>
 
 <template>
-    <ToggleField v-model="usageStatistics" :label="about.usageStatistics" :notes="[note]" />
+    <ToggleField
+        v-model="usageStatistics"
+        :label="about.usageStatistics"
+        :notes="[about.usageStatisticsNote]"
+    />
 </template>
