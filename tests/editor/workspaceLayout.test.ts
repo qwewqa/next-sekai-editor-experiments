@@ -296,6 +296,33 @@ test('a side dock grows only into room the other side is not using', () => {
     assert.equal(after.docks.left?.size, max)
 })
 
+test('side docks shrunk to fit beside the editor are marked shrunk', () => {
+    const base = input({
+        width: 1440,
+        positions: {
+            preview: 'left',
+            groups: 'left',
+            stages: 'left',
+            properties: 'right',
+            history: 'auto',
+        },
+    })
+    const layout = (left: number, right: number) =>
+        computeWorkspaceLayout({ ...base, sizes: { left, right, top: 0 } }).docks
+    const squeezed = layout(824, 384)
+    assert.ok((squeezed.left?.size ?? 0) < 824 && (squeezed.right?.size ?? 0) < 384)
+    assert.equal(squeezed.left?.shrunk, true)
+    assert.equal(squeezed.right?.shrunk, true)
+    // A side at the narrowest width keeps it, so only the other one shrinks.
+    const narrowest = layout(220, 2000)
+    assert.equal(narrowest.left?.size, 220)
+    assert.equal(narrowest.left?.shrunk, false)
+    assert.equal(narrowest.right?.shrunk, true)
+    const fitting = layout(600, 384)
+    assert.equal(fitting.left?.shrunk, false)
+    assert.equal(fitting.right?.shrunk, false)
+})
+
 test('hiding one side dock never resizes the other', () => {
     const base = input({
         positions: {
