@@ -783,6 +783,36 @@ test.describe('Groups and Stages side by side', () => {
         })
     })
 
+    test("a text size change with no window resize moves them to Auto's new width and ends a drag", async ({
+        page,
+    }) => {
+        await setSettings(page, { leftDockWidth: 800 })
+        await settle(page)
+        expect(await sideBySide(page)).toBe(true)
+        const saved = await getSettings(page, ['panelWeights'])
+        const separator = dock(page, 'left').getByRole('separator', {
+            name: 'Resize Preview, Groups and Stages',
+        })
+        const line = (await separator.boundingBox())!
+        const [x, y] = [line.x + 100, line.y + line.height / 2]
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x, y + 40, { steps: 2 })
+        // 20 px text: Auto now needs 964 px.
+        const textSize = (size: string) =>
+            page.evaluate((size) => {
+                document.documentElement.style.fontSize = size
+            }, size)
+        await textSize('20px')
+        await expect.poll(() => sideBySide(page)).toBe(false)
+        await page.mouse.move(x, y + 80, { steps: 2 })
+        await page.mouse.up()
+        await settle(page)
+        expect(await getSettings(page, ['panelWeights'])).toEqual(saved)
+        await textSize('')
+        await expect.poll(() => sideBySide(page)).toBe(true)
+    })
+
     test('a drag between tiles ends when they go side by side or back, as with Escape', async ({
         page,
     }) => {

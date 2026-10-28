@@ -7,6 +7,7 @@ import LevelEditor from './editor/LevelEditor.vue'
 import './editor/loadNotices'
 import NoticeHost from './editor/NoticeHost.vue'
 import { readStorageWhenIdle } from './editor/settings/storageLine'
+import { useRootFontSize } from './editor/useRootFontSize'
 import {
     autoShape,
     drawerSide,
@@ -42,6 +43,9 @@ const root = useTemplateRef<HTMLDivElement>('root')
 
 keepPanelsAcrossShape()
 keepDefaultsAcrossDisplay()
+// The text size can change with no window resize. The docks' default widths and Auto's width for
+// Groups and Stages side by side follow it.
+watch(useRootFontSize(), measureRootFontSize)
 // Local Data shows the browser's storage at once from this read.
 readStorageWhenIdle()
 
