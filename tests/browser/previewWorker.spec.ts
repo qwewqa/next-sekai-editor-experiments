@@ -271,12 +271,11 @@ test('the setting moves the preview between hosts at once, and it keeps drawing'
         // The first change through Settings › Preview.
         if (!on && host === 'main' && before === 0) {
             await page.keyboard.press(',')
-            const row = page
+            const toggle = page
                 .getByRole('dialog')
-                .locator('label')
-                .filter({ has: page.getByText('Parallel Rendering', { exact: true }) })
-            await row.getByRole('switch').click()
-            await expect(row.getByRole('switch')).toHaveValue('Disabled')
+                .getByRole('switch', { name: 'Parallel Rendering', exact: true })
+            await toggle.click()
+            await expect(toggle).toHaveValue('Disabled')
             await page.keyboard.press('Escape')
             await expect(page.getByRole('dialog')).toHaveCount(0)
         } else await page.evaluate((on) => (window.editorTest.settings.previewInWorker = on), on)

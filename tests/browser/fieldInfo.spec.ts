@@ -75,6 +75,13 @@ const times = (page: Page) =>
             ).infoTimes!,
     )
 
+/** Whether pointing at or pressing an element puts it in its hovered or pressed state. */
+const pointerState = (locator: Locator) =>
+    locator.evaluate((element) => ({
+        hover: element.matches(':hover'),
+        active: element.matches(':active'),
+    }))
+
 const box = async (locator: Locator) => {
     const value = await locator.boundingBox()
     if (!value) throw new Error('not visible')
@@ -225,6 +232,38 @@ test.describe('in Settings', () => {
         await info.click()
         await expect(bubble(page).locator('p')).toHaveText(intro)
         await expect(bubble(page).locator('li')).toHaveText(lines)
+    })
+
+    test('pointing at or pressing the button leaves its control at rest; the label text still reaches it', async ({
+        page,
+    }) => {
+        const dialog = await openSettings(page)
+        for (const [name, role] of [
+            ['Name Contrast', 'switch'],
+            ['Beat Display', 'combobox'],
+            ['Max Scroll X (lanes)', 'spinbutton'],
+        ] as const) {
+            const { root, info } = field(dialog, name)
+            const control = root.getByRole(role)
+            await info.scrollIntoViewIfNeeded()
+            const face = await box(info)
+            await page.mouse.move(face.x + face.width / 2, face.y + face.height / 2)
+            await expect.poll(() => pointerState(info)).toEqual({ hover: true, active: false })
+            expect(await pointerState(control)).toEqual({ hover: false, active: false })
+            await page.mouse.down()
+            await expect.poll(() => pointerState(info)).toEqual({ hover: true, active: true })
+            expect(await pointerState(control)).toEqual({ hover: false, active: false })
+            await page.mouse.up()
+            await expect(bubble(page)).toBeVisible()
+            await page.keyboard.press('Escape')
+            await expect(bubble(page)).toHaveCount(0)
+            // A click on the label's text still toggles or focuses the control.
+            const checked = await control.getAttribute('aria-checked')
+            await root.locator('.form-field-text').click()
+            if (role === 'switch')
+                await expect(control).not.toHaveAttribute('aria-checked', checked!)
+            else await expect(control).toBeFocused()
+        }
     })
 
     test('a mouse opens it after 400 ms and closes it 150 ms after leaving; a click pins it', async ({
@@ -426,6 +465,37 @@ test.describe('on touch', () => {
         await other.tap()
         await expect(shown).toHaveCount(0)
         await expect(other).not.toHaveAttribute('aria-checked', before!)
+    })
+
+    test('a tap on the button leaves its control at rest', async ({ page }) => {
+        const dialog = await openSettings(page)
+        // A tap is pressed for a moment only, so each element notes when it was pressed.
+        await page.addStyleTag({
+            content:
+                '@keyframes pressed { to { visibility: visible } } [data-probe]:active { animation: pressed 1s }',
+        })
+        const probe = (locator: Locator) =>
+            locator.evaluate((element: HTMLElement) => {
+                element.dataset.probe = ''
+                element.addEventListener('animationstart', () => (element.dataset.pressed = ''))
+            })
+        for (const [name, role] of [
+            ['Name Contrast', 'switch'],
+            ['Beat Display', 'combobox'],
+        ] as const) {
+            const { root, info } = field(dialog, name)
+            const control = root.getByRole(role)
+            await info.scrollIntoViewIfNeeded()
+            await probe(info)
+            await probe(control)
+            await info.tap()
+            await expect(bubble(page)).toBeVisible()
+            await expect(info).toHaveAttribute('data-pressed')
+            await page.waitForTimeout(300)
+            await expect(control).not.toHaveAttribute('data-pressed')
+            await page.keyboard.press('Escape')
+            await expect(bubble(page)).toHaveCount(0)
+        }
     })
 
     test('a swipe on the list closes it', async ({ page }) => {

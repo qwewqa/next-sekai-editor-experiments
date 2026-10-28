@@ -644,9 +644,7 @@ test('Name Contrast is off by default, persists and outlines whole names in thei
     const key = 'sonolus-next-sekai-editor.nameContrast'
     const toggle = page
         .getByRole('dialog')
-        .locator('label')
-        .filter({ has: page.getByText('Name Contrast', { exact: true }) })
-        .getByRole('switch')
+        .getByRole('switch', { name: 'Name Contrast', exact: true })
     // Inspect the actual complete name sprites drawn on the chart, including black halo pixels.
     const nameAppearance = () =>
         page.evaluate(async () => {

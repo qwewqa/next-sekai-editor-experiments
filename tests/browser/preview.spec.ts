@@ -2239,11 +2239,7 @@ test('preview options share persisted settings with the main options menu', asyn
         .locator('section')
         .filter({ has: page.getByRole('heading', { name: 'Preview', exact: true }) })
     expect(
-        await section
-            .locator('label')
-            .evaluateAll((labels) =>
-                labels.map((label) => label.firstElementChild?.textContent?.trim()),
-            ),
+        (await section.locator('.form-field-text').allTextContents()).map((text) => text.trim()),
     ).toEqual([
         'Assets',
         ...order.slice(0, -1),
@@ -2257,18 +2253,12 @@ test('preview options share persisted settings with the main options menu', asyn
     // Placement lives with the other panels and shares the preview's own field.
     await expect(dialog.getByRole('combobox', { name: 'Preview', exact: true })).toHaveValue('auto')
     await dialog.getByRole('combobox', { name: 'Preview', exact: true }).selectOption('right')
-    await expect(
-        dialog
-            .locator('label')
-            .filter({ has: page.getByText('Show Effects', { exact: true }) })
-            .getByRole('switch'),
-    ).toHaveValue('Disabled')
-    await expect(
-        dialog
-            .locator('label')
-            .filter({ has: page.getByText('Antialiasing', { exact: true }) })
-            .getByRole('switch'),
-    ).toHaveValue('Disabled')
+    await expect(dialog.getByRole('switch', { name: 'Show Effects', exact: true })).toHaveValue(
+        'Disabled',
+    )
+    await expect(dialog.getByRole('switch', { name: 'Antialiasing', exact: true })).toHaveValue(
+        'Disabled',
+    )
     await dialog.getByLabel('Note Speed', { exact: true }).fill('8.5')
     await dialog.getByLabel('Note Speed', { exact: true }).press('Tab')
     await dialog.getByLabel('Render Scale', { exact: true }).fill('0.75')
@@ -2276,16 +2266,8 @@ test('preview options share persisted settings with the main options menu', asyn
     await dialog
         .getByRole('combobox', { name: 'Aspect Ratio', exact: true })
         .selectOption({ label: '21:9' })
-    await dialog
-        .locator('label')
-        .filter({ has: page.getByText('Show Effects', { exact: true }) })
-        .getByRole('switch')
-        .click()
-    await dialog
-        .locator('label')
-        .filter({ has: page.getByText('Antialiasing', { exact: true }) })
-        .getByRole('switch')
-        .click()
+    await dialog.getByRole('switch', { name: 'Show Effects', exact: true }).click()
+    await dialog.getByRole('switch', { name: 'Antialiasing', exact: true }).click()
     await dialog
         .getByRole('combobox', { name: 'Preview Settings Panel', exact: true })
         .selectOption('expanded')
