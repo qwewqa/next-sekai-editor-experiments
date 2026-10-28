@@ -381,7 +381,8 @@ test.describe('loads that show it, and loads that do not', () => {
             .locator('[data-safe-bar]')
             .getByRole('button', { name: 'Leave Safe Mode' })
             .click()
-        await expect.poll(() => new URL(page.url()).search).toBe('')
+        // The page it loads, as a visit's goto waits for it.
+        await page.waitForURL((url) => url.search === '')
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await waitForStartup(page, { agreement: true })
         await decided(page)
