@@ -15,7 +15,7 @@ const SLIDE = 8
 const SMALL_BOX = 24
 const MIN_BOX = 8
 
-/** The box in CSS px from the canvas's top: the view's range, at least `MIN_BOX` tall, kept inside the canvas. */
+/** The box in CSS px from the strip's top: the view's range, at least `MIN_BOX` tall, kept inside the strip. */
 export const boxGeometry = (mapping: MinimapMapping) => {
     const top = mapping.timeToY(times.value.max)
     const bottom = mapping.timeToY(times.value.min)
@@ -30,7 +30,7 @@ export const boxGeometry = (mapping: MinimapMapping) => {
 type Press = {
     pointerId: number
     element: HTMLElement
-    /** The drawing area's rect when the press began. */
+    /** The strip's rect when the press began. */
     rect: DOMRect
     /** `view.time` when the press began, which Escape restores. */
     start: number
@@ -44,10 +44,7 @@ type Press = {
  * The strip's press, drag, wheel and Escape. It writes only `view.time` and the
  * scroll and active fields; it never edits the chart or leaves a peek.
  */
-export const useMinimapInput = (
-    mapping: Readonly<Ref<MinimapMapping | undefined>>,
-    area: Readonly<Ref<HTMLElement | null>>,
-) => {
+export const useMinimapInput = (mapping: Readonly<Ref<MinimapMapping | undefined>>) => {
     const isGrabbing = ref(false)
     let press: Press | undefined
 
@@ -73,8 +70,7 @@ export const useMinimapInput = (
 
     const onPointerDown = (event: PointerEvent) => {
         const current = mapping.value
-        const surface = area.value
-        if (!current || !surface || press || isDragging.value || !event.isPrimary) return
+        if (!current || press || isDragging.value || !event.isPrimary) return
         if (event.pointerType === 'mouse' && event.button !== 0) return
         if (!activateEditorNavigation()) return
 
@@ -86,7 +82,7 @@ export const useMinimapInput = (
         updateViewLastActive()
 
         element.setPointerCapture(event.pointerId)
-        const rect = surface.getBoundingClientRect()
+        const rect = element.getBoundingClientRect()
         press = {
             pointerId: event.pointerId,
             element,

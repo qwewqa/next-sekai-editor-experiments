@@ -46,6 +46,14 @@ test('time maps to y and back, with the clamps at both ends', () => {
     assert.equal(mapping.yToTime(1e6), 0)
 })
 
+test("the range runs from 14 px below the top, under the edge mark's rows, to 4 px above the bottom", () => {
+    const mapping = createMapping(geometry, 100)
+    assert.equal(mapping.timeToY(100), 14)
+    assert.equal(mapping.timeToY(0), geometry.height - 4)
+    assert.equal(mapping.yToTime(14), 100)
+    assert.equal(mapping.yToTime(geometry.height - 4), 0)
+})
+
 test('nothing maps left of the tick column or right of the padding', () => {
     const mapping = createMapping(geometry, 100)
     for (const lane of [-1e6, -40, -16.5, -6, 0, 6, 17, 40, 1e6]) {

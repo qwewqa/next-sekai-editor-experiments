@@ -15,7 +15,6 @@ import { timed } from '../../perf/probe'
 // A single word reads as a native element to the linter.
 defineOptions({ name: 'MinimapStrip' })
 
-const area = useTemplateRef<HTMLElement>('area')
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const annotationCanvas = useTemplateRef<HTMLCanvasElement>('annotations')
 const box = useTemplateRef<HTMLElement>('box')
@@ -24,7 +23,7 @@ const edge = useTemplateRef<SVGElement>('edge')
 
 const { mapping } = useMinimapContent(canvas)
 const { isGrabbing, onPointerDown, onPointerMove, onPointerUp, onPointerEnd, onWheel } =
-    useMinimapInput(mapping, area)
+    useMinimapInput(mapping)
 
 // The box, the cursor and the edge mark move by style, outside the template: one watcher, no
 // canvas work. A style is written only when its value changed, with the rows rounded to device
@@ -34,6 +33,7 @@ let shown = false
 let lastBoxTop = Number.NaN
 let lastCursorY = Number.NaN
 let edgeShown = false
+let edgeLeft = Number.NaN
 const placeOverlay = timed(
     'minimapOverlay',
     (
@@ -72,6 +72,13 @@ const placeOverlay = timed(
         if (cursorY !== lastCursorY) {
             lastCursorY = cursorY
             cursorElement.style.transform = `translateY(${cursorY}px)`
+        }
+        // The mark's apex is 5.5 px into it, so a whole-pixel left keeps the tip one pixel wide: on
+        // the strip's middle, or half a pixel right of it at an even width.
+        const left = Math.ceil(current.geometry.width / 2 - 5.5)
+        if (left !== edgeLeft) {
+            edgeLeft = left
+            edgeElement.style.left = `${left}px`
         }
         // The line and the box stay at the top past the last note; the mark says so.
         const past = cursorTime > current.end || times.value.max > current.end
@@ -146,35 +153,32 @@ onBeforeUnmount(() => {
         @lostpointercapture="onPointerEnd"
         @wheel.prevent="onWheel"
     >
-        <!-- The strip above this area is kept for the edge mark, also while it is hidden, so nothing moves when it shows. -->
-        <div ref="area" class="absolute inset-x-0 bottom-0 top-[10px]" data-minimap-area>
-            <canvas
-                ref="canvas"
-                class="absolute inset-0 size-full"
-                :style="{ opacity: undimmed !== undefined ? 0.45 : undefined }"
-            />
-            <canvas
-                v-if="hasAnnotations"
-                ref="annotations"
-                class="pointer-events-none absolute inset-0 z-[1] size-full"
-            />
-            <div
-                ref="box"
-                class="absolute left-[6px] right-px top-0 border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
-                :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
-                data-minimap-box
-                style="visibility: hidden"
-            />
-            <div
-                ref="cursor"
-                class="pointer-events-none absolute inset-x-0 top-0 h-px bg-white"
-                data-minimap-cursor
-                style="visibility: hidden"
-            />
-        </div>
+        <canvas
+            ref="canvas"
+            class="absolute inset-0 size-full"
+            :style="{ opacity: undimmed !== undefined ? 0.45 : undefined }"
+        />
+        <canvas
+            v-if="hasAnnotations"
+            ref="annotations"
+            class="pointer-events-none absolute inset-0 z-[1] size-full"
+        />
+        <div
+            ref="box"
+            class="absolute left-[6px] right-px top-0 border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
+            :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
+            data-minimap-box
+            style="visibility: hidden"
+        />
+        <div
+            ref="cursor"
+            class="pointer-events-none absolute inset-x-0 top-0 h-px bg-white"
+            data-minimap-cursor
+            style="visibility: hidden"
+        />
         <svg
             ref="edge"
-            class="pointer-events-none absolute left-[calc(50%+2.5px)] top-px -translate-x-1/2 text-white forced-colors:text-[CanvasText]"
+            class="pointer-events-none absolute top-px text-white forced-colors:text-[CanvasText]"
             width="11"
             height="6"
             viewBox="0 0 11 6"

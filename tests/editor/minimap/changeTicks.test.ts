@@ -16,7 +16,7 @@ const bpms: BpmIntegral[] = calculateBpms([
     { x: 0, y: 0, s: 1 },
     { x: 10, y: 10, s: 0.5 },
 ])
-const rowAt = (time: number, scale: number) => (4 + (400 - 8) * (1 - time / 100)) * scale
+const rowAt = (time: number, scale: number) => (14 + (400 - 18) * (1 - time / 100)) * scale
 
 const runs = (times: number[], scale: number) => {
     const mapping = createMapping({ width: 40, height: 400, scale }, 100)
@@ -69,7 +69,7 @@ test('rows follow the time on the tempo the places are in', () => {
 test('places beyond the range clamp to the top row', () => {
     const [run] = runs([250], 1)
     assert.ok(run)
-    assert.ok(Math.abs(run[0] + run[1] / 2 - 4) < 1e-9)
+    assert.ok(Math.abs(run[0] + run[1] / 2 - 14) < 1e-9)
 })
 
 test('3,400 places merge in one pass to at most one rect per run', () => {

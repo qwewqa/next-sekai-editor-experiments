@@ -14,7 +14,7 @@ const bpms: BpmIntegral[] = calculateBpms([
     { x: 0, y: 0, s: 1 },
     { x: 10, y: 10, s: 0.5 },
 ])
-const rowAt = (time: number, scale: number) => (4 + (400 - 8) * (1 - time / 100)) * scale
+const rowAt = (time: number, scale: number) => (14 + (400 - 18) * (1 - time / 100)) * scale
 
 test('keys become device rows on the tempo they are in, with margins', () => {
     for (const scale of [1, 2]) {
