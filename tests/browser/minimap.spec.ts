@@ -992,6 +992,12 @@ test.describe('indicator', () => {
                 const cursor = await rectOf('[data-minimap-cursor]')
                 const edge = await rectOf('[data-minimap-edge]')
                 expect(outer.width, at).toBe(width)
+                // The box keeps the tick column on its left and is centred on the lanes, whose padding is 4 px
+                // on the left and 2 px on the right.
+                expect([box.x - outer.x, outer.x + outer.width - (box.x + box.width)], at).toEqual([
+                    6, 4,
+                ])
+                expect(box.x + box.width / 2 - outer.x, at).toBe(width / 2 + 1)
                 // The content covers the whole strip, so its lane rules run to the top.
                 expect(canvas, at).toEqual(outer)
                 // 11 by 6 px, 1 px from the top and off the tick column. On a whole pixel, so its
