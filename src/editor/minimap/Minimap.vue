@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
         />
         <div
             ref="box"
-            class="absolute left-[6px] right-px top-0 border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
+            class="absolute left-[6px] right-[4px] top-0 border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
             :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
             data-minimap-box
             style="visibility: hidden"

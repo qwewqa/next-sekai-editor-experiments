@@ -386,7 +386,7 @@ test.describe('placement, command and setting', () => {
         await expect(page.locator('[data-minimap]')).toHaveCount(0)
         await settle(page)
         const off = await layout()
-        // The docks gave the strip's 40 px to the chart, so it keeps its width and its row.
+        // The docks gave the strip's width to the chart, so it keeps its width and its row.
         expect(on.tabs.length).toBeGreaterThan(1)
         expect(off.tabs).toEqual(on.tabs)
         expect(on.toolbar).toBe(off.toolbar)
@@ -426,7 +426,7 @@ test.describe('resize', () => {
         page,
     }) => {
         const before = await widths(page)
-        expect(before.strip).toBe(40)
+        expect(before.strip).toBe(60)
         const at = await handleCentre(page)
         await page.mouse.move(at.x, at.y)
         await page.mouse.down()
@@ -434,10 +434,10 @@ test.describe('resize', () => {
         await page.mouse.up()
         await settle(page)
         const after = await widths(page)
-        expect(after.strip).toBe(100)
-        expect(after.setting).toBe(100)
+        expect(after.strip).toBe(120)
+        expect(after.setting).toBe(120)
         expect(before.pane - after.pane).toBeCloseTo(60, 0)
-        expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe('100')
+        expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe('120')
 
         // Dragging right narrows it, down to the smallest width.
         const next = await handleCentre(page)
@@ -448,13 +448,13 @@ test.describe('resize', () => {
         await settle(page)
         expect((await widths(page)).strip).toBe(24)
 
-        await page.mouse.move(next.x + 76, next.y)
+        await page.mouse.move(next.x + 96, next.y)
         await page.mouse.down()
         await page.mouse.move(next.x - 20, next.y, { steps: 5 })
         await page.mouse.up()
         await settle(page)
         const kept = (await widths(page)).setting
-        expect(kept).toBe(120)
+        expect(kept).toBe(140)
         await page.reload()
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await expect(page.locator('[data-minimap]')).toHaveCount(1)
@@ -466,21 +466,21 @@ test.describe('resize', () => {
         await page.keyboard.press('End')
         expect((await widths(page)).strip).toBe(160)
         await handleOf(page).dblclick()
-        expect((await widths(page)).strip).toBe(40)
+        expect((await widths(page)).strip).toBe(60)
         expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
         await handleOf(page).focus()
         await page.keyboard.press('Home')
         expect((await widths(page)).strip).toBe(24)
         await page.keyboard.press('Enter')
-        expect((await widths(page)).strip).toBe(40)
+        expect((await widths(page)).strip).toBe(60)
     })
 
     test('the arrow keys, Home and End stay within 24 and 160', async ({ page }) => {
         await handleOf(page).focus()
         await page.keyboard.press('ArrowLeft')
-        expect((await widths(page)).strip).toBe(56)
+        expect((await widths(page)).strip).toBe(76)
         await page.keyboard.press('Shift+ArrowLeft')
-        expect((await widths(page)).strip).toBe(120)
+        expect((await widths(page)).strip).toBe(140)
         await page.keyboard.press('Shift+ArrowLeft')
         await page.keyboard.press('Shift+ArrowLeft')
         expect((await widths(page)).strip).toBe(160)
@@ -502,13 +502,13 @@ test.describe('resize', () => {
         await page.mouse.move(at.x, at.y)
         await page.mouse.down()
         await page.mouse.move(at.x - 50, at.y, { steps: 5 })
-        await expect.poll(async () => (await widths(page)).strip).toBe(90)
+        await expect.poll(async () => (await widths(page)).strip).toBe(110)
         await page.keyboard.press('Escape')
-        await expect.poll(async () => (await widths(page)).strip).toBe(40)
+        await expect.poll(async () => (await widths(page)).strip).toBe(60)
         await page.mouse.move(at.x - 80, at.y, { steps: 3 })
         await page.mouse.up()
         await settle(page)
-        expect((await widths(page)).strip).toBe(40)
+        expect((await widths(page)).strip).toBe(60)
         expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
     })
 
@@ -536,7 +536,7 @@ test.describe('resize', () => {
             .getByRole('button', { name: 'Reset Settings…', exact: true })
             .click()
         await confirmReset(page, 'Reset Settings')
-        await expect.poll(async () => (await widths(page)).strip).toBe(40)
+        await expect.poll(async () => (await widths(page)).strip).toBe(60)
     })
 })
 
@@ -992,6 +992,12 @@ test.describe('indicator', () => {
                 const cursor = await rectOf('[data-minimap-cursor]')
                 const edge = await rectOf('[data-minimap-edge]')
                 expect(outer.width, at).toBe(width)
+                // The box keeps the tick column on its left and is centred on the lanes, whose padding is 4 px
+                // on the left and 2 px on the right.
+                expect([box.x - outer.x, outer.x + outer.width - (box.x + box.width)], at).toEqual([
+                    6, 4,
+                ])
+                expect(box.x + box.width / 2 - outer.x, at).toBe(width / 2 + 1)
                 // The content covers the whole strip, so its lane rules run to the top.
                 expect(canvas, at).toEqual(outer)
                 // 11 by 6 px, 1 px from the top and off the tick column. On a whole pixel, so its

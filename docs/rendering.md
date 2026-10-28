@@ -147,7 +147,7 @@ The selected name contrast uses a native whole-string 0.5-CSS-pixel black outlin
 
 ## The minimap is the second Canvas2D surface
 
-The minimap strip (`src/editor/minimap/`) draws its content with Canvas2D, a second exception beside the fonts. The chart is Pixi on one WebGL2 root per canvas; a second root for a 40 px strip would be another context, renderer, loss path and set of pools. The strip draws about 2,300 flat shapes on coconut, and Canvas2D records them in under a millisecond.
+The minimap strip (`src/editor/minimap/`) draws its content with Canvas2D, a second exception beside the fonts. The chart is Pixi on one WebGL2 root per canvas; a second root for a narrow strip would be another context, renderer, loss path and set of pools. The strip draws about 2,300 flat shapes on coconut, and Canvas2D records them in under a millisecond.
 
 - **What it reads.** The committed `state` (the peeked state while viewing history), never `sceneState`. A tool dialog's preview or a Composed drag preview reaches the strip at its commit.
 - **Positions.** Lanes −6 to 6 are linear over the central 80% of the width; lanes beyond them are compressed into the margins and never clipped. In Composed, `getComposedLayout` gives each note and connector span; otherwise the authoring `left` and `size`. One module (`mapping.ts`) holds this, and the painter, the overlay, the input and the annotations read it.
