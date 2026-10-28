@@ -166,7 +166,10 @@ export const enableDynamicStages = async (tab: Tab) => {
     await stages.getByRole('button', { name: 'Enable Dynamic Stages' }).click()
     await expect(dialog).toBeVisible()
     await made(tab, 'dynamic stages', () =>
-        confirmWhenReady(dialog.getByRole('button', { name: 'Confirm', exact: true }), dialog),
+        confirmWhenReady(
+            dialog.getByRole('button', { name: 'Enable Dynamic Stages', exact: true }),
+            dialog,
+        ),
     )
 }
 
