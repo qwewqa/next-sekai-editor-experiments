@@ -978,7 +978,7 @@ const scenarios = {
         await sleep(1000)
         log('memory New dialog', JSON.stringify(await dialog.allInnerTexts().catch(() => [])))
         await dialog
-            .getByRole('button', { name: 'New', exact: true })
+            .getByRole('button', { name: 'New Chart', exact: true })
             .click({ timeout: 5000 })
             .catch((error) => log('memory New click failed', String(error)))
         await sleep(3000)

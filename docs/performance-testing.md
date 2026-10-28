@@ -186,6 +186,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 - The throttle slows the CPU only. GPU costs at DPR 3 are not scaled, so a real phone can be slower on fill rate than these runs show.
 - Workers are not throttled. The harness throttles the page's own session only, and a worker target returns an error for `Emulation.setCPUThrottlingRate` (measured), so the storage worker and the preview's worker run at full speed, and a phone figure that includes worker time is a lower bound.
 - Use touch scenarios on it (`quicktouch`, `flick`, `minimapdrag`): wheel and keys are not phone input.
+- Its `idle` CPU includes the throttle itself, about one core. Read idle CPU on the desktop profile.
 
 ### Runs, cold and warm, and the two axes
 
@@ -201,6 +202,8 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
         One 400 ms frame a minute barely moves a median and is what a user remembers.
 - Spikes that recur on a timer show up in any scenario long enough to meet them: garbage collection passes and the storage journal. When a max jumps in one run of five, look for them before blaming the scenario (see "Known costs").
 - **Dense cells vary 2 to 3 times between runs**, even pinned. Use medians of at least 5, and do not read a smaller difference as real.
+- **The first `arrowStep` of a group is cold** and can take twice as long as a later step. Report it apart from the steady steps: with 5 repeats, the p95 is that first step.
+- **An action reads differently at different places in the Timeline.** Compare builds with the same plan, so each action runs at the same place.
 
 ### Tracing
 
@@ -242,6 +245,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 - Example: a Ryzen 9 9950X3D has two CCDs. CCD0 (logical processors 0–15) carries the 3D V-cache and CCD1 (16–31) the higher clocks, so runs use `--affinity 0xFFFF0000`.
 - Run analysis and everything else on the other CCD, and run one measurement at a time with nothing else busy.
 - On a shared machine, check before each run that no other perf run is active (processes with `nse-perf` in their command line) and that both CCDs are quiet, and sample each CCD's load during the run. Run again any run that met other work: other tests at 100% on both CCDs doubled a playback run's clock p95. Bursts last minutes, so compare each run's `startedAt` and `endedAt` with the load log. Two runs waiting for a quiet machine can both see it in the same second, so check again a few seconds after the check passes.
+- Load on the other CCD still moves the measured one: a session with other work on CCD0 read 15–45% higher than a quiet machine on phone playback, zoomed-out flicks and the storage rows. Compare builds within one session, interleaved, and take headline figures on a quiet machine.
 - Name the run's folders and command lines so a priority watcher can exempt them.
 
 ### Charts
@@ -281,6 +285,7 @@ These recur, and a spike in a run is often one of them. Check them before blamin
 - **Composed stage tile builds** are the cost in zoomed-out Composed flicks: at `pps` 100 one tile can hold over a thousand divider strokes. Check `stageTile`, and the builds per chart draw in `perf:report … frames`.
 - **Path-cache churn.** A path built anew every frame and kept in the path cache fills its 128 MiB budget with geometry nothing draws again, and the grown maps and garbage then stall chart frames. A context's current path lasts one frame for this reason (`docs/rendering.md`). A record whose `pathCache` shows steady `trimmed` counts during playback has a new case of it.
 - **The journal with storage unavailable** serializes and gzips the whole chart every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. Its idle callback's 5 s timeout can land it in the middle of a scroll. Measure it with `journal` and a group's `storage` flag.
+- **The journal on hide.** A hide right after an edit writes the whole state synchronously: 20–30 ms on coconut on the desktop, 100–135 ms at 4×, and about 0.6 s at 4× on 21888 and ×8. It shows in `hide` cells with `after` 0.
 
 ## Usage statistics on and off
 

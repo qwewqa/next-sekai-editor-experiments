@@ -33,6 +33,11 @@
 - (Web) Ctrl/Cmd+R now reloads the page and Ctrl/Cmd+F opens the browser’s find bar. Previously, these shortcuts ran the commands assigned to R and F. You can assign either shortcut to a command in Settings › Keyboard Shortcuts.
 - Added an About section in Settings with the editor version and a Copy Diagnostic Info… button.
 - The preview now renders in parallel with the rest of the editor. This makes chart rendering smoother during playback and editing, especially with dense charts. If the preview looks wrong or does not appear, turn off Settings › Preview › Parallel Rendering.
+- When nothing on the screen changes, the editor no longer redraws, so it uses less power.
+- Scrolling a zoomed-out chart and playback on phones are smoother.
+- Dragging to the top or bottom edge of the chart now scrolls at an even speed.
+- Settings opens faster.
+- Large level files open faster, especially on phones.
 - In the preview, hit effects now stay on their notes when the camera moves, and notes attached across stages line up as they do in Sonolus.
 - On iPhone and iPad, audio now plays in silent mode.
 - Session names and suggested file names containing dots, such as “feat. Miku”, are no longer cut off at the first dot.
