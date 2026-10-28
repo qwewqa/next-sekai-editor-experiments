@@ -915,8 +915,22 @@
       "copied": "已複製"
     },
     "descriptions": {
-      "waveform": "在譜面上顯示 BGM 的響度（音量）或頻率（FFT）。",
-      "zeroWidthNotes": "設定哪些音符的寬度可以設為 0 條軌道。",
+      "waveform": {
+        "intro": "設定 BGM 在譜面上的視覺化方式。",
+        "choices": {
+          "volume": "顯示 BGM 的響度。",
+          "fft": "顯示 BGM 的頻率。",
+          "off": "隱藏視覺化圖形。"
+        }
+      },
+      "zeroWidthNotes": {
+        "intro": "設定使用編輯工具時，哪些音符的寬度可以設為 0 條軌道。",
+        "choices": {
+          "off": "要求所有音符的寬度大於 0。",
+          "anchors": "只允許將錨點的寬度設為 0 條軌道。",
+          "all": "允許將任何音符的寬度設為 0 條軌道。"
+        }
+      },
       "dimUnchangedObjects": "設定檢視時間軸中的步驟時，「顯示變更」的預設狀態。",
       "showOtherGroups": "聚焦圖層時，以淡色顯示其他圖層中的物件。",
       "showOtherStages": "聚焦舞台時，以淡色顯示其他舞台上的物件。",
@@ -929,7 +943,14 @@
       "toolbarQuickSwitch": "按住工具列按鈕，再在要選擇的工具上放開即可。",
       "playFollowPosition": "設定播放時「跟隨」將游標保持在譜面上的位置，底部為 0，頂部為 100。",
       "playPreviewDuration": "設定移動游標或選取物件時 BGM 的播放時長。",
-      "mouseSecondaryTool": "設定以右鍵按一下和按住右鍵拖曳的操作。",
+      "mouseSecondaryTool": {
+        "intro": "設定以右鍵按一下和按住右鍵拖曳的操作。",
+        "choices": {
+          "eraser": "按一下右鍵可刪除物件，按住右鍵拖曳可刪除區域內的物件。",
+          "select": "可用滑鼠右鍵選取、移動或調整物件大小。",
+          "selectContextMenu": "按一下右鍵時開啟快顯選單，按住右鍵拖曳時可選取、移動或調整物件大小。"
+        }
+      },
       "beatDisplay": {
         "intro": "設定節拍位置的編號方式。",
         "choices": {
@@ -963,12 +984,39 @@
       "previewShowHitboxes": "在音符被擊中前不久以及滑條進行期間，顯示用於判定音符和滑條的範圍。",
       "previewShowEffects": "音符被擊中時及按住滑條期間，在預覽中顯示粒子與發光效果。",
       "previewAntialias": "平滑預覽中的鋸齒邊緣。",
-      "previewTransportPosition": "將播放控制項放在預覽下方或疊放在預覽的下邊緣。選擇「自動」時，如果預覽不必縮小就能放得下，控制項會放在下方，否則會疊放在下邊緣。",
-      "previewControls": "設定播放停止時，預覽設定是展開，還是收合為按鈕。選擇「自動」時，如果使用滑鼠且預覽面板能容納這些設定，一開始會展開設定。",
-      "playStartPosition": "設定「播放」的開始位置。選擇「檢視位置」時，從可見譜面的底部開始；開啟「跟隨」時，則從「跟隨位置」開始。",
+      "previewTransportPosition": {
+        "intro": "設定預覽播放控制項的顯示位置。",
+        "choices": {
+          "auto": "預覽不必縮小就能放得下時，將控制項放在下方，否則疊放在預覽的下邊緣。",
+          "below": "在預覽下方為控制項留出空間，必要時縮小預覽。",
+          "overlay": "將控制項疊放在預覽的下邊緣。"
+        }
+      },
+      "previewControls": {
+        "intro": "設定播放停止時預覽設定的顯示方式。",
+        "choices": {
+          "auto": "使用滑鼠且預覽面板能容納各項設定時，一開始會展開設定，否則顯示按鈕。",
+          "expanded": "顯示各項設定。",
+          "collapsed": "顯示用於開啟設定的按鈕。"
+        }
+      },
+      "playStartPosition": {
+        "intro": "設定「播放」的開始位置。",
+        "choices": {
+          "view": "從可見譜面的底部開始；開啟「跟隨」時，則從「跟隨位置」開始。",
+          "cursor": "從游標位置開始。"
+        }
+      },
       "playFollow": "播放時捲動譜面，讓游標保持在「跟隨位置」。",
       "touchQuickScrollWidth": "設定譜面右邊緣可用單指捲動的區域寬度。數值為 0 時關閉此功能。",
-      "touchQuickScrollShow": "為譜面右邊緣可用單指捲動的區域加上底色。",
+      "touchQuickScrollShow": {
+        "intro": "設定何時為譜面右邊緣可用單指捲動的區域加上底色。",
+        "choices": {
+          "on": "在所有裝置上都為該區域加上底色。",
+          "off": "不為該區域加上底色。",
+          "touch": "裝置支援觸控時，為該區域加上底色。"
+        }
+      },
       "touchScrollInertia": "讓譜面在雙指平移或在快速捲動區內拖曳後繼續捲動，並逐漸減速。"
     },
     "sections": "分區",

@@ -915,8 +915,22 @@
       "copied": "Kopyalandı"
     },
     "descriptions": {
-      "waveform": "Arka plan müziğinin ses yüksekliğini (Ses) veya frekanslarını (FFT) çizelgede gösterir.",
-      "zeroWidthNotes": "Hangi notaların sıfır şerit genişliğinde olabileceğini belirler.",
+      "waveform": {
+        "intro": "Arka plan müziğinin çizelgede nasıl görselleştirileceğini belirler.",
+        "choices": {
+          "volume": "Ses yüksekliğini gösterir.",
+          "fft": "Frekanslarını gösterir.",
+          "off": "Ses görselleştirmesini gizler."
+        }
+      },
+      "zeroWidthNotes": {
+        "intro": "Düzenleme araçlarıyla hangi notaların sıfır şerit genişliğine getirilebileceğini belirler.",
+        "choices": {
+          "off": "Genişliğin sıfırdan büyük olmasını gerektirir.",
+          "anchors": "Yalnızca sabit noktaların sıfır şerit genişliğinde olmasına izin verir.",
+          "all": "Tüm notaların sıfır şerit genişliğinde olmasına izin verir."
+        }
+      },
       "dimUnchangedObjects": "Zaman Çizgisi’ndeki adımları görüntülerken Değişiklikleri Göster’in varsayılan değerini belirler.",
       "showOtherGroups": "Bir gruba odaklanırken diğer gruplardaki nesneleri soluk gösterir.",
       "showOtherStages": "Bir sahneye odaklanırken diğer sahnelerdeki nesneleri soluk gösterir.",
@@ -929,7 +943,14 @@
       "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçmenizi sağlar.",
       "playFollowPosition": "Takip Et’in oynatma sırasında imleci hangi yükseklikte tutacağını belirler. Çizelgenin altı 0, üstü 100’dür.",
       "playPreviewDuration": "İmleci taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin ne kadar süre çalacağını belirler.",
-      "mouseSecondaryTool": "Sağ tıklamanın ve sağ tuşla sürüklemenin ne yapacağını belirler.",
+      "mouseSecondaryTool": {
+        "intro": "Sağ tıklamanın ve sağ tuşla sürüklemenin ne yapacağını belirler.",
+        "choices": {
+          "eraser": "Sağ tıklamayla nesneleri, sağ tuşla sürüklemeyle bir alandaki nesneleri siler.",
+          "select": "Farenin sağ tuşuyla nesneleri seçmenizi, taşımanızı veya yeniden boyutlandırmanızı sağlar.",
+          "selectContextMenu": "Sağ tıklamayla bağlam menüsünü açar ve sağ tuşla sürükleyerek nesneleri seçmenizi, taşımanızı veya yeniden boyutlandırmanızı sağlar."
+        }
+      },
       "beatDisplay": {
         "intro": "Vuruş konumlarının nasıl numaralandırılacağını belirler.",
         "choices": {
@@ -963,12 +984,39 @@
       "previewShowHitboxes": "Notalara basılmadan kısa bir süre önce ve kaydırmalar etkinken notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir.",
       "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkları ve parlamaları gösterir.",
       "previewAntialias": "Önizlemedeki tırtıklı kenarları yumuşatır.",
-      "previewTransportPosition": "Oynatma denetimlerini önizlemenin altına veya alt kenarının üzerine yerleştirir. Otomatik seçeneğinde önizleme küçülmeden sığıyorsa altına, aksi halde alt kenarının üzerine yerleştirir.",
-      "previewControls": "Oynatma durmuşken önizleme ayarlarının genişletilmiş mi yoksa bir düğmeye daraltılmış mı olacağını belirler. Otomatik seçeneğinde, fare kullanıyorsanız ve ayarlar önizleme paneline sığıyorsa başlangıçta genişletilmiş olarak gösterilir.",
-      "playStartPosition": "Oynat komutunun nereden başlayacağını belirler. Görünüm seçeneğinde, çizelgenin görünen kısmının altından veya Takip Et açıkken Pozisyonu Takip Et ayarında belirtilen konumdan başlar.",
+      "previewTransportPosition": {
+        "intro": "Önizlemenin oynatma denetimlerinin nerede görüneceğini belirler.",
+        "choices": {
+          "auto": "Önizleme küçülmeden sığıyorsa denetimleri altına, aksi halde alt kenarının üzerine yerleştirir.",
+          "below": "Önizlemenin altında yer ayırır ve gerekirse önizlemeyi küçültür.",
+          "overlay": "Denetimleri önizlemenin alt kenarının üzerine yerleştirir."
+        }
+      },
+      "previewControls": {
+        "intro": "Oynatma durmuşken önizleme ayarlarının nasıl gösterileceğini belirler.",
+        "choices": {
+          "auto": "Fare kullanıyorsanız ve ayar formu önizleme paneline sığıyorsa başlangıçta formu, aksi halde bir düğme gösterir.",
+          "expanded": "Ayar formunu gösterir.",
+          "collapsed": "Ayarları açan bir düğme gösterir."
+        }
+      },
+      "playStartPosition": {
+        "intro": "Oynat komutunun nereden başlayacağını belirler.",
+        "choices": {
+          "view": "Çizelgenin görünen kısmının altından veya Takip Et açıkken Pozisyonu Takip Et ayarında belirtilen konumdan başlar.",
+          "cursor": "İmlecin bulunduğu yerden başlar."
+        }
+      },
       "playFollow": "Oynatma sırasında çizelgeyi kaydırarak imleci Pozisyonu Takip Et ayarında belirtilen konumda tutar.",
       "touchQuickScrollWidth": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanın genişliğini belirler. 0 değeri bu alanı kapatır.",
-      "touchQuickScrollShow": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanı gölgelendirir.",
+      "touchQuickScrollShow": {
+        "intro": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanın ne zaman gölgelendirileceğini belirler.",
+        "choices": {
+          "on": "Alanı tüm cihazlarda gölgelendirir.",
+          "off": "Alanı gölgelendirmez.",
+          "touch": "Dokunmatik giriş kullanılabiliyorsa alanı gölgelendirir."
+        }
+      },
       "touchScrollInertia": "İki parmakla kaydırdıktan veya hızlı kaydırma alanında sürükledikten sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar."
     },
     "sections": "Bölümler",

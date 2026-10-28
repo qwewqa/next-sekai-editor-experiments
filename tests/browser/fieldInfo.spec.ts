@@ -211,12 +211,20 @@ test.describe('in Settings', () => {
     test("Show Quick Scroll Zone's description is its own", async ({ page }) => {
         const dialog = await openSettings(page)
         const { root, info } = field(dialog, 'Show Quick Scroll Zone')
-        const text =
-            'Shades the zone at the chart’s right edge where you can scroll with one finger.'
-        await expect(root.getByRole('combobox')).toHaveAccessibleDescription(text)
+        const intro =
+            'Sets when to shade the zone at the chart’s right edge where you can scroll with one finger.'
+        const lines = [
+            'On: Shades the zone on any device.',
+            'Off: Leaves the zone unshaded.',
+            'Touch Screens Only: Shades the zone when touch input is available.',
+        ]
+        await expect(root.getByRole('combobox')).toHaveAccessibleDescription(
+            [intro, ...lines].join(' '),
+        )
         await info.scrollIntoViewIfNeeded()
         await info.click()
-        await expect(bubble(page)).toHaveText(text)
+        await expect(bubble(page).locator('p')).toHaveText(intro)
+        await expect(bubble(page).locator('li')).toHaveText(lines)
     })
 
     test('a mouse opens it after 400 ms and closes it 150 ms after leaving; a click pins it', async ({
@@ -296,7 +304,9 @@ test.describe('in Settings', () => {
         await field(dialog, 'Waveform Visualization').root.locator('select').focus()
         await page.keyboard.press('Tab')
         await expect(info).toBeFocused()
-        await expect(bubble(page)).toHaveText('Sets which notes can be made zero lanes wide.')
+        await expect(bubble(page).locator('p')).toHaveText(
+            'Sets which notes can be made zero lanes wide with the editing tools.',
+        )
         await page.keyboard.press('Enter')
         await expect(info).toHaveAttribute('aria-expanded', 'true')
         await page.keyboard.press('Enter')

@@ -133,6 +133,9 @@ const referenced = (key: string) => {
     )
 }
 
+const listLines =
+    "the description's lines, read as choices[value] for each option in SelectField.vue"
+
 /**
  * Sections whose keys are chosen at run time by a typed value (a reason, a kind, a key name), so
  * no source names them. The types make each one required where it is read; a key added under one
@@ -152,12 +155,16 @@ const dynamic: Record<string, string> = {
     'settings.preview.transport.': "the setting's options",
     'settings.preview.controls.': "the setting's options",
     'settings.panels.groupsStagesSideBySide.': "the setting's options",
-    'settings.descriptions.beatDisplay.':
-        "the description's lines, read as choices[value] for each option in SelectField.vue",
-    'settings.descriptions.elevationEditorSideBySide.':
-        "the description's lines, read as choices[value] for each option in SelectField.vue",
-    'settings.descriptions.groupsStagesSideBySide.':
-        "the description's lines, read as choices[value] for each option in SelectField.vue",
+    'settings.descriptions.beatDisplay.': listLines,
+    'settings.descriptions.elevationEditorSideBySide.': listLines,
+    'settings.descriptions.groupsStagesSideBySide.': listLines,
+    'settings.descriptions.playStartPosition.': listLines,
+    'settings.descriptions.previewTransportPosition.': listLines,
+    'settings.descriptions.previewControls.': listLines,
+    'settings.descriptions.waveform.': listLines,
+    'settings.descriptions.zeroWidthNotes.': listLines,
+    'settings.descriptions.mouseSecondaryTool.': listLines,
+    'settings.descriptions.touchQuickScrollShow.': listLines,
     'workspace.dock.': "the setting's options",
     'storage.': 'StorageLineKey',
     'save.': 'FileErrorKey',
