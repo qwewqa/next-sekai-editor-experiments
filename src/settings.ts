@@ -37,7 +37,7 @@ import { clamp } from './utils/math'
 export type { DefaultNoteSlideProperties }
 
 /** The minimap strip's width in CSS pixels: the default and the range the user can set. */
-export const MINIMAP_WIDTH = { default: 40, min: 24, max: 160 }
+export const MINIMAP_WIDTH = { default: 60, min: 24, max: 160 }
 
 const number = (def: number, min: number, max: number) =>
     Type.Codec(Type.Number({ default: def }))
