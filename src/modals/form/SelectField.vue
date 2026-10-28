@@ -15,8 +15,8 @@ const props = defineProps<{
     disabled?: boolean
     /** Each value's picture in the shared list. */
     optionGlyph?: OptionGlyph<NoInfer<T>>
-    /** What the setting does, behind an ⓘ after the label; with choices, a line for each option. */
-    description?: string | ChoiceDescription<Extract<NoInfer<T>, string>>
+    /** What the setting does, behind an ⓘ after the label: a sentence and a line for each option. */
+    description?: ChoiceDescription<Extract<NoInfer<T>, string>>
 }>()
 
 const modelValue = defineModel<T>({ required: true })
@@ -28,7 +28,7 @@ const shown = computed(() =>
 // Each line is named and ordered as the options are.
 const described = computed((): FieldDescription | undefined => {
     const description = props.description
-    if (typeof description !== 'object') return description
+    if (!description) return undefined
     return {
         intro: description.intro,
         lines: props.options.map(([name, value]) => ({

@@ -915,8 +915,22 @@
       "copied": "Copié"
     },
     "descriptions": {
-      "waveform": "Affiche l’intensité sonore de la musique (Volume) ou ses fréquences (FFT) sur la partition.",
-      "zeroWidthNotes": "Définit les notes qui peuvent avoir une largeur de zéro voie.",
+      "waveform": {
+        "intro": "Définit comment la musique est représentée sur la partition.",
+        "choices": {
+          "volume": "Affiche son intensité sonore.",
+          "fft": "Affiche ses fréquences.",
+          "off": "Masque la visualisation audio."
+        }
+      },
+      "zeroWidthNotes": {
+        "intro": "Définit les notes dont la largeur peut être réglée sur zéro voie avec les outils d’édition.",
+        "choices": {
+          "off": "Exige une largeur supérieure à zéro.",
+          "anchors": "Permet uniquement aux ancres d’avoir une largeur de zéro voie.",
+          "all": "Permet à toutes les notes d’avoir une largeur de zéro voie."
+        }
+      },
       "dimUnchangedObjects": "Définit la valeur par défaut d’Afficher les modifications lorsque vous consultez des étapes de la chronologie.",
       "showOtherGroups": "Affiche les objets des autres groupes en les estompant lorsqu’un groupe est ciblé.",
       "showOtherStages": "Affiche les objets des autres scènes en les estompant lorsqu’une scène est ciblée.",
@@ -929,7 +943,14 @@
       "toolbarQuickSwitch": "Permet de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
       "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur pendant la lecture, de 0 en bas de la partition à 100 en haut.",
       "playPreviewDuration": "Définit la durée de lecture de la musique lorsque vous déplacez le curseur ou sélectionnez un objet.",
-      "mouseSecondaryTool": "Définit l’action du clic droit et du glissement avec le bouton droit.",
+      "mouseSecondaryTool": {
+        "intro": "Définit l’action du clic droit et du glissement avec le bouton droit.",
+        "choices": {
+          "eraser": "Supprime les objets avec un clic droit, ou les objets d’une zone en faisant glisser avec le bouton droit.",
+          "select": "Permet de sélectionner, de déplacer ou de redimensionner les objets avec le bouton droit de la souris.",
+          "selectContextMenu": "Ouvre le menu contextuel avec un clic droit et permet de sélectionner, de déplacer ou de redimensionner les objets en faisant glisser avec le bouton droit."
+        }
+      },
       "beatDisplay": {
         "intro": "Définit la numérotation des positions des temps.",
         "choices": {
@@ -963,12 +984,39 @@
       "previewShowHitboxes": "Affiche les zones utilisées pour juger les notes et les slides, peu avant que les notes soient touchées et pendant que les slides sont actifs.",
       "previewShowEffects": "Affiche des particules et des lueurs lorsque les notes sont touchées et pendant que les slides sont maintenus dans l’aperçu.",
       "previewAntialias": "Lisse les contours en escalier dans l’aperçu.",
-      "previewTransportPosition": "Place les commandes de lecture sous l’aperçu ou sur son bord inférieur. Avec Auto, elles se placent en dessous lorsque l’aperçu tient sans être réduit, et sur son bord inférieur dans le cas contraire.",
-      "previewControls": "Définit si les paramètres de l’aperçu sont déployés ou réduits à un bouton lorsque la lecture est arrêtée. Avec Auto, ils sont déployés au départ lorsque vous utilisez une souris et qu’ils tiennent dans le panneau d’aperçu.",
-      "playStartPosition": "Définit où la commande Lire démarre. Avec Vue, elle démarre au bas de la partie visible de la partition, ou à la hauteur définie par Suivre la position lorsque Suivre est activé.",
+      "previewTransportPosition": {
+        "intro": "Définit où les commandes de lecture de l’aperçu s’affichent.",
+        "choices": {
+          "auto": "Les place sous l’aperçu lorsqu’il tient sans être réduit, et sur son bord inférieur dans le cas contraire.",
+          "below": "Réserve de la place sous l’aperçu et le réduit si nécessaire.",
+          "overlay": "Les place sur le bord inférieur de l’aperçu."
+        }
+      },
+      "previewControls": {
+        "intro": "Définit comment les paramètres de l’aperçu s’affichent lorsque la lecture est arrêtée.",
+        "choices": {
+          "auto": "Affiche au départ le formulaire des paramètres si vous utilisez une souris et qu’il tient dans le panneau d’aperçu, ou un bouton dans le cas contraire.",
+          "expanded": "Affiche le formulaire des paramètres.",
+          "collapsed": "Affiche un bouton qui ouvre les paramètres."
+        }
+      },
+      "playStartPosition": {
+        "intro": "Définit où la commande Lire démarre.",
+        "choices": {
+          "view": "Démarre au bas de la partie visible de la partition, ou à la hauteur définie par Suivre la position lorsque Suivre est activé.",
+          "cursor": "Démarre au curseur."
+        }
+      },
       "playFollow": "Fait défiler la partition pendant la lecture pour maintenir le curseur à la hauteur définie par Suivre la position.",
       "touchQuickScrollWidth": "Définit la largeur de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt. Une valeur de 0 désactive cette zone.",
-      "touchQuickScrollShow": "Colore le fond de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt.",
+      "touchQuickScrollShow": {
+        "intro": "Définit quand colorer le fond de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt.",
+        "choices": {
+          "on": "Colore le fond de la zone sur tous les appareils.",
+          "off": "Ne colore pas le fond de la zone.",
+          "touch": "Colore le fond de la zone lorsque l’appareil prend en charge le tactile."
+        }
+      },
       "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après un déplacement à deux doigts ou un glissement dans la zone de défilement rapide."
     },
     "sections": "Rubriques",

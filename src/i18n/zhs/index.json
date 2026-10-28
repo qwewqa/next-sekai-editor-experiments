@@ -915,8 +915,22 @@
       "copied": "已复制"
     },
     "descriptions": {
-      "waveform": "在谱面上显示背景音乐的响度（音量）或频率（快速傅里叶变换）。",
-      "zeroWidthNotes": "设置哪些音符的宽度可以设为 0 条轨道。",
+      "waveform": {
+        "intro": "设置背景音乐在谱面上的可视化方式。",
+        "choices": {
+          "volume": "显示背景音乐的响度。",
+          "fft": "显示背景音乐的频率。",
+          "off": "隐藏可视化图形。"
+        }
+      },
+      "zeroWidthNotes": {
+        "intro": "设置使用编辑工具时，哪些音符的宽度可以设为 0 条轨道。",
+        "choices": {
+          "off": "要求所有音符的宽度大于 0。",
+          "anchors": "只允许将锚点的宽度设为 0 条轨道。",
+          "all": "允许将任何音符的宽度设为 0 条轨道。"
+        }
+      },
       "dimUnchangedObjects": "设置查看时间线中的步骤时，“显示更改”的默认状态。",
       "showOtherGroups": "聚焦群组时，以淡色显示其他群组中的对象。",
       "showOtherStages": "聚焦舞台时，以淡色显示其他舞台上的对象。",
@@ -929,7 +943,14 @@
       "toolbarQuickSwitch": "按住工具栏按钮，再在要选择的工具上松开即可。",
       "playFollowPosition": "设置播放时“跟随”将光标保持在谱面上的位置，底部为 0，顶部为 100。",
       "playPreviewDuration": "设置移动光标或选择对象时背景音乐的播放时长。",
-      "mouseSecondaryTool": "设置右键单击和按住右键拖动的操作。",
+      "mouseSecondaryTool": {
+        "intro": "设置右键单击和按住右键拖动的操作。",
+        "choices": {
+          "eraser": "右键单击可删除对象，按住右键拖动可删除区域内的对象。",
+          "select": "可用鼠标右键选择、移动或调整对象大小。",
+          "selectContextMenu": "右键单击时打开右键菜单，按住右键拖动时可选择、移动或调整对象大小。"
+        }
+      },
       "beatDisplay": {
         "intro": "设置节拍位置的编号方式。",
         "choices": {
@@ -963,12 +984,39 @@
       "previewShowHitboxes": "在音符被击中前不久以及长按音符进行期间，显示用于判定音符和长按音符的区域。",
       "previewShowEffects": "音符被击中时以及长按音符被按住期间，在预览中显示粒子和发光效果。",
       "previewAntialias": "平滑预览中的锯齿边缘。",
-      "previewTransportPosition": "将播放控件放在预览下方或叠放在预览的下边缘。选择“自动”时，如果预览无需缩小就能放得下，控件会放在下方，否则会叠放在下边缘。",
-      "previewControls": "设置播放停止时，预览设置是展开，还是收起为按钮。选择“自动”时，如果使用鼠标且预览面板能容纳这些设置，最初会展开设置。",
-      "playStartPosition": "设置“播放”的开始位置。选择“当前视图”时，从可见谱面的底部开始；开启“跟随”时，则从“跟随位置”开始。",
+      "previewTransportPosition": {
+        "intro": "设置预览播放控件的显示位置。",
+        "choices": {
+          "auto": "预览无需缩小就能放得下时，将控件放在下方，否则叠放在预览的下边缘。",
+          "below": "在预览下方为控件留出空间，必要时缩小预览。",
+          "overlay": "将控件叠放在预览的下边缘。"
+        }
+      },
+      "previewControls": {
+        "intro": "设置播放停止时预览设置的显示方式。",
+        "choices": {
+          "auto": "使用鼠标且预览面板能容纳各项设置时，最初会展开设置，否则显示按钮。",
+          "expanded": "显示各项设置。",
+          "collapsed": "显示用于打开设置的按钮。"
+        }
+      },
+      "playStartPosition": {
+        "intro": "设置“播放”的开始位置。",
+        "choices": {
+          "view": "从可见谱面的底部开始；开启“跟随”时，则从“跟随位置”开始。",
+          "cursor": "从光标位置开始。"
+        }
+      },
       "playFollow": "播放时滚动谱面，使光标保持在“跟随位置”。",
       "touchQuickScrollWidth": "设置谱面右边缘可用单指滚动的区域宽度。数值为 0 时关闭此功能。",
-      "touchQuickScrollShow": "为谱面右边缘可用单指滚动的区域加上底色。",
+      "touchQuickScrollShow": {
+        "intro": "设置何时为谱面右边缘可用单指滚动的区域加上底色。",
+        "choices": {
+          "on": "在所有设备上都为该区域加上底色。",
+          "off": "不为该区域加上底色。",
+          "touch": "设备支持触控时，为该区域加上底色。"
+        }
+      },
       "touchScrollInertia": "让谱面在双指平移或在快速滚动区域内拖动后继续滚动，并逐渐减速。"
     },
     "sections": "分区",

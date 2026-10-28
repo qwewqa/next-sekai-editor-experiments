@@ -915,8 +915,22 @@
             "copied": "Copied"
         },
         "descriptions": {
-            "waveform": "Shows the BGM’s loudness (Volume) or its frequencies (FFT) on the chart.",
-            "zeroWidthNotes": "Sets which notes can be made zero lanes wide.",
+            "waveform": {
+                "intro": "Sets how the BGM is visualized on the chart.",
+                "choices": {
+                    "volume": "Shows its loudness.",
+                    "fft": "Shows its frequencies.",
+                    "off": "Hides the audio visualization."
+                }
+            },
+            "zeroWidthNotes": {
+                "intro": "Sets which notes can be made zero lanes wide with the editing tools.",
+                "choices": {
+                    "off": "Requires a width greater than zero.",
+                    "anchors": "Lets anchors be zero lanes wide, but no other notes.",
+                    "all": "Allows any note to be zero lanes wide."
+                }
+            },
             "dimUnchangedObjects": "Sets the default for Show Edits when you view Timeline steps.",
             "showOtherGroups": "Shows objects in other groups, faded, while a group is focused.",
             "showOtherStages": "Shows objects on other stages, faded, while a stage is focused.",
@@ -929,7 +943,14 @@
             "toolbarQuickSwitch": "Lets you hold a toolbar button and release on a tool to choose it.",
             "playFollowPosition": "Sets where Follow keeps the cursor during playback, from 0 at the bottom of the chart to 100 at the top.",
             "playPreviewDuration": "Sets how long the BGM plays when you move the cursor or select an object.",
-            "mouseSecondaryTool": "Sets what right-click and right-drag do.",
+            "mouseSecondaryTool": {
+                "intro": "Sets what right-click and right-drag do.",
+                "choices": {
+                    "eraser": "Deletes objects with a right-click or objects in an area with a right-drag.",
+                    "select": "Lets you select, move or resize objects with the right mouse button.",
+                    "selectContextMenu": "Opens the context menu on right-click, and lets you select, move or resize objects by right-dragging."
+                }
+            },
             "beatDisplay": {
                 "intro": "Sets how beat positions are numbered.",
                 "choices": {
@@ -963,12 +984,39 @@
             "previewShowHitboxes": "Shows the areas used to judge notes and slides, shortly before notes are hit and while slides are active.",
             "previewShowEffects": "Shows particles and glows when notes are hit and while slides are held in the preview.",
             "previewAntialias": "Smooths jagged edges in the preview.",
-            "previewTransportPosition": "Places the playback controls below the preview or over its lower edge. With Auto, they go below when the preview fits without shrinking, and over it otherwise.",
-            "previewControls": "Sets whether the preview settings are expanded or collapsed to a button while playback is stopped. With Auto, they start expanded when you use a mouse and they fit in the preview panel.",
-            "playStartPosition": "Sets where Play starts. With View, it starts at the bottom of the visible chart, or at Follow Position when Follow is on.",
+            "previewTransportPosition": {
+                "intro": "Sets where the preview’s playback controls appear.",
+                "choices": {
+                    "auto": "Places them below the preview when it fits without shrinking, and over its lower edge otherwise.",
+                    "below": "Reserves space under the preview, shrinking it if needed.",
+                    "overlay": "Places them over the preview’s lower edge."
+                }
+            },
+            "previewControls": {
+                "intro": "Sets how the preview settings are shown while playback is stopped.",
+                "choices": {
+                    "auto": "Starts with the settings form open when you use a mouse and it fits in the preview panel, or a button otherwise.",
+                    "expanded": "Shows the settings form.",
+                    "collapsed": "Shows a button that opens the settings."
+                }
+            },
+            "playStartPosition": {
+                "intro": "Sets where Play starts.",
+                "choices": {
+                    "view": "Starts at the bottom of the visible chart, or at Follow Position when Follow is on.",
+                    "cursor": "Starts at the cursor."
+                }
+            },
             "playFollow": "Scrolls the chart during playback to keep the cursor at Follow Position.",
             "touchQuickScrollWidth": "Sets the width of the zone at the chart’s right edge where you can scroll with one finger. A value of 0 turns it off.",
-            "touchQuickScrollShow": "Shades the zone at the chart’s right edge where you can scroll with one finger.",
+            "touchQuickScrollShow": {
+                "intro": "Sets when to shade the zone at the chart’s right edge where you can scroll with one finger.",
+                "choices": {
+                    "on": "Shades the zone on any device.",
+                    "off": "Leaves the zone unshaded.",
+                    "touch": "Shades the zone when touch input is available."
+                }
+            },
             "touchScrollInertia": "Lets the chart keep scrolling and slow down gradually after a two-finger pan or a drag in the quick scroll zone."
         },
         "sections": "Sections",
