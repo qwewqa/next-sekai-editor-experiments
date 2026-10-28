@@ -1,18 +1,19 @@
 import { watch } from 'vue'
-import { areGroupsStagesSideBySide, isPanelVisible } from '../editor/workspace'
+import { isPanelVisible, workspaceLayout, workspaceSize } from '../editor/workspace'
 import { isPlaying } from '../player'
 import { previewHost } from '../preview/worker/host'
 import { settings } from '../settings'
 import { capCount, capSeconds, type EventData } from './catalogue'
 import { createSpan, createStateLog, takeSeconds, type FrameState } from './intervals'
+import { createLayoutTime, layoutKeys } from './layoutTime'
 import { bucket } from './scales'
 import { renderScaleOf } from './snapshot'
 import * as tally from './tally'
 
 // Field performance (docs/analytics.md): long frames and slow events from observers that run only
-// for slow entries, the visible and playing time as spans, and the preview's host, its render scale
-// and whether Groups and Stages are side by side as values that can change within an interval. No
-// timer and no polling; nothing here runs per frame.
+// for slow entries, the visible and playing time as spans, the preview's host and its render scale
+// as values that can change within an interval, and the time each layout was shown. No timer and no
+// polling; nothing here runs per frame.
 
 /** How far back a long frame is still placed by the state it began in. */
 const HISTORY_MS = 30_000
@@ -31,9 +32,7 @@ const scaleNow = (): NonNullable<EventData<'perf'>['previewRenderScale']> =>
         ? renderScaleOf(settings.previewRenderScale)
         : 'unknown'
 
-// Shown side by side, not only allowed by the setting.
-const sideBySideNow = (): NonNullable<EventData<'perf'>['groupsStagesSideBySide']> =>
-    areGroupsStagesSideBySide.value ? 'on' : 'off'
+const layoutNow = () => layoutKeys(workspaceLayout.value, workspaceSize.value)
 
 export const startField = () => {
     const isVisible = () => document.visibilityState === 'visible'
@@ -73,8 +72,10 @@ export const startField = () => {
     const renderScale = createSpan(scaleNow())
     const stopHost = watch(hostNow, host.see, { flush: 'sync' })
     const stopScale = watch(scaleNow, renderScale.see, { flush: 'sync' })
-    const sideBySide = createSpan(sideBySideNow())
-    const stopSideBySide = watch(sideBySideNow, sideBySide.see, { flush: 'sync' })
+
+    // Once the updates of a change have settled, so a layout is credited as the user sees it.
+    const layout = createLayoutTime(() => performance.now(), isVisible(), layoutNow())
+    const stopLayout = watch(layoutNow, layout.change)
 
     let unclassified = false
     let lastFrameStart = 0
@@ -127,6 +128,7 @@ export const startField = () => {
                 visibleSince = undefined
             } else visibleSince ??= now
             syncPlay()
+            layout.visibility(isVisible())
         },
         /** Counts the entries the browser has not yet delivered, so a send holds its whole interval. */
         flush: () => {
@@ -156,7 +158,6 @@ export const startField = () => {
                 }),
                 previewHost: host.take(hostNow()),
                 previewRenderScale: renderScale.take(scaleNow()),
-                groupsStagesSideBySide: sideBySide.take(sideBySideNow()),
             }
             sentVisible = visible
             sentPlay = playing.sent
@@ -164,11 +165,13 @@ export const startField = () => {
             unclassified = false
             return measures
         },
+        /** The `layout` event for the time since the last call, or nothing if that was under a second. */
+        layout: layout.take,
         stop: () => {
             stopWatching()
             stopHost()
             stopScale()
-            stopSideBySide()
+            stopLayout()
             tally.watchBusy(undefined)
             for (const observer of observers) observer.disconnect()
         },

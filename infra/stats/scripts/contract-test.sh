@@ -106,16 +106,16 @@ step "a batch from a browser"
 RESPONSE=$(curl -fsS -D /tmp/nse-contract.headers -X POST http://localhost:3000/api/batch \
     -H 'Content-Type: text/plain' -H "User-Agent: $BROWSER" -H 'X-Real-IP: 203.0.113.7' --data "$BATCH")
 echo "$RESPONSE"
-if [ "$(jq .processed <<< "$RESPONSE")" != 17 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
+if [ "$(jq .processed <<< "$RESPONSE")" != 18 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
 grep -qi '^access-control-allow-origin: \*' /tmp/nse-contract.headers || fail "no CORS header on the batch response"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 17 ] || fail "expected 17 stored events"
-[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 90 ] || fail "the event data was not stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 18 ] || fail "expected 18 stored events"
+[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 105 ] || fail "the event data was not stored"
 
 step "a bot User-Agent is dropped"
 BOT=$(curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -H 'User-Agent: python-requests/2.32' \
     --data "$(ev nightly '{}')")
 grep -q beep <<< "$BOT" || fail "a bot User-Agent was not dropped: $BOT"
-[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 17 ] || fail "the bot's event was stored"
+[ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 18 ] || fail "the bot's event was stored"
 
 step "nightly.sh clean"
 sql -c "UPDATE session SET region = 'WA', city = 'Seattle'"
@@ -763,6 +763,7 @@ expect saves 'writeBack|failed|denied|1'
 expect settings 'theme|dark|1'
 expect settings 'showMinimap|on|1'
 expect settings 'previewAssets.skin|bundled|1'
+expect settings 'groupsPosition|left|1'
 expect startup 'reload|cache|2|2|2000|2250|2400|2450|0'
 expect startup 'navigate|network|1|0|||||'
 expect startup '1000-1299|1'
@@ -789,6 +790,51 @@ done
 expect actions 'open|||256K-512K|1|400|400'
 expect peek 'cached|5'
 expect peek '25-40|3'
+# layout.sql prints a cell only for 10 or more sessions. The batch above is one session, so it prints nothing.
+[ -z "$(run_query layout)" ] || fail "layout.sql printed a cell for one session: $(run_query layout)"
+# Each address is a session of its own. The websites are new, so the queries above are unchanged.
+#   LAYOUT: ten sessions send a layout event, each with Preview on the left for 100 s. Nine of them also show Groups
+#   and a drawer, 20 s of the left panels at 760 px or more and 30 s of Preview at 50 percent or more, so those four
+#   cells have nine sessions and stay out. The tenth spends that time in the ranges below. The first sends a second
+#   event with Groups, so Groups has nine sessions and ten events. An eleventh session sends an interval at the cap of
+#   a day, which is left out. The panel query prints Preview as 1000 s. Only 730 s of the Preview shares and 820 s of
+#   the left sizes are printed, and the distributions print percentages of the cells printed and no seconds.
+#   LAYOUT9: nine sessions send an event, so nothing is printed. A tenth makes the cells appear.
+LAYOUT=$(cat /proc/sys/kernel/random/uuid)
+LAYOUT9=$(cat /proc/sys/kernel/random/uuid)
+sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$LAYOUT', 'layout', 'nse.qwewqa.dev'), ('$LAYOUT9', 'layout9', 'nse.qwewqa.dev')" > /dev/null
+send_layout() { # website, address, the event's data (JSON object)
+    curl -fsS -X POST http://localhost:3000/api/batch -H 'Content-Type: text/plain' -H "User-Agent: $BROWSER" -H "X-Real-IP: $2" \
+        --data "$(jq -nc --arg w "$1" --argjson d "$3" --argjson t "$NOW" "[{type: \"event\", payload: ($BASE + {name: \"layout\", data: \$d})}]")" > /dev/null
+}
+LAYOUT_ALL='"visibleTime": 100, "panelSeconds.preview.left": 100, "panelSeconds.stages.covered": 10, "dockSizeSeconds.right.280-400": 100, "previewShareSeconds.0-10": 30, "previewShareSeconds.10-25": 30, "collapsedSeconds": 20, "pairedSeconds": 30'
+LAYOUT_NINE='"panelSeconds.groups.left": 50, "drawerSeconds": 10, "dockSizeSeconds.left.400-540": 50, "dockSizeSeconds.left.540-760": 30, "dockSizeSeconds.left.760+": 20, "previewShareSeconds.25-50": 10, "previewShareSeconds.50+": 30'
+LAYOUT_TENTH='"dockSizeSeconds.left.400-540": 60, "dockSizeSeconds.left.540-760": 40, "previewShareSeconds.25-50": 40'
+for i in $(seq 1 9); do send_layout "$LAYOUT" "198.51.100.$i" "{$LAYOUT_ALL, $LAYOUT_NINE}"; done
+send_layout "$LAYOUT" 198.51.100.10 "{$LAYOUT_ALL, $LAYOUT_TENTH}"
+send_layout "$LAYOUT" 198.51.100.1 '{"visibleTime": 100, "panelSeconds.groups.left": 50}'
+send_layout "$LAYOUT" 198.51.100.11 '{"visibleTime": 86400, "panelSeconds.preview.left": 86400, "dockSizeSeconds.left.400-540": 86400, "collapsedSeconds": 86400}'
+rows=$(run_query layout "$LAYOUT")
+[ "$rows" = "preview|left|10|1000|90.9
+stages|covered|10|100|9.1
+left|400-540|10|62.2
+left|540-760|10|37.8
+right|280-400|10|100.0
+0-10|10|41.1
+10-25|10|41.1
+25-50|10|17.8
+collapsedSeconds|10|200|18.2
+pairedSeconds|10|300|27.3" ] || fail "layout.sql printed this for ten sessions with some cells of nine: $rows"
+LAYOUT_SOLO='{"visibleTime": 100, "panelSeconds.preview.left": 100, "dockSizeSeconds.left.400-540": 100, "previewShareSeconds.10-25": 100, "pairedSeconds": 50}'
+for i in $(seq 1 9); do send_layout "$LAYOUT9" "192.0.2.$i" "$LAYOUT_SOLO"; done
+rows=$(run_query layout "$LAYOUT9")
+[ -z "$rows" ] || fail "layout.sql printed this for nine sessions: $rows"
+send_layout "$LAYOUT9" 192.0.2.10 "$LAYOUT_SOLO"
+rows=$(run_query layout "$LAYOUT9")
+[ "$rows" = "preview|left|10|1000|100.0
+left|400-540|10|100.0
+10-25|10|100.0
+pairedSeconds|10|500|50.0" ] || fail "layout.sql printed this for ten sessions: $rows"
 # A website with no events: every query still runs, and the share left out of the frames is empty, not an error.
 EMPTY=$(cat /proc/sys/kernel/random/uuid)
 sql -c "INSERT INTO website (website_id, name, domain) VALUES ('$EMPTY', 'empty', 'nse.qwewqa.dev')"

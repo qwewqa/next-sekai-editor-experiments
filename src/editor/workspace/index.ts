@@ -303,11 +303,6 @@ export const drawerSide = computed(() =>
     }),
 )
 
-/** Whether Groups and Stages are shown side by side below Preview. */
-export const areGroupsStagesSideBySide = computed(() =>
-    Object.values(workspaceLayout.value.docks).some((dock) => !!dock.sideBySide),
-)
-
 /** Whether the panel's body is currently displayed (open and not covered). */
 export const isPanelVisible = (id: PanelId) => {
     const side = getPanelSide(id)

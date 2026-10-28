@@ -1,3 +1,4 @@
+import type { DockSide, PanelId } from '../editor/workspace/layout'
 import { STACK_CAP } from '../history/cap'
 import { operationCodecs, type OperationId } from '../history/operations/registry'
 import type { LoadEvent } from '../local/startup/events'
@@ -59,8 +60,23 @@ const counts = <const T extends string>(keys: readonly T[]) =>
     Object.fromEntries(keys.map((key) => [key, 'count'])) as Record<T, 'count'>
 const flags = <const T extends string>(keys: readonly T[]) =>
     Object.fromEntries(keys.map((key) => [key, 'boolean'])) as Record<T, 'boolean'>
+const seconds = <const T extends string>(keys: readonly T[]) =>
+    Object.fromEntries(keys.map((key) => [key, 'seconds'])) as Record<T, 'seconds'>
 const prefixed = <const P extends string, const T extends string>(prefix: P, keys: readonly T[]) =>
     keys.map((key) => `${prefix}.${key}` as const)
+/** `<prefix>.<first>.<second>` for each pair. */
+const pairs = <
+    const P extends string,
+    const A extends readonly string[],
+    const B extends readonly string[],
+>(
+    prefix: P,
+    first: A,
+    second: B,
+) =>
+    first.flatMap((a) =>
+        second.map((b) => `${prefix}.${a}.${b}` as `${P}.${A[number]}.${B[number]}`),
+    )
 
 const engines = oneOf('chromium', 'webkit', 'firefox', 'other')
 const renderScales = ['0.25', '0.5', '0.75', '1', '1.25', '1.5', '1.75', '2'] as const
@@ -78,6 +94,7 @@ const device = {
 } as const
 
 const position = oneOf('auto', 'left', 'right', 'top', 'disabled')
+const autoOnOff = oneOf('auto', 'on', 'off')
 const assetSource = oneOf('default', 'builtin', 'bundled', 'file')
 const fileError = [
     'conflict',
@@ -112,6 +129,13 @@ const loadKinds = [
 ] as const satisfies readonly LoadEvent['kind'][]
 // Every kind is listed: a new kind fails the type check until it is added.
 const _everyKind: LoadEvent['kind'] extends (typeof loadKinds)[number] ? true : never = true
+
+/** The panels and docks of the workspace, as the `layout` event names them. */
+const layoutPanels = ['preview', 'groups', 'stages', 'properties', 'history'] as const
+const layoutSides = ['left', 'right', 'top'] as const
+// Every panel and side is listed: a new one fails the type check until it is added.
+const _everyPanel: PanelId extends (typeof layoutPanels)[number] ? true : never = true
+const _everySide: DockSide extends (typeof layoutSides)[number] ? true : never = true
 
 /** History's operations as `edits` counts them: without the `nse.` prefix. */
 type EditKey = OperationId extends `nse.${infer Rest}` ? Rest : never
@@ -154,7 +178,13 @@ export const catalogue = {
         'previewAssets.effect': assetSource,
         showPreview: 'boolean',
         previewPosition: position,
-        showMinimap: oneOf('auto', 'on', 'off'),
+        showGroups: autoOnOff,
+        groupsPosition: position,
+        showStages: autoOnOff,
+        stagesPosition: position,
+        showProperties: 'boolean',
+        propertiesPosition: position,
+        showMinimap: autoOnOff,
         showHistory: 'boolean',
         historyPosition: position,
         dimUnchangedObjects: 'boolean',
@@ -303,8 +333,18 @@ export const catalogue = {
         visibleTime: 'seconds',
         previewHost: oneOf('main', 'worker', 'none', 'mixed', 'unknown'),
         previewRenderScale: oneOf(...renderScales, 'mixed', 'unknown'),
-        groupsStagesSideBySide: oneOf('on', 'off', 'mixed'),
         ...device,
+    },
+    // Time in whole seconds, sent beside `perf`.
+    layout: {
+        visibleTime: 'seconds',
+        ...seconds(pairs('panelSeconds', layoutPanels, [...layoutSides, 'covered'] as const)),
+        ...seconds(pairs('dockSizeSeconds', layoutSides, scales.dockSize)),
+        ...seconds(prefixed('previewShareSeconds', scales.previewShare)),
+        drawerSeconds: 'seconds',
+        collapsedSeconds: 'seconds',
+        suppressedSeconds: 'seconds',
+        pairedSeconds: 'seconds',
     },
     errors: counts(['error', 'csp']),
     // Sent by the support page (public/gate.js), not by the client.

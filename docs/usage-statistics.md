@@ -26,7 +26,7 @@ Most numeric values are sent as ranges.
 - **Counts** (the Count format in the tables) are whole numbers from 0 to 9999. A larger count is sent as 9999.
 - **Activity counts** are sent only when greater than zero. Other counts, such as `interactions` and the number of sessions in Recent Sessions, can be zero.
 - **Durations** are whole milliseconds, from 0 to 600000 (ten minutes). A longer duration is sent as 600000.
-- **Time spent** (`playSeconds` and `visibleTime`) is measured since the previous batch and reported in whole seconds from 0 to 86400 (one day).
+- **Time spent** (`playSeconds`, `visibleTime` and the times in `layout`) is measured since the previous batch and reported in whole seconds from 0 to 86400 (one day).
 - **Processor cores** are exact from 1 to 32, then in ranges.
 - **Pixel density** is exact for 1, 1.25, 1.5, 1.75, 2 and 3, and a range otherwise.
 - **Screen size** is exact, in pixels.
@@ -58,6 +58,8 @@ Most ranges include the lower value and exclude the upper value. Chart-count and
 | Duration of loading a Timeline step, in milliseconds | `peek.<time>` | `<10`, `10-16`, `16-25`, `25-40`, `40-63`, `63-100`, `100-160`, `160-250`, `250-400`, `400-630`, `630-1k`, `1k-1.6k`, `1.6k-2.5k`, `2.5k-4k`, `4k-6.3k`, `6.3k-10k`, `10k-16k`, `16k-25k`, `25k+` |
 | Duration of a long frame, in milliseconds | `frames.<state>.<length>` | `50-100`, `100-200`, `200-500`, `500-1000`, `1000-2000`, `2000+` |
 | Duration of a slow response, in milliseconds | `slowEvents.<length>` | `104-200`, `200-500`, `500-1000`, `1000+` |
+| Width of the left or right panels, or height of the top panels, in pixels | `dockSizeSeconds.<side>.<size>` | `0-280`, `280-400`, `400-540`, `540-760`, `760+` |
+| Preview’s area as a share of the workspace’s area, in percent | `previewShareSeconds.<share>` | `0-10`, `10-25`, `25-50`, `50+` |
 
 ## Common Fields
 
@@ -134,7 +136,9 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `previewNoteSpeed` | The preview’s note speed | Range |
 | `previewAssets.skin`, `previewAssets.particle`, `previewAssets.background`, `previewAssets.effect` | The source of each kind of preview asset. A package from a server is reported as `file` | `default`, `builtin`, `bundled` or `file` |
 | `showPreview`, `showHistory` | Whether the preview and the History panel are shown | Yes or no |
-| `previewPosition`, `historyPosition` | Where the preview and the History panel are placed | `auto`, `left`, `right`, `top` or `disabled` |
+| `showGroups`, `showStages` | Whether Groups and Stages are shown. `auto` means no choice was made, and the editor shows the panel when there is room | `auto`, `on` or `off` |
+| `showProperties` | Whether the Properties panel is shown | Yes or no |
+| `previewPosition`, `groupsPosition`, `stagesPosition`, `propertiesPosition`, `historyPosition` | Where each panel is placed | `auto`, `left`, `right`, `top` or `disabled` |
 | `showMinimap` | Whether the minimap is shown | `auto`, `on` or `off` |
 | `dimUnchangedObjects` | Whether objects that a Timeline step did not change are dimmed | Yes or no |
 | `waveform` | How the music waveform is drawn | `volume`, `fft` or `off` |
@@ -378,8 +382,22 @@ Sent with every batch. Measurements cover the interval since the previous batch,
 | `visibleTime` | The time the page was visible since the previous batch | Seconds |
 | `previewHost` | The thread used to draw the preview during this interval. `none` means the preview was not shown, `mixed` means the value changed, and `unknown` means the thread could not be determined | `main`, `worker`, `none`, `mixed` or `unknown` |
 | `previewRenderScale` | The preview’s render scale during this interval, with `mixed` when it changed | `0.25`, `0.5`, `0.75`, `1`, `1.25`, `1.5`, `1.75`, `2`, `mixed` or `unknown` |
-| `groupsStagesSideBySide` | Whether Groups and Stages were shown side by side during this interval, with `mixed` when it changed. `off` also applies when the setting was on but the panels were too narrow, or Preview, Groups and Stages were not all on one side | `on`, `off` or `mixed` |
 | `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
+
+### `layout`
+
+Sent with `perf`, only when the page was visible for at least a second since the previous batch. Every value is a time in whole seconds, counted only while the page is visible, and is left out when it is zero. Several panels are shown at once, so these times overlap and do not add up to `visibleTime`. A figure is a share of time, not a share of people.
+
+| Field | Meaning | Format |
+| --- | --- | --- |
+| `visibleTime` | The time this batch covers: the page was visible | Seconds |
+| `panelSeconds.<panel>.<place>` | The time a panel was shown on the `left`, `right` or `top`, or was `covered`. The panels are `preview`, `groups`, `stages`, `properties` and `history`. A panel is covered when it is open but its side has no room to show it. A panel is not covered while its side is hidden. A panel shown over the chart counts as shown | Seconds for each panel and place |
+| `dockSizeSeconds.<side>.<size>` | The time the `left`, `right` or `top` panels were shown at each size. The size is the width of the left or right panels, or the height of the top panels, in pixels | Seconds for each side and range |
+| `previewShareSeconds.<share>` | The time the preview was shown at each share of the workspace’s area, in percent | Seconds for each range |
+| `drawerSeconds` | The time panels on a side were shown over the chart instead of beside it, because the window was narrow | Seconds |
+| `collapsedSeconds` | The time the left, right or top panels were hidden by choice, with Hide Left Panels, Hide Right Panels or Hide Top Panels | Seconds |
+| `suppressedSeconds` | The time the left or right panels were hidden by the editor, because the window had room for the panels on one side only | Seconds |
+| `pairedSeconds` | The time Groups and Stages were shown side by side | Seconds |
 
 ### `unsupported`
 

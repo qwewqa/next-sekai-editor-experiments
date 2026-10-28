@@ -9,6 +9,9 @@
             "theme": "dark",
             "showMinimap": "on",
             "previewAssets.skin": "bundled",
+            "showGroups": "auto",
+            "groupsPosition": "left",
+            "showProperties": true,
             "groupsStagesSideBySide": "auto"
         }
     },
@@ -138,7 +141,6 @@
             "visibleTime": 300,
             "previewHost": "worker",
             "previewRenderScale": "1",
-            "groupsStagesSideBySide": "off",
             "cores": "8",
             "deviceMemory": "8",
             "engine": "chromium",
@@ -166,8 +168,23 @@
             "frameAttribution": "full",
             "playSeconds": 60,
             "previewHost": "worker",
-            "previewRenderScale": "2",
-            "groupsStagesSideBySide": "mixed"
+            "previewRenderScale": "2"
+        }
+    },
+    {
+        "name": "layout",
+        "data": {
+            "visibleTime": 300,
+            "panelSeconds.preview.left": 280,
+            "panelSeconds.properties.right": 300,
+            "panelSeconds.stages.covered": 40,
+            "dockSizeSeconds.left.400-540": 120,
+            "dockSizeSeconds.left.540-760": 160,
+            "dockSizeSeconds.right.280-400": 300,
+            "previewShareSeconds.10-25": 120,
+            "previewShareSeconds.25-50": 160,
+            "collapsedSeconds": 20,
+            "pairedSeconds": 90
         }
     },
     {

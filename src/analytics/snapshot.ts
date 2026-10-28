@@ -14,6 +14,9 @@ export const renderScaleOf = (value: number) => {
     return renderScales[step * 4 - 1] ?? '1'
 }
 
+/** A setting that is on, off or not chosen yet (null). */
+const autoOnOff = (value: boolean | null) => (value === null ? 'auto' : value ? 'on' : 'off')
+
 /** The settings snapshot. The two touch options are included only on a touch screen. */
 export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Settings => {
     const assets = settings.previewAssets
@@ -35,7 +38,13 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
         'previewAssets.effect': source('effect'),
         showPreview: settings.showPreview,
         previewPosition: settings.previewPosition,
-        showMinimap: settings.showMinimap === null ? 'auto' : settings.showMinimap ? 'on' : 'off',
+        showGroups: autoOnOff(settings.showGroups),
+        groupsPosition: settings.groupsPosition,
+        showStages: autoOnOff(settings.showStages),
+        stagesPosition: settings.stagesPosition,
+        showProperties: settings.showSidebar,
+        propertiesPosition: settings.propertiesPosition,
+        showMinimap: autoOnOff(settings.showMinimap),
         showHistory: settings.showHistory,
         historyPosition: settings.historyPosition,
         dimUnchangedObjects: settings.dimUnchangedObjects,

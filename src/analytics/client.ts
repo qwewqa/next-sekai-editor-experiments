@@ -248,8 +248,10 @@ export const startClient = (target: AnalyticsTarget) => {
             events.set(name, { ...events.get(name), [key.slice(dot + 1)]: count })
         }
         // The perf event goes at every send: the time and the inputs belong with the counts. The
-        // peek event goes only when there were peeks.
+        // peek event goes only when there were peeks, and the layout event only after a second shown.
         events.set('perf', { ...events.get('perf'), ...field.measures(), ...where })
+        const layout = field.layout()
+        if (layout) events.set('layout', layout)
         const peeks = events.get('peek')
         if (peeks) events.set('peek', { ...peeks, ...where })
         for (const [name, all] of events) {
