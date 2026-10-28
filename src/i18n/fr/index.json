@@ -926,7 +926,7 @@
       "dragToPanX": "Fait défiler la partition horizontalement lorsque vous faites glisser près de son bord gauche ou droit.",
       "previewRenderScale": "Ajuste la résolution de rendu de l’aperçu. Des valeurs plus basses réduisent les détails et le travail de rendu.",
       "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
-      "toolbarQuickSwitch": "Permet de maintenir un bouton d’outil et de faire glisser le long de sa rangée pour choisir un autre outil.",
+      "toolbarQuickSwitch": "Permet de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
       "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur pendant la lecture, de 0 en bas de la partition à 100 en haut.",
       "playPreviewDuration": "Définit la durée de lecture de la musique lorsque vous déplacez le curseur ou sélectionnez un objet.",
       "mouseSecondaryTool": "Définit l’action du clic droit et du glissement avec le bouton droit.",
@@ -959,7 +959,7 @@
         }
       },
       "confirmCloseUnsavedFile": "Demande confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet, même si elles sont stockées dans ce navigateur. Si la fermeture entraîne la perte de modifications, l’éditeur demande toujours confirmation.",
-      "previewNoteSpeed": "Plus la valeur est élevée, plus les notes approchent rapidement dans l’aperçu. Si le paramètre Imposer la vitesse des notes d’un groupe est supérieur à 0, sa valeur remplace celle-ci.",
+      "previewNoteSpeed": "Plus la valeur est élevée, plus les notes approchent rapidement dans l’aperçu.",
       "previewShowHitboxes": "Affiche les zones utilisées pour juger les notes et les slides, peu avant que les notes soient touchées et pendant que les slides sont actifs.",
       "previewShowEffects": "Affiche des particules et des lueurs lorsque les notes sont touchées et pendant que les slides sont maintenus dans l’aperçu.",
       "previewAntialias": "Lisse les contours en escalier dans l’aperçu.",

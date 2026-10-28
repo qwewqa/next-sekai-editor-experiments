@@ -926,7 +926,7 @@
       "dragToPanX": "在譜面左側或右側邊緣附近拖曳時，水平捲動譜面。",
       "previewRenderScale": "縮放預覽的渲染解析度。數值越低，細節越少，渲染工作量也越小。",
       "previewInWorker": "與編輯器的其他部分平行繪製預覽。如果預覽顯示異常或沒有顯示，請關閉此項。",
-      "toolbarQuickSwitch": "按住工具按鈕並沿其所在列拖曳，即可選擇其他工具。",
+      "toolbarQuickSwitch": "按住工具列按鈕，再在要選擇的工具上放開即可。",
       "playFollowPosition": "設定播放時「跟隨」將游標保持在譜面上的位置，底部為 0，頂部為 100。",
       "playPreviewDuration": "設定移動游標或選取物件時 BGM 的播放時長。",
       "mouseSecondaryTool": "設定以右鍵按一下和按住右鍵拖曳的操作。",
@@ -959,7 +959,7 @@
         }
       },
       "confirmCloseUnsavedFile": "有尚未儲存到專案檔案的變更時，會在關閉頁面前詢問，即使這些變更已存放在此瀏覽器中。如果關閉會遺失變更，編輯器一律會詢問。",
-      "previewNoteSpeed": "數值越高，預覽中音符接近的速度越快。如果圖層的「強制音符速度」大於 0，就會使用它來取代此值。",
+      "previewNoteSpeed": "數值越高，預覽中音符接近的速度越快。",
       "previewShowHitboxes": "在音符被擊中前不久以及滑條進行期間，顯示用於判定音符和滑條的範圍。",
       "previewShowEffects": "音符被擊中時及按住滑條期間，在預覽中顯示粒子與發光效果。",
       "previewAntialias": "平滑預覽中的鋸齒邊緣。",

@@ -926,7 +926,7 @@
       "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklediğinizde çizelgeyi yana kaydırır.",
       "previewRenderScale": "Önizlemenin çizim çözünürlüğünü ölçekler. Daha düşük değerler ayrıntıyı ve çizim yükünü azaltır.",
       "previewInWorker": "Önizlemeyi editörün geri kalanıyla paralel olarak çizer. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
-      "toolbarQuickSwitch": "Bir araç düğmesini basılı tutup satırı boyunca sürükleyerek başka bir araç seçmenizi sağlar.",
+      "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçmenizi sağlar.",
       "playFollowPosition": "Takip Et’in oynatma sırasında imleci hangi yükseklikte tutacağını belirler. Çizelgenin altı 0, üstü 100’dür.",
       "playPreviewDuration": "İmleci taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin ne kadar süre çalacağını belirler.",
       "mouseSecondaryTool": "Sağ tıklamanın ve sağ tuşla sürüklemenin ne yapacağını belirler.",
@@ -959,7 +959,7 @@
         }
       },
       "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa, bu tarayıcıda saklanıyor olsalar bile sayfa kapanmadan önce onay ister. Kapatmak değişikliklerin kaybolmasına yol açacaksa editör her zaman onay ister.",
-      "previewNoteSpeed": "Daha yüksek değerler, önizlemede notaların daha hızlı yaklaşmasını sağlar. Bir grubun Nota Hızını Sabitle değeri 0’dan büyükse bu değerin yerine kullanılır.",
+      "previewNoteSpeed": "Daha yüksek değerler, önizlemede notaların daha hızlı yaklaşmasını sağlar.",
       "previewShowHitboxes": "Notalara basılmadan kısa bir süre önce ve kaydırmalar etkinken notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir.",
       "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkları ve parlamaları gösterir.",
       "previewAntialias": "Önizlemedeki tırtıklı kenarları yumuşatır.",

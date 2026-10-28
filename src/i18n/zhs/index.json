@@ -926,7 +926,7 @@
       "dragToPanX": "在谱面左侧或右侧边缘附近拖动时，横向滚动谱面。",
       "previewRenderScale": "缩放预览的渲染分辨率。数值越低，细节越少，渲染工作量也越小。",
       "previewInWorker": "与编辑器的其他部分并行绘制预览。如果预览显示异常或没有显示，请关闭此项。",
-      "toolbarQuickSwitch": "按住工具按钮并沿其所在行拖动，即可选择其他工具。",
+      "toolbarQuickSwitch": "按住工具栏按钮，再在要选择的工具上松开即可。",
       "playFollowPosition": "设置播放时“跟随”将光标保持在谱面上的位置，底部为 0，顶部为 100。",
       "playPreviewDuration": "设置移动光标或选择对象时背景音乐的播放时长。",
       "mouseSecondaryTool": "设置右键单击和按住右键拖动的操作。",
@@ -959,7 +959,7 @@
         }
       },
       "confirmCloseUnsavedFile": "有尚未保存到项目文件的更改时，会在关闭页面前询问，即使这些更改已存储在此浏览器中。如果关闭会丢失更改，编辑器始终会询问。",
-      "previewNoteSpeed": "数值越高，预览中音符接近的速度越快。如果群组的“强制音符速度”大于 0，就会使用它来替代此值。",
+      "previewNoteSpeed": "数值越高，预览中音符接近的速度越快。",
       "previewShowHitboxes": "在音符被击中前不久以及长按音符进行期间，显示用于判定音符和长按音符的区域。",
       "previewShowEffects": "音符被击中时以及长按音符被按住期间，在预览中显示粒子和发光效果。",
       "previewAntialias": "平滑预览中的锯齿边缘。",

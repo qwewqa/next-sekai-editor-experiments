@@ -926,7 +926,7 @@
             "dragToPanX": "Scrolls the chart sideways when you drag near its left or right edge.",
             "previewRenderScale": "Scales the preview’s rendering resolution. Lower values reduce detail and rendering work.",
             "previewInWorker": "Draws the preview in parallel with the rest of the editor. Turn this off if the preview looks wrong or does not appear.",
-            "toolbarQuickSwitch": "Lets you hold a tool button and drag along its row to choose another tool.",
+            "toolbarQuickSwitch": "Lets you hold a toolbar button and release on a tool to choose it.",
             "playFollowPosition": "Sets where Follow keeps the cursor during playback, from 0 at the bottom of the chart to 100 at the top.",
             "playPreviewDuration": "Sets how long the BGM plays when you move the cursor or select an object.",
             "mouseSecondaryTool": "Sets what right-click and right-drag do.",
@@ -959,7 +959,7 @@
                 }
             },
             "confirmCloseUnsavedFile": "Asks before the page closes while changes are not saved to a project file, even when they are stored in this browser. When closing would lose edits, the editor always asks.",
-            "previewNoteSpeed": "Higher values make notes approach faster in the preview. If a group’s Force Note Speed is above 0, it overrides this value.",
+            "previewNoteSpeed": "Higher values make notes approach faster in the preview.",
             "previewShowHitboxes": "Shows the areas used to judge notes and slides, shortly before notes are hit and while slides are active.",
             "previewShowEffects": "Shows particles and glows when notes are hit and while slides are held in the preview.",
             "previewAntialias": "Smooths jagged edges in the preview.",
