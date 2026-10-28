@@ -160,6 +160,16 @@ const defined = {
         limits: [200, 500, 1000],
     },
     cores: coreScale(),
+    /** A dock body's width, or the top dock's height, in CSS pixels. 540 is the side-by-side width. */
+    dockSize: {
+        labels: ['0-280', '280-400', '400-540', '540-760', '760+'],
+        limits: [280, 400, 540, 760],
+    },
+    /** Preview's tile area as a percent of the workspace's area. */
+    previewShare: {
+        labels: ['0-10', '10-25', '25-50', '50+'],
+        limits: [10, 25, 50],
+    },
 } as const satisfies Record<string, Scale_>
 
 /** The ranges numbers are sent as. Each list is in order, and each range's label is its value. */
@@ -178,6 +188,8 @@ export const scales = {
     frame: defined.frame.labels,
     slowEvent: defined.slowEvent.labels,
     cores: defined.cores.labels,
+    dockSize: defined.dockSize.labels,
+    previewShare: defined.previewShare.labels,
 } as const
 
 export type Scale = keyof typeof scales

@@ -109,7 +109,7 @@ echo "$RESPONSE"
 if [ "$(jq .processed <<< "$RESPONSE")" != 17 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
 grep -qi '^access-control-allow-origin: \*' /tmp/nse-contract.headers || fail "no CORS header on the batch response"
 [ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 17 ] || fail "expected 17 stored events"
-[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 96 ] || fail "the event data was not stored"
+[ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" = 94 ] || fail "the event data was not stored"
 
 step "a bot User-Agent is dropped"
 BOT=$(curl -fsS -X POST http://localhost:3000/api/send -H 'Content-Type: text/plain' -H 'User-Agent: python-requests/2.32' \

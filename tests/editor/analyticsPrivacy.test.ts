@@ -61,15 +61,39 @@ const byName = (list: Row[]) =>
 
 /** The field families the reference names once, and the fields each stands for. */
 const frameStates = ['playing', 'busy', 'other']
-const families: Record<string, string[]> = {
-    'frames.<state>.<length>': frameStates.flatMap((state) =>
-        scales.frame.map((length) => `frames.${state}.${length}`),
-    ),
-    'slowEvents.<length>': scales.slowEvent.map((length) => `slowEvents.${length}`),
-    'peek.<time>': scales.peek.map((time) => `peek.${time}`),
+const panels = ['preview', 'groups', 'stages', 'properties', 'history']
+const sides = ['left', 'right', 'top']
+const families: Record<string, { event: keyof typeof catalogue; members: string[] }> = {
+    'frames.<state>.<length>': {
+        event: 'perf',
+        members: frameStates.flatMap((state) =>
+            scales.frame.map((length) => `frames.${state}.${length}`),
+        ),
+    },
+    'slowEvents.<length>': {
+        event: 'perf',
+        members: scales.slowEvent.map((length) => `slowEvents.${length}`),
+    },
+    'peek.<time>': { event: 'peek', members: scales.peek.map((time) => `peek.${time}`) },
+    'panelSeconds.<panel>.<place>': {
+        event: 'layout',
+        members: panels.flatMap((panel) =>
+            [...sides, 'covered'].map((place) => `panelSeconds.${panel}.${place}`),
+        ),
+    },
+    'dockSizeSeconds.<side>.<size>': {
+        event: 'layout',
+        members: sides.flatMap((side) =>
+            scales.dockSize.map((size) => `dockSizeSeconds.${side}.${size}`),
+        ),
+    },
+    'previewShareSeconds.<share>': {
+        event: 'layout',
+        members: scales.previewShare.map((share) => `previewShareSeconds.${share}`),
+    },
 }
 const familyOf = (key: string) =>
-    Object.entries(families).find(([, members]) => members.includes(key))?.[0]
+    Object.entries(families).find(([, { members }]) => members.includes(key))?.[0]
 
 /** The documented name of a catalogue key: itself, or the family it belongs to. */
 const documentedAs = (key: string) => familyOf(key) ?? key
@@ -180,15 +204,17 @@ test("the reference covers the catalogue's fields and leaves out what nothing se
 })
 
 test('the families the reference names stand for fields the catalogue has', () => {
-    for (const [family, members] of Object.entries(families)) {
-        const event = family.startsWith('peek.') ? 'peek' : 'perf'
+    for (const [family, { event, members }] of Object.entries(families)) {
         const keys = Object.keys(catalogue[event])
         for (const member of members) assert.ok(keys.includes(member), member)
         assert.ok(section(event).includes(`\`${family}\``), family)
     }
-    // Every other frame or slow-response field is a counter that is a member of a family.
+    // Every other frame, slow-response or layout-time field is a counter that is a member of a family.
     for (const key of Object.keys(catalogue.perf))
         if (/^(?:frames|slowEvents)\./.test(key) && key !== 'frames.unclassified')
+            assert.ok(familyOf(key), key)
+    for (const key of Object.keys(catalogue.layout))
+        if (/^(?:panelSeconds|dockSizeSeconds|previewShareSeconds)\./.test(key))
             assert.ok(familyOf(key), key)
     for (const state of frameStates)
         assert.ok(section('perf').includes(`\`${state}\``), `perf: the state ${state}`)

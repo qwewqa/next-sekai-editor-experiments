@@ -510,8 +510,6 @@ test('a scripted visit counts each press once by name and source, and sends the 
     expect(dataOf(first, 'perf')).toHaveProperty('viewportHeight')
     expect(dataOf(first, 'perf')).toHaveProperty('viewportAspect')
     expect(dataOf(first, 'perf')).toHaveProperty('previewRenderScale')
-    // The setting is on, but Preview is closed.
-    expect(dataOf(first, 'perf')).toHaveProperty('groupsStagesSideBySide', 'off')
     expect(stray).toEqual([])
     expect(messages).toEqual([])
 })
@@ -704,48 +702,159 @@ test('a preview host or render scale that changed and came back within one tick 
     expect(steady.previewRenderScale).not.toBe('mixed')
 })
 
-test('Groups and Stages count as side by side only while shown so, and mixed when that changed', async ({
-    page,
-}) => {
-    await start(page)
-    await page.setViewportSize({ width: 2560, height: 1440 })
-    const divider = page
-        .locator('[data-workspace-dock="left"]')
-        .getByRole('separator', { name: 'Resize Groups and Stages' })
-    const show = (values: Record<string, unknown>) =>
-        page.evaluate(async (values) => {
-            const { settings } =
-                (await import('/src/settings.ts')) as typeof import('../../src/settings')
-            Object.assign(settings, values)
-        }, values)
-    await show({
-        showPreview: true,
-        showGroups: true,
-        showStages: true,
-        leftDockWidth: 760,
-        groupsStagesSideBySide: false,
-    })
-    await expect(divider).toHaveAttribute('aria-orientation', 'horizontal')
-    const measured = await page.evaluate(async () => {
-        const { startField } =
-            (await import('/src/analytics/field.ts')) as typeof import('../../src/analytics/field')
+/** Changes settings in the page. */
+const setSettings = (page: Page, values: Record<string, unknown>) =>
+    page.evaluate(async (values) => {
         const { settings } =
             (await import('/src/settings.ts')) as typeof import('../../src/settings')
-        const field = startField()
-        const take = () => field.measures().groupsStagesSideBySide
-        // Wide enough, with the setting off.
-        const off = take()
-        settings.groupsStagesSideBySide = true
-        const turnedOn = take()
-        const on = take()
-        // Narrower than 540 px and back, within one tick.
-        settings.leftDockWidth = 500
-        settings.leftDockWidth = 760
-        const narrowed = take()
-        field.stop()
-        return { off, turnedOn, on, narrowed }
+        Object.assign(settings, values)
+    }, values)
+
+type LayoutField = { layout: () => Record<string, number> | undefined; visibility: () => void }
+
+/**
+ * Starts a field on the real workspace with the clock held still: only `pass` moves the time, so
+ * the seconds each layout is shown are exact.
+ */
+const holdLayoutClock = async (
+    page: Page,
+    viewport: { width: number; height: number },
+    values: Record<string, unknown>,
+) => {
+    await page.clock.install()
+    await start(page)
+    await page.setViewportSize(viewport)
+    await setSettings(page, {
+        showPreview: true,
+        showGroups: false,
+        showStages: false,
+        showHistory: false,
+        ...values,
     })
-    expect(measured).toEqual({ off: 'off', turnedOn: 'mixed', on: 'on', narrowed: 'mixed' })
+    await expect(page.locator('[data-workspace-dock="left"]')).toBeVisible()
+    await page.clock.pauseAt(new Date(Date.now() + 60_000))
+    await page.evaluate(async () => {
+        const { startField } =
+            (await import('/src/analytics/field.ts')) as typeof import('../../src/analytics/field')
+        ;(window as unknown as { layoutField: unknown }).layoutField = startField()
+    })
+}
+
+const pass = (page: Page, seconds: number) => page.clock.fastForward(seconds * 1000)
+
+const takeLayout = (page: Page) =>
+    page.evaluate(() => (window as unknown as { layoutField: LayoutField }).layoutField.layout())
+
+/** The page hidden or shown again, as the client's listener tells the field. */
+const setVisible = (page: Page, visible: boolean) =>
+    page.evaluate((visible) => {
+        Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            value: visible ? 'visible' : 'hidden',
+        })
+        ;(window as unknown as { layoutField: LayoutField }).layoutField.visibility()
+    }, visible)
+
+test('a drag across a size range, a collapsed dock and a hidden page are counted in seconds', async ({
+    page,
+}) => {
+    await holdLayoutClock(page, { width: 1600, height: 1000 }, { leftDockWidth: 380 })
+    const left = page.locator('[data-workspace-dock="left"]')
+    await pass(page, 10)
+    // A drag of 60 px takes the dock from 380 to 440 px, over the 400 px edge. The size shown
+    // during the drag counts before it is saved.
+    const handle = left.getByRole('separator', { name: 'Resize Left Panels' })
+    const box = (await handle.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2, { steps: 4 })
+    await pass(page, 5)
+    await page.mouse.up()
+    await pass(page, 20)
+    // Time while the page is hidden is not counted.
+    await setVisible(page, false)
+    await pass(page, 100)
+    await setVisible(page, true)
+    await left.getByRole('button', { name: 'Hide Left Panels' }).click()
+    await pass(page, 4)
+
+    const data = await takeLayout(page)
+    expect(data).toEqual({
+        visibleTime: 39,
+        'panelSeconds.preview.left': 35,
+        'dockSizeSeconds.left.280-400': 10,
+        'dockSizeSeconds.left.400-540': 25,
+        'previewShareSeconds.10-25': 10,
+        'previewShareSeconds.25-50': 25,
+        collapsedSeconds: 4,
+    })
+    expect(isValidEvent('layout', data ?? {})).toBe(true)
+})
+
+test('Groups and Stages count as paired only while shown side by side', async ({ page }) => {
+    await holdLayoutClock(
+        page,
+        { width: 2560, height: 1440 },
+        { showGroups: true, showStages: true, leftDockWidth: 760, groupsStagesSideBySide: false },
+    )
+    await expect(
+        page
+            .locator('[data-workspace-dock="left"]')
+            .getByRole('separator', { name: 'Resize Groups and Stages' }),
+    ).toHaveAttribute('aria-orientation', 'horizontal')
+    await pass(page, 10)
+    await setSettings(page, { groupsStagesSideBySide: true })
+    await pass(page, 20)
+    // Narrower than 540 px, the panels stack again.
+    await setSettings(page, { leftDockWidth: 500 })
+    await pass(page, 5)
+    const data = await takeLayout(page)
+    expect(data).toMatchObject({ visibleTime: 35, pairedSeconds: 20 })
+    expect(data?.['panelSeconds.groups.left']).toBe(35)
+    expect(data?.['dockSizeSeconds.left.760+']).toBe(30)
+    expect(data?.['dockSizeSeconds.left.400-540']).toBe(5)
+})
+
+test('the layout event goes with the next send, for the panels shown and the sizes they had', async ({
+    page,
+    context,
+}) => {
+    const { batches, stray } = await mock(context)
+    await installAnalytics(page)
+    // Only Preview is shown, once the client has started.
+    await page.addInitScript(() => {
+        for (const key of ['showGroups', 'showStages', 'showHistory'])
+            localStorage.setItem(`sonolus-next-sekai-editor.${key}`, 'false')
+    })
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    // The resource timing buffer is full by now, so the client's modules are seen as they load.
+    const loaded = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === '/src/analytics/layoutTime.ts',
+    )
+    await start(page)
+    await interact(page)
+    await loaded
+    await page.waitForTimeout(500)
+    await setSettings(page, { showPreview: true, leftDockWidth: 380 })
+    await expect(page.locator('[data-workspace-dock="left"]')).toBeVisible()
+    await page.waitForTimeout(1500)
+    await setSettings(page, { leftDockWidth: 440 })
+    await page.waitForTimeout(1500)
+    await firstSend(page, batches)
+
+    const [first = []] = batches
+    const layout = dataOf(first, 'layout') as Record<string, number>
+    expect(layout.visibleTime).toBeGreaterThanOrEqual(3)
+    expect(layout['panelSeconds.preview.left']).toBeGreaterThanOrEqual(3)
+    expect(layout['dockSizeSeconds.left.280-400']).toBeGreaterThanOrEqual(1)
+    expect(layout['dockSizeSeconds.left.400-540']).toBeGreaterThanOrEqual(1)
+    // Nothing else was shown.
+    expect(Object.keys(layout).filter((key) => key.startsWith('panelSeconds.'))).toEqual([
+        'panelSeconds.preview.left',
+    ])
+    expect(names(first).indexOf('layout')).toBeGreaterThan(names(first).indexOf('perf'))
+    expect(isValidEvent('layout', layout)).toBe(true)
+    expect(stray).toEqual([])
 })
 
 test.describe('with the first-visit dialog', () => {

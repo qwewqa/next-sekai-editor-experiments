@@ -115,6 +115,20 @@ test('each range starts at its limit and ends just below the next', () => {
         ['cores', 64, '49-64'],
         ['cores', 128, '97-128'],
         ['cores', 129, '129+'],
+        ['dockSize', 0, '0-280'],
+        ['dockSize', 279.9, '0-280'],
+        ['dockSize', 280, '280-400'],
+        ['dockSize', 539.9, '400-540'],
+        ['dockSize', 540, '540-760'],
+        ['dockSize', 759.9, '540-760'],
+        ['dockSize', 760, '760+'],
+        ['previewShare', 9.9, '0-10'],
+        ['previewShare', 10, '10-25'],
+        ['previewShare', 24.9, '10-25'],
+        ['previewShare', 25, '25-50'],
+        ['previewShare', 49.9, '25-50'],
+        ['previewShare', 50, '50+'],
+        ['previewShare', 100, '50+'],
     ]
     for (const [scale, value, label] of edges)
         assert.equal(bucket(scale, value), label, `${scale} ${value}`)
@@ -165,7 +179,7 @@ test('the Undo window and the Recent Sessions count are exact', () => {
 
 test('perf and peek stay within their key budgets', () => {
     // 45 is the most an event may carry; the figures here are the most each is built to populate.
-    assert.equal(Object.keys(catalogue.perf).length, 40)
+    assert.equal(Object.keys(catalogue.perf).length, 39)
     assert.equal(Object.keys(catalogue.peek).length, 28)
     assert.ok(Object.keys(catalogue.perf).length <= MAX_KEYS)
     const every = (name: 'perf' | 'peek') =>
