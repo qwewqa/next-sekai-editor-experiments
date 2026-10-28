@@ -390,8 +390,10 @@ watchEffect(
     { flush: 'post' },
 )
 
-// With an ⓘ in the label, the label names its control by id, which would otherwise be the ⓘ, the
-// first control inside it; the control's name is the label's text alone.
+// With an ⓘ, only the label's text is a label, and it names its control by id: around the ⓘ, a
+// label would show its control hovered and pressed whenever the ⓘ is. The control's name is the
+// label's text alone.
+const textLabel = computed(() => !!props.description && props.labelId === undefined)
 const controlId = ref<string>()
 const fallbackControlId = useId()
 watchEffect(
@@ -414,20 +416,23 @@ watchEffect(
         <!-- Coverage alone joins the label's column where it fits. -->
         <div ref="line" :class="{ 'form-field-inline': coverageOnly }">
             <component
-                :is="labelId === undefined ? 'label' : 'div'"
+                :is="labelId === undefined && !description ? 'label' : 'div'"
                 ref="row"
                 class="form-field-row"
-                :for="description && labelId === undefined ? controlId : undefined"
             >
                 <span
                     ref="labelRow"
                     class="form-field-label"
                     :class="{ 'form-field-label-info': description }"
-                    ><slot name="icon" /><span :id="textId" class="form-field-text"
+                    ><slot name="icon" /><component
+                        :is="textLabel ? 'label' : 'span'"
+                        :id="textId"
+                        class="form-field-text"
+                        :for="textLabel ? controlId : undefined"
                         >{{ labelParts.text
                         }}<span v-if="labelParts.nowrap" class="form-field-unit">{{
                             labelParts.nowrap
-                        }}</span></span
+                        }}</span></component
                     ><FieldInfo
                         v-if="description"
                         :label

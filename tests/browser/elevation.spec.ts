@@ -1634,10 +1634,10 @@ test('side-by-side Auto adapts to available width and the explicit options overr
         await page.keyboard.press(',')
         const dialog = page.getByRole('dialog')
         await expect(dialog).toBeVisible()
-        const preference = dialog
-            .locator('label')
-            .filter({ has: page.getByText('Elevation Editor Side by Side', { exact: true }) })
-            .getByRole('combobox')
+        const preference = dialog.getByRole('combobox', {
+            name: 'Elevation Editor Side by Side',
+            exact: true,
+        })
         await preference.selectOption(value)
         await expect(preference).toHaveValue(value)
         await dialog.locator('.bg-header button').click()
