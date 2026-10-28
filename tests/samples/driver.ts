@@ -341,6 +341,8 @@ export const dump = async (context: BrowserContext, version?: string) => {
             // The panels the generator hid for speed are not part of the sample.
             delete storage[`${prefix}showPreview`]
             delete storage[`${prefix}showMinimap`]
+            // Nor is the seeded agreement: each profile agrees for itself.
+            delete storage[`${prefix}agreement`]
             const dumped = await dumpDatabase(db, {
                 // The blank page has no build define, so a caller that knows the version gives it.
                 appVersion: version ?? appVersion().appVersion,
