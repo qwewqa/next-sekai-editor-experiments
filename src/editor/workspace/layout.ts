@@ -126,6 +126,8 @@ export type DockLayout = {
      * drawer over the editor instead. Display only; preferences are unchanged.
      */
     overlay: boolean
+    /** Narrower than its preference, as the side docks shrink to fit beside the editor. */
+    shrunk: boolean
     /**
      * Groups and Stages side by side below Preview: both tiles have the height of
      * their row, and these widths. Groups' width keeps within `min` and `max`.
@@ -256,7 +258,7 @@ const layoutDock = (
     side: DockSide,
     input: WorkspaceLayoutInput,
     sides: Partial<Record<PanelId, DockSide>>,
-    size: { value: number; min: number; max: number; default: number },
+    size: { value: number; min: number; max: number; default: number; shrunk?: boolean },
     length: number,
     overlay = false,
     suppressed = false,
@@ -335,6 +337,7 @@ const layoutDock = (
         collapsed,
         suppressed: suppressed && !input.collapsed?.[side],
         overlay,
+        shrunk: !!size.shrunk,
         ...(sideBySide && { sideBySide: { groups, stages: across - groups, min, max } }),
         tiles,
         size: visible.length ? size.value : 0,
@@ -382,7 +385,9 @@ export const computeWorkspaceLayout = (input: WorkspaceLayoutInput): WorkspaceLa
         for (const side of sideBodies) if (side !== recentSide) suppressed.add(side)
     const inline = sideBodies.filter((side) => !suppressed.has(side))
     const overlay = !fits(inline.length)
-    const sideSizes: Partial<Record<DockSide, { value: number; min: number; max: number }>> = {}
+    const sideSizes: Partial<
+        Record<DockSide, { value: number; min: number; max: number; shrunk?: boolean }>
+    > = {}
     if (overlay) {
         const max = Math.max(minSideBody, width - rails - 48)
         for (const side of inline) {
@@ -409,6 +414,7 @@ export const computeWorkspaceLayout = (input: WorkspaceLayoutInput): WorkspaceLa
                 value: values[index] ?? minSideBody,
                 min: minSideBody,
                 max: Math.max(minSideBody, maxSideTotal - others),
+                shrunk: scale < 1 && (preferred[index] ?? 0) > minSideBody,
             }
         }
     }

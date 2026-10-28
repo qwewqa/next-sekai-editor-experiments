@@ -76,33 +76,48 @@ const thickness = (size: number) => (row.value ? { height: `${size}px` } : { wid
 
 // Outer dock resizing shows a draft size and saves it only when the drag ends,
 // so display clamps never write back and a cancelled drag changes nothing.
-let dockDrag: { base: number } | undefined
+// While the side docks shrink to fit, a resize holds the other side at its width
+// and saves that width too, so the other side never grows into the room this one gives up.
+type DockSizes = Partial<Record<DockSide, number>>
+let dockDrag: { base: number; held: DockSizes } | undefined
 const direction = computed(() => (props.side === 'right' ? -1 : 1))
 
 const clampDockSize = (size: number) =>
     dock.value ? clamp(size, dock.value.min, dock.value.max) : size
-const setDockDraft = (size: number | undefined) => {
-    const { [props.side]: _, ...rest } = dockSizeDrafts.value
-    dockSizeDrafts.value = size === undefined ? rest : { ...rest, [props.side]: size }
+const heldDockSizes = (): DockSizes => {
+    const other = props.side === 'left' ? 'right' : props.side === 'right' ? 'left' : undefined
+    const shown = other && workspaceLayout.value.docks[other]
+    return other && shown?.shrunk ? { [other]: Math.floor(shown.size) } : {}
+}
+const saveDockSizes = (sizes: DockSizes) => {
+    for (const [side, size] of Object.entries(sizes)) setDockSize(side as DockSide, size)
+}
+const setDockDrafts = (sizes: DockSizes | undefined) => {
+    const own = [props.side, ...Object.keys(dockDrag?.held ?? {})]
+    const rest = Object.entries(dockSizeDrafts.value).filter(([side]) => !own.includes(side))
+    dockSizeDrafts.value = { ...Object.fromEntries(rest), ...sizes }
 }
 const onDockStart = () => {
-    dockDrag = { base: dock.value?.size ?? 0 }
+    dockDrag = { base: dock.value?.size ?? 0, held: heldDockSizes() }
 }
 const onDockMove = (delta: number) => {
-    if (dockDrag) setDockDraft(clampDockSize(dockDrag.base + delta * direction.value))
+    if (dockDrag)
+        setDockDrafts({
+            ...dockDrag.held,
+            [props.side]: clampDockSize(dockDrag.base + delta * direction.value),
+        })
 }
 const onDockEnd = () => {
     const draft = dockSizeDrafts.value[props.side]
-    if (dockDrag && draft !== undefined) setDockSize(props.side, draft)
-    dockDrag = undefined
-    setDockDraft(undefined)
+    if (dockDrag && draft !== undefined) saveDockSizes({ ...dockDrag.held, [props.side]: draft })
+    onDockCancel()
 }
 const onDockCancel = () => {
+    setDockDrafts(undefined)
     dockDrag = undefined
-    setDockDraft(undefined)
 }
 const setDisplayedDockSize = (size: number) => {
-    setDockSize(props.side, clampDockSize(size))
+    saveDockSizes({ ...heldDockSizes(), [props.side]: clampDockSize(size) })
 }
 
 const isPaired = (id: PanelId) => id === 'groups' || id === 'stages'

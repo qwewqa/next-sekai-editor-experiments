@@ -192,6 +192,85 @@ test('dock resizing persists, cancels to the saved preference, and survives relo
     await expect(tab(page, 'left', 'Groups')).toHaveAttribute('aria-selected', 'true')
 })
 
+test('a side dock shrunk to fit follows its drag and keys, and the other side keeps its width', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    const squeeze = async () => {
+        await setSettings(page, {
+            showPreview: true,
+            showGroups: true,
+            showStages: true,
+            showSidebar: true,
+            leftDockWidth: 824,
+            rightDockWidth: 0,
+        })
+        await settle(page)
+        const widths = {
+            left: await dockWidth(page, 'left'),
+            right: await dockWidth(page, 'right'),
+        }
+        // Both preferences, 824 and the default 384, do not fit, so both sides shrink.
+        expect(widths.left).toBeLessThan(824)
+        expect(widths.right).toBeLessThan(384)
+        return widths
+    }
+    const expectWidths = async (left: number, right: number) => {
+        await settle(page)
+        expect(Math.abs((await dockWidth(page, 'left')) - left)).toBeLessThanOrEqual(1)
+        expect(Math.abs((await dockWidth(page, 'right')) - right)).toBeLessThanOrEqual(1)
+    }
+    const handle = dock(page, 'left').getByRole('separator', { name: 'Resize Left Panels' })
+    const drag = async (delta: number, end: () => Promise<void> = () => page.mouse.up()) => {
+        const edge = (await handle.boundingBox())!
+        const [x, y] = [edge.x + edge.width / 2, edge.y + 300]
+        await page.mouse.move(x, y)
+        await page.mouse.down()
+        await page.mouse.move(x + delta, y, { steps: 4 })
+        await end()
+    }
+
+    // Outward, the editor is already at its minimum width, so neither side changes.
+    const { left, right } = await squeeze()
+    await drag(100)
+    await expectWidths(left, right)
+    const saved = await getSettings(page, ['leftDockWidth', 'rightDockWidth'])
+    expect(Math.abs((saved.leftDockWidth as number) - left)).toBeLessThanOrEqual(1)
+    expect(Math.abs((saved.rightDockWidth as number) - right)).toBeLessThanOrEqual(1)
+    // Inward, only the dragged side narrows; it grows back into the room it gave up.
+    await drag(-100)
+    await expectWidths(left - 100, right)
+    await drag(100)
+    await expectWidths(left, right)
+
+    // A cancelled drag changes nothing.
+    await squeeze()
+    await drag(-100, async () => {
+        await expectWidths(left - 100, right)
+        await page.keyboard.press('Escape')
+        await page.mouse.up()
+    })
+    await expectWidths(left, right)
+    expect(await getSettings(page, ['leftDockWidth', 'rightDockWidth'])).toEqual({
+        leftDockWidth: 824,
+        rightDockWidth: 0,
+    })
+
+    // Keys move the edge as a drag does.
+    await handle.focus()
+    for (const key of ['ArrowRight', 'End']) {
+        await page.keyboard.press(key)
+        await expectWidths(left, right)
+    }
+    await page.keyboard.press('ArrowLeft')
+    await expectWidths(left - 16, right)
+
+    await squeeze()
+    await dock(page, 'right').getByRole('separator', { name: 'Resize Right Panels' }).focus()
+    await page.keyboard.press('ArrowLeft')
+    await expectWidths(left, right)
+})
+
 test('stacked panels resize as a pair and reset with a double click', async ({ page }) => {
     await setSettings(page, { showPreview: true, showGroups: true, showStages: true })
     const tiles = dock(page, 'left').locator('.workspace-tile')
