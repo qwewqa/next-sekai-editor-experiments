@@ -34,7 +34,7 @@ onBeforeUnmount(() => {
 
 <template>
     <div
-        class="editor-range-labels pointer-events-none absolute flex size-full flex-col justify-between tabular-nums text-white/70 forced-color-adjust-none"
+        class="editor-range-labels pointer-events-none absolute flex size-full flex-col justify-between tabular-nums text-white/70 forced-color-adjust-none [contain:size_layout]"
     >
         <div class="flex justify-between">
             <span ref="topTime" class="pl-1" :class="{ invisible: coveredEdgeLabels.top.time }">{{
