@@ -52,13 +52,18 @@ test('the preview packages are served and answer ranges with 206', async ({ page
     const files = manifest.previewAssets.map((asset) => asset.file)
     expect(files).toEqual(expect.arrayContaining(['resource/skin.scp', 'resource/skin2.scp']))
     for (const file of files) {
-        const whole = await page.request.get(`/${file}`)
+        const whole = await page.request.get(`/${file}`, {
+            headers: { 'Accept-Encoding': 'identity' },
+        })
         expect(whole.status(), file).toBe(200)
         const size = (await whole.body()).length
         // The preview server misreads a suffix range, so the tail is asked for by position, as the reader
         // does when it sees that.
         const tail = await page.request.get(`/${file}`, {
-            headers: { Range: `bytes=${size - 1024}-${size - 1}` },
+            headers: {
+                Range: `bytes=${size - 1024}-${size - 1}`,
+                'Accept-Encoding': 'identity',
+            },
         })
         expect(tail.status(), file).toBe(206)
         expect(tail.headers()['content-range'], file).toBe(

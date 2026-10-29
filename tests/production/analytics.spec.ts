@@ -8,11 +8,13 @@ import { editorReady } from './fixtures'
 test('an automated visit loads no client and sends nothing, after input and a hide', async ({
     page,
     context,
+    baseURL,
 }) => {
     const analytics = await analyticsOf(page)
+    const appOrigin = new URL(baseURL!).origin
     const sent: string[] = []
     await context.route(
-        (url) => !['127.0.0.1', 'localhost'].includes(url.hostname),
+        (url) => url.origin !== appOrigin,
         (route) => {
             sent.push(route.request().url())
             return route.abort()
