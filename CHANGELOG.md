@@ -43,7 +43,7 @@
 - Session names and suggested file names containing dots, such as “feat. Miku”, are no longer cut off at the first dot.
 - (Web) If a session did not finish opening last time, the editor asks whether to try again or start blank. The session stays in Recent Sessions.
 - Audio files can be up to 90 minutes long.
-- Opening a project file larger than 256 MB asks for confirmation first. Level files larger than 64 MB are not opened.
+- Opening a project file larger than 256 MB asks for confirmation first. Level files larger than 256 MB are not opened.
 - (Web) Added safe mode. If the editor does not start, add ?safe to its address.
 
 ## 0.5.22 (2026-10-17)

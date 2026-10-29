@@ -394,7 +394,7 @@ History is read only when the report holds no `damaged` and no `newer-minor`.
 
 **Rejected:** the encryption flag or a method other than 0 or 8; a CRC, size or local-header mismatch; overlapping entries; a hash that is not 32 lowercase hex characters; an `x` that breaks the `x` rule (not an object, over 256 KiB, or nested deeper than 32 levels below it; format-versioning section 3); a key outside its carrier in a step, recovery context or entry (`unknown-key`); `kept` other than `false`, `dirty` other than `true`; an operation with a lone surrogate, a non-finite number, depth over 16 or over 256 KiB. `chunks.bin` stored with STORE is read in slices and its whole-entry CRC is never checked, and each chunk is checked by its hash instead. An entry name keeps a leading U+FEFF, so `﻿bgm/a.mp3` is not `bgm/a.mp3`. It is an `unknown-entry`, and the pointer's entry is missing.
 
-**Caps:** `NXSP_CAPS` (`read.ts`): `project.json` 1 MiB inflated, `level.json` 64 MiB, the manifest and each segment 256 MiB, all history parts 512 MiB, `chunks.bin` 2 GiB, one chunk 16 MiB inflated, one media entry 1 GiB, JSON depth 64. Also 65,535 entries (`ENTRY_CAP`, `src/zip/directory.ts`) and 4,096 segments (`SEGMENT_CAP`). A STORE entry needs `compressedSize == size`, a DEFLATE entry `compressedSize <= 2*size + 1024`.
+**Caps:** `NXSP_CAPS` (`read.ts`): `project.json` 1 MiB inflated, `level.json` 256 MiB, the manifest and each segment 256 MiB, all history parts 512 MiB, `chunks.bin` 2 GiB, one chunk 16 MiB inflated, one media entry 1 GiB, JSON depth 64. Also 65,535 entries (`ENTRY_CAP`, `src/zip/directory.ts`) and 4,096 segments (`SEGMENT_CAP`). A STORE entry needs `compressedSize == size`, a DEFLATE entry `compressedSize <= 2*size + 1024`.
 
 ### 3.7 The Python checker
 

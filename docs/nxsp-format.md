@@ -69,7 +69,7 @@ The editor's reader (`readNxsp`, `src/local/nxsp/read.ts`) does the following. A
 3. **Check `version`.** A safe integer above 1: `newer-version`; only `level.json` is read, nothing else in `project.json` is interpreted, no history and no media. Otherwise anything but `1` adds `invalid-key` (path `version`) and reading goes on as v1.
 4. **Read the v1 keys** of `project.json` (§5): unknown keys go to *extra* (kept, never reported), wrong forms are `invalid-key`, unknown keys inside the closed objects are `unknown-key`. Then `minor > 0`: `newer-minor`; `patch > 0`: `newer-patch`; `levelVersion > 1`: `newer-level`.
 5. **Check the pointers** (§4): each in its own prefix, no two on one entry (else `damaged`); every other entry that is not ignored is `unknown-entry`.
-6. **Read `level.json`** (cap 64 MiB). Missing or unreadable: `unreadable`. Top-level keys other than `bgmOffset` and `entities`: `unknown-key`.
+6. **Read `level.json`** (cap 256 MiB). Missing or unreadable: `unreadable`. Top-level keys other than `bgmOffset` and `entities`: `unknown-key`.
 7. **Read the media** (§5.5): each `file` entry checked for size and SHA-256 (`media-unreadable` on a mismatch or when missing).
 8. **Read the history** (§9) only when `project.json` has `history` and the report holds no `damaged` and no `newer-minor`. Any failure here adds its reasons and leaves the history unread; the level still opens. A manifest or segment that fails as a ZIP entry, is not UTF-8, is not JSON or is nested deeper than 64 is `damaged`, as is a part past its cap or the parts together past theirs; any other failure is `history-unreadable`, `newer-history` or `unknown-key` (§14.2).
 9. **Classify** (§14): `open` is `full` when the report is empty or holds only `newer-patch`, else `partial`.
@@ -854,7 +854,7 @@ Most serious first (`partialLine`, `src/local/open/decide.ts`): any `damaged` "T
 | --- | --- |
 | ZIP entries | 65,535 |
 | `project.json` (inflated) | 1 MiB |
-| `level.json` | 64 MiB |
+| `level.json` | 256 MiB |
 | manifest, each segment | 256 MiB |
 | manifest and all segments together (declared sizes) | 512 MiB |
 | segments | 4,096 |

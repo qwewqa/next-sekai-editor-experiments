@@ -1,5 +1,6 @@
 import { record } from '../../../analytics/tally'
 import { isZipHead } from '../../../files/detect'
+import { LEVEL_FILE_MAX_BYTES } from '../../../levelData/fileLimit'
 import {
     diskStateOfBytes,
     FileError,
@@ -89,9 +90,6 @@ export type ExportContext = {
 /** done: written or handed over; cancelled: nothing written; back: the picker was dismissed. */
 export type ExportOutcome = 'done' | 'cancelled' | 'back'
 
-/** Above this, a file is not taken for level data without being read whole. */
-const LEVEL_DATA_LIMIT = 64 * 1024 * 1024
-
 // The usage statistics' `export` event, for a write that went through or failed. A write begins
 // after the last picker has closed (`writeStarted`, 0 when none has). One export runs at a time.
 let writeStarted = 0
@@ -176,7 +174,7 @@ const readTarget = async (target: FileTarget): Promise<Found> => {
     try {
         const file = await platform.read(target)
         const [first] = new Uint8Array(await file.slice(0, 1).arrayBuffer())
-        if (file.size > LEVEL_DATA_LIMIT || !mayBeLevelData(first)) return { state: 'other' }
+        if (file.size > LEVEL_FILE_MAX_BYTES || !mayBeLevelData(first)) return { state: 'other' }
         const bytes = await file.arrayBuffer()
         if (!isLevelDataContent(new Uint8Array(bytes))) return { state: 'other' }
         const modified = file instanceof File ? file.lastModified : undefined

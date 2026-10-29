@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, truncateSync, writeFileSync } from 'node:fs'
 import { gunzipSync, gzipSync } from 'node:zlib'
+import { LEVEL_FILE_MAX_BYTES } from '../../src/levelData/fileLimit'
 import { waitForStartup } from './editorFixture'
 import { en } from './messages'
 
@@ -158,12 +159,14 @@ const notes = (page: Page) =>
         }
     })
 
-const open = async (page: Page, name: string, buffer: Buffer) => {
+const open = async (page: Page, name: string, buffer?: Buffer) => {
     // Input reaches the editor once the startup gate lifts.
     await waitForStartup(page)
     const opening = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
-    await (await opening).setFiles({ name, mimeType: 'application/octet-stream', buffer })
+    await (
+        await opening
+    ).setFiles(buffer ? { name, mimeType: 'application/octet-stream', buffer } : name)
 }
 
 test.beforeEach(async ({ page }) => {
@@ -709,13 +712,33 @@ test('level data with a null guide alpha, as older editors saved, opens with alp
     expect(alphas).toEqual([1, 1])
 })
 
-test('a level file over 64 MB is refused as too large, never as an unsupported file', async ({
+for (const compressed of [false, true]) {
+    test(`level JSON above 64 MiB opens ${compressed ? 'gzipped' : 'plain'}`, async ({
+        page,
+    }, testInfo) => {
+        test.setTimeout(120_000)
+        const plain = Buffer.alloc(65 * 1024 * 1024, 0x20)
+        plain.write(JSON.stringify(chcy))
+        const path = testInfo.outputPath(compressed ? 'large.json.gz' : 'large.json')
+        writeFileSync(path, compressed ? gzipSync(plain) : plain)
+
+        await open(page, path)
+        await expect(
+            page
+                .locator('.notification, .notification-pill')
+                .filter({ hasText: 'Imported Chart Cyanvas level' }),
+        ).toBeVisible()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        expect(await notes(page)).toEqual({ notes: 3, offset: 0.5 })
+    })
+}
+
+test('a level file over 256 MiB is refused as too large, never as an unsupported file', async ({
     page,
 }, testInfo) => {
-    // The two files are large for a loaded machine to hand over.
     test.setTimeout(120_000)
-    // A gzip of 70 MB of zeros is a few hundred kB on disk: it is checked as it inflates.
-    await open(page, 'bomb.gz', gzipSync(Buffer.alloc(70 * 1024 * 1024)))
+    // The small gzip is checked as it inflates.
+    await open(page, 'bomb.gz', gzipSync(Buffer.alloc(LEVEL_FILE_MAX_BYTES + 1)))
     await expect(page.getByRole('dialog')).toContainText(en.commands.open.tooLarge)
     await expect(page.getByRole('dialog')).not.toContainText('Unsupported file')
     await page.keyboard.press('Escape')
@@ -723,9 +746,8 @@ test('a level file over 64 MB is refused as too large, never as an unsupported f
 
     // Plain JSON over the limit is refused by its size, before it is read.
     const big = testInfo.outputPath('big.json')
-    writeFileSync(big, Buffer.alloc(65 * 1024 * 1024, 0x20))
-    const opening = page.waitForEvent('filechooser')
-    await page.keyboard.press('o')
-    await (await opening).setFiles(big)
+    writeFileSync(big, ' ')
+    truncateSync(big, LEVEL_FILE_MAX_BYTES + 1)
+    await open(page, big)
     await expect(page.getByRole('dialog')).toContainText(en.commands.open.tooLarge)
 })

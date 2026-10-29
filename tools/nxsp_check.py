@@ -38,7 +38,7 @@ with open(os.path.join(HERE, "fields-v1.json"), encoding="utf-8") as f:
     FIELDS = json.load(f)
 
 MB = 1024 * 1024
-CAPS = {"project": MB, "level": 64 * MB, "manifest": 256 * MB, "history": 512 * MB, "chunks": 2048 * MB,
+CAPS = {"project": MB, "level": 256 * MB, "manifest": 256 * MB, "history": 512 * MB, "chunks": 2048 * MB,
         "chunk": 16 * MB, "media": 1024 * MB, "depth": 64, "entries": 65535, "segments": 4096}
 SAFE = 2 ** 53 - 1
 HEX16 = re.compile(r"^[0-9a-f]{32}$")
