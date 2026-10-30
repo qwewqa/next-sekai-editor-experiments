@@ -1,4 +1,6 @@
 import { executePlan, planNxsp, readNxsp, type NxspRead } from '../../../src/local/nxsp'
+import { gunzipLevel, gzipLevel } from '../../../src/local/nxsp/gzip'
+import { NXSP_CAPS } from '../../../src/local/nxsp/read'
 import { assembleZip, prepareEntry, ZipReader, type DosTime } from '../../../src/zip'
 import { rawZip } from '../../zip/rawZip'
 import { fresh } from './chain'
@@ -51,6 +53,25 @@ export const setJson = (items: Item[], name: string, value: unknown) => {
     const item = items.find((i) => i.name === name)
     if (!item) throw new Error(`No ${name}`)
     item.data = encoder.encode(JSON.stringify(value))
+}
+
+export const levelOf = (items: readonly Item[]) => {
+    const name = jsonOf(items, 'project.json').level as string
+    const item = items.find((entry) => entry.name === name)
+    if (!item) throw new Error(`No ${name}`)
+    return JSON.parse(
+        decoder.decode(
+            name === 'level.json.gz' ? gunzipLevel(item.data, NXSP_CAPS.level) : item.data,
+        ),
+    ) as Loose
+}
+
+export const setLevel = (items: Item[], value: unknown) => {
+    const name = jsonOf(items, 'project.json').level as string
+    const item = items.find((entry) => entry.name === name)
+    if (!item) throw new Error(`No ${name}`)
+    const bytes = encoder.encode(JSON.stringify(value))
+    item.data = name === 'level.json.gz' ? gzipLevel(bytes) : bytes
 }
 
 /** The shared chain's file, written fresh. */

@@ -15,10 +15,12 @@ import {
     crafted,
     freshFile,
     jsonOf,
+    levelOf,
     overHistoryCap,
     readCrafted,
     reasonsOf,
     setJson,
+    setLevel,
     unzip,
     type Item,
     type Loose,
@@ -101,7 +103,7 @@ test('two names equal after NFC are duplicates', async () => {
 
 test('a duplicate level.json opens nothing', async () => {
     const file = await rawFile((entries) => {
-        const level = entries.find((e) => e.name === 'level.json')
+        const level = entries.find((e) => e.name === 'level.json.gz')
         assert.ok(level)
         entries.push({ ...level })
     })
@@ -202,7 +204,7 @@ test('a DEFLATE entry stored past 2 × size + 1024 is refused before it is read'
 test('every reader cap: past it is damage', async () => {
     const file = await freshFile()
     const sizes = Object.fromEntries((await unzip(file)).items.map((i) => [i.name, i.data.length]))
-    const level = sizes['level.json'] ?? 0
+    const level = encoder.encode(JSON.stringify(levelOf((await unzip(file)).items))).length
     const manifest = sizes['history/manifest.json'] ?? 0
     const chunks = sizes['history/chunks.bin'] ?? 0
 
@@ -425,7 +427,7 @@ test('a bgm with file and hash, or without file and with sha256, is a schema vio
 test('an unknown key in level.json makes the open partial', async () => {
     const read = nxsp(
         await readCrafted((items) => {
-            setJson(items, 'level.json', { ...jsonOf(items, 'level.json'), zz: 1 })
+            setLevel(items, { ...levelOf(items), zz: 1 })
         }),
     )
     assert.deepEqual(reasonsOf(read), ['unknown-key level.json.zz'])

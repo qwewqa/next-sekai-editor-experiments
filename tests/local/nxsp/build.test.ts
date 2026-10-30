@@ -117,7 +117,7 @@ test('without an append source, the chronology goes in segments of 500, then the
     const names = plan.entries.map((e) => e.name)
     assert.deepEqual(names.slice(0, 5), [
         'project.json',
-        'level.json',
+        'level.json.gz',
         'history/segments/1.json',
         'history/segments/2.json',
         'history/manifest.json',

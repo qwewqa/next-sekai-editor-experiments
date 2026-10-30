@@ -2,8 +2,10 @@ import { isNotReadable } from '../../platform/fingerprint'
 import { ZipReader } from '../../zip/reader'
 import { equalBytes, fromHex16, hash16, sha256, toHex } from '../hash'
 import type { PlannedChunk } from '../nxsp/build'
+import { gunzipLevel, gzipStoredCap } from '../nxsp/gzip'
 import { isObject, parseJsonBytes } from '../nxsp/json'
 import { NXSP_CAPS } from '../nxsp/read'
+import { scpEntries } from '../nxsp/scp'
 import { canonicalBytes, type RecordValue } from '../records/canonical'
 import { chunkCrc32 } from '../records/rows'
 
@@ -44,7 +46,11 @@ export const checkBuilt = async (file: Blob, storageChunks: readonly PlannedChun
     const data = new Map<string, Uint8Array>()
     for (const entry of reader.entries) {
         try {
-            data.set(entry.name, await reader.read(entry, { maxSize: NXSP_CAPS.chunksBin }))
+            const cap =
+                entry.name === 'level.json.gz'
+                    ? gzipStoredCap(NXSP_CAPS.level)
+                    : NXSP_CAPS.chunksBin
+            data.set(entry.name, await reader.read(entry, { maxSize: cap }))
         } catch (error) {
             unlessNotReadable(error, `${entry.name} does not read`)
         }
@@ -55,9 +61,36 @@ export const checkBuilt = async (file: Blob, storageChunks: readonly PlannedChun
     }
     const project = json('project.json')
     if (!isObject(project)) return fail('project.json')
+    if (project.level !== 'level.json.gz' || data.has('level.json')) fail('level payload')
+    const levelEntry = reader.get('level.json.gz')
+    if (levelEntry?.method !== 0) fail('level.json.gz must be stored')
+    try {
+        const level = parseJsonBytes(
+            gunzipLevel(data.get('level.json.gz') ?? fail('no level.json.gz'), NXSP_CAPS.level),
+        )
+        if (
+            !isObject(level) ||
+            !Array.isArray(level.entities) ||
+            typeof level.bgmOffset !== 'number' ||
+            Object.keys(level).some((key) => key !== 'entities' && key !== 'bgmOffset')
+        )
+            fail('level data')
+        const expected = scpEntries(project)
+        for (const [name, value] of expected) {
+            if (JSON.stringify(json(name)) !== JSON.stringify(value))
+                fail(`${name}: its project projection`)
+            if (reader.get(name)?.method !== 8) fail(`${name}: its ZIP method`)
+        }
+        for (const name of data.keys())
+            if (name.startsWith('sonolus/') && !expected.has(name))
+                fail(`${name}: unexpected package entry`)
+    } catch (error) {
+        unlessNotReadable(error, error instanceof Error ? error.message : 'package projection')
+    }
     for (const form of mediaForms(project)) {
         if (typeof form.file !== 'string') continue
         const bytes = data.get(form.file) ?? fail(`no ${form.file}`)
+        if (bytes.length !== form.size) fail(`${form.file}: its size`)
         if (toHex(await sha256(bytes)) !== form.sha256) fail(`${form.file}: its SHA-256`)
     }
     const history = project.history

@@ -44,9 +44,70 @@ SAFE = 2 ** 53 - 1
 HEX16 = re.compile(r"^[0-9a-f]{32}$")
 HEX32 = re.compile(r"^[0-9a-f]{64}$")
 ENTRY_KINDS = {"init", "continue", "edit", "undo", "redo", "restore", "save", "export", "recovered"}
-STORE_PREFIXES = ("history/chunks.bin", "assets/", "bgm/")
+STORE_PREFIXES = ("level.json.gz", "history/chunks.bin", "assets/", "bgm/")
 # A segment copied whole from a stored source segment stays stored.
 EITHER_PREFIXES = ("history/segments/",)
+
+SCP_CATEGORIES = ("posts", "playlists", "levels", "skins", "backgrounds", "effects", "particles", "engines", "replays")
+SCP_FIXED_PATHS = {"sonolus/package", "sonolus/info"} | {
+    f"sonolus/{category}/{endpoint}" for category in SCP_CATEGORIES for endpoint in ("info", "list")}
+
+
+def scp_level_name(doc_id):
+    value = doc_id.encode("utf-16-le", "surrogatepass").decode("utf-16-le", "replace").encode("utf-8")
+    return "nse-" + hashlib.sha256(value).hexdigest()[:32]
+
+
+def scp_owned(name, doc_id=None):
+    return name in SCP_FIXED_PATHS or (isinstance(doc_id, str) and doc_id != "" and
+                                     name == f"sonolus/levels/{scp_level_name(doc_id)}")
+
+
+def scp_projection(project):
+    def srl(file=None):
+        return {"hash": "", "url": "" if file is None else "/" + file}
+
+    def dependency(title, author="##:Burrito#1000"):
+        return dict(name="coconut-next-sekai-1", source="https://coconut.sonolus.com/next-sekai",
+                    title=title, subtitle="Next SEKAI", author=author, tags=[{"title": "#PINNED"}], thumbnail=srl())
+
+    engine = dict(dependency("Next SEKAI", "##:qwewqa#590353"), version=13,
+                  skin=dict(dependency("Next SEKAI 01"), version=4, data=srl(), texture=srl()),
+                  background=dict(dependency("Next SEKAI"), version=2, data=srl(), image=srl(), configuration=srl()),
+                  effect=dict(dependency("Next SEKAI 01"), version=5, data=srl(), audio=srl()),
+                  particle=dict(dependency("Next SEKAI"), version=3, data=srl(), texture=srl()),
+                  playData=srl(), watchData=srl(), previewData=srl(), tutorialData=srl(), rom=srl(), configuration=srl())
+    meta = project.get("metadata", {})
+    name = scp_level_name(project["id"])
+    title = meta.get("title") or re.sub(r"\.nxsp$", "", project["revision"].get("fileName", ""), flags=re.I) or project.get("name") or name
+    level = dict(name=name, version=1, rating=meta.get("rating", 0), title=title,
+                 artists=meta.get("artists", ""), author=meta.get("author", ""), tags=meta.get("tags", []), engine=engine,
+                 useSkin={"useDefault": True}, useBackground={"useDefault": True},
+                 useEffect={"useDefault": True}, useParticle={"useDefault": True},
+                 cover=srl(meta.get("cover", {}).get("file")), bgm=srl(project.get("bgm", {}).get("file")), data=srl("level.json.gz"))
+    if "file" in meta.get("preview", {}):
+        level["preview"] = srl(meta["preview"]["file"])
+    out = {"sonolus/package": {"shouldUpdate": True},
+           "sonolus/info": {"title": title, "buttons": [{"type": "level"}], "configuration": {"options": []}}}
+    for category in SCP_CATEGORIES:
+        out[f"sonolus/{category}/info"] = {"sections": [{"itemType": "level", "title": title, "items": [level]}] if category == "levels" else []}
+        out[f"sonolus/{category}/list"] = {"pageCount": 1, "items": [level] if category == "levels" else []}
+        if category == "levels":
+            out[f"sonolus/levels/{name}"] = dict(item=level, description=meta.get("description", ""), actions=[], hasCommunity=False, leaderboards=[], sections=[])
+    return out
+
+
+def gunzip_level(data, cap):
+    if len(data) > 2 * cap + 1024 or data[:3] != b"\x1f\x8b\x08":
+        raise ZipBad("gzip header or cap")
+    d = zlib.decompressobj(31)
+    try:
+        out = d.decompress(data, cap + 1)
+    except zlib.error:
+        raise ZipBad("gzip")
+    if len(out) > cap or d.unconsumed_tail or not d.eof or d.unused_data:
+        raise ZipBad("not one whole gzip member")
+    return out
 
 
 class Fail(Exception):
@@ -363,6 +424,8 @@ def read_zip(blob):
         need(name not in seen, f"{name}: twice")
         seen.add(name)
         e["name"] = name
+        if name == "level.json.gz":
+            need(e["usize"] <= 2 * CAPS["level"] + 1024, "level.json.gz: stored cap")
         need(e["offset"] == offset, f"{name}: not where the previous entry ends")
         local = blob[offset:offset + 30]
         need(local[:4] == b"PK\x03\x04", f"{name}: local signature")
@@ -687,7 +750,7 @@ def check_file(path):
     entries = read_zip(blob)
     by_name = {e["name"]: e for e in entries}
     names = [e["name"] for e in entries]
-    need(names[:2] == ["project.json", "level.json"], "project.json and level.json first")
+    need(names[:2] == ["project.json", "level.json.gz"], "project.json and level.json.gz first")
 
     project = parse_json(by_name["project.json"]["data"], "project.json")
     need(len(by_name["project.json"]["data"]) <= CAPS["project"], "project.json: over its cap")
@@ -700,7 +763,7 @@ def check_file(path):
         need(is_str(project.get(key)) and project[key] != "", f"project.json.{key}")
     for key in ("name", "exportName"):
         need(key not in project or is_str(project[key]), f"project.json.{key}")
-    need(project.get("level") == "level.json", "project.json.level")
+    need(project.get("level") == "level.json.gz", "project.json.level")
 
     rev = project.get("revision")
     keys_within(rev, ["id", "parent", "n", "savedAt", "device", "ancestors", "replaces", "fileName", "completeFrom"], "revision")
@@ -725,7 +788,7 @@ def check_file(path):
         g = editor["defaultGuideColors"]
         need(isinstance(g, list) and g and all(is_uint(x) for x in g), "editor.defaultGuideColors")
 
-    pointers = {"level.json": "level"}
+    pointers = {"level.json.gz": "level"}
 
     def point(name, what):
         need(name not in pointers, f"{what}: names the entry {pointers.get(name)} names")
@@ -752,8 +815,12 @@ def check_file(path):
             if f:
                 point(f, f"metadata.{kind}.file")
 
-    level = parse_json(by_name["level.json"]["data"], "level.json")
-    need(len(by_name["level.json"]["data"]) <= CAPS["level"], "level.json: over its cap")
+    try:
+        level_bytes = gunzip_level(by_name["level.json.gz"]["data"], CAPS["level"])
+    except ZipBad as error:
+        need(False, f"level.json.gz: {error}")
+    need(by_name["level.json.gz"]["data"][:10] == b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff", "level.json.gz: canonical header")
+    level = parse_json(level_bytes, "level.json")
     keys_within(level, ["bgmOffset", "entities"], "level.json")
 
     summary = project.get("summary")
@@ -788,14 +855,18 @@ def check_file(path):
     need(project["minor"] == expected_minor(history is not None), f"project.json: minor {project['minor']} is not the lowest the content needs")
     need(project["patch"] == expected_patch(carriers), f"project.json: patch {project['patch']} is not the lowest the content needs")
 
-    # Every entry but project.json is named by a pointer, and every pointer names an entry.
+    projection = scp_projection(project)
+    for name, value in projection.items():
+        need(name in by_name, f"missing {name}")
+        need(js_json(parse_json(by_name[name]["data"], name)) == js_json(value), f"{name}: project projection")
+    # Every authoritative entry is named by a pointer, and every pointer names an entry.
     for name in names[1:]:
-        need(name in pointers, f"{name}: no pointer names it")
+        need(name in pointers or name in projection, f"{name}: no pointer names it")
     for name, what in pointers.items():
         need(name in by_name, f"{what}: no entry {name}")
-    order = ["project.json", "level.json"] + history_order(history) + \
+    order = ["project.json", "level.json.gz"] + history_order(history) + \
         [n for n in names if n.startswith("assets/cover.")] + \
-        [n for n in names if n.startswith("assets/preview.")] + [n for n in names if n.startswith("bgm/")]
+        [n for n in names if n.startswith("assets/preview.")] + [n for n in names if n.startswith("bgm/")] + list(projection)
     need(names == order, f"entry order {names}")
     for e in entries:
         expected = (0, 8) if e["name"].startswith(EITHER_PREFIXES) else (0,) if e["name"].startswith(STORE_PREFIXES) else (8,)
@@ -1931,7 +2002,9 @@ def read_history(z, pointers):
 
 def read_entry_json(z, e, cap):
     try:
-        data = z.read(e, cap)
+        data = z.read(e, 2 * cap + 1024 if e["key"] == "level.json.gz" else cap)
+        if e["key"] == "level.json.gz":
+            data = gunzip_level(data, cap)
     except (ZipBad, struct.error):
         raise ReadFailure("damaged", e["name"])
     try:
@@ -2009,19 +2082,22 @@ def read_nxsp(blob, info=None):
         named = {}
         for path, name, prefix in pointers:
             key = unicodedata.normalize("NFC", name)
-            if (key != prefix) if prefix == "level.json" else (not key.startswith(prefix) or key == prefix):
+            if (key not in ("level.json", "level.json.gz")) if prefix == "level.json" else (not key.startswith(prefix) or key == prefix):
                 report.append(("damaged", path))
             if key in named:
                 report.append(("damaged", path))
             named[key] = path
         if not newer_major:
             for e in z.entries:
-                if is_ignored(e) or e["key"] == "project.json" or e["key"] in named:
+                if is_ignored(e) or e["key"] == "project.json" or e["key"] in named or scp_owned(e["key"], pj.get("id")):
                     continue
                 report.append(("unknown-entry", e["name"]))
-        le = z.get("level.json")
+        pointer = unicodedata.normalize("NFC", project["level"]) if project else None
+        candidates = [name for name in ("level.json", "level.json.gz") if any(e["key"] == name for e in z.entries)]
+        level_name = pointer if pointer in ("level.json", "level.json.gz") else candidates[0] if len(candidates) == 1 else None
+        le = z.get(level_name) if level_name else None
         if le is None:
-            report.append(("damaged", "level.json"))
+            report.append(("damaged", level_name or "level.json"))
             return "unreadable", None, report
         level = read_entry_json(z, le, CAPS["level"])
         if isinstance(level, dict):

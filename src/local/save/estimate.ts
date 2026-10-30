@@ -9,7 +9,7 @@ import { chainRows, ModelError } from './model'
 // The Save dialogs' size preview: `estimateSaveSize`, from
 // stored sizes, never inflating or hashing a body. For the rows the write would hold, each
 // distinct root's and node's row `size` and each chunk's stored length; the media rows' sizes;
-// the manifest by a per-entry and per-record estimate, deflated; `level.json` from the head's
+// the manifest by a per-entry and per-record estimate, deflated; level data from the head's
 // records the same way. Cached per chain by the saved session, its `lastSeq` and the head's BGM,
 // once no open's import is still writing the chain's rows.
 
@@ -29,7 +29,7 @@ export type SaveSizeEstimate = {
     bgmName?: string
     /** Media the head references that the media store lacks: not held, so written as metadata. */
     mediaMissing?: number
-    /** What every write holds: `project.json`, `level.json`, the head's cover and preview audio. */
+    /** Project metadata, gzip level data, the package, and the head's cover and preview audio. */
     base: number
     /**
      * Counted while an open's import still writes the chain's rows: what is stored so far, which
@@ -56,6 +56,8 @@ export const ESTIMATE = {
     levelOverStored: 1.49,
     /** `project.json` without its ancestors, and the ZIP's headers. */
     projectBytes: 700,
+    /** The 21 compressed package responses, ZIP headers and gzip wrapper. */
+    packageBytes: 4400,
     /** Each ancestor id in `revision.ancestors`. */
     ancestorBytes: 40,
 }
@@ -234,6 +236,7 @@ export const estimateSaveSize = async (
         ...(missing ? { mediaMissing: missing } : {}),
         base: Math.round(
             ESTIMATE.projectBytes +
+                ESTIMATE.packageBytes +
                 ancestors * ESTIMATE.ancestorBytes +
                 headStored * ESTIMATE.levelOverStored +
                 assets,

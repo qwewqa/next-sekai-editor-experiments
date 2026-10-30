@@ -7,6 +7,7 @@ import { isHash16Hex } from '../hash'
 import type { RecordValue } from '../records/canonical'
 import { rootVersion } from '../records/snapshot'
 import { toWellFormed } from '../records/wellFormed'
+import { gzipLevel, gzipStoredCap } from './gzip'
 import { checkDepth, isObject, setKey, wellFormedJson } from './json'
 import {
     carriersIn,
@@ -41,10 +42,11 @@ import {
     type RevisionForm,
 } from './project'
 import { NXSP_CAPS, type NxspCaps } from './read'
+import { scpEntries, scpPaths } from './scp'
 import { MANIFEST_VERSION, minorOf, NXSP_FORMAT, NXSP_VERSION, patchOf } from './version'
 
 // The shared builder, its format half: from what a write holds, already decided by
-// the history model, it lays out `project.json`, `level.json`, the segments, the
+// the history model, it lays out `project.json`, `level.json.gz`, the segments, the
 // manifest, `chunks.bin` and the media by the format's rules, as a plan. It reads no
 // clock, random source or device itself, and never a source's bytes.
 
@@ -110,7 +112,7 @@ export type BuildInput = {
         completeFrom?: string
     }
     levelVersion: number
-    /** The level data value `level.json` holds. */
+    /** The decoded level data value. */
     level: unknown
     editor: { defaultGuideColors?: readonly number[] }
     /** The head's note count and duration (`summaryOf`). */
@@ -160,10 +162,7 @@ const deflated = (bytes: Uint8Array): PlannedEntry['parts'] => [
     { kind: 'bytes', data: deflateRaw(bytes) },
 ]
 
-/**
- * A planned entry for new JSON: deflated, with the CRC and size of its uncompressed bytes. Its
- * size and nesting are checked against the caps first, so nothing past them is deflated.
- */
+/** A capped JSON entry; level data uses gzip and ZIP STORE. */
 const jsonEntry = (
     name: string,
     value: unknown,
@@ -178,6 +177,16 @@ const jsonEntry = (
     }
     const bytes = encoder.encode(text)
     if (bytes.length > cap) fail(`${name} is over its cap`, limit)
+    if (name === 'level.json.gz') {
+        const data = gzipLevel(bytes)
+        return {
+            name,
+            method: 0,
+            crc32: crc32(data),
+            uncompressedSize: data.length,
+            parts: [{ kind: 'bytes', data }],
+        }
+    }
     return {
         name,
         method: 8,
@@ -662,7 +671,12 @@ export const planNxsp = (
         ...(media.preview?.entry ? [media.preview.entry] : []),
         ...(media.bgm?.entry ? [media.bgm.entry] : []),
     ]
-    const names = ['project.json', 'level.json', ...bodyEntries.map((entry) => entry.name)]
+    const names = [
+        'project.json',
+        'level.json.gz',
+        ...bodyEntries.map((entry) => entry.name),
+        ...scpPaths(input.id),
+    ]
     let minor: number
     let patch: number
     try {
@@ -700,7 +714,7 @@ export const planNxsp = (
             revision,
             ...(input.name === undefined ? {} : { name: input.name }),
             ...(input.exportName === undefined ? {} : { exportName: input.exportName }),
-            level: 'level.json',
+            level: 'level.json.gz',
             editor: input.editor.defaultGuideColors?.length
                 ? { defaultGuideColors: [...input.editor.defaultGuideColors] }
                 : {},
@@ -714,8 +728,11 @@ export const planNxsp = (
 
     const entries: PlannedEntry[] = [
         jsonEntry('project.json', project, caps, [caps.project, 'project']),
-        jsonEntry('level.json', input.level, caps, [caps.level, 'level']),
+        jsonEntry('level.json.gz', input.level, caps, [caps.level, 'level']),
         ...bodyEntries,
+        ...[...scpEntries(project)].map(([name, value]) =>
+            jsonEntry(name, value, caps, [caps.project * 4 + 16384, 'project']),
+        ),
     ]
     checkLimits(entries, sources, caps)
     return {
@@ -784,6 +801,7 @@ export const storedSize = (entry: PlannedEntry, sources: readonly PinnedSource[]
 const capOf = (name: string, caps: BuildCaps): [number, PlanLimit] | undefined => {
     if (name === 'project.json') return [caps.project, 'project']
     if (name === 'level.json') return [caps.level, 'level']
+    if (name === 'level.json.gz') return [gzipStoredCap(caps.level), 'level']
     if (name === 'history/chunks.bin') return [caps.chunksBin, 'chunks']
     if (name.startsWith('history/')) return [caps.manifest, 'part']
     if (name.startsWith('bgm/')) return [caps.media, 'bgm']

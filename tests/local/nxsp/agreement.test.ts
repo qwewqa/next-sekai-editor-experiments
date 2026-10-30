@@ -8,6 +8,7 @@ import { inflateRawSync } from 'node:zlib'
 import { deflateChunk } from '../../../src/local/chunkVerify'
 import { hash16Sync, toHex } from '../../../src/local/hash'
 import { executePlan, parseSavedAt, planNxsp, readNxsp } from '../../../src/local/nxsp'
+import { gunzipLevel, gzipLevel } from '../../../src/local/nxsp/gzip'
 import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
 import { editStep, futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 import { rawZip, type RawEntry } from '../../zip/rawZip'
@@ -428,9 +429,12 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
             item.data = encoder.encode(text.replace('"rating":12', `"rating":${'9'.repeat(5000)}`))
         }),
         'huge-int-level': await probe((items) => {
-            const { item, text } = textOf(items, 'level.json')
-            item.data = encoder.encode(
-                text.replace(/"bgmOffset":[^,]+/, `"bgmOffset":${'7'.repeat(5000)}`),
+            const item = items.find((entry) => entry.name === 'level.json.gz')!
+            const text = new TextDecoder().decode(gunzipLevel(item.data, 256 * 1024 * 1024))
+            item.data = gzipLevel(
+                encoder.encode(
+                    text.replace(/"bgmOffset":[^,]+/, `"bgmOffset":${'7'.repeat(5000)}`),
+                ),
             )
         }),
         'newer-major': await probe((items) => {

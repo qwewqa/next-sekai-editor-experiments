@@ -8,6 +8,7 @@ import { equalBytes, fromHex16, hash16, sha256, toHex } from '../hash'
 import type { SnapshotRecords } from '../records/encode'
 import { checkHeader } from '../records/schema'
 import { decodeSnapshot } from '../records/snapshot'
+import { gunzipLevel, GzipError, gzipStoredCap } from './gzip'
 import { isObject, JSON_DEPTH_CAP, JsonError, parseJsonBytes } from './json'
 import {
     checkPart,
@@ -19,6 +20,7 @@ import {
     type SegmentForm,
 } from './manifest'
 import { readProject, type MediaForm, type ProjectExtra, type ProjectV1 } from './project'
+import { isScpEntry } from './scp'
 import { NXSP_FORMAT, NXSP_MINOR, NXSP_PATCH, NXSP_VERSION } from './version'
 
 // The `.nxsp` reader: what a file holds, and a report of everything
@@ -102,7 +104,7 @@ export type ReadMedia = { form: MediaForm & { file: string }; entry: ZipEntry; b
 export type NxspRead =
     /** A ZIP without `project.json`, or whose `format` isn't `nxsp`. */
     | { kind: 'not-project' }
-    /** Nothing can be opened: not a readable ZIP, or `project.json` or `level.json` unreadable. */
+    /** Nothing can be opened: the ZIP, project metadata or level payload is unreadable. */
     | { kind: 'unreadable'; report: ReportItem[] }
     | {
           kind: 'nxsp'
@@ -112,7 +114,7 @@ export type NxspRead =
           /** Its known fields; absent for a higher major version, where only the level is read. */
           project?: ProjectV1
           extra: ProjectExtra
-          /** The parsed `level.json`. */
+          /** The decoded and parsed level payload. */
           level: unknown
           history?: ReadHistory
           media: Partial<Record<MediaKind, ReadMedia>>
@@ -139,11 +141,12 @@ const readEntry = async (reader: ZipReader, entry: ZipEntry, cap: number) => {
 }
 
 const readJson = async (reader: ZipReader, entry: ZipEntry, cap: number, depth: number) => {
-    const bytes = await readEntry(reader, entry, cap)
+    const compressed = entry.key === 'level.json.gz'
+    const bytes = await readEntry(reader, entry, compressed ? gzipStoredCap(cap) : cap)
     try {
-        return parseJsonBytes(bytes, depth)
+        return parseJsonBytes(compressed ? gunzipLevel(bytes, cap) : bytes, depth)
     } catch (error) {
-        if (error instanceof JsonError)
+        if (error instanceof JsonError || error instanceof GzipError)
             throw new ReadFailure({ reason: 'damaged', path: entry.name, detail: error.message })
         throw error
     }
@@ -236,7 +239,9 @@ export const readNxsp = async (
         for (const { path, name, prefix } of pointers) {
             const key = name.normalize('NFC')
             if (
-                prefix === 'level.json' ? key !== prefix : !key.startsWith(prefix) || key === prefix
+                prefix === 'level.json'
+                    ? !['level.json', 'level.json.gz'].includes(key)
+                    : !key.startsWith(prefix) || key === prefix
             )
                 damaged(path, `outside ${prefix}`)
             if (named.has(key)) damaged(path, `names the entry ${named.get(key) ?? ''} names`)
@@ -244,16 +249,27 @@ export const readNxsp = async (
         }
         if (!newerMajor) {
             for (const entry of reader.entries) {
-                if (isIgnoredEntry(entry) || entry.key === 'project.json' || named.has(entry.key))
+                if (
+                    isIgnoredEntry(entry) ||
+                    entry.key === 'project.json' ||
+                    named.has(entry.key) ||
+                    isScpEntry(entry.key, project?.id)
+                )
                     continue
                 report.push({ reason: 'unknown-entry', path: entry.name })
             }
         }
 
-        // The level: from `level.json` always, the one name its pointer may hold.
-        const levelEntry = reader.get('level.json')
+        // An explicit supported pointer never falls back to a stale alternate payload.
+        const pointer = project?.level.normalize('NFC')
+        const supported = pointer === 'level.json' || pointer === 'level.json.gz'
+        const candidates = ['level.json', 'level.json.gz'].filter((name) =>
+            reader.entries.some((entry) => entry.key === name),
+        )
+        const levelName = supported ? pointer : candidates.length === 1 ? candidates[0] : undefined
+        const levelEntry = levelName ? reader.get(levelName) : undefined
         if (!levelEntry) {
-            damaged('level.json', 'missing')
+            damaged(levelName ?? 'level.json', 'missing or ambiguous')
             return { kind: 'unreadable', report }
         }
         const level = await readJson(reader, levelEntry, cap.level, cap.depth)

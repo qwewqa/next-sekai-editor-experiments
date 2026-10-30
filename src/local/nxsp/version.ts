@@ -1,3 +1,5 @@
+import { SCP_FIXED_PATHS } from './scp'
+
 // Pinned `.nxsp` constants; `tests/local/formatVersions.test.ts` asserts each. What
 // each number guards, and the checklist for changing a format, is `docs/format-versioning.md`.
 
@@ -51,6 +53,9 @@ export const MINOR_TABLE = {
     zipEntry: {
         'project.json': 0,
         'level.json': 0,
+        'level.json.gz': 0,
+        ...Object.fromEntries(SCP_FIXED_PATHS.map((name) => [name, 0])),
+        'sonolus/levels/': 0,
         'history/segments/': 0,
         'history/manifest.json': 0,
         'history/chunks.bin': 0,
@@ -73,6 +78,9 @@ export const PATCH_TABLE = {
     zipEntry: {
         'project.json': 0,
         'level.json': 0,
+        'level.json.gz': 0,
+        ...Object.fromEntries(SCP_FIXED_PATHS.map((name) => [name, 0])),
+        'sonolus/levels/': 0,
         'history/segments/': 0,
         'history/manifest.json': 0,
         'history/chunks.bin': 0,
