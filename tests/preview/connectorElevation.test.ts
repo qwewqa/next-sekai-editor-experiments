@@ -1,6 +1,121 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { elevationConnectorFracs } from '../../src/preview/engine/connectorElevation'
+import {
+    approach,
+    createLayout,
+    createViewport,
+    defaultCameraInfo,
+    elevationProjection,
+    perspectiveVec,
+} from '../../src/preview/engine/layout'
+import { applyAffine, ease, EaseType, type Vec } from '../../src/preview/engine/math'
+
+const distanceToSegment = (point: Vec, start: Vec, end: Vec) => {
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const length = Math.hypot(dx, dy)
+    if (!length) return Math.hypot(point.x - start.x, point.y - start.y)
+    const along = ((point.x - start.x) * dx + (point.y - start.y) * dy) / length
+    if (along < 0) return Math.hypot(point.x - start.x, point.y - start.y)
+    if (along > length) return Math.hypot(point.x - end.x, point.y - end.y)
+    return Math.abs((point.x - start.x) * dy - (point.y - start.y) * dx) / length
+}
+
+test('circular elevation loops avoid thin pieces while following both projected edges', () => {
+    const layout = createLayout(createViewport(1920, 1080), defaultCameraInfo(), false)
+    const duration = 0.35 + 3.65 * ((12 - 6) / 11) ** 1.31
+    const anchors = [
+        [0, 0],
+        [-4, 4],
+        [0, 8],
+        [4, 4],
+        [0, 0],
+    ] as const
+    let pieces = 0
+    let thin = 0
+    for (let loop = 0; loop < 6; loop++) {
+        const travel = approach(layout, 1 - (2 + loop * 0.25 - 1.75) / duration)
+        for (let segment = 0; segment < 4; segment++) {
+            const first = anchors[segment]
+            const last = anchors[segment + 1]
+            assert.ok(first && last)
+            const curve = segment % 2 ? EaseType.inCirc : EaseType.outCirc
+            const sample = (fraction: number) => {
+                const lane = first[0] + (last[0] - first[0]) * ease(curve, fraction)
+                const projection = elevationProjection(
+                    layout,
+                    first[1] + (last[1] - first[1]) * fraction,
+                )
+                const edges = [-2, 2].map((side) =>
+                    applyAffine(projection, perspectiveVec(layout, lane + side, 1, travel)),
+                )
+                return { edges: [...edges, ...edges], rotation: 0 }
+            }
+            const fractions = elevationConnectorFracs(sample, 1)
+            pieces += fractions.length
+            let previous = 0
+            for (const fraction of fractions) {
+                const start = sample(previous).edges
+                const end = sample(fraction).edges
+                const ys = [...start, ...end].map((edge) => edge.y)
+                if ((Math.max(...ys) - Math.min(...ys)) * 540 < 1) thin++
+                for (let step = 1; step < 128; step++) {
+                    const actual = sample(previous + ((fraction - previous) * step) / 128).edges
+                    for (const side of [0, 1]) {
+                        const point = actual[side]
+                        const a = start[side]
+                        const b = end[side]
+                        assert.ok(point && a && b)
+                        assert.ok(distanceToSegment(point, a, b) * 540 < 1.1)
+                    }
+                }
+                previous = fraction
+            }
+            assert.equal(previous, 1)
+        }
+    }
+    assert.ok(pieces < 300, `${pieces} pieces`)
+    assert.ok(thin < 50, `${thin} pieces below one pixel`)
+})
+
+test('elevation sampling reuses each parent midpoint and quarter sample', () => {
+    const calls: number[] = []
+    const fractions = elevationConnectorFracs((fraction) => {
+        calls.push(fraction)
+        return { edges: [{ x: fraction ** 2, y: fraction }], rotation: 0 }
+    }, 1)
+    assert.ok(fractions.length > 1)
+    assert.equal(calls.length, 4 * fractions.length + 1)
+    assert.equal(new Set(calls).size, calls.length)
+})
+
+test('nonlinear travel along a straight elevation edge needs one segment', () => {
+    assert.deepEqual(
+        elevationConnectorFracs(
+            (fraction) => ({
+                edges: [{ x: ease(EaseType.inCirc, fraction), y: 0 }],
+                rotation: 0,
+            }),
+            1,
+        ),
+        [1],
+    )
+})
+
+test('opposite edge retracing within the chord remains subdivided', () => {
+    const sample = (fraction: number) => ({
+        edges: [
+            { x: fraction, y: 0 },
+            { x: fraction + 0.4 * Math.sin(2 * Math.PI * fraction), y: 0.1 },
+        ],
+        rotation: 0,
+    })
+    const fractions = elevationConnectorFracs(sample, 1)
+    assert.ok(fractions.length > 1)
+    const xs = [0, ...fractions].map((fraction) => sample(fraction).edges[1]?.x ?? NaN)
+    assert.ok(xs.some((value, index) => index > 0 && value < (xs[index - 1] ?? -Infinity)))
+})
 
 test('elevation sampling retains alpha density even on geometrically straight edges', () => {
     const fractions = elevationConnectorFracs(
