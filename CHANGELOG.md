@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed missing bends in elevated connectors with Back or Elastic easing.
+
 - Improved preview performance for curved connectors between elevated notes.
 - (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.
 - (Web) By default, the editor now sends usage statistics unless Do Not Track or Global Privacy Control is enabled in your browser. To stop sending them, turn off Settings › About › Send Usage Statistics. The privacy page lists what is sent and how long it is kept.

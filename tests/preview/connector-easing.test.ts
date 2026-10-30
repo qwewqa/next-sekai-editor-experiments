@@ -10,13 +10,17 @@ import { circularConnectorFracs } from '../../src/preview/engine/connectorCurve'
 import type { PreviewFrameContext } from '../../src/preview/engine/context'
 import {
     approach,
+    computeStageTransform,
     createLayout,
     createViewport,
+    currentLayoutTransform,
     defaultCameraInfo,
     perspectiveVec,
+    stageTransformToAffine,
 } from '../../src/preview/engine/layout'
 import {
     EaseType,
+    applyAffine,
     connectorInterpFrac,
     ease,
     type EaseTypeValue,
@@ -25,6 +29,7 @@ import {
 } from '../../src/preview/engine/math'
 import { ConnectorKind } from '../../src/preview/engine/model'
 import { resolveSkin, type PreviewSkin, type Sprite } from '../../src/preview/skin'
+import { turningKinds, turningRoots } from './connector-turns.fixture'
 
 const sprite: Sprite = { u0: 0, v0: 0, u1: 1, v1: 1 }
 const skin: PreviewSkin = { ...resolveSkin(() => undefined), guides: [sprite] }
@@ -285,3 +290,173 @@ test('NONE evaluates as IN_STEP, the editor None its ease', () => {
     for (const x of [-0.5, 0, 0.3, 0.5, 1, 1.5])
         assert.equal(ease(EaseType.none, x), ease(EaseType.inStep, x))
 })
+
+for (const curve of [
+    EaseType.inBack,
+    EaseType.outBack,
+    EaseType.inOutBack,
+    EaseType.outInBack,
+    EaseType.inElastic,
+    EaseType.outElastic,
+    EaseType.inOutElastic,
+    EaseType.outInElastic,
+]) {
+    test(`turning elevation ${curve} retains excursions between adaptive probes`, () => {
+        for (const tilt of [0, 0.5, 1]) {
+            const layout = createLayout(
+                createViewport(1920, 1080),
+                { ...defaultCameraInfo(), stageTilt: tilt },
+                false,
+            )
+            const transform = (_q: number, u: number) =>
+                computeStageTransform(
+                    layout,
+                    currentLayoutTransform(layout),
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0.05 * u,
+                )
+            for (const [begin, end] of [
+                [0, 1],
+                [1, 0],
+                [0.137, 0.923],
+                [0.94, 0.71],
+                [0.753, 0.877],
+                [0.877, 0.753],
+                [0.331, 0.671],
+                [0, 0.02],
+                [0.98, 1],
+                [0.49, 0.51],
+                [0.51, 0.49],
+                [0.5, 0.5],
+                [0.5, 0.50000000001],
+                [0, 0.33125],
+                [0.66875, 1],
+                [0, 0.10625],
+                [0.89375, 1],
+                [0.33125, 0.5],
+                [0.5, 0.33125],
+                [0.5, 0.66875],
+                [0.66875, 0.5],
+                ...(curve === EaseType.outInElastic
+                    ? ([
+                          [0.21200000000000002, 0.7308],
+                          [0.7956, 0.2576],
+                      ] as const)
+                    : []),
+            ] as const) {
+                if (
+                    curve === EaseType.outInElastic &&
+                    (begin === 0.21200000000000002 || begin === 0.7956)
+                ) {
+                    const visibleEnd = begin + (end - begin)
+                    const join = (0.5 - begin) / (visibleEnd - begin)
+                    assert.ok(begin + (visibleEnd - begin) * join < 0.5)
+                }
+                for (const [firstSize, lastSize] of [
+                    [0.5, 0.5],
+                    [0.05, 1],
+                    [1, 0],
+                ] as const) {
+                    const quads: Quad[] = []
+                    drawConnector(
+                        { now: 0, layout },
+                        (_sprite, quad) => quads.push(quad),
+                        skin,
+                        ConnectorKind.guideNeutral,
+                        ConnectorVisualState.waiting,
+                        curve,
+                        {
+                            lane: -3,
+                            size: firstSize,
+                            visualProgress: 0.7,
+                            targetTime: 1,
+                            easeFrac: begin,
+                            transform: transform(0, 0),
+                        },
+                        {
+                            lane: 3,
+                            size: lastSize,
+                            visualProgress: 0.7,
+                            targetTime: 1,
+                            easeFrac: end,
+                            transform: transform(1, 1),
+                        },
+                        1,
+                        -3,
+                        1,
+                        1,
+                        1,
+                        1,
+                        1,
+                        0,
+                        false,
+                        false,
+                        1,
+                        transform,
+                    )
+                    assert.ok(quads.length > 0)
+                    const travel = approach(layout, 0.7)
+                    const headEased = ease(curve, begin)
+                    const denominator = ease(curve, end) - headEased
+                    if (
+                        curve === EaseType.inElastic &&
+                        begin === 0.137 &&
+                        end === 0.923 &&
+                        firstSize === 0.05 &&
+                        lastSize === 1
+                    ) {
+                        const widthAt = (root: number) =>
+                            firstSize +
+                            ((lastSize - firstSize) * (ease(curve, root) - headEased)) / denominator
+                        assert.ok(widthAt(0.41526010632514954) < 0)
+                        assert.ok(widthAt(0.565260112285614) > 1)
+                        assert.ok(widthAt(0.7152600884437561) < 0)
+                    }
+                    let maximum = 0
+                    const probes = Array.from({ length: 2049 }, (_, step) => step / 2048)
+                    probes.push(1e-12, 1e-9, 0.5 - 1e-12, 0.5 + 1e-12, 1 - 1e-9, 1 - 1e-12)
+                    const join = (0.5 - begin) / (end - begin)
+                    for (const delta of [-1e-12, 0, 1e-12])
+                        if (join + delta > 0 && join + delta < 1) probes.push(join + delta)
+                    const roots = turningRoots[turningKinds.indexOf(curve)]
+                    assert.ok(roots)
+                    for (const root of roots) {
+                        const u = (root - begin) / (end - begin)
+                        if (u > 0 && u < 1) probes.push(u)
+                    }
+                    for (const u of probes) {
+                        const q =
+                            Math.abs(denominator) < 1e-6
+                                ? u
+                                : (ease(curve, begin + (end - begin) * u) - headEased) / denominator
+                        const size = firstSize + (lastSize - firstSize) * q
+                        if (size <= 0) continue
+                        for (const side of [-1, 1]) {
+                            const point = applyAffine(
+                                stageTransformToAffine(transform(q, u)),
+                                perspectiveVec(layout, -3 + 6 * q + side * size, 1, travel),
+                            )
+                            let error = Infinity
+                            for (const quad of quads)
+                                error = Math.min(
+                                    error,
+                                    side < 0
+                                        ? segmentDistance(point, quad.bl, quad.tl)
+                                        : segmentDistance(point, quad.br, quad.tr),
+                                )
+                            maximum = Math.max(maximum, error * 540)
+                        }
+                    }
+                    assert.ok(
+                        maximum < 1.1,
+                        `${tilt}/${begin}/${end}/${firstSize}/${lastSize}: ${maximum} px`,
+                    )
+                }
+            }
+        }
+    })
+}

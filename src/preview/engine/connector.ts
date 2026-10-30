@@ -784,6 +784,11 @@ const drawConnectorDefault = (
                 ? 0
                 : (Math.abs(endAlpha - startAlpha) * alphaOption * quality) /
                       (2 * CONNECTOR_ALPHA_ERROR),
+            constantInterpFrac < 0 && Math.abs(tailEased - headEased) >= 1e-6
+                ? easeType
+                : EaseType.linear,
+            startEaseFrac,
+            endEaseFrac,
         )
         geometryDetail = circularFracs.length / quality
     } else if (

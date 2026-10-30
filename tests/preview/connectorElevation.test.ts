@@ -10,6 +10,7 @@ import {
     perspectiveVec,
 } from '../../src/preview/engine/layout'
 import { applyAffine, ease, EaseType, type Vec } from '../../src/preview/engine/math'
+import { turningKinds, turningRoots } from './connector-turns.fixture'
 
 const distanceToSegment = (point: Vec, start: Vec, end: Vec) => {
     const dx = end.x - start.x
@@ -189,4 +190,80 @@ test('straight elevation connectors need one segment and disabled quality stays 
     const sample = (fraction: number) => ({ edges: [{ x: fraction, y: fraction }], rotation: 0 })
     assert.deepEqual(elevationConnectorFracs(sample, 1), [1])
     assert.deepEqual(elevationConnectorFracs(sample, 0), [1])
+})
+
+test('turn partitions match engine float32 roots through clipped and reversed boundaries', () => {
+    for (const [index, kind] of turningKinds.entries()) {
+        const roots = turningRoots[index]
+        assert.ok(roots)
+        const domains = [
+            [0, 1],
+            [1, 0],
+            [0.137, 0.923],
+            [0.923, 0.137],
+            [0.5, 0.5],
+        ]
+        for (const root of roots)
+            domains.push(
+                [root, 1],
+                [1, root],
+                [0, root],
+                [root, 0],
+                [root - 1e-7, root + 1e-7],
+                [root + 1e-7, root - 1e-7],
+            )
+        for (const domain of domains) {
+            const [start, end] = domain
+            assert.ok(start !== undefined && end !== undefined)
+            const calls: number[] = []
+            const fractions = elevationConnectorFracs(
+                (fraction) => {
+                    calls.push(fraction)
+                    return { edges: [{ x: fraction, y: 0 }], rotation: 0 }
+                },
+                1,
+                0,
+                kind,
+                start,
+                end,
+            )
+            const expected = roots
+                .filter((root) => root > Math.min(start, end) && root < Math.max(start, end))
+                .map((root) => (root - start) / (end - start))
+                .sort((a, b) => a - b)
+            assert.deepEqual(fractions, [...expected, 1], `${kind}/${start}/${end}`)
+            assert.equal(calls.length, 4 * fractions.length + 1)
+            assert.equal(new Set(calls).size, calls.length)
+        }
+    }
+})
+
+test('global budget overflow covers the full curve while later turns remain pending', () => {
+    for (const kind of turningKinds) {
+        for (const [start, end] of [
+            [0, 1],
+            [1, 0],
+        ] as const) {
+            const calls: number[] = []
+            const fractions = elevationConnectorFracs(
+                (fraction) => {
+                    calls.push(fraction)
+                    return { edges: [{ x: fraction, y: 0 }], rotation: 0 }
+                },
+                1,
+                1e6,
+                kind,
+                start,
+                end,
+            )
+            assert.deepEqual(
+                fractions,
+                Array.from({ length: 128 }, (_, index) => (index + 1) / 128),
+            )
+            assert.ok(
+                Math.max(...calls) < 1,
+                'fallback occurred before sampling the last root span',
+            )
+        }
+    }
 })
