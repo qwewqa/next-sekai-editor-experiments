@@ -37,6 +37,8 @@ export type Modified = { dosTime: number; dosDate: number }
 export type CopyCheck = { kind: 'entryCrc' }
 
 export type PlanPart =
+    /** Derived package JSON, serialized after its resource hashes are known. */
+    | { kind: 'scp'; project: Record<string, unknown> }
     /** New data, already deflated for method 8. */
     | { kind: 'bytes'; data: Uint8Array }
     /** A source entry's whole data, by its central-directory index; with `inflate`, uncompressed. */
@@ -52,7 +54,7 @@ export type PlanPart =
 export type PlannedEntry = {
     name: string
     method: 0 | 8
-    /** Given when the builder knows it; required for method 8. */
+    /** Given when the builder knows it; required for method 8 except SCP projections. */
     crc32?: number
     uncompressedSize?: number
     parts: PlanPart[]

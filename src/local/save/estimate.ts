@@ -57,7 +57,7 @@ export const ESTIMATE = {
     /** `project.json` without its ancestors, and the ZIP's headers. */
     projectBytes: 700,
     /** The five compressed package responses, ZIP headers and gzip wrapper. */
-    packageBytes: 2100,
+    packageBytes: 2700,
     /** Each ancestor id in `revision.ancestors`. */
     ancestorBytes: 40,
 }

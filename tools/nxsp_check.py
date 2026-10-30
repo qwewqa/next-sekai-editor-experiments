@@ -61,19 +61,21 @@ def scp_owned(name, doc_id=None):
                                      name == f"sonolus/levels/{scp_level_name(doc_id)}")
 
 
-def scp_projection(project):
+def scp_projection(project, entries):
     def srl(file):
-        return {"hash": "", "url": "/" + file}
+        need(file in entries, f"no resource {file}")
+        return {"hash": hashlib.sha1(entries[file]["data"]).hexdigest(), "url": "/" + file}
 
     def dependency(title, author="##:Burrito#1000"):
         return dict(name="coconut-next-sekai-1", source="https://coconut.sonolus.com/next-sekai",
-                    title=title, subtitle="Next SEKAI", author=author, tags=[{"title": "#PINNED"}])
+                    title=title, subtitle="Next SEKAI", author=author, tags=[{"title": "#PINNED"}], thumbnail={})
 
     engine = dict(dependency("Next SEKAI", "##:qwewqa#590353"), version=13,
-                  skin=dict(dependency("Next SEKAI 01"), version=4),
-                  background=dict(dependency("Next SEKAI"), version=2),
-                  effect=dict(dependency("Next SEKAI 01"), version=5),
-                  particle=dict(dependency("Next SEKAI"), version=3))
+                  playData={}, watchData={}, previewData={}, tutorialData={}, configuration={},
+                  skin=dict(dependency("Next SEKAI 01"), version=4, data={}, texture={}),
+                  background=dict(dependency("Next SEKAI"), version=2, data={}, image={}, configuration={}),
+                  effect=dict(dependency("Next SEKAI 01"), version=5, data={}, audio={}),
+                  particle=dict(dependency("Next SEKAI"), version=3, data={}, texture={}))
     meta = project.get("metadata", {})
     name = scp_level_name(project["id"])
     title = meta.get("title") or re.sub(r"\.nxsp$", "", project["revision"].get("fileName", ""), flags=re.I) or project.get("name") or name
@@ -82,8 +84,7 @@ def scp_projection(project):
                  useSkin={"useDefault": True}, useBackground={"useDefault": True},
                  useEffect={"useDefault": True}, useParticle={"useDefault": True})
     for field, form in (("cover", meta.get("cover", {})), ("bgm", project.get("bgm", {}))):
-        if "file" in form:
-            level[field] = srl(form["file"])
+        level[field] = srl(form["file"]) if "file" in form else {}
     level["data"] = srl("level.json.gz")
     if "file" in meta.get("preview", {}):
         level["preview"] = srl(meta["preview"]["file"])
@@ -853,7 +854,7 @@ def check_file(path):
     need(project["minor"] == expected_minor(history is not None), f"project.json: minor {project['minor']} is not the lowest the content needs")
     need(project["patch"] == expected_patch(carriers), f"project.json: patch {project['patch']} is not the lowest the content needs")
 
-    projection = scp_projection(project)
+    projection = scp_projection(project, by_name)
     for name, value in projection.items():
         need(name in by_name, f"missing {name}")
         need(js_json(parse_json(by_name[name]["data"], name)) == js_json(value), f"{name}: project projection")

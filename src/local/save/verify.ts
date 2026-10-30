@@ -5,7 +5,7 @@ import type { PlannedChunk } from '../nxsp/build'
 import { gunzipLevel, gzipStoredCap } from '../nxsp/gzip'
 import { isObject, parseJsonBytes } from '../nxsp/json'
 import { NXSP_CAPS } from '../nxsp/read'
-import { scpEntries } from '../nxsp/scp'
+import { scpEntries, scpHash } from '../nxsp/scp'
 import { canonicalBytes, type RecordValue } from '../records/canonical'
 import { chunkCrc32 } from '../records/rows'
 
@@ -75,7 +75,15 @@ export const checkBuilt = async (file: Blob, storageChunks: readonly PlannedChun
             Object.keys(level).some((key) => key !== 'entities' && key !== 'bgmOffset')
         )
             fail('level data')
-        const expected = scpEntries(project)
+        const hashes = new Map<string, string>()
+        const resources = new Set<string>()
+        scpEntries(project, (name) => {
+            resources.add(name)
+            return ''
+        })
+        for (const name of resources)
+            hashes.set(name, await scpHash(data.get(name) ?? fail(`no ${name}`)))
+        const expected = scpEntries(project, (name) => hashes.get(name) ?? fail(`no hash ${name}`))
         for (const [name, value] of expected) {
             if (JSON.stringify(json(name)) !== JSON.stringify(value))
                 fail(`${name}: its project projection`)

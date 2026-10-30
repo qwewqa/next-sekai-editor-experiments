@@ -1,7 +1,7 @@
 {
   "source.nxsp": {
-    "fingerprint": "zip:7410:0:f8f1bd0d",
-    "size": 7410,
+    "fingerprint": "zip:7992:0:4f8bc231",
+    "size": 7992,
     "entries": [
       {
         "index": 0,
@@ -88,28 +88,28 @@
         "index": 9,
         "name": "sonolus/levels/info",
         "method": 8,
-        "crc32": 2052584305,
-        "compressedSize": 455,
-        "uncompressedSize": 1604,
+        "crc32": 307198204,
+        "compressedSize": 649,
+        "uncompressedSize": 2029,
         "dataOffset": 5083
       },
       {
         "index": 10,
         "name": "sonolus/levels/list",
         "method": 8,
-        "crc32": 2116645441,
-        "compressedSize": 445,
-        "uncompressedSize": 1567,
-        "dataOffset": 5587
+        "crc32": 2857916748,
+        "compressedSize": 638,
+        "uncompressedSize": 1992,
+        "dataOffset": 5781
       },
       {
         "index": 11,
         "name": "sonolus/levels/nse-a9d652881da36cd59456e01f3a9f54a2",
         "method": 8,
-        "crc32": 831163710,
-        "compressedSize": 487,
-        "uncompressedSize": 1651,
-        "dataOffset": 6113
+        "crc32": 2704444592,
+        "compressedSize": 682,
+        "uncompressedSize": 2076,
+        "dataOffset": 6500
       }
     ]
   }

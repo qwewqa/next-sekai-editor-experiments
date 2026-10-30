@@ -5,20 +5,29 @@ import { isObject } from './json'
 
 type SourceDescriptor<T extends { version: number }> = Required<
     Pick<EngineItem, 'name' | 'source' | 'title' | 'subtitle' | 'author' | 'tags'>
-> & { version: T['version'] }
+> & { version: T['version']; thumbnail: EmptySrl }
+type EmptySrl = Record<string, never>
 type EngineSourceDescriptor = SourceDescriptor<EngineItem> & {
-    skin: SourceDescriptor<EngineItem['skin']>
-    background: SourceDescriptor<EngineItem['background']>
-    effect: SourceDescriptor<EngineItem['effect']>
-    particle: SourceDescriptor<EngineItem['particle']>
+    playData: EmptySrl
+    watchData: EmptySrl
+    previewData: EmptySrl
+    tutorialData: EmptySrl
+    configuration: EmptySrl
+    skin: SourceDescriptor<EngineItem['skin']> & { data: EmptySrl; texture: EmptySrl }
+    background: SourceDescriptor<EngineItem['background']> & {
+        data: EmptySrl
+        image: EmptySrl
+        configuration: EmptySrl
+    }
+    effect: SourceDescriptor<EngineItem['effect']> & { data: EmptySrl; audio: EmptySrl }
+    particle: SourceDescriptor<EngineItem['particle']> & { data: EmptySrl; texture: EmptySrl }
 }
 type PackageLevel = Omit<LevelItem, 'engine' | 'cover' | 'bgm'> & {
     engine: EngineSourceDescriptor
-    cover?: LevelItem['cover']
-    bgm?: LevelItem['bgm']
+    cover: LevelItem['cover'] | EmptySrl
+    bgm: LevelItem['bgm'] | EmptySrl
 }
 
-const srl = (file: string) => ({ hash: '', url: `/${file}` })
 const dependency = (title: string, author = '##:Burrito#1000') => ({
     name: 'coconut-next-sekai-1',
     source: 'https://coconut.sonolus.com/next-sekai',
@@ -26,16 +35,22 @@ const dependency = (title: string, author = '##:Burrito#1000') => ({
     subtitle: 'Next SEKAI',
     author,
     tags: [{ title: '#PINNED' }],
+    thumbnail: {},
 })
 
 /** Reviewed source descriptors; Save never fetches their metadata or resources. */
 const engine = (): EngineSourceDescriptor => ({
     ...dependency('Next SEKAI', '##:qwewqa#590353'),
     version: 13,
-    skin: { ...dependency('Next SEKAI 01'), version: 4 },
-    background: { ...dependency('Next SEKAI'), version: 2 },
-    effect: { ...dependency('Next SEKAI 01'), version: 5 },
-    particle: { ...dependency('Next SEKAI'), version: 3 },
+    playData: {},
+    watchData: {},
+    previewData: {},
+    tutorialData: {},
+    configuration: {},
+    skin: { ...dependency('Next SEKAI 01'), version: 4, data: {}, texture: {} },
+    background: { ...dependency('Next SEKAI'), version: 2, data: {}, image: {}, configuration: {} },
+    effect: { ...dependency('Next SEKAI 01'), version: 5, data: {}, audio: {} },
+    particle: { ...dependency('Next SEKAI'), version: 3, data: {}, texture: {} },
 })
 
 export const scpLevelName = (id: string) =>
@@ -53,8 +68,16 @@ export const isScpEntry = (name: string, id?: string) =>
 
 export const scpPaths = (id: string) => [...SCP_FIXED_PATHS, `sonolus/levels/${scpLevelName(id)}`]
 
+/** SHA-1 names only the generated Sonolus resource, never an authoritative NXSP record. */
+export const scpHash = async (bytes: Uint8Array) =>
+    toHex(new Uint8Array(await crypto.subtle.digest('SHA-1', bytes as Uint8Array<ArrayBuffer>)))
+
 /** The package projects the saved head and only the media the project includes. */
-export const scpEntries = (project: Record<string, unknown>): Map<string, unknown> => {
+export const scpEntries = (
+    project: Record<string, unknown>,
+    hashOf: (file: string) => string,
+): Map<string, unknown> => {
+    const srl = (file: string) => ({ hash: hashOf(file), url: `/${file}` })
     const metadata = isObject(project.metadata) ? project.metadata : {}
     const revision = isObject(project.revision) ? project.revision : {}
     const name = scpLevelName(typeof project.id === 'string' ? project.id : '')
@@ -87,8 +110,8 @@ export const scpEntries = (project: Record<string, unknown>): Map<string, unknow
         useBackground: { useDefault: true },
         useEffect: { useDefault: true },
         useParticle: { useDefault: true },
-        ...(cover === undefined ? {} : { cover: srl(cover) }),
-        ...(bgm === undefined ? {} : { bgm: srl(bgm) }),
+        cover: cover === undefined ? {} : srl(cover),
+        bgm: bgm === undefined ? {} : srl(bgm),
         data: srl('level.json.gz'),
         ...(preview === undefined ? {} : { preview: srl(preview) }),
     }

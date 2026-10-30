@@ -1,22 +1,44 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { deflateRawSync, deflateSync, gunzipSync } from 'node:zlib'
-import { executePlan, planNxsp, readNxsp } from '../../../src/local/nxsp'
+import {
+    executePlan,
+    ExecutionError,
+    inspectNxsp,
+    planNxsp,
+    readNxsp,
+} from '../../../src/local/nxsp'
 import { gunzipLevel, gzipLevel } from '../../../src/local/nxsp/gzip'
 import { scpLevelName, scpPaths } from '../../../src/local/nxsp/scp'
 import { checkBuilt } from '../../../src/local/save/verify'
 import { crc32 } from '../../../src/zip/crc32'
 import { nxspFolder, webFolder } from '../../fixtures-v1/folders'
 import { fresh } from './chain'
-import { crafted, freshFile, jsonOf, levelOf, reasonsOf, setJson, unzip, type Item } from './craft'
-import { COVER_2, PREVIEW } from './helpers'
+import {
+    crafted,
+    freshFile,
+    jsonOf,
+    levelOf,
+    reasonsOf,
+    setJson,
+    unzip,
+    zipItems,
+    type Item,
+} from './craft'
+import { COVER_2, memorySource, PREVIEW } from './helpers'
 
 const encoder = new TextEncoder()
 const bytes = (value: unknown) => encoder.encode(JSON.stringify(value))
+const sha1 = (value: Uint8Array) => createHash('sha1').update(value).digest('hex')
+const resource = (items: Item[], name: string) => ({
+    hash: sha1(items.find((item) => item.name === name)!.data),
+    url: `/${name}`,
+})
 const payload = (items: Item[]) => {
     const item = items.find((entry) => entry.name === 'level.json.gz')
     assert.ok(item)
@@ -24,7 +46,8 @@ const payload = (items: Item[]) => {
 }
 const assertNoDummySrl = (value: unknown) => {
     if (typeof value !== 'object' || value === null) return
-    assert.notDeepEqual(value, { hash: '', url: '' })
+    if (Object.hasOwn(value, 'hash') && Object.hasOwn(value, 'url'))
+        assert.match((value as { hash: string }).hash, /^[0-9a-f]{40}$/)
     for (const child of Object.values(value)) assertNoDummySrl(child)
 }
 
@@ -79,9 +102,9 @@ test('the package shares one deterministic gzip chart and only the included curr
     assert.deepEqual(jsonOf(items, `sonolus/levels/${list.name}`).item, list)
     assert.equal(list.source, undefined)
     assert.equal(list.name, scpLevelName(input.id))
-    assert.deepEqual(list.data, { hash: '', url: '/level.json.gz' })
-    assert.deepEqual(list.cover, { hash: '', url: '/assets/cover.png' })
-    assert.deepEqual(list.bgm, { hash: '', url: '/bgm/Coconut-Master.mp3' })
+    assert.deepEqual(list.data, resource(items, 'level.json.gz'))
+    assert.deepEqual(list.cover, resource(items, 'assets/cover.png'))
+    assert.deepEqual(list.bgm, resource(items, 'bgm/Coconut-Master.mp3'))
     assert.equal(list.preview, undefined)
     for (const field of ['useSkin', 'useBackground', 'useEffect', 'useParticle'])
         assert.deepEqual(list[field], { useDefault: true })
@@ -99,7 +122,7 @@ test('the package shares one deterministic gzip chart and only the included curr
         assert.equal(item.source, 'https://coconut.sonolus.com/next-sekai')
         for (const key of ['title', 'subtitle', 'author']) assert.equal(typeof item[key], 'string')
         assert.ok(Array.isArray(item.tags))
-        for (const resource of resources) assert.equal(Object.hasOwn(item, resource), false)
+        for (const resource of resources) assert.deepEqual(item[resource], {})
     }
     for (const resource of [
         'thumbnail',
@@ -107,10 +130,10 @@ test('the package shares one deterministic gzip chart and only the included curr
         'watchData',
         'previewData',
         'tutorialData',
-        'rom',
         'configuration',
     ])
-        assert.equal(Object.hasOwn(list.engine, resource), false)
+        assert.deepEqual(list.engine[resource], {})
+    assert.equal(Object.hasOwn(list.engine, 'rom'), false)
     await checkBuilt(file, first.storageChunks)
 })
 
@@ -137,8 +160,8 @@ test('projection identity, title fallbacks and numeric metadata come from the sa
         assert.equal(item.name, scpLevelName('../arbitrary/\ufffd'))
         assert.equal(item.title, 'coconut')
         assert.equal(item.rating, rating)
-        assert.equal(Object.hasOwn(item, 'bgm'), false)
-        assert.equal(Object.hasOwn(item, 'cover'), false)
+        assert.deepEqual(item.bgm, {})
+        assert.deepEqual(item.cover, {})
         assertNoDummySrl(item)
     }
     const buildTitle = async (name: string | undefined) => {
@@ -156,7 +179,7 @@ test('projection identity, title fallbacks and numeric metadata come from the sa
     assert.notEqual(scpLevelName('copy'), scpLevelName(input.id))
 })
 
-test('only saved media bytes produce resource fields', async () => {
+test('only saved media bytes produce complete resource links', async () => {
     const { input } = fresh()
     for (const held of [false, true]) {
         const built = planNxsp({
@@ -181,13 +204,148 @@ test('only saved media bytes produce resource fields', async () => {
         const level = jsonOf(items, 'sonolus/levels/list').items[0]
         assertNoDummySrl(level)
         for (const key of ['cover', 'bgm', 'preview']) {
-            assert.equal(Object.hasOwn(level, key), held)
+            assert.equal(Object.hasOwn(level, key), held || key !== 'preview')
             if (held) {
-                assert.equal(level[key].hash, '')
-                assert.ok(items.some((entry) => `/${entry.name}` === level[key].url))
-            }
+                assert.deepEqual(level[key], resource(items, level[key].url.slice(1)))
+            } else if (key !== 'preview') assert.deepEqual(level[key], {})
         }
         await checkBuilt(file, built.storageChunks)
+    }
+})
+
+test('copied STORE and DEFLATE media use their bytes despite stale source resource hashes', async () => {
+    for (const method of ['store', 'deflate'] as const) {
+        const { input } = fresh()
+        input.media.preview = {
+            bytes: PREVIEW.bytes,
+            sha256: PREVIEW.sha256,
+            type: 'audio/mpeg',
+            filename: 'preview.mp3',
+        }
+        const { items, modified } = await unzip(await executePlan(planNxsp(input).plan, new Map()))
+        for (const item of items) {
+            if (item.name.startsWith('assets/') || item.name.startsWith('bgm/'))
+                item.method = method
+            if (scpPaths(input.id).slice(2).includes(item.name)) {
+                const value = jsonOf(items, item.name)
+                const level = value.item ?? value.items?.[0] ?? value.sections[0].items[0]
+                for (const key of ['data', 'bgm', 'cover', 'preview'])
+                    level[key].hash = '0'.repeat(40)
+                item.data = bytes(value)
+            }
+        }
+        const file = await zipItems(items, modified)
+        const source = await inspectNxsp(file, {
+            token: 'source',
+            role: 'target',
+            fingerprint: 'zip:test',
+        })
+        for (const kind of ['bgm', 'cover', 'preview'] as const) {
+            const media = input.media[kind]!
+            assert.ok('bytes' in media)
+            const entry = source.entries.find((entry) =>
+                entry.name.startsWith(kind === 'bgm' ? 'bgm/' : `assets/${kind}.`),
+            )!
+            input.media[kind] = {
+                copy: { source: 'source', entryIndex: entry.index },
+                sha256: media.sha256,
+                type: media.type,
+                filename: media.filename,
+            }
+        }
+        const built = planNxsp(input, [source])
+        const result = await executePlan(built.plan, new Map([['source', memorySource(file)]]))
+        const written = (await unzip(result)).items
+        const level = jsonOf(written, 'sonolus/levels/list').items[0]
+        for (const key of ['data', 'bgm', 'cover', 'preview'])
+            assert.deepEqual(level[key], resource(written, level[key].url.slice(1)))
+        await checkBuilt(result, built.storageChunks)
+    }
+})
+
+test('resource hashing failures do not blame a source and changes during hashing remain conflicts', async (t) => {
+    const { input } = fresh()
+    const file = await executePlan(planNxsp(input).plan, new Map())
+    const pinned = await inspectNxsp(file, {
+        token: 'source',
+        role: 'target',
+        fingerprint: 'zip:test',
+    })
+    const bgm = input.media.bgm!
+    assert.ok('bytes' in bgm)
+    input.media.bgm = {
+        copy: {
+            source: 'source',
+            entryIndex: pinned.entries.find((entry) => entry.name.startsWith('bgm/'))!.index,
+        },
+        sha256: bgm.sha256,
+        type: bgm.type,
+        filename: bgm.filename,
+    }
+    const plan = planNxsp(input, [pinned]).plan
+    const source = memorySource(file)
+    const digest = crypto.subtle.digest.bind(crypto.subtle)
+    const failed = new Error('digest unavailable')
+    const mock = t.mock.method(
+        crypto.subtle,
+        'digest',
+        async (algorithm: AlgorithmIdentifier, data: BufferSource) => {
+            if (
+                algorithm === 'SHA-1' &&
+                data instanceof Uint8Array &&
+                data.length === bgm.bytes.length &&
+                data.every((byte, i) => byte === bgm.bytes[i])
+            )
+                throw failed
+            return digest(algorithm, data)
+        },
+    )
+    await assert.rejects(
+        executePlan(plan, new Map([['source', source]])),
+        (error) => error === failed,
+    )
+    mock.mock.restore()
+    t.mock.method(
+        crypto.subtle,
+        'digest',
+        async (algorithm: AlgorithmIdentifier, data: BufferSource) => {
+            if (algorithm === 'SHA-1') source.changed = true
+            return digest(algorithm, data)
+        },
+    )
+    await assert.rejects(
+        executePlan(plan, new Map([['source', source]])),
+        (error) =>
+            error instanceof ExecutionError &&
+            error.code === 'conflict' &&
+            error.source?.token === 'source',
+    )
+})
+
+test('strict checks reject resource SHA-1 changes even when all package views agree', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nxsp-srl-hash-'))
+    try {
+        for (const key of ['data', 'cover', 'bgm']) {
+            const file = await crafted((items) => {
+                const project = jsonOf(items, 'project.json')
+                for (const name of scpPaths(project.id).slice(2)) {
+                    const value = jsonOf(items, name)
+                    const level = value.item ?? value.items?.[0] ?? value.sections[0].items[0]
+                    level[key].hash = '0'.repeat(40)
+                    setJson(items, name, value)
+                }
+            })
+            await assert.rejects(checkBuilt(file, []), /project projection/)
+            const path = join(dir, `${key}.nxsp`)
+            writeFileSync(path, new Uint8Array(await file.arrayBuffer()))
+            const result = spawnSync('uv', ['run', 'python', '-I', 'tools/nxsp_check.py', path], {
+                encoding: 'utf8',
+            })
+            assert.notEqual(result.status, 0)
+            assert.match(result.stdout + result.stderr, /project projection/)
+        }
+    } finally {
+        rmSync(dir, { recursive: true, force: true })
     }
 })
 

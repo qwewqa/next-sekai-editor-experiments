@@ -730,9 +730,15 @@ export const planNxsp = (
         jsonEntry('project.json', project, caps, [caps.project, 'project']),
         jsonEntry('level.json.gz', input.level, caps, [caps.level, 'level']),
         ...bodyEntries,
-        ...[...scpEntries(project)].map(([name, value]) =>
-            jsonEntry(name, value, caps, [caps.project * 4 + 16384, 'project']),
-        ),
+        ...[...scpEntries(project, () => '0'.repeat(40))].map(([name, value]) => {
+            const entry = jsonEntry(name, value, caps, [caps.project * 4 + 16384, 'project'])
+            return {
+                name,
+                method: 8 as const,
+                uncompressedSize: entry.uncompressedSize,
+                parts: [{ kind: 'scp' as const, project }],
+            }
+        }),
     ]
     checkLimits(entries, sources, caps)
     return {
@@ -793,6 +799,7 @@ const concat = (chunks: readonly Uint8Array[]) => {
 export const storedSize = (entry: PlannedEntry, sources: readonly PinnedSource[]) =>
     entry.parts.reduce((total, part) => {
         if (part.kind === 'bytes') return total + part.data.length
+        if (part.kind === 'scp') return total + 2 * (entry.uncompressedSize ?? 0) + 1024
         const from = sourceEntry(sourceOf(sources, part.source), part.entryIndex)
         return total + (part.inflate ? from.uncompressedSize : from.compressedSize)
     }, 0)

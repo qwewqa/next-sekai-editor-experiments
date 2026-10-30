@@ -1,3 +1,4 @@
+import { deflateRaw } from 'pako'
 import { crc32 } from '../../zip/crc32'
 import { LOCAL_HEADER_SIZE, localHeaderSize } from '../../zip/directory'
 import { ZipError } from '../../zip/error'
@@ -5,6 +6,7 @@ import { inflatedCrc, inflateExact } from '../../zip/inflate'
 import { ZipReader } from '../../zip/reader'
 import { assembleZip, type PreparedEntry } from '../../zip/writer'
 import { ENTRY_LIMIT, ZIP32_LIMIT, type PlannedEntry, type WritePlan } from './plan'
+import { scpEntries, scpHash } from './scp'
 
 // The executor: it follows a plan exactly. Every copy reads through the pinned source
 // its token names, by central-directory index and `dataOffset`, and is checked by the entry's CRC;
@@ -74,7 +76,57 @@ export const executePlan = async (
 
     if (plan.entries.length >= ENTRY_LIMIT) planError('65,535 entries or more')
     const prepared: PreparedEntry[] = []
-    for (const entry of plan.entries) prepared.push(await executeEntry(entry, sourceFor))
+    const hashes = new Map<string, string>()
+    for (const entry of plan.entries) {
+        const [part] = entry.parts
+        if (part?.kind !== 'scp') {
+            prepared.push(await executeEntry(entry, sourceFor))
+            continue
+        }
+        if (entry.parts.length !== 1 || entry.method !== 8 || entry.crc32 !== undefined)
+            planError(`${entry.name}: invalid package projection`)
+        const resources = new Set<string>()
+        scpEntries(part.project, (name) => {
+            resources.add(name)
+            return ''
+        })
+        for (const name of resources) {
+            if (hashes.has(name)) continue
+            const resource = prepared.find((item) => item.name === name)
+            if (resource?.method !== 0)
+                return planError(`${entry.name}: no prepared STORE resource ${name}`)
+            let bytes: Uint8Array
+            try {
+                const data = resource.data
+                bytes = data instanceof Blob ? await bytesOf(data) : data
+            } catch (error) {
+                const copied = plan.entries
+                    .find((item) => item.name === name)
+                    ?.parts.filter((item) => item.kind === 'copy')
+                for (const copy of copied ?? []) {
+                    const source = await sourceFor(copy.source)
+                    throw await sourceFailure(source, error)
+                }
+                throw error
+            }
+            hashes.set(name, await scpHash(bytes))
+        }
+        const value = scpEntries(part.project, (name) => hashes.get(name) ?? planError(name)).get(
+            entry.name,
+        )
+        if (value === undefined) planError(`${entry.name}: unknown package projection`)
+        const bytes = new TextEncoder().encode(JSON.stringify(value))
+        prepared.push(
+            await executeEntry(
+                {
+                    ...entry,
+                    crc32: crc32(bytes),
+                    parts: [{ kind: 'bytes', data: deflateRaw(bytes) }],
+                },
+                sourceFor,
+            ),
+        )
+    }
 
     // A source that changed while it was read is a conflict, whatever the copies found.
     for (const { token, source } of open.values()) {
@@ -153,6 +205,7 @@ const executeEntry = async (
     let size = 0
     let compressedSize = 0
     for (const part of entry.parts) {
+        if (part.kind === 'scp') return planError(`${name}: misplaced package projection`)
         if (part.kind === 'bytes') {
             const bytes = new Uint8Array(part.data)
             if (method === 8) {

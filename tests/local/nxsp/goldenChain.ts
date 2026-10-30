@@ -292,10 +292,10 @@ export const describePlan = (plan: WritePlan) => ({
     entries: plan.entries.map((e) => ({
         name: e.name,
         method: e.method,
-        crc32: e.crc32,
+        ...(e.crc32 === undefined ? {} : { crc32: e.crc32 }),
         uncompressedSize: e.uncompressedSize,
         parts: e.parts.map((part) => {
-            if (part.kind === 'copy') return { ...part }
+            if (part.kind !== 'bytes') return { ...part }
             const data = e.method === 8 ? new Uint8Array(inflateRawSync(part.data)) : part.data
             return e.name.endsWith('.json')
                 ? { kind: 'bytes', json: JSON.parse(new TextDecoder().decode(data)) as unknown }

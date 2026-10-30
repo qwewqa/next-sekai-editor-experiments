@@ -571,60 +571,465 @@
     {
       "name": "sonolus/package",
       "method": 8,
-      "crc32": 3252100260,
       "uncompressedSize": 21,
       "parts": [
         {
-          "kind": "bytes",
-          "base64": "eyJzaG91bGRVcGRhdGUiOnRydWV9"
+          "kind": "scp",
+          "project": {
+            "format": "nxsp",
+            "version": 1,
+            "minor": 0,
+            "patch": 0,
+            "levelVersion": 1,
+            "appVersion": "0.6.0",
+            "id": "d0c00000-0000-4000-8000-000000000000",
+            "lineageId": "11e40000-0000-4000-8000-000000000000",
+            "revision": {
+              "id": "r001-0000-4000-8000-000000000000",
+              "parent": null,
+              "n": 1,
+              "savedAt": "2026-10-16T05:00:00Z",
+              "device": {
+                "id": "c3f00000-0000-4000-8000-000000000000",
+                "label": "Web (Chrome)"
+              },
+              "ancestors": [],
+              "fileName": "golden.nxsp",
+              "completeFrom": "r001-0000-4000-8000-000000000000"
+            },
+            "name": "Golden (Master)",
+            "exportName": "Golden",
+            "level": "level.json.gz",
+            "editor": {
+              "defaultGuideColors": [
+                24,
+                25
+              ]
+            },
+            "bgm": {
+              "file": "bgm/Coconut-Master.mp3",
+              "filename": "Coconut (Master).mp3",
+              "type": "audio/mpeg",
+              "sha256": "8603d27b9dfc1b4a0a7a59269df86050b0c362518623ab6d0efe5becc439b446",
+              "size": 12
+            },
+            "history": {
+              "manifest": "history/manifest.json",
+              "chunks": "history/chunks.bin",
+              "entries": 5
+            },
+            "summary": {
+              "noteCount": 10,
+              "durationMs": 26400,
+              "revisionId": "r001-0000-4000-8000-000000000000"
+            },
+            "metadata": {
+              "title": "Golden",
+              "artists": "Composer feat. Singer",
+              "author": "Charter",
+              "rating": 12,
+              "tags": [
+                {
+                  "title": "Tag"
+                },
+                {
+                  "title": "Second tag"
+                }
+              ],
+              "description": "Line one\nLine two",
+              "cover": {
+                "file": "assets/cover.png",
+                "filename": "cover.png",
+                "type": "image/png",
+                "sha256": "c696c3b561427511b2f3f68cb23cb8019e5f5e1ac4c02cf87b0a763277de3b89",
+                "size": 15
+              },
+              "preview": {
+                "file": "assets/preview.mp3",
+                "filename": "preview.mp3",
+                "type": "audio/mpeg",
+                "sha256": "ea4729ffa04502dbee60fd1d8d661d3f8cb3150d18bb74a7dc51c9e72e663291",
+                "size": 17
+              },
+              "zzFixtureMeta": [
+                1,
+                2
+              ]
+            },
+            "zzFixtureTop": "kept"
+          }
         }
       ]
     },
     {
       "name": "sonolus/info",
       "method": 8,
-      "crc32": 1045002871,
       "uncompressedSize": 78,
       "parts": [
         {
-          "kind": "bytes",
-          "base64": "eyJ0aXRsZSI6IkdvbGRlbiIsImJ1dHRvbnMiOlt7InR5cGUiOiJsZXZlbCJ9XSwiY29uZmlndXJhdGlvbiI6eyJvcHRpb25zIjpbXX19"
+          "kind": "scp",
+          "project": {
+            "format": "nxsp",
+            "version": 1,
+            "minor": 0,
+            "patch": 0,
+            "levelVersion": 1,
+            "appVersion": "0.6.0",
+            "id": "d0c00000-0000-4000-8000-000000000000",
+            "lineageId": "11e40000-0000-4000-8000-000000000000",
+            "revision": {
+              "id": "r001-0000-4000-8000-000000000000",
+              "parent": null,
+              "n": 1,
+              "savedAt": "2026-10-16T05:00:00Z",
+              "device": {
+                "id": "c3f00000-0000-4000-8000-000000000000",
+                "label": "Web (Chrome)"
+              },
+              "ancestors": [],
+              "fileName": "golden.nxsp",
+              "completeFrom": "r001-0000-4000-8000-000000000000"
+            },
+            "name": "Golden (Master)",
+            "exportName": "Golden",
+            "level": "level.json.gz",
+            "editor": {
+              "defaultGuideColors": [
+                24,
+                25
+              ]
+            },
+            "bgm": {
+              "file": "bgm/Coconut-Master.mp3",
+              "filename": "Coconut (Master).mp3",
+              "type": "audio/mpeg",
+              "sha256": "8603d27b9dfc1b4a0a7a59269df86050b0c362518623ab6d0efe5becc439b446",
+              "size": 12
+            },
+            "history": {
+              "manifest": "history/manifest.json",
+              "chunks": "history/chunks.bin",
+              "entries": 5
+            },
+            "summary": {
+              "noteCount": 10,
+              "durationMs": 26400,
+              "revisionId": "r001-0000-4000-8000-000000000000"
+            },
+            "metadata": {
+              "title": "Golden",
+              "artists": "Composer feat. Singer",
+              "author": "Charter",
+              "rating": 12,
+              "tags": [
+                {
+                  "title": "Tag"
+                },
+                {
+                  "title": "Second tag"
+                }
+              ],
+              "description": "Line one\nLine two",
+              "cover": {
+                "file": "assets/cover.png",
+                "filename": "cover.png",
+                "type": "image/png",
+                "sha256": "c696c3b561427511b2f3f68cb23cb8019e5f5e1ac4c02cf87b0a763277de3b89",
+                "size": 15
+              },
+              "preview": {
+                "file": "assets/preview.mp3",
+                "filename": "preview.mp3",
+                "type": "audio/mpeg",
+                "sha256": "ea4729ffa04502dbee60fd1d8d661d3f8cb3150d18bb74a7dc51c9e72e663291",
+                "size": 17
+              },
+              "zzFixtureMeta": [
+                1,
+                2
+              ]
+            },
+            "zzFixtureTop": "kept"
+          }
         }
       ]
     },
     {
       "name": "sonolus/levels/info",
       "method": 8,
-      "crc32": 2052584305,
-      "uncompressedSize": 1604,
+      "uncompressedSize": 2029,
       "parts": [
         {
-          "kind": "bytes",
-          "base64": "eyJzZWN0aW9ucyI6W3siaXRlbVR5cGUiOiJsZXZlbCIsInRpdGxlIjoiR29sZGVuIiwiaXRlbXMiOlt7Im5hbWUiOiJuc2UtYTlkNjUyODgxZGEzNmNkNTk0NTZlMDFmM2E5ZjU0YTIiLCJ2ZXJzaW9uIjoxLCJyYXRpbmciOjEyLCJ0aXRsZSI6IkdvbGRlbiIsImFydGlzdHMiOiJDb21wb3NlciBmZWF0LiBTaW5nZXIiLCJhdXRob3IiOiJDaGFydGVyIiwidGFncyI6W3sidGl0bGUiOiJUYWcifSx7InRpdGxlIjoiU2Vjb25kIHRhZyJ9XSwiZW5naW5lIjp7Im5hbWUiOiJjb2NvbnV0LW5leHQtc2VrYWktMSIsInNvdXJjZSI6Imh0dHBzOi8vY29jb251dC5zb25vbHVzLmNvbS9uZXh0LXNla2FpIiwidGl0bGUiOiJOZXh0IFNFS0FJIiwic3VidGl0bGUiOiJOZXh0IFNFS0FJIiwiYXV0aG9yIjoiIyM6cXdld3FhIzU5MDM1MyIsInRhZ3MiOlt7InRpdGxlIjoiI1BJTk5FRCJ9XSwidmVyc2lvbiI6MTMsInNraW4iOnsibmFtZSI6ImNvY29udXQtbmV4dC1zZWthaS0xIiwic291cmNlIjoiaHR0cHM6Ly9jb2NvbnV0LnNvbm9sdXMuY29tL25leHQtc2VrYWkiLCJ0aXRsZSI6Ik5leHQgU0VLQUkgMDEiLCJzdWJ0aXRsZSI6Ik5leHQgU0VLQUkiLCJhdXRob3IiOiIjIzpCdXJyaXRvIzEwMDAiLCJ0YWdzIjpbeyJ0aXRsZSI6IiNQSU5ORUQifV0sInZlcnNpb24iOjR9LCJiYWNrZ3JvdW5kIjp7Im5hbWUiOiJjb2NvbnV0LW5leHQtc2VrYWktMSIsInNvdXJjZSI6Imh0dHBzOi8vY29jb251dC5zb25vbHVzLmNvbS9uZXh0LXNla2FpIiwidGl0bGUiOiJOZXh0IFNFS0FJIiwic3VidGl0bGUiOiJOZXh0IFNFS0FJIiwiYXV0aG9yIjoiIyM6QnVycml0byMxMDAwIiwidGFncyI6W3sidGl0bGUiOiIjUElOTkVEIn1dLCJ2ZXJzaW9uIjoyfSwiZWZmZWN0Ijp7Im5hbWUiOiJjb2NvbnV0LW5leHQtc2VrYWktMSIsInNvdXJjZSI6Imh0dHBzOi8vY29jb251dC5zb25vbHVzLmNvbS9uZXh0LXNla2FpIiwidGl0bGUiOiJOZXh0IFNFS0FJIDAxIiwic3VidGl0bGUiOiJOZXh0IFNFS0FJIiwiYXV0aG9yIjoiIyM6QnVycml0byMxMDAwIiwidGFncyI6W3sidGl0bGUiOiIjUElOTkVEIn1dLCJ2ZXJzaW9uIjo1fSwicGFydGljbGUiOnsibmFtZSI6ImNvY29udXQtbmV4dC1zZWthaS0xIiwic291cmNlIjoiaHR0cHM6Ly9jb2NvbnV0LnNvbm9sdXMuY29tL25leHQtc2VrYWkiLCJ0aXRsZSI6Ik5leHQgU0VLQUkiLCJzdWJ0aXRsZSI6Ik5leHQgU0VLQUkiLCJhdXRob3IiOiIjIzpCdXJyaXRvIzEwMDAiLCJ0YWdzIjpbeyJ0aXRsZSI6IiNQSU5ORUQifV0sInZlcnNpb24iOjN9fSwidXNlU2tpbiI6eyJ1c2VEZWZhdWx0Ijp0cnVlfSwidXNlQmFja2dyb3VuZCI6eyJ1c2VEZWZhdWx0Ijp0cnVlfSwidXNlRWZmZWN0Ijp7InVzZURlZmF1bHQiOnRydWV9LCJ1c2VQYXJ0aWNsZSI6eyJ1c2VEZWZhdWx0Ijp0cnVlfSwiY292ZXIiOnsiaGFzaCI6IiIsInVybCI6Ii9hc3NldHMvY292ZXIucG5nIn0sImJnbSI6eyJoYXNoIjoiIiwidXJsIjoiL2JnbS9Db2NvbnV0LU1hc3Rlci5tcDMifSwiZGF0YSI6eyJoYXNoIjoiIiwidXJsIjoiL2xldmVsLmpzb24uZ3oifSwicHJldmlldyI6eyJoYXNoIjoiIiwidXJsIjoiL2Fzc2V0cy9wcmV2aWV3Lm1wMyJ9fV19XX0="
+          "kind": "scp",
+          "project": {
+            "format": "nxsp",
+            "version": 1,
+            "minor": 0,
+            "patch": 0,
+            "levelVersion": 1,
+            "appVersion": "0.6.0",
+            "id": "d0c00000-0000-4000-8000-000000000000",
+            "lineageId": "11e40000-0000-4000-8000-000000000000",
+            "revision": {
+              "id": "r001-0000-4000-8000-000000000000",
+              "parent": null,
+              "n": 1,
+              "savedAt": "2026-10-16T05:00:00Z",
+              "device": {
+                "id": "c3f00000-0000-4000-8000-000000000000",
+                "label": "Web (Chrome)"
+              },
+              "ancestors": [],
+              "fileName": "golden.nxsp",
+              "completeFrom": "r001-0000-4000-8000-000000000000"
+            },
+            "name": "Golden (Master)",
+            "exportName": "Golden",
+            "level": "level.json.gz",
+            "editor": {
+              "defaultGuideColors": [
+                24,
+                25
+              ]
+            },
+            "bgm": {
+              "file": "bgm/Coconut-Master.mp3",
+              "filename": "Coconut (Master).mp3",
+              "type": "audio/mpeg",
+              "sha256": "8603d27b9dfc1b4a0a7a59269df86050b0c362518623ab6d0efe5becc439b446",
+              "size": 12
+            },
+            "history": {
+              "manifest": "history/manifest.json",
+              "chunks": "history/chunks.bin",
+              "entries": 5
+            },
+            "summary": {
+              "noteCount": 10,
+              "durationMs": 26400,
+              "revisionId": "r001-0000-4000-8000-000000000000"
+            },
+            "metadata": {
+              "title": "Golden",
+              "artists": "Composer feat. Singer",
+              "author": "Charter",
+              "rating": 12,
+              "tags": [
+                {
+                  "title": "Tag"
+                },
+                {
+                  "title": "Second tag"
+                }
+              ],
+              "description": "Line one\nLine two",
+              "cover": {
+                "file": "assets/cover.png",
+                "filename": "cover.png",
+                "type": "image/png",
+                "sha256": "c696c3b561427511b2f3f68cb23cb8019e5f5e1ac4c02cf87b0a763277de3b89",
+                "size": 15
+              },
+              "preview": {
+                "file": "assets/preview.mp3",
+                "filename": "preview.mp3",
+                "type": "audio/mpeg",
+                "sha256": "ea4729ffa04502dbee60fd1d8d661d3f8cb3150d18bb74a7dc51c9e72e663291",
+                "size": 17
+              },
+              "zzFixtureMeta": [
+                1,
+                2
+              ]
+            },
+            "zzFixtureTop": "kept"
+          }
         }
       ]
     },
     {
       "name": "sonolus/levels/list",
       "method": 8,
-      "crc32": 2116645441,
-      "uncompressedSize": 1567,
+      "uncompressedSize": 1992,
       "parts": [
         {
-          "kind": "bytes",
-          "base64": "eyJwYWdlQ291bnQiOjEsIml0ZW1zIjpbeyJuYW1lIjoibnNlLWE5ZDY1Mjg4MWRhMzZjZDU5NDU2ZTAxZjNhOWY1NGEyIiwidmVyc2lvbiI6MSwicmF0aW5nIjoxMiwidGl0bGUiOiJHb2xkZW4iLCJhcnRpc3RzIjoiQ29tcG9zZXIgZmVhdC4gU2luZ2VyIiwiYXV0aG9yIjoiQ2hhcnRlciIsInRhZ3MiOlt7InRpdGxlIjoiVGFnIn0seyJ0aXRsZSI6IlNlY29uZCB0YWcifV0sImVuZ2luZSI6eyJuYW1lIjoiY29jb251dC1uZXh0LXNla2FpLTEiLCJzb3VyY2UiOiJodHRwczovL2NvY29udXQuc29ub2x1cy5jb20vbmV4dC1zZWthaSIsInRpdGxlIjoiTmV4dCBTRUtBSSIsInN1YnRpdGxlIjoiTmV4dCBTRUtBSSIsImF1dGhvciI6IiMjOnF3ZXdxYSM1OTAzNTMiLCJ0YWdzIjpbeyJ0aXRsZSI6IiNQSU5ORUQifV0sInZlcnNpb24iOjEzLCJza2luIjp7Im5hbWUiOiJjb2NvbnV0LW5leHQtc2VrYWktMSIsInNvdXJjZSI6Imh0dHBzOi8vY29jb251dC5zb25vbHVzLmNvbS9uZXh0LXNla2FpIiwidGl0bGUiOiJOZXh0IFNFS0FJIDAxIiwic3VidGl0bGUiOiJOZXh0IFNFS0FJIiwiYXV0aG9yIjoiIyM6QnVycml0byMxMDAwIiwidGFncyI6W3sidGl0bGUiOiIjUElOTkVEIn1dLCJ2ZXJzaW9uIjo0fSwiYmFja2dyb3VuZCI6eyJuYW1lIjoiY29jb251dC1uZXh0LXNla2FpLTEiLCJzb3VyY2UiOiJodHRwczovL2NvY29udXQuc29ub2x1cy5jb20vbmV4dC1zZWthaSIsInRpdGxlIjoiTmV4dCBTRUtBSSIsInN1YnRpdGxlIjoiTmV4dCBTRUtBSSIsImF1dGhvciI6IiMjOkJ1cnJpdG8jMTAwMCIsInRhZ3MiOlt7InRpdGxlIjoiI1BJTk5FRCJ9XSwidmVyc2lvbiI6Mn0sImVmZmVjdCI6eyJuYW1lIjoiY29jb251dC1uZXh0LXNla2FpLTEiLCJzb3VyY2UiOiJodHRwczovL2NvY29udXQuc29ub2x1cy5jb20vbmV4dC1zZWthaSIsInRpdGxlIjoiTmV4dCBTRUtBSSAwMSIsInN1YnRpdGxlIjoiTmV4dCBTRUtBSSIsImF1dGhvciI6IiMjOkJ1cnJpdG8jMTAwMCIsInRhZ3MiOlt7InRpdGxlIjoiI1BJTk5FRCJ9XSwidmVyc2lvbiI6NX0sInBhcnRpY2xlIjp7Im5hbWUiOiJjb2NvbnV0LW5leHQtc2VrYWktMSIsInNvdXJjZSI6Imh0dHBzOi8vY29jb251dC5zb25vbHVzLmNvbS9uZXh0LXNla2FpIiwidGl0bGUiOiJOZXh0IFNFS0FJIiwic3VidGl0bGUiOiJOZXh0IFNFS0FJIiwiYXV0aG9yIjoiIyM6QnVycml0byMxMDAwIiwidGFncyI6W3sidGl0bGUiOiIjUElOTkVEIn1dLCJ2ZXJzaW9uIjozfX0sInVzZVNraW4iOnsidXNlRGVmYXVsdCI6dHJ1ZX0sInVzZUJhY2tncm91bmQiOnsidXNlRGVmYXVsdCI6dHJ1ZX0sInVzZUVmZmVjdCI6eyJ1c2VEZWZhdWx0Ijp0cnVlfSwidXNlUGFydGljbGUiOnsidXNlRGVmYXVsdCI6dHJ1ZX0sImNvdmVyIjp7Imhhc2giOiIiLCJ1cmwiOiIvYXNzZXRzL2NvdmVyLnBuZyJ9LCJiZ20iOnsiaGFzaCI6IiIsInVybCI6Ii9iZ20vQ29jb251dC1NYXN0ZXIubXAzIn0sImRhdGEiOnsiaGFzaCI6IiIsInVybCI6Ii9sZXZlbC5qc29uLmd6In0sInByZXZpZXciOnsiaGFzaCI6IiIsInVybCI6Ii9hc3NldHMvcHJldmlldy5tcDMifX1dfQ=="
+          "kind": "scp",
+          "project": {
+            "format": "nxsp",
+            "version": 1,
+            "minor": 0,
+            "patch": 0,
+            "levelVersion": 1,
+            "appVersion": "0.6.0",
+            "id": "d0c00000-0000-4000-8000-000000000000",
+            "lineageId": "11e40000-0000-4000-8000-000000000000",
+            "revision": {
+              "id": "r001-0000-4000-8000-000000000000",
+              "parent": null,
+              "n": 1,
+              "savedAt": "2026-10-16T05:00:00Z",
+              "device": {
+                "id": "c3f00000-0000-4000-8000-000000000000",
+                "label": "Web (Chrome)"
+              },
+              "ancestors": [],
+              "fileName": "golden.nxsp",
+              "completeFrom": "r001-0000-4000-8000-000000000000"
+            },
+            "name": "Golden (Master)",
+            "exportName": "Golden",
+            "level": "level.json.gz",
+            "editor": {
+              "defaultGuideColors": [
+                24,
+                25
+              ]
+            },
+            "bgm": {
+              "file": "bgm/Coconut-Master.mp3",
+              "filename": "Coconut (Master).mp3",
+              "type": "audio/mpeg",
+              "sha256": "8603d27b9dfc1b4a0a7a59269df86050b0c362518623ab6d0efe5becc439b446",
+              "size": 12
+            },
+            "history": {
+              "manifest": "history/manifest.json",
+              "chunks": "history/chunks.bin",
+              "entries": 5
+            },
+            "summary": {
+              "noteCount": 10,
+              "durationMs": 26400,
+              "revisionId": "r001-0000-4000-8000-000000000000"
+            },
+            "metadata": {
+              "title": "Golden",
+              "artists": "Composer feat. Singer",
+              "author": "Charter",
+              "rating": 12,
+              "tags": [
+                {
+                  "title": "Tag"
+                },
+                {
+                  "title": "Second tag"
+                }
+              ],
+              "description": "Line one\nLine two",
+              "cover": {
+                "file": "assets/cover.png",
+                "filename": "cover.png",
+                "type": "image/png",
+                "sha256": "c696c3b561427511b2f3f68cb23cb8019e5f5e1ac4c02cf87b0a763277de3b89",
+                "size": 15
+              },
+              "preview": {
+                "file": "assets/preview.mp3",
+                "filename": "preview.mp3",
+                "type": "audio/mpeg",
+                "sha256": "ea4729ffa04502dbee60fd1d8d661d3f8cb3150d18bb74a7dc51c9e72e663291",
+                "size": 17
+              },
+              "zzFixtureMeta": [
+                1,
+                2
+              ]
+            },
+            "zzFixtureTop": "kept"
+          }
         }
       ]
     },
     {
       "name": "sonolus/levels/nse-a9d652881da36cd59456e01f3a9f54a2",
       "method": 8,
-      "crc32": 831163710,
-      "uncompressedSize": 1651,
+      "uncompressedSize": 2076,
       "parts": [
         {
-          "kind": "bytes",
-          "base64": "eyJpdGVtIjp7Im5hbWUiOiJuc2UtYTlkNjUyODgxZGEzNmNkNTk0NTZlMDFmM2E5ZjU0YTIiLCJ2ZXJzaW9uIjoxLCJyYXRpbmciOjEyLCJ0aXRsZSI6IkdvbGRlbiIsImFydGlzdHMiOiJDb21wb3NlciBmZWF0LiBTaW5nZXIiLCJhdXRob3IiOiJDaGFydGVyIiwidGFncyI6W3sidGl0bGUiOiJUYWcifSx7InRpdGxlIjoiU2Vjb25kIHRhZyJ9XSwiZW5naW5lIjp7Im5hbWUiOiJjb2NvbnV0LW5leHQtc2VrYWktMSIsInNvdXJjZSI6Imh0dHBzOi8vY29jb251dC5zb25vbHVzLmNvbS9uZXh0LXNla2FpIiwidGl0bGUiOiJOZXh0IFNFS0FJIiwic3VidGl0bGUiOiJOZXh0IFNFS0FJIiwiYXV0aG9yIjoiIyM6cXdld3FhIzU5MDM1MyIsInRhZ3MiOlt7InRpdGxlIjoiI1BJTk5FRCJ9XSwidmVyc2lvbiI6MTMsInNraW4iOnsibmFtZSI6ImNvY29udXQtbmV4dC1zZWthaS0xIiwic291cmNlIjoiaHR0cHM6Ly9jb2NvbnV0LnNvbm9sdXMuY29tL25leHQtc2VrYWkiLCJ0aXRsZSI6Ik5leHQgU0VLQUkgMDEiLCJzdWJ0aXRsZSI6Ik5leHQgU0VLQUkiLCJhdXRob3IiOiIjIzpCdXJyaXRvIzEwMDAiLCJ0YWdzIjpbeyJ0aXRsZSI6IiNQSU5ORUQifV0sInZlcnNpb24iOjR9LCJiYWNrZ3JvdW5kIjp7Im5hbWUiOiJjb2NvbnV0LW5leHQtc2VrYWktMSIsInNvdXJjZSI6Imh0dHBzOi8vY29jb251dC5zb25vbHVzLmNvbS9uZXh0LXNla2FpIiwidGl0bGUiOiJOZXh0IFNFS0FJIiwic3VidGl0bGUiOiJOZXh0IFNFS0FJIiwiYXV0aG9yIjoiIyM6QnVycml0byMxMDAwIiwidGFncyI6W3sidGl0bGUiOiIjUElOTkVEIn1dLCJ2ZXJzaW9uIjoyfSwiZWZmZWN0Ijp7Im5hbWUiOiJjb2NvbnV0LW5leHQtc2VrYWktMSIsInNvdXJjZSI6Imh0dHBzOi8vY29jb251dC5zb25vbHVzLmNvbS9uZXh0LXNla2FpIiwidGl0bGUiOiJOZXh0IFNFS0FJIDAxIiwic3VidGl0bGUiOiJOZXh0IFNFS0FJIiwiYXV0aG9yIjoiIyM6QnVycml0byMxMDAwIiwidGFncyI6W3sidGl0bGUiOiIjUElOTkVEIn1dLCJ2ZXJzaW9uIjo1fSwicGFydGljbGUiOnsibmFtZSI6ImNvY29udXQtbmV4dC1zZWthaS0xIiwic291cmNlIjoiaHR0cHM6Ly9jb2NvbnV0LnNvbm9sdXMuY29tL25leHQtc2VrYWkiLCJ0aXRsZSI6Ik5leHQgU0VLQUkiLCJzdWJ0aXRsZSI6Ik5leHQgU0VLQUkiLCJhdXRob3IiOiIjIzpCdXJyaXRvIzEwMDAiLCJ0YWdzIjpbeyJ0aXRsZSI6IiNQSU5ORUQifV0sInZlcnNpb24iOjN9fSwidXNlU2tpbiI6eyJ1c2VEZWZhdWx0Ijp0cnVlfSwidXNlQmFja2dyb3VuZCI6eyJ1c2VEZWZhdWx0Ijp0cnVlfSwidXNlRWZmZWN0Ijp7InVzZURlZmF1bHQiOnRydWV9LCJ1c2VQYXJ0aWNsZSI6eyJ1c2VEZWZhdWx0Ijp0cnVlfSwiY292ZXIiOnsiaGFzaCI6IiIsInVybCI6Ii9hc3NldHMvY292ZXIucG5nIn0sImJnbSI6eyJoYXNoIjoiIiwidXJsIjoiL2JnbS9Db2NvbnV0LU1hc3Rlci5tcDMifSwiZGF0YSI6eyJoYXNoIjoiIiwidXJsIjoiL2xldmVsLmpzb24uZ3oifSwicHJldmlldyI6eyJoYXNoIjoiIiwidXJsIjoiL2Fzc2V0cy9wcmV2aWV3Lm1wMyJ9fSwiZGVzY3JpcHRpb24iOiJMaW5lIG9uZVxuTGluZSB0d28iLCJhY3Rpb25zIjpbXSwiaGFzQ29tbXVuaXR5IjpmYWxzZSwibGVhZGVyYm9hcmRzIjpbXSwic2VjdGlvbnMiOltdfQ=="
+          "kind": "scp",
+          "project": {
+            "format": "nxsp",
+            "version": 1,
+            "minor": 0,
+            "patch": 0,
+            "levelVersion": 1,
+            "appVersion": "0.6.0",
+            "id": "d0c00000-0000-4000-8000-000000000000",
+            "lineageId": "11e40000-0000-4000-8000-000000000000",
+            "revision": {
+              "id": "r001-0000-4000-8000-000000000000",
+              "parent": null,
+              "n": 1,
+              "savedAt": "2026-10-16T05:00:00Z",
+              "device": {
+                "id": "c3f00000-0000-4000-8000-000000000000",
+                "label": "Web (Chrome)"
+              },
+              "ancestors": [],
+              "fileName": "golden.nxsp",
+              "completeFrom": "r001-0000-4000-8000-000000000000"
+            },
+            "name": "Golden (Master)",
+            "exportName": "Golden",
+            "level": "level.json.gz",
+            "editor": {
+              "defaultGuideColors": [
+                24,
+                25
+              ]
+            },
+            "bgm": {
+              "file": "bgm/Coconut-Master.mp3",
+              "filename": "Coconut (Master).mp3",
+              "type": "audio/mpeg",
+              "sha256": "8603d27b9dfc1b4a0a7a59269df86050b0c362518623ab6d0efe5becc439b446",
+              "size": 12
+            },
+            "history": {
+              "manifest": "history/manifest.json",
+              "chunks": "history/chunks.bin",
+              "entries": 5
+            },
+            "summary": {
+              "noteCount": 10,
+              "durationMs": 26400,
+              "revisionId": "r001-0000-4000-8000-000000000000"
+            },
+            "metadata": {
+              "title": "Golden",
+              "artists": "Composer feat. Singer",
+              "author": "Charter",
+              "rating": 12,
+              "tags": [
+                {
+                  "title": "Tag"
+                },
+                {
+                  "title": "Second tag"
+                }
+              ],
+              "description": "Line one\nLine two",
+              "cover": {
+                "file": "assets/cover.png",
+                "filename": "cover.png",
+                "type": "image/png",
+                "sha256": "c696c3b561427511b2f3f68cb23cb8019e5f5e1ac4c02cf87b0a763277de3b89",
+                "size": 15
+              },
+              "preview": {
+                "file": "assets/preview.mp3",
+                "filename": "preview.mp3",
+                "type": "audio/mpeg",
+                "sha256": "ea4729ffa04502dbee60fd1d8d661d3f8cb3150d18bb74a7dc51c9e72e663291",
+                "size": 17
+              },
+              "zzFixtureMeta": [
+                1,
+                2
+              ]
+            },
+            "zzFixtureTop": "kept"
+          }
         }
       ]
     }

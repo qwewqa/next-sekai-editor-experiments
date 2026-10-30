@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { readNxsp } from '../../../src/local/nxsp'
@@ -82,15 +83,29 @@ const expectPackage = async (file: Inspected) => {
     const list = JSON.parse(new TextDecoder().decode(await file.data('sonolus/levels/list'))) as {
         items: {
             data: { hash: string; url: string }
-            bgm?: { url: string }
-            cover?: { url: string }
+            bgm: { hash?: string; url?: string }
+            cover: { hash?: string; url?: string }
         }[]
     }
     expect(list.items).toHaveLength(1)
-    expect(list.items[0]?.data).toEqual({ hash: '', url: '/level.json.gz' })
+    expect(list.items[0]?.data).toEqual({
+        hash: createHash('sha1')
+            .update(await file.data('level.json.gz'))
+            .digest('hex'),
+        url: '/level.json.gz',
+    })
     for (const kind of ['bgm', 'cover'] as const) {
         const media = file.read.media[kind]
-        expect(list.items[0]?.[kind]?.url).toBe(media ? `/${media.form.file}` : undefined)
+        expect(list.items[0]?.[kind]).toEqual(
+            media
+                ? {
+                      hash: createHash('sha1')
+                          .update(await file.data(media.form.file))
+                          .digest('hex'),
+                      url: `/${media.form.file}`,
+                  }
+                : {},
+        )
     }
 }
 
