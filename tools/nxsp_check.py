@@ -44,11 +44,12 @@ SAFE = 2 ** 53 - 1
 HEX16 = re.compile(r"^[0-9a-f]{32}$")
 HEX32 = re.compile(r"^[0-9a-f]{64}$")
 ENTRY_KINDS = {"init", "continue", "edit", "undo", "redo", "restore", "save", "export", "recovered"}
-STORE_PREFIXES = ("level.json.gz", "history/chunks.bin", "assets/", "bgm/")
+STORE_PREFIXES = ("level.json.gz", "history/chunks.bin", "assets/", "bgm/", "sonolus/cover.png", "sonolus/bgm.mp3")
 # A segment copied whole from a stored source segment stays stored.
 EITHER_PREFIXES = ("history/segments/",)
 
 SCP_FIXED_PATHS = {"sonolus/package", "sonolus/info", "sonolus/levels/info", "sonolus/levels/list"}
+SCP_MEDIA_PATHS = ("sonolus/cover.png", "sonolus/bgm.mp3")
 
 
 def scp_level_name(doc_id):
@@ -57,7 +58,7 @@ def scp_level_name(doc_id):
 
 
 def scp_owned(name, doc_id=None):
-    return name in SCP_FIXED_PATHS or (isinstance(doc_id, str) and doc_id != "" and
+    return name in SCP_FIXED_PATHS or name in SCP_MEDIA_PATHS or (isinstance(doc_id, str) and doc_id != "" and
                                      name == f"sonolus/levels/{scp_level_name(doc_id)}")
 
 
@@ -84,7 +85,7 @@ def scp_projection(project, entries):
                  useSkin={"useDefault": True}, useBackground={"useDefault": True},
                  useEffect={"useDefault": True}, useParticle={"useDefault": True})
     for field, form in (("cover", meta.get("cover", {})), ("bgm", project.get("bgm", {}))):
-        level[field] = srl(form["file"]) if "file" in form else {}
+        level[field] = srl(form.get("file", "sonolus/cover.png" if field == "cover" else "sonolus/bgm.mp3"))
     level["data"] = srl("level.json.gz")
     if "file" in meta.get("preview", {}):
         level["preview"] = srl(meta["preview"]["file"])
@@ -94,6 +95,61 @@ def scp_projection(project, entries):
     out["sonolus/levels/list"] = {"pageCount": 1, "items": [level]}
     out[f"sonolus/levels/{name}"] = dict(item=level, description=meta.get("description", ""), actions=[], hasCommunity=False, leaderboards=[], sections=[])
     return out
+
+
+def scp_fallbacks(project, level, entries):
+    paths = []
+    if "file" not in project.get("metadata", {}).get("cover", {}):
+        path = "sonolus/cover.png"
+        paths.append(path)
+        need(path in entries, f"no {path}")
+        data = entries[path]["data"]
+        need(data[:8] == b"\x89PNG\r\n\x1a\n", "fallback cover: PNG signature")
+        chunks = []
+        at = 8
+        while at < len(data):
+            need(at + 12 <= len(data), "fallback cover: chunk header")
+            size = struct.unpack_from(">I", data, at)[0]
+            need(at + size + 12 <= len(data), "fallback cover: chunk size")
+            kind, payload = data[at + 4:at + 8], data[at + 8:at + 8 + size]
+            need(zlib.crc32(kind + payload) == struct.unpack_from(">I", data, at + 8 + size)[0], "fallback cover: CRC")
+            chunks.append((kind, payload))
+            at += size + 12
+        need([kind for kind, _ in chunks] == [b"IHDR", b"IDAT", b"IEND"], "fallback cover: chunks")
+        need(chunks[0][1] == struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0), "fallback cover: opaque RGB pixel")
+        need(zlib.decompress(chunks[1][1]) == b"\x00\x00\x00\x00" and chunks[2][1] == b"", "fallback cover: black pixel")
+    if "file" not in project.get("bgm", {}):
+        path = "sonolus/bgm.mp3"
+        paths.append(path)
+        need(path in entries, f"no {path}")
+        bpms, beats = [], []
+        note = re.compile(r"(?:Fake)?(?:(?:Normal|Critical)(?:Head|Tail)?(?:Tap|Flick|Trace|TraceFlick|Release|Tick)|Damage|Anchor)Note")
+        for entity in level["entities"]:
+            values = {field["name"]: field.get("value") for field in entity["data"]}
+            if note.fullmatch(entity["archetype"]):
+                beats.append(values["#BEAT"])
+            elif entity["archetype"] == "#BPM_CHANGE":
+                bpms.append((values["#BEAT"], values["#BPM"]))
+        seconds = 1
+        if beats:
+            bpms.sort(key=lambda bpm: bpm[0])
+            need(bool(bpms), "fallback BGM: no BPM")
+            last = max(beats)
+            beat, bpm = bpms[0]
+            time = 0
+            for next_beat, next_bpm in bpms[1:]:
+                if next_beat >= last:
+                    break
+                time += (next_beat - beat) * (60 / bpm)
+                beat, bpm = next_beat, next_bpm
+            time += (last - beat) * (60 / bpm)
+            seconds = max(1, math.ceil(time + level["bgmOffset"] + 1))
+        frames = math.ceil(seconds * 32000 / 1152)
+        data = entries[path]["data"]
+        need(len(data) == frames * 144 and len(data) <= CAPS["media"], "fallback BGM: duration or cap")
+        frame = b"\xff\xfb\x18\xc0" + bytes(140)
+        need(all(data[at:at + 144] == frame for at in range(0, len(data), 144)), "fallback BGM: silent frames")
+    return paths
 
 
 def gunzip_level(data, cap):
@@ -855,17 +911,18 @@ def check_file(path):
     need(project["patch"] == expected_patch(carriers), f"project.json: patch {project['patch']} is not the lowest the content needs")
 
     projection = scp_projection(project, by_name)
+    fallbacks = scp_fallbacks(project, level, by_name)
     for name, value in projection.items():
         need(name in by_name, f"missing {name}")
         need(js_json(parse_json(by_name[name]["data"], name)) == js_json(value), f"{name}: project projection")
     # Every authoritative entry is named by a pointer, and every pointer names an entry.
     for name in names[1:]:
-        need(name in pointers or name in projection, f"{name}: no pointer names it")
+        need(name in pointers or name in projection or name in fallbacks, f"{name}: no pointer names it")
     for name, what in pointers.items():
         need(name in by_name, f"{what}: no entry {name}")
     order = ["project.json", "level.json.gz"] + history_order(history) + \
         [n for n in names if n.startswith("assets/cover.")] + \
-        [n for n in names if n.startswith("assets/preview.")] + [n for n in names if n.startswith("bgm/")] + list(projection)
+        [n for n in names if n.startswith("assets/preview.")] + [n for n in names if n.startswith("bgm/")] + fallbacks + list(projection)
     need(names == order, f"entry order {names}")
     for e in entries:
         expected = (0, 8) if e["name"].startswith(EITHER_PREFIXES) else (0,) if e["name"].startswith(STORE_PREFIXES) else (8,)

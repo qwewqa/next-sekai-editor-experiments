@@ -1,13 +1,18 @@
 import { captureEntryDescription, utf8Length } from '../../history/operations'
+import { inflateStrict } from '../chunkVerify'
 import { hashKey } from '../db'
 import { fromHex16, toHex } from '../hash'
-import { unpackHashes, type NodesRow } from '../records/rows'
+import { NXSP_CAPS } from '../nxsp/read'
+import { scpSilenceSecondsFromState, scpSilentMp3Size } from '../nxsp/scpMedia'
+import { stateFromRecords } from '../records/records'
+import { nodeJsonFromRow, rootJsonFromRow, unpackHashes, type NodesRow } from '../records/rows'
+import { decodeSnapshot } from '../records/snapshot'
 import type { SaveStore } from './bodies'
 import { CUT_STORES, readCut } from './cut'
 import { chainRows, ModelError } from './model'
 
 // The Save dialogs' size preview: `estimateSaveSize`, from
-// stored sizes, never inflating or hashing a body. For the rows the write would hold, each
+// stored sizes, decoding only the head for its silent BGM's duration. For the rows the write would hold, each
 // distinct root's and node's row `size` and each chunk's stored length; the media rows' sizes;
 // the manifest by a per-entry and per-record estimate, deflated; level data from the head's
 // records the same way. Cached per chain by the saved session, its `lastSeq` and the head's BGM,
@@ -25,6 +30,8 @@ export type SaveSizeEstimate = {
     history: number
     /** The head's BGM; absent without one in storage. */
     bgm?: number
+    /** The generated silence when real BGM bytes are left out; absent if its head cannot be read. */
+    fallbackBgm?: number
     /** The stored BGM's file name, when its row keeps one. */
     bgmName?: string
     /** Media the head references that the media store lacks: not held, so written as metadata. */
@@ -169,6 +176,7 @@ export const estimateSaveSize = async (
         }
     }
     const headNodes = new Set<string>()
+    const allNodes = new Map<string, NodesRow>()
     if (headHex) {
         const row = rootRows.get(headHex) as NodesRow | undefined
         if (row?.t === 'root')
@@ -187,14 +195,13 @@ export const estimateSaveSize = async (
             seen.add(hex)
             const row = value as NodesRow | undefined
             if (row?.t !== 'node') continue
+            allNodes.set(hex, row)
             manifest += row.size + ESTIMATE.recordOverhead
             for (const child of unpackHashes(row.refs).map(toHex)) {
                 if (row.depth === 0) {
                     chunks.add(child)
-                    if (headNodes.has(hex)) headChunks.push(child)
                 } else {
                     next.add(child)
-                    if (headNodes.has(hex)) headNodes.add(child)
                 }
             }
         }
@@ -203,12 +210,52 @@ export const estimateSaveSize = async (
     let chunksBin = 0
     let headStored = 0
     const headSet = new Set(headChunks)
+    const headSeen = new Set<string>()
+    for (const hex of headNodes) {
+        if (headSeen.has(hex)) continue
+        headSeen.add(hex)
+        const row = allNodes.get(hex)
+        if (row?.t !== 'node') continue
+        for (const child of unpackHashes(row.refs).map(toHex)) {
+            if (row.depth === 0) headSet.add(child)
+            else headNodes.add(child)
+        }
+    }
+    const headBodies = new Map<string, Uint8Array>()
     for (const [hex, value] of await readMany(store, 'chunks', [...chunks])) {
         const row = value as { bytes?: Uint8Array; size?: number } | undefined
         if (!row?.bytes) continue
         chunksBin += row.bytes.length
         manifest += ESTIMATE.indexBytes
-        if (headSet.has(hex)) headStored += row.bytes.length
+        if (headSet.has(hex)) {
+            headStored += row.bytes.length
+            headBodies.set(hex, row.bytes)
+        }
+    }
+
+    let fallbackBgm: number | undefined
+    try {
+        const root = headHex ? (rootRows.get(headHex) as NodesRow | undefined) : undefined
+        if (root?.t === 'root') {
+            const records = decodeSnapshot(rootJsonFromRow(root), {
+                node: (hex) => {
+                    const row = allNodes.get(hex)
+                    return row?.t === 'node' ? nodeJsonFromRow(row) : undefined
+                },
+                chunk: (hex) => {
+                    const bytes = headBodies.get(hex)
+                    return bytes
+                        ? (JSON.parse(new TextDecoder().decode(inflateStrict(bytes))) as unknown)
+                        : undefined
+                },
+            })
+            fallbackBgm = scpSilentMp3Size(
+                scpSilenceSecondsFromState(stateFromRecords(records)),
+                NXSP_CAPS.media,
+            )
+        }
+    } catch {
+        // An unreadable head leaves the fallback size unknown.
     }
 
     let bgm: number | undefined
@@ -232,6 +279,7 @@ export const estimateSaveSize = async (
         steps: rows.length,
         history: Math.round(chunksBin + manifest * ESTIMATE.manifestDeflate),
         ...(bgm === undefined ? {} : { bgm }),
+        ...(fallbackBgm === undefined ? {} : { fallbackBgm }),
         ...(bgmName === undefined ? {} : { bgmName }),
         ...(missing ? { mediaMissing: missing } : {}),
         base: Math.round(

@@ -4,8 +4,8 @@ Originally written by `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.t
 `0.5.22+5f2c53da`: the real editor in Chromium on a dev server, driven through a scripted scenario
 (`tests/fixtures-v1`). `SHA256SUMS` pins the current bytes.
 
-Before the v0.6.0 tag, only the derived `sonolus/` entries were refreshed to the five-entry
-level package with empty external SRLs and SHA-1 links for included bytes. Every other
+Before the v0.6.0 tag, only the derived `sonolus/` entries were refreshed to the five-endpoint
+level package with empty external SRLs, SHA-1 links and fallback cover/BGM where bytes are absent. Every other
 entry retains its original compressed bytes and ZIP metadata, including `project.json` and its
 producer, revision and history references. See `docs/format-versioning.md` section 8.
 

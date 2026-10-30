@@ -1,4 +1,5 @@
 import { SCP_FIXED_PATHS } from './scp'
+import { SCP_MEDIA_PATHS } from './scpMedia'
 
 // Pinned `.nxsp` constants; `tests/local/formatVersions.test.ts` asserts each. What
 // each number guards, and the checklist for changing a format, is `docs/format-versioning.md`.
@@ -55,6 +56,7 @@ export const MINOR_TABLE = {
         'level.json': 0,
         'level.json.gz': 0,
         ...Object.fromEntries(SCP_FIXED_PATHS.map((name) => [name, 0])),
+        ...Object.fromEntries(SCP_MEDIA_PATHS.map((name) => [name, 0])),
         'sonolus/levels/': 0,
         'history/segments/': 0,
         'history/manifest.json': 0,
@@ -80,6 +82,7 @@ export const PATCH_TABLE = {
         'level.json': 0,
         'level.json.gz': 0,
         ...Object.fromEntries(SCP_FIXED_PATHS.map((name) => [name, 0])),
+        ...Object.fromEntries(SCP_MEDIA_PATHS.map((name) => [name, 0])),
         'sonolus/levels/': 0,
         'history/segments/': 0,
         'history/manifest.json': 0,

@@ -14,7 +14,15 @@ import {
     readNxsp,
 } from '../../../src/local/nxsp'
 import { gunzipLevel, gzipLevel } from '../../../src/local/nxsp/gzip'
+import { PlanError } from '../../../src/local/nxsp/plan'
 import { scpLevelName, scpPaths } from '../../../src/local/nxsp/scp'
+import {
+    SCP_BGM,
+    SCP_COVER,
+    SCP_MEDIA_PATHS,
+    scpSilenceSeconds,
+    scpSilentMp3Size,
+} from '../../../src/local/nxsp/scpMedia'
 import { checkBuilt } from '../../../src/local/save/verify'
 import { crc32 } from '../../../src/zip/crc32'
 import { nxspFolder, webFolder } from '../../fixtures-v1/folders'
@@ -51,7 +59,116 @@ const assertNoDummySrl = (value: unknown) => {
     for (const child of Object.values(value)) assertNoDummySrl(child)
 }
 
-test('canonical project fixtures contain only the five level endpoints and real resource links', async () => {
+test('silent BGM follows the note clock, offsets and upward rounding without allocating past the cap', () => {
+    const bpm = (beat: number, value: number) => ({
+        archetype: '#BPM_CHANGE',
+        data: [
+            { name: '#BEAT', value: beat },
+            { name: '#BPM', value },
+        ],
+    })
+    const note = (beat: number, archetype = 'NormalTapNote') => ({
+        archetype,
+        data: [{ name: '#BEAT', value: beat }],
+    })
+    const duration = (entities: unknown[], bgmOffset = 0) =>
+        scpSilenceSeconds({ entities, bgmOffset })
+    assert.equal(duration([]), 1)
+    assert.equal(duration([bpm(0, 120), bpm(1000, 1), note(9000, 'StageStyle')], 9000), 1)
+    assert.equal(duration([bpm(0, 120), note(4)]), 3)
+    assert.equal(duration([bpm(4, 60), note(8), bpm(0, 120)], 0.25), 8)
+    assert.equal(
+        duration([bpm(0, 120), note(12, 'FakeAnchorNote'), note(8, 'NormalTailReleaseNote')]),
+        7,
+    )
+    assert.equal(
+        duration([
+            bpm(0, 120),
+            note(4),
+            {
+                archetype: '#TIMESCALE_CHANGE',
+                data: [
+                    { name: '#BEAT', value: 2 },
+                    { name: '#TIMESCALE', value: -5 },
+                ],
+            },
+        ]),
+        3,
+    )
+    assert.equal(duration([bpm(0, 120), note(4)], -9), 1)
+    assert.equal(duration([bpm(0, 120), note(16, 'NormalTailReleaseNote')]), 9)
+    assert.equal(duration([bpm(0, 120), note(-4)]), 1)
+    assert.equal(duration([bpm(4, 120), note(8)]), 3)
+    assert.equal(scpSilentMp3Size(1, 4096), 4032)
+    assert.throws(
+        () => scpSilentMp3Size(1, 4031),
+        (error) => error instanceof PlanError && error.limit === 'bgm',
+    )
+    for (const seconds of [Infinity, Number.MAX_VALUE, 1e20])
+        assert.throws(() => scpSilentMp3Size(seconds, 1024 ** 3), PlanError)
+    assert.throws(() => duration([note(4)]), PlanError)
+})
+
+test('package fallbacks stay out of project media and history and missing derived bytes remain readable', async () => {
+    const { input } = fresh()
+    input.media = {}
+    input.levelInfo = { ...input.levelInfo, cover: undefined, preview: undefined }
+    input.headBgm = null
+    const built = planNxsp(input)
+    const file = await executePlan(built.plan, new Map())
+    const { items, modified } = await unzip(file)
+    const project = jsonOf(items, 'project.json')
+    assert.equal(project.bgm, undefined)
+    assert.equal(project.metadata?.cover, undefined)
+    assert.deepEqual(levelOf(items), input.level)
+    const read = await readNxsp(file)
+    assert.ok(read.kind === 'nxsp' && read.open === 'full')
+    assert.deepEqual(read.media, {})
+    assert.ok(read.history)
+    await checkBuilt(file, built.storageChunks)
+    for (const path of SCP_MEDIA_PATHS) {
+        const changed = items.map((item) => ({ ...item }))
+        changed.find((item) => item.name === path)!.data = new Uint8Array([255])
+        for (const name of scpPaths(input.id).slice(2)) {
+            const value = jsonOf(changed, name)
+            const level = value.item ?? value.items?.[0] ?? value.sections[0].items[0]
+            level[path === SCP_BGM ? 'bgm' : 'cover'] = resource(changed, path)
+            setJson(changed, name, value)
+        }
+        const corrupt = await zipItems(changed, modified)
+        const opened = await readNxsp(corrupt)
+        assert.ok(opened.kind === 'nxsp' && opened.open === 'full')
+        await assert.rejects(checkBuilt(corrupt, []), /fallback bytes/)
+        const dir = mkdtempSync(join(tmpdir(), 'nxsp-fallback-'))
+        try {
+            const file = join(dir, 'fallback.nxsp')
+            writeFileSync(file, new Uint8Array(await corrupt.arrayBuffer()))
+            const result = spawnSync('uv', ['run', 'python', '-I', 'tools/nxsp_check.py', file], {
+                encoding: 'utf8',
+            })
+            assert.notEqual(result.status, 0)
+            assert.match(result.stdout + result.stderr, /fallback (cover|BGM):/)
+        } finally {
+            rmSync(dir, { recursive: true, force: true })
+        }
+    }
+    const old = await zipItems(
+        items.filter((item) => !SCP_MEDIA_PATHS.includes(item.name)),
+        modified,
+    )
+    const oldRead = await readNxsp(old)
+    assert.ok(oldRead.kind === 'nxsp' && oldRead.open === 'full')
+    for (const name of ['sonolus/cover.jpg', 'sonolus/bgm.wav', 'sonolus/media/bgm.mp3']) {
+        const unknown = await zipItems(
+            [...items, { name, data: new Uint8Array(), method: 'store' }],
+            modified,
+        )
+        const opened = await readNxsp(unknown)
+        assert.ok(opened.kind === 'nxsp' && opened.open === 'partial')
+    }
+})
+
+test('canonical project fixtures contain the five level endpoints and real resource links', async () => {
     const paths = [
         ...readdirSync(nxspFolder)
             .filter((name) => name.endsWith('.nxsp'))
@@ -62,7 +179,9 @@ test('canonical project fixtures contain only the five level endpoints and real 
     for (const path of paths) {
         const file = new Blob([readFileSync(path)])
         const { items } = await unzip(file)
-        const endpoints = items.filter((entry) => entry.name.startsWith('sonolus/'))
+        const endpoints = items.filter(
+            (entry) => entry.name.startsWith('sonolus/') && !SCP_MEDIA_PATHS.includes(entry.name),
+        )
         assert.equal(endpoints.length, 5, path)
         assert.deepEqual(
             endpoints.map((entry) => entry.name),
@@ -160,8 +279,8 @@ test('projection identity, title fallbacks and numeric metadata come from the sa
         assert.equal(item.name, scpLevelName('../arbitrary/\ufffd'))
         assert.equal(item.title, 'coconut')
         assert.equal(item.rating, rating)
-        assert.deepEqual(item.bgm, {})
-        assert.deepEqual(item.cover, {})
+        assert.deepEqual(item.bgm, resource(items, SCP_BGM))
+        assert.deepEqual(item.cover, resource(items, SCP_COVER))
         assertNoDummySrl(item)
     }
     const buildTitle = async (name: string | undefined) => {
@@ -207,7 +326,8 @@ test('only saved media bytes produce complete resource links', async () => {
             assert.equal(Object.hasOwn(level, key), held || key !== 'preview')
             if (held) {
                 assert.deepEqual(level[key], resource(items, level[key].url.slice(1)))
-            } else if (key !== 'preview') assert.deepEqual(level[key], {})
+            } else if (key !== 'preview')
+                assert.deepEqual(level[key], resource(items, key === 'bgm' ? SCP_BGM : SCP_COVER))
         }
         await checkBuilt(file, built.storageChunks)
     }

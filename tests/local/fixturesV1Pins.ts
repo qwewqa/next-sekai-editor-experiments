@@ -18,6 +18,6 @@ export const FIXTURES_CONFIRMED_AT = '5f2c53da'
 
 /** The SHA-256 of each folder's SHA256SUMS file. */
 export const SUMS_DIGESTS: Readonly<Record<'nxsp-v1' | 'web-storage-v1', string>> = {
-    'nxsp-v1': 'df06d5a96296d82d0ab5127e9b8a5905d86be3e526991857d5be9ee5ea883425',
+    'nxsp-v1': '447a978b135cdffef5817e167d11da10ac7732660d527de72ad2c1e6ce14ee8f',
     'web-storage-v1': 'b30acca6244327a1985f74b327073cae874e78e0ebfd704e9acbb327df55e8e4',
 }

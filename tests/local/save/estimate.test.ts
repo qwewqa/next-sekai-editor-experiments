@@ -1,12 +1,50 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { totalOf } from '../../../src/editor/save/total'
+import { toHex } from '../../../src/local/hash'
+import { toRecords } from '../../../src/local/records/records'
+import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { cachedEstimate, estimateSaveSize } from '../../../src/local/save/estimate'
 import { saveHandlers } from '../../../src/local/worker/saveHandlers'
 import { ZipReader } from '../../../src/zip/reader'
-import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
+import { futureFixtureOperation } from '../../helpers/historySteps'
+import { BGM, COVER, PREVIEW, chartWith } from '../nxsp/helpers'
+import { note, stateOf } from '../records/charts'
 import { Fixture, save } from './fixture'
 
 // `estimateSaveSize`: from stored sizes, cached per chain, close to the file.
+
+test('a shared child of an older root still contributes to the head silence estimate', async () => {
+    const chart = chartWith()
+    chart.chart.bpms = [{ beat: 0, bpm: 120 }]
+    chart.chart.slides = Array.from({ length: 16 }, (_, i) => [note(i * 16)])
+    chart.offset = 0
+    const before = stateOf(chart)
+    const beforeSnapshot = encodeSnapshot(toRecords(before))
+    chart.chart.slides.push([note(256)])
+    const after = stateOf(chart)
+    const afterSnapshot = encodeSnapshot(toRecords(after))
+    const shared = beforeSnapshot.nodes.find((node) => node.kind === 'slides')!
+    assert.ok(afterSnapshot.nodes.some((node) => node.kind === 'slides' && node.depth === 1))
+    assert.ok(afterSnapshot.nodes.some((node) => toHex(node.hash) === toHex(shared.hash)))
+    const fixture = await Fixture.create()
+    await fixture.start(before)
+    await fixture.editState(after, futureFixtureOperation('grew to 17 chunks'))
+    await fixture.flush()
+    const estimate = await estimateSaveSize(fixture.store, fixture.chainId)
+    assert.ok(estimate)
+    assert.equal(estimate.fallbackBgm, Math.ceil((129 * 32000) / 1152) * 144)
+    const { file } = await save(
+        fixture,
+        { kind: 'copy' },
+        { binds: false, extra: { bgm: false, history: false } },
+    )
+    assert.ok(file)
+    const reader = await ZipReader.open(file)
+    assert.equal(reader.get('sonolus/bgm.mp3')?.size, estimate.fallbackBgm)
+    const total = totalOf(estimate, { history: false, bgm: false })!
+    assert.ok(total / file.size > 0.95 && total / file.size < 1.05)
+})
 
 /** The written file's history entries and the rest, by their stored sizes. */
 const measured = async (file: Blob) => {

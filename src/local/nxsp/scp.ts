@@ -2,6 +2,7 @@ import type { EngineItem, LevelItem } from '@sonolus/core'
 import { hash16Sync, toHex } from '../hash'
 import { toWellFormed } from '../records/wellFormed'
 import { isObject } from './json'
+import { SCP_BGM, SCP_COVER, SCP_MEDIA_PATHS } from './scpMedia'
 
 type SourceDescriptor<T extends { version: number }> = Required<
     Pick<EngineItem, 'name' | 'source' | 'title' | 'subtitle' | 'author' | 'tags'>
@@ -64,7 +65,9 @@ export const SCP_FIXED_PATHS = [
 ]
 
 export const isScpEntry = (name: string, id?: string) =>
-    SCP_FIXED_PATHS.includes(name) || (!!id && name === `sonolus/levels/${scpLevelName(id)}`)
+    SCP_FIXED_PATHS.includes(name) ||
+    SCP_MEDIA_PATHS.includes(name) ||
+    (!!id && name === `sonolus/levels/${scpLevelName(id)}`)
 
 export const scpPaths = (id: string) => [...SCP_FIXED_PATHS, `sonolus/levels/${scpLevelName(id)}`]
 
@@ -72,7 +75,7 @@ export const scpPaths = (id: string) => [...SCP_FIXED_PATHS, `sonolus/levels/${s
 export const scpHash = async (bytes: Uint8Array) =>
     toHex(new Uint8Array(await crypto.subtle.digest('SHA-1', bytes as Uint8Array<ArrayBuffer>)))
 
-/** The package projects the saved head and only the media the project includes. */
+/** The package projects the saved head with included media or generated fallbacks. */
 export const scpEntries = (
     project: Record<string, unknown>,
     hashOf: (file: string) => string,
@@ -110,8 +113,8 @@ export const scpEntries = (
         useBackground: { useDefault: true },
         useEffect: { useDefault: true },
         useParticle: { useDefault: true },
-        cover: cover === undefined ? {} : srl(cover),
-        bgm: bgm === undefined ? {} : srl(bgm),
+        cover: srl(cover ?? SCP_COVER),
+        bgm: srl(bgm ?? SCP_BGM),
         data: srl('level.json.gz'),
         ...(preview === undefined ? {} : { preview: srl(preview) }),
     }

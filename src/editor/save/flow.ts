@@ -17,6 +17,8 @@ import {
     prefillOf,
     stemOf,
 } from '../../local/names'
+import { NXSP_CAPS } from '../../local/nxsp/read'
+import { scpSilenceSecondsFromState, scpSilentMp3Size } from '../../local/nxsp/scpMedia'
 import { NXSP_MINOR, NXSP_VERSION } from '../../local/nxsp/version'
 import { isImporting, whenImported } from '../../local/open/importLoop'
 import type { HandleOwner } from '../../local/save/bind'
@@ -1512,7 +1514,17 @@ const bgmHeld = async (env: Env, state: State) => {
 /** The estimate with the BGM this tab holds counted when storage doesn't have it yet. */
 const withHeldBgm = (estimate: SaveSizeEstimate, state: State): SaveSizeEstimate => {
     const source = state.bgm.source
-    return estimate.bgm === undefined && source ? { ...estimate, bgm: source.byteLength } : estimate
+    let fallbackBgm: number | undefined
+    try {
+        fallbackBgm = scpSilentMp3Size(scpSilenceSecondsFromState(state), NXSP_CAPS.media)
+    } catch {
+        // A duration past the writer's cap leaves the total unknown.
+    }
+    return {
+        ...estimate,
+        fallbackBgm,
+        ...(estimate.bgm === undefined && source ? { bgm: source.byteLength } : {}),
+    }
 }
 
 /** The storage line's first sentence for the first Save in this browser, where it applies. */

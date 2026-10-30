@@ -134,7 +134,7 @@ A reader is more tolerant, so that an operating system's re-zip still opens.
 | `assets/cover.<ext>` | 0 | `metadata.cover.file` | The head's cover, when held |
 | `assets/preview.<ext>` | 0 | `metadata.preview.file` | The head's preview audio, when held |
 | `bgm/<name>` | 0 | `bgm.file` | The head's BGM, when held |
-| `sonolus/…` | 8 | exact derived paths (§4.2) | A generated Sonolus package view of the saved head |
+| `sonolus/…` | 0 for fallback media, 8 for JSON | exact derived paths (§4.2) | A generated Sonolus package view of the saved head |
 
 The writer's order is the table's (segments by number). Readers do not depend on order.
 
@@ -160,7 +160,7 @@ The gzip layer requires an actual gzip header, one completed member, a valid tra
 
 The writer appends five DEFLATE JSON entries after the media, in this order: `sonolus/package`, `sonolus/info`, `sonolus/levels/info`, `sonolus/levels/list` and `sonolus/levels/<name>`. `<name>` is `nse-` followed by lowercase hash16 of the UTF-8 bytes of the well-formed document `id`. Revision and lineage do not take part in it.
 
-These four fixed metadata paths and this document's one derived detail path are owned views. They never override `project.json`, decoded level data or history. Missing, stale or unreadable views leave the authoritative editor content available. Save regenerates them. Another level detail or another path under `sonolus/` remains unknown and makes the open partial. Duplicate-name and overlap rules still apply to every entry, including owned views.
+These four fixed metadata paths, this document's one derived detail path, `sonolus/cover.png` and `sonolus/bgm.mp3` are owned views. They never override `project.json`, decoded level data or history. Missing, stale or unreadable views leave the authoritative editor content available. Save regenerates them. Another level detail or another path under `sonolus/` remains unknown and makes the open partial. Duplicate-name and overlap rules still apply to every entry, including owned views.
 
 `sonolus/package` is `{"shouldUpdate":true}`. `sonolus/info` has the display title, a Levels button and `configuration:{options:[]}`. Levels info has one section with `itemType:"level"`, the display title and `items:[level]`; levels list has `pageCount:1` and `items:[level]`. Level detail has `item:level`, the saved description, `actions:[]`, `hasCommunity:false`, `leaderboards:[]` and `sections:[]`. The three repeated level descriptors agree.
 
@@ -170,7 +170,11 @@ The engine and its four nested defaults use item name `coconut-next-sekai-1`, so
 
 External resource fields are empty SRLs (`{}`), without `hash` or `url`: engine `thumbnail`, `playData`, `watchData`, `previewData`, `tutorialData` and `configuration`; skin and particle `thumbnail`, `data` and `texture`; background `thumbnail`, `data`, `image` and `configuration`; effect `thumbnail`, `data` and `audio`. The engine has no `rom`. Save uses a shipped template and fetches no metadata or dependency bytes.
 
-Bundled SRLs have a 40-character lowercase SHA-1 `hash` and `url:"/" + entryName`. Each hash covers the entry's bytes after ZIP decoding. Data points to `/level.json.gz`, and its hash covers the exact gzip bytes, including the gzip header and trailer. Cover, BGM and preview point directly to the entries this Save includes, with no second copy or conversion. Cover and BGM are `{}` when their bytes are absent, held as metadata only or unticked. Preview is omitted without its bytes. SHA-1 is only for these generated resource links; NXSP media hashes remain SHA-256 and ZIP CRC checks retain their meaning.
+Bundled SRLs have a 40-character lowercase SHA-1 `hash` and `url:"/" + entryName`. Each hash covers the entry's bytes after ZIP decoding. Data points to `/level.json.gz`, and its hash covers the exact gzip bytes, including the gzip header and trailer. Included cover, BGM and preview bytes are referenced directly, with no second copy or conversion. Preview is omitted without its bytes. SHA-1 is only for these generated resource links; NXSP media hashes remain SHA-256 and ZIP CRC checks retain their meaning.
+
+When cover bytes are absent, the package uses `sonolus/cover.png`, an opaque black 1 × 1 RGB PNG. When BGM bytes are absent, held as metadata only or unticked, it uses `sonolus/bgm.mp3`, generated silence. These STORE entries follow the included media and precede the five JSON endpoints, cover first. They are referenced only by the package and never added to editor media, Level Info, records or history. A failed read of included media still fails the Save.
+
+Silence lasts through the latest note's BPM time plus `bgmOffset` plus one second, rounded up to a whole second and then a whole MP3 frame, with a minimum of one second. Without notes it lasts at least one second, regardless of late events or offset. All note archetypes count, including fake notes, anchors and slide tails. Scroll time scales and stage events do not change the note clock. The bytes are MPEG-1 Layer III mono at 32 kHz and 32 kbps: each 144-byte frame starts `ff fb 18 c0` and has zero side information and main data, giving 1,152 silent samples. The writer checks the media cap before allocation. No encoder dependency is used.
 
 The synchronous builder emits a `kind:"scp"` plan part holding the project projection input for each endpoint. The executor resolves these parts after preparing the level and media, hashes each resource once, and then writes the JSON with ZIP DEFLATE. Planned uncompressed sizes use the fixed 40-character hash length; pending compressed sizes use the safe bound `2 * uncompressedSize + 1024`. The executor computes actual CRCs and sizes and checks ZIP32 limits. Copied resources still pass their source CRC checks, and source fingerprints are checked after hashing. The built-file check independently hashes the bytes handed over.
 

@@ -6,6 +6,7 @@ import { gunzipLevel, gzipStoredCap } from '../nxsp/gzip'
 import { isObject, parseJsonBytes } from '../nxsp/json'
 import { NXSP_CAPS } from '../nxsp/read'
 import { scpEntries, scpHash } from '../nxsp/scp'
+import { scpFallbackMedia } from '../nxsp/scpMedia'
 import { canonicalBytes, type RecordValue } from '../records/canonical'
 import { chunkCrc32 } from '../records/rows'
 
@@ -89,8 +90,16 @@ export const checkBuilt = async (file: Blob, storageChunks: readonly PlannedChun
                 fail(`${name}: its project projection`)
             if (reader.get(name)?.method !== 8) fail(`${name}: its ZIP method`)
         }
+        const fallbacks = scpFallbackMedia(project, level, NXSP_CAPS.media)
+        for (const [name, bytes] of fallbacks) {
+            if (
+                reader.get(name)?.method !== 0 ||
+                !equalBytes(data.get(name) ?? new Uint8Array(), bytes)
+            )
+                fail(`${name}: its fallback bytes`)
+        }
         for (const name of data.keys())
-            if (name.startsWith('sonolus/') && !expected.has(name))
+            if (name.startsWith('sonolus/') && !expected.has(name) && !fallbacks.has(name))
                 fail(`${name}: unexpected package entry`)
     } catch (error) {
         unlessNotReadable(error, error instanceof Error ? error.message : 'package projection')

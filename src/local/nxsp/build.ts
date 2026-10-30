@@ -43,6 +43,7 @@ import {
 } from './project'
 import { NXSP_CAPS, type NxspCaps } from './read'
 import { scpEntries, scpPaths } from './scp'
+import { scpFallbackMedia } from './scpMedia'
 import { MANIFEST_VERSION, minorOf, NXSP_FORMAT, NXSP_VERSION, patchOf } from './version'
 
 // The shared builder, its format half: from what a write holds, already decided by
@@ -663,6 +664,14 @@ export const planNxsp = (
         ...(completeFrom === undefined ? {} : { completeFrom }),
     }
 
+    const fallbackMedia = scpFallbackMedia(
+        {
+            ...(media.bgm ? { bgm: media.bgm.form } : {}),
+            metadata: { ...(media.cover ? { cover: media.cover.form } : {}) },
+        },
+        input.level,
+        caps.media,
+    )
     const bodyEntries = [
         ...segmentEntries,
         ...(manifestEntry ? [manifestEntry] : []),
@@ -670,6 +679,13 @@ export const planNxsp = (
         ...(media.cover?.entry ? [media.cover.entry] : []),
         ...(media.preview?.entry ? [media.preview.entry] : []),
         ...(media.bgm?.entry ? [media.bgm.entry] : []),
+        ...[...fallbackMedia].map(([name, data]): PlannedEntry => ({
+            name,
+            method: 0,
+            crc32: crc32(data),
+            uncompressedSize: data.length,
+            parts: [{ kind: 'bytes', data }],
+        })),
     ]
     const names = [
         'project.json',

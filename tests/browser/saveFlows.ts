@@ -61,27 +61,35 @@ export const edit = (page: Page, beat: number) =>
 /** Writes an OPFS file, as another program would. */
 export const writeFile = (page: Page, name: string, bytes: number[] | Uint8Array) =>
     page.evaluate(
-        async ({ name, bytes }) => {
+        async ({ name, base64 }) => {
             const root = await navigator.storage.getDirectory()
             const handle = await root.getFileHandle(name, { create: true })
             const writable = await handle.createWritable()
-            await writable.write(new Uint8Array(bytes))
+            await writable.write(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)))
             await writable.close()
         },
-        { name, bytes: [...bytes] },
+        { name, base64: Buffer.from(bytes).toString('base64') },
     )
 
 /** An OPFS file's bytes, or undefined when there's none. */
-export const readFile = (page: Page, name: string) =>
-    page.evaluate(async (name) => {
+export const readFile = async (page: Page, name: string) => {
+    const base64 = await page.evaluate(async (name) => {
         const root = await navigator.storage.getDirectory()
         try {
             const file = await (await root.getFileHandle(name)).getFile()
-            return [...new Uint8Array(await file.arrayBuffer())]
+            const url = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result as string)
+                reader.onerror = () => reject(reader.error)
+                reader.readAsDataURL(file)
+            })
+            return url.slice(url.indexOf(',') + 1)
         } catch {
             return undefined
         }
     }, name)
+    return base64 === undefined ? undefined : [...Buffer.from(base64, 'base64')]
+}
 
 export const removeFile = (page: Page, name: string) =>
     page.evaluate(async (name) => {

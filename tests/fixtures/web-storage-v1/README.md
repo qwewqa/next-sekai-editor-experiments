@@ -7,8 +7,8 @@ frozen when v0.6.0 is tagged and never changed after it; every later build reads
 `tests/local/fixturesV1.test.ts`).
 
 Before the v0.6.0 tag, only the derived `sonolus/` entries in `saving-marker-file.nxsp` were
-refreshed to the five-entry level package with empty external SRLs and SHA-1 links for included
-bytes. Its other entries retain their original compressed bytes and ZIP metadata,
+refreshed to the five-endpoint level package with empty external SRLs, SHA-1 links and fallback
+cover/BGM where bytes are absent. Its other entries retain their original compressed bytes and ZIP metadata,
 including the producer and revision named by the saving marker. The dumps, raw export and journal
 are unchanged. See `docs/format-versioning.md` section 8.
 

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import test from 'node:test'
+import { totalOf } from '../../../src/editor/save/total'
 import { estimateSaveSize } from '../../../src/local/save/estimate'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
@@ -40,7 +41,7 @@ for (const steps of [3, 30]) {
             assert.ok(estimate)
             const { file } = await save(fixture, { kind: 'copy' }, { binds: false })
             assert.ok(file)
-            const ratio = (estimate.base + estimate.history) / file.size
+            const ratio = totalOf(estimate, { history: true, bgm: false })! / file.size
             assert.ok(ratio > 0.85 && ratio < 1.15, `${JSON.stringify(estimate)} for ${file.size}`)
             const { file: bare } = await save(
                 fixture,
@@ -48,7 +49,7 @@ for (const steps of [3, 30]) {
                 { binds: false, extra: { history: false } },
             )
             assert.ok(bare)
-            const without = estimate.base / bare.size
+            const without = totalOf(estimate, { history: false, bgm: false })! / bare.size
             assert.ok(without > 0.85 && without < 1.15, `${estimate.base} for ${bare.size}`)
         },
     )

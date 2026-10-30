@@ -2,6 +2,7 @@ import { EngineArchetypeDataName, type LevelDataEntity } from '@sonolus/core'
 import Type from 'typebox'
 import { getOptionalRef, getOptionalValue, getValue, type ParseCtx } from '.'
 import { easeFromValue, easeLevelDataValues } from '../../../ease'
+import { isNoteEntity, type NoteEntity } from '../../../levelData/note'
 import type { GroupId } from '../../groups'
 import type { NoteObject } from '../../note'
 import {
@@ -14,6 +15,8 @@ import {
 import { ImportRefusal } from '../../refusal'
 import type { StageId } from '../../stages'
 import { beatSchema } from './schemas'
+
+export { isNoteEntity, noteArchetypeNames } from '../../../levelData/note'
 
 export const parseSlidesToChart = ({
     chart,
@@ -107,84 +110,6 @@ export const parseSlidesToChart = ({
         )
     }
 }
-
-export const noteArchetypeNames = [
-    'NormalTapNote',
-    'NormalFlickNote',
-    'NormalTraceNote',
-    'NormalTraceFlickNote',
-    'NormalReleaseNote',
-    'NormalHeadTapNote',
-    'NormalHeadFlickNote',
-    'NormalHeadTraceNote',
-    'NormalHeadTraceFlickNote',
-    'NormalHeadReleaseNote',
-    'NormalTailTapNote',
-    'NormalTailFlickNote',
-    'NormalTailTraceNote',
-    'NormalTailTraceFlickNote',
-    'NormalTailReleaseNote',
-    'NormalTickNote',
-    'CriticalTapNote',
-    'CriticalFlickNote',
-    'CriticalTraceNote',
-    'CriticalTraceFlickNote',
-    'CriticalReleaseNote',
-    'CriticalHeadTapNote',
-    'CriticalHeadFlickNote',
-    'CriticalHeadTraceNote',
-    'CriticalHeadTraceFlickNote',
-    'CriticalHeadReleaseNote',
-    'CriticalTailTapNote',
-    'CriticalTailFlickNote',
-    'CriticalTailTraceNote',
-    'CriticalTailTraceFlickNote',
-    'CriticalTailReleaseNote',
-    'CriticalTickNote',
-    'DamageNote',
-    'AnchorNote',
-    'FakeNormalTapNote',
-    'FakeNormalFlickNote',
-    'FakeNormalTraceNote',
-    'FakeNormalTraceFlickNote',
-    'FakeNormalReleaseNote',
-    'FakeNormalHeadTapNote',
-    'FakeNormalHeadFlickNote',
-    'FakeNormalHeadTraceNote',
-    'FakeNormalHeadTraceFlickNote',
-    'FakeNormalHeadReleaseNote',
-    'FakeNormalTailTapNote',
-    'FakeNormalTailFlickNote',
-    'FakeNormalTailTraceNote',
-    'FakeNormalTailTraceFlickNote',
-    'FakeNormalTailReleaseNote',
-    'FakeNormalTickNote',
-    'FakeCriticalTapNote',
-    'FakeCriticalFlickNote',
-    'FakeCriticalTraceNote',
-    'FakeCriticalTraceFlickNote',
-    'FakeCriticalReleaseNote',
-    'FakeCriticalHeadTapNote',
-    'FakeCriticalHeadFlickNote',
-    'FakeCriticalHeadTraceNote',
-    'FakeCriticalHeadTraceFlickNote',
-    'FakeCriticalHeadReleaseNote',
-    'FakeCriticalTailTapNote',
-    'FakeCriticalTailFlickNote',
-    'FakeCriticalTailTraceNote',
-    'FakeCriticalTailTraceFlickNote',
-    'FakeCriticalTailReleaseNote',
-    'FakeCriticalTickNote',
-    'FakeDamageNote',
-    'FakeAnchorNote',
-] as const
-
-type NoteArchetypeName = (typeof noteArchetypeNames)[number]
-
-type NoteEntity = LevelDataEntity & { archetype: NoteArchetypeName }
-
-export const isNoteEntity = (entity: LevelDataEntity): entity is NoteEntity =>
-    noteArchetypeNames.includes(entity.archetype as never)
 
 const isAttachedSchema = Type.Number()
 

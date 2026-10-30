@@ -118,7 +118,38 @@ const result = (page: Page) =>
 const dialog = (page: Page) => page.getByRole('dialog')
 const guard = (page: Page) => page.waitForTimeout(400)
 
-const estimateOf = { steps: 1840, history: 3_100_000, bgm: 4_200_000, base: 300_000 }
+const estimateOf = {
+    steps: 1840,
+    history: 3_100_000,
+    bgm: 4_200_000,
+    base: 300_000,
+    fallbackBgm: 400_000,
+}
+
+test('flow estimates no-BGM rows with the fallback even when write options retain BGM', async ({
+    page,
+    context,
+}) => {
+    await seed(context)
+    await visit(page)
+    const totals = await page.evaluate(async () => {
+        const path = '/src/editor/save/preview.ts'
+        const { estimatedTotal, noteLoaded } = await import(/* @vite-ignore */ path)
+        return ['none', 'notLoaded', 'held'].map((kind) => {
+            const input = { bgm: { kind } }
+            noteLoaded(input, { steps: 0, base: 100, history: 0, fallbackBgm: 400, bgm: 1000 })
+            return [
+                estimatedTotal(input, { history: false, bgm: true }),
+                estimatedTotal(input, { history: false, bgm: false }),
+            ]
+        })
+    })
+    expect(totals).toEqual([
+        [500, 500],
+        [500, 500],
+        [1100, 500],
+    ])
+})
 
 test.describe('the Save dialog', () => {
     test('opens on File Name with the prefill, and Enter saves with the extension', async ({
@@ -243,7 +274,7 @@ test.describe('the Save dialog', () => {
         await dialog(page).getByRole('checkbox', { name: 'History' }).uncheck()
         await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 4.5 MB')
         await dialog(page).getByRole('checkbox', { name: 'BGM' }).uncheck()
-        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 300 kB')
+        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 700 kB')
         await page.keyboard.press('Enter')
         await expect.poll(() => result(page)).toMatchObject({ history: false, bgm: false })
     })
@@ -265,13 +296,14 @@ test.describe('the Save dialog', () => {
             steps: estimateOf.steps,
             history: estimateOf.history,
             base: estimateOf.base,
+            fallbackBgm: estimateOf.fallbackBgm,
         }
         await openSave(page, { estimate: { cached: unsized, value: unsized } })
         const total = dialog(page).locator('[data-save-total]')
         await expect(total).toHaveText('Estimating size…')
         // Unticked, the total no longer depends on it.
         await dialog(page).getByRole('checkbox', { name: 'BGM' }).uncheck()
-        await expect(total).toHaveText('Total: about 3.4 MB')
+        await expect(total).toHaveText('Total: about 3.8 MB')
         await dialog(page).getByRole('checkbox', { name: 'BGM' }).check()
         await expect(total).toHaveText('Estimating size…')
     })
@@ -303,7 +335,7 @@ test.describe('the Save dialog', () => {
         await expect(history).not.toBeChecked()
         await expect(dialog(page)).toContainText('History requires a secure connection.')
         await expect(dialog(page).locator('[data-save-row="bgm"]')).toHaveCount(0)
-        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 300 kB')
+        await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 700 kB')
     })
 
     test('a BGM that is not loaded is disabled without a size', async ({ page, context }) => {

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { totalOf } from '../../../src/editor/save/total'
 import { estimateSaveSize } from '../../../src/local/save/estimate'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
@@ -34,7 +35,7 @@ test('the estimate on the generated large chart is within 25% of the file', asyn
     assert.ok(estimate)
     const { file } = await save(fixture, { kind: 'copy' }, { binds: false })
     assert.ok(file)
-    const ratio = (estimate.base + estimate.history) / file.size
+    const ratio = totalOf(estimate, { history: true, bgm: false })! / file.size
     assert.ok(ratio > 0.75 && ratio < 1.25, `${JSON.stringify(estimate)} for ${file.size}`)
     const { file: bare } = await save(
         fixture,
@@ -42,6 +43,6 @@ test('the estimate on the generated large chart is within 25% of the file', asyn
         { binds: false, extra: { history: false } },
     )
     assert.ok(bare)
-    const without = estimate.base / bare.size
+    const without = totalOf(estimate, { history: false, bgm: false })! / bare.size
     assert.ok(without > 0.75 && without < 1.25, `${estimate.base} for ${bare.size}`)
 })

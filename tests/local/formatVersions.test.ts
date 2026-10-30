@@ -69,6 +69,8 @@ test('the minor table: every v1 thing maps to minor 0', () => {
             'sonolus/info': 0,
             'sonolus/levels/info': 0,
             'sonolus/levels/list': 0,
+            'sonolus/cover.png': 0,
+            'sonolus/bgm.mp3': 0,
             'sonolus/levels/': 0,
             'history/segments/': 0,
             'history/manifest.json': 0,

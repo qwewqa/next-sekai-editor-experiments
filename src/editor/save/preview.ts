@@ -68,7 +68,7 @@ export const estimatedTotal = (
 ) => {
     const estimate = loaded.get(input)
     if (!estimate) return
-    return totalOf(estimate, ticks)
+    return totalOf(estimate, { ...ticks, bgm: input.bgm.kind === 'held' && ticks.bgm })
 }
 
 /** Over this estimated size a download build on a touch device opens "Preparing…" at once. */

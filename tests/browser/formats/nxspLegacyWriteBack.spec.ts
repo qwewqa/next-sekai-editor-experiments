@@ -96,16 +96,13 @@ const expectPackage = async (file: Inspected) => {
     })
     for (const kind of ['bgm', 'cover'] as const) {
         const media = file.read.media[kind]
-        expect(list.items[0]?.[kind]).toEqual(
-            media
-                ? {
-                      hash: createHash('sha1')
-                          .update(await file.data(media.form.file))
-                          .digest('hex'),
-                      url: `/${media.form.file}`,
-                  }
-                : {},
-        )
+        const path = media?.form.file ?? (kind === 'bgm' ? 'sonolus/bgm.mp3' : 'sonolus/cover.png')
+        expect(list.items[0]?.[kind]).toEqual({
+            hash: createHash('sha1')
+                .update(await file.data(path))
+                .digest('hex'),
+            url: `/${path}`,
+        })
     }
 }
 
