@@ -162,6 +162,48 @@ test.afterEach(async ({ page }) => {
     )
 })
 
+test('circular endpoints keep their preview geometry through a small fade', async ({ page }) => {
+    for (const ease of ['inCirc', 'outCirc'] as const) {
+        const geometry: number[][] = []
+        for (const alpha of [1, 0.99]) {
+            await page.evaluate(
+                ({ ease, alpha }) => {
+                    const { fixtures, show, view, settings } = window.editorTest
+                    settings.previewShowEffects = false
+                    const base = fixtures.interaction.slides[0]![0]!
+                    const guide = {
+                        ...base,
+                        noteType: 'anchor' as const,
+                        connectorType: 'guide' as const,
+                        connectorEase: ease,
+                        connectorGuideAlpha: 1,
+                        size: 2,
+                    }
+                    show(
+                        {
+                            ...fixtures.interaction,
+                            slides: [
+                                [
+                                    { ...guide, beat: 8, left: -4 },
+                                    { ...guide, beat: 8.5, left: 2, connectorGuideAlpha: alpha },
+                                ],
+                            ],
+                        },
+                        3.8,
+                    )
+                    view.cursorTime = 3.8
+                },
+                { ease, alpha },
+            )
+            await settle(page)
+            const vertices = await page.evaluate(() => window.previewTest.vertices)
+            expect(vertices.length).toBeGreaterThan(0)
+            geometry.push(vertices.filter((_, index) => index % 10 < 2))
+        }
+        expect(geometry[1]).toEqual(geometry[0])
+    }
+})
+
 test('unavailable WebGL reports a graphics error and reload can recover', async ({ page }) => {
     // It patches the main thread's WebGL, which a worker's canvas never reaches.
     test.skip(test.info().project.name === 'chromium-worker')

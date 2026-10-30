@@ -1,9 +1,19 @@
 import { approach, tiltWidthFactor, type PreviewLayout } from './layout'
-import { EaseType, clamp, ease, isStepEase, lerp, safeUnlerp, type EaseTypeValue } from './math'
+import {
+    EaseType,
+    clamp,
+    ease,
+    isStepEase,
+    lerp,
+    safeUnlerp,
+    type EaseTypeValue,
+    type Vec,
+} from './math'
 
 // sekai/lib/connector.py connector_curve_detail and circular_connector_fracs.
 
 export const CONNECTOR_CURVE_ERROR = 2 * (2 / 1080)
+export const CONNECTOR_ZERO_SIZE_FALLBACK = 1e-3
 
 const CURVE_BINS = 16
 const CURVE_BIN_SAMPLES = 16
@@ -116,6 +126,16 @@ export const connectorCurveDetail = (
     return Math.sqrt((width * laneChange * span * bend) / (8 * CONNECTOR_CURVE_ERROR))
 }
 
+const edgeDistanceSquared = (point: Vec, start: Vec, end: Vec) => {
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const px = point.x - start.x
+    const py = point.y - start.y
+    const lengthSquared = dx * dx + dy * dy
+    const frac = lengthSquared > 0 ? clamp((px * dx + py * dy) / lengthSquared, 0, 1) : 0
+    return (px - dx * frac) ** 2 + (py - dy * frac) ** 2
+}
+
 export const circularConnectorFracs = (
     layout: PreviewLayout,
     easeType: EaseTypeValue,
@@ -123,78 +143,102 @@ export const circularConnectorFracs = (
     endEaseFrac: number,
     startProgress: number,
     endProgress: number,
-    laneChange: number,
+    headLane: number,
+    headSize: number,
+    tailLane: number,
+    tailSize: number,
+    headEased: number,
+    tailEased: number,
     quality: number,
 ): number[] => {
     const result: number[] = []
+    const interpAt = (frac: number) =>
+        safeUnlerp(
+            headEased,
+            tailEased,
+            ease(easeType, lerp(startEaseFrac, endEaseFrac, frac)),
+            frac,
+        )
+    const edgesAt = (travel: number, interp: number): [Vec, Vec] => {
+        const lane = lerp(headLane, tailLane, interp)
+        const interpolatedSize = lerp(headSize, tailSize, interp)
+        const size = interpolatedSize > 0 ? interpolatedSize : CONNECTOR_ZERO_SIZE_FALLBACK
+        const width = tiltWidthFactor(layout, travel) * layout.wScale
+        const y = travel * layout.hScale
+        return [
+            { x: (lane - size) * width, y },
+            { x: (lane + size) * width, y },
+        ]
+    }
     // Parent quarter samples become the children's midpoints.
     const ends: [
         frac: number,
         travel: number,
-        x: number,
+        interp: number,
         depth: number,
         middleTravel: number,
-        middleX: number,
+        middleInterp: number,
     ][] = []
     let first = 0
-    let firstTravel = approach(layout, startProgress)
-    let firstX = ease(easeType, startEaseFrac) * tiltWidthFactor(layout, firstTravel)
+    const firstTravel = approach(layout, startProgress)
+    let [firstLeft, firstRight] = edgesAt(firstTravel, interpAt(0))
     const lastTravel = approach(layout, endProgress)
     const rootMiddleTravel = approach(layout, lerp(startProgress, endProgress, 0.5))
-    ends.push([
-        1,
-        lastTravel,
-        ease(easeType, endEaseFrac) * tiltWidthFactor(layout, lastTravel),
-        0,
-        rootMiddleTravel,
-        ease(easeType, lerp(startEaseFrac, endEaseFrac, 0.5)) *
-            tiltWidthFactor(layout, rootMiddleTravel),
-    ])
+    ends.push([1, lastTravel, interpAt(1), 0, rootMiddleTravel, interpAt(0.5)])
     const tolerance = CONNECTOR_CURVE_ERROR / (2 * quality * quality)
     while (ends.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const [last, lastTravel, lastX, depth, middleTravel, middleX] = ends.pop()!
-        const middleChord = lerp(
-            firstX,
-            lastX,
-            safeUnlerp(firstTravel, lastTravel, middleTravel, 0.5),
+        const [last, lastTravel, lastInterp, depth, middleTravel, middleInterp] = ends.pop()!
+        const [lastLeft, lastRight] = edgesAt(lastTravel, lastInterp)
+        const [middleLeft, middleRight] = edgesAt(middleTravel, middleInterp)
+        let errorSquared = Math.max(
+            edgeDistanceSquared(middleLeft, firstLeft, lastLeft),
+            edgeDistanceSquared(middleRight, firstRight, lastRight),
         )
-        let error = Math.abs(middleX - middleChord) * laneChange * Math.abs(layout.wScale)
         let leftMiddleTravel = 0
-        let leftMiddleX = 0
+        let leftMiddleInterp = 0
         let rightMiddleTravel = 0
-        let rightMiddleX = 0
+        let rightMiddleInterp = 0
         for (const sample of [0.25, 0.75]) {
             const frac = lerp(first, last, sample)
             const travel = approach(layout, lerp(startProgress, endProgress, frac))
-            const x =
-                ease(easeType, lerp(startEaseFrac, endEaseFrac, frac)) *
-                tiltWidthFactor(layout, travel)
-            const chord = lerp(firstX, lastX, safeUnlerp(firstTravel, lastTravel, travel, sample))
-            error = Math.max(error, Math.abs(x - chord) * laneChange * Math.abs(layout.wScale))
+            const interp = interpAt(frac)
+            const [left, right] = edgesAt(travel, interp)
+            errorSquared = Math.max(
+                errorSquared,
+                edgeDistanceSquared(left, firstLeft, lastLeft),
+                edgeDistanceSquared(right, firstRight, lastRight),
+            )
             if (sample === 0.25) {
                 leftMiddleTravel = travel
-                leftMiddleX = x
+                leftMiddleInterp = interp
             } else {
                 rightMiddleTravel = travel
-                rightMiddleX = x
+                rightMiddleInterp = interp
             }
         }
-        if (error <= tolerance || depth >= 16) {
+        if (errorSquared <= tolerance * tolerance || depth >= 16) {
             result.push(last)
             first = last
-            firstTravel = lastTravel
-            firstX = lastX
+            firstLeft = lastLeft
+            firstRight = lastRight
         } else {
             if (result.length + ends.length + 2 > 128) return []
-            ends.push([last, lastTravel, lastX, depth + 1, rightMiddleTravel, rightMiddleX])
+            ends.push([
+                last,
+                lastTravel,
+                lastInterp,
+                depth + 1,
+                rightMiddleTravel,
+                rightMiddleInterp,
+            ])
             ends.push([
                 (first + last) / 2,
                 middleTravel,
-                middleX,
+                middleInterp,
                 depth + 1,
                 leftMiddleTravel,
-                leftMiddleX,
+                leftMiddleInterp,
             ])
         }
     }

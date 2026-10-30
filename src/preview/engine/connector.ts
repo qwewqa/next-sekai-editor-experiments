@@ -1,6 +1,10 @@
 import type { ZKey } from '../gl'
 import type { PreviewSkin, Sprite } from '../skin'
-import { circularConnectorFracs, connectorCurveDetail } from './connectorCurve'
+import {
+    CONNECTOR_ZERO_SIZE_FALLBACK,
+    circularConnectorFracs,
+    connectorCurveDetail,
+} from './connectorCurve'
 import { elevationConnectorFracs } from './connectorElevation'
 import type { PreviewFrameContext } from './context'
 import {
@@ -149,7 +153,6 @@ export type ConnectorEndpoint = {
 }
 
 // sekai/lib/connector.py
-const CONNECTOR_ZERO_SIZE_FALLBACK = 1e-3
 const CONNECTOR_ALPHA_ERROR = 1 / 192
 const CONNECTOR_ALPHA_SEGMENT_LENGTH = 2 * (32 / 1080)
 const CONNECTOR_MIN_SEGMENT_LENGTH = 2 * (4 / 1080)
@@ -789,8 +792,10 @@ const drawConnectorDefault = (
         constantInterpFrac < 0 &&
         !hasTransform &&
         !maskEnabled &&
-        headAlpha === tailAlpha &&
-        Math.abs(tailEased - headEased) >= 1e-6
+        Math.abs(tailEased - headEased) >= 1e-6 &&
+        (headAlpha === tailAlpha ||
+            Math.min(startAlpha, endAlpha) * alphaOption >= 1 ||
+            Math.abs(endAlpha - startAlpha) * alphaOption * quality <= 2 * CONNECTOR_ALPHA_ERROR)
     ) {
         circularFracs = circularConnectorFracs(
             layout,
@@ -799,7 +804,12 @@ const drawConnectorDefault = (
             endEaseFrac,
             startVisualProgress,
             endVisualProgress,
-            Math.max(Math.abs(leftChange), Math.abs(rightChange)) / Math.abs(tailEased - headEased),
+            head.lane,
+            head.size,
+            tail.lane,
+            tail.size,
+            headEased,
+            tailEased,
             quality,
         )
         if (circularFracs.length > 0) geometryDetail = circularFracs.length / quality

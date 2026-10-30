@@ -50,12 +50,21 @@ const tail: ConnectorEndpoint = {
     easeFrac: 1,
 }
 
-const draw = (easeType: EaseTypeValue, from = head, to = tail) => {
+const draw = (
+    easeType: EaseTypeValue,
+    from = head,
+    to = tail,
+    tailAlpha = 1,
+    opacity: number[] = [],
+) => {
     const quads: Quad[] = []
     drawConnector(
         context,
         (_sprite, quad, _z, alpha) => {
-            if (alpha > 0) quads.push(quad)
+            if (alpha > 0) {
+                quads.push(quad)
+                opacity.push(alpha)
+            }
         },
         skin,
         ConnectorKind.guideNeutral,
@@ -67,7 +76,7 @@ const draw = (easeType: EaseTypeValue, from = head, to = tail) => {
         from.lane,
         1,
         4,
-        1,
+        tailAlpha,
         1,
         1,
         0,
@@ -76,13 +85,94 @@ const draw = (easeType: EaseTypeValue, from = head, to = tail) => {
     return quads
 }
 
-test('circular sampling preserves known fractions and its overflow fallback', () => {
+test('circular endpoints avoid thin intervals and retain the bounded fallback', () => {
     const layout = { ...context.layout, wScale: 0.1 }
+    for (const curve of [EaseType.inCirc, EaseType.outCirc]) {
+        const fractions = circularConnectorFracs(
+            layout,
+            curve,
+            0,
+            1,
+            0.1,
+            0.9,
+            -3,
+            0.5,
+            3,
+            0.5,
+            0,
+            1,
+            1,
+        )
+        let previous = 0
+        for (const fraction of fractions) {
+            const height = Math.abs(
+                (approach(layout, 0.1 + fraction * 0.8) - approach(layout, 0.1 + previous * 0.8)) *
+                    layout.hScale,
+            )
+            assert.ok(height * 540 > 1.5)
+            previous = fraction
+        }
+        assert.equal(previous, 1)
+    }
     assert.deepEqual(
-        circularConnectorFracs(layout, EaseType.inCirc, 0, 1, 0.1, 0.9, 6, 0.5),
-        [0.25, 0.5, 0.75, 0.875, 0.9375, 0.96875, 0.984375, 0.9921875, 0.99609375, 1],
+        circularConnectorFracs(layout, EaseType.inCirc, 0, 1, 0.1, 0.9, -3, 0.5, 3, 0.5, 0, 1, 100),
+        [],
     )
-    assert.deepEqual(circularConnectorFracs(layout, EaseType.inCirc, 0, 1, 0.1, 0.9, 1e8, 1), [])
+    assert.deepEqual(
+        circularConnectorFracs(layout, EaseType.inCirc, 0, 1, 0.5, 0.5, 2, 0.5, 2, 0.5, 0, 1, 1),
+        [1],
+    )
+})
+
+test('circular fades use visual geometry and midpoint opacity', () => {
+    for (const curve of [
+        EaseType.inCirc,
+        EaseType.outCirc,
+        EaseType.inOutCirc,
+        EaseType.outInCirc,
+    ]) {
+        const opacity: number[] = []
+        const faded = draw(curve, head, tail, 0.99, opacity)
+        assert.deepEqual(faded, draw(curve))
+        assert.ok(opacity.some((alpha) => alpha < 0.6))
+        faded.forEach((quad, index) => {
+            const fractions = [quad.bl, quad.tl].map(
+                (point) =>
+                    ((point.y - context.layout.t) / context.layout.hScale -
+                        approach(context.layout, 0.1)) /
+                    (approach(context.layout, 0.9) - approach(context.layout, 0.1)),
+            )
+            const expected = 0.6 * (1 - (0.01 * (fractions[0]! + fractions[1]!)) / 2)
+            assert.ok(
+                Math.abs(opacity[index]! - expected) < 1e-10,
+                `${opacity[index]} versus ${expected}; ${fractions}`,
+            )
+        })
+        for (const quality of [0.5, 1, 2]) {
+            const fractions = circularConnectorFracs(
+                context.layout,
+                curve,
+                0,
+                1,
+                0.1,
+                0.9,
+                -3,
+                0.5,
+                3,
+                0.5,
+                0,
+                1,
+                quality,
+            )
+            assert.ok(fractions.length > 0 && fractions.length <= 128)
+            let previous = 0
+            for (const fraction of fractions) {
+                assert.ok(fraction > previous)
+                previous = fraction
+            }
+            assert.equal(previous, 1)
+        }
+    }
 })
 
 // Quads list the nearer edge first; the left edges trace the connector's left side.

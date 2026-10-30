@@ -113,7 +113,7 @@ test('connectors split into the same segments as the engine', () => {
     // Watch mode draws at note speed 6, from the packaged engine callbacks.
     for (const [ease, count, sum] of [
         ['inQuad', 13, 16.694660941],
-        ['outCirc', 30, 3.308608918],
+        ['outCirc', 19, 18.012621891],
         ['inOutBack', 24, 32.557121271],
         ['outElastic', 40, 87.375179059],
         ['inOutStep', 2, 2.834125739],
