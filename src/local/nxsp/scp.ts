@@ -3,19 +3,22 @@ import { hash16Sync, toHex } from '../hash'
 import { toWellFormed } from '../records/wellFormed'
 import { isObject } from './json'
 
-const categories = [
-    'posts',
-    'playlists',
-    'levels',
-    'skins',
-    'backgrounds',
-    'effects',
-    'particles',
-    'engines',
-    'replays',
-] as const
+type SourceDescriptor<T extends { version: number }> = Required<
+    Pick<EngineItem, 'name' | 'source' | 'title' | 'subtitle' | 'author' | 'tags'>
+> & { version: T['version'] }
+type EngineSourceDescriptor = SourceDescriptor<EngineItem> & {
+    skin: SourceDescriptor<EngineItem['skin']>
+    background: SourceDescriptor<EngineItem['background']>
+    effect: SourceDescriptor<EngineItem['effect']>
+    particle: SourceDescriptor<EngineItem['particle']>
+}
+type PackageLevel = Omit<LevelItem, 'engine' | 'cover' | 'bgm'> & {
+    engine: EngineSourceDescriptor
+    cover?: LevelItem['cover']
+    bgm?: LevelItem['bgm']
+}
 
-const srl = (file?: string) => ({ hash: '', url: file === undefined ? '' : `/${file}` })
+const srl = (file: string) => ({ hash: '', url: `/${file}` })
 const dependency = (title: string, author = '##:Burrito#1000') => ({
     name: 'coconut-next-sekai-1',
     source: 'https://coconut.sonolus.com/next-sekai',
@@ -23,29 +26,16 @@ const dependency = (title: string, author = '##:Burrito#1000') => ({
     subtitle: 'Next SEKAI',
     author,
     tags: [{ title: '#PINNED' }],
-    thumbnail: srl(),
 })
 
 /** Reviewed source descriptors; Save never fetches their metadata or resources. */
-const engine = (): EngineItem => ({
+const engine = (): EngineSourceDescriptor => ({
     ...dependency('Next SEKAI', '##:qwewqa#590353'),
     version: 13,
-    skin: { ...dependency('Next SEKAI 01'), version: 4, data: srl(), texture: srl() },
-    background: {
-        ...dependency('Next SEKAI'),
-        version: 2,
-        data: srl(),
-        image: srl(),
-        configuration: srl(),
-    },
-    effect: { ...dependency('Next SEKAI 01'), version: 5, data: srl(), audio: srl() },
-    particle: { ...dependency('Next SEKAI'), version: 3, data: srl(), texture: srl() },
-    playData: srl(),
-    watchData: srl(),
-    previewData: srl(),
-    tutorialData: srl(),
-    rom: srl(),
-    configuration: srl(),
+    skin: { ...dependency('Next SEKAI 01'), version: 4 },
+    background: { ...dependency('Next SEKAI'), version: 2 },
+    effect: { ...dependency('Next SEKAI 01'), version: 5 },
+    particle: { ...dependency('Next SEKAI'), version: 3 },
 })
 
 export const scpLevelName = (id: string) =>
@@ -54,17 +44,14 @@ export const scpLevelName = (id: string) =>
 export const SCP_FIXED_PATHS = [
     'sonolus/package',
     'sonolus/info',
-    ...categories.flatMap((category) => [`sonolus/${category}/info`, `sonolus/${category}/list`]),
+    'sonolus/levels/info',
+    'sonolus/levels/list',
 ]
 
 export const isScpEntry = (name: string, id?: string) =>
     SCP_FIXED_PATHS.includes(name) || (!!id && name === `sonolus/levels/${scpLevelName(id)}`)
 
-export const scpPaths = (id: string) => [
-    ...SCP_FIXED_PATHS.slice(0, 8),
-    `sonolus/levels/${scpLevelName(id)}`,
-    ...SCP_FIXED_PATHS.slice(8),
-]
+export const scpPaths = (id: string) => [...SCP_FIXED_PATHS, `sonolus/levels/${scpLevelName(id)}`]
 
 /** The package projects the saved head and only the media the project includes. */
 export const scpEntries = (project: Record<string, unknown>): Map<string, unknown> => {
@@ -80,7 +67,9 @@ export const scpEntries = (project: Record<string, unknown>): Map<string, unknow
         text(project.name) ||
         name
     const preview = file(metadata.preview)
-    const level: LevelItem = {
+    const cover = file(metadata.cover)
+    const bgm = file(project.bgm)
+    const level: PackageLevel = {
         name,
         version: 1,
         rating:
@@ -98,32 +87,26 @@ export const scpEntries = (project: Record<string, unknown>): Map<string, unknow
         useBackground: { useDefault: true },
         useEffect: { useDefault: true },
         useParticle: { useDefault: true },
-        cover: srl(file(metadata.cover)),
-        bgm: srl(file(project.bgm)),
+        ...(cover === undefined ? {} : { cover: srl(cover) }),
+        ...(bgm === undefined ? {} : { bgm: srl(bgm) }),
         data: srl('level.json.gz'),
         ...(preview === undefined ? {} : { preview: srl(preview) }),
     }
-    const out = new Map<string, unknown>([
+    return new Map<string, unknown>([
         ['sonolus/package', { shouldUpdate: true }],
         ['sonolus/info', { title, buttons: [{ type: 'level' }], configuration: { options: [] } }],
-    ])
-    for (const category of categories) {
-        out.set(`sonolus/${category}/info`, {
-            sections: category === 'levels' ? [{ itemType: 'level', title, items: [level] }] : [],
-        })
-        out.set(`sonolus/${category}/list`, {
-            pageCount: 1,
-            items: category === 'levels' ? [level] : [],
-        })
-        if (category === 'levels')
-            out.set(`sonolus/levels/${name}`, {
+        ['sonolus/levels/info', { sections: [{ itemType: 'level', title, items: [level] }] }],
+        ['sonolus/levels/list', { pageCount: 1, items: [level] }],
+        [
+            `sonolus/levels/${name}`,
+            {
                 item: level,
                 description: text(metadata.description),
                 actions: [],
                 hasCommunity: false,
                 leaderboards: [],
                 sections: [],
-            })
-    }
-    return out
+            },
+        ],
+    ])
 }

@@ -56,8 +56,8 @@ export const ESTIMATE = {
     levelOverStored: 1.49,
     /** `project.json` without its ancestors, and the ZIP's headers. */
     projectBytes: 700,
-    /** The 21 compressed package responses, ZIP headers and gzip wrapper. */
-    packageBytes: 4400,
+    /** The five compressed package responses, ZIP headers and gzip wrapper. */
+    packageBytes: 2100,
     /** Each ancestor id in `revision.ancestors`. */
     ancestorBytes: 40,
 }

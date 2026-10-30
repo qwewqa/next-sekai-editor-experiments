@@ -48,9 +48,7 @@ STORE_PREFIXES = ("level.json.gz", "history/chunks.bin", "assets/", "bgm/")
 # A segment copied whole from a stored source segment stays stored.
 EITHER_PREFIXES = ("history/segments/",)
 
-SCP_CATEGORIES = ("posts", "playlists", "levels", "skins", "backgrounds", "effects", "particles", "engines", "replays")
-SCP_FIXED_PATHS = {"sonolus/package", "sonolus/info"} | {
-    f"sonolus/{category}/{endpoint}" for category in SCP_CATEGORIES for endpoint in ("info", "list")}
+SCP_FIXED_PATHS = {"sonolus/package", "sonolus/info", "sonolus/levels/info", "sonolus/levels/list"}
 
 
 def scp_level_name(doc_id):
@@ -64,36 +62,36 @@ def scp_owned(name, doc_id=None):
 
 
 def scp_projection(project):
-    def srl(file=None):
-        return {"hash": "", "url": "" if file is None else "/" + file}
+    def srl(file):
+        return {"hash": "", "url": "/" + file}
 
     def dependency(title, author="##:Burrito#1000"):
         return dict(name="coconut-next-sekai-1", source="https://coconut.sonolus.com/next-sekai",
-                    title=title, subtitle="Next SEKAI", author=author, tags=[{"title": "#PINNED"}], thumbnail=srl())
+                    title=title, subtitle="Next SEKAI", author=author, tags=[{"title": "#PINNED"}])
 
     engine = dict(dependency("Next SEKAI", "##:qwewqa#590353"), version=13,
-                  skin=dict(dependency("Next SEKAI 01"), version=4, data=srl(), texture=srl()),
-                  background=dict(dependency("Next SEKAI"), version=2, data=srl(), image=srl(), configuration=srl()),
-                  effect=dict(dependency("Next SEKAI 01"), version=5, data=srl(), audio=srl()),
-                  particle=dict(dependency("Next SEKAI"), version=3, data=srl(), texture=srl()),
-                  playData=srl(), watchData=srl(), previewData=srl(), tutorialData=srl(), rom=srl(), configuration=srl())
+                  skin=dict(dependency("Next SEKAI 01"), version=4),
+                  background=dict(dependency("Next SEKAI"), version=2),
+                  effect=dict(dependency("Next SEKAI 01"), version=5),
+                  particle=dict(dependency("Next SEKAI"), version=3))
     meta = project.get("metadata", {})
     name = scp_level_name(project["id"])
     title = meta.get("title") or re.sub(r"\.nxsp$", "", project["revision"].get("fileName", ""), flags=re.I) or project.get("name") or name
     level = dict(name=name, version=1, rating=meta.get("rating", 0), title=title,
                  artists=meta.get("artists", ""), author=meta.get("author", ""), tags=meta.get("tags", []), engine=engine,
                  useSkin={"useDefault": True}, useBackground={"useDefault": True},
-                 useEffect={"useDefault": True}, useParticle={"useDefault": True},
-                 cover=srl(meta.get("cover", {}).get("file")), bgm=srl(project.get("bgm", {}).get("file")), data=srl("level.json.gz"))
+                 useEffect={"useDefault": True}, useParticle={"useDefault": True})
+    for field, form in (("cover", meta.get("cover", {})), ("bgm", project.get("bgm", {}))):
+        if "file" in form:
+            level[field] = srl(form["file"])
+    level["data"] = srl("level.json.gz")
     if "file" in meta.get("preview", {}):
         level["preview"] = srl(meta["preview"]["file"])
     out = {"sonolus/package": {"shouldUpdate": True},
            "sonolus/info": {"title": title, "buttons": [{"type": "level"}], "configuration": {"options": []}}}
-    for category in SCP_CATEGORIES:
-        out[f"sonolus/{category}/info"] = {"sections": [{"itemType": "level", "title": title, "items": [level]}] if category == "levels" else []}
-        out[f"sonolus/{category}/list"] = {"pageCount": 1, "items": [level] if category == "levels" else []}
-        if category == "levels":
-            out[f"sonolus/levels/{name}"] = dict(item=level, description=meta.get("description", ""), actions=[], hasCommunity=False, leaderboards=[], sections=[])
+    out["sonolus/levels/info"] = {"sections": [{"itemType": "level", "title": title, "items": [level]}]}
+    out["sonolus/levels/list"] = {"pageCount": 1, "items": [level]}
+    out[f"sonolus/levels/{name}"] = dict(item=level, description=meta.get("description", ""), actions=[], hasCommunity=False, leaderboards=[], sections=[])
     return out
 
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -10,8 +10,10 @@ import { gunzipLevel, gzipLevel } from '../../../src/local/nxsp/gzip'
 import { scpLevelName, scpPaths } from '../../../src/local/nxsp/scp'
 import { checkBuilt } from '../../../src/local/save/verify'
 import { crc32 } from '../../../src/zip/crc32'
+import { nxspFolder, webFolder } from '../../fixtures-v1/folders'
 import { fresh } from './chain'
 import { crafted, freshFile, jsonOf, levelOf, reasonsOf, setJson, unzip, type Item } from './craft'
+import { COVER_2, PREVIEW } from './helpers'
 
 const encoder = new TextEncoder()
 const bytes = (value: unknown) => encoder.encode(JSON.stringify(value))
@@ -20,6 +22,34 @@ const payload = (items: Item[]) => {
     assert.ok(item)
     return item
 }
+const assertNoDummySrl = (value: unknown) => {
+    if (typeof value !== 'object' || value === null) return
+    assert.notDeepEqual(value, { hash: '', url: '' })
+    for (const child of Object.values(value)) assertNoDummySrl(child)
+}
+
+test('canonical project fixtures contain only the five level endpoints and real resource links', async () => {
+    const paths = [
+        ...readdirSync(nxspFolder)
+            .filter((name) => name.endsWith('.nxsp'))
+            .map((name) => join(nxspFolder, name)),
+        join(webFolder, 'saving-marker-file.nxsp'),
+    ]
+    assert.equal(paths.length, 9)
+    for (const path of paths) {
+        const file = new Blob([readFileSync(path)])
+        const { items } = await unzip(file)
+        const endpoints = items.filter((entry) => entry.name.startsWith('sonolus/'))
+        assert.equal(endpoints.length, 5, path)
+        assert.deepEqual(
+            endpoints.map((entry) => entry.name),
+            scpPaths(jsonOf(items, 'project.json').id),
+            path,
+        )
+        for (const entry of endpoints) assertNoDummySrl(jsonOf(items, entry.name))
+        await checkBuilt(file, [])
+    }
+})
 
 test('the package shares one deterministic gzip chart and only the included current media', async () => {
     const { input } = fresh()
@@ -36,7 +66,13 @@ test('the package shares one deterministic gzip chart and only the included curr
     const paths = items
         .filter((entry) => entry.name.startsWith('sonolus/'))
         .map((entry) => entry.name)
-    assert.equal(paths.length, 21)
+    assert.deepEqual(paths, [
+        'sonolus/package',
+        'sonolus/info',
+        'sonolus/levels/info',
+        'sonolus/levels/list',
+        `sonolus/levels/${scpLevelName(input.id)}`,
+    ])
     assert.deepEqual(paths, scpPaths(input.id))
     const list = jsonOf(items, 'sonolus/levels/list').items[0]
     assert.deepEqual(jsonOf(items, 'sonolus/levels/info').sections[0].items[0], list)
@@ -50,6 +86,7 @@ test('the package shares one deterministic gzip chart and only the included curr
     for (const field of ['useSkin', 'useBackground', 'useEffect', 'useParticle'])
         assert.deepEqual(list[field], { useDefault: true })
     assert.equal(list.engine.version, 13)
+    assertNoDummySrl(list)
     for (const [kind, version, resources] of [
         ['skin', 4, ['thumbnail', 'data', 'texture']],
         ['background', 2, ['thumbnail', 'data', 'image', 'configuration']],
@@ -62,7 +99,7 @@ test('the package shares one deterministic gzip chart and only the included curr
         assert.equal(item.source, 'https://coconut.sonolus.com/next-sekai')
         for (const key of ['title', 'subtitle', 'author']) assert.equal(typeof item[key], 'string')
         assert.ok(Array.isArray(item.tags))
-        for (const resource of resources) assert.deepEqual(item[resource], { hash: '', url: '' })
+        for (const resource of resources) assert.equal(Object.hasOwn(item, resource), false)
     }
     for (const resource of [
         'thumbnail',
@@ -73,7 +110,7 @@ test('the package shares one deterministic gzip chart and only the included curr
         'rom',
         'configuration',
     ])
-        assert.deepEqual(list.engine[resource], { hash: '', url: '' })
+        assert.equal(Object.hasOwn(list.engine, resource), false)
     await checkBuilt(file, first.storageChunks)
 })
 
@@ -100,8 +137,9 @@ test('projection identity, title fallbacks and numeric metadata come from the sa
         assert.equal(item.name, scpLevelName('../arbitrary/\ufffd'))
         assert.equal(item.title, 'coconut')
         assert.equal(item.rating, rating)
-        assert.deepEqual(item.bgm, { hash: '', url: '' })
-        assert.deepEqual(item.cover, { hash: '', url: '' })
+        assert.equal(Object.hasOwn(item, 'bgm'), false)
+        assert.equal(Object.hasOwn(item, 'cover'), false)
+        assertNoDummySrl(item)
     }
     const buildTitle = async (name: string | undefined) => {
         const changed = {
@@ -116,6 +154,41 @@ test('projection identity, title fallbacks and numeric metadata come from the sa
     assert.equal(await buildTitle('Project name'), 'Project name')
     assert.equal(await buildTitle(undefined), scpLevelName(input.id))
     assert.notEqual(scpLevelName('copy'), scpLevelName(input.id))
+})
+
+test('only saved media bytes produce resource fields', async () => {
+    const { input } = fresh()
+    for (const held of [false, true]) {
+        const built = planNxsp({
+            ...input,
+            media: held
+                ? {
+                      ...input.media,
+                      preview: {
+                          bytes: PREVIEW.bytes,
+                          sha256: PREVIEW.sha256,
+                          type: 'audio/mpeg',
+                          filename: 'preview.mp3',
+                      },
+                  }
+                : {
+                      cover: COVER_2.ref,
+                      preview: input.media.preview,
+                  },
+        })
+        const file = await executePlan(built.plan, new Map())
+        const { items } = await unzip(file)
+        const level = jsonOf(items, 'sonolus/levels/list').items[0]
+        assertNoDummySrl(level)
+        for (const key of ['cover', 'bgm', 'preview']) {
+            assert.equal(Object.hasOwn(level, key), held)
+            if (held) {
+                assert.equal(level[key].hash, '')
+                assert.ok(items.some((entry) => `/${entry.name}` === level[key].url))
+            }
+        }
+        await checkBuilt(file, built.storageChunks)
+    }
 })
 
 test('gzip rejects damaged wrappers, extra members, trailing bytes and oversized JSON', () => {
@@ -232,7 +305,13 @@ test('only the owned projection is disposable; strict built-file checks reject a
         assert.ok(read.history)
         await assert.rejects(checkBuilt(file, []))
     }
-    for (const name of ['sonolus/levels/nse-other', 'sonolus/repository/data', 'sonolus/unknown']) {
+    for (const name of [
+        'sonolus/levels/nse-other',
+        'sonolus/repository/data',
+        'sonolus/unknown',
+        'sonolus/engines/info',
+        'sonolus/skins/list',
+    ]) {
         const read = await readNxsp(
             await crafted((items) => {
                 items.push({ name, data: bytes({}), method: 'store' })
@@ -255,6 +334,13 @@ test('the Python reader agrees on new gzip failures and exact projection ownersh
             }),
             await crafted((items) => {
                 items.push({ name: 'sonolus/unknown', data: bytes({}), method: 'store' })
+            }),
+            await crafted((items) => {
+                items.push({
+                    name: 'sonolus/engines/info',
+                    data: bytes({ sections: [] }),
+                    method: 'deflate',
+                })
             }),
         ]
         const plain = bytes({ entities: [], bgmOffset: 0 })

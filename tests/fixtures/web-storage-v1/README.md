@@ -1,10 +1,16 @@
 # Web storage v1 fixtures
 
-Written once by `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.ts`) from the editor build
+Originally written by `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.ts`) from the editor build
 `0.5.22+5f2c53da`, in the same run as `../../native/fixtures/nxsp-v1`. `SHA256SUMS` pins each file. They are
 frozen when v0.6.0 is tagged and never changed after it; every later build reads them
 (`tests/browser/formats/webStorageV1.spec.ts`, `tests/local/journalV1.test.ts`,
 `tests/local/fixturesV1.test.ts`).
+
+Before the v0.6.0 tag, only the derived `sonolus/` entries in `saving-marker-file.nxsp` were
+refreshed to the five-entry level package with source descriptors and resource fields only for
+included bytes. Its other entries retain their original compressed bytes and ZIP metadata,
+including the producer and revision named by the saving marker. The dumps, raw export and journal
+are unchanged. See `docs/format-versioning.md` section 8.
 
 | File | Made by | Holds |
 | --- | --- | --- |

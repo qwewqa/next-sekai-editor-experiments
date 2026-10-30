@@ -1,8 +1,13 @@
 # `.nxsp` v1 fixtures
 
-Written once by `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.ts`) from the editor build
+Originally written by `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.ts`) from the editor build
 `0.5.22+5f2c53da`: the real editor in Chromium on a dev server, driven through a scripted scenario
-(`tests/fixtures-v1`). Each file is what that build wrote, and `SHA256SUMS` pins its bytes.
+(`tests/fixtures-v1`). `SHA256SUMS` pins the current bytes.
+
+Before the v0.6.0 tag, only the derived `sonolus/` entries were refreshed to the five-entry
+level package with source descriptors and resource fields only for included bytes. Every other
+entry retains its original compressed bytes and ZIP metadata, including `project.json` and its
+producer, revision and history references. See `docs/format-versioning.md` section 8.
 
 They are frozen when v0.6.0 is tagged and never changed after it. Every later build opens each one
 (`tests/zip/nxspV1.test.ts`, `tests/browser/formats/nxspWriteBackV1.spec.ts`,

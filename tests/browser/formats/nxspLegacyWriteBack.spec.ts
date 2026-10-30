@@ -82,15 +82,15 @@ const expectPackage = async (file: Inspected) => {
     const list = JSON.parse(new TextDecoder().decode(await file.data('sonolus/levels/list'))) as {
         items: {
             data: { hash: string; url: string }
-            bgm: { url: string }
-            cover: { url: string }
+            bgm?: { url: string }
+            cover?: { url: string }
         }[]
     }
     expect(list.items).toHaveLength(1)
     expect(list.items[0]?.data).toEqual({ hash: '', url: '/level.json.gz' })
     for (const kind of ['bgm', 'cover'] as const) {
         const media = file.read.media[kind]
-        expect(list.items[0]?.[kind].url).toBe(media ? `/${media.form.file}` : '')
+        expect(list.items[0]?.[kind]?.url).toBe(media ? `/${media.form.file}` : undefined)
     }
 }
 

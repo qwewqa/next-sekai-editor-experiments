@@ -4,7 +4,7 @@ Frozen with Formats v1. `tests/local/nxsp/golden.test.ts` builds a fixed chain w
 
 - `store.json`: the chunks' stored forms (raw DEFLATE), inputs, so a pako change never changes a plan. The test checks each inflates to its record's canonical bytes.
 - `plan-1.json`, `plan-2.json`: the two plans, with deflated parts inflated, `.json` parts as parsed values and other parts in base64. `plan-2.json`'s copies name the source `golden`, which is `write-1.nxsp`.
-- `write-1.nxsp`, `write-2.nxsp`: the files the plans execute to, including one stored `level.json.gz` and the 21 Sonolus metadata entries. The test compares entry by entry (names, methods, CRCs, sizes, uncompressed bytes). ZIP compression changes alone do not fail it; the inner gzip stream is pinned. CI runs the independent checker over them:
+- `write-1.nxsp`, `write-2.nxsp`: the files the plans execute to, including one stored `level.json.gz` and the five Sonolus metadata entries. The test compares entry by entry (names, methods, CRCs, sizes, uncompressed bytes). ZIP compression changes alone do not fail it; the inner gzip stream is pinned. CI runs the independent checker over them:
 
 ```
 uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/write-1.nxsp tests/local/nxsp/golden-v1/write-2.nxsp
