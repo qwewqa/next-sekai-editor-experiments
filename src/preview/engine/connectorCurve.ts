@@ -127,20 +127,44 @@ export const circularConnectorFracs = (
     quality: number,
 ): number[] => {
     const result: number[] = []
-    const ends: [frac: number, travel: number, x: number, depth: number][] = []
+    // Parent quarter samples become the children's midpoints.
+    const ends: [
+        frac: number,
+        travel: number,
+        x: number,
+        depth: number,
+        middleTravel: number,
+        middleX: number,
+    ][] = []
     let first = 0
     let firstTravel = approach(layout, startProgress)
     let firstX = ease(easeType, startEaseFrac) * tiltWidthFactor(layout, firstTravel)
     const lastTravel = approach(layout, endProgress)
-    ends.push([1, lastTravel, ease(easeType, endEaseFrac) * tiltWidthFactor(layout, lastTravel), 0])
+    const rootMiddleTravel = approach(layout, lerp(startProgress, endProgress, 0.5))
+    ends.push([
+        1,
+        lastTravel,
+        ease(easeType, endEaseFrac) * tiltWidthFactor(layout, lastTravel),
+        0,
+        rootMiddleTravel,
+        ease(easeType, lerp(startEaseFrac, endEaseFrac, 0.5)) *
+            tiltWidthFactor(layout, rootMiddleTravel),
+    ])
     const tolerance = CONNECTOR_CURVE_ERROR / (2 * quality * quality)
     while (ends.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const [last, lastTravel, lastX, depth] = ends.pop()!
-        let error = 0
-        let middleTravel = 0
-        let middleX = 0
-        for (const sample of [0.25, 0.5, 0.75]) {
+        const [last, lastTravel, lastX, depth, middleTravel, middleX] = ends.pop()!
+        const middleChord = lerp(
+            firstX,
+            lastX,
+            safeUnlerp(firstTravel, lastTravel, middleTravel, 0.5),
+        )
+        let error = Math.abs(middleX - middleChord) * laneChange * Math.abs(layout.wScale)
+        let leftMiddleTravel = 0
+        let leftMiddleX = 0
+        let rightMiddleTravel = 0
+        let rightMiddleX = 0
+        for (const sample of [0.25, 0.75]) {
             const frac = lerp(first, last, sample)
             const travel = approach(layout, lerp(startProgress, endProgress, frac))
             const x =
@@ -148,9 +172,12 @@ export const circularConnectorFracs = (
                 tiltWidthFactor(layout, travel)
             const chord = lerp(firstX, lastX, safeUnlerp(firstTravel, lastTravel, travel, sample))
             error = Math.max(error, Math.abs(x - chord) * laneChange * Math.abs(layout.wScale))
-            if (sample === 0.5) {
-                middleTravel = travel
-                middleX = x
+            if (sample === 0.25) {
+                leftMiddleTravel = travel
+                leftMiddleX = x
+            } else {
+                rightMiddleTravel = travel
+                rightMiddleX = x
             }
         }
         if (error <= tolerance || depth >= 16) {
@@ -160,8 +187,15 @@ export const circularConnectorFracs = (
             firstX = lastX
         } else {
             if (result.length + ends.length + 2 > 128) return []
-            ends.push([last, lastTravel, lastX, depth + 1])
-            ends.push([(first + last) / 2, middleTravel, middleX, depth + 1])
+            ends.push([last, lastTravel, lastX, depth + 1, rightMiddleTravel, rightMiddleX])
+            ends.push([
+                (first + last) / 2,
+                middleTravel,
+                middleX,
+                depth + 1,
+                leftMiddleTravel,
+                leftMiddleX,
+            ])
         }
     }
     return result

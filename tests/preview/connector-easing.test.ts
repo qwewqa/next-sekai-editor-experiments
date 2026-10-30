@@ -6,6 +6,7 @@ import {
     drawConnector,
     type ConnectorEndpoint,
 } from '../../src/preview/engine/connector'
+import { circularConnectorFracs } from '../../src/preview/engine/connectorCurve'
 import type { PreviewFrameContext } from '../../src/preview/engine/context'
 import {
     approach,
@@ -74,6 +75,15 @@ const draw = (easeType: EaseTypeValue, from = head, to = tail) => {
     )
     return quads
 }
+
+test('circular sampling preserves known fractions and its overflow fallback', () => {
+    const layout = { ...context.layout, wScale: 0.1 }
+    assert.deepEqual(
+        circularConnectorFracs(layout, EaseType.inCirc, 0, 1, 0.1, 0.9, 6, 0.5),
+        [0.25, 0.5, 0.75, 0.875, 0.9375, 0.96875, 0.984375, 0.9921875, 0.99609375, 1],
+    )
+    assert.deepEqual(circularConnectorFracs(layout, EaseType.inCirc, 0, 1, 0.1, 0.9, 1e8, 1), [])
+})
 
 // Quads list the nearer edge first; the left edges trace the connector's left side.
 const leftEdges = (quads: Quad[]) => quads.map(({ bl, tl }) => [bl, tl] as const)
