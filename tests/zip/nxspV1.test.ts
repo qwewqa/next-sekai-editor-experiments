@@ -43,7 +43,7 @@ const level = (read: Opened) => read.level as { bgmOffset: number; entities: nev
 
 type Fixture = Awaited<ReturnType<typeof whole>>
 
-/** Whether the open would find `level.json` and `project.json` different from the head (a "Changed outside the editor" step). */
+/** Whether the level payload and project metadata differ from the history head. */
 const matches = ({ read, project, history }: Fixture) =>
     matchesHead(
         level(read).entities,
@@ -54,7 +54,7 @@ const matches = ({ read, project, history }: Fixture) =>
 
 const withHistory = names.filter((name) => name !== 'no-history.nxsp')
 
-test('every fixture opens fully, and its head matches level.json and project.json', async () => {
+test('every fixture opens fully, and its head matches the level payload and project metadata', async () => {
     // Catches a later reader that opens a v1 file partial (an unbound copy of the user's own
     // file), or sees a change where there is none (a "Changed outside the editor" step on every open).
     assert.equal(names.length, 8)
@@ -68,7 +68,7 @@ test('every fixture opens fully, and its head matches level.json and project.jso
         assert.equal(matches(fixture), true, name)
         assert.equal(fixture.history.entries.at(-1)?.kind, 'save', name)
     }
-    // No history: level.json alone is the chart.
+    // Without history, the level payload is the chart.
     const plain = await opened(blobOf('no-history.nxsp'))
     assert.equal(plain.history, undefined)
     assert.equal(plain.project?.history, undefined)
@@ -125,7 +125,7 @@ test("the media forms map to the head's records: sha256 with a file, hash withou
     const head = stateFromRecords(unticked.history.headRecords)
     assert.ok(head.bgm.meta)
     assert.equal(unticked.project.bgm, undefined)
-    // The head's chart is level.json as the editor parses it, so a binding is not an open of a changed file.
+    // The head matches the parsed level, so the binding does not name a changed file.
     const chart = parseLevelDataChart(
         level(unticked.read).entities,
         unticked.project.editor.defaultGuideColors,
@@ -248,7 +248,7 @@ test('a damaged chunk outside the head state opens fully and fails only its read
     assert.equal(bad.open, 'partial')
 })
 
-test('only metadata.title edited is a change: the open takes level.json and project.json over the head', async () => {
+test('only metadata.title edited is a change: the open takes the level and project metadata over the head', async () => {
     // Catches a later reader that no longer notices a file edited outside the editor (a user's edit
     // lost under the head's older state), or one that takes every file as edited.
     const file = await crafted((items) => {

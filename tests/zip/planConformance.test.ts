@@ -335,6 +335,10 @@ const generate = async (): Promise<Record<string, Case>> => {
     const append = await appendOnto(golden)
     const fresh = freshPlan()
     const deflatedPlan = await appendOnto(deflated)
+    const copiedBgm = append.entries.find((entry) => entry.name.startsWith('bgm/'))
+    assert.ok(copiedBgm?.method === 0 && copiedBgm.parts[0]?.kind === 'copy')
+    const inflatedBgm = deflatedPlan.entries.find((entry) => entry.name === copiedBgm.name)
+    assert.ok(inflatedBgm?.method === 0 && inflatedBgm.parts[0]?.kind === 'copy')
     const cases: Record<string, Case> = {
         fresh: { plan: fresh, sources: {} },
         append: { plan: append, sources: sourceOnly(golden) },
@@ -365,7 +369,7 @@ const generate = async (): Promise<Record<string, Case>> => {
             files: { 'changed.nxsp': changed },
         },
         'fail-method-mismatch': {
-            plan: withEntry(append, append.entries.at(-1)?.name ?? '', (e) => ({
+            plan: withEntry(append, copiedBgm.name, (e) => ({
                 ...e,
                 method: 8,
             })),
@@ -397,7 +401,7 @@ const generate = async (): Promise<Record<string, Case>> => {
             sources: {},
         },
         'fail-method8-inflate': {
-            plan: withEntry(deflatedPlan, deflatedPlan.entries.at(-1)?.name ?? '', (e) => ({
+            plan: withEntry(deflatedPlan, inflatedBgm.name, (e) => ({
                 ...e,
                 method: 8,
             })),

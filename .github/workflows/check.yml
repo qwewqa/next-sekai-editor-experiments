@@ -44,6 +44,8 @@ jobs:
             # write-1, and the v1 fixtures' against each other.
             - name: Check the .nxsp fixtures with the independent checker
               run: uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/*.nxsp tests/zip/plan-conformance-v1/*/expected.nxsp tests/native/fixtures/nxsp-v1/*.nxsp tests/fixtures/web-storage-v1/*.nxsp
+            - name: Read the legacy .nxsp fixtures with the independent checker
+              run: node scripts/check-nxsp-legacy.mjs
             - run: npm run test:release
             - run: npm run check:builtin-assets
             - run: npm run build:native

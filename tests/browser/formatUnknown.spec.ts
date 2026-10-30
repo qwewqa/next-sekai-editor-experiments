@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { crafted, jsonOf, setJson, type Loose } from '../local/nxsp/craft'
+import { crafted, jsonOf, levelOf, setJson, setLevel, type Loose } from '../local/nxsp/craft'
 import {
     chainOf,
     edit,
@@ -21,7 +21,7 @@ for (const where of ['entity', 'data', 'value and ref'])
     }) => {
         await start(page)
         const file = await crafted((items) => {
-            const level = jsonOf(items, 'level.json')
+            const level = levelOf(items)
             const entity = level.entities.find(
                 (e: { archetype: string }) => e.archetype === 'Initialization',
             )
@@ -29,7 +29,7 @@ for (const where of ['entity', 'data', 'value and ref'])
             if (where === 'entity') entity.futureContent = { important: 42 }
             else if (where === 'data') data.futureContent = { important: 43 }
             else data.ref = 'unused'
-            setJson(items, 'level.json', level)
+            setLevel(items, level)
         })
         const bytes = [...new Uint8Array(await file.arrayBuffer())]
         await writeFile(page, 'coconut.nxsp', bytes)

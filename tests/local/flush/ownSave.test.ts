@@ -23,7 +23,7 @@ import {
 } from '../../helpers/historySteps'
 import { append, beginSession, openJournalPage, replayAll } from '../journal/harness'
 import { fresh } from '../nxsp/chain'
-import { crafted, jsonOf, setJson } from '../nxsp/craft'
+import { crafted, jsonOf, setJson, setLevel } from '../nxsp/craft'
 import { chartWith, levelOf } from '../nxsp/helpers'
 import { goldenChart, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
@@ -192,7 +192,7 @@ test('an open with an outside change writes two own rows with one time', async (
     // The level differs from the history's head: the open adds "Changed outside the editor".
     const edited = stateOf(chartWith({ extraNotes: 3 }))
     const changed = await crafted((items) => {
-        setJson(items, 'level.json', levelOf(edited).level)
+        setLevel(items, levelOf(edited).level)
         setJson(items, 'project.json', jsonOf(items, 'project.json'))
     }, file)
     const reply = await page.tab.run(() => open.openRead(changed))

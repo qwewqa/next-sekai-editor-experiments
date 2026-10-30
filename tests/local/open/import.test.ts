@@ -27,7 +27,7 @@ import { initialStep, nativeOperation, originOperation } from '../../helpers/his
 import '../../helpers/lockChecks'
 import { openPage, rows, storedRecords } from '../flush/harness'
 import { fresh } from '../nxsp/chain'
-import { crafted, jsonOf, setJson } from '../nxsp/craft'
+import { crafted, jsonOf, setJson, setLevel } from '../nxsp/craft'
 import { chartWith, headInput as headInputOf, levelOf } from '../nxsp/helpers'
 import { stateOf } from '../records/charts'
 import { damagedFile } from './files'
@@ -335,7 +335,7 @@ test('a file whose level differs from its history\'s head gets "Changed outside 
     const { file, hashes } = await freshFile()
     const edited = stateOf(chartWith({ extraNotes: 3 }))
     const changed = await crafted((items) => {
-        setJson(items, 'level.json', levelOf(edited).level)
+        setLevel(items, levelOf(edited).level)
         const project = jsonOf(items, 'project.json')
         setJson(items, 'project.json', project)
     }, file)

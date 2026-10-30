@@ -1,25 +1,25 @@
 {
   "source.nxsp": {
-    "fingerprint": "zip:5307:0:3106ff09",
-    "size": 5307,
+    "fingerprint": "zip:9887:0:d91578c6",
+    "size": 9887,
     "entries": [
       {
         "index": 0,
         "name": "project.json",
         "method": 8,
-        "crc32": 856638821,
-        "compressedSize": 734,
-        "uncompressedSize": 1484,
+        "crc32": 349043636,
+        "compressedSize": 738,
+        "uncompressedSize": 1487,
         "dataOffset": 42
       },
       {
         "index": 1,
-        "name": "level.json",
-        "method": 8,
-        "crc32": 1791969369,
-        "compressedSize": 1283,
-        "uncompressedSize": 11488,
-        "dataOffset": 816
+        "name": "level.json.gz",
+        "method": 0,
+        "crc32": 2558595672,
+        "compressedSize": 1301,
+        "uncompressedSize": 1301,
+        "dataOffset": 823
       },
       {
         "index": 2,
@@ -28,7 +28,7 @@
         "crc32": 3553582427,
         "compressedSize": 1263,
         "uncompressedSize": 4850,
-        "dataOffset": 2150
+        "dataOffset": 2175
       },
       {
         "index": 3,
@@ -37,7 +37,7 @@
         "crc32": 2094639827,
         "compressedSize": 1195,
         "uncompressedSize": 1195,
-        "dataOffset": 3461
+        "dataOffset": 3486
       },
       {
         "index": 4,
@@ -46,7 +46,7 @@
         "crc32": 136824160,
         "compressedSize": 15,
         "uncompressedSize": 15,
-        "dataOffset": 4702
+        "dataOffset": 4727
       },
       {
         "index": 5,
@@ -55,7 +55,7 @@
         "crc32": 3245599963,
         "compressedSize": 17,
         "uncompressedSize": 17,
-        "dataOffset": 4765
+        "dataOffset": 4790
       },
       {
         "index": 6,
@@ -64,7 +64,196 @@
         "crc32": 1553704227,
         "compressedSize": 12,
         "uncompressedSize": 12,
-        "dataOffset": 4834
+        "dataOffset": 4859
+      },
+      {
+        "index": 7,
+        "name": "sonolus/package",
+        "method": 8,
+        "crc32": 3252100260,
+        "compressedSize": 23,
+        "uncompressedSize": 21,
+        "dataOffset": 4916
+      },
+      {
+        "index": 8,
+        "name": "sonolus/info",
+        "method": 8,
+        "crc32": 1045002871,
+        "compressedSize": 73,
+        "uncompressedSize": 78,
+        "dataOffset": 4981
+      },
+      {
+        "index": 9,
+        "name": "sonolus/posts/info",
+        "method": 8,
+        "crc32": 1757502238,
+        "compressedSize": 17,
+        "uncompressedSize": 15,
+        "dataOffset": 5102
+      },
+      {
+        "index": 10,
+        "name": "sonolus/posts/list",
+        "method": 8,
+        "crc32": 3351672103,
+        "compressedSize": 28,
+        "uncompressedSize": 26,
+        "dataOffset": 5167
+      },
+      {
+        "index": 11,
+        "name": "sonolus/playlists/info",
+        "method": 8,
+        "crc32": 1757502238,
+        "compressedSize": 17,
+        "uncompressedSize": 15,
+        "dataOffset": 5247
+      },
+      {
+        "index": 12,
+        "name": "sonolus/playlists/list",
+        "method": 8,
+        "crc32": 3351672103,
+        "compressedSize": 28,
+        "uncompressedSize": 26,
+        "dataOffset": 5316
+      },
+      {
+        "index": 13,
+        "name": "sonolus/levels/info",
+        "method": 8,
+        "crc32": 2668266013,
+        "compressedSize": 531,
+        "uncompressedSize": 2238,
+        "dataOffset": 5393
+      },
+      {
+        "index": 14,
+        "name": "sonolus/levels/list",
+        "method": 8,
+        "crc32": 2876943222,
+        "compressedSize": 519,
+        "uncompressedSize": 2201,
+        "dataOffset": 5973
+      },
+      {
+        "index": 15,
+        "name": "sonolus/levels/nse-a9d652881da36cd59456e01f3a9f54a2",
+        "method": 8,
+        "crc32": 3063386176,
+        "compressedSize": 562,
+        "uncompressedSize": 2285,
+        "dataOffset": 6573
+      },
+      {
+        "index": 16,
+        "name": "sonolus/skins/info",
+        "method": 8,
+        "crc32": 1757502238,
+        "compressedSize": 17,
+        "uncompressedSize": 15,
+        "dataOffset": 7183
+      },
+      {
+        "index": 17,
+        "name": "sonolus/skins/list",
+        "method": 8,
+        "crc32": 3351672103,
+        "compressedSize": 28,
+        "uncompressedSize": 26,
+        "dataOffset": 7248
+      },
+      {
+        "index": 18,
+        "name": "sonolus/backgrounds/info",
+        "method": 8,
+        "crc32": 1757502238,
+        "compressedSize": 17,
+        "uncompressedSize": 15,
+        "dataOffset": 7330
+      },
+      {
+        "index": 19,
+        "name": "sonolus/backgrounds/list",
+        "method": 8,
+        "crc32": 3351672103,
+        "compressedSize": 28,
+        "uncompressedSize": 26,
+        "dataOffset": 7401
+      },
+      {
+        "index": 20,
+        "name": "sonolus/effects/info",
+        "method": 8,
+        "crc32": 1757502238,
+        "compressedSize": 17,
+        "uncompressedSize": 15,
+        "dataOffset": 7479
+      },
+      {
+        "index": 21,
+        "name": "sonolus/effects/list",
+        "method": 8,
+        "crc32": 3351672103,
+        "compressedSize": 28,
+        "uncompressedSize": 26,
+        "dataOffset": 7546
+      },
+      {
+        "index": 22,
+        "name": "sonolus/particles/info",
+        "method": 8,
+        "crc32": 1757502238,
+        "compressedSize": 17,
+        "uncompressedSize": 15,
+        "dataOffset": 7626
+      },
+      {
+        "index": 23,
+        "name": "sonolus/particles/list",
+        "method": 8,
+        "crc32": 3351672103,
+        "compressedSize": 28,
+        "uncompressedSize": 26,
+        "dataOffset": 7695
+      },
+      {
+        "index": 24,
+        "name": "sonolus/engines/info",
+        "method": 8,
+        "crc32": 1757502238,
+        "compressedSize": 17,
+        "uncompressedSize": 15,
+        "dataOffset": 7773
+      },
+      {
+        "index": 25,
+        "name": "sonolus/engines/list",
+        "method": 8,
+        "crc32": 3351672103,
+        "compressedSize": 28,
+        "uncompressedSize": 26,
+        "dataOffset": 7840
+      },
+      {
+        "index": 26,
+        "name": "sonolus/replays/info",
+        "method": 8,
+        "crc32": 1757502238,
+        "compressedSize": 17,
+        "uncompressedSize": 15,
+        "dataOffset": 7918
+      },
+      {
+        "index": 27,
+        "name": "sonolus/replays/list",
+        "method": 8,
+        "crc32": 3351672103,
+        "compressedSize": 28,
+        "uncompressedSize": 26,
+        "dataOffset": 7985
       }
     ]
   }

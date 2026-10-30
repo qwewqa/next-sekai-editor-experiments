@@ -54,6 +54,18 @@ test('a native build passes the bundle check, with a planted public/resource/ le
     assert.equal(existsSync(join(dist, 'thumbnail.png')), false)
 })
 
+test('exact quoted and unquoted package descriptors pass the native reference check', async () => {
+    const directory = await copyDist('package-descriptors')
+    await writeFile(
+        join(directory, 'assets/descriptors.js'),
+        `const a={name:'coconut-next-sekai-1',source:'https://coconut.sonolus.com/next-sekai'};
+const b={"name":"coconut-next-sekai-1","source":"https://coconut.sonolus.com/next-sekai"};
+const c={'name':'coconut-next-sekai-1','source':'https://coconut.sonolus.com/next-sekai'};
+const d={name:\`coconut-next-sekai-1\`,source:\`https://coconut.sonolus.com/next-sekai\`};`,
+    )
+    assert.deepEqual(await problemsOf(directory), [])
+})
+
 test('the staged public folder holds only the allowlist', async () => {
     const staged = join(scratch, 'staged')
     await stageNativePublic(root, staged)
@@ -153,6 +165,27 @@ test('the bundle check fails on each kind of web-only content', async () => {
         (d) => writeFile(join(d, 'assets/x.js'), 'fetch("https://coconut.sonolus.com")'),
         /reference coconut/,
     )
+    for (const [name, text] of [
+        ['fetch-source', 'fetch("https://coconut.sonolus.com/next-sekai")'],
+        ['fetch-template', 'fetch(`https://coconut.sonolus.com/next-sekai`)'],
+        [
+            'source-endpoint',
+            'const x={source:"https://coconut.sonolus.com/next-sekai/levels/list"}',
+        ],
+        ['resource-host', 'fetch("https://resources.coconut.sonolus.com/data")'],
+        ['other-key', 'const x={othername:"coconut-next-sekai-1"}'],
+        [
+            'concatenated-source',
+            'const x={source:"https://coconut.sonolus.com/next-sekai"+"/levels"}',
+        ],
+        ['interpolated-source', 'const x={source:`https://coconut.sonolus.com/next-sekai${path}`}'],
+        ['concatenated-template', 'const x={source:`https://coconut.sonolus.com/next-sekai`+path}'],
+    ])
+        await tamper(
+            name,
+            (directory) => writeFile(join(directory, 'assets/x.js'), text),
+            /reference coconut/,
+        )
     await tamper('og', (d) => addToIndex(d, '<meta property="og:image" content="x">'), /og:image/)
     await tamper(
         'theme',

@@ -106,6 +106,7 @@ for (const name of withHistory)
         const after = await partsOf(new Uint8Array((await readFile(page, name))!))
         expect(after.read.open).toBe('full')
         expect(after.read.report).toEqual([])
+        expect(after.read.project?.level).toBe('level.json.gz')
         // Keys a later version wrote are carried through a Save.
         expect(after.read.extra).toEqual(before.read.extra)
         // The chronology begins with the fixture's, and ends with the Save and the edit's rows.

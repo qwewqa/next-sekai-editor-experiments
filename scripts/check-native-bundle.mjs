@@ -12,6 +12,19 @@ const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 const textFile = /\.(?:html|js|mjs|css|json)$/i
 // Licence texts and their inventories list upstream projects, so they aren't app code.
 const licenceFolder = /^(?:third-party|notices)\//
+const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const withoutAllowedProperties = (text, properties = []) => {
+    for (const { key, value } of properties) {
+        const property = `(?:${escaped(key)}|"${escaped(key)}"|'${escaped(key)}')`
+        const literal = `(?:"${escaped(value)}"|'${escaped(value)}'|\`${escaped(value)}\`)`
+        text = text.replace(
+            new RegExp(`(^|[{,]\\s*)${property}\\s*:\\s*${literal}(?=\\s*[,}])`, 'g'),
+            '$1',
+        )
+    }
+    return text
+}
 
 async function listFiles(directory, prefix = '') {
     const files = []
@@ -65,7 +78,13 @@ export async function checkNativeBundle(directory, { root = defaultRoot, full = 
                   label: `/${reference.regex}/`,
                   test: (text) => new RegExp(reference.regex).test(text),
               }
-            : { label: reference.text, test: (text) => text.includes(reference.text) },
+            : {
+                  label: reference.text,
+                  test: (text) =>
+                      withoutAllowedProperties(text, reference.allowObjectProperties).includes(
+                          reference.text,
+                      ),
+              },
     )
 
     const contents = new Map()

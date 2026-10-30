@@ -116,7 +116,11 @@
             "text": "resource/"
         },
         {
-            "text": "coconut"
+            "text": "coconut",
+            "allowObjectProperties": [
+                { "key": "name", "value": "coconut-next-sekai-1" },
+                { "key": "source", "value": "https://coconut.sonolus.com/next-sekai" }
+            ]
         },
         {
             "text": "og:image"

@@ -8,7 +8,8 @@ Written once by \`npm run fixtures:v1\` (\`tests/fixtures-v1/write.fixtures.ts\`
 
 They are frozen when v0.6.0 is tagged and never changed after it. Every later build opens each one
 (\`tests/zip/nxspV1.test.ts\`, \`tests/browser/formats/nxspWriteBackV1.spec.ts\`,
-\`tests/local/fixturesV1.test.ts\`), and \`check.yml\` runs the independent checker over them. A gap is
+\`tests/local/fixturesV1.test.ts\`), and \`check.yml\` runs the independent writer check over them.
+The separate \`tests/local/nxsp/legacy-test20f/\` corpus retains pre-gzip files under reader checks. A gap is
 filled by running the writer of the \`v0.6.0\` tag, never a later build's.
 
 The files, with the steps that made them (A1 to A13, B, D and E are the writer's steps and

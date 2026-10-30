@@ -5,6 +5,7 @@ import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 import { classifyZipNames, detectContent, detectHead, isMpegHeader } from '../../src/files/detect'
 import { buildZip, type ZipInput } from '../../src/zip'
+import { crafted, freshFile, setJson } from '../local/nxsp/craft'
 
 const utf8 = (text: string) => new TextEncoder().encode(text)
 const file = (parts: BlobPart[], name: string, type = '') => new File(parts, name, { type })
@@ -170,6 +171,20 @@ test('a project file is a ZIP whose project.json says nxsp', async () => {
         ),
         { kind: 'zip', zip: 'project' },
     )
+})
+
+test('a hybrid project renamed .scp is detected before its Sonolus package entries', async () => {
+    const hybrid = await freshFile()
+    for (const name of ['level.nxsp', 'level.scp'])
+        assert.deepEqual(await detectContent(file([hybrid], name)), {
+            kind: 'zip',
+            zip: 'project',
+        })
+    const damaged = await crafted((items) => setJson(items, 'project.json', {}), hybrid)
+    assert.deepEqual(await detectContent(file([damaged], 'level.scp')), {
+        kind: 'zip',
+        zip: 'package',
+    })
 })
 
 test('a Sonolus package is recognised, and so is a plain ZIP, an empty one and a damaged one', async () => {

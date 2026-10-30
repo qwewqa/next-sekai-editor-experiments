@@ -296,8 +296,8 @@ test('a plan whose copy fails with the source unchanged is damage, not a conflic
         role: 'target',
         fingerprint: 'zip:test',
     })
-    // A copy of level.json with a CRC that isn't the source's.
-    const level = pinned.entries.find((entry) => entry.name === 'level.json')!
+    // A copy of the level payload with a CRC that isn't the source's.
+    const level = pinned.entries.find((entry) => entry.name === 'level.json.gz')!
     const plan = {
         modified: { dosTime: 0, dosDate: 33 },
         entries: [

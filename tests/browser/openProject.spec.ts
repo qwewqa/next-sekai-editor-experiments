@@ -5,7 +5,7 @@ import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { BGM_MAX_MINUTES } from '../../src/utils/bgmLimit'
 import { buildZip } from '../../src/zip'
 import { fresh } from '../local/nxsp/chain'
-import { crafted, jsonOf, setJson, type Item } from '../local/nxsp/craft'
+import { crafted, jsonOf, levelOf, setJson, setLevel, type Item } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
 import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
@@ -262,7 +262,7 @@ test('a level with a value this build does not know asks first; Cancel opens not
 }) => {
     await start(page)
     const file = await crafted((items) => {
-        const level = jsonOf(items, 'level.json')
+        const level = levelOf(items)
         const entities = level.entities as { archetype: string; data: Row[] }[]
         const note = entities.find((entity) =>
             entity.data.some((field) => field.name === 'flick' || field.name === 'direction'),
@@ -270,7 +270,7 @@ test('a level with a value this build does not know asks first; Cancel opens not
         const field = note?.data.find((each) => each.name === 'direction' || each.name === 'flick')
         if (!field) throw new Error('No choice field to change')
         field.value = 99
-        setJson(items, 'level.json', level)
+        setLevel(items, level)
     })
     await writeFile(page, 'coconut.nxsp', [...new Uint8Array(await file.arrayBuffer())])
     const before = await sessionOf(page)
@@ -921,7 +921,7 @@ test('a newer major version whose level is refused is an error card', async ({ p
         const project = jsonOf(items, 'project.json')
         project.version = 2
         setJson(items, 'project.json', project)
-        setJson(items, 'level.json', { entities: [] })
+        setLevel(items, { entities: [] })
     })
     await writeFile(page, 'coconut.nxsp', bytes)
     await openFile(page, 'coconut.nxsp')

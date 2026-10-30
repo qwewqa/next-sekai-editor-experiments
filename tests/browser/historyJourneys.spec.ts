@@ -168,7 +168,7 @@ const initialLifeOfLevel = (level: LevelData) =>
         .find((entity) => entity.archetype === 'Initialization')!
         .data.find((field) => field.name === 'initialLife')!.value
 
-/** The `level.json` of an OPFS `.nxsp`: its text, as written. */
+/** The decoded level payload of an OPFS `.nxsp`, as text. */
 const levelTextOf = (page: Page, name: string) =>
     page.evaluate(async (name) => {
         const root = await navigator.storage.getDirectory()
@@ -176,7 +176,16 @@ const levelTextOf = (page: Page, name: string) =>
             (await import('/src/zip/reader.ts')) as typeof import('../../src/zip/reader')
         const file = await (await root.getFileHandle(name)).getFile()
         const reader = await ZipReader.open(file)
-        const bytes = await reader.read(reader.get('level.json')!, { maxSize: 4_000_000 })
+        const project = JSON.parse(
+            new TextDecoder().decode(
+                await reader.read(reader.get('project.json')!, { maxSize: 4_000_000 }),
+            ),
+        ) as { level: string }
+        const bytes = await reader.read(reader.get(project.level)!, { maxSize: 4_000_000 })
+        if (project.level === 'level.json.gz') {
+            const { gunzipLevel } = await import('/src/local/nxsp/gzip.ts')
+            return new TextDecoder().decode(gunzipLevel(bytes, 4_000_000))
+        }
         return new TextDecoder().decode(bytes)
     }, name)
 

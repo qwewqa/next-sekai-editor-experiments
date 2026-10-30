@@ -8,6 +8,7 @@
 - (Web) Added the Terms of Service, linked from Settings › About, Help and the privacy page.
 - Some settings now have an info button that shows what the setting does.
 - Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open… (O) opens project files.
+- Project files now include Sonolus package metadata and a gzipped chart, with references to the Next SEKAI engine.
 - Export Level Data… (Shift+P) exports level data for Sonolus.
 - (Web) In desktop Chrome and Edge, and in Chrome 132 or later on Android, saving again updates the project file and exporting again updates the exported file. Other browsers download a new file each time.
 - (Web) The editor stores your work in your browser as sessions and resumes your last session when you return. On the first launch after this update, it opens your old auto save. Save a project file to keep your work.
