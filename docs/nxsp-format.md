@@ -2,9 +2,9 @@
 
 A complete description of the Next SEKAI Editor's project file, written so that a reader with no access to the editor's code can build a compatible viewer: open any v1 file, classify it as the editor does, rebuild the chart at the head and at every stored History step, and list and interpret the History timeline. A short section at the end gives the writer's rules for those who also write files.
 
-- **Status.** Format v1 (`project.json` `version` 1, `minor` 0, `patch` 0; manifest `version` 1; records `v` 1; `levelVersion` 1). **Unshipped:** until v0.6.0 ships, v1 is changed in place, with no version bumps and no compatibility handling. From the ship it is frozen, and any change follows [format-versioning.md](format-versioning.md).
+- **Status.** Format v1 (`project.json` `version` 1, `minor` 0, `patch` 0; manifest `version` 1; records `v` 1; `levelVersion` 1). **Unshipped:** until v0.6.0 ships, v1 is changed in place, with no version bumps. The reader also accepts the plain-level files written by test deployment `20f5883341e5410eb08611a65c4ba7ca631627e7` (§4.1); this is the one prerelease compatibility exception. From the ship it is frozen, and any change follows [format-versioning.md](format-versioning.md).
 - **Authority.** The code is in `src/local/nxsp/`, `src/local/records/`, `src/zip/`, `src/history/operations/`, `src/levelData/` and `src/chart/parse/levelData/`. Where this page and the code disagree, the code wins and this page is wrong. The design rationale is in [history-format.md](history-format.md) (§2–§4) and [format-versioning.md](format-versioning.md), and this page does not repeat it.
-- **Background assumed.** Sonolus level data, the Next SEKAI engine's archetypes and what notes, slides, connectors, guides, time-scale groups, stages, the five event kinds, BGM and offset mean. ZIP, raw DEFLATE (RFC 1951), CRC-32, SHA-256, JSON and UTF-8.
+- **Background assumed.** Sonolus level data, the Next SEKAI engine's archetypes and what notes, slides, connectors, guides, time-scale groups, stages, the five event kinds, BGM and offset mean. ZIP, raw DEFLATE (RFC 1951), gzip (RFC 1952), CRC-32, SHA-256, JSON and UTF-8.
 - **Cross-check tools.** `tools/nxsp_check.py` is an independent reader and strict checker that shares no code with the editor (§17). The goldens and conformance cases are listed in §17.
 
 ## Contents
@@ -15,7 +15,7 @@ A complete description of the Next SEKAI Editor's project file, written so that 
 4. [Entries and pointers](#4-entries-and-pointers)
 5. [`project.json`](#5-projectjson)
 6. [The chart model](#6-the-chart-model)
-7. [`level.json`](#7-leveljson)
+7. [Level data](#7-level-data)
 8. [Snapshots: records, hashes, chunks, nodes, roots](#8-snapshots-records-hashes-chunks-nodes-roots)
 9. [History parts: manifest, segments, `chunks.bin`](#9-history-parts-manifest-segments-chunksbin)
 10. [Entries and the timeline](#10-entries-and-the-timeline)
@@ -29,11 +29,11 @@ A complete description of the Next SEKAI Editor's project file, written so that 
 
 ## 1. Conventions and terms
 
-**Notation.** JSON values are written as JSON. `a | b` is a choice; `x?` an optional key or position; `[a, b, c]` a positional array (a record). Byte layouts are little-endian. "Must" states a rule whose breach changes the classification (§14). "The writer" means the editor's v1 writer, and "the reader" means the editor's v1 reader. A compatible viewer imitates the reader.
+**Notation.** JSON values are written as JSON. `a | b` is a choice; `x?` an optional key or position; `[a, b, c]` a positional array (a record). Byte layouts are little-endian. "Must" states a rule whose breach changes the classification (§14). "The writer" means the editor's v1 writer, and "the reader" means the editor's v1 reader. A compatible viewer imitates the reader. "Level data" means the decoded JSON value, whether it came from plain `level.json` or gzip `level.json.gz`. The encoding does not change the chart model or the head comparison.
 
 **Integers and numbers.** A *safe integer* is an integer `n` with `|n| <= 2^53 - 1`. A *count* (`uint`) is a safe integer `>= 0`; an *id* a safe integer `>= 1`. Numbers are judged by value as `JSON.parse` reads them (`1`, `1.0` and `1e0` are one value; `-0` is the count 0, never an id). A *finite number* is any JSON number that is not infinite after parsing (a literal past the double range parses to infinity and fails).
 
-**Text.** JSON text is UTF-8 without a byte-order mark; a reader strips one leading U+FEFF. A string is *well formed* when it holds no lone UTF-16 surrogate. The writer makes the strings of `project.json` and the entries well formed (a lone surrogate becomes U+FFFD). Record strings (§8.1) and `level.json` are written as the state holds them, with a lone surrogate escaped (`"\ud83d"`), so a reader must accept that escape. The editor makes text well formed where it enters the state (`docs/history-format.md`), so its own records hold none; the rule is for files other writers produce.
+**Text.** JSON text is UTF-8 without a byte-order mark; a reader strips one leading U+FEFF. A string is *well formed* when it holds no lone UTF-16 surrogate. The writer makes the strings of `project.json` and the entries well formed (a lone surrogate becomes U+FFFD). Record strings (§8.1) and level data are written as the state holds them, with a lone surrogate escaped (`"\ud83d"`), so a reader must accept that escape. The editor makes text well formed where it enters the state (`docs/history-format.md`), so its own records hold none; the rule is for files other writers produce.
 
 **Hashes.** *hash16* is the first 16 bytes of SHA-256. In files it is written as exactly 32 lowercase hex characters (`^[0-9a-f]{32}$`, the whole string); anything else (uppercase, 31 or 33 characters, a trailing newline) is not a hash. A full SHA-256 is 64 lowercase hex characters.
 
@@ -55,7 +55,7 @@ A complete description of the Next SEKAI Editor's project file, written so that 
 | operation | The JSON envelope that describes a step or an event: what the user did, never what the chart is (§11). |
 | session | One visit's run of entries; in a file, sessions are separated by `continue` entries. |
 | chain | All sessions of one document. A file's chronology is one chain's, oldest first. |
-| head | The state the file shows now: `level.json` with `project.json`, or the History head when they match (§10.6). |
+| head | The state the file shows now: level data with `project.json`, or the History head when they match (§10.6). |
 | History head | `undoStack.slots[index - base].snapshot` (§9.4). |
 | owner | A group, stage, group folder or stage folder. |
 | report | The list of reasons a reader did not read something (§14). Any reason other than `newer-patch` makes the open *partial*. |
@@ -66,15 +66,15 @@ The editor's reader (`readNxsp`, `src/local/nxsp/read.ts`) does the following. A
 
 1. **Open the ZIP** (§3). Not a ZIP at all: `unreadable`. A directory that cannot be read but local headers that can: entries come from a scan, and the report gets `damaged` (the file can still open, without history). Duplicate names and overlapping data: `damaged` for each.
 2. **Find `project.json`** by name. Absent: `not-project` (unless the name is ambiguous, then `unreadable`). Read it (cap 1 MiB, JSON depth 64); a failure is `unreadable`. Not an object, or `format` not `"nxsp"`: `not-project`.
-3. **Check `version`.** A safe integer above 1: `newer-version`; only `level.json` is read, nothing else in `project.json` is interpreted, no history and no media. Otherwise anything but `1` adds `invalid-key` (path `version`) and reading goes on as v1.
+3. **Check `version`.** A safe integer above 1: `newer-version`; only an unambiguous fixed level payload is read (§4.1), nothing else in `project.json` is interpreted, no history and no media. Otherwise anything but `1` adds `invalid-key` (path `version`) and reading goes on as v1.
 4. **Read the v1 keys** of `project.json` (§5): unknown keys go to *extra* (kept, never reported), wrong forms are `invalid-key`, unknown keys inside the closed objects are `unknown-key`. Then `minor > 0`: `newer-minor`; `patch > 0`: `newer-patch`; `levelVersion > 1`: `newer-level`.
 5. **Check the pointers** (§4): each in its own prefix, no two on one entry (else `damaged`); every other entry that is not ignored is `unknown-entry`.
-6. **Read `level.json`** (cap 256 MiB). Missing or unreadable: `unreadable`. Top-level keys other than `bgmOffset` and `entities`: `unknown-key`.
+6. **Read the selected level payload** (§4.1). Decode its ZIP entry, then gunzip it when its name is `level.json.gz`. The decoded JSON cap is 256 MiB. Missing, ambiguous or unreadable: `unreadable`. Top-level keys other than `bgmOffset` and `entities`: `unknown-key`.
 7. **Read the media** (§5.5): each `file` entry checked for size and SHA-256 (`media-unreadable` on a mismatch or when missing).
 8. **Read the history** (§9) only when `project.json` has `history` and the report holds no `damaged` and no `newer-minor`. Any failure here adds its reasons and leaves the history unread; the level still opens. A manifest or segment that fails as a ZIP entry, is not UTF-8, is not JSON or is nested deeper than 64 is `damaged`, as is a part past its cap or the parts together past theirs; any other failure is `history-unreadable`, `newer-history` or `unknown-key` (§14.2).
 9. **Classify** (§14): `open` is `full` when the report is empty or holds only `newer-patch`, else `partial`.
 
-Then the editor parses `level.json` into a chart (§7), decides the head (§10.6), and imports the history.
+Then the editor parses the decoded level data into a chart (§7), decides the head (§10.6), and imports the history.
 
 ## 3. The ZIP container
 
@@ -119,7 +119,7 @@ A reader is more tolerant, so that an operating system's re-zip still opens.
 - **Names.** Bit 11 set: UTF-8 (invalid bytes become U+FFFD). Bit 11 clear: UTF-8 when valid, else CP437. A leading U+FEFF is kept (so `﻿bgm/a.mp3` is not `bgm/a.mp3`). Names are compared in Unicode NFC.
 - **Directories and clutter are ignored:** names ending in `/`, anything under `__MACOSX/` or `cache/`, and any entry whose last path component is `.DS_Store`, `Thumbs.db`, `desktop.ini` or starts with `._`. Ignored entries are never `unknown-entry`, but they still count for overlaps.
 - **Ambiguity.** Two entries with one NFC name are both unfindable by that name (`damaged` "two entries with this name"). Overlapping data ranges (by the least range from the directory, and again by the real range with each local header's extra field) are `damaged` "overlapping data" for both entries, ignored entries included.
-- **Reading an entry** (every read, every entry): the encryption flag (bit 0) is refused; a method other than 0 or 8 is refused; the declared size must be within the entry's cap; STORE needs `compressedSize == size`, DEFLATE `compressedSize <= 2 * size + 1024`; the local header must repeat the directory's name bytes and method, and its CRC and sizes unless bit 3 is set and they are 0 or `0xFFFFFFFF`; DEFLATE must inflate to exactly the declared size with no input left over and the final block set; the CRC must match. Any failure is `damaged` for that entry (for `project.json` and `level.json`, `unreadable`).
+- **Reading an entry** (every read, every entry): the encryption flag (bit 0) is refused; a method other than 0 or 8 is refused; the declared size must be within the entry's cap; STORE needs `compressedSize == size`, DEFLATE `compressedSize <= 2 * size + 1024`; the local header must repeat the directory's name bytes and method, and its CRC and sizes unless bit 3 is set and they are 0 or `0xFFFFFFFF`; DEFLATE must inflate to exactly the declared size with no input left over and the final block set; the CRC must match. Any failure is `damaged` for that entry (for `project.json` and the selected level payload, `unreadable`).
 - **Tolerated:** STORE or DEFLATE for any entry, data descriptors, extra fields, ZIP64, any entry order, any flags but bit 0, any DOS time.
 
 ## 4. Entries and pointers
@@ -127,21 +127,54 @@ A reader is more tolerant, so that an operating system's re-zip still opens.
 | Entry | Writer's method | Named by | Holds |
 | --- | --- | --- | --- |
 | `project.json` | 8 | fixed name | Identity, revision, level info, pointers, summary (§5) |
-| `level.json` | 8 | `level` (must be `"level.json"`) | The chart now, as level data (§7) |
+| `level.json.gz` | 0 | `level` (`"level.json.gz"` on write) | One gzip member containing the chart now, as level data (§7) |
 | `history/segments/<n>.json` | 8 (a segment copied whole keeps its method) | `history.segments[n-1]` | Older parts of the chronology (§9) |
 | `history/manifest.json` | 8 | `history.manifest` | The newest part and the undo stack (§9) |
 | `history/chunks.bin` | 0 | `history.chunks` | Every chunk's stored bytes, concatenated (§9.3) |
 | `assets/cover.<ext>` | 0 | `metadata.cover.file` | The head's cover, when held |
 | `assets/preview.<ext>` | 0 | `metadata.preview.file` | The head's preview audio, when held |
 | `bgm/<name>` | 0 | `bgm.file` | The head's BGM, when held |
+| `sonolus/…` | 8 | exact derived paths (§4.2) | A generated Sonolus package view of the saved head |
 
 The writer's order is the table's (segments by number). Readers do not depend on order.
 
-**Pointer rules.** Each pointer must stay in its prefix: `level` must equal `level.json`; `bgm.file` must start with `bgm/`, `metadata.cover.file` with `assets/cover.`, `metadata.preview.file` with `assets/preview.`, and `history.manifest`, `history.chunks` and each segment with `history/`, and none may equal its bare prefix. Two pointers must not name one entry (compared in NFC). A breach is `damaged` at the pointer's path (`level`, `bgm.file`, `history.segments[0]`, …).
+**Pointer rules.** Each pointer must stay in its prefix: `level` must equal `level.json` or `level.json.gz`; `bgm.file` must start with `bgm/`, `metadata.cover.file` with `assets/cover.`, `metadata.preview.file` with `assets/preview.`, and `history.manifest`, `history.chunks` and each segment with `history/`, and none may equal its bare prefix. Two pointers must not name one entry (compared in NFC). A breach is `damaged` at the pointer's path (`level`, `bgm.file`, `history.segments[0]`, …).
 
-**Unknown entries.** Every entry that is not ignored (§3.2), not `project.json` and not named by a pointer is `unknown-entry` (partial open). A reader of a newer-major file does not check entries.
+**Unknown entries.** Every entry that is not ignored (§3.2), not `project.json`, not named by a pointer and not an owned package path (§4.2) is `unknown-entry` (partial open). A reader of a newer-major file does not check entries.
 
-Entry names other than `project.json` and `level.json` are cosmetic. Readers find entries only through pointers. The writer's media names are in §16.3.
+The fixed names are `project.json`, the two supported level payload names (§4.1) and the package paths (§4.2). Other entries are found through pointers. The writer's media names are in §16.3.
+
+### 4.1 Level encodings and recovery
+
+The writer emits only `level.json.gz`, with `project.level` equal to that name. Its ZIP method is STORE; its bytes are one deterministic gzip member containing the JSON of §7. ZIP DEFLATE and the gzip resource wrapper are separate layers. The reader accepts ZIP STORE or DEFLATE around either supported payload.
+
+The reader also accepts `level: "level.json"` and plain JSON after ZIP decoding. This preserves files written by test deployment `20f5883341e5410eb08611a65c4ba7ca631627e7`, without changing a version number. It does not add support for unspecified earlier test formats, stored-data migrations or old readers opening new files. Open changes no file; a successful Save writes the current layout.
+
+A valid supported pointer selects the payload, including when both names exist. A missing or damaged selected payload is unreadable; the reader never substitutes the other payload. When both names exist, the unreferenced payload is an unknown entry and makes the open partial. The writer never writes both.
+
+For a missing or invalid pointer, exactly one known payload may be recovered with the existing invalid/damaged report; recovery cannot turn that file into a full open. Two known payloads are ambiguous and cannot be recovered this way. A newer major version ignores the pointer and all other project fields, and may recover exactly one known fixed payload through the existing open-copy path. It refuses two payloads.
+
+The gzip layer requires an actual gzip header, one completed member, a valid trailer with matching CRC-32 and ISIZE, and no trailing bytes or second member. Raw DEFLATE and zlib are refused. The stored gzip bytes are capped independently at `2 * 256 MiB + 1024`; inflation stops when decoded JSON exceeds 256 MiB. UTF-8, JSON and depth checks apply after decompression. These rules also apply after an OS re-zip.
+
+### 4.2 The derived Sonolus package
+
+The writer appends 21 DEFLATE JSON entries after the media. Their order is `sonolus/package`, `sonolus/info`, then each category's `info` and `list`, in this category order: `posts`, `playlists`, `levels`, `skins`, `backgrounds`, `effects`, `particles`, `engines`, `replays`. The level detail, `sonolus/levels/<name>`, follows the levels list. `<name>` is `nse-` followed by lowercase hash16 of the UTF-8 bytes of the well-formed document `id`. Revision and lineage do not take part in it.
+
+These 20 fixed metadata paths and this document's one derived detail path are owned views. They never override `project.json`, decoded level data or history. Missing, stale or unreadable views leave the authoritative editor content available. Save regenerates them. Another level detail or another path under `sonolus/` remains unknown and makes the open partial. Duplicate-name and overlap rules still apply to every entry, including owned views.
+
+`sonolus/package` is `{"shouldUpdate":true}`. `sonolus/info` has the display title, a Levels button and `configuration:{options:[]}`. Levels info has one section with `itemType:"level"`, the display title and `items:[level]`; levels list has `pageCount:1` and `items:[level]`. Level detail has `item:level`, the saved description, `actions:[]`, `hasCommunity:false`, `leaderboards:[]` and `sections:[]`. Every other category has `sections:[]` in info and `pageCount:1,items:[]` in list. The three repeated level descriptors agree.
+
+The level descriptor has `name`, `version:1`, `rating`, `title`, `artists`, `author`, `tags`, `engine`, `useSkin`, `useBackground`, `useEffect`, `useParticle`, `cover`, `bgm` and `data`, plus `preview` when held. It has no `source`. Title uses the first nonempty value of saved title, `revision.fileName` with a final `.nxsp` removed (case-insensitive), project name and stable item name. Rating uses the saved finite number when present, otherwise 0; negative and fractional values are kept. Artists, author, tags and description come from the saved head, preserving empty strings and tag order. Display fallbacks never change Level Info.
+
+The engine and its four nested defaults use item name `coconut-next-sekai-1`, source `https://coconut.sonolus.com/next-sekai`, subtitle `Next SEKAI` and tags `[{"title":"#PINNED"}]`. They are complete item objects: name, source, version, title, subtitle, author, tags and all required resources. Engine version 13 contains skin version 4 (Next SEKAI 01), background version 2 (Next SEKAI), effect version 5 (Next SEKAI 01) and particle version 3 (Next SEKAI). The engine title is Next SEKAI and its author is `##:qwewqa#590353`; each default's author is `##:Burrito#1000`. Each level `use*` field is `{"useDefault":true}` without `item`; the level follows the engine's defaults. The editor's selected Preview Assets do not replace them.
+
+Every external resource SRL is exactly `{"hash":"","url":""}`. Engine resources are thumbnail, playData, watchData, previewData, tutorialData, configuration and rom. Skin and particle have thumbnail, data and texture; background has thumbnail, data, image and configuration; effect has thumbnail, data and audio. Save uses a shipped template and fetches no metadata or dependency bytes.
+
+Local SRLs have `hash:""` and `url:"/" + entryName`. Data points to `/level.json.gz`. Cover, BGM and preview point directly to the entries this Save includes, with no second copy or conversion. Missing required cover and BGM use `{"hash":"","url":""}`; absent optional preview is omitted. Metadata-only and unticked media never create local URLs. These empty hashes are placeholders, not SHA-1 or NXSP SHA-256 values. NXSP media hashes and ZIP CRC checks retain their meaning.
+
+Current Sonolus clients do not fully support this mixture of local resources and source dependencies. This layout describes the generated objects and bytes; it makes no current-client import, caching or playability promise. The editor does not round-trip arbitrary SCP content. Editing only these derived endpoints does not edit the project.
+
+Check File and History checks the authoritative NXSP content and history chunks. It does not validate the disposable package view or external services. The built-file check validates the generated view before each Save handover. The independent strict writer checker validates files separately in development and CI.
 
 ## 5. `project.json`
 
@@ -162,8 +195,8 @@ A JSON object, compact, UTF-8.
 | `revision` | object, optional on read | §5.3. Any form error: `invalid-key` and the whole `revision` reads as absent. |
 | `name` | string, optional | The chain's name. The apps name a file brought into their library by it. The web reads it and does not write it, as its names are automatic (a copy's "(2)", a lost file's stem). |
 | `exportName` | string, optional | The name Export uses (may be `""`). |
-| `level` | string | Must be `"level.json"` (§4). |
-| `editor` | object, optional (`{}`) | Only `defaultGuideColors`: an array of counts, indices into `level.json` `entities` (§7.6). Other keys: `unknown-key`. A bad array: `invalid-key`, read as absent. |
+| `level` | string | `"level.json.gz"` on write; `"level.json"` also accepted on read (§4.1). |
+| `editor` | object, optional (`{}`) | Only `defaultGuideColors`: an array of counts, indices into decoded level data `entities` (§7.6). Other keys: `unknown-key`. A bad array: `invalid-key`, read as absent. |
 | `bgm` | media form, optional | The head's BGM (§5.5). Absent means left out, not removed. |
 | `history` | object, present exactly when the file has history | `{manifest, chunks, entries, segments?}`: `manifest` and `chunks` strings, `entries` a count (the total entry count over all parts), `segments` an array of strings. More than 4,096 segments: `damaged` (`history.segments`). Any other key: `unknown-key`, and the whole `history` reads as absent. |
 | `summary` | object, optional | `{noteCount, durationMs, revisionId}` (counts and a string) from the head. Used only when `revisionId == revision.id`; a bad or stale `summary` is ignored, never reported. |
@@ -175,7 +208,7 @@ Unknown keys inside `revision` and `summary` are ignored. Unknown keys inside `m
 
 ### 5.2 Example
 
-From the minimal file of §17.1 (a Save with History off):
+From the legacy minimal file of §17.1 (a Save with History off). Current writes use `"level":"level.json.gz"` and add the derived package (§4.2):
 
 ```json
 {"format":"nxsp","version":1,"minor":0,"patch":0,"levelVersion":1,"appVersion":"0.6.0","id":"doc-01","lineageId":"lineage-01","revision":{"id":"a001-0000-4000-8000-000000000000","parent":null,"n":1,"savedAt":"2026-10-20T08:00:00Z","device":{"id":"d3v1ce00-0000-4000-8000-000000000001","label":"Web (Chrome)"},"ancestors":[],"fileName":"minimal.nxsp"},"level":"level.json","editor":{},"summary":{"noteCount":2,"durationMs":2000,"revisionId":"a001-0000-4000-8000-000000000000"}}
@@ -220,7 +253,7 @@ A form's **media reference** (§6.6) is `{hash, filename, size, type}`, `hash` b
 
 ## 6. The chart model
 
-The model a file stores, defined once; `level.json` (§7) and snapshot records (§8) are two encodings of it. Field names are the record field names. "Domain" is what the format accepts; the editor enforces tighter ranges in its tools and in the level-data parser (§7.7), never in records.
+The model a file stores, defined once; level data (§7) and snapshot records (§8) are two encodings of it. Field names are the record field names. "Domain" is what the format accepts; the editor enforces tighter ranges in its tools and in the level-data parser (§7.7), never in records.
 
 ### 6.1 The chart and its header
 
@@ -321,11 +354,11 @@ A **media reference** is `{hash, filename, size, type}`: `hash` the hash16 of th
 
 `none`, `linear`, and the 40 names `<mode><Function>` with mode `in out inOut outIn` and function `Sine Quad Cubic Quart Quint Expo Circ Back Elastic Step` (for example `inOutSine`, `outInStep`). A time-scale ease excludes the Back and Elastic eight (34 values).
 
-## 7. `level.json`
+## 7. Level data
 
 ### 7.1 Form
 
-`{"bgmOffset": number, "entities": [LevelDataEntity, ...]}`: ordinary Sonolus level data, not gzipped, the same the editor exports. An entity is `{name?: string, archetype: string, data: [{name, value: number} | {name, ref: string}, ...]}`. Top-level keys other than `bgmOffset` and `entities` are `unknown-key`. The file's chart *now* is this value with `project.json`'s level info and BGM (§10.6).
+`{"bgmOffset": number, "entities": [LevelDataEntity, ...]}`: ordinary Sonolus level data after decoding (§4.1), with the same value the editor exports. An entity is `{name?: string, archetype: string, data: [{name, value: number} | {name, ref: string}, ...]}`. Top-level keys other than `bgmOffset` and `entities` are `unknown-key`. The file's chart *now* is this value with `project.json`'s level info and BGM (§10.6).
 
 Ids are not in level data. A parse numbers groups, stages and folders afresh. Default guide colours (§7.6) and level info and BGM metadata (`project.json`) are kept outside it.
 
@@ -389,7 +422,7 @@ Data: `#TIMESCALE_GROUP` (ref), `stage` (ref; dynamic stages only), `#BEAT`, `la
 
 **`segmentKind`.** For a guide: `100 + c`, `c` the guide colour's code (neutral 1 … black 8), a `default` guide colour written as green (103). Otherwise `family` is 3 for damage, 2 for a critical active connector, 1 for an active one; with `s` the `connectorStyle` code (0 for default): `(connectorIsFake ? 50 : 0) + (s > 0 ? 10 * family + s : family)`. The values are 1, 2, 3, 51, 52, 53, 101–108, and the coloured 11–18, 21–28, 31–38, 61–68, 71–78, 81–88.
 
-### 7.5 Reading `level.json` into a chart
+### 7.5 Reading level data into a chart
 
 The editor's parse (`parseLevelDataChart`). A viewer that shows the head from level data follows it; a viewer that shows only History snapshots may skip it.
 
@@ -593,9 +626,9 @@ The editor's Timeline lists entries newest first, one row per entry, titled by t
 
 ### 10.6 The head, and what an open adds
 
-The file's chart now is `level.json` parsed (§7.5), with level info from `metadata` (§5.4) and the BGM from `bgm` (§5.5), or the History head's BGM reference when `bgm` is absent. When the file has history, the level report is empty and the file **matches** its History head, the editor shows the History head itself (keeping its ids); otherwise it shows the level-data chart (fresh ids).
+The file's chart now is decoded level data parsed (§7.5), with level info from `metadata` (§5.4) and the BGM from `bgm` (§5.5), or the History head's BGM reference when `bgm` is absent. When the file has history, the level report is empty and the file **matches** its History head, the editor shows the History head itself (keeping its ids); otherwise it shows the level-data chart (fresh ids).
 
-**Matches** means: the level info read from `metadata` (§5.4) equals the head's level info (compared as canonical level-info records); `bgm`, when present, names the head's BGM hash; and `level.json` matches the head as level data: both the file's entities and the head re-serialised (§16.4) are parsed (§7.5), groups, stages and folders renumbered 1…n in list order (folders in one sequence, group folders first, references following), converted to records in the writer's order (§8.6) with level info and BGM left out (header positions 0–6 only), and compared as canonical text.
+**Matches** means: the level info read from `metadata` (§5.4) equals the head's level info (compared as canonical level-info records); `bgm`, when present, names the head's BGM hash; and decoded level data matches the head as level data: both the file's entities and the head re-serialised (§16.4) are parsed (§7.5), groups, stages and folders renumbered 1…n in list order (folders in one sequence, group folders first, references following), converted to records in the writer's order (§8.6) with level info and BGM left out (header positions 0–6 only), and compared as canonical text.
 
 When the file does not match, the editor's import adds, after the file's entries, an `edit` entry of `nse.externalChange` with the level-data state, then a `continue` entry of `nse.origin` (`{origin: import, source: <file name>}`); when it matches, only the `continue`. A file without history opens as one `init` slot of that `nse.origin`. These rows are the open's, not the file's.
 
@@ -766,7 +799,7 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 | `nse.file.export` | `export` | `{file: NameText, delivery: file \| download}` | Export Level Data. | "Exported {file}" |
 | `nse.restore` | `restore` step | `{targetTime: time}` | Restore from the Timeline: the restored entry's time (not its position). | "Restored to {targetTime}" |
 | `nse.recovery` | an `edit` step (in a `recovered` entry's push, or a plain `edit` entry) and the `recovered` entry | `{droppedSteps: count}` | A crash recovery from the journal: `droppedSteps` undo steps could not be kept; the step's `recoveryContext` lists them. | "Recovered changes" |
-| `nse.externalChange` | edit | `{}` | A `.nxsp` open whose `level.json` differed from its History head (§10.6). | "Changed outside the editor" |
+| `nse.externalChange` | edit | `{}` | A `.nxsp` open whose decoded level data differed from its History head (§10.6). | "Changed outside the editor" |
 
 ## 13. What each tool and action records
 
@@ -818,7 +851,7 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 | Result | When |
 | --- | --- |
 | `not-project` | A ZIP without `project.json`, or whose `project.json` is not an object with `format: "nxsp"`. |
-| `unreadable` | Not a readable ZIP (no end record and no local header; more than 65,535 entries); `project.json` ambiguous or unreadable (cap, CRC, inflate, UTF-8, JSON, depth); `level.json` missing, ambiguous or unreadable. Nothing opens. |
+| `unreadable` | Not a readable ZIP (no end record and no local header; more than 65,535 entries); `project.json` ambiguous or unreadable (cap, CRC, inflate, UTF-8, JSON, depth); the selected level payload missing, ambiguous or unreadable (§4.1). Nothing opens. |
 | `nxsp`, `full` | The report is empty or holds only `newer-patch`. |
 | `nxsp`, `partial` | Any other report item. The editor opens it as a separate copy: unbound, a new document id, no revision; it never writes over the original. |
 
@@ -831,13 +864,13 @@ The editor's open is whole only when the result is `full`, the level report (§7
 | `damaged` | A directory recovered by scan; duplicate names; overlapping data; a pointer outside its prefix or two pointers on one entry; a manifest, segment or media entry that fails as a ZIP entry or passes its cap; `chunks.bin` past its caps; a manifest or segment that is not UTF-8, not JSON or nested deeper than 64; the parts together over 512 MiB; more than 4,096 segments; a non-object `parts` | History not read. |
 | `history-unreadable` | A part missing; a schema failure inside the history (§9, §10, §11); a dangling hash; an index that does not tile; a header or head chunk failing (its hash, its JSON or its schema), or `chunks.bin` failing as a ZIP entry while one is read (§9.3); a root or node not hashing to its key; `index` out of range; a key with two values; an `entries` mismatch; a resource-invalid description; a bad `x` | History not read. |
 | `newer-history` | A manifest `version` above 1, a root `v` above 1, an entry `kind` or kind name this build does not know | History not read. |
-| `unknown-key` | An unknown key in a closed object: `editor`, `history`, media forms, tags, `parts`, `level.json`'s top level, and anywhere in the history outside `x` | Partial; in the history, history not read. |
-| `unknown-entry` | An entry no pointer names | Partial. |
+| `unknown-key` | An unknown key in a closed object: `editor`, `history`, media forms, tags, `parts`, level data's top level, and anywhere in the history outside `x` | Partial; in the history, history not read. |
+| `unknown-entry` | An entry no pointer names, outside the ignored entries and exact owned package paths | Partial. |
 | `invalid-key` | A known `project.json` key of the wrong form (`version` not 1 and not newer, `minor`, `patch`, `levelVersion`, `appVersion`, `id`, `lineageId`, `name`, `exportName`, `level`, `revision`, `editor`, a media form, `metadata` fields, `history`) | Partial. |
 | `newer-minor` | `minor > 0` | Partial; history not read. |
 | `newer-patch` | `patch > 0` | A notice only: the open stays full. |
 | `newer-level` | `levelVersion > 1` | Partial. |
-| `newer-version` | `version > 1` | Only `level.json` is read; the editor asks first, then opens the level as a copy. |
+| `newer-version` | `version > 1` | Only one unambiguous fixed level payload is read (§4.1); the editor asks first, then opens the level as a copy. |
 | `media-unreadable` | A held media entry missing or not matching its size and SHA-256 | Partial; the rest opens. |
 
 History is read only when the report holds no `damaged` and no `newer-minor`.
@@ -854,19 +887,20 @@ Most serious first (`partialLine`, `src/local/open/decide.ts`): any `damaged` "T
 | --- | --- |
 | ZIP entries | 65,535 |
 | `project.json` (inflated) | 1 MiB |
-| `level.json` | 256 MiB |
+| decoded level JSON, plain or gzip | 256 MiB |
+| gzip payload bytes after ZIP decoding | `2 * 256 MiB + 1024` |
 | manifest, each segment | 256 MiB |
 | manifest and all segments together (declared sizes) | 512 MiB |
 | segments | 4,096 |
 | `chunks.bin` | 2 GiB |
 | one chunk (inflated) | 16 MiB |
 | one media entry | 1 GiB |
-| JSON nesting (arrays and objects, every JSON entry and chunk) | 64 |
+| JSON nesting (arrays and objects, every decoded NXSP JSON entry and chunk) | 64 |
 | a DEFLATE entry's stored size | `2 * size + 1024` |
 | an operation / a step / a context | §11.3 |
 | an `x` | 256 KiB, 32 levels |
 
-Caps are judged from declared sizes before reading; inflating past the declared size is damage.
+ZIP caps are judged from declared sizes before reading; inflating past the declared size is damage. The gzip output cap is checked while inflating independently of the ZIP declared size.
 
 ### 15.2 Rejected (damage or unreadable)
 
@@ -887,7 +921,7 @@ A reader needs none of this. A writer that wants its files to open as the editor
 ### 16.1 Container and `project.json`
 
 - The pinned headers of §3.1; entry order of §4; one DOS time from `savedAt`; never ZIP64 (a plan of 65,535 entries or more, or any size or offset of 4 GB or more, is refused).
-- JSON is `JSON.stringify` output: compact, no BOM, no trailing newline. JSON entries are DEFLATE (raw, pako's default level); `chunks.bin` and media are STORE.
+- JSON is `JSON.stringify` output: compact, no BOM, no trailing newline. Plain JSON entries are DEFLATE (raw, pako's default level); `level.json.gz`, `chunks.bin` and media are STORE. The level JSON is gzipped once with deterministic raw DEFLATE at pako's default level. Its 10-byte gzip header is `1f 8b 08 00 00 00 00 00 00 ff`; its trailer is the JSON bytes' CRC-32 and size modulo 2^32, each little-endian. The timestamp is zero; filename and comment are absent. The gzip wrapper is pinned by the goldens.
 - `project.json` keys in the order `format version minor patch levelVersion appVersion id lineageId revision name exportName level editor bgm history summary metadata`, then the extra keys, then extra `metadata` keys merged into `metadata`; `parts` never. `revision` keys in the order of §5.3; `savedAt` UTC to the second; at most 1,024 ancestors; `completeFrom` only with history, written as given when it is the new id or an ancestor, else the oldest ancestor, else the new id.
 - `minor` and `patch` are the lowest that hold the content (both 0 in v1). `editor` is `{}` when there are no default guide colours. `metadata` per §5.4. `summary` is always written: `noteCount` of the head, `durationMs` = the time of the latest note beat (summing `(min(last, end) - start) * 60000 / bpm` over BPM segments in list order, the first applying from beat 0), `Math.round`, 0 when not a positive safe integer; `revisionId` the new revision.
 - `history.entries` the total entry count; `segments` only when there are any.
@@ -895,6 +929,7 @@ A reader needs none of this. A writer that wants its files to open as the editor
 ### 16.2 History
 
 - A **new or rebuilt** chronology (Save As, Recent Sessions' Save…, a copy, a write that cannot append) is cut into segments of 500 entries while more than 500 remain; the manifest holds the last 1 to 500 and always the write's own `save` entry, last.
+- An **append** rebuilds the ZIP; it never inserts duplicate entries into an existing archive. It regenerates the level payload and package view, including when the source uses plain `level.json`. It preserves the history rules below.
 - An **append** (a write-back to the chain's own file at its base): the source's segments are copied whole in order (same bytes and method); its `chunks.bin` is the new one's prefix, unchanged; its manifest becomes a new segment when it holds 500 or more entries, else its entries, roots, nodes and chunks carry into the new manifest; the new rows follow in the manifest, never split. A write-back to a file without history has nothing to copy. When that Save includes History, it writes the chain's chronology as a new one is written, keeping the file's `id` and taking its revision as `parent`, so the file gains history.
 - Each part holds the roots, nodes and chunks its entries first reference, in first-reference order: entries in order (the snapshot, then a `recovered` entry's pushes), then the undo slots, then any other roots; for each root its header chunk, then its kinds in order, each node's chunks in order. New chunks are appended to `chunks.bin` in that order.
 - Entry keys in the order `kind`, `step` or `operation`, `recoveryContext`, `time`, `snapshot`, `noteCount`, `dirty`, `kept`, `revisionId`, `device`, `appVersion`, `stack`, `x`. A row whose state the writer does not hold whole is written `kept: false`, never left out; a row's `noteCount` is written only when known.
@@ -905,15 +940,15 @@ A reader needs none of this. A writer that wants its files to open as the editor
 
 A cover or preview is `assets/cover.<ext>` or `assets/preview.<ext>`. The BGM is `bgm/<stem>.<ext>`: `<ext>` the original name's extension when it is 1–10 ASCII letters and digits, else from the type (`audio/mpeg` mp3, `audio/ogg` ogg, `audio/wav` and `audio/x-wav` wav, `audio/flac` flac, `audio/mp4` m4a, `audio/aac` aac, `audio/webm` webm, `image/png` png, `image/jpeg` jpg, `image/webp` webp, `image/gif` gif, `image/avif` avif), else `bin`; `<stem>` the name before that extension with only `A-Za-z0-9._ -` kept, dots and spaces at either end removed, runs of spaces as one `-`, cut at 120 characters (trailing dots removed again), a first dot-segment that is a Windows device name (`con prn aux nul com1-9 lpt1-9`) given a `-`, and `bgm` when nothing is left. `Coconut (Master).mp3` becomes `bgm/Coconut-Master.mp3`; `曲 名.mp3` becomes `bgm/bgm.mp3`.
 
-### 16.4 `level.json`
+### 16.4 Level data
 
 Serialise from the state with the entity order, data order and codes of §7.2–§7.4, entity names as lowercase hex in the order first needed. Per slide: the notes, then for each connector run the hidden ticks the engine needs (`TransientHiddenTickNote` along active connectors, `TransientHiddenDamageTickNote` along damage ones, on half-beat ticks as `scheduleHiddenTicks` in `src/state/entities/slides/hiddenTicks.ts` places them) and a `Connector` with `head`, `tail`, `segmentHead`, `segmentTail` and, for active and damage connectors, `activeHead` and `activeTail`; after all slides, `SimLine` entities between neighbouring notes (by lane centre) that share a tick, per stage when its sim lines are isolated, else across stages, for every note but anchors, damage notes and ticks. `editor.defaultGuideColors` lists the default-coloured guide notes' entity indices. The code is `src/levelData/entities/serialize/`.
 
 ## 17. Worked examples, fixtures and tools
 
-### 17.1 The minimal file, byte by byte
+### 17.1 A legacy minimal file, byte by byte
 
-A Save with History off of the editor's new chart (829 bytes; `01-minimal-no-history.nxsp` of the clean-room corpus, §17.4): two entries, both DEFLATE, saved 2026-10-20 08:00:00 UTC.
+A legacy Save with History off of the editor's new chart (829 bytes; `01-minimal-no-history.nxsp` of the clean-room corpus, §17.4): two entries, both DEFLATE, saved 2026-10-20 08:00:00 UTC.
 
 ```
 000: 50 4b 03 04              local header signature
@@ -937,7 +972,7 @@ A Save with History off of the editor's new chart (829 bytes; `01-minimal-no-his
      end record: 2 entries, directory 114 bytes at offset 693, no comment
 ```
 
-Its `project.json` is §5.2. Its `level.json` (the editor's new chart with two one-note slides; dynamic stages off, so no `Stage` and no `stage` refs; the group entity named `"0"` when the first note refers to it):
+This example records the old plain-level layout; it is not current writer output. Its `project.json` is §5.2. Its `level.json` (the editor's new chart with two one-note slides; dynamic stages off, so no `Stage` and no `stage` refs; the group entity named `"0"` when the first note refers to it):
 
 ```json
 {"bgmOffset":0,"entities":[{"archetype":"Initialization","data":[{"name":"initialLife","value":1000},{"name":"revision","value":2}]},{"archetype":"#BPM_CHANGE","data":[{"name":"#BEAT","value":0},{"name":"#BPM","value":60},{"name":"meter","value":4}]},{"archetype":"#TIMESCALE_GROUP","data":[{"name":"editorName","ref":"Default"}],"name":"0"},{"archetype":"NormalTapNote","data":[{"name":"#TIMESCALE_GROUP","ref":"0"},{"name":"#BEAT","value":1},{"name":"lane","value":1},{"name":"size","value":1},{"name":"style","value":0},{"name":"direction","value":0},{"name":"isAttached","value":0},{"name":"isSeparator","value":0},{"name":"connectorEase","value":1},{"name":"segmentKind","value":1},{"name":"segmentAlpha","value":1},{"name":"segmentLayer","value":0},{"name":"effectKind","value":0},{"name":"segmentThroughJudgeLine","value":0},{"name":"segmentPresentation","value":0}]},…]}
@@ -979,5 +1014,6 @@ The second Save of that chain (`05b-sessions-append.nxsp`) was written back over
 
 - `tests/local/nxsp/golden-v1/` (`write-1.nxsp`, `write-2.nxsp`, an append): the builder golden. `tests/zip/plan-conformance-v1/`: plan-to-bytes cases, with failures, that any writer implementation must reproduce. `tests/local/records/golden-v1/`: record and snapshot vectors (the golden and edge charts). `tests/local/records/schema-v1/`: record values the v1 schema must accept and must reject. `tools/fields-v1.json`: every record form, the kind order and the enum sets, machine-readable.
 - `tests/native/fixtures/nxsp-v1/`: eight files the v0.6.0 editor wrote (`full`, `kept-first`, `carried`, `not-carried`, `media-not-held`, `bgm-unticked`, `no-history`, `no-media`), made by driving the real editor (`npm run fixtures:v1`) and frozen with the v0.6.0 tag; its `README.md` says what each holds. `tests/zip/nxspV1.test.ts` reads each (the head matches, the media forms, `completeFrom`, a damaged chunk, an OS re-zip), `tests/local/fixturesV1.test.ts` checks which record forms and keys they exercise, `tests/browser/formats/nxspWriteBackV1.spec.ts` saves each back in place, and `check.yml` runs the checker over them with the golden pair. See [format-versioning.md](format-versioning.md) section 8.
-- The examples in §17.1–§17.3 are files of a clean-room test corpus, written by the editor's own builder (`planNxsp` and `executePlan`). The corpus is not kept, so the bytes and numbers here are its record.
-- `uv run python -I tools/nxsp_check.py --read FILE...`: an independent reader that prints one JSON line per file (kind, open, report) and agrees with the editor on every probe of `tests/local/nxsp/agreement.test.ts`. `uv run python -I tools/nxsp_check.py FILE...`: the strict writer check. `--show FILE HASH`: a record, chunk, root or node with field names.
+- The historical plain-level examples in §17.1–§17.3 are files of a clean-room test corpus, written by the editor's own builder (`planNxsp` and `executePlan`). The corpus is not kept, so the bytes and numbers here are its record.
+- `tests/local/nxsp/legacy-test20f/` is the immutable corpus accepted by the test20f runtime, separate from regenerated canonical fixtures. It contains the prior builder goldens and existing native fixtures produced by `0.5.22+d6d6c401`, not files newly generated by test20f. Its README records that provenance and `SHA256SUMS` pins the bytes. Reader tests assert the expected full classification, head and history; old-to-new-to-second-save tests assert preserved history bytes, ancestry and `completeFrom`. Never regenerate this corpus with the new writer.
+- `uv run python -I tools/nxsp_check.py --read FILE...`: an independent reader that prints one JSON line per file (kind, open, report) and agrees with the editor on every probe of `tests/local/nxsp/agreement.test.ts`. `uv run python -I tools/nxsp_check.py FILE...`: the strict writer check, which requires the current gzip/package layout and validates its projection. Reader mode accepts both layouts; callers must assert its JSON classifications, since its exit status alone does not reject a partial or unreadable file. Reader mode does not perform strict mode's cross-file completeness check. CI keeps legacy files under reader coverage and canonical outputs under strict coverage. `--show FILE HASH`: a record, chunk, root or node with field names.
