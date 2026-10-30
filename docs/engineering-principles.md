@@ -62,13 +62,13 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Example.** The Save conflict dialog said the file on disk had "0 notes" when it had no summary. It now has a line without the note count (`describe` in `src/editor/save/dialogs.ts`). A group count that may be incomplete reads "10+ steps" only while the scan can still find more. Wording stays as in `src/i18n/en/index.json`.
 
-## 8. No compatibility code for builds that never shipped
+## 8. Keep prerelease compatibility explicit and narrow
 
-**Rule.** Until v0.6.0 ships, formats, codecs and the IndexedDB schema change in place at their current version. Do not add migrations, repairs or version bumps for data from a build that was never released. Before code reads, repairs or migrates stored data, name the build that wrote it and check that it shipped; if it did not, clear the profile.
+**Rule.** Until v0.6.0 ships, formats, codecs and the IndexedDB schema normally change in place at their current version, without migrations, repairs or version bumps for earlier test builds. Before adding compatibility, name the writer and the data that needs preserving. An explicit exception stays limited to that writer and that data. For other unshipped stored data, clear the test profile.
 
-**Why.** There is no user whose data it would protect, and every rule it adds must be kept forever once it ships. Code for builds that only ran in testing is cruft from the day it lands.
+**Why.** Most test-build data needs no permanent reader. Deployed test files can still hold work worth preserving. A named boundary protects that work without committing to every earlier experiment.
 
-**Example.** Database versions 2 and 3, `createMissingStores` and a dump-seeder repair existed only for test builds, and `MANIFEST_VERSION`, `SESSION_V` and `JOURNAL_VERSION` were raised to 2 before any release. All were returned to 1 with the rules that told the versions apart. See [format-versioning.md](format-versioning.md).
+**Example.** Database versions 2 and 3, `createMissingStores` and a dump-seeder repair existed only for test builds, and `MANIFEST_VERSION`, `SESSION_V` and `JOURNAL_VERSION` were raised to 2 before any release. All were returned to 1 with the rules that told the versions apart. The NXSP reader has one explicit exception for project files written by test deployment `20f5883341e5410eb08611a65c4ba7ca631627e7`; its immutable corpus pins that boundary, with no stored-data migration or format bump. See [format-versioning.md](format-versioning.md).
 
 ## 9. Protect in proportion
 

@@ -113,9 +113,9 @@ Also:
 
 ## Formats
 
-Stored formats change only through the rules in [docs/format-versioning.md](docs/format-versioning.md): readers before writers, the lowest version that holds the content, and its checklist. Until v0.6.0 ships they change in place at v1.
+Stored formats change only through the rules in [docs/format-versioning.md](docs/format-versioning.md): readers before writers, the lowest version that holds the content, and its checklist. Until v0.6.0 ships they change in place at v1. One explicit exception preserves reading project files written by test deployment `20f5883341e5410eb08611a65c4ba7ca631627e7`; it adds no version bump or stored-data migration. New writes use the current gzip/package layout. The versioning guide defines the boundary and its separate immutable reader corpus.
 
-- Readers before writers. A release that can read format N+1 ships at least one release before the first that writes it, and the writer’s release notes say which version is needed. The level model counts: a new archetype, field or choice value raises `levelVersion`.
+- After v0.6.0 ships, readers before writers. A release that can read format N+1 ships at least one release before the first that writes it, and the writer’s release notes say which version is needed. The level model counts: a new archetype, field or choice value raises `levelVersion`.
 - Never write what you do not understand. A newer `patch`, an `x` value, an `extra` key or a `cache/` entry opens normally. Other content a build does not read opens the file as a separate copy. Newer data in browser storage opens read-only or is not read.
 - Every stored file carries a version, and every new format or field goes into the format table in the same change.
 - Fixtures are committed, one per format version, and every self-test reads them. See the notes in the code next to each format.
@@ -130,7 +130,7 @@ Read these before you change a format:
 
 Read this before you write or review code or tests:
 
-- [docs/engineering-principles.md](docs/engineering-principles.md): defaults and unknowns, one source per fact, owned module state, failures that are not empty, honest tests, shared spec helpers, true text, no compatibility code before ship, proportionate protection, and tests and UI elements that earn their place.
+- [docs/engineering-principles.md](docs/engineering-principles.md): defaults and unknowns, one source per fact, owned module state, failures that are not empty, honest tests, shared spec helpers, true text, explicit prerelease compatibility boundaries, proportionate protection, and tests and UI elements that earn their place.
 
 ## Performance
 

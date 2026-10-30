@@ -250,7 +250,7 @@ A session's own rows never go back in time. Each flush or journal row is its own
 
 ## 3. The `.nxsp` history
 
-A `.nxsp` is a plain ZIP; `level.json` is the chart now, and the history is optional extra. The container rules (headers, CRC, timestamps, ZIP64, names) are in `src/zip/` and `src/local/nxsp/execute.ts`, and the full byte-level description in [nxsp-format.md](nxsp-format.md). What an older reader does with a newer file is format-versioning sections 2 to 4.
+A `.nxsp` is a plain ZIP; decoded level data is the chart now, and the history is optional extra. The container rules (headers, CRC, timestamps, ZIP64, names) are in `src/zip/` and `src/local/nxsp/execute.ts`, and the full byte-level description in [nxsp-format.md](nxsp-format.md). What an older reader does with a newer file is format-versioning sections 2 to 4.
 
 ### 3.1 Entries
 
@@ -259,13 +259,14 @@ In the writer's order (the checker enforces it; readers do not depend on it):
 | Entry | Method | Named by | Holds |
 | --- | --- | --- | --- |
 | `project.json` | 8 (DEFLATE) | fixed | Identity, `revision`, level info, pointers, `summary` |
-| `level.json` | 8 | `level` (must be `"level.json"`) | The chart as level data `{bgmOffset, entities}` |
+| `level.json.gz` | 0 (STORE) | `level` (`"level.json.gz"` on write) | One gzip member containing level data `{bgmOffset, entities}` |
 | `history/segments/<n>.json` | 8; a copied segment keeps its method | `history.segments[n-1]` | Older parts of the chronology |
 | `history/manifest.json` | 8 | `history.manifest` | The newest part and the undo stack |
 | `history/chunks.bin` | 0 (STORE) | `history.chunks` | Every chunk's stored form, concatenated |
 | `assets/cover.<ext>`, `assets/preview.<ext>`, `bgm/<name>` | 0 | `metadata.cover.file`, `metadata.preview.file`, `bgm.file` | The head's media, when held |
+| `sonolus/…` | 8 | Exact derived paths (nxsp-format section 4.2) | A generated package view of the saved head |
 
-Every entry other than `project.json` must be named by exactly one pointer, inside that pointer's prefix. JSON is compact `JSON.stringify`, UTF-8, no BOM; a reader strips one leading BOM.
+Except for ignored entries and the exact derived package paths, every entry other than `project.json` must be named by exactly one pointer, inside that pointer's prefix. The reader also accepts legacy plain `level.json`; payload selection and recovery follow nxsp-format section 4.1. JSON is compact `JSON.stringify`, UTF-8, no BOM; a reader strips one leading BOM after decoding.
 
 ### 3.2 `project.json` keys History uses
 
@@ -319,7 +320,7 @@ A field of another kind (`revisionId`, `device` or `appVersion` off `save`, `sta
 
 ### 3.4 Open, and `chunks.bin`
 
-An open writes one new session (origin `nxsp`, or `replaced` for a takeover; `writeOpenHead`, `src/local/open/importWrite.ts`) in one transaction: the file's rows as `seq` 1 to n, then an `edit` entry of `nse.externalChange` when `level.json` differs from the history head, then a `continue` entry of `nse.origin`. Its stack is the file's `undoStack` (plus that edit); a file without history gives one slot whose step is `init`. The binding's cut is row n. Bodies not needed for the head follow in the background import (`importPending`, `src/local/open/importLoop.ts`).
+An open writes one new session (origin `nxsp`, or `replaced` for a takeover; `writeOpenHead`, `src/local/open/importWrite.ts`) in one transaction: the file's rows as `seq` 1 to n, then an `edit` entry of `nse.externalChange` when decoded level data differs from the history head, then a `continue` entry of `nse.origin`. Its stack is the file's `undoStack` (plus that edit); a file without history gives one slot whose step is `init`. The binding's cut is row n. Bodies not needed for the head follow in the background import (`importPending`, `src/local/open/importLoop.ts`).
 
 **An open of the open session's own last write** makes no session (`reopensOwnFile`, `src/local/open/reopen.ts`; the reads in `ownWriteOf`, `src/editor/commands/open/project.ts`, before the read-only branch). It applies only when all of these hold:
 
@@ -357,7 +358,7 @@ At open, every root and node is checked (hash of its canonical bytes, form, know
 
 **What to save is chosen per Save** (`SaveOptions.history`, `bgm`). Every write includes History and the head's BGM (its bytes when held, else as metadata) unless the Save dialog's ticks for that write leave them out. Nothing is stored on the binding (`DEFAULT_OPTIONS`, `src/editor/save/flow.ts`). A write-back, Download Again, Save as a Separate File…, Replace and Export's rewrite of the chain's own file have no dialog, so they use the defaults. An append source with history keeps it whatever the option, so a Save As… whose picker returns the chain's own file with History unticked still writes its history; a file without history gets none only when that write's History is unticked.
 
-In every write the history ends with this revision's `save` entry; the undo stack is the saved session's, cut and renumbered (section 2.8); rows whose state is not held whole are written `kept: false`, never filtered out; and `project.json`, `level.json` and the media are rewritten. A writer never thins history inside a file. `new` (Save As, Recent Sessions' Save… of a session) starts a new `docId` with no parent; `copy` keeps the `docId` and takes the chain's revision as parent.
+In every write the history ends with this revision's `save` entry; the undo stack is the saved session's, cut and renumbered (section 2.8); rows whose state is not held whole are written `kept: false`, never filtered out; and `project.json`, the gzip level payload, the derived package view and the media are rewritten. A writer never thins history inside a file. `new` (Save As, Recent Sessions' Save… of a session) starts a new `docId` with no parent; `copy` keeps the `docId` and takes the chain's revision as parent.
 
 Writer-only limits: the 1,000-slot undo stack (`STACK_CAP`; the tab keeps the same cap), 1,024 ancestors, 500-entry segments and the split sizes. `checkLimits` refuses a plan (`PlanError`, reason `plan`) with more than 4,096 segments, history parts over 512 MiB, or anything needing ZIP64 (4 GB, 65,535 entries), as the writer never emits ZIP64. Readers accept any count within their caps.
 
@@ -376,7 +377,7 @@ Writer-only limits: the 1,000-slot undo stack (`STACK_CAP`; the tab keeps the sa
 | Result | When |
 | --- | --- |
 | `not-project` | No `project.json`, or `format != "nxsp"`. |
-| `unreadable` | Not a readable ZIP; more than 65,535 entries; `project.json` or `level.json` missing or unreadable (cap, CRC, inflate, UTF-8, JSON, nesting). Nothing opens. |
+| `unreadable` | Not a readable ZIP; more than 65,535 entries; `project.json` or the selected level payload missing, ambiguous or unreadable (cap, CRC, ZIP/gzip decoding, UTF-8, JSON, nesting). Nothing opens. |
 | `nxsp`, `open: 'full'` | The report is empty or holds only `newer-patch`. |
 | `nxsp`, `open: 'partial'` | Anything else in the report. Unbound, a new `docId`, no `revision`; it never writes over the original. |
 
@@ -387,14 +388,16 @@ History is read only when the report holds no `damaged` and no `newer-minor`.
 | `damaged` | Duplicate names, overlapping data, a directory recovered by scan, a pointer outside its prefix or two on one entry, a cap passed, a ZIP or JSON failure in a history part (other than `chunks.bin`), a non-object `parts` | History not read; the level opens. |
 | `history-unreadable` | A missing part, a dangling hash, an index that does not tile, a chunk not hashing to its name or over 16 MiB, any failure reading `chunks.bin`, a root or node not hashing to its key or invalid, `index` out of range, a key with two values, an `entries` mismatch, a bad entry, a resource-invalid description, a manifest `version` that is not an integer of at least 1 (`version < MANIFEST_VERSION`, `checkPart`) | History not read. |
 | `newer-history` | A manifest `version` that is a safe integer above 1, a root `v` above `RECORDS_V`, an entry `kind` or record kind name this build does not know | History not read. |
-| `unknown-entry`, `unknown-key`, `invalid-key`, `newer-level`, `newer-minor`, `newer-patch`, `newer-version` | Newer content or a known key of the wrong form (format-versioning section 2) | `unknown-key` covers unknown `level.json` keys too. |
+| `unknown-entry`, `unknown-key`, `invalid-key`, `newer-level`, `newer-minor`, `newer-patch`, `newer-version` | Newer content or a known key of the wrong form (format-versioning section 2) | `unknown-key` covers unknown decoded level-data keys too. |
 | `media-unreadable` | A media entry missing, or its size or SHA-256 differs from `project.json` | The rest opens. |
 
 **Tolerated:** unknown top-level and `metadata` keys (kept as `extra`, written back); unknown keys inside `revision` and `summary` (ignored); `x` on any carrier; a `savedAt` that is not RFC 3339 (absent); any entry order; STORE or DEFLATE for any entry; data descriptors, extra fields and ZIP64, so an OS re-zip opens; `__MACOSX/`, `cache/`, `.DS_Store`, `Thumbs.db`, `desktop.ini` and `._*` entries (ignored); chunks that hash to their name but are not canonical; one leading BOM in JSON.
 
 **Rejected:** the encryption flag or a method other than 0 or 8; a CRC, size or local-header mismatch; overlapping entries; a hash that is not 32 lowercase hex characters; an `x` that breaks the `x` rule (not an object, over 256 KiB, or nested deeper than 32 levels below it; format-versioning section 3); a key outside its carrier in a step, recovery context or entry (`unknown-key`); `kept` other than `false`, `dirty` other than `true`; an operation with a lone surrogate, a non-finite number, depth over 16 or over 256 KiB. `chunks.bin` stored with STORE is read in slices and its whole-entry CRC is never checked, and each chunk is checked by its hash instead. An entry name keeps a leading U+FEFF, so `﻿bgm/a.mp3` is not `bgm/a.mp3`. It is an `unknown-entry`, and the pointer's entry is missing.
 
-**Caps:** `NXSP_CAPS` (`read.ts`): `project.json` 1 MiB inflated, `level.json` 256 MiB, the manifest and each segment 256 MiB, all history parts 512 MiB, `chunks.bin` 2 GiB, one chunk 16 MiB inflated, one media entry 1 GiB, JSON depth 64. Also 65,535 entries (`ENTRY_CAP`, `src/zip/directory.ts`) and 4,096 segments (`SEGMENT_CAP`). A STORE entry needs `compressedSize == size`, a DEFLATE entry `compressedSize <= 2*size + 1024`.
+The 20 fixed Sonolus metadata paths and the detail path derived from this document's id are disposable views (nxsp-format section 4.2). Missing, stale or unreadable views do not affect the authoritative level/history read; other `sonolus/` paths remain unknown. Global duplicate-name and overlap checks still apply. Check File and History checks authoritative NXSP content and history chunks, not these views or external services.
+
+**Caps:** `NXSP_CAPS` (`read.ts`): `project.json` 1 MiB inflated, decoded level JSON 256 MiB, the manifest and each segment 256 MiB, all history parts 512 MiB, `chunks.bin` 2 GiB, one chunk 16 MiB inflated, one media entry 1 GiB, JSON depth 64. Gzip bytes after ZIP decoding have a separate `2 * levelCap + 1024` cap; gzip decoding requires one whole member with checked CRC/ISIZE and no trailing bytes. Also 65,535 entries (`ENTRY_CAP`, `src/zip/directory.ts`) and 4,096 segments (`SEGMENT_CAP`). A STORE entry needs `compressedSize == size`, a DEFLATE entry `compressedSize <= 2*size + 1024`.
 
 ### 3.7 The Python checker
 
@@ -407,6 +410,8 @@ uv run python -I tools/nxsp_check.py --show FILE HASH # a record, chunk, root or
 ```
 
 Strict mode checks the container byte for byte, `project.json` and `revision` (ancestors, DOS time equal to `savedAt`, `summary` against the head), pointers, segment names and entry order; that `minor` and `patch` equal the lowest the content needs (`expected_minor`, `expected_patch`, as `minorOf` and `patchOf` choose them); then every part's keys, every entry including the carrier rules, step keys and kinds, and a `save` entry's non-empty `appVersion`; index tiling and `history.entries`; every chunk strict-inflated and re-hashed; every node and root re-hashed and checked against `fields-v1.json`; kind order, `noteCount`, header references and the closure of every root; the undo `index`; and the chronology ending with this revision's `save` entry. Across files given together it checks `completeFrom` against the other files' rows. `--read` agrees with the TypeScript reader. Operation payloads are bounded only (`finite_wire_json`: `OP_BYTES` 256 KiB, depth 16, finite numbers, well-formed Unicode); the checker never decodes an envelope.
+
+Strict mode requires the current gzip/package layout and checks the generated view. Reader mode also accepts the immutable legacy corpus; callers assert its JSON classifications, since its exit status alone does not reject partial/unreadable files. Reader mode does not run the strict cross-file completeness check. The Python checker runs separately in development and CI; the runtime built-file check runs before each Save handover.
 
 The checker's hard-coded values are listed in format-versioning section 4, step 3. The list of entry keys appears twice in it, inline in `entry_form` (strict) and as `ENTRY_KEYS` (`--read`); change both.
 
@@ -631,7 +636,7 @@ Made by the storage side and the file flows; none groups. Step Details shows the
 - **`nse.file.save`**: `saveOperation` (`src/editor/save/flow.ts`), reserved with `Flusher.reserveSave` and written by `endSave` at the reserved `seq`; an own completed Save recognised later writes none (section 2.7). The `save` History action kind (`markFileEvent`) has no producer, so a spec reaches the entry through a real Save with the test pickers. **`nse.file.export`**: `markExported` after an Export (`src/editor/commands/exportLevel/`).
 - **`nse.restore`**: `restoreEntry` through `PeekEffects.restoredOperation` (`src/editor/peek.ts`); it carries the restored entry's time, not its key.
 - **`nse.recovery`**: journal apply (`writeJournalApply`), the journal-only reload and a taken journal (section 2.9). `droppedSteps` counts the undo steps that could not be kept; the operation factory is in `src/local/start.ts`.
-- **`nse.externalChange`**: written by `writeOpenHead` as an `edit` entry before the `continue` entry when a file's `level.json` differs from its history head; the operation comes from `src/editor/commands/open/project.ts`.
+- **`nse.externalChange`**: written by `writeOpenHead` as an `edit` entry before the `continue` entry when a file's decoded level data differs from its history head; the operation comes from `src/editor/commands/open/project.ts`.
 
 ### 4.5 Step Details and Timeline grouping
 
