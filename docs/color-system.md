@@ -81,9 +81,9 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 12. **Contrast is measured against what lies on both sides, and the chrome is checked on both chromes.** Text and icons on their face need 4.5:1. State indicators and edges that matter need 3:1. The light status bar is mid-tone (L 0.49), not dark.
 
 13. **A real dark theme, tuned, not inverted.**
-    - Surfaces stay deep indigo, and body ink (`fg`) is never pure white. The chrome keeps its v0.5.22 white/80 and white.
+    - Surfaces stay deep indigo, and body ink (`fg`) is never pure white. The chrome uses white/80 and white.
     - Dark fills carry dark ink (`#232539`): periwinkle, coral, mint.
-    - A tune that cannot be seen (ΔE under 2) is not made: dark mint and dark danger text keep their v0.5.22 values.
+    - A tune that cannot be seen (ΔE under 2) is not made. Dark mint and dark danger text are left untuned for that reason.
 
 14. **Style from state opt-in, never from a bare attribute.** A recipe styles `aria-pressed` only on `.btn-toggle`, and the open look only on popup triggers or `.holds-open`.
     - *Reason:* one attribute can mean different things. `aria-pressed` marks a checked Manager row and a toolbar value in use; `aria-expanded` marks folder disclosure. Section 6.3 lists every current use.
