@@ -4,8 +4,11 @@ import { notify } from './notification'
 // The in-app browser line's Copy Link: the page without its query or hash, which
 // keeps `?safe` and the like out of what is pasted into a browser.
 
-/** The clipboard API, else the older copy command, which some hosts still allow. */
-const writeText = async (text: string) => {
+/**
+ * The clipboard API, else the older copy command, which some hosts still allow. An open dialog
+ * passes itself as the container: a field outside its top layer cannot take the selection.
+ */
+export const writeText = async (text: string, container: Element = document.body) => {
     try {
         await navigator.clipboard.writeText(text)
         return true
@@ -17,7 +20,7 @@ const writeText = async (text: string) => {
     field.readOnly = true
     field.style.position = 'fixed'
     field.style.opacity = '0'
-    document.body.append(field)
+    container.append(field)
     try {
         field.select()
         // eslint-disable-next-line @typescript-eslint/no-deprecated

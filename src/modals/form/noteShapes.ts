@@ -2,7 +2,19 @@ import type { NoteSfx, NoteType } from '../../chart/note'
 
 /** A note pictogram in the editor's default note colours, or a muted speaker. */
 export type NoteShape =
-    'tap' | 'flick' | 'trace' | 'tick' | 'nonTick' | 'damage' | 'anchor' | 'mute'
+    | 'tap'
+    | 'flick'
+    | 'trace'
+    | 'tick'
+    | 'nonTick'
+    | 'damage'
+    | 'anchor'
+    | 'mute'
+    | 'release'
+    | 'traceFlick'
+    | 'hiddenTick'
+    | 'damageTick'
+    | 'fake'
 
 /** Each note type's pictogram; Default is a plain tap. */
 export const noteTypeShapes = {
@@ -28,3 +40,17 @@ export const sfxShapes = {
     criticalTick: ['tick', true],
     damage: ['damage', false],
 } as const satisfies Record<NoteSfx, readonly [NoteShape, boolean] | null>
+
+/**
+ * The Statistics chart's category colours: chart content, the same in both themes, for its
+ * layers, bars and legend swatches.
+ */
+export const chartCategoryColors = {
+    tap: '#8394f6',
+    flick: '#e0508e',
+    release: '#27bf8c',
+    trace: '#5ce29d',
+    traceFlick: '#fe9ccb',
+    tick: '#44bbdd',
+    damage: '#b07ad6',
+} as const

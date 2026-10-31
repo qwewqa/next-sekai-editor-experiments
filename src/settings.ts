@@ -9,6 +9,7 @@ import { migrateToolbar } from './editor/toolbar/migrate'
 import { defaultGroupsShare, isPanelId, panelIds, type PanelId } from './editor/workspace/layout'
 import { defaultLocale } from './i18n/locale'
 import { localizations } from './i18n/localizations'
+import { CATEGORIES, DEFAULT_CATEGORIES } from './levelData/statistics'
 import {
     DISMISSED_NOTICE_LIMIT,
     previewAssetsSchema,
@@ -29,6 +30,7 @@ import { insertExportLevel } from './settings/toolbarExport'
 import { insertMinimap } from './settings/toolbarMinimap'
 import { insertPreviewAssets } from './settings/toolbarPreviewAssets'
 import { insertSessionRestore } from './settings/toolbarSessionRestore'
+import { insertStatistics } from './settings/toolbarStatistics'
 import { storedBindings, storedNames } from './settingsCodecs'
 import { storageGet, storageRemove, storageSet } from './storage'
 import { themes, type Theme } from './themes'
@@ -123,6 +125,17 @@ const settingsProperties = {
         .Encode((values) => values),
     // Connector fields in Selection fold behind their summary when collapsed.
     propertiesConnectorExpanded: Type.Boolean({ default: true }),
+
+    // Statistics: the chart's mode and the categories it counts.
+    statisticsChart: Type.Union(
+        [Type.Literal('smooth'), Type.Literal('bars'), Type.Literal('rolling')],
+        { default: 'smooth' },
+    ),
+    statisticsDensityTypes: Type.Codec(
+        Type.Array(Type.String(), { default: [...DEFAULT_CATEGORIES] }),
+    )
+        .Decode((values) => CATEGORIES.filter((category) => values.includes(category)))
+        .Encode((values) => values),
 
     previewControls: Type.Union([
         Type.Literal('auto'),
@@ -250,7 +263,16 @@ const settingsProperties = {
     toolbar: Type.Codec(
         Type.Array(storedNames(), {
             default: [
-                ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open'],
+                [
+                    'utilities',
+                    'statistics',
+                    'properties',
+                    'reset',
+                    'exportLevel',
+                    'saveAs',
+                    'save',
+                    'open',
+                ],
                 [
                     'previewAssets',
                     'offset',
@@ -575,6 +597,7 @@ const loadSetting = (key: string, defaultValue: unknown) => {
             ['toolbarPreviewAssetsMigrated', insertPreviewAssets],
             ['toolbarSessionRestoreMigrated', insertSessionRestore],
             ['toolbarMinimapMigrated', insertMinimap],
+            ['toolbarStatisticsMigrated', insertStatistics],
         ] as const
         const pending = steps.filter(([flag]) => storageGet(flag, false) !== true)
         const loaded = storageGet(key, defaultValue)

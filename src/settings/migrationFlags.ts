@@ -7,6 +7,7 @@ export const WEB_MIGRATION_FLAGS: readonly string[] = [
     'toolbarPreviewAssetsMigrated',
     'toolbarSessionRestoreMigrated',
     'toolbarMinimapMigrated',
+    'toolbarStatisticsMigrated',
 ]
 
 /** Other keys the editor writes on its own, which a new visitor has too. */

@@ -4,6 +4,7 @@ import { insertExportLevel } from '../../src/settings/toolbarExport'
 import { insertMinimap } from '../../src/settings/toolbarMinimap'
 import { insertPreviewAssets } from '../../src/settings/toolbarPreviewAssets'
 import { insertSessionRestore } from '../../src/settings/toolbarSessionRestore'
+import { insertStatistics } from '../../src/settings/toolbarStatistics'
 
 const playback = [
     'offset',
@@ -143,4 +144,29 @@ test('a toolbar that has Minimap anywhere is left as it is', () => {
 test('the Minimap step is idempotent', () => {
     const once = insertMinimap([navigation])
     assert.equal(insertMinimap(once), once)
+})
+
+const formerFirst = ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open']
+
+test('Statistics goes before Level Info in the exact old first group, so Open stays its face', () => {
+    assert.deepEqual(insertStatistics([formerFirst, ['play']]), [
+        ['utilities', 'statistics', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open'],
+        ['play'],
+    ])
+})
+
+test('a customised first group, or a toolbar that has Statistics, is left as it is', () => {
+    for (const groups of [
+        [formerFirst.slice(1)],
+        [[...formerFirst, 'help']],
+        [[...formerFirst].reverse()],
+        [['statistics'], formerFirst],
+    ]) {
+        assert.equal(insertStatistics(groups), groups)
+    }
+})
+
+test('the Statistics step is idempotent', () => {
+    const once = insertStatistics([formerFirst])
+    assert.equal(insertStatistics(once), once)
 })

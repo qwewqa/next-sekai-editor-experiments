@@ -72,6 +72,7 @@ import { splitHold } from './splitHold'
 import { stageAll } from './stages/stageAll'
 import { stageNext } from './stages/stageNext'
 import { stagePrev } from './stages/stagePrev'
+import { statistics } from './statistics'
 import { stop } from './stop'
 import { timeScale } from './timeScale'
 import { toggleBgmVolume } from './toggleVolume/bgm'
@@ -115,6 +116,7 @@ const builtInCommands = {
     exportLevel,
     reset,
     properties: levelInfo,
+    statistics,
     checkProject,
     utilities,
 

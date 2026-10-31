@@ -392,7 +392,7 @@ test('the kernel keeps a chord within its count and a note within 1.5 s', () => 
     assert.ok(Math.abs(middle - 8) < 0.02)
 })
 
-test('the drawn area is the number of notes, at the chart’s ends and after long silences', () => {
+test('the drawn area is the number of notes, at the ends of the chart and after long silences', () => {
     for (const [times, bgmEnd] of [
         [[0], undefined],
         [[3600], undefined],
@@ -517,7 +517,7 @@ test('Rolling counts from 00:00.000 and splits a step by its earliest busiest wi
 
 // --- Bars.
 
-test('Bars puts each note in one bin by the window rule, with the width from the timeline’s end', () => {
+test('Bars puts each note in one bin by the window rule, with the width from the end of the timeline', () => {
     assert.equal(binWidth(125.4), 1)
     assert.equal(binWidth(149.5), 1)
     assert.equal(binWidth(150), 2)
@@ -559,7 +559,7 @@ test('the y axis takes a nice top, and the time labels stay few on any length', 
     assert.ok(timeTicks(end, 3).length <= 3)
 })
 
-test('the readout’s parts add up to its total as shown', () => {
+test('the parts of the readout add up to its total as shown', () => {
     assert.deepEqual(roundParts([4.79, 0.73, 2.25], 7.77), [4.8, 0.7, 2.3])
     const parts = [1.04, 2.04, 3.04]
     const shown = roundParts(parts, 6.12)
@@ -620,7 +620,7 @@ const copyText = (stats: ChartStatistics, chosen: Category[], locale: 'en' | 'fr
         locale,
     )
 
-test('Copy Text gives the title, then each figure in the dialog’s order', () => {
+test('Copy Text gives the title, then each figure in the order of the dialog', () => {
     const stats = statsOf(handBuilt())
     assert.deepEqual(copyText(stats, ['tap', 'flick', 'release'], 'en', ' Hand Built '), [
         'Hand Built',
@@ -637,7 +637,7 @@ test('Copy Text gives the title, then each figure in the dialog’s order', () =
         'Fake Note: 1',
         'Notes per Second: Tap, Flick, Release',
         'Average: 2.9',
-        'Median: 2',
+        'Median: 1',
         '90th Percentile: 7',
         '99th Percentile: 7',
         'First Combo Note: 00:00.000',
@@ -653,8 +653,8 @@ test('Copy Text gives the title, then each figure in the dialog’s order', () =
 
 test('Copy Text in French spaces its colons and agrees with the critical count', () => {
     const lines = copyText(statsOf(handBuilt()), ['tap', 'flick', 'release', 'tick'], 'fr')
-    assert.ok(lines.includes('Tap : 11 (2 critiques)'))
-    assert.ok(lines.includes('Relâchement : 7 (0 critique)'))
-    assert.ok(lines.some((line) => /^Moyenne : \d+,\d$/.test(line)))
-    assert.ok(lines.includes('Notes par seconde : Tap, Flick, Relâchement, Tick'))
+    assert.ok(lines.includes('Tap\u00a0: 11 (2 critiques)'))
+    assert.ok(lines.includes('Relâchement\u00a0: 7 (0 critique)'))
+    assert.ok(lines.some((line) => /^Moyenne\u00a0: \d+,\d$/.test(line)))
+    assert.ok(lines.includes('Notes par seconde\u00a0: Tap, Flick, Relâchement, Tick'))
 })

@@ -75,6 +75,7 @@ const allowed = [
     'openContextMenu',
     // Level Info and the Groups and Stages dialogs open read-only.
     'properties',
+    'statistics',
     'manageGroups',
     'manageStages',
     // The live session.

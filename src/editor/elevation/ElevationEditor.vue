@@ -217,6 +217,7 @@ const availableCommands: CommandName[] = [
     'exportLevel',
     'reset',
     'properties',
+    'statistics',
     'utilities',
     'play',
     'stop',

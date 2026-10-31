@@ -933,6 +933,8 @@ test('the toolbar step adds Save As and History to the old default groups once',
                 'toolbarPreviewAssetsMigrated',
             ])
                 localStorage.setItem(`sonolus-next-sekai-editor.${flag}`, 'true')
+            // The later Statistics step would match the first group too.
+            localStorage.setItem('sonolus-next-sekai-editor.toolbarStatisticsMigrated', 'true')
         },
         [file, undo],
     )

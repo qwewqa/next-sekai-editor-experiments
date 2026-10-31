@@ -19,6 +19,9 @@ const palette = {
     diamond: ['#abfbe3', '#27bf8c'],
     diamondCritical: ['#fff2c3', '#e8ad1c'],
     damage: ['#a50acc', '#7d0a9b'],
+    release: ['#81f8cf', '#5ce29d'],
+    traceRed: ['#fe9ccb', '#ec7cb4'],
+    diamondRed: ['#ffd8f6', '#ec7cb4'],
 } as const
 
 const colors = computed(() => {
@@ -53,7 +56,7 @@ const kite = (cx: number, cy: number, scale: number) =>
 <template>
     <svg class="size-3.5 shrink-0" viewBox="0 0 16 16" aria-hidden="true">
         <rect
-            v-if="shape === 'tap'"
+            v-if="shape === 'tap' || shape === 'fake'"
             x="1"
             y="4"
             width="14"
@@ -61,6 +64,43 @@ const kite = (cx: number, cy: number, scale: number) =>
             rx="2"
             :fill="colors.body[0]"
             :stroke="colors.body[1]"
+        />
+        <rect
+            v-else-if="shape === 'release'"
+            x="1"
+            y="4"
+            width="14"
+            height="8"
+            rx="2"
+            :fill="palette.release[0]"
+            :stroke="palette.release[1]"
+        />
+        <template v-else-if="shape === 'traceFlick'">
+            <rect
+                x="1"
+                y="9.5"
+                width="14"
+                height="5"
+                rx="1.5"
+                :fill="palette.traceRed[0]"
+                :stroke="palette.traceRed[1]"
+            />
+            <polygon
+                :points="kite(8, 12, 14)"
+                :fill="palette.diamondRed[0]"
+                :stroke="palette.traceRed[1]"
+                stroke-linejoin="round"
+            />
+            <polygon :points="arrow" fill="#ec7cb4" transform="translate(0 -3.75)" />
+        </template>
+        <polygon
+            v-else-if="shape === 'hiddenTick' || shape === 'damageTick'"
+            :points="kite(8, 9.65, 22)"
+            fill="none"
+            :stroke="shape === 'hiddenTick' ? palette.diamond[1] : palette.damage[0]"
+            stroke-width="1.5"
+            stroke-dasharray="2 1.5"
+            stroke-linejoin="round"
         />
         <template v-else-if="shape === 'flick'">
             <rect
@@ -142,5 +182,9 @@ const kite = (cx: number, cy: number, scale: number) =>
                 <line x1="5.5" y1="11" x2="10.5" y2="6" />
             </g>
         </template>
+        <g v-if="shape === 'fake'" stroke="#f44" stroke-width="1.5">
+            <line x1="2" y1="3" x2="14" y2="13" />
+            <line x1="2" y1="13" x2="14" y2="3" />
+        </g>
     </svg>
 </template>
