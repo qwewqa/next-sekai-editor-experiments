@@ -10,6 +10,7 @@ import InfoIcon from '../../editor/history/InfoIcon.vue'
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import { choiceLine, type FieldDescription } from './fieldDescription'
+import { CLOSE_DELAY_MS, OPEN_DELAY_MS } from './infoBubble'
 
 // The ⓘ after a setting's label: hover or focus shows its description after a moment, and a
 // click, tap, Enter or Space pins it. The bubble goes under the field, or above it when there is
@@ -22,8 +23,6 @@ defineProps<{
     describedBy: string
 }>()
 
-const OPEN_DELAY_MS = 400
-const CLOSE_DELAY_MS = 150
 const GAP = 4
 const MARGIN = 8
 

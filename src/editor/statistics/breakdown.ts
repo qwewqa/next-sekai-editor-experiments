@@ -1,4 +1,5 @@
 import { onBeforeUnmount, shallowRef } from 'vue'
+import { CLOSE_DELAY_MS, OPEN_DELAY_MS } from '../../modals/form/infoBubble'
 
 // The normal and critical breakdown of a row: FieldInfo's bubble, anchored to the row. Hover (a
 // mouse, or a pen hovering) or keyboard focus shows it after 400 ms; a click, tap, Enter or Space
@@ -7,9 +8,6 @@ import { onBeforeUnmount, shallowRef } from 'vue'
 // wait when it ends. A shown bubble closes 150 ms after neither hover nor focus holds it; a pinned
 // one closes on a second press, a press elsewhere, Escape, a scroll, a resize, or focus leaving
 // its row for anything but the bubble.
-
-const OPEN_DELAY_MS = 400
-const CLOSE_DELAY_MS = 150
 
 type Disclosure<K> = { key: K; how: 'shown' | 'pinned' }
 
