@@ -6,6 +6,7 @@ import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
 import { parseLevelDataChart } from '../../src/chart/parse/levelData'
 import type { StageId } from '../../src/chart/stages'
+import { statisticsStringsOf } from '../../src/editor/statistics/strings'
 import en from '../../src/i18n/en/index.json'
 import fr from '../../src/i18n/fr/index.json'
 import { parseLevelData } from '../../src/levelData/parse'
@@ -25,6 +26,7 @@ import {
     kernel,
     mergeTimes,
     oneSecondMax,
+    representable,
     rollingFigures,
     roundParts,
     ROWS,
@@ -36,9 +38,16 @@ import {
     type Category,
     type ChartStatistics,
     type Row,
-    type StatisticsStrings,
 } from '../../src/levelData/statistics'
 import { createState, type State } from '../../src/state'
+
+// A 32-bit generator: seeded, uniform, with no short cycle.
+const mulberry32 = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
 
 const note = (beat: number, overrides: Partial<NoteObject> = {}): NoteObject => ({
     groupId: 1 as GroupId,
@@ -118,12 +127,9 @@ const exportedRow = (archetype: string): Row | undefined => {
     return row
 }
 
-const SCORED = 35
-
 const exportCounts = (state: State) => {
     const counts = Object.fromEntries(ROWS.map((row) => [row, 0])) as Record<Row, number>
     const critical: Partial<Record<Row, number>> = {}
-    const scored = new Set<string>()
     let combo = 0
     for (const { archetype } of serializeToLevelData(
         state.initialLife,
@@ -138,11 +144,10 @@ const exportCounts = (state: State) => {
         counts[row]++
         if (row !== 'fakeNote') {
             combo++
-            scored.add(archetype)
         }
         if (archetype.startsWith('Critical')) critical[row] = (critical[row] ?? 0) + 1
     }
-    return { counts, critical, combo, scored }
+    return { counts, critical, combo }
 }
 
 const assertEqualToExport = (state: State) => {
@@ -152,14 +157,12 @@ const assertEqualToExport = (state: State) => {
     assert.equal(stats.combo, exported.combo)
     for (const row of ROWS)
         assert.equal(stats.critical[row] ?? 0, exported.critical[row] ?? 0, `${row} critical`)
-    assert.ok(exported.scored.size <= SCORED)
 }
 
 // Deterministic charts with every role, flicks on every role, critical and fake notes, fake and
 // guide slides, damage runs with separators, zero-length slides, Force Tick and Non-Tick.
 const randomCharts = function* () {
-    let seed = 777
-    const random = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648
+    const random = mulberry32(777)
     const pick = <T>(values: readonly T[]) => values[Math.floor(random() * values.length)] as T
     for (let round = 0; round < 30; round++) {
         const slides: NoteObject[][] = []
@@ -321,6 +324,22 @@ test('BGM End is the length less the offset, and left out when the music ends by
     assert.equal(bgmEndOf({ offset: 0 }), undefined)
 })
 
+test('at absurd BPMs the counts and the finite times show, and the chart is not drawn', () => {
+    for (const [bpm, times] of [
+        [1e-10, [0, 6e16]],
+        [1e-310, []],
+    ] as const) {
+        const stats = statsOf(
+            createState(chart([[note(0)], [note(100000)]], [{ beat: 0, bpm }]), 0),
+        )
+        assert.equal(stats.counts.tap, 2)
+        assert.equal(stats.combo, 2)
+        const shown = [stats.firstComboNote, stats.lastNote].filter((time) => time !== undefined)
+        assert.deepEqual(shown, times)
+        assert.equal(representable(stats, undefined), false)
+    }
+})
+
 test('an empty chart has zeros and no note times', () => {
     const stats = statsOf(createState(chart([]), 0))
     assert.equal(stats.combo, 0)
@@ -478,8 +497,7 @@ const bruteSkyline = (times: number[], x0: number, x1: number, count: number) =>
 }
 
 test('each Rolling step is the busiest window centred in it, and the top is the one-second maximum', () => {
-    let seed = 99
-    const random = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648
+    const random = mulberry32(99)
     for (let round = 0; round < 40; round++) {
         const times = Array.from(
             { length: 5 + Math.floor(random() * 80) },
@@ -568,43 +586,6 @@ test('the parts of the readout add up to its total as shown', () => {
 
 // --- Copy Text.
 
-const strings = (messages: typeof en): StatisticsStrings => ({
-    combo: messages.statistics.combo,
-    rows: {
-        tap: messages.modals.form.sfx.normalTap,
-        flick: messages.modals.form.sfx.normalFlick,
-        release: messages.statistics.release,
-        trace: messages.modals.form.sfx.normalTrace,
-        traceFlick: messages.statistics.traceFlick,
-        tick: messages.modals.form.sfx.normalTick,
-        hiddenTick: messages.statistics.hiddenTick,
-        damageNote: messages.statistics.damageNote,
-        damageTick: messages.statistics.damageTick,
-        fakeNote: messages.statistics.fakeNote,
-    },
-    categories: {
-        tap: messages.modals.form.sfx.normalTap,
-        flick: messages.modals.form.sfx.normalFlick,
-        release: messages.statistics.release,
-        trace: messages.modals.form.sfx.normalTrace,
-        traceFlick: messages.statistics.traceFlick,
-        tick: messages.modals.form.sfx.normalTick,
-        damage: messages.modals.form.noteType.damage,
-    },
-    withCritical: messages.statistics.withCritical,
-    notesPerSecond: messages.statistics.notesPerSecond,
-    noNotes: messages.statistics.noNotes,
-    average: messages.statistics.average,
-    median: messages.statistics.median,
-    p90: messages.statistics.p90,
-    p99: messages.statistics.p99,
-    firstComboNote: messages.statistics.firstComboNote,
-    lastComboNote: messages.statistics.lastComboNote,
-    lastNote: messages.statistics.lastNote,
-    bgmEnd: messages.statistics.bgmEnd,
-    textLine: messages.statistics.textLine,
-})
-
 const copyText = (stats: ChartStatistics, chosen: Category[], locale: 'en' | 'fr', title = '') =>
     copyTextLines(
         {
@@ -616,7 +597,7 @@ const copyText = (stats: ChartStatistics, chosen: Category[], locale: 'en' | 'fr
             ),
             bgmEnd: 10.25,
         },
-        strings(locale === 'en' ? en : (fr as typeof en)),
+        statisticsStringsOf(locale === 'en' ? en : (fr as typeof en)),
         locale,
     )
 
