@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch, watchEffect, type Ref } from 'vue'
 import { isDynamicStages } from '../history/dynamicStages.ts'
-import { slotLoading } from '../history'
+import { liveState, slotLoading } from '../history'
 import { folderPathParts, templateParts, type NamePart } from '../chart/folders'
 import { groupFolders, groups } from '../history/groups'
 import { stageFolders, stages } from '../history/stages'
@@ -175,19 +175,40 @@ watch(container, (element, _, onCleanup) => {
 // Panel layout changes can move the editor without changing its dimensions.
 watch(workspaceLayout, updateBounds, { flush: 'post' })
 
-watch([groups, () => view.groupId], () => {
-    if (!view.groupId) return
-    if (groups.value.has(view.groupId)) return
-
-    view.groupId = undefined
-})
-
-watch([groups, () => brushProperties.value.groupId], () => {
-    if (!brushProperties.value.groupId) return
-    if (groups.value.has(brushProperties.value.groupId)) return
-
-    brushProperties.value.groupId = undefined
-})
+/**
+ * Clears a focus or a brush target that Now's chart no longer has, as when its group is deleted.
+ * A peek of an older step never clears one. Id 0 is a real group or stage.
+ */
+const clearMissing = <T,>(
+    ids: () => ReadonlyMap<T, unknown> | undefined,
+    id: () => T | undefined,
+    clear: () => void,
+) =>
+    watch([ids, id], ([map, value]) => {
+        if (value !== undefined && !map?.has(value)) clear()
+    })
+clearMissing(
+    () => liveState.value.groups,
+    () => view.groupId,
+    () => (view.groupId = undefined),
+)
+clearMissing(
+    () => liveState.value.groups,
+    () => brushProperties.value.groupId,
+    () => (brushProperties.value.groupId = undefined),
+)
+// Stages count only while Now's chart has dynamic stages.
+const liveStages = () => (liveState.value.isDynamicStages ? liveState.value.stages : undefined)
+clearMissing(
+    liveStages,
+    () => view.stageId,
+    () => (view.stageId = undefined),
+)
+clearMissing(
+    liveStages,
+    () => brushProperties.value.stageId,
+    () => (brushProperties.value.stageId = undefined),
+)
 
 // Event tools need dynamic stages, which undo can turn off; their events would not save.
 const eventTools = new Set<ToolName>([
@@ -199,20 +220,6 @@ const eventTools = new Set<ToolName>([
 ])
 watch(isDynamicStages, (value) => {
     if (!value && eventTools.has(toolName.value)) switchToolTo('select')
-})
-
-watch([stages, isDynamicStages, () => view.stageId], () => {
-    if (!view.stageId) return
-    if (isDynamicStages.value && stages.value.has(view.stageId)) return
-
-    view.stageId = undefined
-})
-
-watch([stages, isDynamicStages, () => brushProperties.value.stageId], () => {
-    if (!brushProperties.value.stageId) return
-    if (isDynamicStages.value && stages.value.has(brushProperties.value.stageId)) return
-
-    brushProperties.value.stageId = undefined
 })
 
 // A scope label runs its manage command, as the toolbar tool and its hotkey do.
