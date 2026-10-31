@@ -21,7 +21,7 @@ import { bindingHandle, quickBinding, type Binding, type Env } from './binding'
 import type { RefusedReason } from './dialogs'
 import { heldHandle, savedState, withBind, type SaveMarker } from './env'
 import { pause, PREPARING_MS } from './imports'
-import { openedPackageOf } from './openedPackages'
+import { openedPackageBytes, openedPackageOf, registerOpenedPackage } from './openedPackages'
 import {
     Cancelled,
     commitFirst,
@@ -133,7 +133,13 @@ export type Picked =
     /** An Export target: Export's picker writes it; a project picker refuses it. */
     | { kind: 'target'; owner: HandleOwner }
     /** `bytes`: those kept at its open, once kept. */
-    | { kind: 'refused'; reason: RefusedReason; bytes?: Promise<Blob | undefined> }
+    | {
+          kind: 'refused'
+          reason: RefusedReason
+          bytes?: Promise<Blob | undefined>
+          /** A package this tab opened, refused only because nothing else placed it. */
+          package?: true
+      }
     | { kind: 'unknown' }
 
 type Row = Record<string, unknown>
@@ -248,11 +254,9 @@ const packageOnly = async (
     if (!(await openedPackageOf(handle))) return
     const bytes = {
         then: (resolve: (blob: Blob | undefined) => void, reject: (error: unknown) => void) =>
-            openedPackageOf(handle)
-                .then((entry) => entry?.bytes)
-                .then(resolve, reject),
+            openedPackageBytes(handle).then(resolve, reject),
     } as unknown as Promise<Blob | undefined>
-    return { kind: 'refused', reason: 'notProject', bytes }
+    return { kind: 'refused', reason: 'notProject', bytes, package: true }
 }
 
 /** The level-data builder, loaded before a hold so that nothing loads inside one. */
@@ -623,7 +627,12 @@ export const withPickSession = <T>(
                         offer = { emptied: true, bytes: undefined }
                     return
                 }
-                if ((await isEmpty()) && (await putBack(target, bytes))) return
+                if ((await isEmpty()) && (await putBack(target, bytes))) {
+                    // The file holds the package again, which the write forgot.
+                    if (identity.kind === 'refused' && identity.package)
+                        registerOpenedPackage(target.handle, bytes)
+                    return
+                }
                 // Not empty now: a file that begins with the bytes holds them (a write of ours or a
                 // put-back whose read-back failed); anything else lost them, and they are offered.
                 const emptied = await isEmpty()

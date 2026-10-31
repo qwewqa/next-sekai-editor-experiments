@@ -9,6 +9,7 @@ import {
     notice,
     pauseAt,
     pressSave,
+    projectOf,
     queuePicks,
     reached,
     readFile,
@@ -147,6 +148,43 @@ test('a package opened twice is refused by Save, Save As and Export, its bytes p
     await queuePicks(page, ['song.scp'])
     await page.keyboard.press('Enter')
     await refused()
+})
+
+test('a package, then the same file opened as level data and left: Save As writes it as its own', async ({
+    page,
+}) => {
+    await start(page)
+    await openPackageFile(page, 'shared', await newEffect())
+    await expect(list(page)).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+
+    // Another program puts plain level data there, and Open opens it: no longer a package.
+    const level = await page.evaluate(async () => {
+        const { buildLevelDataVariants } = await import('/src/editor/commands/exportLevel/build.ts')
+        const blob = (await buildLevelDataVariants())[0]
+        return [...new Uint8Array(await blob!.arrayBuffer())]
+    })
+    await writeFile(page, 'shared', [...gunzipSync(new Uint8Array(level))])
+    await queuePicks(page, ['shared'])
+    await page.locator('canvas.editor-chart').focus()
+    await page.keyboard.press('o')
+    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
+
+    // New: nothing places the file any more, so Save As writes the project there.
+    await page.locator('canvas.editor-chart').focus()
+    await page.keyboard.press('n')
+    await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
+    await edit(page, 2)
+    await queuePicks(page, ['shared'])
+    await page.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.saveAs, 'button')
+    })
+    await submitSave(page, 'shared', 'Save As')
+    await expect(notice(page).filter({ hasText: 'Saved to shared' })).toBeVisible()
+    expect((await projectOf(page, 'shared')).format).toBe('nxsp')
 })
 
 for (const [format, cover, type] of [

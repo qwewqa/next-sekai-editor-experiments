@@ -1,10 +1,11 @@
-import type { SaveResult } from '../../platform'
+import { onBeforeHandleWrite } from '../../platform'
 import { KEPT_BYTES_LIMIT, sameEntry } from '../commands/exportLevel/memory'
 
 // The Sonolus packages opened in this tab, for the tab's life. Save and Export consult them only
 // for a file nothing else places (no session source, binding or owner), and refuse it: a package
 // is a source to read, never a file to write. Only the latest keeps its bytes, to put back if a
-// save picker emptied it. An entry goes when this tab opens or writes that file as anything else.
+// save picker emptied it. An entry goes when this tab opens that file as anything else, and
+// before any write of this tab to it.
 
 export type OpenedPackage = {
     handle: FileSystemFileHandle
@@ -43,11 +44,9 @@ export const forgetOpenedPackage = async (handle: FileSystemFileHandle) => {
     opened = opened.filter((entry) => !matches.includes(entry))
 }
 
-/** Forgets the package a write of this tab replaced, if the write went to a handle. */
-export const forgetWrittenPackage = (result: SaveResult) =>
-    result.status === 'saved' && result.target.kind === 'handle'
-        ? forgetOpenedPackage(result.target.handle)
-        : Promise.resolve()
+// Every write of this tab to a handle, whether it lands or not: the file may no longer hold the
+// package. A put-back of the package's own bytes registers it again.
+onBeforeHandleWrite(forgetOpenedPackage)
 
 /**
  * The newest package of the file a handle names. The register can change while an `isSameEntry`
@@ -66,6 +65,21 @@ export const openedPackageOf = async (handle: FileSystemFileHandle) => {
             }
         }
         if (opened === seen) return found
+    }
+}
+
+/**
+ * The bytes of the newest package of the file a handle names, read within the same check: a
+ * package registered or forgotten while they are read starts the lookup again, so older bytes
+ * never go back.
+ */
+export const openedPackageBytes = async (handle: FileSystemFileHandle) => {
+    for (;;) {
+        const seen = opened
+        const entry = await openedPackageOf(handle)
+        if (opened !== seen) continue
+        const bytes = await entry?.bytes
+        if (opened === seen) return bytes
     }
 }
 

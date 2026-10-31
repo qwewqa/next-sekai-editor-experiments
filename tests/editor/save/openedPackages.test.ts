@@ -1,20 +1,26 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { gzipSync } from 'node:zlib'
 import { activation } from '../saveMatrix/env'
 
 // The packages this tab opened, where nothing else places a picked file: refused, and their bytes
 // put back if the save picker emptied the file. Wherever the save's own rules place the file,
-// they decide, exactly as they do without a package. The register, the session's source, the
-// binding and the pick session's hold and put-back run on the in-memory platform, whose save
-// picker empties a file as Chromium's does.
+// they decide, exactly as they do without a package. Every write of this tab to a handle forgets
+// the file's package first, through the platform; a put-back of the package's own bytes registers
+// it again. The register, the session's source, the binding, the platform and the pick session's
+// hold, write and put-back are the real ones, on the in-memory platform, whose save picker empties
+// a file as Chromium's does.
 
 const { createMockPlatform } = await import('../../../src/platform/mock')
-const { setPlatformForTests } = await import('../../../src/platform')
+const platformModule = await import('../../../src/platform')
+const { FileError, setPlatformForTests } = platformModule
+const { levelDataDiskState } = await import('../../../src/platform/fingerprint')
 const { FakeLockManager } = await import('../../../src/local/testing/locks')
 const { setSaveEnvironment } = await import('../../../src/editor/save/binding')
 const { rememberHandle, forgetHandle } = await import('../../../src/editor/save/env')
 const { withPickSession } = await import('../../../src/editor/save/pickSession')
 const packages = await import('../../../src/editor/save/openedPackages')
+const { exportToTarget } = await import('../../../src/editor/commands/exportLevel/flow')
 const { clearExportMemory, exportMemory, KEPT_BYTES_LIMIT } =
     await import('../../../src/editor/commands/exportLevel/memory')
 const { resetStates } = await import('../../../src/history/stack')
@@ -24,28 +30,14 @@ const { initialStep } = await import('../../helpers/historySteps')
 const PATH = 'x'
 type Purpose = 'save' | 'saveToFile' | 'export'
 const purposes: Purpose[] = ['save', 'saveToFile', 'export']
-
-type Step =
-    /** Open finds a package: registered before anything else is read of it. */
-    | ['package', string]
-    /** As above, for a package over 64 MiB, whose bytes are not kept. */
-    | ['largePackage', string]
-    /** Open opens level data: the file is forgotten as a package; a new session from it. */
-    | ['levelData', string]
-    /** Open opens a project file whole: forgotten as a package; a new session bound to it. */
-    | ['project', string]
-    /** Open reads the file as audio or as data it cannot open: forgotten; the session stays. */
-    | ['other', string]
-    /** Another program writes the path. */
-    | ['replace', string]
-    /** This tab writes the path (an Export to its target, a Save over its own file). */
-    | ['write', string]
-    /** New, Reopen or Recent Sessions: another session. */
-    | ['switch']
-
 type Outcome = { refused: boolean; file: string }
 
-const run = async (steps: Step[], purpose: Purpose): Promise<Outcome> => {
+/** A level data file's bytes, gzipped as Export writes it. */
+const levelBytes = (n: number) =>
+    new Blob([gzipSync(JSON.stringify({ bgmOffset: 0, entities: [{ n }] }))])
+
+/** One tab, one session at a time, and the path. */
+const world = () => {
     localStorage.clear()
     clearExportMemory()
     packages.resetOpenedPackagesForTests()
@@ -89,240 +81,288 @@ const run = async (steps: Step[], purpose: Purpose): Promise<Outcome> => {
     let env = envOf('blank')
     setSaveEnvironment(() => env)
     let chains = 0
-    const newSession = (bound?: FileSystemFileHandle) => {
-        // A switch clears the session's source, as `onResetState` does.
-        clearExportMemory()
-        const chainId = `c${++chains}`
-        env = envOf(chainId, bound?.name)
-        if (bound) {
-            forgetHandle(chainId)
-            rememberHandle(chainId, bound)
-        }
-    }
-    for (const step of steps) {
-        // Each open picks the file again: another handle to the same file.
-        const handle = mock.createHandle(PATH)
-        switch (step[0]) {
-            case 'package':
-                mock.writeFile(PATH, new Blob([step[1]]))
-                packages.registerOpenedPackage(handle, new File([step[1]], PATH))
-                break
-            case 'largePackage':
-                mock.writeFile(PATH, new Blob([step[1]]))
-                packages.registerOpenedPackage(handle, {
-                    size: KEPT_BYTES_LIMIT + 1,
-                } as Blob)
-                break
-            case 'levelData':
-                mock.writeFile(PATH, new Blob([step[1]]))
-                await packages.forgetOpenedPackage(handle)
-                newSession()
-                exportMemory.opened = {
-                    handle,
-                    levelData: true,
-                    partial: false,
-                    kept: await new Blob([step[1]]).arrayBuffer(),
-                }
-                break
-            case 'project':
-                mock.writeFile(PATH, new Blob([step[1]]))
-                await packages.forgetOpenedPackage(handle)
-                newSession(handle)
-                break
-            case 'other':
-                mock.writeFile(PATH, new Blob([step[1]]))
-                await packages.forgetOpenedPackage(handle)
-                break
-            case 'replace':
-                mock.writeFile(PATH, new Blob([step[1]]))
-                break
-            case 'write': {
-                const result = await mock.saveFile({
-                    kind: 'nsld',
-                    suggestedName: PATH,
-                    target: { kind: 'handle', handle },
-                    build: () => Promise.resolve(new Blob([step[1]])),
-                })
-                await packages.forgetWrittenPackage(result)
-                break
+    const file = async () => (await mock.files.get(PATH)?.text()) ?? '(none)'
+    const self = {
+        mock,
+        file,
+        /** New, Reopen or Recent Sessions: another session, its source cleared as a switch clears it. */
+        switch: (bound?: FileSystemFileHandle) => {
+            clearExportMemory()
+            const chainId = `c${++chains}`
+            env = envOf(chainId, bound?.name)
+            if (bound) {
+                forgetHandle(chainId)
+                rememberHandle(chainId, bound)
             }
-            case 'switch':
-                newSession()
-                break
-        }
+        },
+        /** Another program writes the path. */
+        replace: (content: string | Blob) => mock.writeFile(PATH, new Blob([content])),
+        /** Open finds a package at the path: registered before anything else is read of it. */
+        package: (content: string, size?: number) => {
+            self.replace(content)
+            packages.registerOpenedPackage(
+                mock.createHandle(PATH),
+                size === undefined ? new File([content], PATH) : ({ size } as Blob),
+            )
+        },
+        /** Open opens plain level data at the path: a new session whose source it is. */
+        levelData: async (content: string) => {
+            self.replace(content)
+            const handle = mock.createHandle(PATH)
+            self.switch()
+            exportMemory.opened = {
+                handle,
+                levelData: true,
+                partial: false,
+                kept: await new Blob([content]).arrayBuffer(),
+            }
+        },
+        /** Open opens a project file at the path whole: a new session bound to it. */
+        project: (content: string) => {
+            self.replace(content)
+            self.switch(mock.createHandle(PATH))
+        },
+        /** A save picker: a refusal puts back what it chose; anything else writes. */
+        pick: async (purpose: Purpose): Promise<Outcome> => {
+            // The kept bytes are read at registration.
+            await new Promise((resolve) => setTimeout(resolve, 0))
+            mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle(PATH) })
+            const ui = {
+                preparing: () => ({
+                    signal: new AbortController().signal,
+                    importing: () => undefined,
+                    built: () => undefined,
+                    ready: () => Promise.resolve(true),
+                    close: () => undefined,
+                }),
+                notPutBack: () => Promise.resolve(undefined),
+                download: () => Promise.resolve(),
+            }
+            let refused = false
+            await withPickSession(
+                {
+                    env,
+                    name: 'out',
+                    surface: purpose === 'export' ? 'export' : 'save',
+                    purpose,
+                    commitFirst: false,
+                    read: 'start',
+                    ui,
+                } as never,
+                (session) =>
+                    session.pick(
+                        { id: 'p', types: [], excludeAll: true, startIn: 'documents' },
+                        PATH,
+                        async (picked) => {
+                            if (picked.identity.kind === 'refused') {
+                                refused = true
+                                return 'refused'
+                            }
+                            // The pick session's own write, as Save and Export make it.
+                            await picked
+                                .write({
+                                    kind: purpose === 'export' ? 'nsld' : 'nxsp',
+                                    blob: new Blob([purpose === 'export' ? 'EXPORTED' : 'SAVED']),
+                                })
+                                .catch(() => undefined)
+                            return 'written'
+                        },
+                    ),
+            )
+            return { refused, file: await file() }
+        },
     }
-    // The kept bytes are read at registration.
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle(PATH) })
-    const ui = {
-        preparing: () => ({
-            signal: new AbortController().signal,
-            importing: () => undefined,
-            built: () => undefined,
-            ready: () => Promise.resolve(true),
-            close: () => undefined,
-        }),
-        notPutBack: () => Promise.resolve(undefined),
-        download: () => Promise.resolve(),
-    }
-    let refused = false
-    await withPickSession(
-        {
-            env,
-            name: 'out',
-            surface: purpose === 'export' ? 'export' : 'save',
-            purpose,
-            commitFirst: false,
-            read: 'start',
-            ui,
-        } as never,
-        (session) =>
-            session.pick(
-                { id: 'p', types: [], excludeAll: true, startIn: 'documents' },
-                PATH,
-                async (picked) => {
-                    if (picked.identity.kind === 'refused') {
-                        refused = true
-                        return 'refused'
-                    }
-                    await picked.write({
-                        kind: purpose === 'export' ? 'nsld' : 'nxsp',
-                        blob: new Blob([purpose === 'export' ? 'EXPORTED' : 'SAVED']),
-                    })
-                    return 'written'
-                },
-            ),
-    )
-    return { refused, file: (await mock.files.get(PATH)?.text()) ?? '(none)' }
+    return self
 }
 
 const refused = (file: string): Outcome => ({ refused: true, file })
-const each = (outcome: Outcome) => ({ save: outcome, saveToFile: outcome, export: outcome })
 const SAVED: Outcome = { refused: false, file: 'SAVED' }
 const EXPORTED: Outcome = { refused: false, file: 'EXPORTED' }
+const written = (purpose: Purpose) => (purpose === 'export' ? EXPORTED : SAVED)
 
-const rows: { name: string; steps: Step[]; expect: Record<Purpose, Outcome> }[] = [
-    { name: 'a package alone', steps: [['package', 'P1']], expect: each(refused('P1')) },
-    {
-        name: 'the same file opened as a package twice: the newest bytes',
-        steps: [
-            ['package', 'P1'],
-            ['replace', 'P2'],
-            ['package', 'P2'],
-        ],
-        expect: each(refused('P2')),
-    },
-    {
-        name: 'a package, then the same file opened as level data: its own rules',
-        steps: [
-            ['package', 'P1'],
-            ['replace', 'L2'],
-            ['levelData', 'L2'],
-        ],
-        expect: { save: refused('L2'), saveToFile: refused('L2'), export: EXPORTED },
-    },
-    {
-        name: 'a package, then the same file opened as a project: its own file',
-        steps: [
-            ['package', 'P1'],
-            ['replace', 'J2'],
-            ['project', 'J2'],
-        ],
-        expect: { save: SAVED, saveToFile: SAVED, export: EXPORTED },
-    },
-    {
-        name: 'a package, then the same file read as audio: nothing places it',
-        steps: [
-            ['package', 'P1'],
-            ['replace', 'A2'],
-            ['other', 'A2'],
-        ],
-        expect: { save: SAVED, saveToFile: SAVED, export: EXPORTED },
-    },
-    {
+for (const purpose of purposes) {
+    test(`a package alone: ${purpose} is refused and puts it back`, async () => {
+        const w = world()
+        w.package('P1')
+        assert.deepEqual(await w.pick(purpose), refused('P1'))
+    })
+
+    test(`the same file opened as a package twice: ${purpose} puts back the newest`, async () => {
+        const w = world()
+        w.package('P1')
+        w.package('P2')
+        assert.deepEqual(await w.pick(purpose), refused('P2'))
+    })
+
+    test(`a package put back is still the package: a second ${purpose} after a switch`, async () => {
+        const w = world()
+        w.package('P1')
+        assert.deepEqual(await w.pick(purpose), refused('P1'))
+        w.switch()
+        assert.deepEqual(await w.pick(purpose), refused('P1'))
+    })
+
+    test(`a package, then session switches: ${purpose} still refuses it`, async () => {
+        const w = world()
+        w.package('P1')
+        w.switch()
+        w.switch()
+        assert.deepEqual(await w.pick(purpose), refused('P1'))
+    })
+
+    test(`a package over 64 MiB: ${purpose} is refused, nothing put back`, async () => {
+        const w = world()
+        w.package('P1', KEPT_BYTES_LIMIT + 1)
+        assert.deepEqual(await w.pick(purpose), refused(''))
+    })
+
+    test(`level data, then a package at the same path: ${purpose} by the source's rule`, async () => {
         // A file replaced outside the editor: the session's source puts back what it read.
-        name: 'level data, then a package at the same path: the source decides',
-        steps: [
-            ['levelData', 'L1'],
-            ['replace', 'P2'],
-            ['package', 'P2'],
-        ],
-        expect: { save: refused('L1'), saveToFile: refused('L1'), export: EXPORTED },
-    },
-    {
-        // The session stays bound to the file: its binding decides, as for any file replaced outside.
-        name: 'a project, then a package at the same path: the binding decides',
-        steps: [
-            ['project', 'J1'],
-            ['replace', 'P2'],
-            ['package', 'P2'],
-        ],
-        expect: { save: SAVED, saveToFile: SAVED, export: EXPORTED },
-    },
-    {
-        name: 'a package, then this tab writes the file',
-        steps: [
-            ['package', 'P1'],
-            ['write', 'W2'],
-        ],
-        expect: { save: SAVED, saveToFile: SAVED, export: EXPORTED },
-    },
-    {
-        name: 'a package, then session switches',
-        steps: [['package', 'P1'], ['switch'], ['switch']],
-        expect: each(refused('P1')),
-    },
-    {
-        name: 'a package over 64 MiB: refused, nothing put back',
-        steps: [['largePackage', 'P1']],
-        expect: each(refused('')),
-    },
-]
+        const w = world()
+        await w.levelData('L1')
+        w.package('P2')
+        assert.deepEqual(await w.pick(purpose), purpose === 'export' ? EXPORTED : refused('L1'))
+    })
 
-for (const row of rows)
-    for (const purpose of purposes)
-        test(`${row.name}: ${purpose}`, async () => {
-            assert.deepEqual(await run(row.steps, purpose), row.expect[purpose])
-        })
+    test(`a project, then a package at the same path: ${purpose} by the binding`, async () => {
+        const w = world()
+        w.project('J1')
+        w.package('P2')
+        assert.deepEqual(await w.pick(purpose), written(purpose))
+    })
+
+    test(`a package at the session's Export target: ${purpose} by the save's own rules`, async () => {
+        const w = world()
+        w.package('P1')
+        const handle = w.mock.createHandle(PATH)
+        exportMemory.target = {
+            name: PATH,
+            handle,
+            disk: { fingerprint: 'f', size: 2, lastModified: 0 },
+            exported: false,
+        }
+        assert.deepEqual(await w.pick(purpose), written(purpose))
+    })
+}
+
+test('a project, a package in its place, a Save over the bound file, a switch: Save As writes', async () => {
+    const w = world()
+    w.project('J1')
+    w.package('P2')
+    // The binding places the file: the pick session's write goes over it.
+    assert.deepEqual(await w.pick('save'), SAVED)
+    w.switch()
+    // The write forgot the package: nothing places the file now.
+    assert.deepEqual(await w.pick('save'), SAVED)
+})
+
+test('level data, a package in its place, the source put back, New: never the package', async () => {
+    const w = world()
+    await w.levelData('L1')
+    w.package('P2')
+    // The source's rule puts back what it read, over the package.
+    assert.deepEqual(await w.pick('save'), refused('L1'))
+    w.switch()
+    // That put-back forgot the package: nothing places the file now.
+    assert.deepEqual(await w.pick('save'), SAVED)
+})
+
+test('an Export whose read-back fails after it committed forgets the package too', async () => {
+    const w = world()
+    await w.levelData('L1')
+    w.package('P2')
+    w.mock.fault = (point) => {
+        if (point === 'closed')
+            throw new FileError('io', 'The read-back failed', undefined, 'readBack')
+    }
+    // Export may write over its own source: the write commits, then its read-back fails.
+    assert.deepEqual(await w.pick('export'), EXPORTED)
+    w.mock.fault = undefined
+    w.switch()
+    assert.deepEqual(await w.pick('save'), SAVED)
+})
+
+test('an Export to its target forgets a package registered for that file', async () => {
+    const w = world()
+    w.replace(levelBytes(0))
+    const handle = w.mock.createHandle(PATH)
+    const target = {
+        name: PATH,
+        handle,
+        disk: await levelDataDiskState(await handle.getFile()),
+        exported: false,
+    }
+    exportMemory.target = target
+    // A package read at that path earlier, by another handle.
+    packages.registerOpenedPackage(w.mock.createHandle(PATH), new File(['P1'], PATH))
+    const ui = { exported: () => undefined, markExported: () => undefined }
+    const outcome = await exportToTarget(
+        {
+            ui: ui as never,
+            build: () => levelBytes(1),
+            suggestedName: PATH,
+            types: [],
+            leave: () => undefined,
+        },
+        target,
+    )
+    assert.equal(outcome, 'done')
+    assert.equal(await packages.openedPackageOf(w.mock.createHandle(PATH)), undefined)
+})
+
+/** A handle whose comparisons wait for `release`, as a slow `isSameEntry` does. */
+const slowHandle = (mock: ReturnType<typeof createMockPlatform>) => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const handle = mock.createHandle(PATH)
+    const isSameEntry = handle.isSameEntry.bind(handle)
+    Object.assign(handle, {
+        isSameEntry: async (other: FileSystemHandle) => {
+            await gate
+            return isSameEntry(other)
+        },
+    })
+    return { handle, release }
+}
 
 test('a lookup never uses an entry the register replaced or forgot while it compared', async () => {
     packages.resetOpenedPackagesForTests()
     const mock = createMockPlatform()
-    let release: () => void = () => undefined
-    const gate = new Promise<void>((resolve) => (release = resolve))
-    // A handle whose comparison waits, as a slow `isSameEntry` does.
-    const slow = (name: string) => {
-        const handle = mock.createHandle(name)
-        const isSameEntry = handle.isSameEntry.bind(handle)
-        return Object.assign(handle, {
-            isSameEntry: async (other: FileSystemHandle) => {
-                await gate
-                return isSameEntry(other)
-            },
-        })
-    }
     packages.registerOpenedPackage(mock.createHandle(PATH), new File(['P1'], PATH))
-    const looking = packages.openedPackageOf(slow(PATH))
+    const first = slowHandle(mock)
+    const looking = packages.openedPackageBytes(first.handle)
     // Meanwhile the file is opened as a package again.
     packages.registerOpenedPackage(mock.createHandle(PATH), new File(['P2'], PATH))
-    release()
-    assert.equal(await (await (await looking)?.bytes)?.text(), 'P2')
+    first.release()
+    assert.equal(await (await looking)?.text(), 'P2')
 
-    let releaseAgain: () => void = () => undefined
-    const gateAgain = new Promise<void>((resolve) => (releaseAgain = resolve))
-    const slowAgain = mock.createHandle(PATH)
-    const compare = slowAgain.isSameEntry.bind(slowAgain)
-    Object.assign(slowAgain, {
-        isSameEntry: async (other: FileSystemHandle) => {
-            await gateAgain
-            return compare(other)
-        },
-    })
-    const lookingAgain = packages.openedPackageOf(slowAgain)
+    const second = slowHandle(mock)
+    const lookingAgain = packages.openedPackageOf(second.handle)
     // Meanwhile it is opened as something else.
     const forgetting = packages.forgetOpenedPackage(mock.createHandle(PATH))
-    releaseAgain()
+    second.release()
     await forgetting
     assert.equal(await lookingAgain, undefined)
+})
+
+test('bytes still being read when a newer package registers are not the ones put back', async () => {
+    packages.resetOpenedPackagesForTests()
+    const mock = createMockPlatform()
+    // The first package's bytes are read slowly.
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const slow = {
+        size: 2,
+        arrayBuffer: async () => {
+            await gate
+            return new TextEncoder().encode('P1').buffer
+        },
+    } as Blob
+    packages.registerOpenedPackage(mock.createHandle(PATH), slow)
+    const looking = packages.openedPackageBytes(mock.createHandle(PATH))
+    // The lookup now waits for those bytes; the file is opened as a package again.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    packages.registerOpenedPackage(mock.createHandle(PATH), new File(['P2'], PATH))
+    release()
+    assert.equal(await (await looking)?.text(), 'P2')
 })

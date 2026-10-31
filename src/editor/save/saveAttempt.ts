@@ -8,7 +8,6 @@ import { environment, type Env } from './binding'
 import type { SaveUi } from './dialogs'
 import { removeMarker, savedState, writeMarker, type SaveMarker } from './env'
 import { openPreparing, PREPARING_MS, waitForChainImports, type PreparingSlot } from './imports'
-import { forgetWrittenPackage } from './openedPackages'
 
 // One Save attempt: every Save, Export's pick and Recent Sessions' Save… that may
 // write a file runs in one. It owns the Save's cancel and its one "Preparing…", the wait for the chain's
@@ -252,8 +251,6 @@ export const withSaveAttempt = async <T>(
                     },
                 })
                 closeDialog()
-                // A package this tab opened is gone from that file now.
-                await forgetWrittenPackage(result)
                 if (result.status === 'saved' || result.status === 'download-started') {
                     progress.landed = true
                     return result
