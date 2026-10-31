@@ -368,6 +368,35 @@ test('guide opacity interpolates in time across BPM changes', () => {
     assert.ok(Math.abs(connection.alpha - 1 / 6) < 1e-12)
 })
 
+test('guide alpha scales before clamping, so 2 is fully opaque', () => {
+    const build = (from: number, to: number) => {
+        const head = note({ beat: 0, connectorType: 'guide', connectorGuideAlpha: from })
+        const tail = note({ beat: 4, connectorGuideAlpha: to })
+        return getElevationConnections([row(head), row(tail)], [[connect(head, tail)]])[0]!
+    }
+    for (const [value, expected] of [
+        [1.5, 0.75],
+        [2, 1],
+        [3, 1],
+    ] as const) {
+        assert.equal(build(value, value).alpha, expected)
+    }
+    assert.equal(build(1.5, 0).alpha, 0.75)
+    assert.equal(build(2, 0).alpha, 1)
+})
+
+test('same-beat guide ribbon alpha scales before clamping at both ends', () => {
+    const head = note({ elevation: 0, connectorType: 'guide', connectorGuideAlpha: 1.5 })
+    const tail = note({ elevation: 4, connectorGuideAlpha: 2 })
+    const [connection] = getElevationConnections(
+        [row(head, 100, 300), row(tail, 200, 100)],
+        [[connect(head, tail)]],
+    )
+    assert.ok(connection)
+    assert.equal(connection.alpha, 0.75)
+    assert.equal(connection.tailAlpha, 1)
+})
+
 test('same-beat curves ease horizontal position and width over signed elevation', () => {
     for (const direction of [-1, 1]) {
         const head = note({ connectorEase: 'inQuad' }),

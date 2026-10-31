@@ -48,14 +48,12 @@ const guideAlpha = (
         (Math.abs(end - start) < 1e-6
             ? 0.5
             : clamp((timeAt(connector.head.beat) - start) / (end - start)))
-    return (
-        clamp(
-            lerp(
-                connector.segmentHead.connectorGuideAlpha,
-                connector.segmentTail.connectorGuideAlpha,
-                fraction,
-            ),
-        ) * 0.5
+    return clamp(
+        lerp(
+            connector.segmentHead.connectorGuideAlpha,
+            connector.segmentTail.connectorGuideAlpha,
+            fraction,
+        ) * 0.5,
     )
 }
 
