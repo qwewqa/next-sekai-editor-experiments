@@ -187,6 +187,55 @@ test('a package, then the same file opened as level data and left: Save As write
     expect((await projectOf(page, 'shared')).format).toBe('nxsp')
 })
 
+test('level data put back over a package at its path forgets the package: after New, Save As writes there', async ({
+    page,
+}) => {
+    await start(page)
+    // Plain level data: no Export target, so after New nothing else places the file.
+    const level = await page.evaluate(async () => {
+        const { buildLevelDataVariants } = await import('/src/editor/commands/exportLevel/build.ts')
+        const blob = (await buildLevelDataVariants())[0]
+        return [...new Uint8Array(await blob!.arrayBuffer())]
+    })
+    const plain = [...gunzipSync(new Uint8Array(level))]
+    await writeFile(page, 'shared', plain)
+    await queuePicks(page, ['shared'])
+    await page.locator('canvas.editor-chart').focus()
+    await page.keyboard.press('o')
+    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
+
+    // Another program puts a package there; it is browsed and its list closed.
+    await openPackageFile(page, 'shared', await newEffect())
+    await expect(list(page)).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+
+    // Save onto it: the session's source refuses it and puts the level data back.
+    await queuePicks(page, ['shared'])
+    await pressSave(page)
+    await submitSave(page, 'shared')
+    await expect(page.getByRole('dialog')).toContainText('“shared” is not a project file.')
+    expect(await readFile(page, 'shared')).toEqual(plain)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+
+    // That put-back was a write to the file: the package is forgotten, so after New, Save As
+    // writes the project there.
+    await page.locator('canvas.editor-chart').focus()
+    await page.keyboard.press('n')
+    await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
+    await edit(page, 2)
+    await queuePicks(page, ['shared'])
+    await page.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.saveAs, 'button')
+    })
+    await submitSave(page, 'shared', 'Save As')
+    await expect(notice(page).filter({ hasText: 'Saved to shared' })).toBeVisible()
+    expect((await projectOf(page, 'shared')).format).toBe('nxsp')
+})
+
 for (const [format, cover, type] of [
     ['WebP', webp(), 'image/webp'],
     ['GIF', gif(), 'image/gif'],
