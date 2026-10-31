@@ -187,6 +187,20 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
     const compatible = (baseline: Baseline, frame: Omit<Frame, 'geometry'>) =>
         !!target && sameFrame(baseline, { ...frame, geometry: target })
 
+    /** The frame the latest sources ask for, and their layout. */
+    const frameOf = ({ shown, live, peeking, visibility }: MinimapSources) => {
+        const layout = getComposedLayout(shown)
+        return {
+            layout,
+            frame: {
+                bpms: shown.bpms,
+                layoutKey: layoutKeyOf(layout),
+                visibility,
+                end: computeEnd(shown, live, peeking),
+            },
+        }
+    }
+
     /** Paints one slice of the job; returns whether the job is complete. */
     const runSlice = (running: Job) => {
         if (!backContext) return true
@@ -239,6 +253,12 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
 
     const swap = (running: Job) => {
         if (!frontContext || job !== running) return
+        // Sources that changed after the last slice can make the image wrong before its pass runs.
+        const latest = sources && { shown: sources.shown, ...frameOf(sources) }
+        if (latest && !compatible(running.baseline, latest.frame)) {
+            startFull(latest.shown, latest.layout, latest.frame)
+            return
+        }
         const start = now()
         const { width, height } = backingSize(running.baseline.geometry)
         if (front.width !== width || front.height !== height) {
@@ -376,14 +396,8 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         if (disposed || lost.size || !sources || !target) return
         minimapStats.passes++
         const start = now()
-        const { shown, live, peeking, visibility } = sources
-        const layout = getComposedLayout(shown)
-        const frame = {
-            bpms: shown.bpms,
-            layoutKey: layoutKeyOf(layout),
-            visibility,
-            end: computeEnd(shown, live, peeking),
-        }
+        const { shown } = sources
+        const { layout, frame } = frameOf(sources)
         if (job) {
             // Edits during a job do not restart it. What would make its output wrong does.
             if (!compatible(job.baseline, frame)) startFull(shown, layout, frame)
