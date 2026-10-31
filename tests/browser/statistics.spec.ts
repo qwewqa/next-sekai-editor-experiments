@@ -160,14 +160,20 @@ const expanded = (page: Page) => page.locator('[data-statistics-split][aria-expa
 test('rows crossed on the way open nothing, and moving from row to row keeps one bubble', async ({
     page,
 }) => {
+    // The page's clock stands still while the mouse moves, so no crossed row reaches its delay
+    // however slowly the runner goes; time then passes only by the clock's steps.
+    await page.clock.install()
     await start(page)
     await open(page)
     await recordOpens(page)
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000)
     // The mouse crosses Tap and Flick to rest on Release.
     for (const name of ['tap', 'flick', 'release']) await row(page, name).hover()
+    await page.clock.runFor(450)
     await expect(row(page, 'release').locator('button')).toHaveAttribute('aria-expanded', 'true')
     // Moving on to Trace hands over: one bubble, Trace's.
     await row(page, 'trace').hover()
+    await page.clock.runFor(450)
     await expect(row(page, 'trace').locator('button')).toHaveAttribute('aria-expanded', 'true')
     await expect(expanded(page)).toHaveCount(1)
     await expect(bubble(page)).toHaveCount(1)
@@ -315,6 +321,29 @@ test('a click on the plot does not pin the readout: leaving clears it and BGM En
     await expect(dialog(page).locator('.stats-dot, .stats-cross')).toHaveCount(0)
     await expect(entry(page, 'tap').locator('.stats-entry-value')).toHaveText('')
     await expect(label).toBeVisible()
+})
+
+test('a key after a click pins the readout to the keyboard: leaving keeps it, the next key moves on', async ({
+    page,
+}) => {
+    await start(page)
+    await open(page)
+    const plot = await chart(page).boundingBox()
+    if (!plot) throw new Error('No plot')
+    await page.mouse.click(plot.x + plot.width / 3, plot.y + plot.height / 2)
+    await expect(chart(page)).toBeFocused()
+    await expect(dialog(page).locator('.stats-plot-focus')).toHaveCount(0)
+    const now = async () => Number(await chart(page).getAttribute('aria-valuenow'))
+    const clicked = await now()
+    await page.keyboard.press('ArrowRight')
+    await expect(dialog(page).locator('.stats-plot-focus')).toHaveCount(1)
+    await expect.poll(now).toBeCloseTo(clicked + 1, 3)
+    await page.mouse.move(5, 5)
+    const readout = dialog(page).locator('[data-statistics-readout]')
+    await expect(readout).not.toHaveText('')
+    await page.keyboard.press('ArrowRight')
+    await expect.poll(now).toBeCloseTo(clicked + 2, 3)
+    await expect(readout).not.toHaveText('')
 })
 
 test('keyboard focus starts the readout at the start, the arrows move it, and Tab reaches the legend', async ({

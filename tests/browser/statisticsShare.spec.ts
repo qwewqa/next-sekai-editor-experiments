@@ -190,20 +190,36 @@ test.describe('on a phone', () => {
     })
 })
 
-/** Makes the next `count` card encodes fail, as `toBlob` giving null does. */
+/** Makes the next `count` card encodes fail, as `toBlob` giving null does, and counts them. */
 const failEncodes = (page: Page, count: number) =>
     page.addInitScript((count) => {
         let left = count
+        const failed = { count: 0 }
+        Object.assign(window, { failedEncodes: failed })
         const toBlob = HTMLCanvasElement.prototype.toBlob
         HTMLCanvasElement.prototype.toBlob = function (callback, ...rest) {
             if (left > 0 && this.width === 1600) {
                 left--
-                setTimeout(() => callback(null), 0)
+                setTimeout(() => {
+                    callback(null)
+                    failed.count++
+                }, 0)
                 return
             }
             toBlob.call(this, callback, ...rest)
         }
     }, count)
+
+/** Waits until this many encodes have failed and their rejections have been handled. */
+const failed = (page: Page, count: number) =>
+    expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    (window as unknown as { failedEncodes: { count: number } }).failedEncodes.count,
+            ),
+        )
+        .toBe(count)
 
 test('a card that fails to encode shows the file error on Download Image, and the next press renders again', async ({
     page,
@@ -218,6 +234,8 @@ test('a card that fails to encode shows the file error on Download Image, and th
     })
     await page.locator('[data-statistics-share]').click()
     await expect(shareDialog(page)).toBeVisible()
+    // The render on opening has failed before the first press.
+    await failed(page, 1)
     await expect(preview(page)).toHaveCount(0)
     await shareDialog(page).locator('[data-share-download]').click()
     await expect(
@@ -244,6 +262,7 @@ test('a card that fails to encode says so on Copy Image, and the next press copi
     })
     await page.locator('[data-statistics-share]').click()
     await expect(shareDialog(page)).toBeVisible()
+    await failed(page, 1)
     await primary(page).click()
     await expect(shareDialog(page).locator('[data-share-failure]')).toHaveText(
         en.statistics.notCopiedImage,
@@ -257,13 +276,26 @@ test('a card that fails to encode says so on Copy Image, and the next press copi
 
 test('closing the dialog while the card renders leaves no preview URL behind', async ({ page }) => {
     await page.addInitScript(() => {
-        const held: (() => void)[] = []
+        const held: (() => Promise<void>)[] = []
         const urls = { created: 0, revoked: 0 }
         Object.assign(window, { heldEncodes: held, previewUrls: urls })
         const toBlob = HTMLCanvasElement.prototype.toBlob
         HTMLCanvasElement.prototype.toBlob = function (callback, ...rest) {
             if (this.width !== 1600) return toBlob.call(this, callback, ...rest)
-            held.push(() => toBlob.call(this, callback, ...rest))
+            // Finishing it resolves once the card's own callback has run.
+            held.push(
+                () =>
+                    new Promise((resolve) => {
+                        toBlob.call(
+                            this,
+                            (blob) => {
+                                callback(blob)
+                                resolve()
+                            },
+                            ...rest,
+                        )
+                    }),
+            )
         }
         const create = URL.createObjectURL.bind(URL)
         const revoke = URL.revokeObjectURL.bind(URL)
@@ -287,7 +319,7 @@ test('closing the dialog while the card renders leaves no preview URL behind', a
     const state = () =>
         page.evaluate(() => {
             const { heldEncodes, previewUrls } = window as unknown as {
-                heldEncodes: (() => void)[]
+                heldEncodes: (() => Promise<void>)[]
                 previewUrls: { created: number; revoked: number }
             }
             return { held: heldEncodes.length, ...previewUrls }
@@ -297,10 +329,11 @@ test('closing the dialog while the card renders leaves no preview URL behind', a
     await shareDialog(page).getByRole('button', { name: en.modals.close }).click()
     await expect(shareDialog(page)).toHaveCount(0)
     // The encode finishes after the dialog has gone.
-    await page.evaluate(() => {
-        for (const finish of (window as unknown as { heldEncodes: (() => void)[] }).heldEncodes)
-            finish()
+    await page.evaluate(async () => {
+        const { heldEncodes } = window as unknown as { heldEncodes: (() => Promise<void>)[] }
+        await Promise.all(heldEncodes.map((finish) => finish()))
+        // The card's own handlers run in the microtasks after its callback; a task drains them.
+        await new Promise((resolve) => setTimeout(resolve, 0))
     })
-    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)))
     expect((await state()).created).toBe(before.created)
 })
