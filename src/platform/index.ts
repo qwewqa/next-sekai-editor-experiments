@@ -3,7 +3,6 @@ import { startDetection } from './detect'
 import type { Platform } from './types'
 
 export { diskStateOfBytes, levelDataDiskState } from './fingerprint'
-export { onBeforeHandleWrite } from './handleWrites'
 export * from './types'
 export { appVersion, type AppVersion } from './version'
 

@@ -1,7 +1,6 @@
 import { MemoryStorage, storageJournalStore, type JournalStorage } from '../local/journal/store'
 import { FakeLockManager } from '../local/testing/locks'
 import { levelDataDiskState, nxspDiskState, sameContent } from './fingerprint'
-import { beforeHandleWrite } from './handleWrites'
 import { toBlob } from './handover'
 import {
     FileError,
@@ -265,7 +264,6 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             if (permission !== 'granted') throw new FileError('denied', 'Not allowed')
             const target = req.target
             const write = async () => {
-                if (target.kind === 'handle') await beforeHandleWrite(target.handle)
                 signal?.throwIfAborted()
                 const name = targetKey(target)
                 const { expected } = req

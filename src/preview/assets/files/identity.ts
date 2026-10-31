@@ -28,12 +28,12 @@ export type IdentityContext = {
 }
 
 /** How long the list waits for the storage worker: far less than the store's own wait. */
-export const STORE_WAIT_MS = 2000
+const STORE_WAIT_MS = 2000
 
 const bundledOf: Partial<Record<AssetType, BundledId>> = { skin: 'skin2', effect: 'effect2' }
 
 /** The stored metas, or undefined when storage takes longer than `ms` or fails. */
-export const storedWithin = async (store: UserAssetStore, ms: number) => {
+const storedWithin = async (store: UserAssetStore, ms: number) => {
     let timer: number | undefined
     try {
         return await Promise.race([

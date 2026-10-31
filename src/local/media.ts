@@ -82,7 +82,7 @@ export const durationMsOf = (seconds: number) =>
 /** The largest canvas side Chromium and WebKit allow: a cover over it is never decoded. */
 export const COVER_MAX_SIDE = 16_384
 
-export type CoverSize = { width: number; height: number }
+type CoverSize = { width: number; height: number }
 
 const u16le = (bytes: Uint8Array, at: number) => (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8)
 const u24le = (bytes: Uint8Array, at: number) => u16le(bytes, at) | ((bytes[at + 2] ?? 0) << 16)

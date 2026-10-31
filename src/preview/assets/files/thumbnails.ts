@@ -5,9 +5,9 @@ import { LIMITS } from './limits'
 // anything decodes them. Shared by the chooser and Open's package list.
 
 /** How many rows of a list get a picture; the rest show their glyph. */
-export const PICTURED_ROWS = 50
+const PICTURED_ROWS = 50
 
-export type PictureSource = {
+type PictureSource = {
     key: string
     /** The picture's bytes, read within the thumbnail cap; undefined when there is none. */
     read: () => Promise<Uint8Array | undefined>

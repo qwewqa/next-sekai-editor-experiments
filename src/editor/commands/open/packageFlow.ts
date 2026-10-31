@@ -18,7 +18,6 @@ import { importMessage } from '../../../preview/assets/files/importText'
 import { workerStore } from '../../../preview/assets/files/store'
 import type { BundledId } from '../../../preview/assets/types'
 import { getFilename } from '../../../utils/file'
-import { registerOpenedPackage } from '../../save/openedPackages'
 import { confirmSwitch } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { openPackageLevel } from './packageLevel'
@@ -26,8 +25,8 @@ import { createPackageList } from './packageList'
 import PackageListModal from './PackageListModal.vue'
 import { dropOpen, endOpen, startOpen } from './report'
 
-// Open's package flow: the package is registered so Save and Export refuse it, its lists are
-// read in the loading dialog, and then one level opens directly or the list shows.
+// Open's package flow: the package's lists are read in the loading dialog, and then one level
+// opens directly or the list shows.
 
 const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
@@ -142,13 +141,7 @@ const showList = async (
  * The package flow, from detection on. `request` is the Open command's, already confirmed; without
  * it every switch is confirmed just before it happens.
  */
-export const openPackage = async (
-    file: File,
-    handle: FileSystemFileHandle | undefined,
-    request: SwitchRequest | undefined,
-) => {
-    // Before anything else is read: a list-only visit or a failed open is covered too.
-    if (handle) registerOpenedPackage(handle, file)
+export const openPackage = async (file: File, request: SwitchRequest | undefined) => {
     const listed = await listPackage(file)
     if (!listed) {
         dropOpen()

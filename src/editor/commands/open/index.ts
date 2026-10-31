@@ -30,7 +30,6 @@ import { interpolate } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
 import { loadForAction } from '../../loadFailure'
 import { notify } from '../../notification'
-import { forgetOpenedPackage } from '../../save/openedPackages'
 import { confirmSwitch, notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { changeBgm } from '../bgm/index.ts'
@@ -72,7 +71,7 @@ export const open: Command = {
 }
 
 /** A file to open, from any entry point. */
-export type PickedForOpen = {
+type PickedForOpen = {
     file: File
     handle?: FileSystemFileHandle | undefined
     /**
@@ -109,12 +108,7 @@ export const openPicked = async (picked: PickedForOpen) => {
     try {
         // A failed read here surfaces in the loading modal below.
         const detected = await detectHead(file).catch(() => 'data' as const)
-        // A ZIP that cannot be classified goes on to the project reader, which says why.
-        const kind =
-            detected === 'zip' ? await detectZip(file).catch(() => 'project' as const) : undefined
         if (!isCurrent()) return
-        // Read as anything else, the file is no longer a package this tab opened.
-        if (handle && kind !== 'package') await forgetOpenedPackage(handle)
         if (detected === 'audio') {
             // Audio replaces the chart's BGM: an edit, so the peek ends first.
             dropOpen()
@@ -126,7 +120,10 @@ export const openPicked = async (picked: PickedForOpen) => {
             await switching((request) => openData(file, handle, request))
             return
         }
-        // An archive or a Sonolus package is named, not opened: nothing is replaced.
+        // An archive or a Sonolus package is named, not opened: nothing is replaced. A ZIP that
+        // cannot be classified goes on to the project reader, which says why it cannot open.
+        const kind = await detectZip(file).catch(() => 'project' as const)
+        if (!isCurrent()) return
         if (kind === 'archive') {
             dropOpen()
             await showModal(InfoModal, {
@@ -141,7 +138,7 @@ export const openPicked = async (picked: PickedForOpen) => {
                 dropOpen()
                 return
             }
-            await flow.openPackage(file, handle, supplied)
+            await flow.openPackage(file, supplied)
             return
         }
         await switching((request) => openProjectFile(file, handle, request))

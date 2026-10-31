@@ -21,7 +21,7 @@ import {
 const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 /** Whether bytes match an SRL's SHA-1, when it has one (lowercased, as asset import checks). */
-export const matchesHash = async (srl: Srl, bytes: Uint8Array) => {
+const matchesHash = async (srl: Srl, bytes: Uint8Array) => {
     const hash = srl?.hash
     if (hash === undefined || hash === null) return true
     return /^[0-9a-f]{40}$/i.test(hash) && (await sha1Hex(bytes)) === hash.toLowerCase()

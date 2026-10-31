@@ -8,7 +8,6 @@ import {
     isStandalone,
     usesOpfsPickers,
 } from './detect'
-import { beforeHandleWrite } from './handleWrites'
 import {
     diskStateOf,
     fileErrorOf,
@@ -154,10 +153,7 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
     if (req.target && permission) {
         // A precondition makes a failure the caller's to show; without one, today's download.
         const handle = req.target.handle
-        const write = async () => {
-            await beforeHandleWrite(handle)
-            return writeHandle(req, handle, permission)
-        }
+        const write = () => writeHandle(req, handle, permission)
         const locked = () => (req.lock ? req.lock(write) : write())
         if (req.expected !== undefined) return locked()
         return locked().catch(async () => {

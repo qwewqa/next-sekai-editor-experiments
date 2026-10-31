@@ -30,8 +30,8 @@ import { levelInfoOf, readDescription, readLevelData, readMedia } from './packag
 import { endOpen, openFormat } from './report'
 
 // Opening one level of a Sonolus package: a new session with its chart, Level Info, cover,
-// preview audio, BGM and offset, as level data opens. Nothing changes until the publish; the
-// package never becomes an Export target, and `openedPackages` keeps Save and Export off it.
+// preview audio, BGM and offset, as level data opens. Nothing changes until the publish, and the
+// package never becomes an Export target.
 
 /** What the dialog read, ready to publish. */
 type Prepared = {

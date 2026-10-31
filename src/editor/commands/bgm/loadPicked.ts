@@ -22,7 +22,7 @@ const formatOf = (file: File) => {
     return FORMATS.find(([, pattern]) => pattern.test(text))?.[0] ?? 'other'
 }
 
-export type LoadOptions = {
+type LoadOptions = {
     /** A Choose Audio pick, recorded in the usage statistics; true unless given. */
     record?: boolean
     /** Draws the waveform; true unless given. */

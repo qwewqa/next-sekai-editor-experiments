@@ -117,7 +117,7 @@ export type FilePackage = SourcePackage & {
 /** An item object with a safe name. */
 export type NamedItem = Record<string, unknown> & { name: string }
 
-export type OpenOptions = {
+type OpenOptions = {
     /** The largest file accepted: the chooser's 2 GiB unless given. */
     fileLimit?: number
 }

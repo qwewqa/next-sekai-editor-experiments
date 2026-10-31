@@ -11,10 +11,7 @@ const json = (value: unknown) => encoder.encode(JSON.stringify(value))
 const REPOSITORY = 'sonolus/repository/'
 
 /** What a repacked item is made of besides its resources. */
-export type RepackFields = Pick<
-    CheckedItem,
-    'type' | 'name' | 'version' | 'title' | 'subtitle' | 'author'
->
+type RepackFields = Pick<CheckedItem, 'type' | 'name' | 'version' | 'title' | 'subtitle' | 'author'>
 
 /**
  * The item object of a repacked package, from its fields and the SHA-1 of each resource, the

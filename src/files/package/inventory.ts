@@ -50,7 +50,7 @@ const firstOfEach = (items: NamedItem[]) => {
 }
 
 /** The path of a level's data, when its SRL names an entry this file has. */
-export const levelDataPath = (pkg: FilePackage, item: Record<string, unknown>) => {
+const levelDataPath = (pkg: FilePackage, item: Record<string, unknown>) => {
     const srl = isSrl(item.data) ? item.data : undefined
     const path = pkg.resolve(srl)
     return path !== undefined && pkg.has(path) ? path : undefined

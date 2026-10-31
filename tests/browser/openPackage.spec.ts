@@ -8,7 +8,6 @@ import {
     edit,
     notice,
     pauseAt,
-    pressSave,
     projectOf,
     queuePicks,
     reached,
@@ -51,7 +50,7 @@ const live = (page: Page) =>
         }
     })
 
-test('a one-level package opens directly with its Level Info, cover, BGM and offset, and Save and Export refuse it', async ({
+test('a one-level package opens directly with its Level Info, cover, BGM and offset', async ({
     page,
 }) => {
     await start(page)
@@ -90,150 +89,40 @@ test('a one-level package opens directly with its Level Info, cover, BGM and off
     expect(opened.notes).toBe(1)
     // Named after the level, not the file.
     expect((await sessionOf(page)).sourceName).toBe('Song Title')
-
-    // In the same visit, Save to the package is refused and its bytes stay as they were.
-    await queuePicks(page, ['song.scp'])
-    await pressSave(page)
-    await submitSave(page, 'song')
-    await expect(page.getByRole('dialog')).toContainText('“song.scp” is not a project file.')
-    expect(await readFile(page, 'song.scp')).toEqual([...bytes])
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-
-    // And so is Export.
-    await page.keyboard.press('Shift+P')
-    await expect(dialog(page)).toHaveAccessibleName('Export Level Data')
-    await queuePicks(page, ['song.scp'])
-    await page.keyboard.press('Enter')
-    await expect(dialog(page)).toContainText('“song.scp” is not level data.')
-    expect(await readFile(page, 'song.scp')).toEqual([...bytes])
 })
 
-test('a package opened twice is refused by Save, Save As and Export, its bytes put back each time', async ({
+test('a package opened in this tab is written over like any file the user picks', async ({
     page,
 }) => {
     await start(page)
-    const bytes = await levelPackage('full', [{ name: 'song', title: 'Song' }])
-    // Opened again, the file has two entries in the register: only the newer keeps its bytes.
-    await openPackageFile(page, 'song.scp', bytes)
-    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
-    const first = (await sessionOf(page)).sessionId
-    await queuePicks(page, ['song.scp'])
-    await page.locator('canvas.editor-chart').focus()
-    await page.keyboard.press('o')
-    await expect.poll(async () => (await sessionOf(page)).sessionId).not.toBe(first)
-
-    const refused = async () => {
-        await expect(page.getByRole('dialog')).toContainText('“song.scp” is not')
-        expect(await readFile(page, 'song.scp')).toEqual([...bytes])
-        await page.keyboard.press('Escape')
-        await expect(page.getByRole('dialog')).toHaveCount(0)
-    }
-    await queuePicks(page, ['song.scp'])
-    await pressSave(page)
-    await submitSave(page, 'song')
-    await refused()
-
-    await queuePicks(page, ['song.scp'])
-    await page.evaluate(async () => {
-        const { commands } = await import('/src/editor/commands/index.ts')
-        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs, 'button')
-    })
-    await submitSave(page, 'song', 'Save As')
-    await refused()
-
-    await page.keyboard.press('Shift+P')
-    await expect(dialog(page)).toHaveAccessibleName('Export Level Data')
-    await queuePicks(page, ['song.scp'])
-    await page.keyboard.press('Enter')
-    await refused()
-})
-
-test('a package, then the same file opened as level data and left: Save As writes it as its own', async ({
-    page,
-}) => {
-    await start(page)
-    await openPackageFile(page, 'shared', await newEffect())
+    // Save As onto a package whose list was closed writes the project there.
+    await openPackageFile(page, 'skins.scp', await newEffect())
     await expect(list(page)).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
-
-    // Another program puts plain level data there, and Open opens it: no longer a package.
-    const level = await page.evaluate(async () => {
-        const { buildLevelDataVariants } = await import('/src/editor/commands/exportLevel/build.ts')
-        const blob = (await buildLevelDataVariants())[0]
-        return [...new Uint8Array(await blob!.arrayBuffer())]
-    })
-    await writeFile(page, 'shared', [...gunzipSync(new Uint8Array(level))])
-    await queuePicks(page, ['shared'])
-    await page.locator('canvas.editor-chart').focus()
-    await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
-
-    // New: nothing places the file any more, so Save As writes the project there.
-    await page.locator('canvas.editor-chart').focus()
-    await page.keyboard.press('n')
-    await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
     await edit(page, 2)
-    await queuePicks(page, ['shared'])
+    await queuePicks(page, ['skins.scp'])
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
         void runCommand(commands.saveAs, 'button')
     })
-    await submitSave(page, 'shared', 'Save As')
-    await expect(notice(page).filter({ hasText: 'Saved to shared' })).toBeVisible()
-    expect((await projectOf(page, 'shared')).format).toBe('nxsp')
-})
+    await submitSave(page, 'skins', 'Save As')
+    await expect(notice(page).filter({ hasText: 'Saved to skins.scp' })).toBeVisible()
+    expect((await projectOf(page, 'skins.scp')).format).toBe('nxsp')
 
-test('level data put back over a package at its path forgets the package: after New, Save As writes there', async ({
-    page,
-}) => {
-    await start(page)
-    // Plain level data: no Export target, so after New nothing else places the file.
-    const level = await page.evaluate(async () => {
-        const { buildLevelDataVariants } = await import('/src/editor/commands/exportLevel/build.ts')
-        const blob = (await buildLevelDataVariants())[0]
-        return [...new Uint8Array(await blob!.arrayBuffer())]
-    })
-    const plain = [...gunzipSync(new Uint8Array(level))]
-    await writeFile(page, 'shared', plain)
-    await queuePicks(page, ['shared'])
-    await page.locator('canvas.editor-chart').focus()
-    await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
-
-    // Another program puts a package there; it is browsed and its list closed.
-    await openPackageFile(page, 'shared', await newEffect())
+    // Export onto another package writes level data there.
+    await openPackageFile(page, 'sounds.scp', await newEffect())
     await expect(list(page)).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
-
-    // Save onto it: the session's source refuses it and puts the level data back.
-    await queuePicks(page, ['shared'])
-    await pressSave(page)
-    await submitSave(page, 'shared')
-    await expect(page.getByRole('dialog')).toContainText('“shared” is not a project file.')
-    expect(await readFile(page, 'shared')).toEqual(plain)
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-
-    // That put-back was a write to the file: the package is forgotten, so after New, Save As
-    // writes the project there.
-    await page.locator('canvas.editor-chart').focus()
-    await page.keyboard.press('n')
-    await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
-    await edit(page, 2)
-    await queuePicks(page, ['shared'])
-    await page.evaluate(async () => {
-        const { commands } = await import('/src/editor/commands/index.ts')
-        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs, 'button')
-    })
-    await submitSave(page, 'shared', 'Save As')
-    await expect(notice(page).filter({ hasText: 'Saved to shared' })).toBeVisible()
-    expect((await projectOf(page, 'shared')).format).toBe('nxsp')
+    await page.keyboard.press('Shift+P')
+    await expect(dialog(page)).toHaveAccessibleName('Export Level Data')
+    await queuePicks(page, ['sounds.scp'])
+    await page.keyboard.press('Enter')
+    await expect(notice(page).filter({ hasText: 'Exported to sounds.scp' })).toBeVisible()
+    const written = new Uint8Array((await readFile(page, 'sounds.scp')) ?? [])
+    expect(JSON.parse(new TextDecoder().decode(gunzipSync(written)))).toHaveProperty('entities')
 })
 
 for (const [format, cover, type] of [
@@ -410,42 +299,6 @@ test('the list: Open on each level with data, Import and Use on assets, and the 
         list(page).locator('[data-package-row]').nth(4).locator('[data-package-in-use]'),
     ).toBeVisible()
     await expect(row(page, 'Neon Skin').locator('[data-package-in-use]')).toBeVisible()
-})
-
-test('an asset-only package is refused as a Save destination after an Import, and level data keeps its own refusal', async ({
-    page,
-}) => {
-    await start(page)
-    // The current session comes from level data, whose own refusal must still hold.
-    const level = await page.evaluate(async () => {
-        const { buildLevelDataVariants } = await import('/src/editor/commands/exportLevel/build.ts')
-        const blob = (await buildLevelDataVariants())[0]
-        return [...new Uint8Array(await blob!.arrayBuffer())]
-    })
-    await writeFile(page, 'LevelData', level)
-    await queuePicks(page, ['LevelData'])
-    await page.locator('canvas.editor-chart').focus()
-    await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
-
-    const bytes = await newEffect()
-    await openPackageFile(page, 'skins.scp', bytes)
-    await expect(list(page)).toBeVisible()
-    await list(page).locator('[data-package-import]').click()
-    await expect(list(page).locator('[data-package-in-use]')).toBeVisible({ timeout: 15_000 })
-    await page.keyboard.press('Escape')
-    await expect(dialog(page)).toHaveCount(0)
-
-    for (const name of ['skins.scp', 'LevelData']) {
-        await queuePicks(page, [name])
-        await pressSave(page)
-        await submitSave(page, 'song')
-        await expect(page.getByRole('dialog')).toContainText(`“${name}” is not a project file.`)
-        await page.keyboard.press('Escape')
-        await expect(page.getByRole('dialog')).toHaveCount(0)
-    }
-    expect(await readFile(page, 'skins.scp')).toEqual([...bytes])
-    expect(await readFile(page, 'LevelData')).toEqual(level)
 })
 
 test('a package with nothing the editor can use says so', async ({ page }) => {

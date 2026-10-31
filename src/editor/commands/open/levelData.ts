@@ -17,7 +17,7 @@ import { interpolateRaw } from '../../../utils/interpolate'
 // level's level data, become a chart or one of the refusals below. Kept free of the i18n module,
 // so Node tests can run it and pass the English strings to `openErrorText`.
 
-export type ImportType = 'levelData' | 'chcy' | 'usc' | 'sus'
+type ImportType = 'levelData' | 'chcy' | 'usc' | 'sus'
 
 /** A file whose format the editor cannot read. */
 export class UnsupportedFileError extends Error {
