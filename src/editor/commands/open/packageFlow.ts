@@ -12,11 +12,11 @@ import InfoModal from '../../../modals/InfoModal.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { platform } from '../../../platform'
 import { packageUrls } from '../../../preview/assets'
+import { bundledIds } from '../../../preview/assets/choice'
 import { AssetImportError } from '../../../preview/assets/files/errors'
 import { identifyAssets, type AssetIdentity } from '../../../preview/assets/files/identity'
 import { importMessage } from '../../../preview/assets/files/importText'
 import { workerStore } from '../../../preview/assets/files/store'
-import type { BundledId } from '../../../preview/assets/types'
 import { isAbort } from '../../../utils/error'
 import { getFilename } from '../../../utils/file'
 import { confirmSwitch } from '../../switch'
@@ -67,11 +67,7 @@ const listPackage = async (file: File) => {
                         {
                             store: workerStore,
                             hasDefault: platform.capabilities.defaultAssets,
-                            bundled: new Set(
-                                (['skin2', 'effect2'] as BundledId[]).filter(
-                                    (id) => packageUrls[id],
-                                ),
-                            ),
+                            bundled: new Set(bundledIds.filter((id) => packageUrls[id])),
                         },
                         signal,
                     )

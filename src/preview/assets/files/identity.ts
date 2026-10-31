@@ -1,5 +1,5 @@
 import { builtinResources, type BuiltinSource } from '../builtinResources'
-import { builtinChoice } from '../choice'
+import { builtinChoice, bundledIdOf } from '../choice'
 import type { AssetChoice, AssetType, BundledId } from '../types'
 import { storedChoice } from './chooser'
 import { fields, maxSizeOf, sha1Hex, srlHash, type ResourceField } from './item'
@@ -29,8 +29,6 @@ export type IdentityContext = {
 
 /** How long the list waits for the storage worker: far less than the store's own wait. */
 const STORE_WAIT_MS = 2000
-
-const bundledOf: Partial<Record<AssetType, BundledId>> = { skin: 'skin2', effect: 'effect2' }
 
 /** The stored metas, or undefined when storage takes longer than `ms` or fails. */
 const storedWithin = async (store: UserAssetStore, ms: number) => {
@@ -91,7 +89,7 @@ const builtinMatch = (
     hashes: ReadonlyMap<ResourceField, string>,
     context: IdentityContext,
 ): AssetIdentity | undefined => {
-    const bundled = bundledOf[type]
+    const bundled = bundledIdOf(type)
     for (const row of builtinResources) {
         if (row.type !== type) continue
         if (row.source === 'default' && !context.hasDefault) continue

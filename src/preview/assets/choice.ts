@@ -21,6 +21,13 @@ const storedChoice = <S extends 'file' | 'server'>(source: S) =>
 /** The bundled package a type has, if any. */
 const bundledChoices = { skin: 'skin2', effect: 'effect2' } as const
 
+/** Every bundled package (Next SEKAI 02). */
+export const bundledIds: readonly BundledId[] = Object.values(bundledChoices)
+
+/** The bundled package (Next SEKAI 02) a type has, if any. */
+export const bundledIdOf = (type: AssetType): BundledId | undefined =>
+    (bundledChoices as Partial<Record<AssetType, BundledId>>)[type]
+
 /** One choice as the setting stores it; a malformed one repairs to Default. */
 const choiceSchema = (bundledId?: BundledId) =>
     Type.Unsafe<AssetChoice>(
@@ -86,10 +93,7 @@ export const builtinChoice = (hasDefault: boolean): AssetChoice => ({
  */
 export const choiceRow = (choice: AssetChoice, type: AssetType, hasDefault: boolean) => {
     if (choice.source === 'file' || choice.source === 'server') return choiceKey(choice)
-    const bundledId: BundledId | undefined = (
-        bundledChoices as Partial<Record<AssetType, BundledId>>
-    )[type]
-    if (choice.source === 'bundled' && hasDefault && bundledId === choice.id)
+    if (choice.source === 'bundled' && hasDefault && bundledIdOf(type) === choice.id)
         return choiceKey(choice)
     return choice.source === 'default' && hasDefault ? 'default' : 'builtin'
 }

@@ -21,7 +21,7 @@ import {
 } from '../../../preview/assets'
 import { fallbacks } from '../../../preview/assets/active'
 import { loadPackageInfo, builtinUrl, type PackageInfo } from '../../../preview/assets/builtin'
-import { builtinChoice, choiceKey, choiceRow } from '../../../preview/assets/choice'
+import { builtinChoice, bundledIdOf, choiceKey, choiceRow } from '../../../preview/assets/choice'
 import { defaultName, rowText } from '../../../preview/assets/fallbackText'
 import { storedChoice, type AssetChooser } from '../../../preview/assets/files/chooser'
 import type { ServerChooser } from '../../../preview/assets/server/chooser'
@@ -56,8 +56,7 @@ type Row = {
     image: string | undefined
 }
 
-// The Next SEKAI 02 package a type has, if any.
-const bundledId = props.type === 'skin' ? 'skin2' : props.type === 'effect' ? 'effect2' : undefined
+const bundledId = bundledIdOf(props.type)
 
 // The author and picture of Built-in, Default and Next SEKAI 02 come from their packages, read once the tab shows.
 const builtin = ref<PackageInfo>()
