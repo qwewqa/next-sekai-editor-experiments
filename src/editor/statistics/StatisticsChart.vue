@@ -93,21 +93,14 @@ const legendOrder = computed(() => (side.value ? [...CATEGORIES].reverse() : CAT
 const chart = useTemplateRef<HTMLDivElement>('chart')
 const plotBlock = useTemplateRef<HTMLDivElement>('plotBlock')
 const size = shallowRef({ width: 0, height: 0 })
-const pixel = shallowRef({ dpr: 1, fx: 0, fy: 0 })
+const dpr = ref(window.devicePixelRatio || 1)
 const chartLeft = ref(0)
 
-const measurePixel = () => {
+const measurePlot = () => {
     const element = chart.value
     if (!element) return
     const box = element.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    const ox = box.left * dpr
-    const oy = box.top * dpr
-    const fx = ox - Math.floor(ox)
-    const fy = oy - Math.floor(oy)
-    const was = pixel.value
-    const off = (a: number, b: number) => Math.min(Math.abs(a - b), 1 - Math.abs(a - b)) > 1e-3
-    if (was.dpr !== dpr || off(was.fx, fx) || off(was.fy, fy)) pixel.value = { dpr, fx, fy }
+    dpr.value = window.devicePixelRatio || 1
     if (box.width !== size.value.width || box.height !== size.value.height)
         size.value = { width: box.width, height: box.height }
     const block = plotBlock.value
@@ -134,7 +127,7 @@ const model = computed(() => {
 const drawing = computed(() => {
     const current = model.value
     if (!current || !size.value.height) return undefined
-    return drawChart(current, size.value.width, size.value.height, pixel.value.dpr)
+    return drawChart(current, size.value.width, size.value.height, dpr.value)
 })
 
 const ink = computed(() => mode.value === 'rolling')
@@ -327,14 +320,14 @@ let frame = 0
 const onScroll = () => {
     checkStuck()
     cancelAnimationFrame(frame)
-    frame = requestAnimationFrame(measurePixel)
+    frame = requestAnimationFrame(measurePlot)
 }
 
 let resize: ResizeObserver | undefined
 let zoom: MediaQueryList | undefined
 const onZoom = () => {
     watchZoom()
-    measurePixel()
+    measurePlot()
 }
 const watchZoom = () => {
     zoom?.removeEventListener('change', onZoom)
@@ -343,14 +336,14 @@ const watchZoom = () => {
 }
 onMounted(() => {
     resize = new ResizeObserver(() => {
-        measurePixel()
+        measurePlot()
         checkStuck()
     })
     if (chart.value) resize.observe(chart.value)
     if (props.scroller) resize.observe(props.scroller)
     watchZoom()
-    window.addEventListener('resize', measurePixel)
-    measurePixel()
+    window.addEventListener('resize', measurePlot)
+    measurePlot()
     void fitLabelLine()
 })
 watch(
@@ -366,15 +359,14 @@ onBeforeUnmount(() => {
     resize?.disconnect()
     zoom?.removeEventListener('change', onZoom)
     sideQuery.removeEventListener('change', onSide)
-    window.removeEventListener('resize', measurePixel)
+    window.removeEventListener('resize', measurePlot)
     props.scroller?.removeEventListener('scroll', onScroll)
     cancelAnimationFrame(frame)
 })
 
-const svgShift = computed(
-    () =>
-        `translate(${-pixel.value.fx / pixel.value.dpr}px, ${-pixel.value.fy / pixel.value.dpr}px)`,
-)
+// Tiles snap to device pixels from the plot's own origin, a quarter pixel past each edge, so
+// crisp edges round the same way at any fractional place of the dialog (measured at 1x to 3x).
+const bias = computed(() => 0.25 / dpr.value)
 const yLabel = (value: number) => formatDecimal(Math.round(value * 1e6) / 1e6, locale.value)
 const color = (category: Category) => chartCategoryColors[category]
 const modes = computed(() => [
@@ -481,7 +473,6 @@ defineExpose({ chosen })
                     :viewBox="`0 0 ${drawing.width} ${drawing.height}`"
                     preserveAspectRatio="none"
                     aria-hidden="true"
-                    :style="{ transform: svgShift }"
                 >
                     <defs>
                         <linearGradient :id="`${headingId}-wash`" x1="0" y1="0" x2="0" y2="1">
@@ -515,8 +506,8 @@ defineExpose({ chosen })
                             v-for="(tile, i) in drawing.tiles"
                             :key="i"
                             class="stats-layer"
-                            :x="tile.x"
-                            :y="tile.y"
+                            :x="tile.x + bias"
+                            :y="tile.y + bias"
                             :width="tile.width"
                             :height="tile.height"
                             :fill="color(kinds[tile.layer]!)"
