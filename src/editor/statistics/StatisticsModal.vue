@@ -213,10 +213,11 @@ const copy = async () => {
 const share = () => {
     void showModal(ShareImageModal, {
         stats: stats.value,
-        times: stats.value.times,
         every: every.value,
         bgmEnd: bgmEnd.value,
         drawable: drawable.value,
+        chosen: settings.statisticsDensityTypes,
+        mode: settings.statisticsChart,
         summary: copyText(),
     })
 }

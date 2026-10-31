@@ -1,22 +1,345 @@
-<script setup lang="ts">
-import { i18n } from '../../i18n'
-import type { Category, ChartStatistics } from '../../levelData/statistics'
-import BaseModal from '../../modals/BaseModal.vue'
+<script lang="ts">
+// The link is kept for the tab while the editor is open, never stored.
+let keptLink = ''
+</script>
 
-defineProps<{
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
+import { state } from '../../history'
+import { i18n } from '../../i18n'
+import {
+    ROWS,
+    type Category,
+    type ChartMode,
+    type ChartStatistics,
+    type Row,
+} from '../../levelData/statistics'
+import { readMediaBlob } from '../../local/mediaBlob'
+import BaseModal from '../../modals/BaseModal.vue'
+import NoteShapeIcon from '../../modals/form/NoteShapeIcon.vue'
+import type { NoteShape } from '../../modals/form/noteShapes'
+import { FileError, platform } from '../../platform'
+import { PRODUCT_NAME } from '../../product'
+import { fileErrorText } from '../commands/exportLevel/ui'
+import { notify } from '../notification'
+import SeverityIcon from '../SeverityIcon.vue'
+import { isCoarsePointer } from '../workspace'
+import { drawCard, type CardTheme, type Rgb } from './shareCard'
+import { statisticsLocale, statisticsStrings } from './text'
+
+// Share Image: the card as a PNG for a Link value, previewed as the PNG itself, then copied,
+// shared or downloaded. A press takes the card for Link as it is at that moment.
+
+const props = defineProps<{
     stats: ChartStatistics
-    times: Record<Category, Float64Array>
     every: Float64Array
     bgmEnd: number | undefined
     drawable: boolean
+    chosen: readonly Category[]
+    mode: ChartMode
+    /** The preview's alt text: the Copy Text summary. */
     summary: string
 }>()
 
 const emit = defineEmits<{
     close: []
 }>()
+
+const formId = useId()
+const link = ref(keptLink)
+const failure = ref<'copy' | 'share'>()
+
+// Share on a phone or tablet that shares files; elsewhere Copy Image where the clipboard takes
+// images. Download Image is always there.
+const probeFile = new File([new Uint8Array()], 'card.png', { type: 'image/png' })
+const canShare =
+    isCoarsePointer.value &&
+    typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [probeFile] })
+// Insecure origins have no clipboard object.
+const clipboard = navigator.clipboard as Clipboard | undefined
+const canCopy = typeof ClipboardItem === 'function' && typeof clipboard?.write === 'function'
+const primary = canShare ? 'share' : canCopy ? 'copy' : 'download'
+
+const title = computed(() => state.value.levelInfo.title.trim())
+const fileName = computed(() => `${title.value || i18n.value.save.placeholder}.png`)
+
+// --- The glyphs: the dialog's own SVG, drawn as images.
+const shapes: Partial<Record<Row, NoteShape>> = {
+    tap: 'tap',
+    flick: 'flick',
+    release: 'release',
+    trace: 'trace',
+    traceFlick: 'traceFlick',
+    tick: 'tick',
+    hiddenTick: 'hiddenTick',
+    damageNote: 'damage',
+    damageTick: 'damageTick',
+}
+const glyphHost = useTemplateRef<HTMLDivElement>('glyphHost')
+const loadGlyphs = () =>
+    Promise.all(
+        ROWS.filter((row) => shapes[row]).map(
+            (row) =>
+                new Promise<[Row, HTMLImageElement | undefined]>((resolve) => {
+                    const svg = glyphHost.value?.querySelector(`[data-glyph="${row}"] svg`)
+                    if (!svg) {
+                        resolve([row, undefined])
+                        return
+                    }
+                    const copy = svg.cloneNode(true) as SVGElement
+                    copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+                    copy.setAttribute('width', '96')
+                    copy.setAttribute('height', '96')
+                    // The glyphs that take the text colour draw in the card's ink.
+                    copy.style.color = getComputedStyle(svg).color
+                    const image = new Image()
+                    image.onload = () => {
+                        resolve([row, image])
+                    }
+                    image.onerror = () => {
+                        resolve([row, undefined])
+                    }
+                    image.src = `data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(copy))}`
+                }),
+        ),
+    ).then((entries) => Object.fromEntries(entries) as Partial<Record<Row, HTMLImageElement>>)
+
+// --- The cover, decoded from its stored bytes; none when it is absent or does not decode.
+const loadCover = async () => {
+    const ref = state.value.levelInfo.cover
+    if (!ref) return undefined
+    try {
+        const result = await readMediaBlob(ref)
+        return result.kind === 'blob' ? await createImageBitmap(result.blob) : undefined
+    } catch {
+        return undefined
+    }
+}
+
+const themeOf = (): CardTheme => {
+    const style = getComputedStyle(document.documentElement)
+    const color = (name: string): Rgb => {
+        const [r = 0, g = 0, b = 0] = style.getPropertyValue(name).trim().split(/\s+/).map(Number)
+        return [r, g, b]
+    }
+    const modal = color('--color-modal')
+    return {
+        modal,
+        header: color('--color-header'),
+        fg: color('--color-fg'),
+        dark: modal[0] + modal[1] + modal[2] < 3 * 128,
+    }
+}
+
+let assets: Promise<{
+    glyphs: Partial<Record<Row, HTMLImageElement>>
+    cover?: ImageBitmap
+}>
+
+// --- One PNG per Link value: the current value's render, started when none is running or done.
+type Card = { link: string; promise: Promise<Blob>; blob?: Blob }
+let card: Card | undefined
+const previewUrl = ref<string>()
+const render = (value: string) =>
+    assets.then(
+        ({ glyphs, cover }) =>
+            new Promise<Blob>((resolve, reject) => {
+                const canvas = document.createElement('canvas')
+                const strings = statisticsStrings.value
+                const levelInfo = state.value.levelInfo
+                drawCard(canvas, {
+                    info: {
+                        title: levelInfo.title,
+                        artists: levelInfo.artists,
+                        author: levelInfo.author,
+                        rating: levelInfo.rating,
+                    },
+                    cover,
+                    link: value,
+                    stats: props.stats,
+                    every: props.every,
+                    bgmEnd: props.bgmEnd,
+                    drawable: props.drawable,
+                    chosen: props.chosen,
+                    mode: props.mode,
+                    glyphs,
+                    theme: themeOf(),
+                    fontFamily: getComputedStyle(document.body).fontFamily,
+                    locale: statisticsLocale.value,
+                    strings: {
+                        rows: strings.rows,
+                        categories: strings.categories,
+                        combo: strings.combo,
+                        notesPerSecond: strings.notesPerSecond,
+                        noNotes: strings.noNotes,
+                        untitled: i18n.value.save.placeholder,
+                        author: i18n.value.historyChanges.fields.author,
+                        rating: i18n.value.historyChanges.fields.rating,
+                        product: PRODUCT_NAME,
+                    },
+                })
+                canvas.toBlob((blob) => {
+                    if (blob) resolve(blob)
+                    else reject(new Error('The card did not encode'))
+                }, 'image/png')
+            }),
+    )
+const cardFor = (): Card => {
+    const value = link.value.trim()
+    if (card?.link === value) return card
+    const next: Card = { link: value, promise: render(value) }
+    card = next
+    void next.promise.then(
+        (blob) => {
+            next.blob = blob
+            if (card !== next) return
+            if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+            previewUrl.value = URL.createObjectURL(blob)
+        },
+        () => undefined,
+    )
+    return next
+}
+
+let timer: ReturnType<typeof setTimeout> | undefined
+const onInput = () => {
+    keptLink = link.value
+    clearTimeout(timer)
+    timer = setTimeout(cardFor, 150)
+}
+
+// --- The actions, each in its press or Enter handler.
+const copy = () => {
+    failure.value = undefined
+    // No await before the write: Safari takes it only within the gesture, with a promise-valued item.
+    navigator.clipboard.write([new ClipboardItem({ 'image/png': cardFor().promise })]).then(
+        () => notify(() => i18n.value.statistics.copiedImage),
+        () => (failure.value = 'copy'),
+    )
+}
+let sharing = false
+const share = async () => {
+    // One share at a time: a second call before the first settles would reject.
+    if (sharing) return
+    sharing = true
+    failure.value = undefined
+    try {
+        const current = cardFor()
+        const blob = current.blob ?? (await current.promise)
+        await navigator.share({ files: [new File([blob], fileName.value, { type: 'image/png' })] })
+    } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) failure.value = 'share'
+    } finally {
+        sharing = false
+    }
+}
+const download = async () => {
+    const name = fileName.value
+    const promise = cardFor().promise
+    try {
+        await platform.saveFile({ kind: 'image', suggestedName: name, build: () => promise })
+    } catch (error) {
+        if (!(error instanceof FileError)) throw error
+        notify(() => fileErrorText(name, error), { card: true, severity: 'error' })
+    }
+}
+const submit = () => {
+    if (primary === 'share') void share()
+    else if (primary === 'copy') copy()
+    else void download()
+}
+// A held Enter or Space repeats keydown; only the first press acts, in Link and on the buttons.
+const onKeydown = (event: KeyboardEvent) => {
+    if ((event.key === 'Enter' || event.key === ' ') && event.repeat) event.preventDefault()
+}
+
+let dialog: HTMLDialogElement | null | undefined
+onMounted(() => {
+    dialog = glyphHost.value?.closest('dialog')
+    dialog?.addEventListener('keydown', onKeydown, true)
+    assets = Promise.all([loadGlyphs(), loadCover()]).then(([glyphs, cover]) => ({
+        glyphs,
+        cover,
+    }))
+    cardFor()
+})
+onBeforeUnmount(() => {
+    dialog?.removeEventListener('keydown', onKeydown, true)
+    clearTimeout(timer)
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+})
+
+const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 </script>
 
 <template>
-    <BaseModal :title="i18n.statistics.shareImageTitle" @close="emit('close')" />
+    <BaseModal :title="i18n.statistics.shareImageTitle" @close="emit('close')">
+        <div class="contents" data-share-image>
+            <img
+                v-if="previewUrl"
+                :src="previewUrl"
+                :alt="summary"
+                class="block aspect-video h-auto w-full rounded-xl shadow-[0_0_0_1px_rgb(var(--color-fg)/0.15)]"
+                data-share-preview
+            />
+            <div v-else class="aspect-video w-full rounded-xl bg-fg/5" />
+            <form :id="formId" class="flex items-center gap-4" @submit.prevent="submit">
+                <label :for="`${formId}-link`" class="shrink-0">{{ i18n.statistics.link }}</label>
+                <input
+                    :id="`${formId}-link`"
+                    v-model="link"
+                    class="field w-full min-w-0 appearance-none rounded-full px-4 py-1"
+                    type="text"
+                    maxlength="120"
+                    spellcheck="false"
+                    autocomplete="off"
+                    data-share-link
+                    @input="onInput"
+                />
+            </form>
+            <p class="flex items-start gap-2 text-sm empty:hidden" role="status">
+                <template v-if="failure">
+                    <SeverityIcon severity="error" class="mt-0.5 size-4 shrink-0" />
+                    <span data-share-failure>{{
+                        failure === 'copy'
+                            ? i18n.statistics.notCopiedImage
+                            : i18n.statistics.notSharedImage
+                    }}</span>
+                </template>
+            </p>
+            <div ref="glyphHost" class="hidden" aria-hidden="true">
+                <span v-for="(shape, row) in shapes" :key="row" :data-glyph="row">
+                    <NoteShapeIcon :shape="shape!" />
+                </span>
+            </div>
+        </div>
+        <template #footer>
+            <button
+                v-if="primary !== 'download'"
+                type="button"
+                :class="[buttonClass, 'btn-secondary']"
+                data-share-download
+                @click="download"
+            >
+                {{ i18n.statistics.downloadImage }}
+            </button>
+            <button
+                type="submit"
+                :form="formId"
+                :class="[buttonClass, 'btn-primary']"
+                data-autofocus
+                :data-share-primary="primary"
+            >
+                {{
+                    primary === 'share'
+                        ? i18n.statistics.share
+                        : primary === 'copy'
+                          ? i18n.statistics.copyImage
+                          : i18n.statistics.downloadImage
+                }}
+            </button>
+        </template>
+    </BaseModal>
 </template>
