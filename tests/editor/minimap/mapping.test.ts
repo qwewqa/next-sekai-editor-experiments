@@ -110,3 +110,42 @@ test("History's ticks and the selection rail mirror each other on whole device p
     // At 2x both are 5 px.
     assert.deepEqual(gutterMarkEdges({ width: 60, height: 776, scale: 2 }), { tick: 5, rail: 55 })
 })
+
+test('neither gutter mark covers a column of a note that stays clear of their 5 CSS px', () => {
+    // Every pixel ratio the strip meets, at every width it can take.
+    const scales = [1, 1.25, 1.5, 1.75, 2, 3].map((ratio) => capScale(ratio, 776))
+    const geometries = [
+        ...[...Array(137).keys()].flatMap((i) =>
+            scales.map((scale) => ({ width: 24 + i, height: 776, scale })),
+        ),
+        { width: 60, height: 2500, scale: capScale(2, 2500) },
+    ]
+    const sizes = [0, 0.25, 0.5, 1, 2, 3, 6, 12]
+    for (const geometry of geometries) {
+        const { width, scale } = geometry
+        const mapping = createMapping(geometry, 100)
+        const backing = backingSize(geometry).width
+        const ratio = backing / width
+        const { tick, rail } = gutterMarkEdges(geometry)
+        const tickEnd = Math.round(tick * ratio)
+        const railStart = Math.round(rail * ratio)
+        for (let left = -40; left <= 40; left += 0.5)
+            for (const size of sizes) {
+                const [a, b] = mapping.spanToX(left, size)
+                // A note reaching into the marks' own 5 px may be covered there by design.
+                if (a < GUTTER_MARK_WIDTH || b > width - GUTTER_MARK_WIDTH) continue
+                // The painter's columns (paint.ts noteRect): from x0 up to x1, exclusive.
+                const x0 = Math.round(a * scale)
+                const x1 = Math.max(x0 + 1, Math.round(b * scale))
+                assert.ok(
+                    x0 >= tickEnd && x1 <= railStart,
+                    `${JSON.stringify(geometry)}: lane ${left} size ${size} at ${x0}..${x1}, marks to ${tickEnd} and from ${railStart}`,
+                )
+            }
+    }
+    // A note from lane 6 to 12 at 24 px and 1.5x ends in column 28, just left of the rail.
+    const narrow = { width: 24, height: 776, scale: 1.5 }
+    const [, b] = createMapping(narrow, 100).spanToX(6, 6)
+    assert.equal(Math.round(b * 1.5), 29)
+    assert.equal(Math.round(gutterMarkEdges(narrow).rail * 1.5), 29)
+})
