@@ -2421,7 +2421,7 @@
       "open": "Aç",
       "import": "İçe Aktar",
       "stored": "Saklanan",
-      "dataMissing": "Seviye verisi bu dosyada yok",
+      "dataMissing": "Seviye verisi yok",
       "levelUnreadable": "Bu seviyenin verisi okunamadı.",
       "withoutMedia": "Bu seviye {0} olmadan açıldı.",
       "empty": "Bu Sonolus paketinde seviye veya varlık yok."

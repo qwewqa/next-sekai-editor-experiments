@@ -56,6 +56,10 @@ export const createPackageList = (
     /** The id of the row whose Import runs. */
     const working = shallowRef<string>()
     const errors = shallowRef<ReadonlyMap<string, string>>(new Map())
+    /** What a screen reader hears of the last action: Storing…, its result, or its error. */
+    const status = shallowRef('')
+    /** The level row whose Open was pressed last, where the list shows again after it fails. */
+    const pressed = shallowRef<string>()
     const pictures = shallowRef<ReadonlyMap<string, string>>(new Map())
     const controller = new AbortController()
     const life = { disposed: false }
@@ -128,12 +132,15 @@ export const createPackageList = (
                   ),
         )
 
+    const inUseText = (row: ListRow) => `${row.title} · ${i18n.value.commands.previewAssets.inUse}`
+
     /** Checks, stores and uses one asset, as the chooser's Use does. */
     const importRow = async (row: ListRow & { kind: 'asset' }) => {
         if (working.value !== undefined || isDisposed()) return
         const { signal } = controller
         working.value = row.id
         setError(row.id, undefined)
+        status.value = i18n.value.commands.previewAssets.progress.storing
         try {
             const metas = await importAndUse(
                 inventory.pkg,
@@ -151,9 +158,12 @@ export const createPackageList = (
             known.value = known.value.map((identity, index) =>
                 index === row.index ? { kind: 'stored', choice: storedChoice(meta) } : identity,
             )
+            status.value = inUseText(row)
         } catch (failure) {
             if (isDisposed() || isAbort(failure)) return
-            setError(row.id, describe(failure, row.asset))
+            const message = describe(failure, row.asset)
+            setError(row.id, message)
+            status.value = message
             if (!(failure instanceof AssetImportError))
                 console.error('Could not store the preview asset:', failure)
         } finally {
@@ -167,6 +177,7 @@ export const createPackageList = (
         if (!identity || identity.kind === 'new' || working.value !== undefined) return
         const choice: AssetChoice = identity.choice
         settings.previewAssets = { ...settings.previewAssets, [row.asset.type]: choice }
+        status.value = inUseText(row)
         // Using a stored item marks it used; the mark is only a note.
         if (choice.source === 'file' || choice.source === 'server')
             void deps.store.touch(choice.key).catch(() => undefined)
@@ -204,6 +215,12 @@ export const createPackageList = (
         working,
         errors,
         pictures,
+        status,
+        pressed,
+        /** Remembers the level row whose Open was pressed. */
+        press: (id: string) => {
+            pressed.value = id
+        },
         /** The line above the first asset row in Safe Mode, if any. */
         safeModeLine: computed(() =>
             isAssetSafeModeActive && hasDefault && inventory.assets.length

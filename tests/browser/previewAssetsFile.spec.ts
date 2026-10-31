@@ -421,7 +421,7 @@ test.describe('From a File', () => {
         expect((await choices(page)).skin).toEqual({ source: 'builtin' })
     })
 
-    test('a package opened with Open lists its assets, and Import there is the chooser’s Use', async ({
+    test("a package opened with Open lists its assets, and Import there is the chooser's Use", async ({
         page,
     }) => {
         await start(page)

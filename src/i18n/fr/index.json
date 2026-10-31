@@ -2421,7 +2421,7 @@
       "open": "Ouvrir",
       "import": "Importer",
       "stored": "Stocké",
-      "dataMissing": "Données de niveau absentes de ce fichier",
+      "dataMissing": "Sans données de niveau",
       "levelUnreadable": "Impossible de lire les données de ce niveau.",
       "withoutMedia": "Ce niveau a été ouvert sans {0}.",
       "empty": "Ce paquet Sonolus ne contient ni niveau ni ressource."

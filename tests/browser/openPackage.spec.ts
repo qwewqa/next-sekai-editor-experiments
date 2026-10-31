@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
+import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import { minimalLevel } from '../editor/levelDataSynthetic'
 import { gif, levelData, levelPackage, png, wav, webp } from './levelPackages'
 import { builtinBytes, entriesOf, pack, patched, utf8 } from './previewAssetsPackages'
 import {
+    edit,
     notice,
     pressSave,
     queuePicks,
@@ -261,7 +263,7 @@ test('the list: Open on each level with data, Import and Use on assets, and the 
         'Artist A · Charter A',
     )
     await expect(row(page, 'Level C').locator('[data-package-row-detail]')).toHaveText(
-        'Level data not in this file · Charter C',
+        'No level data · Charter C',
     )
     await expect(row(page, 'Level C').locator('button')).toHaveCount(0)
     // The skin is the Built-in one: Default is in use, so it offers Use under Built-in's name.
@@ -274,17 +276,25 @@ test('the list: Open on each level with data, Import and Use on assets, and the 
     // Import stores the particle and makes it the one in use.
     const particle = list(page).locator('[data-package-row]').nth(4)
     await expect(particle.locator('[data-package-row-detail]')).toHaveText(/^Particle/)
-    await particle.locator('[data-package-import]').click()
+    await particle.locator('[data-package-import]').focus()
+    await page.keyboard.press('Enter')
     await expect(particle.locator('[data-package-in-use]')).toBeVisible({ timeout: 15_000 })
-    // A failing Import says why under its row.
+    // The result is announced, and the focus moves on to the next button.
+    const status = dialog(page).locator('[data-package-status]')
+    await expect(status).toHaveText('Editor · In use')
     const background = list(page).locator('[data-package-row]').nth(5)
-    await background.locator('[data-package-import]').click()
-    await expect(list(page).locator('[data-package-error]')).toHaveText(
-        'This file’s background image is not a PNG or JPEG image.',
-    )
-    // Use applies the stored choice.
+    await expect(background.locator('[data-package-import]')).toBeFocused()
+    // A failing Import says why under its row, and the focus stays on its button.
+    await page.keyboard.press('Enter')
+    const error = 'This file’s background image is not a PNG or JPEG image.'
+    await expect(list(page).locator('[data-package-error]')).toHaveText(error)
+    await expect(status).toHaveText(error)
+    await expect(background.locator('[data-package-import]')).toBeFocused()
+    // Use applies the stored choice; the focus moves on past the row.
     await row(page, 'Neon Skin').locator('[data-package-use]').click()
     await expect(row(page, 'Neon Skin').locator('[data-package-in-use]')).toBeVisible()
+    await expect(status).toHaveText('Neon Skin · In use')
+    await expect(background.locator('[data-package-import]')).toBeFocused()
 
     // A failed Open shows its message, then the same list again.
     await row(page, 'Level B').locator('[data-package-open]').click()
@@ -293,6 +303,8 @@ test('the list: Open on each level with data, Import and Use on assets, and the 
     await expect(list(page)).toBeVisible()
     await expect(particle.locator('[data-package-in-use]')).toBeVisible()
     await expect(list(page).locator('[data-package-error]')).toHaveCount(1)
+    // At the row that was pressed.
+    await expect(row(page, 'Level B').locator('[data-package-open]')).toBeFocused()
 
     // Open closes the list and opens the level.
     await row(page, 'Level A').locator('[data-package-open]').click()
@@ -311,7 +323,7 @@ test('the list: Open on each level with data, Import and Use on assets, and the 
     await expect(row(page, 'Neon Skin').locator('[data-package-in-use]')).toBeVisible()
 })
 
-test('an asset-only package is refused as a Save destination after Import, and level data keeps its own refusal', async ({
+test('an asset-only package is refused as a Save destination after an Import, and level data keeps its own refusal', async ({
     page,
 }) => {
     await start(page)
@@ -327,9 +339,11 @@ test('an asset-only package is refused as a Save destination after Import, and l
     await page.keyboard.press('o')
     await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
 
-    const bytes = await levelPackage('full', [], { skin: [{ name: 'neon', title: 'Neon Skin' }] })
+    const bytes = await newEffect()
     await openPackageFile(page, 'skins.scp', bytes)
     await expect(list(page)).toBeVisible()
+    await list(page).locator('[data-package-import]').click()
+    await expect(list(page).locator('[data-package-in-use]')).toBeVisible({ timeout: 15_000 })
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
 
@@ -353,4 +367,155 @@ test('a package with nothing the editor can use says so', async ({ page }) => {
         pack(new Map([['sonolus/engines/list', utf8('{"items":[{"name":"e"}]}')]])),
     )
     await expect(dialog(page)).toContainText('This Sonolus package contains no levels or assets.')
+})
+
+/** A package whose effect is the Built-in one in other bytes, so it offers Import. */
+const newEffect = async () => {
+    const entries = await entriesOf(builtinBytes('effect'))
+    const list = JSON.parse(new TextDecoder().decode(entries.get('sonolus/effects/list'))) as {
+        items: { data: { url: string } }[]
+    }
+    const data = entries.get(list.items[0]!.data.url.slice(1))!
+    return patched('effect', {
+        resources: { data: new Uint8Array(gzipSync(gunzipSync(data), { level: 1 })) },
+    })
+}
+
+/** Slows every audio decode, so a test can act while one runs. */
+const slowDecoding = (page: Page, ms: number) =>
+    page.evaluate((ms) => {
+        const original = BaseAudioContext.prototype.decodeAudioData
+        BaseAudioContext.prototype.decodeAudioData = async function (
+            this: BaseAudioContext,
+            data: ArrayBuffer,
+        ) {
+            await new Promise((resolve) => setTimeout(resolve, ms))
+            return original.call(this, data)
+        } as typeof original
+    }, ms)
+
+/** Opens a package without the Open command's confirmation, as another entry point would. */
+const openUnconfirmed = (page: Page, name: string, bytes: Uint8Array) =>
+    page.evaluate(
+        async ({ name, bytes }) => {
+            const { openPicked } = await import('/src/editor/commands/open/index.ts')
+            void openPicked({ file: new File([new Uint8Array(bytes)], name), confirmed: false })
+        },
+        { name, bytes: Array.from(bytes) },
+    )
+
+/** How many BPM changes the chart has: an edit adds one. */
+const bpmCount = (page: Page) =>
+    page.evaluate(async () => {
+        const { state } =
+            (await import('/src/history/index.ts')) as typeof import('../../src/history')
+        return state.value.bpms.length
+    })
+
+test('work that is not stored is asked about before a package level replaces it; Cancel keeps it', async ({
+    page,
+}) => {
+    // Nothing is stored, so an edit is work that a switch would lose.
+    await page.addInitScript(() => localStorage.setItem('nse.test.noStorage', 'true'))
+    await start(page)
+    await edit(page, 3)
+    const before = await sessionOf(page)
+    const bpms = await bpmCount(page)
+
+    // A direct open asks just before the switch.
+    await openUnconfirmed(page, 'one.scp', await levelPackage('full', [{ name: 'one' }]))
+    const leave = page.getByRole('button', { name: 'Leave Anyway' })
+    await expect(leave).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
+    expect(await bpmCount(page)).toBe(bpms)
+    await expect(notice(page).filter({ hasText: 'Opened level' })).toHaveCount(0)
+
+    // The list asks nothing; its Open asks, with a request of its own, and Cancel shows it again.
+    await openUnconfirmed(
+        page,
+        'two.scp',
+        await levelPackage('full', [
+            { name: 'a', title: 'Level A' },
+            { name: 'b', title: 'Level B' },
+        ]),
+    )
+    await expect(list(page)).toBeVisible()
+    await row(page, 'Level B').locator('[data-package-open]').click()
+    await expect(leave).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(list(page)).toBeVisible()
+    await expect(row(page, 'Level B').locator('[data-package-open]')).toBeFocused()
+    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
+    expect(await bpmCount(page)).toBe(bpms)
+})
+
+test('Cancel while a level opens releases what it held and shows the list again at its row', async ({
+    page,
+}) => {
+    await start(page)
+    const cover = png(8, 8)
+    const bytes = await levelPackage('full', [
+        { name: 'a', title: 'Level A' },
+        { name: 'b', title: 'Level B', cover, bgm: wav() },
+    ])
+    await openPackageFile(page, 'slow.scp', bytes)
+    await expect(list(page)).toBeVisible()
+    const before = await sessionOf(page)
+    await slowDecoding(page, 1500)
+    await row(page, 'Level B').locator('[data-package-open]').click()
+    // The cover is held by now; the BGM is still decoding.
+    await expect(dialog(page)).toContainText('Decoding audio…')
+    await page.keyboard.press('Escape')
+    await expect(list(page)).toBeVisible()
+    await expect(row(page, 'Level B').locator('[data-package-open]')).toBeFocused()
+    // Past the slowed decode: nothing opened, and the cover is not held.
+    await page.waitForTimeout(2000)
+    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
+    await expect(list(page)).toBeVisible()
+    const hash = createHash('sha256').update(cover).digest('hex').slice(0, 32)
+    expect(
+        await page.evaluate(async (hash) => {
+            const { heldItem } = await import('/src/local/heldMedia.ts')
+            return heldItem(hash) !== undefined
+        }, hash),
+    ).toBe(false)
+})
+
+test('closing the list stops a running Import: nothing is stored or applied', async ({ page }) => {
+    await start(page)
+    await openPackageFile(page, 'sounds.scp', await newEffect())
+    await expect(list(page)).toBeVisible()
+    // Decoding waits until the list is closed, then the rest of the Import would run at once.
+    await page.evaluate(() => {
+        const original = BaseAudioContext.prototype.decodeAudioData
+        const gate = new Promise((resolve) => {
+            ;(window as unknown as { releaseDecoding: () => void }).releaseDecoding = () =>
+                resolve(undefined)
+        })
+        BaseAudioContext.prototype.decodeAudioData = async function (
+            this: BaseAudioContext,
+            data: ArrayBuffer,
+        ) {
+            await gate
+            return original.call(this, data)
+        } as typeof original
+    })
+    await list(page).locator('[data-package-import]').click()
+    await expect(dialog(page).locator('[data-package-status]')).toHaveText('Storing…')
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+    await page.evaluate(() =>
+        (window as unknown as { releaseDecoding: () => void }).releaseDecoding(),
+    )
+    await page.waitForTimeout(3000)
+    const state = await page.evaluate(async () => {
+        const { workerStore } = await import('/src/preview/assets/files/store.ts')
+        return {
+            stored: (await workerStore.list()).length,
+            effect: (await import('/src/settings.ts')).settings.previewAssets.effect,
+        }
+    })
+    expect(state).toEqual({ stored: 0, effect: { source: 'default' } })
 })

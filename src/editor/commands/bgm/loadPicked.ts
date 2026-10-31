@@ -23,7 +23,7 @@ const formatOf = (file: File) => {
 }
 
 export type LoadOptions = {
-    /** A Choose Audio… pick, recorded in the usage statistics; true unless given. */
+    /** A Choose Audio pick, recorded in the usage statistics; true unless given. */
     record?: boolean
     /** Draws the waveform; true unless given. */
     waveform?: boolean

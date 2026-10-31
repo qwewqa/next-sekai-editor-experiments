@@ -2421,7 +2421,7 @@
       "open": "열기",
       "import": "가져오기",
       "stored": "보관됨",
-      "dataMissing": "이 파일에 레벨 데이터 없음",
+      "dataMissing": "레벨 데이터 없음",
       "levelUnreadable": "이 레벨의 데이터를 읽을 수 없습니다.",
       "withoutMedia": "이 레벨을 {0} 없이 열었습니다.",
       "empty": "이 Sonolus 패키지에는 레벨이나 에셋이 없습니다."

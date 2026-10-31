@@ -2421,9 +2421,9 @@
       "open": "打开",
       "import": "导入",
       "stored": "已存储",
-      "dataMissing": "此文件中没有关卡数据",
+      "dataMissing": "无关卡数据",
       "levelUnreadable": "无法读取此关卡的数据。",
-      "withoutMedia": "已打开此关卡，但未包含{0}。",
+      "withoutMedia": "已打开此关卡，不含{0}。",
       "empty": "此 Sonolus 包中没有关卡或资源。"
     }
   },

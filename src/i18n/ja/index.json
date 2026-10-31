@@ -2421,7 +2421,7 @@
       "open": "開く",
       "import": "インポート",
       "stored": "保管済み",
-      "dataMissing": "このファイルにレベルデータはありません",
+      "dataMissing": "レベルデータなし",
       "levelUnreadable": "この譜面のデータを読み込めませんでした。",
       "withoutMedia": "{0}なしで譜面を開きました。",
       "empty": "このSonolusパッケージには譜面もアセットもありません。"

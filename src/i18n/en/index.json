@@ -2421,7 +2421,7 @@
             "open": "Open",
             "import": "Import",
             "stored": "Stored",
-            "dataMissing": "Level data not in this file",
+            "dataMissing": "No level data",
             "levelUnreadable": "This level’s data could not be read.",
             "withoutMedia": "This level was opened without its {0}.",
             "empty": "This Sonolus package contains no levels or assets."

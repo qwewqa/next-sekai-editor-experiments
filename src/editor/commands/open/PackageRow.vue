@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { shallowRef, useId, watch } from 'vue'
+import { computed, shallowRef, useId, watch } from 'vue'
 import { i18n } from '../../../i18n'
 import SeverityIcon from '../../SeverityIcon.vue'
 import WaitSpinner from '../../workspace/WaitSpinner.vue'
@@ -11,9 +11,9 @@ import type { ListRow } from './packageList'
 const props = defineProps<{
     row: ListRow
     image?: string | undefined
-    /** Something else works: the row's button waits. */
+    /** Another row's Import is running, so this row's button is disabled. */
     disabled: boolean
-    /** This row's Import runs. */
+    /** This row's Import is running: its button keeps the focus, marked busy. */
     working: boolean
     error?: string | undefined
     autofocus: boolean
@@ -36,6 +36,11 @@ watch(
 )
 
 const buttonClass = 'btn btn-secondary relative h-9 min-w-24 max-w-full truncate rounded-full px-4'
+
+// A row with nothing to press has no button column, so its reason can wrap instead of being cut.
+const hasAction = computed(() =>
+    props.row.kind === 'level' ? props.row.level.data !== undefined : props.row.state !== 'none',
+)
 </script>
 
 <template>
@@ -61,12 +66,13 @@ const buttonClass = 'btn btn-secondary relative h-9 min-w-24 max-w-full truncate
             <span :id="titleId" class="block truncate" data-package-row-title>{{ row.title }}</span>
             <span
                 v-if="row.detail"
-                class="block truncate text-sm text-fg/80"
+                class="block text-sm text-fg/80"
+                :class="hasAction ? 'truncate' : '[overflow-wrap:anywhere]'"
                 data-package-row-detail
                 >{{ row.detail }}</span
             >
         </span>
-        <span class="flex min-w-24 shrink-0 justify-end">
+        <span v-if="hasAction" class="flex min-w-24 shrink-0 justify-end">
             <template v-if="row.kind === 'level'">
                 <button
                     v-if="row.level.data !== undefined"
@@ -88,18 +94,16 @@ const buttonClass = 'btn btn-secondary relative h-9 min-w-24 max-w-full truncate
                 v-else-if="row.state === 'import'"
                 type="button"
                 :class="buttonClass"
-                :disabled="disabled || working"
+                :disabled="disabled"
+                :aria-disabled="working || undefined"
                 :aria-describedby="error ? `${titleId} ${errorId}` : titleId"
                 :data-autofocus="autofocus || undefined"
                 data-package-import
-                @click="$emit('import')"
+                @click="working || $emit('import')"
             >
                 <span :class="{ invisible: working }">{{ i18n.open.package.import }}</span>
                 <span v-if="working" class="absolute inset-0 flex items-center justify-center">
                     <WaitSpinner class="size-5" />
-                    <span class="sr-only" role="status">{{
-                        i18n.commands.previewAssets.progress.storing
-                    }}</span>
                 </span>
             </button>
             <button
@@ -116,13 +120,7 @@ const buttonClass = 'btn btn-secondary relative h-9 min-w-24 max-w-full truncate
             </button>
         </span>
     </div>
-    <p
-        v-if="error"
-        :id="errorId"
-        class="relative pb-2 pl-[5.5rem] pr-3 text-sm"
-        aria-live="polite"
-        data-package-error
-    >
+    <p v-if="error" :id="errorId" class="relative pb-2 pl-[5.5rem] pr-3 text-sm" data-package-error>
         <SeverityIcon severity="error" class="absolute left-[4rem] top-[0.125rem] size-4" />{{
             error
         }}

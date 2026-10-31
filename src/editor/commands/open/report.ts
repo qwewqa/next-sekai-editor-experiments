@@ -20,7 +20,7 @@ export const openFormat = (format: Format) => {
     if (current) current.format = format
 }
 
-/** The file is not a chart (audio, an archive, a package): nothing to record. */
+/** The file is not a chart (audio, an archive, a package's list): nothing to record. */
 export const dropOpen = () => {
     if (current) busy(false)
     current = undefined
