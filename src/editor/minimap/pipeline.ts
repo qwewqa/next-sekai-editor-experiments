@@ -60,6 +60,8 @@ export const minimapStats = {
     bandPasses: 0,
     /** Content paints: one per swap and one per band redraw. */
     paints: 0,
+    /** Full-redraw slices: specs tell a running job from an idle pipeline by it. */
+    slices: 0,
     /** The change layer's paints. */
     annotationPaints: 0,
     /** The selection layer's paints. */
@@ -140,6 +142,8 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
     let passFrame: number | undefined
     let geometryTimer: ReturnType<typeof setTimeout> | undefined
     let disposed = false
+    /** The canvases whose context is lost: nothing is drawn or published until they are back. */
+    const lost = new Set<EventTarget>()
 
     const cancelJob = () => {
         if (job?.frame !== undefined) cancelAnimationFrame(job.frame)
@@ -147,7 +151,7 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
     }
 
     const schedulePass = () => {
-        if (disposed || passFrame !== undefined) return
+        if (disposed || lost.size || passFrame !== undefined) return
         passFrame = requestAnimationFrame(runPass)
     }
 
@@ -197,6 +201,7 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         flush(backContext)
         const end = now()
         running.slices++
+        minimapStats.slices++
         running.recordMs += recorded - start
         running.flushMs += end - recorded
         running.sliceMs += end - start
@@ -340,7 +345,7 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
 
     function runPass() {
         passFrame = undefined
-        if (disposed || !sources || !target) return
+        if (disposed || lost.size || !sources || !target) return
         minimapStats.passes++
         const start = now()
         const { shown, live, peeking } = sources
@@ -368,13 +373,25 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         setDrawn({ ...drawn, grids: next, bpms: shown.bpms })
     }
 
-    const restart = () => {
-        // A lost context has lost its pixels: nothing drawn is left to diff against.
+    // A lost context loses its pixels: the front image is unknown and a job's slices draw nothing,
+    // so nothing is drawn or published until every canvas is back, and then all is redrawn.
+    const onContextLost = (event: Event) => {
+        lost.add(event.target ?? front)
+        cancelJob()
+        if (passFrame !== undefined) cancelAnimationFrame(passFrame)
+        passFrame = undefined
+        setDrawn(undefined)
+    }
+    const onContextRestored = (event: Event) => {
+        lost.delete(event.target ?? front)
         cancelJob()
         setDrawn(undefined)
         schedulePass()
     }
-    front.addEventListener('contextrestored', restart)
+    for (const canvas of [front, back]) {
+        canvas.addEventListener('contextlost', onContextLost)
+        canvas.addEventListener('contextrestored', onContextRestored)
+    }
 
     return {
         setGeometry(width, height, devicePixelRatio) {
@@ -415,7 +432,10 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
             clearTimeout(geometryTimer)
             if (passFrame !== undefined) cancelAnimationFrame(passFrame)
             passFrame = undefined
-            front.removeEventListener('contextrestored', restart)
+            for (const canvas of [front, back]) {
+                canvas.removeEventListener('contextlost', onContextLost)
+                canvas.removeEventListener('contextrestored', onContextRestored)
+            }
             front.width = 0
             front.height = 0
             back.width = 0
