@@ -35,13 +35,18 @@ const focusId = computed(() => {
 
 /**
  * After an Import or a Use, the focus stays on the row's button while it has one (an Import that
- * failed); otherwise it moves to the next button, or the one before, or the list.
+ * failed); otherwise it moves to the next button, or the one before, or the list. Focus that the
+ * user moved elsewhere meanwhile stays where it is.
  */
 const settleFocus = async (id: string) => {
     await nextTick()
     const list = scroller.value
     if (!list) return
     const row = list.querySelector(`[data-package-row="${CSS.escape(id)}"]`)
+    const focused = document.activeElement
+    // A removed button leaves the focus on the body, or on the dialog.
+    const lost = !focused || focused === document.body || focused === list.closest('dialog')
+    if (!lost && !row?.contains(focused)) return
     const own = row?.querySelector<HTMLElement>('button:not(:disabled)')
     if (own) {
         own.focus()
