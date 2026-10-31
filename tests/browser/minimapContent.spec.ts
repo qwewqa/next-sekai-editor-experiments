@@ -376,30 +376,53 @@ test('a redraw whose visibility changed after its last slice is never published'
         const second = h.visibilityOf({ groupVisibility: new Map([[2 as never, 'hidden']]) })
         const third = h.visibilityOf({ groupVisibility: new Map([[1 as never, 'hidden']]) })
         const { pipeline } = await h.create(48, 600, 2, first)
+        // From here the test runs the frames, and the clock stands still, so a slice never runs
+        // out of time: each redraw is one slice, and its swap waits for the next frame.
+        const real = {
+            request: window.requestAnimationFrame,
+            cancel: window.cancelAnimationFrame,
+            now: performance.now.bind(performance),
+        }
+        let queue: { id: number; callback: FrameRequestCallback }[] = []
+        let next = 0
+        window.requestAnimationFrame = (callback) => {
+            queue.push({ id: ++next, callback })
+            return next
+        }
+        window.cancelAnimationFrame = (id) => {
+            queue = queue.filter((entry) => entry.id !== id)
+        }
+        performance.now = () => 0
         const published: unknown[] = []
-        // A redraw for the second visibility: one slice, so its swap waits for the next frame.
-        const jobs = minimapStats.fullJobs
-        const paints = minimapStats.paints
-        pipeline.setSources(h.sources(second))
-        for (let i = 0; i < 600 && minimapStats.fullJobs === jobs; i++) await h.frame()
-        const pending = minimapStats.paints === paints
-        // The third arrives before that swap.
-        pipeline.setSources(h.sources(third))
-        for (let i = 0; i < 600 && !pipeline.isIdle(); i++) {
-            const before = minimapStats.paints
-            await h.frame()
-            if (minimapStats.paints !== before) published.push(pipeline.drawn.value?.visibility)
+        const frame = () => {
+            const run = queue
+            queue = []
+            const paints = minimapStats.paints
+            for (const { callback } of run) callback(0)
+            if (minimapStats.paints !== paints) published.push(pipeline.drawn.value?.visibility)
         }
-        await h.idle(pipeline)
-        const result = {
-            pending,
-            secondShown: published.includes(second),
-            last: pipeline.drawn.value?.visibility === third,
+        try {
+            // The second visibility's redraw: its only slice runs, and its swap is queued.
+            pipeline.setSources(h.sources(second))
+            frame()
+            const queued = queue.length === 1 && published.length === 0
+            // The third arrives before that swap.
+            pipeline.setSources(h.sources(third))
+            for (let i = 0; i < 10 && queue.length; i++) frame()
+            return {
+                queued,
+                published: published.map((visibility) =>
+                    visibility === second ? 'second' : visibility === third ? 'third' : 'other',
+                ),
+            }
+        } finally {
+            window.requestAnimationFrame = real.request
+            window.cancelAnimationFrame = real.cancel
+            performance.now = real.now
+            pipeline.dispose()
         }
-        pipeline.dispose()
-        return result
     })
-    expect(result).toEqual({ pending: true, secondShown: false, last: true })
+    expect(result).toEqual({ queued: true, published: ['third'] })
 })
 
 test("an incremental redraw of separate bands does not carry a fake note's opacity into the next band", async ({
