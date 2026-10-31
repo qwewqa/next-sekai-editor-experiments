@@ -20,9 +20,18 @@ export type ImportDeps = {
     onStorageChanged?: () => void
 }
 
-const throwIfAborted = (signal: AbortSignal) => {
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-}
+/** The choice of a stored item: a file's, or a server's by its address. */
+export const storedChoice = (meta: UserAssetMeta): AssetChoice => ({
+    source: isServerOrigin(meta.origin) ? 'server' : 'file',
+    key: meta.key,
+    name: meta.name,
+    title: meta.title,
+    author: meta.author,
+    origin: meta.origin,
+})
+
+/** A stored item's origin is a file name or a server's address; only an address has a scheme. */
+const isServerOrigin = (origin: string) => /^https?:\/\//i.test(origin)
 
 /**
  * Imports items of a package and applies them. Resolves to the stored metas, or undefined when
@@ -36,13 +45,11 @@ export const importAndUse = async (
         origin,
         signal,
         isCurrent,
-        toChoice,
     }: {
         /** The file name, recorded with each item. */
         origin: string
         signal: AbortSignal
         isCurrent: () => boolean
-        toChoice: (meta: UserAssetMeta) => AssetChoice
     },
     deps: ImportDeps,
 ): Promise<UserAssetMeta[] | undefined> => {
@@ -62,11 +69,11 @@ export const importAndUse = async (
             )
         // Checked all: only now is anything stored, all in one transaction, so a bad item
         // stores nothing.
-        throwIfAborted(signal)
+        signal.throwIfAborted()
         storageAttempted = true
         const { metas } = await storeRecords(deps.store, records)
         if (!isCurrent()) return
-        deps.apply(Object.fromEntries(metas.map((meta) => [meta.type, toChoice(meta)])))
+        deps.apply(Object.fromEntries(metas.map((meta) => [meta.type, storedChoice(meta)])))
         return metas
     } finally {
         if (storageAttempted) deps.onStorageChanged?.()

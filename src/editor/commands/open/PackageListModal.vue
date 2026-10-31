@@ -93,7 +93,6 @@ const firstAsset = computed(() => rows.value.find((row) => row.kind === 'asset')
                 <p
                     v-if="row.id === firstAsset && list.safeModeLine.value"
                     class="px-3 pb-1 pt-2 text-sm text-fg/80"
-                    data-package-safe-mode
                 >
                     {{ list.safeModeLine.value }}
                 </p>

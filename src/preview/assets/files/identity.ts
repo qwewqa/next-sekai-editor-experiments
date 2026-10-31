@@ -1,7 +1,7 @@
 import { builtinResources, type BuiltinSource } from '../builtinResources'
 import { builtinChoice, bundledIdOf } from '../choice'
 import type { AssetChoice, AssetType, BundledId } from '../types'
-import { storedChoice } from './chooser'
+import { storedChoice } from './importStore'
 import { fields, maxSizeOf, sha1Hex, srlHash, type ResourceField } from './item'
 import { displayText, isSrl, openSourcePackage, type FilePackage } from './package'
 import { repackedItem } from './repack'

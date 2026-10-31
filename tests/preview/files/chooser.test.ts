@@ -1,16 +1,13 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import {
-    createAssetChooser,
-    storedChoice,
-    type ChooserDeps,
-} from '../../../src/preview/assets/files/chooser'
+import { createAssetChooser, type ChooserDeps } from '../../../src/preview/assets/files/chooser'
 import type { AssetImportError } from '../../../src/preview/assets/files/errors'
 import {
     formatImportMessage,
     type ImportStrings,
 } from '../../../src/preview/assets/files/importMessage'
+import { storedChoice } from '../../../src/preview/assets/files/importStore'
 import { importItem } from '../../../src/preview/assets/files/importer'
 import { openSourcePackage } from '../../../src/preview/assets/files/package'
 import { createMemoryStore } from '../../../src/preview/assets/files/store'

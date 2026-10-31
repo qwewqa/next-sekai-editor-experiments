@@ -4,9 +4,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { builtinResources } from '../../../src/preview/assets/builtinResources'
 import { builtinChoice, choiceKey, choiceRow } from '../../../src/preview/assets/choice'
-import { storedChoice } from '../../../src/preview/assets/files/chooser'
 import { identifyAssets, type IdentityContext } from '../../../src/preview/assets/files/identity'
-import { importAndUse } from '../../../src/preview/assets/files/importStore'
+import { importAndUse, storedChoice } from '../../../src/preview/assets/files/importStore'
 import { fields } from '../../../src/preview/assets/files/item'
 import { categoryOf, openSourcePackage } from '../../../src/preview/assets/files/package'
 import { createMemoryStore, type UserAssetStore } from '../../../src/preview/assets/files/store'
@@ -55,7 +54,6 @@ const imported = async (store: UserAssetStore, bytes: Uint8Array, origin = 'a.sc
             origin,
             signal: new AbortController().signal,
             isCurrent: () => true,
-            toChoice: storedChoice,
         },
         {
             store,

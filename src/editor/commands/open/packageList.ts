@@ -6,11 +6,10 @@ import { savePoint } from '../../../platform/testPause'
 import { isAssetSafeModeActive } from '../../../preview/assets'
 import { choiceRow } from '../../../preview/assets/choice'
 import { defaultName, typeLabel } from '../../../preview/assets/fallbackText'
-import { storedChoice } from '../../../preview/assets/files/chooser'
 import { AssetImportError } from '../../../preview/assets/files/errors'
 import type { AssetIdentity } from '../../../preview/assets/files/identity'
 import { pageImportDeps } from '../../../preview/assets/files/importDeps'
-import { importAndUse } from '../../../preview/assets/files/importStore'
+import { importAndUse, storedChoice } from '../../../preview/assets/files/importStore'
 import { LIMITS } from '../../../preview/assets/files/limits'
 import type { ItemType, Srl } from '../../../preview/assets/files/package'
 import { StoreFailed } from '../../../preview/assets/files/storeRecords'
@@ -149,7 +148,6 @@ export const createPackageList = (
                     origin,
                     signal,
                     isCurrent: () => !life.disposed && !signal.aborted,
-                    toChoice: storedChoice,
                 },
                 deps,
             )

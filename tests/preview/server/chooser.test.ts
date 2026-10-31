@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { storedChoice } from '../../../src/preview/assets/files/chooser'
 import type { AssetImportError } from '../../../src/preview/assets/files/errors'
+import { storedChoice } from '../../../src/preview/assets/files/importStore'
 import { createMemoryStore } from '../../../src/preview/assets/files/store'
 import {
     createServerChooser,

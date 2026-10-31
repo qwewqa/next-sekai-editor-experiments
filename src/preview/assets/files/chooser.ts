@@ -1,12 +1,11 @@
 import { shallowRef } from 'vue'
 import { isAbort } from '../../../utils/error'
 import { assetTypes } from '../choice'
-import type { AssetChoice, AssetType } from '../types'
+import type { AssetType } from '../types'
 import { AssetImportError } from './errors'
 import { importAndUse, type ImportDeps } from './importStore'
 import { LIMITS } from './limits'
 import { openSourcePackage, type ListedItem, type SourcePackage } from './package'
-import type { UserAssetMeta } from './store'
 import { StoreFailed } from './storeRecords'
 import { loadThumbnails } from './thumbnails'
 
@@ -28,18 +27,6 @@ export type ChooserDeps = ImportDeps & {
 }
 
 export type ChooserPhase = 'idle' | 'reading' | 'listed' | 'working'
-
-export const storedChoice = (meta: UserAssetMeta): AssetChoice => ({
-    source: isServerOrigin(meta.origin) ? 'server' : 'file',
-    key: meta.key,
-    name: meta.name,
-    title: meta.title,
-    author: meta.author,
-    origin: meta.origin,
-})
-
-/** A stored item's origin is a file name or a server's address; only an address has a scheme. */
-export const isServerOrigin = (origin: string) => /^https?:\/\//i.test(origin)
 
 export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
     // Whatever went wrong reads as a problem with the package, with reading the file (moved or
@@ -190,7 +177,6 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
                     origin: fileName.value,
                     signal,
                     isCurrent: () => mine === generation,
-                    toChoice: storedChoice,
                 },
                 deps,
             )

@@ -3,7 +3,7 @@ import { computed, shallowRef, useId } from 'vue'
 import { i18n } from '../../../i18n'
 import { showChoice } from '../../../modals/choice'
 import { assetTypes, choiceKey } from '../../../preview/assets/choice'
-import { storedChoice } from '../../../preview/assets/files/chooser'
+import { storedChoice } from '../../../preview/assets/files/importStore'
 import {
     refreshStored,
     storedAssets,

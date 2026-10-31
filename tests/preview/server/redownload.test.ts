@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { storedChoice } from '../../../src/preview/assets/files/chooser'
+import { storedChoice } from '../../../src/preview/assets/files/importStore'
 import { createStoredProviders } from '../../../src/preview/assets/files/provider'
 import { createMemoryStore } from '../../../src/preview/assets/files/store'
 import { createAssetLoader } from '../../../src/preview/assets/loader'
