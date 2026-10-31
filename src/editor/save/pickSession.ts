@@ -21,7 +21,7 @@ import { bindingHandle, quickBinding, type Binding, type Env } from './binding'
 import type { RefusedReason } from './dialogs'
 import { heldHandle, savedState, withBind, type SaveMarker } from './env'
 import { pause, PREPARING_MS } from './imports'
-import { openedPackages } from './openedPackages'
+import { openedPackageOf } from './openedPackages'
 import {
     Cancelled,
     commitFirst,
@@ -209,14 +209,6 @@ const identify = async (
         // Its bytes are awaited: a quick Save never finds them still being read.
         else if (opened.partial) return { kind: 'refused', reason: 'notKept', bytes: kept(opened) }
     }
-    // A package opened in this tab, whichever session it left.
-    for (const opened of openedPackages())
-        if (await same(handle, opened.handle))
-            return {
-                kind: 'refused',
-                reason: 'notProject',
-                ...(opened.bytes ? { bytes: opened.bytes } : {}),
-            }
     if (!env) return { kind: 'unknown' }
     const own = quickBinding(env).file
     const held = own && heldHandle(env.chainId, own.name)
@@ -238,6 +230,29 @@ const identify = async (
         return owner.chainId === env.chainId ? { kind: 'own' } : { kind: 'other', owner }
     }
     return { kind: 'unknown' }
+}
+
+/**
+ * A file nothing else places that this tab opened as a Sonolus package: refused. Its bytes are
+ * looked up again when they are put back, so a package forgotten or opened again meanwhile gives
+ * what the register holds then.
+ */
+const packageOnly = async (
+    picked: Picked,
+    handle: FileSystemFileHandle,
+): Promise<Picked | undefined> => {
+    if (picked.kind !== 'unknown') return
+    const { opened, target } = exportMemory
+    if (opened && (await same(handle, opened.handle))) return
+    if (target && (await same(handle, target.handle))) return
+    if (!(await openedPackageOf(handle))) return
+    const bytes = {
+        then: (resolve: (blob: Blob | undefined) => void, reject: (error: unknown) => void) =>
+            openedPackageOf(handle)
+                .then((entry) => entry?.bytes)
+                .then(resolve, reject),
+    } as unknown as Promise<Blob | undefined>
+    return { kind: 'refused', reason: 'notProject', bytes }
 }
 
 /** The level-data builder, loaded before a hold so that nothing loads inside one. */
@@ -513,9 +528,10 @@ export const withPickSession = <T>(
                     )
                     // A project picker never writes an Export target.
                     identity =
-                        spec.purpose === 'export' || !env
+                        (await packageOnly(identified, target.handle)) ??
+                        (spec.purpose === 'export' || !env
                             ? identified
-                            : refusedTarget(env, identified)
+                            : refusedTarget(env, identified))
                 } catch (error) {
                     failure ??= { error }
                 }

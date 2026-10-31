@@ -13,6 +13,7 @@ import {
 } from '../../../platform'
 import { ZipReader } from '../../../zip'
 import type { PickedLevelData } from '../../save/exportPick'
+import { forgetWrittenPackage } from '../../save/openedPackages'
 import type { ReadResult } from '../../save/pickSession'
 import { isLevelDataContent, mayBeLevelData } from './content'
 import { fileError } from './errorText'
@@ -289,6 +290,8 @@ export const exportToTarget = async (
                         throw new FileError('conflict', `${target.name} holds a project`)
                     const result = await run()
                     await rememberWritten(ctx, result as SaveResult)
+                    // A package this tab opened is gone from that file now.
+                    await forgetWrittenPackage(result as SaveResult)
                     return result
                 }),
             build: body.build,
