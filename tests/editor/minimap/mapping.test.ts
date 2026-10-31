@@ -7,6 +7,9 @@ import {
     laneFraction,
     PAD_LEFT,
     PAD_RIGHT,
+    RAIL_INSET,
+    RAIL_WIDTH,
+    railEdges,
 } from '../../../src/editor/minimap/mapping'
 
 const geometry = { width: 40, height: 400, scale: 2 }
@@ -82,4 +85,30 @@ test('the backing store and the scale are capped', () => {
     assert.equal(capScale(1.5, 500), 1.5)
     // A tall canvas gives up scale to stay within 4096 device rows.
     assert.ok(backingSize({ width: 40, height: 3000, scale: capScale(2, 3000) }).height <= 4096)
+})
+
+test('the selection rail sits on whole device px with the outer one clear, at any scale', () => {
+    const cases = [
+        { width: 60, height: 776, scale: 2 },
+        { width: 60, height: 776, scale: 1 },
+        // Windows at 125% and 150%, an odd width, and a tall strip's capped scale.
+        { width: 60, height: 776, scale: 1.25 },
+        { width: 61, height: 776, scale: 1.5 },
+        { width: 24, height: 776, scale: 1.5 },
+        { width: 160, height: 2500, scale: capScale(2, 2500) },
+    ]
+    for (const geometry of cases) {
+        const backing = backingSize(geometry).width
+        const ratio = backing / geometry.width
+        const [left, right] = railEdges(geometry)
+        const at = JSON.stringify(geometry)
+        for (const edge of [left, right])
+            assert.ok(Math.abs(edge * ratio - Math.round(edge * ratio)) < 1e-9, `whole px: ${at}`)
+        assert.ok(right * ratio <= backing - 1 + 1e-9, `outer px clear: ${at}`)
+        // Within a device px of the unsnapped rail, 1 px in from the edge.
+        assert.ok(Math.abs(right - (geometry.width - RAIL_INSET)) <= 1 / ratio, at)
+        assert.ok(Math.abs(right - left - RAIL_WIDTH) <= 1 / ratio, at)
+    }
+    // At 2x nothing moves.
+    assert.deepEqual(railEdges({ width: 60, height: 776, scale: 2 }), [56, 59])
 })

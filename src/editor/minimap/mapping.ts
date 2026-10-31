@@ -1,5 +1,5 @@
 // The minimap's one coordinate mapping: pure, in CSS px from the canvas's top left.
-// The painter, the overlay, input and the annotations all read it.
+// The painter, the overlay, input and the mark layers all read it.
 
 /** CSS px; device px are CSS px times `scale`. */
 export type MinimapGeometry = { width: number; height: number; scale: number }
@@ -17,7 +17,7 @@ export type MinimapMapping = {
 
 /** The tick column (C) at the left edge, which no note reaches. */
 export const PAD_LEFT = 4
-/** The selection rail's column at the right edge. */
+/** The column at the right edge that the selection rail covers, with a px of the lane margin. */
 export const PAD_RIGHT = 3
 export const PAD_Y = 4
 /**
@@ -38,6 +38,22 @@ export const backingSize = ({ width, height, scale }: MinimapGeometry) => ({
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),
 })
+
+/** The selection rail's width and its gap to the strip's right edge, in CSS px. */
+export const RAIL_WIDTH = 3
+export const RAIL_INSET = 1
+
+/**
+ * The rail's left and right edges in CSS px, on whole pixels of the backing store so it stays
+ * crisp at any scale, with at least the outer device px clear.
+ */
+export const railEdges = (geometry: MinimapGeometry): [number, number] => {
+    const backing = backingSize(geometry).width
+    const ratio = backing / geometry.width
+    const right = Math.min(Math.round((geometry.width - RAIL_INSET) * ratio), backing - 1)
+    const left = Math.min(Math.round((geometry.width - RAIL_INSET - RAIL_WIDTH) * ratio), right - 1)
+    return [left / ratio, right / ratio]
+}
 
 /** The scale for a device pixel ratio: at most 2, and low enough for `MAX_BACKING_HEIGHT`. */
 export const capScale = (devicePixelRatio: number, height: number) => {

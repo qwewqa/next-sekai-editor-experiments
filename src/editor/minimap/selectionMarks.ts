@@ -8,7 +8,7 @@ import { SELECTION_COLOR } from '../../utils/colors'
 import type { ComposedLayout } from '../composed'
 import { getComposedLayout } from '../composedView'
 import type { MinimapLayer } from './layers'
-import { MAX_BACKING_HEIGHT, type MinimapMapping } from './mapping'
+import { MAX_BACKING_HEIGHT, railEdges, type MinimapMapping } from './mapping'
 import { FAKE_FACTOR, noteRect } from './paint'
 import { sameGeometry, type Baseline } from './pipeline'
 import { createRowSpread } from './tickRuns'
@@ -18,9 +18,6 @@ import { createRowSpread } from './tickRuns'
 // marks the selected objects the strip does not draw.
 
 const LIFT_COLOR = '#ffffff'
-/** The rail's width and its gap to the strip's right edge, in CSS px. */
-export const RAIL_WIDTH = 3
-export const RAIL_INSET = 1
 
 /** What the rail marks. Connectors and event connections are left out, as the chart's rows are. */
 const MARKED = new Set<EntityType>([
@@ -55,7 +52,7 @@ export const paintSelection = timed(
     'minimapSelection',
     (ctx: CanvasRenderingContext2D, mapping: MinimapMapping, inputs: SelectionInputs) => {
         const { entities, bpms, layout } = inputs
-        const { width, scale } = mapping.geometry
+        const { scale } = mapping.geometry
         spread ??= createRowSpread(MAX_BACKING_HEIGHT + 1)
         spread.reset(scale)
         const solid = new Path2D()
@@ -78,9 +75,9 @@ export const paintSelection = timed(
         ctx.fill(faint)
         ctx.restore()
         ctx.fillStyle = SELECTION_COLOR
-        const x = width - RAIL_INSET - RAIL_WIDTH
+        const [left, right] = railEdges(mapping.geometry)
         spread.runs((top, height) => {
-            ctx.fillRect(x, top, RAIL_WIDTH, height)
+            ctx.fillRect(left, top, right - left, height)
         })
     },
 )
