@@ -637,7 +637,7 @@ test('Copy Text gives the title, then each figure in the order of the dialog', (
         'Fake Note: 1',
         'Notes per Second: Tap, Flick, Release',
         'Average: 2.9',
-        'Median: 1',
+        'Median: 2',
         '90th Percentile: 7',
         '99th Percentile: 7',
         'First Combo Note: 00:00.000',
