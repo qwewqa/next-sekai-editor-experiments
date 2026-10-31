@@ -290,7 +290,7 @@ test.describe('placement, command and setting', () => {
         await toolbar(page).getByTitle('Jump to Start', { exact: true }).hover()
         await toolbar(page).getByTitle('Minimap', { exact: true }).click()
         await expect(el).toHaveCount(0)
-        // It keeps the group's face, and the tool has no dragging state.
+        // It keeps the group's face, and the tool has no pressed state.
         await expect(toolbar(page).getByTitle('Jump to Start', { exact: true })).toHaveCount(1)
 
         // A bound key.
@@ -1541,25 +1541,34 @@ test.describe('peek', () => {
         await act(page, 'leavePeek')
     })
 
-    /** Whether the selection layer shows: not hidden, with cyan in its rail's middle column. */
-    const selectionShown = (page: Page) =>
-        page.evaluate(() => {
-            const canvas = document.querySelector<HTMLCanvasElement>(
-                '[data-minimap-layer="selection"]',
-            )
-            if (!canvas || canvas.style.visibility === 'hidden') return false
-            const x = Math.floor(canvas.width - (2.5 * canvas.width) / canvas.clientWidth)
-            const { data } = canvas.getContext('2d')!.getImageData(x, 0, 1, canvas.height)
-            for (let i = 0; i < data.length; i += 4)
-                if (
-                    data[i + 3]! > 200 &&
-                    data[i]! < 160 &&
-                    data[i + 1]! > 180 &&
-                    data[i + 2]! > 180
+    /**
+     * Whether the selection layer shows a rail at a time's row: not hidden, with cyan in the rail's
+     * middle column within 2 CSS px of the row.
+     */
+    const railAt = async (page: Page, time: number) =>
+        page.evaluate(
+            ([row]) => {
+                const canvas = document.querySelector<HTMLCanvasElement>(
+                    '[data-minimap-layer="selection"]',
                 )
-                    return true
-            return false
-        })
+                if (!canvas || canvas.style.visibility === 'hidden') return false
+                const scale = canvas.width / canvas.clientWidth
+                const x = Math.floor(canvas.width - 2.5 * scale)
+                const top = Math.max(0, Math.floor((row - 2) * scale))
+                const rows = Math.ceil(4 * scale)
+                const { data } = canvas.getContext('2d')!.getImageData(x, top, 1, rows)
+                for (let i = 0; i < data.length; i += 4)
+                    if (
+                        data[i + 3]! > 200 &&
+                        data[i]! < 160 &&
+                        data[i + 1]! > 180 &&
+                        data[i + 2]! > 180
+                    )
+                        return true
+                return false
+            },
+            [await rowOf(page, time)] as const,
+        )
 
     test("History's ticks come back when their own canvas's context is restored", async ({
         page,
@@ -1618,7 +1627,8 @@ test.describe('peek', () => {
         await page.mouse.click(point.x, point.y)
         await expect(selection).toHaveCount(1)
         expect(await selectedCount(page)).toBe(1)
-        await expect.poll(() => selectionShown(page)).toBe(true)
+        // Beat 7 is 3.5 s at the fixture's 120 BPM, and beat 3 is 1.5 s.
+        await expect.poll(() => railAt(page, 3.5)).toBe(true)
         const after = await statsOf(page)
         expect(after.selectionPaints).toBeGreaterThan(before.selectionPaints)
         expect(after.annotationPaints).toBe(before.annotationPaints)
@@ -1626,7 +1636,12 @@ test.describe('peek', () => {
         await act(page, 'leavePeek')
         await expect.poll(() => isPeeking(page)).toBe(false)
         await expect(selection).toHaveCount(1)
-        await expect.poll(() => selectionShown(page)).toBe(true)
+        // Now's marks paint again: the rail is at beat 3's row, and the peek's at beat 7 is gone.
+        await expect
+            .poll(async () => (await statsOf(page)).selectionPaints)
+            .toBeGreaterThan(after.selectionPaints)
+        await expect.poll(() => railAt(page, 1.5)).toBe(true)
+        expect(await railAt(page, 3.5)).toBe(false)
         expect(
             await page.evaluate(() =>
                 window.editorTest.history.state.value.selectedEntities.map((entity) => entity.beat),

@@ -99,6 +99,15 @@ declare global {
             select: (entities: readonly import('../../src/state/entities').Entity[]) => void
             notes: () => import('../../src/state/entities/slides/note').NoteEntity[]
         }
+        /** The context-loss test's canvases and steps. */
+        mmLoss: {
+            created: HTMLCanvasElement[]
+            canvas: (name: 'front' | 'back') => HTMLCanvasElement
+            lose: (name: 'front' | 'back') => void
+            restore: (name: 'front' | 'back') => void
+            edit: () => void
+            stopped: (count: number) => Promise<{ hidden: boolean; idle: boolean }>
+        }
     }
 }
 
@@ -692,54 +701,170 @@ test.describe('lifetime', () => {
         expect(result).toEqual({ mounted: true, paints: 0, size: [0, 0] })
     })
 
-    test('while the content canvas is lost the marks stay hidden and nothing is drawn or published; after its restore they show again', async ({
+    test('while a content canvas is lost, edits draw and publish nothing and the marks stay hidden, until every lost canvas is back', async ({
+        page,
+    }) => {
+        await open(page)
+        // The strip again, with its back buffer recorded: the pipeline makes it off the page.
+        await page.evaluate(async () => {
+            const { settings, nextTick } = window.editorTest
+            const created: HTMLCanvasElement[] = []
+            const make = document.createElement.bind(document)
+            document.createElement = ((tag: string, options?: ElementCreationOptions) => {
+                const element = make(tag, options)
+                if (element instanceof HTMLCanvasElement) created.push(element)
+                return element
+            }) as typeof document.createElement
+            settings.showMinimap = false
+            await nextTick()
+            settings.showMinimap = true
+            await nextTick()
+            document.createElement = make
+            window.mmLoss = { created } as unknown as Window['mmLoss']
+        })
+        await install(page)
+        await settled(page)
+        await selectAll(page)
+        await settled(page)
+        const found = await page.evaluate(async () => {
+            const { appImport, historySteps } = window.editorTest
+            const { frame, minimapStats, history, notes } = window.mmSelection
+            const [{ createTransaction }, slideNotes, bpm] = await Promise.all([
+                appImport<typeof import('../../src/state/transaction')>(
+                    '/src/state/transaction.ts',
+                ),
+                appImport<typeof import('../../src/state/mutations/slides/note')>(
+                    '/src/state/mutations/slides/note.ts',
+                ),
+                appImport<typeof import('../../src/state/mutations/bpm')>(
+                    '/src/state/mutations/bpm.ts',
+                ),
+            ])
+            const front = document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')!
+            const back = window.mmLoss.created.find(
+                (canvas) =>
+                    !canvas.isConnected &&
+                    canvas.width === front.width &&
+                    canvas.height === front.height,
+            )
+            let beat = 6
+            window.mmLoss = {
+                created: window.mmLoss.created,
+                canvas: (name) => (name === 'front' ? front : back!),
+                lose(name) {
+                    const canvas = this.canvas(name)
+                    canvas.dispatchEvent(new Event('contextlost'))
+                    // Its pixels are gone.
+                    const { width } = canvas
+                    canvas.width = 0
+                    canvas.width = width
+                },
+                restore(name) {
+                    this.canvas(name).dispatchEvent(new Event('contextrestored'))
+                },
+                edit() {
+                    const transaction = createTransaction(history.state.value)
+                    const note = notes()[0]!
+                    const moved = slideNotes.replaceNote(transaction, note, {
+                        ...note,
+                        beat: note.beat + 0.25,
+                    })
+                    history.pushState(historySteps.noteAdd(1), transaction.commit(moved))
+                    const tempo = createTransaction(history.state.value)
+                    bpm.addBpm(tempo, { beat: (beat += 0.5), bpm: 90, meter: 4 })
+                    history.pushState(
+                        historySteps.noteAdd(1),
+                        tempo.commit(history.state.value.selectedEntities),
+                    )
+                },
+                async stopped(count) {
+                    const work = () =>
+                        [
+                            minimapStats.passes,
+                            minimapStats.slices,
+                            minimapStats.paints,
+                            minimapStats.fullJobs,
+                            minimapStats.selectionPaints,
+                        ].join()
+                    const start = work()
+                    let hidden = true
+                    for (let i = 0; i < count; i++) {
+                        await frame()
+                        const selection = document.querySelector<HTMLCanvasElement>(
+                            '[data-minimap-layer="selection"]',
+                        )
+                        hidden &&= selection?.style.visibility === 'hidden'
+                    }
+                    return { hidden, idle: work() === start }
+                },
+            }
+            return !!back
+        })
+        expect(found).toBe(true)
+        const restored = async (label: string) => {
+            const jobs = (await counts(page)).fullJobs
+            await settled(page)
+            expect(await selectionVisible(page), label).toBe(true)
+            expect((await counts(page)).fullJobs, label).toBeGreaterThan(jobs)
+            await expectRail(page, label)
+        }
+
+        // The front lost, with a note and a tempo edit while it is.
+        expect(
+            await page.evaluate(() => {
+                window.mmLoss.lose('front')
+                window.mmLoss.edit()
+                return window.mmLoss.stopped(30)
+            }),
+        ).toEqual({ hidden: true, idle: true })
+        await page.evaluate(() => window.mmLoss.restore('front'))
+        await restored('front restored')
+
+        // The back buffer lost, then the front too; one restored is not enough.
+        expect(
+            await page.evaluate(() => {
+                window.mmLoss.lose('back')
+                window.mmLoss.edit()
+                return window.mmLoss.stopped(20)
+            }),
+        ).toEqual({ hidden: true, idle: true })
+        expect(
+            await page.evaluate(() => {
+                window.mmLoss.lose('front')
+                window.mmLoss.restore('back')
+                window.mmLoss.edit()
+                return window.mmLoss.stopped(20)
+            }),
+        ).toEqual({ hidden: true, idle: true })
+        await page.evaluate(() => window.mmLoss.restore('front'))
+        await restored('both restored')
+    })
+
+    test("unmounting removes the layer canvas's context listeners, so a late restore schedules nothing", async ({
         page,
     }) => {
         await open(page)
         await selectAll(page)
         await settled(page)
-        const before = await counts(page)
-        const from = await mark(page)
-        const during = await page.evaluate(async () => {
-            const { frame, minimapStats, select, notes } = window.mmSelection
-            const content = document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')!
-            const selection = () =>
-                document.querySelector<HTMLCanvasElement>('[data-minimap-layer="selection"]')
-            // A full redraw on its way, then the loss: its pixels are gone.
-            const jobs = minimapStats.fullJobs
-            window.editorTest.settings.minimapWidth = 80
-            for (let i = 0; i < 600 && minimapStats.fullJobs === jobs; i++) await frame()
-            content.dispatchEvent(new Event('contextlost'))
-            const { width } = content
-            content.width = 0
-            content.width = width
-            const paints = minimapStats.paints
-            const selectionPaints = minimapStats.selectionPaints
-            // A selection change and an edit while lost.
-            select(notes().slice(0, 5))
-            const hidden: boolean[] = []
-            for (let i = 0; i < 30; i++) {
-                await frame()
-                hidden.push(selection()?.style.visibility === 'hidden')
+        const requests = await page.evaluate(async () => {
+            const { settings, nextTick } = window.editorTest
+            const canvas = document.querySelector<HTMLCanvasElement>(
+                '[data-minimap-layer="selection"]',
+            )!
+            settings.showMinimap = false
+            await nextTick()
+            // The listener would run inside the dispatch: count the frames it asks for there.
+            let count = 0
+            const request = window.requestAnimationFrame
+            window.requestAnimationFrame = (callback) => {
+                count++
+                return request.call(window, callback)
             }
-            const result = {
-                hidden,
-                paints: minimapStats.paints - paints,
-                selectionPaints: minimapStats.selectionPaints - selectionPaints,
-            }
-            content.dispatchEvent(new Event('contextrestored'))
-            return result
+            canvas.dispatchEvent(new Event('contextrestored'))
+            window.requestAnimationFrame = request
+            return count
         })
-        expect(during.hidden.every(Boolean)).toBe(true)
-        expect([during.paints, during.selectionPaints]).toEqual([0, 0])
-        await settled(page)
-        expect(await selectionVisible(page)).toBe(true)
-        const after = await counts(page)
-        expect(after.fullJobs).toBeGreaterThan(before.fullJobs)
-        // The selection changed while lost: one paint on the restored image.
-        const entries = await logSince(page, from)
-        expect(entries.filter((entry) => entry.key === 'selectionPaints')).toHaveLength(1)
-        await expectRail(page, 'after the restore')
+        expect(requests).toBe(0)
     })
 
     test('a content context restore with nothing else changed shows the marks again without a paint', async ({
