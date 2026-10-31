@@ -125,32 +125,37 @@ export const chartStatistics = ({
         }
     }
 
-    let first = Infinity
-    let last = -Infinity
+    let firstBeat = Infinity
+    let lastComboBeat = -Infinity
     const times = Object.fromEntries(
         CATEGORIES.map((category) => {
-            const list = Float64Array.from(beats[category], (beat) => beatToTime(bpms, beat)).sort()
-            // Absurd BPMs can make times infinite or NaN: only finite times are shown.
-            for (const time of list)
-                if (Number.isFinite(time)) {
-                    first = Math.min(first, time)
-                    last = Math.max(last, time)
-                }
-            return [category, list]
+            for (const beat of beats[category]) {
+                firstBeat = Math.min(firstBeat, beat)
+                lastComboBeat = Math.max(lastComboBeat, beat)
+            }
+            return [
+                category,
+                Float64Array.from(beats[category], (beat) => beatToTime(bpms, beat)).sort(),
+            ]
         }),
     ) as Record<Category, Float64Array>
 
     let combo = 0
     for (const row of ROWS) if (row !== 'fakeNote') combo += counts[row]
-    const lastNote = lastBeat === -Infinity ? NaN : beatToTime(bpms, lastBeat)
+    // Absurd BPMs can make a time infinite or NaN: each time shows only when its own is finite.
+    const timeOf = (beat: number) => {
+        if (!Number.isFinite(beat)) return undefined
+        const time = beatToTime(bpms, beat)
+        return Number.isFinite(time) ? time : undefined
+    }
     return {
         counts,
         critical,
         combo,
         times,
-        firstComboNote: first === Infinity ? undefined : first,
-        lastComboNote: last === -Infinity ? undefined : last,
-        lastNote: Number.isFinite(lastNote) ? lastNote : undefined,
+        firstComboNote: timeOf(firstBeat),
+        lastComboNote: timeOf(lastComboBeat),
+        lastNote: timeOf(lastBeat),
     }
 }
 

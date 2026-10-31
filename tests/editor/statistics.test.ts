@@ -340,6 +340,24 @@ test('at absurd BPMs the counts and the finite times show, and the chart is not 
     }
 })
 
+test('a time past a change to an absurd BPM is left out, never replaced by an earlier one', () => {
+    const tempo = [
+        { beat: 0, bpm: 120 },
+        { beat: 4, bpm: 1e-310 },
+    ]
+    const late = statsOf(createState(chart([[note(0)], [note(2)], [note(8)]], tempo), 0))
+    assert.equal(late.combo, 3)
+    assert.equal(late.firstComboNote, 0)
+    assert.equal(late.lastComboNote, undefined)
+    assert.equal(late.lastNote, undefined)
+    // The last combo note in time, and an anchor beyond: Last Note alone is left out.
+    const anchored = statsOf(
+        createState(chart([[note(0)], [note(2)], [note(8, { noteType: 'anchor' })]], tempo), 0),
+    )
+    assert.equal(anchored.lastComboNote, 1)
+    assert.equal(anchored.lastNote, undefined)
+})
+
 test('an empty chart has zeros and no note times', () => {
     const stats = statsOf(createState(chart([]), 0))
     assert.equal(stats.combo, 0)
