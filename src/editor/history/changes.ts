@@ -504,10 +504,10 @@ export const bandTimes = () => {
     return { ...band, floor: band.bottom - view.time }
 }
 
-/** Each changed object's time and lanes, on the peeked tempo, in chart order. */
 /** A change's place, with the object as it is drawn there: the ring's or, for an old place, the ghost's. */
 type LocatedPlace = Place & { entity?: Entity }
 
+/** Each changed object's time and lanes, on the peeked tempo, in chart order. */
 const places = computed((): LocatedPlace[] => {
     const change = drawnChange.value
     if (!change || !hasPlaces.value) return []
@@ -559,21 +559,25 @@ const places = computed((): LocatedPlace[] => {
 })
 
 /**
- * The places the minimap marks: those of the change the chart marks where the chart draws the
- * object, none when it marks none. A move keeps the side that is drawn.
+ * The places where the chart draws the changed object, the ring's or the ghost's: what the arrows
+ * count and bring into view. A move keeps the side that is drawn.
  */
-export const minimapChangePlaces = computed(() => {
-    if (!changeMarks.value) return undefined
+const shownPlaces = computed(() => {
     const visibility = entityVisibility.value
     return places.value.filter(
-        ({ entity }) => !entity || entityDrawState(entity, visibility) !== 'hidden',
+        ({ entity }) => entity && entityDrawState(entity, visibility) !== 'hidden',
     )
 })
+
+/** The places the minimap marks: the shown places, none when the chart marks none. */
+export const minimapChangePlaces = computed(() =>
+    changeMarks.value ? shownPlaces.value : undefined,
+)
 
 /** Changes beyond the band's top and bottom edges. */
 export const usableBand = computed(() => changeBand.value.top + changeBand.value.bottom < view.h)
 export const offBand = computed(() =>
-    usableBand.value ? countOff(places.value, bandTimes()) : { above: 0, below: 0 },
+    usableBand.value ? countOff(shownPlaces.value, bandTimes()) : { above: 0, below: 0 },
 )
 
 /** Whether the arrows carry counts: not past the limit. */
@@ -695,7 +699,7 @@ const currentStops = () => {
     return {
         band,
         stops: usableBand.value
-            ? stopsOf(reachable(places.value, band.floor), band.top - band.bottom)
+            ? stopsOf(reachable(shownPlaces.value, band.floor), band.top - band.bottom)
             : [],
     }
 }
@@ -704,7 +708,7 @@ const showLateralChange = () => {
     if (!usableBand.value) return false
     const band = bandTimes()
     const half = settings.width / 2
-    const outside = places.value.filter(
+    const outside = shownPlaces.value.filter(
         (place) =>
             place.time >= band.bottom &&
             place.time <= band.top &&
@@ -739,7 +743,7 @@ export const showChangeToward = (direction: 'up' | 'down') => {
     if (!usableBand.value) return
     const band = bandTimes()
     const stops = stopsOf(
-        reachable(places.value, band.floor).filter(({ time }) =>
+        reachable(shownPlaces.value, band.floor).filter(({ time }) =>
             direction === 'up' ? time > band.top : time < band.bottom,
         ),
         band.top - band.bottom,
