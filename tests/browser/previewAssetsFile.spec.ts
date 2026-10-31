@@ -8,6 +8,7 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import {
     builtinBytes,
     collection,
+    entriesOf,
     patched,
     rawZip,
     types,
@@ -70,7 +71,6 @@ const open = async (page: Page, tab?: Type | 'stored') => {
 
 const tabOf = (page: Page, type: string) =>
     dialog(page).locator(`[data-preview-assets-tab="${type}"]`)
-const selectedTab = (page: Page) => dialog(page).getByRole('tab', { selected: true })
 
 type Choice = { source: string; title?: string; name?: string; origin?: string; key?: string }
 const choices = (page: Page) =>
@@ -421,33 +421,54 @@ test.describe('From a File', () => {
         expect((await choices(page)).skin).toEqual({ source: 'builtin' })
     })
 
-    test('a file picked in Open File opens the dialog on its first type, already listed', async ({
+    test('a package opened with Open lists its assets, and Import there is the chooser’s Use', async ({
         page,
     }) => {
         await start(page)
-        // No skin in it: the first type it holds, in tab order, is the particle.
-        const pack = await collection({
-            particle: [{ name: 'neon', title: 'Neon Particle' }],
-            effect: [{ name: 'neon', title: 'Neon Sounds' }],
+        // The Built-in particle with its data gzipped again: the same item in other bytes, so
+        // it is not the Built-in one. A copy of the Built-in effect is Built-in, with Use.
+        const entries = await entriesOf(builtinBytes('particle'))
+        const particleList = JSON.parse(
+            new TextDecoder().decode(entries.get('sonolus/particles/list')),
+        ) as {
+            items: { data: { url: string } }[]
+        }
+        const data = entries.get(particleList.items[0]!.data.url.slice(1))!
+        const particle = await patched('particle', {
+            resources: { data: new Uint8Array(gzipSync(gunzipSync(data), { level: 1 })) },
         })
+        const merged = new Map([
+            ...(await entriesOf(particle)),
+            ...(await entriesOf(
+                await variants('effect', [{ name: 'neon', title: 'Neon Sounds' }]),
+            )),
+        ])
+        const pack = rawZip([...merged].map(([name, data]) => ({ name, data, method: 0 as const })))
         await page.evaluate(
             async ({ bytes }) => {
-                const { showPreviewAssets } =
-                    await import('/src/editor/commands/previewAssets/modal.ts')
+                const { openPicked } = await import('/src/editor/commands/open/index.ts')
                 const file = new File([new Uint8Array(bytes)], 'from-open.scp')
-                await showPreviewAssets('skin', { file })
+                void openPicked({ file, confirmed: false })
             },
             { bytes: Array.from(pack) },
         )
-        await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
-        await expect(selectedTab(page)).toHaveText('Particle')
-        // The items are listed without a second pick.
-        await expect(chooser(page).locator('[data-chooser-item]')).toHaveCount(1)
-        await expect(chooser(page).locator('[data-chooser-item]')).toContainText('Neon Particle')
-        await expect(chooser(page).locator('[data-chooser-file-name]')).toHaveText('from-open.scp')
-        await expect(chooser(page).locator('[data-chooser-also]')).toContainText(
-            'Also use the sound effects “Neon Sounds” from this file',
-        )
+        const list = dialog(page).locator('[data-package-list]')
+        await expect(dialog(page)).toHaveAccessibleName('from-open')
+        await expect(list.locator('[data-package-row-title]')).toHaveText(['Editor', 'Neon Sounds'])
+        await expect(list.locator('[data-package-row-detail]')).toHaveText([
+            /^Particle · /,
+            /^Built-in · Sound Effects · /,
+        ])
+        await list.locator('[data-package-import]').click()
+        await expect(list.locator('[data-package-in-use]')).toHaveCount(1, { timeout: 15_000 })
+        // Stored and in use, with the file's name as its origin.
+        const [item] = await stored(page)
+        expect(item).toMatchObject({ type: 'particle', origin: 'from-open.scp' })
+        expect((await choices(page)).particle).toMatchObject({ source: 'file' })
+        // Use on the Built-in copy applies Built-in.
+        await list.locator('[data-package-use]').click()
+        await expect(list.locator('[data-package-in-use]')).toHaveCount(2)
+        expect((await choices(page)).effect).toEqual({ source: 'builtin' })
     })
 
     test('the tabs keep their choosers, and an import goes on while another tab shows', async ({

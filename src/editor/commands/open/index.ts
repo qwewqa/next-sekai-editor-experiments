@@ -34,7 +34,7 @@ import { confirmSwitch, notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { changeBgm } from '../bgm/index.ts'
 import { exportMemory, KEPT_BYTES_LIMIT, rememberExport } from '../exportLevel/memory'
-import { showPreviewAssets } from '../previewAssets/modal'
+
 import { installDropGuard } from './dropGuard'
 import {
     FileTooLargeError,
@@ -138,21 +138,7 @@ export const openPicked = async (picked: PickedForOpen) => {
                 dropOpen()
                 return
             }
-            await flow.openPackage(file, handle, supplied, async () => {
-                const choice = await showChoice({
-                    title: () => i18n.value.commands.open.dialogTitle,
-                    message: () => i18n.value.open.scp,
-                    choices: [
-                        {
-                            value: true,
-                            label: () => i18n.value.open.openPreviewAssets,
-                            default: true,
-                        },
-                    ],
-                    cancelLabel: () => i18n.value.modals.info.ok,
-                })
-                if (choice) await showPreviewAssets(undefined, { file })
-            })
+            await flow.openPackage(file, handle, supplied)
             return
         }
         await switching((request) => openProjectFile(file, handle, request))
@@ -272,6 +258,7 @@ export const localizedOpenError = (error: unknown) => {
         invalidChart: open.invalidChart,
         refusals: open.refusals,
         levelUnreadable: i18n.value.open.package.levelUnreadable,
+        fileUnreadable: i18n.value.commands.previewAssets.import.fileUnreadable,
     })
     return text === undefined ? error : new Error(text, { cause: error })
 }

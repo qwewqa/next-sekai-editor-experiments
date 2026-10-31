@@ -5,6 +5,7 @@ import { scpBlackPng } from '../../../local/nxsp/scpMedia'
 import { sha1Hex } from '../../../preview/assets/files/item'
 import { isSrl, type FilePackage, type Srl } from '../../../preview/assets/files/package'
 import {
+    FileUnreadableError,
     levelDataType,
     LevelUnreadableError,
     parseImported,
@@ -47,6 +48,9 @@ export const readLevelData = async (
         json = JSON.parse(new TextDecoder().decode(text))
     } catch (error) {
         if (isAbort(error)) throw error
+        // A file that cannot be read any more is the file's doing, not the level's.
+        if (error instanceof DOMException)
+            throw new FileUnreadableError('The file could not be read', { cause: error })
         throw new LevelUnreadableError('The level data could not be read', { cause: error })
     }
     const type = levelDataType(json)

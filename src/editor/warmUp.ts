@@ -34,10 +34,10 @@ export const warmUpGroups: readonly (readonly Load[])[] = [
     [() => import('./check/run')],
     // Loading and drawing the BGM's waveform.
     [() => import('../waveform')],
-    // Preview Assets and its file inspection.
+    // Preview Assets, and Open's package list.
     [
         () => import('./commands/previewAssets/PreviewAssetsModal.vue'),
-        () => import('../preview/assets/files/inspect'),
+        () => import('./commands/open/packageFlow'),
     ],
 ]
 

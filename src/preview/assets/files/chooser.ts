@@ -139,14 +139,14 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
     }
 
     /** Reads a package and lists its items of this type. */
-    const pick = async (file: Blob, name: string, opened?: SourcePackage) => {
+    const pick = async (file: Blob, name: string) => {
         reset()
         const mine = generation
         open.value = true
         fileName.value = name
         phase.value = 'reading'
         try {
-            const source = opened ?? (await openSourcePackage(file))
+            const source = await openSourcePackage(file)
             const listed = await source.list(type, controller.signal)
             if (mine !== generation) return
             pkg = source

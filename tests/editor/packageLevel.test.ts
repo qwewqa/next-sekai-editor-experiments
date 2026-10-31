@@ -26,10 +26,14 @@ import { entity, minimalLevel } from './levelDataSynthetic'
 const strings = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
 ) as {
-    commands: { open: Omit<OpenErrorStrings, 'levelUnreadable'> }
+    commands: { open: Omit<OpenErrorStrings, 'levelUnreadable' | 'fileUnreadable'> }
     open: { package: { levelUnreadable: string } }
 }
-const english = { ...strings.commands.open, levelUnreadable: strings.open.package.levelUnreadable }
+const english = {
+    ...strings.commands.open,
+    levelUnreadable: strings.open.package.levelUnreadable,
+    fileUnreadable: 'This file could not be read.',
+}
 const en = {
     unreadable: 'This level’s data could not be read.',
     noBpm: 'Invalid level: initial BPM not found',

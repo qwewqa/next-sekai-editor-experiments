@@ -225,6 +225,18 @@ test('a .nxsp opens bound in a new session, with its history imported and Undo w
     await expect.poll(() => noteCount(page)).toBe(notes - 1)
 })
 
+test('a .nxsp renamed .scp is detected by its content and opens as a project file', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.scp', await freshBytes())
+    await openFile(page, 'coconut.scp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.scp' })).toBeVisible()
+    await imported(page)
+    expect((await sessionOf(page)).file?.name).toBe('coconut.scp')
+    await expect(page.locator('[data-package-list]')).toHaveCount(0)
+})
+
 test('a file with an unknown entry opens as a separate copy with a new docId and no binding', async ({
     page,
 }) => {
@@ -1033,7 +1045,7 @@ test('an archive of project files says to unzip it, and opens nothing', async ({
     expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
 })
 
-test('a Sonolus package points to Preview Assets, which opens', async ({ page }) => {
+test('a Sonolus package with nothing usable says so, and nothing is replaced', async ({ page }) => {
     await start(page)
     const before = await sessionOf(page)
     await openZip(page, 'skin.scp', [
@@ -1041,29 +1053,14 @@ test('a Sonolus package points to Preview Assets, which opens', async ({ page })
         ['sonolus/info', '{}'],
     ])
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText(
-        'This is a Sonolus package. To use its skin or other assets, choose it in Preview Assets.',
-    )
+    await expect(dialog).toContainText('This Sonolus package contains no levels or assets.')
     await expect(dialog).not.toContainText('not a project file')
     // A press in the dialog's first moments is ignored (the activation guard): press until it counts.
-    await expect(async () => {
-        await dialog.getByRole('button', { name: 'Preview Assets' }).click({ timeout: 1000 })
-        await expect(page.getByRole('dialog', { name: 'Preview Assets' })).toBeVisible({
-            timeout: 1000,
-        })
-    }).toPass()
-    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
-})
-
-test('a package can be dismissed without opening Preview Assets', async ({ page }) => {
-    await start(page)
-    await openZip(page, 'skin.scp', [['sonolus/info', '{}']])
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('This is a Sonolus package.')
     await expect(async () => {
         await dialog.getByRole('button', { name: 'OK' }).click({ timeout: 1000 })
         await expect(dialog).toHaveCount(0, { timeout: 1000 })
     }).toPass()
+    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
 })
 
 test('any other ZIP is still "not a project file"', async ({ page }) => {

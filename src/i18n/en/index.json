@@ -2387,8 +2387,6 @@
     "open": {
         "notProject": "This ZIP is not a project file.",
         "severalProjects": "This ZIP contains several project files. Unzip it and open them one by one.",
-        "scp": "This is a Sonolus package. To use its skin or other assets, choose it in Preview Assets.",
-        "openPreviewAssets": "Preview Assets",
         "damagedUnopened": "This file is damaged and could not be opened.",
         "damaged": "This file is damaged. It was opened without its history.",
         "historyUnreadable": "This file’s history could not be read. Saving will create a separate file.",
@@ -2420,6 +2418,10 @@
         "restoreIt": "Restore Session",
         "damagedHistory": "The history in {0} is damaged. Saving will create a separate file.",
         "package": {
+            "open": "Open",
+            "import": "Import",
+            "stored": "Stored",
+            "dataMissing": "Level data not in this file",
             "levelUnreadable": "This level’s data could not be read.",
             "withoutMedia": "This level was opened without its {0}.",
             "empty": "This Sonolus package contains no levels or assets."

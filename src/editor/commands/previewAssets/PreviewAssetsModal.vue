@@ -19,7 +19,7 @@ import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
 import { createAssetChooser, storedChoice } from '../../../preview/assets/files/chooser'
 import { pageImportDeps } from '../../../preview/assets/files/importDeps'
-import type { SourcePackage } from '../../../preview/assets/files/package'
+
 import { refreshStored, storedAssets } from '../../../preview/assets/files/store'
 import { createServerChooser } from '../../../preview/assets/server/chooser'
 import { liveServerClient } from '../../../preview/assets/server/live'
@@ -37,10 +37,6 @@ import { isAssetTab, previewAssetsTabs, type PreviewAssetsTab } from './tabs'
 
 const props = defineProps<{
     tab: PreviewAssetsTab
-    /** A package picked elsewhere (Open File…): its chooser opens with the items already listed. */
-    file?: File
-    /** That package, already opened. */
-    source?: SourcePackage
 }>()
 
 const emit = defineEmits<{
@@ -88,10 +84,6 @@ const servers = Object.fromEntries(
 
 onMounted(() => {
     void refreshStored()
-    if (props.file && isAssetTab(active.value)) {
-        const file = props.file
-        void choosers[active.value].pick(file, file.name, props.source)
-    }
 })
 onBeforeUnmount(() => {
     for (const chooser of Object.values(choosers)) chooser.dispose()

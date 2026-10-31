@@ -33,6 +33,11 @@ export class LevelUnreadableError extends Error {
     override name = 'LevelUnreadableError'
 }
 
+/** The picked file cannot be read any more (moved, or its provider revoked it). */
+export class FileUnreadableError extends Error {
+    override name = 'FileUnreadableError'
+}
+
 /** A chart that cannot be built. SUS, USC and Chart Cyanvas files are charts rather than levels. */
 export class RefusedFileError extends Error {
     override name = 'RefusedFileError'
@@ -51,6 +56,7 @@ export type OpenErrorStrings = {
     invalidChart: string
     refusals: Record<ImportRefusal['reason'], string>
     levelUnreadable: string
+    fileUnreadable: string
 }
 
 /** The message a loading dialog shows for one of the errors above; undefined for any other. */
@@ -58,6 +64,7 @@ export const openErrorText = (error: unknown, strings: OpenErrorStrings) => {
     if (error instanceof UnsupportedFileError) return strings.unsupported
     if (error instanceof FileTooLargeError) return strings.tooLarge
     if (error instanceof LevelUnreadableError) return strings.levelUnreadable
+    if (error instanceof FileUnreadableError) return strings.fileUnreadable
     if (error instanceof RefusedFileError) {
         const { type, refusal } = error
         return interpolateRaw(

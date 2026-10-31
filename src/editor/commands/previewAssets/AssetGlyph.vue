@@ -3,14 +3,18 @@ import ToggleVolumeIcon from '../toggleVolume/ToggleVolumeIcon.vue'
 import type { AssetType } from '../../../preview/assets'
 import PreviewAssetsIcon from './PreviewAssetsIcon.vue'
 
-// A neutral mark for a row without a picture.
+// A neutral mark for a row without a picture: an asset's, or a level's in Open's package list.
 defineProps<{
-    type: AssetType
+    type: AssetType | 'level'
 }>()
 </script>
 
 <template>
-    <PreviewAssetsIcon v-if="type === 'skin'" class="size-5 fill-current" aria-hidden="true" />
+    <!-- A pair of eighth notes. -->
+    <svg v-if="type === 'level'" class="size-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 3.5 21 1v14.5a3.5 3 0 1 1-2-2.7V6.1L11 7.8v10.7a3.5 3 0 1 1-2-2.7z" />
+    </svg>
+    <PreviewAssetsIcon v-else-if="type === 'skin'" class="size-5 fill-current" aria-hidden="true" />
     <ToggleVolumeIcon
         v-else-if="type === 'effect'"
         :state="true"

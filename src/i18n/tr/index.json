@@ -2387,8 +2387,6 @@
   "open": {
     "notProject": "Bu ZIP bir proje dosyası değil.",
     "severalProjects": "Bu ZIP birden fazla proje dosyası içeriyor. Arşivden çıkarıp tek tek açın.",
-    "scp": "Bu bir Sonolus paketi. Görünümünü veya diğer varlıklarını kullanmak için Önizleme Varlıkları’nda seçin.",
-    "openPreviewAssets": "Önizleme Varlıkları",
     "damagedUnopened": "Bu dosya hasarlı ve açılamadı.",
     "damaged": "Bu dosya hasarlı. Geçmişi olmadan açıldı.",
     "historyUnreadable": "Bu dosyanın geçmişi okunamadı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
@@ -2420,6 +2418,10 @@
     "restoreIt": "Oturumu Geri Yükle",
     "damagedHistory": "{0} dosyasının geçmişi hasarlı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
     "package": {
+      "open": "Aç",
+      "import": "İçe Aktar",
+      "stored": "Saklanan",
+      "dataMissing": "Seviye verisi bu dosyada yok",
       "levelUnreadable": "Bu seviyenin verisi okunamadı.",
       "withoutMedia": "Bu seviye {0} olmadan açıldı.",
       "empty": "Bu Sonolus paketinde seviye veya varlık yok."

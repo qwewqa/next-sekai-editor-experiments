@@ -158,15 +158,17 @@ test('Preview Assets says so when its code does not load', async ({ page }) => {
     await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('Preview Assets opened with a package says so when the package reader does not load', async ({
-    page,
-}) => {
-    await page.route('**/preview/assets/files/inspect.ts*', (route) => route.abort())
+test('Open says so when the code for a package does not load', async ({ page }) => {
+    await page.route('**/commands/open/packageFlow.ts*', (route) => route.abort())
     await start(page)
     await page.evaluate(async () => {
-        const { showPreviewAssets } =
-            (await import('/src/editor/commands/previewAssets/modal.ts')) as typeof import('../../src/editor/commands/previewAssets/modal')
-        await showPreviewAssets(undefined, { file: new File([new Uint8Array(4)], 'pack.scp') })
+        const { buildZip } = (await import('/src/zip/index.ts')) as typeof import('../../src/zip')
+        const { openPicked } =
+            (await import('/src/editor/commands/open/index.ts')) as typeof import('../../src/editor/commands/open')
+        const zip = await buildZip([
+            { name: 'sonolus/skins/list', method: 'store', data: new TextEncoder().encode('{}') },
+        ])
+        await openPicked({ file: new File([zip], 'pack.scp'), confirmed: false })
     })
     await expect(notice(page).filter({ hasText: failed })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
