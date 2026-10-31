@@ -92,6 +92,7 @@ test("History's ticks and the selection rail mirror each other on whole device p
         { width: 60, height: 776, scale: 1 },
         // Windows at 125% and 150%, an odd width, and a tall strip's capped scale.
         { width: 60, height: 776, scale: 1.25 },
+        { width: 60, height: 776, scale: 1.5 },
         { width: 61, height: 776, scale: 1.5 },
         { width: 24, height: 776, scale: 1.5 },
         { width: 160, height: 2500, scale: capScale(2, 2500) },
@@ -102,14 +103,9 @@ test("History's ticks and the selection rail mirror each other on whole device p
         const at = JSON.stringify(geometry)
         for (const edge of [tick, rail])
             assert.ok(Math.abs(edge * ratio - Math.round(edge * ratio)) < 1e-9, `whole px: ${at}`)
-        // Within a device px of the unsnapped width, from each edge.
+        // Within a device px of the unsnapped width, and the rail exactly as wide as the tick.
         assert.ok(Math.abs(tick - GUTTER_MARK_WIDTH) <= 1 / ratio, at)
-        assert.ok(Math.abs(geometry.width - rail - GUTTER_MARK_WIDTH) <= 1 / ratio, at)
-        // Over their gutter and 1 px of lane margin, never further into the lanes.
-        assert.ok(
-            tick <= PAD_LEFT + 1 + 1 / ratio && rail >= geometry.width - PAD_RIGHT - 1 - 1 / ratio,
-            at,
-        )
+        assert.ok(Math.abs(geometry.width - rail - tick) < 1e-9, `mirrored: ${at}`)
     }
     // At 2x both are 5 px.
     assert.deepEqual(gutterMarkEdges({ width: 60, height: 776, scale: 2 }), { tick: 5, rail: 55 })

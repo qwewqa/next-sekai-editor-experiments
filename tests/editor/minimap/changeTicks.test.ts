@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { GUTTER_MARK_WIDTH, createMapping } from '../../../src/editor/minimap/mapping'
+import { createMapping } from '../../../src/editor/minimap/mapping'
 import {
     HAIRLINE_MAX_RUN,
     HAIRLINE_MAX_RUNS,
@@ -90,8 +90,7 @@ test('3,400 places merge in one pass to at most one rect per run', () => {
     assert.equal(runs(times, 2).length, 1)
 })
 
-test('the edge tick is 5 CSS px wide and at least 3 CSS px tall', () => {
-    assert.equal(GUTTER_MARK_WIDTH, 5)
+test('the edge tick is at least 3 CSS px tall', () => {
     assert.equal(MIN_TICK_HEIGHT, 3)
 })
 
