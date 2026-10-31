@@ -10,7 +10,7 @@ import { minimapStats, sameGeometry, type Baseline } from './pipeline'
 export type MinimapLayer<T> = {
     /** The canvas's `data-minimap-layer`. */
     name: string
-    /** Made in the layer's scope. Undefined draws nothing and removes the canvas. */
+    /** Created in the layer's scope. While it is undefined, nothing is drawn and the canvas is removed. */
     useInputs: () => Readonly<Ref<T | undefined>>
     /** Draws in CSS px; the canvas is clear. */
     paint: (ctx: CanvasRenderingContext2D, mapping: MinimapMapping, inputs: T) => void
@@ -44,7 +44,7 @@ const samePainted = (a: Painted, b: Painted) =>
  * Paints `layer` on `canvas` in a component's setup. An ungated layer paints after the flush of
  * any change to its inputs or the mapping. A gated one paints in the frame the content's image
  * changes, or one frame after its inputs or the mapping change, and only while that image matches
- * the state. Returns whether the canvas is wanted.
+ * the state. Returns whether the layer has marks to draw.
  */
 export const useMinimapLayer = <T>(
     canvas: Readonly<Ref<HTMLCanvasElement | null | undefined>>,
@@ -106,7 +106,7 @@ export const useMinimapLayer = <T>(
         })
     }
 
-    // A context lost and restored has lost its pixels.
+    // After a lost context is restored, the canvas is blank.
     const onContextChange = (event: Event) => {
         painted = undefined
         if (event.type === 'contextrestored') requestPaint()

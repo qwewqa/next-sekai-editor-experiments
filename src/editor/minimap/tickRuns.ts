@@ -1,7 +1,7 @@
 import type { MinimapMapping } from './mapping'
 
-// The merge behind the change ticks and the selection rail, apart from the painters so Node tests
-// can load it.
+// The merge shared by the change ticks and the selection rail, kept out of the painters so Node
+// tests can load it.
 
 /** Places whose rows are this many device px apart or less share one tick. */
 export const MERGE_DEVICE_PX = 2
@@ -71,8 +71,8 @@ export const tickRuns = (
 
 /**
  * Rows in any order, kept per device row as its lowest and highest. Those two stand in for every
- * row between them: they are under a device px apart, so in sorted order they merge as all of
- * them do, and `runs` gives the runs the sorted rows would.
+ * row between them, because a device row's rows are under a device px apart, so in sorted order
+ * they merge as all of them do, and `runs` gives the runs the sorted rows would.
  */
 export const createRowSpread = (capacity: number) => {
     const lows = new Float64Array(capacity).fill(Infinity)
