@@ -36,6 +36,6 @@ export const statisticsStringsOf = (t: typeof en): StatisticsStrings => {
         lastComboNote: statistics.lastComboNote,
         lastNote: statistics.lastNote,
         bgmEnd: statistics.bgmEnd,
-        textLine: statistics.textLine,
+        textLine: modals.form.choiceLine,
     }
 }

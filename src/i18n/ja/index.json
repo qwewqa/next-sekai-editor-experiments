@@ -2281,7 +2281,6 @@
     "lastNote": "最後のノーツ",
     "bgmEnd": "BGM 終了",
     "copyText": "テキストをコピー",
-    "textLine": "{0}：{1}",
     "copiedText": "統計をコピーしました",
     "notCopiedText": "統計をコピーできませんでした",
     "shareImage": "画像を共有…",

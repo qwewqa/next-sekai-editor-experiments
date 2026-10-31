@@ -388,7 +388,6 @@ const identicalToEnglish: Record<string, string[]> = {
         // "BGM" as in its other BGM strings.
         // "BGM", as in its other strings.
         'settings.editor.waveformVisualization.fft',
-        'statistics.textLine',
         'tools.bpm.title',
         'workspace.folders.path',
         'workspace.manager.copyName',
@@ -432,7 +431,6 @@ const identicalToEnglish: Record<string, string[]> = {
         // Turkish spells Normal the same; the span is the bare range.
         'statistics.normal',
         'statistics.span',
-        'statistics.textLine',
         'tools.bpm.title',
         'workspace.folders.path',
         'workspace.manager.copyName',

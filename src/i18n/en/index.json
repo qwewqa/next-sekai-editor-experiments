@@ -2281,7 +2281,6 @@
         "lastNote": "Last Note",
         "bgmEnd": "BGM End",
         "copyText": "Copy Text",
-        "textLine": "{0}: {1}",
         "copiedText": "Copied the statistics",
         "notCopiedText": "Could not copy the statistics",
         "shareImage": "Share Image…",

@@ -2281,7 +2281,6 @@
     "lastNote": "마지막 노트",
     "bgmEnd": "배경음 끝",
     "copyText": "텍스트 복사",
-    "textLine": "{0}: {1}",
     "copiedText": "통계를 복사했습니다",
     "notCopiedText": "통계를 복사하지 못함",
     "shareImage": "이미지 공유…",
