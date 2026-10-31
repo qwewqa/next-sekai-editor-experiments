@@ -801,13 +801,33 @@ test.describe('lifetime', () => {
             return !!back
         })
         expect(found).toBe(true)
-        const restored = async (label: string) => {
-            const jobs = (await counts(page)).fullJobs
+        /** Restores a canvas, then checks a redraw followed and the marks show again. */
+        const restore = async (name: 'front' | 'back', label: string) => {
+            // Read in the same task as the restore, before its redraw can start.
+            const jobs = await page.evaluate((name) => {
+                const { fullJobs } = window.mmSelection.minimapStats
+                window.mmLoss.restore(name)
+                return fullJobs
+            }, name)
             await settled(page)
             expect(await selectionVisible(page), label).toBe(true)
             expect((await counts(page)).fullJobs, label).toBeGreaterThan(jobs)
             await expectRail(page, label)
         }
+
+        // The front lost while a full redraw runs: the redraw must not go on to swap or publish.
+        const running = await page.evaluate(async () => {
+            const { frame, minimapStats } = window.mmSelection
+            const jobs = minimapStats.fullJobs
+            const paints = minimapStats.paints
+            window.editorTest.settings.minimapWidth = 80
+            for (let i = 0; i < 600 && minimapStats.fullJobs === jobs; i++) await frame()
+            const started = minimapStats.fullJobs > jobs && minimapStats.paints === paints
+            window.mmLoss.lose('front')
+            return { started, ...(await window.mmLoss.stopped(30)) }
+        })
+        expect(running).toEqual({ started: true, hidden: true, idle: true })
+        await restore('front', 'front restored after a running redraw')
 
         // The front lost, with a note and a tempo edit while it is.
         expect(
@@ -817,8 +837,7 @@ test.describe('lifetime', () => {
                 return window.mmLoss.stopped(30)
             }),
         ).toEqual({ hidden: true, idle: true })
-        await page.evaluate(() => window.mmLoss.restore('front'))
-        await restored('front restored')
+        await restore('front', 'front restored')
 
         // The back buffer lost, then the front too; one restored is not enough.
         expect(
@@ -836,8 +855,7 @@ test.describe('lifetime', () => {
                 return window.mmLoss.stopped(20)
             }),
         ).toEqual({ hidden: true, idle: true })
-        await page.evaluate(() => window.mmLoss.restore('front'))
-        await restored('both restored')
+        await restore('front', 'both restored')
     })
 
     test("unmounting removes the layer canvas's context listeners, so a late restore schedules nothing", async ({
