@@ -96,14 +96,21 @@ const hex = (bytes: ArrayBuffer) =>
 export const sha1Hex = async (bytes: Uint8Array) =>
     hex(await crypto.subtle.digest('SHA-1', new Uint8Array(bytes)))
 
-const checkHash = async (srl: Srl, bytes: Uint8Array, type: AssetType, field: ResourceField) => {
-    // An absent or null hash means there is none to check.
+/**
+ * An SRL's hash as its SHA-1 is compared: lowercased, null when it has none (an absent or null
+ * hash means there is none to check), undefined when it is not one.
+ */
+export const srlHash = (srl: Srl) => {
     const hash = srl?.hash
-    if (hash === undefined || hash === null) return
-    const detail = { type, part: partOf(field) }
-    if (!/^[0-9a-f]{40}$/i.test(hash)) throw new AssetImportError('checksum', detail)
-    if ((await sha1Hex(bytes)) !== hash.toLowerCase())
-        throw new AssetImportError('checksum', detail)
+    if (hash === undefined || hash === null) return null
+    return /^[0-9a-f]{40}$/i.test(hash) ? hash.toLowerCase() : undefined
+}
+
+const checkHash = async (srl: Srl, bytes: Uint8Array, type: AssetType, field: ResourceField) => {
+    const hash = srlHash(srl)
+    if (hash === null) return
+    if (hash === undefined || (await sha1Hex(bytes)) !== hash)
+        throw new AssetImportError('checksum', { type, part: partOf(field) })
 }
 
 const checkImage = (

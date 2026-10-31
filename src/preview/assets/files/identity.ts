@@ -2,8 +2,8 @@ import { builtinResources, type BuiltinSource } from '../builtinResources'
 import { builtinChoice } from '../choice'
 import type { AssetChoice, AssetType, BundledId } from '../types'
 import { storedChoice } from './chooser'
-import { fields, maxSizeOf, sha1Hex, type ResourceField } from './item'
-import { displayText, isSrl, openSourcePackage, type FilePackage, type Srl } from './package'
+import { fields, maxSizeOf, sha1Hex, srlHash, type ResourceField } from './item'
+import { displayText, isSrl, openSourcePackage, type FilePackage } from './package'
 import { repackedItem } from './repack'
 import type { UserAssetMeta, UserAssetStore } from './store'
 
@@ -45,13 +45,6 @@ const storedWithin = async (store: UserAssetStore, ms: number) => {
     } finally {
         clearTimeout(timer)
     }
-}
-
-/** An SRL's hash, lowercased as asset import checks it; null when it has none, undefined when it is not one. */
-const srlHash = (srl: Srl) => {
-    const hash = srl?.hash
-    if (hash === undefined || hash === null) return null
-    return /^[0-9a-f]{40}$/i.test(hash) ? hash.toLowerCase() : undefined
 }
 
 /**

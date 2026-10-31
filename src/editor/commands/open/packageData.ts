@@ -3,7 +3,7 @@ import { inflateCapped } from '../../../levelData/gzip'
 import { NXSP_CAPS } from '../../../local/nxsp/read'
 import { scpBlackPng } from '../../../local/nxsp/scpMedia'
 import { toWellFormed } from '../../../local/records/wellFormed'
-import { sha1Hex } from '../../../preview/assets/files/item'
+import { sha1Hex, srlHash } from '../../../preview/assets/files/item'
 import { isSrl, type FilePackage, type Srl } from '../../../preview/assets/files/package'
 import type { LevelInfo } from '../../../state/levelInfo'
 import { isAbort } from '../../../utils/error'
@@ -19,11 +19,10 @@ import {
 // A package level's data and media, read from the list item's SRLs. Kept free of the dialog so
 // the reads and their messages can be tested in Node.
 
-/** Whether bytes match an SRL's SHA-1, when it has one (lowercased, as asset import checks). */
+/** Whether bytes match an SRL's SHA-1, when it has one, as asset import checks it. */
 const matchesHash = async (srl: Srl, bytes: Uint8Array) => {
-    const hash = srl?.hash
-    if (hash === undefined || hash === null) return true
-    return /^[0-9a-f]{40}$/i.test(hash) && (await sha1Hex(bytes)) === hash.toLowerCase()
+    const hash = srlHash(srl)
+    return hash === null || (hash !== undefined && (await sha1Hex(bytes)) === hash)
 }
 
 /**
