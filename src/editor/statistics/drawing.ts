@@ -28,8 +28,8 @@ export type Drawing = {
 }
 
 /**
- * Draws a model in a plot of `width` x `height` CSS px whose origin is on a device pixel, at
- * `dpr` device pixels per CSS px.
+ * Draws a model in a plot of `width` x `height` CSS px at `dpr` device pixels per CSS px, edges
+ * snapped to whole device pixels from the plot's origin.
  */
 export const drawChart = (
     model: ChartModel,

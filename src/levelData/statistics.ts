@@ -27,14 +27,7 @@ export const ROWS = [
 export type Row = (typeof ROWS)[number]
 
 /** The rows whose type has a critical variant; the note's own `isCritical` decides. */
-export const CRITICAL_ROWS: readonly Row[] = [
-    'tap',
-    'flick',
-    'release',
-    'trace',
-    'traceFlick',
-    'tick',
-]
+const CRITICAL_ROWS: readonly Row[] = ['tap', 'flick', 'release', 'trace', 'traceFlick', 'tick']
 
 /** The chart's categories, in the list's order and the stack's order from the bottom. */
 export const CATEGORIES = [
@@ -55,7 +48,7 @@ export const categoryOf = (row: Exclude<Row, 'fakeNote'>): Category =>
     row === 'hiddenTick' ? 'tick' : row === 'damageNote' || row === 'damageTick' ? 'damage' : row
 
 /** The row of an exported note, or undefined for an anchor. Fake notes are Fake Note. */
-export const classifyNote = (info: SlideNoteInfo): Row | undefined => {
+const classifyNote = (info: SlideNoteInfo): Row | undefined => {
     const role = getNoteRole(info)
     if (role === 'anchor') return undefined
     if (info.note.isFake) return 'fakeNote'
@@ -365,16 +358,6 @@ export const curveSamples = (layers: readonly Times[], grid: Grid): Samples => {
     }
 }
 
-/** One layer's samples over the whole grid, for checks on small charts. */
-export const denseSamples = (samples: Samples, layer: number) => {
-    const out = new Float64Array(samples.n)
-    samples.segments.forEach(([start], k) => {
-        const array = samples.layers[layer]?.[k]
-        if (array) out.set(array, start)
-    })
-    return out
-}
-
 /**
  * The drawn columns over [x0, x1]: per layer, each column's mean of the curve, the integral of
  * the straight lines between samples (zeros beyond the stored stretches) over its width.
@@ -543,7 +526,6 @@ export const binAt = (bins: Bin[], width: number, time: number) =>
 // --- The chart in one mode, as drawn: the times of its points and each layer's boundary there.
 
 export type ChartMode = 'smooth' | 'bars' | 'rolling'
-export const CHART_MODES: readonly ChartMode[] = ['smooth', 'bars', 'rolling']
 
 export type ChartModel = {
     mode: ChartMode

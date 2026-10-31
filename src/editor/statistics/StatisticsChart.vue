@@ -45,7 +45,7 @@ const props = defineProps<{
     figures: Figures | undefined
     /** False at absurd BPMs: the plot stays empty and the figures are left out. */
     drawable: boolean
-    /** The dialog's scrolling body, for the sticky label line and the plot's place on screen. */
+    /** The dialog's scrolling body, for the sticky label line. */
     scroller: HTMLElement | undefined
 }>()
 
@@ -88,7 +88,7 @@ const onSide = () => (side.value = sideQuery.matches)
 sideQuery.addEventListener('change', onSide)
 const legendOrder = computed(() => (side.value ? [...CATEGORIES].reverse() : CATEGORIES))
 
-// --- The plot's size and its place on the device pixel grid.
+// --- The plot's size and the device pixel ratio.
 const chart = useTemplateRef<HTMLDivElement>('chart')
 const plotBlock = useTemplateRef<HTMLDivElement>('plotBlock')
 const size = shallowRef({ width: 0, height: 0 })
@@ -330,11 +330,8 @@ const checkStuck = () => {
     stuck.value =
         lineBox.top <= edge + 0.5 && blockBox.top < edge - 0.5 && blockBox.bottom > lineBox.bottom
 }
-let frame = 0
 const onScroll = () => {
     checkStuck()
-    cancelAnimationFrame(frame)
-    frame = requestAnimationFrame(measurePlot)
 }
 
 let resize: ResizeObserver | undefined
@@ -356,7 +353,6 @@ onMounted(() => {
     if (chart.value) resize.observe(chart.value)
     if (props.scroller) resize.observe(props.scroller)
     watchZoom()
-    window.addEventListener('resize', measurePlot)
     measurePlot()
     void fitLabelLine()
 })
@@ -373,9 +369,7 @@ onBeforeUnmount(() => {
     resize?.disconnect()
     zoom?.removeEventListener('change', onZoom)
     sideQuery.removeEventListener('change', onSide)
-    window.removeEventListener('resize', measurePlot)
     props.scroller?.removeEventListener('scroll', onScroll)
-    cancelAnimationFrame(frame)
 })
 
 // Tiles snap to device pixels from the plot's own origin, a quarter pixel past each edge, so
@@ -404,8 +398,6 @@ const figureRows = computed(() => {
         { label: strings.value.p99, value: value(formatCount(figures?.p99 ?? 0, locale.value)) },
     ]
 })
-
-defineExpose({ chosen })
 </script>
 
 <template>

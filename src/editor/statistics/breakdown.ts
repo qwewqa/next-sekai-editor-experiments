@@ -11,10 +11,10 @@ import { onBeforeUnmount, shallowRef } from 'vue'
 const OPEN_DELAY_MS = 400
 const CLOSE_DELAY_MS = 150
 
-export type Disclosure<K> = { key: K; how: 'shown' | 'pinned' }
+type Disclosure<K> = { key: K; how: 'shown' | 'pinned' }
 
 /** Hover: a mouse, or a pen that hovers without touching. */
-export const isHover = (event: PointerEvent) =>
+const isHover = (event: PointerEvent) =>
     event.pointerType === 'mouse' || (event.pointerType === 'pen' && event.buttons === 0)
 
 export const useBreakdown = <K>(options: {

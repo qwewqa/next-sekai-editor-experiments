@@ -21,7 +21,6 @@ import {
     copyTextLines,
     curveColumns,
     curveSamples,
-    denseSamples,
     gridOf,
     kernel,
     mergeTimes,
@@ -38,6 +37,7 @@ import {
     type Category,
     type ChartStatistics,
     type Row,
+    type Samples,
 } from '../../src/levelData/statistics'
 import { createState, type State } from '../../src/state'
 
@@ -401,6 +401,16 @@ test('the window rule never adds a note across a one-second boundary', () => {
 })
 
 // --- Smooth.
+
+/** One layer's samples over the whole grid. */
+const denseSamples = (samples: Samples, layer: number) => {
+    const out = new Float64Array(samples.n)
+    samples.segments.forEach(([start], k) => {
+        const array = samples.layers[layer]?.[k]
+        if (array) out.set(array, start)
+    })
+    return out
+}
 
 const drawnArea = (xs: Float64Array, ys: Float64Array) => {
     let area = 0
