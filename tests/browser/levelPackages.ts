@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
-import { gzipSync } from 'node:zlib'
+import { deflateSync, gzipSync } from 'node:zlib'
+import { crc32 } from '../../src/zip'
 import { minimalLevel } from '../editor/levelDataSynthetic'
 import { collection, entriesOf, pack, utf8, type Type, type Variant } from './previewAssetsPackages'
 
@@ -146,4 +147,63 @@ export const levelPackage = async (
             entries.set(`sonolus/${category}/info`, utf8(JSON.stringify({ sections: [] })))
     }
     return pack(entries)
+}
+
+/** A solid PNG of the given size, which the browser decodes. */
+export const png = (width = 2, height = 2) => {
+    const chunk = (type: string, data: Uint8Array) => {
+        const out = new Uint8Array(12 + data.length)
+        const view = new DataView(out.buffer)
+        view.setUint32(0, data.length)
+        out.set(utf8(type), 4)
+        out.set(data, 8)
+        view.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)))
+        return out
+    }
+    const header = new Uint8Array(13)
+    const view = new DataView(header.buffer)
+    view.setUint32(0, width)
+    view.setUint32(4, height)
+    header.set([8, 2, 0, 0, 0], 8)
+    // Each row: filter 0, then red pixels.
+    const rows = new Uint8Array(height * (1 + width * 3))
+    for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) rows[y * (1 + width * 3) + 1 + x * 3] = 0xff
+    const parts = [
+        new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+        chunk('IHDR', header),
+        chunk('IDAT', new Uint8Array(deflateSync(rows))),
+        chunk('IEND', new Uint8Array()),
+    ]
+    return new Uint8Array(parts.flatMap((part) => [...part]))
+}
+
+/** A 1x1 GIF and a 1x1 lossless WebP: covers the asset reader would refuse. */
+export const gif = () =>
+    new Uint8Array(
+        Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64'),
+    )
+export const webp = () =>
+    new Uint8Array(Buffer.from('UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==', 'base64'))
+
+/** A short 16-bit mono WAV tone. */
+export const wav = (seconds = 0.5, rate = 8000) => {
+    const samples = Math.round(seconds * rate)
+    const out = new Uint8Array(44 + samples * 2)
+    const view = new DataView(out.buffer)
+    out.set(utf8('RIFF'), 0)
+    view.setUint32(4, 36 + samples * 2, true)
+    out.set(utf8('WAVEfmt '), 8)
+    view.setUint32(16, 16, true)
+    view.setUint16(20, 1, true)
+    view.setUint16(22, 1, true)
+    view.setUint32(24, rate, true)
+    view.setUint32(28, rate * 2, true)
+    view.setUint16(32, 2, true)
+    view.setUint16(34, 16, true)
+    out.set(utf8('data'), 36)
+    view.setUint32(40, samples * 2, true)
+    for (let i = 0; i < samples; i++)
+        view.setInt16(44 + i * 2, Math.round(8000 * Math.sin((i / rate) * 2 * Math.PI * 440)), true)
+    return out
 }

@@ -22,6 +22,13 @@ const formatOf = (file: File) => {
     return FORMATS.find(([, pattern]) => pattern.test(text))?.[0] ?? 'other'
 }
 
+export type LoadOptions = {
+    /** A Choose Audio… pick, recorded in the usage statistics; true unless given. */
+    record?: boolean
+    /** Draws the waveform; true unless given. */
+    waveform?: boolean
+}
+
 /**
  * Loads a picked file for the loading dialog, reporting each step. `cancelled` is asked after each
  * await; a throw there is the dialog's AbortError. The waveform belongs to the caller once this
@@ -31,13 +38,15 @@ export async function* loadPickedBgm(
     file: File,
     cancelled: () => boolean,
     signal: AbortSignal,
+    { record: recorded = true, waveform = true }: LoadOptions = {},
 ): AsyncGenerator<() => string, PickedBgm> {
+    if (!recorded) return yield* load(file, cancelled, signal, waveform)
     // The usage statistics' `bgm` event, with the load as its time.
     const began = performance.now()
     const base = { format: formatOf(file), size: file.size } as const
     busy(true)
     try {
-        const picked = yield* load(file, cancelled, signal)
+        const picked = yield* load(file, cancelled, signal, waveform)
         record('bgm', { ...base, length: picked.buffer.duration * 1000, outcome: 'done' }, began)
         return picked
     } catch (error) {
@@ -53,6 +62,7 @@ async function* load(
     file: File,
     cancelled: () => boolean,
     signal: AbortSignal,
+    drawn: boolean,
 ): AsyncGenerator<() => string, PickedBgm> {
     const check = () => {
         if (cancelled()) throw new DOMException('BGM import cancelled', 'AbortError')
@@ -70,6 +80,9 @@ async function* load(
 
     const buffer = await loadBgm(data)
     check()
+    const durationMs = durationMsOf(buffer.duration)
+    const meta = { ...captured.meta, ...(durationMs === undefined ? {} : { durationMs }) }
+    if (!drawn) return { filename: getFilename(file), buffer, source: captured.source, meta }
 
     yield () => i18n.value.commands.bgm.modal.generating
     await timeout(50)
@@ -82,13 +95,12 @@ async function* load(
         releaseWaveform(waveform)
         throw error
     }
-    const durationMs = durationMsOf(buffer.duration)
     return {
         filename: getFilename(file),
         buffer,
         ...(waveform ? { waveform } : {}),
         source: captured.source,
         // Every pick records its own metadata and bytes, never the previous BGM's.
-        meta: { ...captured.meta, ...(durationMs === undefined ? {} : { durationMs }) },
+        meta,
     }
 }

@@ -1,4 +1,5 @@
 import { isMpegHeader } from '../files/detect'
+import { readImageSize } from '../preview/assets/files/image'
 import type { BgmMeta } from '../state/bgm'
 import { sha256, toHex } from './hash'
 import { toWellFormed } from './records/wellFormed'
@@ -77,3 +78,47 @@ export const captureMedia = async (
 /** A decoded length as the record keeps it. */
 export const durationMsOf = (seconds: number) =>
     Number.isFinite(seconds) ? Math.round(seconds * 1000) : undefined
+
+/** The largest canvas side Chromium and WebKit allow: a cover over it is never decoded. */
+export const COVER_MAX_SIDE = 16_384
+
+export type CoverSize = { width: number; height: number }
+
+const u16le = (bytes: Uint8Array, at: number) => (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8)
+const u24le = (bytes: Uint8Array, at: number) => u16le(bytes, at) | ((bytes[at + 2] ?? 0) << 16)
+
+/**
+ * A cover's width and height from its header, for the four formats the editor sniffs (PNG, JPEG,
+ * GIF and WebP): undefined when the header is cut off or invalid, `unknown` for another format,
+ * which only decoding can measure.
+ */
+export const readCoverSize = (bytes: Uint8Array): CoverSize | 'unknown' | undefined => {
+    const type = sniffImageType(bytes)
+    if (type === 'image/png' || type === 'image/jpeg') {
+        const size = readImageSize(bytes)
+        return size && { width: size.width, height: size.height }
+    }
+    if (type === 'image/gif') {
+        // The logical screen size follows the six-byte signature.
+        if (bytes.length < 10) return
+        const size = { width: u16le(bytes, 6), height: u16le(bytes, 8) }
+        return size.width > 0 && size.height > 0 ? size : undefined
+    }
+    if (type === 'image/webp') {
+        if (bytes.length < 30) return
+        const chunk = String.fromCharCode(...bytes.subarray(12, 16))
+        if (chunk === 'VP8 ') {
+            // A key frame's start code, then 14-bit sides.
+            if (bytes[23] !== 0x9d || bytes[24] !== 0x01 || bytes[25] !== 0x2a) return
+            return { width: u16le(bytes, 26) & 0x3fff, height: u16le(bytes, 28) & 0x3fff }
+        }
+        if (chunk === 'VP8L') {
+            if (bytes[20] !== 0x2f) return
+            const bits = u24le(bytes, 21) | ((bytes[24] ?? 0) << 24)
+            return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 }
+        }
+        if (chunk === 'VP8X') return { width: u24le(bytes, 24) + 1, height: u24le(bytes, 27) + 1 }
+        return
+    }
+    return 'unknown'
+}

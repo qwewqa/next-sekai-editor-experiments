@@ -253,7 +253,7 @@
             "importedChcy": "Imported Chart Cyanvas level",
             "importedUsc": "Imported USC chart",
             "importedSus": "Imported SUS chart",
-            "unsupported": "Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.",
+            "unsupported": "Unsupported file. Open a project file, a Sonolus package, level data, a Chart Cyanvas level, or a USC or SUS chart.",
             "tooLarge": "This file is too large to open.",
             "invalidLevel": "Invalid level: {0}",
             "invalidChart": "Invalid chart: {0}",
@@ -2418,7 +2418,12 @@
         "unsavedEarlier": "You have unsaved changes to an earlier version of {0} ({1}). They are in Recent Sessions.",
         "olderVersion": "This is an older version of {0}. A newer one from {1} is in Recent Sessions.",
         "restoreIt": "Restore Session",
-        "damagedHistory": "The history in {0} is damaged. Saving will create a separate file."
+        "damagedHistory": "The history in {0} is damaged. Saving will create a separate file.",
+        "package": {
+            "levelUnreadable": "This level’s data could not be read.",
+            "withoutMedia": "This level was opened without its {0}.",
+            "empty": "This Sonolus package contains no levels or assets."
+        }
     },
     "file": {
         "replacedElsewhere": "“{0}” was replaced from another tab or window.",

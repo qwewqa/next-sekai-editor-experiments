@@ -253,7 +253,7 @@
       "importedChcy": "Chart Cyanvas seviyesi içe aktarıldı",
       "importedUsc": "USC çizelgesi içe aktarıldı",
       "importedSus": "SUS çizelgesi içe aktarıldı",
-      "unsupported": "Desteklenmeyen dosya. Proje dosyası, seviye verisi, Chart Cyanvas seviyesi ya da USC veya SUS çizelgesi açın.",
+      "unsupported": "Desteklenmeyen dosya. Proje dosyası, Sonolus paketi, seviye verisi, Chart Cyanvas seviyesi ya da USC veya SUS çizelgesi açın.",
       "tooLarge": "Bu dosya açılamayacak kadar büyük.",
       "invalidLevel": "Geçersiz seviye: {0}",
       "invalidChart": "Geçersiz çizelge: {0}",
@@ -2418,7 +2418,12 @@
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
     "olderVersion": "Bu, {0} dosyasının eski bir sürümü. Daha yeni bir sürüm ({1}) Son Oturumlar’da.",
     "restoreIt": "Oturumu Geri Yükle",
-    "damagedHistory": "{0} dosyasının geçmişi hasarlı. Kaydettiğinizde ayrı bir dosya oluşturulacak."
+    "damagedHistory": "{0} dosyasının geçmişi hasarlı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
+    "package": {
+      "levelUnreadable": "Bu seviyenin verisi okunamadı.",
+      "withoutMedia": "Bu seviye {0} olmadan açıldı.",
+      "empty": "Bu Sonolus paketinde seviye veya varlık yok."
+    }
   },
   "file": {
     "replacedElsewhere": "“{0}” başka bir sekmeden veya pencereden değiştirildi.",

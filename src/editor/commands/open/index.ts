@@ -38,6 +38,7 @@ import { showPreviewAssets } from '../previewAssets/modal'
 import { installDropGuard } from './dropGuard'
 import {
     FileTooLargeError,
+    openErrorText,
     parseImported,
     RefusedFileError,
     tryImport,
@@ -132,20 +133,26 @@ export const openPicked = async (picked: PickedForOpen) => {
             return
         }
         if (kind === 'package') {
-            dropOpen()
-            const choice = await showChoice({
-                title: () => i18n.value.commands.open.dialogTitle,
-                message: () => i18n.value.open.scp,
-                choices: [
-                    {
-                        value: true,
-                        label: () => i18n.value.open.openPreviewAssets,
-                        default: true,
-                    },
-                ],
-                cancelLabel: () => i18n.value.modals.info.ok,
+            const flow = await loadForAction(() => import('./packageFlow'))
+            if (!flow) {
+                dropOpen()
+                return
+            }
+            await flow.openPackage(file, handle, supplied, async () => {
+                const choice = await showChoice({
+                    title: () => i18n.value.commands.open.dialogTitle,
+                    message: () => i18n.value.open.scp,
+                    choices: [
+                        {
+                            value: true,
+                            label: () => i18n.value.open.openPreviewAssets,
+                            default: true,
+                        },
+                    ],
+                    cancelLabel: () => i18n.value.modals.info.ok,
+                })
+                if (choice) await showPreviewAssets(undefined, { file })
             })
-            if (choice) await showPreviewAssets(undefined, { file })
             return
         }
         await switching((request) => openProjectFile(file, handle, request))
@@ -200,7 +207,8 @@ const openData = async (
                 yield () => i18n.value.commands.open.loading
 
                 // Refused by size before it is read; a gzip is checked as it inflates.
-                if (file.size > LEVEL_FILE_MAX_BYTES) throw new FileTooLargeError()
+                if (file.size > LEVEL_FILE_MAX_BYTES)
+                    throw new FileTooLargeError('The file is over the limit')
                 const buffer = await file.arrayBuffer()
                 sourceBuffer = buffer
                 signal.throwIfAborted()
@@ -234,7 +242,7 @@ const openData = async (
                         endOpen('refused', 'unsupported')
                     else if (error instanceof RefusedFileError) endOpen('refused', 'invalid')
                     else endOpen('failed')
-                    throw error
+                    throw localizedOpenError(error)
                 }
             } finally {
                 stopAbort()
@@ -252,6 +260,20 @@ const openData = async (
     }
     if (!warning || !request.isCurrent()) return
     showOpenWarning(warning)
+}
+
+/** An open's error as the loading dialog shows it, in the current language. */
+export const localizedOpenError = (error: unknown) => {
+    const { open } = i18n.value.commands
+    const text = openErrorText(error, {
+        unsupported: open.unsupported,
+        tooLarge: open.tooLarge,
+        invalidLevel: open.invalidLevel,
+        invalidChart: open.invalidChart,
+        refusals: open.refusals,
+        levelUnreadable: i18n.value.open.package.levelUnreadable,
+    })
+    return text === undefined ? error : new Error(text, { cause: error })
 }
 
 /** What an opened level left out, or the engine revision it was made for. */

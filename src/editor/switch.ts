@@ -220,27 +220,32 @@ export const restoreCopy = (sessionId: string) =>
 /**
  * The notice after a switch: its message, and Reopen "<previous>" while the session left can be
  * reopened, unless `offer` is false. When it turns out not to be (Leave Anyway), the
- * notice is plain. `line` is a second row of the card (the BGM that is not loaded).
+ * notice is plain. `line` is more rows of the card (the BGM that is not loaded, media left out).
  */
-export const notifyLeft = (message: () => string, offer = true, line?: NoticeLine) => {
+export const notifyLeft = (
+    message: () => string,
+    offer = true,
+    line?: NoticeLine | readonly NoticeLine[],
+) => {
     // The switch ends the session the cards were raised in.
     dismissNoticeCard()
     const left = previousSession.value
-    // A screen reader hears the second row too.
-    const rows = (first: NoticeLine, second: NoticeLine) => ({
-        lines: [first, second],
-        announcement: () => `${message()} ${second.message()}`,
+    const more = line === undefined ? [] : 'message' in line ? [line] : [...line]
+    // A screen reader hears the other rows too.
+    const rows = (first: NoticeLine) => ({
+        lines: [first, ...more],
+        announcement: () => [message, ...more.map((row) => row.message)].map((m) => m()).join(' '),
     })
     const plain = () => {
-        if (line) notify(message, rows({ message }, line))
+        if (more.length) notify(message, rows({ message }))
         else notify(message)
     }
     if (!left || !offer) {
         plain()
         return
     }
-    const shown = line
-        ? notify(message, rows({ message, action: reopenAction(left) }, line))
+    const shown = more.length
+        ? notify(message, rows({ message, action: reopenAction(left) }))
         : notify(message, { action: reopenAction(left) })
     // Stops once the card is gone however it went (dismissed, replaced, used), so a switch leaves
     // no watcher behind.

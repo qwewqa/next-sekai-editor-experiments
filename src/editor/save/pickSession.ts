@@ -21,6 +21,7 @@ import { bindingHandle, quickBinding, type Binding, type Env } from './binding'
 import type { RefusedReason } from './dialogs'
 import { heldHandle, savedState, withBind, type SaveMarker } from './env'
 import { pause, PREPARING_MS } from './imports'
+import { openedPackages } from './openedPackages'
 import {
     Cancelled,
     commitFirst,
@@ -208,6 +209,14 @@ const identify = async (
         // Its bytes are awaited: a quick Save never finds them still being read.
         else if (opened.partial) return { kind: 'refused', reason: 'notKept', bytes: kept(opened) }
     }
+    // A package opened in this tab, whichever session it left.
+    for (const opened of openedPackages())
+        if (await same(handle, opened.handle))
+            return {
+                kind: 'refused',
+                reason: 'notProject',
+                ...(opened.bytes ? { bytes: opened.bytes } : {}),
+            }
     if (!env) return { kind: 'unknown' }
     const own = quickBinding(env).file
     const held = own && heldHandle(env.chainId, own.name)

@@ -216,7 +216,7 @@ test('USC and SUS charts import with their own messages', async ({ page }) => {
 test('an unsupported file explains what can be opened', async ({ page }) => {
     await open(page, 'notes.txt', Buffer.from('not a chart'))
     await expect(page.getByRole('dialog')).toContainText(
-        'Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.',
+        'Unsupported file. Open a project file, a Sonolus package, level data, a Chart Cyanvas level, or a USC or SUS chart.',
     )
     await expect(page.getByRole('dialog')).not.toContainText('Error:')
 })
@@ -232,7 +232,7 @@ for (const [label, content] of [
     test(`a file that is ${label} explains what can be opened`, async ({ page }) => {
         await open(page, 'chart.json', Buffer.from(JSON.stringify(content)))
         await expect(page.getByRole('dialog')).toContainText(
-            'Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.',
+            'Unsupported file. Open a project file, a Sonolus package, level data, a Chart Cyanvas level, or a USC or SUS chart.',
         )
         await expect(page.getByRole('dialog')).not.toContainText('Error')
     })
@@ -261,7 +261,7 @@ test('a file picked after a garbage collection still opens', async ({ page }) =>
     })
     expect(picked).toBe(true)
     await expect(page.getByRole('dialog')).toContainText(
-        'Unsupported file. Open a project file, level data, a Chart Cyanvas level, or a USC or SUS chart.',
+        'Unsupported file. Open a project file, a Sonolus package, level data, a Chart Cyanvas level, or a USC or SUS chart.',
     )
 })
 

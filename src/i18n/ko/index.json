@@ -253,7 +253,7 @@
       "importedChcy": "Chart Cyanvas 레벨 가져옴",
       "importedUsc": "USC 채보 가져옴",
       "importedSus": "SUS 채보 가져옴",
-      "unsupported": "지원하지 않는 파일입니다. 프로젝트 파일, 레벨 데이터, Chart Cyanvas 레벨, USC 또는 SUS 채보를 여세요.",
+      "unsupported": "지원하지 않는 파일입니다. 프로젝트 파일, Sonolus 패키지, 레벨 데이터, Chart Cyanvas 레벨, USC 또는 SUS 채보를 여세요.",
       "tooLarge": "이 파일은 너무 커서 열 수 없습니다.",
       "invalidLevel": "잘못된 레벨: {0}",
       "invalidChart": "잘못된 채보: {0}",
@@ -2418,7 +2418,12 @@
     "unsavedEarlier": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있습니다.",
     "olderVersion": "{0}의 이전 버전입니다. {1}의 더 새로운 버전이 최근 세션에 있습니다.",
     "restoreIt": "세션 복원",
-    "damagedHistory": "“{0}”의 기록이 손상되었습니다. 저장하면 별도의 파일이 만들어집니다."
+    "damagedHistory": "“{0}”의 기록이 손상되었습니다. 저장하면 별도의 파일이 만들어집니다.",
+    "package": {
+      "levelUnreadable": "이 레벨의 데이터를 읽을 수 없습니다.",
+      "withoutMedia": "이 레벨을 {0} 없이 열었습니다.",
+      "empty": "이 Sonolus 패키지에는 레벨이나 에셋이 없습니다."
+    }
   },
   "file": {
     "replacedElsewhere": "“{0}”이(가) 다른 탭이나 창에서 교체되었습니다.",

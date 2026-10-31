@@ -253,7 +253,7 @@
       "importedChcy": "Chart Cyanvas の譜面をインポートしました",
       "importedUsc": "USC 譜面をインポートしました",
       "importedSus": "SUS 譜面をインポートしました",
-      "unsupported": "対応していないファイルです。プロジェクトファイル、レベルデータ、Chart Cyanvas の譜面、USC または SUS 譜面を開いてください。",
+      "unsupported": "対応していないファイルです。プロジェクトファイル、Sonolusパッケージ、レベルデータ、Chart Cyanvas の譜面、USC または SUS 譜面を開いてください。",
       "tooLarge": "このファイルはサイズが大きすぎるため、開けません。",
       "invalidLevel": "無効な譜面：{0}",
       "invalidChart": "無効な譜面：{0}",
@@ -2418,7 +2418,12 @@
     "unsavedEarlier": "{0} の以前のバージョンへの未保存の変更（{1}）が最近のセッションにあります。",
     "olderVersion": "これは {0} の古いバージョンです。{1} の新しいバージョンが最近のセッションにあります。",
     "restoreIt": "セッションを復元",
-    "damagedHistory": "「{0}」の履歴は破損しています。保存すると別のファイルになります。"
+    "damagedHistory": "「{0}」の履歴は破損しています。保存すると別のファイルになります。",
+    "package": {
+      "levelUnreadable": "この譜面のデータを読み込めませんでした。",
+      "withoutMedia": "{0}なしで譜面を開きました。",
+      "empty": "このSonolusパッケージには譜面もアセットもありません。"
+    }
   },
   "file": {
     "replacedElsewhere": "「{0}」は別のタブまたはウィンドウから置き換えられました。",

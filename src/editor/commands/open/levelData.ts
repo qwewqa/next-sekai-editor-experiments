@@ -6,7 +6,6 @@ import { parseUscChart } from '../../../chart/parse/usc'
 import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
-import { i18n } from '../../../i18n'
 import { inflateCapped, isGzip, LevelFileTooLarge } from '../../../levelData/gzip'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
@@ -15,35 +14,58 @@ import { parseUsc } from '../../../usc/parse'
 import { interpolateRaw } from '../../../utils/interpolate'
 
 // Open's content dispatch and parse, without the dialog: a loose file's bytes, or a package
-// level's level data, become a chart or one of the refusals below.
+// level's level data, become a chart or one of the refusals below. Kept free of the i18n module,
+// so Node tests can run it and pass the English strings to `openErrorText`.
 
 export type ImportType = 'levelData' | 'chcy' | 'usc' | 'sus'
 
 /** A file whose format the editor cannot read. */
 export class UnsupportedFileError extends Error {
-    constructor() {
-        super(i18n.value.commands.open.unsupported)
-    }
+    override name = 'UnsupportedFileError'
 }
 
 export class FileTooLargeError extends Error {
-    constructor() {
-        super(i18n.value.commands.open.tooLarge)
+    override name = 'FileTooLargeError'
+}
+
+/** Any failure to read a package level's data: one message, whatever the cause. */
+export class LevelUnreadableError extends Error {
+    override name = 'LevelUnreadableError'
+}
+
+/** A chart that cannot be built. SUS, USC and Chart Cyanvas files are charts rather than levels. */
+export class RefusedFileError extends Error {
+    override name = 'RefusedFileError'
+    constructor(
+        readonly type: ImportType,
+        readonly refusal: ImportRefusal,
+    ) {
+        super(`Refused: ${refusal.reason}`, { cause: refusal })
     }
 }
 
-// SUS, USC and Chart Cyanvas files are charts rather than levels.
-export class RefusedFileError extends Error {
-    constructor(type: ImportType, refusal: ImportRefusal) {
-        const { open } = i18n.value.commands
-        super(
-            interpolateRaw(
-                type === 'levelData' ? open.invalidLevel : open.invalidChart,
-                interpolateRaw(open.refusals[refusal.reason], ...refusal.params),
-            ),
-            { cause: refusal },
+export type OpenErrorStrings = {
+    unsupported: string
+    tooLarge: string
+    invalidLevel: string
+    invalidChart: string
+    refusals: Record<ImportRefusal['reason'], string>
+    levelUnreadable: string
+}
+
+/** The message a loading dialog shows for one of the errors above; undefined for any other. */
+export const openErrorText = (error: unknown, strings: OpenErrorStrings) => {
+    if (error instanceof UnsupportedFileError) return strings.unsupported
+    if (error instanceof FileTooLargeError) return strings.tooLarge
+    if (error instanceof LevelUnreadableError) return strings.levelUnreadable
+    if (error instanceof RefusedFileError) {
+        const { type, refusal } = error
+        return interpolateRaw(
+            type === 'levelData' ? strings.invalidLevel : strings.invalidChart,
+            interpolateRaw(strings.refusals[refusal.reason], ...refusal.params),
         )
     }
+    return
 }
 
 /** What a parse made: the chart, its offset, and for level data what the reader left out. */
@@ -78,7 +100,7 @@ export const tryImport = (buffer: ArrayBuffer) => {
     const sus = tryImportSus(buffer)
     if (sus) return ['sus', sus] as const
 
-    throw new UnsupportedFileError()
+    throw new UnsupportedFileError('No format matches the content')
 }
 
 /**
@@ -115,7 +137,8 @@ export const parseImported = (type: ImportType, data: unknown): Parsed => {
             }
         }
     } catch (error) {
-        if (error instanceof AssertError) throw new UnsupportedFileError()
+        if (error instanceof AssertError)
+            throw new UnsupportedFileError('The schema refused the file', { cause: error })
         if (error instanceof ImportRefusal) throw new RefusedFileError(type, error)
         throw error
     }
@@ -128,7 +151,8 @@ const tryParseJson = (buffer: ArrayBuffer): unknown => {
         text = new TextDecoder().decode(isGzip(buffer) ? inflateCapped(bytes) : bytes)
     } catch (error) {
         // The refusal is not a file that is not JSON: it must not fall through to SUS.
-        if (error instanceof LevelFileTooLarge) throw new FileTooLargeError()
+        if (error instanceof LevelFileTooLarge)
+            throw new FileTooLargeError('The file inflates past the limit')
         return
     }
     try {

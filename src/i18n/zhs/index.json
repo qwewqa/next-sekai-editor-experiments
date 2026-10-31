@@ -253,7 +253,7 @@
       "importedChcy": "已导入 Chart Cyanvas 关卡",
       "importedUsc": "已导入 USC 谱面",
       "importedSus": "已导入 SUS 谱面",
-      "unsupported": "不支持的文件。请打开项目文件、关卡数据、Chart Cyanvas 关卡，或 USC、SUS 谱面。",
+      "unsupported": "不支持的文件。请打开项目文件、Sonolus 包、关卡数据、Chart Cyanvas 关卡，或 USC、SUS 谱面。",
       "tooLarge": "此文件过大，无法打开。",
       "invalidLevel": "无效的关卡：{0}",
       "invalidChart": "无效的谱面：{0}",
@@ -2418,7 +2418,12 @@
     "unsavedEarlier": "对 {0} 早期版本的未保存更改（{1}）在“最近会话”中。",
     "olderVersion": "这是 {0} 的旧版本。{1} 的较新版本在“最近会话”中。",
     "restoreIt": "还原会话",
-    "damagedHistory": "“{0}”的历史记录已损坏。保存时会创建单独的文件。"
+    "damagedHistory": "“{0}”的历史记录已损坏。保存时会创建单独的文件。",
+    "package": {
+      "levelUnreadable": "无法读取此关卡的数据。",
+      "withoutMedia": "已打开此关卡，但未包含{0}。",
+      "empty": "此 Sonolus 包中没有关卡或资源。"
+    }
   },
   "file": {
     "replacedElsewhere": "“{0}”已从另一个标签页或窗口被替换。",

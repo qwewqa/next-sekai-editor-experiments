@@ -229,15 +229,18 @@ export const withCachedBgm = (state: State): State => {
 
 /**
  * Attaches parts to the live state, only while it still names `hash` without audio in the
- * session `id`, and no peek holds the screen. Nothing is pushed: the slot keeps its root.
+ * session `id` (or with these parts' audio and no waveform, which they bring), and no peek holds
+ * the screen. Nothing is pushed: the slot keeps its root.
  */
 export const attachHeld = (id: string, hash: string, parts: HeldParts) => {
     const live = liveState.value
+    const waveformOnly =
+        live.bgm.buffer === parts.buffer && !live.bgm.waveform && parts.waveform !== undefined
     if (
         session.value.sessionId !== id ||
         isPeeking.value ||
         live.bgm.meta?.hash !== hash ||
-        live.bgm.buffer
+        (live.bgm.buffer && !waveformOnly)
     )
         return false
     replaceState({ ...live, bgm: withParts(live.bgm, parts) })

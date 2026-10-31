@@ -253,7 +253,7 @@
       "importedChcy": "Niveau Chart Cyanvas importé",
       "importedUsc": "Partition USC importée",
       "importedSus": "Partition SUS importée",
-      "unsupported": "Fichier non pris en charge. Ouvrez un fichier de projet, des données de niveau, un niveau Chart Cyanvas, ou une partition USC ou SUS.",
+      "unsupported": "Fichier non pris en charge. Ouvrez un fichier de projet, un paquet Sonolus, des données de niveau, un niveau Chart Cyanvas, ou une partition USC ou SUS.",
       "tooLarge": "Ce fichier est trop volumineux pour être ouvert.",
       "invalidLevel": "Niveau non valide : {0}",
       "invalidChart": "Partition non valide : {0}",
@@ -2418,7 +2418,12 @@
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans les sessions récentes.",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente ({1}) est dans les sessions récentes.",
     "restoreIt": "Restaurer la session",
-    "damagedHistory": "L’historique de {0} est endommagé. La sauvegarde créera un fichier séparé."
+    "damagedHistory": "L’historique de {0} est endommagé. La sauvegarde créera un fichier séparé.",
+    "package": {
+      "levelUnreadable": "Impossible de lire les données de ce niveau.",
+      "withoutMedia": "Ce niveau a été ouvert sans {0}.",
+      "empty": "Ce paquet Sonolus ne contient ni niveau ni ressource."
+    }
   },
   "file": {
     "replacedElsewhere": "« {0} » a été remplacé depuis un autre onglet ou une autre fenêtre.",
