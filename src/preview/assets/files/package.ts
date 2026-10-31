@@ -227,13 +227,22 @@ export const openSourcePackage = async (
         thumbnail: isSrl(item.thumbnail) ? item.thumbnail : undefined,
     })
 
+    // Each list is read and parsed once: an item without a detail entry is looked up in it.
+    const lists = new Map<ItemType, Promise<unknown>>()
+    const listOf = (type: ItemType) => {
+        let list = lists.get(type)
+        if (!list)
+            lists.set(type, (list = json(`sonolus/${itemCategoryOf[type]}/list`, type, 'list')))
+        return list
+    }
+
     const details = async (type: ItemType, name: string) => {
         if (!isItemName(name)) return
         const raw = await json(`sonolus/${itemCategoryOf[type]}/${name}`, type, 'details')
         if (isRecord(raw) && isRecord(raw.item)) return raw.item
         // Without a details entry, the list's own entry stands in for it.
         if (raw !== undefined) throw new AssetImportError('unreadable', { type, part: 'details' })
-        const listed = await json(`sonolus/${itemCategoryOf[type]}/list`, type, 'list')
+        const listed = await listOf(type)
         if (isRecord(listed) && Array.isArray(listed.items))
             return (listed.items as unknown[]).find(
                 (item): item is Record<string, unknown> => isRecord(item) && item.name === name,
@@ -243,7 +252,7 @@ export const openSourcePackage = async (
 
     const items = async (type: ItemType, signal?: AbortSignal) => {
         const category = itemCategoryOf[type]
-        const raw = await json(`sonolus/${category}/list`, type, 'list')
+        const raw = await listOf(type)
         if (raw !== undefined) {
             if (!isRecord(raw) || !Array.isArray(raw.items))
                 throw new AssetImportError('unreadable', { type, part: 'list' })

@@ -60,15 +60,28 @@ const listPackage = async (file: File) => {
                 throw listingError(error)
             }
             const listing = !isEmptyInventory(inventory) && !directLevel(inventory)
-            const identities = listing
-                ? await identifyAssets(inventory.pkg, inventory.assets, {
-                      store: workerStore,
-                      hasDefault: platform.capabilities.defaultAssets,
-                      bundled: new Set(
-                          (['skin2', 'effect2'] as BundledId[]).filter((id) => packageUrls[id]),
-                      ),
-                  })
-                : []
+            let identities: AssetIdentity[] = []
+            try {
+                if (listing)
+                    identities = await identifyAssets(
+                        inventory.pkg,
+                        inventory.assets,
+                        {
+                            store: workerStore,
+                            hasDefault: platform.capabilities.defaultAssets,
+                            bundled: new Set(
+                                (['skin2', 'effect2'] as BundledId[]).filter(
+                                    (id) => packageUrls[id],
+                                ),
+                            ),
+                        },
+                        signal,
+                    )
+            } catch (error) {
+                // Cancel stops the reads; nothing else rejects.
+                if (signal.aborted) return
+                throw error
+            }
             if (!signal.aborted) listed = { inventory, identities }
         },
     })

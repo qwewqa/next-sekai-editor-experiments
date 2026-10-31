@@ -64,9 +64,11 @@ const resourcesOf = async (
     type: AssetType,
     item: Record<string, unknown>,
     compute: boolean,
+    signal: AbortSignal | undefined,
 ) => {
     const hashes = new Map<ResourceField, string>()
     const hashOf = async (field: ResourceField, required: boolean) => {
+        signal?.throwIfAborted()
         const srl: unknown = item[field]
         if (srl !== undefined && srl !== null && !isSrl(srl)) return !required
         const path = isSrl(srl) ? pkg.resolve(srl) : undefined
@@ -131,21 +133,26 @@ const storedItem = async (store: UserAssetStore, meta: UserAssetMeta) => {
     }
 }
 
-/** Which of a package's assets are in Preview Assets already, row by row. */
+/**
+ * Which of a package's assets are in Preview Assets already, row by row. `signal` stops it between
+ * reads, rejecting with its AbortError.
+ */
 export const identifyAssets = async (
     pkg: FilePackage,
     assets: readonly { type: AssetType; name: string }[],
     context: IdentityContext,
+    signal?: AbortSignal,
 ): Promise<AssetIdentity[]> => {
     const metas = (await storedWithin(context.store, context.storeWaitMs ?? STORE_WAIT_MS)) ?? []
     const identities: AssetIdentity[] = []
     for (const { type, name } of assets) {
+        signal?.throwIfAborted()
         let identity: AssetIdentity = { kind: 'new' }
         try {
             const item = await pkg.details(type, name)
             const named = metas.filter((meta) => meta.type === type && meta.name === name)
             if (item && named.length) {
-                const hashes = await resourcesOf(pkg, type, item, true)
+                const hashes = await resourcesOf(pkg, type, item, true, signal)
                 const wanted =
                     hashes &&
                     JSON.stringify(
@@ -164,6 +171,7 @@ export const identifyAssets = async (
                     )
                 for (const meta of named) {
                     if (wanted === undefined) break
+                    signal?.throwIfAborted()
                     const stored = await storedItem(context.store, meta)
                     if (stored && JSON.stringify(stored) === wanted) {
                         identity = { kind: 'stored', choice: storedChoice(meta) }
@@ -173,10 +181,11 @@ export const identifyAssets = async (
             }
             if (item && identity.kind === 'new') {
                 // Only the SRLs' own hashes: nothing is read for an item that is not stored.
-                const hashes = await resourcesOf(pkg, type, item, false)
+                const hashes = await resourcesOf(pkg, type, item, false, signal)
                 identity = (hashes && builtinMatch(type, hashes, context)) ?? identity
             }
-        } catch {
+        } catch (error) {
+            if (signal?.aborted) throw error
             // An item that cannot be read offers Import, which says what is wrong with it.
         }
         identities.push(identity)

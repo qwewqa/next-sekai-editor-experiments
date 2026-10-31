@@ -21,6 +21,7 @@ import {
     rawZip,
     scp,
     scpEntries,
+    scpMulti,
     type ScpOptions,
 } from './fixtures'
 
@@ -278,3 +279,65 @@ function hasShipped() {
         }
     })
 }
+
+/** Counts the entries read, by name, while `run` runs. */
+const countingReads = async <T>(run: () => Promise<T>) => {
+    const read = ZipReader.prototype.read
+    const counts = new Map<string, number>()
+    ZipReader.prototype.read = function (this: ZipReader, entry, options) {
+        counts.set(entry.key, (counts.get(entry.key) ?? 0) + 1)
+        return read.call(this, entry, options)
+    }
+    try {
+        return { result: await run(), counts }
+    } finally {
+        ZipReader.prototype.read = read
+    }
+}
+
+const tenSkins = (noDetails: boolean) =>
+    scpMulti(
+        Array.from({ length: 10 }, (_, i): [AssetType, ScpOptions] => [
+            'skin',
+            { name: `skin${i}`, noDetails },
+        ]),
+    )
+
+test('a list is read once, however many of its items have no detail entry', async () => {
+    const { counts } = await countingReads(async () => {
+        const pkg = await openSourcePackage(blobOf(tenSkins(true)))
+        const listed = await pkg.list('skin')
+        assert.equal(listed.length, 10)
+        await identifyAssets(
+            pkg,
+            listed.map(({ name }) => ({ type: 'skin', name })),
+            context(createMemoryStore()),
+        )
+    })
+    assert.equal(counts.get('sonolus/skins/list'), 1)
+})
+
+test('Cancel stops the identity reads between items', async () => {
+    const controller = new AbortController()
+    const { counts } = await countingReads(async () => {
+        const pkg = await openSourcePackage(blobOf(tenSkins(false)))
+        const listed = await pkg.list('skin')
+        const read = ZipReader.prototype.read
+        // The first detail entry read cancels.
+        ZipReader.prototype.read = function (this: ZipReader, entry, options) {
+            if (entry.key.startsWith('sonolus/skins/skin')) controller.abort()
+            return read.call(this, entry, options)
+        }
+        await assert.rejects(
+            identifyAssets(
+                pkg,
+                listed.map(({ name }) => ({ type: 'skin', name })),
+                context(createMemoryStore()),
+                controller.signal,
+            ),
+            (error: unknown) => error instanceof DOMException && error.name === 'AbortError',
+        )
+    })
+    const details = [...counts].filter(([key]) => key.startsWith('sonolus/skins/skin'))
+    assert.equal(details.length, 1)
+})
