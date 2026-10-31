@@ -9,10 +9,10 @@
 - (Web) Before you first use the editor, it asks you to agree to the Terms of Service in a welcome window that also has Language, Theme and the Send Usage Statistics setting. It asks again after some changes to the Terms of Service or the Privacy Notice. Usage statistics from the editor are sent only after you agree. The unsupported-browser page may send a browser report before you agree.
 - (Web) Added the Terms of Service, linked from Settings › About, Help and the privacy page.
 - Some settings now have an info button that shows what the setting does.
-- Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open… (O) opens project files.
+- Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open (O) opens project files.
 - Project files now include Sonolus package metadata and a gzipped chart, with references to the Next SEKAI engine.
 - The Sonolus package in a project file now includes a black cover and silent BGM when those media are left out. These assets are used only by the Sonolus package.
-- Export Level Data… (Shift+P) exports level data for Sonolus.
+- Export Level Data (Shift+P) exports level data for Sonolus.
 - (Web) In desktop Chrome and Edge, and in Chrome 132 or later on Android, saving again updates the project file and exporting again updates the exported file. Other browsers download a new file each time.
 - (Web) The editor stores your work in your browser as sessions and resumes your last session when you return. On the first launch after this update, it opens your old auto save. Save a project file to keep your work.
 - Reset is now New (N). New asks for confirmation when the chart has unsaved changes. The previous session stays in Recent Sessions. The notice shown after New has a Reopen button to return to it.
@@ -28,7 +28,7 @@
 - The BGM dialog now has a Download BGM button. When the BGM is not loaded, a notice offers Choose Audio… to load an audio file.
 - Level Info now has a Check button for the project file and the history stored in your browser. It uses the file to repair damaged history where possible and reports any remaining damage. In Settings › Toolbar and Settings › Keyboard Shortcuts, the command is named Check File and History.
 - Added Preview Assets to the toolbar and the Preview panel’s menu for choosing the skin, particle effects, background and sound effects.
-- Open… (O) now opens Sonolus packages (.scp). A package with one level and nothing else opens that level. Otherwise, a list shows each level with Open, and each skin, particle effect, background and set of sound effects with Import. Import adds the item to Preview Assets and uses it.
+- Open (O) now opens Sonolus packages (.scp). A package with one level and nothing else opens that level. Otherwise, a list shows each level with Open, and each skin, particle effect, background and set of sound effects with Import. Import adds the item to Preview Assets and uses it.
 - (Web) The editor now also includes the Next SEKAI 02 skin and sound effects.
 - Added a Minimap beside the chart. It shows the whole chart and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its left edge to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap.
 - The Minimap shows the selection. Selected notes are white, and cyan bars at its right edge show where the selected objects are, including BPM changes, time scales and events.
