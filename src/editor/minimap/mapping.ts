@@ -15,10 +15,12 @@ export type MinimapMapping = {
     spanToX: (left: number, size: number) => [number, number]
 }
 
-/** The tick column (C) at the left edge, which no note reaches. */
+/**
+ * The gutters at the strip's edges, which no note reaches: History's ticks on the left, the
+ * selection rail on the right.
+ */
 export const PAD_LEFT = 4
-/** The right edge's column: the selection rail covers its inner 2 px and 1 px of the lane margin. */
-export const PAD_RIGHT = 3
+export const PAD_RIGHT = PAD_LEFT
 export const PAD_Y = 4
 /**
  * The rows at the strip's top kept for the edge mark (`Minimap.vue`). Only the lane rules run
@@ -39,20 +41,20 @@ export const backingSize = ({ width, height, scale }: MinimapGeometry) => ({
     height: Math.max(1, Math.round(height * scale)),
 })
 
-/** The selection rail's width and its gap to the strip's right edge, in CSS px. */
-export const RAIL_WIDTH = 3
-export const RAIL_INSET = 1
+/** The width of History's ticks and the selection rail, in CSS px: a gutter and 1 px of lane margin. */
+export const GUTTER_MARK_WIDTH = PAD_LEFT + 1
 
 /**
- * The rail's left and right edges in CSS px. Both fall on whole backing-store pixels so the rail
- * stays crisp at any scale, and at least one device pixel stays clear at the right edge.
+ * Where the gutter marks end, in CSS px: History's ticks from 0 to `tick`, the selection rail from
+ * `rail` to the strip's right edge. Both fall on whole backing-store pixels, so the marks stay crisp
+ * at any scale.
  */
-export const railEdges = (geometry: MinimapGeometry): [number, number] => {
-    const backing = backingSize(geometry).width
-    const ratio = backing / geometry.width
-    const right = Math.min(Math.round((geometry.width - RAIL_INSET) * ratio), backing - 1)
-    const left = Math.min(Math.round((geometry.width - RAIL_INSET - RAIL_WIDTH) * ratio), right - 1)
-    return [left / ratio, right / ratio]
+export const gutterMarkEdges = (geometry: MinimapGeometry) => {
+    const ratio = backingSize(geometry).width / geometry.width
+    return {
+        tick: Math.round(GUTTER_MARK_WIDTH * ratio) / ratio,
+        rail: Math.round((geometry.width - GUTTER_MARK_WIDTH) * ratio) / ratio,
+    }
 }
 
 /** The scale for a device pixel ratio: at most 2, and low enough for `MAX_BACKING_HEIGHT`. */

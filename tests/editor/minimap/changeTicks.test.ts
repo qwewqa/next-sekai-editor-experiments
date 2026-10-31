@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createMapping } from '../../../src/editor/minimap/mapping'
+import { GUTTER_MARK_WIDTH, createMapping } from '../../../src/editor/minimap/mapping'
 import {
     HAIRLINE_MAX_RUN,
     HAIRLINE_MAX_RUNS,
     MIN_TICK_HEIGHT,
-    TICK_WIDTH,
     createRowSpread,
     createRunMerger,
     hairlineRuns,
@@ -92,7 +91,7 @@ test('3,400 places merge in one pass to at most one rect per run', () => {
 })
 
 test('the edge tick is 5 CSS px wide and at least 3 CSS px tall', () => {
-    assert.equal(TICK_WIDTH, 5)
+    assert.equal(GUTTER_MARK_WIDTH, 5)
     assert.equal(MIN_TICK_HEIGHT, 3)
 })
 

@@ -8,7 +8,7 @@ import { SELECTION_COLOR } from '../../utils/colors'
 import type { ComposedLayout } from '../composed'
 import { getComposedLayout } from '../composedView'
 import type { MinimapLayer } from './layers'
-import { MAX_BACKING_HEIGHT, railEdges, type MinimapMapping } from './mapping'
+import { MAX_BACKING_HEIGHT, gutterMarkEdges, type MinimapMapping } from './mapping'
 import { FAKE_FACTOR, noteRect } from './paint'
 import { sameGeometry, type Baseline } from './pipeline'
 import { createRowSpread } from './tickRuns'
@@ -31,14 +31,14 @@ const MARKED = new Set<EntityType>([
     'stageTransformEventJoint',
 ])
 
-export type SelectionInputs = {
+type SelectionInputs = {
     entities: readonly Entity[]
     bpms: BpmIntegral[]
     layout: ComposedLayout | undefined
 }
 
 /** Whether the content's front image is the one `shown` and `mapping` describe. */
-export const matches = (drawn: Baseline, shown: State, mapping: MinimapMapping) =>
+const matches = (drawn: Baseline, shown: State, mapping: MinimapMapping) =>
     drawn.grids.note === shown.store.grid.note &&
     isSameTempo(drawn.bpms, shown.bpms) &&
     drawn.layoutKey === (getComposedLayout(shown)?.stages ?? 'basic') &&
@@ -48,7 +48,7 @@ export const matches = (drawn: Baseline, shown: State, mapping: MinimapMapping) 
 let spread: ReturnType<typeof createRowSpread> | undefined
 
 /** One pass over the selection for both marks. */
-export const paintSelection = timed(
+const paintSelection = timed(
     'minimapSelection',
     (ctx: CanvasRenderingContext2D, mapping: MinimapMapping, inputs: SelectionInputs) => {
         const { entities, bpms, layout } = inputs
@@ -75,9 +75,10 @@ export const paintSelection = timed(
         ctx.fill(faint)
         ctx.restore()
         ctx.fillStyle = SELECTION_COLOR
-        const [left, right] = railEdges(mapping.geometry)
+        const { rail } = gutterMarkEdges(mapping.geometry)
+        const width = mapping.geometry.width - rail
         spread.runs((top, height) => {
-            ctx.fillRect(left, top, right - left, height)
+            ctx.fillRect(rail, top, width, height)
         })
     },
 )

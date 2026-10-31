@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { GUTTER_MARK_WIDTH } from '../../src/editor/minimap/mapping'
 import { importLevelData, openEditor } from './memoryBaseline'
 
 // The minimap's selection marks: a white lift on each selected note and a cyan rail at the right
@@ -255,17 +256,23 @@ const expectRail = async (page: Page, label: string) => {
     }
     expect(wrong, label).toBe(0)
     expect(on, label).toBeGreaterThan(0)
-    // The outer column stays clear.
+    // The rail is flush with the strip's right edge, as the ticks are with its left.
     const outer = backingWidth - 1
+    let ragged = 0
     for (let row = 0; row < backingHeight; row++)
-        expect(data[(row * backingWidth + outer) * 4 + 3], label).toBe(0)
+        if (
+            isCyan(data, (row * backingWidth + outer) * 4) !==
+            isCyan(data, (row * backingWidth + column) * 4)
+        )
+            ragged++
+    expect(ragged, label).toBe(0)
     return strip
 }
 
 /** Every white pixel of the lift sits on a drawn note of the content canvas. */
 const expectLiftOnNotes = (strip: Awaited<ReturnType<typeof readStrip>>, label: string) => {
     const data = strip.selection!
-    const railStart = Math.floor((strip.width - 4) * strip.scale)
+    const railStart = Math.floor((strip.width - GUTTER_MARK_WIDTH) * strip.scale)
     let white = 0
     let offNotes = 0
     for (let i = 0; i < data.length; i += 4) {

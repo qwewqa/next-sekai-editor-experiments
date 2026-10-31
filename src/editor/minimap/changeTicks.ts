@@ -3,7 +3,8 @@ import { CHANGE_COLOR } from '../canvas/changes'
 import type { Place } from '../history/changeStops'
 import { minimapChangePlaces } from '../history/changes'
 import type { MinimapLayer } from './layers'
-import { HAIRLINE_ALPHA, TICK_WIDTH, hairlineRuns, tickRuns, type TickRun } from './tickRuns'
+import { gutterMarkEdges } from './mapping'
+import { HAIRLINE_ALPHA, hairlineRuns, tickRuns, type TickRun } from './tickRuns'
 
 /**
  * Orange marks at the places the peeked step changed: an edge tick per run, and
@@ -27,6 +28,7 @@ export const changeTicks: MinimapLayer<readonly Place[]> = {
         for (const { top, height } of hairlineRuns(runs))
             ctx.fillRect(0, Math.floor((top + height / 2) * scale) / scale, width, 1 / scale)
         ctx.globalAlpha = 1
-        for (const { top, height } of runs) ctx.fillRect(0, top, TICK_WIDTH, height)
+        const { tick } = gutterMarkEdges(mapping.geometry)
+        for (const { top, height } of runs) ctx.fillRect(0, top, tick, height)
     },
 }

@@ -7,8 +7,6 @@ import type { MinimapMapping } from './mapping'
 export const MERGE_DEVICE_PX = 2
 /** The shortest tick, in CSS px. */
 export const MIN_TICK_HEIGHT = 3
-/** The edge tick's width, in CSS px: the tick column (PAD_LEFT, 4) and a px of the lane margin. */
-export const TICK_WIDTH = 5
 /** A run this tall or taller, in CSS px, gets no hairline: long stretches would tint the strip. */
 export const HAIRLINE_MAX_RUN = 8
 /** More runs than this get no hairlines: a busy column of ticks already reads, and lines would haze. */

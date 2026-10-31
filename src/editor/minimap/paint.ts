@@ -92,7 +92,7 @@ export const basicConnectorSpan = (
 }
 
 /** A note's rectangle in device px, as `createPainter` fills it. */
-export type NoteRect = { x: number; y: number; width: number; height: number }
+type NoteRect = { x: number; y: number; width: number; height: number }
 
 const rect: NoteRect = { x: 0, y: 0, width: 0, height: 0 }
 

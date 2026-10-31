@@ -4,12 +4,11 @@ import {
     backingSize,
     capScale,
     createMapping,
+    GUTTER_MARK_WIDTH,
+    gutterMarkEdges,
     laneFraction,
     PAD_LEFT,
     PAD_RIGHT,
-    RAIL_INSET,
-    RAIL_WIDTH,
-    railEdges,
 } from '../../../src/editor/minimap/mapping'
 
 const geometry = { width: 40, height: 400, scale: 2 }
@@ -87,7 +86,7 @@ test('the backing store and the scale are capped', () => {
     assert.ok(backingSize({ width: 40, height: 3000, scale: capScale(2, 3000) }).height <= 4096)
 })
 
-test('the selection rail sits on whole device px with the outer one clear, at any scale', () => {
+test("History's ticks and the selection rail mirror each other on whole device px, at any scale", () => {
     const cases = [
         { width: 60, height: 776, scale: 2 },
         { width: 60, height: 776, scale: 1 },
@@ -98,17 +97,20 @@ test('the selection rail sits on whole device px with the outer one clear, at an
         { width: 160, height: 2500, scale: capScale(2, 2500) },
     ]
     for (const geometry of cases) {
-        const backing = backingSize(geometry).width
-        const ratio = backing / geometry.width
-        const [left, right] = railEdges(geometry)
+        const ratio = backingSize(geometry).width / geometry.width
+        const { tick, rail } = gutterMarkEdges(geometry)
         const at = JSON.stringify(geometry)
-        for (const edge of [left, right])
+        for (const edge of [tick, rail])
             assert.ok(Math.abs(edge * ratio - Math.round(edge * ratio)) < 1e-9, `whole px: ${at}`)
-        assert.ok(right * ratio <= backing - 1 + 1e-9, `outer px clear: ${at}`)
-        // Within a device px of the unsnapped rail, 1 px in from the edge.
-        assert.ok(Math.abs(right - (geometry.width - RAIL_INSET)) <= 1 / ratio, at)
-        assert.ok(Math.abs(right - left - RAIL_WIDTH) <= 1 / ratio, at)
+        // Within a device px of the unsnapped width, from each edge.
+        assert.ok(Math.abs(tick - GUTTER_MARK_WIDTH) <= 1 / ratio, at)
+        assert.ok(Math.abs(geometry.width - rail - GUTTER_MARK_WIDTH) <= 1 / ratio, at)
+        // Over their gutter and 1 px of lane margin, never further into the lanes.
+        assert.ok(
+            tick <= PAD_LEFT + 1 + 1 / ratio && rail >= geometry.width - PAD_RIGHT - 1 - 1 / ratio,
+            at,
+        )
     }
-    // At 2x nothing moves.
-    assert.deepEqual(railEdges({ width: 60, height: 776, scale: 2 }), [56, 59])
+    // At 2x both are 5 px.
+    assert.deepEqual(gutterMarkEdges({ width: 60, height: 776, scale: 2 }), { tick: 5, rail: 55 })
 })

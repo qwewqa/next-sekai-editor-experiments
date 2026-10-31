@@ -137,7 +137,7 @@ const { active: hasSelection } = useMinimapLayer(selectionCanvas, mapping, drawn
         />
         <div
             ref="box"
-            class="absolute left-[6px] right-[5px] top-0 z-[3] border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
+            class="absolute left-[6px] right-[6px] top-0 z-[3] border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
             :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
             data-minimap-box
             style="visibility: hidden"
