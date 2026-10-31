@@ -5,7 +5,7 @@ import { getNoteRole, type SlideNoteInfo } from '../state/entities/slides/semant
 import { beatToTime, type BpmIntegral } from '../state/integrals/bpms'
 import type { Store } from '../state/store'
 import { formatTime } from '../utils/format'
-import { formatCount } from '../utils/size'
+import { formatCount, formatTenths } from '../utils/size'
 
 // Statistics: the chart's counts by what the player does, its times, and the Notes per
 // Second chart's three modes and four figures. The dialog and the share card both draw from
@@ -705,18 +705,6 @@ export const roundParts = (parts: readonly number[], total: number) => {
 }
 
 // --- Text.
-
-const formats = new Map<string, Intl.NumberFormat>()
-/** A figure with one decimal in the locale: "4.5", "4,5". */
-export const formatTenths = (value: number, locale: string) => {
-    const tag = languageTag(locale)
-    let format = formats.get(tag)
-    if (!format) {
-        format = new Intl.NumberFormat(tag, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-        formats.set(tag, format)
-    }
-    return format.format(value)
-}
 
 // Narrow conjunctions: "Tap, Flick, Release" in English and "タップ、フリック" in Japanese. The unit
 // style drops the separators in Chinese, Japanese, Korean and Turkish.

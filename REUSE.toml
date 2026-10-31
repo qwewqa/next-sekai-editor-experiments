@@ -106,6 +106,7 @@ path = [
     "src/editor/commands/stages/StageAllIcon.vue",
     "src/editor/commands/stages/StageNextIcon.vue",
     "src/editor/commands/stages/StagePrevIcon.vue",
+    "src/editor/commands/statistics/StatisticsIcon.vue",
     "src/editor/commands/stop/StopIcon.vue",
     "src/editor/commands/toggleVolume/ToggleVolumeIcon.vue",
     "src/editor/commands/undo/UndoIcon.vue",

@@ -16,7 +16,6 @@ import {
     chartModel,
     fillMessage,
     formatList,
-    formatTenths,
     oneSecondMax,
     timeTicks,
     type Category,
@@ -28,7 +27,7 @@ import { settings } from '../../settings'
 import type { BpmIntegral } from '../../state/integrals/bpms'
 import { timeToBeat } from '../../state/integrals/bpms'
 import { formatIntegerTime, formatTime } from '../../utils/format'
-import { formatCount, formatDecimal } from '../../utils/size'
+import { formatCount, formatDecimal, formatTenths } from '../../utils/size'
 import { formatBeatPosition } from '../beatDisplay'
 import { drawChart, readAt, type Reading } from './drawing'
 import { statisticsLocale, statisticsStrings } from './text'

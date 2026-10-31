@@ -303,6 +303,10 @@ const identicalToEnglish: Record<string, string[]> = {
         'settings.preview.position.title',
         'settings.preview.transport.auto',
         'sidebars.view.division',
+        // French spells Combo and Normal the same; the span is the bare range.
+        'statistics.combo',
+        'statistics.normal',
+        'statistics.span',
         'tools.bpm.title',
         'tools.brush.kinds.note',
         'workspace.folders.path',
@@ -384,6 +388,7 @@ const identicalToEnglish: Record<string, string[]> = {
         // "BGM" as in its other BGM strings.
         // "BGM", as in its other strings.
         'settings.editor.waveformVisualization.fft',
+        'statistics.textLine',
         'tools.bpm.title',
         'workspace.folders.path',
         'workspace.manager.copyName',
@@ -424,6 +429,10 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.sentenceJoin',
         // "BGM", as in its other strings.
         'settings.editor.waveformVisualization.fft',
+        // Turkish spells Normal the same; the span is the bare range.
+        'statistics.normal',
+        'statistics.span',
+        'statistics.textLine',
         'tools.bpm.title',
         'workspace.folders.path',
         'workspace.manager.copyName',
@@ -455,6 +464,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.key.names.shift',
         'modals.form.key.names.space',
         'modals.form.key.names.tab',
+        'statistics.span',
         // "BGM" as in its other BGM strings.
         // "BGM", as in its other strings.
         'tools.bpm.title',
@@ -494,6 +504,7 @@ const identicalToEnglish: Record<string, string[]> = {
         // "BGM", as in its other strings.
         'save.bgm',
         'settings.editor.waveformVisualization.fft',
+        'statistics.span',
         'tools.bpm.title',
         'utilities.previewEditor.bgm',
         'workspace.folders.path',

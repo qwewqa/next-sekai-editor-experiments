@@ -51,3 +51,7 @@ export const formatCount = (count: number, locale: string = currentLocale()) =>
 /** A decimal such as a speed in the UI locale: "0,5" in French, at most three fractions. */
 export const formatDecimal = (value: number, locale: string = currentLocale()) =>
     numberFormat(locale, { maximumFractionDigits: 3 }).format(value)
+
+/** A figure with exactly one decimal in the UI locale: "4.5", "4,5". */
+export const formatTenths = (value: number, locale: string = currentLocale()) =>
+    numberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)
