@@ -104,6 +104,47 @@ test('a one-level package opens directly with its Level Info, cover, BGM and off
     expect(await readFile(page, 'song.scp')).toEqual([...bytes])
 })
 
+test('a package opened twice is refused by Save, Save As and Export, its bytes put back each time', async ({
+    page,
+}) => {
+    await start(page)
+    const bytes = await levelPackage('full', [{ name: 'song', title: 'Song' }])
+    // Opened again, the file has two entries in the register: only the newer keeps its bytes.
+    await openPackageFile(page, 'song.scp', bytes)
+    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
+    const first = (await sessionOf(page)).sessionId
+    await queuePicks(page, ['song.scp'])
+    await page.locator('canvas.editor-chart').focus()
+    await page.keyboard.press('o')
+    await expect.poll(async () => (await sessionOf(page)).sessionId).not.toBe(first)
+
+    const refused = async () => {
+        await expect(page.getByRole('dialog')).toContainText('“song.scp” is not')
+        expect(await readFile(page, 'song.scp')).toEqual([...bytes])
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+    }
+    await queuePicks(page, ['song.scp'])
+    await pressSave(page)
+    await submitSave(page, 'song')
+    await refused()
+
+    await queuePicks(page, ['song.scp'])
+    await page.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.saveAs, 'button')
+    })
+    await submitSave(page, 'song', 'Save As')
+    await refused()
+
+    await page.keyboard.press('Shift+P')
+    await expect(dialog(page)).toHaveAccessibleName('Export Level Data')
+    await queuePicks(page, ['song.scp'])
+    await page.keyboard.press('Enter')
+    await refused()
+})
+
 for (const [format, cover, type] of [
     ['WebP', webp(), 'image/webp'],
     ['GIF', gif(), 'image/gif'],

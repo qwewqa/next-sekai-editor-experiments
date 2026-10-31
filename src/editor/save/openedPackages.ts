@@ -28,9 +28,8 @@ export const registerOpenedPackage = (handle: FileSystemFileHandle, file: Blob) 
     })
 }
 
-export const openedPackages = (): readonly OpenedPackage[] => opened
-
-/** Forgets every package, as a test needs between cases. */
-export const resetOpenedPackagesForTests = () => {
-    opened.length = 0
-}
+/**
+ * The packages opened in this tab, newest first. A file opened again has several entries, and
+ * only the newest keeps its bytes, so a lookup takes the first that matches.
+ */
+export const openedPackages = (): readonly OpenedPackage[] => [...opened].reverse()
