@@ -1,27 +1,28 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
+import { useTemplateRef, watch } from 'vue'
 import { times } from '..'
 import { undimmed } from '../history/changes'
 import { view } from '../view'
 import { minimapWidth } from '../workspace'
-import type { MinimapAnnotation } from './annotations'
+import { useMinimapLayer } from './annotations'
 import { changeTicks } from './changeTicks'
 import { useMinimapContent } from './content'
 import { boxGeometry, useMinimapInput } from './input'
-import { backingSize, type MinimapMapping } from './mapping'
-import { minimapStats } from './pipeline'
+import type { MinimapMapping } from './mapping'
+import { selectionMarks } from './selectionMarks'
 import { timed } from '../../perf/probe'
 
 // A single word reads as a native element to the linter.
 defineOptions({ name: 'MinimapStrip' })
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
-const annotationCanvas = useTemplateRef<HTMLCanvasElement>('annotations')
+const changeCanvas = useTemplateRef<HTMLCanvasElement>('change')
+const selectionCanvas = useTemplateRef<HTMLCanvasElement>('selection')
 const box = useTemplateRef<HTMLElement>('box')
 const cursor = useTemplateRef<HTMLElement>('cursor')
 const edge = useTemplateRef<SVGElement>('edge')
 
-const { mapping } = useMinimapContent(canvas)
+const { mapping, drawn } = useMinimapContent(canvas)
 const { isGrabbing, onPointerDown, onPointerMove, onPointerUp, onPointerEnd, onWheel } =
     useMinimapInput(mapping)
 
@@ -96,45 +97,9 @@ watch(
     { flush: 'post' },
 )
 
-// The annotation painters are a static list.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const painters: MinimapAnnotation<any>[] = [changeTicks]
-
-// The canvas exists only while a painter has something to draw.
-const hasAnnotations = computed(() => painters.some((painter) => painter.inputs() !== undefined))
-
-watch(
-    [hasAnnotations, mapping, ...painters.map((painter) => painter.inputs)],
-    () => {
-        const element = annotationCanvas.value
-        const current = mapping.value
-        if (!element || !current) return
-        const size = backingSize(current.geometry)
-        if (element.width !== size.width) element.width = size.width
-        if (element.height !== size.height) element.height = size.height
-        const ctx = element.getContext('2d')
-        if (!ctx) return
-        ctx.setTransform(
-            size.width / current.geometry.width,
-            0,
-            0,
-            size.height / current.geometry.height,
-            0,
-            0,
-        )
-        ctx.clearRect(0, 0, current.geometry.width, current.geometry.height)
-        for (const painter of painters) {
-            const inputs: unknown = painter.inputs()
-            if (inputs !== undefined) painter.paint(ctx, current, inputs)
-        }
-        minimapStats.annotationPaints++
-    },
-    { flush: 'post' },
-)
-
-onBeforeUnmount(() => {
-    if (annotationCanvas.value) annotationCanvas.value.width = annotationCanvas.value.height = 0
-})
+// The mark layers, bottom to top: History's change ticks, then the selection.
+const { active: hasChanges } = useMinimapLayer(changeCanvas, mapping, drawn, changeTicks)
+const { active: hasSelection } = useMinimapLayer(selectionCanvas, mapping, drawn, selectionMarks)
 </script>
 
 <template>
@@ -159,26 +124,33 @@ onBeforeUnmount(() => {
             :style="{ opacity: undimmed !== undefined ? 0.45 : undefined }"
         />
         <canvas
-            v-if="hasAnnotations"
-            ref="annotations"
+            v-if="hasChanges"
+            ref="change"
             class="pointer-events-none absolute inset-0 z-[1] size-full"
+            data-minimap-layer="change"
+        />
+        <canvas
+            v-if="hasSelection"
+            ref="selection"
+            class="pointer-events-none absolute inset-0 z-[2] size-full"
+            data-minimap-layer="selection"
         />
         <div
             ref="box"
-            class="absolute left-[6px] right-[4px] top-0 border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
+            class="absolute left-[6px] right-[5px] top-0 z-[3] border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
             :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
             data-minimap-box
             style="visibility: hidden"
         />
         <div
             ref="cursor"
-            class="pointer-events-none absolute inset-x-0 top-0 h-px bg-white"
+            class="pointer-events-none absolute inset-x-0 top-0 z-[3] h-px bg-white"
             data-minimap-cursor
             style="visibility: hidden"
         />
         <svg
             ref="edge"
-            class="pointer-events-none absolute top-1 text-white forced-colors:text-[CanvasText]"
+            class="pointer-events-none absolute top-1 z-[3] text-white forced-colors:text-[CanvasText]"
             width="11"
             height="6"
             viewBox="0 0 11 6"

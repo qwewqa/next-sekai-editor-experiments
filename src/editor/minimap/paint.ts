@@ -18,7 +18,8 @@ import { CORE, type MinimapMapping } from './mapping'
 
 export const RULE_COLOR = 'rgba(255,255,255,0.12)'
 const BODY_ALPHA = 0.3
-const FAKE_FACTOR = 0.5
+/** A fake note's opacity, against a real one's. */
+export const FAKE_FACTOR = 0.5
 /** Device rows between a body's samples. */
 const SAMPLE_ROWS = 4
 /** Device rows a note takes. */
@@ -88,6 +89,29 @@ export const basicConnectorSpan = (
         left: lerp(attachHead.left, attachTail.left, q) + Math.min(size, 0) / 2,
         size: Math.max(size, 0),
     }
+}
+
+/** A note's rectangle in device px, as `createPainter` fills it. */
+export type NoteRect = { x: number; y: number; width: number; height: number }
+
+const rect: NoteRect = { x: 0, y: 0, width: 0, height: 0 }
+
+/** Where a note at `time` is drawn, in device px. The result is reused by the next call. */
+export const noteRect = (
+    note: NoteEntity,
+    time: number,
+    layout: ComposedLayout | undefined,
+    mapping: MinimapMapping,
+): Readonly<NoteRect> => {
+    const { scale } = mapping.geometry
+    const position = layout ? layout.notePosition(note) : note
+    const [a, b] = mapping.spanToX(position.left, position.size)
+    const x0 = Math.round(a * scale)
+    rect.x = x0
+    rect.y = Math.round(mapping.timeToY(time) * scale) - NOTE_HEIGHT / 2
+    rect.width = Math.max(x0 + 1, Math.round(b * scale)) - x0
+    rect.height = NOTE_HEIGHT
+    return rect
 }
 
 const xs: number[] = []
@@ -160,13 +184,14 @@ export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource
             const infos = state.store.slides.info.get(note.slideId)
             const type = getNoteVisualType(note, infos, infos && slideLookup(infos))
             if (type === 'anchor') return
-            const position = layout ? layout.notePosition(note) : note
-            const [a, b] = mapping.spanToX(position.left, position.size)
-            const x0 = Math.round(a * scale)
-            const x1 = Math.max(x0 + 1, Math.round(b * scale))
-            const y = Math.round(rowOf(beatToTime(bpms, note.beat)))
+            const { x, y, width, height } = noteRect(
+                note,
+                beatToTime(bpms, note.beat),
+                layout,
+                mapping,
+            )
             style(noteMinimapFill(note, type), note.isFake ? FAKE_FACTOR : 1)
-            ctx.fillRect(x0, y - NOTE_HEIGHT / 2, x1 - x0, NOTE_HEIGHT)
+            ctx.fillRect(x, y, width, height)
         },
     }
 }

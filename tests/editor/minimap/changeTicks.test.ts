@@ -6,6 +6,8 @@ import {
     HAIRLINE_MAX_RUNS,
     MIN_TICK_HEIGHT,
     TICK_WIDTH,
+    createRowSpread,
+    createRunMerger,
     hairlineRuns,
     tickRuns,
 } from '../../../src/editor/minimap/tickRuns'
@@ -117,4 +119,108 @@ test('many short runs get no hairlines, so the strip does not haze', () => {
     const runs = Array.from({ length: HAIRLINE_MAX_RUNS }, () => run(3))
     assert.equal(hairlineRuns(runs).length, HAIRLINE_MAX_RUNS)
     assert.deepEqual(hairlineRuns([...runs, run(3)]), [])
+})
+
+// The selection rail: rows in any order, through the same merge.
+
+/** Runs of rows fed to the shared merge in sorted order, top first. */
+const sortedRuns = (rows: number[], scale: number) => {
+    const out: [number, number][] = []
+    const merger = createRunMerger(scale, (top, height) => out.push([top, height]))
+    for (const y of [...rows].sort((a, b) => a - b)) merger.add(y)
+    merger.end()
+    return out
+}
+
+/** Runs of the same rows through a row spread, fed in a scrambled order. */
+const spreadRuns = (rows: number[], scale: number, capacity = 4097) => {
+    const spread = createRowSpread(capacity)
+    spread.reset(scale)
+    for (let i = 0; i < rows.length; i++) spread.add(rows[(i * 7919) % rows.length] ?? 0)
+    const out: [number, number][] = []
+    spread.runs((top, height) => out.push([top, height]))
+    return out
+}
+
+test('a row spread gives the runs the sorted rows do, fractional rows and scales included', () => {
+    const cases: [number[], number][] = [
+        // Same row, and rows 2 and 3 device px apart at 1x and 2x.
+        [[100, 100, 100], 1],
+        [[100, 102], 1],
+        [[100, 103], 1],
+        [[100, 101], 2],
+        [[100, 101.5], 2],
+        // Two device rows 2.8 px apart: the bucket's ends, not its index, decide.
+        [[100.1, 102.9], 1],
+        // A 7.8 px run, just under the hairline threshold.
+        [[100.1, 102, 104, 106, 107.9], 1],
+        // A fractional scale, whose shortest run is still 3 CSS px.
+        [[50, 50.2, 60.05, 61.9, 62.7], 1.1],
+        [[20, 20.4, 20.9, 21.3, 300, 300.95], 1.5],
+    ]
+    for (const [rows, scale] of cases) {
+        const sorted = sortedRuns(rows, scale)
+        assert.deepEqual(spreadRuns(rows, scale), sorted, `${rows.join(', ')} at ${scale}`)
+    }
+    assert.equal(sortedRuns([100.1, 102.9], 1).length, 2)
+    assert.equal(sortedRuns([100, 101], 2).length, 1)
+    assert.equal(sortedRuns([100, 101.5], 2).length, 2)
+    const [long] = spreadRuns([100.1, 102, 104, 106, 107.9], 1)
+    assert.ok(long && Math.abs(long[1] - 7.8) < 1e-9)
+    assert.equal(hairlineRuns([{ top: long[0], height: long[1] }]).length, 1)
+    const [short] = spreadRuns([50, 50.2], 1.1)
+    assert.ok(short)
+    assert.equal(short[1], MIN_TICK_HEIGHT)
+    assert.ok(Math.abs(short[0] + short[1] / 2 - 50.1) < 1e-9)
+})
+
+test("a row spread over places gives the change ticks' runs, top first", () => {
+    const mapping = createMapping({ width: 40, height: 400, scale: 2 }, 100)
+    const times = [10, 10.2, 10.4, 30, 30.1, 70, 99, 250]
+    const ticks: [number, number][] = []
+    tickRuns(
+        times.map((time) => ({ time })),
+        mapping,
+        (top, height) => ticks.push([top, height]),
+    )
+    const spread = createRowSpread(4097)
+    spread.reset(2)
+    for (const time of [...times].reverse()) spread.add(mapping.timeToY(time))
+    const out: [number, number][] = []
+    spread.runs((top, height) => out.push([top, height]))
+    assert.deepEqual(out, ticks.reverse())
+    // Beyond the range clamps to the top row, with 99 s within 2 device px of it.
+    assert.ok(Math.abs((out[0]?.[0] ?? 0) - (mapping.timeToY(250) - MIN_TICK_HEIGHT / 2)) < 1)
+})
+
+test('a row spread clamps rows beyond its capacity and starts clear after a reset', () => {
+    const spread = createRowSpread(10)
+    spread.reset(1)
+    spread.add(-5)
+    spread.add(50)
+    const out: [number, number][] = []
+    spread.runs((top, height) => out.push([top, height]))
+    // Both kept as they are, each in its end row: two runs far apart.
+    assert.equal(out.length, 2)
+    spread.reset(1)
+    spread.add(4)
+    out.length = 0
+    spread.runs((top, height) => out.push([top, height]))
+    assert.deepEqual(out, [[2.5, MIN_TICK_HEIGHT]])
+})
+
+test('13,400 entities in any order give the sorted runs, at most one rect per run', () => {
+    // Every note entity of a large chart, anchors included, selected.
+    let seed = 1
+    const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    const rows = Array.from({ length: 13400 }, () => 17 + random() * 760)
+    for (const scale of [1, 2]) {
+        const runs = spreadRuns(rows, scale)
+        assert.deepEqual(runs, sortedRuns(rows, scale))
+        assert.ok(runs.length <= 760 * scale)
+    }
+    // Clustered: a few dense stretches.
+    const clusters = rows.map((y, i) => 100 + (i % 4) * 150 + (y % 20))
+    assert.deepEqual(spreadRuns(clusters, 2), sortedRuns(clusters, 2))
+    assert.equal(spreadRuns(clusters, 2).length, 4)
 })

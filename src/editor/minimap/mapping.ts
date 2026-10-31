@@ -17,7 +17,8 @@ export type MinimapMapping = {
 
 /** The tick column (C) at the left edge, which no note reaches. */
 export const PAD_LEFT = 4
-export const PAD_RIGHT = 2
+/** The selection rail's column at the right edge. */
+export const PAD_RIGHT = 3
 export const PAD_Y = 4
 /**
  * The rows at the strip's top kept for the edge mark (`Minimap.vue`). Only the lane rules run

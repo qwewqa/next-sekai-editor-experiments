@@ -1,4 +1,5 @@
 import { curveTolerance, resolutionScale, roundCappedSegments } from '../rendering/strokeSegments'
+import { SELECTION_COLOR } from '../utils/colors'
 import type { Vec } from './engine/math'
 import { linkProgram } from './gl'
 
@@ -21,9 +22,13 @@ out vec4 outColor;
 void main() { outColor = u_color; }
 `
 
+/** `#rrggbb` as 0 to 1 channels. */
+const channels = (hex: string) =>
+    [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number]
+
 const STROKES = [
     { width: 5, color: [6 / 255, 21 / 255, 29 / 255, 1] },
-    { width: 2, color: [103 / 255, 232 / 255, 249 / 255, 1] },
+    { width: 2, color: [...channels(SELECTION_COLOR), 1] },
 ] as const
 
 /** The outline's edges in CSS pixels (x0, y0, x1, y1, …), from the engine's screen space. */

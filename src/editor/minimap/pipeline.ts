@@ -39,6 +39,8 @@ export type MinimapPipeline = {
     setSources: (sources: MinimapSources) => void
     /** The mapping the front canvas shows, at the current CSS size; undefined before the first swap. */
     mapping: Readonly<ShallowRef<MinimapMapping | undefined>>
+    /** What the front canvas shows, set at every swap and band pass; undefined while it shows nothing. */
+    drawn: Readonly<ShallowRef<Baseline | undefined>>
     /** Whether nothing is waiting: no pass, no job and no geometry change. Specs wait on it. */
     isIdle: () => boolean
     dispose: () => void
@@ -58,8 +60,10 @@ export const minimapStats = {
     bandPasses: 0,
     /** Content paints: one per swap and one per band redraw. */
     paints: 0,
-    /** B and C increment it. */
+    /** The change layer's paints. */
     annotationPaints: 0,
+    /** The selection layer's paints. */
+    selectionPaints: 0,
     /** The range of what the front canvas shows, in seconds. */
     end: 0,
     lastFull: {
@@ -79,7 +83,7 @@ export const minimapStats = {
 }
 
 /** What a canvas was drawn from, to tell a full redraw from bands. */
-type Baseline = {
+export type Baseline = {
     grids: DrawnGrids
     bpms: BpmIntegral[]
     /** The Composed stage map, or `'basic'`. */
@@ -106,7 +110,7 @@ type Job = {
     flushMs: number
 }
 
-const sameGeometry = (a: MinimapGeometry, b: MinimapGeometry) =>
+export const sameGeometry = (a: MinimapGeometry, b: MinimapGeometry) =>
     a.width === b.width && a.height === b.height && a.scale === b.scale
 
 const now = () => performance.now()
@@ -120,6 +124,7 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
     const back = document.createElement('canvas')
     const backContext = back.getContext('2d', { willReadFrequently: true })
     const mapping = shallowRef<MinimapMapping>()
+    const published = shallowRef<Baseline>()
 
     let sources: MinimapSources | undefined
     /** The latest CSS size, at once. */
@@ -127,6 +132,10 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
     /** The geometry full redraws are made for, after the debounce. */
     let target: MinimapGeometry | undefined
     let drawn: Baseline | undefined
+    const setDrawn = (next: Baseline | undefined) => {
+        drawn = next
+        published.value = next
+    }
     let job: Job | undefined
     let passFrame: number | undefined
     let geometryTimer: ReturnType<typeof setTimeout> | undefined
@@ -212,7 +221,7 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         flush(frontContext)
         const end = now()
         job = undefined
-        drawn = running.baseline
+        setDrawn(running.baseline)
         mapping.value = running.source.mapping
         const full = minimapStats.lastFull
         full.swapMs = end - start
@@ -356,13 +365,13 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         }
         // The diff and the bands count as one pass.
         if (keys.length) minimapStats.lastBand.ms = now() - start
-        drawn = { ...drawn, grids: next, bpms: shown.bpms }
+        setDrawn({ ...drawn, grids: next, bpms: shown.bpms })
     }
 
     const restart = () => {
         // A lost context has lost its pixels: nothing drawn is left to diff against.
         cancelJob()
-        drawn = undefined
+        setDrawn(undefined)
         schedulePass()
     }
     front.addEventListener('contextrestored', restart)
@@ -396,6 +405,8 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
 
         mapping,
 
+        drawn: published,
+
         isIdle: () => passFrame === undefined && !job && geometryTimer === undefined,
 
         dispose() {
@@ -410,7 +421,7 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
             back.width = 0
             back.height = 0
             mapping.value = undefined
-            drawn = undefined
+            setDrawn(undefined)
         },
     }
 }

@@ -17,6 +17,9 @@ export const guideColors = {
 
 export const damageColor = '#ff80ff'
 
+/** A selection's colour where white does not serve: the preview's outline and the minimap's rail. */
+export const SELECTION_COLOR = '#67e8f9'
+
 /** A styled active or damage connector's base; black stays clear of the grid and damage. */
 export const connectorStyleColor = (style: Exclude<NoteStyle, 'default'>) =>
     style === 'black' ? '#555555' : guideColors[style]

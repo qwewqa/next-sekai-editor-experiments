@@ -5,10 +5,11 @@ import { shallowRef, watch, type Ref } from 'vue'
 import { isPeeking, liveState, state } from '../../history'
 import { view } from '../view'
 import type { MinimapMapping } from './mapping'
-import { createMinimapPipeline, type MinimapPipeline } from './pipeline'
+import { createMinimapPipeline, type Baseline, type MinimapPipeline } from './pipeline'
 
 export const useMinimapContent = (canvas: Readonly<Ref<HTMLCanvasElement | null | undefined>>) => {
     const mapping = shallowRef<MinimapMapping>()
+    const drawn = shallowRef<Baseline>()
     let pipeline: MinimapPipeline | undefined
 
     const push = () => {
@@ -49,6 +50,9 @@ export const useMinimapContent = (canvas: Readonly<Ref<HTMLCanvasElement | null 
             const stopMapping = watch(created.mapping, (next) => (mapping.value = next), {
                 flush: 'sync',
             })
+            const stopDrawn = watch(created.drawn, (next) => (drawn.value = next), {
+                flush: 'sync',
+            })
 
             let width = 0
             let height = 0
@@ -79,13 +83,15 @@ export const useMinimapContent = (canvas: Readonly<Ref<HTMLCanvasElement | null 
                 observer.disconnect()
                 query?.removeEventListener('change', updateRatio)
                 stopMapping()
+                stopDrawn()
                 created.dispose()
                 if (pipeline === created) pipeline = undefined
                 mapping.value = undefined
+                drawn.value = undefined
             })
         },
         { immediate: true, flush: 'post' },
     )
 
-    return { mapping }
+    return { mapping, drawn }
 }

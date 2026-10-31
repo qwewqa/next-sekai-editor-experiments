@@ -347,6 +347,7 @@ test.describe('placement, command and setting', () => {
         const after = await statsOf(page)
         expect(after.paints).toBe(before.paints)
         expect(after.annotationPaints).toBe(before.annotationPaints)
+        expect(after.selectionPaints).toBe(before.selectionPaints)
     })
 
     test('with both docks open at 1280 the toolbar keeps one row and toggling the strip moves no panel', async ({
@@ -768,12 +769,15 @@ test.describe('zero work', () => {
     test('scrolling, playback with Follow and a held note drag paint nothing', async ({ page }) => {
         await open(page, { size: { width: 1280, height: 800 } })
         await expect(minimapStrip(page).box).toBeVisible()
+        // With a selection, so its marks are shown throughout.
+        await selectAll(page)
         await frames(page, 10)
+        await expect(page.locator('[data-minimap-layer="selection"]')).toHaveCount(1)
         const counts = async () => {
-            const { paints, annotationPaints } = await statsOf(page)
-            return { paints, annotationPaints }
+            const { paints, annotationPaints, selectionPaints } = await statsOf(page)
+            return { paints, annotationPaints, selectionPaints }
         }
-        const start = await counts()
+        let start = await counts()
 
         // The wheel over the chart.
         await page.mouse.move(400, 400)
@@ -806,6 +810,9 @@ test.describe('zero work', () => {
         })
         await page.mouse.move(point.x, point.y)
         await page.mouse.down()
+        // The press selects the note: its marks paint once, and the hold paints nothing more.
+        await frames(page, 10)
+        start = await counts()
         for (let i = 1; i <= 10; i++) await page.mouse.move(point.x + 3 * i, point.y - 3 * i)
         await frames(page, 60)
         expect(await counts()).toEqual(start)
@@ -992,12 +999,12 @@ test.describe('indicator', () => {
                 const cursor = await rectOf('[data-minimap-cursor]')
                 const edge = await rectOf('[data-minimap-edge]')
                 expect(outer.width, at).toBe(width)
-                // The box keeps the tick column on its left and is centred on the lanes, whose padding is 4 px
-                // on the left and 2 px on the right.
+                // The box keeps the tick column on its left and the rail's on its right, and is
+                // centred on the lanes, whose padding is 4 px on the left and 3 px on the right.
                 expect([box.x - outer.x, outer.x + outer.width - (box.x + box.width)], at).toEqual([
-                    6, 4,
+                    6, 5,
                 ])
-                expect(box.x + box.width / 2 - outer.x, at).toBe(width / 2 + 1)
+                expect(box.x + box.width / 2 - outer.x, at).toBe(width / 2 + 0.5)
                 // The content covers the whole strip, so its lane rules run to the top.
                 expect(canvas, at).toEqual(outer)
                 // 11 by 6 px, 4 px from the top and off the tick column. On a whole pixel, so its
@@ -1306,7 +1313,9 @@ test.describe('peek', () => {
     /** The ticks: runs of orange rows in the annotation canvas's tick column, in CSS px. */
     const tickRows = (page: Page) =>
         page.evaluate(() => {
-            const canvas = document.querySelectorAll<HTMLCanvasElement>('[data-minimap] canvas')[1]
+            const canvas = document.querySelector<HTMLCanvasElement>(
+                '[data-minimap-layer="change"]',
+            )
             if (!canvas) return []
             const scale = canvas.width / canvas.clientWidth
             const { data } = canvas.getContext('2d')!.getImageData(0, 0, 3, canvas.height)
@@ -1328,7 +1337,9 @@ test.describe('peek', () => {
      */
     const beyondColumn = (page: Page) =>
         page.evaluate(() => {
-            const canvas = document.querySelectorAll<HTMLCanvasElement>('[data-minimap] canvas')[1]
+            const canvas = document.querySelector<HTMLCanvasElement>(
+                '[data-minimap-layer="change"]',
+            )
             if (!canvas) return { hairlines: [], other: 0 }
             const scale = canvas.width / canvas.clientWidth
             const from = Math.ceil(5 * scale)
