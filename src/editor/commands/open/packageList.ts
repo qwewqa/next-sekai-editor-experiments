@@ -2,6 +2,7 @@ import { computed, shallowRef } from 'vue'
 import type { Inventory, PackageAsset, PackageLevel } from '../../../files/package/inventory'
 import { i18n } from '../../../i18n'
 import { platform } from '../../../platform'
+import { savePoint } from '../../../platform/testPause'
 import { isAssetSafeModeActive } from '../../../preview/assets'
 import { choiceRow } from '../../../preview/assets/choice'
 import { defaultName, typeLabel } from '../../../preview/assets/fallbackText'
@@ -168,6 +169,8 @@ export const createPackageList = (
                 console.error('Could not store the preview asset:', failure)
         } finally {
             if (working.value === row.id) working.value = undefined
+            // A spec waits for this to know the Import has settled, cancelled or not.
+            void savePoint('packageImportEnded')
         }
     }
 

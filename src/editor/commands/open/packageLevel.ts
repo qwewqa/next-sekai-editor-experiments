@@ -7,6 +7,7 @@ import { getLevelDataRevision, getRevisionWarning } from '../../../levelData/rev
 import { COVER_MAX_SIDE, readCoverSize } from '../../../local/media'
 import { showModal } from '../../../modals'
 import LoadingModal from '../../../modals/LoadingModal.vue'
+import { savePoint } from '../../../platform/testPause'
 import { settings } from '../../../settings'
 import { createState } from '../../../state'
 import type { Bgm } from '../../../state/bgm'
@@ -167,6 +168,8 @@ export const openPackageLevel = async (
                     throw localizedOpenError(error)
                 } finally {
                     stopAbort()
+                    // A spec waits for this to know the task has settled, cancelled or not.
+                    void savePoint('packageLevelEnded')
                 }
             },
         })

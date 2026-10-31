@@ -7,8 +7,10 @@ import { builtinBytes, entriesOf, pack, patched, utf8 } from './previewAssetsPac
 import {
     edit,
     notice,
+    pauseAt,
     pressSave,
     queuePicks,
+    reached,
     readFile,
     sessionOf,
     start,
@@ -381,18 +383,43 @@ const newEffect = async () => {
     })
 }
 
-/** Slows every audio decode, so a test can act while one runs. */
-const slowDecoding = (page: Page, ms: number) =>
-    page.evaluate((ms) => {
+/**
+ * Holds every audio decode until `releaseDecoding`: `decodeEntered` counts the decodes that began,
+ * `decodeEnded` those that returned.
+ */
+const gateDecoding = (page: Page) =>
+    page.evaluate(() => {
+        const signals = window as unknown as {
+            decodeEntered: number
+            decodeEnded: number
+            releaseDecoding: () => void
+        }
+        signals.decodeEntered = 0
+        signals.decodeEnded = 0
+        const gate = new Promise<void>((resolve) => (signals.releaseDecoding = resolve))
         const original = BaseAudioContext.prototype.decodeAudioData
         BaseAudioContext.prototype.decodeAudioData = async function (
             this: BaseAudioContext,
             data: ArrayBuffer,
         ) {
-            await new Promise((resolve) => setTimeout(resolve, ms))
-            return original.call(this, data)
+            signals.decodeEntered++
+            await gate
+            try {
+                return await original.call(this, data)
+            } finally {
+                signals.decodeEnded++
+            }
         } as typeof original
-    }, ms)
+    })
+
+const decodes = (page: Page) =>
+    page.evaluate(() => {
+        const { decodeEntered, decodeEnded } = window as unknown as Record<string, number>
+        return { entered: decodeEntered, ended: decodeEnded }
+    })
+
+const releaseDecoding = (page: Page) =>
+    page.evaluate(() => (window as unknown as { releaseDecoding: () => void }).releaseDecoding())
 
 /** Opens a package without the Open command's confirmation, as another entry point would. */
 const openUnconfirmed = (page: Page, name: string, bytes: Uint8Array) =>
@@ -463,15 +490,19 @@ test('Cancel while a level opens releases what it held and shows the list again 
     await openPackageFile(page, 'slow.scp', bytes)
     await expect(list(page)).toBeVisible()
     const before = await sessionOf(page)
-    await slowDecoding(page, 1500)
+    // Logs the open's end without pausing anything.
+    await pauseAt(page, 'none')
+    await gateDecoding(page)
     await row(page, 'Level B').locator('[data-package-open]').click()
-    // The cover is held by now; the BGM is still decoding.
-    await expect(dialog(page)).toContainText('Decoding audio…')
+    // The cover is held by now, and the BGM's decode has begun and waits.
+    await expect.poll(async () => (await decodes(page)).entered).toBe(1)
     await page.keyboard.press('Escape')
     await expect(list(page)).toBeVisible()
     await expect(row(page, 'Level B').locator('[data-package-open]')).toBeFocused()
-    // Past the slowed decode: nothing opened, and the cover is not held.
-    await page.waitForTimeout(2000)
+    // The decode returns and the cancelled task ends, publishing and holding nothing.
+    await releaseDecoding(page)
+    await reached(page, 'packageLevelEnded')
+    expect(await decodes(page)).toEqual({ entered: 1, ended: 1 })
     expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
     await expect(list(page)).toBeVisible()
     const hash = createHash('sha256').update(cover).digest('hex').slice(0, 32)
@@ -487,29 +518,16 @@ test('closing the list stops a running Import: nothing is stored or applied', as
     await start(page)
     await openPackageFile(page, 'sounds.scp', await newEffect())
     await expect(list(page)).toBeVisible()
-    // Decoding waits until the list is closed, then the rest of the Import would run at once.
-    await page.evaluate(() => {
-        const original = BaseAudioContext.prototype.decodeAudioData
-        const gate = new Promise((resolve) => {
-            ;(window as unknown as { releaseDecoding: () => void }).releaseDecoding = () =>
-                resolve(undefined)
-        })
-        BaseAudioContext.prototype.decodeAudioData = async function (
-            this: BaseAudioContext,
-            data: ArrayBuffer,
-        ) {
-            await gate
-            return original.call(this, data)
-        } as typeof original
-    })
+    await pauseAt(page, 'none')
+    await gateDecoding(page)
     await list(page).locator('[data-package-import]').click()
-    await expect(dialog(page).locator('[data-package-status]')).toHaveText('Storing…')
+    // The Import is checking the clips, which wait.
+    await expect.poll(async () => (await decodes(page)).entered).toBeGreaterThan(0)
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
-    await page.evaluate(() =>
-        (window as unknown as { releaseDecoding: () => void }).releaseDecoding(),
-    )
-    await page.waitForTimeout(3000)
+    // The Import goes on to its end, whatever that is, before anything is checked.
+    await releaseDecoding(page)
+    await reached(page, 'packageImportEnded')
     const state = await page.evaluate(async () => {
         const { workerStore } = await import('/src/preview/assets/files/store.ts')
         return {
