@@ -61,8 +61,11 @@ test('comments and the inside of strings do not read as calls', () => {
     }
 })
 
-test('navigator.share and canShare appear nowhere in src/', () => {
-    assert.deepEqual(matching(/navigator\.share|canShare/), [])
+test('navigator.share and canShare appear only in Share Image', () => {
+    // Files are never handed over through the Web Share API; sharing the statistics card is a share.
+    assert.deepEqual(matching(/navigator\.share|canShare/), [
+        'src/editor/statistics/ShareImageModal.vue',
+    ])
 })
 
 test('nothing in src/ navigates the app context', () => {

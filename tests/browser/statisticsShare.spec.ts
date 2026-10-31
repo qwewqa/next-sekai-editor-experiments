@@ -3,7 +3,7 @@ import en from '../../src/i18n/en/index.json' with { type: 'json' }
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // Share Image: the card's size, its buttons on each kind of device, and the press flow: the
-// clipboard write runs within the press, for the card with the link just typed.
+// clipboard write and the share run within the press, for the card with the link just typed.
 
 type Recorded = { writes: { active: boolean; size?: number }[] }
 
@@ -58,6 +58,54 @@ const record = (page: Page) =>
                 writeText: () => Promise.resolve(),
             },
         })
+    })
+
+type Shared = { active: boolean; at: number; size: number; name: string; text?: string }
+
+/**
+ * Stubs the share sheet: `navigator.canShare` takes files, and `navigator.share` records each call
+ * (whether the press's activation was still active, when, and what it carried), then settles as
+ * `outcome` says after 300 ms.
+ */
+const stubShare = (page: Page, outcome: 'shared' | 'dismissed' | 'refused' = 'shared') =>
+    page.addInitScript((outcome) => {
+        const shares: Shared[] = []
+        const pressed = { at: 0 }
+        Object.assign(window, { shares, pressed })
+        window.addEventListener('pointerdown', () => (pressed.at = performance.now()), true)
+        window.addEventListener('keydown', () => (pressed.at = performance.now()), true)
+        navigator.canShare = (data?: ShareData) => !!data?.files?.length
+        navigator.share = (data?: ShareData) => {
+            const file = data?.files?.[0]
+            shares.push({
+                active: navigator.userActivation.isActive,
+                at: performance.now(),
+                size: file?.size ?? 0,
+                name: file?.name ?? '',
+                text: data?.text,
+            })
+            return new Promise((resolve, reject) =>
+                setTimeout(() => {
+                    if (outcome === 'shared') resolve()
+                    else
+                        reject(
+                            new DOMException(
+                                'stubbed',
+                                outcome === 'dismissed' ? 'AbortError' : 'NotAllowedError',
+                            ),
+                        )
+                }, 300),
+            )
+        }
+    }, outcome)
+
+const shares = (page: Page) =>
+    page.evaluate(() => {
+        const { shares, pressed } = window as unknown as {
+            shares: Shared[]
+            pressed: { at: number }
+        }
+        return { shares, pressedAt: pressed.at }
     })
 
 const recorded = (page: Page) =>
@@ -171,23 +219,14 @@ test('an untitled level downloads as Untitled.png', async ({ page }) => {
     expect((await download).suggestedFilename()).toBe(`${en.save.placeholder}.png`)
 })
 
-test.describe('on a phone', () => {
-    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
-
-    test('Copy Image and Download Image share one row, and the Web Share API is not offered', async ({
-        page,
-    }) => {
-        await page.addInitScript(() => {
-            navigator.canShare = () => true
-            navigator.share = () => Promise.resolve()
-        })
-        await start(page)
-        await openShare(page)
-        await expect(primary(page)).toHaveText(en.statistics.copyImage)
-        const download = await shareDialog(page).locator('[data-share-download]').boundingBox()
-        const copy = await primary(page).boundingBox()
-        expect(download && copy && Math.abs(download.y - copy.y) < 1).toBe(true)
-    })
+test('a desktop that can share files still shows Copy Image, and no Share', async ({ page }) => {
+    await stubShare(page)
+    await start(page)
+    await openShare(page)
+    await expect(primary(page)).toHaveText(en.statistics.copyImage)
+    await expect(shareDialog(page).getByRole('button', { name: en.statistics.share })).toHaveCount(
+        0,
+    )
 })
 
 /** Makes the next `count` card encodes fail, as `toBlob` giving null does, and counts them. */
@@ -336,4 +375,96 @@ test('closing the dialog while the card renders leaves no preview URL behind', a
         await new Promise((resolve) => setTimeout(resolve, 0))
     })
     expect((await state()).created).toBe(before.created)
+})
+
+test.describe('on a phone that shares files', () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+
+    test('Share replaces Copy Image beside Download Image, and shares the card with the link within the press', async ({
+        page,
+    }) => {
+        await stubShare(page)
+        await start(page)
+        await openShare(page)
+        await expect(primary(page)).toHaveText(en.statistics.share)
+        await expect(primary(page)).toBeFocused()
+        const download = await shareDialog(page).locator('[data-share-download]').boundingBox()
+        const share = await primary(page).boundingBox()
+        expect(download && share && Math.abs(download.y - share.y) < 1).toBe(true)
+        // The press comes before the card for the new link has rendered: it waits for it.
+        await shareDialog(page).locator('[data-share-link]').fill('https://example.com/x')
+        await primary(page).tap()
+        // A second tap while the sheet is open shares nothing more.
+        await primary(page).tap()
+        await expect.poll(async () => (await shares(page)).shares.length).toBe(1)
+        const {
+            shares: [shared],
+            pressedAt,
+        } = await shares(page)
+        expect(shared?.active).toBe(true)
+        expect(shared!.at - pressedAt).toBeLessThan(1000)
+        expect(shared?.size).toBeGreaterThan(0)
+        expect(shared?.name).toBe('Brain Rot.png')
+        expect(shared?.text).toBe('https://example.com/x')
+        await expect(shareDialog(page).locator('[data-share-failure]')).toHaveCount(0)
+    })
+
+    test('with no link, the card is shared alone', async ({ page }) => {
+        await stubShare(page)
+        await start(page)
+        await openShare(page)
+        await primary(page).tap()
+        await expect.poll(async () => (await shares(page)).shares.length).toBe(1)
+        expect((await shares(page)).shares[0]?.text).toBeUndefined()
+    })
+
+    test('dismissing the share sheet says nothing', async ({ page }) => {
+        await stubShare(page, 'dismissed')
+        await start(page)
+        await openShare(page)
+        await primary(page).tap()
+        await expect.poll(async () => (await shares(page)).shares.length).toBe(1)
+        // The stub settles 300 ms after the call; the line would show by then.
+        await expect
+            .poll(() => page.evaluate(() => performance.now()))
+            .toBeGreaterThan((await shares(page)).shares[0]!.at + 400)
+        await expect(shareDialog(page).locator('[data-share-failure]')).toHaveCount(0)
+    })
+
+    test('a share that fails says so, and the next press shares again', async ({ page }) => {
+        await stubShare(page, 'refused')
+        await start(page)
+        await openShare(page)
+        await primary(page).tap()
+        await expect(shareDialog(page).locator('[data-share-failure]')).toHaveText(
+            en.statistics.notSharedImage,
+        )
+        await primary(page).tap()
+        await expect.poll(async () => (await shares(page)).shares.length).toBe(2)
+    })
+
+    test('after a failed render, Share renders again and shares within the press', async ({
+        page,
+    }) => {
+        await stubShare(page)
+        await failEncodes(page, 1)
+        await start(page)
+        await page.evaluate(async () => {
+            const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+            const { commands } = await import('/src/editor/commands/index.ts')
+            void runCommand(commands.statistics, 'button')
+        })
+        await page.locator('[data-statistics-share]').tap()
+        await expect(shareDialog(page)).toBeVisible()
+        await failed(page, 1)
+        await primary(page).tap()
+        await expect.poll(async () => (await shares(page)).shares.length).toBe(1)
+        const {
+            shares: [shared],
+            pressedAt,
+        } = await shares(page)
+        expect(shared?.active).toBe(true)
+        expect(shared!.at - pressedAt).toBeLessThan(1000)
+        expect(shared?.size).toBeGreaterThan(0)
+    })
 })

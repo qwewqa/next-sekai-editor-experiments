@@ -2288,9 +2288,11 @@
     "shareImageTitle": "이미지 공유",
     "link": "링크",
     "copyImage": "이미지 복사",
+    "share": "공유",
     "downloadImage": "이미지 다운로드",
     "copiedImage": "이미지를 복사했습니다",
-    "notCopiedImage": "이미지를 복사하지 못함"
+    "notCopiedImage": "이미지를 복사하지 못함",
+    "notSharedImage": "이미지를 공유하지 못함"
   },
   "conflict": {
     "exportTitle": "“{0}” 변경됨",
