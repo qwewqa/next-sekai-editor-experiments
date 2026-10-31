@@ -559,7 +559,7 @@ const places = computed((): LocatedPlace[] => {
 })
 
 /**
- * The places where the chart draws the changed object, the ring's or the ghost's: what the arrows
+ * The places where the chart draws the changed object (its ring or its ghost): what the arrows
  * count and bring into view. A move keeps the side that is drawn.
  */
 const shownPlaces = computed(() => {
