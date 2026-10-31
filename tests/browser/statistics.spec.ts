@@ -253,8 +253,8 @@ test('the modes and the legend persist, and Reset Settings restores them', async
     })
     expect(
         await page.evaluate(() => [
-            window.editorTest.settings.statisticsChart,
-            window.editorTest.settings.statisticsDensityTypes,
+            window.editorTest.settings.statisticsChartMode,
+            window.editorTest.settings.statisticsCategories,
         ]),
     ).toEqual(['smooth', ['tap', 'flick', 'release']])
 })

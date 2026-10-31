@@ -19,28 +19,28 @@ import {
     CATEGORIES,
     chartStatistics,
     copyTextLines,
-    fillMessage,
     formatList,
     mergeTimes,
     representable,
     rollingFigures,
     ROWS,
+    timeRows,
     type Row,
 } from '../../levelData/statistics'
 import { showModal } from '../../modals'
 import BaseModal from '../../modals/BaseModal.vue'
 import NoteShapeIcon from '../../modals/form/NoteShapeIcon.vue'
-import type { NoteShape } from '../../modals/form/noteShapes'
 import { settings } from '../../settings'
-import { formatTime } from '../../utils/format'
+import { fill } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { writeText } from '../copyLink'
 import { notify } from '../notification'
 import SeverityIcon from '../SeverityIcon.vue'
 import { useBreakdown } from './breakdown'
+import { rowShapes } from './marks'
 import ShareImageModal from './ShareImageModal.vue'
 import StatisticsChart from './StatisticsChart.vue'
-import { statisticsLocale, statisticsStrings } from './text'
+import { statisticsStrings } from './text'
 
 // Statistics: the displayed chart's counts by what the player does, Notes per Second and its
 // times. Read-only; it follows the displayed chart, peeks included.
@@ -50,7 +50,7 @@ const emit = defineEmits<{
 }>()
 
 const strings = statisticsStrings
-const locale = statisticsLocale
+const locale = computed(() => settings.locale)
 
 const stats = computed(() => chartStatistics({ store: state.value.store, bpms: state.value.bpms }))
 const bgmEnd = computed(() => bgmEndOf(state.value.bgm))
@@ -61,7 +61,7 @@ const drawable = computed(() => representable(stats.value, bgmEnd.value))
 const chosenTimes = computed(
     () =>
         mergeTimes(
-            CATEGORIES.filter((category) => settings.statisticsDensityTypes.includes(category)).map(
+            CATEGORIES.filter((category) => settings.statisticsCategories.includes(category)).map(
                 (category) => stats.value.times[category],
             ),
         ).times,
@@ -69,18 +69,6 @@ const chosenTimes = computed(
 const figures = computed(() => (drawable.value ? rollingFigures(chosenTimes.value) : undefined))
 
 // --- The list.
-const shapes: Record<Row, NoteShape> = {
-    tap: 'tap',
-    flick: 'flick',
-    release: 'release',
-    trace: 'trace',
-    traceFlick: 'traceFlick',
-    tick: 'tick',
-    hiddenTick: 'hiddenTick',
-    damageNote: 'damage',
-    damageTick: 'damageTick',
-    fakeNote: 'fake',
-}
 const rows = computed(() =>
     ROWS.map((row) => {
         const split = breakdownOf(stats.value, row)
@@ -100,7 +88,7 @@ const rows = computed(() =>
                 lines &&
                 formatList(
                     lines.map((line) =>
-                        fillMessage(locale.value, strings.value.textLine, line.label, line.value),
+                        fill(strings.value.textLine, [line.label, line.value], locale.value),
                     ),
                     locale.value,
                 ),
@@ -108,19 +96,7 @@ const rows = computed(() =>
     }),
 )
 
-const times = computed(() => {
-    const { firstComboNote, lastComboNote, lastNote } = stats.value
-    const out: { label: string; value: string }[] = []
-    if (firstComboNote !== undefined)
-        out.push({ label: strings.value.firstComboNote, value: formatTime(firstComboNote) })
-    if (lastComboNote !== undefined)
-        out.push({ label: strings.value.lastComboNote, value: formatTime(lastComboNote) })
-    if (lastNote !== undefined)
-        out.push({ label: strings.value.lastNote, value: formatTime(lastNote) })
-    if (bgmEnd.value !== undefined)
-        out.push({ label: strings.value.bgmEnd, value: formatTime(bgmEnd.value) })
-    return out
-})
+const times = computed(() => timeRows(stats.value, bgmEnd.value, strings.value))
 
 // --- The breakdown bubble.
 const bubbleId = useId()
@@ -159,34 +135,17 @@ watch(
     },
 )
 
-// --- The body: column layouts without container queries, and closing the bubble on a scroll.
+// --- The body: a scroll closes the bubble.
 const body = useTemplateRef<HTMLDivElement>('body')
 const bodyElement = shallowRef<HTMLDivElement>()
-const noContainerQueries = !CSS.supports('container-type', 'inline-size')
-const wide = ref(false)
-let observer: ResizeObserver | undefined
 const onBodyScroll = () => {
     breakdown.close(true)
 }
 onMounted(() => {
     bodyElement.value = body.value ?? undefined
     body.value?.addEventListener('scroll', onBodyScroll, { passive: true })
-    if (!noContainerQueries || !body.value) return
-    const element = body.value
-    // The body's content width sets the two columns, as the container query does.
-    const measure = () => {
-        const style = getComputedStyle(element)
-        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize)
-        wide.value =
-            element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) >=
-            32 * rem
-    }
-    observer = new ResizeObserver(measure)
-    observer.observe(element)
-    measure()
 })
 onBeforeUnmount(() => {
-    observer?.disconnect()
     body.value?.removeEventListener('scroll', onBodyScroll)
 })
 
@@ -197,7 +156,7 @@ const copyText = () =>
         {
             title: state.value.levelInfo.title,
             stats: stats.value,
-            chosen: settings.statisticsDensityTypes,
+            chosen: settings.statisticsCategories,
             figures: figures.value,
             bgmEnd: bgmEnd.value,
         },
@@ -216,8 +175,8 @@ const share = () => {
         every: every.value,
         bgmEnd: bgmEnd.value,
         drawable: drawable.value,
-        chosen: settings.statisticsDensityTypes,
-        mode: settings.statisticsChart,
+        chosen: settings.statisticsCategories,
+        mode: settings.statisticsChartMode,
         levelInfo: state.value.levelInfo,
         summary: copyText(),
     })
@@ -230,8 +189,6 @@ const share = () => {
             ref="body"
             v-scroll-edges.end
             class="stats-body relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4"
-            :class="{ 'no-cq': noContainerQueries, wide }"
-            data-statistics
         >
             <dl class="stats-rows stats-one-col first outline-none" tabindex="-1" data-autofocus>
                 <div class="stats-row stats-combo">
@@ -240,18 +197,18 @@ const share = () => {
                 </div>
             </dl>
 
-            <dl ref="list" class="stats-rows stats-two" data-statistics-list>
+            <dl ref="list" class="stats-rows stats-two">
                 <div
                     v-for="(item, i) in rows"
                     :key="item.row"
                     class="stats-row"
-                    :class="{ 'col-top': i === 5, 'has-split': item.lines }"
+                    :class="{ 'col-top': i === 5 }"
                     :data-statistics-row="item.row"
                     @pointerenter="item.lines && breakdown.rowEnter(item.row, $event)"
                     @pointerleave="item.lines && breakdown.rowLeave(item.row, $event)"
                 >
                     <dt>
-                        <NoteShapeIcon :shape="shapes[item.row]" />
+                        <NoteShapeIcon :shape="rowShapes[item.row]" />
                         <span :id="`${idBase}-${item.row}`">{{ item.name }}</span>
                     </dt>
                     <dd>
@@ -360,9 +317,6 @@ const share = () => {
 .stats-body {
     container-type: inline-size;
 }
-.stats-body.no-cq {
-    container-type: normal;
-}
 .stats-body > * {
     flex-shrink: 0;
 }
@@ -407,17 +361,6 @@ const share = () => {
     .stats-one-col {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-}
-.stats-body.no-cq.wide .stats-two {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-flow: column;
-    grid-template-rows: repeat(var(--rows, 5), auto);
-}
-.stats-body.no-cq.wide .stats-two > .col-top {
-    border-top-color: transparent;
-}
-.stats-body.no-cq.wide .stats-one-col {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .stats-rows[data-statistics-figures] {
     --rows: 2;
@@ -548,9 +491,6 @@ const share = () => {
         height: 8.5rem;
     }
 }
-.stats-body.no-cq:not(.wide) .stats-chart {
-    height: 8.5rem;
-}
 @media (max-height: 30rem) {
     .stats-chart {
         height: 8.5rem;
@@ -612,12 +552,6 @@ const share = () => {
     .stats-tick-x:not(.wide) {
         display: none;
     }
-}
-.stats-body.no-cq.wide .stats-tick-x:not(.narrow) {
-    display: inline;
-}
-.stats-body.no-cq.wide .stats-tick-x:not(.wide) {
-    display: none;
 }
 .stats-dot {
     position: absolute;

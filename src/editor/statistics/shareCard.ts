@@ -7,11 +7,12 @@ import {
     type ChartMode,
     type ChartStatistics,
     type Row,
+    type StatisticsStrings,
 } from '../../levelData/statistics'
-import { chartCategoryColors } from '../../modals/form/noteShapes'
 import { formatIntegerTime } from '../../utils/format'
-import { formatCount, formatDecimal } from '../../utils/size'
-import { drawChart } from './drawing'
+import { formatCount } from '../../utils/size'
+import { drawChart, yLabel } from './drawing'
+import { chartCategoryColors } from './marks'
 
 // The share card: 800 x 450 units drawn at 1600 x 900 px, built like a dialog: a band with the
 // cover, the title, the artists, the author and the rating; Combo and the list's rows; the
@@ -40,12 +41,10 @@ export type CardInput = {
     theme: CardTheme
     fontFamily: string
     locale: string
-    strings: {
-        rows: Record<Row, string>
-        categories: Record<Category, string>
-        combo: string
-        notesPerSecond: string
-        noNotes: string
+    strings: Pick<
+        StatisticsStrings,
+        'rows' | 'categories' | 'combo' | 'notesPerSecond' | 'noNotes'
+    > & {
         untitled: string
         author: string
         rating: string
@@ -272,7 +271,7 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     const linkLines = input.link ? wrap(g, input.link, WIDTH - 2 * PAD - productWidth, 2, true) : []
     const footerHeight = linkLines.length ? linkLines.length * 18 + 4 : 20
 
-    // --- Combo and the rows: the list's non-zero Combo rows, always the full list.
+    // --- Combo and the rows: every non-zero Combo row, none cut.
     const top = bandHeight + PAD
     const listWidth = 236
     g.fillStyle = rgba(theme.fg, 0.8)
@@ -392,56 +391,26 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
             g.lineTo(drawing.width, line.y)
             g.stroke()
             g.fillStyle = rgba(theme.fg, 0.8)
-            g.fillText(
-                formatDecimal(Math.round(line.value * 1e6) / 1e6, locale),
-                -6,
-                drawing.py(line.value),
-            )
+            g.fillText(yLabel(line.value, locale), -6, drawing.py(line.value))
         }
-        const xs = Array.from(model.xs, drawing.px)
-        const boundary = (j: number) =>
-            Array.from(model.boundaries[j] ?? new Float64Array(), drawing.py)
+        // The dialog's own paths: Bars' tiles, Rolling's wash and line in ink, or Smooth's layers.
         if (model.bins) {
             for (const tile of drawing.tiles) {
                 g.fillStyle = chartCategoryColors[chosen[tile.layer] ?? 'tap']
                 g.fillRect(tile.x, tile.y, tile.width, tile.height)
             }
         } else if (model.steps) {
-            const total = boundary(model.boundaries.length - 1)
-            g.beginPath()
-            g.moveTo(0, drawing.py(0))
-            xs.forEach((x, i) => {
-                g.lineTo(x, total[i] ?? 0)
-            })
-            g.lineTo(drawing.width, drawing.py(0))
-            g.closePath()
             g.fillStyle = rgba(theme.fg, 0.12)
-            g.fill()
-            g.beginPath()
-            xs.forEach((x, i) => {
-                if (i) g.lineTo(x, total[i] ?? 0)
-                else g.moveTo(x, total[i] ?? 0)
-            })
+            g.fill(new Path2D(drawing.wash))
             g.strokeStyle = rgba(theme.fg)
             g.lineWidth = 1
             g.lineJoin = 'round'
-            g.stroke()
-        } else {
-            // The layers, bottom to top, between adjacent boundaries; no total line.
-            model.boundaries.forEach((_, j) => {
-                const upper = boundary(j)
-                const lower = j ? boundary(j - 1) : xs.map(() => drawing.py(0))
-                g.beginPath()
-                xs.forEach((x, i) => {
-                    if (i) g.lineTo(x, upper[i] ?? 0)
-                    else g.moveTo(x, upper[i] ?? 0)
-                })
-                for (let i = xs.length - 1; i >= 0; i--) g.lineTo(xs[i] ?? 0, lower[i] ?? 0)
-                g.closePath()
+            g.stroke(new Path2D(drawing.lines[drawing.lines.length - 1]))
+        } else
+            drawing.areas.forEach((area, j) => {
                 g.fillStyle = chartCategoryColors[chosen[j] ?? 'tap']
-                g.fill()
+                g.fill(new Path2D(area))
             })
-        }
         // The time labels: the dialog's steps, at most six.
         g.fillStyle = rgba(theme.fg, 0.8)
         g.font = font(13)

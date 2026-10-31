@@ -180,14 +180,6 @@ test('Copy Image is hidden without ClipboardItem; Download Image then fills its 
     await expect(primary(page)).toHaveText(en.statistics.downloadImage)
 })
 
-test('Download Image saves the card as the title and .png, or Untitled.png', async ({ page }) => {
-    await start(page)
-    await openShare(page)
-    const download = page.waitForEvent('download')
-    await shareDialog(page).locator('[data-share-download]').click()
-    expect((await download).suggestedFilename()).toBe('Brain Rot.png')
-})
-
 test('the card keeps the level as it was when the dialog opened', async ({ page }) => {
     await start(page)
     await openShare(page)

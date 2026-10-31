@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { drawChart, readAt } from '../../src/editor/statistics/drawing'
-import { chartModel, mergeTimes, type Bin } from '../../src/levelData/statistics'
+import { chartModel, mergeTimes, type Span } from '../../src/levelData/statistics'
 
 // The chart at a plot's size: Bars' tiles on device pixels, the emitted paths, and the readout
 // read from the same coordinates as the drawing.
@@ -47,10 +47,10 @@ test('Bars tiles lie on whole device pixels, with one gap rule and a pixel for e
             bins.forEach((bin, k) => {
                 const next = bins[k + 1]
                 if (!bin.count || !next?.count) return
-                const left = drawing.snapX(drawing.px(bin.a))
+                const left = drawing.snap(drawing.px(bin.a))
                 const tile = drawing.tiles.find((each) => near(each.x, left))
                 assert.ok(tile)
-                const nextLeft = drawing.snapX(drawing.px(next.a))
+                const nextLeft = drawing.snap(drawing.px(next.a))
                 assert.ok(near(nextLeft - (tile.x + tile.width), gap / dpr), `${dpr}: bin ${k}`)
             })
             // Widths differ by at most one device pixel.
@@ -68,7 +68,7 @@ test('a lone tap in a wide bin beside a dense one still takes one device pixel',
     assert.equal(model.bins.width, 15)
     for (const dpr of RATIOS) {
         const drawing = drawChart(model, 295, 136, dpr)
-        const lone = drawing.tiles.find((tile) => near(tile.x, drawing.snapX(drawing.px(690))))
+        const lone = drawing.tiles.find((tile) => near(tile.x, drawing.snap(drawing.px(690))))
         assert.ok(lone, `${dpr}`)
         assert.ok(near(lone.height * dpr, 1), `${dpr}: ${lone.height * dpr}`)
     }
@@ -126,7 +126,7 @@ test('Bars reads its bin and Rolling its step, whole counts where the values are
     const rollingDrawing = drawChart(rolling, 400, 136, 1)
     for (const time of [0, 0.25, 1, 3.05, 3.5, 7.25, 39.9]) {
         const bar = readAt(bars, barsDrawing, time)
-        const bin: Bin = bars.bins.bins[Math.floor(time + 1e-9)]!
+        const bin: Span = bars.bins.bins[Math.floor(time + 1e-9)]!
         assert.equal(bar.value, bin.count)
         assert.deepEqual(bar.parts, bin.parts)
         assert.deepEqual(bar.span, [bin.a, bin.b])

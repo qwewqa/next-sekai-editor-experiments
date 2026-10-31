@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { chartCategoryColors } from '../../src/editor/statistics/marks'
 import { drawCard, type CardInput } from '../../src/editor/statistics/shareCard'
 import {
     CATEGORIES,
@@ -8,12 +9,14 @@ import {
     type Category,
     type ChartStatistics,
 } from '../../src/levelData/statistics'
-import { chartCategoryColors } from '../../src/modals/form/noteShapes'
 
 // The share card's layout, drawn on a recording 2D context: what it writes and where, for the
 // branches a card can take.
 
 type Call = { name: string; args: unknown[]; fillStyle: unknown; font: string }
+
+// Node has no Path2D; the card's paths are drawing.ts's, tested there.
+globalThis.Path2D ??= class {} as unknown as typeof Path2D
 
 /** A 2D context that records its calls; text is 0.55 of its size wide per character. */
 const recorder = ({ roundRect = true } = {}) => {
@@ -138,6 +141,9 @@ const draw = (overrides: Partial<CardInput> = {}, options?: { roundRect?: boolea
     assert.equal(canvas.height, 900)
     return calls
 }
+/** The calls that draw a path object: the chart's, not the card's own shapes. */
+const paths = (calls: Call[], name: 'fill' | 'stroke') =>
+    calls.filter((call) => call.name === name && call.args[0] instanceof Path2D)
 const texts = (calls: Call[]) =>
     calls.filter((call) => call.name === 'fillText').map((call) => call.args[0] as string)
 const fills = (calls: Call[], color: string) =>
@@ -164,6 +170,13 @@ test('the key lists the chosen categories with notes, from the baseline up, and 
     for (const category of ['tap', 'flick', 'release'] as const)
         assert.ok(fills(calls, chartCategoryColors[category]).length > 0, category)
     assert.equal(fills(calls, chartCategoryColors.trace).length, 0)
+    // Smooth fills one area per chosen layer, from the dialog's own paths.
+    assert.deepEqual(
+        paths(calls, 'fill').map((call) => call.fillStyle),
+        ['tap', 'flick', 'release', 'traceFlick'].map(
+            (category) => chartCategoryColors[category as Category],
+        ),
+    )
 })
 
 test('with nothing chosen the chart says so, and draws no layer', () => {
@@ -184,6 +197,9 @@ test('Bars draws tiles in the layer colours, and Rolling draws ink with no swatc
     for (const category of CATEGORIES)
         assert.equal(fills(rolling, chartCategoryColors[category]).length, 0, category)
     assert.ok(texts(rolling).includes('Key tap'))
+    // Rolling fills its wash and strokes its line.
+    assert.equal(paths(rolling, 'fill').length, 1)
+    assert.equal(paths(rolling, 'stroke').length, 1)
 })
 
 test('a long title takes two lines and an ellipsis; empty fields leave their lines out', () => {

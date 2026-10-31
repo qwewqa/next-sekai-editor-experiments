@@ -1,4 +1,5 @@
 import { binAt, roundParts, yScale, type ChartModel } from '../../levelData/statistics'
+import { formatDecimal } from '../../utils/size'
 
 // The chart at a plot's size: the coordinates of its layers, Bars' tiles and the gridlines, and
 // the readout read from the same coordinates, so the dot and the values sit on the drawn edges.
@@ -8,7 +9,6 @@ export type Tile = { x: number; y: number; width: number; height: number; layer:
 export type Drawing = {
     width: number
     height: number
-    yStep: number
     yTop: number
     /** Plot x of a time. */
     px: (time: number) => number
@@ -18,14 +18,19 @@ export type Drawing = {
     lines: string[]
     /** Each layer's area, bottom first. */
     areas: string[]
+    /** The area under the total, for an ink wash. */
+    wash: string
     tiles: Tile[]
     /** Gridlines' y and their thickness in CSS px. */
     grid: { y: number; value: number }[]
     gridWidth: number
     /** A whole number of device pixels from the plot's own origin. */
-    snapX: (x: number) => number
-    snapY: (y: number) => number
+    snap: (value: number) => number
 }
+
+/** A y-axis label: at most three decimals in the locale. */
+export const yLabel = (value: number, locale: string) =>
+    formatDecimal(Math.round(value * 1e6) / 1e6, locale)
 
 /**
  * Draws a model in a plot of `width` x `height` CSS px at `dpr` device pixels per CSS px, edges
@@ -45,8 +50,7 @@ export const drawChart = (
     const span = model.x1 - model.x0
     const px = (time: number) => ((time - model.x0) / span) * width
     const py = (value: number) => (1 - value / yTop) * height
-    const snapX = (x: number) => Math.round(x * dpr) / dpr
-    const snapY = snapX
+    const snap = (value: number) => Math.round(value * dpr) / dpr
     const xs = Array.from(model.xs, px)
     const ys = model.boundaries.map((boundary) => Array.from(boundary, py))
     const line = (values: number[]) => 'M' + xs.map((x, i) => `${x} ${values[i] ?? 0}`).join(' L')
@@ -57,6 +61,7 @@ export const drawChart = (
         const back = xs.map((x, i) => `${x} ${lower ? (lower[i] ?? baseline) : baseline}`).reverse()
         return `${line(upper)} L${back.join(' L')} Z`
     })
+    const wash = `M${px(model.x0)} ${baseline} L${lines[lines.length - 1]?.slice(1) ?? ''} L${px(model.x1)} ${baseline} Z`
 
     // Bars: tiles on device pixels; a one-device-pixel gap between bars from a pitch of 5 device
     // pixels; a nonzero part that would round to nothing takes one device pixel.
@@ -67,13 +72,13 @@ export const drawChart = (
         const gap = pitch >= 5 ? 1 / dpr : 0
         for (const bin of bins.bins) {
             if (!bin.count) continue
-            const left = snapX(px(bin.a))
-            const right = snapX(px(bin.b)) - gap
+            const left = snap(px(bin.a))
+            const right = snap(px(bin.b)) - gap
             let below = 0
-            let base = snapY(py(0))
+            let base = snap(py(0))
             bin.parts.forEach((count, layer) => {
                 if (!count) return
-                let y = snapY(py((below + count) / bins.width))
+                let y = snap(py((below + count) / bins.width))
                 if (y >= base - 1e-9) y = base - 1 / dpr
                 tiles.push({ x: left, y, width: right - left, height: base - y, layer })
                 below += count
@@ -87,24 +92,23 @@ export const drawChart = (
     const grid: Drawing['grid'] = []
     for (let k = 0; k * yStep <= yTop * (1 + 1e-9); k++)
         grid.push({
-            y: Math.min(snapY(py(k * yStep)), snapY(height) - gridWidth) + gridWidth / 2,
+            y: Math.min(snap(py(k * yStep)), snap(height) - gridWidth) + gridWidth / 2,
             value: k * yStep,
         })
 
     return {
         width,
         height,
-        yStep,
         yTop,
         px,
         py,
         lines,
         areas,
+        wash,
         tiles,
         grid,
         gridWidth,
-        snapX,
-        snapY,
+        snap,
     }
 }
 

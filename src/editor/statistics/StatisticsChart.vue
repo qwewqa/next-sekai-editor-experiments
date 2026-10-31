@@ -14,7 +14,7 @@ import { i18n } from '../../i18n'
 import {
     CATEGORIES,
     chartModel,
-    fillMessage,
+    figureRows,
     formatList,
     oneSecondMax,
     timeTicks,
@@ -22,15 +22,16 @@ import {
     type ChartMode,
     type Figures,
 } from '../../levelData/statistics'
-import { chartCategoryColors } from '../../modals/form/noteShapes'
 import { settings } from '../../settings'
 import type { BpmIntegral } from '../../state/integrals/bpms'
 import { timeToBeat } from '../../state/integrals/bpms'
 import { formatIntegerTime, formatTime } from '../../utils/format'
-import { formatCount, formatDecimal, formatTenths } from '../../utils/size'
+import { fill } from '../../utils/interpolate'
+import { formatCount, formatTenths } from '../../utils/size'
 import { formatBeatPosition } from '../beatDisplay'
-import { drawChart, readAt, type Reading } from './drawing'
-import { statisticsLocale, statisticsStrings } from './text'
+import { drawChart, readAt, yLabel, type Reading } from './drawing'
+import { chartCategoryColors } from './marks'
+import { statisticsStrings } from './text'
 
 // Notes per Second: the mode control, the plot with its readout on the label line above it,
 // the legend that chooses the categories, and the four figures.
@@ -50,15 +51,15 @@ const props = defineProps<{
 }>()
 
 const strings = statisticsStrings
-const locale = statisticsLocale
+const locale = computed(() => settings.locale)
 const headingId = useId()
 const modeName = useId()
 
 const mode = computed({
-    get: () => settings.statisticsChart,
-    set: (value: ChartMode) => (settings.statisticsChart = value),
+    get: () => settings.statisticsChartMode,
+    set: (value: ChartMode) => (settings.statisticsChartMode = value),
 })
-const chosen = computed(() => settings.statisticsDensityTypes)
+const chosen = computed(() => settings.statisticsCategories)
 const isOn = (category: Category) => chosen.value.includes(category)
 
 const status = ref('')
@@ -66,16 +67,15 @@ const toggle = (category: Category, on: boolean) => {
     const set = new Set(chosen.value)
     if (on) set.add(category)
     else set.delete(category)
-    settings.statisticsDensityTypes = CATEGORIES.filter((each) => set.has(each))
+    settings.statisticsCategories = CATEGORIES.filter((each) => set.has(each))
     // After a toggle, one polite line says the new Average.
     void nextTick(() => {
         const figures = props.figures
         status.value = figures
-            ? fillMessage(
-                  locale.value,
+            ? fill(
                   strings.value.textLine,
-                  strings.value.average,
-                  formatTenths(figures.average, locale.value),
+                  [strings.value.average, formatTenths(figures.average, locale.value)],
+                  locale.value,
               )
             : strings.value.noNotes
     })
@@ -107,8 +107,8 @@ const measurePlot = () => {
 }
 
 // --- The model and its drawing.
-const chosenTimes = computed(() => CATEGORIES.filter(isOn).map((category) => props.times[category]))
 const kinds = computed(() => CATEGORIES.filter(isOn))
+const chosenTimes = computed(() => kinds.value.map((category) => props.times[category]))
 const hasNotes = computed(() => chosenTimes.value.some((list) => list.length > 0))
 const columns = computed(() => Math.max(2, Math.round(size.value.width * 2)))
 
@@ -149,7 +149,7 @@ const xTicks = computed(() => {
 const bgmLine = computed(() => {
     const current = drawing.value
     if (!current || props.bgmEnd === undefined) return undefined
-    return current.snapX(current.px(props.bgmEnd)) + current.gridWidth / 2
+    return current.snap(current.px(props.bgmEnd)) + current.gridWidth / 2
 })
 
 // --- The readout.
@@ -181,11 +181,10 @@ const describe = (shown: (Reading & { time: number }) | undefined) => {
     const value = number(shown.exact ? shown.value : Math.round(shown.value * 10) / 10, shown.exact)
     const when = shown.span ? shown.span[0] : shown.time
     const time = shown.span
-        ? fillMessage(
-              locale.value,
+        ? fill(
               i18n.value.statistics.span,
-              formatTime(shown.span[0]),
-              formatTime(shown.span[1]),
+              [formatTime(shown.span[0]), formatTime(shown.span[1])],
+              locale.value,
           )
         : formatTime(shown.time)
     const parts = Object.fromEntries(
@@ -194,13 +193,12 @@ const describe = (shown: (Reading & { time: number }) | undefined) => {
     // The value at its time, then each part, in the locale's list.
     const valueText = formatList(
         [
-            fillMessage(locale.value, i18n.value.statistics.at, value, time),
+            fill(i18n.value.statistics.at, [value, time], locale.value),
             ...kinds.value.map((category) =>
-                fillMessage(
-                    locale.value,
+                fill(
                     strings.value.textLine,
-                    strings.value.categories[category],
-                    parts[category] ?? '',
+                    [strings.value.categories[category], parts[category] ?? ''],
+                    locale.value,
                 ),
             ),
         ],
@@ -299,12 +297,7 @@ const probeText = computed(() => {
     end += 10
     return {
         value: formatTenths(top.value, locale.value),
-        time: fillMessage(
-            locale.value,
-            i18n.value.statistics.span,
-            formatTime(end),
-            formatTime(end),
-        ),
+        time: fill(i18n.value.statistics.span, [formatTime(end), formatTime(end)], locale.value),
         beat: position(end),
     }
 })
@@ -372,29 +365,13 @@ onBeforeUnmount(() => {
 // Tiles snap to device pixels from the plot's own origin, a quarter pixel past each edge, so
 // crisp edges round the same way at any fractional place of the dialog (measured at 1x to 3x).
 const bias = computed(() => 0.25 / dpr.value)
-const yLabel = (value: number) => formatDecimal(Math.round(value * 1e6) / 1e6, locale.value)
 const color = (category: Category) => chartCategoryColors[category]
 const modes = computed(() => [
     { value: 'smooth' as const, label: i18n.value.statistics.smooth },
     { value: 'bars' as const, label: i18n.value.statistics.bars },
     { value: 'rolling' as const, label: i18n.value.statistics.rolling },
 ])
-const figureRows = computed(() => {
-    const figures = props.figures
-    const value = (text: string) => (figures ? text : '')
-    return [
-        {
-            label: strings.value.average,
-            value: value(formatTenths(figures?.average ?? 0, locale.value)),
-        },
-        {
-            label: strings.value.median,
-            value: value(formatCount(figures?.median ?? 0, locale.value)),
-        },
-        { label: strings.value.p90, value: value(formatCount(figures?.p90 ?? 0, locale.value)) },
-        { label: strings.value.p99, value: value(formatCount(figures?.p99 ?? 0, locale.value)) },
-    ]
-})
+const figureLines = computed(() => figureRows(props.figures, strings.value, locale.value))
 </script>
 
 <template>
@@ -404,7 +381,6 @@ const figureRows = computed(() => {
             class="flex rounded-full bg-recess p-0.5 shadow-track"
             role="radiogroup"
             :aria-labelledby="headingId"
-            data-statistics-mode
         >
             <label v-for="item in modes" :key="item.value" class="segment-choice relative">
                 <input
@@ -422,12 +398,7 @@ const figureRows = computed(() => {
         </div>
     </div>
 
-    <div
-        ref="plotBlock"
-        class="stats-plot"
-        :style="{ '--lines': lines, '--v': `${slotWidth}ch` }"
-        data-statistics-plot
-    >
+    <div ref="plotBlock" class="stats-plot" :style="{ '--lines': lines, '--v': `${slotWidth}ch` }">
         <div ref="labelLine" class="stats-label-line" :class="{ stuck }">
             <span class="stats-readout" data-statistics-readout>
                 <span v-if="readout" class="stats-facts">
@@ -519,15 +490,8 @@ const figureRows = computed(() => {
                         />
                     </template>
                     <template v-else>
-                        <path
-                            :d="`M${drawing.px(model.x0)} ${drawing.py(0)} L${drawing.lines[drawing.lines.length - 1]?.slice(1)} L${drawing.px(model.x1)} ${drawing.py(0)} Z`"
-                            :fill="`url(#${headingId}-wash)`"
-                        />
-                        <path
-                            class="stats-line"
-                            :d="drawing.lines[drawing.lines.length - 1]"
-                            data-statistics-line
-                        />
+                        <path :d="drawing.wash" :fill="`url(#${headingId}-wash)`" />
+                        <path class="stats-line" :d="drawing.lines[drawing.lines.length - 1]" />
                     </template>
                     <path
                         v-if="mode !== 'rolling'"
@@ -543,7 +507,6 @@ const figureRows = computed(() => {
                         :y2="drawing.height"
                         :style="{ strokeWidth: `${drawing.gridWidth}px` }"
                         shape-rendering="crispEdges"
-                        data-statistics-bgm-line
                     />
                 </svg>
                 <template v-if="drawing && model">
@@ -552,7 +515,7 @@ const figureRows = computed(() => {
                         :key="line.value"
                         class="stats-tick stats-tick-y"
                         :style="{ top: `${(drawing.py(line.value) / drawing.height) * 100}%` }"
-                        >{{ yLabel(line.value) }}</span
+                        >{{ yLabel(line.value, locale) }}</span
                     >
                     <span
                         v-for="tick in xTicks"
@@ -582,7 +545,7 @@ const figureRows = computed(() => {
                     {{ strings.noNotes }}
                 </div>
             </div>
-            <div class="stats-key" role="group" :aria-labelledby="headingId" data-statistics-legend>
+            <div class="stats-key" role="group" :aria-labelledby="headingId">
                 <label
                     v-for="category in legendOrder"
                     :key="category"
@@ -620,7 +583,7 @@ const figureRows = computed(() => {
         data-statistics-figures
     >
         <div
-            v-for="(row, i) in figureRows"
+            v-for="(row, i) in figureLines"
             :key="i"
             class="stats-row"
             :class="{ 'col-top': i === 2 }"

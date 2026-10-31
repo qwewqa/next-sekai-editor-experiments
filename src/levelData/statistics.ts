@@ -1,10 +1,11 @@
-import { languageTag, pluralForm } from '../i18n/plural'
+import { languageTag } from '../i18n/plural'
 import type { Bgm } from '../state/bgm'
 import { beatToTicks, scheduleHiddenTicks } from '../state/entities/slides/hiddenTicks'
 import { getNoteRole, type SlideNoteInfo } from '../state/entities/slides/semantics'
 import { beatToTime, type BpmIntegral } from '../state/integrals/bpms'
 import type { Store } from '../state/store'
 import { formatTime } from '../utils/format'
+import { fill } from '../utils/interpolate'
 import { formatCount, formatTenths } from '../utils/size'
 
 // Statistics: the chart's counts by what the player does, its times, and the Notes per
@@ -161,7 +162,7 @@ export const bgmEndOf = (bgm: Pick<Bgm, 'offset' | 'meta' | 'buffer'>) => {
 }
 
 /** Chosen notes merged in time order, each tagged with its layer: its index among the chosen. */
-export type Tagged = { times: Float64Array; layers: Uint8Array; count: number }
+export type Tagged = { times: Float64Array; layers: Uint8Array; layerCount: number }
 
 /** Merges sorted category lists in O(n); at equal times the lower layer comes first. */
 export const mergeTimes = (lists: readonly Float64Array[]): Tagged => {
@@ -183,7 +184,7 @@ export const mergeTimes = (lists: readonly Float64Array[]): Tagged => {
         layers[i] = best
         at[best] = (at[best] ?? 0) + 1
     }
-    return { times, layers, count: lists.length }
+    return { times, layers, layerCount: lists.length }
 }
 
 // Times a chart reaches only at absurd BPMs: past 2^53 samples of 50 ms the grid loses precision.
@@ -214,7 +215,7 @@ export const oneSecondMax = (times: Times) => {
     return best
 }
 
-export type Figures = { average: number; median: number; p90: number; p99: number; active: number }
+export type Figures = { average: number; median: number; p90: number; p99: number }
 
 /**
  * The four figures, of the Rolling count r(s) over the time it is above 0: Average is the
@@ -262,7 +263,6 @@ export const rollingFigures = (times: Times): Figures | undefined => {
         median: percentile(0.5),
         p90: percentile(0.9),
         p99: percentile(0.99),
-        active: active / 1000,
     }
 }
 
@@ -412,7 +412,8 @@ export const curveColumns = (samples: Samples, x0: number, x1: number, count: nu
 
 // --- Rolling: the most chosen notes in a one-second window centred in each step.
 
-export type Step = { a: number; b: number; count: number; parts: number[] }
+/** A stretch [a, b) of the timeline: its count of notes and their split by layer. */
+export type Span = { a: number; b: number; count: number; parts: number[] }
 
 /**
  * Each step [a, b) takes the most notes in a window starting in [a - 0.5 s, b - 0.5 s), from
@@ -420,7 +421,7 @@ export type Step = { a: number; b: number; count: number; parts: number[] }
  * The count rises only when a note enters, so the candidates are the range's first start, every
  * note start in it and the start just after each note enters. O(n + steps).
  */
-export const skyline = (tagged: Tagged, x0: number, x1: number, count = 300): Step[] => {
+export const skyline = (tagged: Tagged, x0: number, x1: number, count = 300): Span[] => {
     const ms = Float64Array.from(tagged.times, (time) => time * 1000)
     const n = ms.length
     let lo = 0
@@ -440,14 +441,14 @@ export const skyline = (tagged: Tagged, x0: number, x1: number, count = 300): St
     }
     const entry = (time: number) => time - 1000 + 2 * MARGIN_MS
     const width = (x1 - x0) / count
-    const steps: Step[] = []
+    const steps: Span[] = []
     let iNote = 0
     let iEntry = 0
     let previousA = -Infinity
     for (let k = 0; k < count; k++) {
         const a = x0 + k * width
         const b = a + width
-        const parts = new Array<number>(tagged.count).fill(0)
+        const parts = new Array<number>(tagged.layerCount).fill(0)
         if (b <= 0) {
             steps.push({ a, b, count: 0, parts })
             continue
@@ -497,17 +498,15 @@ export const binWidth = (end: number) => {
     return width
 }
 
-export type Bin = { a: number; b: number; count: number; parts: number[] }
-
 /** Each bin's count and split; a bar's height is its count over the width. */
 export const bars = (tagged: Tagged, end: number) => {
     const timelineEnd = Math.max(0, end)
     const width = binWidth(timelineEnd)
-    const bins: Bin[] = Array.from({ length: binOf(timelineEnd, width) + 1 }, (_, k) => ({
+    const bins: Span[] = Array.from({ length: binOf(timelineEnd, width) + 1 }, (_, k) => ({
         a: k * width,
         b: (k + 1) * width,
         count: 0,
-        parts: new Array<number>(tagged.count).fill(0),
+        parts: new Array<number>(tagged.layerCount).fill(0),
     }))
     for (let i = 0; i < tagged.times.length; i++) {
         const bin = bins[Math.max(0, binOf(tagged.times[i] ?? 0, width))]
@@ -520,7 +519,7 @@ export const bars = (tagged: Tagged, end: number) => {
 }
 
 /** The bin under a time: the plot runs over whole bins, so every place has one. */
-export const binAt = (bins: Bin[], width: number, time: number) =>
+export const binAt = (bins: Span[], width: number, time: number) =>
     bins[Math.min(bins.length - 1, Math.max(0, binOf(time, width)))]
 
 // --- The chart in one mode, as drawn: the times of its points and each layer's boundary there.
@@ -528,15 +527,14 @@ export const binAt = (bins: Bin[], width: number, time: number) =>
 export type ChartMode = 'smooth' | 'bars' | 'rolling'
 
 export type ChartModel = {
-    mode: ChartMode
     x0: number
     x1: number
     /** The drawn points' times. */
     xs: Float64Array
     /** Per layer, the sum of the layers up to it at each point; the last is the total. */
     boundaries: Float64Array[]
-    bins?: { width: number; bins: Bin[] }
-    steps?: Step[]
+    bins?: { width: number; bins: Span[] }
+    steps?: Span[]
 }
 
 /** The smooth curve's and Rolling's timeline: the grid with its padding, to BGM End. */
@@ -555,6 +553,21 @@ const cumulate = (layers: Float64Array[], length: number) => {
     return out
 }
 
+/** Spans drawn flat across their width, each layer's part divided by `per`. */
+const flat = (spans: Span[], layerCount: number, per: number) => ({
+    xs: Float64Array.from(spans.flatMap((span) => [span.a, span.b])),
+    boundaries: cumulate(
+        Array.from({ length: layerCount }, (_, j) => {
+            const layer = new Float64Array(spans.length * 2)
+            spans.forEach((span, i) => {
+                layer[2 * i] = layer[2 * i + 1] = (span.parts[j] ?? 0) / per
+            })
+            return layer
+        }),
+        spans.length * 2,
+    ),
+})
+
 /**
  * The chart for the chosen categories in one mode. `every` is every category's times (the
  * grid and the timeline follow the chart, never the selection); `columns` is the plot's
@@ -567,47 +580,24 @@ export const chartModel = (
     bgmEnd: number | undefined,
     columns: number,
 ): ChartModel | undefined => {
-    const grid = gridOf(every)
-    if (!grid) return undefined
-    const tagged = mergeTimes(chosen)
+    if (!every.length) return undefined
     if (mode === 'bars') {
         let end = bgmEnd ?? 0
         for (const time of every) end = Math.max(end, time)
-        const result = bars(tagged, end)
-        const parts = chosen.map((_, j) => {
-            const layer = new Float64Array(result.bins.length * 2)
-            result.bins.forEach((bin, i) => {
-                layer[2 * i] = layer[2 * i + 1] = (bin.parts[j] ?? 0) / result.width
-            })
-            return layer
-        })
+        const result = bars(mergeTimes(chosen), end)
         return {
-            mode,
             x0: 0,
             x1: result.bins.length * result.width,
-            xs: Float64Array.from(result.bins.flatMap((bin) => [bin.a, bin.b])),
-            boundaries: cumulate(parts, result.bins.length * 2),
+            ...flat(result.bins, chosen.length, result.width),
             bins: result,
         }
     }
+    const grid = gridOf(every)
+    if (!grid) return undefined
     const { x0, x1 } = timelineOf(grid, bgmEnd)
     if (mode === 'rolling') {
-        const steps = skyline(tagged, x0, x1)
-        const parts = chosen.map((_, j) => {
-            const layer = new Float64Array(steps.length * 2)
-            steps.forEach((step, i) => {
-                layer[2 * i] = layer[2 * i + 1] = step.parts[j] ?? 0
-            })
-            return layer
-        })
-        return {
-            mode,
-            x0,
-            x1,
-            xs: Float64Array.from(steps.flatMap((step) => [step.a, step.b])),
-            boundaries: cumulate(parts, steps.length * 2),
-            steps,
-        }
+        const steps = skyline(mergeTimes(chosen), x0, x1)
+        return { x0, x1, ...flat(steps, chosen.length, 1), steps }
     }
     const { centres, values } = curveColumns(
         curveSamples(chosen, grid),
@@ -624,7 +614,6 @@ export const chartModel = (
         return out
     })
     return {
-        mode,
         x0,
         x1,
         xs: Float64Array.from([x0, ...centres, x1]),
@@ -710,13 +699,6 @@ export const formatList = (items: string[], locale: string) => {
     return format.format(items)
 }
 
-/** Fills a message as `interpolate` does, in the given locale: the form follows `{0}`. */
-export const fillMessage = (locale: string, message: string, ...params: (string | number)[]) =>
-    pluralForm(locale, message, params[0]).replace(/\{(\d+)\}/g, (placeholder, index: string) => {
-        const param = params[Number(index)]
-        return typeof param === 'number' ? formatCount(param, locale) : (param ?? placeholder)
-    })
-
 export type StatisticsStrings = {
     combo: string
     rows: Record<Row, string>
@@ -743,6 +725,39 @@ export const breakdownOf = (stats: ChartStatistics, row: Row) => {
     return critical === undefined || !count ? undefined : { normal: count - critical, critical }
 }
 
+export type TextRow = { label: string; value: string }
+
+/** The four figures' rows; with no figures, their values are empty and the labels stay. */
+export const figureRows = (
+    figures: Figures | undefined,
+    strings: StatisticsStrings,
+    locale: string,
+): TextRow[] => {
+    const count = (value: number | undefined) =>
+        value === undefined ? '' : formatCount(value, locale)
+    return [
+        { label: strings.average, value: figures ? formatTenths(figures.average, locale) : '' },
+        { label: strings.median, value: count(figures?.median) },
+        { label: strings.p90, value: count(figures?.p90) },
+        { label: strings.p99, value: count(figures?.p99) },
+    ]
+}
+
+/** The times' rows: each shown only when its time is known. */
+export const timeRows = (
+    stats: ChartStatistics,
+    bgmEnd: number | undefined,
+    strings: StatisticsStrings,
+): TextRow[] =>
+    (
+        [
+            [strings.firstComboNote, stats.firstComboNote],
+            [strings.lastComboNote, stats.lastComboNote],
+            [strings.lastNote, stats.lastNote],
+            [strings.bgmEnd, bgmEnd],
+        ] as const
+    ).flatMap(([label, time]) => (time === undefined ? [] : [{ label, value: formatTime(time) }]))
+
 /** Copy Text: one line per figure in the dialog's order, the title first when there is one. */
 export const copyTextLines = (
     input: {
@@ -756,39 +771,29 @@ export const copyTextLines = (
     locale: string,
 ) => {
     const { stats, figures } = input
-    const line = (name: string, value: string) => fillMessage(locale, strings.textLine, name, value)
+    const line = ({ label, value }: TextRow) => fill(strings.textLine, [label, value], locale)
     const count = (value: number) => formatCount(value, locale)
     const out: string[] = []
     const title = input.title.trim()
     if (title) out.push(title)
-    out.push(line(strings.combo, count(stats.combo)))
+    out.push(line({ label: strings.combo, value: count(stats.combo) }))
     for (const row of ROWS) {
         const split = breakdownOf(stats, row)
-        out.push(
-            line(
-                strings.rows[row],
-                split
-                    ? fillMessage(locale, strings.withCritical, split.critical, stats.counts[row])
-                    : count(stats.counts[row]),
-            ),
-        )
+        const value = split
+            ? fill(strings.withCritical, [split.critical, stats.counts[row]], locale)
+            : count(stats.counts[row])
+        out.push(line({ label: strings.rows[row], value }))
     }
     const names = CATEGORIES.filter((category) => input.chosen.includes(category)).map(
         (category) => strings.categories[category],
     )
-    out.push(line(strings.notesPerSecond, figures ? formatList(names, locale) : strings.noNotes))
-    if (figures)
-        out.push(
-            line(strings.average, formatTenths(figures.average, locale)),
-            line(strings.median, count(figures.median)),
-            line(strings.p90, count(figures.p90)),
-            line(strings.p99, count(figures.p99)),
-        )
-    if (stats.firstComboNote !== undefined)
-        out.push(line(strings.firstComboNote, formatTime(stats.firstComboNote)))
-    if (stats.lastComboNote !== undefined)
-        out.push(line(strings.lastComboNote, formatTime(stats.lastComboNote)))
-    if (stats.lastNote !== undefined) out.push(line(strings.lastNote, formatTime(stats.lastNote)))
-    if (input.bgmEnd !== undefined) out.push(line(strings.bgmEnd, formatTime(input.bgmEnd)))
+    out.push(
+        line({
+            label: strings.notesPerSecond,
+            value: figures ? formatList(names, locale) : strings.noNotes,
+        }),
+    )
+    if (figures) out.push(...figureRows(figures, strings, locale).map(line))
+    out.push(...timeRows(stats, input.bgmEnd, strings).map(line))
     return out
 }

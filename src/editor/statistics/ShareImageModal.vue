@@ -16,7 +16,6 @@ import {
 import { readMediaBlob } from '../../local/mediaBlob'
 import BaseModal from '../../modals/BaseModal.vue'
 import NoteShapeIcon from '../../modals/form/NoteShapeIcon.vue'
-import type { NoteShape } from '../../modals/form/noteShapes'
 import { FileError, platform } from '../../platform'
 import { PRODUCT_NAME } from '../../product'
 import type { LevelInfo } from '../../state/levelInfo'
@@ -24,8 +23,10 @@ import { fileErrorText } from '../commands/exportLevel/ui'
 import { notify } from '../notification'
 import SeverityIcon from '../SeverityIcon.vue'
 import { isCoarsePointer } from '../workspace'
+import { rowShapes } from './marks'
 import { drawCard, type CardTheme, type Rgb } from './shareCard'
-import { statisticsLocale, statisticsStrings } from './text'
+import { settings } from '../../settings'
+import { statisticsStrings } from './text'
 
 // Share Image: the card as a PNG for a Link value, previewed as the PNG itself, then copied,
 // shared or downloaded. A press takes the card for Link as it is at that moment. The card is drawn
@@ -69,21 +70,12 @@ const fileName = computed(
 )
 
 // --- The glyphs: the dialog's own SVG, drawn as images.
-const shapes: Partial<Record<Row, NoteShape>> = {
-    tap: 'tap',
-    flick: 'flick',
-    release: 'release',
-    trace: 'trace',
-    traceFlick: 'traceFlick',
-    tick: 'tick',
-    hiddenTick: 'hiddenTick',
-    damageNote: 'damage',
-    damageTick: 'damageTick',
-}
+// Fake Note is not on the card.
+const cardRows = ROWS.filter((row) => row !== 'fakeNote')
 const glyphHost = useTemplateRef<HTMLDivElement>('glyphHost')
 const loadGlyphs = () =>
     Promise.all(
-        ROWS.filter((row) => shapes[row]).map(
+        cardRows.map(
             (row) =>
                 new Promise<[Row, HTMLImageElement | undefined]>((resolve) => {
                     const svg = glyphHost.value?.querySelector(`[data-glyph="${row}"] svg`)
@@ -151,7 +143,6 @@ const render = (value: string) =>
         ({ glyphs, cover }) =>
             new Promise<Blob>((resolve, reject) => {
                 const canvas = document.createElement('canvas')
-                const strings = statisticsStrings.value
                 const levelInfo = props.levelInfo
                 drawCard(canvas, {
                     info: {
@@ -171,13 +162,9 @@ const render = (value: string) =>
                     glyphs,
                     theme: themeOf(),
                     fontFamily: getComputedStyle(document.body).fontFamily,
-                    locale: statisticsLocale.value,
+                    locale: settings.locale,
                     strings: {
-                        rows: strings.rows,
-                        categories: strings.categories,
-                        combo: strings.combo,
-                        notesPerSecond: strings.notesPerSecond,
-                        noNotes: strings.noNotes,
+                        ...statisticsStrings.value,
                         untitled: i18n.value.save.placeholder,
                         author: i18n.value.historyChanges.fields.author,
                         rating: i18n.value.historyChanges.fields.rating,
@@ -301,44 +288,42 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 
 <template>
     <BaseModal :title="i18n.statistics.shareImageTitle" @close="emit('close')">
-        <div class="contents" data-share-image>
-            <img
-                v-if="previewUrl"
-                :src="previewUrl"
-                :alt="summary"
-                class="block aspect-video h-auto w-full rounded-xl shadow-[0_0_0_1px_rgb(var(--color-fg)/0.15)]"
-                data-share-preview
+        <img
+            v-if="previewUrl"
+            :src="previewUrl"
+            :alt="summary"
+            class="block aspect-video h-auto w-full rounded-xl shadow-[0_0_0_1px_rgb(var(--color-fg)/0.15)]"
+            data-share-preview
+        />
+        <div v-else class="aspect-video w-full rounded-xl bg-fg/5" />
+        <form :id="formId" class="flex items-center gap-4" @submit.prevent="submit">
+            <label :for="`${formId}-link`" class="shrink-0">{{ i18n.statistics.link }}</label>
+            <input
+                :id="`${formId}-link`"
+                v-model="link"
+                class="field w-full min-w-0 appearance-none rounded-full px-4 py-1"
+                type="text"
+                maxlength="120"
+                spellcheck="false"
+                autocomplete="off"
+                data-share-link
+                @input="onInput"
             />
-            <div v-else class="aspect-video w-full rounded-xl bg-fg/5" />
-            <form :id="formId" class="flex items-center gap-4" @submit.prevent="submit">
-                <label :for="`${formId}-link`" class="shrink-0">{{ i18n.statistics.link }}</label>
-                <input
-                    :id="`${formId}-link`"
-                    v-model="link"
-                    class="field w-full min-w-0 appearance-none rounded-full px-4 py-1"
-                    type="text"
-                    maxlength="120"
-                    spellcheck="false"
-                    autocomplete="off"
-                    data-share-link
-                    @input="onInput"
-                />
-            </form>
-            <p class="flex items-start gap-2 text-sm empty:hidden" role="status">
-                <template v-if="failure">
-                    <SeverityIcon severity="error" class="mt-0.5 size-4 shrink-0" />
-                    <span data-share-failure>{{
-                        failure === 'copy'
-                            ? i18n.statistics.notCopiedImage
-                            : i18n.statistics.notSharedImage
-                    }}</span>
-                </template>
-            </p>
-            <div ref="glyphHost" class="hidden" aria-hidden="true">
-                <span v-for="(shape, row) in shapes" :key="row" :data-glyph="row">
-                    <NoteShapeIcon :shape="shape!" />
-                </span>
-            </div>
+        </form>
+        <p class="flex items-start gap-2 text-sm empty:hidden" role="status">
+            <template v-if="failure">
+                <SeverityIcon severity="error" class="mt-0.5 size-4 shrink-0" />
+                <span data-share-failure>{{
+                    failure === 'copy'
+                        ? i18n.statistics.notCopiedImage
+                        : i18n.statistics.notSharedImage
+                }}</span>
+            </template>
+        </p>
+        <div ref="glyphHost" class="hidden" aria-hidden="true">
+            <span v-for="row in cardRows" :key="row" :data-glyph="row">
+                <NoteShapeIcon :shape="rowShapes[row]" />
+            </span>
         </div>
         <template #footer>
             <button

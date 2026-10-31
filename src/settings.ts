@@ -127,11 +127,11 @@ const settingsProperties = {
     propertiesConnectorExpanded: Type.Boolean({ default: true }),
 
     // Statistics: the chart's mode and the categories it counts.
-    statisticsChart: Type.Union(
+    statisticsChartMode: Type.Union(
         [Type.Literal('smooth'), Type.Literal('bars'), Type.Literal('rolling')],
         { default: 'smooth' },
     ),
-    statisticsDensityTypes: Type.Codec(
+    statisticsCategories: Type.Codec(
         Type.Array(Type.String(), { default: [...DEFAULT_CATEGORIES] }),
     )
         .Decode((values) => CATEGORIES.filter((category) => values.includes(category)))
