@@ -380,7 +380,7 @@ const hideGroups = (page: Page, ids: number[]) =>
         window.editorTest.view.groupVisibility = new Map(ids.map((id) => [id as never, 'hidden']))
     }, ids)
 
-test("a move into a hidden group is counted and brought into view only where it is drawn; the minimap's ticks and the chart's marks agree", async ({
+test('a move into a hidden group is counted and brought into view only where it is drawn', async ({
     page,
 }) => {
     // Beat 5 moves to beat 40 and into group 2: its old place below the view, its new one above.
@@ -394,43 +394,6 @@ test("a move into a hidden group is counted and brought into view only where it 
     await expect(peekLine(page)).toHaveText('2 changes')
     await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
     await expect(arrow(page, 'down')).toHaveAttribute('data-count', '1')
-
-    // The same objects are counted, ticked and marked: here the ghost at the old place only.
-    const agreed = await page.evaluate(async () => {
-        const { appImport } = window.editorTest
-        const [module, { drawChangeMarks }, { entityDrawState }, { entityVisibility }] =
-            await Promise.all([
-                appImport<typeof import('../../src/editor/history/changes')>(
-                    '/src/editor/history/changes.ts',
-                ),
-                appImport<typeof import('../../src/editor/canvas/changes')>(
-                    '/src/editor/canvas/changes.ts',
-                ),
-                appImport<typeof import('../../src/editor/canvas/ordering')>(
-                    '/src/editor/canvas/ordering.ts',
-                ),
-                appImport<typeof import('../../src/editor/scope')>('/src/editor/scope.ts'),
-            ])
-        const marks = module.changeMarks.value!
-        const drawn = new Set<unknown>()
-        drawChangeMarks(
-            {
-                state: marks.ghostState!,
-                scale: 40,
-                ups: 2,
-                bounds: { l: -50, r: 50, t: -500, b: 500 },
-                ctx: new Proxy({}, { get: () => () => {} }),
-            } as Parameters<typeof drawChangeMarks>[0],
-            marks,
-            -Infinity,
-            Infinity,
-            (entity) => entityDrawState(entity, entityVisibility.value),
-            (_context, entity) => drawn.add(entity),
-        )
-        const ticked = module.minimapChangePlaces.value!.map(({ time }) => time)
-        return { ghosts: drawn.size, rings: marks.rings.length, ticked: ticked.length }
-    })
-    expect(agreed).toEqual({ ghosts: 1, rings: 1, ticked: 1 })
 
     // Showing the group counts the new place too, and scrolls nothing.
     const time = (await changes(page)).time
@@ -447,6 +410,159 @@ test("a move into a hidden group is counted and brought into view only where it 
     await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
     await arrow(page, 'down').click()
     await expect.poll(async () => Math.round(await centreBeat(page))).toBeLessThan(10)
+})
+
+test('the chart marks a change exactly where the minimap ticks it and the arrows count it, and dims what it dims', async ({
+    page,
+}) => {
+    // One step changing a note (moved from beat 5 to 11 and into group 2), a BPM change (beat 6),
+    // a time scale in group 2 (beat 8) and a pivot event in stage 2 (beat 10), on dynamic stages.
+    await page.evaluate(async () => {
+        const { appImport, history, historySteps } = window.editorTest
+        const [{ createTransaction }, notes, bpm, timeScale, pivot, { noteObjectOf }] =
+            await Promise.all([
+                appImport<typeof import('../../src/state/transaction')>(
+                    '/src/state/transaction.ts',
+                ),
+                appImport<typeof import('../../src/state/mutations/slides/note')>(
+                    '/src/state/mutations/slides/note.ts',
+                ),
+                appImport<typeof import('../../src/state/mutations/bpm')>(
+                    '/src/state/mutations/bpm.ts',
+                ),
+                appImport<typeof import('../../src/state/mutations/timeScale')>(
+                    '/src/state/mutations/timeScale.ts',
+                ),
+                appImport<typeof import('../../src/state/mutations/events/stage/pivot')>(
+                    '/src/state/mutations/events/stage/pivot.ts',
+                ),
+                appImport<typeof import('../../src/local/records/extract')>(
+                    '/src/local/records/extract.ts',
+                ),
+            ])
+        const step = (label: string) => ({
+            ...historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, label),
+            futureFixture: true,
+        })
+        history.pushState(step('Dynamic'), { ...history.state.value, isDynamicStages: true })
+        const state = history.state.value
+        const transaction = createTransaction(state)
+        const note = [...state.store.slides.note.values()].flat().find((n) => n.beat === 5)!
+        notes.replaceNote(transaction, note, {
+            ...noteObjectOf(note),
+            beat: 11,
+            groupId: 2 as typeof note.groupId,
+        })
+        // The same tempo, so beats stay half seconds.
+        bpm.addBpm(transaction, { beat: 6, bpm: 120, meter: 4 })
+        timeScale.addTimeScale(transaction, {
+            groupId: 2 as typeof note.groupId,
+            beat: 8,
+            editorLane: 7,
+            timeScale: 2,
+            skip: 0,
+            timeScaleEase: 'linear',
+            timeScaleTransition: 'timeScale',
+            hideNotes: false,
+        })
+        pivot.addStagePivotEventJoint(transaction, {
+            stageId: 2 as typeof note.stageId,
+            beat: 10,
+            pivotLane: 2,
+            divisionSize: 1,
+            divisionParity: 'even',
+            yOffset: 0,
+            yOffsetBeat: 0,
+            eventEase: 'linear',
+        })
+        history.pushState(step('Four kinds'), transaction.commit([]))
+        window.editorTest.settings.pps = 120
+    })
+    await stored(page)
+    await viewAt(page, 8)
+    await openTab(page)
+    await row(page, 'Four kinds').click()
+    await expect.poll(async () => (await changes(page)).rings).toBeGreaterThan(0)
+
+    /** How much change-mark orange the chart shows on each place's row, and the ticked beats. */
+    const observe = async () => {
+        await frames(page)
+        await frames(page)
+        const rows = await page.evaluate(() =>
+            [5, 6, 8, 10, 11].map((beat) => window.editorTest.point(0, beat).y),
+        )
+        const pane = (await page.locator('canvas.editor-chart').boundingBox())!
+        const shot = await page.screenshot({
+            clip: { x: pane.x, y: pane.y, width: pane.width, height: pane.height },
+        })
+        return page.evaluate(
+            async ({ png, rows, top, width }) => {
+                const image = await createImageBitmap(
+                    await (await fetch(`data:image/png;base64,${png}`)).blob(),
+                )
+                const canvas = new OffscreenCanvas(image.width, image.height)
+                const ctx = canvas.getContext('2d')!
+                ctx.drawImage(image, 0, 0)
+                const scale = image.width / width
+                const orange = rows.map((y) => {
+                    const from = Math.round((y - top - 14) * scale)
+                    const { data } = ctx.getImageData(0, from, image.width, Math.round(28 * scale))
+                    // The change orange (#ff9b42) over the dark chart: red well above blue.
+                    let sum = 0
+                    for (let i = 0; i < data.length; i += 4) {
+                        const [r, g, b] = [data[i]!, data[i + 1]!, data[i + 2]!]
+                        if (r > g && g > b) sum += Math.max(0, r - b - 60)
+                    }
+                    return sum
+                })
+                const { appImport } = window.editorTest
+                const { minimapChangePlaces } = await appImport<
+                    typeof import('../../src/editor/history/changes')
+                >('/src/editor/history/changes.ts')
+                const ticked = [
+                    ...new Set(
+                        (minimapChangePlaces.value ?? []).map(({ time }) => Math.round(time * 2)),
+                    ),
+                ].sort((a, b) => a - b)
+                return { orange, ticked }
+            },
+            { png: shot.toString('base64'), rows, top: pane.y, width: pane.width },
+        )
+    }
+    const beats = [5, 6, 8, 10, 11]
+    const marked = (orange: number[], strong: number[]) =>
+        beats.filter((_, i) => orange[i]! > (strong[i] ?? 0) * 0.3)
+
+    const shown = await observe()
+    expect(shown.ticked).toEqual(beats)
+    // Group 2 and stage 2 hidden: only the old place and the BPM change are marked and ticked.
+    await page.evaluate(() => {
+        const { view } = window.editorTest
+        view.groupVisibility = new Map([[2 as never, 'hidden']])
+        view.stageVisibility = new Map([[2 as never, 'hidden']])
+    })
+    const hidden = await observe()
+    expect(hidden.ticked).toEqual([5, 6])
+    expect(marked(hidden.orange, shown.orange)).toEqual([5, 6])
+    expect(marked(shown.orange, shown.orange)).toEqual(beats)
+
+    // Group 1 focused, the others shown dimmed: group 2's marks fainter, the rest unchanged.
+    await page.evaluate(() => {
+        const { view, settings } = window.editorTest
+        view.groupVisibility = new Map()
+        view.stageVisibility = new Map()
+        settings.showOtherGroups = true
+        view.groupId = 1 as never
+    })
+    const dimmed = await observe()
+    expect(dimmed.ticked).toEqual(beats)
+    for (const [i, beat] of beats.entries()) {
+        const ratio = dimmed.orange[i]! / shown.orange[i]!
+        if (beat === 8 || beat === 11) expect(ratio, `beat ${beat}`).toBeLessThan(0.8)
+        else expect(ratio, `beat ${beat}`).toBeGreaterThan(0.8)
+        // Fainter, but still there: the score drops faster than the alpha.
+        expect(ratio, `beat ${beat}`).toBeGreaterThan(0.05)
+    }
 })
 
 test('with every changed place hidden the arrows are off and Show Change moves nothing; a dimmed place is counted', async ({
