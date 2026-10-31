@@ -18,7 +18,7 @@ export const changeTicks: MinimapLayer<readonly Place[]> = {
             return places && places.length > 0 ? places : undefined
         }),
     counter: 'changePaints',
-    // The ticks sit on rows, not on notes: they wait only for the visibility the image shows.
+    // The ticks sit on rows, not on notes, so they wait only for the visibility the image shows.
     aligned: (drawn) => drawn.visibility === contentVisibility.value,
     paint: (ctx, mapping, places) => {
         const runs: TickRun[] = []

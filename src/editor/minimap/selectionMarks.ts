@@ -60,7 +60,7 @@ const paintSelection = timed(
     (ctx: CanvasRenderingContext2D, mapping: MinimapMapping, inputs: SelectionInputs) => {
         const { entities, bpms, layout } = inputs
         const { scale } = mapping.geometry
-        // The controls deselect what the chart hides; this keeps the marks to what it draws anyway.
+        // The controls already deselect what the chart hides. This also limits the marks to what it draws.
         const visibility = entityVisibility.value
         spread ??= createRowSpread(MAX_BACKING_HEIGHT + 1)
         spread.reset(scale)

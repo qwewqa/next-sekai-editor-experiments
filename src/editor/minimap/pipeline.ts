@@ -36,7 +36,7 @@ export type MinimapSources = {
     shown: State
     live: State
     peeking: boolean
-    /** What the chart draws by, as far as notes and bodies go (`contentVisibility`). */
+    /** The chart's visibility for notes and bodies (`contentVisibility`). */
     visibility: DrawVisibility
 }
 
@@ -98,7 +98,7 @@ export type Baseline = {
     bpms: BpmIntegral[]
     /** The Composed stage map, or `'basic'`. */
     layoutKey: unknown
-    /** The visibility drawn under, compared by identity. */
+    /** The visibility the content was drawn with, compared by identity. */
     visibility: DrawVisibility
     end: number
     geometry: MinimapGeometry
