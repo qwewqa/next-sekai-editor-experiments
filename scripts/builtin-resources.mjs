@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { fields } from '../src/preview/assets/files/item.ts'
+import { categoryOf } from '../src/preview/assets/files/package.ts'
 import { ZipReader } from '../src/zip/index.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -23,13 +24,6 @@ const packages = [
     ['resource/effect2', 'nextSekai02', 'effect'],
 ]
 
-const categories = {
-    skin: 'skins',
-    particle: 'particles',
-    background: 'backgrounds',
-    effect: 'effects',
-}
-
 const rows = []
 for (const [path, source, type] of packages) {
     const reader = await ZipReader.open(
@@ -37,7 +31,7 @@ for (const [path, source, type] of packages) {
     )
     const read = (name) => reader.read(reader.get(name), { maxSize: 256 * 1024 * 1024 })
     const list = JSON.parse(
-        new TextDecoder().decode(await read(`sonolus/${categories[type]}/list`)),
+        new TextDecoder().decode(await read(`sonolus/${categoryOf[type]}/list`)),
     )
     const [item] = list.items
     const hashes = []

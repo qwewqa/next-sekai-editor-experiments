@@ -8,7 +8,7 @@ import { storedChoice } from '../../../src/preview/assets/files/chooser'
 import { identifyAssets, type IdentityContext } from '../../../src/preview/assets/files/identity'
 import { importAndUse } from '../../../src/preview/assets/files/importStore'
 import { fields } from '../../../src/preview/assets/files/item'
-import { openSourcePackage } from '../../../src/preview/assets/files/package'
+import { categoryOf, openSourcePackage } from '../../../src/preview/assets/files/package'
 import { createMemoryStore, type UserAssetStore } from '../../../src/preview/assets/files/store'
 import type { AssetChoice, AssetType } from '../../../src/preview/assets/types'
 import { ZipReader } from '../../../src/zip'
@@ -224,19 +224,13 @@ test(
 )
 
 const sha1 = (bytes: Uint8Array) => createHash('sha1').update(bytes).digest('hex')
-const categories = {
-    skin: 'skins',
-    particle: 'particles',
-    background: 'backgrounds',
-    effect: 'effects',
-} as const
 
 /** The table's row of a package, computed from its bytes. */
 const rowOf = async (bytes: Uint8Array, type: AssetType) => {
     const reader = await ZipReader.open(blobOf(bytes))
     const read = (name: string) => reader.read(reader.get(name)!, { maxSize: 1 << 28 })
     const list = JSON.parse(
-        new TextDecoder().decode(await read(`sonolus/${categories[type]}/list`)),
+        new TextDecoder().decode(await read(`sonolus/${categoryOf[type]}/list`)),
     ) as {
         items: Record<string, { url: string }>[]
     }
