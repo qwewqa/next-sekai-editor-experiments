@@ -10,6 +10,36 @@ const json = (value: unknown) => encoder.encode(JSON.stringify(value))
 
 const REPOSITORY = 'sonolus/repository/'
 
+/** What a repacked item is made of besides its resources. */
+export type RepackFields = Pick<
+    CheckedItem,
+    'type' | 'name' | 'version' | 'title' | 'subtitle' | 'author'
+>
+
+/**
+ * The item object of a repacked package, from its fields and the SHA-1 of each resource, the
+ * thumbnail first, then the type's resources in order. The repack and the check of whether a
+ * package's item is stored both build it here, so the two cannot drift.
+ */
+export const repackedItem = (fields: RepackFields, hashes: ReadonlyMap<ResourceField, string>) => {
+    const srl = (hash: string) => ({ hash, url: `/${REPOSITORY}${hash}` })
+    const thumbnail = hashes.get('thumbnail')
+    return {
+        name: fields.name,
+        version: fields.version ?? VERSIONS[fields.type],
+        title: fields.title,
+        subtitle: fields.subtitle,
+        author: fields.author,
+        tags: [],
+        ...(thumbnail === undefined ? {} : { thumbnail: srl(thumbnail) }),
+        ...Object.fromEntries(
+            [...hashes]
+                .filter(([field]) => field !== 'thumbnail')
+                .map(([f, hash]) => [f, srl(hash)]),
+        ),
+    }
+}
+
 /**
  * A standard single-item package: the list, the item's details and its resources
  * under `sonolus/repository/{sha1}`, every field rebuilt from what passed the checks. The same
@@ -20,23 +50,14 @@ export const repackItem = async (checked: CheckedItem): Promise<Blob> => {
     const category = categoryOf[type]
 
     const repository = new Map<string, Uint8Array>()
-    const srls = new Map<ResourceField, { hash: string; url: string }>()
+    const hashes = new Map<ResourceField, string>()
     for (const [field, bytes] of checked.resources) {
         const hash = await sha1Hex(bytes)
         repository.set(hash, bytes)
-        srls.set(field, { hash, url: `/${REPOSITORY}${hash}` })
+        hashes.set(field, hash)
     }
 
-    const item = {
-        name,
-        version: checked.version ?? VERSIONS[type],
-        title: checked.title,
-        subtitle: checked.subtitle,
-        author: checked.author,
-        tags: [],
-        ...(srls.has('thumbnail') ? { thumbnail: srls.get('thumbnail') } : {}),
-        ...Object.fromEntries([...srls].filter(([field]) => field !== 'thumbnail')),
-    }
+    const item = repackedItem(checked, hashes)
 
     const inputs: ZipInput[] = [
         {

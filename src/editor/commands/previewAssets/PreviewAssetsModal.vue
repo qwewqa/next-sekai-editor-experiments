@@ -17,14 +17,10 @@ import { platform } from '../../../platform'
 import { assetTypes, withRecentServer } from '../../../preview/assets/choice'
 import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
-import { applyAssetChoices } from '../../../preview/assets'
 import { createAssetChooser, storedChoice } from '../../../preview/assets/files/chooser'
+import { pageImportDeps } from '../../../preview/assets/files/importDeps'
 import type { SourcePackage } from '../../../preview/assets/files/package'
-import { decodeToCheck } from '../../../preview/assets/files/audio'
-import { decodeImageToCheck } from '../../../preview/assets/files/decodeImage'
-import { importMessage } from '../../../preview/assets/files/importText'
-import { refreshStored, storedAssets, workerStore } from '../../../preview/assets/files/store'
-import { maxTextureSide } from '../../../preview/assets/files/textureLimit'
+import { refreshStored, storedAssets } from '../../../preview/assets/files/store'
 import { createServerChooser } from '../../../preview/assets/server/chooser'
 import { liveServerClient } from '../../../preview/assets/server/live'
 import { serverItemText } from '../../../preview/assets/server/liveText'
@@ -57,19 +53,9 @@ const hasDefault = platform.capabilities.defaultAssets
 
 // One chooser per type, kept for as long as the dialog is open: switching tabs leaves a chooser
 // open as it was, and closing the dialog stops what any of them is doing.
+const deps = pageImportDeps()
 const choosers = Object.fromEntries(
-    assetTypes.map((type) => [
-        type,
-        createAssetChooser(type, {
-            store: workerStore,
-            maxTextureSide,
-            decodeAudio: decodeToCheck,
-            decodeImage: decodeImageToCheck,
-            describe: importMessage,
-            apply: applyAssetChoices,
-            onStorageChanged: () => void refreshStored(),
-        }),
-    ]),
+    assetTypes.map((type) => [type, createAssetChooser(type, deps)]),
 ) as Record<AssetType, ReturnType<typeof createAssetChooser>>
 
 // One server chooser per type, beside the file chooser: they share the open state and the choices.
@@ -78,19 +64,14 @@ const servers = Object.fromEntries(
     assetTypes.map((type) => [
         type,
         createServerChooser(type, {
+            ...deps,
             client: serverClient,
-            store: workerStore,
-            maxTextureSide,
-            decodeAudio: decodeToCheck,
-            decodeImage: decodeImageToCheck,
             describe: serverItemText,
             toChoice: storedChoice,
-            apply: applyAssetChoices,
             recent: () => settings.recentServers,
             remember: (address) => {
                 settings.recentServers = withRecentServer(settings.recentServers, address)
             },
-            onStorageChanged: () => void refreshStored(),
             close: () => {
                 choosers[type].cancel()
             },

@@ -21,7 +21,7 @@ import {
 } from '../../../preview/assets'
 import { fallbacks } from '../../../preview/assets/active'
 import { loadPackageInfo, builtinUrl, type PackageInfo } from '../../../preview/assets/builtin'
-import { choiceKey } from '../../../preview/assets/choice'
+import { builtinChoice, choiceKey, choiceRow } from '../../../preview/assets/choice'
 import { defaultName, rowText } from '../../../preview/assets/fallbackText'
 import { storedChoice, type AssetChooser } from '../../../preview/assets/files/chooser'
 import type { ServerChooser } from '../../../preview/assets/server/chooser'
@@ -93,8 +93,7 @@ const rows = computed<Row[]>(() => {
     const list: Row[] = [
         {
             id: 'builtin',
-            // In the apps Default is Built-in, which the setting stores as Default.
-            choice: { source: hasDefault ? 'builtin' : 'default' },
+            choice: builtinChoice(hasDefault),
             name: strings.value.builtin,
             detail: builtin.value?.author ?? '',
             image: builtin.value?.image,
@@ -135,15 +134,7 @@ const rows = computed<Row[]>(() => {
     return list
 })
 
-const bundledType = { skin2: 'skin', effect2: 'effect' } as const
-
-const selectedId = computed(() => {
-    const choice = chosen.value
-    if (choice.source === 'file' || choice.source === 'server') return choiceKey(choice)
-    if (choice.source === 'bundled' && hasDefault && props.type === bundledType[choice.id])
-        return choiceKey(choice)
-    return choice.source === 'default' && hasDefault ? 'default' : 'builtin'
-})
+const selectedId = computed(() => choiceRow(chosen.value, props.type, hasDefault))
 
 // A package that left storage is picked again from a file.
 const chooseAgain = () => {

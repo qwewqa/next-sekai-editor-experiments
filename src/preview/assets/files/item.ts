@@ -61,7 +61,8 @@ export type CheckContext = {
     decodeImage?: DecodeImage
 }
 
-const fields: Record<AssetType, ResourceField[]> = {
+/** The resources each type requires, in the order they are read. */
+export const fields: Record<AssetType, ResourceField[]> = {
     skin: ['data', 'texture'],
     particle: ['data', 'texture'],
     background: ['data', 'image', 'configuration'],
@@ -71,7 +72,8 @@ const fields: Record<AssetType, ResourceField[]> = {
 /** The part a field is named by in a message. */
 const partOf = (field: ResourceField): ImportPart => field
 
-const maxSizeOf = (field: ResourceField) => {
+/** The most a resource entry may hold. */
+export const maxSizeOf = (field: ResourceField) => {
     switch (field) {
         case 'data':
             return LIMITS.dataGzip

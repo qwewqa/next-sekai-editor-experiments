@@ -1,14 +1,13 @@
 import { shallowRef } from 'vue'
 import { assetTypes } from '../choice'
 import type { AssetChoice, AssetType } from '../types'
-import type { DecodeImage } from './decodeImage'
 import { AssetImportError } from './errors'
-import { readImageSize } from './image'
-import { importItem } from './importer'
+import { importAndUse, type ImportDeps } from './importStore'
 import { LIMITS } from './limits'
 import { openSourcePackage, type ListedItem, type SourcePackage } from './package'
-import type { UserAssetMeta, UserAssetRecord, UserAssetStore } from './store'
-import { StoreFailed, storeRecords } from './storeRecords'
+import type { UserAssetMeta } from './store'
+import { StoreFailed } from './storeRecords'
+import { loadThumbnails } from './thumbnails'
 
 // The chooser's From a File view without its markup: pick a package, list the
 // items of one type, offer the other types' items of the same name, and on Use check, repack and
@@ -22,18 +21,9 @@ export type AlsoOption = {
     ticked: boolean
 }
 
-export type ChooserDeps = {
-    store: UserAssetStore
-    maxTextureSide: () => number
-    decodeAudio: (data: ArrayBuffer) => Promise<AudioBuffer>
-    decodeImage: DecodeImage
-    /** Sets the choices a Use made, all together. */
-    apply: (choices: Partial<Record<AssetType, AssetChoice>>) => void
+export type ChooserDeps = ImportDeps & {
     /** The plain message for a package that is refused. */
     describe: (error: AssetImportError) => string
-    now?: () => number
-    /** Called after a storage attempt settles, so lists and the footer follow. */
-    onStorageChanged?: () => void
 }
 
 export type ChooserPhase = 'idle' | 'reading' | 'listed' | 'working'
@@ -105,32 +95,22 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
     }
 
     /** The thumbnails of the first items, as small images checked by their headers. */
-    const loadThumbnails = async (source: SourcePackage, listed: ListedItem[], mine: number) => {
-        for (const item of listed.slice(0, 50)) {
-            if (mine !== generation) return
-            try {
-                const path = source.resolve(item.thumbnail)
-                const bytes = path
-                    ? await source.entry(path, {
-                          type,
-                          part: 'thumbnail',
-                          maxSize: LIMITS.thumbnail,
-                      })
-                    : undefined
-                const size = bytes && readImageSize(bytes)
-                if (!bytes || !size || size.width > LIMITS.thumbnailSide) continue
-                if (size.height > LIMITS.thumbnailSide || mine !== generation) continue
-                const url = URL.createObjectURL(
-                    new Blob([new Uint8Array(bytes)], {
-                        type: size.format === 'jpeg' ? 'image/jpeg' : 'image/png',
-                    }),
-                )
-                thumbnails.value = new Map(thumbnails.value).set(item.name, url)
-            } catch {
-                // A picture that cannot be read is no picture; Use reports real problems.
-            }
-        }
-    }
+    const pictures = (source: SourcePackage, listed: ListedItem[], mine: number) =>
+        loadThumbnails(
+            listed.map((item) => ({
+                key: item.name,
+                read: async () => {
+                    const path = source.resolve(item.thumbnail)
+                    return path
+                        ? source.entry(path, { type, part: 'thumbnail', maxSize: LIMITS.thumbnail })
+                        : undefined
+                },
+            })),
+            () => mine === generation,
+            (name, url) => {
+                thumbnails.value = new Map(thumbnails.value).set(name, url)
+            },
+        )
 
     /** The other types' items that share the selected item's name. */
     const lookUpAlso = async (name: string, mine: number) => {
@@ -172,7 +152,7 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             pkg = source
             items.value = listed
             phase.value = 'listed'
-            void loadThumbnails(source, listed, mine)
+            void pictures(source, listed, mine)
             // With exactly one item, there is nothing to choose.
             if (listed.length === 1 && listed[0]) select(listed[0].name)
         } catch (failure) {
@@ -203,28 +183,19 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
         ]
         phase.value = 'working'
         useError.value = undefined
-        let storageAttempted = false
         try {
-            const records: UserAssetRecord[] = []
-            for (const entry of wanted)
-                records.push(
-                    await importItem(source, entry.type, entry.name, {
-                        maxTextureSide: deps.maxTextureSide(),
-                        decodeAudio: deps.decodeAudio,
-                        decodeImage: deps.decodeImage,
-                        signal,
-                        origin: fileName.value,
-                        now: deps.now ?? Date.now,
-                    }),
-                )
-            // Checked all: only now is anything stored, all in one transaction, so a bad item
-            // stores nothing.
-            if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-            storageAttempted = true
-            const { metas } = await storeRecords(deps.store, records)
-            if (mine !== generation) return
-            deps.apply(Object.fromEntries(metas.map((meta) => [meta.type, storedChoice(meta)])))
-            if (mine !== generation) return
+            const metas = await importAndUse(
+                source,
+                wanted,
+                {
+                    origin: fileName.value,
+                    signal,
+                    isCurrent: () => mine === generation,
+                    toChoice: storedChoice,
+                },
+                deps,
+            )
+            if (!metas || mine !== generation) return
             reset()
             open.value = false
         } catch (failure) {
@@ -235,8 +206,6 @@ export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
             // A refused package is the file's doing, and the message says so; the rest is ours.
             if (!(failure instanceof AssetImportError))
                 console.error('Could not store the preview asset:', failure)
-        } finally {
-            if (storageAttempted) deps.onStorageChanged?.()
         }
     }
 

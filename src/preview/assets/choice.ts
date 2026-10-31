@@ -72,6 +72,28 @@ export const RECENT_SERVER_LIMIT = 5
 export const withRecentServer = (servers: readonly string[], address: string) =>
     [address, ...servers.filter((held) => held !== address)].slice(0, RECENT_SERVER_LIMIT)
 
+/**
+ * What choosing Built-in stores. Where there is no Default (the apps, and web builds without the
+ * resource packs) Built-in is the Default, and the setting stores it as Default.
+ */
+export const builtinChoice = (hasDefault: boolean): AssetChoice => ({
+    source: hasDefault ? 'builtin' : 'default',
+})
+
+/**
+ * The row of Preview Assets' sources a choice selects: the stored item's or Next SEKAI 02's
+ * identity, else `default` or `builtin`, Built-in also where Default stands for it.
+ */
+export const choiceRow = (choice: AssetChoice, type: AssetType, hasDefault: boolean) => {
+    if (choice.source === 'file' || choice.source === 'server') return choiceKey(choice)
+    const bundledId: BundledId | undefined = (
+        bundledChoices as Partial<Record<AssetType, BundledId>>
+    )[type]
+    if (choice.source === 'bundled' && hasDefault && bundledId === choice.id)
+        return choiceKey(choice)
+    return choice.source === 'default' && hasDefault ? 'default' : 'builtin'
+}
+
 /** A choice's identity: the source, and the stored package for a file or a server. */
 export const choiceKey = (choice: AssetChoice) =>
     choice.source === 'file' || choice.source === 'server'
