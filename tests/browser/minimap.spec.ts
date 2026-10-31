@@ -1524,6 +1524,53 @@ test.describe('peek', () => {
         await act(page, 'leavePeek')
     })
 
+    test("Now's selection marks clear in a peek, a tap there marks the peek's own without a tick paint, and Back to Now restores Now's", async ({
+        page,
+    }) => {
+        const selection = page.locator('[data-minimap-layer="selection"]')
+        const first = await newestSeq(page)
+        await pushStep(page, 'Moved 1 note', { kind: 'move', from: 5, to: 100 })
+        await expect.poll(() => newestSeq(page)).toBe(first + 1)
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            const notes = [...history.state.value.store.slides.note.values()].flat()
+            const note = notes.find((note) => note.beat === 3)!
+            history.replaceState({ ...history.state.value, selectedEntities: [note] })
+        })
+        await expect(selection).toHaveCount(1)
+
+        await peekRow(page, 'Moved 1 note')
+        await expect(selection).toHaveCount(0)
+        await expect.poll(async () => (await tickRows(page)).length).toBeGreaterThan(0)
+        await settle(page)
+        const before = await statsOf(page)
+        // A tap on the note at beat 7 selects it in the peeked state.
+        await setViewTime(page, 3.5)
+        const point = await page.evaluate(() => {
+            const { history, point } = window.editorTest
+            const note = [...history.state.value.store.slides.note.values()]
+                .flat()
+                .find((note) => note.beat === 7)!
+            return point(note.left + note.size / 2, note.beat)
+        })
+        await page.mouse.click(point.x, point.y)
+        await expect(selection).toHaveCount(1)
+        expect(await selectedCount(page)).toBe(1)
+        await frames(page, 10)
+        const after = await statsOf(page)
+        expect(after.selectionPaints).toBeGreaterThan(before.selectionPaints)
+        expect(after.annotationPaints).toBe(before.annotationPaints)
+
+        await act(page, 'leavePeek')
+        await expect.poll(() => isPeeking(page)).toBe(false)
+        await expect(selection).toHaveCount(1)
+        expect(
+            await page.evaluate(() =>
+                window.editorTest.history.state.value.selectedEntities.map((entity) => entity.beat),
+            ),
+        ).toEqual([3])
+    })
+
     test('Escape mid-drag keeps the peek', async ({ page }) => {
         const strip = minimapStrip(page)
         const first = await newestSeq(page)
