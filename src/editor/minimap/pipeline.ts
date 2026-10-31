@@ -5,6 +5,7 @@
 import { shallowRef, type ShallowRef } from 'vue'
 import type { State } from '../../state'
 import { isSameTempo, type BpmIntegral } from '../../state/integrals/bpms'
+import type { ComposedLayout } from '../composed'
 import { getComposedLayout } from '../composedView'
 import {
     bandKeyRange,
@@ -112,8 +113,26 @@ type Job = {
     flushMs: number
 }
 
-export const sameGeometry = (a: MinimapGeometry, b: MinimapGeometry) =>
+const sameGeometry = (a: MinimapGeometry, b: MinimapGeometry) =>
     a.width === b.width && a.height === b.height && a.scale === b.scale
+
+/** What a full redraw is made for: everything in a baseline but the notes. */
+type Frame = Omit<Baseline, 'grids'>
+
+/** Whether two baselines share their tempo (meters aside), layout, range and geometry. */
+const sameFrame = (a: Frame, b: Frame) =>
+    sameGeometry(a.geometry, b.geometry) &&
+    a.end === b.end &&
+    a.layoutKey === b.layoutKey &&
+    isSameTempo(a.bpms, b.bpms)
+
+/** Whether two baselines describe the same image: the same frame and the same notes. */
+export const sameBaseline = (a: Baseline, b: Baseline) =>
+    a.grids.note === b.grids.note && sameFrame(a, b)
+
+/** A baseline's `layoutKey`: the Composed stage map, or `'basic'`. */
+export const layoutKeyOf = (layout: ComposedLayout | undefined): unknown =>
+    layout?.stages ?? 'basic'
 
 const now = () => performance.now()
 
@@ -156,11 +175,7 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
     }
 
     const compatible = (baseline: Baseline, shown: State, layoutKey: unknown, end: number) =>
-        !!target &&
-        sameGeometry(baseline.geometry, target) &&
-        baseline.end === end &&
-        baseline.layoutKey === layoutKey &&
-        isSameTempo(baseline.bpms, shown.bpms)
+        !!target && sameFrame(baseline, { bpms: shown.bpms, layoutKey, end, geometry: target })
 
     /** Paints one slice of the job; returns whether the job is complete. */
     const runSlice = (running: Job) => {
@@ -350,7 +365,7 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         const start = now()
         const { shown, live, peeking } = sources
         const layout = getComposedLayout(shown)
-        const layoutKey: unknown = layout?.stages ?? 'basic'
+        const layoutKey = layoutKeyOf(layout)
         const end = computeEnd(shown, live, peeking)
         if (job) {
             // Edits during a job do not restart it. What would make its output wrong does.

@@ -3,14 +3,15 @@ import { state } from '../../history'
 import { timed } from '../../perf/probe'
 import type { State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
-import { beatToTime, isSameTempo, type BpmIntegral } from '../../state/integrals/bpms'
+import { beatToTime, type BpmIntegral } from '../../state/integrals/bpms'
 import { SELECTION_COLOR } from '../../utils/colors'
 import type { ComposedLayout } from '../composed'
 import { getComposedLayout } from '../composedView'
+import { gridsOf } from './diff'
 import type { MinimapLayer } from './layers'
 import { MAX_BACKING_HEIGHT, gutterMarkEdges, type MinimapMapping } from './mapping'
 import { FAKE_FACTOR, noteRect } from './paint'
-import { sameGeometry, type Baseline } from './pipeline'
+import { layoutKeyOf, sameBaseline, type Baseline } from './pipeline'
 import { createRowSpread } from './tickRuns'
 
 // The shown state's selection on the strip: each selected note drawn again in white over its own
@@ -39,11 +40,13 @@ type SelectionInputs = {
 
 /** Whether the content's front image is the one `shown` and `mapping` describe. */
 const matches = (drawn: Baseline, shown: State, mapping: MinimapMapping) =>
-    drawn.grids.note === shown.store.grid.note &&
-    isSameTempo(drawn.bpms, shown.bpms) &&
-    drawn.layoutKey === (getComposedLayout(shown)?.stages ?? 'basic') &&
-    drawn.end === mapping.end &&
-    sameGeometry(drawn.geometry, mapping.geometry)
+    sameBaseline(drawn, {
+        grids: gridsOf(shown),
+        bpms: shown.bpms,
+        layoutKey: layoutKeyOf(getComposedLayout(shown)),
+        end: mapping.end,
+        geometry: mapping.geometry,
+    })
 
 let spread: ReturnType<typeof createRowSpread> | undefined
 
@@ -84,7 +87,6 @@ const paintSelection = timed(
 )
 
 export const selectionMarks: MinimapLayer<SelectionInputs> = {
-    name: 'selection',
     // Kept while the selection, the tempo and the layout keep their identities, so other state
     // changes paint nothing.
     useInputs: () =>

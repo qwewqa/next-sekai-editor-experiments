@@ -1,15 +1,12 @@
 import { computed, onScopeDispose, watch, type Ref } from 'vue'
-import { isSameTempo } from '../../state/integrals/bpms'
 import { backingSize, type MinimapMapping } from './mapping'
-import { minimapStats, sameGeometry, type Baseline } from './pipeline'
+import { minimapStats, sameBaseline, type Baseline } from './pipeline'
 
 // The strip's mark layers: one canvas each over the content, with its own inputs, schedule and
 // counter, so one kind of mark never repaints another.
 
 /** One kind of mark drawn over the strip's content, on a canvas of its own. */
 export type MinimapLayer<T> = {
-    /** The canvas's `data-minimap-layer`. */
-    name: string
     /** Created in the layer's scope. While it is undefined, nothing is drawn and the canvas is removed. */
     useInputs: () => Readonly<Ref<T | undefined>>
     /** Draws in CSS px; the canvas is clear. */
@@ -22,23 +19,11 @@ export type MinimapLayer<T> = {
     aligned?: (drawn: Baseline, mapping: MinimapMapping) => boolean
 }
 
-/** What a gated layer last painted with. */
-type Painted = {
-    inputs: unknown
-    drawn: Baseline
-    width: number
-    height: number
-}
+/** What a gated layer last painted with. Its backing size follows from the baseline's geometry. */
+type Painted = { inputs: unknown; drawn: Baseline }
 
 const samePainted = (a: Painted, b: Painted) =>
-    a.inputs === b.inputs &&
-    a.drawn.grids.note === b.drawn.grids.note &&
-    isSameTempo(a.drawn.bpms, b.drawn.bpms) &&
-    a.drawn.layoutKey === b.drawn.layoutKey &&
-    a.drawn.end === b.drawn.end &&
-    sameGeometry(a.drawn.geometry, b.drawn.geometry) &&
-    a.width === b.width &&
-    a.height === b.height
+    a.inputs === b.inputs && sameBaseline(a.drawn, b.drawn)
 
 /**
  * Paints `layer` on `canvas` in a component's setup. An ungated layer paints after the flush of
@@ -85,7 +70,7 @@ export const useMinimapLayer = <T>(
         const value = inputs.value
         if (!element || !current || value === undefined || !layer.aligned) return
         if (!baseline || !layer.aligned(baseline, current)) return
-        const target = { inputs: value, drawn: baseline, ...backingSize(current.geometry) }
+        const target = { inputs: value, drawn: baseline }
         if (!painted || !samePainted(painted, target)) {
             if (!draw(element, current, value)) return
             painted = target

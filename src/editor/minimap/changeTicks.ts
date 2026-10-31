@@ -11,7 +11,6 @@ import { HAIRLINE_ALPHA, hairlineRuns, tickRuns, type TickRun } from './tickRuns
  * for a few short runs a faint hairline across the strip, so a lone change reads against the notes.
  */
 export const changeTicks: MinimapLayer<readonly Place[]> = {
-    name: 'change',
     useInputs: () =>
         computed(() => {
             const places = minimapChangePlaces.value
