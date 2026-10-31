@@ -60,7 +60,7 @@ export const minimapStats = {
     bandPasses: 0,
     /** Content paints: one per swap and one per band redraw. */
     paints: 0,
-    /** Full-redraw slices: specs tell a running job from an idle pipeline by it. */
+    /** Full-redraw slices. Specs use it to tell a running job from an idle pipeline. */
     slices: 0,
     /** The change layer's paints. */
     annotationPaints: 0,

@@ -17,7 +17,7 @@ export type MinimapMapping = {
 
 /** The tick column (C) at the left edge, which no note reaches. */
 export const PAD_LEFT = 4
-/** The column at the right edge that the selection rail covers, with a px of the lane margin. */
+/** The right edge's column: the selection rail covers its inner 2 px and 1 px of the lane margin. */
 export const PAD_RIGHT = 3
 export const PAD_Y = 4
 /**
@@ -44,8 +44,8 @@ export const RAIL_WIDTH = 3
 export const RAIL_INSET = 1
 
 /**
- * The rail's left and right edges in CSS px, on whole pixels of the backing store so it stays
- * crisp at any scale, with at least the outer device px clear.
+ * The rail's left and right edges in CSS px. Both fall on whole backing-store pixels so the rail
+ * stays crisp at any scale, and at least one device pixel stays clear at the right edge.
  */
 export const railEdges = (geometry: MinimapGeometry): [number, number] => {
     const backing = backingSize(geometry).width
