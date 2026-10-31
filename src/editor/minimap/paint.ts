@@ -96,10 +96,10 @@ export type NoteRect = { x: number; y: number; width: number; height: number }
 
 const rect: NoteRect = { x: 0, y: 0, width: 0, height: 0 }
 
-/** Where a note at `time` is drawn, in device px. The result is reused by the next call. */
+/** Where a note on row `y` (CSS px) is drawn, in device px. The result is reused by the next call. */
 export const noteRect = (
     note: NoteEntity,
-    time: number,
+    y: number,
     layout: ComposedLayout | undefined,
     mapping: MinimapMapping,
 ): Readonly<NoteRect> => {
@@ -108,7 +108,7 @@ export const noteRect = (
     const [a, b] = mapping.spanToX(position.left, position.size)
     const x0 = Math.round(a * scale)
     rect.x = x0
-    rect.y = Math.round(mapping.timeToY(time) * scale) - NOTE_HEIGHT / 2
+    rect.y = Math.round(y * scale) - NOTE_HEIGHT / 2
     rect.width = Math.max(x0 + 1, Math.round(b * scale)) - x0
     rect.height = NOTE_HEIGHT
     return rect
@@ -184,12 +184,8 @@ export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource
             const infos = state.store.slides.info.get(note.slideId)
             const type = getNoteVisualType(note, infos, infos && slideLookup(infos))
             if (type === 'anchor') return
-            const { x, y, width, height } = noteRect(
-                note,
-                beatToTime(bpms, note.beat),
-                layout,
-                mapping,
-            )
+            const row = mapping.timeToY(beatToTime(bpms, note.beat))
+            const { x, y, width, height } = noteRect(note, row, layout, mapping)
             style(noteMinimapFill(note, type), note.isFake ? FAKE_FACTOR : 1)
             ctx.fillRect(x, y, width, height)
         },

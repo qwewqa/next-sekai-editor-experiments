@@ -61,11 +61,12 @@ export const paintSelection = timed(
         const solid = new Path2D()
         const faint = new Path2D()
         for (const entity of entities) {
-            if (!MARKED.has(entity.type)) continue
-            const time = beatToTime(bpms, entity.beat)
-            spread.add(mapping.timeToY(time))
-            if (entity.type !== 'note' || entity.noteType === 'anchor') continue
-            const rect = noteRect(entity, time, layout, mapping)
+            const note = entity.type === 'note'
+            if (!note && !MARKED.has(entity.type)) continue
+            const y = mapping.timeToY(beatToTime(bpms, entity.beat))
+            spread.add(y)
+            if (!note || entity.noteType === 'anchor') continue
+            const rect = noteRect(entity, y, layout, mapping)
             ;(entity.isFake ? faint : solid).rect(rect.x, rect.y, rect.width, rect.height)
         }
         // The lift in device px, on the content's own pixels.
