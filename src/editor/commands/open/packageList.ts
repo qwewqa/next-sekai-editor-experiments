@@ -17,6 +17,7 @@ import { StoreFailed } from '../../../preview/assets/files/storeRecords'
 import { loadThumbnails } from '../../../preview/assets/files/thumbnails'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
+import { isAbort } from '../../../utils/error'
 import { interpolateRaw } from '../../../utils/interpolate'
 
 // The package list's state, kept while the flow lasts: the list shows again with it after an Open
@@ -35,8 +36,6 @@ export type ListRow =
           /** What the row offers: Import, Use, "In use", or nothing in Safe Mode. */
           state: 'import' | 'use' | 'inUse' | 'none'
       }
-
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 const hasDefault = platform.capabilities.defaultAssets
 

@@ -1,4 +1,5 @@
 import { shallowRef } from 'vue'
+import { isAbort } from '../../../utils/error'
 import { assetTypes } from '../choice'
 import type { AssetChoice, AssetType } from '../types'
 import { AssetImportError } from './errors'
@@ -39,8 +40,6 @@ export const storedChoice = (meta: UserAssetMeta): AssetChoice => ({
 
 /** A stored item's origin is a file name or a server's address; only an address has a scheme. */
 export const isServerOrigin = (origin: string) => /^https?:\/\//i.test(origin)
-
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 export const createAssetChooser = (type: AssetType, deps: ChooserDeps) => {
     // Whatever went wrong reads as a problem with the package, with reading the file (moved or

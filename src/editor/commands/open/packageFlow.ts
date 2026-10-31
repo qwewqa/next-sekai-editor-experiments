@@ -17,6 +17,7 @@ import { identifyAssets, type AssetIdentity } from '../../../preview/assets/file
 import { importMessage } from '../../../preview/assets/files/importText'
 import { workerStore } from '../../../preview/assets/files/store'
 import type { BundledId } from '../../../preview/assets/types'
+import { isAbort } from '../../../utils/error'
 import { getFilename } from '../../../utils/file'
 import { confirmSwitch } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
@@ -27,8 +28,6 @@ import { dropOpen, endOpen, startOpen } from './report'
 
 // Open's package flow: the package's lists are read in the loading dialog, and then one level
 // opens directly or the list shows.
-
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 /** A listing failure as the loading dialog words it. */
 const listingError = (error: unknown) =>

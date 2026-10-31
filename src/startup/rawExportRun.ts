@@ -1,6 +1,6 @@
 import type { exportRawData } from '../local/rawExport'
-import { isAbort } from '../platform/handover'
 import type { Platform } from '../platform/types'
+import { isAbort } from '../utils/error'
 import type { RawExportRun } from './rawExportNote'
 
 // The run of Export Raw Data, apart from the action so a Node test can read it.

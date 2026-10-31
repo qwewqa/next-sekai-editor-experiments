@@ -1,4 +1,5 @@
 import type { ServerFetchInit } from '../../../platform/types'
+import { isAbort } from '../../../utils/error'
 import { LIMITS } from '../files/limits'
 import { displayText, isItemName, isSrl, type Srl } from '../files/package'
 import { isLocalHost } from '../serverUrl'
@@ -92,7 +93,6 @@ export type ServerInfo = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 const abortError = () => new DOMException('Aborted', 'AbortError')
 
 /** Settles with the promise, or rejects as soon as the signal aborts. */

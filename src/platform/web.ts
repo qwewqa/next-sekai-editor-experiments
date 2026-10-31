@@ -1,6 +1,7 @@
 import { storageJournalStore } from '../local/journal/store'
 import { webLockService } from '../local/locks'
 import { storageKey } from '../storage'
+import { isAbort } from '../utils/error'
 import {
     allowsFileSystemAccess,
     detection,
@@ -12,7 +13,6 @@ import {
     diskStateOf,
     fileErrorOf,
     handOver,
-    isAbort,
     requestWrite,
     toBlob,
     verifyBuilt,

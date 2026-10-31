@@ -1,3 +1,4 @@
+import { isAbort } from '../../../utils/error'
 import { buildParticle } from '../../particle'
 import { buildSkin } from '../../skin'
 import {
@@ -18,8 +19,6 @@ import type { UserAssetRecord, UserAssetStore } from './store'
 // The loader's provider for a stored choice: the package comes from the
 // store, is checked again under the same limits (an older build may have stored it under looser
 // ones), and loads. A package that is gone is `missing`; one that fails a check is `corrupt`.
-
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 /** Every failure of a stored package as the loader's typed error; an abort passes through. */
 const toAssetError = (error: unknown, type: AssetType) => {

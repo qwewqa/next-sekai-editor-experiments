@@ -12,6 +12,7 @@ import { settings } from '../../../settings'
 import { createState } from '../../../state'
 import type { Bgm } from '../../../state/bgm'
 import type { LevelInfo } from '../../../state/levelInfo'
+import { isAbort } from '../../../utils/error'
 import { interpolate } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
 import { createWaveform, releaseWaveform } from '../../../waveform'
@@ -40,8 +41,6 @@ type Prepared = {
     bgm: Bgm
     lines: NoticeLine[]
 }
-
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 const withoutLine = (slot: 'bgm' | 'cover' | 'preview'): NoticeLine => ({
     message: interpolate(

@@ -1,4 +1,5 @@
 import { shallowRef } from 'vue'
+import { isAbort } from '../../../utils/error'
 import { assetTypes } from '../choice'
 import type { AlsoOption } from '../files/chooser'
 import type { DecodeImage } from '../files/decodeImage'
@@ -68,8 +69,6 @@ export type ServerChooserDeps = {
 }
 
 export type ServerPhase = 'idle' | 'connecting' | 'listed' | 'working'
-
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 const typeOfCategory = (category: ServerCategory): AssetType => {
     const found = assetTypes.find((type) => serverCategoryOf[type] === category)

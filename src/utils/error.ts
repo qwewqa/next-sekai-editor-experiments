@@ -1,3 +1,7 @@
+/** A cancel: the AbortError an aborted signal or a closed dialog throws. */
+export const isAbort = (error: unknown) =>
+    error instanceof DOMException && error.name === 'AbortError'
+
 // Shown to users: the message alone, without the "Error: " prefix.
 export const errorMessage = (error: unknown) =>
     error instanceof Error && error.message ? error.message : String(error)

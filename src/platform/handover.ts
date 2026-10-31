@@ -23,9 +23,6 @@ export const DATA_URL_LIMIT = 1024 * 1024
 /** Without navigator.userActivation, a build longer than this may have outlasted the gesture. */
 const GESTURE_MS = 1000
 
-export const isAbort = (error: unknown) =>
-    error instanceof DOMException && error.name === 'AbortError'
-
 const errorName = (error: unknown) => (error instanceof DOMException ? error.name : undefined)
 
 // The code each DOMException becomes; a denial is never "not found".

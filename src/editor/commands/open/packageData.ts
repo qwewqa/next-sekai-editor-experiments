@@ -6,6 +6,7 @@ import { toWellFormed } from '../../../local/records/wellFormed'
 import { sha1Hex } from '../../../preview/assets/files/item'
 import { isSrl, type FilePackage, type Srl } from '../../../preview/assets/files/package'
 import type { LevelInfo } from '../../../state/levelInfo'
+import { isAbort } from '../../../utils/error'
 import {
     FileUnreadableError,
     levelDataType,
@@ -17,8 +18,6 @@ import {
 
 // A package level's data and media, read from the list item's SRLs. Kept free of the dialog so
 // the reads and their messages can be tested in Node.
-
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 
 /** Whether bytes match an SRL's SHA-1, when it has one (lowercased, as asset import checks). */
 const matchesHash = async (srl: Srl, bytes: Uint8Array) => {
