@@ -1,5 +1,6 @@
 import { ZipError } from '../../../zip/error'
 import type { AssetType } from '../types'
+import type { ItemType } from './package'
 
 /** The part of an item a message names. */
 export type ImportPart =
@@ -33,7 +34,7 @@ export type ImportErrorCode =
     | 'storeFailed'
 
 export type ImportDetail = {
-    type?: AssetType
+    type?: ItemType
     part?: ImportPart
     /** An image's size and its limit, a cap, or an effect's name */
     width?: number

@@ -15,6 +15,14 @@ export const categoryOf = {
     effect: 'effects',
 } as const satisfies Record<AssetType, string>
 
+/** What a package file lists that the editor reads: levels, and the four asset types. */
+export type ItemType = AssetType | 'level'
+
+const itemCategoryOf = { ...categoryOf, level: 'levels' } as const satisfies Record<
+    ItemType,
+    string
+>
+
 /** An SRL as a server sends it: a hash and a url, either of which may be absent or null. */
 export type Srl = { hash?: string | null; url?: string | null } | null | undefined
 
@@ -59,12 +67,7 @@ const isBadName = (name: string) => {
     return path.startsWith('/') || path.includes('\0') || path.split('/').includes('..')
 }
 
-const mapZipError = (
-    error: unknown,
-    type?: AssetType,
-    part?: ImportPart,
-    limit?: number,
-): never => {
+const mapZipError = (error: unknown, type?: ItemType, part?: ImportPart, limit?: number): never => {
     if (error instanceof AssetImportError) throw error
     if (error instanceof ZipError) {
         if (error.code === 'too-large') throw new AssetImportError('tooBig', { type, part, limit })
@@ -92,9 +95,31 @@ export type SourcePackage = {
 }
 
 export type EntryOptions = {
-    type: AssetType
+    type: ItemType
     part: ImportPart
     maxSize: number
+}
+
+/**
+ * A package read from a file: levels as well as assets, and whether an entry is there. The
+ * server source implements only `SourcePackage`.
+ */
+export type FilePackage = SourcePackage & {
+    json: (path: string, type: ItemType, part: ImportPart) => Promise<unknown>
+    /** The items of a type as the package lists them, each with a safe name. */
+    items: (type: ItemType, signal?: AbortSignal) => Promise<NamedItem[]>
+    list: (type: ItemType, signal?: AbortSignal) => Promise<ListedItem[]>
+    details: (type: ItemType, name: string) => Promise<Record<string, unknown> | undefined>
+    /** Whether the package has an entry at `path`, reading nothing. A name two entries share is there. */
+    has: (path: string) => boolean
+}
+
+/** An item object with a safe name. */
+export type NamedItem = Record<string, unknown> & { name: string }
+
+export type OpenOptions = {
+    /** The largest file accepted: the chooser's 2 GiB unless given. */
+    fileLimit?: number
 }
 
 /**
@@ -102,8 +127,11 @@ export type EntryOptions = {
  * the last 64 KiB, ZIP64, a directory that has to be rebuilt by scanning, more than 20,000 entries
  * or a name with `..` or a leading `/`.
  */
-export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
-    if (file.size > LIMITS.file) throw new AssetImportError('fileTooLarge', { limit: LIMITS.file })
+export const openSourcePackage = async (
+    file: Blob,
+    { fileLimit = LIMITS.file }: OpenOptions = {},
+): Promise<FilePackage> => {
+    if (file.size > fileLimit) throw new AssetImportError('fileTooLarge', { limit: fileLimit })
 
     try {
         const tail = new Uint8Array(
@@ -159,8 +187,10 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
         }
     }
 
-    const json = async (path: string, type: AssetType, part: ImportPart) => {
-        const bytes = await entry(path, { type, part, maxSize: LIMITS.json })
+    const json = async (path: string, type: ItemType, part: ImportPart) => {
+        // A levels list embeds each level's engine, so it may be as large as a listing.
+        const maxSize = type === 'level' && part === 'list' ? LIMITS.listing : LIMITS.json
+        const bytes = await entry(path, { type, part, maxSize })
         if (!bytes) return
         try {
             return JSON.parse(new TextDecoder().decode(bytes)) as unknown
@@ -171,36 +201,39 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
 
     const resolve = (srl: Srl) => {
         const url = srl?.url
-        if (!url) return
+        // A URL with a scheme names a resource elsewhere, never an entry.
+        if (!url || /^[a-z][a-z0-9+.-]*:/i.test(url)) return
         const path = url.replace(/^\/+/, '')
         return path === '' || isBadName(path) ? undefined : path
     }
 
-    const names = (type: AssetType) => {
-        const prefix = `sonolus/${categoryOf[type]}/`
+    const has = (path: string) =>
+        reader.get(path) !== undefined || reader.ambiguous.has(path.normalize('NFC'))
+
+    const names = (type: ItemType) => {
+        const prefix = `sonolus/${itemCategoryOf[type]}/`
         return reader.entries
             .filter((item) => !item.isDirectory && item.key.startsWith(prefix))
             .map((item) => item.key.slice(prefix.length))
             .filter((name) => name !== 'list' && name !== 'info' && !name.includes('/'))
     }
 
-    const toListed = (item: unknown): ListedItem | undefined => {
-        if (!isRecord(item) || !isItemName(item.name)) return
-        return {
-            name: item.name,
-            title: displayText(item.title) || item.name,
-            author: displayText(item.author),
-            thumbnail: isSrl(item.thumbnail) ? item.thumbnail : undefined,
-        }
-    }
+    const isNamed = (item: unknown): item is NamedItem => isRecord(item) && isItemName(item.name)
 
-    const details = async (type: AssetType, name: string) => {
+    const toListed = (item: NamedItem): ListedItem => ({
+        name: item.name,
+        title: displayText(item.title) || item.name,
+        author: displayText(item.author),
+        thumbnail: isSrl(item.thumbnail) ? item.thumbnail : undefined,
+    })
+
+    const details = async (type: ItemType, name: string) => {
         if (!isItemName(name)) return
-        const raw = await json(`sonolus/${categoryOf[type]}/${name}`, type, 'details')
+        const raw = await json(`sonolus/${itemCategoryOf[type]}/${name}`, type, 'details')
         if (isRecord(raw) && isRecord(raw.item)) return raw.item
         // Without a details entry, the list's own entry stands in for it.
         if (raw !== undefined) throw new AssetImportError('unreadable', { type, part: 'details' })
-        const listed = await json(`sonolus/${categoryOf[type]}/list`, type, 'list')
+        const listed = await json(`sonolus/${itemCategoryOf[type]}/list`, type, 'list')
         if (isRecord(listed) && Array.isArray(listed.items))
             return (listed.items as unknown[]).find(
                 (item): item is Record<string, unknown> => isRecord(item) && item.name === name,
@@ -208,31 +241,31 @@ export const openSourcePackage = async (file: Blob): Promise<SourcePackage> => {
         return
     }
 
-    const list = async (type: AssetType, signal?: AbortSignal) => {
-        const category = categoryOf[type]
+    const items = async (type: ItemType, signal?: AbortSignal) => {
+        const category = itemCategoryOf[type]
         const raw = await json(`sonolus/${category}/list`, type, 'list')
         if (raw !== undefined) {
             if (!isRecord(raw) || !Array.isArray(raw.items))
                 throw new AssetImportError('unreadable', { type, part: 'list' })
-            return (raw.items as unknown[])
-                .slice(0, LIMITS.listed)
-                .map(toListed)
-                .filter((item): item is ListedItem => item !== undefined)
+            return (raw.items as unknown[]).slice(0, LIMITS.listed).filter(isNamed)
         }
         // No list: the detail entries are the items, up to what a budget of their JSON holds.
-        const listed: ListedItem[] = []
+        const listed: NamedItem[] = []
         let budget = LIMITS.listing
         for (const name of names(type).slice(0, LIMITS.listed)) {
             if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
             budget -= reader.get(`sonolus/${category}/${name}`)?.size ?? 0
             if (budget < 0) break
-            const item = toListed(await details(type, name))
-            if (item) listed.push(item)
+            const item = await details(type, name)
+            if (isNamed(item)) listed.push(item)
         }
         return listed
     }
 
-    return { entry, json, resolve, list, details }
+    const list = async (type: ItemType, signal?: AbortSignal) =>
+        (await items(type, signal)).map(toListed)
+
+    return { entry, json, resolve, items, list, details, has }
 }
 
 /** A gzipped data entry's JSON, under the data limits. */

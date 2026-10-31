@@ -23,7 +23,8 @@ export const formatImportMessage = (
 ): string => {
     const { import: text, part } = strings
     const { code, detail } = error
-    const noun = detail.type ? strings.noun[detail.type] : ''
+    // Open words a level's failures itself, so a level has no noun here.
+    const noun = detail.type && detail.type !== 'level' ? strings.noun[detail.type] : ''
     const partNoun = detail.part ? part[detail.part] : ''
     const limit = detail.limit ?? 0
 

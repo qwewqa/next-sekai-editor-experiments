@@ -19,7 +19,7 @@ export const builtinBytes = (type: Type) =>
 
 type Entries = Map<string, Uint8Array>
 
-const entriesOf = async (bytes: Uint8Array): Promise<Entries> => {
+export const entriesOf = async (bytes: Uint8Array): Promise<Entries> => {
     const reader = await ZipReader.open(new Blob([new Uint8Array(bytes)]))
     const entries: Entries = new Map()
     for (const entry of reader.entries)

@@ -5,8 +5,10 @@ const KiB = 1024
 const MB = 1000 * 1000
 
 export const LIMITS = {
-    /** A package file: ZIP32 only */
+    /** A package file in the chooser */
     file: 2 * 1024 * 1024 * KiB,
+    /** A package file opened with Open, read lazily: the most ZIP32 can address */
+    openFile: 4 * 1024 * 1024 * KiB - 1,
     entries: 20_000,
     /** An entry name's length in bytes */
     entryName: KiB,
