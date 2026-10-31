@@ -162,7 +162,10 @@ export const useMinimapLayer = <T>(
     onScopeDispose(() => {
         cancelFrame()
         const element = canvas.value
-        if (element) element.width = element.height = 0
+        if (!element) return
+        element.removeEventListener('contextlost', onContextChange)
+        element.removeEventListener('contextrestored', onContextChange)
+        element.width = element.height = 0
     })
 
     return { active }
