@@ -170,6 +170,77 @@ test('removed events preserve every native kind and group/stage visibility', asy
     await page.screenshot({ path: `${shots}/removed-events.png` })
 })
 
+test("a dimmed object's ring, badge and ghost draw at half strength; a full one's are unchanged", async ({
+    page,
+}) => {
+    await boot(page)
+    const strengths = await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const [{ drawChangeMarks }, { DIMMED_CHANGE }] = await Promise.all([
+            appImport<typeof import('../../src/editor/canvas/changes')>(
+                '/src/editor/canvas/changes.ts',
+            ),
+            appImport<typeof import('../../src/editor/canvas/ordering')>(
+                '/src/editor/canvas/ordering.ts',
+            ),
+        ])
+        const note = (beat: number) =>
+            ({
+                type: 'note',
+                beat,
+                left: 0,
+                size: 1,
+                hitbox: { lane: 0.5, beat, w: 0.5, h: 0.2 },
+                slideId: 1,
+            }) as never
+        const state = window.editorTest.history.state.value
+        // A ring with its + badge, and a ghost with its - badge.
+        const marks = {
+            changed: new Set(),
+            rings: [{ entity: note(4), added: true, id: 0 }],
+            ghosts: [{ entity: note(8), removed: true, id: 1 }],
+            ghostState: state,
+        } as unknown as Parameters<typeof drawChangeMarks>[1]
+        const run = (drawState: 'dimmed' | 'full') => {
+            const alphas: number[] = []
+            const stack: number[] = []
+            const ctx = new Proxy({ globalAlpha: 1 } as Record<string, unknown>, {
+                get: (target, key) => {
+                    if (key === 'globalAlpha') return target.globalAlpha
+                    if (key === 'save') return () => stack.push(target.globalAlpha as number)
+                    if (key === 'restore') return () => (target.globalAlpha = stack.pop())
+                    // Every stroke and fill, with the alpha it draws at.
+                    return () => alphas.push(target.globalAlpha as number)
+                },
+                set: (target, key, value) => {
+                    target[key as string] = value
+                    return true
+                },
+            })
+            const ghosts: number[] = []
+            drawChangeMarks(
+                {
+                    state,
+                    scale: 40,
+                    ups: 2,
+                    bounds: { l: -50, r: 50, t: -500, b: 500 },
+                    ctx,
+                } as never,
+                marks,
+                -Infinity,
+                Infinity,
+                () => drawState,
+                (_context, _entity, opacity) => ghosts.push(opacity),
+            )
+            return { alphas: [...new Set(alphas)], ghosts }
+        }
+        return { dimmed: run('dimmed'), full: run('full'), half: DIMMED_CHANGE }
+    })
+    expect(strengths.half).toBe(0.5)
+    expect(strengths.dimmed).toEqual({ alphas: [0.5], ghosts: [0.175] })
+    expect(strengths.full).toEqual({ alphas: [1], ghosts: [0.35] })
+})
+
 const cases = [
     { name: 'desktop', width: 1440, height: 900, touch: false },
     { name: 'hybrid', width: 1440, height: 900, touch: true },

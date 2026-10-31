@@ -886,3 +886,91 @@ for (const kind of ['groups', 'stages'] as const) {
         })
     }
 }
+
+test('deleting the focused group and stage clears the focus and the brush; Undo brings them back unfocused', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { history, view, nextTick, appImport, historySteps } = window.editorTest
+        const { brushProperties } = await appImport<typeof import('../../src/editor/tools/brush')>(
+            '/src/editor/tools/brush/index.ts',
+        )
+        const focus = async (group: number, stage: number) => {
+            view.groupId = group as never
+            view.stageId = stage as never
+            brushProperties.value = { groupId: group as never, stageId: stage as never }
+            await nextTick()
+        }
+        const now = () => [
+            view.groupId,
+            view.stageId,
+            brushProperties.value.groupId,
+            brushProperties.value.stageId,
+        ]
+        /** Replaces the groups and the stages in one step, as their managers do. */
+        const replace = async (groups: number[], stages: number[]) => {
+            const state = history.state.value
+            history.pushState(historySteps.noteAdd(1), {
+                ...state,
+                groups: new Map(
+                    groups.map((id) => [
+                        id as never,
+                        state.groups.get(id as never) ?? { name: `G${id}` },
+                    ]),
+                ),
+                stages: new Map(
+                    stages.map((id) => [
+                        id as never,
+                        state.stages.get(id as never) ?? [...state.stages.values()][0]!,
+                    ]),
+                ),
+            })
+            await nextTick()
+        }
+        await focus(3, 3)
+        await replace([1, 2], [1, 2])
+        const deleted = now()
+        history.undoState()
+        await nextTick()
+        const undone = { restored: history.state.value.groups.has(3 as never), focus: now() }
+        return { deleted, undone }
+    })
+    const none = [undefined, undefined, undefined, undefined]
+    expect(result.deleted).toEqual(none)
+    expect(result.undone).toEqual({ restored: true, focus: none })
+})
+
+test('a peek of a step from before the focused group existed leaves the focus and the brush as they were', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { history, view, nextTick, appImport } = window.editorTest
+        const [{ brushProperties }, peek, { flusher }] = await Promise.all([
+            appImport<typeof import('../../src/editor/tools/brush')>(
+                '/src/editor/tools/brush/index.ts',
+            ),
+            appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts'),
+            appImport<typeof import('../../src/local/storing')>('/src/local/storing.ts'),
+        ])
+        // A step that adds group 4, focused and set as the brush's group.
+        const state = history.state.value
+        history.pushState(window.editorTest.historySteps.noteAdd(1), {
+            ...state,
+            groups: new Map([...state.groups, [4 as never, { name: 'Fourth' }]]),
+        })
+        await flusher!.flush({ strict: true })
+        view.groupId = 4 as never
+        brushProperties.value = { groupId: 4 as never }
+        await nextTick()
+        // Peek the step before it, then go back to Now.
+        const before = flusher!.newestSeq(flusher!.session!) - 1
+        await peek.peekEntry(peek.entryKey(flusher!.session!.id, before))
+        await nextTick()
+        const inPeek = [history.isPeeking.value, view.groupId, brushProperties.value.groupId]
+        peek.leavePeek()
+        await nextTick()
+        return { inPeek, after: [view.groupId, brushProperties.value.groupId] }
+    })
+    expect(result.inPeek).toEqual([true, 4, 4])
+    expect(result.after).toEqual([4, 4])
+})

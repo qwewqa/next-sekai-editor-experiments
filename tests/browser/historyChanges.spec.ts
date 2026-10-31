@@ -32,7 +32,8 @@ test.afterEach(({ page }) => {
 
 type Change =
     | { kind: 'move'; beats: number[]; lanes?: number }
-    | { kind: 'add'; beats: number[]; left?: number }
+    | { kind: 'add'; beats: number[]; left?: number; groupId?: number }
+    | { kind: 'regroup'; beat: number; to: number; groupId: number }
     | { kind: 'delete'; beats: number[] }
     | { kind: 'bpm'; bpm: number }
     | { kind: 'life' }
@@ -111,8 +112,24 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
                             ...template,
                             beat,
                             left: change.left ?? -1,
+                            ...(change.groupId === undefined
+                                ? {}
+                                : { groupId: change.groupId as typeof template.groupId }),
                         })
                     break
+                case 'regroup': {
+                    receipt = {
+                        id: 'nse.object.move',
+                        data: { subject: 'note', changed: { note: 1 } },
+                    }
+                    const note = all.find((note) => note.beat === change.beat)!
+                    notes.replaceNote(transaction, note, {
+                        ...noteObjectOf(note),
+                        beat: change.to,
+                        groupId: change.groupId as typeof note.groupId,
+                    })
+                    break
+                }
                 case 'many':
                     receipt = { id: 'nse.note.add', data: { created: change.count } }
                     for (let i = 0; i < change.count; i++)
@@ -355,6 +372,111 @@ test('Show Change steps through the changes in chart order and wraps', async ({ 
     const time = (await changes(page)).time
     await runCommand(page, 'showChange')
     expect((await changes(page)).time).toBe(time)
+})
+
+/** Hides groups in the chart, as their eyes do. */
+const hideGroups = (page: Page, ids: number[]) =>
+    page.evaluate((ids) => {
+        window.editorTest.view.groupVisibility = new Map(ids.map((id) => [id as never, 'hidden']))
+    }, ids)
+
+test("a move into a hidden group is counted and brought into view only where it is drawn; the minimap's ticks and the chart's marks agree", async ({
+    page,
+}) => {
+    // Beat 5 moves to beat 40 and into group 2: its old place below the view, its new one above.
+    await edit(page, 'Moved into Other', { kind: 'regroup', beat: 5, to: 40, groupId: 2 })
+    await stored(page)
+    await viewAt(page, 20)
+    await hideGroups(page, [2])
+    await openTab(page)
+    await row(page, 'Moved into Other').click()
+    // The summary tells the whole edit: the note left group 1 and arrived in group 2.
+    await expect(peekLine(page)).toHaveText('2 changes')
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
+    await expect(arrow(page, 'down')).toHaveAttribute('data-count', '1')
+
+    // The same objects are counted, ticked and marked: here the ghost at the old place only.
+    const agreed = await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const [module, { drawChangeMarks }, { entityDrawState }, { entityVisibility }] =
+            await Promise.all([
+                appImport<typeof import('../../src/editor/history/changes')>(
+                    '/src/editor/history/changes.ts',
+                ),
+                appImport<typeof import('../../src/editor/canvas/changes')>(
+                    '/src/editor/canvas/changes.ts',
+                ),
+                appImport<typeof import('../../src/editor/canvas/ordering')>(
+                    '/src/editor/canvas/ordering.ts',
+                ),
+                appImport<typeof import('../../src/editor/scope')>('/src/editor/scope.ts'),
+            ])
+        const marks = module.changeMarks.value!
+        const drawn = new Set<unknown>()
+        drawChangeMarks(
+            {
+                state: marks.ghostState!,
+                scale: 40,
+                ups: 2,
+                bounds: { l: -50, r: 50, t: -500, b: 500 },
+                ctx: new Proxy({}, { get: () => () => {} }),
+            } as Parameters<typeof drawChangeMarks>[0],
+            marks,
+            -Infinity,
+            Infinity,
+            (entity) => entityDrawState(entity, entityVisibility.value),
+            (_context, entity) => drawn.add(entity),
+        )
+        const ticked = module.minimapChangePlaces.value!.map(({ time }) => time)
+        return { ghosts: drawn.size, rings: marks.rings.length, ticked: ticked.length }
+    })
+    expect(agreed).toEqual({ ghosts: 1, rings: 1, ticked: 1 })
+
+    // Showing the group counts the new place too, and scrolls nothing.
+    const time = (await changes(page)).time
+    await hideGroups(page, [])
+    await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
+    await expect(arrow(page, 'down')).toHaveAttribute('data-count', '1')
+    expect((await changes(page)).time).toBe(time)
+
+    // Hidden again, with Show Edits off: the arrows still bring the shown place into view.
+    await hideGroups(page, [2])
+    await page.evaluate(() => {
+        window.editorTest.settings.dimUnchangedObjects = false
+    })
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
+    await arrow(page, 'down').click()
+    await expect.poll(async () => Math.round(await centreBeat(page))).toBeLessThan(10)
+})
+
+test('with every changed place hidden the arrows are off and Show Change moves nothing; a dimmed place is counted', async ({
+    page,
+}) => {
+    await edit(page, 'Added 2 notes', { kind: 'add', beats: [40, 41], groupId: 2 })
+    await stored(page)
+    await viewAt(page, 6)
+    await hideGroups(page, [2])
+    await openTab(page)
+    await row(page, 'Added 2 notes').click()
+    // The summary tells the whole edit.
+    await expect(peekLine(page)).toHaveText('2 changes')
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
+    await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
+    const time = (await changes(page)).time
+    await runCommand(page, 'showChange')
+    await frames(page)
+    expect((await changes(page)).time).toBe(time)
+
+    // Group 1 focused with Show Other Groups: group 2 is dimmed, drawn, counted and reachable.
+    await hideGroups(page, [])
+    await page.evaluate(() => {
+        const { view, settings } = window.editorTest
+        settings.showOtherGroups = true
+        view.groupId = 1 as never
+    })
+    await expect(arrow(page, 'up')).toHaveAttribute('data-count', '2')
+    await runCommand(page, 'showChange')
+    await expect.poll(async () => Math.round(await centreBeat(page))).toBeGreaterThan(38)
 })
 
 test("the row menu's Show Change peeks the row and brings its change into view", async ({

@@ -765,32 +765,30 @@ test.describe('touch', () => {
     })
 })
 
+/** The content canvas's total alpha: less when notes are hidden or dimmed. */
+const contentAlpha = (page: Page) =>
+    page.evaluate(() => {
+        const canvas = document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')!
+        const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height)
+        let sum = 0
+        for (let i = 3; i < data.length; i += 4) sum += data[i]!
+        return sum
+    })
+
+/** Until the strip has redrawn after a full redraw started. */
+const redrawn = async (page: Page, jobs: number) => {
+    await expect.poll(async () => (await statsOf(page)).fullJobs).toBe(jobs + 1)
+    await expect
+        .poll(async () => {
+            const { paints } = await statsOf(page)
+            await frames(page, 10)
+            return (await statsOf(page)).paints === paints
+        })
+        .toBe(true)
+}
+
 // The strip draws what the chart pane draws: the groups', stages' and types' visibility.
 test.describe('visibility', () => {
-    /** The content canvas's total alpha: less when notes are hidden or dimmed. */
-    const contentAlpha = (page: Page) =>
-        page.evaluate(() => {
-            const canvas = document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')!
-            const { data } = canvas
-                .getContext('2d')!
-                .getImageData(0, 0, canvas.width, canvas.height)
-            let sum = 0
-            for (let i = 3; i < data.length; i += 4) sum += data[i]!
-            return sum
-        })
-
-    /** Until the strip has redrawn after a full redraw started. */
-    const redrawn = async (page: Page, jobs: number) => {
-        await expect.poll(async () => (await statsOf(page)).fullJobs).toBe(jobs + 1)
-        await expect
-            .poll(async () => {
-                const { paints } = await statsOf(page)
-                await frames(page, 10)
-                return (await statsOf(page)).paints === paints
-            })
-            .toBe(true)
-    }
-
     test.beforeEach(async ({ page }) => {
         await open(page, { size: { width: 1280, height: 800 }, long: false })
         // The notes fixture: groups 1 and 2, and stages 1 and 2, by column.
@@ -829,11 +827,13 @@ test.describe('visibility', () => {
         expect(onlyOther).toBeLessThan(all)
         expect(onlyOther).not.toBe(withoutOther)
 
-        // A switch for a type the strip does not draw changes nothing on it.
+        // A switch for a type the strip does not draw, or Show Other Objects while notes and
+        // bodies are shown, changes nothing on it.
         before = after
         await page.evaluate(() => {
-            const { view } = window.editorTest
+            const { view, settings } = window.editorTest
             view.visibilities = { ...view.visibilities, bpm: false, timeScale: false }
+            settings.showOtherObjects = !settings.showOtherObjects
         })
         await frames(page, 20)
         after = await statsOf(page)
@@ -850,18 +850,26 @@ test.describe('visibility', () => {
         const all = await contentAlpha(page)
         let before = await statsOf(page)
         await page.evaluate(() => {
-            window.editorTest.view.groupId = 1 as never
+            window.editorTest.view.groupVisibility = new Map([[2 as never, 'hidden']])
+        })
+        await redrawn(page, before.fullJobs)
+        const hidden = await contentAlpha(page)
+        before = await statsOf(page)
+        await page.evaluate(() => {
+            const { view } = window.editorTest
+            view.groupVisibility = new Map()
+            view.groupId = 1 as never
         })
         await redrawn(page, before.fullJobs)
         const focused = await contentAlpha(page)
         expect(focused).toBeLessThan(all)
+        expect(focused).toBeGreaterThan(hidden)
 
         before = await statsOf(page)
         await page.evaluate(() => {
-            const { view, settings } = window.editorTest
+            const { view } = window.editorTest
             view.groupId = undefined
             view.layout = 'composed'
-            settings.showOtherGroups = true
         })
         await redrawn(page, before.fullJobs)
         const composed = await contentAlpha(page)
@@ -883,11 +891,11 @@ test.describe('zero work', () => {
             return { paints, changePaints, selectionPaints }
         }
         // With a group hidden, and a selection, so its marks are shown throughout.
+        const jobs = (await statsOf(page)).fullJobs
         await page.evaluate(() => {
             window.editorTest.view.groupVisibility = new Map([[2 as never, 'hidden']])
         })
-        await expect.poll(async () => (await statsOf(page)).fullJobs).toBeGreaterThan(0)
-        await frames(page, 30)
+        await redrawn(page, jobs)
         const unselected = await counts()
         await selectTwoNotes(page)
         await expect

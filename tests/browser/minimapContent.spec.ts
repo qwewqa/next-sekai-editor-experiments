@@ -363,6 +363,45 @@ test("the chart's visibility hides and dims notes and bodies, and bands under it
     expect([result.visibilityJobs, result.visibilityBands]).toEqual([1, 0])
 })
 
+test('a redraw whose visibility changed after its last slice is never published', async ({
+    page,
+}) => {
+    await installHarness(page)
+    const result = await page.evaluate(async () => {
+        const h = window.minimapHarness
+        const { fixtures, show } = window.editorTest
+        const { minimapStats } = h.pipelineModule
+        show(fixtures.connectors, 5)
+        const first = h.visibilityOf({})
+        const second = h.visibilityOf({ groupVisibility: new Map([[2 as never, 'hidden']]) })
+        const third = h.visibilityOf({ groupVisibility: new Map([[1 as never, 'hidden']]) })
+        const { pipeline } = await h.create(48, 600, 2, first)
+        const published: unknown[] = []
+        // A redraw for the second visibility: one slice, so its swap waits for the next frame.
+        const jobs = minimapStats.fullJobs
+        const paints = minimapStats.paints
+        pipeline.setSources(h.sources(second))
+        for (let i = 0; i < 600 && minimapStats.fullJobs === jobs; i++) await h.frame()
+        const pending = minimapStats.paints === paints
+        // The third arrives before that swap.
+        pipeline.setSources(h.sources(third))
+        for (let i = 0; i < 600 && !pipeline.isIdle(); i++) {
+            const before = minimapStats.paints
+            await h.frame()
+            if (minimapStats.paints !== before) published.push(pipeline.drawn.value?.visibility)
+        }
+        await h.idle(pipeline)
+        const result = {
+            pending,
+            secondShown: published.includes(second),
+            last: pipeline.drawn.value?.visibility === third,
+        }
+        pipeline.dispose()
+        return result
+    })
+    expect(result).toEqual({ pending: true, secondShown: false, last: true })
+})
+
 test("an incremental redraw of separate bands does not carry a fake note's opacity into the next band", async ({
     page,
 }) => {
