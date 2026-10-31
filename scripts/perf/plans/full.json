@@ -1036,6 +1036,298 @@
                     "keepRaw": true
                 }
             ]
+        },
+        {
+            "id": "S-d-r21888",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/real-21888.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "act",
+                    "action": "selectAll",
+                    "layout": "basic",
+                    "reps": 6,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "layout": "basic",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "ctrl": true,
+                    "layout": "basic",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "tag": "ctrl"
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectionUndo",
+                    "layout": "basic",
+                    "reps": 4,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectAll",
+                    "layout": "composed",
+                    "reps": 6,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "layout": "composed",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "ctrl": true,
+                    "layout": "composed",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "tag": "ctrl"
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectionUndo",
+                    "layout": "composed",
+                    "reps": 4,
+                    "keepRaw": true
+                }
+            ]
+        },
+        {
+            "id": "S-x4-r21888",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/real-21888.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "act",
+                    "action": "selectAll",
+                    "layout": "basic",
+                    "reps": 6,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "layout": "basic",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "ctrl": true,
+                    "layout": "basic",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "tag": "ctrl"
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectionUndo",
+                    "layout": "basic",
+                    "reps": 4,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectAll",
+                    "layout": "composed",
+                    "reps": 6,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "layout": "composed",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "ctrl": true,
+                    "layout": "composed",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "tag": "ctrl"
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectionUndo",
+                    "layout": "composed",
+                    "reps": 4,
+                    "keepRaw": true
+                }
+            ]
+        },
+        {
+            "id": "S-d-str",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "act",
+                    "action": "selectAll",
+                    "layout": "basic",
+                    "reps": 6,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "layout": "basic",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "ctrl": true,
+                    "layout": "basic",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "tag": "ctrl"
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectionUndo",
+                    "layout": "basic",
+                    "reps": 4,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectAll",
+                    "layout": "composed",
+                    "reps": 6,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "layout": "composed",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "ctrl": true,
+                    "layout": "composed",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "tag": "ctrl"
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectionUndo",
+                    "layout": "composed",
+                    "reps": 4,
+                    "keepRaw": true
+                }
+            ]
+        },
+        {
+            "id": "S-x4-str",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "act",
+                    "action": "selectAll",
+                    "layout": "basic",
+                    "reps": 6,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "layout": "basic",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "ctrl": true,
+                    "layout": "basic",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "tag": "ctrl"
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectionUndo",
+                    "layout": "basic",
+                    "reps": 4,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectAll",
+                    "layout": "composed",
+                    "reps": 6,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "layout": "composed",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "act",
+                    "action": "boxSelect",
+                    "ctrl": true,
+                    "layout": "composed",
+                    "pps": 100,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "tag": "ctrl"
+                },
+                {
+                    "scenario": "act",
+                    "action": "selectionUndo",
+                    "layout": "composed",
+                    "reps": 4,
+                    "keepRaw": true
+                }
+            ]
         }
     ]
 }

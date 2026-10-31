@@ -148,6 +148,7 @@ const installCollector = () => {
             P.perfSamples.on = true
             r.paints = P.minimapStats.paints
             r.annotationPaints = P.minimapStats.annotationPaints
+            r.selectionPaints = P.minimapStats.selectionPaints
             const loop = (t) => {
                 if (!r.on) return
                 r.frames.push([t, P.view.time, P.view.cursorTime])
@@ -192,6 +193,7 @@ const installCollector = () => {
                 probes: P.perfSamples.samples,
                 paints: P.minimapStats.paints - r.paints,
                 annotationPaints: P.minimapStats.annotationPaints - r.annotationPaints,
+                selectionPaints: P.minimapStats.selectionPaints - r.selectionPaints,
                 visibility: document.visibilityState,
             }
         },
@@ -1351,6 +1353,7 @@ const runOnce = async (page, cdp, cell, profile, hz, label, light, group) => {
             maxMs: Math.max(0, ...raw.longtasks.map((e) => e.duration)),
         },
         minimapPaints: raw.paints + raw.annotationPaints,
+        selectionPaints: raw.selectionPaints,
         startedAt,
         endedAt: new Date().toISOString(),
         pathCache,

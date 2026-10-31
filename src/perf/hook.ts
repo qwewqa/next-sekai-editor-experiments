@@ -18,6 +18,7 @@ import { peekDrawContext } from '../rendering/context'
 import type { PathGraphicsCache } from '../rendering/pathGraphics'
 import { settings } from '../settings'
 import { startupGate } from '../startup/gate'
+import type { Entity } from '../state/entities'
 import { beatToTime } from '../state/integrals/bpms'
 import { perfSamples } from './probe'
 
@@ -94,11 +95,19 @@ const nsePerf = {
         }
         return out
     },
-    /** Selects every note and connector, or nothing. */
-    selectNotes(on: boolean) {
-        const selectedEntities = on
-            ? [...getAllEntities()].filter((e) => e.type === 'note' || e.type === 'connector')
-            : []
+    /**
+     * Selects every note and connector, or nothing. With `outside` (seconds), only the notes
+     * outside that span.
+     */
+    selectNotes(on: boolean, outside?: { from: number; to: number }) {
+        const bpms = state.value.bpms
+        const selected = (e: Entity) => {
+            if (!outside) return e.type === 'note' || e.type === 'connector'
+            if (e.type !== 'note') return false
+            const time = beatToTime(bpms, e.beat)
+            return time < outside.from || time > outside.to
+        }
+        const selectedEntities = on ? [...getAllEntities()].filter(selected) : []
         replaceState({ ...state.value, selectedEntities })
         return selectedEntities.length
     },

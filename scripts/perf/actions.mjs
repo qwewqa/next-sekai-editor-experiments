@@ -1282,6 +1282,167 @@ export const actions = {
                 window.nsePerf.settings[name] = !window.nsePerf.settings[name]
             }, cell.setting),
     },
+
+    // The minimap's selection layer: `selectionPaints` and the `minimapSelection` probe.
+    /** Select every note and connector, then nothing, in turn. */
+    selectAll: {
+        prep: async (page) => {
+            await closeDialogs(page)
+            await sleep(500)
+        },
+        spec: (cell, state) =>
+            state.rep % 2 === 0
+                ? {
+                      before: 'P.minimapStats.selectionPaints',
+                      done: 'P.minimapStats.selectionPaints > A',
+                      tail: 500,
+                  }
+                : {
+                      done: `!document.querySelector('[data-minimap-layer="selection"]')`,
+                      tail: 500,
+                  },
+        input: (page, cdp, cell, state) =>
+            page.evaluate(
+                (on) => {
+                    window.nsePerfAct.input()
+                    window.nsePerf.selectNotes(on)
+                },
+                state.rep % 2 === 0,
+            ),
+    },
+    /**
+     * A box drag with the select tool over the view at the chart's start, from an empty point on its
+     * bottom to the opposite top corner in `seconds` (default 1); `ctrl` adds to a selection of
+     * every note outside the view, as a Ctrl box does.
+     * Fails unless the box changed the selection and the layer painted more than once.
+     */
+    boxSelect: {
+        prep: async (page, cell, state) => {
+            await closeDialogs(page)
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
+            await page.keyboard.press('f')
+            // From the chart's start, where a press usually lands on nothing: the box grows from
+            // there over the view.
+            const geometry = await page.evaluate(async () => {
+                const { view, settings } = window.nsePerf
+                view.time = view.h / 2 / settings.pps
+                for (let i = 0; i < 10; i++)
+                    await new Promise((done) => requestAnimationFrame(done))
+                const point = (lane, time) => ({
+                    x: view.x + view.w * (0.5 + (lane - view.lane) / settings.width),
+                    y: view.y + view.h / 2 - (time - view.time) * settings.pps,
+                })
+                const half = view.h / 2 / settings.pps
+                const from = view.time - half * 0.98
+                const to = view.time + half * 0.9
+                const left = view.lane - settings.width / 2 + 0.25
+                const right = view.lane + settings.width / 2 - 0.25
+                // Starting points along the view's bottom, from the corners in.
+                const starts = []
+                for (let i = 0; i < 8; i++)
+                    for (const [lane, end] of [
+                        [left + i, right],
+                        [right - i, left],
+                    ])
+                        starts.push({ from: point(lane, from), to: point(end, to) })
+                return { from, to, starts }
+            })
+            // The press must land on nothing, or it selects or moves an object: a click there
+            // must leave the selection empty.
+            const empty = async () => {
+                for (const start of geometry.starts) {
+                    await page.evaluate(() => window.nsePerf.selectNotes(false))
+                    await sleep(100)
+                    await click(page._cdp, start.from)
+                    await sleep(150)
+                    const selected = await page.evaluate(
+                        () => window.nsePerf.state.value.selectedEntities.length,
+                    )
+                    if (selected === 0) return start
+                }
+                throw new Error('No empty point to start a box from')
+            }
+            const start = await empty()
+            const base = await page.evaluate(
+                ({ ctrl, from, to }) => window.nsePerf.selectNotes(ctrl, { from, to }),
+                { ctrl: !!cell.ctrl, from: geometry.from, to: geometry.to },
+            )
+            state.box = { ...start, base }
+            await sleep(cell.pause ?? 500)
+        },
+        spec: () => ({
+            before: '({ paints: P.minimapStats.selectionPaints, selection: P.state.value.selectedEntities })',
+            release: true,
+            done: 'P.state.value.selectedEntities !== A.selection && P.minimapStats.selectionPaints > A.paints',
+            tail: 500,
+        }),
+        input: async (page, cdp, cell, state) => {
+            const { from, to } = state.box
+            const before = await page.evaluate(() => window.nsePerf.minimapStats.selectionPaints)
+            const modifiers = cell.ctrl ? 2 : 0
+            const mouse = (type, { x, y }, buttons = 1) =>
+                cdp.send('Input.dispatchMouseEvent', {
+                    type,
+                    x,
+                    y,
+                    button: 'left',
+                    buttons,
+                    clickCount: 1,
+                    modifiers,
+                })
+            await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...from })
+            await mouse('mousePressed', from)
+            const steps = Math.round(((cell.seconds ?? 1) * 1000) / 16.7)
+            const start = performance.now()
+            for (let i = 1; i <= steps; i++) {
+                const wait = start + i * 16.7 - performance.now()
+                if (wait > 0) await sleep(wait)
+                await mouse('mouseMoved', {
+                    x: from.x + ((to.x - from.x) * i) / steps,
+                    y: from.y + ((to.y - from.y) * i) / steps,
+                })
+            }
+            await mouse('mouseReleased', to, 0)
+            const after = await page.evaluate(() => ({
+                paints: window.nsePerf.minimapStats.selectionPaints,
+                selected: window.nsePerf.state.value.selectedEntities.length,
+            }))
+            state.extra = {
+                base: state.box.base,
+                selected: after.selected,
+                layerPaints: after.paints - before,
+            }
+            if (after.selected <= state.box.base || after.paints - before < 2)
+                throw new Error(`The box changed nothing: ${JSON.stringify(state.extra)}`)
+        },
+        reset: (page) => page.evaluate(() => window.nsePerf.selectNotes(false)),
+    },
+    /** With every note and connector selected and flipped once, Undo (z) and Redo (y) in turn. */
+    selectionUndo: {
+        prep: async (page, cell, state) => {
+            await closeHistory(page)
+            await closeDialogs(page)
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
+            if (state.rep === 0) {
+                await page.evaluate(() => window.nsePerf.selectNotes(true))
+                await sleep(500)
+                await page.keyboard.press('u')
+            }
+            await sleep(cell.pause ?? 2500)
+        },
+        spec: () => ({
+            before: '({ paints: P.minimapStats.selectionPaints, state: P.live().state })',
+            done: 'P.live().state !== A.state && !P.live().loading && P.minimapStats.selectionPaints > A.paints',
+            busy: 'P.live().loading',
+        }),
+        input: (page, cdp, cell, state) => page.keyboard.press(state.rep % 2 === 0 ? 'z' : 'y'),
+    },
 }
 
 /** The `act` scenario: one repeat of `cell.action`. */

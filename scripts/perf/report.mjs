@@ -67,9 +67,15 @@ if (mode === 'ui') {
                 'gate',
                 'chart',
                 'done',
+                'layerPaints',
             ]
                 .filter((key) => results.some((r) => r[key] !== undefined))
                 .map((key) => `${key} ${spread(pick(key))}`)
+            // The minimap's selection layer, separate from its other paints.
+            if (row.runs.some((r) => r.selectionPaints))
+                extra.push(
+                    `selection paints ${spread(row.runs.map((r) => r.selectionPaints))} (${['p50', 'max'].map((key) => fixed(median(row.runs.map((r) => r.probes.minimapSelection?.[key])))).join('/')} ms)`,
+                )
             return [
                 row.id,
                 results.length,
@@ -166,6 +172,11 @@ if (mode === 'ui') {
                 m((r) => r.minimapPaints),
                 0,
             ),
+            // The selection layer's paints and the probe's time per paint.
+            `${fixed(
+                m((r) => r.selectionPaints ?? 0),
+                0,
+            )} (${probe('minimapSelection', 'p50', 'max')})`,
             row.offPin,
         ]
     })
@@ -186,6 +197,7 @@ if (mode === 'ui') {
                 'jumps',
                 'cold max',
                 'minimap paints',
+                'selection paints (p50/max)',
                 'off pin',
             ],
             lines,
