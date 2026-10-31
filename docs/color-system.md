@@ -91,7 +91,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 15. **A token retune lands with every consumer of that token.** When `selected` is retuned, for example, the ManagerRow tint that uses it is adjusted in the same change.
 
-16. **Keep the feel.** The palette stays seven hues; no surface colour changes; the light `accent`, `danger` and surfaces are byte-identical to v0.5.22.
+16. **Keep the feel.** The palette stays seven hues. Surfaces, `accent` and `danger` change only in a change that sets out to retune them, with every consumer (principle 15).
 
 17. **Forced colours: basic function only** (low priority). The recipes keep the transparent resting outline that high contrast paints as an edge, and thicken focus to 4 px there. No other work.
 
@@ -101,7 +101,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 Values are RGB channel triples, as in `src/themes.css`. OKLCH is given as L C h.
 
-These keep their v0.5.22 values (principle 16):
+These have not been retuned (principle 16):
 
 - the surfaces and inks: `fg`, `fg-strong`, `bg`, `scrim`, `button`, `header`, `header-hover`, `modal`, `popup`, `popup-hover`, `popup-edge`, `preview`, `knob`, `recess`, `band-hover`;
 - `accent` and `on-accent` (the same in both themes);
