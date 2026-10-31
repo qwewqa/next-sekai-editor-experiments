@@ -34,13 +34,21 @@ const installHarness = (page: Page) =>
         const { createSlideId } = await appImport<typeof import('../../src/state/entities/slides')>(
             '/src/state/entities/slides/index.ts',
         )
+        const { contentVisibility } = await appImport<
+            typeof import('../../src/editor/minimap/visibility')
+        >('/src/editor/minimap/visibility.ts')
         const { view } = window.editorTest
 
         const frame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve))
-        const sources = () => ({
+        const scopeRules = await appImport<typeof import('../../src/editor/scopeRules')>(
+            '/src/editor/scopeRules.ts',
+        )
+        type Visibility = import('../../src/editor/canvas/ordering').DrawVisibility
+        const sources = (visibility: Visibility = contentVisibility.value) => ({
             shown: history.state.value,
             live: history.liveState.value,
             peeking: history.isPeeking.value,
+            visibility,
         })
         const idle = async (pipeline: { isIdle: () => boolean }) => {
             for (let i = 0; i < 1200; i++) {
@@ -49,11 +57,11 @@ const installHarness = (page: Page) =>
             }
             throw new Error('The pipeline never went idle')
         }
-        const create = async (width = 48, height = 600, ratio = 2) => {
+        const create = async (width = 48, height = 600, ratio = 2, visibility?: Visibility) => {
             const canvas = document.createElement('canvas')
             const pipeline = pipelineModule.createMinimapPipeline(canvas)
             pipeline.setGeometry(width, height, ratio)
-            pipeline.setSources(sources())
+            pipeline.setSources(sources(visibility))
             await idle(pipeline)
             return { canvas, pipeline }
         }
@@ -95,8 +103,15 @@ const installHarness = (page: Page) =>
             change(transaction)
             history.pushState(window.editorTest.historySteps.noteAdd(1), transaction.commit([]))
         }
+        /** The chart's visibility with these scope inputs, every type shown. */
+        const visibilityOf = (scope: import('../../src/editor/scopeRules').ScopeInputs) => ({
+            scope: scopeRules.createScopeLookup(scope),
+            visibilities: { ...contentVisibility.value.visibilities },
+            showOtherObjects: false,
+        })
         window.minimapHarness = {
             pipelineModule,
+            visibilityOf,
             history,
             slideNotes,
             bpmMutations,
@@ -122,10 +137,14 @@ declare global {
             view: (typeof import('../../src/editor/view'))['view']
             frame: () => Promise<number>
             idle: (pipeline: { isIdle: () => boolean }) => Promise<void>
+            visibilityOf: (
+                scope: import('../../src/editor/scopeRules').ScopeInputs,
+            ) => import('../../src/editor/canvas/ordering').DrawVisibility
             create: (
                 width?: number,
                 height?: number,
                 ratio?: number,
+                visibility?: import('../../src/editor/canvas/ordering').DrawVisibility,
             ) => Promise<{
                 canvas: HTMLCanvasElement
                 pipeline: import('../../src/editor/minimap/pipeline').MinimapPipeline
@@ -141,7 +160,9 @@ declare global {
                     >,
                 ) => void,
             ) => void
-            sources: () => import('../../src/editor/minimap/pipeline').MinimapSources
+            sources: (
+                visibility?: import('../../src/editor/canvas/ordering').DrawVisibility,
+            ) => import('../../src/editor/minimap/pipeline').MinimapSources
         }
     }
 }
@@ -249,6 +270,97 @@ test('incremental redraws equal a full redraw after a move, an Undo, a slide edi
         expect(bands, `${name} bands`).toBe(1)
         expect(fullJobs, `${name} full jobs`).toBe(0)
     }
+})
+
+test("the chart's visibility hides and dims notes and bodies, and bands under it equal a full redraw", async ({
+    page,
+}) => {
+    await installHarness(page)
+    const result = await page.evaluate(async () => {
+        const h = window.minimapHarness
+        const { fixtures, show } = window.editorTest
+        const { minimapStats } = h.pipelineModule
+        type GroupId = import('../../src/chart/groups').GroupId
+        const [shownGroup, hiddenGroup] = [1 as GroupId, 2 as GroupId]
+        // Bodies in both groups, damage bodies in group 2, and single notes in each. The last
+        // note is in group 1, so leaving group 2 out keeps the range.
+        const single = fixtures.interaction.slides[0]![0]!
+        const chart = {
+            ...fixtures.connectors,
+            slides: [
+                ...fixtures.connectors.slides,
+                [{ ...single, beat: 5, left: -2 }],
+                [{ ...single, beat: 7, left: 3, groupId: hiddenGroup }],
+                [{ ...single, beat: 30, left: 0 }],
+            ],
+        }
+        const alpha = (canvas: HTMLCanvasElement) => {
+            const data = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height)
+            let sum = 0
+            for (let i = 3; i < data.data.length; i += 4) sum += data.data[i]!
+            return sum
+        }
+        const hidden = h.visibilityOf({ groupVisibility: new Map([[hiddenGroup, 'hidden']]) })
+        const dimmed = h.visibilityOf({ groupId: shownGroup })
+        show(chart, 5)
+        const full = await h.create()
+        const withHidden = await h.create(48, 600, 2, hidden)
+        const withDimmed = await h.create(48, 600, 2, dimmed)
+        // A group hidden draws as the chart without that group's slides.
+        show(
+            {
+                ...chart,
+                slides: chart.slides.filter((slide) =>
+                    slide.some((note) => note.groupId !== hiddenGroup),
+                ),
+            },
+            5,
+        )
+        const without = await h.create()
+        const hiddenAsRemoved = h.compare(withHidden.canvas, without.canvas)
+        const sums = [alpha(withHidden.canvas), alpha(withDimmed.canvas), alpha(full.canvas)]
+        for (const created of [full, withHidden, withDimmed, without]) created.pipeline.dispose()
+
+        // Under a visibility, an edit in each group lands as a band equal to a full redraw.
+        show(chart, 5)
+        const { canvas, pipeline } = await h.create(48, 600, 2, hidden)
+        const before = { ...minimapStats }
+        h.edit((transaction) => {
+            for (const note of [...h.history.state.value.store.slides.note.values()].flat())
+                if (note.beat === 5 || note.beat === 7)
+                    h.slideNotes.replaceNote(transaction, note, { ...note, beat: note.beat + 4 })
+        })
+        pipeline.setSources(h.sources(hidden))
+        await h.idle(pipeline)
+        const edited = { ...minimapStats }
+        const fresh = await h.create(48, 600, 2, hidden)
+        const bands = h.compare(canvas, fresh.canvas)
+        fresh.pipeline.dispose()
+        const ready = { ...minimapStats }
+        // A visibility change is one full redraw.
+        pipeline.setSources(h.sources(dimmed))
+        await h.idle(pipeline)
+        const changed = { ...minimapStats }
+        pipeline.dispose()
+        return {
+            hiddenAsRemoved,
+            sums,
+            bands,
+            bandPasses: edited.bandPasses - before.bandPasses,
+            editJobs: edited.fullJobs - before.fullJobs,
+            visibilityJobs: changed.fullJobs - ready.fullJobs,
+            visibilityBands: changed.bandPasses - ready.bandPasses,
+        }
+    })
+    expect(result.hiddenAsRemoved.differing, result.hiddenAsRemoved.first.join('; ')).toBe(0)
+    expect(result.hiddenAsRemoved.drawn).toBeGreaterThan(500)
+    // Hidden < dimmed < full.
+    const [hidden, dimmed, full] = result.sums
+    expect(hidden).toBeLessThan(dimmed!)
+    expect(dimmed).toBeLessThan(full!)
+    expect(result.bands.differing, result.bands.first.join('; ')).toBe(0)
+    expect([result.bandPasses, result.editJobs]).toEqual([1, 0])
+    expect([result.visibilityJobs, result.visibilityBands]).toEqual([1, 0])
 })
 
 test("an incremental redraw of separate bands does not carry a fake note's opacity into the next band", async ({

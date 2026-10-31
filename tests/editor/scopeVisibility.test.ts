@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 import type { GroupId } from '../../src/chart/groups'
 import type { StageId } from '../../src/chart/stages'
-import { orderEntities } from '../../src/editor/canvas/ordering'
+import { entityDrawState, orderEntities } from '../../src/editor/canvas/ordering'
 import {
     bestScope,
     createScopeLookup,
@@ -400,6 +400,69 @@ test('selected group and stage render fully with hidden saved eyes for every set
             )
         }
     }
+})
+
+test("the draw state is the chart's: scope, the type's switch and Show Other Objects", () => {
+    const hidden = groupMask([[groupB, 'hidden']])
+    const types = (off: EntityType[]) =>
+        new Proxy({} as Record<EntityType, boolean>, {
+            get: (_, type) => !off.includes(type as EntityType),
+        })
+    const visibility = (scope: ScopeInputs, off: EntityType[] = [], showOtherObjects = false) => ({
+        scope: createScopeLookup(scope),
+        visibilities: types(off),
+        showOtherObjects,
+    })
+    const shown = note(groupA, stageA)
+    const inHidden = note(groupB, stageA)
+    // Scope: shown, hidden, and dimmed under a focus with Show Other Groups.
+    assert.equal(entityDrawState(shown, visibility({ groupVisibility: hidden })), 'full')
+    assert.equal(entityDrawState(inHidden, visibility({ groupVisibility: hidden })), 'hidden')
+    assert.equal(entityDrawState(inHidden, visibility({ groupId: groupA })), 'dimmed')
+    assert.equal(
+        entityDrawState(inHidden, visibility({ groupId: groupA, showOtherGroups: false })),
+        'hidden',
+    )
+    // The type switch: hidden, or dimmed with Show Other Objects; a hidden scope stays hidden.
+    assert.equal(entityDrawState(shown, visibility({}, ['note'])), 'hidden')
+    assert.equal(entityDrawState(shown, visibility({}, ['note'], true)), 'dimmed')
+    assert.equal(
+        entityDrawState(inHidden, visibility({ groupVisibility: hidden }, ['note'], true)),
+        'hidden',
+    )
+    // A stage hides its notes and events; a time scale goes by its group; BPM changes by type only.
+    const stages = visibility({ stageVisibility: stageMask([[stageB, 'hidden']]) })
+    assert.equal(entityDrawState(note(groupA, stageB), stages), 'hidden')
+    assert.equal(
+        entityDrawState({ type: 'stagePivotEventJoint', stageId: stageB } as Entity, stages),
+        'hidden',
+    )
+    assert.equal(
+        entityDrawState(
+            { type: 'timeScale', groupId: groupB } as Entity,
+            visibility({ groupVisibility: hidden }),
+        ),
+        'hidden',
+    )
+    const bpm = { type: 'bpm' } as Entity
+    assert.equal(entityDrawState(bpm, visibility({ groupVisibility: hidden })), 'full')
+    assert.equal(entityDrawState(bpm, visibility({}, ['bpm'])), 'hidden')
+    // A connector takes the more visible of its endpoints.
+    const body = connector(shown, inHidden)
+    assert.equal(entityDrawState(body, visibility({ groupVisibility: hidden })), 'full')
+    assert.equal(
+        entityDrawState(
+            body,
+            visibility({
+                groupVisibility: groupMask([
+                    [groupA, 'hidden'],
+                    [groupB, 'hidden'],
+                ]),
+            }),
+        ),
+        'hidden',
+    )
+    assert.equal(entityDrawState(body, visibility({}, ['connector'])), 'hidden')
 })
 
 test('only scope changes that can hide something count as reductions', () => {

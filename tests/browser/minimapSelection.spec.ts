@@ -495,6 +495,34 @@ test.describe('the gate', () => {
         })
     }
 
+    test('hiding a group, with the selection changed in the same task, paints the marks once, at the swap', async ({
+        page,
+    }) => {
+        await open(page)
+        await page.evaluate(() => {
+            const { select, notes } = window.mmSelection
+            select(notes().filter((note) => note.groupId === (1 as never)))
+        })
+        await settled(page)
+        const from = await mark(page)
+        // Group 2 hidden, and one note fewer selected: the new marks wait for the new image.
+        await page.evaluate(() => {
+            const { select, notes } = window.mmSelection
+            window.editorTest.view.groupVisibility = new Map([[2 as never, 'hidden']])
+            select(
+                notes()
+                    .filter((note) => note.groupId === (1 as never))
+                    .slice(1),
+            )
+        })
+        await settled(page)
+        const entries = await logSince(page, from)
+        expect(entries.some((entry) => entry.key === 'fullJobs')).toBe(true)
+        expectOnContentFrames(entries, 'visibility')
+        expect(entries.filter((entry) => entry.key === 'selectionPaints')).toHaveLength(1)
+        expectLiftOnNotes(await expectRail(page, 'group 2 hidden'), 'group 2 hidden')
+    })
+
     test('Basic to Composed on a dynamic-stage chart paints the marks at the swap', async ({
         page,
     }) => {

@@ -765,6 +765,115 @@ test.describe('touch', () => {
     })
 })
 
+// The strip draws what the chart pane draws: the groups', stages' and types' visibility.
+test.describe('visibility', () => {
+    /** The content canvas's total alpha: less when notes are hidden or dimmed. */
+    const contentAlpha = (page: Page) =>
+        page.evaluate(() => {
+            const canvas = document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')!
+            const { data } = canvas
+                .getContext('2d')!
+                .getImageData(0, 0, canvas.width, canvas.height)
+            let sum = 0
+            for (let i = 3; i < data.length; i += 4) sum += data[i]!
+            return sum
+        })
+
+    /** Until the strip has redrawn after a full redraw started. */
+    const redrawn = async (page: Page, jobs: number) => {
+        await expect.poll(async () => (await statsOf(page)).fullJobs).toBe(jobs + 1)
+        await expect
+            .poll(async () => {
+                const { paints } = await statsOf(page)
+                await frames(page, 10)
+                return (await statsOf(page)).paints === paints
+            })
+            .toBe(true)
+    }
+
+    test.beforeEach(async ({ page }) => {
+        await open(page, { size: { width: 1280, height: 800 }, long: false })
+        // The notes fixture: groups 1 and 2, and stages 1 and 2, by column.
+        await page.evaluate(() => {
+            const { show, fixtures, settings } = window.editorTest
+            show(fixtures.notes, 4)
+            settings.showGroups = true
+        })
+        await expect(page.locator('#workspace-panel-groups .manager-entry').first()).toBeVisible()
+        await expect.poll(async () => (await statsOf(page)).paints).toBeGreaterThan(0)
+        await frames(page, 30)
+    })
+
+    test("the Groups panel's eye and its solo each redraw the strip once, and a BPM switch redraws nothing", async ({
+        page,
+    }) => {
+        const panel = page.locator('#workspace-panel-groups')
+        const all = await contentAlpha(page)
+        let before = await statsOf(page)
+        await panel.getByRole('button', { name: 'Hide Other group', exact: true }).click()
+        await redrawn(page, before.fullJobs)
+        let after = await statsOf(page)
+        expect(after.bandPasses).toBe(before.bandPasses)
+        const withoutOther = await contentAlpha(page)
+        expect(withoutOther).toBeLessThan(all)
+        expect(withoutOther).toBeGreaterThan(0)
+
+        // Alt on an eye shows only that group.
+        before = after
+        await panel
+            .getByRole('button', { name: 'Show Other group', exact: true })
+            .click({ modifiers: ['Alt'] })
+        await redrawn(page, before.fullJobs)
+        after = await statsOf(page)
+        const onlyOther = await contentAlpha(page)
+        expect(onlyOther).toBeLessThan(all)
+        expect(onlyOther).not.toBe(withoutOther)
+
+        // A switch for a type the strip does not draw changes nothing on it.
+        before = after
+        await page.evaluate(() => {
+            const { view } = window.editorTest
+            view.visibilities = { ...view.visibilities, bpm: false, timeScale: false }
+        })
+        await frames(page, 20)
+        after = await statsOf(page)
+        expect([after.passes, after.paints, after.fullJobs]).toEqual([
+            before.passes,
+            before.paints,
+            before.fullJobs,
+        ])
+    })
+
+    test('a focused group with Show Other Groups draws the others dimmed, and hiding a stage in Composed hides its notes', async ({
+        page,
+    }) => {
+        const all = await contentAlpha(page)
+        let before = await statsOf(page)
+        await page.evaluate(() => {
+            window.editorTest.view.groupId = 1 as never
+        })
+        await redrawn(page, before.fullJobs)
+        const focused = await contentAlpha(page)
+        expect(focused).toBeLessThan(all)
+
+        before = await statsOf(page)
+        await page.evaluate(() => {
+            const { view, settings } = window.editorTest
+            view.groupId = undefined
+            view.layout = 'composed'
+            settings.showOtherGroups = true
+        })
+        await redrawn(page, before.fullJobs)
+        const composed = await contentAlpha(page)
+        before = await statsOf(page)
+        await page.evaluate(() => {
+            window.editorTest.view.stageVisibility = new Map([[2 as never, 'hidden']])
+        })
+        await redrawn(page, before.fullJobs)
+        expect(await contentAlpha(page)).toBeLessThan(composed)
+    })
+})
+
 test.describe('zero work', () => {
     test('scrolling, playback with Follow and a held note drag paint nothing', async ({ page }) => {
         await open(page, { size: { width: 1280, height: 800 } })
@@ -773,7 +882,12 @@ test.describe('zero work', () => {
             const { paints, changePaints, selectionPaints } = await statsOf(page)
             return { paints, changePaints, selectionPaints }
         }
-        // With a selection, so its marks are shown throughout.
+        // With a group hidden, and a selection, so its marks are shown throughout.
+        await page.evaluate(() => {
+            window.editorTest.view.groupVisibility = new Map([[2 as never, 'hidden']])
+        })
+        await expect.poll(async () => (await statsOf(page)).fullJobs).toBeGreaterThan(0)
+        await frames(page, 30)
         const unselected = await counts()
         await selectTwoNotes(page)
         await expect
@@ -1265,7 +1379,7 @@ test.describe('peek', () => {
     // --- Change ticks (C): the peeked step's changed places, in the tick column, with a hairline across the strip.
 
     type Step =
-        | { kind: 'move'; from: number; to: number }
+        | { kind: 'move'; from: number; to: number; groupId?: number }
         | { kind: 'slide'; beats: number[] }
         | { kind: 'bpm'; beat: number; bpm: number }
 
@@ -1303,7 +1417,13 @@ test.describe('peek', () => {
                         id: 'nse.object.move',
                         data: { subject: 'note', changed: { note: 1 } },
                     }
-                    notes.replaceNote(transaction, note, { ...noteObjectOf(note), beat: step.to })
+                    notes.replaceNote(transaction, note, {
+                        ...noteObjectOf(note),
+                        beat: step.to,
+                        ...(step.groupId === undefined
+                            ? {}
+                            : { groupId: step.groupId as typeof note.groupId }),
+                    })
                 } else if (step.kind === 'slide') {
                     receipt = { id: 'nse.note.add', data: { created: step.beats.length } }
                     const template = noteObjectOf([...state.store.slides.note.values()].flat()[0]!)
@@ -1431,6 +1551,27 @@ test.describe('peek', () => {
         await act(page, 'leavePeek')
         await expect.poll(() => contentOpacity(page)).toBe('')
         await expect.poll(async () => (await tickRows(page)).length).toBe(0)
+    })
+
+    test('a move into a hidden group is ticked only at its shown side, and showing the group ticks both', async ({
+        page,
+    }) => {
+        const first = await newestSeq(page)
+        // Beat 5 (2.5 s) moves to beat 100 (50 s) and into group 2.
+        await pushStep(page, 'Moved into Other', { kind: 'move', from: 5, to: 100, groupId: 2 })
+        await expect.poll(() => newestSeq(page)).toBe(first + 1)
+        await page.evaluate(() => {
+            window.editorTest.view.groupVisibility = new Map([[2 as never, 'hidden']])
+        })
+        await peekRow(page, 'Moved into Other')
+        await expect.poll(async () => (await tickRows(page)).length).toBe(1)
+        expect(near(await tickRows(page), await rowOf(page, 2.5))).toBe(true)
+        await page.evaluate(() => {
+            window.editorTest.view.groupVisibility = new Map()
+        })
+        await expect.poll(async () => (await tickRows(page)).length).toBe(2)
+        expect(near(await tickRows(page), await rowOf(page, 50))).toBe(true)
+        await act(page, 'leavePeek')
     })
 
     test('a note moved within its slide is ticked at its old and new rows', async ({ page }) => {
