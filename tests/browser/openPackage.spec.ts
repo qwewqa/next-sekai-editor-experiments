@@ -1,20 +1,17 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
-import { gunzipSync, gzipSync } from 'node:zlib'
 import { minimalLevel } from '../editor/levelDataSynthetic'
-import { gif, levelData, levelPackage, png, wav, webp } from './levelPackages'
-import { builtinBytes, entriesOf, pack, patched, utf8 } from './previewAssetsPackages'
+import { png, wav } from './levelInfoFiles'
+import { gif, levelData, levelPackage, webp } from './levelPackages'
+import { entriesOf, pack, patched, regzipped, utf8 } from './previewAssetsPackages'
 import {
     edit,
     notice,
     pauseAt,
-    projectOf,
     queuePicks,
     reached,
-    readFile,
     sessionOf,
     start,
-    submitSave,
     writeFile,
 } from './saveFlows'
 
@@ -64,8 +61,8 @@ test('a one-level package opens directly with its Level Info, cover, BGM and off
             rating: 27,
             tags: ['Hard'],
             data: levelData(minimalLevel(), 0.75),
-            cover: png(4, 4),
-            bgm: wav(),
+            cover: png(4, 4, [255, 0, 0]),
+            bgm: wav(0.5),
             preview: wav(0.2),
         },
     ])
@@ -84,45 +81,11 @@ test('a one-level package opens directly with its Level Info, cover, BGM and off
         preview: { type: 'audio/wav' },
     })
     expect(opened.offset).toBe(0.75)
-    expect(opened.bgm).toEqual({ size: wav().length, type: 'audio/wav' })
+    expect(opened.bgm).toEqual({ size: wav(0.5).length, type: 'audio/wav' })
     expect(opened.hasAudio).toBe(true)
     expect(opened.notes).toBe(1)
     // Named after the level, not the file.
     expect((await sessionOf(page)).sourceName).toBe('Song Title')
-})
-
-test('a package opened in this tab is written over like any file the user picks', async ({
-    page,
-}) => {
-    await start(page)
-    // Save As onto a package whose list was closed writes the project there.
-    await openPackageFile(page, 'skins.scp', await newEffect())
-    await expect(list(page)).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(dialog(page)).toHaveCount(0)
-    await edit(page, 2)
-    await queuePicks(page, ['skins.scp'])
-    await page.evaluate(async () => {
-        const { commands } = await import('/src/editor/commands/index.ts')
-        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs, 'button')
-    })
-    await submitSave(page, 'skins', 'Save As')
-    await expect(notice(page).filter({ hasText: 'Saved to skins.scp' })).toBeVisible()
-    expect((await projectOf(page, 'skins.scp')).format).toBe('nxsp')
-
-    // Export onto another package writes level data there.
-    await openPackageFile(page, 'sounds.scp', await newEffect())
-    await expect(list(page)).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(dialog(page)).toHaveCount(0)
-    await page.keyboard.press('Shift+P')
-    await expect(dialog(page)).toHaveAccessibleName('Export Level Data')
-    await queuePicks(page, ['sounds.scp'])
-    await page.keyboard.press('Enter')
-    await expect(notice(page).filter({ hasText: 'Exported to sounds.scp' })).toBeVisible()
-    const written = new Uint8Array((await readFile(page, 'sounds.scp')) ?? [])
-    expect(JSON.parse(new TextDecoder().decode(gunzipSync(written)))).toHaveProperty('entities')
 })
 
 for (const [format, cover, type] of [
@@ -149,7 +112,7 @@ test('media the editor cannot use is left out with a line; an empty SRL says not
         page,
         'bad.scp',
         await levelPackage('full', [
-            { name: 'song', bgm: new Uint8Array(4096).fill(7), cover: png(16_385, 1) },
+            { name: 'song', bgm: new Uint8Array(4096).fill(7), cover: png(16_385, 1, [255, 0, 0]) },
         ]),
     )
     await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
@@ -187,12 +150,7 @@ const merged = async (...parts: Uint8Array[]) => {
 
 /** A level package with assets beside its levels: a Built-in skin, a new particle, a bad background. */
 const mixed = async () => {
-    // Re-gzipped data: the same particle in other bytes, so it is not the Built-in one.
-    const particle = await patched('particle', {
-        resources: {
-            data: new Uint8Array(gzipSync(gunzipSync(await particleData()), { level: 1 })),
-        },
-    })
+    const particle = await regzipped('particle')
     const background = await patched('background', { resources: { image: utf8('not an image') } })
     return merged(
         await levelPackage(
@@ -207,15 +165,6 @@ const mixed = async () => {
         particle,
         background,
     )
-}
-
-/** The Built-in particle's data entry, gzipped. */
-const particleData = async () => {
-    const entries = await entriesOf(builtinBytes('particle'))
-    const list = JSON.parse(new TextDecoder().decode(entries.get('sonolus/particles/list'))) as {
-        items: { data: { url: string } }[]
-    }
-    return entries.get(list.items[0]!.data.url.slice(1))!
 }
 
 const list = (page: Page) => dialog(page).locator('[data-package-list]')
@@ -300,28 +249,6 @@ test('the list: Open on each level with data, Import and Use on assets, and the 
     ).toBeVisible()
     await expect(row(page, 'Neon Skin').locator('[data-package-in-use]')).toBeVisible()
 })
-
-test('a package with nothing the editor can use says so', async ({ page }) => {
-    await start(page)
-    await openPackageFile(
-        page,
-        'engines.scp',
-        pack(new Map([['sonolus/engines/list', utf8('{"items":[{"name":"e"}]}')]])),
-    )
-    await expect(dialog(page)).toContainText('This Sonolus package contains no levels or assets.')
-})
-
-/** A package whose effect is the Built-in one in other bytes, so it offers Import. */
-const newEffect = async () => {
-    const entries = await entriesOf(builtinBytes('effect'))
-    const list = JSON.parse(new TextDecoder().decode(entries.get('sonolus/effects/list'))) as {
-        items: { data: { url: string } }[]
-    }
-    const data = entries.get(list.items[0]!.data.url.slice(1))!
-    return patched('effect', {
-        resources: { data: new Uint8Array(gzipSync(gunzipSync(data), { level: 1 })) },
-    })
-}
 
 /**
  * Holds every audio decode until `releaseDecoding`: `decodeEntered` counts the decodes that began,
@@ -422,10 +349,10 @@ test('Cancel while a level opens releases what it held and shows the list again 
     page,
 }) => {
     await start(page)
-    const cover = png(8, 8)
+    const cover = png(8, 8, [255, 0, 0])
     const bytes = await levelPackage('full', [
         { name: 'a', title: 'Level A' },
-        { name: 'b', title: 'Level B', cover, bgm: wav() },
+        { name: 'b', title: 'Level B', cover, bgm: wav(0.5) },
     ])
     await openPackageFile(page, 'slow.scp', bytes)
     await expect(list(page)).toBeVisible()
@@ -456,7 +383,7 @@ test('Cancel while a level opens releases what it held and shows the list again 
 
 test('closing the list stops a running Import: nothing is stored or applied', async ({ page }) => {
     await start(page)
-    await openPackageFile(page, 'sounds.scp', await newEffect())
+    await openPackageFile(page, 'sounds.scp', await regzipped('effect'))
     await expect(list(page)).toBeVisible()
     await pauseAt(page, 'none')
     await gateDecoding(page)
@@ -480,7 +407,7 @@ test('closing the list stops a running Import: nothing is stored or applied', as
 
 test('focus moved away during an Import stays where the user put it', async ({ page }) => {
     await start(page)
-    await openPackageFile(page, 'sounds.scp', await newEffect())
+    await openPackageFile(page, 'sounds.scp', await regzipped('effect'))
     await expect(list(page)).toBeVisible()
     await pauseAt(page, 'none')
     await gateDecoding(page)

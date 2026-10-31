@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { gunzipSync, gzipSync } from 'node:zlib'
 import { ZipReader } from '../../src/zip'
 import { rawZip, utf8, type RawEntry } from '../zip/rawZip'
 
@@ -124,6 +125,21 @@ export const patched = async (type: Type, patch: Patch): Promise<Uint8Array> => 
             method: deflated.has(name) ? 8 : 0,
         })),
     )
+}
+
+/**
+ * The Built-in item of a type with its data gzipped again: the same item in other bytes, so not
+ * the Built-in one.
+ */
+export const regzipped = async (type: Type): Promise<Uint8Array> => {
+    const entries = await entriesOf(builtinBytes(type))
+    const list = json(entries.get(`sonolus/${categories[type]}/list`)) as {
+        items: { data: { url: string } }[]
+    }
+    const data = entries.get(list.items[0]!.data.url.slice(1))!
+    return patched(type, {
+        resources: { data: new Uint8Array(gzipSync(gunzipSync(data), { level: 1 })) },
+    })
 }
 
 export { pack }

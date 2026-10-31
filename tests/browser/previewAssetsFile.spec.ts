@@ -11,6 +11,7 @@ import {
     entriesOf,
     patched,
     rawZip,
+    regzipped,
     types,
     utf8,
     variants,
@@ -425,20 +426,10 @@ test.describe('From a File', () => {
         page,
     }) => {
         await start(page)
-        // The Built-in particle with its data gzipped again: the same item in other bytes, so
-        // it is not the Built-in one. A copy of the Built-in effect is Built-in, with Use.
-        const entries = await entriesOf(builtinBytes('particle'))
-        const particleList = JSON.parse(
-            new TextDecoder().decode(entries.get('sonolus/particles/list')),
-        ) as {
-            items: { data: { url: string } }[]
-        }
-        const data = entries.get(particleList.items[0]!.data.url.slice(1))!
-        const particle = await patched('particle', {
-            resources: { data: new Uint8Array(gzipSync(gunzipSync(data), { level: 1 })) },
-        })
+        // A new particle (the Built-in one gzipped again), and a copy of the Built-in effect,
+        // which is Built-in, with Use.
         const merged = new Map([
-            ...(await entriesOf(particle)),
+            ...(await entriesOf(await regzipped('particle'))),
             ...(await entriesOf(
                 await variants('effect', [{ name: 'neon', title: 'Neon Sounds' }]),
             )),
