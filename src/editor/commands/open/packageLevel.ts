@@ -86,7 +86,7 @@ export const openPackageLevel = async (
                     yield () => i18n.value.commands.open.importing
                     await timeout(50)
                     check()
-                    const parsed = await readLevelData(pkg, level.item)
+                    const parsed = await readLevelData(pkg, level)
                     check()
                     const levelInfo = levelInfoOf(
                         level.item,

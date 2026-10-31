@@ -34,7 +34,6 @@ import { confirmSwitch, notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { changeBgm } from '../bgm/index.ts'
 import { exportMemory, KEPT_BYTES_LIMIT, rememberExport } from '../exportLevel/memory'
-
 import { installDropGuard } from './dropGuard'
 import {
     FileTooLargeError,

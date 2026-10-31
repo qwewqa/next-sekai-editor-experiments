@@ -56,7 +56,7 @@ const opened = async (bytes: Uint8Array) => {
 
 const read = async (spec: Omit<LevelSpec, 'name'>) => {
     const { pkg, level } = await opened(await levelPackage('full', [{ name: 'song', ...spec }]))
-    return readLevelData(pkg, level.item)
+    return readLevelData(pkg, level)
 }
 
 // The class decides the open's outcome; the dialog shows its text.
@@ -108,7 +108,7 @@ test('every failure to read the data is one message, without a raw code', async 
         )
     const readFrom = async (bytes: Uint8Array) => {
         const { pkg, level } = await opened(bytes)
-        return readLevelData(pkg, level.item)
+        return readLevelData(pkg, level)
     }
     rows.push(['a bad CRC', () => readFrom(damaged({ central: { crc32: 1 } }))])
     rows.push([
@@ -304,7 +304,7 @@ test('a file that cannot be read any more says so, not that the level is damaged
     const gone = () => Promise.reject(new DOMException('gone', 'NotReadableError'))
     const { pkg, level } = await fakePackage(gone)
     await assert.rejects(
-        readLevelData(pkg, level.item),
+        readLevelData(pkg, level),
         refusedWith('This file could not be read.', FileUnreadableError),
     )
     // A medium that cannot be read is left out with its line.

@@ -1,3 +1,4 @@
+import type { PackageLevel } from '../../../files/package/inventory'
 import { LEVEL_FILE_MAX_BYTES } from '../../../levelData/fileLimit'
 import { inflateCapped } from '../../../levelData/gzip'
 import { NXSP_CAPS } from '../../../local/nxsp/read'
@@ -32,14 +33,13 @@ const matchesHash = async (srl: Srl, bytes: Uint8Array) => {
  */
 export const readLevelData = async (
     pkg: FilePackage,
-    item: Record<string, unknown>,
+    { item, data }: Pick<PackageLevel, 'item' | 'data'>,
 ): Promise<Parsed> => {
     let json: unknown
     try {
         const srl = isSrl(item.data) ? item.data : undefined
-        const path = pkg.resolve(srl)
-        const bytes = path
-            ? await pkg.entry(path, { type: 'level', part: 'data', maxSize: LEVEL_FILE_MAX_BYTES })
+        const bytes = data
+            ? await pkg.entry(data, { type: 'level', part: 'data', maxSize: LEVEL_FILE_MAX_BYTES })
             : undefined
         if (!bytes) throw new Error('The level data is not in this file')
         if (!(await matchesHash(srl, bytes))) throw new Error('The level data fails its hash')
@@ -78,11 +78,10 @@ export const readDescription = async (pkg: FilePackage, name: string) => {
     }
 }
 
-export type MediaSlot = 'bgm' | 'cover' | 'preview'
+type MediaSlot = 'bgm' | 'cover' | 'preview'
 
 /** A media resource of a level: none named, its bytes, or one the editor cannot use. */
-type MediaRead =
-    { kind: 'none' } | { kind: 'bytes'; bytes: Uint8Array } | { kind: 'unusable'; error?: unknown }
+type MediaRead = { kind: 'none' } | { kind: 'bytes'; bytes: Uint8Array } | { kind: 'unusable' }
 
 /** An SRL that names nothing: `{}`, a known absence. */
 const namesNothing = (srl: Srl) => !srl?.url && !srl?.hash
@@ -114,7 +113,7 @@ export const readMedia = async (
         return { kind: 'bytes', bytes }
     } catch (error) {
         if (isAbort(error)) throw error
-        return { kind: 'unusable', error }
+        return { kind: 'unusable' }
     }
 }
 
