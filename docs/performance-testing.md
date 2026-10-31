@@ -55,11 +55,11 @@ Options:
 
 A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 
-- `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`). It also has `selectNear(time, count)` to select the plain notes nearest a time and return their screen points, `chartEnd()` for the last entity's time, `pathCaches()` for the chart and overlay canvases' path-cache counters and resident bytes, `startup()` for the startup phase, `peek()` for the entry asked for, the entry shown, the spinner and the change view's state, `live()` for the live state and whether Undo or Redo waits for a step to load, and `worker()` for the storage worker.
+- `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`). It also has `selectNear(time, count)` to select the plain notes nearest a time and return their screen points, `chartEnd()` for the last entity's time, `pathCaches()` for the chart and overlay canvases' path-cache counters and resident bytes, `startup()` for the startup phase, `peek()` for the entry asked for, the entry shown, the spinner and the change view's state, `live()` for the live state and whether Undo or Redo waits for a step to load, `worker()` for the storage worker, and `selectNotes(on, outside)` to select every note and connector, or nothing, or with `outside` every note outside a span of seconds.
 - Per-frame timings (`src/perf/probe.ts`):
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
     - `clockFrame`: the app clock's whole frame, with the time watchers, Vue's flush and the draws it triggers. The clock runs only while something moves through it (eases, inertia, playback, a tool drag), so direct scrolls such as `quicktouch` and `minimapdrag` have few or no clock frames: compare their `chartDraw` and frame intervals;
-    - `previewDraw`, `elevationDraw` and `minimapOverlay`. In the worker host, `previewDraw` is the main thread's part of a frame: resolving the state, building the chart's diff and posting the frame;
+    - `previewDraw`, `elevationDraw`, `minimapOverlay` and `minimapSelection` (one paint of the minimap's selection layer, recording only: its rasterisation shows in a trace). In the worker host, `previewDraw` is the main thread's part of a frame: resolving the state, building the chart's diff and posting the frame;
     - the worker host's `previewWorkerDraw`, the worker's draw with any rebuild, and `previewWorkerAnswer`, the time from posting a frame until the worker's `drawn` message arrives. `previewReplaced` counts the frames that a newer request replaced before they were sent. `perf:report … frames` gives the worker's frames per second beside the clock's;
     - `stageTile`: each Composed stage tile build. `perf:report … frames` gives the builds per chart draw.
 
@@ -140,11 +140,12 @@ Actions, by `action`:
 - Settings: `openSettings` (until the Language field and Local Data's heading show), `openSettingsAll` (until About, the last section, is mounted) and `closeSettings`;
 - Local Data: `localData` (Settings), `deleteCounts` (Delete Sessions… up to its counts), `deleteAll` (deletes every session, so it runs once in a group of its own) and `exportRaw`;
 - files: `save` (the first repeat names the file), `open` (`file`, through the file input), `newChart`, `exportLevel` and `check` (Level Info › Check);
+- the minimap's selection layer: `selectAll` (every note and connector selected, then nothing, in turn), `boxSelect` (a box drag with the Select tool over the view, from its bottom left to its top right over `seconds` (1); with `ctrl`, a Ctrl box over a selection of every note outside the view, so each move adds notes to a large selection; it fails unless the selection changed and the layer painted more than once, and records `layerPaints`) and `selectionUndo` (every note and connector selected and flipped once, then Undo and Redo in turn);
 - `dialog` (`open`: a key, or `click:<selector>`, until a dialog with `title` shows), `setting` (a setting flipped, and the frames that redraw it), and `goToIndex` (reads Go To's index for an opened file's session of `rows` rows through the storage worker, without the UI).
 
 Settings opens with Editor and Local Data and mounts the other sections in tasks after the first frame. A comment in `SettingsModal.vue` names the stages. Judge a change to Settings by `openSettings` and its `tailTask`, which shows a staging task in the 600 ms after the first screen only when it takes 50 ms or more, so 0 means every stage stayed under that. `openSettingsAll` shows how long the rest takes.
 
-`npm run perf:report -- <run> ui` tabulates them. Response is how long the user waits. Compare it with one frame for actions that should feel immediate, and with 100 ms (desktop) or 200 ms (the phone stand-in) for the others. A long task during the response also delays every other input.
+`npm run perf:report -- <run> ui` tabulates them. Every run also records `minimapPaints` (the content's and History's change ticks) and, apart, `selectionPaints`; `frames` and `ui` show the selection layer's paints with its probe. A cell that selects nothing new, such as `flick` with `selection`, must show no selection paints. Response is how long the user waits. Compare it with one frame for actions that should feel immediate, and with 100 ms (desktop) or 200 ms (the phone stand-in) for the others. A long task during the response also delays every other input.
 
 ## Seeds
 

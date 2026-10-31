@@ -532,13 +532,15 @@ A unit test feeds one synthetic line per inventoried form through the detector a
 Chart content keeps its own colours:
 
 - notes, connectors, guides, grid and stages;
-- the minimap's content and change ticks (its box and cursor are UI: white on `bg`, the box with a dark outer ring);
+- the minimap's content, change ticks and selection marks (its box and cursor are UI: white on `bg`, the box with a dark outer ring);
 - the elevation canvas and the preview renderer;
 - NoteShapeIcon;
 - the BPM and time-scale chips;
 - the `--note-accent` styles.
 
 The change orange is chart content too: 4.50:1 and 7.18:1 on the chart. No UI element uses orange, so the marks stay the one hue nothing else on screen uses.
+
+The selection takes white where the chart draws it (outlines, the box select), and `SELECTION_COLOR` (`#67e8f9`, `src/utils/colors.ts`) where white does not serve: the preview's selection outline and the minimap's selection rail. It is not mint, so it never reads as on. On the minimap strip it is 10.4:1 on the dark ground and 6.5:1 on the light.
 
 Light warning (h 68) and the change orange (h 59) are 9° apart, not 20°. They are told apart by lightness (L 0.52 against 0.78), and orange never appears on a UI surface. In dark they are 29° apart (h 88 against 59).
 
