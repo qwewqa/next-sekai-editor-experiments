@@ -28,13 +28,20 @@ const start = async (page: Page, { title = 'Brain Rot' } = {}) => {
     }, title)
 }
 
-const openShare = async (page: Page) => {
+/** Opens Statistics, then Share Image by a click or a tap, without waiting for the preview. */
+const openShareNow = async (page: Page, press: 'click' | 'tap' = 'click') => {
     await page.evaluate(async () => {
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
         const { commands } = await import('/src/editor/commands/index.ts')
         void runCommand(commands.statistics, 'button')
     })
-    await page.locator('[data-statistics-share]').click()
+    await page.locator('[data-statistics-share]')[press]()
+    await expect(shareDialog(page)).toBeVisible()
+}
+
+/** Opens Share Image and waits for the preview. */
+const openShare = async (page: Page) => {
+    await openShareNow(page)
     await expect(preview(page)).toBeVisible()
 }
 
@@ -266,13 +273,7 @@ test('a card that fails to encode shows the file error on Download Image, and th
     // The render on opening and the one the first press starts both fail.
     await failEncodes(page, 2)
     await start(page)
-    await page.evaluate(async () => {
-        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        const { commands } = await import('/src/editor/commands/index.ts')
-        void runCommand(commands.statistics, 'button')
-    })
-    await page.locator('[data-statistics-share]').click()
-    await expect(shareDialog(page)).toBeVisible()
+    await openShareNow(page)
     // The render on opening has failed before the first press.
     await failed(page, 1)
     await expect(preview(page)).toHaveCount(0)
@@ -294,13 +295,7 @@ test('a card that fails to encode says so on Copy Image, and the next press copi
     await record(page)
     await failEncodes(page, 2)
     await start(page)
-    await page.evaluate(async () => {
-        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        const { commands } = await import('/src/editor/commands/index.ts')
-        void runCommand(commands.statistics, 'button')
-    })
-    await page.locator('[data-statistics-share]').click()
-    await expect(shareDialog(page)).toBeVisible()
+    await openShareNow(page)
     await failed(page, 1)
     await primary(page).click()
     await expect(shareDialog(page).locator('[data-share-failure]')).toHaveText(
@@ -313,8 +308,9 @@ test('a card that fails to encode says so on Copy Image, and the next press copi
     ).toBeVisible()
 })
 
-test('closing the dialog while the card renders leaves no preview URL behind', async ({ page }) => {
-    await page.addInitScript(() => {
+/** Holds each card encode until `finishEncodes`, and counts the object URLs made and revoked. */
+const holdEncodes = (page: Page) =>
+    page.addInitScript(() => {
         const held: (() => Promise<void>)[] = []
         const urls = { created: 0, revoked: 0 }
         Object.assign(window, { heldEncodes: held, previewUrls: urls })
@@ -347,40 +343,41 @@ test('closing the dialog while the card renders leaves no preview URL behind', a
             revoke(url)
         }
     })
-    await start(page)
-    await page.evaluate(async () => {
-        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        const { commands } = await import('/src/editor/commands/index.ts')
-        void runCommand(commands.statistics, 'button')
+
+const encodes = (page: Page) =>
+    page.evaluate(() => {
+        const { heldEncodes, previewUrls } = window as unknown as {
+            heldEncodes: (() => Promise<void>)[]
+            previewUrls: { created: number; revoked: number }
+        }
+        return { held: heldEncodes.length, ...previewUrls }
     })
-    await page.locator('[data-statistics-share]').click()
-    await expect(shareDialog(page)).toBeVisible()
-    const state = () =>
-        page.evaluate(() => {
-            const { heldEncodes, previewUrls } = window as unknown as {
-                heldEncodes: (() => Promise<void>)[]
-                previewUrls: { created: number; revoked: number }
-            }
-            return { held: heldEncodes.length, ...previewUrls }
-        })
-    await expect.poll(async () => (await state()).held).toBe(1)
-    const before = await state()
+
+/** Finishes the held encodes, then drains the card's own handlers, which run after them. */
+const finishEncodes = (page: Page) =>
+    page.evaluate(async () => {
+        const { heldEncodes } = window as unknown as { heldEncodes: (() => Promise<void>)[] }
+        await Promise.all(heldEncodes.map((finish) => finish()))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+test('closing the dialog while the card renders leaves no preview URL behind', async ({ page }) => {
+    await holdEncodes(page)
+    await start(page)
+    await openShareNow(page)
+    await expect.poll(async () => (await encodes(page)).held).toBe(1)
+    const before = await encodes(page)
     await shareDialog(page).getByRole('button', { name: en.modals.close }).click()
     await expect(shareDialog(page)).toHaveCount(0)
     // The encode finishes after the dialog has gone.
-    await page.evaluate(async () => {
-        const { heldEncodes } = window as unknown as { heldEncodes: (() => Promise<void>)[] }
-        await Promise.all(heldEncodes.map((finish) => finish()))
-        // The card's own handlers run in the microtasks after its callback; a task drains them.
-        await new Promise((resolve) => setTimeout(resolve, 0))
-    })
-    expect((await state()).created).toBe(before.created)
+    await finishEncodes(page)
+    expect((await encodes(page)).created).toBe(before.created)
 })
 
 test.describe('on a phone that shares files', () => {
     test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
 
-    test('Share replaces Copy Image beside Download Image, and shares the card with the link within the press', async ({
+    test('Share replaces Copy Image beside Download Image, and shares the card alone within the press', async ({
         page,
     }) => {
         await stubShare(page)
@@ -405,17 +402,26 @@ test.describe('on a phone that shares files', () => {
         expect(shared!.at - pressedAt).toBeLessThan(1000)
         expect(shared?.size).toBeGreaterThan(0)
         expect(shared?.name).toBe('Brain Rot.png')
-        expect(shared?.text).toBe('https://example.com/x')
+        // The link is on the card; the sheet gets the file alone.
+        expect(shared?.text).toBeUndefined()
         await expect(shareDialog(page).locator('[data-share-failure]')).toHaveCount(0)
     })
 
-    test('with no link, the card is shared alone', async ({ page }) => {
-        await stubShare(page)
+    test('closing the dialog while a press waits for the card shares nothing', async ({ page }) => {
+        await stubShare(page, 'refused')
+        await holdEncodes(page)
         await start(page)
-        await openShare(page)
+        const errors: string[] = []
+        page.on('pageerror', (error) => errors.push(error.message))
+        await openShareNow(page, 'tap')
+        await expect.poll(async () => (await encodes(page)).held).toBe(1)
+        // The press waits for the render in flight; the dialog closes before it finishes.
         await primary(page).tap()
-        await expect.poll(async () => (await shares(page)).shares.length).toBe(1)
-        expect((await shares(page)).shares[0]?.text).toBeUndefined()
+        await shareDialog(page).getByRole('button', { name: en.modals.close }).tap()
+        await expect(shareDialog(page)).toHaveCount(0)
+        await finishEncodes(page)
+        expect((await shares(page)).shares).toHaveLength(0)
+        expect(errors).toEqual([])
     })
 
     test('dismissing the share sheet says nothing', async ({ page }) => {
@@ -449,13 +455,7 @@ test.describe('on a phone that shares files', () => {
         await stubShare(page)
         await failEncodes(page, 1)
         await start(page)
-        await page.evaluate(async () => {
-            const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-            const { commands } = await import('/src/editor/commands/index.ts')
-            void runCommand(commands.statistics, 'button')
-        })
-        await page.locator('[data-statistics-share]').tap()
-        await expect(shareDialog(page)).toBeVisible()
+        await openShareNow(page, 'tap')
         await failed(page, 1)
         await primary(page).tap()
         await expect.poll(async () => (await shares(page)).shares.length).toBe(1)

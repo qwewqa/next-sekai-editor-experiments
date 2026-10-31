@@ -225,7 +225,9 @@ const copy = () => {
     // No await before the write: Safari takes it only within the gesture, with a promise-valued item.
     navigator.clipboard.write([new ClipboardItem({ 'image/png': cardFor().promise })]).then(
         () => notify(() => i18n.value.statistics.copiedImage),
-        () => (failure.value = 'copy'),
+        () => {
+            if (open) failure.value = 'copy'
+        },
     )
 }
 // Share: the file goes in the call itself. A ready card is shared at once; otherwise the press waits
@@ -239,12 +241,14 @@ const share = async () => {
     try {
         const current = cardFor()
         const blob = current.blob ?? (await current.promise)
-        const file = new File([blob], fileName.value, { type: 'image/png' })
-        const text = current.link
-        await navigator.share(text ? { files: [file], text } : { files: [file] })
+        // A dialog closed while the card rendered shares nothing.
+        if (!open) return
+        // The card alone: the link is on it, and iOS leaves Save Image off a sheet that has text.
+        await navigator.share({ files: [new File([blob], fileName.value, { type: 'image/png' })] })
     } catch (error) {
-        // Dismissing the share sheet is no failure.
-        if (!(error instanceof DOMException && error.name === 'AbortError')) failure.value = 'share'
+        // Dismissing the share sheet is no failure; nothing shows once the dialog has closed.
+        if (open && !(error instanceof DOMException && error.name === 'AbortError'))
+            failure.value = 'share'
     } finally {
         sharing = false
     }
