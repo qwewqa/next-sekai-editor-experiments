@@ -704,6 +704,8 @@ test.describe('lifetime', () => {
     test('while a content canvas is lost, edits draw and publish nothing and the marks stay hidden, until every lost canvas is back', async ({
         page,
     }) => {
+        // Its frame waits outlast the default timeout under a full suite's load.
+        test.slow()
         await open(page)
         // The strip again, with its back buffer recorded: the pipeline makes it off the page.
         await page.evaluate(async () => {
