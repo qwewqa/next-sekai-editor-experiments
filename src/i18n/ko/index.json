@@ -2266,7 +2266,7 @@
     "normal": "일반",
     "withCritical": "{1} (크리티컬 {0})",
     "notesPerSecond": "초당 노트 수",
-    "smooth": "부드럽게",
+    "smooth": "곡선",
     "bars": "막대",
     "rolling": "롤링",
     "span": "{0}~{1}",

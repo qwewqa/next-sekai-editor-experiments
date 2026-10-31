@@ -2268,7 +2268,7 @@
     "notesPerSecond": "每秒音符数",
     "smooth": "平滑",
     "bars": "柱状图",
-    "rolling": "滚动",
+    "rolling": "滚动计数",
     "span": "{0}–{1}",
     "average": "平均",
     "median": "中位数",
