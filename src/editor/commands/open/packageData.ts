@@ -83,7 +83,7 @@ export const readDescription = async (pkg: FilePackage, name: string) => {
 export type MediaSlot = 'bgm' | 'cover' | 'preview'
 
 /** A media resource of a level: none named, its bytes, or one the editor cannot use. */
-export type MediaRead =
+type MediaRead =
     { kind: 'none' } | { kind: 'bytes'; bytes: Uint8Array } | { kind: 'unusable'; error?: unknown }
 
 /** An SRL that names nothing: `{}`, a known absence. */

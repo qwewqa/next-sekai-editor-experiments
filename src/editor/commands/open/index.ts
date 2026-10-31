@@ -83,7 +83,7 @@ type PickedForOpen = {
 }
 
 /** Runs a switch: in the request already confirmed, or in one made and confirmed now. */
-export type Switching = (run: (request: SwitchRequest) => Promise<void>) => Promise<void>
+type Switching = (run: (request: SwitchRequest) => Promise<void>) => Promise<void>
 
 /**
  * Opens a picked file by its content. Every entry point calls this, so none can leave work
@@ -120,8 +120,9 @@ export const openPicked = async (picked: PickedForOpen) => {
             await switching((request) => openData(file, handle, request))
             return
         }
-        // An archive or a Sonolus package is named, not opened: nothing is replaced. A ZIP that
-        // cannot be classified goes on to the project reader, which says why it cannot open.
+        // An archive is only named. A package goes to its own flow, where a level replaces the
+        // session only after the confirmation. A ZIP that cannot be classified goes on to the
+        // project reader, which says why it cannot open.
         const kind = await detectZip(file).catch(() => 'project' as const)
         if (!isCurrent()) return
         if (kind === 'archive') {
