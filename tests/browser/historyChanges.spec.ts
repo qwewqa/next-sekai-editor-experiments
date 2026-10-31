@@ -412,7 +412,7 @@ test('a move into a hidden group is counted and brought into view only where it 
     await expect.poll(async () => Math.round(await centreBeat(page))).toBeLessThan(10)
 })
 
-test('the chart marks a change exactly where the minimap ticks it and the arrows count it, and dims what it dims', async ({
+test('the chart marks a change exactly where the minimap ticks it, and dims what it dims', async ({
     page,
 }) => {
     // One step changing a note (moved from beat 5 to 11 and into group 2), a BPM change (beat 6),
@@ -476,7 +476,6 @@ test('the chart marks a change exactly where the minimap ticks it and the arrows
             eventEase: 'linear',
         })
         history.pushState(step('Four kinds'), transaction.commit([]))
-        window.editorTest.settings.pps = 120
     })
     await stored(page)
     await viewAt(page, 8)
