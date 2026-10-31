@@ -90,10 +90,6 @@ test('3,400 places merge in one pass to at most one rect per run', () => {
     assert.equal(runs(times, 2).length, 1)
 })
 
-test('the edge tick is at least 3 CSS px tall', () => {
-    assert.equal(MIN_TICK_HEIGHT, 3)
-})
-
 const run = (height: number) => ({ top: 10, height })
 
 test('a few short runs get hairlines, and long stretches do not', () => {

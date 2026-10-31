@@ -47,7 +47,7 @@ export const GUTTER_MARK_WIDTH = PAD_LEFT + 1
 /**
  * Where the gutter marks end, in CSS px: History's ticks from 0 to `tick`, the selection rail from
  * `rail` to the strip's right edge, as wide as the ticks. Both fall on whole backing-store pixels,
- * so the marks stay crisp at any scale, rounded down so neither is wider than its 5 px.
+ * so the marks stay crisp at any scale, rounded down so neither is wider than `GUTTER_MARK_WIDTH`.
  */
 export const gutterMarkEdges = (geometry: MinimapGeometry) => {
     const ratio = backingSize(geometry).width / geometry.width
