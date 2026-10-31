@@ -4,7 +4,7 @@ import { busy, record } from '../../../analytics/tally'
 // the open ends. The facts gather in a module value while it runs, so the several paths of the
 // open each add a line. One open runs at a time (`withSwitchRequest`).
 
-type Format = 'nxsp' | 'levelData' | 'sus' | 'usc' | 'chcy' | 'other'
+type Format = 'nxsp' | 'levelData' | 'sus' | 'usc' | 'chcy' | 'scp' | 'other'
 type Outcome = 'done' | 'cancelled' | 'refused' | 'failed'
 
 let current: { size: number; since: number; format: Format } | undefined

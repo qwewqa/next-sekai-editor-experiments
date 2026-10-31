@@ -1,12 +1,5 @@
-import { AssertError } from 'typebox/value'
 import type { Command } from '..'
 import type { Chart } from '../../../chart'
-import { parseLevelDataChart } from '../../../chart/parse/levelData'
-import { parseSusChart } from '../../../chart/parse/sus'
-import { parseUscChart } from '../../../chart/parse/usc'
-import { ImportRefusal } from '../../../chart/refusal'
-import { validateChart } from '../../../chart/validate'
-import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { recordError } from '../../../diagnostics'
 import { detectHead, detectZip } from '../../../files/detect'
 import { resetImportedState } from '../../../history'
@@ -15,9 +8,9 @@ import { leavePeek } from '../../../history/peek'
 import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { LEVEL_FILE_MAX_BYTES } from '../../../levelData/fileLimit'
-import { inflateCapped, isGzip, LevelFileTooLarge } from '../../../levelData/gzip'
-import { parseLevelData } from '../../../levelData/parse'
-import { LevelDataReport } from '../../../levelData/report'
+import { isGzip } from '../../../levelData/gzip'
+import type { parseLevelData } from '../../../levelData/parse'
+import type { LevelDataReport } from '../../../levelData/report'
 import {
     getLevelDataRevision,
     getRevisionWarning,
@@ -30,12 +23,10 @@ import { describeFailure } from '../../../modals/loadingFailure'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { levelDataDiskState } from '../../../platform'
 import { createState } from '../../../state'
-import { parseSus } from '../../../sus/parse'
-import { parseUsc } from '../../../usc/parse'
 import { errorMessage } from '../../../utils/error'
 import { getFilename, pickFileForOpen } from '../../../utils/file'
 import { inlineName } from '../../../utils/inlineName'
-import { interpolate, interpolateRaw } from '../../../utils/interpolate'
+import { interpolate } from '../../../utils/interpolate'
 import { timeout } from '../../../utils/promise'
 import { loadForAction } from '../../loadFailure'
 import { notify } from '../../notification'
@@ -45,6 +36,13 @@ import { changeBgm } from '../bgm/index.ts'
 import { exportMemory, KEPT_BYTES_LIMIT, rememberExport } from '../exportLevel/memory'
 import { showPreviewAssets } from '../previewAssets/modal'
 import { installDropGuard } from './dropGuard'
+import {
+    FileTooLargeError,
+    parseImported,
+    RefusedFileError,
+    tryImport,
+    UnsupportedFileError,
+} from './levelData'
 import OpenIcon from './OpenIcon.vue'
 import { dropOpen, endOpen, openFormat, startOpen } from './report'
 
@@ -60,225 +58,227 @@ export const open: Command = {
 
     execute() {
         return withSwitchRequest(undefined, async (request) => {
+            // Confirmed before the pick, which needs the press's activation.
             if (!(await confirmSwitch()) || !request.isCurrent()) return
 
             // Unfiltered, keeping the handle where the picker exists.
             const { file, handle } = await pickFileForOpen('nse-open')
             if (!file || !request.isCurrent()) return
-            startOpen(file)
-
-            // A failed read here surfaces in the loading modal below.
-            const detected = await detectHead(file).catch(() => 'data' as const)
-            if (!request.isCurrent()) return
-            if (detected === 'audio') {
-                // Audio replaces the chart's BGM: an edit, so the peek ends first.
-                dropOpen()
-                leavePeek()
-                void changeBgm(file)
-                return
-            }
-            if (detected === 'zip') {
-                // An archive or a Sonolus package is named, not opened: nothing is
-                // replaced. A ZIP that cannot be classified goes on to the project reader, which
-                // says why it cannot open.
-                const kind = await detectZip(file).catch(() => 'project' as const)
-                if (!request.isCurrent()) return
-                if (kind === 'archive') {
-                    dropOpen()
-                    await showModal(InfoModal, {
-                        title: () => i18n.value.commands.open.dialogTitle,
-                        message: () => i18n.value.open.severalProjects,
-                    })
-                    return
-                }
-                if (kind === 'package') {
-                    dropOpen()
-                    const choice = await showChoice({
-                        title: () => i18n.value.commands.open.dialogTitle,
-                        message: () => i18n.value.open.scp,
-                        choices: [
-                            {
-                                value: true,
-                                label: () => i18n.value.open.openPreviewAssets,
-                                default: true,
-                            },
-                        ],
-                        cancelLabel: () => i18n.value.modals.info.ok,
-                    })
-                    if (choice) await showPreviewAssets(undefined, { file })
-                    return
-                }
-                // A project file, read in the storage worker.
-                const project = await loadForAction(() => import('./project'))
-                if (!project) {
-                    dropOpen()
-                    return
-                }
-                openFormat('nxsp')
-                try {
-                    if (!request.isCurrent()) return
-                    await project.openProject(file, handle, request)
-                } catch (error) {
-                    recordError(error)
-                    console.error(error)
-                    endOpen('failed')
-                    if (request.isCurrent())
-                        notify(() => describeFailure(error).headline?.() ?? errorMessage(error), {
-                            card: true,
-                            severity: 'error',
-                        })
-                }
-                return
-            }
-
-            let sourceBuffer: ArrayBuffer | undefined
-            let warning: RevisionWarning | 'unsupportedParts' | undefined
-            // Values this build doesn't know: the level opens only after its confirm.
-            let newerValues:
-                (() => Promise<RevisionWarning | 'unsupportedParts' | undefined>) | undefined
-            await showModal(LoadingModal, {
-                title: () => i18n.value.commands.open.dialogTitle,
-                async *task(signal: AbortSignal) {
-                    const stopAbort = request.observeAbort(signal)
-                    try {
-                        yield () => i18n.value.commands.open.loading
-
-                        // Refused by size before it is read; a gzip is checked as it inflates.
-                        if (file.size > LEVEL_FILE_MAX_BYTES) throw new FileTooLargeError()
-                        const buffer = await file.arrayBuffer()
-                        sourceBuffer = buffer
-                        signal.throwIfAborted()
-                        if (!request.isCurrent()) return
-
-                        yield () => i18n.value.commands.open.importing
-                        await timeout(50)
-                        signal.throwIfAborted()
-                        if (!request.isCurrent()) return
-
-                        const [type, data] = tryImport(buffer)
-                        openFormat(type)
-                        let partial = false
-                        try {
-                            switch (type) {
-                                case 'chcy': {
-                                    const { offset, objects } = chcyToUsc(parseLevelData(data))
-
-                                    const chart = parseUscChart(objects)
-                                    validateChart(chart)
-
-                                    if (!resetImported(request, chart, offset, file)) return
-                                    break
-                                }
-                                case 'levelData': {
-                                    const levelData = parseLevelData(data)
-                                    const report = new LevelDataReport()
-                                    const chart = parseLevelDataChart(
-                                        levelData.entities,
-                                        undefined,
-                                        undefined,
-                                        report,
-                                    )
-                                    validateChart(chart)
-                                    const apply = () =>
-                                        applyLevelData(
-                                            file,
-                                            handle,
-                                            buffer,
-                                            levelData,
-                                            chart,
-                                            report,
-                                            request,
-                                        )
-                                    if (report.hasUnknownValue) {
-                                        newerValues = apply
-                                        return
-                                    }
-                                    partial = !report.isEmpty
-                                    warning = await apply()
-                                    break
-                                }
-                                case 'usc': {
-                                    const { usc } = parseUsc(data)
-
-                                    const chart = parseUscChart(usc.objects)
-                                    validateChart(chart)
-
-                                    if (!resetImported(request, chart, usc.offset, file)) return
-                                    break
-                                }
-                                case 'sus': {
-                                    const sus = parseSus(data)
-
-                                    const chart = parseSusChart(sus)
-                                    validateChart(chart)
-
-                                    if (!resetImported(request, chart, sus.offset, file)) return
-                                    break
-                                }
-                            }
-                        } catch (error) {
-                            // A file its format's schema refuses is one the editor cannot read.
-                            if (error instanceof AssertError) throw new UnsupportedFileError()
-                            if (error instanceof ImportRefusal)
-                                throw new RefusedFileError(type, error)
-                            throw error
-                        }
-
-                        await opened(handle, buffer, type, partial, request)
-                    } catch (error) {
-                        if (request.isCurrent()) {
-                            if (
-                                error instanceof UnsupportedFileError ||
-                                error instanceof FileTooLargeError
-                            )
-                                endOpen('refused', 'unsupported')
-                            else if (error instanceof RefusedFileError)
-                                endOpen('refused', 'invalid')
-                            else endOpen('failed')
-                            throw error
-                        }
-                    } finally {
-                        stopAbort()
-                    }
-                },
-            })
-            if (!request.isCurrent()) return
-            if (newerValues) {
-                const apply = newerValues
-                const choice = await showChoice({
-                    title: interpolate(
-                        () => i18n.value.open.newerValues.title,
-                        inlineName(file.name),
-                    ),
-                    message: () => i18n.value.open.newerValues.body,
-                    choices: [
-                        {
-                            value: true,
-                            label: () => i18n.value.open.newerValues.openCopy,
-                            default: true,
-                        },
-                    ],
-                })
-                // Cancel opens nothing and leaves the session as it was.
-                if (!choice || !sourceBuffer || !request.isCurrent()) return
-                warning = await apply()
-                await opened(handle, sourceBuffer, 'levelData', true, request)
-            }
-            if (!warning || !request.isCurrent()) return
-
-            const message = warning
-            void showModal(InfoModal, {
-                title: () => i18n.value.commands.open.dialogTitle,
-                message: () =>
-                    message === 'unsupportedParts'
-                        ? i18n.value.commands.open.unsupportedParts
-                        : i18n.value.commands.open.revision[message],
-            })
-            // Whatever has not ended the open by now was left: a cancelled dialog or choice.
-        }).finally(() => {
-            endOpen('cancelled')
+            await openPicked({ file, handle, confirmed: true, request })
         })
     },
+}
+
+/** A file to open, from any entry point. */
+export type PickedForOpen = {
+    file: File
+    handle?: FileSystemFileHandle | undefined
+    /**
+     * The switch was confirmed already, with `request`. Otherwise the confirmation comes after
+     * detection, just before something is replaced.
+     */
+    confirmed: boolean
+    request?: SwitchRequest
+}
+
+/** Runs a switch: in the request already confirmed, or in one made and confirmed now. */
+export type Switching = (run: (request: SwitchRequest) => Promise<void>) => Promise<void>
+
+/**
+ * Opens a picked file by its content. Every entry point calls this, so none can leave work
+ * without the confirmation: audio, an archive's message or a package's list replace nothing.
+ */
+export const openPicked = async (picked: PickedForOpen) => {
+    const { file, handle } = picked
+    const supplied = picked.confirmed ? picked.request : undefined
+    // A request already given must still be current; one made here has nothing to go stale.
+    const isCurrent = () => !supplied || supplied.isCurrent()
+    const switching: Switching = async (run) => {
+        if (supplied) {
+            if (supplied.isCurrent()) await run(supplied)
+            return
+        }
+        await withSwitchRequest(undefined, async (request) => {
+            if (!(await confirmSwitch()) || !request.isCurrent()) return
+            await run(request)
+        })
+    }
+    startOpen(file)
+    try {
+        // A failed read here surfaces in the loading modal below.
+        const detected = await detectHead(file).catch(() => 'data' as const)
+        if (!isCurrent()) return
+        if (detected === 'audio') {
+            // Audio replaces the chart's BGM: an edit, so the peek ends first.
+            dropOpen()
+            leavePeek()
+            void changeBgm(file)
+            return
+        }
+        if (detected === 'data') {
+            await switching((request) => openData(file, handle, request))
+            return
+        }
+        // An archive or a Sonolus package is named, not opened: nothing is replaced. A ZIP that
+        // cannot be classified goes on to the project reader, which says why it cannot open.
+        const kind = await detectZip(file).catch(() => 'project' as const)
+        if (!isCurrent()) return
+        if (kind === 'archive') {
+            dropOpen()
+            await showModal(InfoModal, {
+                title: () => i18n.value.commands.open.dialogTitle,
+                message: () => i18n.value.open.severalProjects,
+            })
+            return
+        }
+        if (kind === 'package') {
+            dropOpen()
+            const choice = await showChoice({
+                title: () => i18n.value.commands.open.dialogTitle,
+                message: () => i18n.value.open.scp,
+                choices: [
+                    {
+                        value: true,
+                        label: () => i18n.value.open.openPreviewAssets,
+                        default: true,
+                    },
+                ],
+                cancelLabel: () => i18n.value.modals.info.ok,
+            })
+            if (choice) await showPreviewAssets(undefined, { file })
+            return
+        }
+        await switching((request) => openProjectFile(file, handle, request))
+    } finally {
+        // Whatever has not ended the open by now was left: a cancelled dialog or choice.
+        endOpen('cancelled')
+    }
+}
+
+/** A project file, read in the storage worker. */
+const openProjectFile = async (
+    file: File,
+    handle: FileSystemFileHandle | undefined,
+    request: SwitchRequest,
+) => {
+    const project = await loadForAction(() => import('./project'))
+    if (!project) {
+        dropOpen()
+        return
+    }
+    openFormat('nxsp')
+    try {
+        if (!request.isCurrent()) return
+        await project.openProject(file, handle, request)
+    } catch (error) {
+        recordError(error)
+        console.error(error)
+        endOpen('failed')
+        if (request.isCurrent())
+            notify(() => describeFailure(error).headline?.() ?? errorMessage(error), {
+                card: true,
+                severity: 'error',
+            })
+    }
+}
+
+/** Level data, a Chart Cyanvas level, or a USC or SUS chart, read whole. */
+const openData = async (
+    file: File,
+    handle: FileSystemFileHandle | undefined,
+    request: SwitchRequest,
+) => {
+    let sourceBuffer: ArrayBuffer | undefined
+    let warning: OpenWarning | undefined
+    // Values this build does not know: the level opens only after its confirm.
+    let newerValues: (() => Promise<OpenWarning | undefined>) | undefined
+    await showModal(LoadingModal, {
+        title: () => i18n.value.commands.open.dialogTitle,
+        async *task(signal: AbortSignal) {
+            const stopAbort = request.observeAbort(signal)
+            try {
+                yield () => i18n.value.commands.open.loading
+
+                // Refused by size before it is read; a gzip is checked as it inflates.
+                if (file.size > LEVEL_FILE_MAX_BYTES) throw new FileTooLargeError()
+                const buffer = await file.arrayBuffer()
+                sourceBuffer = buffer
+                signal.throwIfAborted()
+                if (!request.isCurrent()) return
+
+                yield () => i18n.value.commands.open.importing
+                await timeout(50)
+                signal.throwIfAborted()
+                if (!request.isCurrent()) return
+
+                const [type, data] = tryImport(buffer)
+                openFormat(type)
+                const parsed = parseImported(type, data)
+                let partial = false
+                if (parsed.type === 'levelData') {
+                    const { levelData, chart, report } = parsed
+                    const apply = () =>
+                        applyLevelData(file, handle, buffer, levelData, chart, report, request)
+                    if (report.hasUnknownValue) {
+                        newerValues = apply
+                        return
+                    }
+                    partial = !report.isEmpty
+                    warning = await apply()
+                } else if (!resetImported(request, parsed.chart, parsed.offset, file)) return
+
+                await opened(handle, buffer, type, partial, request)
+            } catch (error) {
+                if (request.isCurrent()) {
+                    if (error instanceof UnsupportedFileError || error instanceof FileTooLargeError)
+                        endOpen('refused', 'unsupported')
+                    else if (error instanceof RefusedFileError) endOpen('refused', 'invalid')
+                    else endOpen('failed')
+                    throw error
+                }
+            } finally {
+                stopAbort()
+            }
+        },
+    })
+    if (!request.isCurrent()) return
+    if (newerValues) {
+        const apply = newerValues
+        const choice = await confirmNewerValues(file.name)
+        // Cancel opens nothing and leaves the session as it was.
+        if (!choice || !sourceBuffer || !request.isCurrent()) return
+        warning = await apply()
+        await opened(handle, sourceBuffer, 'levelData', true, request)
+    }
+    if (!warning || !request.isCurrent()) return
+    showOpenWarning(warning)
+}
+
+/** What an opened level left out, or the engine revision it was made for. */
+export type OpenWarning = RevisionWarning | 'unsupportedParts'
+
+/** The "Open a Copy" choice for a level with values this build does not know. */
+export const confirmNewerValues = (name: string) =>
+    showChoice({
+        title: interpolate(() => i18n.value.open.newerValues.title, inlineName(name)),
+        message: () => i18n.value.open.newerValues.body,
+        choices: [
+            {
+                value: true,
+                label: () => i18n.value.open.newerValues.openCopy,
+                default: true,
+            },
+        ],
+    })
+
+export const showOpenWarning = (warning: OpenWarning) => {
+    void showModal(InfoModal, {
+        title: () => i18n.value.commands.open.dialogTitle,
+        message: () =>
+            warning === 'unsupportedParts'
+                ? i18n.value.commands.open.unsupportedParts
+                : i18n.value.commands.open.revision[warning],
+    })
 }
 
 /**
@@ -347,81 +347,6 @@ const openedMessages = {
     usc: 'importedUsc',
     sus: 'importedSus',
 } as const
-
-/**
- * Detects the format from the content: level data (gzipped, as Sonolus serves
- * it, or plain JSON), which is Chart Cyanvas level data when it has the
- * format's `TimeScaleGroup` entities; a USC chart; or a SUS chart.
- */
-const tryImport = (buffer: ArrayBuffer) => {
-    const json = tryParseJson(buffer)
-    if (isLevelDataLike(json)) {
-        return isChcyLevelData(json) ? (['chcy', json] as const) : (['levelData', json] as const)
-    }
-    if (json !== undefined) return ['usc', json] as const
-
-    const sus = tryImportSus(buffer)
-    if (sus) return ['sus', sus] as const
-
-    throw new UnsupportedFileError()
-}
-
-class UnsupportedFileError extends Error {
-    constructor() {
-        super(i18n.value.commands.open.unsupported)
-    }
-}
-
-class FileTooLargeError extends Error {
-    constructor() {
-        super(i18n.value.commands.open.tooLarge)
-    }
-}
-
-// SUS, USC and Chart Cyanvas files are charts rather than levels.
-class RefusedFileError extends Error {
-    constructor(type: 'levelData' | 'chcy' | 'usc' | 'sus', refusal: ImportRefusal) {
-        const { open } = i18n.value.commands
-        super(
-            interpolateRaw(
-                type === 'levelData' ? open.invalidLevel : open.invalidChart,
-                interpolateRaw(open.refusals[refusal.reason], ...refusal.params),
-            ),
-            { cause: refusal },
-        )
-    }
-}
-
-const isLevelDataLike = (data: unknown) =>
-    typeof data === 'object' && data !== null && 'entities' in data
-
-const tryParseJson = (buffer: ArrayBuffer): unknown => {
-    const bytes = new Uint8Array(buffer)
-    let text: string
-    try {
-        text = new TextDecoder().decode(isGzip(buffer) ? inflateCapped(bytes) : bytes)
-    } catch (error) {
-        // The refusal is not a file that is not JSON: it must not fall through to SUS.
-        if (error instanceof LevelFileTooLarge) throw new FileTooLargeError()
-        return
-    }
-    try {
-        return JSON.parse(text)
-    } catch {
-        return
-    }
-}
-
-const tryImportSus = (buffer: ArrayBuffer) => {
-    try {
-        const data = new TextDecoder().decode(buffer).split('\n')
-        if (data.filter((line) => line.startsWith('#')).length < 10) return
-
-        return data
-    } catch {
-        return
-    }
-}
 
 const resetImported = (request: SwitchRequest, chart: Chart, offset: number, file: File) => {
     const descriptor = createSessionDescriptor({ sourceName: getFilename(file) })

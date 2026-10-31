@@ -1,3 +1,4 @@
+import { JsonError, isObject, parseJsonBytes } from '../local/nxsp/json'
 import { ZipError, ZipReader, isIgnoredEntry } from '../zip'
 
 // Open classifies by content, never by extension. Only the first 64 bytes are read to tell
@@ -49,11 +50,14 @@ export const isAudioHead = (head: Uint8Array) =>
 
 /**
  * What a ZIP without a project file is, from its entry names (NFC, ignored
- * entries already left out): `manifest.json` or `.nxsp` entries make an
- * archive, which the web only names; `sonolus/` entries a collection package.
+ * entries already left out): `manifest.json` or `.nxsp` entries outside `sonolus/` make an
+ * archive, which the web only names; `sonolus/` entries a Sonolus package.
  */
 export const classifyZipNames = (names: readonly string[]): Exclude<ZipKind, 'project'> => {
-    if (names.includes('manifest.json') || names.some((name) => name.endsWith('.nxsp'))) {
+    if (
+        names.includes('manifest.json') ||
+        names.some((name) => name.endsWith('.nxsp') && !name.startsWith('sonolus/'))
+    ) {
         return 'archive'
     }
     if (names.some((name) => name.startsWith('sonolus/'))) return 'package'
@@ -62,7 +66,11 @@ export const classifyZipNames = (names: readonly string[]): Exclude<ZipKind, 'pr
 
 const PROJECT_JSON_CAP = 1024 * 1024
 
-/** Classifies a ZIP: `project.json` with `"format": "nxsp"` is a project file. */
+/**
+ * Classifies a ZIP: `project.json` with `"format": "nxsp"` is a project file, and so is one whose
+ * `project.json` cannot be read, which the project reader calls damaged. Both use the reader's
+ * strict JSON rules.
+ */
 export const detectZip = async (file: Blob): Promise<ZipKind> => {
     let reader: ZipReader
     try {
@@ -74,18 +82,16 @@ export const detectZip = async (file: Blob): Promise<ZipKind> => {
 
     const kept = reader.entries.filter((entry) => !isIgnoredEntry(entry))
     const project = reader.get('project.json')
+    if (reader.ambiguous.has('project.json')) return 'project'
     if (project && !project.isDirectory) {
+        let json: unknown
         try {
-            const json: unknown = JSON.parse(
-                new TextDecoder().decode(await reader.read(project, { maxSize: PROJECT_JSON_CAP })),
-            )
-            if (typeof json === 'object' && json !== null && 'format' in json) {
-                if (json.format === 'nxsp') return 'project'
-            }
+            json = parseJsonBytes(await reader.read(project, { maxSize: PROJECT_JSON_CAP }))
         } catch (error) {
-            // A project.json that cannot be read is not one this check can vouch for.
-            if (!(error instanceof ZipError || error instanceof SyntaxError)) throw error
+            if (error instanceof ZipError || error instanceof JsonError) return 'project'
+            throw error
         }
+        if (isObject(json) && json.format === 'nxsp') return 'project'
     }
     return classifyZipNames(kept.map((entry) => entry.key))
 }

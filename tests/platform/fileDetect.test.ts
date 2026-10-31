@@ -6,6 +6,7 @@ import { gzipSync } from 'node:zlib'
 import { classifyZipNames, detectContent, detectHead, isMpegHeader } from '../../src/files/detect'
 import { buildZip, type ZipInput } from '../../src/zip'
 import { crafted, freshFile, setJson } from '../local/nxsp/craft'
+import { rawZip } from '../zip/rawZip'
 
 const utf8 = (text: string) => new TextEncoder().encode(text)
 const file = (parts: BlobPart[], name: string, type = '') => new File(parts, name, { type })
@@ -152,8 +153,8 @@ test('a project file is a ZIP whose project.json says nxsp', async () => {
     ])
     assert.deepEqual(await detectContent(project), { kind: 'zip', zip: 'project' })
 
-    // Not a project file: another format, a project.json that is not JSON, or none.
-    for (const content of [JSON.stringify({ format: 'other' }), 'not json', '[]', 'null']) {
+    // Not a project file: valid JSON of another format, or no format at all.
+    for (const content of [JSON.stringify({ format: 'other' }), '[]', 'null']) {
         assert.deepEqual(
             await detectContent(await zipFile('p.nxsp', [entry('project.json', content)])),
             { kind: 'zip', zip: 'other' },
@@ -168,6 +169,39 @@ test('a project file is a ZIP whose project.json says nxsp', async () => {
                 entry('project.json', JSON.stringify({ format: 'nxsp' })),
                 entry('manifest.json', '{}'),
             ]),
+        ),
+        { kind: 'zip', zip: 'project' },
+    )
+})
+
+test('a project.json that cannot be read is a damaged project file, never a package', async () => {
+    const zip = (entries: Parameters<typeof rawZip>[0]) =>
+        file([rawZip([...entries, { name: 'sonolus/levels/list', data: utf8('{}') }])], 'p.scp')
+    const project = (data: Uint8Array) => ({ name: 'project.json', data, method: 0 as const })
+    const cases: [string, Blob][] = [
+        ['not JSON', await zip([project(utf8('not json'))])],
+        // Decoded permissively, the byte would read as another format and reach the package list.
+        [
+            'an invalid UTF-8 byte inside "nxsp"',
+            await zip([project(new Uint8Array([...utf8('{"format":"nx'), 0xff, ...utf8('p"}')]))]),
+        ],
+        ['nested past 64', await zip([project(utf8(`${'['.repeat(65)}${']'.repeat(65)}`))])],
+        [
+            'a bad CRC',
+            await zip([{ ...project(utf8('{"format":"nxsp"}')), central: { crc32: 1 } }]),
+        ],
+        [
+            'two entries of that name',
+            await zip([project(utf8('{"format":"nxsp"}')), project(utf8('{"format":"nxsp"}'))]),
+        ],
+        ['over 1 MiB', await zip([project(utf8(`"${'x'.repeat(1024 * 1024)}"`))])],
+    ]
+    for (const [label, content] of cases)
+        assert.deepEqual(await detectContent(content), { kind: 'zip', zip: 'project' }, label)
+    // A byte-order mark is stripped, as the reader strips it.
+    assert.deepEqual(
+        await detectContent(
+            await zip([project(new Uint8Array([0xef, 0xbb, 0xbf, ...utf8('{"format":"nxsp"}')]))]),
         ),
         { kind: 'zip', zip: 'project' },
     )
@@ -238,6 +272,9 @@ test('the shipped .scp files are packages', { skip: !hasShipped() }, async () =>
 test('entry names classify without opening anything', () => {
     assert.equal(classifyZipNames(['manifest.json']), 'archive')
     assert.equal(classifyZipNames(['a/b.nxsp']), 'archive')
+    assert.equal(classifyZipNames(['projects/a/b.nxsp']), 'archive')
+    // A package item may be named like a project file.
+    assert.equal(classifyZipNames(['sonolus/levels/x.nxsp', 'sonolus/levels/list']), 'package')
     assert.equal(classifyZipNames(['sonolus/info']), 'package')
     assert.equal(classifyZipNames(['level.json']), 'other')
     assert.equal(classifyZipNames([]), 'other')

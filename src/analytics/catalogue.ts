@@ -241,7 +241,7 @@ export const catalogue = {
         graphics: oneOf('ok', 'unavailable'),
     },
     open: {
-        format: oneOf('nxsp', 'levelData', 'sus', 'usc', 'chcy', 'other'),
+        format: oneOf('nxsp', 'levelData', 'sus', 'usc', 'chcy', 'scp', 'other'),
         via: oneOf('picker', 'drop', 'launch'),
         size: scale('size'),
         outcome: oneOf('done', 'cancelled', 'refused', 'failed'),

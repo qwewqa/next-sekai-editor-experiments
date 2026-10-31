@@ -878,6 +878,7 @@ INSERT INTO nse_allowed (event, property, kind, value, max) VALUES
     ('open', 'format', 'text', 'sus', NULL),
     ('open', 'format', 'text', 'usc', NULL),
     ('open', 'format', 'text', 'chcy', NULL),
+    ('open', 'format', 'text', 'scp', NULL),
     ('open', 'format', 'text', 'other', NULL),
     ('open', 'via', 'text', 'picker', NULL),
     ('open', 'via', 'text', 'drop', NULL),

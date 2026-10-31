@@ -236,11 +236,11 @@ Recorded when statistics collection starts, if the preview is shown, and when th
 
 ### `open`
 
-Recorded when an attempt to open a chart through **Open File…** ends. Opening non-chart files, such as audio, archives or packages, and dropping files onto the editor are not recorded.
+Recorded when an attempt to open a chart through **Open File…** ends, including a level opened from a Sonolus package. Opening audio or archives, the list of a package’s items, and dropping files onto the editor are not recorded.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
-| `format` | The kind of chart file | `nxsp`, `levelData`, `sus`, `usc`, `chcy` or `other` |
+| `format` | The kind of chart file | `nxsp`, `levelData`, `sus`, `usc`, `chcy`, `scp` (a level from a Sonolus package) or `other` |
 | `via` | How the file was chosen | Always `picker` |
 | `size` | The file’s size | Range |
 | `outcome` | The result of opening the file | `done`, `cancelled`, `refused` or `failed` |
