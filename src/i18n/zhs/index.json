@@ -2284,15 +2284,15 @@
     "textLine": "{0}：{1}",
     "copiedText": "已复制统计",
     "notCopiedText": "无法复制统计",
-    "shareImage": "分享图片…",
-    "shareImageTitle": "分享图片",
+    "shareImage": "分享图像…",
+    "shareImageTitle": "分享图像",
     "link": "链接",
-    "copyImage": "复制图片",
+    "copyImage": "复制图像",
     "share": "分享",
-    "downloadImage": "下载图片",
-    "copiedImage": "已复制图片",
-    "notCopiedImage": "无法复制图片",
-    "notSharedImage": "无法分享图片"
+    "downloadImage": "下载图像",
+    "copiedImage": "已复制图像",
+    "notCopiedImage": "无法复制图像",
+    "notSharedImage": "无法分享图像"
   },
   "conflict": {
     "exportTitle": "“{0}”已更改",

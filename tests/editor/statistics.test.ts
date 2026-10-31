@@ -653,8 +653,8 @@ test('Copy Text gives the title, then each figure in the dialog’s order', () =
 
 test('Copy Text in French spaces its colons and agrees with the critical count', () => {
     const lines = copyText(statsOf(handBuilt()), ['tap', 'flick', 'release', 'tick'], 'fr')
-    assert.ok(lines.includes('Tap : 11 (2 critiques)'))
-    assert.ok(lines.includes('Relâchement : 7 (0 critique)'))
-    assert.ok(lines.some((line) => /^Moyenne : \d+,\d$/.test(line)))
-    assert.ok(lines.includes('Notes par seconde : Tap, Flick, Relâchement, Tick'))
+    assert.ok(lines.includes('Tap : 11 (2 critiques)'))
+    assert.ok(lines.includes('Relâchement : 7 (0 critique)'))
+    assert.ok(lines.some((line) => /^Moyenne : \d+,\d$/.test(line)))
+    assert.ok(lines.includes('Notes par seconde : Tap, Flick, Relâchement, Tick'))
 })
