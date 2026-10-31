@@ -207,8 +207,9 @@ export const openSourcePackage = async (
         return path === '' || isBadName(path) ? undefined : path
     }
 
+    // A directory entry holds no data.
     const has = (path: string) =>
-        reader.get(path) !== undefined || reader.ambiguous.has(path.normalize('NFC'))
+        reader.get(path)?.isDirectory === false || reader.ambiguous.has(path.normalize('NFC'))
 
     const names = (type: ItemType) => {
         const prefix = `sonolus/${itemCategoryOf[type]}/`

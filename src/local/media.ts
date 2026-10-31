@@ -88,6 +88,34 @@ const u16le = (bytes: Uint8Array, at: number) => (bytes[at] ?? 0) | ((bytes[at +
 const u24le = (bytes: Uint8Array, at: number) => u16le(bytes, at) | ((bytes[at + 2] ?? 0) << 16)
 
 /**
+ * A GIF's size as browsers take it: the logical screen, grown to hold the first frame. Undefined
+ * when the file ends before the first frame.
+ */
+const gifSize = (bytes: Uint8Array): CoverSize | undefined => {
+    if (bytes.length < 13) return
+    let width = u16le(bytes, 6)
+    let height = u16le(bytes, 8)
+    const packed = bytes[10] ?? 0
+    // A global colour table of 2^(n+1) entries follows the screen descriptor.
+    let at = 13 + (packed & 0x80 ? 3 * 2 ** ((packed & 7) + 1) : 0)
+    for (;;) {
+        const block = bytes[at]
+        if (block === 0x2c) {
+            if (at + 9 > bytes.length) return
+            width = Math.max(width, u16le(bytes, at + 1) + u16le(bytes, at + 5))
+            height = Math.max(height, u16le(bytes, at + 3) + u16le(bytes, at + 7))
+            return width > 0 && height > 0 ? { width, height } : undefined
+        }
+        // Extensions: an introducer, a label, then sub-blocks up to an empty one.
+        if (block !== 0x21) return
+        at += 2
+        for (let size = bytes[at]; size; size = bytes[at]) at += size + 1
+        if (at >= bytes.length) return
+        at++
+    }
+}
+
+/**
  * A cover's width and height from its header, for the four formats the editor sniffs (PNG, JPEG,
  * GIF and WebP): undefined when the header is cut off or invalid, `unknown` for another format,
  * which only decoding can measure.
@@ -98,12 +126,7 @@ export const readCoverSize = (bytes: Uint8Array): CoverSize | 'unknown' | undefi
         const size = readImageSize(bytes)
         return size && { width: size.width, height: size.height }
     }
-    if (type === 'image/gif') {
-        // The logical screen size follows the six-byte signature.
-        if (bytes.length < 10) return
-        const size = { width: u16le(bytes, 6), height: u16le(bytes, 8) }
-        return size.width > 0 && size.height > 0 ? size : undefined
-    }
+    if (type === 'image/gif') return gifSize(bytes)
     if (type === 'image/webp') {
         if (bytes.length < 30) return
         const chunk = String.fromCharCode(...bytes.subarray(12, 16))

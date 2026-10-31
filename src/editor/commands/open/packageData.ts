@@ -2,8 +2,10 @@ import { LEVEL_FILE_MAX_BYTES } from '../../../levelData/fileLimit'
 import { inflateCapped } from '../../../levelData/gzip'
 import { NXSP_CAPS } from '../../../local/nxsp/read'
 import { scpBlackPng } from '../../../local/nxsp/scpMedia'
+import { toWellFormed } from '../../../local/records/wellFormed'
 import { sha1Hex } from '../../../preview/assets/files/item'
 import { isSrl, type FilePackage, type Srl } from '../../../preview/assets/files/package'
+import type { LevelInfo } from '../../../state/levelInfo'
 import {
     FileUnreadableError,
     levelDataType,
@@ -132,4 +134,46 @@ export const isSilentMp3 = (bytes: Uint8Array) => {
     // Every 144-byte frame is this header, then zeros.
     const header = [0xff, 0xfb, 0x18, 0xc0]
     return bytes.every((byte, at) => byte === (header[at % 144] ?? 0))
+}
+
+/**
+ * The most Level Info text a package's level brings: a project file's `project.json` holds Level
+ * Info and is refused past 1 MiB, so text past these bounds would make every Save of the session
+ * fail. Real levels stay far below them.
+ */
+export const LEVEL_INFO_TEXT = { field: 1000, tag: 200, tags: 100, description: 100_000 }
+
+/** Text cut to `max` characters, never inside a surrogate pair. */
+const cut = (value: string, max: number) => {
+    const characters = Array.from(toWellFormed(value))
+    return characters.length > max ? characters.slice(0, max).join('') : characters.join('')
+}
+
+const text = (value: unknown) =>
+    typeof value === 'string' ? cut(value, LEVEL_INFO_TEXT.field) : ''
+
+/** Level Info from the list item, with the checks a project file's `metadata` gets. */
+export const levelInfoOf = (item: Record<string, unknown>, description: string): LevelInfo => {
+    const tags = Array.isArray(item.tags)
+        ? (item.tags as unknown[])
+              .flatMap((tag) =>
+                  typeof tag === 'object' &&
+                  tag !== null &&
+                  'title' in tag &&
+                  typeof tag.title === 'string'
+                      ? [{ title: cut(tag.title, LEVEL_INFO_TEXT.tag) }]
+                      : [],
+              )
+              .slice(0, LEVEL_INFO_TEXT.tags)
+        : []
+    return {
+        title: text(item.title),
+        artists: text(item.artists),
+        author: text(item.author),
+        description: cut(description, LEVEL_INFO_TEXT.description),
+        tags,
+        ...(typeof item.rating === 'number' && Number.isFinite(item.rating)
+            ? { rating: item.rating }
+            : {}),
+    }
 }

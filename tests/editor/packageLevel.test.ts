@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 import {
+    FileUnreadableError,
     LevelUnreadableError,
     openErrorText,
     RefusedFileError,
@@ -11,12 +12,16 @@ import {
 import {
     isBlackPng,
     isSilentMp3,
+    LEVEL_INFO_TEXT,
+    levelInfoOf,
     readLevelData,
     readMedia,
 } from '../../src/editor/commands/open/packageData'
 import { readInventory } from '../../src/files/package/inventory'
 import { COVER_MAX_SIDE, readCoverSize } from '../../src/local/media'
+import { NXSP_CAPS } from '../../src/local/nxsp/read'
 import { scpBlackPng, scpSilentMp3 } from '../../src/local/nxsp/scpMedia'
+import type { FilePackage } from '../../src/preview/assets/files/package'
 import { levelData, levelPackage, type LevelSpec } from '../browser/levelPackages'
 import { entriesOf, rawZip, utf8 } from '../browser/previewAssetsPackages'
 import { entity, minimalLevel } from './levelDataSynthetic'
@@ -26,13 +31,16 @@ import { entity, minimalLevel } from './levelDataSynthetic'
 const strings = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
 ) as {
-    commands: { open: Omit<OpenErrorStrings, 'levelUnreadable' | 'fileUnreadable'> }
+    commands: {
+        open: Omit<OpenErrorStrings, 'levelUnreadable' | 'fileUnreadable'>
+        previewAssets: { import: { fileUnreadable: string } }
+    }
     open: { package: { levelUnreadable: string } }
 }
 const english = {
     ...strings.commands.open,
     levelUnreadable: strings.open.package.levelUnreadable,
-    fileUnreadable: 'This file could not be read.',
+    fileUnreadable: strings.commands.previewAssets.import.fileUnreadable,
 }
 const en = {
     unreadable: 'This level’s data could not be read.',
@@ -189,8 +197,24 @@ test('a cover header gives its size for PNG, JPEG, GIF and WebP', () => {
     assert.deepEqual(readCoverSize(png), { width: 1, height: 1 })
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xc0, 0, 17, 8, 0x01, 0x02, 0x03, 0x04, 3])
     assert.deepEqual(readCoverSize(jpeg), { width: 0x0304, height: 0x0102 })
-    const gif = new Uint8Array([...utf8('GIF89a'), 0x10, 0x00, 0x20, 0x00, 0, 0])
+    // A screen, a frame filling it, and no colour table.
+    const gif = new Uint8Array([
+        ...utf8('GIF89a'),
+        ...[0x10, 0, 0x20, 0, 0, 0, 0],
+        ...[0x2c, 0, 0, 0, 0, 0x10, 0, 0x20, 0, 0],
+    ])
     assert.deepEqual(readCoverSize(gif), { width: 16, height: 32 })
+    // A 1x1 screen whose first frame is 60000 px a side, after a colour table and an extension:
+    // browsers size it by the frame.
+    const huge = new Uint8Array([
+        ...utf8('GIF89a'),
+        ...[1, 0, 1, 0, 0x80, 0, 0],
+        ...[0, 0, 0, 0xff, 0xff, 0xff],
+        ...[0x21, 0xf9, 4, 0, 0, 0, 0, 0],
+        ...[0x2c, 0, 0, 0, 0, 0x60, 0xea, 0x60, 0xea, 0],
+    ])
+    assert.deepEqual(readCoverSize(huge), { width: 60000, height: 60000 })
+    assert.equal(readCoverSize(huge.subarray(0, 25)), undefined)
     const webp = (chunk: string, body: number[]) =>
         new Uint8Array([
             ...utf8('RIFF'),
@@ -242,4 +266,87 @@ test('a cover header gives its size for PNG, JPEG, GIF and WebP', () => {
     assert.equal(readCoverSize(gif.subarray(0, 8)), undefined)
     assert.equal(readCoverSize(webp('VP8 ', [0, 0, 0, 0x9d]).subarray(0, 24)), undefined)
     assert.equal(readCoverSize(utf8('BM some bitmap')), 'unknown')
+})
+
+test('Level Info text from a package is cut to bounds that keep it within a project file', () => {
+    const long = 'x'.repeat(LEVEL_INFO_TEXT.description + 10)
+    const info = levelInfoOf(
+        {
+            title: long,
+            artists: 'Artist',
+            tags: Array.from({ length: LEVEL_INFO_TEXT.tags + 5 }, () => ({ title: long })),
+            rating: Number.NaN,
+        },
+        long,
+    )
+    assert.equal(info.title.length, LEVEL_INFO_TEXT.field)
+    assert.equal(info.artists, 'Artist')
+    assert.equal(info.description.length, LEVEL_INFO_TEXT.description)
+    assert.equal(info.tags.length, LEVEL_INFO_TEXT.tags)
+    assert.equal(info.tags[0]?.title.length, LEVEL_INFO_TEXT.tag)
+    assert.equal(info.rating, undefined)
+    // Never inside a surrogate pair.
+    assert.equal(
+        levelInfoOf({ title: '🎵'.repeat(LEVEL_INFO_TEXT.field + 1) }, '').title,
+        '🎵'.repeat(LEVEL_INFO_TEXT.field),
+    )
+})
+
+/** A package whose entry reads go through `entry`. */
+const fakePackage = async (entry: FilePackage['entry']) => {
+    const { pkg, level } = await opened(
+        await levelPackage('full', [{ name: 'song', cover: utf8('c'), bgm: utf8('b') }]),
+    )
+    return { pkg: { ...pkg, entry }, level }
+}
+
+test('a file that cannot be read any more says so, not that the level is damaged', async () => {
+    const gone = () => Promise.reject(new DOMException('gone', 'NotReadableError'))
+    const { pkg, level } = await fakePackage(gone)
+    await assert.rejects(
+        readLevelData(pkg, level.item),
+        refusedWith('This file could not be read.', FileUnreadableError),
+    )
+    // A medium that cannot be read is left out with its line.
+    assert.equal((await readMedia(pkg, level.item, 'bgm')).kind, 'unusable')
+})
+
+test('covers and BGM are read within the media cap and the ratio guard', async () => {
+    const caps: number[] = []
+    const { pkg, level } = await fakePackage((_path, options) => {
+        caps.push(options.maxSize)
+        return Promise.resolve(undefined)
+    })
+    await readMedia(pkg, level.item, 'cover')
+    await readMedia(pkg, level.item, 'bgm')
+    assert.deepEqual(caps, [NXSP_CAPS.media, NXSP_CAPS.media])
+    // A megabyte of BGM that deflates to almost nothing is refused, so left out.
+    const entries = await entriesOf(
+        await levelPackage('full', [{ name: 'song', bgm: new Uint8Array(1 << 20) }]),
+    )
+    const bgmPath = [...entries.keys()].find((name) => entries.get(name)!.length === 1 << 20)!
+    const ratio = await opened(
+        rawZip(
+            [...entries].map(([name, data]) => ({
+                name,
+                data,
+                method: name === bgmPath ? (8 as const) : (0 as const),
+            })),
+        ),
+    )
+    assert.equal((await readMedia(ratio.pkg, ratio.level.item, 'bgm')).kind, 'unusable')
+})
+
+test('a directory entry is not level data in the file', async () => {
+    const bytes = rawZip([
+        {
+            name: 'sonolus/levels/list',
+            data: utf8(
+                JSON.stringify({ items: [{ name: 'a', data: { url: '/sonolus/repository/' } }] }),
+            ),
+        },
+        { name: 'sonolus/repository/', data: new Uint8Array() },
+    ])
+    const inventory = await readInventory(new Blob([new Uint8Array(bytes)]))
+    assert.equal(inventory.levels[0]?.data, undefined)
 })

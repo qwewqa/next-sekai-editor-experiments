@@ -5,7 +5,6 @@ import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { getLevelDataRevision, getRevisionWarning } from '../../../levelData/revision'
 import { COVER_MAX_SIDE, readCoverSize } from '../../../local/media'
-import { toWellFormed } from '../../../local/records/wellFormed'
 import { showModal } from '../../../modals'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { settings } from '../../../settings'
@@ -26,7 +25,7 @@ import { loadPickedBgm } from '../bgm/loadPicked'
 import { exportMemory, rememberExport } from '../exportLevel/memory'
 import { confirmNewerValues, localizedOpenError, showOpenWarning, type OpenWarning } from './index'
 import { LevelUnreadableError, RefusedFileError, type Parsed } from './levelData'
-import { readDescription, readLevelData, readMedia } from './packageData'
+import { levelInfoOf, readDescription, readLevelData, readMedia } from './packageData'
 import { endOpen, openFormat } from './report'
 
 // Opening one level of a Sonolus package: a new session with its chart, Level Info, cover,
@@ -50,32 +49,6 @@ const withoutLine = (slot: 'bgm' | 'cover' | 'preview'): NoticeLine => ({
     ),
     severity: 'info',
 })
-
-const text = (value: unknown) => (typeof value === 'string' ? toWellFormed(value) : '')
-
-/** Level Info from the list item, with the checks a project file's `metadata` gets. */
-const levelInfoOf = (item: Record<string, unknown>, description: string): LevelInfo => {
-    const tags = Array.isArray(item.tags)
-        ? (item.tags as unknown[]).flatMap((tag) =>
-              typeof tag === 'object' &&
-              tag !== null &&
-              'title' in tag &&
-              typeof tag.title === 'string'
-                  ? [{ title: toWellFormed(tag.title) }]
-                  : [],
-          )
-        : []
-    return {
-        title: text(item.title),
-        artists: text(item.artists),
-        author: text(item.author),
-        description: toWellFormed(description),
-        tags,
-        ...(typeof item.rating === 'number' && Number.isFinite(item.rating)
-            ? { rating: item.rating }
-            : {}),
-    }
-}
 
 /** A media item's bytes as Level Info's pickers take a file. */
 const sourceOf = (bytes: Uint8Array) => ({
