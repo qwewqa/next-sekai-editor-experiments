@@ -166,7 +166,10 @@ test('rows crossed on the way open nothing, and moving from row to row keeps one
     await start(page)
     await open(page)
     await recordOpens(page)
-    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000)
+    // One fixed time well ahead, so a stall before it cannot make the pause go backwards.
+    const pause = new Date('2100-01-01T00:00:00Z')
+    await page.clock.setFixedTime(pause)
+    await page.clock.pauseAt(pause)
     // The mouse crosses Tap and Flick to rest on Release.
     for (const name of ['tap', 'flick', 'release']) await row(page, name).hover()
     await page.clock.runFor(450)
