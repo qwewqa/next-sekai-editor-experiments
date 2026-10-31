@@ -839,14 +839,14 @@ watchEffect(
             if (marks || bracket) {
                 const context = { ...inputs, ctx, nameSprites }
                 if (bracket) drawHereBracket(context, bracket.from, bracket.to)
-                // Changes in hidden groups or stages are counted, not drawn.
+                // Changes are marked as their objects are drawn: none when hidden, fainter when dimmed.
                 if (marks)
                     drawChangeMarks(
                         context,
                         marks,
                         range.min,
                         range.max,
-                        (entity) => entityDrawState(entity, markVisibility) !== 'hidden',
+                        (entity) => entityDrawState(entity, markVisibility),
                         (target, entity, opacity) => {
                             drawEntity(target, entity, false, opacity)
                         },

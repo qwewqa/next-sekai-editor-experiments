@@ -151,7 +151,7 @@ test('removed events preserve every native kind and group/stage visibility', asy
             marks,
             0,
             100,
-            (entity) => entityScopeVisibility(entity, scope) !== 'hidden',
+            (entity) => (entityScopeVisibility(entity, scope) === 'hidden' ? 'hidden' : 'full'),
             (_context, entity) => drawn.push(entity.type),
         )
         return { types: [...new Set(marks.ghosts.map(({ entity }) => entity.type))].sort(), drawn }

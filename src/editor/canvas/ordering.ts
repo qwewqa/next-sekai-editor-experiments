@@ -90,14 +90,16 @@ export type DrawVisibility = Omit<EntityVisibility, 'undimmed'>
 /** The dim of other groups and objects, and of what a peeked entry didn't change. */
 export const DIM = 0.25
 
+/** A History change mark's strength on a dimmed object: fainter, but still easy to find. */
+export const DIMMED_CHANGE = 0.5
+
+export type DrawState = 'hidden' | 'dimmed' | 'full'
+
 /**
  * How the chart draws an entity: not at all when its group or stage scope is hidden, or its type is
  * hidden without Show Other Objects; at full strength when both are fully visible; dimmed otherwise.
  */
-export const entityDrawState = (
-    entity: Entity,
-    visibility: DrawVisibility,
-): 'hidden' | 'dimmed' | 'full' => {
+export const entityDrawState = (entity: Entity, visibility: DrawVisibility): DrawState => {
     const scope = entityScopeVisibility(entity, visibility.scope)
     const byType = visibility.visibilities[entity.type]
     if (scope === 'hidden' || !(byType || visibility.showOtherObjects)) return 'hidden'

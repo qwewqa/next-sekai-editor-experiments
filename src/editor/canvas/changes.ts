@@ -2,6 +2,7 @@ import type { Entity } from '../../state/entities'
 import { beatToTime } from '../../state/integrals/bpms'
 import type { ChangeMarks } from '../history/changes'
 import { changeShape, type ChangeShape } from './changeGeometry'
+import { DIMMED_CHANGE, type DrawState } from './ordering'
 import type { EditorDrawContext } from './types'
 
 // A History entry's changes on the editing chart: an orange ring 3 px outside
@@ -88,10 +89,11 @@ const contour = (context: EditorDrawContext, shape: ChangeShape, by: number) => 
     ctx.stroke()
 }
 
-const ring = (context: EditorDrawContext, shape: ChangeShape, dashed: boolean) => {
+const ring = (context: EditorDrawContext, shape: ChangeShape, dashed: boolean, alpha: number) => {
     const { ctx, scale } = context
     const px = 1 / scale
     ctx.save()
+    ctx.globalAlpha *= alpha
     ctx.setLineDash(dashed ? [4 * px, 3 * px] : [])
     ctx.lineWidth = EDGE * px
     ctx.strokeStyle = colors().ink
@@ -103,7 +105,7 @@ const ring = (context: EditorDrawContext, shape: ChangeShape, dashed: boolean) =
 }
 
 /** A `+` or `−` badge at the box's top right, kept inside the pane. */
-const badge = (context: EditorDrawContext, box: Box, glyph: '+' | '−') => {
+const badge = (context: EditorDrawContext, box: Box, glyph: '+' | '−', alpha: number) => {
     const { ctx, scale, bounds } = context
     const px = 1 / scale
     // Smaller on short notes, as on phones.
@@ -113,6 +115,7 @@ const badge = (context: EditorDrawContext, box: Box, glyph: '+' | '−') => {
     const x = Math.min(Math.max(outer.x + outer.w, bounds.l + radius), bounds.r - radius)
     const y = Math.min(Math.max(top, bounds.t + radius), bounds.b - radius)
     ctx.save()
+    ctx.globalAlpha *= alpha
     ctx.setLineDash([])
     ctx.fillStyle = colors().color
     ctx.fillCircle(x, y, radius)
@@ -154,34 +157,39 @@ export const drawChangeMarks = (
     marks: ChangeMarks,
     min: number,
     max: number,
-    isShown: (entity: Entity) => boolean,
+    drawStateOf: (entity: Entity) => DrawState,
     drawGhost: (context: EditorDrawContext, entity: Entity, opacity: number) => void,
 ) => {
-    const badges: { context: EditorDrawContext; box: Box; glyph: '+' | '−' }[] = []
+    // Hidden objects get no mark; dimmed ones a fainter one.
+    const strength = (entity: Entity) =>
+        ({ hidden: 0, dimmed: DIMMED_CHANGE, full: 1 })[drawStateOf(entity)]
+    const badges: { context: EditorDrawContext; box: Box; glyph: '+' | '−'; alpha: number }[] = []
     if (marks.ghostState) {
         const ghostContext = { ...context, state: marks.ghostState }
         for (const { entity, removed } of visible(marks.ghosts, min, max)) {
-            if (!isShown(entity)) continue
-            drawGhost(ghostContext, entity, GHOST_OPACITY)
+            const alpha = strength(entity)
+            if (!alpha) continue
+            drawGhost(ghostContext, entity, GHOST_OPACITY * alpha)
             const box = changeShape(ghostContext, entity)
             if (!box) continue
-            ring(ghostContext, box, true)
-            if (removed) badges.push({ context: ghostContext, box, glyph: '−' })
+            ring(ghostContext, box, true, alpha)
+            if (removed) badges.push({ context: ghostContext, box, glyph: '−', alpha })
         }
     }
     for (const { entity, added } of visible(marks.rings, min, max)) {
-        if (!isShown(entity)) continue
+        const alpha = strength(entity)
+        if (!alpha) continue
         const box = changeShape(context, entity)
         if (!box) continue
-        ring(context, box, false)
-        if (added) badges.push({ context, box, glyph: '+' })
+        ring(context, box, false, alpha)
+        if (added) badges.push({ context, box, glyph: '+', alpha })
     }
     const cells = new Set<string>()
     for (const item of badges.reverse()) {
         const key = `${Math.round(((item.box.x + item.box.w) * context.scale) / 14)}:${Math.round((item.box.y * context.scale) / 14)}`
         if (cells.has(key)) continue
         cells.add(key)
-        badge(item.context, item.box, item.glyph)
+        badge(item.context, item.box, item.glyph, item.alpha)
     }
 }
 
