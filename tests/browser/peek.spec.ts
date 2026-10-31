@@ -762,6 +762,34 @@ test('Level Info opens read-only while peeking', async ({ page }) => {
     await leave(page)
 })
 
+test('Statistics opens while peeking and counts the peeked chart', async ({ page }) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    const deleted = await newestSeq(page)
+    await peek(page, first)
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const [{ commands }, { runCommand }] = await Promise.all([
+            appImport<typeof import('../../src/editor/commands')>('/src/editor/commands/index.ts'),
+            appImport<typeof import('../../src/editor/commands/runCommand')>(
+                '/src/editor/commands/runCommand.ts',
+            ),
+        ])
+        void runCommand(commands.statistics, 'button')
+    })
+    const dialog = page.getByRole('dialog', { name: 'Statistics', exact: true })
+    // The peeked chart has the four taps; the live one, three.
+    await expect(dialog.locator('[data-statistics-combo]')).toHaveText('4')
+    expect(
+        await page.evaluate(() => window.editorTest.history.liveState.value.store.slides.info.size),
+    ).toBe(3)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    // Opening it wrote nothing.
+    expect(await newestSeq(page)).toBe(deleted)
+    await leave(page)
+})
+
 test('Restore pushes the entry as an undoable step, and a matching one changes nothing', async ({
     page,
 }) => {

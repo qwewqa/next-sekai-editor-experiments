@@ -109,8 +109,6 @@ test('the breakdown shows by hover and focus, pins, and closes on Escape with th
     await expect(tap).toHaveAccessibleDescription('Normal: 0, Critical: 1')
 
     await row(page, 'tap').hover()
-    await page.waitForTimeout(200)
-    await expect(bubble(page)).toHaveCount(0)
     await expect(bubble(page)).toContainText('Critical')
     await expect(bubble(page)).toContainText('1')
     await page.mouse.move(5, 5)
@@ -135,6 +133,55 @@ test('the breakdown shows by hover and focus, pins, and closes on Escape with th
     await page.waitForTimeout(300)
     await expect(bubble(page)).toBeVisible()
     await dialog(page).locator('[data-statistics-combo]').click()
+    await expect(bubble(page)).toHaveCount(0)
+})
+
+/** Records each row whose breakdown opens, in order. */
+const recordOpens = (page: Page) =>
+    page.evaluate(() => {
+        const opened: string[] = []
+        ;(window as unknown as { opened: string[] }).opened = opened
+        new MutationObserver((records) => {
+            for (const record of records) {
+                const button = record.target as HTMLElement
+                if (button.getAttribute('aria-expanded') === 'true')
+                    opened.push(
+                        button
+                            .closest('[data-statistics-row]')
+                            ?.getAttribute('data-statistics-row') ?? '',
+                    )
+            }
+        }).observe(document.body, { subtree: true, attributeFilter: ['aria-expanded'] })
+    })
+const opened = (page: Page) =>
+    page.evaluate(() => (window as unknown as { opened: string[] }).opened)
+const expanded = (page: Page) => page.locator('[data-statistics-split][aria-expanded="true"]')
+
+test('rows crossed on the way open nothing, and moving from row to row keeps one bubble', async ({
+    page,
+}) => {
+    await start(page)
+    await open(page)
+    await recordOpens(page)
+    // The mouse crosses Tap and Flick to rest on Release.
+    for (const name of ['tap', 'flick', 'release']) await row(page, name).hover()
+    await expect(row(page, 'release').locator('button')).toHaveAttribute('aria-expanded', 'true')
+    // Moving on to Trace hands over: one bubble, Trace's.
+    await row(page, 'trace').hover()
+    await expect(row(page, 'trace').locator('button')).toHaveAttribute('aria-expanded', 'true')
+    await expect(expanded(page)).toHaveCount(1)
+    await expect(bubble(page)).toHaveCount(1)
+    expect(await opened(page)).toEqual(['release', 'trace'])
+})
+
+test('a hovering pen reveals the breakdown as a mouse does', async ({ page }) => {
+    await start(page)
+    await open(page)
+    await row(page, 'flick').dispatchEvent('pointerenter', { pointerType: 'pen', buttons: 0 })
+    await expect(bubble(page)).toBeVisible()
+    await expect(row(page, 'flick').locator('button')).toHaveAttribute('aria-expanded', 'true')
+    // Its leaving closes it, as a mouse's does.
+    await row(page, 'flick').dispatchEvent('pointerleave', { pointerType: 'pen', buttons: 0 })
     await expect(bubble(page)).toHaveCount(0)
 })
 
@@ -236,6 +283,38 @@ test('the readout follows the mouse on the label line, and the plot stays in pla
     }
     await page.mouse.move(5, 5)
     await expect(readout).toHaveText('')
+})
+
+test('a click on the plot does not pin the readout: leaving clears it and BGM End shows again', async ({
+    page,
+}) => {
+    await start(page)
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        const current = history.state.value
+        const meta = {
+            hash: '0'.repeat(32),
+            filename: 'bgm.mp3',
+            size: 1,
+            type: 'audio/mpeg',
+            durationMs: 3000,
+        }
+        history.replaceState({ ...current, bgm: { ...current.bgm, meta } })
+    })
+    await open(page)
+    const label = dialog(page).locator('[data-statistics-bgm-label]')
+    await expect(label).toBeVisible()
+    const plot = await chart(page).boundingBox()
+    if (!plot) throw new Error('No plot')
+    await page.mouse.click(plot.x + plot.width / 3, plot.y + plot.height / 2)
+    const readout = dialog(page).locator('[data-statistics-readout]')
+    await expect(readout).not.toHaveText('')
+    await expect(label).toHaveCount(0)
+    await page.mouse.move(5, 5)
+    await expect(readout).toHaveText('')
+    await expect(dialog(page).locator('.stats-dot, .stats-cross')).toHaveCount(0)
+    await expect(entry(page, 'tap').locator('.stats-entry-value')).toHaveText('')
+    await expect(label).toBeVisible()
 })
 
 test('keyboard focus starts the readout at the start, the arrows move it, and Tab reaches the legend', async ({
@@ -340,4 +419,69 @@ test('when copying fails, the line says so and the fallback field was inside the
     expect(await page.evaluate(() => (window as unknown as { inDialog: boolean }).inDialog)).toBe(
         true,
     )
+})
+
+test('the toolbar step adds Statistics to the old first group once, and a removal stays', async ({
+    page,
+}) => {
+    const former = ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open']
+    await page.addInitScript(installCanvasCounters)
+    await page.addInitScript((former) => {
+        if (sessionStorage.getItem('seeded')) return
+        sessionStorage.setItem('seeded', '1')
+        const prefix = 'sonolus-next-sekai-editor.'
+        localStorage.setItem(`${prefix}toolbar`, JSON.stringify([former, ['play']]))
+        // The earlier steps are done, so only this one is seen.
+        for (const flag of [
+            'toolbarEditorLayoutMigrated',
+            'toolbarExportMigrated',
+            'toolbarPreviewAssetsMigrated',
+            'toolbarSessionRestoreMigrated',
+            'toolbarMinimapMigrated',
+        ])
+            localStorage.setItem(`${prefix}${flag}`, 'true')
+        localStorage.removeItem(`${prefix}toolbarStatisticsMigrated`)
+    }, former)
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    const toolbar = () => page.evaluate(() => window.editorTest.settings.toolbar)
+    const withStatistics = ['utilities', 'statistics', ...former.slice(1)]
+    expect(await toolbar()).toEqual([withStatistics, ['play']])
+    expect(
+        await page.evaluate(() => [
+            localStorage.getItem('sonolus-next-sekai-editor.toolbarStatisticsMigrated'),
+            JSON.parse(localStorage.getItem('sonolus-next-sekai-editor.toolbar') ?? '[]')[0],
+        ]),
+    ).toEqual(['true', withStatistics])
+
+    // Removing it afterwards is a customisation, kept across a reload.
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.toolbar = settings.toolbar.map((group) =>
+            group.filter((name) => name !== 'statistics'),
+        )
+    })
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    expect((await toolbar())[0]).toEqual(former)
+})
+
+test('at an absurd BPM the dialog opens with the counts and no chart', async ({ page }) => {
+    await start(page)
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.evaluate(() => {
+        const { fixtures, show } = window.editorTest
+        const chart = structuredClone(fixtures.interaction)
+        chart.bpms = [{ beat: 0, bpm: 1e-310 }]
+        show(chart)
+    })
+    await open(page)
+    await expect(dialog(page).locator('[data-statistics-combo]')).toHaveText('4')
+    await expect(dialog(page).locator('[data-statistics-figures]')).toHaveCount(0)
+    await expect(chart(page).locator('svg')).toHaveCount(0)
+    await expect(dialog(page).locator('[data-statistics-times]')).toHaveCount(0)
+    expect(errors).toEqual([])
 })

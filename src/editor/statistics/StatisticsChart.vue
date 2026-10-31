@@ -191,17 +191,21 @@ const describe = (shown: (Reading & { time: number }) | undefined) => {
     const parts = Object.fromEntries(
         kinds.value.map((category, j) => [category, number(shown.parts[j] ?? 0, shown.exact)]),
     ) as Partial<Record<Category, string>>
-    const valueText = `${fillMessage(locale.value, i18n.value.statistics.at, value, time)}, ${formatList(
-        kinds.value.map((category) =>
-            fillMessage(
-                locale.value,
-                strings.value.textLine,
-                strings.value.categories[category],
-                parts[category] ?? '',
+    // The value at its time, then each part, in the locale's list.
+    const valueText = formatList(
+        [
+            fillMessage(locale.value, i18n.value.statistics.at, value, time),
+            ...kinds.value.map((category) =>
+                fillMessage(
+                    locale.value,
+                    strings.value.textLine,
+                    strings.value.categories[category],
+                    parts[category] ?? '',
+                ),
             ),
-        ),
+        ],
         locale.value,
-    )}`
+    )
     return { value, time, beat: position(when), parts, valueText }
 }
 const readout = computed(() => describe(reading.value))
@@ -242,8 +246,10 @@ const onPointerDown = (event: PointerEvent) => {
     }
 }
 const onFocus = () => {
-    pinned = true
+    // Keyboard focus pins the readout; a click focuses the plot too, and the readout still follows
+    // the mouse and clears when it leaves.
     if (!chart.value?.matches(':focus-visible')) return
+    pinned = true
     focusRing.value = true
     show(cursor.value ?? 0)
 }
@@ -280,7 +286,7 @@ const top = computed(() => oneSecondMax(props.every))
 const slotWidth = computed(() => formatTenths(top.value, locale.value).length)
 const probeText = computed(() => {
     let end = props.bgmEnd ?? 0
-    for (const time of props.every) end = Math.max(end, time)
+    for (const time of props.every) if (Number.isFinite(time)) end = Math.max(end, time)
     end += 10
     return {
         value: formatTenths(top.value, locale.value),

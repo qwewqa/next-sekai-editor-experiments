@@ -130,24 +130,27 @@ export const chartStatistics = ({
     const times = Object.fromEntries(
         CATEGORIES.map((category) => {
             const list = Float64Array.from(beats[category], (beat) => beatToTime(bpms, beat)).sort()
-            if (list.length) {
-                first = Math.min(first, list[0] ?? Infinity)
-                last = Math.max(last, list[list.length - 1] ?? -Infinity)
-            }
+            // Absurd BPMs can make times infinite or NaN: only finite times are shown.
+            for (const time of list)
+                if (Number.isFinite(time)) {
+                    first = Math.min(first, time)
+                    last = Math.max(last, time)
+                }
             return [category, list]
         }),
     ) as Record<Category, Float64Array>
 
     let combo = 0
     for (const row of ROWS) if (row !== 'fakeNote') combo += counts[row]
+    const lastNote = lastBeat === -Infinity ? NaN : beatToTime(bpms, lastBeat)
     return {
         counts,
         critical,
         combo,
         times,
-        firstComboNote: combo ? first : undefined,
-        lastComboNote: combo ? last : undefined,
-        lastNote: lastBeat === -Infinity ? undefined : beatToTime(bpms, lastBeat),
+        firstComboNote: first === Infinity ? undefined : first,
+        lastComboNote: last === -Infinity ? undefined : last,
+        lastNote: Number.isFinite(lastNote) ? lastNote : undefined,
     }
 }
 
