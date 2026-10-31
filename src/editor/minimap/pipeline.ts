@@ -5,6 +5,7 @@
 import { shallowRef, type ShallowRef } from 'vue'
 import type { State } from '../../state'
 import { isSameTempo, type BpmIntegral } from '../../state/integrals/bpms'
+import type { DrawVisibility } from '../canvas/ordering'
 import type { ComposedLayout } from '../composed'
 import { getComposedLayout } from '../composedView'
 import {
@@ -31,7 +32,13 @@ import {
 } from './paint'
 import { computeEnd } from './range'
 
-export type MinimapSources = { shown: State; live: State; peeking: boolean }
+export type MinimapSources = {
+    shown: State
+    live: State
+    peeking: boolean
+    /** What the chart draws by, as far as notes and bodies go (`contentVisibility`). */
+    visibility: DrawVisibility
+}
 
 export type MinimapPipeline = {
     /** CSS size of the canvas and devicePixelRatio; caps and the 100 ms debounce are applied here. */
@@ -91,6 +98,8 @@ export type Baseline = {
     bpms: BpmIntegral[]
     /** The Composed stage map, or `'basic'`. */
     layoutKey: unknown
+    /** The visibility drawn under, compared by identity. */
+    visibility: DrawVisibility
     end: number
     geometry: MinimapGeometry
 }
@@ -119,11 +128,12 @@ const sameGeometry = (a: MinimapGeometry, b: MinimapGeometry) =>
 /** What a full redraw is made for: everything in a baseline but the notes. */
 type Frame = Omit<Baseline, 'grids'>
 
-/** Whether two baselines share their tempo (meters aside), layout, range and geometry. */
+/** Whether two baselines share their tempo (meters aside), layout, visibility, range and geometry. */
 const sameFrame = (a: Frame, b: Frame) =>
     sameGeometry(a.geometry, b.geometry) &&
     a.end === b.end &&
     a.layoutKey === b.layoutKey &&
+    a.visibility === b.visibility &&
     isSameTempo(a.bpms, b.bpms)
 
 /** Whether two baselines describe the same image: the same frame and the same notes. */
@@ -174,8 +184,8 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         passFrame = requestAnimationFrame(runPass)
     }
 
-    const compatible = (baseline: Baseline, shown: State, layoutKey: unknown, end: number) =>
-        !!target && sameFrame(baseline, { bpms: shown.bpms, layoutKey, end, geometry: target })
+    const compatible = (baseline: Baseline, frame: Omit<Frame, 'geometry'>) =>
+        !!target && sameFrame(baseline, { ...frame, geometry: target })
 
     /** Paints one slice of the job; returns whether the job is complete. */
     const runSlice = (running: Job) => {
@@ -277,21 +287,19 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
     const startFull = (
         shown: State,
         layout: PaintSource['layout'],
-        layoutKey: unknown,
-        end: number,
+        frame: Omit<Frame, 'geometry'>,
     ) => {
         if (!target) return
         cancelJob()
         minimapStats.fullJobs++
         const running: Job = {
-            baseline: {
-                grids: gridsOf(shown),
-                bpms: shown.bpms,
-                layoutKey,
-                end,
-                geometry: target,
+            baseline: { ...frame, grids: gridsOf(shown), geometry: target },
+            source: {
+                state: shown,
+                layout,
+                mapping: createMapping(target, frame.end),
+                visibility: frame.visibility,
             },
-            source: { state: shown, layout, mapping: createMapping(target, end) },
             connectors: [],
             notes: [],
             rules: false,
@@ -327,7 +335,12 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         const bands = keysToBands(keys, shown.bpms, shownMapping)
         const { width, height } = backingSize(current.geometry)
         if (bandsTooTall(bands, height)) return false
-        const source: PaintSource = { state: shown, layout, mapping: shownMapping }
+        const source: PaintSource = {
+            state: shown,
+            layout,
+            mapping: shownMapping,
+            visibility: current.visibility,
+        }
         const { grid } = shown.store
         let entities = 0
         backContext.globalAlpha = 1
@@ -363,24 +376,27 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         if (disposed || lost.size || !sources || !target) return
         minimapStats.passes++
         const start = now()
-        const { shown, live, peeking } = sources
+        const { shown, live, peeking, visibility } = sources
         const layout = getComposedLayout(shown)
-        const layoutKey = layoutKeyOf(layout)
-        const end = computeEnd(shown, live, peeking)
+        const frame = {
+            bpms: shown.bpms,
+            layoutKey: layoutKeyOf(layout),
+            visibility,
+            end: computeEnd(shown, live, peeking),
+        }
         if (job) {
             // Edits during a job do not restart it. What would make its output wrong does.
-            if (!compatible(job.baseline, shown, layoutKey, end))
-                startFull(shown, layout, layoutKey, end)
+            if (!compatible(job.baseline, frame)) startFull(shown, layout, frame)
             return
         }
-        if (!drawn || !compatible(drawn, shown, layoutKey, end)) {
-            startFull(shown, layout, layoutKey, end)
+        if (!drawn || !compatible(drawn, frame)) {
+            startFull(shown, layout, frame)
             return
         }
         const next = gridsOf(shown)
         const keys = diffGrids(drawn.grids, next)
         if (keys === 'full' || (keys.length && !paintBands(shown, layout, keys, drawn))) {
-            startFull(shown, layout, layoutKey, end)
+            startFull(shown, layout, frame)
             return
         }
         // The diff and the bands count as one pass.

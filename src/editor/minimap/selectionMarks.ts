@@ -5,14 +5,17 @@ import type { State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
 import { beatToTime, type BpmIntegral } from '../../state/integrals/bpms'
 import { SELECTION_COLOR } from '../../utils/colors'
+import { entityDrawState } from '../canvas/ordering'
 import type { ComposedLayout } from '../composed'
 import { getComposedLayout } from '../composedView'
+import { entityVisibility } from '../scope'
 import { gridsOf } from './diff'
 import type { MinimapLayer } from './layers'
 import { MAX_BACKING_HEIGHT, gutterMarkEdges, type MinimapMapping } from './mapping'
 import { FAKE_FACTOR, noteRect } from './paint'
 import { layoutKeyOf, sameBaseline, type Baseline } from './pipeline'
 import { createRowSpread } from './tickRuns'
+import { contentVisibility } from './visibility'
 
 // The shown state's selection on the strip: each selected note drawn again in white over its own
 // mark (the lift), and a cyan rail at the right edge for each run of selected rows, which also
@@ -44,6 +47,7 @@ const matches = (drawn: Baseline, shown: State, mapping: MinimapMapping) =>
         grids: gridsOf(shown),
         bpms: shown.bpms,
         layoutKey: layoutKeyOf(getComposedLayout(shown)),
+        visibility: contentVisibility.value,
         end: mapping.end,
         geometry: mapping.geometry,
     })
@@ -56,6 +60,8 @@ const paintSelection = timed(
     (ctx: CanvasRenderingContext2D, mapping: MinimapMapping, inputs: SelectionInputs) => {
         const { entities, bpms, layout } = inputs
         const { scale } = mapping.geometry
+        // The controls deselect what the chart hides; this keeps the marks to what it draws anyway.
+        const visibility = entityVisibility.value
         spread ??= createRowSpread(MAX_BACKING_HEIGHT + 1)
         spread.reset(scale)
         const solid = new Path2D()
@@ -63,6 +69,7 @@ const paintSelection = timed(
         for (const entity of entities) {
             const note = entity.type === 'note'
             if (!note && !MARKED.has(entity.type)) continue
+            if (entityDrawState(entity, visibility) === 'hidden') continue
             const y = mapping.timeToY(beatToTime(bpms, entity.beat))
             spread.add(y)
             if (!note || entity.noteType === 'anchor') continue

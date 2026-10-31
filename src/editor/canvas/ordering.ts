@@ -84,8 +84,25 @@ export type EntityVisibility = {
     undimmed?: ReadonlySet<Entity>
 }
 
+/** What decides whether the chart draws an entity: its scope, its type's switch, Show Other Objects. */
+export type DrawVisibility = Omit<EntityVisibility, 'undimmed'>
+
 /** The dim of other groups and objects, and of what a peeked entry didn't change. */
 export const DIM = 0.25
+
+/**
+ * How the chart draws an entity: not at all when its group or stage scope is hidden, or its type is
+ * hidden without Show Other Objects; at full strength when both are fully visible; dimmed otherwise.
+ */
+export const entityDrawState = (
+    entity: Entity,
+    visibility: DrawVisibility,
+): 'hidden' | 'dimmed' | 'full' => {
+    const scope = entityScopeVisibility(entity, visibility.scope)
+    const byType = visibility.visibilities[entity.type]
+    if (scope === 'hidden' || !(byType || visibility.showOtherObjects)) return 'hidden'
+    return scope === 'full' && byType ? 'full' : 'dimmed'
+}
 
 type ChainType = EventJointEntityType | 'timeScale'
 type ChainKey = StageId | GroupId | undefined
@@ -195,11 +212,8 @@ export const compareDrawKeys = (a: DrawKey, b: DrawKey) =>
     a.tier - b.tier || +a.isFull - +b.isFull || a.layer - b.layer || b.beat - a.beat
 
 /**
- * Painter order and opacity for the main editor. An entity is drawn unless its
- * group/stage scope is hidden or its type is hidden (with other objects not
- * shown); it is drawn at full opacity only when both are fully visible. The
- * full joints and lines of event chains with a selected joint draw above
- * unselected objects.
+ * Painter order and opacity for the main editor, by `entityDrawState`. The full joints and lines
+ * of event chains with a selected joint draw above unselected objects.
  */
 export const orderEntities = (
     entities: Entity[],
@@ -209,14 +223,13 @@ export const orderEntities = (
 ) =>
     entities
         .map((entity) => {
-            const scope = entityScopeVisibility(entity, visibility.scope)
-            const isVisibleByType = visibility.visibilities[entity.type]
+            const state = entityDrawState(entity, visibility)
             const isSelected = selected.has(entity)
-            const isFull = scope === 'full' && isVisibleByType
+            const isFull = state === 'full'
             return {
                 entity,
                 isSelected,
-                isDrawn: scope !== 'hidden' && (visibility.showOtherObjects || isVisibleByType),
+                isDrawn: state !== 'hidden',
                 isFull,
                 tier: isSelected ? 2 : isFull && isInRaisedChain(chains, entity) ? 1 : 0,
                 layer: getLayer(entity),

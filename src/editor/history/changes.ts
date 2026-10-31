@@ -44,7 +44,9 @@ import { beatToTime } from '../../state/integrals/bpms'
 import { clockNow } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
+import { entityDrawState } from '../canvas/ordering'
 import { getComposedLayout } from '../composedView'
+import { entityVisibility } from '../scope'
 import { view } from '../view'
 import { historyCalendar } from './calendarClock'
 import {
@@ -503,7 +505,10 @@ export const bandTimes = () => {
 }
 
 /** Each changed object's time and lanes, on the peeked tempo, in chart order. */
-const places = computed((): Place[] => {
+/** A change's place, with the object as it is drawn there: the ring's or, for an old place, the ghost's. */
+type LocatedPlace = Place & { entity?: Entity }
+
+const places = computed((): LocatedPlace[] => {
     const change = drawnChange.value
     if (!change || !hasPlaces.value) return []
     const bpms = change.state.bpms
@@ -529,23 +534,41 @@ const places = computed((): Place[] => {
                     ? position(object.kind, object.record, old.get(id), true)
                     : position(object.kind, object.record, current.get(id))
             const points = [
-                from,
+                {
+                    place: from,
+                    entity: object.status === 'removed' ? old.get(id) : current.get(id),
+                },
                 ...(object.from && isMoved(object)
-                    ? [position(object.kind, object.from, old.get(id), true)]
+                    ? [
+                          {
+                              place: position(object.kind, object.from, old.get(id), true),
+                              entity: old.get(id),
+                          },
+                      ]
                     : []),
             ]
-            return points.map((place) => ({
+            return points.map(({ place, entity }) => ({
                 id,
                 time: beatToTime(bpms, place.beat),
                 left: place.left,
                 right: place.left + place.size,
+                entity,
             }))
         })
         .sort((a, b) => a.time - b.time)
 })
 
-/** The places the minimap marks: those of the change the chart marks, none when it marks none. */
-export const minimapChangePlaces = computed(() => (changeMarks.value ? places.value : undefined))
+/**
+ * The places the minimap marks: those of the change the chart marks where the chart draws the
+ * object, none when it marks none. A move keeps the side that is drawn.
+ */
+export const minimapChangePlaces = computed(() => {
+    if (!changeMarks.value) return undefined
+    const visibility = entityVisibility.value
+    return places.value.filter(
+        ({ entity }) => !entity || entityDrawState(entity, visibility) !== 'hidden',
+    )
+})
 
 /** Changes beyond the band's top and bottom edges. */
 export const usableBand = computed(() => changeBand.value.top + changeBand.value.bottom < view.h)

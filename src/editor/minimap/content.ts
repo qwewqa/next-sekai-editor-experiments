@@ -6,6 +6,7 @@ import { isPeeking, liveState, state } from '../../history'
 import { view } from '../view'
 import type { MinimapMapping } from './mapping'
 import { createMinimapPipeline, type Baseline, type MinimapPipeline } from './pipeline'
+import { contentVisibility } from './visibility'
 
 export const useMinimapContent = (canvas: Readonly<Ref<HTMLCanvasElement | null | undefined>>) => {
     const mapping = shallowRef<MinimapMapping>()
@@ -17,6 +18,7 @@ export const useMinimapContent = (canvas: Readonly<Ref<HTMLCanvasElement | null 
             shown: state.value,
             live: liveState.value,
             peeking: isPeeking.value,
+            visibility: contentVisibility.value,
         })
     }
 
@@ -37,6 +39,7 @@ export const useMinimapContent = (canvas: Readonly<Ref<HTMLCanvasElement | null 
             () => liveState.value.store.grid.note,
             () => liveState.value.bpms,
             isPeeking,
+            contentVisibility,
         ],
         push,
     )

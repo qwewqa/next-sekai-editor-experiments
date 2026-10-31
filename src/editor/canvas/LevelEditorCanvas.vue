@@ -41,7 +41,7 @@ import {
     toSceneEntity,
 } from '../sceneState'
 import { isPreviewScrubbing } from '../player'
-import { scopeLookup, showGroupNames, showStageNames } from '../scope'
+import { entityVisibility, scopeLookup, showGroupNames, showStageNames } from '../scope'
 import { bgmOffsetDelta } from '../tools/offset'
 import { tool, tools } from '../tools'
 import { pasteGhostBase, pasteGhostInfos, pasteGhostState } from '../tools/paste'
@@ -90,7 +90,13 @@ import { createLabelSprites } from './labelSprites'
 import { createNameLayer, placeNames } from './names'
 import { createNoteRenderer } from './notes'
 import { raisedToolChain } from '../raisedTool'
-import { orderEntities, raisedChains, toDrawSteps, type DrawStep } from './ordering'
+import {
+    entityDrawState,
+    orderEntities,
+    raisedChains,
+    toDrawSteps,
+    type DrawStep,
+} from './ordering'
 import { createFrameScheduler, prepareSurface } from './surface'
 import { timed } from '../../perf/probe'
 import { clearTextWidths, FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle } from './text'
@@ -192,9 +198,7 @@ const showEntities = (shown: Entity[], range: () => { min: number; max: number }
 }
 const shownEntities = computed(() => showEntities(artEntities.value, () => artRange.value))
 const visibility = () => ({
-    scope: scopeLookup.value,
-    visibilities: view.visibilities,
-    showOtherObjects: settings.showOtherObjects,
+    ...entityVisibility.value,
     // While a peeked entry's change is shown, what it didn't change dims.
     ...(undimmed.value ? { undimmed: undimmed.value } : {}),
 })
@@ -775,9 +779,7 @@ watchEffect(
         // A peeked entry's change, and Edits Here's range.
         const marks = changeMarks.value
         const bracket = historyFilter.value === 'here' ? hereRange.value : undefined
-        const markScope = scopeLookup.value
-        const markVisibilities = view.visibilities
-        const markOthers = settings.showOtherObjects
+        const markVisibility = entityVisibility.value
         const hover = shownMarkerTime.value
         const hoverEnds =
             hover === undefined
@@ -844,9 +846,7 @@ watchEffect(
                         marks,
                         range.min,
                         range.max,
-                        (entity) =>
-                            entityScopeVisibility(entity, markScope) !== 'hidden' &&
-                            (markVisibilities[entity.type] || markOthers),
+                        (entity) => entityDrawState(entity, markVisibility) !== 'hidden',
                         (target, entity, opacity) => {
                             drawEntity(target, entity, false, opacity)
                         },

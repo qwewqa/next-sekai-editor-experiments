@@ -7,6 +7,7 @@ import { onResetState } from '../history/resetHooks'
 import { stages } from '../history/stages'
 import { settings } from '../settings'
 import type { Entity } from '../state/entities'
+import type { DrawVisibility } from './canvas/ordering'
 import { switchToGroup } from './commands/groups'
 import { switchToStage } from './commands/stages'
 import {
@@ -206,6 +207,13 @@ export const scopeLookup = computed(() =>
         isDynamicStages: isDynamicStages.value,
     }),
 )
+
+/** What the chart pane draws by (`entityDrawState`): the scope, the type switches, Show Other Objects. */
+export const entityVisibility = computed((): DrawVisibility => ({
+    scope: scopeLookup.value,
+    visibilities: view.visibilities,
+    showOtherObjects: settings.showOtherObjects,
+}))
 
 /** Whether the entity shows: its type is visible and its group and stage aren't hidden. */
 export const isEntityShown = (entity: Entity) =>

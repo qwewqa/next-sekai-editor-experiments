@@ -5,6 +5,7 @@ import { minimapChangePlaces } from '../history/changes'
 import type { MinimapLayer } from './layers'
 import { gutterMarkEdges } from './mapping'
 import { HAIRLINE_ALPHA, hairlineRuns, tickRuns, type TickRun } from './tickRuns'
+import { contentVisibility } from './visibility'
 
 /**
  * Orange marks at the places the peeked step changed: an edge tick per run, and
@@ -17,6 +18,8 @@ export const changeTicks: MinimapLayer<readonly Place[]> = {
             return places && places.length > 0 ? places : undefined
         }),
     counter: 'changePaints',
+    // The ticks sit on rows, not on notes: they wait only for the visibility the image shows.
+    aligned: (drawn) => drawn.visibility === contentVisibility.value,
     paint: (ctx, mapping, places) => {
         const runs: TickRun[] = []
         tickRuns(places, mapping, (top, height) => runs.push({ top, height }))

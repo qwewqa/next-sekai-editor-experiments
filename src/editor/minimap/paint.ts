@@ -11,6 +11,7 @@ import { getNoteVisualType } from '../../state/entities/slides/visualType'
 import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 import { lerp, safeUnlerpClamped } from '../../utils/math'
 import { noteMinimapFill } from '../canvas/notes'
+import { DIM, entityDrawState, type DrawVisibility } from '../canvas/ordering'
 import type { ComposedLayout } from '../composed'
 import { isConnectorVisible } from '../entities/visibility'
 import { connectorColors } from '../utils/connectorColors'
@@ -67,6 +68,8 @@ export type PaintSource = {
     /** Set when the chart is shown Composed. */
     layout: ComposedLayout | undefined
     mapping: MinimapMapping
+    /** What the chart draws, read once for a whole redraw. */
+    visibility: DrawVisibility
 }
 
 /**
@@ -120,7 +123,7 @@ const ys: number[] = []
 
 /** Paints into `ctx` in device px. Create one per paint session: it caches the context's style. */
 export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource) => {
-    const { state, layout, mapping } = source
+    const { state, layout, mapping, visibility } = source
     const { scale } = mapping.geometry
     const { bpms } = state
     const rowOf = (time: number) => mapping.timeToY(time) * scale
@@ -140,6 +143,8 @@ export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource
         },
 
         connector(connector: ConnectorEntity) {
+            const drawn = entityDrawState(connector, visibility)
+            if (drawn === 'hidden') return
             const { head, tail, segmentHead, segmentTail } = connector
             const tHead = beatToTime(bpms, head.beat)
             const tTail = beatToTime(bpms, tail.beat)
@@ -165,12 +170,14 @@ export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource
                 ys.push(rowOf(time))
             }
             const guide = segmentHead.connectorType === 'guide'
-            const opacity = guide
-                ? BODY_ALPHA *
-                  Math.max(segmentHead.connectorGuideAlpha, segmentTail.connectorGuideAlpha)
-                : segmentHead.connectorIsFake
-                  ? BODY_ALPHA * FAKE_FACTOR
-                  : BODY_ALPHA
+            const opacity =
+                (drawn === 'dimmed' ? DIM : 1) *
+                (guide
+                    ? BODY_ALPHA *
+                      Math.max(segmentHead.connectorGuideAlpha, segmentTail.connectorGuideAlpha)
+                    : segmentHead.connectorIsFake
+                      ? BODY_ALPHA * FAKE_FACTOR
+                      : BODY_ALPHA)
             style(connectorColors(segmentHead).body, opacity)
             ctx.beginPath()
             ctx.moveTo(xs[0] ?? 0, ys[0] ?? 0)
@@ -184,9 +191,14 @@ export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource
             const infos = state.store.slides.info.get(note.slideId)
             const type = getNoteVisualType(note, infos, infos && slideLookup(infos))
             if (type === 'anchor') return
+            const drawn = entityDrawState(note, visibility)
+            if (drawn === 'hidden') return
             const row = mapping.timeToY(beatToTime(bpms, note.beat))
             const { x, y, width, height } = noteRect(note, row, layout, mapping)
-            style(noteMinimapFill(note, type), note.isFake ? FAKE_FACTOR : 1)
+            style(
+                noteMinimapFill(note, type),
+                (note.isFake ? FAKE_FACTOR : 1) * (drawn === 'dimmed' ? DIM : 1),
+            )
             ctx.fillRect(x, y, width, height)
         },
     }

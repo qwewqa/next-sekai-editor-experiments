@@ -13,10 +13,10 @@ export type MinimapLayer<T> = {
     paint: (ctx: CanvasRenderingContext2D, mapping: MinimapMapping, inputs: T) => void
     counter: 'changePaints' | 'selectionPaints'
     /**
-     * Set for marks drawn on the notes: whether the content's front image is the one the marks
-     * are for. They then paint only on that image, and hide while it differs.
+     * Whether the content's front image is one the marks fit: they then paint only on such an
+     * image, and hide while it differs.
      */
-    aligned?: (drawn: Baseline, mapping: MinimapMapping) => boolean
+    aligned: (drawn: Baseline, mapping: MinimapMapping) => boolean
 }
 
 /** What a gated layer last painted with. Its backing size follows from the baseline's geometry. */
@@ -26,10 +26,9 @@ const samePainted = (a: Painted, b: Painted) =>
     a.inputs === b.inputs && sameBaseline(a.drawn, b.drawn)
 
 /**
- * Paints `layer` on `canvas` in a component's setup. An ungated layer paints after the flush of
- * any change to its inputs or the mapping. A gated one paints in the frame the content's image
- * changes, or one frame after its inputs or the mapping change, and only while that image matches
- * the state. Returns whether the layer has marks to draw.
+ * Paints `layer` on `canvas` in a component's setup: in the frame the content's image changes, or
+ * one frame after its inputs or the mapping change, and only while that image fits the marks.
+ * Returns whether the layer has marks to draw.
  */
 export const useMinimapLayer = <T>(
     canvas: Readonly<Ref<HTMLCanvasElement | null | undefined>>,
@@ -62,13 +61,13 @@ export const useMinimapLayer = <T>(
         return true
     }
 
-    /** A gated paint: on the matching image only, and none when nothing differs. */
+    /** A paint on a fitting image only, and none when nothing differs. */
     const paintAligned = () => {
         const element = canvas.value
         const current = mapping.value
         const baseline = drawn.value
         const value = inputs.value
-        if (!element || !current || value === undefined || !layer.aligned) return
+        if (!element || !current || value === undefined) return
         if (!baseline || !layer.aligned(baseline, current)) return
         const target = { inputs: value, drawn: baseline }
         if (!painted || !samePainted(painted, target)) {
@@ -83,20 +82,11 @@ export const useMinimapLayer = <T>(
         frame = undefined
     }
 
-    /** An ungated paint, whenever there is something to draw. */
-    const paintPlain = () => {
-        const element = canvas.value
-        const current = mapping.value
-        const value = inputs.value
-        if (element && current && value !== undefined) draw(element, current, value)
-    }
-
     const requestPaint = () => {
         if (frame !== undefined) return
         frame = requestAnimationFrame(() => {
             frame = undefined
-            if (layer.aligned) paintAligned()
-            else paintPlain()
+            paintAligned()
         })
     }
 
@@ -125,24 +115,19 @@ export const useMinimapLayer = <T>(
         { flush: 'post' },
     )
 
-    if (layer.aligned) {
-        const aligned = layer.aligned
-        watch(
-            drawn,
-            (baseline) => {
-                const element = canvas.value
-                const current = mapping.value
-                if (!element || !current) return
-                // The image under the marks changed to one they were not painted for.
-                if (!baseline || !aligned(baseline, current)) element.style.visibility = 'hidden'
-                else paintAligned()
-            },
-            { flush: 'post' },
-        )
-        watch([inputs, mapping, canvas], requestPaint, { flush: 'post' })
-    } else {
-        watch([inputs, mapping, canvas], paintPlain, { flush: 'post' })
-    }
+    watch(
+        drawn,
+        (baseline) => {
+            const element = canvas.value
+            const current = mapping.value
+            if (!element || !current) return
+            // The image under the marks changed to one they were not painted for.
+            if (!baseline || !layer.aligned(baseline, current)) element.style.visibility = 'hidden'
+            else paintAligned()
+        },
+        { flush: 'post' },
+    )
+    watch([inputs, mapping, canvas], requestPaint, { flush: 'post' })
 
     onScopeDispose(() => {
         cancelFrame()
