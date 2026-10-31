@@ -105,7 +105,9 @@ test('Enter in Link copies the card with the link just typed, inside the press',
     await page.keyboard.down('Enter')
     await page.keyboard.down('Enter')
     await page.keyboard.up('Enter')
-    await page.waitForTimeout(200)
+    await expect.poll(async () => (await recorded(page)).writes.length).toBe(2)
+    // The repeats had their keydowns before the write that settled; nothing follows them.
+    await expect.poll(async () => (await recorded(page)).writes[1]?.size).toBeGreaterThan(0)
     expect((await recorded(page)).writes).toHaveLength(2)
 })
 
@@ -126,6 +128,36 @@ test('Copy Image is hidden without ClipboardItem; Download Image then fills its 
 test('Download Image saves the card as the title and .png, or Untitled.png', async ({ page }) => {
     await start(page)
     await openShare(page)
+    const download = page.waitForEvent('download')
+    await shareDialog(page).locator('[data-share-download]').click()
+    expect((await download).suggestedFilename()).toBe('Brain Rot.png')
+})
+
+test('the card keeps the level as it was when the dialog opened', async ({ page }) => {
+    await start(page)
+    await openShare(page)
+    const link = shareDialog(page).locator('[data-share-link]')
+    /** The preview's PNG, once it shows the card for this link. */
+    const cardFor = async (value: string) => {
+        const before = await preview(page).getAttribute('src')
+        await link.fill(value)
+        await expect(preview(page)).not.toHaveAttribute('src', before ?? '')
+        return preview(page).evaluate(async (image) => {
+            const bytes = new Uint8Array(
+                await (await fetch((image as HTMLImageElement).src)).arrayBuffer(),
+            )
+            return Array.from(bytes).join(',')
+        })
+    }
+    const first = await cardFor('https://example.com/a')
+    // Another state arrives (a peek, a step from a notice) while the dialog is open.
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        const current = history.state.value
+        history.replaceState({ ...current, levelInfo: { ...current.levelInfo, title: 'Other' } })
+    })
+    await cardFor('https://example.com/b')
+    expect(await cardFor('https://example.com/a')).toBe(first)
     const download = page.waitForEvent('download')
     await shareDialog(page).locator('[data-share-download]').click()
     expect((await download).suggestedFilename()).toBe('Brain Rot.png')
@@ -156,4 +188,119 @@ test.describe('on a phone', () => {
         const copy = await primary(page).boundingBox()
         expect(download && copy && Math.abs(download.y - copy.y) < 1).toBe(true)
     })
+})
+
+/** Makes the next `count` card encodes fail, as `toBlob` giving null does. */
+const failEncodes = (page: Page, count: number) =>
+    page.addInitScript((count) => {
+        let left = count
+        const toBlob = HTMLCanvasElement.prototype.toBlob
+        HTMLCanvasElement.prototype.toBlob = function (callback, ...rest) {
+            if (left > 0 && this.width === 1600) {
+                left--
+                setTimeout(() => callback(null), 0)
+                return
+            }
+            toBlob.call(this, callback, ...rest)
+        }
+    }, count)
+
+test('a card that fails to encode shows the file error on Download Image, and the next press renders again', async ({
+    page,
+}) => {
+    // The render on opening and the one the first press starts both fail.
+    await failEncodes(page, 2)
+    await start(page)
+    await page.evaluate(async () => {
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        const { commands } = await import('/src/editor/commands/index.ts')
+        void runCommand(commands.statistics, 'button')
+    })
+    await page.locator('[data-statistics-share]').click()
+    await expect(shareDialog(page)).toBeVisible()
+    await expect(preview(page)).toHaveCount(0)
+    await shareDialog(page).locator('[data-share-download]').click()
+    await expect(
+        page.locator('[data-notice-card], .notification', {
+            hasText: '“Brain Rot.png” could not be prepared.',
+        }),
+    ).toBeVisible()
+    const download = page.waitForEvent('download')
+    await shareDialog(page).locator('[data-share-download]').click()
+    expect((await download).suggestedFilename()).toBe('Brain Rot.png')
+    await expect(preview(page)).toBeVisible()
+})
+
+test('a card that fails to encode says so on Copy Image, and the next press copies', async ({
+    page,
+}) => {
+    await record(page)
+    await failEncodes(page, 2)
+    await start(page)
+    await page.evaluate(async () => {
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        const { commands } = await import('/src/editor/commands/index.ts')
+        void runCommand(commands.statistics, 'button')
+    })
+    await page.locator('[data-statistics-share]').click()
+    await expect(shareDialog(page)).toBeVisible()
+    await primary(page).click()
+    await expect(shareDialog(page).locator('[data-share-failure]')).toHaveText(
+        en.statistics.notCopiedImage,
+    )
+    await primary(page).click()
+    await expect.poll(async () => (await recorded(page)).writes[1]?.size).toBeGreaterThan(0)
+    await expect(
+        page.locator('.notification', { hasText: en.statistics.copiedImage }),
+    ).toBeVisible()
+})
+
+test('closing the dialog while the card renders leaves no preview URL behind', async ({ page }) => {
+    await page.addInitScript(() => {
+        const held: (() => void)[] = []
+        const urls = { created: 0, revoked: 0 }
+        Object.assign(window, { heldEncodes: held, previewUrls: urls })
+        const toBlob = HTMLCanvasElement.prototype.toBlob
+        HTMLCanvasElement.prototype.toBlob = function (callback, ...rest) {
+            if (this.width !== 1600) return toBlob.call(this, callback, ...rest)
+            held.push(() => toBlob.call(this, callback, ...rest))
+        }
+        const create = URL.createObjectURL.bind(URL)
+        const revoke = URL.revokeObjectURL.bind(URL)
+        URL.createObjectURL = (object) => {
+            urls.created++
+            return create(object)
+        }
+        URL.revokeObjectURL = (url) => {
+            urls.revoked++
+            revoke(url)
+        }
+    })
+    await start(page)
+    await page.evaluate(async () => {
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        const { commands } = await import('/src/editor/commands/index.ts')
+        void runCommand(commands.statistics, 'button')
+    })
+    await page.locator('[data-statistics-share]').click()
+    await expect(shareDialog(page)).toBeVisible()
+    const state = () =>
+        page.evaluate(() => {
+            const { heldEncodes, previewUrls } = window as unknown as {
+                heldEncodes: (() => void)[]
+                previewUrls: { created: number; revoked: number }
+            }
+            return { held: heldEncodes.length, ...previewUrls }
+        })
+    await expect.poll(async () => (await state()).held).toBe(1)
+    const before = await state()
+    await shareDialog(page).getByRole('button', { name: en.modals.close }).click()
+    await expect(shareDialog(page)).toHaveCount(0)
+    // The encode finishes after the dialog has gone.
+    await page.evaluate(() => {
+        for (const finish of (window as unknown as { heldEncodes: (() => void)[] }).heldEncodes)
+            finish()
+    })
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)))
+    expect((await state()).created).toBe(before.created)
 })

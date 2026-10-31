@@ -218,6 +218,7 @@ const share = () => {
         drawable: drawable.value,
         chosen: settings.statisticsDensityTypes,
         mode: settings.statisticsChart,
+        levelInfo: state.value.levelInfo,
         summary: copyText(),
     })
 }
@@ -482,6 +483,8 @@ const share = () => {
     @apply text-sm;
 }
 .stats-label-line.stuck {
+    /* Stuck over the plot, it is opaque to its edge. */
+    background-size: 100% 100%;
     box-shadow: var(--shadow-band);
 }
 .stats-readout {

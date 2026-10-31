@@ -23,7 +23,8 @@ const SCALE = 2
 const PAD = 16
 
 export type Rgb = readonly [number, number, number]
-export type CardTheme = { modal: Rgb; header: Rgb; fg: Rgb; dark: boolean }
+/** The theme's colours; `recess` is the cover tile's background, a CSS colour over the band. */
+export type CardTheme = { modal: Rgb; header: Rgb; fg: Rgb; recess: string; dark: boolean }
 
 export type CardInput = {
     info: { title: string; artists: string; author: string; rating?: number }
@@ -64,8 +65,8 @@ const graphemes = (text: string) => {
     const each = segmenter('grapheme')
     return each ? Array.from(each.segment(text), (part) => part.segment) : Array.from(text)
 }
-const CJK = '\\u2E80-\\u9FFF\\uAC00-\\uD7AF\\uF900-\\uFAFF\\uFF00-\\uFFEF'
-const fallbackWords = new RegExp(`[${CJK}]|[^\\s${CJK}]+|\\s+`, 'gu')
+const fallbackWords =
+    /[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]|[^\s\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]+|\s+/gu
 const words = (text: string) => {
     const each = segmenter('word')
     return each
@@ -207,10 +208,22 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
             g.fill()
         }
         g.restore()
+        // A cover that is not square is fitted and centred in its tile, as Level Info shows it.
         g.save()
         roundRect(g, x, y, coverSize, coverSize, 12)
         g.clip()
-        g.drawImage(input.cover, x, y, coverSize, coverSize)
+        g.fillStyle = theme.recess
+        g.fillRect(x, y, coverSize, coverSize)
+        const fit = coverSize / Math.max(input.cover.width, input.cover.height, 1)
+        const width = input.cover.width * fit
+        const height = input.cover.height * fit
+        g.drawImage(
+            input.cover,
+            x + (coverSize - width) / 2,
+            y + (coverSize - height) / 2,
+            width,
+            height,
+        )
         g.restore()
         g.strokeStyle = theme.dark ? 'rgb(255 255 255 / 0.15)' : 'rgb(0 0 0 / 0.12)'
         g.lineWidth = 1
@@ -304,8 +317,10 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     g.fillStyle = rgba(theme.fg)
     g.font = font(15, 700)
     g.fillText(strings.notesPerSecond, chartX, top + 15)
-    const plotTop = top + 15 + 14
-    const plotHeight = HEIGHT - top - 29 - 22 - footerHeight - PAD - 8
+    // The plot's edges on whole pixels of the 2x canvas, so its tiles and gridlines are crisp.
+    const snap = (units: number) => Math.round(units * SCALE) / SCALE
+    const plotTop = snap(top + 15 + 14)
+    const plotHeight = snap(HEIGHT - top - 29 - 22 - footerHeight - PAD - 8)
     const plotBottom = plotTop + plotHeight
     const ink = input.mode === 'rolling'
     // The key: one line per chosen category that has notes, in stacking order from the baseline.
@@ -362,7 +377,7 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
             : undefined
     if (model) {
         // The plot's origin on a whole pixel of the 2x canvas, as the dialog's on the screen.
-        const originX = Math.round(left * SCALE) / SCALE
+        const originX = snap(left)
         const drawing = drawChart(model, right - originX, plotHeight, SCALE, 3)
         g.save()
         g.translate(originX, plotTop)

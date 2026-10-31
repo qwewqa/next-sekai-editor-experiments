@@ -5,7 +5,6 @@ let keptLink = ''
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
-import { state } from '../../history'
 import { i18n } from '../../i18n'
 import {
     ROWS,
@@ -20,14 +19,16 @@ import NoteShapeIcon from '../../modals/form/NoteShapeIcon.vue'
 import type { NoteShape } from '../../modals/form/noteShapes'
 import { FileError, platform } from '../../platform'
 import { PRODUCT_NAME } from '../../product'
+import type { LevelInfo } from '../../state/levelInfo'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { notify } from '../notification'
 import SeverityIcon from '../SeverityIcon.vue'
 import { drawCard, type CardTheme, type Rgb } from './shareCard'
 import { statisticsLocale, statisticsStrings } from './text'
 
-// Share Image: the card as a PNG for a Link value, previewed as the PNG itself, then copied,
-// shared or downloaded. A press takes the card for Link as it is at that moment.
+// Share Image: the card as a PNG for a Link value, previewed as the PNG itself, then copied or
+// downloaded. A press takes the card for Link as it is at that moment. The card is drawn from
+// the statistics and Level Info as they were when the dialog opened.
 
 const props = defineProps<{
     stats: ChartStatistics
@@ -36,6 +37,8 @@ const props = defineProps<{
     drawable: boolean
     chosen: readonly Category[]
     mode: ChartMode
+    /** Level Info when the dialog opened, read with the statistics. */
+    levelInfo: LevelInfo
     /** The preview's alt text: the Copy Text summary. */
     summary: string
 }>()
@@ -54,8 +57,9 @@ const clipboard = navigator.clipboard as Clipboard | undefined
 const canCopy = typeof ClipboardItem === 'function' && typeof clipboard?.write === 'function'
 const primary = canCopy ? 'copy' : 'download'
 
-const title = computed(() => state.value.levelInfo.title.trim())
-const fileName = computed(() => `${title.value || i18n.value.save.placeholder}.png`)
+const fileName = computed(
+    () => `${props.levelInfo.title.trim() || i18n.value.save.placeholder}.png`,
+)
 
 // --- The glyphs: the dialog's own SVG, drawn as images.
 const shapes: Partial<Record<Row, NoteShape>> = {
@@ -100,7 +104,7 @@ const loadGlyphs = () =>
 
 // --- The cover, decoded from its stored bytes; none when it is absent or does not decode.
 const loadCover = async () => {
-    const ref = state.value.levelInfo.cover
+    const ref = props.levelInfo.cover
     if (!ref) return undefined
     try {
         const result = await readMediaBlob(ref)
@@ -119,6 +123,7 @@ const themeOf = (): CardTheme => {
     const modal = color('--color-modal')
     return {
         modal,
+        recess: style.getPropertyValue('--color-recess').trim(),
         header: color('--color-header'),
         fg: color('--color-fg'),
         dark: modal[0] + modal[1] + modal[2] < 3 * 128,
@@ -140,7 +145,7 @@ const render = (value: string) =>
             new Promise<Blob>((resolve, reject) => {
                 const canvas = document.createElement('canvas')
                 const strings = statisticsStrings.value
-                const levelInfo = state.value.levelInfo
+                const levelInfo = props.levelInfo
                 drawCard(canvas, {
                     info: {
                         title: levelInfo.title,
@@ -178,6 +183,7 @@ const render = (value: string) =>
                 }, 'image/png')
             }),
     )
+let open = true
 const cardFor = (): Card => {
     const value = link.value.trim()
     if (card?.link === value) return card
@@ -186,11 +192,15 @@ const cardFor = (): Card => {
     void next.promise.then(
         (blob) => {
             next.blob = blob
-            if (card !== next) return
+            // A render that finishes after a newer one started, or after the dialog closed, shows nothing.
+            if (card !== next || !open) return
             if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
             previewUrl.value = URL.createObjectURL(blob)
         },
-        () => undefined,
+        () => {
+            // A failed render is not kept: the next press renders again.
+            if (card === next) card = undefined
+        },
     )
     return next
 }
@@ -214,8 +224,13 @@ const copy = () => {
 const download = async () => {
     const name = fileName.value
     const promise = cardFor().promise
+    // A render that fails is a failed build, which the file error card names.
+    const build = () =>
+        promise.catch((error: unknown) => {
+            throw new FileError('io', String(error), undefined, 'build')
+        })
     try {
-        await platform.saveFile({ kind: 'image', suggestedName: name, build: () => promise })
+        await platform.saveFile({ kind: 'image', suggestedName: name, build })
     } catch (error) {
         if (!(error instanceof FileError)) throw error
         notify(() => fileErrorText(name, error), { card: true, severity: 'error' })
@@ -243,6 +258,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
     dialog?.removeEventListener('keydown', onKeydown, true)
     clearTimeout(timer)
+    open = false
+    card = undefined
     if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
 })
 
