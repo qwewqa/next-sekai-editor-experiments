@@ -3,13 +3,9 @@ import en from '../../src/i18n/en/index.json' with { type: 'json' }
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // Share Image: the card's size, its buttons on each kind of device, and the press flow: the
-// clipboard write and the share run within the press, for the card with the link just typed.
+// clipboard write runs within the press, for the card with the link just typed.
 
-type Recorded = {
-    writes: { active: boolean; size?: number }[]
-    shares: { active: boolean; at: number; size: number }[]
-    pressedAt: number
-}
+type Recorded = { writes: { active: boolean; size?: number }[] }
 
 const shareDialog = (page: Page) =>
     page.getByRole('dialog', { name: en.statistics.shareImageTitle, exact: true })
@@ -42,19 +38,18 @@ const openShare = async (page: Page) => {
     await expect(preview(page)).toBeVisible()
 }
 
-/** Wraps the clipboard and share calls to record when they run and what they carry. */
-const record = (page: Page, { share = false } = {}) =>
-    page.addInitScript((share) => {
-        const recorded: Recorded = { writes: [], shares: [], pressedAt: 0 }
+/** Wraps the clipboard to record when it is written and what it carries. */
+const record = (page: Page) =>
+    page.addInitScript(() => {
+        const recorded: Recorded = { writes: [] }
         ;(window as unknown as { recorded: Recorded }).recorded = recorded
-        const active = () => navigator.userActivation.isActive
-        window.addEventListener('keydown', () => (recorded.pressedAt = performance.now()), true)
-        window.addEventListener('pointerdown', () => (recorded.pressedAt = performance.now()), true)
         Object.defineProperty(navigator, 'clipboard', {
             configurable: true,
             value: {
                 write: (items: ClipboardItem[]) => {
-                    const entry: Recorded['writes'][number] = { active: active() }
+                    const entry: Recorded['writes'][number] = {
+                        active: navigator.userActivation.isActive,
+                    }
                     recorded.writes.push(entry)
                     return items[0]!.getType('image/png').then((blob) => {
                         entry.size = blob.size
@@ -63,17 +58,7 @@ const record = (page: Page, { share = false } = {}) =>
                 writeText: () => Promise.resolve(),
             },
         })
-        if (!share) return
-        navigator.canShare = () => true
-        navigator.share = (data?: ShareData) => {
-            recorded.shares.push({
-                active: active(),
-                at: performance.now(),
-                size: data?.files?.[0]?.size ?? 0,
-            })
-            return new Promise((resolve) => setTimeout(resolve, 300))
-        }
-    }, share)
+    })
 
 const recorded = (page: Page) =>
     page.evaluate(() => (window as unknown as { recorded: Recorded }).recorded)
@@ -138,13 +123,6 @@ test('Copy Image is hidden without ClipboardItem; Download Image then fills its 
     await expect(primary(page)).toHaveText(en.statistics.downloadImage)
 })
 
-test('a desktop that can share files still shows Copy Image', async ({ page }) => {
-    await record(page, { share: true })
-    await start(page)
-    await openShare(page)
-    await expect(primary(page)).toHaveText(en.statistics.copyImage)
-})
-
 test('Download Image saves the card as the title and .png, or Untitled.png', async ({ page }) => {
     await start(page)
     await openShare(page)
@@ -161,26 +139,21 @@ test('an untitled level downloads as Untitled.png', async ({ page }) => {
     expect((await download).suggestedFilename()).toBe(`${en.save.placeholder}.png`)
 })
 
-test.describe('on a touch device that shares files', () => {
+test.describe('on a phone', () => {
     test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
 
-    test('Share replaces Copy Image, shares within the press, and a double tap shares once', async ({
+    test('Copy Image and Download Image share one row, and the Web Share API is not offered', async ({
         page,
     }) => {
-        await record(page, { share: true })
+        await page.addInitScript(() => {
+            navigator.canShare = () => true
+            navigator.share = () => Promise.resolve()
+        })
         await start(page)
         await openShare(page)
-        await expect(primary(page)).toHaveText(en.statistics.share)
-        const link = shareDialog(page).locator('[data-share-link]')
-        await link.fill('https://example.com/x')
-        await primary(page).tap()
-        await primary(page).tap()
-        await expect.poll(async () => (await recorded(page)).shares.length).toBe(1)
-        await page.waitForTimeout(400)
-        const result = await recorded(page)
-        expect(result.shares).toHaveLength(1)
-        expect(result.shares[0]?.active).toBe(true)
-        expect(result.shares[0]!.at - result.pressedAt).toBeLessThan(1000)
-        expect(result.shares[0]?.size).toBeGreaterThan(0)
+        await expect(primary(page)).toHaveText(en.statistics.copyImage)
+        const download = await shareDialog(page).locator('[data-share-download]').boundingBox()
+        const copy = await primary(page).boundingBox()
+        expect(download && copy && Math.abs(download.y - copy.y) < 1).toBe(true)
     })
 })

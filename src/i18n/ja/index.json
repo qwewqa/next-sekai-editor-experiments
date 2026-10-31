@@ -2288,11 +2288,9 @@
     "shareImageTitle": "画像を共有",
     "link": "リンク",
     "copyImage": "画像をコピー",
-    "share": "共有",
     "downloadImage": "画像をダウンロード",
     "copiedImage": "画像をコピーしました",
-    "notCopiedImage": "画像をコピーできませんでした",
-    "notSharedImage": "画像を共有できませんでした"
+    "notCopiedImage": "画像をコピーできませんでした"
   },
   "conflict": {
     "exportTitle": "「{0}」が変更されました",

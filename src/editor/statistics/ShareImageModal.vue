@@ -23,7 +23,6 @@ import { PRODUCT_NAME } from '../../product'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { notify } from '../notification'
 import SeverityIcon from '../SeverityIcon.vue'
-import { isCoarsePointer } from '../workspace'
 import { drawCard, type CardTheme, type Rgb } from './shareCard'
 import { statisticsLocale, statisticsStrings } from './text'
 
@@ -47,20 +46,13 @@ const emit = defineEmits<{
 
 const formId = useId()
 const link = ref(keptLink)
-const failure = ref<'copy' | 'share'>()
+const copyFailed = ref(false)
 
-// Share on a phone or tablet that shares files; elsewhere Copy Image where the clipboard takes
-// images. Download Image is always there.
-const probeFile = new File([new Uint8Array()], 'card.png', { type: 'image/png' })
-const canShare =
-    isCoarsePointer.value &&
-    typeof navigator.share === 'function' &&
-    typeof navigator.canShare === 'function' &&
-    navigator.canShare({ files: [probeFile] })
-// Insecure origins have no clipboard object.
+// Copy Image where the clipboard takes images; Download Image always. Files are never handed to
+// the Web Share API. Insecure origins have no clipboard object.
 const clipboard = navigator.clipboard as Clipboard | undefined
 const canCopy = typeof ClipboardItem === 'function' && typeof clipboard?.write === 'function'
-const primary = canShare ? 'share' : canCopy ? 'copy' : 'download'
+const primary = canCopy ? 'copy' : 'download'
 
 const title = computed(() => state.value.levelInfo.title.trim())
 const fileName = computed(() => `${title.value || i18n.value.save.placeholder}.png`)
@@ -212,28 +204,12 @@ const onInput = () => {
 
 // --- The actions, each in its press or Enter handler.
 const copy = () => {
-    failure.value = undefined
+    copyFailed.value = false
     // No await before the write: Safari takes it only within the gesture, with a promise-valued item.
     navigator.clipboard.write([new ClipboardItem({ 'image/png': cardFor().promise })]).then(
         () => notify(() => i18n.value.statistics.copiedImage),
-        () => (failure.value = 'copy'),
+        () => (copyFailed.value = true),
     )
-}
-let sharing = false
-const share = async () => {
-    // One share at a time: a second call before the first settles would reject.
-    if (sharing) return
-    sharing = true
-    failure.value = undefined
-    try {
-        const current = cardFor()
-        const blob = current.blob ?? (await current.promise)
-        await navigator.share({ files: [new File([blob], fileName.value, { type: 'image/png' })] })
-    } catch (error) {
-        if (!(error instanceof DOMException && error.name === 'AbortError')) failure.value = 'share'
-    } finally {
-        sharing = false
-    }
 }
 const download = async () => {
     const name = fileName.value
@@ -246,8 +222,7 @@ const download = async () => {
     }
 }
 const submit = () => {
-    if (primary === 'share') void share()
-    else if (primary === 'copy') copy()
+    if (primary === 'copy') copy()
     else void download()
 }
 // A held Enter or Space repeats keydown; only the first press acts, in Link and on the buttons.
@@ -300,13 +275,9 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                 />
             </form>
             <p class="flex items-start gap-2 text-sm empty:hidden" role="status">
-                <template v-if="failure">
+                <template v-if="copyFailed">
                     <SeverityIcon severity="error" class="mt-0.5 size-4 shrink-0" />
-                    <span data-share-failure>{{
-                        failure === 'copy'
-                            ? i18n.statistics.notCopiedImage
-                            : i18n.statistics.notSharedImage
-                    }}</span>
+                    <span data-share-failure>{{ i18n.statistics.notCopiedImage }}</span>
                 </template>
             </p>
             <div ref="glyphHost" class="hidden" aria-hidden="true">
@@ -332,13 +303,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                 data-autofocus
                 :data-share-primary="primary"
             >
-                {{
-                    primary === 'share'
-                        ? i18n.statistics.share
-                        : primary === 'copy'
-                          ? i18n.statistics.copyImage
-                          : i18n.statistics.downloadImage
-                }}
+                {{ primary === 'copy' ? i18n.statistics.copyImage : i18n.statistics.downloadImage }}
             </button>
         </template>
     </BaseModal>

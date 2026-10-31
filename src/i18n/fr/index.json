@@ -2288,11 +2288,9 @@
     "shareImageTitle": "Partager l’image",
     "link": "Lien",
     "copyImage": "Copier l’image",
-    "share": "Partager",
     "downloadImage": "Télécharger l’image",
     "copiedImage": "Image copiée",
-    "notCopiedImage": "Impossible de copier l’image",
-    "notSharedImage": "Impossible de partager l’image"
+    "notCopiedImage": "Impossible de copier l’image"
   },
   "conflict": {
     "exportTitle": "« {0} » a changé",

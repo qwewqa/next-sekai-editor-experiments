@@ -2288,11 +2288,9 @@
     "shareImageTitle": "Görseli Paylaş",
     "link": "Bağlantı",
     "copyImage": "Görseli Kopyala",
-    "share": "Paylaş",
     "downloadImage": "Görseli İndir",
     "copiedImage": "Görsel kopyalandı",
-    "notCopiedImage": "Görsel kopyalanamadı",
-    "notSharedImage": "Görsel paylaşılamadı"
+    "notCopiedImage": "Görsel kopyalanamadı"
   },
   "conflict": {
     "exportTitle": "“{0}” Değişti",
