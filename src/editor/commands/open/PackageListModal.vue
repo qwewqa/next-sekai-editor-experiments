@@ -80,7 +80,7 @@ const firstAsset = computed(() => rows.value.find((row) => row.kind === 'asset')
         <div
             ref="scroller"
             v-scroll-edges
-            class="min-h-0 flex-1 overflow-y-auto p-2 focus:outline-none"
+            class="min-h-0 flex-1 overflow-y-auto p-2"
             tabindex="-1"
             data-package-list
         >
