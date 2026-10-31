@@ -330,9 +330,6 @@ const checkStuck = () => {
     stuck.value =
         lineBox.top <= edge + 0.5 && blockBox.top < edge - 0.5 && blockBox.bottom > lineBox.bottom
 }
-const onScroll = () => {
-    checkStuck()
-}
 
 let resize: ResizeObserver | undefined
 let zoom: MediaQueryList | undefined
@@ -359,8 +356,8 @@ onMounted(() => {
 watch(
     () => props.scroller,
     (element, before) => {
-        before?.removeEventListener('scroll', onScroll)
-        element?.addEventListener('scroll', onScroll, { passive: true })
+        before?.removeEventListener('scroll', checkStuck)
+        element?.addEventListener('scroll', checkStuck, { passive: true })
         if (element) resize?.observe(element)
     },
     { immediate: true },
@@ -369,7 +366,7 @@ onBeforeUnmount(() => {
     resize?.disconnect()
     zoom?.removeEventListener('change', onZoom)
     sideQuery.removeEventListener('change', onSide)
-    props.scroller?.removeEventListener('scroll', onScroll)
+    props.scroller?.removeEventListener('scroll', checkStuck)
 })
 
 // Tiles snap to device pixels from the plot's own origin, a quarter pixel past each edge, so
