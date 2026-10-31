@@ -43,7 +43,7 @@ const install = (page: Page) =>
         ])
         const log: { key: string; t: number }[] = []
         const now = () => Number(document.timeline.currentTime)
-        for (const key of ['paints', 'selectionPaints', 'annotationPaints', 'fullJobs'] as const) {
+        for (const key of ['paints', 'selectionPaints', 'changePaints', 'fullJobs'] as const) {
             let value = minimapStats[key]
             Object.defineProperty(minimapStats, key, {
                 configurable: true,
@@ -141,9 +141,9 @@ const selectAll = (page: Page) =>
 
 const counts = (page: Page) =>
     page.evaluate(() => {
-        const { paints, selectionPaints, annotationPaints, passes, fullJobs } =
+        const { paints, selectionPaints, changePaints, passes, fullJobs } =
             window.mmSelection.minimapStats
-        return { paints, selectionPaints, annotationPaints, passes, fullJobs }
+        return { paints, selectionPaints, changePaints, passes, fullJobs }
     })
 
 /** The log from here on. */
@@ -301,10 +301,10 @@ test.describe('what paints', () => {
         await settled(page)
         let after = await counts(page)
         expect(after.selectionPaints - before.selectionPaints).toBe(1)
-        expect([after.paints, after.passes, after.annotationPaints]).toEqual([
+        expect([after.paints, after.passes, after.changePaints]).toEqual([
             before.paints,
             before.passes,
-            before.annotationPaints,
+            before.changePaints,
         ])
         await expect(page.locator(selectionCanvas)).toHaveCount(1)
 
@@ -375,7 +375,7 @@ test.describe('what paints', () => {
         const paints = after.selectionPaints - start
         expect(paints).toBeGreaterThanOrEqual(1)
         expect(paints).toBeLessThanOrEqual(frames)
-        expect(after.annotationPaints).toBe(before.annotationPaints)
+        expect(after.changePaints).toBe(before.changePaints)
         expect(after.paints).toBe(before.paints)
     })
 })

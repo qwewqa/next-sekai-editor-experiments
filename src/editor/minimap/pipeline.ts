@@ -64,7 +64,7 @@ export const minimapStats = {
     /** Full-redraw slices. Specs use it to tell a running job from an idle pipeline. */
     slices: 0,
     /** The change layer's paints. */
-    annotationPaints: 0,
+    changePaints: 0,
     /** The selection layer's paints. */
     selectionPaints: 0,
     /** The range of what the front canvas shows, in seconds. */

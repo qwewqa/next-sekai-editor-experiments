@@ -16,7 +16,7 @@ export const changeTicks: MinimapLayer<readonly Place[]> = {
             const places = minimapChangePlaces.value
             return places && places.length > 0 ? places : undefined
         }),
-    counter: 'annotationPaints',
+    counter: 'changePaints',
     paint: (ctx, mapping, places) => {
         const runs: TickRun[] = []
         tickRuns(places, mapping, (top, height) => runs.push({ top, height }))

@@ -11,7 +11,7 @@ export type MinimapLayer<T> = {
     useInputs: () => Readonly<Ref<T | undefined>>
     /** Draws in CSS px; the canvas is clear. */
     paint: (ctx: CanvasRenderingContext2D, mapping: MinimapMapping, inputs: T) => void
-    counter: 'annotationPaints' | 'selectionPaints'
+    counter: 'changePaints' | 'selectionPaints'
     /**
      * Set for marks drawn on the notes: whether the content's front image is the one the marks
      * are for. They then paint only on that image, and hide while it differs.

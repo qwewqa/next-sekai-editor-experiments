@@ -346,7 +346,7 @@ test.describe('placement, command and setting', () => {
         await frames(page, 10)
         const after = await statsOf(page)
         expect(after.paints).toBe(before.paints)
-        expect(after.annotationPaints).toBe(before.annotationPaints)
+        expect(after.changePaints).toBe(before.changePaints)
         expect(after.selectionPaints).toBe(before.selectionPaints)
     })
 
@@ -770,8 +770,8 @@ test.describe('zero work', () => {
         await open(page, { size: { width: 1280, height: 800 } })
         await expect(minimapStrip(page).box).toBeVisible()
         const counts = async () => {
-            const { paints, annotationPaints, selectionPaints } = await statsOf(page)
-            return { paints, annotationPaints, selectionPaints }
+            const { paints, changePaints, selectionPaints } = await statsOf(page)
+            return { paints, changePaints, selectionPaints }
         }
         // With a selection, so its marks are shown throughout.
         const unselected = await counts()
@@ -914,7 +914,7 @@ test.describe('indicator', () => {
         expect(Math.abs(before.boxY - after.boxY - scrolled / m.row)).toBeLessThanOrEqual(1.5)
         const stats = await statsOf(page)
         expect(stats.paints).toBe(paints.paints)
-        expect(stats.annotationPaints).toBe(paints.annotationPaints)
+        expect(stats.changePaints).toBe(paints.changePaints)
     })
 
     test('playback without Follow moves the cursor and leaves the box', async ({ page }) => {
@@ -1081,7 +1081,7 @@ test.describe('indicator', () => {
             expect(await layout(), state).toEqual(before)
             const stats = await statsOf(page)
             expect(stats.paints, state).toBe(paints.paints)
-            expect(stats.annotationPaints, state).toBe(paints.annotationPaints)
+            expect(stats.changePaints, state).toBe(paints.changePaints)
         }
     })
 
@@ -1327,7 +1327,7 @@ test.describe('peek', () => {
             { label, step },
         )
 
-    /** The ticks: runs of orange rows in the annotation canvas's tick column, in CSS px. */
+    /** The ticks: runs of orange rows in the change layer's tick column, in CSS px. */
     const tickRows = (page: Page) =>
         page.evaluate(() => {
             const canvas = document.querySelector<HTMLCanvasElement>(
@@ -1528,9 +1528,9 @@ test.describe('peek', () => {
                         resize === 'narrowest' ? 24 : 160,
                     ),
                 )
-            const [strip, content, annotations] = await surfaces()
+            const [strip, content, change] = await surfaces()
             expect(content, resize).toEqual(strip)
-            expect(annotations, resize).toEqual(strip)
+            expect(change, resize).toEqual(strip)
             await expect.poll(async () => near(await tickRows(page), 17), resize).toBe(true)
             expect(
                 (await tickRows(page)).every(([top]) => top >= 13),
@@ -1591,7 +1591,7 @@ test.describe('peek', () => {
             canvas.dispatchEvent(new Event('contextrestored'))
         })
         await expect.poll(async () => (await tickRows(page)).length).toBe(2)
-        expect((await statsOf(page)).annotationPaints).toBe(before.annotationPaints + 1)
+        expect((await statsOf(page)).changePaints).toBe(before.changePaints + 1)
         await act(page, 'leavePeek')
     })
 
@@ -1631,7 +1631,7 @@ test.describe('peek', () => {
         await expect.poll(() => railAt(page, 3.5)).toBe(true)
         const after = await statsOf(page)
         expect(after.selectionPaints).toBeGreaterThan(before.selectionPaints)
-        expect(after.annotationPaints).toBe(before.annotationPaints)
+        expect(after.changePaints).toBe(before.changePaints)
 
         await act(page, 'leavePeek')
         await expect.poll(() => isPeeking(page)).toBe(false)
