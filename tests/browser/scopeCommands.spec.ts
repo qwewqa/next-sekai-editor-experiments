@@ -974,3 +974,32 @@ test('a peek of a step from before the focused group existed leaves the focus an
     expect(result.inPeek).toEqual([true, 4, 4])
     expect(result.after).toEqual([4, 4])
 })
+
+test('a peek of a step from before dynamic stages were on leaves an event tool chosen', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { history, nextTick, appImport, historySteps } = window.editorTest
+        const [{ switchToolTo }, { toolName }, peek, { flusher }] = await Promise.all([
+            appImport<typeof import('../../src/editor/tools')>('/src/editor/tools/index.ts'),
+            appImport<typeof import('../../src/editor/tools/state')>('/src/editor/tools/state.ts'),
+            appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts'),
+            appImport<typeof import('../../src/local/storing')>('/src/local/storing.ts'),
+        ])
+        // A step without dynamic stages, then one with them, and a stage event tool.
+        const state = history.state.value
+        history.pushState(historySteps.noteAdd(1), { ...state, isDynamicStages: false })
+        history.pushState(historySteps.noteAdd(1), { ...state, isDynamicStages: true })
+        await flusher!.flush({ strict: true })
+        switchToolTo('stageMaskEvent')
+        await nextTick()
+        const before = flusher!.newestSeq(flusher!.session!) - 1
+        await peek.peekEntry(peek.entryKey(flusher!.session!.id, before))
+        await nextTick()
+        const peeked = !history.state.value.isDynamicStages
+        peek.leavePeek()
+        await nextTick()
+        return { peeked, tool: toolName.value }
+    })
+    expect(result).toEqual({ peeked: true, tool: 'stageMaskEvent' })
+})

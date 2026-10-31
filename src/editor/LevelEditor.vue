@@ -210,7 +210,8 @@ clearMissing(
     () => (brushProperties.value.stageId = undefined),
 )
 
-// Event tools need dynamic stages, which undo can turn off; their events would not save.
+// Event tools need dynamic stages, which undo can turn off; their events would not save. Now's
+// chart decides: a peek of an older step never switches the tool.
 const eventTools = new Set<ToolName>([
     'cameraEvent',
     'stageMaskEvent',
@@ -218,9 +219,12 @@ const eventTools = new Set<ToolName>([
     'stageStyleEvent',
     'stageTransformEvent',
 ])
-watch(isDynamicStages, (value) => {
-    if (!value && eventTools.has(toolName.value)) switchToolTo('select')
-})
+watch(
+    () => liveState.value.isDynamicStages,
+    (value) => {
+        if (!value && eventTools.has(toolName.value)) switchToolTo('select')
+    },
+)
 
 // A scope label runs its manage command, as the toolbar tool and its hotkey do.
 const onStatusChip = (event: MouseEvent, item: 'group' | 'stage') => {
