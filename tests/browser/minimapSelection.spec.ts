@@ -29,8 +29,15 @@ const open = async (page: Page, chart: Chart = 'notes') => {
 /** Records each paint counter's increments with the frame's time, and the selection canvas's hiding. */
 const install = (page: Page) =>
     page.evaluate(async () => {
-        const { appImport, history } = window.editorTest
-        const [{ minimapStats }, { createMapping, capScale }, { beatToTime }] = await Promise.all([
+        const { appImport, history, historySteps } = window.editorTest
+        const [
+            { minimapStats },
+            { createMapping, capScale },
+            { beatToTime },
+            { createTransaction },
+            slideNotes,
+            bpm,
+        ] = await Promise.all([
             appImport<typeof import('../../src/editor/minimap/pipeline')>(
                 '/src/editor/minimap/pipeline.ts',
             ),
@@ -39,6 +46,13 @@ const install = (page: Page) =>
             ),
             appImport<typeof import('../../src/state/integrals/bpms')>(
                 '/src/state/integrals/bpms.ts',
+            ),
+            appImport<typeof import('../../src/state/transaction')>('/src/state/transaction.ts'),
+            appImport<typeof import('../../src/state/mutations/slides/note')>(
+                '/src/state/mutations/slides/note.ts',
+            ),
+            appImport<typeof import('../../src/state/mutations/bpm')>(
+                '/src/state/mutations/bpm.ts',
             ),
         ])
         const log: { key: string; t: number }[] = []
@@ -72,6 +86,7 @@ const install = (page: Page) =>
             attributeFilter: ['style'],
         })
         const frame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve))
+        const notes = () => [...history.state.value.store.slides.note.values()].flat()
         window.mmSelection = {
             minimapStats,
             log,
@@ -83,9 +98,45 @@ const install = (page: Page) =>
             select: (entities) => {
                 history.replaceState({ ...history.state.value, selectedEntities: [...entities] })
             },
-            notes: () => [...history.state.value.store.slides.note.values()].flat(),
+            notes,
+            commit(edit) {
+                const transaction = createTransaction(history.state.value)
+                let selection = history.state.value.selectedEntities
+                if (edit === 'moveAll')
+                    selection = notes().flatMap((note) =>
+                        slideNotes.replaceNote(transaction, note, {
+                            ...note,
+                            beat: note.beat + 0.25,
+                        }),
+                    )
+                else if (edit === 'moveFirst') {
+                    const note = notes()[0]!
+                    selection = slideNotes.replaceNote(transaction, note, {
+                        ...note,
+                        beat: note.beat + 0.25,
+                    })
+                } else if (edit === 'shiftMiddle') {
+                    // A note in the middle, so the range keeps its end.
+                    const all = notes().sort((a, b) => a.beat - b.beat)
+                    const note = all[all.length >> 1]!
+                    slideNotes.replaceNote(transaction, note, { ...note, left: note.left + 1 })
+                } else if (edit === 'meter') {
+                    // The chart's BPM change at beat 12, with a meter of 3.
+                    const change = [...window.editorTest.store.getAllEntities()].find(
+                        (entity) => entity.type === 'bpm' && entity.beat === 12,
+                    ) as import('../../src/state/entities/bpm').BpmEntity
+                    bpm.replaceBpm(transaction, change, { beat: 12, bpm: change.bpm, meter: 3 })
+                } else bpm.addBpm(transaction, { beat: edit.tempoAt, bpm: edit.bpm, meter: 4 })
+                history.pushState(historySteps.noteAdd(1), transaction.commit(selection))
+            },
         }
     })
+
+/** One Timeline step: notes moved later, a note moved sideways, a meter, or a BPM change. */
+type Edit = 'moveAll' | 'moveFirst' | 'shiftMiddle' | 'meter' | { tempoAt: number; bpm: number }
+
+const commitEdit = (page: Page, edit: Edit) =>
+    page.evaluate((edit) => window.mmSelection.commit(edit), edit)
 
 declare global {
     interface Window {
@@ -99,6 +150,7 @@ declare global {
             beatToTime: (typeof import('../../src/state/integrals/bpms'))['beatToTime']
             select: (entities: readonly import('../../src/state/entities').Entity[]) => void
             notes: () => import('../../src/state/entities/slides/note').NoteEntity[]
+            commit: (edit: Edit) => void
         }
         /** The context-loss test's canvases and steps. */
         mmLoss: {
@@ -387,24 +439,8 @@ test.describe('the gate', () => {
         await open(page)
         await selectAll(page)
         await settled(page)
-        // Move every note a beat later in one step, then Undo it.
-        await page.evaluate(async () => {
-            const { appImport, historySteps } = window.editorTest
-            const { history, notes } = window.mmSelection
-            const [{ createTransaction }, slideNotes] = await Promise.all([
-                appImport<typeof import('../../src/state/transaction')>(
-                    '/src/state/transaction.ts',
-                ),
-                appImport<typeof import('../../src/state/mutations/slides/note')>(
-                    '/src/state/mutations/slides/note.ts',
-                ),
-            ])
-            const transaction = createTransaction(history.state.value)
-            const moved = notes().flatMap((note) =>
-                slideNotes.replaceNote(transaction, note, { ...note, beat: note.beat + 0.25 }),
-            )
-            history.pushState(historySteps.noteAdd(1), transaction.commit(moved))
-        })
+        // Move every note a quarter beat later in one step, then Undo it.
+        await commitEdit(page, 'moveAll')
         await settled(page)
         const from = await mark(page)
         await page.evaluate(() => window.mmSelection.history.undoState())
@@ -420,24 +456,7 @@ test.describe('the gate', () => {
         await selectAll(page)
         await settled(page)
         const from = await mark(page)
-        await page.evaluate(async () => {
-            const { appImport, historySteps } = window.editorTest
-            const { history } = window.mmSelection
-            const [{ createTransaction }, bpm] = await Promise.all([
-                appImport<typeof import('../../src/state/transaction')>(
-                    '/src/state/transaction.ts',
-                ),
-                appImport<typeof import('../../src/state/mutations/bpm')>(
-                    '/src/state/mutations/bpm.ts',
-                ),
-            ])
-            const transaction = createTransaction(history.state.value)
-            bpm.addBpm(transaction, { beat: 6, bpm: 60, meter: 4 })
-            history.pushState(
-                historySteps.noteAdd(1),
-                transaction.commit(history.state.value.selectedEntities),
-            )
-        })
+        await commitEdit(page, { tempoAt: 6, bpm: 60 })
         await settled(page)
         const entries = await logSince(page, from)
         expect(entries.some((entry) => entry.key === 'fullJobs')).toBe(true)
@@ -458,28 +477,7 @@ test.describe('the gate', () => {
             await page.evaluate(() => window.mmSelection.select(window.mmSelection.notes()))
             await settled(page)
             const from = await mark(page)
-            await page.evaluate(async () => {
-                const { appImport, historySteps } = window.editorTest
-                const { history } = window.mmSelection
-                const [{ createTransaction }, bpm] = await Promise.all([
-                    appImport<typeof import('../../src/state/transaction')>(
-                        '/src/state/transaction.ts',
-                    ),
-                    appImport<typeof import('../../src/state/mutations/bpm')>(
-                        '/src/state/mutations/bpm.ts',
-                    ),
-                ])
-                const transaction = createTransaction(history.state.value)
-                // The chart's BPM change at beat 12, with a meter of 3.
-                const change = [...window.editorTest.store.getAllEntities()].find(
-                    (entity) => entity.type === 'bpm' && entity.beat === 12,
-                ) as import('../../src/state/entities/bpm').BpmEntity
-                bpm.replaceBpm(transaction, change, { beat: 12, bpm: change.bpm, meter: 3 })
-                history.pushState(
-                    historySteps.noteAdd(1),
-                    transaction.commit(history.state.value.selectedEntities),
-                )
-            })
+            await commitEdit(page, 'meter')
             await settled(page)
             const entries = await logSince(page, from)
             expect(entries.filter((entry) => entry.key === 'selectionPaints')).toHaveLength(1)
@@ -580,27 +578,8 @@ test.describe('the gate', () => {
         await settled(page)
         await selectAll(page)
         await settled(page)
-        // An edit to Undo: a note in the middle moves, so the range keeps its end.
-        await page.evaluate(async () => {
-            const { appImport, historySteps } = window.editorTest
-            const { history, notes } = window.mmSelection
-            const [{ createTransaction }, slideNotes] = await Promise.all([
-                appImport<typeof import('../../src/state/transaction')>(
-                    '/src/state/transaction.ts',
-                ),
-                appImport<typeof import('../../src/state/mutations/slides/note')>(
-                    '/src/state/mutations/slides/note.ts',
-                ),
-            ])
-            const all = notes().sort((a, b) => a.beat - b.beat)
-            const note = all[all.length >> 1]!
-            const transaction = createTransaction(history.state.value)
-            slideNotes.replaceNote(transaction, note, { ...note, left: note.left + 1 })
-            history.pushState(
-                historySteps.noteAdd(1),
-                transaction.commit(history.state.value.selectedEntities),
-            )
-        })
+        // An edit to Undo.
+        await commitEdit(page, 'shiftMiddle')
         await settled(page)
         const cdp = await page.context().newCDPSession(page)
         await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
@@ -735,20 +714,8 @@ test.describe('lifetime', () => {
         await settled(page)
         await selectAll(page)
         await settled(page)
-        const found = await page.evaluate(async () => {
-            const { appImport, historySteps } = window.editorTest
-            const { frame, minimapStats, history, notes } = window.mmSelection
-            const [{ createTransaction }, slideNotes, bpm] = await Promise.all([
-                appImport<typeof import('../../src/state/transaction')>(
-                    '/src/state/transaction.ts',
-                ),
-                appImport<typeof import('../../src/state/mutations/slides/note')>(
-                    '/src/state/mutations/slides/note.ts',
-                ),
-                appImport<typeof import('../../src/state/mutations/bpm')>(
-                    '/src/state/mutations/bpm.ts',
-                ),
-            ])
+        const found = await page.evaluate(() => {
+            const { frame, minimapStats, commit } = window.mmSelection
             const front = document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')!
             const back = window.mmLoss.created.find(
                 (canvas) =>
@@ -772,19 +739,8 @@ test.describe('lifetime', () => {
                     this.canvas(name).dispatchEvent(new Event('contextrestored'))
                 },
                 edit() {
-                    const transaction = createTransaction(history.state.value)
-                    const note = notes()[0]!
-                    const moved = slideNotes.replaceNote(transaction, note, {
-                        ...note,
-                        beat: note.beat + 0.25,
-                    })
-                    history.pushState(historySteps.noteAdd(1), transaction.commit(moved))
-                    const tempo = createTransaction(history.state.value)
-                    bpm.addBpm(tempo, { beat: (beat += 0.5), bpm: 90, meter: 4 })
-                    history.pushState(
-                        historySteps.noteAdd(1),
-                        tempo.commit(history.state.value.selectedEntities),
-                    )
+                    commit('moveFirst')
+                    commit({ tempoAt: (beat += 0.5), bpm: 90 })
                 },
                 async stopped(count) {
                     const work = () =>
