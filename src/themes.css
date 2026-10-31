@@ -58,7 +58,7 @@
     --shadow-band: 0 1px 0 rgb(68 68 102 / 0.15), 0 6px 8px -6px rgb(68 68 102 / 0.35);
     --dock-edge: rgb(0 0 0 / 0.3);
     --swatch-edge: transparent;
-    /* An inset outline over a cover, so one of the modal's own colour keeps its edge. */
+    /* Inset outline on the Level Info cover, which can match the modal's colour. */
     --cover-edge: rgb(0 0 0 / 0.12);
 }
 

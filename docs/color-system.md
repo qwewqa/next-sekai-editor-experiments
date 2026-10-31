@@ -9,7 +9,7 @@ The roles, tokens and control recipes behind the editor's UI colour, and the rul
 
 ## 1. In one paragraph
 
-Mint keeps one meaning: **something is on** (a switch, the tool in use, a mode in force, rows checked for an action, and the current marker on the dark chrome). **The primary action is ink:** indigo in light and periwinkle in dark, so action and on differ in lightness as well as hue. **Destructive is red in both themes:** a filled red for the action a destructive dialog exists for, and a quiet red label when it is offered beside a safe default. **Three elevations tell the state:** raised is pressable, flat is on, and sunk is being pressed. **A press is one step beyond hover:** the face takes one tone, the ink strengthens, it sinks, and a raised control keeps its mint glow, so a tap always shows and never looks like on or like disabled. **Focus is one rule:** a 2 px ring drawn 2 px inside the face, in the face's own ink. Warning and info are tokens with their glyphs. The neutrals, the surfaces, the white raised pills, the hover glow and the quick toast keep their v0.5.22 look.
+Mint keeps one meaning: **something is on** (a switch, the tool in use, a mode in force, rows checked for an action, and the current marker on the dark chrome). **The primary action is ink:** indigo in light and periwinkle in dark, so action and on differ in lightness as well as hue. **Destructive is red in both themes:** a filled red for the action a destructive dialog exists for, and a quiet red label when it is offered beside a safe default. **Three elevations tell the state:** raised is pressable, flat is on, and sunk is being pressed. **A press is one step beyond hover:** the face takes one tone, the ink strengthens, it sinks, and a raised control keeps its mint glow, so a tap always shows and never looks like on or like disabled. **Focus is one rule:** a 2 px ring drawn 2 px inside the face, in the face's own ink. Warning and info are tokens with their glyphs. The neutrals, the surfaces, the white raised pills, the hover glow and the quick toast have not been retuned since v0.5.22.
 
 ---
 
@@ -91,7 +91,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 15. **A token retune lands with every consumer of that token.** When `selected` is retuned, for example, the ManagerRow tint that uses it is adjusted in the same change.
 
-16. **Keep the feel.** The palette stays seven hues. Surfaces, `accent` and `danger` change only in a change that sets out to retune them, with every consumer (principle 15).
+16. **Keep the feel.** The palette stays seven hues. A change to surfaces, `accent` or `danger` is a retune and lands with every consumer (principle 15).
 
 17. **Forced colours: basic function only** (low priority). The recipes keep the transparent resting outline that high contrast paints as an edge, and thicken focus to 4 px there. No other work.
 
