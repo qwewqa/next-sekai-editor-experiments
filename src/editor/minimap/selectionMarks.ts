@@ -7,7 +7,7 @@ import { beatToTime, isSameTempo, type BpmIntegral } from '../../state/integrals
 import { SELECTION_COLOR } from '../../utils/colors'
 import type { ComposedLayout } from '../composed'
 import { getComposedLayout } from '../composedView'
-import type { MinimapLayer } from './annotations'
+import type { MinimapLayer } from './layers'
 import { MAX_BACKING_HEIGHT, type MinimapMapping } from './mapping'
 import { FAKE_FACTOR, noteRect } from './paint'
 import { sameGeometry, type Baseline } from './pipeline'

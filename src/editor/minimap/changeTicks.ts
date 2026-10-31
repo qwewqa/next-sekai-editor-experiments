@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import { CHANGE_COLOR } from '../canvas/changes'
 import type { Place } from '../history/changeStops'
 import { minimapChangePlaces } from '../history/changes'
-import type { MinimapLayer } from './annotations'
+import type { MinimapLayer } from './layers'
 import { HAIRLINE_ALPHA, TICK_WIDTH, hairlineRuns, tickRuns, type TickRun } from './tickRuns'
 
 /**

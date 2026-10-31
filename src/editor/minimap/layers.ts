@@ -98,11 +98,20 @@ export const useMinimapLayer = <T>(
         frame = undefined
     }
 
+    /** An ungated paint, whenever there is something to draw. */
+    const paintPlain = () => {
+        const element = canvas.value
+        const current = mapping.value
+        const value = inputs.value
+        if (element && current && value !== undefined) draw(element, current, value)
+    }
+
     const requestPaint = () => {
         if (frame !== undefined) return
         frame = requestAnimationFrame(() => {
             frame = undefined
-            paintAligned()
+            if (layer.aligned) paintAligned()
+            else paintPlain()
         })
     }
 
@@ -147,13 +156,7 @@ export const useMinimapLayer = <T>(
         )
         watch([inputs, mapping, canvas], requestPaint, { flush: 'post' })
     } else {
-        watch(
-            [inputs, mapping, canvas],
-            ([value, current, element]) => {
-                if (element && current && value !== undefined) draw(element, current, value)
-            },
-            { flush: 'post' },
-        )
+        watch([inputs, mapping, canvas], paintPlain, { flush: 'post' })
     }
 
     onScopeDispose(() => {
