@@ -58,6 +58,8 @@
     --shadow-band: 0 1px 0 rgb(68 68 102 / 0.15), 0 6px 8px -6px rgb(68 68 102 / 0.35);
     --dock-edge: rgb(0 0 0 / 0.3);
     --swatch-edge: transparent;
+    /* An inset outline over a cover, so one of the modal's own colour keeps its edge. */
+    --cover-edge: rgb(0 0 0 / 0.12);
 }
 
 /* Surfaces step up from the chart as in light: dark chrome, panels, then bands and popups, then
@@ -105,6 +107,7 @@
     --shadow-band: 0 1px 0 rgb(0 0 0 / 0.3), 0 6px 8px -6px rgb(0 0 0 / 0.5);
     --dock-edge: rgb(255 255 255 / 0.08);
     --swatch-edge: rgb(255 255 255 / 0.45);
+    --cover-edge: rgb(255 255 255 / 0.15);
     /* Preset numbers stay dark on light note bodies; light inherits the surface's ink. */
     --preset-ink: rgb(68 68 102);
 }

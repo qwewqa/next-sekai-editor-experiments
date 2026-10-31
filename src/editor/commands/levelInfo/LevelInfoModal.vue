@@ -298,7 +298,8 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                 >
                     <template v-if="draft.cover" #lead>
                         <div
-                            class="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-button text-center text-sm text-fg/80 shadow-md"
+                            class="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-xl text-center text-sm text-fg/80 shadow-md"
+                            :class="cover.status.value === 'ready' ? 'bg-recess' : 'bg-button'"
                             data-level-info-cover-tile
                         >
                             <img
@@ -311,6 +312,10 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                             <span v-else-if="cover.status.value === 'absent'" class="px-2">{{
                                 i18n.levelInfo.notLoaded
                             }}</span>
+                            <span
+                                class="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-[--cover-edge]"
+                                aria-hidden="true"
+                            ></span>
                         </div>
                     </template>
                     <button
