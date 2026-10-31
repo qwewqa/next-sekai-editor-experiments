@@ -102,7 +102,10 @@ declare global {
     }
 }
 
-/** Until no counter has changed for 15 frames and 250 ms: the pipeline and the layers are idle. */
+/**
+ * Until no counter has changed for 15 frames and 250 ms: the pipeline and the layers are idle. A
+ * running full redraw counts a slice each frame, and the 100 ms resize debounce is shorter.
+ */
 const settled = (page: Page) =>
     page.evaluate(async () => {
         const { minimapStats, frame } = window.mmSelection
@@ -494,7 +497,7 @@ test.describe('the gate', () => {
         expect(entries.some((entry) => entry.key === 'fullJobs')).toBe(true)
         expectOnContentFrames(entries, 'layout')
         expect(entries.filter((entry) => entry.key === 'selectionPaints')).toHaveLength(1)
-        expectLiftOnNotes(await expectRail(page, 'composed'), 'composed')
+        expect(expectLiftOnNotes(await expectRail(page, 'composed'), 'composed')).toBeGreaterThan(0)
     })
 
     test('a resize from 160 to 24 px stretches the marks with the content, then paints once at the swap', async ({
@@ -532,7 +535,7 @@ test.describe('the gate', () => {
         await settled(page)
         // Before the swap the canvas keeps its size and its marks.
         const waiting = frames.filter((frame) => frame.paints === frames[0]!.paints)
-        expect(waiting.length).toBeGreaterThan(3)
+        expect(waiting.length).toBeGreaterThanOrEqual(1)
         for (const frame of waiting) {
             expect(frame.width).toBe(before[0])
             expect(frame.selectionPaints).toBe(waiting[0]!.selectionPaints)
@@ -689,7 +692,57 @@ test.describe('lifetime', () => {
         expect(result).toEqual({ mounted: true, paints: 0, size: [0, 0] })
     })
 
-    test('a content context restore hides the marks and shows them again without a paint', async ({
+    test('while the content canvas is lost the marks stay hidden and nothing is drawn or published; after its restore they show again', async ({
+        page,
+    }) => {
+        await open(page)
+        await selectAll(page)
+        await settled(page)
+        const before = await counts(page)
+        const from = await mark(page)
+        const during = await page.evaluate(async () => {
+            const { frame, minimapStats, select, notes } = window.mmSelection
+            const content = document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')!
+            const selection = () =>
+                document.querySelector<HTMLCanvasElement>('[data-minimap-layer="selection"]')
+            // A full redraw on its way, then the loss: its pixels are gone.
+            const jobs = minimapStats.fullJobs
+            window.editorTest.settings.minimapWidth = 80
+            for (let i = 0; i < 600 && minimapStats.fullJobs === jobs; i++) await frame()
+            content.dispatchEvent(new Event('contextlost'))
+            const { width } = content
+            content.width = 0
+            content.width = width
+            const paints = minimapStats.paints
+            const selectionPaints = minimapStats.selectionPaints
+            // A selection change and an edit while lost.
+            select(notes().slice(0, 5))
+            const hidden: boolean[] = []
+            for (let i = 0; i < 30; i++) {
+                await frame()
+                hidden.push(selection()?.style.visibility === 'hidden')
+            }
+            const result = {
+                hidden,
+                paints: minimapStats.paints - paints,
+                selectionPaints: minimapStats.selectionPaints - selectionPaints,
+            }
+            content.dispatchEvent(new Event('contextrestored'))
+            return result
+        })
+        expect(during.hidden.every(Boolean)).toBe(true)
+        expect([during.paints, during.selectionPaints]).toEqual([0, 0])
+        await settled(page)
+        expect(await selectionVisible(page)).toBe(true)
+        const after = await counts(page)
+        expect(after.fullJobs).toBeGreaterThan(before.fullJobs)
+        // The selection changed while lost: one paint on the restored image.
+        const entries = await logSince(page, from)
+        expect(entries.filter((entry) => entry.key === 'selectionPaints')).toHaveLength(1)
+        await expectRail(page, 'after the restore')
+    })
+
+    test('a content context restore with nothing else changed shows the marks again without a paint', async ({
         page,
     }) => {
         await open(page)

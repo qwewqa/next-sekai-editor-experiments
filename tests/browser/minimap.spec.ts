@@ -247,7 +247,7 @@ const setViewTime = (page: Page, time: number) =>
 const selectedCount = (page: Page) =>
     page.evaluate(() => window.editorTest.history.state.value.selectedEntities.length)
 
-const selectAll = (page: Page) =>
+const selectTwoNotes = (page: Page) =>
     page.evaluate(() => {
         const { history } = window.editorTest
         const notes = [...history.state.value.store.slides.note.values()].flat()
@@ -290,7 +290,7 @@ test.describe('placement, command and setting', () => {
         await toolbar(page).getByTitle('Jump to Start', { exact: true }).hover()
         await toolbar(page).getByTitle('Minimap', { exact: true }).click()
         await expect(el).toHaveCount(0)
-        // It keeps the group's face, and the tool has no pressed state.
+        // It keeps the group's face, and the tool has no dragging state.
         await expect(toolbar(page).getByTitle('Jump to Start', { exact: true })).toHaveCount(1)
 
         // A bound key.
@@ -340,7 +340,7 @@ test.describe('placement, command and setting', () => {
         await open(page, { minimap: false })
         await expect(page.locator('[data-minimap]')).toHaveCount(0)
         const before = await statsOf(page)
-        await selectAll(page)
+        await selectTwoNotes(page)
         await page.keyboard.press('Delete')
         await settle(page)
         await frames(page, 10)
@@ -610,7 +610,7 @@ test.describe('mouse', () => {
     })
 
     test('Escape mid-drag restores the view and keeps the selection', async ({ page }) => {
-        await selectAll(page)
+        await selectTwoNotes(page)
         expect(await selectedCount(page)).toBe(2)
         const strip = minimapStrip(page)
         const m = await strip.metrics()
@@ -632,7 +632,7 @@ test.describe('mouse', () => {
     })
 
     test('leaving the app mid-drag ends the press', async ({ page }) => {
-        await selectAll(page)
+        await selectTwoNotes(page)
         const strip = minimapStrip(page)
         const m = await strip.metrics()
         const box = (await strip.box.boundingBox())!
@@ -652,7 +652,7 @@ test.describe('mouse', () => {
 
     test('unmounting mid-drag leaves Escape to Deselect', async ({ page }) => {
         await bindKey(page, 'l')
-        await selectAll(page)
+        await selectTwoNotes(page)
         const strip = minimapStrip(page)
         const m = await strip.metrics()
         const box = (await strip.box.boundingBox())!
@@ -769,14 +769,16 @@ test.describe('zero work', () => {
     test('scrolling, playback with Follow and a held note drag paint nothing', async ({ page }) => {
         await open(page, { size: { width: 1280, height: 800 } })
         await expect(minimapStrip(page).box).toBeVisible()
-        // With a selection, so its marks are shown throughout.
-        await selectAll(page)
-        await frames(page, 10)
-        await expect(page.locator('[data-minimap-layer="selection"]')).toHaveCount(1)
         const counts = async () => {
             const { paints, annotationPaints, selectionPaints } = await statsOf(page)
             return { paints, annotationPaints, selectionPaints }
         }
+        // With a selection, so its marks are shown throughout.
+        const unselected = await counts()
+        await selectTwoNotes(page)
+        await expect
+            .poll(async () => (await counts()).selectionPaints)
+            .toBe(unselected.selectionPaints + 1)
         let start = await counts()
 
         // The wheel over the chart.
@@ -808,15 +810,30 @@ test.describe('zero work', () => {
                 .find((note) => note.beat === 5)!
             return point(note.left + note.size / 2, note.beat)
         })
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            history.replaceState({ ...history.state.value, selectedEntities: [] })
+        })
+        await settle(page)
+        start = await counts()
         await page.mouse.move(point.x, point.y)
         await page.mouse.down()
-        // The press selects the note: its marks paint once, and the hold paints nothing more.
-        await frames(page, 10)
-        start = await counts()
-        for (let i = 1; i <= 10; i++) await page.mouse.move(point.x + 3 * i, point.y - 3 * i)
+        // The drag starts past 20 px and selects the note: its marks paint once, and the hold
+        // paints nothing more.
+        for (let i = 1; i <= 6; i++) await page.mouse.move(point.x + 3 * i, point.y - 3 * i)
+        await expect
+            .poll(async () => (await counts()).selectionPaints)
+            .toBe(start.selectionPaints + 1)
+        const dragging = await counts()
+        expect(dragging.paints).toBe(start.paints)
+        for (let i = 7; i <= 10; i++) await page.mouse.move(point.x + 3 * i, point.y - 3 * i)
         await frames(page, 60)
-        expect(await counts()).toEqual(start)
+        expect(await counts()).toEqual(dragging)
+        // The drop is one paint, with the content's.
         await page.mouse.up()
+        await expect.poll(async () => (await counts()).paints).toBeGreaterThan(dragging.paints)
+        await frames(page, 10)
+        expect((await counts()).selectionPaints).toBe(dragging.selectionPaints + 1)
     })
 })
 
@@ -1524,6 +1541,51 @@ test.describe('peek', () => {
         await act(page, 'leavePeek')
     })
 
+    /** Whether the selection layer shows: not hidden, with cyan in its rail's middle column. */
+    const selectionShown = (page: Page) =>
+        page.evaluate(() => {
+            const canvas = document.querySelector<HTMLCanvasElement>(
+                '[data-minimap-layer="selection"]',
+            )
+            if (!canvas || canvas.style.visibility === 'hidden') return false
+            const x = Math.floor(canvas.width - (2.5 * canvas.width) / canvas.clientWidth)
+            const { data } = canvas.getContext('2d')!.getImageData(x, 0, 1, canvas.height)
+            for (let i = 0; i < data.length; i += 4)
+                if (
+                    data[i + 3]! > 200 &&
+                    data[i]! < 160 &&
+                    data[i + 1]! > 180 &&
+                    data[i + 2]! > 180
+                )
+                    return true
+            return false
+        })
+
+    test("History's ticks come back when their own canvas's context is restored", async ({
+        page,
+    }) => {
+        const first = await newestSeq(page)
+        await pushStep(page, 'Moved 1 note', { kind: 'move', from: 5, to: 100 })
+        await expect.poll(() => newestSeq(page)).toBe(first + 1)
+        await peekRow(page, 'Moved 1 note')
+        await expect.poll(async () => (await tickRows(page)).length).toBe(2)
+        const before = await statsOf(page)
+        await page.evaluate(() => {
+            const canvas = document.querySelector<HTMLCanvasElement>(
+                '[data-minimap-layer="change"]',
+            )!
+            canvas.dispatchEvent(new Event('contextlost'))
+            // The lost context's pixels are gone.
+            const { width } = canvas
+            canvas.width = 0
+            canvas.width = width
+            canvas.dispatchEvent(new Event('contextrestored'))
+        })
+        await expect.poll(async () => (await tickRows(page)).length).toBe(2)
+        expect((await statsOf(page)).annotationPaints).toBe(before.annotationPaints + 1)
+        await act(page, 'leavePeek')
+    })
+
     test("Now's selection marks clear in a peek, a tap there marks the peek's own without a tick paint, and Back to Now restores Now's", async ({
         page,
     }) => {
@@ -1556,7 +1618,7 @@ test.describe('peek', () => {
         await page.mouse.click(point.x, point.y)
         await expect(selection).toHaveCount(1)
         expect(await selectedCount(page)).toBe(1)
-        await frames(page, 10)
+        await expect.poll(() => selectionShown(page)).toBe(true)
         const after = await statsOf(page)
         expect(after.selectionPaints).toBeGreaterThan(before.selectionPaints)
         expect(after.annotationPaints).toBe(before.annotationPaints)
@@ -1564,6 +1626,7 @@ test.describe('peek', () => {
         await act(page, 'leavePeek')
         await expect.poll(() => isPeeking(page)).toBe(false)
         await expect(selection).toHaveCount(1)
+        await expect.poll(() => selectionShown(page)).toBe(true)
         expect(
             await page.evaluate(() =>
                 window.editorTest.history.state.value.selectedEntities.map((entity) => entity.beat),
