@@ -336,24 +336,21 @@ export const curveSamples = (layers: readonly Times[], grid: Grid): Samples => {
         ...grid,
         layers: layers.map((times) => {
             const arrays = segments.map(([start, end]) => new Float64Array(end - start + 1))
-            const put = (bin: number, weight: number) => {
-                const k = segmentOf(bin)
-                const [start, end] = segments[k] ?? [0, -1]
-                const array = arrays[k]
-                if (!array) return
-                for (let j = -REACH; j <= REACH; j++) {
-                    const index = bin + j
-                    if (index >= start && index <= end)
-                        array[index - start] =
-                            (array[index - start] ?? 0) + weight * (TAPS[j + REACH] ?? 0)
-                }
+            // Every chosen time is a grid time, so its taps and its split lie inside one segment.
+            const put = (array: Float64Array, first: number, weight: number) => {
+                for (let j = 0; j < TAPS.length; j++)
+                    array[first + j] = (array[first + j] ?? 0) + weight * (TAPS[j] ?? 0)
             }
             for (const time of times) {
                 const u = (time - g0) / SAMPLE
                 const bin = Math.floor(u)
                 const fraction = u - bin
-                put(bin, 1 - fraction)
-                if (fraction > 0) put(bin + 1, fraction)
+                const k = segmentOf(bin)
+                const array = arrays[k]
+                if (!array) continue
+                const first = bin - REACH - (segments[k]?.[0] ?? 0)
+                put(array, first, 1 - fraction)
+                if (fraction > 0) put(array, first + 1, fraction)
             }
             return arrays
         }),
