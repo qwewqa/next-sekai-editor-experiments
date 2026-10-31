@@ -268,11 +268,20 @@ const onKeydown = (event: KeyboardEvent) => {
           ? (current.x1 - current.x0) / current.steps.length
           : 1
     const step = { ArrowLeft: -1, ArrowRight: 1, PageDown: 10, PageUp: -10 }[event.key]
-    if (step !== undefined) show((cursor.value ?? 0) + step * unit)
-    else if (event.key === 'Home') show(0)
-    else if (event.key === 'End') show(current.x1)
-    else return
+    const time =
+        step !== undefined
+            ? (cursor.value ?? 0) + step * unit
+            : event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? current.x1
+                : undefined
+    if (time === undefined) return
     event.preventDefault()
+    // A key takes over from a click: the readout is the keyboard's now, pinned and ringed.
+    pinned = true
+    focusRing.value = true
+    show(time)
 }
 watch(mode, () => {
     cursor.value = undefined
