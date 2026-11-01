@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { prepareVideoDestination } from '../../src/editor/exportVideo/destination'
+import {
+    pickedDestination,
+    prepareVideoDestination,
+} from '../../src/editor/exportVideo/destination'
 import {
     videoReport,
     videoSpeed,
@@ -155,4 +158,29 @@ test('report payload keeps explicit work time and excludes raw names, errors and
     assert.equal(failed.reason, 'encoder')
     assert.equal(videoSpeed(10, undefined), undefined)
     assert.equal(videoSpeed(10, 0), undefined)
+})
+
+test('a picked destination discards the emptied file, and never a changed one', async () => {
+    const pickedFile = (size: number, lastModified: number) => {
+        let file: File | undefined = new File([new Uint8Array(size)], 'clip.mp4', { lastModified })
+        const handle = {
+            name: 'clip.mp4',
+            getFile: () =>
+                file
+                    ? Promise.resolve(file)
+                    : Promise.reject(new DOMException('', 'NotFoundError')),
+            remove: () => {
+                file = undefined
+                return Promise.resolve()
+            },
+        } as unknown as FileSystemFileHandle
+        return { handle, exists: () => file !== undefined }
+    }
+    // Cancelled while preparing: the worker never opened the file the picker emptied.
+    const emptied = pickedFile(0, 42)
+    await pickedDestination({ handle: emptied.handle, lastModified: 42 }).discard()
+    assert.equal(emptied.exists(), false)
+    const changed = pickedFile(5, 43)
+    await pickedDestination({ handle: changed.handle, lastModified: 42 }).discard()
+    assert.equal(changed.exists(), true)
 })

@@ -1,4 +1,6 @@
 import type { VideoFormat } from '../../exportVideo/codecs'
+import type { JobDestination } from '../../exportVideo/job'
+import { removeVideoPick } from '../../exportVideo/worker/target'
 import type { Platform, StagedVideo, VideoOutput } from '../../platform/types'
 import type { PickedVideo, VideoPick, pickVideo } from '../save/videoPick'
 
@@ -55,3 +57,13 @@ export const prepareVideoDestination = async (options: {
         return { kind: 'memory', limit: VIDEO_MEMORY_LIMIT }
     }
 }
+
+/**
+ * An accepted pick as the job's destination. An export that ends before its worker opens the
+ * target, as a cancel while preparing does, leaves the file the picker emptied: it is removed
+ * while it is still empty and unchanged.
+ */
+export const pickedDestination = (pick: VideoPick): JobDestination => ({
+    worker: { kind: 'picked', pick },
+    discard: () => removeVideoPick(pick),
+})

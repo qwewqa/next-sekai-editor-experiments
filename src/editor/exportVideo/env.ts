@@ -9,7 +9,7 @@ import { handOver } from '../../platform/handover'
 import { showNotPutBack } from '../commands/exportLevel/ui'
 import { pickUi } from '../save/flow'
 import { pickVideo } from '../save/videoPick'
-import { prepareVideoDestination } from './destination'
+import { pickedDestination, prepareVideoDestination } from './destination'
 import { VideoOutputUnavailable, VideoPickRefused } from './failure'
 
 export type DestinationRequest = {
@@ -64,11 +64,7 @@ export const pageDestination = async (request: DestinationRequest): Promise<JobD
     })
     switch (destination.kind) {
         case 'picked':
-            // The worker's target removes an untouched picked file itself.
-            return {
-                worker: { kind: 'picked', pick: destination.pick },
-                discard: () => Promise.resolve(),
-            }
+            return pickedDestination(destination.pick)
         case 'staged': {
             const { id, stage, output } = destination
             return {
