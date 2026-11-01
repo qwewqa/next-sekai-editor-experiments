@@ -261,11 +261,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+    <!-- Its 44 px target is in flow, as a chip's is, so the controls and chips after it keep their own. -->
     <button
         :id="buttonId"
         ref="button"
         type="button"
-        class="ghost focus-out holds-open relative ml-1 flex size-6 shrink-0 items-center justify-center rounded-full text-fg/70 before:absolute before:-inset-2.5 hover:text-fg aria-expanded:text-fg"
+        class="ghost focus-out holds-open ml-1 grid size-6 shrink-0 place-items-center rounded-full text-fg/70 before:-m-2.5 before:place-self-stretch before:[grid-area:1/1] hover:text-fg aria-expanded:text-fg"
         data-field-info
         :[dockKeysAttribute]="inToolDialog ? '' : undefined"
         :aria-label="interpolateRaw(i18n.modals.form.about, label)"
@@ -279,7 +280,7 @@ onBeforeUnmount(() => {
         @click="onClick"
         @keydown="onKeydown"
     >
-        <InfoIcon class="size-4 fill-current" />
+        <InfoIcon class="size-4 fill-current [grid-area:1/1]" />
     </button>
     <Teleport v-if="state !== 'closed'" :to="container">
         <div

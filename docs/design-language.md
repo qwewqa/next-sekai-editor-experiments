@@ -88,7 +88,7 @@ Colour, elevation, hover, press and focus of every button family come from the r
 - **On/off** (`btn-toggle` with `aria-pressed`): mint and flat when on. The toolbar tool in use and Show Edits are examples.
 - **Floating pill with an icon:** `.manager-add` is `btn btn-secondary rounded-full p-0.5 pr-4`, the icon in a 36 px slot.
 - **Fields** (`field`): raised like a secondary button, `rounded-full`; `aria-invalid` adds a red ring that is separate from the focus ring.
-- **Info button** (`FieldInfo.vue`): the ⓘ after a described setting's or chart property's label, `ghost holds-open focus-out size-6 rounded-full text-fg/70` with a 44 px `::before` target.
+- **Info button** (`FieldInfo.vue`): the ⓘ after a described setting's or chart property's label, `ghost holds-open focus-out size-6 rounded-full text-fg/70` with a 44 px `::before` target. The target is in flow, as a chip's is, so the controls and chips after it keep their own targets.
   - It sits after the label's text, so the text wraps 28 px earlier and the control keeps its column.
   - Hover or keyboard focus shows the description after 400 ms. A click, tap, Enter or Space pins it.
   - The bubble is the menu surface (`.popup-surface`, `px-3 py-2 text-sm`, at most 20 rem), teleported into the dialog, or into the page when there is no dialog. Keys pressed in it reach no shortcut, as in a dock. It goes under the whole field, or above it when there is no room below, so it never covers its own row. When it fits neither side, it takes the roomier one and scrolls inside, by touch, wheel or the scroll keys on the ⓘ.
