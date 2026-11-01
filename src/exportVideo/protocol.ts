@@ -27,7 +27,7 @@ export type FromExportWorker =
     | { type: 'view'; bitmap: ImageBitmap }
     | { type: 'block' }
     | { type: 'progress'; frames: number; bitmap?: ImageBitmap }
-    | { type: 'pixels'; pixels: Uint8Array }
+    | { type: 'pixels'; pixels: Uint8Array; width: number; height: number }
     | { type: 'finishing' }
     | { type: 'done'; result: unknown }
     | { type: 'failed'; error: ExportFailure }

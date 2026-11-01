@@ -3,7 +3,18 @@ import { createTestSink } from '../../exportVideo/worker/testSink'
 import { testKeysOpen } from '../../platform/testKeys'
 import { openStagedTarget } from './worker/target'
 
-if (testKeysOpen)
+if (testKeysOpen) {
+    const target = self.name
+    if (target === 'foreground' || target === 'composite') {
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- Called with its context below.
+        const check = WebGL2RenderingContext.prototype.checkFramebufferStatus
+        let calls = 0
+        WebGL2RenderingContext.prototype.checkFramebufferStatus = function (attachment) {
+            if (++calls === (target === 'foreground' ? 1 : 2))
+                return this.FRAMEBUFFER_INCOMPLETE_ATTACHMENT
+            return check.call(this, attachment)
+        }
+    }
     installExportWorker(async (start, destination, signal) => {
         if (destination.kind !== 'staged') throw new Error('Test sink requires a staged target')
         const { handle } = destination
@@ -25,3 +36,4 @@ if (testKeysOpen)
             abort: () => target.abort(),
         }
     })
+}

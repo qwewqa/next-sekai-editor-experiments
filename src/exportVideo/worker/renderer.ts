@@ -66,71 +66,75 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
         const build = createPreviewChartBuilder()
         const mirror = applyMirror(undefined, start.mirror)
         const draw = (time: number, clipTime?: number, settings: ExportSettings = s) => {
-            const s = settings
-            const width = Math.round(s.width * s.renderScale)
-            const height = Math.round(s.height * s.renderScale)
-            renderer.setRenderTarget({ width, height, antialias: s.antialias })
-            if (
-                s.renderScale !== 1 &&
-                (composite?.width !== width || composite.height !== height)
-            ) {
-                composite?.dispose()
-                composite = createRenderTarget(gl, canvas, { width, height, antialias: false })
-            }
-            renderer.setCompositeTarget(s.renderScale === 1 ? undefined : composite)
-            const chart = build(mirror, s.noteSpeed)
-            const background = assets.background
-            const result = drawPreviewFrame(
-                renderer,
-                undefined,
-                assets.skin.skin,
-                assets.particle?.particle,
-                chart,
-                {
-                    time,
-                    leftLimit: false,
-                    width,
-                    height,
-                    displayWidth: (540 * s.width) / s.height,
-                    displayHeight: 540,
-                    overlayWidth: width,
-                    overlayHeight: height,
-                    noteSpeed: s.noteSpeed,
-                    showEffects: s.showEffects,
-                    showHitboxes: false,
-                    showCombo: s.showCombo,
-                    backdrop: s.backdrop,
-                    background: background && {
-                        ...background,
-                        sigma: (background.blur * height) / 540,
+            try {
+                const s = settings
+                const width = Math.round(s.width * s.renderScale)
+                const height = Math.round(s.height * s.renderScale)
+                renderer.setRenderTarget({ width, height, antialias: s.antialias })
+                if (
+                    s.renderScale !== 1 &&
+                    (composite?.width !== width || composite.height !== height)
+                ) {
+                    composite?.dispose()
+                    composite = createRenderTarget(gl, canvas, { width, height, antialias: false })
+                }
+                renderer.setCompositeTarget(s.renderScale === 1 ? undefined : composite)
+                const chart = build(mirror, s.noteSpeed)
+                const background = assets.background
+                const result = drawPreviewFrame(
+                    renderer,
+                    undefined,
+                    assets.skin.skin,
+                    assets.particle?.particle,
+                    chart,
+                    {
+                        time,
+                        leftLimit: false,
+                        width,
+                        height,
+                        displayWidth: (540 * s.width) / s.height,
+                        displayHeight: 540,
+                        overlayWidth: width,
+                        overlayHeight: height,
+                        noteSpeed: s.noteSpeed,
+                        showEffects: s.showEffects,
+                        showHitboxes: false,
+                        showCombo: s.showCombo,
+                        backdrop: s.backdrop,
+                        background: background && {
+                            ...background,
+                            sigma: (background.blur * height) / 540,
+                        },
                     },
-                },
-                undefined,
-            )
-            if (!result.drawn)
-                throw new GraphicsError(`Export frame was not drawn: ${result.reason}`)
-            const opacity =
-                clipTime === undefined
-                    ? 0
-                    : 1 -
-                      Math.max(
-                          0,
-                          Math.min(
-                              1,
-                              s.fadeIn ? clipTime / s.fadeIn : 1,
-                              s.fadeOut ? (s.frames / s.frameRate - clipTime) / s.fadeOut : 1,
-                          ),
-                      )
-            if (opacity > 0) {
-                gl.useProgram(fade ?? null)
-                gl.enable(gl.BLEND)
-                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-                gl.uniform1f(alpha, opacity)
-                gl.drawArrays(gl.TRIANGLES, 0, 3)
+                    undefined,
+                )
+                if (!result.drawn)
+                    throw new GraphicsError(`Export frame was not drawn: ${result.reason}`)
+                const opacity =
+                    clipTime === undefined
+                        ? 0
+                        : 1 -
+                          Math.max(
+                              0,
+                              Math.min(
+                                  1,
+                                  s.fadeIn ? clipTime / s.fadeIn : 1,
+                                  s.fadeOut ? (s.frames / s.frameRate - clipTime) / s.fadeOut : 1,
+                              ),
+                          )
+                if (opacity > 0) {
+                    gl.useProgram(fade ?? null)
+                    gl.enable(gl.BLEND)
+                    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+                    gl.uniform1f(alpha, opacity)
+                    gl.drawArrays(gl.TRIANGLES, 0, 3)
+                }
+                if (s.renderScale !== 1) composite?.present(s.width, s.height)
+                if (!renderer.checkError())
+                    throw new GraphicsError('Export frame failed its graphics check')
+            } catch (error) {
+                throw error instanceof GraphicsError ? error : new GraphicsError(String(error))
             }
-            if (s.renderScale !== 1) composite?.present(s.width, s.height)
-            if (!renderer.checkError())
-                throw new GraphicsError('Export frame failed its graphics check')
         }
         return {
             canvas,
@@ -145,14 +149,6 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
                         frameTimestamp(index + 1, s.frameRate) - frameTimestamp(index, s.frameRate),
                     alpha: 'discard',
                 })
-            },
-            pixels() {
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-                const pixels = new Uint8Array(s.width * s.height * 4)
-                gl.readPixels(0, 0, s.width, s.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
-                if (!renderer.checkError())
-                    throw new GraphicsError('Export frame could not be read')
-                return pixels
             },
             loseContext() {
                 gl.getExtension('WEBGL_lose_context')?.loseContext()

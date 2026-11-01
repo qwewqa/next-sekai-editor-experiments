@@ -76,10 +76,11 @@ test('the same worker draws queued views and then exports at the selected size',
     page,
 }) => {
     const result = await page.evaluate(() =>
-        window.editorTest.exportVideo({ previewFirst: true, settings: { frames: 3 } }),
+        window.editorTest.exportVideo({ previewFirst: true, parityAt: 0, settings: { frames: 3 } }),
     )
     expect(result.error).toBeUndefined()
     expect(result.viewSize).toEqual([160, 90])
+    expect(result.capturedSize).toEqual([320, 180])
     expect(result.phase).toBe('ready')
 })
 
@@ -128,7 +129,7 @@ for (const renderScale of [1.5, 2] as const)
         expect(result.maxError).toBeLessThanOrEqual(1)
     })
 
-for (const start of [2, 7])
+for (const start of [2, 7, 83])
     test(`camera, stage and scroll events match at ${start} s`, async ({ page }) => {
         const result = await page.evaluate((start) => {
             const chart = structuredClone(window.editorTest.fixtures.events)
@@ -145,10 +146,11 @@ for (const start of [2, 7])
 
 test('an intentionally black first frame is encoded', async ({ page }) => {
     const result = await page.evaluate(() =>
-        window.editorTest.exportVideo({ settings: { frames: 3, fadeIn: 0.1 } }),
+        window.editorTest.exportVideo({ parityAt: 0, settings: { frames: 3, fadeIn: 0.1 } }),
     )
     expect(result.error).toBeUndefined()
     expect(result.phase).toBe('ready')
+    expect(result.capturedMax).toBe(0)
 })
 
 test('a failed write retains its file error and removes the staged file', async ({ page }) => {
@@ -187,3 +189,29 @@ test('pagehide clears the running marker without cancelling the export', async (
     expect(pagehideCleared).toBe(true)
     expect(result.markerLeft).toBe(false)
 })
+
+for (const target of ['foreground', 'composite'] as const)
+    for (const hidden of [false, true])
+        test(`an incomplete ${target} target reports a ${hidden ? 'background' : 'graphics'} error`, async ({
+            page,
+        }) => {
+            const result = await page.evaluate(
+                async ({ target, hidden }) => {
+                    Object.defineProperty(document, 'hidden', { configurable: true, value: hidden })
+                    try {
+                        return await window.editorTest.exportVideo({
+                            incompleteTarget: target,
+                            settings: { frames: 3, renderScale: 1.5 },
+                        })
+                    } finally {
+                        Reflect.deleteProperty(document, 'hidden')
+                    }
+                },
+                { target, hidden },
+            )
+            expect(result.phase).toBe('failed')
+            expect(result.error).toContain(`${hidden ? 'background' : 'graphics'}:`)
+            expect(result.error).toContain('Incomplete preview render target')
+            expect(result.retained).toBe(false)
+            expect(result.markerLeft).toBe(false)
+        })

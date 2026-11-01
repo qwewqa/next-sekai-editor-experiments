@@ -18,6 +18,7 @@ export type ExportTestOptions = {
     previewFirst?: boolean
     backgroundBlur?: number
     failWrite?: boolean
+    incompleteTarget?: 'foreground' | 'composite'
 }
 
 const services = createExportServices()
@@ -51,8 +52,8 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
     let closeGuard: (() => boolean | Promise<boolean>) | undefined
     let reference: Uint8Array | undefined
     let exported: Uint8Array | undefined
+    let capturedSize: number[] | undefined
     let finishingCancel: boolean | undefined
-    let retained = false
     let runningPixels: number | undefined
     const bgm = new AudioBuffer({
         numberOfChannels: 2,
@@ -153,9 +154,9 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
                                             (Math.min(y1, sy + 1) - Math.max(y0, sy))
                                         sum += (pixels[(sy * width + sx) * 4 + c] ?? 0) * weight
                                     }
-                                reference[(y * settings.width + x) * 4 + c] = Math.round(
-                                    sum / ((x1 - x0) * (y1 - y0)),
-                                )
+                                reference[
+                                    ((settings.height - 1 - y) * settings.width + x) * 4 + c
+                                ] = Math.round(sum / ((x1 - x0) * (y1 - y0)))
                             }
                         }
                     if (!renderer.checkError())
@@ -168,7 +169,6 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         },
         destination: async (_signal, id) => {
             const stage = await webVideoOutput.stage(id, 'webm')
-            retained = true
             return {
                 worker: { kind: 'staged', handle: stage.handle },
                 ready: {
@@ -176,19 +176,17 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
                     deliver: (file, how) => webVideoOutput.deliver(file, 'test.webm', how),
                     end: async () => {
                         await stage.endReady()
-                        retained = false
                     },
                 },
                 discard: async () => {
                     await webVideoOutput.remove(id)
-                    retained = false
                 },
             }
         },
         worker: () => {
             const worker = new Worker(new URL('./test.worker.ts', import.meta.url), {
                 type: 'module',
-                name: 'nse-export-test',
+                name: options.incompleteTarget ?? 'nse-export-test',
             })
             if (options.cancelAt === 'view')
                 worker.addEventListener(
@@ -216,7 +214,10 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         test: {
             faults,
             event: (event) => {
-                if (event.type === 'pixels') exported = event.pixels
+                if (event.type === 'pixels') {
+                    exported = event.pixels
+                    capturedSize = [event.width, event.height]
+                }
                 if (event.type === 'held') job.cancel()
             },
         },
@@ -273,8 +274,23 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         result.phase === 'failed' && result.error instanceof FileError
             ? result.error.code
             : undefined
+    const capturedMax = exported
+        ? exported.reduce((max, value, i) => (i % 4 === 3 ? max : Math.max(max, value)), 0)
+        : undefined
     await job.dispose()
+    let retained = false
+    try {
+        const directory = await (
+            await navigator.storage.getDirectory()
+        ).getDirectoryHandle('export-video')
+        await directory.getFileHandle(`${job.id}.webm`)
+        retained = true
+    } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error
+    }
     return {
+        capturedSize,
+        capturedMax,
         runningPixels,
         markerLeft: localStorage.getItem(`exportVideoRunning.${job.id}`) !== null,
         mixStarted,

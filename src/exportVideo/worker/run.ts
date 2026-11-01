@@ -26,7 +26,8 @@ export const runExport = async (
         block: () => Promise<AudioBlock | undefined>
         progress: (frames: number, bitmap?: ImageBitmap) => void
         finishing: () => Promise<void>
-        inspect?: (renderer: ReturnType<typeof createExportRenderer>, index: number) => void
+        beforeCapture?: (renderer: ReturnType<typeof createExportRenderer>, index: number) => void
+        inspect?: (frame: VideoFrame, index: number) => Promise<void>
     },
 ) => {
     const { settings: s } = start
@@ -118,10 +119,11 @@ export const runExport = async (
         let lastProgress = -Infinity
         for (let i = 0; i < s.frames; i++) {
             await loop.room('video', (i + 1) / s.frameRate)
-            options.inspect?.(renderer, i)
+            options.beforeCapture?.(renderer, i)
             const frame = renderer.capture(i)
             try {
                 video.encode(frame, { keyFrame: i % (2 * s.frameRate) === 0 })
+                if (options.inspect) await loop.guard(options.inspect(frame, i))
             } finally {
                 frame.close()
             }

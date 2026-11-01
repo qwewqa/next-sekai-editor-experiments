@@ -119,19 +119,30 @@ export const installExportWorker = (
                 progress: (frames, bitmap) => {
                     post({ type: 'progress', frames, bitmap }, bitmap ? [bitmap] : [])
                 },
-                inspect:
+                beforeCapture:
                     faults &&
                     ((renderer, index) => {
                         if (index === faults.loseContextAt) renderer.loseContext()
-                        if (index === faults.pixelsAt) {
-                            renderer.draw(
-                                start.settings.in + index / start.frameRate,
-                                index / start.frameRate,
-                            )
-                            const pixels = renderer.pixels()
-                            post({ type: 'pixels', pixels }, [pixels.buffer])
-                        }
                     }),
+                inspect:
+                    faults?.pixelsAt === undefined
+                        ? undefined
+                        : async (frame, index) => {
+                              if (index !== faults.pixelsAt) return
+                              const pixels = new Uint8Array(
+                                  frame.allocationSize({ format: 'RGBA' }),
+                              )
+                              await frame.copyTo(pixels, { format: 'RGBA' })
+                              post(
+                                  {
+                                      type: 'pixels',
+                                      pixels,
+                                      width: frame.displayWidth,
+                                      height: frame.displayHeight,
+                                  },
+                                  [pixels.buffer],
+                              )
+                          },
                 finishing: () =>
                     new Promise<void>((resolve) => {
                         commit = resolve
