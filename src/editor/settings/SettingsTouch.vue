@@ -36,6 +36,12 @@ import SettingsSection from './SettingsSection.vue'
         />
 
         <ToggleField
+            v-model="settings.touchDragHandles"
+            :label="i18n.settings.touch.dragHandles"
+            :description="i18n.settings.descriptions.touchDragHandles"
+        />
+
+        <ToggleField
             v-model="settings.touchLongPressContextMenu"
             :label="i18n.settings.touch.longPressContextMenu"
         />

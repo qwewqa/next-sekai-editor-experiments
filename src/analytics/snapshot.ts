@@ -17,7 +17,7 @@ export const renderScaleOf = (value: number) => {
 /** A setting that is on, off or not chosen yet (null). */
 const autoOnOff = (value: boolean | null) => (value === null ? 'auto' : value ? 'on' : 'off')
 
-/** The settings snapshot. The two touch options are included only on a touch screen. */
+/** The settings snapshot. The touch options are included only on a touch screen. */
 export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Settings => {
     const assets = settings.previewAssets
     // A package from a server is a package of its own: the same kind as a file.
@@ -60,6 +60,7 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
         ...(touch && {
             touchQuickScrollShow: settings.touchQuickScrollShow,
             touchLongPressContextMenu: settings.touchLongPressContextMenu,
+            touchDragHandles: settings.touchDragHandles,
         }),
     }
 }

@@ -242,6 +242,7 @@ INSERT INTO nse_allowed (event, property, kind, value, max) VALUES
     ('settings', 'touchQuickScrollShow', 'text', 'off', NULL),
     ('settings', 'touchQuickScrollShow', 'text', 'touch', NULL),
     ('settings', 'touchLongPressContextMenu', 'boolean', '', NULL),
+    ('settings', 'touchDragHandles', 'boolean', '', NULL),
     ('settings', 'confirmCloseUnsavedFile', 'boolean', '', NULL),
     ('settings', 'groupsStagesSideBySide', 'text', 'auto', NULL),
     ('settings', 'groupsStagesSideBySide', 'text', 'enabled', NULL),

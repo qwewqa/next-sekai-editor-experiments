@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { oneRowToolbarWidth } from '../../src/editor/toolbar/layout'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
 import { resource } from './previewResourceFixture'
 import { confirmReset } from './resetConfirm'
 
@@ -146,6 +146,15 @@ test('compact docks switch tabs without ever bringing back another panel', async
     // Shortcuts are not triggered while a tab has keyboard focus.
     await page.keyboard.press('Delete')
     await expect(tab(page, 'top', 'Preview')).toHaveAttribute('aria-expanded', 'false')
+})
+
+test('with a mouse, Show Drag Handles off still shows the grabber on hover', async ({ page }) => {
+    await setSettings(page, { showGroups: true, touchDragHandles: false })
+    const handle = dock(page, 'left').getByRole('separator', { name: 'Resize Left Panels' })
+    const grabber = handle.locator('.resize-grabber')
+    await expect(grabber).toHaveCSS('opacity', '0')
+    await handle.hover()
+    await expect(grabber).toHaveCSS('opacity', '1')
 })
 
 test('dock resizing persists, cancels to the saved preference, and survives reload', async ({
@@ -457,6 +466,34 @@ test.describe('phone', () => {
         await expect(grabber).toHaveCSS('opacity', '1')
         const box = (await grabber.boundingBox())!
         expect([box.width, box.height]).toEqual([32, 4])
+    })
+
+    test('with Show Drag Handles off the grabber hides and the edge still resizes by touch', async ({
+        page,
+    }) => {
+        await setSettings(page, {
+            groupsPosition: 'top',
+            showGroups: true,
+            showPreview: false,
+            touchDragHandles: false,
+        })
+        const handle = dock(page, 'top').getByRole('separator', {
+            name: 'Resize Top Panels',
+            exact: true,
+        })
+        await expect(handle).toBeVisible()
+        await expect(handle.locator('.resize-grabber')).toHaveCSS('opacity', '0')
+        const before = (await dock(page, 'top').boundingBox())!.height
+        const box = (await handle.boundingBox())!
+        const x = box.x + box.width / 2
+        const y = box.y + box.height / 2
+        const touch = await touchInput(page)
+        await touch('touchStart', [[x, y]])
+        for (let step = 1; step <= 6; step++) await touch('touchMove', [[x, y + step * 10]])
+        await touch('touchEnd', [])
+        await expect
+            .poll(async () => (await dock(page, 'top').boundingBox())!.height)
+            .toBeCloseTo(before + 60, 0)
     })
 
     test('side placements open one drawer at a time and its scrim absorbs the dismissing tap', async ({

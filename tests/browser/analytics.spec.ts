@@ -551,6 +551,21 @@ test('the settings snapshot reports where each panel is placed and which are sho
         expect(isValidEvent('settings', snapshot)).toBe(true)
 })
 
+test('the touch settings snapshot adds the touch options', async ({ page }) => {
+    await start(page)
+    const snapshot = await page.evaluate(async () => {
+        const { settingsSnapshot } =
+            (await import('/src/analytics/snapshot.ts')) as typeof import('../../src/analytics/snapshot')
+        return settingsSnapshot(true, false)
+    })
+    expect(snapshot).toMatchObject({
+        touchQuickScrollShow: 'touch',
+        touchLongPressContextMenu: true,
+        touchDragHandles: true,
+    })
+    expect(isValidEvent('settings', snapshot)).toBe(true)
+})
+
 test('a Save records its outcome, and a chart with objects is counted once saved', async ({
     page,
     context,

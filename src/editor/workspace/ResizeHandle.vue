@@ -4,6 +4,7 @@ import { interruptsDrags } from '../../activity'
 import { resizeEscapes } from '../controls'
 import { cancelMouseControls } from '../controls/mouse'
 import { cancelTouchControls } from '../controls/touch'
+import { settings } from '../../settings'
 
 const props = defineProps<{
     /** `x` separates side by side areas; `y` separates stacked areas. */
@@ -139,7 +140,10 @@ onUnmounted(() => {
         />
         <div
             class="resize-grabber pointer-events-none relative rounded-full bg-knob shadow ring-1 ring-fg/25 transition-opacity"
-            :class="axis === 'x' ? 'h-8 w-1' : 'h-1 w-8'"
+            :class="[
+                axis === 'x' ? 'h-8 w-1' : 'h-1 w-8',
+                { 'is-hidden': !settings.touchDragHandles },
+            ]"
         />
     </div>
 </template>
@@ -186,7 +190,7 @@ onUnmounted(() => {
 
 /* Touch has no hover, so the grabber always shows where to drag. */
 @media (pointer: coarse) {
-    .resize-grabber {
+    .resize-grabber:not(.is-hidden) {
         opacity: 1;
     }
 }

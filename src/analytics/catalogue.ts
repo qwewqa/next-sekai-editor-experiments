@@ -197,6 +197,7 @@ export const catalogue = {
         playFollow: 'boolean',
         touchQuickScrollShow: oneOf('on', 'off', 'touch'),
         touchLongPressContextMenu: 'boolean',
+        touchDragHandles: 'boolean',
         confirmCloseUnsavedFile: 'boolean',
         groupsStagesSideBySide: oneOf('auto', 'enabled', 'disabled'),
     },

@@ -150,6 +150,7 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `playFollow` | Whether the view follows playback | Yes or no |
 | `touchQuickScrollShow` | When the Quick Scroll Zone is shown. Sent only when the primary pointing device has limited precision | `on`, `off` or `touch` |
 | `touchLongPressContextMenu` | Whether a long press opens the context menu. Sent only when the primary pointing device has limited precision | Yes or no |
+| `touchDragHandles` | Whether the drag handles are shown. Sent only when the primary pointing device has limited precision | Yes or no |
 | `confirmCloseUnsavedFile` | Whether the Ask Before Closing with Unsaved Changes setting is on | Yes or no |
 | `groupsStagesSideBySide` | The Groups and Stages Side by Side setting | `auto`, `enabled` or `disabled` |
 
