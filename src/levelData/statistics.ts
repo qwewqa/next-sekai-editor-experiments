@@ -1,75 +1,29 @@
 import { languageTag } from '../i18n/plural'
 import type { Bgm } from '../state/bgm'
-import { beatToTicks, scheduleHiddenTicks } from '../state/entities/slides/hiddenTicks'
-import { getNoteRole, type SlideNoteInfo } from '../state/entities/slides/semantics'
 import { beatToTime, type BpmIntegral } from '../state/integrals/bpms'
 import type { Store } from '../state/store'
 import { formatTime } from '../utils/format'
 import { fill } from '../utils/interpolate'
 import { formatCount, formatTenths } from '../utils/size'
+import {
+    CATEGORIES,
+    categoryOf,
+    forEachExported,
+    inCombo,
+    ROWS,
+    type Category,
+    type Row,
+} from './scoring'
 
 // Statistics: the chart's counts by what the player does, its times, and the Notes per
 // Second chart's three modes and four figures. The dialog and the share card both draw from
 // here, so the two always agree.
 
-/** The breakdown's rows, in display order. Fake Note is outside Combo. */
-export const ROWS = [
-    'tap',
-    'flick',
-    'release',
-    'trace',
-    'traceFlick',
-    'tick',
-    'hiddenTick',
-    'damageNote',
-    'damageTick',
-    'fakeNote',
-] as const
-export type Row = (typeof ROWS)[number]
+export { CATEGORIES, categoryOf, classifyNote, ROWS, type Category, type Row } from './scoring'
 
-/** The rows whose type has a critical variant; the note's own `isCritical` decides. */
 const CRITICAL_ROWS: readonly Row[] = ['tap', 'flick', 'release', 'trace', 'traceFlick', 'tick']
 
-/** The chart's categories, in the list's order and the stack's order from the bottom. */
-export const CATEGORIES = [
-    'tap',
-    'flick',
-    'release',
-    'trace',
-    'traceFlick',
-    'tick',
-    'damage',
-] as const
-export type Category = (typeof CATEGORIES)[number]
-
 export const DEFAULT_CATEGORIES: readonly Category[] = ['tap', 'flick', 'release']
-
-/** The chart category a scored row counts in. */
-export const categoryOf = (row: Exclude<Row, 'fakeNote'>): Category =>
-    row === 'hiddenTick' ? 'tick' : row === 'damageNote' || row === 'damageTick' ? 'damage' : row
-
-/** The row of an exported note, or undefined for an anchor. Fake notes are Fake Note. */
-const classifyNote = (info: SlideNoteInfo): Row | undefined => {
-    const role = getNoteRole(info)
-    if (role === 'anchor') return undefined
-    if (info.note.isFake) return 'fakeNote'
-    const isFlick = info.note.flickDirection !== 'none'
-    switch (role) {
-        case 'damage':
-            return 'damageNote'
-        case 'tick':
-            return 'tick'
-        case 'trace':
-        case 'headTrace':
-        case 'tailTrace':
-            return isFlick ? 'traceFlick' : 'trace'
-        case 'tail':
-            return isFlick ? 'flick' : 'release'
-        case 'single':
-        case 'head':
-            return isFlick ? 'flick' : 'tap'
-    }
-}
 
 export type ChartStatistics = {
     counts: Record<Row, number>
@@ -105,18 +59,13 @@ export const chartStatistics = ({
     for (const infos of store.slides.info.values()) {
         for (const info of infos) {
             if (info.note.beat > lastBeat) lastBeat = info.note.beat
-            const row = classifyNote(info)
-            if (row === undefined) continue
-            counts[row]++
-            if (row === 'fakeNote') continue
-            if (info.note.isCritical && critical[row] !== undefined) critical[row]++
-            beats[categoryOf(row)].push(info.note.beat)
         }
-        for (const tick of scheduleHiddenTicks(infos)) {
-            const row = tick.connectorType === 'active' ? 'hiddenTick' : 'damageTick'
+        forEachExported(infos, (row, beat, info) => {
             counts[row]++
-            beats[categoryOf(row)].push(tick.tick / beatToTicks)
-        }
+            if (!inCombo(row)) return
+            if (info?.note.isCritical && critical[row] !== undefined) critical[row]++
+            beats[categoryOf(row)].push(beat)
+        })
     }
 
     let firstBeat = Infinity
@@ -135,7 +84,7 @@ export const chartStatistics = ({
     ) as Record<Category, Float64Array>
 
     let combo = 0
-    for (const row of ROWS) if (row !== 'fakeNote') combo += counts[row]
+    for (const row of ROWS) if (inCombo(row)) combo += counts[row]
     // Absurd BPMs can make a time infinite or NaN: each time shows only when its own is finite.
     const timeOf = (beat: number) => {
         if (!Number.isFinite(beat)) return undefined

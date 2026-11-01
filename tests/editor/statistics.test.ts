@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import type { Chart } from '../../src/chart'
-import type { GroupId } from '../../src/chart/groups'
 import type { NoteObject } from '../../src/chart/note'
 import { parseLevelDataChart } from '../../src/chart/parse/levelData'
-import type { StageId } from '../../src/chart/stages'
 import { statisticsStringsOf } from '../../src/editor/statistics/strings'
 import en from '../../src/i18n/en/index.json'
 import fr from '../../src/i18n/fr/index.json'
@@ -39,7 +36,10 @@ import {
     type Row,
     type Samples,
 } from '../../src/levelData/statistics'
+import { buildPreviewChart } from '../../src/preview/engine/chart'
+import { getComboTimes } from '../../src/preview/engine/combo'
 import { createState, type State } from '../../src/state'
+import { chart, handBuilt, note } from '../helpers/scoring'
 
 // A 32-bit generator: seeded, uniform, with no short cycle.
 const mulberry32 = (seed: number) => () => {
@@ -48,52 +48,6 @@ const mulberry32 = (seed: number) => () => {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
 }
-
-const note = (beat: number, overrides: Partial<NoteObject> = {}): NoteObject => ({
-    groupId: 1 as GroupId,
-    stageId: 1 as StageId,
-    beat,
-    noteType: 'default',
-    isAttached: false,
-    left: -1,
-    size: 2,
-    isCritical: false,
-    flickDirection: 'none',
-    isFake: false,
-    noteStyle: 'default',
-    connectorStyle: 'default',
-    sfx: 'default',
-    isConnectorSeparator: false,
-    connectorType: 'active',
-    connectorEase: 'linear',
-    connectorIsFake: false,
-    connectorActiveIsCritical: false,
-    connectorGuideAlpha: 1,
-    connectorLayer: 'top',
-    connectorIsPassThrough: false,
-    connectorPresentation: 'default',
-    ...overrides,
-})
-
-const chart = (slides: NoteObject[][], bpms: Chart['bpms'] = [{ beat: 0, bpm: 120 }]): Chart => ({
-    initialLife: 1000,
-    isDynamicStages: false,
-    bpms,
-    groups: new Map([[1 as GroupId, { name: 'A' }]]),
-    stages: new Map([
-        [
-            1 as StageId,
-            { name: 'S', isFromStart: true, isUntilEnd: true, generateSimLines: 'global' },
-        ],
-    ]),
-    cameraEvents: [],
-    stageMaskEvents: [],
-    stagePivotEvents: [],
-    stageStyleEvents: [],
-    stageTransformEvents: [],
-    timeScales: [],
-    slides,
-})
 
 const statsOf = (state: State) => chartStatistics({ store: state.store, bpms: state.bpms })
 
@@ -155,6 +109,9 @@ const assertEqualToExport = (state: State) => {
     const exported = exportCounts(state)
     assert.deepEqual(stats.counts, exported.counts)
     assert.equal(stats.combo, exported.combo)
+    const times = getComboTimes(buildPreviewChart(state, 10))
+    assert.equal(times.length, stats.combo)
+    assert.deepEqual(times, mergeTimes(CATEGORIES.map((category) => stats.times[category])).times)
     for (const row of ROWS)
         assert.equal(stats.critical[row] ?? 0, exported.critical[row] ?? 0, `${row} critical`)
 }
@@ -233,42 +190,6 @@ test('a trace with a flick is a Trace Flick at any place; a slide-end flick is a
     assert.equal(stats.counts.trace, 1)
     assert.equal(stats.counts.flick, 1)
 })
-
-// The hand-derived chart: BPM 120 from beat 0 and 60 from beat 8, each slide on its own.
-const handBuilt = (extra: NoteObject[][] = [], tail: Partial<NoteObject> = {}) => {
-    const damage = { connectorType: 'damage' } as const
-    const anchor = { noteType: 'anchor' } as const
-    return createState(
-        chart(
-            [
-                [note(0), note(2, tail)],
-                [note(0.25, { noteType: 'trace' }), note(2, { flickDirection: 'up' })],
-                [note(0, { isCritical: true }), note(1, { isConnectorSeparator: true }), note(2)],
-                [note(0, { ...anchor, ...damage }), note(2, { ...anchor, ...damage })],
-                [note(4), note(4)],
-                [note(4, { ...anchor, ...damage }), note(4, { ...anchor, ...damage })],
-                [note(0), note(1), note(2)],
-                [note(0, { connectorIsFake: true }), note(2)],
-                [note(0, { connectorType: 'guide' }), note(2, { connectorType: 'guide' })],
-                [note(0, { noteType: 'forceNonTick' }), note(2 + 1 / 480)],
-                [note(8), note(9, { noteType: 'forceNonTick' }), note(10)],
-                [note(5, { noteType: 'forceTick' })],
-                [note(6, { isCritical: true })],
-                [note(6.5, { flickDirection: 'up' })],
-                [note(7, { noteType: 'trace' })],
-                [note(7.5, { noteType: 'damage' })],
-                [note(12, { isFake: true })],
-                [note(12.5, anchor)],
-                ...extra,
-            ],
-            [
-                { beat: 0, bpm: 120 },
-                { beat: 8, bpm: 60 },
-            ],
-        ),
-        0,
-    )
-}
 
 test('the hand-derived chart gives the counts, critical counts and times worked out by hand', () => {
     const state = handBuilt()
