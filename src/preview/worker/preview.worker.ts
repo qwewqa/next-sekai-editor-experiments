@@ -164,6 +164,11 @@ const installCounters = () => {
     watch('uniform1f', (gl, [location, value]) => {
         if (isPreview(gl) && location && names.get(location) === 'u_aspect')
             current.aspect = value as number
+        if (isPreview(gl) && location && names.get(location) === 'u_sigma')
+            current.backgroundBlurs = (current.backgroundBlurs ?? 0) + 1
+    })
+    watch('texStorage2D', (gl) => {
+        if (isPreview(gl)) current.allocations = (current.allocations ?? 0) + 1
     })
     watch('clear', (gl) => {
         if (!isPreview(gl)) return
@@ -186,11 +191,29 @@ const installCounters = () => {
 
 const report = () => {
     if (!testKeysOpen || !counters) return
-    const { uploads, frames, releases, vertices, backgroundVertices, aspect } = counters
+    const {
+        uploads,
+        frames,
+        releases,
+        vertices,
+        backgroundVertices,
+        aspect,
+        allocations,
+        backgroundBlurs,
+    } = counters
     if (!uploads && !frames && !releases && aspect === undefined) return
     post({
         type: 'counters',
-        counters: { uploads, frames, releases, vertices, backgroundVertices, aspect },
+        counters: {
+            uploads,
+            frames,
+            releases,
+            vertices,
+            backgroundVertices,
+            aspect,
+            allocations,
+            backgroundBlurs,
+        },
     })
     counters.uploads = 0
     counters.frames = 0
@@ -198,6 +221,8 @@ const report = () => {
     counters.vertices = undefined
     counters.backgroundVertices = undefined
     counters.aspect = undefined
+    counters.allocations = 0
+    counters.backgroundBlurs = 0
 }
 
 const handle = (message: ToPreviewWorker) => {

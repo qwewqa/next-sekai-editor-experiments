@@ -191,7 +191,7 @@ export const createPreviewRenderer = (
     let restoreState = false
     let target: RenderTarget | undefined
     let backgroundPass: ReturnType<typeof createBackgroundPass> | undefined
-    let backgroundIdentity: object | undefined
+    let backgroundIdentity: ImageBitmap | undefined
     let disposed = false
     const deleteResources = () => {
         if (disposed) return
@@ -294,7 +294,7 @@ export const createPreviewRenderer = (
                           backgroundIdentity,
                           input.width,
                           input.height,
-                          (background.blur * input.height) / input.displayHeight,
+                          background.sigma,
                       )
                     : undefined
             if (canvas.width !== input.width) canvas.width = input.width

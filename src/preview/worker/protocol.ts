@@ -28,6 +28,8 @@ export type PreviewWorkerCounters = {
     /** The last frame's vertices, once a frame cleared since the last report. */
     vertices?: number[]
     backgroundVertices?: number[]
+    allocations?: number
+    backgroundBlurs?: number
     aspect?: number
 }
 

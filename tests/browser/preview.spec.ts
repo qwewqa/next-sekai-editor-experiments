@@ -13,6 +13,8 @@ declare global {
             bitmaps: number
             closes: number
             backgroundVertices?: number[]
+            allocations?: number
+            backgroundBlurs?: number
             vertices: number[]
             resolutions: number
             aspect: number
@@ -104,7 +106,15 @@ test.beforeEach(async ({ page }, testInfo) => {
             if (isPreview(this) && location && uniformNames.get(location) === 'u_aspect') {
                 window.previewTest.aspect = value
             }
+            if (isPreview(this) && location && uniformNames.get(location) === 'u_sigma')
+                window.previewTest.backgroundBlurs = (window.previewTest.backgroundBlurs ?? 0) + 1
             return uniform1f.call(this, location, value)
+        }
+        const storage = WebGL2RenderingContext.prototype.texStorage2D
+        WebGL2RenderingContext.prototype.texStorage2D = function (...args) {
+            if (isPreview(this))
+                window.previewTest.allocations = (window.previewTest.allocations ?? 0) + 1
+            return storage.apply(this, args)
         }
         const clear = WebGL2RenderingContext.prototype.clear
         WebGL2RenderingContext.prototype.clear = function (...args) {
@@ -3208,6 +3218,80 @@ test('Ctrl+Z and Ctrl+Y on preview sliders, switches and selects reach the edito
         await expect.poll(canUndo).toBe(true)
         await expect(control).toBeFocused()
     }
+})
+
+test.describe('background during panel resizing', () => {
+    test.use({ deviceScaleFactor: 4 })
+
+    test('fractional heights keep the blur and its allocations until release', async ({ page }) => {
+        await expect
+            .poll(() =>
+                page.evaluate(async () => {
+                    const { assetSession } = await window.editorTest.appImport<
+                        typeof import('../../src/preview/assets')
+                    >('/src/preview/assets/index.ts')
+                    return assetSession.slots.background.value.state
+                }),
+            )
+            .toBe('ready')
+        await page.evaluate(async () => {
+            Object.assign(window.editorTest.settings, {
+                previewTransportPosition: 'overlay',
+                previewRenderScale: 1,
+                previewAntialias: false,
+            })
+            const { assetSession } = await window.editorTest.appImport<
+                typeof import('../../src/preview/assets')
+            >('/src/preview/assets/index.ts')
+            const slot = assetSession.slots.background
+            slot.value = { state: 'ready', value: { ...slot.value.value!, blur: 6 } }
+        })
+        const panel = page.locator('.preview')
+        await panel.evaluate((element: HTMLElement) => {
+            Object.assign(element.style, { width: '960px', height: '540px', flex: 'none' })
+        })
+        const height = () =>
+            page
+                .locator('.preview-viewport')
+                .evaluate((element) => element.getBoundingClientRect().height)
+        await expect.poll(height).toBe(540)
+        await settle(page)
+        const read = () =>
+            page.evaluate(() => ({
+                allocations: window.previewTest.allocations,
+                blurs: window.previewTest.backgroundBlurs,
+                frames: window.previewTest.frames,
+            }))
+        const before = await read()
+        expect(before.allocations).toBeGreaterThan(0)
+        expect(before.blurs).toBeGreaterThan(0)
+        await page.evaluate(async () => {
+            const { dockSizeDrafts } = await window.editorTest.appImport<
+                typeof import('../../src/editor/workspace')
+            >('/src/editor/workspace/index.ts')
+            dockSizeDrafts.value = { top: window.editorTest.settings.topDockHeight }
+        })
+        for (const nextHeight of [539.75, 539.5, 539.25]) {
+            await panel.evaluate((element: HTMLElement, value) => {
+                element.style.height = `${value}px`
+            }, nextHeight)
+            await expect.poll(height).toBe(nextHeight)
+            await settle(page)
+            const current = await read()
+            expect(current.frames).toBeGreaterThan(before.frames)
+            expect(current.allocations).toBe(before.allocations)
+            expect(current.blurs).toBe(before.blurs)
+        }
+        await page.evaluate(async () => {
+            const { dockSizeDrafts } = await window.editorTest.appImport<
+                typeof import('../../src/editor/workspace')
+            >('/src/editor/workspace/index.ts')
+            dockSizeDrafts.value = {}
+        })
+        await settle(page)
+        expect((await read()).blurs).toBeGreaterThan(before.blurs!)
+        expect((await read()).allocations).toBeGreaterThan(before.allocations!)
+    })
 })
 
 test("transparent backgrounds use the current theme's backdrop", async ({ page }) => {

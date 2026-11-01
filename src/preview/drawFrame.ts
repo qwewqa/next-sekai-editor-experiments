@@ -31,7 +31,8 @@ export type PreviewFrameInput = {
         aspectRatio: number
         fit: BackgroundFit
         color: string
-        blur: number
+        /** Gaussian sigma in drawing-buffer pixels, held during panel resizing. */
+        sigma: number
         mask?: string
     }
 }

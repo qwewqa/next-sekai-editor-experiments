@@ -96,6 +96,8 @@ type PreviewTestCounters = {
     releases?: number
     vertices: number[]
     backgroundVertices?: number[]
+    allocations?: number
+    backgroundBlurs?: number
     aspect: number
 }
 
@@ -104,6 +106,8 @@ const addCounters = (counters: PreviewWorkerCounters) => {
     if (!target) return
     target.uploads += counters.uploads
     target.frames += counters.frames
+    target.allocations = (target.allocations ?? 0) + (counters.allocations ?? 0)
+    target.backgroundBlurs = (target.backgroundBlurs ?? 0) + (counters.backgroundBlurs ?? 0)
     if (counters.releases) target.releases = (target.releases ?? 0) + counters.releases
     if (counters.vertices) target.vertices = counters.vertices
     if (counters.backgroundVertices) target.backgroundVertices = counters.backgroundVertices

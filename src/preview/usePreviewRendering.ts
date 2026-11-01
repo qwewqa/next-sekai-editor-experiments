@@ -350,8 +350,8 @@ export const usePreviewRendering = (
                           aspectRatio: loadedBackground.value.aspectRatio,
                           fit: loadedBackground.value.fit,
                           color: loadedBackground.value.color,
-                          blur:
-                              (loadedBackground.value.blur * canvasHeight.value) /
+                          sigma:
+                              (loadedBackground.value.blur * renderSize.height) /
                               backgroundDisplayHeight,
                           mask: loadedBackground.value.mask,
                       }

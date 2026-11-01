@@ -7,6 +7,122 @@ test.beforeEach(async ({ page }) => {
     await page.goto('/__background')
 })
 
+test('maximum blur preserves the average of detailed stripes', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+        const { createBackgroundPass } = await import('/src/preview/backgroundPass.ts')
+        const gl = new OffscreenCanvas(1, 1).getContext('webgl2')!
+        const image = new OffscreenCanvas(4096, 4096)
+        const context = image.getContext('2d')!
+        for (let x = 0; x < image.width; x += 26) {
+            context.fillStyle = (x / 26) % 2 ? '#fff' : '#000'
+            context.fillRect(x, 0, 26, image.height)
+        }
+        const bitmap = await createImageBitmap(image)
+        const source = gl.createTexture()!
+        gl.bindTexture(gl.TEXTURE_2D, source)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        const allocations = new Map<WebGLTexture, number>()
+        let peakBytes = 0
+        let peakTextures = 0
+        let longestSide = 0
+        const storage = gl.texStorage2D.bind(gl)
+        gl.texStorage2D = (...args) => {
+            const [, , , width, height] = args
+            allocations.set(
+                gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture,
+                width * height * 4,
+            )
+            peakBytes = Math.max(
+                peakBytes,
+                [...allocations.values()].reduce((a, b) => a + b, 0),
+            )
+            peakTextures = Math.max(peakTextures, allocations.size)
+            longestSide = Math.max(longestSide, width, height)
+            storage(...args)
+        }
+        const remove = gl.deleteTexture.bind(gl)
+        gl.deleteTexture = (texture) => {
+            if (texture) allocations.delete(texture)
+            remove(texture)
+        }
+        const pass = createBackgroundPass(gl)
+        const copy = pass.blur(source, bitmap, 3840, 2160, 400)!
+        const framebuffer = gl.createFramebuffer()
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            copy.texture,
+            0,
+        )
+        // The middle row, more than three sigma from the image's left and right edges.
+        const values = new Uint8Array(25 * 4)
+        gl.readPixels(50, Math.floor(copy.height / 2), 25, 1, gl.RGBA, gl.UNSIGNED_BYTE, values)
+        pass.dispose()
+        gl.deleteFramebuffer(framebuffer)
+        gl.deleteTexture(source)
+        bitmap.close()
+        return {
+            pixels: [...values],
+            peakBytes,
+            peakTextures,
+            longestSide,
+            remaining: allocations.size,
+        }
+    })
+    expect(result.peakBytes).toBeLessThanOrEqual(32 * 1024 * 1024)
+    expect(result.peakTextures).toBe(2)
+    expect(result.longestSide).toBeLessThanOrEqual(2048)
+    expect(result.remaining).toBe(0)
+    const { pixels } = result
+    // Equal black and white areas converge to 127.5 under this wide Gaussian.
+    for (let i = 0; i < pixels.length; i += 4) {
+        for (let channel = 0; channel < 3; channel++)
+            expect(Math.abs(pixels[i + channel]! - 127.5)).toBeLessThanOrEqual(2)
+        // The image's top and bottom edges are less than three sigma from this row.
+        expect(pixels[i + 3]).toBeGreaterThanOrEqual(253)
+    }
+})
+
+test('small backgrounds keep their color when enlarged for blur', async ({ page }) => {
+    const pixel = await page.evaluate(async () => {
+        const { createBackgroundPass } = await import('/src/preview/backgroundPass.ts')
+        const gl = new OffscreenCanvas(1, 1).getContext('webgl2')!
+        const image = new OffscreenCanvas(1, 1)
+        const context = image.getContext('2d')!
+        context.fillStyle = '#fff'
+        context.fillRect(0, 0, 1, 1)
+        const bitmap = await createImageBitmap(image)
+        const source = gl.createTexture()!
+        gl.bindTexture(gl.TEXTURE_2D, source)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        const pass = createBackgroundPass(gl)
+        const copy = pass.blur(source, bitmap, 192, 108, 1)!
+        const framebuffer = gl.createFramebuffer()
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            copy.texture,
+            0,
+        )
+        const value = new Uint8Array(4)
+        gl.readPixels(40, 40, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, value)
+        pass.dispose()
+        gl.deleteFramebuffer(framebuffer)
+        gl.deleteTexture(source)
+        bitmap.close()
+        return [...value]
+    })
+    expect(pixel).toEqual([255, 255, 255, 255])
+})
+
 test('additive foreground keeps its alpha when composited over an exposed background', async ({
     page,
 }) => {
@@ -49,7 +165,7 @@ test('additive foreground keeps its alpha when composited over an exposed backgr
             showEffects: true,
             showHitboxes: false,
             showCombo: false,
-            background: { aspectRatio: 1, fit: 'cover', color: '#52779c', blur: 0 },
+            background: { aspectRatio: 1, fit: 'cover', color: '#52779c', sigma: 0 },
         })
         const gl = canvas.getContext('webgl2')!
         const final = new Uint8Array(4)
