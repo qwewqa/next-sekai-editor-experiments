@@ -927,10 +927,10 @@
       "dragToPanY": "드래그하여 Y축 이동",
       "dragToPanX": "드래그하여 X축 이동",
       "showGroupName": "그룹 이름 표시",
-      "hideGroupNameWhenFocusingGroup": "한 그룹을 현재 그룹으로 설정했을 때 그룹 이름 숨기기",
+      "hideGroupNameWhenFocusingGroup": "그룹에 포커스할 때 그룹 이름 숨기기",
       "showOtherGroups": "다른 그룹 표시",
       "showStageName": "스테이지 이름 표시",
-      "hideStageNameWhenFocusingStage": "한 스테이지를 현재 스테이지로 설정했을 때 스테이지 이름 숨기기",
+      "hideStageNameWhenFocusingStage": "스테이지에 포커스할 때 스테이지 이름 숨기기",
       "showOtherStages": "다른 스테이지 표시",
       "nameContrast": "이름 대비",
       "showOtherObjects": "다른 객체 표시",
@@ -1027,7 +1027,7 @@
         "right": "우측"
       },
       "scrollInertia": "스크롤 관성",
-      "dragHandles": "드래그 핸들 표시",
+      "resizeHandles": "크기 조절 핸들 표시",
       "longPressContextMenu": "길게 눌러 컨텍스트 메뉴 열기"
     },
     "panels": {
@@ -1074,8 +1074,8 @@
         }
       },
       "dimUnchangedObjects": "타임라인의 단계를 볼 때 변경 사항 표시의 기본값을 설정합니다.",
-      "showOtherGroups": "한 그룹을 현재 그룹으로 설정했을 때 다른 그룹의 객체를 흐리게 표시합니다.",
-      "showOtherStages": "한 스테이지를 현재 스테이지로 설정했을 때 다른 스테이지의 객체를 흐리게 표시합니다.",
+      "showOtherGroups": "그룹에 포커스할 때 다른 그룹의 객체를 흐리게 표시합니다.",
+      "showOtherStages": "스테이지에 포커스할 때 다른 스테이지의 객체를 흐리게 표시합니다.",
       "showOtherObjects": "숨긴 유형의 객체를 흐리게 표시합니다.",
       "nameContrast": "그룹 이름과 스테이지 이름에 검은 윤곽선을 넣고 스테이지 이름을 더 밝게 표시합니다.",
       "dragToPanY": "채보의 위쪽이나 아래쪽 가장자리 근처에서 드래그하면 채보를 위아래로 스크롤합니다.",
@@ -1160,7 +1160,6 @@
         }
       },
       "touchScrollInertia": "손가락을 뗀 뒤에도 채보가 계속 스크롤되며 서서히 느려지게 합니다.",
-      "touchDragHandles": "패널 가장자리와 그룹 및 스테이지의 행에 핸들을 표시합니다. 터치로 행을 드래그하려면 행의 핸들을 사용해야 합니다.",
       "showPropertyDescriptions": "채보 속성 옆에 정보 버튼을 표시합니다."
     },
     "sections": "섹션",
@@ -2459,7 +2458,7 @@
     "notLocal": "“{0}”이(가) 아직 이 기기에 없습니다.",
     "noSpace": "{0}을(를) 쓸 공간이 부족합니다.",
     "writeFailed": "“{0}”에 쓰지 못했습니다.",
-    "ownFileEmptied": "“{0}”이(가) 비워졌습니다. 채보는 여전히 이 브라우저에 보관되어 있습니다.",
+    "ownFileEmptied": "“{0}”에 쓰지 못했습니다. 파일이 비워졌습니다. 채보는 여전히 이 브라우저에 보관되어 있습니다.",
     "notPutBack": "“{0}”이(가) 비워졌으며 내용을 복원하지 못했습니다.",
     "openedContentGone": "“{0}”의 내용이 변경되었습니다.",
     "replacedContentGone": "“{0}”의 내용이 변경되었습니다.",

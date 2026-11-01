@@ -927,10 +927,10 @@
       "dragToPanY": "Y Eksenini Kaydırmak İçin Sürükle",
       "dragToPanX": "X Eksenini Kaydırmak İçin Sürükle",
       "showGroupName": "Grup Adını Göster",
-      "hideGroupNameWhenFocusingGroup": "Bir Grup Geçerli Grup Olarak Seçiliyken Grup Adlarını Gizle",
+      "hideGroupNameWhenFocusingGroup": "Bir Gruba Odaklanırken Grup Adlarını Gizle",
       "showOtherGroups": "Diğer Grupları Göster",
       "showStageName": "Sahne Adını Göster",
-      "hideStageNameWhenFocusingStage": "Bir Sahne Geçerli Sahne Olarak Seçiliyken Sahne Adlarını Gizle",
+      "hideStageNameWhenFocusingStage": "Bir Sahneye Odaklanırken Sahne Adlarını Gizle",
       "showOtherStages": "Diğer Sahneleri Göster",
       "nameContrast": "Ad Kontrastı",
       "showOtherObjects": "Diğer Nesneleri Göster",
@@ -1027,7 +1027,7 @@
         "right": "Sağ"
       },
       "scrollInertia": "Kaydırma Ataleti",
-      "dragHandles": "Sürükleme Tutamaçlarını Göster",
+      "resizeHandles": "Yeniden Boyutlandırma Tutamaçlarını Göster",
       "longPressContextMenu": "Bağlam Menüsü İçin Uzun Bas"
     },
     "panels": {
@@ -1074,8 +1074,8 @@
         }
       },
       "dimUnchangedObjects": "Zaman Çizgisi’ndeki adımları görüntülerken Değişiklikleri Göster’in varsayılan değerini belirler.",
-      "showOtherGroups": "Bir grup geçerli grup olarak seçiliyken diğer gruplardaki nesneleri soluk gösterir.",
-      "showOtherStages": "Bir sahne geçerli sahne olarak seçiliyken diğer sahnelerdeki nesneleri soluk gösterir.",
+      "showOtherGroups": "Bir gruba odaklanırken diğer gruplardaki nesneleri soluk gösterir.",
+      "showOtherStages": "Bir sahneye odaklanırken diğer sahnelerdeki nesneleri soluk gösterir.",
       "showOtherObjects": "Gizlediğiniz türlerdeki nesneleri soluk gösterir.",
       "nameContrast": "Grup ve sahne adlarının çevresine siyah bir kontur ekler ve sahne adlarını daha parlak gösterir.",
       "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklediğinizde çizelgeyi yukarı veya aşağı kaydırır.",
@@ -1160,7 +1160,6 @@
         }
       },
       "touchScrollInertia": "Parmağınızı kaldırdıktan sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar.",
-      "touchDragHandles": "Panel kenarlarında ve Gruplar ile Sahneler panellerindeki satırlarda tutamaçları gösterir. Satırları dokunarak sürüklemek için satır tutamaçlarını kullanmanız gerekir.",
       "showPropertyDescriptions": "Çizelge özelliklerinin yanında bilgi düğmeleri gösterir."
     },
     "sections": "Bölümler",
@@ -2459,7 +2458,7 @@
     "notLocal": "“{0}” henüz bu cihazda değil.",
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "“{0}” yazılamadı.",
-    "ownFileEmptied": "“{0}” artık boş. Nota çizelgesi hâlâ bu tarayıcıda saklanıyor.",
+    "ownFileEmptied": "“{0}” yazılamadı. Dosya artık boş. Nota çizelgesi hâlâ bu tarayıcıda saklanıyor.",
     "notPutBack": "“{0}” boşaltıldı ve içeriği geri yüklenemedi.",
     "openedContentGone": "“{0}” içeriği değişti.",
     "replacedContentGone": "“{0}” içeriği değişti.",

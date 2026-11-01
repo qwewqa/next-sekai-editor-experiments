@@ -927,10 +927,10 @@
       "dragToPanY": "ドラッグ中の縦方向スクロール",
       "dragToPanX": "ドラッグ中の横方向スクロール",
       "showGroupName": "グループ名を表示",
-      "hideGroupNameWhenFocusingGroup": "1つのグループを現在のグループに設定しているときはグループ名を非表示",
+      "hideGroupNameWhenFocusingGroup": "グループにフォーカスしているときはグループ名を非表示",
       "showOtherGroups": "他のグループを表示",
       "showStageName": "ステージ名を表示",
-      "hideStageNameWhenFocusingStage": "1つのステージを現在のステージに設定しているときはステージ名を非表示",
+      "hideStageNameWhenFocusingStage": "ステージにフォーカスしているときはステージ名を非表示",
       "showOtherStages": "他のステージを表示",
       "nameContrast": "名前のコントラスト",
       "showOtherObjects": "他のオブジェクトを表示",
@@ -1027,7 +1027,7 @@
         "right": "右"
       },
       "scrollInertia": "スクロールの慣性",
-      "dragHandles": "ドラッグハンドルを表示",
+      "resizeHandles": "サイズ変更ハンドルを表示",
       "longPressContextMenu": "長押しでコンテキストメニュー"
     },
     "panels": {
@@ -1074,8 +1074,8 @@
         }
       },
       "dimUnchangedObjects": "タイムラインの操作を表示するときの「変更を表示」のデフォルトを設定します。",
-      "showOtherGroups": "1つのグループを現在のグループに設定しているときは、他のグループのオブジェクトを薄く表示します。",
-      "showOtherStages": "1つのステージを現在のステージに設定しているときは、他のステージのオブジェクトを薄く表示します。",
+      "showOtherGroups": "グループにフォーカスしているとき、他のグループのオブジェクトを薄く表示します。",
+      "showOtherStages": "ステージにフォーカスしているとき、他のステージのオブジェクトを薄く表示します。",
       "showOtherObjects": "非表示にした種類のオブジェクトを薄く表示します。",
       "nameContrast": "グループ名とステージ名を黒で縁取り、ステージ名を明るく表示します。",
       "dragToPanY": "譜面の上端または下端の近くでドラッグすると、譜面を上下にスクロールします。",
@@ -1160,7 +1160,6 @@
         }
       },
       "touchScrollInertia": "指を離した後も、譜面が徐々に減速しながらスクロールし続けるようにします。",
-      "touchDragHandles": "パネルの端と、グループとステージの各行にハンドルを表示します。タッチ操作で行をドラッグするには、行のハンドルを使う必要があります。",
       "showPropertyDescriptions": "譜面のプロパティの横に、情報ボタンを表示します。"
     },
     "sections": "セクション",
@@ -2459,7 +2458,7 @@
     "notLocal": "「{0}」はまだこのデバイス上にありません。",
     "noSpace": "{0} を書き込むための空き容量が足りません。",
     "writeFailed": "「{0}」に書き込めませんでした。",
-    "ownFileEmptied": "「{0}」は空になりました。譜面は引き続きこのブラウザーに保管されています。",
+    "ownFileEmptied": "「{0}」に書き込めませんでした。ファイルは空になりました。譜面は引き続きこのブラウザーに保管されています。",
     "notPutBack": "「{0}」は空になり、内容を復元できませんでした。",
     "openedContentGone": "「{0}」の内容が変更されています。",
     "replacedContentGone": "「{0}」の内容が変更されています。",

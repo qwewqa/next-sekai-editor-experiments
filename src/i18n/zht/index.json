@@ -927,10 +927,10 @@
       "dragToPanY": "拖曳以平移 Y",
       "dragToPanX": "拖曳以平移 X",
       "showGroupName": "顯示圖層名稱",
-      "hideGroupNameWhenFocusingGroup": "將某個圖層設為目前圖層時隱藏圖層名稱",
+      "hideGroupNameWhenFocusingGroup": "聚焦圖層時隱藏圖層名稱",
       "showOtherGroups": "顯示其他圖層",
       "showStageName": "顯示舞台名稱",
-      "hideStageNameWhenFocusingStage": "將某個舞台設為目前舞台時隱藏舞台名稱",
+      "hideStageNameWhenFocusingStage": "聚焦舞台時隱藏舞台名稱",
       "showOtherStages": "顯示其他舞台",
       "nameContrast": "名稱對比度",
       "showOtherObjects": "顯示其他物件",
@@ -1027,7 +1027,7 @@
         "right": "右邊"
       },
       "scrollInertia": "滾動慣性",
-      "dragHandles": "顯示拖曳把手",
+      "resizeHandles": "顯示調整大小把手",
       "longPressContextMenu": "長按開啟右鍵選單"
     },
     "panels": {
@@ -1074,8 +1074,8 @@
         }
       },
       "dimUnchangedObjects": "設定檢視時間軸中的步驟時，「顯示變更」的預設狀態。",
-      "showOtherGroups": "將某個圖層設為目前圖層時，以淡色顯示其他圖層中的物件。",
-      "showOtherStages": "將某個舞台設為目前舞台時，以淡色顯示其他舞台上的物件。",
+      "showOtherGroups": "聚焦圖層時，以淡色顯示其他圖層中的物件。",
+      "showOtherStages": "聚焦舞台時，以淡色顯示其他舞台上的物件。",
       "showOtherObjects": "以淡色顯示已隱藏類型的物件。",
       "nameContrast": "為圖層名稱和舞台名稱加上黑色描邊，並提高舞台名稱的亮度。",
       "dragToPanY": "在譜面頂部或底部邊緣附近拖曳時，向上或向下捲動譜面。",
@@ -1160,7 +1160,6 @@
         }
       },
       "touchScrollInertia": "讓譜面在抬起手指後繼續捲動，並逐漸減速。",
-      "touchDragHandles": "在面板邊緣以及圖層和舞台的各列上顯示把手。用觸控拖曳列時，需要使用列上的把手。",
       "showPropertyDescriptions": "在譜面屬性旁顯示資訊按鈕。"
     },
     "sections": "分區",
@@ -2459,7 +2458,7 @@
     "notLocal": "「{0}」尚不在此裝置上。",
     "noSpace": "空間不足，無法寫入 {0}。",
     "writeFailed": "無法寫入「{0}」。",
-    "ownFileEmptied": "「{0}」已被清空。譜面仍存放在此瀏覽器中。",
+    "ownFileEmptied": "「{0}」無法寫入。檔案已被清空。譜面仍存放在此瀏覽器中。",
     "notPutBack": "「{0}」已被清空，且無法還原其內容。",
     "openedContentGone": "「{0}」的內容已變更。",
     "replacedContentGone": "「{0}」的內容已變更。",

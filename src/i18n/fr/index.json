@@ -927,10 +927,10 @@
       "dragToPanY": "Glisser pour déplacer la vue verticalement",
       "dragToPanX": "Glisser pour déplacer la vue horizontalement",
       "showGroupName": "Afficher le nom du groupe",
-      "hideGroupNameWhenFocusingGroup": "Masquer les noms des groupes lorsqu’un groupe est défini comme groupe actuel",
+      "hideGroupNameWhenFocusingGroup": "Masquer les noms des groupes lorsqu’un groupe est ciblé",
       "showOtherGroups": "Afficher les autres groupes",
       "showStageName": "Afficher le nom de la scène",
-      "hideStageNameWhenFocusingStage": "Masquer les noms des scènes lorsqu’une scène est définie comme scène actuelle",
+      "hideStageNameWhenFocusingStage": "Masquer les noms des scènes lorsqu’une scène est ciblée",
       "showOtherStages": "Afficher les autres scènes",
       "nameContrast": "Contraste des noms",
       "showOtherObjects": "Afficher les autres objets",
@@ -1027,7 +1027,7 @@
         "right": "Droite"
       },
       "scrollInertia": "Inertie de défilement",
-      "dragHandles": "Afficher les poignées de déplacement",
+      "resizeHandles": "Afficher les poignées de redimensionnement",
       "longPressContextMenu": "Appui long pour le menu contextuel"
     },
     "panels": {
@@ -1074,8 +1074,8 @@
         }
       },
       "dimUnchangedObjects": "Définit la valeur par défaut d’Afficher les modifications lorsque vous consultez des étapes de la chronologie.",
-      "showOtherGroups": "Affiche les objets des autres groupes en les estompant lorsqu’un groupe est défini comme groupe actuel.",
-      "showOtherStages": "Affiche les objets des autres scènes en les estompant lorsqu’une scène est définie comme scène actuelle.",
+      "showOtherGroups": "Affiche les objets des autres groupes en les estompant lorsqu’un groupe est ciblé.",
+      "showOtherStages": "Affiche les objets des autres scènes en les estompant lorsqu’une scène est ciblée.",
       "showOtherObjects": "Affiche les objets des types que vous avez masqués en les estompant.",
       "nameContrast": "Entoure les noms des groupes et des scènes d’un contour noir et éclaircit les noms des scènes.",
       "dragToPanY": "Fait défiler la partition vers le haut ou vers le bas lorsque vous faites glisser près de son bord supérieur ou inférieur.",
@@ -1160,7 +1160,6 @@
         }
       },
       "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après avoir levé le doigt.",
-      "touchDragHandles": "Affiche des poignées sur les bords des panneaux et sur les lignes de Groupes et Scènes. Pour faire glisser une ligne au doigt, vous devez utiliser sa poignée.",
       "showPropertyDescriptions": "Affiche des boutons d’information à côté des propriétés de la partition."
     },
     "sections": "Rubriques",
@@ -2459,7 +2458,7 @@
     "notLocal": "« {0} » n’est pas encore disponible sur cet appareil.",
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "« {0} » n’a pas pu être écrit.",
-    "ownFileEmptied": "« {0} » est maintenant vide. La partition est toujours stockée dans ce navigateur.",
+    "ownFileEmptied": "« {0} » n’a pas pu être écrit. Le fichier est maintenant vide. La partition est toujours stockée dans ce navigateur.",
     "notPutBack": "« {0} » a été vidé et son contenu n’a pas pu être restauré.",
     "openedContentGone": "Le contenu de « {0} » a changé.",
     "replacedContentGone": "Le contenu de « {0} » a changé.",

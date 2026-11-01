@@ -46,8 +46,7 @@ import SettingsSection from './SettingsSection.vue'
 
         <ToggleField
             v-model="settings.touchDragHandles"
-            :label="i18n.settings.touch.dragHandles"
-            :description="i18n.settings.descriptions.touchDragHandles"
+            :label="i18n.settings.touch.resizeHandles"
         />
 
         <ToggleField

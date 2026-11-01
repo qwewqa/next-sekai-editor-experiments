@@ -176,9 +176,10 @@ test("Save As… picking the chain's own file with nothing read: a rebuild that 
     // Shown as not written; storage holds all the file did, so it's left empty.
     const failed = saveDialog(page, 'Save')
     await expect(failed).toContainText(
-        '“coconut.nxsp” is now empty. The chart is still stored in this browser.',
+        '“coconut.nxsp” could not be written. The file is now empty. The chart is still stored in this browser.',
     )
     await page.keyboard.press('Escape')
+    await expect(failed).not.toContainText('is now empty')
     await expect(failed).toContainText('“coconut.nxsp” could not be written.')
     expect(await readFile(page, 'coconut.nxsp')).toEqual([])
     await page.keyboard.press('Escape')

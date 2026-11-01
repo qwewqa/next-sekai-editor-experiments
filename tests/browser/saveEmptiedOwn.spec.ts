@@ -144,7 +144,7 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
 
         const offer = saveDialog(page, flow === 'Export Level Data' ? flow : 'Save')
         await expect(offer).toContainText(
-            '“coconut.nxsp” is now empty. The chart is still stored in this browser.',
+            '“coconut.nxsp” could not be written. The file is now empty. The chart is still stored in this browser.',
         )
         await expect(offer.getByRole('button', { name: 'OK', exact: true })).toBeVisible()
         await expect(offer.getByRole('button', { name: 'Download', exact: true })).toHaveCount(0)

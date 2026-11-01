@@ -99,11 +99,11 @@ test.describe('in Settings', () => {
         await boot(page)
     })
 
-    test('36 described rows, each with a 24 px face, a 44 px target and exact names', async ({
+    test('35 described rows, each with a 24 px face, a 44 px target and exact names', async ({
         page,
     }) => {
         const dialog = await openSettings(page)
-        await expect(dialog.locator('[data-field-info]')).toHaveCount(36)
+        await expect(dialog.locator('[data-field-info]')).toHaveCount(35)
         const { root, info } = field(dialog, 'Name Contrast')
         await expect(info).toHaveAccessibleName('About Name Contrast')
         const toggle = root.getByRole('switch')
@@ -280,7 +280,7 @@ test.describe('in Settings', () => {
         await info.scrollIntoViewIfNeeded()
         await info.hover()
         await expect(bubble(page)).toHaveText(
-            'Shows objects in other groups, faded, while one group is current.',
+            'Shows objects in other groups, faded, while a group is focused.',
         )
         await expect(info).toHaveAttribute('aria-expanded', 'true')
         const opened = await times(page)
@@ -428,7 +428,7 @@ test.describe('in Settings', () => {
         await second.info.click()
         await expect(bubble(page)).toHaveCount(1)
         await expect(bubble(page)).toHaveText(
-            'Shows objects on other stages, faded, while one stage is current.',
+            'Shows objects on other stages, faded, while a stage is focused.',
         )
         await expect(first.info).toHaveAttribute('aria-expanded', 'false')
     })
@@ -981,7 +981,7 @@ test.describe('on chart properties', () => {
             expect(new Set(fields.map(({ info }) => info)), surface).toEqual(new Set([0]))
         }
         const dialog = await openSettings(page)
-        await expect(dialog.locator('[data-field-info]')).toHaveCount(36)
+        await expect(dialog.locator('[data-field-info]')).toHaveCount(35)
     })
 
     for (const where of ['panel', 'selection dialog'] as const)

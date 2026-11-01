@@ -927,10 +927,10 @@
             "dragToPanY": "Drag to Pan Y",
             "dragToPanX": "Drag to Pan X",
             "showGroupName": "Show Group Name",
-            "hideGroupNameWhenFocusingGroup": "Hide Group Names When One Group Is Current",
+            "hideGroupNameWhenFocusingGroup": "Hide Group Names When Focusing a Group",
             "showOtherGroups": "Show Other Groups",
             "showStageName": "Show Stage Name",
-            "hideStageNameWhenFocusingStage": "Hide Stage Names When One Stage Is Current",
+            "hideStageNameWhenFocusingStage": "Hide Stage Names When Focusing a Stage",
             "showOtherStages": "Show Other Stages",
             "nameContrast": "Name Contrast",
             "showOtherObjects": "Show Other Objects",
@@ -1027,7 +1027,7 @@
                 "right": "Right"
             },
             "scrollInertia": "Scroll Inertia",
-            "dragHandles": "Show Drag Handles",
+            "resizeHandles": "Show Resize Handles",
             "longPressContextMenu": "Long Press for Context Menu"
         },
         "panels": {
@@ -1074,8 +1074,8 @@
                 }
             },
             "dimUnchangedObjects": "Sets the default for Show Edits when you view Timeline steps.",
-            "showOtherGroups": "Shows objects in other groups, faded, while one group is current.",
-            "showOtherStages": "Shows objects on other stages, faded, while one stage is current.",
+            "showOtherGroups": "Shows objects in other groups, faded, while a group is focused.",
+            "showOtherStages": "Shows objects on other stages, faded, while a stage is focused.",
             "showOtherObjects": "Shows objects of the types you have hidden, faded.",
             "nameContrast": "Outlines group and stage names in black and brightens stage names.",
             "dragToPanY": "Scrolls the chart up or down when you drag near its top or bottom edge.",
@@ -1160,7 +1160,6 @@
                 }
             },
             "touchScrollInertia": "Lets the chart keep scrolling and slow down gradually after you lift your finger.",
-            "touchDragHandles": "Shows handles on panel edges and on rows in Groups and Stages. You need the row handles to drag rows by touch.",
             "showPropertyDescriptions": "Shows info buttons beside chart properties."
         },
         "sections": "Sections",
@@ -2459,7 +2458,7 @@
         "notLocal": "“{0}” is not available on this device yet.",
         "noSpace": "There is not enough space to write {0}.",
         "writeFailed": "“{0}” could not be written.",
-        "ownFileEmptied": "“{0}” is now empty. The chart is still stored in this browser.",
+        "ownFileEmptied": "“{0}” could not be written. The file is now empty. The chart is still stored in this browser.",
         "notPutBack": "“{0}” was emptied and its contents could not be restored.",
         "openedContentGone": "The contents of “{0}” have changed.",
         "replacedContentGone": "The contents of “{0}” have changed.",

@@ -445,10 +445,11 @@ test("Export's picker: the chain's own file that could not be written again says
     await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
     await page.keyboard.press('Enter')
     await expect(saveDialog(page, 'Export Level Data')).toContainText(
-        '“coconut.nxsp” is now empty. The chart is still stored in this browser.',
+        '“coconut.nxsp” could not be written. The file is now empty. The chart is still stored in this browser.',
     )
     await page.keyboard.press('Escape')
     const dialog = page.getByRole('dialog')
+    await expect(dialog).not.toContainText('is now empty')
     await expect(dialog).toContainText('“coconut.nxsp” could not be written.')
     await expect(dialog).not.toContainText('is not level data')
 })
