@@ -209,13 +209,29 @@ The first audio packet is rebased to zero and carries `AudioTiming`: the whole s
 
 `src/editor/exportVideo/destination.ts` prepares an accepted pick or a staged file, or selects the bounded memory route when staging is unavailable. Its result leaves target ownership with the caller. `report.ts` builds the usage event's raw payload from settings and explicit end measurements. Work time is captured before waiting for delivery; the analytics catalogue converts sizes and lengths to its existing ranges when the event is wired into the lifecycle.
 
-The position-addressed targets in `src/editor/exportVideo/worker/target.ts` write chunks through a picked file's writable stream or an OPFS sync access handle. They support rewriting headers without collecting the whole output in memory. The caller awaits each write and closes or aborts the target before releasing its destination.
+The position-addressed targets in `src/exportVideo/worker/target.ts` write chunks through a picked file's writable stream or an OPFS sync access handle. They support rewriting headers without collecting the whole output in memory. The caller awaits each write and closes or aborts the target before releasing its destination.
 
 `src/editor/save/videoPick.ts` uses the shared pick session. Only an unknown, empty file becomes a video destination. A pick of the chain's own project runs the same `ownPick.ts` rewrite as Export Level Data. Other known files are refused, with any held bytes restored or offered by the session. Streaming starts after the session releases `nse-bind`. Before committing, the target must still be empty with the modification time read at the pick. Cancellation before the commit aborts the swap and removes only that unchanged empty file. The read-to-close and read-to-remove windows can still race another writer.
 
 `platform.videoOutput` owns staged files under `export-video/`, each protected by `nse-export-video:<id>`. The worker closes its sync access handle before the owner removes a cancelled or failed output. A file remains locked while Ready is shown. After a successful delivery, `endReady()` starts the hand-over's ten-minute retention; an undelivered file is removed at once. Call it only after any required discard confirmation. Downloads use the existing hand-over, and shares use the video's MIME type. A dismissed share keeps the file available.
 
 The maintenance runner sweeps unlocked staged files before checking storage pressure. A deletion attempt releases ownership even if it fails, so a later sweep can retry. The sweep never reads project media or History. Web implements staging in OPFS, the mock keeps it in memory, and native leaves `videoOutput` absent.
+
+### Export jobs
+
+`src/exportVideo/job.ts` owns one chart snapshot and its export. The editor supplies copied assets, audio buffers, a destination and a worker. `copyExportAssets` copies the shown skin, particles and background through their current preview host. The worker uploads the copies and closes them. The renderer keeps the background's uploaded dimensions separately from its bitmap.
+
+When browser storage is available, an export writes its render-pixel count to `localStorage` under `exportVideoRunning.<id>` after acquiring its job lock. It removes that marker at every end and on `pagehide`. The dialog can use markers left by interrupted exports when deciding which settings to offer.
+
+The dialog reads `state` and receives changes through `changed`. The phases are `setup`, `preparing`, `exporting` (frame count, fraction complete and ETA in seconds), `cancelling`, `finishing`, `ready`, `done`, `failed` and `cancelled`. `preview(time, size)` returns a bitmap that the caller closes; a queued request replaced by a newer request returns no bitmap. `configure(settings)` changes the setup before `start()`. Cancel stops preparation or encoding; it is refused during the commit and in Ready. `deliver()` keeps Ready available for retries. Call `endReady()` only after confirming the discard of an undelivered file. `dispose()` cancels work before the commit, waits for an active commit and releases the worker. A staged destination keeps its lock through Ready and the platform's retention period.
+
+`host.ts` and `worker/export.worker.ts` carry view requests, audio blocks, progress and cancellation. A worker entry calls `installExportWorker` with a function that opens its packet sink and target. The sink accepts `MuxInput` from `worker/encode.ts`; its `add` resolves after writing that packet, and `finalize` does not commit the target. The worker awaits the commit separately. This keeps the container implementation outside the frame loop.
+
+The worker uses the preview renderer at a logical height of 540 pixels. An optional composite target receives the background and foreground, then an export pass applies fades before downscaling. Every captured frame must pass the draw result and graphics error checks. Context loss fails the job without waiting for restoration. Black frames are valid.
+
+The loop gates each video frame and each 100 ms audio unit on encoder input consumption, queued packets and a one-second lead in clip time. It counts submitted and written work per track, excluding audio trims from playable audio. Those counts never gate input on encoder output. Encoders in quality mode may retain frames until flush. A single drain awaits each packet write; finalization waits for audio submission, both encoder flushes and the last write. Cancellation and the first error settle the waits.
+
+The browser hook at `window.editorTest.exportVideo` runs the job through real encoders and an OPFS target. Its test sink records packets and decoder metadata and checks frame timestamps, durations, dimensions, audio length and trims. It writes no media container. Container playback and seeking require a muxer and separate tests.
 
 ## Pinned Pixi seams and upgrade gate
 

@@ -19,6 +19,7 @@ declare global {
         editorRendering: typeof import('../../src/rendering/context')
         installEditorRendering?: (rendering: typeof import('../../src/rendering/context')) => void
         editorTest: {
+            exportVideo: (typeof import('../../src/editor/exportVideo/test'))['exportVideoTest']
             history: typeof import('../../src/history')
             store: typeof import('../../src/history/store')
             historySteps: typeof import('../helpers/historySteps')
@@ -476,6 +477,12 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
         ...('left' in entity ? { left: entity.left, size: entity.size } : {}),
     })
     window.editorTest = {
+        exportVideo: async (options) => {
+            const { exportVideoTest } = await appImport<
+                typeof import('../../src/editor/exportVideo/test')
+            >('/src/editor/exportVideo/test.ts')
+            return exportVideoTest(options)
+        },
         history,
         store,
         historySteps,

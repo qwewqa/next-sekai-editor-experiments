@@ -62,7 +62,7 @@ export type ToPreviewWorker =
       }
     /** Hand the atlases back to the main thread. The canvases stay until the worker is terminated. */
     | { type: 'return' }
-    | { type: 'copyAtlas'; id: number; slot: 0 | 1 }
+    | { type: 'copyAtlas'; id: number; slot: 0 | 1 | 3 }
     | { type: 'outlineAlpha' }
     | { type: 'comboPixels' }
     | { type: 'loseContext' }

@@ -332,7 +332,11 @@ const startWorker = () => {
     return {
         hasFrame,
         maxViewportSize,
-        copyAtlas: (slot: 0 | 1, loaded: LoadedSkin | LoadedParticle, signal: AbortSignal) =>
+        copyAtlas: (
+            slot: 0 | 1 | 3,
+            loaded: LoadedSkin | LoadedParticle | LoadedBackground,
+            signal: AbortSignal,
+        ) =>
             new Promise<ImageBitmap>((resolve, reject) => {
                 if (signal.aborted || stopped || lent[slot] !== loaded) {
                     reject(new Error('Preview atlas is unavailable'))
@@ -484,8 +488,8 @@ let client: ReturnType<typeof startWorker> | undefined
 
 /** Copies an atlas already lent to the worker, without starting a host or moving the original. */
 export const copyWorkerAtlas = (
-    slot: 0 | 1,
-    loaded: LoadedSkin | LoadedParticle,
+    slot: 0 | 1 | 3,
+    loaded: LoadedSkin | LoadedParticle | LoadedBackground,
     signal: AbortSignal,
 ) =>
     client?.copyAtlas(slot, loaded, signal) ??

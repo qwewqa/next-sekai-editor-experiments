@@ -169,6 +169,8 @@ export type PreviewSurface = PreviewRenderer & {
     compositeBackground: (quad: Quad, input: PreviewFrameInput) => void
     hasTexture: (slot: TextureSlot) => boolean
     setRenderTarget: (options: RenderTargetOptions | undefined) => RenderTarget | undefined
+    /** The caller owns this single-sample target and presents it after the composite. */
+    setCompositeTarget: (target: RenderTarget | undefined) => void
     checkError: () => boolean
 }
 
@@ -190,8 +192,9 @@ export const createPreviewRenderer = (
     let buffer: WebGLBuffer | null = null
     let restoreState = false
     let target: RenderTarget | undefined
+    let compositeTarget: RenderTarget | undefined
     let backgroundPass: ReturnType<typeof createBackgroundPass> | undefined
-    let backgroundIdentity: ImageBitmap | undefined
+    let backgroundIdentity: { width: number; height: number } | undefined
     let disposed = false
     const deleteResources = () => {
         if (disposed) return
@@ -297,9 +300,12 @@ export const createPreviewRenderer = (
                           background.sigma,
                       )
                     : undefined
-            if (canvas.width !== input.width) canvas.width = input.width
-            if (canvas.height !== input.height) canvas.height = input.height
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+            if (compositeTarget) compositeTarget.bind()
+            else {
+                if (canvas.width !== input.width) canvas.width = input.width
+                if (canvas.height !== input.height) canvas.height = input.height
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+            }
             gl.viewport(0, 0, input.width, input.height)
             gl.useProgram(program)
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
@@ -340,6 +346,9 @@ export const createPreviewRenderer = (
             restoreState = true
         },
         hasTexture: (slot) => hasTextures[slot] === true,
+        setCompositeTarget: (value) => {
+            compositeTarget = value
+        },
         setRenderTarget(options) {
             if (disposed) throw new Error('Preview renderer is disposed')
             if (
@@ -376,7 +385,7 @@ export const createPreviewRenderer = (
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
 
             hasTextures[index] = true
-            if (index === 3) backgroundIdentity = bitmap
+            if (index === 3) backgroundIdentity = { width: bitmap.width, height: bitmap.height }
         },
 
         reserveTexture(slot, width, height) {
