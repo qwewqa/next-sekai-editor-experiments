@@ -151,7 +151,7 @@ const measure = async (
                     nominalTop: one.label.originY - one.labelCap,
                     nominalBottom: one.label.originY,
                 })
-            pen += glyphs.COMBO_FONT.labelAdvances[i]! * scale + 0.3 * one.labelCap
+            pen += glyphs.COMBO_FONT.labelAdvances[i]! * scale + 0.26 * one.labelCap
         }
 
         // Where outlines meet, no pixel outside the fill is darker than one outline.
@@ -249,7 +249,7 @@ test('the combo raster is exact where it must be, and the same in a worker', asy
 
     // Overlapping shapes in one path are covered once, and a diagonal edge has the expected coverage.
     expect(Math.abs(main.coverage.fill - 128)).toBeLessThanOrEqual(1)
-    expect(Math.abs(main.coverage.outline - 184)).toBeLessThanOrEqual(1)
+    expect(Math.abs(main.coverage.outline - 204)).toBeLessThanOrEqual(1)
     expect(main.coverage.corner).toBeGreaterThanOrEqual(3)
     expect(main.coverage.corner).toBeLessThanOrEqual(9)
 
@@ -268,7 +268,7 @@ test('the combo raster is exact where it must be, and the same in a worker', asy
             }
         }
         for (const { text, outside } of size.union)
-            expect(outside, `${text} at field ${size.fieldH}`).toBeLessThanOrEqual(185)
+            expect(outside, `${text} at field ${size.fieldH}`).toBeLessThanOrEqual(205)
         expect(size.countChange.changed).toBeGreaterThan(0)
         // Chromium's analytic coverage depends on every edge that crosses a row, so the other
         // digits' edge pixels move by a few levels; their shapes do not.

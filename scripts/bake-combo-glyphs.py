@@ -31,6 +31,7 @@ from fontTools.varLib import instancer
 FONT_COMMIT = '5f246070882b903ed95a911dba83d9d4a6836152'
 FONT_SHA256 = 'fc7287273e66929776e2ba54f144fe699080bec29f61bf649d70d871468aeade'
 WEIGHT = 600
+LABEL_WEIGHT = 700
 DIGITS = '0123456789'
 LETTERS = 'COMB'
 LABEL = 'COMBO'
@@ -189,20 +190,22 @@ def main():
     for ch in LETTERS:
         names[ch] = cmap[ord(ch)]
 
+    # The digits at WEIGHT, and the label's letters at LABEL_WEIGHT.
     font = instancer.instantiateVariableFont(variable, {'wght': WEIGHT})
-    removeOverlaps(font, list(names.values()))
-    glyph_set = font.getGlyphSet()
-    hmtx = font['hmtx']
-
+    label_font = instancer.instantiateVariableFont(variable, {'wght': LABEL_WEIGHT})
     glyphs = {}
-    for ch, name in names.items():
-        pen = SvgPen(glyph_set)
-        glyph_set[name].draw(pen)
-        d = pen.data()
-        glyphs[ch] = {'d': d, 'advance': hmtx[name][0], **measure(d)}
+    for instance, chars in ((font, DIGITS), (label_font, LETTERS)):
+        removeOverlaps(instance, [names[ch] for ch in chars])
+        glyph_set = instance.getGlyphSet()
+        hmtx = instance['hmtx']
+        for ch in chars:
+            pen = SvgPen(glyph_set)
+            glyph_set[names[ch]].draw(pen)
+            d = pen.data()
+            glyphs[ch] = {'d': d, 'advance': hmtx[names[ch]][0], **measure(d)}
 
     upm = font['head'].unitsPerEm
-    cap_height = font['OS/2'].sCapHeight
+    cap_height = label_font['OS/2'].sCapHeight
     advances = {glyphs[ch]['advance'] for ch in DIGITS}
     if len(advances) != 1:
         sys.exit('The tnum digits differ in advance')
@@ -219,14 +222,14 @@ def main():
 
     face = hb.Face(source)
     hb_font = hb.Font(face)
-    hb_font.set_variations({'wght': WEIGHT})
+    hb_font.set_variations({'wght': LABEL_WEIGHT})
     buffer = hb.Buffer()
     buffer.add_str(LABEL)
     buffer.guess_segment_properties()
     hb.shape(hb_font, buffer, {'kern': True, 'liga': False})
     label_advances = [p.x_advance for p in buffer.glyph_positions]
     if [buffer.glyph_infos[i].codepoint for i in range(len(LABEL))] != [
-        font.getGlyphID(names[ch]) for ch in LABEL
+        label_font.getGlyphID(names[ch]) for ch in LABEL
     ]:
         sys.exit('HarfBuzz shaped the label into other glyphs')
 
@@ -263,10 +266,11 @@ def main():
         '    centroidX: number\n',
         '}\n',
         '\n',
-        f'/** Outfit at weight {WEIGHT}, in font units. */\n',
+        f'/** Outfit in font units: the digits at weight {WEIGHT}, the label at {LABEL_WEIGHT}. */\n',
         'export const COMBO_FONT = {\n',
         f'    unitsPerEm: {number(upm)},\n',
         f'    figureHeight: {number(figure_height)},\n',
+        '    /** The label\'s cap height. */\n',
         f'    capHeight: {number(cap_height)},\n',
         f'    tabularAdvance: {number(tabular)},\n',
         '    /** The mean side bearings of the ten digits. */\n',

@@ -6,11 +6,11 @@ import type { PreviewViewport } from './layout'
 // shows the same composition. Positions are device pixels, y down.
 
 const NUMBER_SIZE = 0.09
-const LABEL_CAP = 0.25
+const LABEL_CAP = 0.28
 const LABEL_GAP = 0.3
 const NUMBER_OUTLINE = 0.05
 const LABEL_OUTLINE = 0.16
-const LABEL_TRACKING = 0.3
+const LABEL_TRACKING = 0.26
 /** The engine's combo anchor, as fractions of the field from its top left corner. */
 const ANCHOR_X = 0.855
 const ANCHOR_Y = 0.4125
@@ -20,7 +20,8 @@ export const COMBO_CAPACITY = 7
 
 /** The label's letters, in Latin capitals in every locale. */
 const LABEL = ['C', 'O', 'M', 'B', 'O'] as const
-export const COMBO_OUTLINE_COLOR = 'rgba(10, 12, 30, 0.72)'
+export const COMBO_OUTLINE_COLOR = 'rgba(10, 12, 30, 0.8)'
+export const COMBO_LABEL_OUTLINE_COLOR = 'rgba(10, 12, 30, 0.88)'
 export const COMBO_LABEL_COLOR = '#77efdc'
 export const COMBO_NUMBER_COLOR = '#ffffff'
 
@@ -300,7 +301,7 @@ export const paintLabel = (context: OffscreenCanvasRenderingContext2D, layout: C
         context,
         labelPath(layout),
         layout.labelOutline,
-        COMBO_OUTLINE_COLOR,
+        COMBO_LABEL_OUTLINE_COLOR,
         COMBO_LABEL_COLOR,
     )
 }

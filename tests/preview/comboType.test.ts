@@ -31,16 +31,16 @@ const layoutAt = (fieldH: number, aspect: number, digits: number) => {
 test('the combo sizes follow the field height', () => {
     const expected: Record<number, [number, number, number, number]> = {
         199: [18, 15, 5, 5],
-        470: [42, 35, 11, 13],
-        657: [59, 50, 15, 18],
-        1080: [97, 81, 24, 29],
+        470: [42, 35, 12, 13],
+        657: [59, 50, 17, 18],
+        1080: [97, 81, 27, 29],
     }
     for (const fieldH of FIELD_HEIGHTS) {
         const { layout, field } = layoutAt(fieldH, 16 / 9, 3)
         const H = Math.round(0.09 * field.h)
         assert.equal(layout.H, H)
         assert.equal(layout.cell, Math.round((590 * H) / 703))
-        assert.equal(layout.labelCap, Math.round(0.25 * H))
+        assert.equal(layout.labelCap, Math.round(0.28 * H))
         assert.equal(layout.gap, Math.round(0.3 * H))
         const row = expected[fieldH]
         if (row)
@@ -80,7 +80,7 @@ test('the combo snaps to whole pixels and centres on the anchor at every size an
                 // The label's ink box, from the baked bounds, centres on the number's box plus
                 // the optical shift.
                 const s = scaleL(layout.labelCap)
-                const track = 0.3 * layout.labelCap
+                const track = 0.26 * layout.labelCap
                 const start = layout.label.x + layout.label.originX
                 const lastPen = COMBO_FONT.labelAdvances
                     .slice(0, 4)
