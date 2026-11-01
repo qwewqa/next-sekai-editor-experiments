@@ -215,7 +215,7 @@ export type SettingsLayout = {
     top: number
     width: number
     maxHeight: number
-    /** Whether the expanded settings fit within the panel without scrolling. */
+    /** Whether the expanded settings open in the panel, showing most of the form. */
     fitsInPanel: boolean
     /** Settings toggle position: the image's top-right corner, mirroring the clock. */
     button: { left: number; top: number }
@@ -228,7 +228,7 @@ const overlaps = (a: Pick<Rect, 'left' | 'right'>, b: Pick<Rect, 'left' | 'right
 
 /**
  * Chooses where expanded preview settings open. In-panel placements are
- * preferred while the whole form fits; otherwise the placement with the most
+ * preferred while most of the form shows there; otherwise the placement with the most
  * room wins, which may extend beyond a small panel toward the editor. The
  * settings never cover their toggle, the clock or the given obstacles, and
  * cover the playback bar only when a very short top panel leaves nothing else.
@@ -238,6 +238,12 @@ const minSettingsWidth = 256
 /** On a phone the form spans the screen with even margins, like other sheets. */
 const narrowViewportWidth = 480
 const narrowSettingsMargin = 8
+/**
+ * The share of the form's height the panel must show for the form to open there
+ * and scroll the rest. Two thirds keeps most rows in view; with less, the form
+ * opens outside the panel, whole where it can.
+ */
+const inPanelShare = 2 / 3
 
 export const placePreviewSettings = ({
     side,
@@ -368,17 +374,20 @@ export const placePreviewSettings = ({
 
     const room = (region: Region) => region.bottom - region.top
     const fits = (region: Region, share = 1) => room(region) >= natural(region.width) * share
-    // Prefer the first place that fits the whole form, then one that shows most
-    // of it with a short scroll. Under a top dock, a form that scrolls is better
-    // than one covering the image and bar, so long as a few rows show. Covering
-    // the bar is a last resort; failing everything, the most room wins.
+    const isInPanel = (region: Region) =>
+        region.placement === 'below' || region.placement === 'over'
+    // Prefer the panel while it shows most of the form, scrolling the rest, then
+    // a place outside it that fits the whole form, then one that shows most of it.
+    // Under a top dock, a form that scrolls is better than one covering the image
+    // and bar, so long as a few rows show. Covering the bar is a last resort;
+    // failing everything, the most room wins.
     const preferred = regions.filter((region) => region.placement !== 'down')
     // A region an obstacle cut below a usable size is skipped: its height can
     // never grow past the obstacle, so it would show almost nothing.
     const usable = regions.filter((region) => !region.clipped || room(region) >= scrollMin)
     const candidates = usable.length ? usable : regions
     const chosen =
-        preferred.find((region) => fits(region)) ??
+        preferred.find((region) => fits(region, isInPanel(region) ? inPanelShare : 1)) ??
         preferred.find((region) => fits(region, 2 / 3)) ??
         (under && room(under) >= scrollMin ? under : undefined) ??
         candidates.reduce((best, region) => (room(region) > room(best) ? region : best))
@@ -393,7 +402,7 @@ export const placePreviewSettings = ({
         maxHeight: chosen.clipped
             ? Math.max(0, room(chosen))
             : Math.max(room(chosen), Math.min(minHeight, viewport.height - m - chosen.top)),
-        fitsInPanel: (chosen.placement === 'below' || chosen.placement === 'over') && fits(chosen),
+        fitsInPanel: isInPanel(chosen) && fits(chosen, inPanelShare),
         button,
         // Hiding the bar (by tapping the image) brings the toggle back.
         isButtonBlocked:

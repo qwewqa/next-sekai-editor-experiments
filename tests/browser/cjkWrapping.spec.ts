@@ -100,7 +100,7 @@ test('Preview Settings labels make room for a phrase rather than break inside it
         )
 })
 
-test('Japanese Preview Settings show in a dock just tall enough for their fitted height', async ({
+test('Japanese Preview Settings show in a dock just tall enough for two thirds of their fitted height', async ({
     page,
 }) => {
     const openPreview = async (height: number) => {
@@ -128,9 +128,11 @@ test('Japanese Preview Settings show in a dock just tall enough for their fitted
             margin: innerHeight - parseFloat(getComputedStyle(element).maxHeight),
         }
     })
-    // Before the fit, the labels wrap inside phrases and the form is taller than this room.
-    await openPreview(Math.ceil(height + margin) + 4)
+    // Before the fit, the labels wrap inside phrases, and two thirds of that taller form need more room.
+    await openPreview(Math.ceil((height * 2) / 3 + margin) + 4)
     await expect(form).toBeVisible()
+    const body = form.locator('.preview-controls-body')
+    expect(await body.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
 })
 
 test('Korean labels too long for two lines by word still break between words', async ({ page }) => {

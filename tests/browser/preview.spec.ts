@@ -2237,12 +2237,11 @@ test('Show Combo draws the combo in the frame while it is on', async ({ page }) 
     // Every note of the chart is before this time.
     await page.evaluate(() => (window.editorTest.view.cursorTime = 10))
     expect(await drawn()).toBe(false)
-    await page.keyboard.press(',')
-    const toggle = page.getByRole('dialog').getByRole('switch', { name: 'Show Combo', exact: true })
-    await toggle.click()
+    const toggle = page.locator('.preview-controls').getByLabel('Show Combo', { exact: true })
+    await toggle.check()
     expect(await page.evaluate(() => window.editorTest.settings.previewShowCombo)).toBe(true)
     expect(await drawn()).toBe(true)
-    await toggle.click()
+    await toggle.uncheck()
     expect(await page.evaluate(() => window.editorTest.settings.previewShowCombo)).toBe(false)
     expect(await drawn()).toBe(false)
 })
@@ -2267,13 +2266,14 @@ test('preview options share persisted settings with the main options menu', asyn
         'auto',
     )
     // Both entry points list the shared options in the same order; Settings adds the Assets row,
-    // Show Combo, and Parallel Rendering, a setting for a device whose preview looks wrong.
+    // and Parallel Rendering, a setting for a device whose preview looks wrong.
     const order = [
         'Note Speed',
         'Highlight Selection',
         'Show Hitboxes',
         'Show Effects',
         'Show Time',
+        'Show Combo',
         'Aspect Ratio',
         'Render Scale',
         'Antialiasing',
@@ -2310,9 +2310,7 @@ test('preview options share persisted settings with the main options menu', asyn
         (await section.locator('.form-field-text').allTextContents()).map((text) => text.trim()),
     ).toEqual([
         'Assets',
-        ...order.slice(0, 5),
-        'Show Combo',
-        ...order.slice(5, -1),
+        ...order.slice(0, -1),
         'Parallel Rendering',
         'Playback Controls',
         'Preview Settings Panel',
@@ -2924,6 +2922,63 @@ test.describe('preview panel lifecycle', () => {
             .getByText('Highlight Selection', { exact: true })
             .boundingBox())!
         expect(label.height).toBeLessThan(24)
+    })
+
+    test('a form taller than its room below the bar opens and scrolls there, following focus', async ({
+        page,
+    }) => {
+        const controls = page.locator('.preview-controls')
+        const body = controls.locator('.preview-controls-body')
+        await expect(controls).toBeVisible()
+        // The form's full height, and how much shorter its room is than the window.
+        const { height, margin } = await controls.evaluate((element) => {
+            const body = element.querySelector('.preview-controls-body')!
+            return {
+                height:
+                    element.firstElementChild!.getBoundingClientRect().height + body.scrollHeight,
+                margin: innerHeight - parseFloat(getComputedStyle(element).maxHeight),
+            }
+        })
+        // A window with room for four fifths of the form, then a new preview there.
+        await page.setViewportSize({ width: 1600, height: Math.round(height * 0.8 + margin) })
+        await page.evaluate(() => (window.editorTest.settings.showPreview = false))
+        await expect(page.locator('.preview')).toHaveCount(0)
+        await page.evaluate(() => (window.editorTest.settings.showPreview = true))
+        await expect(controls).toBeVisible()
+        await settle(page)
+        const geometry = await readPreviewChrome(page)
+        expect(geometry.settings.top).toBeGreaterThanOrEqual(geometry.bar!.bottom)
+        expect(geometry.settings.left).toBeGreaterThanOrEqual(geometry.preview.left)
+        expect(geometry.settings.right).toBeLessThanOrEqual(geometry.preview.right)
+        expect(geometry.settings.bottom).toBeLessThanOrEqual(geometry.preview.bottom)
+        expect(geometry.scrolls).toBe(true)
+        expect(await body.evaluate((element) => element.scrollTop)).toBe(0)
+
+        // Each control that takes focus by Tab scrolls fully into the body's view, down to
+        // Position in the last row.
+        await page.locator('.preview-settings-toggle').focus()
+        await page.keyboard.press('Tab')
+        for (let step = 0; step < 20; step++) {
+            await page.keyboard.press('Tab')
+            const focused = await page.evaluate(() => {
+                const active = document.activeElement!
+                const rect = active.getBoundingClientRect()
+                const view = document
+                    .querySelector('.preview-controls-body')!
+                    .getBoundingClientRect()
+                return {
+                    shown: rect.top >= view.top - 0.5 && rect.bottom <= view.bottom + 0.5,
+                    last:
+                        active ===
+                        [...document.querySelectorAll('.preview-controls select')].at(-1),
+                }
+            })
+            expect(focused.shown).toBe(true)
+            if (focused.last) break
+        }
+        const placement = controls.getByRole('combobox', { name: 'Position', exact: true })
+        await expect(placement).toBeFocused()
+        expect(await body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
     })
 
     test('a short top dock scrolls its form under the dock rather than over the image', async ({

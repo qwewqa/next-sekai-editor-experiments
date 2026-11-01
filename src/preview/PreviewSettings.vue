@@ -54,6 +54,7 @@ const toggles = computed(
             ['previewShowHitboxes', i18n.value.settings.preview.showHitboxes],
             ['previewShowEffects', i18n.value.settings.preview.showEffects],
             ['previewShowTime', i18n.value.settings.preview.showTime],
+            ['previewShowCombo', i18n.value.settings.preview.showCombo],
         ] as const,
 )
 

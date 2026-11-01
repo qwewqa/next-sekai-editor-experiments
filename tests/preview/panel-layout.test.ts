@@ -225,6 +225,19 @@ test('settings open below the docked bar of a tall side panel', () => {
     assert.equal(layout.maxHeight, 1000 - 4 - 250)
 })
 
+test('settings scroll below the bar while two thirds of the form show there', () => {
+    // 300 px below the bar of a 554 px panel.
+    const input = base({ tile: rect(36, 0, 352, 554), transport: rect(40, 202, 344, 44) })
+    const scrolls = placePreviewSettings({ ...input, naturalHeight: 450 })
+    assert.equal(scrolls.placement, 'below')
+    assert.equal(scrolls.fitsInPanel, true)
+    assert.equal(scrolls.maxHeight, 300)
+
+    const beside = placePreviewSettings({ ...input, naturalHeight: 451 })
+    assert.equal(beside.placement, 'beside')
+    assert.equal(beside.fitsInPanel, false)
+})
+
 test('a short stacked side panel opens settings beside the dock without covering it', () => {
     const left = placePreviewSettings(
         base({ tile: rect(36, 0, 352, 262), transport: rect(40, 202, 344, 44) }),
