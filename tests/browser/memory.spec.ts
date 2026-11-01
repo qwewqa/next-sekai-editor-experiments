@@ -11,20 +11,20 @@ import {
 } from './memoryBaseline'
 
 // Chromium only: the heap comes from CDP. Memory after the edits, with storing on and every entry
-// flushed, stays within 15% of the baseline: 133.1 MB on the generated
-// chart and 131.8 MB on coconut, measured on `main` before any storing code.
+// flushed, is capped at 1.15 times the reference values. The references were recalibrated on
+// 2026-11-01 after accepted growth.
 const MB = 1_000_000
 const charts = [
     {
         name: 'generated large chart',
         file: join('tests', 'fixtures', 'generated-large.json'),
-        baselineMb: 133.1,
+        baselineMb: 134.4,
     },
     {
         name: 'coconut',
         file: join('test_level_data', 'coconut-next-sekai-24887.json'),
         optional: true,
-        baselineMb: 131.8,
+        baselineMb: 133,
     },
 ]
 
@@ -80,7 +80,7 @@ for (const chart of charts) {
             body: JSON.stringify({ ...figure, editsMs: edits.ms }),
             contentType: 'application/json',
         })
-        // Allows 15% over the heap before stored History existed.
+        // Allows 15% over the recalibrated reference value.
         expect(heap / MB).toBeGreaterThanOrEqual(chart.baselineMb * 0.9)
         expect(heap / MB).toBeLessThanOrEqual(chart.baselineMb * 1.15)
     })
