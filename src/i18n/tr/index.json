@@ -467,6 +467,9 @@
     "exportLevel": {
       "title": "Seviye Verisini Dışa Aktar…"
     },
+    "exportVideo": {
+      "title": "Videoyu Dışa Aktar…"
+    },
     "previewAssets": {
       "title": "Önizleme Varlıkları",
       "modal": {
@@ -739,6 +742,9 @@
     "exportLevel": {
       "contents": "Seviye verisi çizelgeyi, Başlangıç Canı’nı ve arka plan müziğinin zaman kaymasını içerir. Müziği ve Seviye Bilgileri’nin geri kalanını içermez.",
       "levelData": "Sonolus sunucusuna yükleyebileceğiniz seviye verisini (.nsld) dışa aktarır."
+    },
+    "exportVideo": {
+      "contents": "Nota çizelgesinin tamamının veya bir kısmının önizlemesini video olarak dışa aktarır. Arka plan müziği ve ses efektleri de eklenebilir."
     },
     "utilities": {
       "editors": "Bir görselden kapak oluşturmak için Kapak Editörü’nü veya arka plan müziğinin bir bölümünden önizleme sesi oluşturmak için Önizleme Editörü’nü açar.",
@@ -2413,6 +2419,99 @@
     "notLevelData": "“{0}” seviye verisi değil.",
     "fileType": "Next SEKAI seviye verisi",
     "unsupportedParts": "“{0}”, editörün bu sürümünün desteklemediği kısımlar içeriyor."
+  },
+  "exportVideo": {
+    "title": "Videoyu Dışa Aktar",
+    "frame": "Video Önizlemesi",
+    "previousFrame": "Önceki Kare",
+    "play": "Oynat",
+    "pause": "Duraklat",
+    "nextFrame": "Sonraki Kare",
+    "playhead": "Oynatma Kafası",
+    "setIn": "Giriş İşaretle",
+    "setOut": "Çıkış İşaretle",
+    "range": "Aralık",
+    "wholeChart": "Tüm Nota Çizelgesi",
+    "selection": "Seçim",
+    "nothingSelected": "Seçim yok",
+    "zoom": "Aralığa Yakınlaştır",
+    "in": "Giriş",
+    "out": "Çıkış",
+    "length": "Süre",
+    "invalidTime": "01:23.456 gibi bir zaman girin.",
+    "resolution": "Çözünürlük",
+    "frameRate": "Kare Hızı",
+    "fps": "{0} fps",
+    "quality": "Kalite",
+    "qualities": {
+      "low": "Düşük",
+      "standard": "Standart",
+      "high": "Yüksek",
+      "custom": "Özel"
+    },
+    "qualityDescription": "Daha yüksek kalite, video bit hızını ve dosya boyutunu artırır.",
+    "noBgm": "Arka plan müziği yok",
+    "notInBrowser": "Bu ayarlarla bu tarayıcıda kullanılamıyor: {0}",
+    "tooLarge": "Bu ayarlarla bu cihazda kullanılamıyor: {0}",
+    "advanced": "Gelişmiş",
+    "video": "Video",
+    "picture": "Görüntü",
+    "sound": "Ses",
+    "format": "Biçim",
+    "formats": {
+      "automatic": "Otomatik"
+    },
+    "formatDescription": {
+      "choices": {
+        "automatic": "Geçerli ayarlarla destekleniyorsa MP4, aksi hâlde WebM kullanır.",
+        "mp4": "Oynatıcılar ve video editörleri tarafından yaygın olarak desteklenir.",
+        "webm": "Daha az oynatıcı ve video editörü tarafından desteklenir."
+      }
+    },
+    "videoBitrate": "Video Bit Hızı (Mbps)",
+    "renderScaleDescription": "Her karenin çizildiği çözünürlüğü ölçekler. Daha yüksek değerler kenarları yumuşatır ve dışa aktarmayı yavaşlatır.",
+    "fadeIn": "Giriş Geçişi (sn)",
+    "fadeOut": "Çıkış Geçişi (sn)",
+    "audioBitrate": "Ses Bit Hızı",
+    "kbps": "{0} kbps",
+    "restoreDefaults": "Varsayılanlara Sıfırla",
+    "export": "Dışa Aktar…",
+    "exportNow": "Dışa Aktar",
+    "download": "Videoyu İndir",
+    "share": "Videoyu Paylaş",
+    "fileType": "Video",
+    "about": "Yaklaşık {0}",
+    "minutesLeft": "Yaklaşık {0} dk kaldı",
+    "lessThanMinuteLeft": "1 dk’dan az kaldı",
+    "preparing": "Hazırlanıyor…",
+    "exporting": "Video dışa aktarılıyor…",
+    "finishing": "Tamamlanıyor…",
+    "cancelling": "İptal ediliyor…",
+    "exported": "{0} dosyasına dışa aktarıldı",
+    "ready": "Hazır",
+    "keepOpen": "Dışa aktarma bitene kadar bu sekmeyi açık tutun.",
+    "keepOpenVisible": "Dışa aktarma bitene kadar bu sekmeyi açık ve görünür tutun.",
+    "stopped": "Video dışa aktarmaları tekrar tekrar durdu. Bu cihazda Çözünürlük ve Çizim Ölçeği artık sınırlı. Varsayılanlara Sıfırla bu sınırı kaldırır.",
+    "discardTitle": "Bu video silinsin mi?",
+    "discard": "Videoyu Sil",
+    "unsupported": "Bu tarayıcı video dışa aktaramıyor.",
+    "errors": {
+      "ownProject": "{0} dosyasına kaydedildi. Video için başka bir ad seçin.",
+      "refused": "“{0}” bir nota çizelgesi dosyasıdır. Başka bir ad seçin.",
+      "refusedOther": "“{0}” artık boş. Proje dosyasını yeniden yazmak için bu dosyanın oturumunda Kaydet komutunu kullanın. Video için başka bir ad seçin.",
+      "config": "Bu video ayarları bu tarayıcıda kullanılamıyor. Daha düşük bir çözünürlük veya kare hızı seçin.",
+      "encoder": "Video oluşturulamadı.",
+      "audio": "Ses hazırlanamadı.",
+      "graphics": "Bir grafik hatası dışa aktarmayı durdurdu. Tekrar deneyin.",
+      "memory": "Bellek yetersizdi. Daha düşük bir çözünürlük seçin.",
+      "hidden": "Sekme arka plandayken dışa aktarma durdu. Bu sekmeyi görünür tutup tekrar deneyin.",
+      "memoryLimit": "Bu video bu tarayıcı için çok büyük. Daha kısa bir aralık seçin veya kaliteyi düşürün.",
+      "unavailable": "Bu tarayıcı video dışa aktaramıyor.",
+      "download": "Video indirilemedi.",
+      "share": "Video paylaşılamadı."
+    },
+    "fadeInDescription": "Görüntüyü siyahtan, sesi sessizlikten başlayarak yavaşça açar.",
+    "fadeOutDescription": "Görüntüyü yavaşça siyaha, sesi sessizliğe geçirir."
   },
   "peek": {
     "loadingShort": "Yükleniyor…",

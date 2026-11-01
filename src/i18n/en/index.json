@@ -467,6 +467,9 @@
         "exportLevel": {
             "title": "Export Level Data…"
         },
+        "exportVideo": {
+            "title": "Export Video…"
+        },
         "previewAssets": {
             "title": "Preview Assets",
             "modal": {
@@ -739,6 +742,9 @@
         "exportLevel": {
             "contents": "Level data contains the chart, Initial Life and the BGM offset, but not the music or the rest of Level Info.",
             "levelData": "Exports level data (.nsld) you can upload to a Sonolus server."
+        },
+        "exportVideo": {
+            "contents": "Exports a video of the preview for the whole chart or part of it, with optional BGM and sound effects."
         },
         "utilities": {
             "editors": "Opens Cover Editor to make a cover from an image, or Preview Editor to make preview audio from part of the BGM.",
@@ -2413,6 +2419,99 @@
         "notLevelData": "“{0}” is not level data.",
         "fileType": "Next SEKAI level data",
         "unsupportedParts": "“{0}” has parts that this version of the editor does not support."
+    },
+    "exportVideo": {
+        "title": "Export Video",
+        "frame": "Video Preview",
+        "previousFrame": "Previous Frame",
+        "play": "Play",
+        "pause": "Pause",
+        "nextFrame": "Next Frame",
+        "playhead": "Playhead",
+        "setIn": "Set In",
+        "setOut": "Set Out",
+        "range": "Range",
+        "wholeChart": "Whole Chart",
+        "selection": "Selection",
+        "nothingSelected": "Nothing selected",
+        "zoom": "Zoom to Range",
+        "in": "In",
+        "out": "Out",
+        "length": "Length",
+        "invalidTime": "Enter a time such as 01:23.456.",
+        "resolution": "Resolution",
+        "frameRate": "Frame Rate",
+        "fps": "{0} fps",
+        "quality": "Quality",
+        "qualities": {
+            "low": "Low",
+            "standard": "Standard",
+            "high": "High",
+            "custom": "Custom"
+        },
+        "qualityDescription": "Higher quality increases the video bitrate and file size.",
+        "noBgm": "No BGM",
+        "notInBrowser": "Unavailable in this browser with these settings: {0}",
+        "tooLarge": "Unavailable on this device with these settings: {0}",
+        "advanced": "Advanced",
+        "video": "Video",
+        "picture": "Picture",
+        "sound": "Sound",
+        "format": "Format",
+        "formats": {
+            "automatic": "Automatic"
+        },
+        "formatDescription": {
+            "choices": {
+                "automatic": "Uses MP4 when supported with the current settings, otherwise WebM.",
+                "mp4": "Widely supported by players and video editors.",
+                "webm": "Supported by fewer players and video editors."
+            }
+        },
+        "videoBitrate": "Video Bitrate (Mbps)",
+        "renderScaleDescription": "Scales the resolution that each frame is drawn at. Higher values give smoother edges and make the export slower.",
+        "fadeIn": "Fade In (s)",
+        "fadeOut": "Fade Out (s)",
+        "audioBitrate": "Audio Bitrate",
+        "kbps": "{0} kbps",
+        "restoreDefaults": "Reset to Defaults",
+        "export": "Export…",
+        "exportNow": "Export",
+        "download": "Download Video",
+        "share": "Share Video",
+        "fileType": "Video",
+        "about": "About {0}",
+        "minutesLeft": "About {0} min left",
+        "lessThanMinuteLeft": "Less than 1 min left",
+        "preparing": "Preparing…",
+        "exporting": "Exporting video…",
+        "finishing": "Finishing…",
+        "cancelling": "Cancelling…",
+        "exported": "Exported to {0}",
+        "ready": "Ready",
+        "keepOpen": "Keep this tab open until the export ends.",
+        "keepOpenVisible": "Keep this tab open and visible until the export ends.",
+        "stopped": "Video exports stopped repeatedly. Resolution and Render Scale are now limited on this device. Reset to Defaults removes this limit.",
+        "discardTitle": "Discard this video?",
+        "discard": "Discard Video",
+        "unsupported": "This browser cannot export video.",
+        "errors": {
+            "ownProject": "Saved to {0}. Choose another name for the video.",
+            "refused": "“{0}” is a chart file. Choose another name.",
+            "refusedOther": "“{0}” is now empty. Use Save in its session to write the project file again. Choose another name for the video.",
+            "config": "These video settings are not available in this browser. Choose a lower resolution or frame rate.",
+            "encoder": "The video could not be created.",
+            "audio": "The audio could not be prepared.",
+            "graphics": "A graphics error stopped the export. Try again.",
+            "memory": "There was not enough memory. Choose a lower resolution.",
+            "hidden": "The export stopped while the tab was in the background. Keep this tab visible and try again.",
+            "memoryLimit": "This video is too large for this browser. Choose a shorter range or lower the quality.",
+            "unavailable": "This browser cannot export video.",
+            "download": "The video could not be downloaded.",
+            "share": "The video could not be shared."
+        },
+        "fadeInDescription": "Fades the picture from black and the sound from silence.",
+        "fadeOutDescription": "Fades the picture to black and the sound to silence."
     },
     "peek": {
         "loadingShort": "Loading…",

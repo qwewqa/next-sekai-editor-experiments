@@ -467,6 +467,9 @@
     "exportLevel": {
       "title": "レベルデータを出力…"
     },
+    "exportVideo": {
+      "title": "動画を出力…"
+    },
     "previewAssets": {
       "title": "プレビューアセット",
       "modal": {
@@ -739,6 +742,9 @@
     "exportLevel": {
       "contents": "レベルデータには譜面、初期ライフ、BGMのオフセットが含まれます。音楽や「譜面情報」のその他の項目は含まれません。",
       "levelData": "Sonolusサーバーにアップロードできるレベルデータ（.nsld）を出力します。"
+    },
+    "exportVideo": {
+      "contents": "譜面全体または一部のプレビューを動画として出力します。BGMとSEも含められます。"
     },
     "utilities": {
       "editors": "画像からジャケットを作成する「ジャケットエディター」や、BGMの一部からプレビュー音源を作成する「プレビュー音源エディター」を開きます。",
@@ -2413,6 +2419,99 @@
     "notLevelData": "「{0}」はレベルデータではありません。",
     "fileType": "Next SEKAI レベルデータ",
     "unsupportedParts": "「{0}」には、このバージョンのエディターが対応していない部分があります。"
+  },
+  "exportVideo": {
+    "title": "動画を出力",
+    "frame": "動画プレビュー",
+    "previousFrame": "前のフレーム",
+    "play": "再生",
+    "pause": "一時停止",
+    "nextFrame": "次のフレーム",
+    "playhead": "再生ヘッド",
+    "setIn": "イン点を設定",
+    "setOut": "アウト点を設定",
+    "range": "範囲",
+    "wholeChart": "譜面全体",
+    "selection": "選択範囲",
+    "nothingSelected": "選択なし",
+    "zoom": "範囲に合わせてズーム",
+    "in": "イン点",
+    "out": "アウト点",
+    "length": "長さ",
+    "invalidTime": "01:23.456のように時間を入力してください。",
+    "resolution": "解像度",
+    "frameRate": "フレームレート",
+    "fps": "{0} fps",
+    "quality": "画質",
+    "qualities": {
+      "low": "低",
+      "standard": "標準",
+      "high": "高",
+      "custom": "カスタム"
+    },
+    "qualityDescription": "画質を上げると、動画のビットレートとファイルサイズが大きくなります。",
+    "noBgm": "BGMなし",
+    "notInBrowser": "現在の設定では、このブラウザーで利用できません：{0}",
+    "tooLarge": "現在の設定では、このデバイスで利用できません：{0}",
+    "advanced": "詳細設定",
+    "video": "動画",
+    "picture": "映像",
+    "sound": "音声",
+    "format": "形式",
+    "formats": {
+      "automatic": "自動"
+    },
+    "formatDescription": {
+      "choices": {
+        "automatic": "現在の設定で対応している場合はMP4、それ以外はWebMを使います。",
+        "mp4": "多くのプレーヤーや動画編集ソフトで再生・編集できます。",
+        "webm": "対応しているプレーヤーや動画編集ソフトが少なめです。"
+      }
+    },
+    "videoBitrate": "動画ビットレート (Mbps)",
+    "renderScaleDescription": "各フレームを描画する解像度の倍率を変えます。値を大きくすると輪郭が滑らかになり、出力に時間がかかります。",
+    "fadeIn": "フェードイン (秒)",
+    "fadeOut": "フェードアウト (秒)",
+    "audioBitrate": "音声ビットレート",
+    "kbps": "{0} kbps",
+    "restoreDefaults": "初期値にリセット",
+    "export": "出力…",
+    "exportNow": "出力",
+    "download": "動画をダウンロード",
+    "share": "動画を共有",
+    "fileType": "動画",
+    "about": "約 {0}",
+    "minutesLeft": "残り約 {0} 分",
+    "lessThanMinuteLeft": "残り1分未満",
+    "preparing": "準備中…",
+    "exporting": "動画を出力中…",
+    "finishing": "完了処理中…",
+    "cancelling": "キャンセル中…",
+    "exported": "{0} に出力しました",
+    "ready": "準備完了",
+    "keepOpen": "出力が終わるまで、このタブを開いたままにしてください。",
+    "keepOpenVisible": "出力が終わるまで、このタブを開いて表示したままにしてください。",
+    "stopped": "動画の出力が繰り返し停止しました。このデバイスでは解像度と描画解像度が制限されています。「初期値にリセット」でこの制限を解除できます。",
+    "discardTitle": "この動画を破棄しますか？",
+    "discard": "動画を破棄",
+    "unsupported": "このブラウザーでは動画を出力できません。",
+    "errors": {
+      "ownProject": "{0} に保存しました。動画には別の名前を選んでください。",
+      "refused": "「{0}」は譜面ファイルです。別の名前を選んでください。",
+      "refusedOther": "「{0}」は空になりました。このファイルのセッションで「保存」を使い、プロジェクトファイルを書き直してください。動画には別の名前を選んでください。",
+      "config": "このブラウザーでは、これらの動画設定を利用できません。解像度またはフレームレートを下げてください。",
+      "encoder": "動画を作成できませんでした。",
+      "audio": "音声を準備できませんでした。",
+      "graphics": "グラフィックスのエラーで出力が停止しました。もう一度お試しください。",
+      "memory": "メモリーが不足しました。解像度を下げてください。",
+      "hidden": "タブがバックグラウンドにある間に出力が停止しました。このタブを表示したまま、もう一度お試しください。",
+      "memoryLimit": "この動画はこのブラウザーで扱えるサイズを超えています。範囲を短くするか、画質を下げてください。",
+      "unavailable": "このブラウザーでは動画を出力できません。",
+      "download": "動画をダウンロードできませんでした。",
+      "share": "動画を共有できませんでした。"
+    },
+    "fadeInDescription": "黒い画面から徐々に映像を映し、無音から徐々に音量を上げます。",
+    "fadeOutDescription": "映像を徐々に黒にし、音量を徐々に下げて無音にします。"
   },
   "peek": {
     "loadingShort": "読み込み中…",

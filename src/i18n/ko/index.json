@@ -467,6 +467,9 @@
     "exportLevel": {
       "title": "레벨 데이터 내보내기…"
     },
+    "exportVideo": {
+      "title": "동영상 내보내기…"
+    },
     "previewAssets": {
       "title": "미리보기 에셋",
       "modal": {
@@ -739,6 +742,9 @@
     "exportLevel": {
       "contents": "레벨 데이터에는 채보, 초기 라이프, 배경음 오프셋이 포함됩니다. 음악과 레벨 정보의 나머지 항목은 포함되지 않습니다.",
       "levelData": "Sonolus 서버에 업로드할 수 있는 레벨 데이터(.nsld)를 내보냅니다."
+    },
+    "exportVideo": {
+      "contents": "채보 전체 또는 일부의 미리보기를 동영상으로 내보냅니다. 배경음과 효과음을 포함할 수 있습니다."
     },
     "utilities": {
       "editors": "이미지로 커버를 만드는 커버 편집기나 배경음의 일부로 미리보기 오디오를 만드는 미리보기 편집기를 엽니다.",
@@ -2413,6 +2419,99 @@
     "notLevelData": "“{0}”은(는) 레벨 데이터가 아닙니다.",
     "fileType": "Next SEKAI 레벨 데이터",
     "unsupportedParts": "“{0}”에는 이 버전의 편집기가 지원하지 않는 부분이 있습니다."
+  },
+  "exportVideo": {
+    "title": "동영상 내보내기",
+    "frame": "동영상 미리보기",
+    "previousFrame": "이전 프레임",
+    "play": "재생",
+    "pause": "일시정지",
+    "nextFrame": "다음 프레임",
+    "playhead": "재생 헤드",
+    "setIn": "시작점 지정",
+    "setOut": "종료점 지정",
+    "range": "범위",
+    "wholeChart": "채보 전체",
+    "selection": "선택 영역",
+    "nothingSelected": "선택한 항목 없음",
+    "zoom": "범위에 맞춰 확대",
+    "in": "시작점",
+    "out": "종료점",
+    "length": "길이",
+    "invalidTime": "01:23.456과 같은 형식으로 시간을 입력하세요.",
+    "resolution": "해상도",
+    "frameRate": "프레임 속도",
+    "fps": "{0} fps",
+    "quality": "화질",
+    "qualities": {
+      "low": "낮음",
+      "standard": "표준",
+      "high": "높음",
+      "custom": "사용자 지정"
+    },
+    "qualityDescription": "화질이 높을수록 동영상 비트레이트와 파일 크기가 증가합니다.",
+    "noBgm": "배경음 없음",
+    "notInBrowser": "현재 설정으로 이 브라우저에서 사용할 수 없음: {0}",
+    "tooLarge": "현재 설정으로 이 기기에서 사용할 수 없음: {0}",
+    "advanced": "고급",
+    "video": "동영상",
+    "picture": "화면",
+    "sound": "소리",
+    "format": "형식",
+    "formats": {
+      "automatic": "자동"
+    },
+    "formatDescription": {
+      "choices": {
+        "automatic": "현재 설정으로 지원되면 MP4를 사용하고, 그렇지 않으면 WebM을 사용합니다.",
+        "mp4": "많은 재생 프로그램과 동영상 편집기에서 지원합니다.",
+        "webm": "지원하는 재생 프로그램과 동영상 편집기가 더 적습니다."
+      }
+    },
+    "videoBitrate": "동영상 비트레이트 (Mbps)",
+    "renderScaleDescription": "각 프레임을 그리는 해상도의 배율을 조절합니다. 값이 높을수록 가장자리가 부드러워지고 내보내기에 시간이 더 걸립니다.",
+    "fadeIn": "페이드 인 (초)",
+    "fadeOut": "페이드 아웃 (초)",
+    "audioBitrate": "오디오 비트레이트",
+    "kbps": "{0} kbps",
+    "restoreDefaults": "기본값으로 초기화",
+    "export": "내보내기…",
+    "exportNow": "내보내기",
+    "download": "동영상 다운로드",
+    "share": "동영상 공유",
+    "fileType": "동영상",
+    "about": "약 {0}",
+    "minutesLeft": "약 {0}분 남음",
+    "lessThanMinuteLeft": "1분 미만 남음",
+    "preparing": "준비 중…",
+    "exporting": "동영상 내보내는 중…",
+    "finishing": "마무리 중…",
+    "cancelling": "취소 중…",
+    "exported": "{0}에 내보냄",
+    "ready": "준비됨",
+    "keepOpen": "내보내기가 끝날 때까지 이 탭을 열어 두세요.",
+    "keepOpenVisible": "내보내기가 끝날 때까지 이 탭을 열고 화면에 표시해 두세요.",
+    "stopped": "동영상 내보내기가 반복해서 중단되었습니다. 이 기기에서는 해상도와 렌더링 배율이 제한됩니다. 기본값으로 초기화를 사용하면 이 제한이 해제됩니다.",
+    "discardTitle": "이 동영상을 버릴까요?",
+    "discard": "동영상 버리기",
+    "unsupported": "이 브라우저에서는 동영상을 내보낼 수 없습니다.",
+    "errors": {
+      "ownProject": "{0}에 저장됨. 동영상에는 다른 이름을 선택하세요.",
+      "refused": "“{0}”은(는) 채보 파일입니다. 다른 이름을 선택하세요.",
+      "refusedOther": "“{0}” 파일이 비워졌습니다. 해당 세션에서 저장을 사용해 프로젝트 파일을 다시 쓰세요. 동영상에는 다른 이름을 선택하세요.",
+      "config": "이 브라우저에서는 이 동영상 설정을 사용할 수 없습니다. 해상도나 프레임 속도를 낮추세요.",
+      "encoder": "동영상을 만들지 못했습니다.",
+      "audio": "오디오를 준비하지 못했습니다.",
+      "graphics": "그래픽 오류로 내보내기가 중단되었습니다. 다시 시도하세요.",
+      "memory": "메모리가 부족했습니다. 해상도를 낮추세요.",
+      "hidden": "탭이 백그라운드에 있는 동안 내보내기가 중단되었습니다. 이 탭을 화면에 표시한 상태로 다시 시도하세요.",
+      "memoryLimit": "이 동영상은 이 브라우저에서 처리하기에 너무 큽니다. 더 짧은 범위를 선택하거나 화질을 낮추세요.",
+      "unavailable": "이 브라우저에서는 동영상을 내보낼 수 없습니다.",
+      "download": "동영상을 다운로드하지 못했습니다.",
+      "share": "동영상을 공유하지 못했습니다."
+    },
+    "fadeInDescription": "검은 화면에서 영상이 서서히 나타나고 무음에서 소리가 서서히 커집니다.",
+    "fadeOutDescription": "화면이 서서히 검게 변하고 소리가 서서히 줄어 무음이 됩니다."
   },
   "peek": {
     "loadingShort": "불러오는 중…",

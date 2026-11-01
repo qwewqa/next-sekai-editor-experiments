@@ -467,6 +467,9 @@
     "exportLevel": {
       "title": "Exporter les données de niveau…"
     },
+    "exportVideo": {
+      "title": "Exporter la vidéo…"
+    },
     "previewAssets": {
       "title": "Ressources d’aperçu",
       "modal": {
@@ -739,6 +742,9 @@
     "exportLevel": {
       "contents": "Les données de niveau contiennent la partition, la Vie initiale et le décalage de la musique, mais pas la musique ni le reste des Informations du niveau.",
       "levelData": "Exporte des données de niveau (.nsld) que vous pouvez envoyer à un serveur Sonolus."
+    },
+    "exportVideo": {
+      "contents": "Exporte une vidéo de l’aperçu de la partition entière ou d’une partie, avec la musique et les effets sonores en option."
     },
     "utilities": {
       "editors": "Ouvre l’Éditeur de la couverture pour créer une couverture à partir d’une image, ou l’Éditeur de l’aperçu pour créer un extrait audio à partir d’une partie de la musique.",
@@ -2413,6 +2419,99 @@
     "notLevelData": "« {0} » ne contient pas de données de niveau.",
     "fileType": "Données de niveau Next SEKAI",
     "unsupportedParts": "« {0} » contient des parties que cette version de l’éditeur ne prend pas en charge."
+  },
+  "exportVideo": {
+    "title": "Exporter la vidéo",
+    "frame": "Aperçu vidéo",
+    "previousFrame": "Image précédente",
+    "play": "Lire",
+    "pause": "Pause",
+    "nextFrame": "Image suivante",
+    "playhead": "Tête de lecture",
+    "setIn": "Marquer l’entrée",
+    "setOut": "Marquer la sortie",
+    "range": "Plage",
+    "wholeChart": "Partition entière",
+    "selection": "Sélection",
+    "nothingSelected": "Aucune sélection",
+    "zoom": "Zoom sur la plage",
+    "in": "Entrée",
+    "out": "Sortie",
+    "length": "Durée",
+    "invalidTime": "Saisissez un temps comme 01:23.456.",
+    "resolution": "Résolution",
+    "frameRate": "Fréquence d’images",
+    "fps": "{0} fps",
+    "quality": "Qualité",
+    "qualities": {
+      "low": "Faible",
+      "standard": "Standard",
+      "high": "Élevée",
+      "custom": "Personnalisée"
+    },
+    "qualityDescription": "Une qualité plus élevée augmente le débit vidéo et la taille du fichier.",
+    "noBgm": "Aucune musique",
+    "notInBrowser": "Indisponible dans ce navigateur avec ces paramètres : {0}",
+    "tooLarge": "Indisponible sur cet appareil avec ces paramètres : {0}",
+    "advanced": "Avancé",
+    "video": "Vidéo",
+    "picture": "Image",
+    "sound": "Son",
+    "format": "Format",
+    "formats": {
+      "automatic": "Automatique"
+    },
+    "formatDescription": {
+      "choices": {
+        "automatic": "Utilise MP4 si les paramètres actuels le permettent, sinon WebM.",
+        "mp4": "Pris en charge par de nombreux lecteurs et logiciels de montage vidéo.",
+        "webm": "Pris en charge par moins de lecteurs et de logiciels de montage vidéo."
+      }
+    },
+    "videoBitrate": "Débit vidéo (Mbps)",
+    "renderScaleDescription": "Ajuste la résolution de rendu de chaque image. Des valeurs plus élevées rendent les contours plus lisses et ralentissent l’exportation.",
+    "fadeIn": "Fondu d’entrée (s)",
+    "fadeOut": "Fondu de sortie (s)",
+    "audioBitrate": "Débit audio",
+    "kbps": "{0} kbps",
+    "restoreDefaults": "Réinitialiser par défaut",
+    "export": "Exporter…",
+    "exportNow": "Exporter",
+    "download": "Télécharger la vidéo",
+    "share": "Partager la vidéo",
+    "fileType": "Vidéo",
+    "about": "Environ {0}",
+    "minutesLeft": "Encore environ {0} min",
+    "lessThanMinuteLeft": "Encore moins de 1 min",
+    "preparing": "Préparation…",
+    "exporting": "Exportation de la vidéo…",
+    "finishing": "Finalisation…",
+    "cancelling": "Annulation…",
+    "exported": "Exporté vers {0}",
+    "ready": "Prêt",
+    "keepOpen": "Gardez cet onglet ouvert jusqu’à la fin de l’exportation.",
+    "keepOpenVisible": "Gardez cet onglet ouvert et visible jusqu’à la fin de l’exportation.",
+    "stopped": "Les exportations vidéo se sont arrêtées à plusieurs reprises. Résolution et Échelle de rendu sont maintenant limitées sur cet appareil. Réinitialiser par défaut supprime cette limite.",
+    "discardTitle": "Abandonner cette vidéo ?",
+    "discard": "Abandonner la vidéo",
+    "unsupported": "Ce navigateur ne peut pas exporter de vidéo.",
+    "errors": {
+      "ownProject": "Sauvegardé dans {0}. Choisissez un autre nom pour la vidéo.",
+      "refused": "« {0} » est un fichier de partition. Choisissez un autre nom.",
+      "refusedOther": "« {0} » est maintenant vide. Utilisez Sauvegarder dans sa session pour réécrire le fichier de projet. Choisissez un autre nom pour la vidéo.",
+      "config": "Ces paramètres vidéo ne sont pas disponibles dans ce navigateur. Choisissez une résolution ou une fréquence d’images plus basse.",
+      "encoder": "La vidéo n’a pas pu être créée.",
+      "audio": "Le son n’a pas pu être préparé.",
+      "graphics": "Une erreur graphique a arrêté l’exportation. Réessayez.",
+      "memory": "La mémoire était insuffisante. Choisissez une résolution plus basse.",
+      "hidden": "L’exportation s’est arrêtée lorsque cet onglet était en arrière-plan. Gardez cet onglet visible et réessayez.",
+      "memoryLimit": "Cette vidéo est trop volumineuse pour ce navigateur. Choisissez une plage plus courte ou réduisez la qualité.",
+      "unavailable": "Ce navigateur ne peut pas exporter de vidéo.",
+      "download": "La vidéo n’a pas pu être téléchargée.",
+      "share": "La vidéo n’a pas pu être partagée."
+    },
+    "fadeInDescription": "Fait apparaître progressivement l’image depuis le noir et le son depuis le silence.",
+    "fadeOutDescription": "Fait disparaître progressivement l’image vers le noir et le son vers le silence."
   },
   "peek": {
     "loadingShort": "Chargement…",

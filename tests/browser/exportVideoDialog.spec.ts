@@ -296,7 +296,9 @@ test('a time that cannot be read is not applied', async ({ page }) => {
 test('sizes this device is not qualified for are not offered', async ({ page }) => {
     const dialog = await open(page, { unqualified: true })
     await expect(
-        dialog.locator('.form-field-notes', { hasText: 'Too large for this device: 720p, 1080p' }),
+        dialog.locator('.form-field-notes', {
+            hasText: 'Unavailable on this device with these settings: 720p, 1080p',
+        }),
     ).toBeVisible()
     await expect(exportButton(page)).toBeDisabled()
 })

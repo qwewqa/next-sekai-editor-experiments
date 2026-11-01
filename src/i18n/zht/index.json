@@ -467,6 +467,9 @@
     "exportLevel": {
       "title": "匯出關卡資料…"
     },
+    "exportVideo": {
+      "title": "匯出影片…"
+    },
     "previewAssets": {
       "title": "預覽資源",
       "modal": {
@@ -739,6 +742,9 @@
     "exportLevel": {
       "contents": "關卡資料包含譜面、初始生命值和 BGM 偏移，不包含音樂及「關卡資訊」中的其他內容。",
       "levelData": "匯出可上傳至 Sonolus 伺服器的關卡資料（.nsld）。"
+    },
+    "exportVideo": {
+      "contents": "將整個譜面或部分譜面的預覽匯出為影片，可包含 BGM 和音效。"
     },
     "utilities": {
       "editors": "開啟「封面編輯器」以用圖像製作封面，或開啟「預覽編輯器」以用 BGM 的片段製作預覽音訊。",
@@ -2413,6 +2419,99 @@
     "notLevelData": "「{0}」不是關卡資料。",
     "fileType": "Next SEKAI 關卡資料",
     "unsupportedParts": "「{0}」包含此版本編輯器不支援的部分。"
+  },
+  "exportVideo": {
+    "title": "匯出影片",
+    "frame": "影片預覽",
+    "previousFrame": "上一影格",
+    "play": "播放",
+    "pause": "暫停",
+    "nextFrame": "下一影格",
+    "playhead": "播放頭",
+    "setIn": "設定入點",
+    "setOut": "設定出點",
+    "range": "範圍",
+    "wholeChart": "整個譜面",
+    "selection": "選取範圍",
+    "nothingSelected": "未選取任何內容",
+    "zoom": "縮放至範圍",
+    "in": "入點",
+    "out": "出點",
+    "length": "長度",
+    "invalidTime": "請輸入時間，例如 01:23.456。",
+    "resolution": "解析度",
+    "frameRate": "影格率",
+    "fps": "{0} fps",
+    "quality": "畫質",
+    "qualities": {
+      "low": "低",
+      "standard": "標準",
+      "high": "高",
+      "custom": "自訂"
+    },
+    "qualityDescription": "畫質越高，影片位元率和檔案大小越大。",
+    "noBgm": "無 BGM",
+    "notInBrowser": "使用目前設定時，此瀏覽器不支援：{0}",
+    "tooLarge": "使用目前設定時，此裝置不支援：{0}",
+    "advanced": "進階",
+    "video": "影片",
+    "picture": "畫面",
+    "sound": "聲音",
+    "format": "格式",
+    "formats": {
+      "automatic": "自動"
+    },
+    "formatDescription": {
+      "choices": {
+        "automatic": "目前設定支援 MP4 時使用 MP4，否則使用 WebM。",
+        "mp4": "許多播放器和影片編輯器支援此格式。",
+        "webm": "支援此格式的播放器和影片編輯器較少。"
+      }
+    },
+    "videoBitrate": "影片位元率（Mbps）",
+    "renderScaleDescription": "按比例調整繪製每個影格時的解析度。數值越高，邊緣越平滑，匯出耗時越長。",
+    "fadeIn": "淡入（秒）",
+    "fadeOut": "淡出（秒）",
+    "audioBitrate": "音訊位元率",
+    "kbps": "{0} kbps",
+    "restoreDefaults": "重置為預設值",
+    "export": "匯出…",
+    "exportNow": "匯出",
+    "download": "下載影片",
+    "share": "分享影片",
+    "fileType": "影片",
+    "about": "約 {0}",
+    "minutesLeft": "剩餘約 {0} 分鐘",
+    "lessThanMinuteLeft": "剩餘不到 1 分鐘",
+    "preparing": "正在準備…",
+    "exporting": "正在匯出影片…",
+    "finishing": "正在完成匯出…",
+    "cancelling": "正在取消…",
+    "exported": "已匯出至 {0}",
+    "ready": "已準備好",
+    "keepOpen": "匯出結束前，請保持此分頁開啟。",
+    "keepOpenVisible": "匯出結束前，請保持此分頁開啟並可見。",
+    "stopped": "影片匯出多次中斷。此裝置上的解析度和渲染比例現已受限。「重置為預設值」可解除此限制。",
+    "discardTitle": "要捨棄此影片嗎？",
+    "discard": "捨棄影片",
+    "unsupported": "此瀏覽器無法匯出影片。",
+    "errors": {
+      "ownProject": "已儲存到 {0}。請為影片選擇其他名稱。",
+      "refused": "「{0}」是譜面檔案。請選擇其他名稱。",
+      "refusedOther": "「{0}」已被清空。請在其所屬工作階段中使用「儲存」重新寫入專案檔案。請為影片選擇其他名稱。",
+      "config": "此瀏覽器不支援這些影片設定。請降低解析度或影格率。",
+      "encoder": "無法建立影片。",
+      "audio": "無法準備音訊。",
+      "graphics": "圖形錯誤導致匯出中斷。請重試。",
+      "memory": "記憶體不足。請降低解析度。",
+      "hidden": "分頁處於背景時，匯出已中斷。請保持此分頁可見，然後重試。",
+      "memoryLimit": "此影片超出此瀏覽器可處理的大小。請選擇更短的範圍或降低畫質。",
+      "unavailable": "此瀏覽器無法匯出影片。",
+      "download": "無法下載影片。",
+      "share": "無法分享影片。"
+    },
+    "fadeInDescription": "畫面從黑色逐漸顯現，聲音從靜音逐漸增大。",
+    "fadeOutDescription": "畫面逐漸變黑，聲音逐漸減小至靜音。"
   },
   "peek": {
     "loadingShort": "載入中…",

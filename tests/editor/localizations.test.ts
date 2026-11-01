@@ -261,6 +261,12 @@ const identicalToEnglish: Record<string, string[]> = {
         'elevation.auto',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        // Units, and Format, Pause and Standard, spelled as in English.
+        'exportVideo.format',
+        'exportVideo.fps',
+        'exportVideo.kbps',
+        'exportVideo.pause',
+        'exportVideo.qualities.standard',
         // These French labels have the same spelling as English.
         'history.details.counts.note',
         'history.quotedField',
@@ -325,6 +331,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        // Units kept in Latin letters, as elsewhere.
+        'exportVideo.fps',
+        'exportVideo.kbps',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -364,6 +373,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'conflict.savedNoNotes',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        // Units kept in Latin letters, as elsewhere.
+        'exportVideo.fps',
+        'exportVideo.kbps',
         'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
@@ -405,6 +417,11 @@ const identicalToEnglish: Record<string, string[]> = {
         'conflict.savedNoNotes',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        // Units, and Video, spelled as in English.
+        'exportVideo.fileType',
+        'exportVideo.fps',
+        'exportVideo.kbps',
+        'exportVideo.video',
         'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
@@ -445,6 +462,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        // Units kept in Latin letters, as elsewhere.
+        'exportVideo.fps',
+        'exportVideo.kbps',
         'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
@@ -481,6 +501,9 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        // Units kept in Latin letters, as elsewhere.
+        'exportVideo.fps',
+        'exportVideo.kbps',
         'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',

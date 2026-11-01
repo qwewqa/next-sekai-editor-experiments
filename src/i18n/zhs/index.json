@@ -467,6 +467,9 @@
     "exportLevel": {
       "title": "导出关卡数据…"
     },
+    "exportVideo": {
+      "title": "导出视频…"
+    },
     "previewAssets": {
       "title": "预览资源",
       "modal": {
@@ -739,6 +742,9 @@
     "exportLevel": {
       "contents": "关卡数据包含谱面、初始生命值和背景音乐偏移，不包含音乐及“关卡信息”中的其他内容。",
       "levelData": "导出可上传到 Sonolus 服务器的关卡数据（.nsld）。"
+    },
+    "exportVideo": {
+      "contents": "将整个谱面或部分谱面的预览导出为视频，可包含背景音乐和音效。"
     },
     "utilities": {
       "editors": "打开“封面编辑器”用图像制作封面，或打开“预览编辑器”用背景音乐的片段制作预览音频。",
@@ -2413,6 +2419,99 @@
     "notLevelData": "“{0}”不是关卡数据。",
     "fileType": "Next SEKAI 关卡数据",
     "unsupportedParts": "“{0}”包含此版本编辑器不支持的部分。"
+  },
+  "exportVideo": {
+    "title": "导出视频",
+    "frame": "视频预览",
+    "previousFrame": "上一帧",
+    "play": "播放",
+    "pause": "暂停",
+    "nextFrame": "下一帧",
+    "playhead": "播放头",
+    "setIn": "设置入点",
+    "setOut": "设置出点",
+    "range": "范围",
+    "wholeChart": "整个谱面",
+    "selection": "选区",
+    "nothingSelected": "未选择任何内容",
+    "zoom": "缩放至范围",
+    "in": "入点",
+    "out": "出点",
+    "length": "时长",
+    "invalidTime": "请输入时间，例如 01:23.456。",
+    "resolution": "分辨率",
+    "frameRate": "帧率",
+    "fps": "{0} fps",
+    "quality": "画质",
+    "qualities": {
+      "low": "低",
+      "standard": "标准",
+      "high": "高",
+      "custom": "自定义"
+    },
+    "qualityDescription": "画质越高，视频码率和文件大小越大。",
+    "noBgm": "无背景音乐",
+    "notInBrowser": "使用当前设置时，此浏览器不支持：{0}",
+    "tooLarge": "使用当前设置时，此设备不支持：{0}",
+    "advanced": "高级",
+    "video": "视频",
+    "picture": "画面",
+    "sound": "声音",
+    "format": "格式",
+    "formats": {
+      "automatic": "自动"
+    },
+    "formatDescription": {
+      "choices": {
+        "automatic": "当前设置支持 MP4 时使用 MP4，否则使用 WebM。",
+        "mp4": "许多播放器和视频编辑器支持此格式。",
+        "webm": "支持此格式的播放器和视频编辑器较少。"
+      }
+    },
+    "videoBitrate": "视频码率（Mbps）",
+    "renderScaleDescription": "按比例调整绘制每帧时的分辨率。数值越高，边缘越平滑，导出耗时越长。",
+    "fadeIn": "淡入（秒）",
+    "fadeOut": "淡出（秒）",
+    "audioBitrate": "音频码率",
+    "kbps": "{0} kbps",
+    "restoreDefaults": "重置为默认值",
+    "export": "导出…",
+    "exportNow": "导出",
+    "download": "下载视频",
+    "share": "分享视频",
+    "fileType": "视频",
+    "about": "约 {0}",
+    "minutesLeft": "剩余约 {0} 分钟",
+    "lessThanMinuteLeft": "剩余不足 1 分钟",
+    "preparing": "正在准备…",
+    "exporting": "正在导出视频…",
+    "finishing": "正在完成导出…",
+    "cancelling": "正在取消…",
+    "exported": "已导出到 {0}",
+    "ready": "已准备好",
+    "keepOpen": "导出结束前，请保持此标签页打开。",
+    "keepOpenVisible": "导出结束前，请保持此标签页打开并可见。",
+    "stopped": "视频导出多次中断。此设备上的分辨率和渲染比例现已受限。“重置为默认值”可解除此限制。",
+    "discardTitle": "要放弃此视频吗？",
+    "discard": "放弃视频",
+    "unsupported": "此浏览器无法导出视频。",
+    "errors": {
+      "ownProject": "已保存到 {0}。请为视频选择其他名称。",
+      "refused": "“{0}”是谱面文件。请选择其他名称。",
+      "refusedOther": "“{0}”已被清空。请在其所属会话中使用“保存”重新写入项目文件。请为视频选择其他名称。",
+      "config": "此浏览器不支持这些视频设置。请降低分辨率或帧率。",
+      "encoder": "无法创建视频。",
+      "audio": "无法准备音频。",
+      "graphics": "图形错误导致导出中断。请重试。",
+      "memory": "内存不足。请降低分辨率。",
+      "hidden": "标签页处于后台时，导出已中断。请保持此标签页可见，然后重试。",
+      "memoryLimit": "此视频超出此浏览器可处理的大小。请选择更短的范围或降低画质。",
+      "unavailable": "此浏览器无法导出视频。",
+      "download": "无法下载视频。",
+      "share": "无法分享视频。"
+    },
+    "fadeInDescription": "画面从黑色逐渐显现，声音从静音逐渐增大。",
+    "fadeOutDescription": "画面逐渐变黑，声音逐渐减小至静音。"
   },
   "peek": {
     "loadingShort": "加载中…",

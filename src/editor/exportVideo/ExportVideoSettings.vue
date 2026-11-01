@@ -106,10 +106,7 @@ const toggleAdvanced = async () => {
     })
 }
 
-const formatDescription = computed(() => ({
-    intro: strings.value.formatDescription.intro,
-    choices: strings.value.formatDescription.choices,
-}))
+const formatDescription = computed(() => ({ choices: strings.value.formatDescription.choices }))
 </script>
 
 <template>
@@ -218,6 +215,7 @@ const formatDescription = computed(() => ({
             <NumberField
                 v-model="form.fadeIn"
                 :label="strings.fadeIn"
+                :description="strings.fadeInDescription"
                 :min="0"
                 :max="d.fadeLimits.value.fadeIn"
                 :step="0.1"
@@ -226,6 +224,7 @@ const formatDescription = computed(() => ({
             <NumberField
                 v-model="form.fadeOut"
                 :label="strings.fadeOut"
+                :description="strings.fadeOutDescription"
                 :min="0"
                 :max="d.fadeLimits.value.fadeOut"
                 :step="0.1"
