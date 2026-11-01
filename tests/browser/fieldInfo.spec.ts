@@ -99,11 +99,11 @@ test.describe('in Settings', () => {
         await boot(page)
     })
 
-    test('35 described rows, each with a 24 px face, a 44 px target and exact names', async ({
+    test('36 described rows, each with a 24 px face, a 44 px target and exact names', async ({
         page,
     }) => {
         const dialog = await openSettings(page)
-        await expect(dialog.locator('[data-field-info]')).toHaveCount(35)
+        await expect(dialog.locator('[data-field-info]')).toHaveCount(36)
         const { root, info } = field(dialog, 'Name Contrast')
         await expect(info).toHaveAccessibleName('About Name Contrast')
         const toggle = root.getByRole('switch')
@@ -224,8 +224,7 @@ test.describe('in Settings', () => {
     test("Show Quick Scroll Zone's description is its own", async ({ page }) => {
         const dialog = await openSettings(page)
         const { root, info } = field(dialog, 'Show Quick Scroll Zone')
-        const intro =
-            'Sets when to shade the zone at the chart’s right edge where you can scroll with one finger.'
+        const intro = 'Sets when to shade the zone where you can scroll with one finger.'
         const lines = [
             'On: Shades the zone on any device.',
             'Off: Leaves the zone unshaded.',
@@ -982,7 +981,7 @@ test.describe('on chart properties', () => {
             expect(new Set(fields.map(({ info }) => info)), surface).toEqual(new Set([0]))
         }
         const dialog = await openSettings(page)
-        await expect(dialog.locator('[data-field-info]')).toHaveCount(35)
+        await expect(dialog.locator('[data-field-info]')).toHaveCount(36)
     })
 
     for (const where of ['panel', 'selection dialog'] as const)
