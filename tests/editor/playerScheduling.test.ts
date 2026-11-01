@@ -6,7 +6,9 @@ import test from 'node:test'
 import { queryObjects } from 'node:v8'
 import { nextTick, type ShallowRef } from 'vue'
 import type { State } from '../../src/state'
+import { createState } from '../../src/state'
 import { soundCharts, soundClips } from '../helpers/playerSounds'
+import { goldenChart, note } from '../local/records/charts'
 
 // Use the real chart store and player with fixed history, settings and decoded clips.
 const here = (path: string) => new URL(path, import.meta.url).href
@@ -43,6 +45,9 @@ class Context extends EventTarget {
     state = 'running'
     destination = 'destination'
     static current: Context
+    resume() {
+        return Promise.resolve()
+    }
     constructor() {
         super()
         setMaxListeners(0, this)
@@ -52,7 +57,10 @@ class Context extends EventTarget {
 class Source {
     id = nextId++
     onended: (() => void) | null = null
-    constructor(_context: unknown, options: unknown) {
+    constructor(
+        _context: unknown,
+        readonly options: AudioBufferSourceOptions,
+    ) {
         calls.push(['source', this.id, options])
     }
     connect(node: Gain) {
@@ -199,8 +207,12 @@ test('a clock that advances during planning skips past hits and resumes a spanni
     sounds.stop(true)
 })
 
-for (const work of ['hidden sections', 'holds'] as const) {
-    test(`a speed change queues near hits before scanning ${work}`, (t) => {
+for (const work of [
+    'scanning hidden sections',
+    'scanning holds',
+    'spacing criticalTap hits',
+] as const) {
+    test(`a speed change queues near hits before ${work}`, (t) => {
         t.mock.method(globalThis, 'setInterval', () => 1)
         t.mock.method(globalThis, 'clearInterval', () => {})
         t.mock.method(globalThis, 'setTimeout', () => 1)
@@ -212,18 +224,27 @@ for (const work of ['hidden sections', 'holds'] as const) {
         const advance = () => {
             playbackContext.currentTime = 10.03
         }
-        if (work === 'hidden sections') {
+        if (work === 'scanning hidden sections') {
             const values = timeScale.values.bind(timeScale)
             t.mock.method(timeScale, 'values', () => {
                 advance()
                 return values()
             })
-        } else {
+        } else if (work === 'scanning holds') {
             const get = connector.get.bind(connector)
             t.mock.method(connector, 'get', (key: number) => {
                 advance()
                 return get(key)
             })
+        } else {
+            const sort = Array.prototype.sort
+            t.after(() => {
+                Array.prototype.sort = sort
+            })
+            Array.prototype.sort = function (this: unknown[], compare) {
+                if (this.length === 1 && this[0] === 0) advance()
+                return sort.call(this, compare)
+            }
         }
         calls = []
         try {
@@ -241,31 +262,169 @@ for (const work of ['hidden sections', 'holds'] as const) {
     })
 }
 
-test('stopping after a display frame releases the previous chart audio', async (t) => {
-    class DecodedAudio {}
-    t.mock.method(globalThis, 'setInterval', () => 1)
-    t.mock.method(globalThis, 'clearInterval', () => {})
-    t.mock.method(globalThis, 'setTimeout', () => 1)
-    t.mock.method(globalThis, 'clearTimeout', () => {})
-    playbackContext.currentTime = 10
-    state.value = {
-        ...soundCharts()[0]!,
-        bgm: { offset: 0, buffer: new DecodedAudio() as AudioBuffer },
-    }
-    player.startPlayer(0, 1, () => assert.fail('start failed'))
-    player.getPlayerDisplayTime()
-    assert.equal(queryObjects(DecodedAudio), 1)
-    player.stopPlayer()
-    // Finish the pending fades through the context's suspension handler.
-    playbackContext.state = 'suspended'
-    playbackContext.dispatchEvent(new Event('statechange'))
-    playbackContext.state = 'running'
-    state.value = soundCharts()[1]!
-    const { playbackBgm } = await import('../../src/history/bgm')
-    assert.equal(playbackBgm.value, state.value.bgm)
-    await nextTick()
+for (const pending of ['nothing', 'resume()', 'an ended callback'] as const) {
+    test(`stopping after a display frame releases chart audio with ${pending} pending`, async (t) => {
+        class DecodedAudio {}
+        t.mock.method(globalThis, 'setInterval', () => 1)
+        t.mock.method(globalThis, 'clearInterval', () => {})
+        t.mock.method(globalThis, 'setTimeout', () => 1)
+        t.mock.method(globalThis, 'clearTimeout', () => {})
+        let resolveResume!: () => void
+        const resume = new Promise<void>((resolve) => {
+            resolveResume = resolve
+        })
+        const ended: (() => void)[] = []
+        if (pending === 'resume()') {
+            playbackContext.state = 'suspended'
+            t.mock.method(playbackContext, 'resume', () => resume)
+        }
+        if (pending === 'an ended callback') {
+            const start = Source.prototype.start
+            t.mock.method(Source.prototype, 'start', function (this: Source, ...args: number[]) {
+                if (this.onended && !(this.options.buffer instanceof DecodedAudio))
+                    ended.push(this.onended)
+                start.apply(this, args)
+            })
+        }
+        playbackContext.currentTime = 10
+        state.value = {
+            ...soundCharts()[0]!,
+            bgm: { offset: 0, buffer: new DecodedAudio() as AudioBuffer },
+        }
+        player.startPlayer(0, 1, () => assert.fail('start failed'))
+        if (pending === 'an ended callback') assert.ok(ended.length > 0)
+        player.getPlayerDisplayTime()
+        assert.equal(queryObjects(DecodedAudio), 1)
+        player.stopPlayer()
+        // Finish the pending fades through the context's suspension handler.
+        playbackContext.state = 'suspended'
+        playbackContext.dispatchEvent(new Event('statechange'))
+        playbackContext.state = 'running'
+        state.value = soundCharts()[1]!
+        const { playbackBgm } = await import('../../src/history/bgm')
+        assert.equal(playbackBgm.value, state.value.bgm)
+        await nextTick()
+        calls = []
+        // Mock call records also hold the start deadline's closure until released.
+        t.mock.reset()
+        try {
+            assert.equal(queryObjects(DecodedAudio), 0)
+        } finally {
+            resolveResume()
+            for (const callback of ended) callback()
+            await nextTick()
+        }
+    })
+}
+
+for (const work of ['sorting critical holds', "converting the next hold's times"] as const) {
+    test(`normal holds are queued before ${work}`, (t) => {
+        t.mock.method(globalThis, 'setInterval', () => 1)
+        t.mock.method(globalThis, 'clearInterval', () => {})
+        t.mock.method(globalThis, 'setTimeout', () => 1)
+        t.mock.method(globalThis, 'clearTimeout', () => {})
+        playbackContext.currentTime = 10
+        state.value = createState(
+            {
+                ...goldenChart().chart,
+                bpms: [
+                    { beat: 0, bpm: 60 },
+                    { beat: 0.3, bpm: 60 },
+                ],
+                timeScales: [],
+                slides: [
+                    [note(0.021, { sfx: 'none' }), note(0.04, { sfx: 'none' })],
+                    [
+                        note(0.3, {
+                            sfx: 'none',
+                            connectorActiveIsCritical: work === 'sorting critical holds',
+                        }),
+                        note(0.4, { sfx: 'none' }),
+                    ],
+                ],
+            },
+            0,
+        )
+        const sort = Array.prototype.sort
+        t.after(() => {
+            Array.prototype.sort = sort
+        })
+        let sortedHolds = false
+        const bpm = state.value.bpms[1]!
+        const slope = bpm.s
+        Object.defineProperty(bpm, 's', { configurable: true, get: () => slope })
+        t.mock.getter(bpm, 's', () => {
+            if (sortedHolds && work === "converting the next hold's times")
+                playbackContext.currentTime = 10.03
+            return slope
+        })
+        Array.prototype.sort = function (this: unknown[], compare) {
+            if (Array.isArray(this[0])) {
+                sortedHolds = true
+                if (this[0][0] === 0.3 && work === 'sorting critical holds')
+                    playbackContext.currentTime = 10.03
+            }
+            return sort.call(this, compare)
+        }
+        calls = []
+        try {
+            player.startPlayer(0, 1.5, () => assert.fail('start failed'), 0)
+            assert.equal(playbackContext.currentTime, 10.03)
+            assert.ok(calls.some(([method, , when]) => method === 'start' && when === 10.014))
+        } finally {
+            player.stopPlayer()
+            playbackContext.state = 'suspended'
+            playbackContext.dispatchEvent(new Event('statechange'))
+            playbackContext.state = 'running'
+        }
+    })
+}
+
+test('hold cleanup checks the clock again before extending the next voice', async (t) => {
+    const { scheduleActivePlayerAudio } = await import('../../src/playerAudio')
+    const context = new Context()
+    const actives = new Set<import('../../src/playerAudio').ActivePlayerAudio>()
+    const buffer = {} as AudioBuffer
+    scheduleActivePlayerAudio(
+        context as unknown as AudioContext,
+        actives,
+        buffer,
+        0,
+        1,
+        80,
+        10,
+        10.01,
+    )
+    scheduleActivePlayerAudio(
+        context as unknown as AudioContext,
+        actives,
+        buffer,
+        2,
+        3,
+        80,
+        10,
+        10.04,
+    )
+    const [first, second] = [...actives]
+    assert.ok(first && second)
+    const stop = first.stop
+    t.mock.method(first, 'stop', () => {
+        stop()
+        context.currentTime = 10.05
+    })
+    context.currentTime = 10.02
     calls = []
-    // Mock call records also hold the start deadline's closure until released.
-    t.mock.reset()
-    assert.equal(queryObjects(DecodedAudio), 0)
+    scheduleActivePlayerAudio(
+        context as unknown as AudioContext,
+        actives,
+        buffer,
+        3,
+        4,
+        80,
+        10.04,
+        11,
+    )
+    assert.ok(!actives.has(second), 'release the voice that ended during cleanup')
+    assert.ok(calls.some(([method, , when]) => method === 'start' && when === 10.05))
+    for (const active of actives) active.stop()
 })

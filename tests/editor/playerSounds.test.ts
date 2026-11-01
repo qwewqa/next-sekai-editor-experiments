@@ -191,25 +191,10 @@ test('hidden holds resume in a later window and catch-up includes only spanning 
 test('hold merging retains the longest end and replaces expired voices at catch-up', () => {
     const active = { endBeat: 6, endTime: 5 }
     const expired = { endBeat: 10, endTime: 2 }
-    assert.deepEqual(planActiveSound([active], 2, 4, 2, 4, 1), {
-        expired: [],
-        next: { type: 'skip' },
-    })
-    assert.deepEqual(planActiveSound([expired, active], 6, 8, 5, 7, 3), {
-        expired: [expired],
-        next: { type: 'extend', active },
-    })
-    assert.deepEqual(planActiveSound([active], 6, 8, 5, 7, 5), {
-        expired: [active],
-        next: { type: 'start', time: 5 },
-    })
-    assert.deepEqual(planActiveSound([], 0, 8, 0, 7, 3), {
-        expired: [],
-        next: { type: 'start', time: 3 },
-    })
-    assert.deepEqual(planActiveSound([active], 8, 9, 7, 8, 3), {
-        expired: [],
-        next: { type: 'start', time: 7 },
-    })
+    assert.equal(planActiveSound(active, 2, 4, 1), 'covered')
+    assert.equal(planActiveSound(expired, 6, 8, 3), 'expired')
+    assert.equal(planActiveSound(active, 6, 8, 3), 'extend')
+    assert.equal(planActiveSound(active, 6, 8, 5), 'expired')
+    assert.equal(planActiveSound(active, 8, 9, 3), 'separate')
     assert.deepEqual(active, { endBeat: 6, endTime: 5 })
 })

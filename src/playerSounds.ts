@@ -44,22 +44,25 @@ export const planSounds = (
     previous: SoundPlanState,
 ): { events: SoundEvent[]; state: SoundPlanState } => {
     const hits = planHits(source, bpms, clips, window, previous)
-    return {
-        events: [...hits.events, ...planHolds(source, bpms, clips, window, previous)],
-        state: hits.state,
+    const events: SoundEvent[] = []
+    let hit = hits.next()
+    while (!hit.done) {
+        events.push(hit.value)
+        hit = hits.next()
     }
+    for (const hold of planHolds(source, bpms, clips, window, previous)) events.push(hold)
+    return { events, state: hit.value }
 }
 
-export const planHits = (
+export function* planHits(
     source: Pick<SoundSource, 'notes' | 'getInfo'>,
     bpms: BpmIntegral[],
     clips: Partial<Record<SoundClip, boolean>>,
     window: { from: number; to: number },
     previous: SoundPlanState,
-): { events: Extract<SoundEvent, { type: 'hit' }>[]; state: SoundPlanState } => {
+): Generator<Extract<SoundEvent, { type: 'hit' }>, SoundPlanState> {
     const beats = { min: timeToBeat(bpms, window.from), max: timeToBeat(bpms, window.to) }
     const lastSfx = { ...previous.lastSfx }
-    const events: Extract<SoundEvent, { type: 'hit' }>[] = []
     const sfxDistance = 0.02
 
     const targets = {
@@ -177,22 +180,21 @@ export const planHits = (
         const last = times.at(-1)
         if (last !== undefined) lastSfx[type] = last
 
-        for (const time of times) events.push({ type: 'hit', clip: type, time })
+        for (const time of times) yield { type: 'hit', clip: type, time }
     }
 
-    return { events, state: { until: window.to, lastSfx } }
+    return { until: window.to, lastSfx }
 }
 
-export const planHolds = (
+export function* planHolds(
     source: Pick<SoundSource, 'connectors' | 'getHideChanges'>,
     bpms: BpmIntegral[],
     clips: Partial<Record<SoundClip, boolean>>,
     window: { from: number; to: number },
     previous: SoundPlanState,
-): Extract<SoundEvent, { type: 'hold' }>[] => {
+): Generator<Extract<SoundEvent, { type: 'hold' }>> {
     const beats = { min: timeToBeat(bpms, window.from), max: timeToBeat(bpms, window.to) }
     const isCatchingUp = previous.until === undefined || window.from > previous.until
-    const events: Extract<SoundEvent, { type: 'hold' }>[] = []
     const activeTargets = {
         normalActive: Array<[number, number]>(),
         criticalActive: Array<[number, number]>(),
@@ -226,47 +228,27 @@ export const planHolds = (
         if (!clips[type]) continue
 
         for (const [start, end] of pieces.sort((a, b) => a[0] - b[0])) {
-            events.push({
+            yield {
                 type: 'hold',
                 clip: type,
                 startBeat: start,
                 endBeat: end,
                 time: beatToTime(bpms, start),
                 endTime: beatToTime(bpms, end),
-            })
+            }
         }
     }
-
-    return events
 }
 
 export type ActiveSound = { endBeat: number; endTime: number }
-export type ActiveSoundPlan<T> = {
-    expired: T[]
-    next: { type: 'skip' } | { type: 'extend'; active: T } | { type: 'start'; time: number }
-}
-
 // An ended callback can still be queued after its source has stopped. Such a voice cannot restart.
-export const planActiveSound = <T extends ActiveSound>(
-    actives: Iterable<T>,
+export const planActiveSound = (
+    active: ActiveSound,
     startBeat: number,
     endBeat: number,
-    whenStart: number,
-    whenStop: number,
     now: number,
-): ActiveSoundPlan<T> => {
-    const expired: T[] = []
-    if (whenStop <= now) return { expired, next: { type: 'skip' } }
-    for (const active of actives) {
-        if (active.endTime <= now) {
-            expired.push(active)
-            continue
-        }
-        if (active.endBeat < startBeat) continue
-        return {
-            expired,
-            next: endBeat <= active.endBeat ? { type: 'skip' } : { type: 'extend', active },
-        }
-    }
-    return { expired, next: { type: 'start', time: Math.max(whenStart, now) } }
+): 'expired' | 'separate' | 'covered' | 'extend' => {
+    if (active.endTime <= now) return 'expired'
+    if (active.endBeat < startBeat) return 'separate'
+    return endBeat <= active.endBeat ? 'covered' : 'extend'
 }

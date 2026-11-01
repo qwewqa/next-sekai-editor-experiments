@@ -36,6 +36,7 @@ const sfxBuffers = {
 }
 
 const state = shallowRef<{
+    token: symbol
     speed: number
     bgmTime: number
     // Audio time at which bgmTime begins, including any initial preroll.
@@ -171,7 +172,9 @@ export const startPlayer = (
     const startTime = context.currentTime
     const contextTime = startTime + delay
 
+    const token = Symbol()
     state.value = {
+        token,
         speed,
         bgmTime,
         contextTime,
@@ -187,14 +190,12 @@ export const startPlayer = (
             start: { time: bgmTime, contextTime, speed },
         }),
     }
-    const current = state.value
-
     const fail = () => {
         stopPlayback(true)
         onFailure()
     }
     resumeContext(() => {
-        if (state.value === current) fail()
+        if (state.value?.token === token) fail()
     })
     stopPreviewPlayer()
 
@@ -209,7 +210,7 @@ export const startPlayer = (
     // has not.
     startCheck = setTimeout(() => {
         startCheck = undefined
-        if (state.value !== current || context.currentTime > startTime) return
+        if (state.value?.token !== token || context.currentTime > startTime) return
         stuckAt = startTime
         fail()
     }, startDeadline)

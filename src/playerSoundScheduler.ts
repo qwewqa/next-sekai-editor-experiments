@@ -42,28 +42,11 @@ export const createSoundScheduler = ({
     const chartTime = (time: number) => (time - start.contextTime) * start.speed + start.time
     const audioTime = (time: number) => (time - start.time) / start.speed + start.contextTime
 
-    const schedule = (
-        nodes: Set<PlayerAudio>,
-        buffer: AudioBuffer,
-        volume: number,
-        when: number,
-        offset = 0,
-        speed = 1,
-        fadeIn = false,
-    ) => {
-        const audio = createPlayerAudio(context, { buffer, playbackRate: speed }, volume, () =>
-            nodes.delete(audio),
-        )
-        nodes.add(audio)
-        const startTime = offset < 0 ? when - offset / speed : when
-        if (fadeIn) audio.fadeIn(startTime)
-        audio.start(startTime, Math.max(0, offset))
-    }
-
     return {
         startBgm() {
             if (buffers.bgm.buffer)
                 schedule(
+                    context,
                     bgmNodes,
                     buffers.bgm.buffer,
                     volumes.bgm(),
@@ -99,14 +82,16 @@ export const createSoundScheduler = ({
                 window,
                 continuation,
             )
-            // Queue hits before scanning hidden sections and holds. A speed change restarts without preroll.
-            for (const event of hits.events) {
+            // Queue each clip before planning the next. A speed change restarts without preroll.
+            let hit = hits.next()
+            for (; !hit.done; hit = hits.next()) {
+                const event = hit.value
                 const buffer = buffers.sfx[event.clip]
                 if (!buffer) continue
                 const when = audioTime(event.time)
                 // The clock can advance during planning. Do not replay a hit that has passed.
                 if (when < context.currentTime) continue
-                schedule(sfxNodes, buffer, volumes.sfx(), when)
+                schedule(context, sfxNodes, buffer, volumes.sfx(), when)
             }
             const grid = store.grid.timeScale
             if (hideChanges?.grid !== grid) {
@@ -130,7 +115,6 @@ export const createSoundScheduler = ({
                 window,
                 continuation,
             )
-            continuation = hits.state
             for (const event of holds) {
                 const buffer = buffers.sfx[event.clip]
                 if (!buffer) continue
@@ -146,6 +130,7 @@ export const createSoundScheduler = ({
                     audioTime(event.endTime),
                 )
             }
+            continuation = hit.value
             scheduledUntil = to
         },
         setBgmVolume(value: number) {
@@ -165,4 +150,23 @@ export const createSoundScheduler = ({
             }
         },
     }
+}
+
+const schedule = (
+    context: AudioContext,
+    nodes: Set<PlayerAudio>,
+    buffer: AudioBuffer,
+    volume: number,
+    when: number,
+    offset = 0,
+    speed = 1,
+    fadeIn = false,
+) => {
+    const audio = createPlayerAudio(context, { buffer, playbackRate: speed }, volume, () =>
+        nodes.delete(audio),
+    )
+    nodes.add(audio)
+    const startTime = offset < 0 ? when - offset / speed : when
+    if (fadeIn) audio.fadeIn(startTime)
+    audio.start(startTime, Math.max(0, offset))
 }

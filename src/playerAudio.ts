@@ -170,20 +170,19 @@ export const scheduleActivePlayerAudio = (
     whenStart: number,
     whenStop: number,
 ) => {
-    const { expired, next } = planActiveSound(
-        actives,
-        startBeat,
-        endBeat,
-        whenStart,
-        whenStop,
-        context.currentTime,
-    )
-    for (const active of expired) active.stop()
-    if (next.type === 'skip') return
-    if (next.type === 'extend') {
-        next.active.endBeat = endBeat
-        next.active.endTime = whenStop
-        next.active.source.stop(whenStop)
+    if (whenStop <= context.currentTime) return
+
+    for (const active of actives) {
+        const next = planActiveSound(active, startBeat, endBeat, context.currentTime)
+        if (next === 'expired') {
+            active.stop()
+            continue
+        }
+        if (next === 'separate') continue
+        if (next === 'covered') return
+        active.endBeat = endBeat
+        active.endTime = whenStop
+        active.source.stop(whenStop)
         return
     }
 
@@ -193,7 +192,7 @@ export const scheduleActivePlayerAudio = (
         endTime: whenStop,
     }
     actives.add(active)
-    const start = Math.max(next.time, context.currentTime)
+    const start = Math.max(whenStart, context.currentTime)
     active.fadeIn(start)
     active.start(start)
     active.source.stop(whenStop)
