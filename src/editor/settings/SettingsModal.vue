@@ -137,14 +137,18 @@ const index = computed(() => ({
 }))
 
 // A reset cannot be undone, so each asks first, with Cancel as the safe default.
-const confirmReset = async (title: () => string, message: () => string, reset: () => void) => {
+const confirmReset = async (
+    title: () => string,
+    message: () => string,
+    reset: () => void | Promise<void>,
+) => {
     const confirmed = await showChoice({
         title,
         message,
         choices: [{ value: true, label: title, danger: true }],
         cancelIsDefault: true,
     })
-    if (confirmed) reset()
+    if (confirmed) await reset()
 }
 const askResetSettings = () =>
     confirmReset(
