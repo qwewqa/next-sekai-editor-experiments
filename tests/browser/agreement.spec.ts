@@ -495,12 +495,12 @@ test.describe('load notices wait under it', () => {
         await expect(line).toBeVisible()
     })
 
-    test('13 s after Agree, a late notice is only kept in Local Data', async ({ page }) => {
+    test('16 s after Agree, a late notice is only kept in Local Data', async ({ page }) => {
         await page.clock.install()
         await heldEstimate(page)
         await visit(page)
         await agree(page)
-        await page.clock.runFor(13_000)
+        await page.clock.runFor(16_000)
         await releaseEstimate(page)
         await page.waitForTimeout(500)
         await expect(pill(page)).toHaveCount(0)

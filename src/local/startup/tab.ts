@@ -111,8 +111,8 @@ export const watchMarker = (current: () => string | undefined) => {
     })
 }
 
-/** The wait for a late flush from the page that went away (about 2 s). */
-export const MARKER_WAIT_MS = 2000
+/** The longest wait for a late flush from the page that went away (5 s). */
+export const MARKER_WAIT_MS = 5000
 
 /** A spec sets `nse.test.markerWait` (ms) to widen or shorten the wait. */
 export const markerWaitMs = () =>

@@ -221,7 +221,7 @@ onHistoryAction(({ kind }) => {
 
 /**
  * Whether the start-up notice is still the one shown, so a load notice may join it: its card, or
- * the quick toast of a clean load within 12 s of the gate lifting, while nothing was edited, undone,
+ * the quick toast of a clean load within 15 s of the gate lifting, while nothing was edited, undone,
  * redone or restored. Never the faint text left after it.
  */
 export const startupNoticeCurrent = () =>
@@ -232,7 +232,7 @@ export const startupNoticeCurrent = () =>
 
 /**
  * Keeps the start-up toast current while the agreement dialog covers the page; at the release
- * its 12 s start, since the page only then becomes usable.
+ * its 15 s start, since the page only then becomes usable.
  */
 export const holdStartupWindow = (held: boolean) => {
     startupWindow.hold(held, performance.now())
@@ -268,7 +268,7 @@ watch(
 /**
  * Adds a load notice. Before the gate lifts, it waits for it with the rest. After,
  * it is a line on the start-up notice while that is current, and the card then stays about 8 s.
- * Otherwise (an edit, another notice, 12 s) the line is only kept, since nothing appears at an
+ * Otherwise (an edit, another notice, 15 s) the line is only kept, since nothing appears at an
  * arbitrary time.
  */
 export const addLoadNotice = (

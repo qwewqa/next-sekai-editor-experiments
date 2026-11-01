@@ -394,7 +394,8 @@ test('a page without Web Locks: the claim is a reload only with the marker, and 
     }
 })
 
-test("the claim: a held lock released within the marker's wait is a reload; held past it, a Duplicate Tab", async () => {
+test("the claim: a held lock released within the marker's wait is a reload; held past it, a Duplicate Tab", async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'] })
     const world = createWorld({ seed: 9 })
     const tab: TabStorage = new Map()
     recordTab(tab, { sessionId: 'S', start: 'stored' })
@@ -407,23 +408,40 @@ test("the claim: a held lock released within the marker's wait is a reload; held
         return claimer.run(() => claimTab(claimer.locks))
     }
 
-    // The unloading page's late flush ends within the wait.
+    // A free lock needs no timer tick, even with the marker.
+    const freeAt = Date.now()
+    const free = await claimIn(tab)
+    assert.equal(free.kind, 'reload')
+    assert.equal(Date.now(), freeAt)
+    if (free.kind === 'reload') free.lock.release()
+    await world.idle()
+
+    // The unloading page's late flush ends after 3 s, within the 5 s wait.
     const late = holdSessionLock(holder.locks, 'S')
     await holder.run(() => late.granted)
     const claiming = claimIn(tab)
-    setTimeout(() => {
-        late.release()
-    }, 200)
+    await world.idle()
+    t.mock.timers.tick(3000)
+    await world.idle()
+    assert.equal(world.locks.snapshot().pending.length, 1)
+    late.release()
     const claim = await claiming
     assert.equal(claim.kind, 'reload')
     if (claim.kind === 'reload') claim.lock.release()
+    await world.idle()
 
     // A live tab keeps it past the wait: a Duplicate Tab.
     const live = holdSessionLock(holder.locks, 'S')
     await holder.run(() => live.granted)
-    const started = Date.now()
-    assert.equal((await claimIn(tab)).kind, 'duplicate')
-    assert.ok(Date.now() - started >= MARKER_WAIT_MS - 50)
+    const waiting = claimIn(tab)
+    await world.idle()
+    assert.equal(MARKER_WAIT_MS, 5000)
+    t.mock.timers.tick(4999)
+    await world.idle()
+    assert.equal(world.locks.snapshot().pending.length, 1)
+    t.mock.timers.tick(1)
+    assert.equal((await waiting).kind, 'duplicate')
+    assert.equal(world.locks.snapshot().pending.length, 0)
     // Without the marker it asks once, at once.
     tab.delete([...tab.keys()].find((key) => key.endsWith('unloaded'))!)
     assert.equal((await claimIn(tab)).kind, 'duplicate')

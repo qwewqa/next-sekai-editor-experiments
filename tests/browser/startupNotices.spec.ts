@@ -397,7 +397,7 @@ test.describe('load notices in the start-up pill', () => {
 
     // A line found late (a resumed import finding damaged history) while the clean load's toast
     // is still the quick notice: only kept, never a card at an arbitrary time.
-    for (const after of ['an edit', '12 s'] as const)
+    for (const after of ['an edit', '15 s'] as const)
         test(`a load notice after ${after} is kept for Local Data, with no card`, async ({
             page,
         }) => {
@@ -409,7 +409,7 @@ test.describe('load notices in the start-up pill', () => {
             else
                 await page.evaluate(() => {
                     const now = performance.now.bind(performance)
-                    performance.now = () => now() + 12_000
+                    performance.now = () => now() + 15_000
                 })
             const shown = await page.evaluate(async () => {
                 const n =
@@ -443,10 +443,10 @@ test.describe('load notices in the start-up pill', () => {
         })
         await page.goto('/')
         await expect.poll(() => page.evaluate(() => !!window.nseStartupRelease)).toBe(true)
-        // Startup ends at a page age of 13 s, past the 12 s the window once counted from load, and
+        // Startup ends at a page age of 16 s, past the 15 s window if counted from load, and
         // the clock stays there until the notice is added.
         await page.evaluate(() => {
-            ;(window as unknown as { pageClock: { frozen: number } }).pageClock.frozen = 13_000
+            ;(window as unknown as { pageClock: { frozen: number } }).pageClock.frozen = 16_000
             window.nseStartupRelease?.()
         })
         await opened(page)

@@ -56,7 +56,7 @@ export type Claim =
 /**
  * Decides reload or Duplicate Tab by the session lock, before the recovery order, so this
  * tab's own journal is replayed under the lock it now holds. With the marker, a blocking request
- * of about 2 s lets the unloading page's late flush land first.
+ * of up to 5 s lets the unloading page's late flush land first.
  */
 export const claimTab = async (locks: LockService): Promise<Claim> => {
     const record = readTabRecord()

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- On slow devices, load notices can now appear later after startup. A reload also waits longer for the previous page to finish storing its work before opening a separate copy.
+
 - Changed how the preview blurs backgrounds.
 
 - Help entries now start by explaining what each tool does.

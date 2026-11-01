@@ -9,12 +9,12 @@ export const NOTICE_MAX_MS = 12_000
 export const RESUME_MIN_MS = 1500
 
 /** How long after the startup gate lifts its start-up toast may still become the start-up card. */
-export const STARTUP_WINDOW_MS = 12_000
+export const STARTUP_WINDOW_MS = 15_000
 
 /**
- * When the start-up toast may still become the start-up card: within 12 s of the startup gate
+ * When the start-up toast may still become the start-up card: within 15 s of the startup gate
  * lifting. A hold keeps it open, as while the agreement dialog covers the page, and its release
- * starts the 12 s again, since that is when the page first becomes usable.
+ * starts the 15 s again, since that is when the page first becomes usable.
  */
 export const createStartupWindow = () => {
     let from: number | undefined

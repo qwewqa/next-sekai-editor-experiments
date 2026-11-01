@@ -838,8 +838,8 @@ const reopenedTab = async (context: BrowserContext, record: string) => {
 }
 
 /**
- * Whether a page of the context waits for the session's lock: a reload in the marker's wait
- * (`MARKER_WAIT_MS`), which ends in a separate copy when the lock is still held 2 s on.
+ * A page waiting for its session's lock during the marker wait (`MARKER_WAIT_MS`).
+ * If the lock stays held for 5 s, the page opens a separate copy.
  */
 const waitsForLock = (page: Page, sessionId: string) =>
     expect
@@ -874,7 +874,7 @@ test('Reopen Closed Tab: the lock coming free within the wait is a reload; held 
     await copy.close({ runBeforeUnload: false })
 
     // It closes within the wait: a reload of the same session. The key is shared by the origin's
-    // pages and read as a tab claims, so only this half's tab waits long; the fork above needed 2 s.
+    // pages and read as a tab claims, so only this half's tab waits long; the fork above needed 5 s.
     await page.evaluate(() => localStorage.setItem('nse.test.markerWait', '60000'))
     const reopened = await reopenedTab(context, record)
     const visiting = visit(reopened)

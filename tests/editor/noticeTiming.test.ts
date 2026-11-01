@@ -34,17 +34,19 @@ test('a hold lets go with at least 1.5 s left', () => {
     assert.equal(RESUME_MIN_MS, 1500)
 })
 
-test('the start-up window is open until the gate lifts, then for 12 s', () => {
+test('the start-up window is open until the gate lifts, then for 15 s', () => {
     const window = createStartupWindow()
     assert.equal(window.isOpen(100_000), true)
     window.start(1000)
     // A later lift changes nothing.
     window.start(5000)
+    assert.equal(window.isOpen(1000 + 12_000), true)
+    assert.equal(STARTUP_WINDOW_MS, 15_000)
     assert.equal(window.isOpen(1000 + STARTUP_WINDOW_MS - 1), true)
     assert.equal(window.isOpen(1000 + STARTUP_WINDOW_MS), false)
 })
 
-test('a hold keeps the window open past 12 s, and its release starts the 12 s again', () => {
+test('a hold keeps the window open past 15 s, and its release starts the 15 s again', () => {
     const window = createStartupWindow()
     window.start(0)
     window.hold(true, 1000)
