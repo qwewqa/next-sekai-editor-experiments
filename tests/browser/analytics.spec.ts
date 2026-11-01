@@ -568,7 +568,7 @@ test('the touch settings snapshot adds the touch options', async ({ page }) => {
         touchQuickScrollShow: 'touch',
         touchQuickScrollSide: 'right',
         touchLongPressContextMenu: true,
-        touchDragHandles: true,
+        touchResizeHandles: true,
     })
     expect(isValidEvent('settings', snapshot)).toBe(true)
 })

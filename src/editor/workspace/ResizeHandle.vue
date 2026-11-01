@@ -142,7 +142,7 @@ onUnmounted(() => {
             class="resize-grabber pointer-events-none relative rounded-full bg-knob shadow ring-1 ring-fg/25 transition-opacity"
             :class="[
                 axis === 'x' ? 'h-8 w-1' : 'h-1 w-8',
-                { 'is-hidden': !settings.touchDragHandles },
+                { 'is-hidden': !settings.touchResizeHandles },
             ]"
         />
     </div>

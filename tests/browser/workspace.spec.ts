@@ -148,8 +148,8 @@ test('compact docks switch tabs without ever bringing back another panel', async
     await expect(tab(page, 'top', 'Preview')).toHaveAttribute('aria-expanded', 'false')
 })
 
-test('with a mouse, Show Drag Handles off still shows the grabber on hover', async ({ page }) => {
-    await setSettings(page, { showGroups: true, touchDragHandles: false })
+test('with a mouse, Show Resize Handles off still shows the grabber on hover', async ({ page }) => {
+    await setSettings(page, { showGroups: true, touchResizeHandles: false })
     const handle = dock(page, 'left').getByRole('separator', { name: 'Resize Left Panels' })
     const grabber = handle.locator('.resize-grabber')
     await expect(grabber).toHaveCSS('opacity', '0')
@@ -468,14 +468,14 @@ test.describe('phone', () => {
         expect([box.width, box.height]).toEqual([32, 4])
     })
 
-    test('with Show Drag Handles off the grabber hides and the edge still resizes by touch', async ({
+    test('with Show Resize Handles off the grabber hides and the edge still resizes by touch', async ({
         page,
     }) => {
         await setSettings(page, {
             groupsPosition: 'top',
             showGroups: true,
             showPreview: false,
-            touchDragHandles: false,
+            touchResizeHandles: false,
         })
         const handle = dock(page, 'top').getByRole('separator', {
             name: 'Resize Top Panels',

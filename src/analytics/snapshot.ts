@@ -63,7 +63,7 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
             touchQuickScrollShow: settings.touchQuickScrollShow,
             touchQuickScrollSide: settings.touchQuickScrollSide,
             touchLongPressContextMenu: settings.touchLongPressContextMenu,
-            touchDragHandles: settings.touchDragHandles,
+            touchResizeHandles: settings.touchResizeHandles,
         }),
     }
 }

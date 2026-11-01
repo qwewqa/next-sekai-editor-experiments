@@ -200,7 +200,7 @@ export const catalogue = {
         touchQuickScrollShow: oneOf('on', 'off', 'touch'),
         touchQuickScrollSide: oneOf('left', 'right'),
         touchLongPressContextMenu: 'boolean',
-        touchDragHandles: 'boolean',
+        touchResizeHandles: 'boolean',
         confirmCloseUnsavedFile: 'boolean',
         groupsStagesSideBySide: oneOf('auto', 'enabled', 'disabled'),
     },

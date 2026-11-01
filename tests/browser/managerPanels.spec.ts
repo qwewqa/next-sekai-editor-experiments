@@ -1386,22 +1386,17 @@ test.describe('touch reordering', () => {
         expect((await groupState(page)).focus).toBeUndefined()
     })
 
-    test('Show Drag Handles off removes the handles from Groups and Stages', async ({ page }) => {
+    test('Show Resize Handles off keeps the handles in Groups and Stages', async ({ page }) => {
         await seedGroups(page, ['Default', 'Other group', 'Third'])
         for (const [name, shown] of [
             ['groups', { showGroups: true, showStages: false }],
             ['stages', { showGroups: false, showStages: true }],
         ] as const) {
             await page.evaluate((shown) => {
-                Object.assign(window.editorTest.settings, shown, { touchDragHandles: true })
+                Object.assign(window.editorTest.settings, shown, { touchResizeHandles: false })
             }, shown)
             const panel = page.locator(`#workspace-panel-${name}`)
             await expect(panel.locator('.manager-entry .manager-grip').first()).toBeVisible()
-            await page.evaluate(() => {
-                window.editorTest.settings.touchDragHandles = false
-            })
-            await expect(panel.locator('.manager-entry').first()).toBeVisible()
-            await expect(panel.locator('.manager-grip')).toHaveCount(0)
         }
     })
 })

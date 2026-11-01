@@ -23,7 +23,6 @@ import { i18n } from '../../../i18n'
 import { modals, showModal } from '../../../modals'
 import ConfirmModal from '../../../modals/ConfirmModal.vue'
 import { createFontContext } from '../../../rendering/textRaster'
-import { settings } from '../../../settings'
 import { interpolateRaw } from '../../../utils/interpolate'
 import CopyIcon from '../../commands/copy/CopyIcon.vue'
 import SelectIcon from '../../commands/select/SelectIcon.vue'
@@ -382,7 +381,7 @@ const inlineMode = computed(() =>
     width.value < 256 ? undefined : isCoarse.value ? ('current' as const) : ('hover' as const),
 )
 /** Touch drag handles, where names keep enough room beside them. */
-const hasGrip = computed(() => width.value >= 300 && settings.touchDragHandles)
+const hasGrip = computed(() => width.value >= 300)
 
 /** Whether a row offers its inline actions, which the menu then leaves out. */
 const hasInline = (id: T) =>

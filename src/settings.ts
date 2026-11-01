@@ -404,7 +404,7 @@ const settingsProperties = {
 
     touchScrollInertia: Type.Boolean({ default: true }),
 
-    touchDragHandles: Type.Boolean({ default: true }),
+    touchResizeHandles: Type.Boolean({ default: true }),
 
     touchLongPressContextMenu: Type.Boolean({ default: true }),
 
