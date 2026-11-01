@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { easeTypes } from '../../src/ease'
 import { aggregateValues, countOptions, valueRange } from '../../src/editor/utils/aggregate'
 import {
     brushFields,
@@ -432,17 +431,37 @@ test('qualified names drop a unit, unless only it tells two fields apart', () =>
     for (const locale of locales) assert.doesNotMatch(qualified('skip', locale), /[(（]/, locale)
 })
 
-type Description = string | { intro?: string; choices: Record<string, string> }
+type Description = string | { intro?: string; choices?: Record<string, string> }
 const descriptions = () =>
     messages('en').modals.form.descriptions as unknown as Record<string, Description | undefined>
 
-test('every chart property has an English description', () => {
+// Their labels and choices say enough.
+const undescribed = [
+    'beat',
+    'stageId',
+    'left',
+    'size',
+    'isCritical',
+    'flickDirection',
+    'connectorActiveIsCritical',
+    'bpm',
+    'editorLane',
+    'cameraZoom',
+    'laneColor',
+    'judgmentLineColor',
+    'judgmentLineStyle',
+    'preset',
+]
+// Both border sides show the styles' lines.
+const sharedDescription: Record<string, string> = {
+    leftBorderStyle: 'borderStyle',
+    rightBorderStyle: 'borderStyle',
+}
+
+test('the listed chart properties have an English description, and the others have no key', () => {
     const all = descriptions()
     const keys = [
         ...propertyFields.map((field) => field.key),
-        // The second row of the ease fields.
-        'easeFunction',
-        'timeScaleEaseFunction',
         // Group Properties, Stage Properties and Level Info.
         'name',
         'forceNoteSpeed',
@@ -456,9 +475,19 @@ test('every chart property has an English description', () => {
         'preset',
     ]
     for (const key of keys) {
-        const description = all[key]
-        const text = typeof description === 'string' ? description : description?.intro
-        assert.ok(text?.trim(), key)
+        if (undescribed.includes(key)) {
+            assert.equal(all[key], undefined, key)
+            continue
+        }
+        const description = all[sharedDescription[key] ?? key]
+        const texts =
+            typeof description === 'string'
+                ? [description]
+                : [description?.intro, ...Object.values(description?.choices ?? {})]
+        assert.ok(
+            texts.some((text) => text?.trim()),
+            key,
+        )
     }
 })
 
@@ -470,24 +499,21 @@ test('each choice description has a line for every option of its select, and no 
         Object.keys(form[section]!).filter((key) => !['label', 'qualified'].includes(key))
     const options: Record<string, string[]> = {
         noteType: named('noteType'),
-        connectorType: named('connectorType'),
-        easeType: [...easeTypes],
         connectorLayer: named('connectorLayer'),
-        connectorPresentation: named('connectorPresentation'),
         timeScaleTransition: named('timeScaleTransition'),
-        cameraZoomVerticalAlign: named('cameraZoomVerticalAlign'),
         divisionParity: named('divisionParity'),
-        judgmentLineStyle: named('judgmentLineStyle'),
         borderStyle: named('borderStyle'),
         rotationCenter: named('rotationCenter'),
         anchor: named('anchor'),
         generateSimLines: named('generateSimLines'),
     }
-    const withChoices = Object.entries(descriptions()).filter(
-        (entry): entry is [string, Exclude<Description, string>] => typeof entry[1] === 'object',
+    const withChoices = Object.entries(descriptions()).flatMap(([key, description]) =>
+        typeof description === 'object' && description.choices
+            ? [[key, description.choices] as const]
+            : [],
     )
     assert.deepEqual(withChoices.map(([key]) => key).sort(), Object.keys(options).sort())
-    for (const [key, { choices }] of withChoices) {
+    for (const [key, choices] of withChoices) {
         assert.deepEqual(Object.keys(choices).sort(), [...options[key]!].sort(), key)
         for (const [value, text] of Object.entries(choices))
             assert.ok(text.trim(), `${key}.${value}`)

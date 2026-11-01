@@ -16,7 +16,6 @@ import {
 import { i18n } from '../../i18n'
 import FieldUsageProvider from '../../editor/workspace/properties/FieldUsageProvider.vue'
 import { unsetChoiceKey } from './emptyLabel'
-import type { ChoiceDescription } from './fieldDescription'
 import { useFieldUsage, type FieldUsage } from './fieldUsage'
 import EaseIcon from './EaseIcon.vue'
 import MultiSelectField from './MultiSelectField.vue'
@@ -29,10 +28,8 @@ const props = defineProps<{
     functions: readonly EaseFunctionOf<E>[]
     /** Each half can be left unset instead of showing mixed values. */
     optional?: boolean
-    /** What Ease Type does, behind an ⓘ: a sentence and a line per type. */
-    typeDescription?: ChoiceDescription<EaseType> | null
-    /** What Ease Function does, behind an ⓘ. */
-    functionDescription?: string | null
+    /** What Ease Type does, behind an ⓘ. */
+    typeDescription?: string | null
 }>()
 
 const modelValue = defineModel<EaseEdit | undefined>({ required: true })
@@ -133,7 +130,6 @@ const curve = computed(() =>
             :disabled="standalone"
             :empty-label="standalone ? '—' : undefined"
             :option-glyph="functionGlyph"
-            :description="functionDescription"
         />
     </template>
     <template v-else>
@@ -154,7 +150,6 @@ const curve = computed(() =>
                 :disabled="standalone"
                 :empty-label="standalone ? '—' : undefined"
                 :option-glyph="functionGlyph"
-                :description="functionDescription"
             />
         </FieldUsageProvider>
     </template>

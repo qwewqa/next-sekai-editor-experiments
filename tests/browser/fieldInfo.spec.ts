@@ -811,10 +811,13 @@ test.describe('on chart properties', () => {
             await nextTick()
         })
 
-    /** How many info buttons each of these fields has. */
+    /** Each of these fields' label and how many info buttons it has. */
     const infoIn = (fields: Locator) =>
         fields.evaluateAll((fields) =>
-            fields.map((field) => field.querySelectorAll('[data-field-info]').length),
+            fields.map((field) => ({
+                label: field.querySelector('.form-field-text')?.textContent ?? '',
+                info: field.querySelectorAll('[data-field-info]').length,
+            })),
         )
     const infoPerField = (scope: Locator) => infoIn(scope.locator('.form-field'))
 
@@ -870,7 +873,7 @@ test.describe('on chart properties', () => {
 
     /** Each surface's info buttons per field. */
     const surveyProperties = async (page: Page) => {
-        const counts: Record<string, number[]> = {}
+        const counts: Record<string, { label: string; info: number }[]> = {}
         await selectEveryKind(page)
         await expect(selection(page).locator('.form-field').first()).toBeVisible()
         counts.selection = await infoPerField(selection(page))
@@ -916,31 +919,57 @@ test.describe('on chart properties', () => {
         await boot(page)
     })
 
-    test('with the setting on, every property field has one info button, and Brush and View have none', async ({
+    // Their labels and choices say enough.
+    const undescribed = new Set([
+        'Beat',
+        'Stage',
+        'Lane',
+        'Size',
+        'Critical',
+        'Flick Direction',
+        'Slide Critical',
+        'BPM',
+        'Editor Lane',
+        'Zoom',
+        'Lane Color',
+        'Judgment Line Color',
+        'Judgment Line Style',
+        'Ease Function',
+        'Event Ease Function',
+        'Preset',
+    ])
+
+    test('with the setting on, each described property field has one info button, and the others, Brush and View have none', async ({
         page,
     }) => {
         test.setTimeout(60_000)
         const { levelInfo, initialLife, ...surfaces } = await surveyProperties(page)
         for (const [surface, fields] of Object.entries(surfaces)) {
             expect(fields.length, surface).toBeGreaterThan(1)
-            expect(new Set(fields), surface).toEqual(new Set([1]))
+            for (const { label, info } of fields)
+                expect(info, `${surface}: ${label}`).toBe(undescribed.has(label) ? 0 : 1)
         }
-        expect(surfaces.selection!.length).toBeGreaterThan(60)
+        expect(surfaces.selection!.filter(({ info }) => info).length).toBeGreaterThan(45)
+        expect(surfaces.selection!.filter(({ info }) => !info).length).toBeGreaterThan(10)
         // Group Properties has Name and Force Note Speed; in Level Info, only Initial Life.
-        expect(surfaces.group).toEqual([1, 1])
-        expect(initialLife).toEqual([1])
-        expect(levelInfo!.reduce((sum, count) => sum + count, 0)).toBe(1)
+        expect(surfaces.group!.map(({ info }) => info)).toEqual([1, 1])
+        expect(initialLife!.map(({ info }) => info)).toEqual([1])
+        expect(levelInfo!.reduce((sum, { info }) => sum + info, 0)).toBe(1)
 
         await page.evaluate(() => (window.editorTest.settings.propertiesPosition = 'right'))
+        // A field without one is a label, as in Brush and View.
+        await expect(row(selection(page), 'Critical').locator('label.form-field-row')).toHaveCount(
+            1,
+        )
         await useTool(page, 'brush')
         await addBrushProperty(toolSection(page), 'noteType')
         await addBrushProperty(toolSection(page), 'groupId')
         const brush = await infoPerField(toolSection(page))
         expect(brush.length).toBeGreaterThan(1)
-        expect(new Set(brush)).toEqual(new Set([0]))
+        expect(new Set(brush.map(({ info }) => info))).toEqual(new Set([0]))
         const view = await infoPerField(panel(page).locator('#properties-section-view'))
         expect(view.length).toBeGreaterThan(3)
-        expect(new Set(view)).toEqual(new Set([0]))
+        expect(new Set(view.map(({ info }) => info))).toEqual(new Set([0]))
     })
 
     test('with the setting off, no property field has one, and Settings keeps its own', async ({
@@ -950,7 +979,7 @@ test.describe('on chart properties', () => {
         await showDescriptions(page, false)
         for (const [surface, fields] of Object.entries(await surveyProperties(page))) {
             expect(fields.length, surface).toBeGreaterThan(0)
-            expect(new Set(fields), surface).toEqual(new Set([0]))
+            expect(new Set(fields.map(({ info }) => info)), surface).toEqual(new Set([0]))
         }
         const dialog = await openSettings(page)
         await expect(dialog.locator('[data-field-info]')).toHaveCount(35)
@@ -1015,11 +1044,7 @@ test.describe('on chart properties', () => {
         page,
     }) => {
         await selectMixed(page)
-        const { descriptions, ease } = en.modals.form
-        const lines = (['none', 'linear', 'in', 'out', 'inOut', 'outIn'] as const).map(
-            (value) => `${ease[value]}: ${descriptions.easeType.choices[value]}`,
-        )
-        const description = [descriptions.connectorEase, ...lines].join(' ')
+        const description = en.modals.form.descriptions.connectorEase
         const type = row(selection(page), 'Ease Type')
         await expect(type.locator('[data-field-info]')).toHaveAccessibleDescription(description)
         await expect(type.getByRole('combobox')).toHaveAccessibleName('Ease Type')
@@ -1125,47 +1150,6 @@ test.describe('on chart properties', () => {
             ).toEqual({ selected: 1, notes: 4 })
         })
 
-    test('with Ease Function disabled, Settings that hides descriptions leaves focus in Properties, and Delete deletes nothing', async ({
-        page,
-    }) => {
-        const state = () =>
-            page.evaluate(() => ({
-                selected: window.editorTest.history.state.value.selectedEntities.length,
-                notes: window.editorTest.snapshot().notes.length,
-            }))
-        await page.evaluate(async () => {
-            const { fixtures, show, history, store, settings, nextTick } = window.editorTest
-            settings.showSidebar = true
-            settings.propertiesConnectorExpanded = true
-            show(fixtures.connectors)
-            // The head of the slide with a linear ease.
-            history.replaceState({
-                ...history.state.value,
-                selectedEntities: [...store.getAllEntities()].filter(
-                    (entity) =>
-                        entity.type === 'note' &&
-                        entity.beat === 1 &&
-                        Math.abs(entity.left + 6.6) < 0.01,
-                ),
-            })
-            await nextTick()
-        })
-        const before = await state()
-        expect(before.selected).toBe(1)
-        const field = row(selection(page), 'Ease Function')
-        await expect(field.getByRole('combobox')).toBeDisabled()
-        await field.locator('[data-field-info]').focus()
-        await page.keyboard.press('Control+Comma')
-        const dialog = page.getByRole('dialog', { name: 'Settings' })
-        await expect(dialog).toBeVisible()
-        await dialog.getByRole('switch', { name: 'Show Property Descriptions' }).click()
-        await page.keyboard.press('Escape')
-        await expect(dialog).toHaveCount(0)
-        await expect(panel(page).locator(':focus')).toHaveCount(1)
-        await page.keyboard.press('Delete')
-        expect(await state()).toEqual(before)
-    })
-
     test('a scroll that closes a bubble holding focus gives focus back to its button, and Delete deletes nothing', async ({
         page,
     }) => {
@@ -1234,6 +1218,27 @@ test.describe('on chart properties', () => {
         await expect(anchor.getByRole('combobox')).toBeVisible()
         await anchor.locator('[data-field-info]').click()
         await expect(bubble(page).locator('li > span')).toHaveText(lines)
+    })
+
+    test('lines without a sentence start at the top of the bubble, and are all that screen readers hear', async ({
+        page,
+    }) => {
+        await page.evaluate(() => (window.editorTest.settings.showSidebar = true))
+        await selectNote(page)
+        const info = row(selection(page), 'Note Type').locator('[data-field-info]')
+        await info.click()
+        const shown = bubble(page)
+        await expect(shown.locator('li')).toHaveCount(6)
+        await expect(shown.locator('p')).toHaveCount(0)
+        const lines = await shown.locator('li').allTextContents()
+        expect(lines[0]).toBe(`Default: ${en.modals.form.descriptions.noteType.choices.default}`)
+        // Only the bubble's 8 px padding is above the first line.
+        const gap = await shown.evaluate((element) => {
+            const scroller = element.firstElementChild!.getBoundingClientRect()
+            return element.querySelector('li')!.getBoundingClientRect().top - scroller.top
+        })
+        expect(gap).toBeCloseTo(8, 0)
+        await expect(info).toHaveAccessibleDescription(lines.join(' '))
     })
 
     test('the setting is on by default, outlasts a reload and comes back on with Reset Settings', async ({

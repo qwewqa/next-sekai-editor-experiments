@@ -2097,175 +2097,123 @@
             "coverageChip": "{0} of {1}",
             "selectCovered": "Select only objects this property applies to ({0} of {1})",
             "descriptions": {
-                "beat": "Places the object in time, counting beats from 1 at the start of the chart.",
-                "groupId": "Sets which group the object belongs to. Each group has its own speed, set by its time scale changes.",
-                "stageId": "Sets which stage the object belongs to. Each stage has its own lanes and stage events.",
-                "elevation": "Raises the stage or note, in lanes.",
-                "left": "Sets the note’s left edge, in lanes. The default stage runs from -6 to 6.",
-                "size": "Sets the note’s width, in lanes.",
+                "groupId": "Each group has its own time scale changes.",
+                "elevation": "In lanes.",
                 "noteType": {
-                    "intro": "Sets how the note is hit.",
                     "choices": {
-                        "default": "Tapped, or flicked if it has a Flick Direction. At the end of a slide it is released or flicked, and in the middle it is a tick, hit by holding the slide.",
-                        "trace": "Hit by any touch at its time, with no tap. With a Flick Direction, it needs a swipe.",
-                        "anchor": "Shapes the connector without being drawn or hit.",
-                        "damage": "Costs the player life when touched.",
-                        "forceTick": "A tick even at the start or end of a slide, or on its own.",
-                        "forceNonTick": "Like Default, except that in the middle of a slide it is tapped or flicked instead of being a tick."
+                        "default": "Tap, flick, release or tick, depending on its place in a slide and its Flick Direction.",
+                        "trace": "Trace or trace flick.",
+                        "anchor": "Invisible. Shapes connectors without adding combo.",
+                        "damage": "Counts as a miss if touched.",
+                        "forceTick": "Always a tick, even outside a slide.",
+                        "forceNonTick": "Like Default, but a tap or flick in the middle of a slide."
                     }
                 },
-                "noteStyle": "Sets the color of the note and its hit effects.",
-                "isAttached": "Places the note on its connector, taking its lane and size from the connector.",
-                "isCritical": "Gives the note the critical look. Critical notes can also play a critical sound and be worth more points.",
-                "flickDirection": "Sets whether the note is a flick, hit with a swipe, and which way its arrow points. Up and Down accept a swipe in any direction, and angled arrows show the way to swipe.",
-                "isFake": "Shows the note without judging or scoring it. It plays no sound.",
-                "sfx": "Sets the sound the note plays when it is hit.",
-                "isConnectorSeparator": "Starts a new connector segment at this note, so the connector’s Type, Color and other properties can change here.",
+                "noteStyle": "Note color override.",
+                "isAttached": "Takes its lane and size from the connector.",
+                "isFake": "Not judged, with no sound or hit effect.",
+                "sfx": "Sound effect override.",
+                "isConnectorSeparator": "Starts a new connector segment with this note’s connector properties.",
                 "connectorType": {
-                    "intro": "Sets what the connector does in play.",
-                    "choices": {
-                        "active": "Must be held.",
-                        "guide": "Shows a path that needs no input.",
-                        "damage": "Costs the player life when touched."
-                    }
+                    "intro": "A Damage connector causes misses while touched."
                 },
-                "connectorStyle": "Sets the connector’s color. Default uses the usual color for its type.",
-                "connectorEase": "Sets how the connector curves from this note to the next unattached note.",
-                "easeType": {
-                    "choices": {
-                        "none": "Stays at the start, then jumps at the end.",
-                        "linear": "Changes at a steady rate.",
-                        "in": "Changes slowly at first, then faster.",
-                        "out": "Changes quickly at first, then more slowly.",
-                        "inOut": "Changes slowly at both ends and faster in the middle.",
-                        "outIn": "Changes quickly at both ends and more slowly in the middle."
-                    }
-                },
-                "easeFunction": "Sets the curve that In, Out, In-Out and Out-In follow. Sine, Quad, Cubic, Quart, Quint and Expo are increasingly sharp, and Circ follows a quarter circle. Back briefly goes the other way, and Elastic swings back and forth. Step jumps instead of moving.",
-                "connectorIsFake": "Makes a slide need no input, and a damage connector harmless.",
-                "connectorActiveIsCritical": "Gives the slide the critical look and hold sound.",
-                "connectorGuideAlpha": "Sets the guide’s opacity at this note, from 0 to 2. It changes evenly toward the value at the next separator, or at the guide’s last note. The player’s Guide Alpha option scales it, so values above 1 can make guides easier to see.",
+                "connectorStyle": "Connector color override.",
+                "connectorEase": "How the connector curves to the next unattached note.",
+                "connectorIsFake": "Not judged.",
+                "connectorGuideAlpha": "Opacity of the guide at this note, 0 to 2. It changes evenly along each segment. The player’s Guide Alpha option scales it.",
                 "connectorLayer": {
-                    "intro": "Sets which layer the connector is drawn in, among objects at the same elevation.",
+                    "intro": "Order among objects at the same elevation.",
                     "choices": {
-                        "top": "Above the stage and Bottom connectors, below notes.",
+                        "top": "Above Bottom connectors, below notes.",
                         "bottom": "Above the stage, below Top connectors.",
                         "under": "Below the stage’s lanes and judgment line.",
                         "over": "Above notes."
                     }
                 },
-                "connectorIsPassThrough": "Lets the connector scroll on past the judgment line instead of stopping at it.",
+                "connectorIsPassThrough": "Keeps scrolling past the judgment line.",
                 "connectorPresentation": {
-                    "intro": "Sets how the connector is drawn.",
-                    "choices": {
-                        "default": "As a strip along the lanes.",
-                        "fullscreen": "Over the whole screen, while the connector passes the judgment line."
-                    }
+                    "intro": "Fullscreen draws the connector over the whole screen while it passes the judgment line."
                 },
-                "bpm": "Sets the tempo from this change until the next. Notes keep their beats, so a new tempo moves them in time.",
-                "meter": "Sets how many beats a measure has from this BPM change on. Only the editor uses it, for measure numbers and measure snapping.",
-                "editorLane": "Sets the lane where the editor draws the object’s marker.",
-                "timeScale": "Sets how fast the group’s notes move from this change on, where 1 is normal speed. Negative values move them backward. The notes are still hit at the same times.",
-                "skip": "Jumps the group’s notes closer to the judgment line at this change, by the distance they travel in this many beats at normal speed. The notes are still hit at the same times.",
-                "timeScaleEase": "Sets how the speed changes from this time scale change to the next one in its group.",
-                "timeScaleEaseFunction": "Sets the curve that In, Out, In-Out and Out-In follow. Sine, Quad, Cubic, Quart, Quint and Expo are increasingly sharp, and Circ follows a quarter circle. Step jumps instead of moving.",
+                "meter": "Beats per measure. Only the editor uses it.",
+                "timeScale": "Speed multiplier for the group’s notes. Negative values move them backward.",
+                "skip": "Jumps the group’s notes toward the judgment line by the distance notes travel in this many beats at time scale 1.",
+                "timeScaleEase": "How the speed changes until the group’s next time scale change.",
                 "timeScaleTransition": {
-                    "intro": "Sets how notes on screen are spaced while this change applies.",
                     "choices": {
-                        "timeScale": "By the speeds they will pass through, so changes ahead show as wider or tighter spacing.",
-                        "scroll": "By the current speed, so the notes on screen speed up and slow down together."
+                        "timeScale": "Note spacing shows the speed changes ahead.",
+                        "scroll": "Note spacing follows the current speed."
                     }
                 },
-                "hideNotes": "Hides the group’s notes, and the connector segments that start in the group, until the group’s next time scale change. The notes can still be hit.",
-                "cameraLeft": "Sets the left edge of the camera’s view, in lanes. With a Shift Size of 12, -6 is the default view.",
-                "cameraSize": "Sets how many lanes wide the camera’s view is, from 6 to 24, where 12 shows the default view.",
-                "cameraZoom": "Zooms the whole view around the zoom target. 1 is no zoom.",
-                "cameraZoomTargetLane": "Sets the lane that Zoom centers on, counted from the middle of the camera’s view. Changing it shifts the view, even at Zoom 1.",
-                "cameraZoomTargetY": "Sets the height on the stage that Zoom centers on, from -1 to 1. 0 is the judgment line and 1 is the top of the stage.",
+                "hideNotes": "Hides the group’s notes and the connector segments that start in the group, until its next time scale change.",
+                "cameraLeft": "Left edge of the camera’s view, in lanes.",
+                "cameraSize": "Width of the camera’s view, 6 to 24 lanes.",
+                "cameraZoomTargetLane": "Lane that the zoom centers on, counted from the middle of the camera’s view.",
+                "cameraZoomTargetY": "Height that the zoom centers on, -1 to 1. 0 is the judgment line and 1 is the top of the stage.",
                 "cameraZoomVerticalAlign": {
-                    "intro": "Sets where the zoom target sits on the screen.",
-                    "choices": {
-                        "default": "At the judgment line’s usual height.",
-                        "center": "In the middle of the screen."
-                    }
+                    "intro": "Vertical position of the zoom target on the screen. Default is the judgment line’s usual height."
                 },
-                "cameraRotation": "Turns the whole view around the middle of the screen, in degrees. Positive values turn it clockwise.",
-                "cameraStageTilt": "Sets how far the stage leans back, from 0 to 1. 1 is the usual perspective, and 0 is a flat stage facing the screen.",
-                "eventEase": "Sets how the values change from this event to the next connected event.",
-                "maskLeft": "Sets the left edge of the stage’s mask, in lanes. The mask is the part of the stage where its lanes and judgment line are drawn.",
-                "maskSize": "Sets the width of the stage’s mask, in lanes. 12 covers the default stage.",
-                "isMaskNotes": "Cuts off notes and connectors at the mask’s edges. Touches count on the part inside.",
-                "pivotLane": "Sets the lane that the stage’s notes and lane dividers are positioned from.",
-                "divisionSize": "Sets how many lanes apart the lane dividers are.",
+                "cameraRotation": "Turns the whole view around the middle of the screen. In degrees, positive clockwise.",
+                "cameraStageTilt": "How far the stage leans back, 0 to 1. 1 is the usual perspective.",
+                "eventEase": "How the values change until the next connected event.",
+                "maskLeft": "Left edge of the drawn part of the stage, in lanes.",
+                "maskSize": "Width of the drawn part of the stage, in lanes.",
+                "isMaskNotes": "Cuts off notes and connectors at the mask’s edges.",
+                "pivotLane": "Offset of the stage’s notes and lane dividers, in lanes.",
+                "divisionSize": "Distance between lane dividers, in lanes.",
                 "divisionParity": {
-                    "intro": "Sets where the lane dividers fall around the Pivot Lane.",
                     "choices": {
                         "even": "Puts a divider on the Pivot Lane.",
                         "odd": "Puts the Pivot Lane halfway between two dividers."
                     }
                 },
-                "yOffset": "Raises the judgment line up the stage, where 0 is its usual place and 1 is the top of the stage.",
-                "yOffsetBeat": "Raises the judgment line further, by how far notes travel in this many beats.",
-                "laneColor": "Sets the color of the stage’s lane background.",
-                "judgmentLineColor": "Sets the color of the judgment line. Purple matches the default stage.",
-                "judgmentLineStyle": {
-                    "intro": "Sets how the judgment line is drawn.",
-                    "choices": {
-                        "default": "As the usual bar.",
-                        "singleLine": "As one thin line."
-                    }
-                },
-                "leftBorderStyle": "Sets the line along the stage’s left edge.",
+                "yOffset": "Raises the judgment line. 1 is the top of the stage.",
+                "yOffsetBeat": "Raises the judgment line further by the distance notes travel in this many beats at time scale 1.",
                 "borderStyle": {
                     "choices": {
-                        "default": "A thick border just outside the edge.",
-                        "light": "A thin line, like a lane divider.",
-                        "medium": "A border half as thick as Default.",
-                        "disabled": "No line at the edge."
+                        "default": "Thick border just outside the edge.",
+                        "light": "Thin line on the edge.",
+                        "medium": "Half as thick as Default.",
+                        "disabled": "No line."
                     }
                 },
-                "rightBorderStyle": "Sets the line along the stage’s right edge.",
-                "isFullWidth": "Hides the lane background, dividers and borders, and draws the judgment line far past the stage’s edges.",
-                "noteAlpha": "Sets the opacity of the stage’s notes and connectors, from 0 to 1. Notes at 0 can still be hit.",
-                "laneAlpha": "Sets the opacity of the lane background, dividers and borders, from 0 to 1.",
-                "judgmentLineAlpha": "Sets the opacity of the judgment line, from 0 to 1.",
-                "divisionLineAlpha": "Sets the opacity of the lane dividers, from 0 to 1.",
-                "xTranslation": "Moves the stage sideways, in lanes. Positive values move it right.",
-                "yTranslation": "Moves the stage up or down, in lanes. Positive values move it up.",
-                "rotation": "Turns the stage around its rotation center, in degrees. Positive values turn it clockwise.",
+                "isFullWidth": "Hides the lane background, dividers and borders, and extends the judgment line far past the stage’s edges.",
+                "noteAlpha": "Opacity of the stage’s notes and connectors, 0 to 1.",
+                "laneAlpha": "Opacity of the lane background, dividers and borders, 0 to 1.",
+                "judgmentLineAlpha": "Opacity of the judgment line, 0 to 1.",
+                "divisionLineAlpha": "Opacity of the lane dividers, 0 to 1.",
+                "xTranslation": "In lanes, positive to the right.",
+                "yTranslation": "In lanes, positive up.",
+                "rotation": "In degrees, positive clockwise.",
                 "rotationCenter": {
-                    "intro": "Sets the point that Rotation turns the stage around. X Translation and Y Translation move the point with the stage.",
                     "choices": {
                         "stage": "Lane 0 at the judgment line’s usual height.",
-                        "mask": "The middle of the mask at the judgment line’s usual height.",
-                        "screen": "The middle of the screen with the default camera.",
+                        "mask": "Middle of the mask at the judgment line’s usual height.",
+                        "screen": "Middle of the screen with the default camera.",
                         "vanishingPoint": "Where the lanes meet in the distance."
                     }
                 },
-                "centerXOffset": "Moves the rotation center sideways from the point that Rotation Center sets, in lanes. Positive values move it right.",
-                "centerYOffset": "Moves the rotation center up or down from the point that Rotation Center sets, in lanes. Positive values move it up.",
+                "centerXOffset": "In lanes, positive to the right.",
+                "centerYOffset": "In lanes, positive up.",
                 "anchor": {
-                    "intro": "Sets where Y Translation moves the stage from.",
+                    "intro": "Reference point for Y Translation.",
                     "choices": {
-                        "default": "The judgment line’s usual place.",
-                        "center": "The middle of the screen with the default camera."
+                        "default": "Usual height of the judgment line.",
+                        "center": "Middle of the screen with the default camera."
                     }
                 },
                 "copyProperties": "With exactly one object selected, properties set to Copy take their values from it when you add an object of the same kind.",
                 "copyPropertiesSlide": "With exactly one note selected, properties set to Copy take their values from it and its slide when you add a note.",
-                "preset": "Chooses which set of default properties the tool uses.",
                 "name": "Only the editor shows this name.",
-                "forceNoteSpeed": "Sets a fixed note speed for the group’s notes, from 1 to 12, in place of the player’s Note Speed.",
-                "isFromStart": "Draws the stage from the start of the level, before its first mask event.",
-                "isUntilEnd": "Keeps drawing the stage after its last mask event, until the end of the level.",
+                "forceNoteSpeed": "Note speed override for the group, 1 to 12.",
+                "isFromStart": "Draws the stage before its first mask event.",
+                "isUntilEnd": "Draws the stage after its last mask event.",
                 "generateSimLines": {
-                    "intro": "Sets which notes hit at the same time are joined by a sim line.",
                     "choices": {
-                        "global": "Joins this stage’s notes with those on other stages that also use this choice.",
-                        "isolated": "Joins this stage’s notes only with each other."
+                        "global": "Joins notes across all Global stages.",
+                        "isolated": "Joins notes only within this stage."
                     }
                 },
-                "initialLife": "Sets how much life the player starts with. It is also the most life they can have. Each missed note costs 80 life. A missed tick, or touching a damage note or connector, costs 40."
+                "initialLife": "Starting and maximum life. Each miss costs 80, or 40 for ticks and damage."
             }
         },
         "confirm": {

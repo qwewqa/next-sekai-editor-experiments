@@ -306,8 +306,8 @@ onBeforeUnmount(() => {
             >
                 <template v-if="typeof description === 'string'">{{ description }}</template>
                 <template v-else>
-                    <p>{{ description.intro }}</p>
-                    <ul class="mt-2 flex flex-col gap-1">
+                    <p v-if="description.intro" class="mb-2">{{ description.intro }}</p>
+                    <ul class="flex flex-col gap-1">
                         <li v-for="(line, index) in description.lines" :key="index">
                             <span class="font-semibold">{{ choiceLine(line.name) }}</span
                             >{{ line.text }}

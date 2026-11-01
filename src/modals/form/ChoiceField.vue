@@ -32,7 +32,7 @@ const props = defineProps<{
     options: (readonly [string, NoInfer<T>])[]
     /** `multi`: undefined means mixed. `optional`: undefined means not set, with its own option. */
     variant?: 'multi' | 'optional'
-    /** What the property does, behind an ⓘ: prose, or a sentence and a line per option. */
+    /** What the property does, behind an ⓘ: prose, or a line per option. */
     description?: string | ChoiceDescription<Extract<NoInfer<T>, string>> | null
 }>()
 

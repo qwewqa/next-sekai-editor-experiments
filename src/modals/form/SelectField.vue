@@ -15,7 +15,7 @@ const props = defineProps<{
     disabled?: boolean
     /** Each value's picture in the shared list. */
     optionGlyph?: OptionGlyph<NoInfer<T>>
-    /** What the field does, behind an ⓘ: prose, or a sentence and a line per option. */
+    /** What the field does, behind an ⓘ: prose, or a line per option. */
     description?: string | ChoiceDescription<Extract<NoInfer<T>, string>> | null
 }>()
 

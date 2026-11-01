@@ -6,20 +6,13 @@ import EaseField from './EaseField.vue'
 import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<EaseEdit<TimeScaleEase> | undefined>({ required: true })
-const typeDescription = usePropertyDescription((t) => ({
-    intro: t.modals.form.descriptions.timeScaleEase,
-    choices: t.modals.form.descriptions.easeType.choices,
-}))
-const functionDescription = usePropertyDescription(
-    (t) => t.modals.form.descriptions.timeScaleEaseFunction,
-)
+const typeDescription = usePropertyDescription((t) => t.modals.form.descriptions.timeScaleEase)
 </script>
 
 <template>
     <EaseField
         v-model="modelValue"
         :type-description="typeDescription"
-        :function-description="functionDescription"
         :type-label="i18n.modals.form.timeScaleEase.type"
         :function-label="i18n.modals.form.timeScaleEase.function"
         :functions="timeScaleEaseFunctionNames"

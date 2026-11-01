@@ -1,17 +1,17 @@
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 
-/** A select's description in the locale: a sentence, then a text for each of its values. */
+/** A select's description in the locale: an optional sentence, then a text for each value. */
 export type ChoiceDescription<T extends string> = {
-    intro: string
+    intro?: string
     choices: Record<T, string>
 }
 
 /** One choice's line: the select's name for it and the text after that name. */
 export type ChoiceLine = { name: string; text: string }
 
-/** What a field's ⓘ shows: prose, or a sentence and one line per choice in the select's order. */
-export type FieldDescription = string | { intro: string; lines: ChoiceLine[] }
+/** What a field's ⓘ shows: prose, or an optional sentence and a line per choice, in order. */
+export type FieldDescription = string | { intro?: string; lines: ChoiceLine[] }
 
 /** What a select's ⓘ shows: prose, or a line per option, named and ordered as its options. */
 export const describeChoices = <T>(
@@ -39,6 +39,6 @@ export const descriptionText = (description: FieldDescription) =>
     typeof description === 'string'
         ? description
         : [
-              description.intro,
+              ...(description.intro ? [description.intro] : []),
               ...description.lines.map(({ name, text }) => choiceLine(name) + text),
           ].join(' ')

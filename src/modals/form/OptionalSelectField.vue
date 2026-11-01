@@ -22,7 +22,7 @@ const props = defineProps<{
     emptyLabel?: string
     /** Each value's picture in the shared list; the unset choice has none. */
     optionGlyph?: OptionGlyph<NoInfer<T>>
-    /** What the property does, behind an ⓘ: prose, or a sentence and a line per option. */
+    /** What the property does, behind an ⓘ: prose, or a line per option. */
     description?: string | ChoiceDescription<Extract<NoInfer<T>, string>> | null
 }>()
 

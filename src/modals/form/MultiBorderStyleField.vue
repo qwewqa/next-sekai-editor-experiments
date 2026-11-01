@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { BorderStyle } from '../../chart/events/stage/style'
 import { i18n } from '../../i18n'
+import type { ChoiceDescription } from './fieldDescription'
 import MultiSelectField from './MultiSelectField.vue'
 
 defineProps<{
     label: string
-    /** The side's sentence before the styles' lines, behind an ⓘ. */
-    description?: string | null
+    /** A line per style, behind an ⓘ. */
+    description?: ChoiceDescription<BorderStyle> | null
 }>()
 
 const modelValue = defineModel<BorderStyle | undefined>({ required: true })
@@ -16,12 +17,7 @@ const modelValue = defineModel<BorderStyle | undefined>({ required: true })
     <MultiSelectField
         v-model="modelValue"
         :label
-        :description="
-            description && {
-                intro: description,
-                choices: i18n.modals.form.descriptions.borderStyle.choices,
-            }
-        "
+        :description
         :options="[
             [i18n.modals.form.borderStyle.default, 'default'],
             [i18n.modals.form.borderStyle.light, 'light'],

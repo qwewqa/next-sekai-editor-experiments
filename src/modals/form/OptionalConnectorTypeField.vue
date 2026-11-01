@@ -5,7 +5,7 @@ import OptionalSelectField from './OptionalSelectField.vue'
 import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<ConnectorType | undefined>({ required: true })
-const description = usePropertyDescription((t) => t.modals.form.descriptions.connectorType)
+const description = usePropertyDescription((t) => t.modals.form.descriptions.connectorType.intro)
 </script>
 
 <template>

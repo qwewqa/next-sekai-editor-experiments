@@ -2097,175 +2097,123 @@
       "coverageChip": "{1} içinden {0}",
       "selectCovered": "Yalnızca uygulandığı nesneleri seç ({1} içinden {0})",
       "descriptions": {
-        "beat": "Nesnenin zamanını, çizelgenin başında 1’den başlayan vuruş sayısıyla belirler.",
-        "groupId": "Nesnenin hangi gruba ait olduğunu belirler. Her grubun kendi zaman ölçeği değişiklikleriyle belirlenen bir hızı vardır.",
-        "stageId": "Nesnenin hangi sahneye ait olduğunu belirler. Her sahnenin kendi şeritleri ve sahne olayları vardır.",
-        "elevation": "Sahneyi veya notayı şerit biriminde yükseltir.",
-        "left": "Notanın sol kenarını şerit biriminde belirler. Varsayılan sahne -6 ile 6 arasındadır.",
-        "size": "Notanın genişliğini şerit biriminde belirler.",
+        "groupId": "Her grubun kendi zaman ölçeği değişiklikleri vardır.",
+        "elevation": "Şerit biriminde.",
         "noteType": {
-          "intro": "Notaya nasıl basılacağını belirler.",
           "choices": {
-            "default": "Dokunarak, Fiske Yönü varsa fiskeyle oynanır. Kaydırmanın sonunda bırakılarak veya fiskeyle oynanır. Ortasında ise kaydırmayı basılı tutarak alınan bir ara vuruştur.",
-            "trace": "Notanın zamanında herhangi bir temasla alınır; yeniden dokunmak gerekmez. Fiske Yönü varsa parmağı kaydırmak gerekir.",
-            "anchor": "Çizilmeden veya basılması gerekmeden bağlayıcıya şekil verir.",
-            "damage": "Dokunulduğunda oyuncunun canını azaltır.",
-            "forceTick": "Kaydırmanın başında, sonunda veya tek başına olsa da ara vuruş olur.",
-            "forceNonTick": "Varsayılan gibidir, ancak kaydırmanın ortasında ara vuruş olmak yerine dokunarak veya fiskeyle oynanır."
+            "default": "Kaydırmadaki yerine ve Fiske Yönü’ne göre dokunma, fiske, bırakma veya ara vuruş.",
+            "trace": "İz veya iz fiskesi.",
+            "anchor": "Görünmez. Kombo eklemeden bağlayıcılara şekil verir.",
+            "damage": "Dokunulduğunda kaçırılmış sayılır.",
+            "forceTick": "Kaydırma dışında bile her zaman ara vuruş.",
+            "forceNonTick": "Varsayılan gibidir, ancak kaydırmanın ortasında dokunma veya fiske olur."
           }
         },
-        "noteStyle": "Notanın ve basıldığında çıkan efektlerin rengini belirler.",
-        "isAttached": "Notayı bağlayıcısının üzerine yerleştirir; şeridini ve boyutunu bağlayıcıdan alır.",
-        "isCritical": "Notaya kritik görünümü verir. Kritik notalar kritik ses de çalabilir ve daha fazla puan kazandırabilir.",
-        "flickDirection": "Notanın parmağı kaydırarak oynanan bir fiske olup olmadığını ve okunun yönünü belirler. Yukarı ve Aşağı, her yöne kaydırmayı kabul eder. Çapraz oklar, kaydırmanız gereken yönü gösterir.",
-        "isFake": "Notayı değerlendirmeden veya puan vermeden gösterir. Ses çalmaz.",
-        "sfx": "Notaya basıldığında çalacak sesi belirler.",
-        "isConnectorSeparator": "Bu notada yeni bir bağlayıcı bölümü başlatır; böylece bağlayıcının Tip, Renk ve diğer özellikleri burada değişebilir.",
+        "noteStyle": "Varsayılan nota renginin yerine kullanılacak renk.",
+        "isAttached": "Şeridini ve boyutunu bağlayıcıdan alır.",
+        "isFake": "Değerlendirilmez, ses veya vuruş efekti oluşturmaz.",
+        "sfx": "Varsayılan ses efektinin yerine kullanılacak efekt.",
+        "isConnectorSeparator": "Bu notanın bağlayıcı özellikleriyle yeni bir bağlayıcı bölümü başlatır.",
         "connectorType": {
-          "intro": "Bağlayıcının oyun sırasında ne yapacağını belirler.",
-          "choices": {
-            "active": "Basılı tutulmalıdır.",
-            "guide": "Girdi gerektirmeyen bir yol gösterir.",
-            "damage": "Dokunulduğunda oyuncunun canını azaltır."
-          }
+          "intro": "Hasar bağlayıcısı, dokunulduğu sürece kaçırmalara neden olur."
         },
-        "connectorStyle": "Bağlayıcının rengini belirler. Varsayılan, tipinin normal rengini kullanır.",
-        "connectorEase": "Bağlayıcının bu notadan sonraki ekli olmayan notaya kadar nasıl kıvrılacağını belirler.",
-        "easeType": {
-          "choices": {
-            "none": "Başlangıç değerinde kalır, sonda bir anda son değere geçer.",
-            "linear": "Sabit hızda değişir.",
-            "in": "Önce yavaş, sonra daha hızlı değişir.",
-            "out": "Önce hızlı, sonra daha yavaş değişir.",
-            "inOut": "İki uçta yavaş, ortada daha hızlı değişir.",
-            "outIn": "İki uçta hızlı, ortada daha yavaş değişir."
-          }
-        },
-        "easeFunction": "Giriş, Çıkış, Giriş-Çıkış ve Çıkış-Giriş’in izleyeceği eğriyi belirler. Sinüs, Karesel, Kübik, Dördüncü Derece, Beşinci Derece ve Üstel sırasıyla daha keskin değişimler oluşturur; Dairesel ise çeyrek daireyi izler. Geri kısa süreliğine ters yöne gider, Elastik ileri geri salınır. Basamak, ilerlemek yerine bir anda değer değiştirir.",
-        "connectorIsFake": "Kaydırmanın girdi gerektirmemesini ve hasar bağlayıcısının zarar vermemesini sağlar.",
-        "connectorActiveIsCritical": "Kaydırmaya kritik görünümü ve basılı tutma sesini verir.",
-        "connectorGuideAlpha": "Kılavuzun bu notadaki opaklığını 0 ile 2 arasında belirler. Sonraki ayırıcıdaki veya kılavuzun son notasındaki değere doğru sabit hızda değişir. Oyuncunun Kılavuz Opaklığı seçeneği bu değeri çarpar. Bu nedenle 1’in üzerindeki değerler kılavuzu daha görünür kılabilir.",
+        "connectorStyle": "Varsayılan bağlayıcı renginin yerine kullanılacak renk.",
+        "connectorEase": "Bağlayıcının sonraki ekli olmayan notaya kadar nasıl kıvrılacağı.",
+        "connectorIsFake": "Değerlendirilmez.",
+        "connectorGuideAlpha": "Kılavuzun bu notadaki opaklığı, 0 ile 2 arasında. Her bölüm boyunca eşit oranda değişir. Oyuncunun Kılavuz Opaklığı seçeneği bu değeri çarpar.",
         "connectorLayer": {
-          "intro": "Aynı yükseklikteki nesneler arasında bağlayıcının çizileceği katmanı belirler.",
+          "intro": "Aynı yükseklikteki nesneler arasındaki sıralama.",
           "choices": {
-            "top": "Sahnenin ve Alt bağlayıcıların önünde, notaların arkasında.",
+            "top": "Alt bağlayıcıların önünde, notaların arkasında.",
             "bottom": "Sahnenin önünde, Üst bağlayıcıların arkasında.",
             "under": "Sahnenin şeritlerinin ve vuruş çizgisinin arkasında.",
             "over": "Notaların önünde."
           }
         },
-        "connectorIsPassThrough": "Bağlayıcının vuruş çizgisinde durmak yerine çizgiyi geçip kaymaya devam etmesini sağlar.",
+        "connectorIsPassThrough": "Vuruş çizgisini geçip kaymaya devam eder.",
         "connectorPresentation": {
-          "intro": "Bağlayıcının nasıl çizileceğini belirler.",
-          "choices": {
-            "default": "Şeritler boyunca uzanan bir bant olarak.",
-            "fullscreen": "Bağlayıcı vuruş çizgisinden geçerken tüm ekranı kaplayacak şekilde."
-          }
+          "intro": "Tam Ekran, bağlayıcıyı vuruş çizgisinden geçerken tüm ekranı kaplayacak şekilde çizer."
         },
-        "bpm": "Bu değişiklikten sonrakine kadar tempoyu belirler. Notaların vuruşları değişmez; bu yüzden yeni tempo, basılma zamanlarını değiştirir.",
-        "meter": "Bu BPM değişikliğinden itibaren bir ölçüdeki vuruş sayısını belirler. Yalnızca editörde, ölçü numaraları ve ölçülere hizalama için kullanılır.",
-        "editorLane": "Editörün nesnenin işaretini hangi şeritte çizeceğini belirler.",
-        "timeScale": "Bu değişiklikten itibaren grubun notalarının ne kadar hızlı hareket edeceğini belirler. 1 normal hızdır. Negatif değerler notaları geriye hareket ettirir. Notalara basılma zamanları değişmez.",
-        "skip": "Bu değişiklikte grubun notalarını, normal hızda belirtilen vuruş sayısında alacakları yol kadar bir anda vuruş çizgisine yaklaştırır. Notalara basılma zamanları değişmez.",
-        "timeScaleEase": "Bu zaman ölçeği değişikliğinden grubundaki sonraki değişikliğe kadar hızın nasıl değişeceğini belirler.",
-        "timeScaleEaseFunction": "Giriş, Çıkış, Giriş-Çıkış ve Çıkış-Giriş’in izleyeceği eğriyi belirler. Sinüs, Karesel, Kübik, Dördüncü Derece, Beşinci Derece ve Üstel sırasıyla daha keskin değişimler oluşturur; Dairesel ise çeyrek daireyi izler. Basamak, ilerlemek yerine bir anda değer değiştirir.",
+        "meter": "Ölçü başına vuruş sayısı. Yalnızca editörde kullanılır.",
+        "timeScale": "Grubun notaları için hız çarpanı. Negatif değerler notaları geriye hareket ettirir.",
+        "skip": "Grubun notalarını, zaman ölçeği 1 iken belirtilen vuruş sayısında alacakları yol kadar bir anda vuruş çizgisine yaklaştırır.",
+        "timeScaleEase": "Grubun sonraki zaman ölçeği değişikliğine kadar hızın nasıl değişeceği.",
         "timeScaleTransition": {
-          "intro": "Bu değişiklik geçerliyken ekrandaki notaların aralıklarını belirler.",
           "choices": {
-            "timeScale": "İleride geçecekleri hızlara göre belirler; böylece ilerideki değişiklikler daha geniş veya dar aralıklar olarak görünür.",
-            "scroll": "Geçerli hıza göre belirler; böylece ekrandaki notalar birlikte hızlanır ve yavaşlar."
+            "timeScale": "Nota aralıkları ilerideki hız değişikliklerini gösterir.",
+            "scroll": "Nota aralıkları geçerli hıza göre değişir."
           }
         },
-        "hideNotes": "Grubun notalarını ve grupta başlayan bağlayıcı bölümlerini, grubun sonraki zaman ölçeği değişikliğine kadar gizler. Notalara yine de basılabilir.",
-        "cameraLeft": "Kameranın gördüğü alanın sol kenarını şerit biriminde belirler. Boyut Kayması 12 olduğunda -6 varsayılan görünümü verir.",
-        "cameraSize": "Kameranın gördüğü alanın genişliğini 6 ile 24 şerit arasında belirler. 12 varsayılan görünümü verir.",
-        "cameraZoom": "Tüm görünümü yakınlaştırma hedefinin çevresinde ölçekler. 1 ölçeği değiştirmez.",
-        "cameraZoomTargetLane": "Yakınlaştırma’nın merkez aldığı şeridi, kameranın gördüğü alanın ortasından sayarak belirler. Bunu değiştirmek, Yakınlaştırma 1 olsa bile görünümü kaydırır.",
-        "cameraZoomTargetY": "Yakınlaştırma’nın merkez aldığı sahne yüksekliğini -1 ile 1 arasında belirler. 0 vuruş çizgisi, 1 sahnenin üstüdür.",
+        "hideNotes": "Grubun notalarını ve grupta başlayan bağlayıcı bölümlerini, grubun sonraki zaman ölçeği değişikliğine kadar gizler.",
+        "cameraLeft": "Kameranın gördüğü alanın sol kenarı, şerit biriminde.",
+        "cameraSize": "Kameranın gördüğü alanın genişliği, 6 ile 24 şerit arasında.",
+        "cameraZoomTargetLane": "Yakınlaştırmanın merkez aldığı şerit, kameranın gördüğü alanın ortasından sayılır.",
+        "cameraZoomTargetY": "Yakınlaştırmanın merkez aldığı yükseklik, -1 ile 1 arasında. 0 vuruş çizgisi, 1 sahnenin üstüdür.",
         "cameraZoomVerticalAlign": {
-          "intro": "Yakınlaştırma hedefinin ekrandaki yerini belirler.",
-          "choices": {
-            "default": "Vuruş çizgisinin normal yüksekliğinde.",
-            "center": "Ekranın ortasında."
-          }
+          "intro": "Yakınlaştırma hedefinin ekrandaki dikey konumu. Varsayılan, vuruş çizgisinin normal yüksekliğidir."
         },
-        "cameraRotation": "Tüm görünümü ekranın ortası çevresinde derece biriminde döndürür. Pozitif değerler saat yönünde döndürür.",
-        "cameraStageTilt": "Sahnenin ne kadar geriye eğileceğini 0 ile 1 arasında belirler. 1 normal perspektiftir; 0 ise ekrana dönük düz bir sahnedir.",
-        "eventEase": "Bu olaydan sonraki bağlı olaya kadar değerlerin nasıl değişeceğini belirler.",
-        "maskLeft": "Sahne maskesinin sol kenarını şerit biriminde belirler. Maske, sahnenin şeritlerinin ve vuruş çizgisinin çizildiği bölümdür.",
-        "maskSize": "Sahne maskesinin genişliğini şerit biriminde belirler. 12 varsayılan sahneyi kaplar.",
-        "isMaskNotes": "Notaları ve bağlayıcıları maskenin kenarlarında keser. Dokunuşlar, içerideki kısımda sayılır.",
-        "pivotLane": "Sahnenin notalarının ve bölüm çizgilerinin yerleşiminde esas alınacak şeridi belirler.",
-        "divisionSize": "Bölüm çizgileri arasındaki uzaklığı şerit biriminde belirler.",
+        "cameraRotation": "Tüm görünümü ekranın ortası çevresinde döndürür. Derece biriminde, pozitif değerler saat yönünde.",
+        "cameraStageTilt": "Sahnenin geriye eğim miktarı, 0 ile 1 arasında. 1 normal perspektiftir.",
+        "eventEase": "Sonraki bağlı olaya kadar değerlerin nasıl değişeceği.",
+        "maskLeft": "Sahnenin çizilen bölümünün sol kenarı, şerit biriminde.",
+        "maskSize": "Sahnenin çizilen bölümünün genişliği, şerit biriminde.",
+        "isMaskNotes": "Notaları ve bağlayıcıları maskenin kenarlarında keser.",
+        "pivotLane": "Sahnenin notalarının ve bölüm çizgilerinin kayması, şerit biriminde.",
+        "divisionSize": "Bölüm çizgileri arasındaki uzaklık, şerit biriminde.",
         "divisionParity": {
-          "intro": "Bölüm çizgilerinin Referans Noktası Şeridi çevresindeki yerlerini belirler.",
           "choices": {
             "even": "Referans Noktası Şeridi üzerine bir bölüm çizgisi koyar.",
             "odd": "Referans Noktası Şeridi’ni iki bölüm çizgisinin tam ortasına yerleştirir."
           }
         },
-        "yOffset": "Vuruş çizgisini sahnede yükseltir. 0 normal yeri, 1 sahnenin üstüdür.",
-        "yOffsetBeat": "Vuruş çizgisini, notaların belirtilen vuruş sayısında aldığı yol kadar daha yükseltir.",
-        "laneColor": "Sahnenin şerit arka planının rengini belirler.",
-        "judgmentLineColor": "Vuruş çizgisinin rengini belirler. Mor, varsayılan sahneyle aynı renktir.",
-        "judgmentLineStyle": {
-          "intro": "Vuruş çizgisinin nasıl çizileceğini belirler.",
-          "choices": {
-            "default": "Normal çubuk olarak.",
-            "singleLine": "Tek bir ince çizgi olarak."
-          }
-        },
-        "leftBorderStyle": "Sahnenin sol kenarı boyunca uzanan çizgiyi belirler.",
+        "yOffset": "Vuruş çizgisini yükseltir. 1 sahnenin üstüdür.",
+        "yOffsetBeat": "Vuruş çizgisini, notaların zaman ölçeği 1 iken belirtilen vuruş sayısında aldığı yol kadar daha yükseltir.",
         "borderStyle": {
           "choices": {
             "default": "Kenarın hemen dışında kalın bir kenarlık.",
-            "light": "Bölüm çizgisi gibi ince bir çizgi.",
-            "medium": "Varsayılan’ın yarısı kalınlığında bir kenarlık.",
-            "disabled": "Kenarda çizgi olmaz."
+            "light": "Kenar üzerinde ince bir çizgi.",
+            "medium": "Varsayılan’ın yarısı kalınlığında.",
+            "disabled": "Çizgi yok."
           }
         },
-        "rightBorderStyle": "Sahnenin sağ kenarı boyunca uzanan çizgiyi belirler.",
-        "isFullWidth": "Şerit arka planını, bölüm çizgilerini ve kenarlıkları gizler; vuruş çizgisini sahnenin kenarlarının çok ötesine kadar çizer.",
-        "noteAlpha": "Sahnenin notalarının ve bağlayıcılarının opaklığını 0 ile 1 arasında belirler. 0 olan notalara yine de basılabilir.",
-        "laneAlpha": "Şerit arka planının, bölüm çizgilerinin ve kenarlıkların opaklığını 0 ile 1 arasında belirler.",
-        "judgmentLineAlpha": "Vuruş çizgisinin opaklığını 0 ile 1 arasında belirler.",
-        "divisionLineAlpha": "Bölüm çizgilerinin opaklığını 0 ile 1 arasında belirler.",
-        "xTranslation": "Sahneyi şerit biriminde yana taşır. Pozitif değerler sağa taşır.",
-        "yTranslation": "Sahneyi şerit biriminde yukarı veya aşağı taşır. Pozitif değerler yukarı taşır.",
-        "rotation": "Sahneyi dönüş merkezi çevresinde derece biriminde döndürür. Pozitif değerler saat yönünde döndürür.",
+        "isFullWidth": "Şerit arka planını, bölüm çizgilerini ve kenarlıkları gizler, vuruş çizgisini sahnenin kenarlarının çok ötesine uzatır.",
+        "noteAlpha": "Sahnenin notalarının ve bağlayıcılarının opaklığı, 0 ile 1 arasında.",
+        "laneAlpha": "Şerit arka planının, bölüm çizgilerinin ve kenarlıkların opaklığı, 0 ile 1 arasında.",
+        "judgmentLineAlpha": "Vuruş çizgisinin opaklığı, 0 ile 1 arasında.",
+        "divisionLineAlpha": "Bölüm çizgilerinin opaklığı, 0 ile 1 arasında.",
+        "xTranslation": "Şerit biriminde, pozitif değerler sağa.",
+        "yTranslation": "Şerit biriminde, pozitif değerler yukarı.",
+        "rotation": "Derece biriminde, pozitif değerler saat yönünde.",
         "rotationCenter": {
-          "intro": "Dönüş’ün sahneyi çevresinde döndüreceği noktayı belirler. X Ötelemesi ve Y Ötelemesi bu noktayı sahneyle birlikte taşır.",
           "choices": {
-            "stage": "Vuruş çizgisinin normal yüksekliğindeki şerit 0’dır.",
-            "mask": "Vuruş çizgisinin normal yüksekliğinde maskenin ortasıdır.",
-            "screen": "Varsayılan kamerada ekranın ortasıdır.",
-            "vanishingPoint": "Şeritlerin uzakta birleştiği noktadır."
+            "stage": "Vuruş çizgisinin normal yüksekliğindeki şerit 0.",
+            "mask": "Vuruş çizgisinin normal yüksekliğinde maskenin ortası.",
+            "screen": "Varsayılan kamerada ekranın ortası.",
+            "vanishingPoint": "Şeritlerin uzakta birleştiği nokta."
           }
         },
-        "centerXOffset": "Dönüş merkezini, Dönüş Merkezi’nin belirlediği noktadan şerit biriminde yana taşır. Pozitif değerler sağa taşır.",
-        "centerYOffset": "Dönüş merkezini, Dönüş Merkezi’nin belirlediği noktadan şerit biriminde yukarı veya aşağı taşır. Pozitif değerler yukarı taşır.",
+        "centerXOffset": "Şerit biriminde, pozitif değerler sağa.",
+        "centerYOffset": "Şerit biriminde, pozitif değerler yukarı.",
         "anchor": {
-          "intro": "Y Ötelemesi’nin sahneyi hangi konumdan hareket ettireceğini belirler.",
+          "intro": "Y Ötelemesi için referans noktası.",
           "choices": {
-            "default": "Vuruş çizgisinin normal yeri.",
+            "default": "Vuruş çizgisinin normal yüksekliği.",
             "center": "Varsayılan kamerada ekranın ortası."
           }
         },
         "copyProperties": "Tam olarak bir nesne seçiliyken aynı türden bir nesne eklediğinizde, Kopyala olarak ayarlanmış özellikler değerlerini seçili nesneden alır.",
         "copyPropertiesSlide": "Tam olarak bir nota seçiliyken nota eklediğinizde, Kopyala olarak ayarlanmış özellikler değerlerini seçili notadan ve kaydırmasından alır.",
-        "preset": "Aracın hangi varsayılan özellik kümesini kullanacağını seçer.",
         "name": "Bu adı yalnızca editör gösterir.",
-        "forceNoteSpeed": "Oyuncunun Nota Hızı yerine grubun notaları için 1 ile 12 arasında sabit bir hız belirler.",
-        "isFromStart": "Sahneyi ilk maske olayından önce, seviyenin başından itibaren çizer.",
-        "isUntilEnd": "Son maske olayından sonra da seviyenin sonuna kadar sahneyi çizmeye devam eder.",
+        "forceNoteSpeed": "Grubun nota hızının yerine kullanılacak hız, 1 ile 12 arasında.",
+        "isFromStart": "Sahneyi ilk maske olayından önce çizer.",
+        "isUntilEnd": "Sahneyi son maske olayından sonra çizer.",
         "generateSimLines": {
-          "intro": "Aynı anda basılan hangi notaların eşzamanlılık çizgisiyle birleştirileceğini belirler.",
           "choices": {
-            "global": "Bu sahnenin notalarını, aynı seçimi kullanan diğer sahnelerin notalarıyla da birleştirir.",
-            "isolated": "Bu sahnenin notalarını yalnızca birbirleriyle birleştirir."
+            "global": "Genel seçili tüm sahnelerdeki notaları birleştirir.",
+            "isolated": "Notaları yalnızca bu sahne içinde birleştirir."
           }
         },
-        "initialLife": "Oyuncunun başlangıç canını belirler. Bu aynı zamanda ulaşabileceği en yüksek candır. Kaçırılan her nota 80 can azaltır. Bir ara vuruşu kaçırmak veya bir hasar notasına ya da hasar bağlayıcısına dokunmak 40 can azaltır."
+        "initialLife": "Başlangıç ve en yüksek can. Her kaçırma 80 can azaltır, ara vuruşlarda ve hasarda ise 40."
       }
     },
     "confirm": {

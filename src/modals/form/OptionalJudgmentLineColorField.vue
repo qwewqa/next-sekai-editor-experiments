@@ -5,20 +5,17 @@ import { i18n } from '../../i18n'
 import JudgmentLineColorSwatch from './JudgmentLineColorSwatch.vue'
 import OptionalSelectField from './OptionalSelectField.vue'
 import type { OptionGlyph } from './optionGlyph'
-import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<JudgmentLineColor | undefined>({ required: true })
 
 // Unset, mixed and unknown values have no swatch.
 const glyph = computed(() => judgmentLineColors.find((color) => color === modelValue.value))
 const swatch: OptionGlyph<JudgmentLineColor> = (value) => h(JudgmentLineColorSwatch, { value })
-const description = usePropertyDescription((t) => t.modals.form.descriptions.judgmentLineColor)
 </script>
 
 <template>
     <OptionalSelectField
         v-model="modelValue"
-        :description
         :label="i18n.modals.form.judgmentLineColor.label"
         :options="[
             [i18n.modals.form.judgmentLineColor.neutral, 'neutral'],
