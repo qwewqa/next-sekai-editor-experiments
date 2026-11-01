@@ -1,4 +1,5 @@
 import type { PreviewFrameInput } from '../drawFrame'
+import type { OutlineAlpha } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
 import type { MirrorDiff } from './mirror'
@@ -28,6 +29,9 @@ export type PreviewWorkerCounters = {
     aspect?: number
 }
 
+/** The selection as the worker reads it: places in the slides and stage indices. */
+export type SelectionPlaces = { places: Int32Array; stages: number[]; centers: number[] }
+
 export type ToPreviewWorker =
     | { type: 'start'; test: boolean; flags: PreviewWorkerFlags }
     /**
@@ -49,12 +53,12 @@ export type ToPreviewWorker =
           type: 'frame'
           mirror?: MirrorDiff
           /** The selection's places in the slides, sent when it or the slides changed. */
-          selection?: { places: Int32Array; stages: number[] } | null
+          selection?: SelectionPlaces | null
           input: PreviewFrameInput
       }
     /** Hand the atlases back to the main thread. The canvases stay until the worker is terminated. */
     | { type: 'return' }
-    | { type: 'outlinePixels' }
+    | { type: 'outlineAlpha' }
     | { type: 'loseContext' }
     | { type: 'restoreContext' }
 
@@ -65,5 +69,5 @@ export type FromPreviewWorker =
     | { type: 'error'; message: string }
     | { type: 'atlases'; bitmaps: (ImageBitmap | undefined)[] }
     | { type: 'counters'; counters: PreviewWorkerCounters }
-    | { type: 'outlinePixels'; lit: number }
+    | { type: 'outlineAlpha'; alpha?: OutlineAlpha }
     | { type: 'context'; lost: boolean }

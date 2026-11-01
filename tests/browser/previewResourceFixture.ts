@@ -91,4 +91,7 @@ export const serveRanges = async (
 
 /** The selection outline's pixels with any alpha, in either preview host. */
 export const outlinePixels = (page: Page) =>
-    page.evaluate(() => window.nsePreviewTest?.outlinePixels() ?? 0)
+    page.evaluate(async () => {
+        const alpha = await window.nsePreviewTest?.outlineAlpha()
+        return alpha ? alpha.data.reduce((lit, value) => lit + (value ? 1 : 0), 0) : 0
+    })

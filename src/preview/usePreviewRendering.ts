@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, shallowRef, watch, watchEffect, type Ref } from 'vue'
 import { isAppActive } from '../activity'
+import type { StageId } from '../chart/stages'
 import { view } from '../editor/view'
 import { dockSizeDrafts, panelWeightsDraft } from '../editor/workspace'
 import { cancelFrame, requestFrame } from '../frame'
@@ -110,12 +111,19 @@ export const usePreviewRendering = (
                 return []
             }),
         )
-        const stages = new Set(
-            [...state.value.stages.keys()].flatMap((id, index) =>
-                stageIds.has(id) ? [index] : [],
+        const centerIds = new Set(
+            selected.flatMap((entity) =>
+                entity.type === 'stageTransformEventJoint' ? [entity.stageId] : [],
             ),
         )
-        return objects.size || stages.size ? { objects, stages } : undefined
+        const indices = (ids: ReadonlySet<StageId>) =>
+            new Set(
+                [...state.value.stages.keys()].flatMap((id, index) => (ids.has(id) ? [index] : [])),
+            )
+        const stages = indices(stageIds)
+        return objects.size || stages.size
+            ? { objects, stages, centers: indices(centerIds) }
+            : undefined
     })
 
     const renderer = shallowRef<PreviewRenderer>()
@@ -404,8 +412,7 @@ export const usePreviewRendering = (
         get host() {
             return previewHost.kind
         },
-        outlinePixels: () =>
-            worker.value?.outlinePixels() ?? Promise.resolve(outline.value?.litPixels() ?? 0),
+        outlineAlpha: () => worker.value?.outlineAlpha() ?? Promise.resolve(outline.value?.alpha()),
         settled: () => worker.value?.settled() ?? Promise.resolve(),
         setContextLost: (lost) => worker.value?.setContextLost(lost) ?? Promise.resolve(),
     })

@@ -1,12 +1,19 @@
 import type { Quad, Vec } from './engine/math'
 
+/** An X at a stage's rotation center, turned by `angle` (radians, y up). */
+export type OutlineMarker = { point: Vec; angle: number }
+
 export const createSelectionOutline = () => {
     const objects = new Map<object | undefined, Map<string, { a: Vec; b: Vec; count: number }>>()
     const lines: { a: Vec; b: Vec }[] = []
+    const markers: OutlineMarker[] = []
     const pointKey = (point: Vec) => `${Math.round(point.x * 1e5)},${Math.round(point.y * 1e5)}`
     return {
         addLine: (a: Vec, b: Vec) => {
             lines.push({ a, b })
+        },
+        addMarker: (point: Vec, angle: number) => {
+            markers.push({ point, angle })
         },
         add: (quad: Quad, source?: object) => {
             let edges = objects.get(source)
@@ -36,5 +43,6 @@ export const createSelectionOutline = () => {
                 ...lines,
             ]
         },
+        markers: (): readonly OutlineMarker[] => markers,
     }
 }

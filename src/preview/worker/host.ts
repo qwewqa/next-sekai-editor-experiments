@@ -7,6 +7,7 @@ import { testKeysOpen } from '../../platform/testKeys'
 import { settings } from '../../settings'
 import type { State } from '../../state'
 import type { PreviewFrameInput, PreviewSelection } from '../drawFrame'
+import type { OutlineAlpha } from '../outlineRenderer'
 import type { LoadedParticle } from '../particle'
 import type { LoadedSkin } from '../skin'
 import { decodeAtlasesAgain } from '../usePreviewResources'
@@ -16,6 +17,7 @@ import type {
     FromPreviewWorker,
     PreviewWorkerCounters,
     PreviewWorkerFlags,
+    SelectionPlaces,
     ToPreviewWorker,
 } from './protocol'
 
@@ -134,7 +136,7 @@ const startWorker = () => {
     // The objects whose atlases the worker holds, by slot: skin, then particle.
     const lent: (LoadedSkin | LoadedParticle | undefined)[] = []
     let onAtlases: ((bitmaps: (ImageBitmap | undefined)[]) => void) | undefined
-    let onOutlinePixels: ((lit: number) => void) | undefined
+    let onOutlineAlpha: ((alpha: OutlineAlpha | undefined) => void) | undefined
     let onContext: ((lost: boolean) => void) | undefined
     let onSettled: (() => void)[] = []
     // The worker drew a frame, which the usage statistics report with a handover.
@@ -275,8 +277,8 @@ const startWorker = () => {
             case 'counters':
                 addCounters(message.counters)
                 return
-            case 'outlinePixels':
-                onOutlinePixels?.(message.lit)
+            case 'outlineAlpha':
+                onOutlineAlpha?.(message.alpha)
                 return
             case 'context':
                 onContext?.(message.lost)
@@ -363,12 +365,13 @@ const startWorker = () => {
             const mirror = sender.diff(state)
             const transfers: Transferable[] = []
             if (mirror?.slides) transfers.push(mirror.slides.order.buffer)
-            let places: { places: Int32Array; stages: number[] } | null | undefined
+            let places: SelectionPlaces | null | undefined
             if (selection !== sentSelection || mirror?.slides) {
                 places = selection
                     ? {
                           places: selectionPlaces(state, selection.objects),
                           stages: [...selection.stages],
+                          centers: [...selection.centers],
                       }
                     : null
                 if (places) transfers.push(places.places.buffer)
@@ -380,14 +383,14 @@ const startWorker = () => {
             post({ type: 'frame', mirror, selection: places, input }, transfers)
         },
         /** For tests: the outline's drawn pixels, read in the worker. */
-        outlinePixels: () =>
-            new Promise<number>((resolve) => {
+        outlineAlpha: () =>
+            new Promise<OutlineAlpha | undefined>((resolve) => {
                 if (stopped) {
-                    resolve(0)
+                    resolve(undefined)
                     return
                 }
-                onOutlinePixels = resolve
-                post({ type: 'outlinePixels' })
+                onOutlineAlpha = resolve
+                post({ type: 'outlineAlpha' })
             }),
         /** For tests: resolves once no frame is in flight or waiting. */
         settled: () =>

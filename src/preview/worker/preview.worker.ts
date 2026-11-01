@@ -14,6 +14,7 @@ import type {
     FromPreviewWorker,
     PreviewWorkerCounters,
     PreviewWorkerFlags,
+    SelectionPlaces,
     ToPreviewWorker,
 } from './protocol'
 
@@ -51,7 +52,7 @@ let particle: PreviewParticle | undefined
 
 let mirror: MirrorState | undefined
 let build = createPreviewChartBuilder()
-let places: { places: Int32Array; stages: number[] } | undefined
+let places: SelectionPlaces | undefined
 let selection: PreviewSelection | undefined
 let lastInput: PreviewFrameInput | undefined
 
@@ -121,7 +122,7 @@ const resolveSelection = () => {
     const objects = selectedObjects(mirror, places.places)
     selection =
         objects.size || places.stages.length
-            ? { objects, stages: new Set(places.stages) }
+            ? { objects, stages: new Set(places.stages), centers: new Set(places.centers) }
             : undefined
 }
 
@@ -262,10 +263,12 @@ const handle = (message: ToPreviewWorker) => {
             )
             return
         }
-        case 'outlinePixels':
+        case 'outlineAlpha': {
             if (!testKeysOpen) return
-            post({ type: 'outlinePixels', lit: outline?.litPixels() ?? 0 })
+            const alpha = outline?.alpha()
+            post({ type: 'outlineAlpha', alpha }, alpha ? [alpha.data.buffer] : [])
             return
+        }
         case 'loseContext':
             if (!testKeysOpen) return
             lose = canvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context')

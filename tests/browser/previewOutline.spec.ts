@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 
 // The preview's selection outline has a renderer of its own, which both preview hosts use. It
-// must draw what the editor's stroked path of the same segments draws.
+// must draw what the editor's stroked path of the same segments draws, and a rotation center's X
+// over the outline.
 test.beforeEach(async ({ page }) => {
     await page.route('**/__preview-outline-test', (route) =>
         route.fulfill({ contentType: 'text/html', body: '<!doctype html>' }),
@@ -9,17 +10,18 @@ test.beforeEach(async ({ page }) => {
     await page.goto('/__preview-outline-test')
 })
 
-test('the outline renderer draws what a stroked path draws at each device scale', async ({
+test('the outline renderer draws what stroked paths draw at each device scale, the X last', async ({
     page,
 }) => {
     const results = await page.evaluate(async () => {
         const { disposeDrawContext, getDrawContext } = await import('/src/rendering/context.ts')
-        const { createOutlineRenderer } = await import('/src/preview/outlineRenderer.ts')
+        const { createOutlineRenderer, markerSegments } =
+            await import('/src/preview/outlineRenderer.ts')
         // The editor's paths are tessellated by Lyon once it loads, which is at once.
         const { initializeLyon } = await import('/src/rendering/lyon.ts')
         await initializeLyon()
         // Outline shapes in CSS pixels, as the preview draws them: a slanted note,
-        // a curved connector cut into slices, a lone line, a hairpin and an empty edge.
+        // a curved connector cut into slices, two lone lines, a hairpin and an empty edge.
         const segments: number[] = []
         const edge = (ax: number, ay: number, bx: number, by: number) =>
             segments.push(ax, ay, bx, by)
@@ -44,6 +46,9 @@ test('the outline renderer draws what a stroked path draws at each device scale'
         edge(220, 80, 290, 150)
         edge(290, 150, 224, 86)
         edge(250, 200, 250, 200)
+        edge(200, 180, 300, 180)
+        // An X across the last line, at (250, 180) on a 320 x 240 preview.
+        const markers = markerSegments([{ point: { x: 0.75, y: -0.5 }, angle: 0 }], 320, 240)
         // Both drawing buffers, premultiplied, as WebGL holds them.
         const read = (canvas: HTMLCanvasElement) => {
             const gl = canvas.getContext('webgl2')!
@@ -69,19 +74,20 @@ test('the outline renderer draws what a stroked path draws at each device scale'
             ctx.setTransform(sx, 0, 0, sy, 0, 0)
             ctx.lineCap = 'round'
             ctx.lineJoin = 'round'
-            for (const [color, lineWidth] of [
-                ['#06151d', 5],
-                ['#67e8f9', 2],
-            ] as const) {
-                ctx.strokeStyle = color
-                ctx.lineWidth = lineWidth
-                ctx.beginPath()
-                for (let i = 0; i < segments.length; i += 4) {
-                    ctx.moveTo(segments[i]!, segments[i + 1]!)
-                    ctx.lineTo(segments[i + 2]!, segments[i + 3]!)
+            for (const list of [segments, markers])
+                for (const [color, lineWidth] of [
+                    ['#06151d', 5],
+                    ['#67e8f9', 2],
+                ] as const) {
+                    ctx.strokeStyle = color
+                    ctx.lineWidth = lineWidth
+                    ctx.beginPath()
+                    for (let i = 0; i < list.length; i += 4) {
+                        ctx.moveTo(list[i]!, list[i + 1]!)
+                        ctx.lineTo(list[i + 2]!, list[i + 3]!)
+                    }
+                    ctx.stroke()
                 }
-                ctx.stroke()
-            }
             ctx.flush()
             const expected = read(path)
             disposeDrawContext(path)
@@ -89,11 +95,24 @@ test('the outline renderer draws what a stroked path draws at each device scale'
             const renderer = createOutlineRenderer(outline, (error) => {
                 throw error
             })
-            renderer.draw(segments, width, height, sx, sy)
+            renderer.draw(segments, markers, width, height, sx, sy)
             const actual = read(outline)
             renderer.dispose()
             const at = (data: Uint8Array, x: number, y: number, c: number) =>
                 data[(y * width + x) * 4 + c]!
+            // Beside the X's arm on the line, from 2x up a whole pixel: under the X's dark
+            // stroke, outside its cyan one. WebGL reads the bottom row first.
+            const crossing =
+                sx >= 2
+                    ? [0, 1, 2, 3].map((c) =>
+                          at(
+                              actual,
+                              Math.floor(252.75 * sx),
+                              height - 1 - Math.floor(180.25 * sy),
+                              c,
+                          ),
+                      )
+                    : undefined
             let coverage = 0
             let expectedCoverage = 0
             let interiorDifferences = 0
@@ -127,6 +146,7 @@ test('the outline renderer draws what a stroked path draws at each device scale'
                 coverage,
                 interiorDifferences,
                 maxDifference,
+                crossing,
             })
         }
         return results
@@ -141,5 +161,7 @@ test('the outline renderer draws what a stroked path draws at each device scale'
         expect(Math.abs(result.coverage / result.expectedCoverage - 1), result.label).toBeLessThan(
             0.02,
         )
+        // The X is drawn after the outline: its dark stroke covers the line's cyan.
+        if (result.crossing) expect(result.crossing, result.label).toEqual([6, 21, 29, 255])
     }
 })

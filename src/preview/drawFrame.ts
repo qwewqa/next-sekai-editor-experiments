@@ -2,7 +2,7 @@ import type { BackgroundFit } from './engine/background'
 import type { PreviewChart } from './engine/model'
 import { renderPreviewFrame } from './engine/render'
 import type { PreviewRenderer } from './gl'
-import { outlineSegments, type OutlineRenderer } from './outlineRenderer'
+import { markerSegments, outlineSegments, type OutlineRenderer } from './outlineRenderer'
 import type { PreviewParticle } from './particle'
 import { createSelectionOutline } from './selectionOutline'
 import type { PreviewSkin } from './skin'
@@ -27,9 +27,14 @@ export type PreviewFrameInput = {
     background?: { aspectRatio: number; fit: BackgroundFit }
 }
 
-export type PreviewSelection = { objects: ReadonlySet<object>; stages: ReadonlySet<number> }
+export type PreviewSelection = {
+    objects: ReadonlySet<object>
+    stages: ReadonlySet<number>
+    /** Stages with a selected transform event, which mark their rotation center. */
+    centers: ReadonlySet<number>
+}
 
-/** Draws a frame and its selection outline; returns the quad the background image fills. */
+/** Draws a frame, its selection outline and markers; returns the quad the background image fills. */
 export const drawPreviewFrame = (
     renderer: PreviewRenderer,
     outline: OutlineRenderer | undefined,
@@ -52,13 +57,19 @@ export const drawPreviewFrame = (
         input.noteSpeed,
         input.showEffects,
         particle,
-        selection && { ...selection, outline: edges.add, line: edges.addLine },
+        selection && {
+            ...selection,
+            outline: edges.add,
+            line: edges.addLine,
+            marker: edges.addMarker,
+        },
         input.leftLimit,
         input.showHitboxes,
         input.background,
     )
     outline?.draw(
         outlineSegments(edges.edges(), input.displayWidth, input.displayHeight),
+        markerSegments(edges.markers(), input.displayWidth, input.displayHeight),
         input.overlayWidth,
         input.overlayHeight,
         input.overlayWidth / input.displayWidth,

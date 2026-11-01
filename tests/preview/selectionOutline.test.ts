@@ -40,3 +40,18 @@ test('explicit selection lines remain visible beside sliced and degenerate outli
     outline.add(quad(0, 1), {})
     assert.equal(outline.edges().length, 5)
 })
+
+test('rotation center markers stay apart from the edges and their cancellation', () => {
+    const outline = createSelectionOutline()
+    const stage = {}
+    const point = { x: 1, y: 0 }
+    outline.add(quad(0, 1), stage)
+    outline.addMarker(point, 0.5)
+    outline.add(quad(1, 2), stage)
+    outline.addMarker(point, 0.5)
+    assert.equal(outline.edges().length, 6)
+    assert.deepEqual(outline.markers(), [
+        { point, angle: 0.5 },
+        { point, angle: 0.5 },
+    ])
+})

@@ -66,14 +66,17 @@ import {
     type VisualMask,
 } from './mask'
 import {
+    addVec,
     connectorFractions,
     connectorInterpFrac,
     isNoneEase,
     lerp,
     remapClamped,
+    rotateVec,
     safeUnlerpClamped,
     transformQuadAffine,
     unlerpClamped,
+    vec,
     type Quad,
     type Vec,
 } from './math'
@@ -101,6 +104,7 @@ import {
     getStageProps,
     getStageYOffset,
     resolveJudgeLineStyle,
+    stagePropsRotationFrame,
     stagePropsTransform,
     type StageProps,
 } from './stage'
@@ -196,6 +200,9 @@ export const renderPreviewFrame = (
         stages?: ReadonlySet<number>
         outline: (quad: Quad, source?: object) => void
         line?: (a: Vec, b: Vec, source?: object) => void
+        /** Stages whose rotation center and its angle on screen go to `marker`. */
+        centers?: ReadonlySet<number>
+        marker?: (point: Vec, angle: number) => void
     },
     leftLimit = false,
     showHitboxes = false,
@@ -280,7 +287,21 @@ export const renderPreviewFrame = (
                 continue
 
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            drawStageWithProps(context, selectedDraw(undefined, i), skin, stagePropsAt(i)!)
+            const props = stagePropsAt(i)!
+            drawStageWithProps(context, selectedDraw(undefined, i), skin, props)
+            if (selection?.marker && selection.centers?.has(i)) {
+                const { center, offset } = stagePropsRotationFrame(context, props)
+                // The judgment line's direction: the camera's x axis, through the stage.
+                const axis = rotateVec(vec(1, 0), -context.layout.rotate)
+                const affine = stageAffineAt(i)
+                selection.marker(
+                    addVec(center, offset),
+                    Math.atan2(
+                        affine.a10 * axis.x + affine.a11 * axis.y,
+                        affine.a00 * axis.x + affine.a01 * axis.y,
+                    ),
+                )
+            }
         }
     } else {
         drawStaticStage(context, draw, skin)

@@ -3,6 +3,7 @@ import { curveTolerance, resolutionScale, roundCappedSegments } from '../renderi
 import { SELECTION_COLOR } from '../utils/colors'
 import type { Vec } from './engine/math'
 import { linkProgram } from './gl'
+import type { OutlineMarker } from './selectionOutline'
 
 // The selection outline's own small WebGL2 renderer, used by both preview hosts. It draws the
 // outline as the editor's context drew it: round-capped segments, a dark 5 px stroke under a
@@ -46,21 +47,51 @@ export const outlineSegments = (
     return segments
 }
 
+/** Half an X's arm on each axis before it turns, in CSS pixels. */
+const MARKER_ARM = 6
+
+/** Each marker's two arms in CSS pixels, as `outlineSegments` gives edges. */
+export const markerSegments = (
+    markers: readonly OutlineMarker[],
+    displayWidth: number,
+    displayHeight: number,
+) => {
+    const scale = displayHeight / 2
+    const segments: number[] = []
+    for (const { point, angle } of markers) {
+        const x = displayWidth / 2 + point.x * scale
+        const y = displayHeight / 2 - point.y * scale
+        const cos = Math.cos(angle) * MARKER_ARM
+        const sin = Math.sin(angle) * MARKER_ARM
+        // The diagonals (1, 1) and (1, -1), turned; the canvas's y points down.
+        for (const side of [1, -1]) {
+            const dx = cos - side * sin
+            const dy = sin + side * cos
+            segments.push(x - dx, y + dy, x + dx, y - dy)
+        }
+    }
+    return segments
+}
+
+/** The drawn pixels' alpha, top row first. */
+export type OutlineAlpha = { width: number; height: number; data: Uint8Array }
+
 export type OutlineRenderer = {
     /**
-     * Draws `segments` (CSS pixels) into a backing store of `width` × `height`, scaled by
-     * `scaleX` and `scaleY`. No segments clear what was drawn; while nothing was drawn, the
-     * canvas gets no context at all.
+     * Draws `segments`, then `markers` over them (CSS pixels), into a backing store of
+     * `width` x `height`, scaled by `scaleX` and `scaleY`. No segments and no markers clear what
+     * was drawn; while nothing was drawn, the canvas gets no context at all.
      */
     draw: (
         segments: readonly number[],
+        markers: readonly number[],
         width: number,
         height: number,
         scaleX: number,
         scaleY: number,
     ) => void
-    /** For tests: the drawn pixels, those with any alpha. None while there is no context. */
-    litPixels: () => number
+    /** For tests: the drawn pixels' alpha. None while there is no context. */
+    alpha: () => OutlineAlpha | undefined
     dispose: () => void
 }
 
@@ -139,10 +170,10 @@ export const createOutlineRenderer = (
         return gl
     }
 
-    const draw: OutlineRenderer['draw'] = (segments, width, height, scaleX, scaleY) => {
+    const draw: OutlineRenderer['draw'] = (segments, markers, width, height, scaleX, scaleY) => {
         if (disposed) return
-        last = [segments, width, height, scaleX, scaleY]
-        if (!segments.length && !drawn) return
+        last = [segments, markers, width, height, scaleX, scaleY]
+        if (!segments.length && !markers.length && !drawn) return
         const current = context()
         if (!current || lost || current.isContextLost()) return
         try {
@@ -156,43 +187,49 @@ export const createOutlineRenderer = (
         if (canvas.height !== height) canvas.height = height
         current.viewport(0, 0, width, height)
         current.clear(current.COLOR_BUFFER_BIT)
-        drawn = segments.length > 0
+        drawn = segments.length > 0 || markers.length > 0
         if (!drawn) return
         current.uniform2f(program.size, width, height)
         const matrix = [scaleX, 0, 0, scaleY, 0, 0]
         // The path cache's tolerance at this transform, so the caps match a stroked path's.
         const tolerance = curveTolerance / resolutionScale(matrix)
-        for (const { width: lineWidth, color } of STROKES) {
-            let length = 0
-            roundCappedSegments(segments, lineWidth, tolerance, (x, y) => {
-                if (length + 2 > vertices.length) {
-                    const grown = new Float32Array(Math.max(1024, vertices.length * 2))
-                    grown.set(vertices)
-                    vertices = grown
-                }
-                vertices[length++] = x * scaleX
-                vertices[length++] = y * scaleY
-            })
-            if (!length) continue
-            current.bufferData(
-                current.ARRAY_BUFFER,
-                vertices.subarray(0, length),
-                current.STREAM_DRAW,
-            )
-            current.uniform4f(program.color, color[0], color[1], color[2], color[3])
-            current.drawArrays(current.TRIANGLES, 0, length / 2)
-        }
+        // The markers' dark stroke covers the outline under them.
+        for (const list of [segments, markers])
+            for (const { width: lineWidth, color } of STROKES) {
+                let length = 0
+                roundCappedSegments(list, lineWidth, tolerance, (x, y) => {
+                    if (length + 2 > vertices.length) {
+                        const grown = new Float32Array(Math.max(1024, vertices.length * 2))
+                        grown.set(vertices)
+                        vertices = grown
+                    }
+                    vertices[length++] = x * scaleX
+                    vertices[length++] = y * scaleY
+                })
+                if (!length) continue
+                current.bufferData(
+                    current.ARRAY_BUFFER,
+                    vertices.subarray(0, length),
+                    current.STREAM_DRAW,
+                )
+                current.uniform4f(program.color, color[0], color[1], color[2], color[3])
+                current.drawArrays(current.TRIANGLES, 0, length / 2)
+            }
     }
 
     return {
         draw,
-        litPixels: () => {
-            if (!gl || gl.isContextLost()) return 0
-            const data = new Uint8Array(canvas.width * canvas.height * 4)
-            gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, data)
-            let lit = 0
-            for (let i = 3; i < data.length; i += 4) if (data[i]) lit++
-            return lit
+        alpha: () => {
+            if (!gl || gl.isContextLost()) return
+            const { width, height } = canvas
+            const rgba = new Uint8Array(width * height * 4)
+            gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, rgba)
+            const data = new Uint8Array(width * height)
+            // WebGL reads the bottom row first.
+            for (let y = 0; y < height; y++)
+                for (let x = 0; x < width; x++)
+                    data[y * width + x] = rgba[((height - 1 - y) * width + x) * 4 + 3] ?? 0
+            return { width, height, data }
         },
         dispose: () => {
             if (disposed) return

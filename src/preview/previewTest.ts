@@ -1,10 +1,11 @@
 import { testKeysOpen } from '../platform/testKeys'
+import type { OutlineAlpha } from './outlineRenderer'
 
 /** Test builds: what the preview specs read of the preview, whichever host draws it. */
 export type PreviewTestHandle = {
     host: 'main' | 'worker'
-    /** The selection outline's pixels with any alpha. */
-    outlinePixels: () => Promise<number>
+    /** The selection outline's drawn pixels; none while it has no context. */
+    outlineAlpha: () => Promise<OutlineAlpha | undefined>
     /** Resolves once the worker host has drawn the frames asked for; at once in the main host. */
     settled: () => Promise<void>
     /** The worker host's context loss, which the specs cannot reach; resolves once it is handled. */
