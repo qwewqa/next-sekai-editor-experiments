@@ -12,6 +12,11 @@ export const stackLongWordsKey: InjectionKey<boolean> = Symbol('stackLongWords')
 
 export const useStackLongWords = () => inject(stackLongWordsKey, false)
 
+/** Fields whose label would take more than two lines take the row below it. */
+export const stackTallLabelsKey: InjectionKey<boolean> = Symbol('stackTallLabels')
+
+export const useStackTallLabels = () => inject(stackTallLabelsKey, false)
+
 let context: CanvasRenderingContext2D | null | undefined
 
 /** Read the available width before any labels switch to their intrinsic width. */

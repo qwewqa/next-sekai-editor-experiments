@@ -14,7 +14,13 @@ import {
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import { splitUnit } from '../../utils/unitLabel'
-import { measureWord, useStackLongValues, useStackLongWords, valueOverflows } from './fieldLayout'
+import {
+    measureWord,
+    useStackLongValues,
+    useStackLongWords,
+    useStackTallLabels,
+    valueOverflows,
+} from './fieldLayout'
 import { cancelFit, queueFit } from './fitBatch'
 import { holdsTyping } from './resync'
 import { fittedAtWidth, observeWidth, unobserveWidth } from './widthObserver'
@@ -110,6 +116,7 @@ const labelRow = useTemplateRef<HTMLElement>('labelRow')
 const fieldRoot = useTemplateRef<HTMLElement>('fieldRoot')
 const stackLongValues = useStackLongValues()
 const stackLongWords = useStackLongWords()
+const stackTallLabels = useStackTallLabels()
 const labelFitOwner = {}
 
 const overTwoLines = (text: HTMLElement) =>
@@ -164,7 +171,9 @@ const fitLabel = (nextFrame = false) => {
                 const others = control?.parentElement?.classList.contains('form-field-toggle')
                     ? [enabled, disabled]
                     : []
-                stacked = !!(stackLongValues && control && valueOverflows(control, others))
+                stacked =
+                    !!(stackLongValues && control && valueOverflows(control, others)) ||
+                    (stackTallLabels && overTwoLines(text))
                 // Japanese may break between characters, so only its values stack.
                 if (!stacked && stackLongWords && !text.matches(':lang(ja)'))
                     word = measureWord(text)

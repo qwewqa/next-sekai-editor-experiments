@@ -129,6 +129,49 @@ test('brush values stack too, with remove kept on the label line', async ({ page
     ).toBeLessThan(4)
 })
 
+test('beside remove at the narrowest dock, no brush label takes three lines', async ({ page }) => {
+    await open(page, 'fr', 260)
+    await page.evaluate(async () => {
+        const { appImport, nextTick, settings } = window.editorTest
+        settings.propertiesCollapsed = ['selection']
+        const { brushProperties } = await appImport<typeof import('../../src/editor/tools/brush')>(
+            '/src/editor/tools/brush/index.ts',
+        )
+        const { brushFields } = await appImport<
+            typeof import('../../src/editor/workspace/properties/fields')
+        >('/src/editor/workspace/properties/fields.ts')
+        const { defaultGroupId } =
+            await appImport<typeof import('../../src/history/groups')>('/src/history/groups.ts')
+        const { defaultStageId } =
+            await appImport<typeof import('../../src/history/stages')>('/src/history/stages.ts')
+        // Every property, so every label shows; the group and stage are the current ones.
+        const current: Record<string, unknown> = {
+            groupId: defaultGroupId.value,
+            stageId: defaultStageId.value,
+        }
+        brushProperties.value = Object.fromEntries(
+            brushFields.map((field) => [field.key, field.brush?.initial ?? current[field.key]]),
+        ) as typeof brushProperties.value
+        await nextTick()
+    })
+    await page.keyboard.press('b')
+    const labels = page.locator('#workspace-panel-properties [data-brush-key] .form-field-text')
+    await expect(labels.first()).toBeVisible()
+    const lines = () =>
+        labels.evaluateAll((texts) =>
+            texts
+                .map((text) => ({
+                    label: text.textContent,
+                    lines: Math.round(
+                        text.getBoundingClientRect().height /
+                            parseFloat(getComputedStyle(text).lineHeight),
+                    ),
+                }))
+                .filter(({ lines }) => lines > 2),
+        )
+    await expect.poll(lines).toEqual([])
+})
+
 test('a mixed range too long for its pill goes below its label', async ({ page }) => {
     await open(page, 'fr', 260)
     await page.evaluate(async () => {
