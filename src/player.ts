@@ -288,7 +288,8 @@ export const startClipPlayer = (options: {
     time: number
     source: Pick<State, 'store' | 'bpms'>
     bgm: Bgm
-    volumes: { bgm: number; sfx: number }
+    /** Read as sounds are queued, and again by `applyVolumes`. */
+    volumes: () => { bgm: number; sfx: number }
     onFailure: () => void
 }) => {
     setAudioSession()
@@ -303,7 +304,7 @@ export const startClipPlayer = (options: {
         context: started,
         source: () => options.source,
         buffers: { sfx: sfxBuffers, bgm: options.bgm },
-        volumes: { bgm: () => options.volumes.bgm, sfx: () => options.volumes.sfx },
+        volumes: { bgm: () => options.volumes().bgm, sfx: () => options.volumes().sfx },
         start: { time: options.time, contextTime, speed: 1 },
     })
     let stopped = false
@@ -345,6 +346,13 @@ export const startClipPlayer = (options: {
                 ) - contextTime,
             ) + options.time,
         stop,
+        /** Sets the playing sounds to the volumes as they are now. */
+        applyVolumes() {
+            if (stopped) return
+            const { bgm, sfx } = options.volumes()
+            sounds.setBgmVolume(bgm)
+            sounds.setSfxVolume(sfx)
+        },
     }
 }
 

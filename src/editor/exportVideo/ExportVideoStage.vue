@@ -124,10 +124,14 @@ const play = () => {
     player = startClipPlayer({
         time: d.playhead.value,
         source: d.input.snapshot,
-        bgm: d.form.bgm ? d.input.bgm : { offset: 0 },
-        volumes: {
-            bgm: d.form.bgm ? d.form.bgmVolume : 0,
-            sfx: d.form.sfx ? d.form.sfxVolume : 0,
+        // The BGM is always queued, so turning it on while playing is heard.
+        bgm: d.input.bgmMissing ? { offset: 0 } : d.input.bgm,
+        volumes: () => {
+            const fade = fadeAt(player?.time() ?? d.playhead.value)
+            return {
+                bgm: d.form.bgm ? d.form.bgmVolume * fade : 0,
+                sfx: d.form.sfx ? d.form.sfxVolume * fade : 0,
+            }
         },
         onFailure: stop,
     })
@@ -141,9 +145,19 @@ const play = () => {
             return
         }
         d.playhead.value = time
+        // The dialog's sound settings and the export's fades, as they are now.
+        player.applyVolumes()
         frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
+}
+/** The export's sound fades at a chart time: 0 to 1, linear, as the mix applies them. */
+const fadeAt = (time: number) => {
+    const { in: start, fadeIn, fadeOut, frames, frameRate } = d.exportSettings()
+    const end = start + frames / frameRate
+    const rising = fadeIn > 0 ? (time - start) / fadeIn : 1
+    const falling = fadeOut > 0 ? (end - time) / fadeOut : 1
+    return Math.min(1, Math.max(0, Math.min(rising, falling)))
 }
 const pause = () => {
     if (d.playing.value) stop()
