@@ -984,6 +984,7 @@
       "renderScale": "Échelle de rendu",
       "showEffects": "Afficher les effets",
       "showTime": "Afficher le temps",
+      "showCombo": "Afficher le combo",
       "highlightSelection": "Mettre la sélection en évidence",
       "showHitboxes": "Afficher les hitboxes",
       "antialias": "Anticrénelage",

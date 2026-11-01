@@ -984,6 +984,7 @@
       "renderScale": "렌더링 배율",
       "showEffects": "효과 표시",
       "showTime": "시간 표시",
+      "showCombo": "콤보 표시",
       "highlightSelection": "선택 항목 강조",
       "showHitboxes": "판정 범위 표시",
       "antialias": "안티앨리어싱",

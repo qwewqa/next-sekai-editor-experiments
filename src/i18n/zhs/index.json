@@ -984,6 +984,7 @@
       "renderScale": "渲染比例",
       "showEffects": "显示特效",
       "showTime": "显示时间",
+      "showCombo": "显示连击",
       "highlightSelection": "高亮所选对象",
       "showHitboxes": "显示判定范围",
       "antialias": "抗锯齿",

@@ -984,6 +984,7 @@
       "renderScale": "描画解像度",
       "showEffects": "エフェクトを表示",
       "showTime": "時間を表示",
+      "showCombo": "コンボを表示",
       "highlightSelection": "選択対象を強調表示",
       "showHitboxes": "判定範囲を表示",
       "antialias": "アンチエイリアス",

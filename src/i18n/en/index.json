@@ -984,6 +984,7 @@
             "renderScale": "Render Scale",
             "showEffects": "Show Effects",
             "showTime": "Show Time",
+            "showCombo": "Show Combo",
             "highlightSelection": "Highlight Selection",
             "showHitboxes": "Show Hitboxes",
             "antialias": "Antialiasing",

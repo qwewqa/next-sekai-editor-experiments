@@ -984,6 +984,7 @@
       "renderScale": "渲染比例",
       "showEffects": "顯示特效",
       "showTime": "顯示時間",
+      "showCombo": "顯示連擊",
       "highlightSelection": "醒目顯示選取物件",
       "showHitboxes": "顯示判定範圍",
       "antialias": "反鋸齒",
