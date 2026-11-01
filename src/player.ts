@@ -217,6 +217,7 @@ export const startPlayer = (
 
 // `immediately` skips the fade, because a fade on a clock that stands still never ends.
 const stopPlayback = (immediately: boolean) => {
+    displayClockState = undefined
     clearScheduler()
     clearTimeout(startCheck)
     startCheck = undefined

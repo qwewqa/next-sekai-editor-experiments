@@ -43,10 +43,23 @@ export const planSounds = (
     window: { from: number; to: number },
     previous: SoundPlanState,
 ): { events: SoundEvent[]; state: SoundPlanState } => {
+    const hits = planHits(source, bpms, clips, window, previous)
+    return {
+        events: [...hits.events, ...planHolds(source, bpms, clips, window, previous)],
+        state: hits.state,
+    }
+}
+
+export const planHits = (
+    source: Pick<SoundSource, 'notes' | 'getInfo'>,
+    bpms: BpmIntegral[],
+    clips: Partial<Record<SoundClip, boolean>>,
+    window: { from: number; to: number },
+    previous: SoundPlanState,
+): { events: Extract<SoundEvent, { type: 'hit' }>[]; state: SoundPlanState } => {
     const beats = { min: timeToBeat(bpms, window.from), max: timeToBeat(bpms, window.to) }
-    const isCatchingUp = previous.until === undefined || window.from > previous.until
     const lastSfx = { ...previous.lastSfx }
-    const events: SoundEvent[] = []
+    const events: Extract<SoundEvent, { type: 'hit' }>[] = []
     const sfxDistance = 0.02
 
     const targets = {
@@ -167,6 +180,19 @@ export const planSounds = (
         for (const time of times) events.push({ type: 'hit', clip: type, time })
     }
 
+    return { events, state: { until: window.to, lastSfx } }
+}
+
+export const planHolds = (
+    source: Pick<SoundSource, 'connectors' | 'getHideChanges'>,
+    bpms: BpmIntegral[],
+    clips: Partial<Record<SoundClip, boolean>>,
+    window: { from: number; to: number },
+    previous: SoundPlanState,
+): Extract<SoundEvent, { type: 'hold' }>[] => {
+    const beats = { min: timeToBeat(bpms, window.from), max: timeToBeat(bpms, window.to) }
+    const isCatchingUp = previous.until === undefined || window.from > previous.until
+    const events: Extract<SoundEvent, { type: 'hold' }>[] = []
     const activeTargets = {
         normalActive: Array<[number, number]>(),
         criticalActive: Array<[number, number]>(),
@@ -211,7 +237,7 @@ export const planSounds = (
         }
     }
 
-    return { events, state: { until: window.to, lastSfx } }
+    return events
 }
 
 export type ActiveSound = { endBeat: number; endTime: number }
