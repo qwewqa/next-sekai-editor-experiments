@@ -140,6 +140,7 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `showProperties` | Whether the Properties panel is shown | Yes or no |
 | `previewPosition`, `groupsPosition`, `stagesPosition`, `propertiesPosition`, `historyPosition` | Where each panel is placed | `auto`, `left`, `right`, `top` or `disabled` |
 | `showMinimap` | Whether the minimap is shown | `auto`, `on` or `off` |
+| `showPropertyDescriptions` | Whether the Show Property Descriptions setting is on | Yes or no |
 | `dimUnchangedObjects` | Whether objects that a Timeline step did not change are dimmed | Yes or no |
 | `waveform` | How the music waveform is drawn | `volume`, `fft` or `off` |
 | `beatDisplay` | What the beat labels show | `beat`, `measure` or `both` |

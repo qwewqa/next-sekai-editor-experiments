@@ -218,6 +218,7 @@ INSERT INTO nse_allowed (event, property, kind, value, max) VALUES
     ('settings', 'showMinimap', 'text', 'auto', NULL),
     ('settings', 'showMinimap', 'text', 'on', NULL),
     ('settings', 'showMinimap', 'text', 'off', NULL),
+    ('settings', 'showPropertyDescriptions', 'boolean', '', NULL),
     ('settings', 'showHistory', 'boolean', '', NULL),
     ('settings', 'historyPosition', 'text', 'auto', NULL),
     ('settings', 'historyPosition', 'text', 'left', NULL),

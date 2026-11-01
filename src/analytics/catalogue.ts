@@ -185,6 +185,7 @@ export const catalogue = {
         showProperties: 'boolean',
         propertiesPosition: position,
         showMinimap: autoOnOff,
+        showPropertyDescriptions: 'boolean',
         showHistory: 'boolean',
         historyPosition: position,
         dimUnchangedObjects: 'boolean',

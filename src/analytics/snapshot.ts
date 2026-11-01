@@ -45,6 +45,7 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
         showProperties: settings.showSidebar,
         propertiesPosition: settings.propertiesPosition,
         showMinimap: autoOnOff(settings.showMinimap),
+        showPropertyDescriptions: settings.showPropertyDescriptions,
         showHistory: settings.showHistory,
         historyPosition: settings.historyPosition,
         dimUnchangedObjects: settings.dimUnchangedObjects,
