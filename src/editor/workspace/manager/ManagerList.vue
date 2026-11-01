@@ -1784,9 +1784,9 @@ const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLE
         case 'properties':
             if (key.type !== 'entry') return
             await props.model.openProperties(key.id)
-            // The inline button hides once focus leaves its row, so focus can't return to it.
-            if (keyboard && !rowOf(key)?.contains(document.activeElement))
-                focusIn(key, '.manager-name')
+            // The inline button hides once focus leaves its row, so focus can't return to it, and
+            // the dialog's own fallback leaves it on another control in the row.
+            if (keyboard) focusIn(key, '.manager-name')
             return
         case 'duplicate':
             await duplicateRow(key)
