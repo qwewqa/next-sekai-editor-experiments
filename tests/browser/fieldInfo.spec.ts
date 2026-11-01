@@ -275,7 +275,7 @@ test.describe('in Settings', () => {
         await info.scrollIntoViewIfNeeded()
         await info.hover()
         await expect(bubble(page)).toHaveText(
-            'Shows objects in other groups, faded, while a group is focused.',
+            'Shows objects in other groups, faded, while one group is current.',
         )
         await expect(info).toHaveAttribute('aria-expanded', 'true')
         const opened = await times(page)
@@ -423,7 +423,7 @@ test.describe('in Settings', () => {
         await second.info.click()
         await expect(bubble(page)).toHaveCount(1)
         await expect(bubble(page)).toHaveText(
-            'Shows objects on other stages, faded, while a stage is focused.',
+            'Shows objects on other stages, faded, while one stage is current.',
         )
         await expect(first.info).toHaveAttribute('aria-expanded', 'false')
     })
