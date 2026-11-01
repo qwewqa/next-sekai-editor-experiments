@@ -589,17 +589,19 @@ export const withPickSession = <T>(
                           ? await Promise.resolve(identity.bytes).catch(() => undefined)
                           : undefined
                 const bytes = held && held.size > 0 ? held : undefined
-                const isEmpty = async () => {
+                const isEmpty = async (unreadableIsEmpty = true) => {
                     const now = await platform.inspect(target, 'nxsp').catch(() => undefined)
-                    // A file that cannot be inspected is taken as emptied: the picker did that. One
-                    // that is gone was not emptied, and holds nothing to put back into.
-                    return now === undefined || (now !== 'missing' && now.size === 0)
+                    // Restoration treats an unreadable file as emptied because the picker emptied it.
+                    // The own-file warning requires a confirmed size of zero.
+                    return now === undefined
+                        ? unreadableIsEmpty
+                        : now !== 'missing' && now.size === 0
                 }
                 if (!bytes) {
                     // Emptied, with nothing readable to give back.
                     if (
                         (identity.kind === 'refused' || identity.kind === 'own') &&
-                        (await isEmpty())
+                        (await isEmpty(identity.kind === 'refused'))
                     )
                         offer = {
                             emptied: true,
