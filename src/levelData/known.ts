@@ -111,7 +111,8 @@ export const noteFields: Record<string, KnownField> = {
     next: ref({ readWhen: 'the note has a name' }),
 }
 
-const eventEase = choice(easeValues, 1, required)
+// An absent ease reads 0, none; an unknown one becomes linear.
+const eventEase = choice(easeValues, 1)
 const eventReadWhen = (first: string) =>
     `the entity is reached by ${first} and its next chain; others are never read`
 
@@ -169,8 +170,8 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
         readWhen: eventReadWhen('Initialization.firstCamera'),
         fields: {
             '#BEAT': value(required),
-            lane: value(required),
-            size: value(required),
+            lane: value(),
+            size: value(),
             zoom: value(),
             zoomTargetLane: value(),
             zoomTargetY: value(),
@@ -230,11 +231,11 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
         readWhen: eventReadWhen("a Stage's firstTransformChange"),
         fields: {
             '#BEAT': value(required),
-            rotate: value(required),
-            xLaneTranslate: value(required),
-            yLaneTranslate: value(required),
+            rotate: value(),
+            xLaneTranslate: value(),
+            yLaneTranslate: value(),
             elevation: value(),
-            anchor: choice([0, 1], 0, required),
+            anchor: choice([0, 1], 0),
             ease: eventEase,
             next: ref(),
         },

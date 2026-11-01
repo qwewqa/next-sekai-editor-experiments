@@ -302,6 +302,76 @@ test('the lane color round trips with the note style codes, and an absent or unk
     ])
 })
 
+const exported = (entities: LevelDataEntity[]) => {
+    const state = createState(parseLevelDataChart(entities), 0)
+    return serializeToLevelDataEntities(
+        state.initialLife,
+        state.isDynamicStages,
+        state.store,
+        state.groups,
+        state.stages,
+    )
+}
+
+/** The level without these fields on every entity of the archetype. */
+const without = (entities: LevelDataEntity[], archetype: string, names: string[]) =>
+    entities.map((e) =>
+        e.archetype === archetype
+            ? { ...e, data: e.data.filter((d) => !names.includes(d.name)) }
+            : e,
+    )
+
+test('omitted transform, camera and ease fields read as the engine reads them, 0', () => {
+    let level = without(fullLevel(), 'StageTransformChange', [
+        'rotate',
+        'xLaneTranslate',
+        'yLaneTranslate',
+        'anchor',
+        'ease',
+    ])
+    level = without(level, 'CameraChange', ['lane', 'size', 'ease'])
+    for (const archetype of ['StageMaskChange', 'StagePivotChange', 'StageStyleChange'])
+        level = without(level, archetype, ['ease'])
+    const { chart, report } = parse(level)
+    assert.deepEqual(report.entries, [])
+
+    const [transform] = chart.stageTransformEvents
+    assert.deepEqual(
+        transform && [
+            transform.rotation,
+            transform.xTranslation,
+            transform.yTranslation,
+            transform.anchor,
+            transform.eventEase,
+        ],
+        [0, 0, 0, 'default', 'none'],
+    )
+    // The size is kept raw at 0, so it is written back as it was read.
+    assert.deepEqual(
+        chart.cameraEvents.map((event) => [event.cameraLeft, event.cameraSize, event.eventEase]),
+        [
+            [0, 0, 'none'],
+            [0, 0, 'none'],
+        ],
+    )
+    for (const events of [chart.stageMaskEvents, chart.stagePivotEvents, chart.stageStyleEvents])
+        assert.ok(events.length && events.every((event) => event.eventEase === 'none'))
+
+    // What the editor writes for them opens again as it was.
+    const again = parseLevelDataChart(exported(level))
+    const unowned = (events: { stageId: number }[]) => events.map(({ stageId: _, ...rest }) => rest)
+    assert.deepEqual(unowned(again.stageTransformEvents), unowned(chart.stageTransformEvents))
+    assert.deepEqual(again.cameraEvents, chart.cameraEvents)
+
+    // An explicit camera size of 0 opens too; a negative one is refused as before.
+    const sized = (size: number) => withData(fullLevel(), 'CameraChange', 'size', size)
+    assert.deepEqual(
+        parseLevelDataChart(sized(0)).cameraEvents.map((event) => event.cameraSize),
+        [0, 0],
+    )
+    assert.throws(() => parseLevelDataChart(sized(-1)), refusal('invalidValue', 'size'))
+})
+
 test('every choice field in the table takes the unknown-value path', () => {
     let fields = 0
     for (const [archetype, known] of Object.entries(knownArchetypes)) {

@@ -43,6 +43,21 @@ test('oversized spans fit the range while cameras retain a valid minimum width',
     })
 })
 
+test('a move keeps a camera narrower than the editor makes, and a resize widens it', () => {
+    assert.deepEqual(constrainLaneObject({ cameraLeft: 8, cameraSize: 2 }, 6), {
+        cameraLeft: 4,
+        cameraSize: 2,
+    })
+    assert.deepEqual(constrainLaneObject({ cameraLeft: 8, cameraSize: 0 }, 6), {
+        cameraLeft: 6,
+        cameraSize: 0,
+    })
+    assert.deepEqual(constrainLaneObject({ cameraLeft: 8, cameraSize: 2 }, 6, true), {
+        cameraLeft: 0,
+        cameraSize: 6,
+    })
+})
+
 test('point events use their horizontal editing coordinate without changing other axes', () => {
     assert.deepEqual(constrainLaneObject({ pivotLane: -8, yOffset: 4 }, 2.5), {
         pivotLane: -2.5,

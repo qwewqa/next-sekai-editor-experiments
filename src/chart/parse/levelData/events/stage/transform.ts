@@ -3,11 +3,10 @@ import Type from 'typebox'
 import { parseStageEvents } from '.'
 import { getEventRefs } from '..'
 import { getOptionalValue, getValue, type ParseCtx } from '../..'
-import { easeFromValue } from '../../../../../ease'
 import { ImportRefusal } from '../../../../refusal'
 import type { StageId } from '../../../../stages'
 import { beatSchema } from '../../schemas'
-import { eventEaseSchema } from '../schemas'
+import { getEventEase } from '../schemas'
 
 export const parseStageTransformEventsToChart = (
     { chart, entities }: ParseCtx,
@@ -21,12 +20,12 @@ export const parseStageTransformEventsToChart = (
     parseStageEvents(refs, firstRefs, chart.stageTransformEvents, (stageId, entity) => ({
         stageId,
         beat: getValue(entity, EngineArchetypeDataName.Beat, beatSchema),
-        rotation: getValue(entity, 'rotate', rotateSchema),
-        xTranslation: getValue(entity, 'xLaneTranslate', xLaneTranslateSchema),
-        yTranslation: getValue(entity, 'yLaneTranslate', yLaneTranslateSchema),
+        rotation: getOptionalValue(entity, 'rotate', rotateSchema) ?? 0,
+        xTranslation: getOptionalValue(entity, 'xLaneTranslate', xLaneTranslateSchema) ?? 0,
+        yTranslation: getOptionalValue(entity, 'yLaneTranslate', yLaneTranslateSchema) ?? 0,
         elevation: getOptionalValue(entity, 'elevation', elevationSchema) ?? 0,
-        anchor: anchors[getValue(entity, 'anchor', anchorSchema)],
-        eventEase: easeFromValue(getValue(entity, 'ease', eventEaseSchema)),
+        anchor: anchors[getOptionalValue(entity, 'anchor', anchorSchema) ?? 0],
+        eventEase: getEventEase(entity),
     }))
 }
 

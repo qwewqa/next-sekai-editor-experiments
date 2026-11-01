@@ -3,12 +3,11 @@ import Type from 'typebox'
 import { parseStageEvents } from '.'
 import { getEventRefs } from '..'
 import { getOptionalValue, getValue, type ParseCtx } from '../..'
-import { easeFromValue } from '../../../../../ease'
 import { noteStyles, noteStyleValueSchema } from '../../../../noteStyle'
 import { ImportRefusal } from '../../../../refusal'
 import type { StageId } from '../../../../stages'
 import { beatSchema } from '../../schemas'
-import { eventEaseSchema } from '../schemas'
+import { getEventEase } from '../schemas'
 
 export const parseStageStyleEventsToChart = (
     { chart, entities }: ParseCtx,
@@ -40,7 +39,7 @@ export const parseStageStyleEventsToChart = (
             laneAlpha: getValue(entity, 'laneAlpha', alphaSchema) * alpha,
             judgmentLineAlpha: getValue(entity, 'judgeLineAlpha', alphaSchema) * alpha,
             divisionLineAlpha: getOptionalValue(entity, 'divisionLineAlpha', alphaSchema) ?? 1,
-            eventEase: easeFromValue(getValue(entity, 'ease', eventEaseSchema)),
+            eventEase: getEventEase(entity),
         }
     })
 }

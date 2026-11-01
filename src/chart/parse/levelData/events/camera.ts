@@ -2,10 +2,9 @@ import { EngineArchetypeDataName } from '@sonolus/core'
 import Type from 'typebox'
 import { getEventRefs, parseEvents } from '.'
 import { getOptionalValue, getValue, type ParseCtx } from '..'
-import { easeFromValue } from '../../../../ease'
 import { ImportRefusal } from '../../../refusal'
 import { beatSchema } from '../schemas'
-import { eventEaseSchema } from './schemas'
+import { getEventEase } from './schemas'
 
 export const parseCameraEventsToChart = (
     { chart, entities }: ParseCtx,
@@ -17,8 +16,8 @@ export const parseCameraEventsToChart = (
     const refs = getEventRefs(entities, 'CameraChange')
 
     parseEvents(refs, firstRef, chart.cameraEvents, (entity) => {
-        const lane = getValue(entity, 'lane', laneSchema)
-        const size = getValue(entity, 'size', sizeSchema)
+        const lane = getOptionalValue(entity, 'lane', laneSchema) ?? 0
+        const size = getOptionalValue(entity, 'size', sizeSchema) ?? 0
 
         return {
             beat: getValue(entity, EngineArchetypeDataName.Beat, beatSchema),
@@ -34,14 +33,15 @@ export const parseCameraEventsToChart = (
                 ],
             cameraRotation: getOptionalValue(entity, 'rotate', rotateSchema) ?? 0,
             cameraStageTilt: getOptionalValue(entity, 'stageTilt', stageTiltSchema) ?? 1,
-            eventEase: easeFromValue(getValue(entity, 'ease', eventEaseSchema)),
+            eventEase: getEventEase(entity),
         }
     })
 }
 
 const laneSchema = Type.Number()
 
-const sizeSchema = Type.Number({ minimum: 3, maximum: 12 })
+// Sampling reads a size below 0.01 as 0.01.
+const sizeSchema = Type.Number({ minimum: 0 })
 
 const zoomSchema = Type.Number({ minimum: 0.01 })
 

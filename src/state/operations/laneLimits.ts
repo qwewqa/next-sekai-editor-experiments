@@ -21,9 +21,12 @@ export const constrainLaneObject = <T extends EditableObject>(
         const position = object[positionKey]
         if (position === undefined) continue
         const originalSize = sizeKey ? object[sizeKey] : undefined
+        // Level data may hold cameras narrower than the editor makes; a move keeps them.
         const minimum =
             positionKey === 'cameraLeft'
-                ? 6
+                ? resizing
+                    ? 6
+                    : Math.min(6, originalSize ?? 6)
                 : positionKey === 'left' && resizing
                   ? Math.min(noteMinimum, maxLane * 2)
                   : 0

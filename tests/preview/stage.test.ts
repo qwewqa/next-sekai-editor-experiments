@@ -439,6 +439,8 @@ test('camera sizes have the engine minimum at events, not only between them', ()
     const floor = getCameraInfo(viewport, [camera(0, 0.01)], 0)
     assert.equal(at.size, 0.01)
     assert.deepEqual(at.zoomTarget, floor.zoomTarget)
+    // Level data without a size reads 0.
+    assert.equal(getCameraInfo(viewport, [camera(0, 0)], 0).size, 0.01)
     const before = getCameraInfo(viewport, [camera(1, 0.005), camera(2, 6)], 0)
     assert.equal(before.size, 0.01)
 })
