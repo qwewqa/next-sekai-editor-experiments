@@ -302,7 +302,7 @@ test.describe('kept writes', () => {
             await nextTick()
         }, beats)
         const control = page
-            .locator('#workspace-panel-properties #properties-section-selection label')
+            .locator('#workspace-panel-properties #properties-section-selection .form-field')
             .filter({ has: page.getByText(labels[key], { exact: true }) })
             .locator('input')
         if (typeof value === 'number') {

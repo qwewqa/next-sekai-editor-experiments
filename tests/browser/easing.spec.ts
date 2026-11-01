@@ -6,7 +6,7 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 const panel = (page: Page) => page.locator('#workspace-panel-properties')
 const field = (page: Page, label: string) =>
     panel(page)
-        .locator('label')
+        .locator('.form-field')
         .filter({ has: page.getByText(label, { exact: true }) })
         .locator('select')
 const selected = (select: Locator) =>
@@ -257,7 +257,7 @@ test.describe('ease fields', () => {
 
     test('the type selector shows the curve of a complete ease', async ({ page }) => {
         const icon = panel(page)
-            .locator('label')
+            .locator('.form-field')
             .filter({ has: page.getByText('Ease Type', { exact: true }) })
             .locator('.form-field-select-lead path')
         await showSlides(page, ['outSine'])
@@ -265,7 +265,7 @@ test.describe('ease fields', () => {
         // Only the type select carries the glyph.
         await expect(
             panel(page)
-                .locator('label')
+                .locator('.form-field')
                 .filter({ has: page.getByText('Ease Function', { exact: true }) })
                 .locator('.form-field-select-lead path'),
         ).toHaveCount(0)

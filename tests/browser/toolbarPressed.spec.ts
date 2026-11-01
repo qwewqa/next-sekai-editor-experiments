@@ -333,7 +333,7 @@ test('Escape in a tool dialog field reverts an uncommitted edit, else closes the
     })
     const dialog = page.locator('.editor-tool-modal')
     const field = dialog
-        .locator('label')
+        .locator('.form-field')
         .filter({ has: page.getByText('BPM', { exact: true }) })
         .locator('input')
     const bpms = () =>
@@ -389,7 +389,7 @@ test('Escape in a tool setting field reverts typing first, then closes the dialo
     const dialog = page.locator('.editor-tool-modal')
     await expect(dialog).toBeVisible()
     const field = dialog
-        .locator('label')
+        .locator('.form-field')
         .filter({ has: page.getByText('Guide Alpha', { exact: true }) })
         .locator('input')
     await field.fill('0.5')
@@ -415,7 +415,7 @@ test('Escape reverts unparseable typing in an empty number field', async ({ page
     const dialog = page.locator('.editor-tool-modal')
     await expect(dialog).toBeVisible()
     const field = dialog
-        .locator('label')
+        .locator('.form-field')
         .filter({ has: page.getByText('Guide Alpha', { exact: true }) })
         .locator('input')
     await field.focus()
@@ -1372,7 +1372,7 @@ test('Escape over a hovered flyout reverts the typing in a focused field', async
         page.evaluate(() => window.editorTest.snapshot().notes.map((note) => note.left))
     const before = await lefts()
     const lane = page
-        .locator('#properties-section-selection label')
+        .locator('#properties-section-selection .form-field')
         .filter({ has: page.getByText('Lane', { exact: true }) })
         .locator('input')
     const shownText = await lane.inputValue()
@@ -1612,7 +1612,7 @@ test('Escape after a native undo back to the committed value closes the tool dia
     })
     const dialog = page.locator('.editor-tool-modal')
     const field = dialog
-        .locator('label')
+        .locator('.form-field')
         .filter({ has: page.getByText('BPM', { exact: true }) })
         .locator('input')
     const point = await page.evaluate(() => window.editorTest.point(0, 2))

@@ -306,7 +306,7 @@ test('an Elevation Editor Slide add under a Properties draft lands as its ghost:
     )
     await page.evaluate(() => (window.editorTest.settings.showSidebar = true))
     await page
-        .locator('#workspace-panel-properties #properties-section-selection label')
+        .locator('#workspace-panel-properties #properties-section-selection .form-field')
         .filter({ has: page.getByText('Elevation', { exact: true }) })
         .locator('input')
         .fill('2')

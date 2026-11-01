@@ -244,7 +244,7 @@ test('with a Beat draft pending, the hover is what a tap selects or adds, where 
         })
     })
     const beatField = page
-        .locator('#workspace-panel-properties #properties-section-selection label')
+        .locator('#workspace-panel-properties #properties-section-selection .form-field')
         .filter({ has: page.getByText('Beat', { exact: true }) })
         .locator('input')
     // The field shows beats as the view displays them; 4 beats later.

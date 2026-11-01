@@ -51,7 +51,7 @@ const showDraft = async (page: Page, { layout, dynamic }: Layout, typed = '0') =
         { layout, dynamic },
     )
     const lane = page
-        .locator('#workspace-panel-properties #properties-section-selection label')
+        .locator('#workspace-panel-properties #properties-section-selection .form-field')
         .filter({ has: page.getByText('Lane', { exact: true }) })
         .locator('input')
     await lane.fill(typed)
@@ -348,7 +348,7 @@ test('after a cycle, a draft and its committing click: the hover showed what the
     await page.mouse.click(point.x, point.y)
     await page.mouse.click(point.x, point.y)
     const elevation = page
-        .locator('#workspace-panel-properties #properties-section-selection label')
+        .locator('#workspace-panel-properties #properties-section-selection .form-field')
         .filter({ has: page.getByText('Elevation', { exact: true }) })
         .locator('input')
     await elevation.fill('1')
@@ -417,7 +417,7 @@ test("Composed: with a stage's move drafted, a Note tool ghost lands where the c
         await nextTick()
     })
     await page
-        .locator('#workspace-panel-properties #properties-section-selection label')
+        .locator('#workspace-panel-properties #properties-section-selection .form-field')
         .filter({ has: page.getByText('X Translation', { exact: true }) })
         .locator('input')
         .fill('3')
@@ -486,7 +486,7 @@ test('Basic: a draft of the copied note sets the Note ghost, as the click copies
 }) => {
     await showDraft(page, { layout: 'basic', dynamic: false })
     await page
-        .locator('#workspace-panel-properties #properties-section-selection label')
+        .locator('#workspace-panel-properties #properties-section-selection .form-field')
         .filter({ has: page.getByText('Size', { exact: true }) })
         .locator('input')
         .fill('6')
@@ -543,7 +543,7 @@ test("Basic: a Slide ghost copies the drafted slide's nearest note, as the click
     })
     // The red note drafted to beat 1, nearest before beat 2.
     await page
-        .locator('#workspace-panel-properties #properties-section-selection label')
+        .locator('#workspace-panel-properties #properties-section-selection .form-field')
         .filter({ has: page.getByText('Beat', { exact: true }) })
         .locator('input')
         .fill('1')

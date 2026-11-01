@@ -82,7 +82,7 @@ for (const layout of ['basic', 'composed'] as const) {
             })
             await select(page, lanes[layout].tick, 4)
             const control = page
-                .locator('#workspace-panel-properties #properties-section-selection label')
+                .locator('#workspace-panel-properties #properties-section-selection .form-field')
                 .filter({ has: page.getByText('Attached', { exact: true }) })
                 .locator('input')
             await control.click()

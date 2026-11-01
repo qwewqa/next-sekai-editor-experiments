@@ -6,7 +6,7 @@ const panel = (page: Page) => page.locator('#workspace-panel-properties')
 const selection = (page: Page) => panel(page).locator('#properties-section-selection')
 const control = (page: Page, label: string) =>
     selection(page)
-        .locator('label')
+        .locator('.form-field')
         .filter({ has: page.getByText(label, { exact: true }) })
         .locator('input, select')
 
@@ -845,7 +845,7 @@ test.describe('unset values', () => {
     const tool = (page: Page) => panel(page).locator('#properties-section-tool')
     const empty = (page: Page, label: string) =>
         tool(page)
-            .locator('label')
+            .locator('.form-field')
             .filter({ has: page.getByText(label, { exact: true }) })
             .locator('select option')
             .first()
@@ -857,7 +857,7 @@ test.describe('unset values', () => {
         await expect(empty(page, 'Critical')).toHaveText('Copy')
         await expect(empty(page, 'Type')).toHaveText('Auto')
         await tool(page)
-            .locator('label')
+            .locator('.form-field')
             .filter({ has: page.getByText('Copy Properties', { exact: true }) })
             .locator('input')
             .click()

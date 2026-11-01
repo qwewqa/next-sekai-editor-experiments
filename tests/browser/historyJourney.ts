@@ -548,7 +548,7 @@ export const setProperty = async (page: Page, label: string, value: string) => {
         window.editorTest.settings.propertiesSection = 'selection'
     })
     const field = page
-        .locator('#workspace-panel-properties #properties-section-selection label')
+        .locator('#workspace-panel-properties #properties-section-selection .form-field')
         .filter({ has: page.getByText(label, { exact: true }) })
         .locator('input')
     await expect(field).toBeVisible()

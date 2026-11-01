@@ -597,7 +597,7 @@ test.describe('tool dialogs', () => {
             await focusSelectionProperties(true)
         })
         const size = dialog(page)
-            .locator('label')
+            .locator('.form-field')
             .filter({ has: page.getByText('Size', { exact: true }) })
             .locator('input')
         await size.fill('5')
@@ -645,7 +645,7 @@ test.describe('dock', () => {
 
     const control = (page: Page, label: string) =>
         page
-            .locator('#properties-section-selection label')
+            .locator('#properties-section-selection .form-field')
             .filter({ has: page.getByText(label, { exact: true }) })
             .locator('input, select')
 
