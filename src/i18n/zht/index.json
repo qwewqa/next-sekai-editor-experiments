@@ -1060,10 +1060,10 @@
       "nameContrast": "為圖層名稱和舞台名稱加上黑色描邊，並提高舞台名稱的亮度。",
       "dragToPanY": "在譜面頂部或底部邊緣附近拖曳時，向上或向下捲動譜面。",
       "dragToPanX": "在譜面左側或右側邊緣附近拖曳時，水平捲動譜面。",
-      "previewRenderScale": "縮放預覽的渲染解析度，範圍為 0.25 到 2。數值越低，細節越少，渲染工作量也越小。",
+      "previewRenderScale": "縮放預覽的解析度，範圍為 0.25 倍到 2 倍。數值越低，清晰度越低，並可能提升效能。",
       "previewInWorker": "與編輯器的其他部分平行繪製預覽。如果預覽顯示異常或沒有顯示，請關閉此項。",
       "toolbarQuickSwitch": "按住工具列按鈕，再在要選擇的工具上放開即可。",
-      "playFollowPosition": "設定「跟隨」將播放游標保持在譜面上的位置，底部為 0，頂部為 100。",
+      "playFollowPosition": "設定「跟隨」將播放游標保持在可見譜面上的位置，底部為 0，頂部為 100。",
       "playPreviewDuration": "設定移動播放游標或選取物件時 BGM 的播放時長。",
       "mouseSecondaryTool": {
         "intro": "設定以右鍵按一下和按住右鍵拖曳的操作。",
@@ -1094,7 +1094,7 @@
       },
       "elevationConnectorArrows": "選取滑條或將指標停留在滑條上時，在每條連接線上顯示從起點指向終點的箭頭。",
       "groupsStagesSideBySide": {
-        "intro": "設定何時在「預覽」下方並排顯示「圖層」和「舞台」。",
+        "intro": "設定「圖層」和「舞台」停靠在「預覽」下方時並排顯示的條件。",
         "choices": {
           "auto": "在面板較寬時並排顯示。",
           "enabled": "只要兩個面板放得下，就並排顯示。",
@@ -1139,7 +1139,7 @@
           "touch": "裝置支援觸控時，為該區域加上底色。"
         }
       },
-      "touchScrollInertia": "讓譜面在觸控捲動後繼續捲動，並逐漸減速。",
+      "touchScrollInertia": "讓譜面在抬起手指後繼續捲動，並逐漸減速。",
       "touchDragHandles": "在面板邊緣以及圖層和舞台的各列上顯示把手。用觸控拖曳列時，需要使用列上的把手。",
       "showPropertyDescriptions": "在譜面屬性旁顯示資訊按鈕。"
     },
@@ -2596,7 +2596,7 @@
     "shareImageTitle": "分享圖片",
     "link": "連結",
     "copyImage": "複製圖片",
-    "share": "分享",
+    "share": "分享圖片",
     "downloadImage": "下載圖片",
     "copiedImage": "已複製圖片",
     "notCopiedImage": "無法複製圖片",

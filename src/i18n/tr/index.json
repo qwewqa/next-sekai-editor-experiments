@@ -1060,10 +1060,10 @@
       "nameContrast": "Grup ve sahne adlarının çevresine siyah bir kontur ekler ve sahne adlarını daha parlak gösterir.",
       "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklediğinizde çizelgeyi yukarı veya aşağı kaydırır.",
       "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklediğinizde çizelgeyi yana kaydırır.",
-      "previewRenderScale": "Önizlemenin çizim çözünürlüğünü 0.25 ile 2 arasında ölçekler. Daha düşük değerler ayrıntıyı ve çizim yükünü azaltır.",
+      "previewRenderScale": "Önizlemenin çözünürlüğünü 0.25 ile 2 kat arasında ölçekler. Daha düşük değerler keskinliği azaltır ve performansı artırabilir.",
       "previewInWorker": "Önizlemeyi editörün geri kalanıyla paralel olarak çizer. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
       "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçmenizi sağlar.",
-      "playFollowPosition": "Takip Et’in oynatma imlecini hangi yükseklikte tutacağını belirler. Çizelgenin altı 0, üstü 100’dür.",
+      "playFollowPosition": "Takip Et’in oynatma imlecini hangi yükseklikte tutacağını belirler. Çizelgenin görünen kısmının altı 0, üstü 100’dür.",
       "playPreviewDuration": "Oynatma imlecini taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin ne kadar süre çalacağını belirler.",
       "mouseSecondaryTool": {
         "intro": "Sağ tıklamanın ve sağ tuşla sürüklemenin ne yapacağını belirler.",
@@ -1094,7 +1094,7 @@
       },
       "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmalarda, her bağlayıcının başlangıcından sonuna doğru oklar gösterir.",
       "groupsStagesSideBySide": {
-        "intro": "Gruplar ve Sahneler panellerinin Önizleme’nin altında ne zaman yan yana gösterileceğini belirler.",
+        "intro": "Gruplar ve Sahneler panellerinin Önizleme’nin altına yerleştirildiklerinde ne zaman yan yana gösterileceğini belirler.",
         "choices": {
           "auto": "Paneller geniş olduğunda yan yana yerleştirir.",
           "enabled": "İkisi de sığdığında yan yana yerleştirir.",
@@ -1139,7 +1139,7 @@
           "touch": "Dokunmatik giriş kullanılabiliyorsa alanı gölgelendirir."
         }
       },
-      "touchScrollInertia": "Dokunarak kaydırdıktan sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar.",
+      "touchScrollInertia": "Parmağınızı kaldırdıktan sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar.",
       "touchDragHandles": "Panel kenarlarında ve Gruplar ile Sahneler panellerindeki satırlarda tutamaçları gösterir. Satırları dokunarak sürüklemek için satır tutamaçlarını kullanmanız gerekir.",
       "showPropertyDescriptions": "Çizelge özelliklerinin yanında bilgi düğmeleri gösterir."
     },
@@ -2596,7 +2596,7 @@
     "shareImageTitle": "Görseli Paylaş",
     "link": "Bağlantı",
     "copyImage": "Görseli Kopyala",
-    "share": "Paylaş",
+    "share": "Görseli Paylaş",
     "downloadImage": "Görseli İndir",
     "copiedImage": "Görsel kopyalandı",
     "notCopiedImage": "Görsel kopyalanamadı",

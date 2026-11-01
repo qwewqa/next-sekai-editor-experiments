@@ -1050,7 +1050,7 @@
                 "choices": {
                     "off": "Requires a width greater than zero.",
                     "anchors": "Lets anchors be zero lanes wide.",
-                    "all": "Allows any note to be zero lanes wide."
+                    "all": "Lets any note be zero lanes wide."
                 }
             },
             "dimUnchangedObjects": "Sets the default for Show Edits when you view Timeline steps.",
@@ -1060,10 +1060,10 @@
             "nameContrast": "Outlines group and stage names in black and brightens stage names.",
             "dragToPanY": "Scrolls the chart up or down when you drag near its top or bottom edge.",
             "dragToPanX": "Scrolls the chart sideways when you drag near its left or right edge.",
-            "previewRenderScale": "Scales the preview’s rendering resolution, from 0.25 to 2. Lower values reduce detail and rendering work.",
+            "previewRenderScale": "Scales the preview’s resolution from 0.25× to 2×. Lower values reduce sharpness and can improve performance.",
             "previewInWorker": "Draws the preview in parallel with the rest of the editor. Turn this off if the preview looks wrong or does not appear.",
             "toolbarQuickSwitch": "Lets you hold a toolbar button and release on a tool to choose it.",
-            "playFollowPosition": "Sets where Follow keeps the playback cursor, from 0 at the bottom of the chart to 100 at the top.",
+            "playFollowPosition": "Sets where Follow keeps the playback cursor, from 0 at the bottom of the visible chart to 100 at the top.",
             "playPreviewDuration": "Sets how long the BGM plays when you move the playback cursor or select an object.",
             "mouseSecondaryTool": {
                 "intro": "Sets what right-click and right-drag do.",
@@ -1092,9 +1092,9 @@
                     "disallow": "Opens it in place of the chart."
                 }
             },
-            "elevationConnectorArrows": "Shows arrows on the connectors of selected or hovered slides, pointing from start to end.",
+            "elevationConnectorArrows": "Shows arrows from start to end on the connectors of selected or hovered slides.",
             "groupsStagesSideBySide": {
-                "intro": "Sets when Groups and Stages are shown side by side below Preview.",
+                "intro": "Sets when Groups and Stages are shown side by side while they are docked below Preview.",
                 "choices": {
                     "auto": "Puts them side by side when the panels are wide.",
                     "enabled": "Puts them side by side whenever both fit.",
@@ -1139,7 +1139,7 @@
                     "touch": "Shades the zone when touch input is available."
                 }
             },
-            "touchScrollInertia": "Lets the chart keep scrolling and slow down gradually after you scroll by touch.",
+            "touchScrollInertia": "Lets the chart keep scrolling and slow down gradually after you lift your finger.",
             "touchDragHandles": "Shows handles on panel edges and on rows in Groups and Stages. You need the row handles to drag rows by touch.",
             "showPropertyDescriptions": "Shows info buttons beside chart properties."
         },
@@ -2596,7 +2596,7 @@
         "shareImageTitle": "Share Image",
         "link": "Link",
         "copyImage": "Copy Image",
-        "share": "Share",
+        "share": "Share Image",
         "downloadImage": "Download Image",
         "copiedImage": "Copied the image",
         "notCopiedImage": "Could not copy the image",

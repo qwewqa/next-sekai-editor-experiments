@@ -1060,10 +1060,10 @@
       "nameContrast": "Entoure les noms des groupes et des scènes d’un contour noir et éclaircit les noms des scènes.",
       "dragToPanY": "Fait défiler la partition vers le haut ou vers le bas lorsque vous faites glisser près de son bord supérieur ou inférieur.",
       "dragToPanX": "Fait défiler la partition horizontalement lorsque vous faites glisser près de son bord gauche ou droit.",
-      "previewRenderScale": "Ajuste la résolution de rendu de l’aperçu, de 0.25 à 2. Des valeurs plus basses réduisent les détails et le travail de rendu.",
+      "previewRenderScale": "Ajuste la résolution de l’aperçu, de 0.25× à 2×. Des valeurs plus basses réduisent la netteté et peuvent améliorer les performances.",
       "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
       "toolbarQuickSwitch": "Permet de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
-      "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur de lecture, de 0 en bas de la partition à 100 en haut.",
+      "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur de lecture, de 0 en bas de la partie visible de la partition à 100 en haut.",
       "playPreviewDuration": "Définit la durée de lecture de la musique lorsque vous déplacez le curseur de lecture ou sélectionnez un objet.",
       "mouseSecondaryTool": {
         "intro": "Définit l’action du clic droit et du glissement avec le bouton droit.",
@@ -1092,9 +1092,9 @@
           "disallow": "L’ouvre à la place de la partition."
         }
       },
-      "elevationConnectorArrows": "Affiche des flèches sur les connecteurs des slides sélectionnés ou survolés, pointant du début vers la fin.",
+      "elevationConnectorArrows": "Affiche des flèches pointant du début vers la fin sur les connecteurs des slides sélectionnés ou survolés.",
       "groupsStagesSideBySide": {
-        "intro": "Définit quand Groupes et Scènes s’affichent côte à côte sous Aperçu.",
+        "intro": "Définit quand Groupes et Scènes s’affichent côte à côte lorsqu’ils sont ancrés sous Aperçu.",
         "choices": {
           "auto": "Les place côte à côte lorsque les panneaux sont larges.",
           "enabled": "Les place côte à côte dès que les deux y tiennent.",
@@ -1139,7 +1139,7 @@
           "touch": "Colore le fond de la zone lorsque l’appareil prend en charge le tactile."
         }
       },
-      "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après un défilement tactile.",
+      "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après avoir levé le doigt.",
       "touchDragHandles": "Affiche des poignées sur les bords des panneaux et sur les lignes de Groupes et Scènes. Pour faire glisser une ligne au doigt, vous devez utiliser sa poignée.",
       "showPropertyDescriptions": "Affiche des boutons d’information à côté des propriétés de la partition."
     },
@@ -2596,7 +2596,7 @@
     "shareImageTitle": "Partager l’image",
     "link": "Lien",
     "copyImage": "Copier l’image",
-    "share": "Partager",
+    "share": "Partager l’image",
     "downloadImage": "Télécharger l’image",
     "copiedImage": "Image copiée",
     "notCopiedImage": "Impossible de copier l’image",

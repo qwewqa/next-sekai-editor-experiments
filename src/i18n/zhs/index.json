@@ -1060,10 +1060,10 @@
       "nameContrast": "为群组名称和舞台名称加上黑色描边，并提高舞台名称的亮度。",
       "dragToPanY": "在谱面顶部或底部边缘附近拖动时，向上或向下滚动谱面。",
       "dragToPanX": "在谱面左侧或右侧边缘附近拖动时，横向滚动谱面。",
-      "previewRenderScale": "缩放预览的渲染分辨率，范围为 0.25 到 2。数值越低，细节越少，渲染工作量也越小。",
+      "previewRenderScale": "缩放预览的分辨率，范围为 0.25 倍到 2 倍。数值越低，清晰度越低，并可能提升性能。",
       "previewInWorker": "与编辑器的其他部分并行绘制预览。如果预览显示异常或没有显示，请关闭此项。",
       "toolbarQuickSwitch": "按住工具栏按钮，再在要选择的工具上松开即可。",
-      "playFollowPosition": "设置“跟随”将播放光标保持在谱面上的位置，底部为 0，顶部为 100。",
+      "playFollowPosition": "设置“跟随”将播放光标保持在可见谱面上的位置，底部为 0，顶部为 100。",
       "playPreviewDuration": "设置移动播放光标或选择对象时背景音乐的播放时长。",
       "mouseSecondaryTool": {
         "intro": "设置右键单击和按住右键拖动的操作。",
@@ -1094,7 +1094,7 @@
       },
       "elevationConnectorArrows": "选中长按音符或将指针悬停在其上时，在每个连接上显示从起点指向终点的箭头。",
       "groupsStagesSideBySide": {
-        "intro": "设置何时在“预览”下方并排显示“群组”和“舞台”。",
+        "intro": "设置“群组”和“舞台”停靠在“预览”下方时并排显示的条件。",
         "choices": {
           "auto": "在面板较宽时并排显示。",
           "enabled": "只要两个面板放得下，就并排显示。",
@@ -1139,7 +1139,7 @@
           "touch": "设备支持触控时，为该区域加上底色。"
         }
       },
-      "touchScrollInertia": "让谱面在触控滚动后继续滚动，并逐渐减速。",
+      "touchScrollInertia": "让谱面在抬起手指后继续滚动，并逐渐减速。",
       "touchDragHandles": "在面板边缘以及群组和舞台的各行上显示手柄。用触控拖动行时，需要使用行上的手柄。",
       "showPropertyDescriptions": "在谱面属性旁显示信息按钮。"
     },
@@ -2596,7 +2596,7 @@
     "shareImageTitle": "分享图像",
     "link": "链接",
     "copyImage": "复制图像",
-    "share": "分享",
+    "share": "分享图像",
     "downloadImage": "下载图像",
     "copiedImage": "已复制图像",
     "notCopiedImage": "无法复制图像",
