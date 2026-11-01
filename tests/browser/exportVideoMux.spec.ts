@@ -16,7 +16,7 @@ for (const format of ['webm', 'mp4'] as const)
     for (const start of [0, 83])
         test(`${format} streams a clip from ${start} s with aligned sound and less than one packet of padding`, async ({
             page,
-        }) => {
+        }, testInfo) => {
             const supported = await page.evaluate(async (format) => {
                 const { createCodecProbes } = await import('/src/exportVideo/codecs.ts')
                 return createCodecProbes().resolve({
@@ -52,19 +52,32 @@ for (const format of ['webm', 'mp4'] as const)
             expect(result.phase).toBe('ready')
             expect(result.retained).toBe(false)
             const media = result.media!
+            await testInfo.attach('media', {
+                contentType: 'application/json',
+                body: JSON.stringify({ format, start, media, result: result.result }),
+            })
             expect(media.frames).toBe(76)
             expect(media.firstVideo).toBe(0)
             expect(media.width).toBe(320)
             expect(media.height).toBe(180)
             expect(Math.abs(media.videoEnd - 76 / 30)).toBeLessThan(0.0011)
-            expect(Math.abs(media.firstSound!)).toBeLessThan(0.002)
+            const precision = format === 'webm' ? 0.001 : 1 / 48000
+            // AAC decoding can return silent pre-roll before the first presented sample.
+            expect(media.firstAudio!).toBeLessThanOrEqual(precision)
+            // The fixture's 440 Hz tone has a 5 ms attack.
+            const onset = Array.from({ length: 240 }, (_, i) =>
+                Math.abs(0.25 * Math.sin((i * 2 * Math.PI * 440) / 48000) * (i / 240)),
+            ).findIndex((value) => value > 0.1)
+            expect(Math.abs(media.firstSound! - onset / 48000)).toBeLessThan(0.001)
             expect(media.earlyPeak).toBeGreaterThan(0.1)
             const packetSamples = format === 'mp4' ? 1024 : 960
             const padding = (result.result as { paddingSamples: number }).paddingSamples
             expect(padding).toBeGreaterThanOrEqual(0)
             expect(padding).toBeLessThan(packetSamples)
             expect(Math.abs(media.audioEnd - (121600 + padding) / 48000)).toBeLessThan(0.0011)
-            expect(media.duration).toBeGreaterThan(0)
+            expect(
+                Math.abs(media.duration - Math.max(media.videoEnd, media.audioEnd)),
+            ).toBeLessThan(0.0011)
             expect(media.colorSpace).toBeDefined()
         })
 
@@ -78,8 +91,8 @@ test('cancel before finalising a real mux removes the staged file', async ({ pag
 })
 
 for (const format of ['webm', 'mp4'] as const)
-    for (const cancel of [false, true])
-        test(`${format} picked output ${cancel ? 'can be discarded after muxing' : 'preserves colour tags and pixels'}`, async ({
+    for (const cancel of [false, true, 'writing'] as const)
+        test(`${format} picked output ${cancel === 'writing' ? 'can be cancelled during a write' : cancel ? 'can be discarded after muxing' : 'preserves colour tags and pixels'}`, async ({
             page,
         }) => {
             const result = await page.evaluate(
@@ -92,12 +105,23 @@ for (const format of ['webm', 'mp4'] as const)
             if (format === 'mp4') test.skip(!result, 'This browser does not encode H.264')
             expect(result).toBeDefined()
             expect(result!.beforeCommit).toBe(0)
-            if (cancel) expect(result!.removed).toBe(true)
-            else {
+            if (cancel) {
+                expect(result!.removed).toBe(true)
+                expect(result!.writes).toBeGreaterThan(0)
+                if (cancel === 'writing') expect(result!.cancelledDuringWrite).toBe(true)
+            } else {
                 expect(result!.size).toBeGreaterThan(0)
                 expect(result!.expectedColor).toBeDefined()
                 expect(result!.actualColor).toEqual(result!.expectedColor)
-                expect(result!.maxError).toBeLessThanOrEqual(4)
+                expect(result!.muxError).toBe(0)
+                expect(
+                    result!.maxError,
+                    JSON.stringify({
+                        directMaxError: result!.directMaxError,
+                        directColor: result!.directColor,
+                        expectedColor: result!.expectedColor,
+                    }),
+                ).toBeLessThanOrEqual(4)
                 if (format === 'mp4') expect(result!.indexBeforeMedia).toBe(true)
             }
         })

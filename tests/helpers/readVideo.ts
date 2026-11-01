@@ -25,10 +25,12 @@ export const readVideo = async (bytes: number[]) => {
             frames++
         }
         let audioEnd = 0
+        let firstAudio: number | undefined
         let firstSound: number | undefined
         let earlyPeak = 0
         for await (const sample of new AudioSampleSink(audio).samples()) {
             try {
+                firstAudio ??= sample.timestamp
                 const plane = new Float32Array(sample.numberOfFrames)
                 sample.copyTo(plane, { planeIndex: 0, format: 'f32-planar' })
                 for (let i = 0; i < plane.length; i++) {
@@ -50,6 +52,7 @@ export const readVideo = async (bytes: number[]) => {
             firstVideo,
             videoEnd,
             audioEnd,
+            firstAudio,
             firstSound,
             earlyPeak,
             width: await video.getDisplayWidth(),

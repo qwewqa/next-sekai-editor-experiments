@@ -4,7 +4,7 @@ import { videoPacket, type MuxInput } from '../../src/exportVideo/worker/encode'
 import { openMuxOutput } from '../../src/exportVideo/worker/mux'
 
 /** OPFS handles exercise the picked target's writable stream without opening a picker. */
-export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean) => {
+export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean | 'writing') => {
     const codecs = await createCodecProbes().resolve({
         format,
         width: 320,
@@ -20,6 +20,22 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean) =>
     const name = `mux-${crypto.randomUUID()}.${format}`
     const handle = await root.getFileHandle(name, { create: true })
     const controller = new AbortController()
+    let writes = 0
+    let beforeCommit: number | undefined
+    const createWritable = handle.createWritable.bind(handle)
+    handle.createWritable = async (options) => {
+        const writable = await createWritable(options)
+        const write = writable.write.bind(writable)
+        writable.write = async (data) => {
+            await write(data)
+            writes++
+            if (cancel === 'writing') {
+                beforeCommit = (await handle.getFile()).size
+                controller.abort()
+            }
+        }
+        return writable
+    }
     const output = await openMuxOutput(
         { codecs, frames: 1, frameRate: 30, samples: 1600 },
         {
@@ -65,9 +81,49 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean) =>
         }
         await encoder.flush()
         if (failure) throw failure
+        const first = packets[0]!
+        if (first.track !== 'video' || !first.decoderConfig)
+            throw new Error('Missing video configuration')
+        let directPixels: Uint8ClampedArray<ArrayBufferLike> | undefined
+        let directColor: VideoColorSpaceInit | undefined
+        const decoder = new VideoDecoder({
+            error: (error) => {
+                failure = error
+            },
+            output: (frame) => {
+                try {
+                    directColor = frame.colorSpace.toJSON()
+                    context.drawImage(frame, 0, 0)
+                    directPixels = context.getImageData(0, 0, 320, 180).data
+                } finally {
+                    frame.close()
+                }
+            },
+        })
+        try {
+            decoder.configure(first.decoderConfig)
+            for (const packet of packets) {
+                if (packet.track !== 'video') continue
+                decoder.decode(new EncodedVideoChunk(packet.packet))
+            }
+            await decoder.flush()
+            if (failure) throw failure
+        } finally {
+            decoder.close()
+        }
         for (const packet of packets) await output.sink.add(packet)
-        await output.sink.finalize()
-        const beforeCommit = (await handle.getFile()).size
+        let cancelledDuringWrite = false
+        try {
+            await output.sink.finalize()
+        } catch (error) {
+            if (
+                cancel !== 'writing' ||
+                !(error instanceof DOMException && error.name === 'AbortError')
+            )
+                throw error
+            cancelledDuringWrite = true
+        }
+        if (cancel !== 'writing') beforeCommit = (await handle.getFile()).size
         if (cancel) {
             controller.abort()
             await output.sink.abort()
@@ -79,7 +135,7 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean) =>
                 if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error
                 removed = true
             }
-            return { beforeCommit, removed }
+            return { beforeCommit, removed, writes, cancelledDuringWrite }
         }
         await output.commit()
         const bytes = new Uint8Array(await (await handle.getFile()).arrayBuffer())
@@ -100,15 +156,25 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean) =>
             }
             const pixels = context.getImageData(0, 0, 320, 180).data
             let maxError = 0
+            let directMaxError = 0
+            let muxError = 0
             for (let patch = 0; patch < colors.length; patch++)
                 for (let channel = 0; channel < 3; channel++) {
                     const i = (90 * 320 + patch * 40 + 20) * 4 + channel
                     maxError = Math.max(maxError, Math.abs(pixels[i]! - original[i]!))
+                    directMaxError = Math.max(
+                        directMaxError,
+                        Math.abs(directPixels![i]! - original[i]!),
+                    )
+                    muxError = Math.max(muxError, Math.abs(pixels[i]! - directPixels![i]!))
                 }
             const first = packets[0]!
             return {
                 beforeCommit,
                 maxError,
+                directColor,
+                directMaxError,
+                muxError,
                 expectedColor:
                     first.track === 'video' ? first.decoderConfig?.colorSpace : undefined,
                 actualColor: config?.colorSpace,

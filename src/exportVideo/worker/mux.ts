@@ -58,6 +58,7 @@ export const createMuxSink = async (
                 frames++
             } else {
                 if (!audio) throw new Error('Unexpected audio packet')
+                // Negative timestamps supply WebM CodecDelay and the MP4 edit list.
                 await audio.add(packet, { decoderConfig: input.decoderConfig })
             }
         },

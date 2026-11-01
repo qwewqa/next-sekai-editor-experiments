@@ -124,10 +124,10 @@ test('the upstream-unconfirmed files are not covered by MIT', () => {
 
 test('Mediabunny is pinned and its unmodified licence is included in releases', () => {
     const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8')
-    assert.equal(JSON.parse(read('package.json')).dependencies.mediabunny, '1.61.6')
+    assert.equal(JSON.parse(read('package.json')).dependencies.mediabunny, '1.65.0')
     assert.equal(
         JSON.parse(read('package-lock.json')).packages['node_modules/mediabunny'].version,
-        '1.61.6',
+        '1.65.0',
     )
     assert.equal(
         read('deployment/notices/Mediabunny-MPL-2.0.txt'),
