@@ -31,7 +31,7 @@
 - Added Preview Assets to the toolbar and the Preview panel’s menu for choosing the skin, particle effects, background and sound effects.
 - Open (O) now opens Sonolus packages (.scp). A package with one level and nothing else opens that level. Otherwise, a list shows each level with Open, and each skin, particle effect, background and set of sound effects with Import. Import adds the item to Preview Assets and uses it.
 - (Web) The editor now also includes the Next SEKAI 02 skin and sound effects.
-- Added a Minimap beside the chart. It shows the whole chart and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its left edge to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap.
+- Added a Minimap beside the chart. It shows the whole chart and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its edge next to the chart to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap.
 - The Minimap shows the selection. Selected notes are white, and cyan bars at its right edge show where the selected objects are, including BPM changes, time scales and events.
 - The Minimap shows only what the chart shows: hiding or isolating groups and stages, and hiding notes, also applies to the Minimap.
 - Added Statistics to the toolbar. It shows the combo, the count of each note type, Notes per Second and the times of the first and last notes. Copy Text copies the statistics, and Share Image… makes an image of them to share, copy or download. If you have customized the toolbar, add Statistics in Settings › Toolbar.
@@ -60,6 +60,7 @@
 - (Web) Added safe mode. If the editor does not start, add ?safe to its address.
 - Help now has an entry for each tool, in sections with an index as in Settings. It opens at the entry for the tool you are using, at History while you view a Timeline step or a session, or at the Elevation Editor when it fills the chart.
 - Hide group names when focusing a group and Hide stage names when focusing a stage are now Hide Group Names When One Group Is Current and Hide Stage Names When One Stage Is Current.
+- To move the Minimap or the quick scroll zone to the left of the chart, use Settings › Editor › Minimap Side or Settings › Touch › Quick Scroll Zone Side.
 - Added Settings › Touch › Show Drag Handles. Turn it off to hide the handles on panel edges and on rows in Groups and Stages. Rows can then be moved by touch only from their menu.
 
 ## 0.5.22 (2026-10-17)

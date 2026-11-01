@@ -29,6 +29,15 @@ import SettingsSection from './SettingsSection.vue'
             ]"
         />
 
+        <SelectField
+            v-model="settings.touchQuickScrollSide"
+            :label="i18n.settings.touch.quickScrollSide.title"
+            :options="[
+                [i18n.settings.touch.quickScrollSide.left, 'left'],
+                [i18n.settings.touch.quickScrollSide.right, 'right'],
+            ]"
+        />
+
         <ToggleField
             v-model="settings.touchScrollInertia"
             :label="i18n.settings.touch.scrollInertia"

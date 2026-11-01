@@ -7,7 +7,7 @@ import { groupFolders, groups } from '../history/groups'
 import { stageFolders, stages } from '../history/stages'
 import { i18n } from '../i18n'
 import { detection } from '../platform/detect'
-import { MINIMAP_WIDTH, settings } from '../settings'
+import { settings } from '../settings'
 import { interpolateRaw } from '../utils/interpolate'
 import { vFocusRescue } from '../directives/focusRescue'
 import LevelEditorCanvas from './canvas/LevelEditorCanvas.vue'
@@ -23,8 +23,7 @@ import { activateEditorNavigation, useControlLifecycle } from './controls'
 import { useFocusControl } from './controls/focus'
 import { useKeyboardControl } from './controls/keyboard'
 import './peek'
-import Minimap from './minimap/Minimap.vue'
-import { isMinimapShown } from './minimap/state'
+import MinimapColumn from './minimap/MinimapColumn.vue'
 import LevelEditorNotification from './LevelEditorNotification.vue'
 import PeekBar from './history/PeekBar.vue'
 import ChangeBand from './history/ChangeBand.vue'
@@ -41,7 +40,7 @@ import { hasToolModal } from './toolModals'
 import { switchToolTo, tool, toolName, type ToolName } from './tools'
 import { brushProperties } from './tools/brush'
 import { view } from './view'
-import { minimapMaxWidth, minimapWidth, workspaceLayout } from './workspace'
+import { workspaceLayout } from './workspace'
 import ResizeHandle from './workspace/ResizeHandle.vue'
 import { formatCount } from '../utils/size'
 
@@ -103,27 +102,6 @@ const onResizeCancel = () => {
     resizing = undefined
 }
 
-// The strip is on the right, so moving its edge right (a positive pixel delta) narrows it.
-const setMinimapWidth = (width: number) => {
-    settings.minimapWidth = Math.round(
-        Math.max(MINIMAP_WIDTH.min, Math.min(minimapMaxWidth.value, width)),
-    )
-}
-let minimapResizing: { original: number; origin: number } | undefined
-const onMinimapResizeStart = () => {
-    minimapResizing = { original: settings.minimapWidth, origin: minimapWidth.value }
-}
-const onMinimapResizeMove = (delta: number) => {
-    if (minimapResizing) setMinimapWidth(minimapResizing.origin - delta)
-}
-const onMinimapResizeEnd = () => {
-    minimapResizing = undefined
-}
-const onMinimapResizeCancel = () => {
-    if (minimapResizing) settings.minimapWidth = minimapResizing.original
-    minimapResizing = undefined
-}
-
 // iOS and iPadOS have no leave prompt, so the bar is their strong sign while work is only here.
 const showNotStoredBar = computed(
     () => detection().os === 'ios' && notStored.value !== undefined && workNotInFile.value,
@@ -172,8 +150,8 @@ watch(container, (element, _, onCleanup) => {
     })
 })
 
-// Panel layout changes can move the editor without changing its dimensions.
-watch(workspaceLayout, updateBounds, { flush: 'post' })
+// Panel layout changes and the minimap's side can move the editor without changing its dimensions.
+watch([workspaceLayout, () => settings.minimapSide], updateBounds, { flush: 'post' })
 
 /**
  * Clears a focus or a brush target that Now's chart no longer has, as when its group is deleted.
@@ -312,6 +290,7 @@ const stageCount = computed(() =>
     <div ref="host" class="isolate flex flex-col" :class="{ 'slot-busy': slotLoading }">
         <NotStoredBar v-if="showNotStoredBar" />
         <div class="relative flex min-h-0 flex-grow select-none overflow-hidden">
+            <MinimapColumn v-if="!isElevationEditorOpen || isElevationSideBySide" side="left" />
             <div
                 v-if="!isElevationEditorOpen || isElevationSideBySide"
                 ref="container"
@@ -331,25 +310,7 @@ const stageCount = computed(() =>
                 <LevelEditorToolbar v-if="!hasToolModal('main')" pane="main" />
                 <EditorToolModalHost pane="main" />
             </div>
-            <template v-if="isMinimapShown && (!isElevationEditorOpen || isElevationSideBySide)">
-                <div class="relative z-10 w-0 flex-none">
-                    <ResizeHandle
-                        axis="x"
-                        :label="i18n.workspace.resize.minimap"
-                        :value="minimapWidth"
-                        :min="MINIMAP_WIDTH.min"
-                        :max="minimapMaxWidth"
-                        @start="onMinimapResizeStart"
-                        @move="onMinimapResizeMove"
-                        @end="onMinimapResizeEnd"
-                        @cancel="onMinimapResizeCancel"
-                        @step="setMinimapWidth(minimapWidth - $event)"
-                        @set="setMinimapWidth"
-                        @reset="settings.minimapWidth = MINIMAP_WIDTH.default"
-                    />
-                </div>
-                <Minimap />
-            </template>
+            <MinimapColumn v-if="!isElevationEditorOpen || isElevationSideBySide" side="right" />
             <div
                 v-if="isElevationEditorOpen && isElevationSideBySide"
                 class="relative z-10 w-px flex-none bg-white/10"

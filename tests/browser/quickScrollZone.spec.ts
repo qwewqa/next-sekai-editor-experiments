@@ -105,7 +105,7 @@ test('the zone is at most half the pane', async ({ page }) => {
     ).toEqual([200, 150])
 })
 
-test('the strip shows for On, hides for Off, and follows touch screens for Touch Screens Only', async ({
+test('the strip shows for On, hides for Off, follows touch screens for Touch Screens Only and takes its side', async ({
     page,
 }) => {
     const strip = page.locator('.editor .editor-quick-scroll-zone')
@@ -130,6 +130,11 @@ test('the strip shows for On, hides for Off, and follows touch screens for Touch
     expect(box.width).toBeCloseTo(32, 0)
     expect(box.x + box.width).toBeCloseTo(pane.x + pane.w, 0)
     expect(box.height).toBeCloseTo(pane.h, 0)
+    await page.evaluate(() => {
+        window.editorTest.settings.touchQuickScrollSide = 'left'
+    })
+    await expect.poll(async () => (await strip.boundingBox())!.x).toBeCloseTo(pane.x, 0)
+    expect((await strip.boundingBox())!.width).toBeCloseTo(32, 0)
     await set('off')
     await expect(strip).toHaveCount(0)
     await set('touch')

@@ -54,6 +54,8 @@ const panelPosition = Type.Union([
     Type.Literal('disabled'),
 ])
 
+const side = Type.Union([Type.Literal('left'), Type.Literal('right')], { default: 'right' })
+
 export const propertiesSections = ['selection', 'tool', 'view'] as const
 export type PropertiesSection = (typeof propertiesSections)[number]
 
@@ -75,6 +77,7 @@ const settingsProperties = {
     // Null: shown where the workspace is wide enough.
     showMinimap: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
     minimapWidth: number(MINIMAP_WIDTH.default, MINIMAP_WIDTH.min, MINIMAP_WIDTH.max),
+    minimapSide: side,
 
     panelRecency: Type.Codec(
         Type.Array(Type.String(), {
@@ -395,6 +398,8 @@ const settingsProperties = {
         [Type.Literal('on'), Type.Literal('off'), Type.Literal('touch')],
         { default: 'touch' },
     ),
+
+    touchQuickScrollSide: side,
 
     touchScrollInertia: Type.Boolean({ default: true }),
 

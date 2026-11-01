@@ -140,6 +140,7 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `showProperties` | Whether the Properties panel is shown | Yes or no |
 | `previewPosition`, `groupsPosition`, `stagesPosition`, `propertiesPosition`, `historyPosition` | Where each panel is placed | `auto`, `left`, `right`, `top` or `disabled` |
 | `showMinimap` | Whether the minimap is shown | `auto`, `on` or `off` |
+| `minimapSide` | Which side the minimap is on | `left` or `right` |
 | `showPropertyDescriptions` | Whether the Show Property Descriptions setting is on | Yes or no |
 | `dimUnchangedObjects` | Whether objects that a Timeline step did not change are dimmed | Yes or no |
 | `waveform` | How the music waveform is drawn | `volume`, `fft` or `off` |
@@ -149,6 +150,7 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `mouseSecondaryTool` | What the secondary mouse button does | `eraser`, `select` or `selectContextMenu` |
 | `playFollow` | Whether the view follows playback | Yes or no |
 | `touchQuickScrollShow` | When the Quick Scroll Zone is shown. Sent only when the primary pointing device has limited precision | `on`, `off` or `touch` |
+| `touchQuickScrollSide` | Which side the Quick Scroll Zone is on. Sent only when the primary pointing device has limited precision | `left` or `right` |
 | `touchLongPressContextMenu` | Whether a long press opens the context menu. Sent only when the primary pointing device has limited precision | Yes or no |
 | `touchDragHandles` | Whether the drag handles are shown. Sent only when the primary pointing device has limited precision | Yes or no |
 | `confirmCloseUnsavedFile` | Whether the Ask Before Closing with Unsaved Changes setting is on | Yes or no |

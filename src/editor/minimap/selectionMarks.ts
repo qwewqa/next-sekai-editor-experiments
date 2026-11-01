@@ -18,7 +18,7 @@ import { createRowSpread } from './tickRuns'
 import { contentVisibility } from './visibility'
 
 // The shown state's selection on the strip: each selected note drawn again in white over its own
-// mark (the lift), and a cyan rail at the right edge for each run of selected rows, which also
+// mark (the lift), and a cyan rail at the strip's right edge for each run of selected rows, which also
 // marks the selected objects the strip does not draw.
 
 const LIFT_COLOR = '#ffffff'

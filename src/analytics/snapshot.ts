@@ -45,6 +45,7 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
         showProperties: settings.showSidebar,
         propertiesPosition: settings.propertiesPosition,
         showMinimap: autoOnOff(settings.showMinimap),
+        minimapSide: settings.minimapSide,
         showPropertyDescriptions: settings.showPropertyDescriptions,
         showHistory: settings.showHistory,
         historyPosition: settings.historyPosition,
@@ -59,6 +60,7 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
         groupsStagesSideBySide: settings.groupsStagesSideBySide,
         ...(touch && {
             touchQuickScrollShow: settings.touchQuickScrollShow,
+            touchQuickScrollSide: settings.touchQuickScrollSide,
             touchLongPressContextMenu: settings.touchLongPressContextMenu,
             touchDragHandles: settings.touchDragHandles,
         }),

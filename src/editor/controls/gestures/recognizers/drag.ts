@@ -5,7 +5,7 @@ import { clockNow, keepClockWhile, time } from '../../../../time'
 import { unlerp } from '../../../../utils/math'
 import { editorNavigation, getControlBounds } from '../../../navigation'
 import { clearNotification, notification } from '../../../notification'
-import { quickScrollWidth } from '../../../quickScroll'
+import { inQuickScrollZone } from '../../../quickScroll'
 import { tool, type Tool } from '../../../tools'
 import {
     scrollViewXBy,
@@ -150,7 +150,7 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
 
             const bounds = getControlBounds(view)
             // Where the press landed decides, not where it was recognized.
-            if (!quickScroll || sx - bounds.x <= bounds.w - quickScrollWidth(bounds.w)) {
+            if (!quickScroll || !inQuickScrollZone(sx, bounds, settings.touchQuickScrollSide)) {
                 // Tools hold one drag; another input's drag leaves this press inert.
                 if (isDragging.value) return true
                 const startState = state.value

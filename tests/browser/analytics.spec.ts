@@ -493,9 +493,9 @@ test('a scripted visit counts each press once by name and source, and sends the 
         'scrollDown.key': 1,
         'zoomYIn.wheel': 1,
     })
-    // The desktop snapshot: the 31 settings, 33 keys, and no touch options.
+    // The desktop snapshot: the 32 settings, 34 keys, and no touch options.
     const settings = dataOf(first, 'settings') ?? {}
-    expect(Object.keys(settings)).toHaveLength(33)
+    expect(Object.keys(settings)).toHaveLength(34)
     expect(settings).toHaveProperty('groupsStagesSideBySide', 'auto')
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
@@ -560,6 +560,7 @@ test('the touch settings snapshot adds the touch options', async ({ page }) => {
     })
     expect(snapshot).toMatchObject({
         touchQuickScrollShow: 'touch',
+        touchQuickScrollSide: 'right',
         touchLongPressContextMenu: true,
         touchDragHandles: true,
     })

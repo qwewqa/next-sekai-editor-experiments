@@ -77,6 +77,15 @@ watch(
 
         <ToggleField v-model="showMinimap" :label="i18n.settings.editor.minimap" />
 
+        <SelectField
+            v-model="settings.minimapSide"
+            :label="i18n.settings.editor.minimapSide.title"
+            :options="[
+                [i18n.settings.editor.minimapSide.left, 'left'],
+                [i18n.settings.editor.minimapSide.right, 'right'],
+            ]"
+        />
+
         <PropertyDescriptionsField />
 
         <ToggleField

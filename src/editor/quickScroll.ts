@@ -12,6 +12,16 @@ touchScreenQuery.addEventListener('change', () => {
 export const quickScrollWidth = (paneWidth: number) =>
     Math.min(settings.touchQuickScrollWidth, paneWidth / 2)
 
+/** Whether a press at `x` is in the zone on the pane's `side`. A press on its inner edge is not. */
+export const inQuickScrollZone = (
+    x: number,
+    bounds: { x: number; w: number },
+    side: 'left' | 'right',
+) => {
+    const width = quickScrollWidth(bounds.w)
+    return side === 'left' ? x - bounds.x < width : x - bounds.x > bounds.w - width
+}
+
 export const isQuickScrollZoneShown = computed(
     () =>
         settings.touchQuickScrollWidth > 0 &&

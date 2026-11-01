@@ -104,7 +104,7 @@ const { active: hasSelection } = useMinimapLayer(selectionCanvas, mapping, drawn
 
 <template>
     <div
-        class="relative flex-none touch-none select-none overflow-hidden bg-bg shadow-[inset_1px_0_0_rgb(255_255_255/0.1)]"
+        class="relative flex-none touch-none select-none overflow-hidden bg-bg"
         :class="isGrabbing ? 'cursor-grabbing' : 'cursor-pointer'"
         :style="{ width: `${minimapWidth}px` }"
         aria-hidden="true"

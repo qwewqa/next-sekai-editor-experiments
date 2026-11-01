@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createMapping } from '../../src/editor/minimap/mapping'
-import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, touchInput, useTool } from './editorFixture'
 import { row as historyRow } from './historyJourney'
 import { confirmReset } from './resetConfirm'
 
@@ -397,6 +397,78 @@ test.describe('placement, command and setting', () => {
         })
         await settle(page)
         expect(await layout()).toEqual(on)
+    })
+})
+
+test.describe('side', () => {
+    test.beforeEach(async ({ page }) => {
+        await open(page, { size: { width: 1280, height: 800 }, long: false })
+    })
+
+    test('a click on a note selects it after the strip moves to the left', async ({ page }) => {
+        await page.evaluate(async () => {
+            const { fixtures, show, settings, nextTick } = window.editorTest
+            const template = fixtures.interaction.slides.flat()[0]!
+            show(
+                {
+                    ...fixtures.interaction,
+                    slides: [[{ ...template, beat: 2, left: -1, size: 2, isAttached: false }]],
+                },
+                1.1,
+            )
+            settings.minimapWidth = 160
+            await nextTick()
+        })
+        await useTool(page, 'select')
+        await settle(page)
+        await page.evaluate(() => {
+            window.editorTest.settings.minimapSide = 'left'
+        })
+        await settle(page)
+        // From the pane's place on screen, not from the editor's own record of it.
+        const at = await page.evaluate(() => {
+            const { view, settings } = window.editorTest
+            const pane = document.querySelector('.chart-pane')!.getBoundingClientRect()
+            const strip = document.querySelector('[data-minimap]')!.getBoundingClientRect()
+            return {
+                x: pane.x + pane.width * (0.5 + (0 - view.lane) / settings.width),
+                y: pane.y + pane.height / 2 - (2 / 2 - view.time) * settings.pps,
+                stripRight: strip.right,
+                paneLeft: pane.x,
+            }
+        })
+        expect(at.stripRight).toBeCloseTo(at.paneLeft, 0)
+        await page.mouse.click(at.x, at.y)
+        await expect
+            .poll(() => page.evaluate(() => window.editorTest.snapshot().selected))
+            .toEqual([{ type: 'note', beat: 2, left: -1, size: 2 }])
+    })
+
+    test('on the left, dragging the edge right and ArrowRight widen the strip', async ({
+        page,
+    }) => {
+        await page.evaluate(() => {
+            window.editorTest.settings.minimapSide = 'left'
+        })
+        const handle = page.getByRole('separator', { name: 'Resize Minimap', exact: true })
+        await expect(handle).toBeVisible()
+        const strip = page.locator('[data-minimap]')
+        const width = async () => (await strip.boundingBox())!.width
+        expect(await width()).toBe(60)
+        const rect = (await handle.boundingBox())!
+        const at = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+        expect(at.x).toBeCloseTo((await strip.boundingBox())!.x + 60, 0)
+        await page.mouse.move(at.x, at.y)
+        await page.mouse.down()
+        await page.mouse.move(at.x + 60, at.y, { steps: 5 })
+        await page.mouse.up()
+        await settle(page)
+        expect(await width()).toBe(120)
+        await handle.focus()
+        await page.keyboard.press('ArrowRight')
+        expect(await width()).toBe(136)
+        await page.keyboard.press('Shift+ArrowLeft')
+        expect(await width()).toBe(72)
     })
 })
 
