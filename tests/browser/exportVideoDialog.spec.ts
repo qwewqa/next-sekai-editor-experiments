@@ -383,3 +383,33 @@ test('an export waits for the sound effects, which it takes as it starts', async
     await exportButton(page).click()
     await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
 })
+
+test('the fades shown are those the export uses, together at most the clip', async ({ page }) => {
+    const dialog = await open(page)
+    const setTime = async (name: 'In' | 'Out', value: string) => {
+        const field = dialog.getByRole('textbox', { name, exact: true })
+        await field.fill(value)
+        await field.press('Enter')
+    }
+    await setTime('In', '0')
+    await setTime('Out', '5')
+    await dialog.locator('[data-export-advanced]').click()
+    const fadeIn = dialog.getByRole('spinbutton', { name: 'Fade In (s)' })
+    const fadeOut = dialog.getByRole('spinbutton', { name: 'Fade Out (s)' })
+    await fadeIn.fill('4')
+    await fadeIn.press('Enter')
+    await expect(fadeOut).toHaveAttribute('max', '1')
+    // A shorter clip shortens Fade Out first, then Fade In.
+    await setTime('Out', '3')
+    await expect(fadeIn).toHaveValue('3')
+    await expect(fadeOut).toHaveValue('0')
+    const used = await page.evaluate(() => {
+        const settings = (
+            Reflect.get(window, 'exportVideoDialog') as {
+                exportSettings(): { fadeIn: number; fadeOut: number }
+            }
+        ).exportSettings()
+        return [settings.fadeIn, settings.fadeOut]
+    })
+    expect(used).toEqual([3, 0])
+})

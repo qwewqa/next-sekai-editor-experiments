@@ -319,6 +319,18 @@ export const createExportDialog = (input: DialogInput) => {
         estimateBytes(length.value, videoBitrate.value, hasAudio.value ? form.audioBitrate : 0),
     )
 
+    // --- Fades: together at most the clip, so the fields show what the export uses. A shorter
+    // clip shortens Fade Out first, then Fade In, as the mix would.
+    const tenths = (value: number) => Math.max(0, Math.floor(value * 10 + 1e-6) / 10)
+    const fadeLimits = computed(() => ({
+        fadeIn: tenths(length.value - form.fadeOut),
+        fadeOut: tenths(length.value - form.fadeIn),
+    }))
+    watch(length, (value) => {
+        if (form.fadeIn > value) form.fadeIn = tenths(value)
+        if (form.fadeIn + form.fadeOut > value) form.fadeOut = tenths(value - form.fadeIn)
+    })
+
     // --- Settings the export uses.
     const exportSettings = (): ExportSettings => ({
         in: range.value.in,
@@ -729,6 +741,7 @@ export const createExportDialog = (input: DialogInput) => {
         videoBitrate,
         setBitrate,
         hasAudio,
+        fadeLimits,
         support,
         unavailable,
         format,

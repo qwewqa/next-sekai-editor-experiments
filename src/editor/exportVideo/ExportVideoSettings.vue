@@ -89,7 +89,6 @@ const bitrateValue = computed({
     },
 })
 
-const fadeMax = computed(() => Math.floor(d.length.value * 10) / 10)
 
 // --- Advanced: opening it scrolls it to the top of its scroller, so its first fields show.
 const advanced = computed(() => settings.exportVideoAdvanced)
@@ -221,7 +220,7 @@ const formatDescription = computed(() => ({
                 v-model="form.fadeIn"
                 :label="strings.fadeIn"
                 :min="0"
-                :max="fadeMax"
+                :max="d.fadeLimits.value.fadeIn"
                 :step="0.1"
                 :disabled="busy"
             />
@@ -229,7 +228,7 @@ const formatDescription = computed(() => ({
                 v-model="form.fadeOut"
                 :label="strings.fadeOut"
                 :min="0"
-                :max="fadeMax"
+                :max="d.fadeLimits.value.fadeOut"
                 :step="0.1"
                 :disabled="busy"
             />
