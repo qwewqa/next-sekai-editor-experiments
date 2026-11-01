@@ -140,7 +140,12 @@ export async function checkNativeBundle(directory, { root = defaultRoot, full = 
         problems.push(
             'notices/builtin-assets-CC0.txt is missing or differs from builtin-assets/LICENSE.txt',
         )
-    for (const file of ['LICENSE.txt', 'THIRD_PARTY_NOTICES.txt', 'notices/Font-Awesome.txt'])
+    for (const file of [
+        'LICENSE.txt',
+        'THIRD_PARTY_NOTICES.txt',
+        'notices/Font-Awesome.txt',
+        'notices/Outfit-OFL.txt',
+    ])
         if (!has(file)) problems.push(`${file} is missing`)
     const notices = contents.get('THIRD_PARTY_NOTICES.txt')?.toString('utf8') ?? ''
     if (
@@ -150,6 +155,8 @@ export async function checkNativeBundle(directory, { root = defaultRoot, full = 
         problems.push('THIRD_PARTY_NOTICES.txt lacks the Font Awesome credit')
     if (!notices.includes('Built-in preview assets and app icon: original, CC0 1.0.'))
         problems.push('THIRD_PARTY_NOTICES.txt lacks the Built-in assets credit')
+    if (!notices.includes('glyph outlines from Outfit SemiBold'))
+        problems.push('THIRD_PARTY_NOTICES.txt lacks the Outfit credit')
 
     if (full) {
         if (!existsSync(join(root, 'src-tauri/Cargo.lock')))

@@ -163,6 +163,12 @@ path = [
 SPDX-FileCopyrightText = "The Lyon authors and the Rust Project developers"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
+# The combo's glyph outlines, baked from Outfit by scripts/bake-combo-glyphs.py.
+[[annotations]]
+path = "src/preview/engine/comboGlyphs.ts"
+SPDX-FileCopyrightText = "2021 The Outfit Project Authors"
+SPDX-License-Identifier = "OFL-1.1"
+
 # Licence texts are licensed as their own authors state.
 [[annotations]]
 path = "deployment/notices/**"

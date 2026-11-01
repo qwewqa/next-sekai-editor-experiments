@@ -51,6 +51,7 @@ export const noticeFiles = [
     'notices/Font-Awesome.txt',
     'notices/libtess.txt',
     'notices/pixi-colord.txt',
+    'notices/Outfit-OFL.txt',
 ]
 
 export function sha256(bytes) {
@@ -127,6 +128,7 @@ async function dependencyNotices(root, kind) {
         'Lyon 1.0.22/Rust kernel: full notices and source revisions in third-party/lyon/sources.json.',
         'Vendored libtess.js: notices/libtess.txt (SGI Free Software License B).',
         'libtess.js source: https://github.com/brendankenny/libtess.js',
+        'Combo digits and label: glyph outlines from Outfit SemiBold, Copyright 2021 The Outfit Project Authors, SIL Open Font License 1.1: notices/Outfit-OFL.txt.',
         '',
         'PixiJS 8.22.0 includes one checked source patch:',
         '- Resolve the initial default batcher through the registered batcher extension.',
