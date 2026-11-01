@@ -2,10 +2,12 @@
 import { i18n } from '../../i18n'
 import BaseField from './BaseField.vue'
 import { useEmptyLabel } from './emptyLabel'
+import { lengthLimit } from './textLimits'
 
 defineProps<{
     label: string
     rows?: number
+    maxlength?: number
 }>()
 
 const emptyLabel = useEmptyLabel()
@@ -21,6 +23,7 @@ const modelValue = defineModel<string>({ required: true })
             v-model="modelValue"
             class="field block w-full resize-y appearance-none rounded-2xl px-4 py-2 placeholder:text-fg/80"
             :rows="rows ?? 4"
+            :maxlength="lengthLimit(maxlength, modelValue)"
             :placeholder="emptyLabel?.() ?? i18n.modals.form.notSet"
         />
     </BaseField>

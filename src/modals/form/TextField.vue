@@ -2,11 +2,13 @@
 import { useTemplateRef, type Ref } from 'vue'
 import BaseField from './BaseField.vue'
 import { confirmOnEnter, resyncInput, revertOnEscape, trackTypedText } from './resync'
+import { lengthLimit } from './textLimits'
 
 defineProps<{
     label: string
     /** What the property does, behind an ⓘ after the label. */
     description?: string | null
+    maxlength?: number
 }>()
 
 const input: Ref<HTMLInputElement | null> = useTemplateRef('input')
@@ -31,6 +33,7 @@ const onFocus = (event: FocusEvent) => {
             class="field w-full appearance-none rounded-full px-4 py-1"
             type="text"
             required
+            :maxlength="lengthLimit(maxlength, modelValue)"
             @focus="onFocus"
             @change="resyncInput($event, () => modelValue)"
             @keydown.esc="revertOnEscape($event, modelValue)"

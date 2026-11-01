@@ -28,6 +28,7 @@ import VisibleIcon from './icons/VisibleIcon.vue'
 import type { ManagerRowAction, SelectModifiers } from './model'
 import { settings } from '../../../settings'
 import { isComposingKey } from '../../../utils/composition'
+import { lengthLimit, textLimits } from '../../../modals/form/textLimits'
 
 const props = defineProps<{
     name: string
@@ -421,6 +422,7 @@ const onRenameBlur = (event: FocusEvent) => {
             v-model="draft"
             class="manager-rename"
             type="text"
+            :maxlength="lengthLimit(textLimits.name, name)"
             :aria-label="renameLabel"
             enterkeyhint="done"
             @keydown="onRenameKeydown"

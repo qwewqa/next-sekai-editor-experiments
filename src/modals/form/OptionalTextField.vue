@@ -4,11 +4,13 @@ import { i18n } from '../../i18n'
 import BaseField from './BaseField.vue'
 import { useEmptyLabel } from './emptyLabel'
 import { confirmOnEnter, resyncInput, revertOnEscape, trackTypedText } from './resync'
+import { lengthLimit } from './textLimits'
 
 defineProps<{
     label: string
     /** Shown while empty, in place of "Not Set". */
     placeholder?: string
+    maxlength?: number
 }>()
 
 const emptyLabel = useEmptyLabel()
@@ -33,6 +35,7 @@ const onFocus = (event: FocusEvent) => {
             class="field w-full appearance-none rounded-full px-4 py-1 placeholder:text-fg/80"
             :placeholder="placeholder ?? emptyLabel?.() ?? i18n.modals.form.notSet"
             type="text"
+            :maxlength="lengthLimit(maxlength, modelValue)"
             @focus="onFocus"
             @change="resyncInput($event, () => modelValue)"
             @keydown.esc="revertOnEscape($event, modelValue)"

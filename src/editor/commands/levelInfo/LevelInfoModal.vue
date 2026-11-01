@@ -11,6 +11,7 @@ import InitialLifeField from '../../../modals/form/InitialLifeField.vue'
 import OptionalNumberField from '../../../modals/form/OptionalNumberField.vue'
 import OptionalTextField from '../../../modals/form/OptionalTextField.vue'
 import TextAreaField from '../../../modals/form/TextAreaField.vue'
+import { textLimits } from '../../../modals/form/textLimits'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { pickFile } from '../../../utils/file'
 import { inlineName } from '../../../utils/inlineName'
@@ -269,14 +270,17 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                     <OptionalTextField
                         v-model="draft.title"
                         :label="i18n.historyChanges.fields.title"
+                        :maxlength="textLimits.name"
                     />
                     <OptionalTextField
                         v-model="draft.artists"
                         :label="i18n.historyChanges.fields.artists"
+                        :maxlength="textLimits.name"
                     />
                     <OptionalTextField
                         v-model="draft.author"
                         :label="i18n.historyChanges.fields.author"
+                        :maxlength="textLimits.name"
                     />
                     <OptionalNumberField
                         v-model="draft.rating"
@@ -287,10 +291,12 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                         v-model="draft.tags"
                         :label="i18n.historyChanges.fields.tags"
                         :placeholder="i18n.levelInfo.tagsPlaceholder"
+                        :maxlength="textLimits.tags"
                     />
                     <TextAreaField
                         v-model="draft.description"
                         :label="i18n.historyChanges.fields.description"
+                        :maxlength="textLimits.description"
                     />
                 </fieldset>
 
