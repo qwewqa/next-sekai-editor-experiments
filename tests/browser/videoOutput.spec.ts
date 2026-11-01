@@ -317,8 +317,25 @@ test('a sweep retries a failed deletion of a video left by a closed page', async
         await platform.videoOutput!.stage('closed', 'mp4')
     })
     const other = await context.newPage()
+    await other.addInitScript(() => {
+        const persist = navigator.storage.persist.bind(navigator.storage)
+        Object.assign(window, {
+            videoMaintenanceDone: new Promise<void>((resolve) => {
+                // The startup sweep finishes before persist() runs. Keep the first page open until then.
+                navigator.storage.persist = () => {
+                    resolve()
+                    return persist()
+                }
+            }),
+        })
+    })
     await start(other)
+    await other.evaluate(
+        () => (window as unknown as { videoMaintenanceDone: Promise<void> }).videoMaintenanceDone,
+    )
     await page.close()
+    // Closing a page can finish before the browser releases its Web Locks.
+    await other.evaluate(() => navigator.locks.request('nse-export-video:closed', () => undefined))
     const result = await other.evaluate(async () => {
         const { platform } = await import('/src/platform/index.ts')
         const output = platform.videoOutput!
