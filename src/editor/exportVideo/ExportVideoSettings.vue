@@ -89,7 +89,6 @@ const bitrateValue = computed({
     },
 })
 
-
 // --- Advanced: opening it scrolls it to the top of its scroller, so its first fields show.
 const advanced = computed(() => settings.exportVideoAdvanced)
 const toggleAdvanced = async () => {

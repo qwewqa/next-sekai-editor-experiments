@@ -29,6 +29,7 @@ import {
 } from '../../exportVideo/job'
 import type { ExportSettings } from '../../exportVideo/types'
 import { bgmEndOf } from '../../levelData/statistics'
+import { isNearlyFull } from '../../local/nearlyFull'
 import { platform } from '../../platform'
 import { loadedSfx, sfxSettled } from '../../player'
 import { previewAspectRatios, previewNoteSpeed } from '../../preview/options'
@@ -330,6 +331,23 @@ export const createExportDialog = (input: DialogInput) => {
         if (form.fadeIn > value) form.fadeIn = tenths(value)
         if (form.fadeIn + form.fadeOut > value) form.fadeOut = tenths(value - form.fadeIn)
     })
+
+    // --- A staged file counts toward browser storage: past the line where cleanup starts, the
+    // dialog warns before the export, and still allows it.
+    const storageNearlyFull = ref(false)
+    // Insecure origins have no storage manager.
+    if (!input.env.picker && 'storage' in navigator)
+        watch(
+            bytes,
+            async (estimated) => {
+                const { usage, quota } = await navigator.storage
+                    .estimate()
+                    .catch((): StorageEstimate => ({}))
+                storageNearlyFull.value =
+                    usage !== undefined && isNearlyFull({ usage: usage + estimated, quota })
+            },
+            { immediate: true },
+        )
 
     // --- Settings the export uses.
     const exportSettings = (): ExportSettings => ({
@@ -742,6 +760,7 @@ export const createExportDialog = (input: DialogInput) => {
         setBitrate,
         hasAudio,
         fadeLimits,
+        storageNearlyFull,
         support,
         unavailable,
         format,

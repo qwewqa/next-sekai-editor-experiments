@@ -28,6 +28,8 @@ const message = computed(() => {
         }
     if (d.stoppedLine.value && d.phase.value === 'setup')
         return { severity: 'warning' as const, text: i18n.value.exportVideo.stopped }
+    if (d.storageNearlyFull.value && !d.busy.value)
+        return { severity: 'warning' as const, text: i18n.value.load.storageNearlyFull }
     return undefined
 })
 </script>

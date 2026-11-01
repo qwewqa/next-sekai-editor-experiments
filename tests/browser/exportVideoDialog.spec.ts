@@ -413,3 +413,18 @@ test('the fades shown are those the export uses, together at most the clip', asy
     })
     expect(used).toEqual([3, 0])
 })
+
+test('a staged export warns first when storage would pass the cleanup line', async ({ page }) => {
+    // The page again, with storage just under the line before the video.
+    await page.addInitScript(() => {
+        navigator.storage.estimate = () => Promise.resolve({ usage: 795_000_000, quota: 1e9 })
+    })
+    await boot(page)
+    const dialog = await open(page)
+    const slot = dialog.locator('[data-export-slot]')
+    await expect(slot).toContainText('Browser storage is almost full.')
+    // A short clip stays under it, and the export is allowed either way.
+    await shortClip(page)
+    await expect(slot).not.toContainText('Browser storage is almost full.')
+    await expect(exportButton(page)).toBeEnabled()
+})
