@@ -8,11 +8,12 @@ import { showChoice } from '../../modals/choice'
 import { resetKeybinds, resetSettings } from '../../settings'
 import { closeSettingsKey } from './closeSettings'
 import { commands } from '../commands'
+import SectionIndex from '../SectionIndex.vue'
+import { landOn } from '../sectionLanding'
 import { requestedSection } from './openSettings'
-import type { SettingsSectionId } from './sections'
+import { SETTINGS_SECTIONS, type SettingsSectionId } from './sections'
 import SettingsAbout from './SettingsAbout.vue'
 import SettingsEditor from './SettingsEditor.vue'
-import SettingsIndex from './SettingsIndex.vue'
 import SettingsKeyboardShortcuts from './SettingsKeyboardShortcuts.vue'
 import SettingsLocalData from './SettingsLocalData.vue'
 import SettingsMouse from './SettingsMouse.vue'
@@ -77,11 +78,7 @@ const scheduleStage = () => {
 const land = (id: SettingsSectionId, focus: boolean) => {
     const section = document.getElementById(`settings-${id}`)
     if (!section) return
-    section.scrollIntoView({ block: 'start' })
-    if (focus)
-        section
-            .querySelector<HTMLElement>('[data-settings-heading]')
-            ?.focus({ preventScroll: true })
+    landOn(section, focus ? section.querySelector<HTMLElement>('[data-settings-heading]') : null)
 }
 let jumpFrame = 0
 // True while fields that a jump mounted, or the dialog's first fields, have not yet fitted their
@@ -131,6 +128,14 @@ onBeforeUnmount(() => {
     cancelAnimationFrame(jumpFrame)
 })
 
+// The section index: Settings' own attributes, which Help's index does not carry.
+const index = computed(() => ({
+    items: SETTINGS_SECTIONS.map((id) => ({ id, label: i18n.value.settings[id].title })),
+    label: i18n.value.settings.sections,
+    indexAttribute: 'data-settings-index',
+    pillAttribute: 'data-settings-pill',
+}))
+
 // A reset cannot be undone, so each asks first, with Cancel as the safe default.
 const confirmReset = async (title: () => string, message: () => string, reset: () => void) => {
     const confirmed = await showChoice({
@@ -173,12 +178,12 @@ onBeforeUnmount(() => {
 
 <template>
     <BaseModal :title="i18n.settings.title" fill @close="emit('close')">
-        <SettingsIndex v-if="!short" class="px-4 py-2" @go="jumpTo($event)" />
+        <SectionIndex v-if="!short" v-bind="index" class="px-4 py-2" @go="jumpTo($event)" />
         <div
             v-scroll-edges
             class="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-2 [scrollbar-gutter:stable]"
         >
-            <SettingsIndex v-if="short" class="py-1" @go="jumpTo($event)" />
+            <SectionIndex v-if="short" v-bind="index" class="py-1" @go="jumpTo($event)" />
             <div class="flex flex-wrap gap-2">
                 <button
                     type="button"
