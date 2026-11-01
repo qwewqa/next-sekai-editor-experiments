@@ -627,7 +627,7 @@
                 "title": "Touchscreen",
                 "longPress": "Long-press an object to open the context menu.",
                 "scroll": "Drag with two fingers to scroll. Pinch vertically to zoom vertically, or horizontally to zoom horizontally.",
-                "quickScroll": "To scroll with one finger, drag in the quick scroll zone at the right edge of the chart.",
+                "quickScroll": "To scroll with one finger, drag in the quick scroll zone at the edge of the chart.",
                 "gestures": "Tap with two fingers to deselect. Tap with three fingers to start or stop playback."
             },
             "mouse": {
@@ -885,6 +885,11 @@
             "elevationSideBySide": "Elevation Editor Side by Side",
             "elevationConnectorArrows": "Elevation Editor Connector Arrows",
             "minimap": "Show Minimap",
+            "minimapSide": {
+                "title": "Minimap Side",
+                "left": "Left",
+                "right": "Right"
+            },
             "showPropertyDescriptions": "Show Property Descriptions",
             "waveformVisualization": {
                 "title": "Waveform Visualization",
@@ -996,7 +1001,13 @@
                 "off": "Off",
                 "touch": "Touch Screens Only"
             },
+            "quickScrollSide": {
+                "title": "Quick Scroll Zone Side",
+                "left": "Left",
+                "right": "Right"
+            },
             "scrollInertia": "Scroll Inertia",
+            "dragHandles": "Show Drag Handles",
             "longPressContextMenu": "Long Press for Context Menu"
         },
         "panels": {
@@ -1119,9 +1130,9 @@
                 }
             },
             "playFollow": "Scrolls the chart during playback to keep the playback cursor at Follow Position.",
-            "touchQuickScrollWidth": "Sets the width of the zone at the chart’s right edge where you can scroll with one finger. A value of 0 turns it off.",
+            "touchQuickScrollWidth": "Sets the width of the zone where you can scroll with one finger. A value of 0 turns it off.",
             "touchQuickScrollShow": {
-                "intro": "Sets when to shade the zone at the chart’s right edge where you can scroll with one finger.",
+                "intro": "Sets when to shade the zone where you can scroll with one finger.",
                 "choices": {
                     "on": "Shades the zone on any device.",
                     "off": "Leaves the zone unshaded.",
@@ -1129,6 +1140,7 @@
                 }
             },
             "touchScrollInertia": "Lets the chart keep scrolling and slow down gradually after you scroll by touch.",
+            "touchDragHandles": "Shows handles on panel edges and on rows in Groups and Stages. You need the row handles to drag rows by touch.",
             "showPropertyDescriptions": "Shows info buttons beside chart properties."
         },
         "sections": "Sections",

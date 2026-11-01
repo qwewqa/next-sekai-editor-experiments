@@ -627,7 +627,7 @@
         "title": "터치스크린",
         "longPress": "객체를 길게 누르면 컨텍스트 메뉴가 열립니다.",
         "scroll": "두 손가락으로 드래그하면 스크롤됩니다. 세로로 손가락을 오므리거나 벌리면 세로로 확대하거나 축소하고, 가로로 오므리거나 벌리면 가로로 확대하거나 축소합니다.",
-        "quickScroll": "한 손가락으로 스크롤하려면 채보 오른쪽 가장자리의 빠른 스크롤 영역에서 드래그하세요.",
+        "quickScroll": "한 손가락으로 스크롤하려면 채보 가장자리의 빠른 스크롤 영역에서 드래그하세요.",
         "gestures": "두 손가락으로 탭하면 선택을 해제합니다. 세 손가락으로 탭하면 재생을 시작하거나 멈춥니다."
       },
       "mouse": {
@@ -885,6 +885,11 @@
       "elevationSideBySide": "높이 편집기 나란히 표시",
       "elevationConnectorArrows": "높이 편집기 커넥터 화살표",
       "minimap": "미니맵 표시",
+      "minimapSide": {
+        "title": "미니맵 위치",
+        "left": "좌측",
+        "right": "우측"
+      },
       "showPropertyDescriptions": "속성 설명 표시",
       "waveformVisualization": {
         "title": "파형 시각화",
@@ -996,7 +1001,13 @@
         "off": "꺼짐",
         "touch": "터치스크린에서만"
       },
+      "quickScrollSide": {
+        "title": "빠른 스크롤 영역 위치",
+        "left": "좌측",
+        "right": "우측"
+      },
       "scrollInertia": "스크롤 관성",
+      "dragHandles": "드래그 핸들 표시",
       "longPressContextMenu": "길게 눌러 컨텍스트 메뉴 열기"
     },
     "panels": {
@@ -1119,9 +1130,9 @@
         }
       },
       "playFollow": "재생 중 채보를 스크롤하여 재생 커서를 따라가기 위치에 유지합니다.",
-      "touchQuickScrollWidth": "채보 오른쪽 가장자리에서 한 손가락으로 스크롤할 수 있는 영역의 너비를 설정합니다. 값을 0으로 설정하면 이 기능을 끕니다.",
+      "touchQuickScrollWidth": "한 손가락으로 스크롤할 수 있는 영역의 너비를 설정합니다. 값을 0으로 설정하면 이 기능을 끕니다.",
       "touchQuickScrollShow": {
-        "intro": "채보 오른쪽 가장자리에서 한 손가락으로 스크롤할 수 있는 영역에 음영을 표시할 조건을 설정합니다.",
+        "intro": "한 손가락으로 스크롤할 수 있는 영역에 음영을 표시할 조건을 설정합니다.",
         "choices": {
           "on": "모든 기기에서 영역에 음영을 표시합니다.",
           "off": "영역에 음영을 표시하지 않습니다.",
@@ -1129,6 +1140,7 @@
         }
       },
       "touchScrollInertia": "터치로 스크롤한 뒤에도 채보가 계속 스크롤되며 서서히 느려지게 합니다.",
+      "touchDragHandles": "패널 가장자리와 그룹 및 스테이지의 행에 핸들을 표시합니다. 터치로 행을 드래그하려면 행의 핸들을 사용해야 합니다.",
       "showPropertyDescriptions": "채보 속성 옆에 정보 버튼을 표시합니다."
     },
     "sections": "섹션",

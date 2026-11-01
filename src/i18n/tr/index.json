@@ -627,7 +627,7 @@
         "title": "Dokunmatik Ekran",
         "longPress": "Bağlam menüsünü açmak için bir nesneye uzun basın.",
         "scroll": "Kaydırmak için iki parmakla sürükleyin. Dikey yakınlaştırma için parmaklarınızı dikey yönde, yatay yakınlaştırma için yatay yönde birbirine yaklaştırın veya birbirinden uzaklaştırın.",
-        "quickScroll": "Tek parmakla kaydırmak için çizelgenin sağ kenarındaki hızlı kaydırma alanında sürükleyin.",
+        "quickScroll": "Tek parmakla kaydırmak için çizelgenin kenarındaki hızlı kaydırma alanında sürükleyin.",
         "gestures": "Seçimi kaldırmak için iki parmakla dokunun. Oynatmayı başlatmak veya durdurmak için üç parmakla dokunun."
       },
       "mouse": {
@@ -885,6 +885,11 @@
       "elevationSideBySide": "Yükseklik Editörünü Yan Yana Göster",
       "elevationConnectorArrows": "Yükseklik Editöründe Bağlayıcı Okları",
       "minimap": "Mini Haritayı Göster",
+      "minimapSide": {
+        "title": "Mini Haritanın Konumu",
+        "left": "Sol",
+        "right": "Sağ"
+      },
       "showPropertyDescriptions": "Özellik Açıklamalarını Göster",
       "waveformVisualization": {
         "title": "Dalga Formu Görselleştirmesi",
@@ -996,7 +1001,13 @@
         "off": "Kapalı",
         "touch": "Yalnızca Dokunmatik Ekranlar"
       },
+      "quickScrollSide": {
+        "title": "Hızlı Kaydırma Alanının Konumu",
+        "left": "Sol",
+        "right": "Sağ"
+      },
       "scrollInertia": "Kaydırma Ataleti",
+      "dragHandles": "Sürükleme Tutamaçlarını Göster",
       "longPressContextMenu": "Bağlam Menüsü İçin Uzun Bas"
     },
     "panels": {
@@ -1119,9 +1130,9 @@
         }
       },
       "playFollow": "Oynatma sırasında çizelgeyi kaydırarak oynatma imlecini Pozisyonu Takip Et ayarında belirtilen konumda tutar.",
-      "touchQuickScrollWidth": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanın genişliğini belirler. 0 değeri bu alanı kapatır.",
+      "touchQuickScrollWidth": "Tek parmakla kaydırabileceğiniz alanın genişliğini belirler. 0 değeri bu alanı kapatır.",
       "touchQuickScrollShow": {
-        "intro": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanın ne zaman gölgelendirileceğini belirler.",
+        "intro": "Tek parmakla kaydırabileceğiniz alanın ne zaman gölgelendirileceğini belirler.",
         "choices": {
           "on": "Alanı tüm cihazlarda gölgelendirir.",
           "off": "Alanı gölgelendirmez.",
@@ -1129,6 +1140,7 @@
         }
       },
       "touchScrollInertia": "Dokunarak kaydırdıktan sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar.",
+      "touchDragHandles": "Panel kenarlarında ve Gruplar ile Sahneler panellerindeki satırlarda tutamaçları gösterir. Satırları dokunarak sürüklemek için satır tutamaçlarını kullanmanız gerekir.",
       "showPropertyDescriptions": "Çizelge özelliklerinin yanında bilgi düğmeleri gösterir."
     },
     "sections": "Bölümler",

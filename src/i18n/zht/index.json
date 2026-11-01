@@ -627,7 +627,7 @@
         "title": "觸控螢幕",
         "longPress": "長按物件即可開啟快顯選單。",
         "scroll": "雙指拖曳即可捲動。垂直捏合可垂直縮放，水平捏合可水平縮放。",
-        "quickScroll": "要用單指捲動，請在譜面右邊緣的快速捲動區內拖曳。",
+        "quickScroll": "要用單指捲動，請在譜面邊緣的快速捲動區內拖曳。",
         "gestures": "雙指點選可取消選取。三指點選可開始或停止播放。"
       },
       "mouse": {
@@ -885,6 +885,11 @@
       "elevationSideBySide": "高度編輯器並排顯示",
       "elevationConnectorArrows": "高度編輯器連接線箭頭",
       "minimap": "顯示小地圖",
+      "minimapSide": {
+        "title": "小地圖位置",
+        "left": "左邊",
+        "right": "右邊"
+      },
       "showPropertyDescriptions": "顯示屬性說明",
       "waveformVisualization": {
         "title": "波形視覺化",
@@ -996,7 +1001,13 @@
         "off": "關閉",
         "touch": "僅觸控螢幕"
       },
+      "quickScrollSide": {
+        "title": "快速捲動區位置",
+        "left": "左邊",
+        "right": "右邊"
+      },
       "scrollInertia": "滾動慣性",
+      "dragHandles": "顯示拖曳把手",
       "longPressContextMenu": "長按開啟右鍵選單"
     },
     "panels": {
@@ -1119,9 +1130,9 @@
         }
       },
       "playFollow": "播放時捲動譜面，讓播放游標保持在「跟隨位置」。",
-      "touchQuickScrollWidth": "設定譜面右邊緣可用單指捲動的區域寬度。數值為 0 時關閉此功能。",
+      "touchQuickScrollWidth": "設定可用單指捲動的區域寬度。數值為 0 時關閉此功能。",
       "touchQuickScrollShow": {
-        "intro": "設定何時為譜面右邊緣可用單指捲動的區域加上底色。",
+        "intro": "設定何時為可用單指捲動的區域加上底色。",
         "choices": {
           "on": "在所有裝置上都為該區域加上底色。",
           "off": "不為該區域加上底色。",
@@ -1129,6 +1140,7 @@
         }
       },
       "touchScrollInertia": "讓譜面在觸控捲動後繼續捲動，並逐漸減速。",
+      "touchDragHandles": "在面板邊緣以及圖層和舞台的各列上顯示把手。用觸控拖曳列時，需要使用列上的把手。",
       "showPropertyDescriptions": "在譜面屬性旁顯示資訊按鈕。"
     },
     "sections": "分區",

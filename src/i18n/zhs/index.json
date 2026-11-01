@@ -627,7 +627,7 @@
         "title": "触控屏",
         "longPress": "长按对象即可打开右键菜单。",
         "scroll": "双指拖动即可滚动。纵向捏合可纵向缩放，横向捏合可横向缩放。",
-        "quickScroll": "要用单指滚动，请在谱面右边缘的快速滚动区域内拖动。",
+        "quickScroll": "要用单指滚动，请在谱面边缘的快速滚动区域内拖动。",
         "gestures": "双指轻触即可取消选择。三指轻触即可开始或停止播放。"
       },
       "mouse": {
@@ -885,6 +885,11 @@
       "elevationSideBySide": "高度编辑器并排显示",
       "elevationConnectorArrows": "高度编辑器连接箭头",
       "minimap": "显示小地图",
+      "minimapSide": {
+        "title": "小地图位置",
+        "left": "左边",
+        "right": "右边"
+      },
       "showPropertyDescriptions": "显示属性说明",
       "waveformVisualization": {
         "title": "波形可视化",
@@ -996,7 +1001,13 @@
         "off": "关",
         "touch": "仅触摸屏"
       },
+      "quickScrollSide": {
+        "title": "快速滚动区域位置",
+        "left": "左边",
+        "right": "右边"
+      },
       "scrollInertia": "滚动惯性",
+      "dragHandles": "显示拖动手柄",
       "longPressContextMenu": "长按打开右键菜单"
     },
     "panels": {
@@ -1119,9 +1130,9 @@
         }
       },
       "playFollow": "播放时滚动谱面，使播放光标保持在“跟随位置”。",
-      "touchQuickScrollWidth": "设置谱面右边缘可用单指滚动的区域宽度。数值为 0 时关闭此功能。",
+      "touchQuickScrollWidth": "设置可用单指滚动的区域宽度。数值为 0 时关闭此功能。",
       "touchQuickScrollShow": {
-        "intro": "设置何时为谱面右边缘可用单指滚动的区域加上底色。",
+        "intro": "设置何时为可用单指滚动的区域加上底色。",
         "choices": {
           "on": "在所有设备上都为该区域加上底色。",
           "off": "不为该区域加上底色。",
@@ -1129,6 +1140,7 @@
         }
       },
       "touchScrollInertia": "让谱面在触控滚动后继续滚动，并逐渐减速。",
+      "touchDragHandles": "在面板边缘以及群组和舞台的各行上显示手柄。用触控拖动行时，需要使用行上的手柄。",
       "showPropertyDescriptions": "在谱面属性旁显示信息按钮。"
     },
     "sections": "分区",

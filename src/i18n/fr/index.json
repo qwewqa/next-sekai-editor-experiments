@@ -627,7 +627,7 @@
         "title": "Écran tactile",
         "longPress": "Appuyez longuement sur un objet pour ouvrir le menu contextuel.",
         "scroll": "Faites glisser deux doigts pour faire défiler. Pincez verticalement pour zoomer verticalement, ou horizontalement pour zoomer horizontalement.",
-        "quickScroll": "Pour faire défiler avec un doigt, faites-le glisser dans la zone de défilement rapide au bord droit de la partition.",
+        "quickScroll": "Pour faire défiler avec un doigt, faites-le glisser dans la zone de défilement rapide au bord de la partition.",
         "gestures": "Appuyez avec deux doigts pour désélectionner. Appuyez avec trois doigts pour lancer ou arrêter la lecture."
       },
       "mouse": {
@@ -885,6 +885,11 @@
       "elevationSideBySide": "Éditeur d’élévation côte à côte",
       "elevationConnectorArrows": "Flèches des connecteurs dans l’éditeur d’élévation",
       "minimap": "Afficher la minicarte",
+      "minimapSide": {
+        "title": "Côté de la minicarte",
+        "left": "Gauche",
+        "right": "Droite"
+      },
       "showPropertyDescriptions": "Afficher les descriptions des propriétés",
       "waveformVisualization": {
         "title": "Visualisation de la forme d’onde",
@@ -996,7 +1001,13 @@
         "off": "Désactivé",
         "touch": "Écrans tactiles uniquement"
       },
+      "quickScrollSide": {
+        "title": "Côté de la zone de défilement rapide",
+        "left": "Gauche",
+        "right": "Droite"
+      },
       "scrollInertia": "Inertie de défilement",
+      "dragHandles": "Afficher les poignées de déplacement",
       "longPressContextMenu": "Appui long pour le menu contextuel"
     },
     "panels": {
@@ -1119,9 +1130,9 @@
         }
       },
       "playFollow": "Fait défiler la partition pendant la lecture pour maintenir le curseur de lecture à la hauteur définie par Suivre la position.",
-      "touchQuickScrollWidth": "Définit la largeur de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt. Une valeur de 0 désactive cette zone.",
+      "touchQuickScrollWidth": "Définit la largeur de la zone où vous pouvez faire défiler avec un doigt. Une valeur de 0 désactive cette zone.",
       "touchQuickScrollShow": {
-        "intro": "Définit quand colorer le fond de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt.",
+        "intro": "Définit quand colorer le fond de la zone où vous pouvez faire défiler avec un doigt.",
         "choices": {
           "on": "Colore le fond de la zone sur tous les appareils.",
           "off": "Ne colore pas le fond de la zone.",
@@ -1129,6 +1140,7 @@
         }
       },
       "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après un défilement tactile.",
+      "touchDragHandles": "Affiche des poignées sur les bords des panneaux et sur les lignes de Groupes et Scènes. Pour faire glisser une ligne au doigt, vous devez utiliser sa poignée.",
       "showPropertyDescriptions": "Affiche des boutons d’information à côté des propriétés de la partition."
     },
     "sections": "Rubriques",
