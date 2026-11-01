@@ -1437,6 +1437,7 @@
     "player": {
         "started": "Started playing",
         "stopped": "Stopped playing",
+        "startFailed": "Could not start playing. Try again.",
         "changed": "Changed playback speed to {0}×"
     },
     "history": {

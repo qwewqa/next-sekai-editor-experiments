@@ -18,6 +18,8 @@ const fixture = (t: TestContext) => {
         display: undefined as number | undefined,
     }
     const starts: { time: number; speed: number; delay?: number }[] = []
+    // Each start's failure callback, as the audio calls it when the start fails.
+    const failures: (() => void)[] = []
     const auditions: number[] = []
     let stopped = 0
     let auditionsStopped = 0
@@ -26,8 +28,9 @@ const fixture = (t: TestContext) => {
     const flushVersion = ref(0)
     const transport = createTransport({
         audio: {
-            start(time, speed, delay) {
+            start(time, speed, onFailure, delay) {
                 starts.push({ time, speed, delay })
+                failures.push(onFailure)
                 clock.audio = time
             },
             stop() {
@@ -49,6 +52,7 @@ const fixture = (t: TestContext) => {
         queueFlush: () => flushVersion.value++,
         onPlay: () => notifications.push('play'),
         onStop: () => notifications.push('stop'),
+        onStartFailed: () => notifications.push('failed'),
         onSpeedChange: (speed) => notifications.push(speed),
     })
     const scope = effectScope()
@@ -63,6 +67,7 @@ const fixture = (t: TestContext) => {
         settings,
         clock,
         starts,
+        failures,
         auditions,
         notifications,
         counts: () => ({ stopped, auditionsStopped, active }),
@@ -197,6 +202,23 @@ test('whether it plays is reactive, also when the next frame finds the audio sto
     transport.play(view.cursorTime)
     transport.pause()
     assert.deepEqual(seen, [true, false, true, false])
+})
+
+test('a failed start shows Play at once, so the next press plays, before any frame', (t) => {
+    const { transport, view, clock, starts, failures, notifications, counts } = fixture(t)
+    transport.play(view.cursorTime)
+    clock.audio = undefined
+    failures.at(-1)!()
+    assert.equal(transport.isPlaying, false)
+    assert.deepEqual(notifications, ['play', 'failed'])
+    transport.play(view.cursorTime)
+    assert.equal(transport.isPlaying, true)
+    assert.equal(starts.length, 2)
+    assert.equal(counts().stopped, 0)
+    // A late call from the earlier start leaves the newer playback alone.
+    failures[0]!()
+    assert.equal(transport.isPlaying, true)
+    assert.deepEqual(notifications, ['play', 'failed', 'play'])
 })
 
 test('stop returns to the original play position after speed changes', async (t) => {

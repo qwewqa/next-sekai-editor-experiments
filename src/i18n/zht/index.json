@@ -1437,6 +1437,7 @@
   "player": {
     "started": "開始播放",
     "stopped": "停止播放",
+    "startFailed": "無法開始播放。請重試。",
     "changed": "將播放速度改為 {0}×"
   },
   "history": {

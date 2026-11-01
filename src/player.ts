@@ -25,8 +25,15 @@ const startupDelay = 0.2
 // Keep enough audio queued to survive a slow editor frame without delaying play.
 const lookAhead = 0.75
 const scheduleInterval = 25
+// A running context whose clock stands still this long (ms) has stalled.
+const stallTime = 500
+// Play stops if the audio clock has not moved this long (ms) after Play. An audition is
+// dropped the same way.
+const startDeadline = 3000
+// A resume() still pending after this long (ms) is taken as one that never settles.
+const resumeTimeout = startDeadline
 
-const context = new AudioContext()
+let context = new AudioContext()
 
 const sfxBuffers = {
     normalTap: optional<AudioBuffer>(),
@@ -89,8 +96,15 @@ watch(isSfxEnabled, () => {
 
 let preview: PlayerAudio | undefined
 let scheduler: ReturnType<typeof setInterval> | undefined
-let resuming: Promise<void> | undefined
+let startCheck: ReturnType<typeof setTimeout> | undefined
 let areSfxReady = false
+// The clock when the context was found stuck: Play replaces it while its clock still reads this.
+let stuckAt: number | undefined
+// The resume() calls still pending on the context, and when the first of them was made.
+let pendingResumes = 0
+let resumeSince: number | undefined
+// The clock's last reading while playing, and when it changed.
+let clockReading: { time: number; at: number } | undefined
 const getSlideInfoLookup = createSlideInfoLookup()
 
 const sfxDistance = 0.02
@@ -330,12 +344,26 @@ const clearScheduler = () => {
     scheduler = undefined
 }
 
+// Marks a running context for replacement at the next Play when its clock stands still,
+// for example after a route change.
+const checkClock = () => {
+    const time = context.currentTime
+    const at = performance.now()
+    if (clockReading?.time !== time || document.visibilityState !== 'visible')
+        clockReading = { time, at }
+    else if (at - clockReading.at >= stallTime) stuckAt = time
+}
+
 const updateScheduler = () => {
     clearScheduler()
+    clockReading = undefined
     if (!state.value || context.state !== 'running') return
     scheduleAudio()
     // Audio scheduling must not depend on whether the preview renders a frame.
-    scheduler = setInterval(scheduleAudio, scheduleInterval)
+    scheduler = setInterval(() => {
+        checkClock()
+        scheduleAudio()
+    }, scheduleInterval)
 }
 
 context.addEventListener('statechange', updateScheduler)
@@ -367,14 +395,41 @@ export const getPlayerDisplayTime = () => {
     return Math.max(0, audioTime - current.contextTime) * current.speed + current.bgmTime
 }
 
+// Decodes in flight on each context: a replaced context is closed only once its decodes settle.
+const decodes = new Map<AudioContext, number>()
+
+const decode = (data: ArrayBuffer) => {
+    const decoding = context
+    decodes.set(decoding, (decodes.get(decoding) ?? 0) + 1)
+    return decoding.decodeAudioData(data).finally(() => {
+        const left = (decodes.get(decoding) ?? 1) - 1
+        if (left) decodes.set(decoding, left)
+        else decodes.delete(decoding)
+        if (!left && decoding !== context) closeContext(decoding)
+    })
+}
+
 /** Decodes audio bytes, within the BGM length limit (`decodeWithinLimit`). */
-export const loadBgm = (data: ArrayBuffer) =>
-    decodeWithinLimit(data, (bytes) => context.decodeAudioData(bytes))
+export const loadBgm = (data: ArrayBuffer) => decodeWithinLimit(data, decode)
 
-export const startPlayer = (bgmTime: number, speed: number, delay = startupDelay) => {
-    stopPlayer()
+/**
+ * `onFailure` runs when this start fails, because the audio clock did not move or resume()
+ * was rejected.
+ */
+export const startPlayer = (
+    bgmTime: number,
+    speed: number,
+    onFailure: () => void,
+    delay = startupDelay,
+) => {
+    setAudioSession()
+    // Inside the Play gesture, where a new context can start.
+    const replace = needsNewContext()
+    stopPlayback(replace)
+    if (replace) replaceContext()
 
-    const contextTime = context.currentTime + delay
+    const startTime = context.currentTime
+    const contextTime = startTime + delay
 
     state.value = {
         speed,
@@ -389,8 +444,16 @@ export const startPlayer = (bgmTime: number, speed: number, delay = startupDelay
             criticalActive: new Set(),
         },
     }
+    const current = state.value
 
-    startContext()
+    const fail = () => {
+        stopPlayback(true)
+        onFailure()
+    }
+    resumeContext(() => {
+        if (state.value === current) fail()
+    })
+    stopPreviewPlayer()
 
     if (bgm.value.buffer)
         schedule(
@@ -407,34 +470,61 @@ export const startPlayer = (bgmTime: number, speed: number, delay = startupDelay
     // the cursor share the same suspended clock, and stop cancels these sources.
     scheduleAudio()
     updateScheduler()
+
+    // If the clock has not moved, stop. The next Play replaces the context if its clock still
+    // has not.
+    startCheck = setTimeout(() => {
+        startCheck = undefined
+        if (state.value !== current || context.currentTime > startTime) return
+        stuckAt = startTime
+        fail()
+    }, startDeadline)
 }
 
-export const stopPlayer = () => {
+// `immediately` skips the fade, because a fade on a clock that stands still never ends.
+const stopPlayback = (immediately: boolean) => {
     clearScheduler()
+    clearTimeout(startCheck)
+    startCheck = undefined
     if (!state.value) return
 
+    const stop = (audio: PlayerAudio) => {
+        if (immediately) audio.stop()
+        else audio.fadeOut()
+    }
     for (const audio of state.value.bgmNodes) {
-        audio.fadeOut()
+        stop(audio)
     }
     for (const audio of state.value.sfxNodes) {
-        audio.fadeOut()
+        stop(audio)
     }
 
     for (const actives of Object.values(state.value.actives)) {
         for (const audio of actives) {
-            audio.fadeOut()
+            stop(audio)
         }
     }
 
     state.value = undefined
 }
 
+export const stopPlayer = () => {
+    stopPlayback(false)
+}
+
 export const previewPlayer = (bgmTime: number) => {
     const duration = settings.playPreviewDuration / 1000
     if (duration <= 0) return
 
-    startContext()
+    setAudioSession()
+    stopPreviewPlayer()
+    const audio = startPreview(bgmTime, duration)
+    resumeContext(() => {
+        if (audio && preview === audio) stopPreviewPlayer()
+    })
+}
 
+const startPreview = (bgmTime: number, duration: number) => {
     if (!bgm.value.buffer) return
 
     const offset = bgmTime + bgm.value.offset
@@ -450,9 +540,17 @@ export const previewPlayer = (bgmTime: number) => {
     )
     preview = audio
 
-    const time = context.currentTime
+    const started = context
+    const time = started.currentTime
     audio.envelope(time, duration)
     audio.start(time, offset, duration)
+    // An audition must not play when a context that could not start runs much later by itself.
+    setTimeout(() => {
+        if (started !== context || started.currentTime > time) return
+        stuckAt = time
+        audio.stop()
+    }, startDeadline)
+    return audio
 }
 
 export const stopPreviewPlayer = () => {
@@ -460,26 +558,84 @@ export const stopPreviewPlayer = () => {
     preview = undefined
 }
 
-const startContext = () => {
-    // On iOS, play through the silent switch (Audio Session API, Safari 16.4+).
+// On iOS, play through the silent switch (Audio Session API, Safari 16.4+).
+const setAudioSession = () => {
     const { audioSession } = navigator as Navigator & { audioSession?: { type: string } }
     if (audioSession) audioSession.type = 'playback'
-
-    if (context.state !== 'running' && !resuming) {
-        resuming = context
-            .resume()
-            .catch(() => {
-                if (context.state === 'running') return
-                stopPlayer()
-                stopPreviewPlayer()
-            })
-            .finally(() => {
-                resuming = undefined
-            })
-    }
-
-    stopPreviewPlayer()
 }
+
+// Retry resume() for each Play and audition while the context is not running. WebKit can
+// leave earlier calls pending.
+const resumeContext = (onFailure: () => void) => {
+    if (context.state === 'running') return
+    const resumed = context
+    pendingResumes++
+    resumeSince ??= performance.now()
+    const settle = () => {
+        if (resumed !== context) return
+        if (--pendingResumes === 0) resumeSince = undefined
+    }
+    void resumed.resume().then(settle, () => {
+        settle()
+        if (resumed === context && resumed.state !== 'running') onFailure()
+    })
+}
+
+// In WebKit, an interrupted context, or one whose resume() has not settled, may not start again.
+const needsNewContext = () =>
+    context.currentTime === stuckAt ||
+    context.state === 'interrupted' ||
+    context.state === 'closed' ||
+    (context.state !== 'running' &&
+        resumeSince !== undefined &&
+        performance.now() - resumeSince > resumeTimeout)
+
+// close() rejects on a context that is already closed.
+const closeContext = (closing: AudioContext) => {
+    void closing.close().catch(() => undefined)
+}
+
+// Decoded audio carries over, as an AudioBuffer belongs to no context. Sources are made for
+// each start.
+const replaceContext = () => {
+    let next: AudioContext
+    try {
+        next = new AudioContext()
+    } catch {
+        // Keep the old context; the next Play tries again.
+        return
+    }
+    preview?.stop()
+    preview = undefined
+    context.removeEventListener('statechange', updateScheduler)
+    if (!decodes.has(context)) closeContext(context)
+    context = next
+    context.addEventListener('statechange', updateScheduler)
+    stuckAt = undefined
+    pendingResumes = 0
+    resumeSince = undefined
+}
+
+// When the page is shown again, marks a running context whose clock stands still, so the
+// next Play replaces it.
+let recheckTimer: ReturnType<typeof setTimeout> | undefined
+const recheckContext = () => {
+    clearTimeout(recheckTimer)
+    if (document.visibilityState !== 'visible' || context.state !== 'running') return
+    const checked = context
+    const time = checked.currentTime
+    recheckTimer = setTimeout(() => {
+        if (
+            checked === context &&
+            checked.state === 'running' &&
+            checked.currentTime === time &&
+            document.visibilityState === 'visible'
+        )
+            stuckAt = time
+    }, stallTime)
+}
+document.addEventListener('visibilitychange', recheckContext)
+window.addEventListener('pageshow', recheckContext)
 
 const schedule = (
     nodes: Set<PlayerAudio>,
@@ -502,7 +658,7 @@ const schedule = (
 
 // The sound effects the preview and playback use; a choice change loads them again in place.
 const loadSfx = () => {
-    setAudioDecoder((data) => context.decodeAudioData(data))
+    setAudioDecoder(decode)
     watch(
         assetSession.slots.effect,
         ({ state, value }) => {
@@ -520,6 +676,9 @@ if (import.meta.hot) {
     import.meta.hot.dispose(() => {
         stopPlayer()
         stopPreviewPlayer()
+        clearTimeout(recheckTimer)
+        document.removeEventListener('visibilitychange', recheckContext)
+        window.removeEventListener('pageshow', recheckContext)
         context.removeEventListener('statechange', updateScheduler)
         void context.close()
     })

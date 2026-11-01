@@ -62,6 +62,9 @@ const transport = createTransport({
     onStop: () => {
         notify(() => i18n.value.player.stopped)
     },
+    onStartFailed: () => {
+        notify(() => i18n.value.player.startFailed)
+    },
     onSpeedChange: (speed) => {
         notify(interpolate(() => i18n.value.player.changed, formatDecimal(speed)))
     },

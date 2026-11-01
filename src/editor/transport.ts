@@ -4,7 +4,8 @@ import type { view } from './view'
 
 type TransportDependencies = {
     audio: {
-        start(time: number, speed: number, delay?: number): void
+        /** `onFailure` runs when this start fails. */
+        start(time: number, speed: number, onFailure: () => void, delay?: number): void
         stop(): void
         getTime(): number | undefined
         /** Smoothed for drawing. */
@@ -20,6 +21,7 @@ type TransportDependencies = {
     queueFlush: () => void
     onPlay: () => void
     onStop: () => void
+    onStartFailed: () => void
     onSpeedChange: (speed: number) => void
 }
 
@@ -35,6 +37,7 @@ export const createTransport = ({
     queueFlush,
     onPlay,
     onStop,
+    onStartFailed,
     onSpeedChange,
 }: TransportDependencies) => {
     let speed = 1
@@ -99,6 +102,13 @@ export const createTransport = ({
         onStop()
     }
 
+    // At once, so the next press plays rather than pauses.
+    const fail = (failed: NonNullable<typeof playback.value>) => {
+        if (playback.value !== failed) return
+        playback.value = undefined
+        onStartFailed()
+    }
+
     const pause = () => {
         // Pause captures the audio clock even when the displayed frame is late.
         // Editing and fine steps use stop() to preserve the displayed position.
@@ -154,8 +164,11 @@ export const createTransport = ({
         endScrub(false)
         cancelFollow()
         pendingAudition = undefined
-        audio.start(seconds, speed)
-        playback.value = { returnTime: seconds }
+        const current = { returnTime: seconds }
+        audio.start(seconds, speed, () => {
+            fail(current)
+        })
+        playback.value = current
         onPlay()
     }
 
@@ -192,10 +205,18 @@ export const createTransport = ({
         const newSpeed = speeds[speeds.indexOf(speed) + direction] ?? speed
         if (newSpeed === speed) return
         speed = newSpeed
-        if (playback.value) {
+        const current = playback.value
+        if (current) {
             // Audio restarts at its own clock, which the shown frame may lead.
-            audio.start(audio.getTime() ?? view.cursorTime, speed, 0)
-            playback.value.floor = view.cursorTime
+            audio.start(
+                audio.getTime() ?? view.cursorTime,
+                speed,
+                () => {
+                    fail(current)
+                },
+                0,
+            )
+            current.floor = view.cursorTime
         }
         onSpeedChange(speed)
     }

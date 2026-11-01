@@ -1437,6 +1437,7 @@
   "player": {
     "started": "플레이 시작됨",
     "stopped": "플레이 정지됨",
+    "startFailed": "플레이를 시작하지 못했습니다. 다시 시도하세요.",
     "changed": "{0}배속으로 변경됨"
   },
   "history": {

@@ -527,6 +527,9 @@ test('both hosts draw the same pixels, paused and playing, with everything selec
                     )
                 window.hostTest.freezeAudio!(1)
                 startOrStopPlayer()
+                // A clock that never moves stops playback. This one moves but stays within the
+                // startup delay.
+                window.hostTest.freezeAudio!(1.1)
                 await new Promise((resolve) => setTimeout(resolve, 400))
                 return { playing: isPlaying.value, time: window.editorTest.view.cursorTime }
             }),

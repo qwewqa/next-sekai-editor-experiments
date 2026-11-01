@@ -1437,6 +1437,7 @@
   "player": {
     "started": "Oynatmaya başlandı",
     "stopped": "Oynatma durduruldu",
+    "startFailed": "Oynatma başlatılamadı. Tekrar deneyin.",
     "changed": "Oynatma hızı {0}× olarak değiştirildi"
   },
   "history": {
