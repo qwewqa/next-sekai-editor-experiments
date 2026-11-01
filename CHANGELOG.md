@@ -67,7 +67,7 @@
 - (Web) Added safe mode. If the editor does not start, add ?safe to its address.
 - Help now has an entry for each tool, in sections with an index as in Settings. It opens at the entry for the tool you are using, at History while you view a Timeline step or a session, or at the Elevation Editor when it fills the chart.
 - Added Settings › Editor › Minimap Side and Settings › Touch › Quick Scroll Zone Side.
-- Added Settings › Touch › Show Resize Handles. With it off, the handles on panel edges are hidden, and the edges still resize when dragged.
+- Added Settings › Touch › Show Resize Handles.
 
 ## 0.5.22 (2026-10-17)
 
