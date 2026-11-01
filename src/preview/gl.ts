@@ -1,4 +1,6 @@
 import type { Quad } from './engine/math'
+import { linkProgram } from './program'
+import { createRenderTarget, type RenderTarget, type RenderTargetOptions } from './renderTarget'
 import type { Sprite } from './skin'
 
 export type ZKey = readonly number[]
@@ -156,71 +158,36 @@ const writeVertex = (
     data[offset + 9] = a
 }
 
-/**
- * A linked program of two shaders, which are deleted once linked. On a failure nothing is left,
- * and the error names `name` with the log.
- */
-export const linkProgram = (
-    gl: WebGL2RenderingContext,
-    name: string,
-    vertexShader: string,
-    fragmentShader: string,
-) => {
-    const shaders: WebGLShader[] = []
-    const program = gl.createProgram()
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
-        if (!program) throw new Error(`Failed to create ${name} shader program`)
-        for (const [type, source] of [
-            [gl.VERTEX_SHADER, vertexShader],
-            [gl.FRAGMENT_SHADER, fragmentShader],
-        ] as const) {
-            const shader = gl.createShader(type)
-            if (!shader) throw new Error('Failed to create shader')
-            shaders.push(shader)
-            gl.shaderSource(shader, source)
-            gl.compileShader(shader)
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-                throw new Error(
-                    `Failed to compile ${name} shader: ${gl.getShaderInfoLog(shader) ?? ''}`,
-                )
-            gl.attachShader(program, shader)
-        }
-        gl.linkProgram(program)
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-            throw new Error(
-                `Failed to link ${name} shader program: ${gl.getProgramInfoLog(program) ?? ''}`,
-            )
-        return program
-    } catch (error) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- As above.
-        if (program) gl.deleteProgram(program)
-        throw error
-    } finally {
-        for (const shader of shaders) {
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- As above.
-            if (program) gl.detachShader(program, shader)
-            gl.deleteShader(shader)
-        }
-    }
+export type PreviewSurface = PreviewRenderer & {
+    hasTexture: (slot: TextureSlot) => boolean
+    setRenderTarget: (options: RenderTargetOptions | undefined) => RenderTarget | undefined
+    checkError: () => boolean
 }
 
 export const createPreviewRenderer = (
-    canvas: HTMLCanvasElement,
+    canvas: HTMLCanvasElement | OffscreenCanvas,
     antialias = true,
-): PreviewRenderer => {
+): PreviewSurface => {
     const getContext = (antialias: boolean) =>
-        canvas.getContext('webgl2', { alpha: true, antialias, premultipliedAlpha: true })
+        (canvas as HTMLCanvasElement).getContext('webgl2', {
+            alpha: true,
+            antialias,
+            premultipliedAlpha: true,
+        })
     const gl = getContext(antialias) ?? (antialias ? getContext(false) : null)
     if (!gl) throw new Error('WebGL2 is unavailable or disabled in this browser')
 
     const textures: WebGLTexture[] = []
     let program: WebGLProgram | null = null
     let buffer: WebGLBuffer | null = null
+    let restoreState = false
+    let target: RenderTarget | undefined
     let disposed = false
     const deleteResources = () => {
         if (disposed) return
         disposed = true
+        target?.dispose()
+        target = undefined
         for (const texture of textures) gl.deleteTexture(texture)
         textures.length = 0
         if (buffer) {
@@ -298,6 +265,23 @@ export const createPreviewRenderer = (
     const outputs = new Array<number>(8)
 
     return {
+        hasTexture: (slot) => hasTextures[slot] === true,
+        setRenderTarget(options) {
+            if (disposed) throw new Error('Preview renderer is disposed')
+            if (
+                options &&
+                target?.width === options.width &&
+                target.height === options.height &&
+                target.antialias === options.antialias
+            )
+                return target
+            restoreState = true
+            target?.dispose()
+            target = undefined
+            if (options) target = createRenderTarget(gl, canvas, options)
+            return target
+        },
+        checkError: () => !disposed && !gl.isContextLost() && gl.getError() === gl.NO_ERROR,
         maxViewportSize: {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             width: maxViewportDimensions[0]!,
@@ -354,9 +338,10 @@ export const createPreviewRenderer = (
             const pixels = new Uint8Array(width * height * 4)
             if (disposed) return pixels
             if (source === 'frame') {
+                target?.resolve()
                 gl.readPixels(
                     x,
-                    gl.drawingBufferHeight - y - height,
+                    (target?.height ?? gl.drawingBufferHeight) - y - height,
                     width,
                     height,
                     gl.RGBA,
@@ -389,9 +374,25 @@ export const createPreviewRenderer = (
 
         begin(width, height, aspectRatio = width / height) {
             if (disposed) return
-            if (canvas.width !== width) canvas.width = width
-            if (canvas.height !== height) canvas.height = height
+            if (target) {
+                if (width !== target.width || height !== target.height)
+                    throw new Error('Preview frame size differs from its render target')
+                target.bind()
+            } else {
+                if (canvas.width !== width) canvas.width = width
+                if (canvas.height !== height) canvas.height = height
+            }
 
+            if (restoreState) {
+                gl.useProgram(program)
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+                for (let i = 0; i < textures.length; i++) {
+                    gl.activeTexture(gl.TEXTURE0 + i)
+                    gl.bindTexture(gl.TEXTURE_2D, textures[i] ?? null)
+                }
+                gl.enable(gl.BLEND)
+                if (!target) restoreState = false
+            }
             gl.viewport(0, 0, width, height)
             gl.uniform1f(aspectLocation, aspectRatio)
 

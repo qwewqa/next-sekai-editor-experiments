@@ -17,7 +17,7 @@ import { readCombo } from './engine/comboDraw'
 import type { Quad } from './engine/math'
 import type { PreviewChart } from './engine/model'
 import { previewBackgroundQuad } from './engine/render'
-import { createPreviewRenderer, type PreviewRenderer } from './gl'
+import { createPreviewRenderer, type PreviewSurface } from './gl'
 import { createOutlineRenderer, type OutlineRenderer } from './outlineRenderer'
 import type { LoadedParticle } from './particle'
 import { exposePreviewTest } from './previewTest'
@@ -127,7 +127,7 @@ export const usePreviewRendering = (
             : undefined
     })
 
-    const renderer = shallowRef<PreviewRenderer>()
+    const renderer = shallowRef<PreviewSurface>()
 
     let contextLost = false
 
@@ -176,7 +176,7 @@ export const usePreviewRendering = (
         initializeRenderer()
     })
 
-    let uploadedRenderer: PreviewRenderer | undefined
+    let uploadedRenderer: PreviewSurface | undefined
     let uploadedSkin: LoadedSkin | undefined
     let uploadedParticle: LoadedParticle | undefined
     watch(
@@ -379,17 +379,16 @@ export const usePreviewRendering = (
                   }
                 : () => {
                       if (!currentRenderer) return
-                      showBackground(
-                          drawPreviewFrame(
-                              currentRenderer,
-                              currentOutline,
-                              currentSkin.skin,
-                              currentParticle,
-                              getChart(),
-                              input,
-                              selected,
-                          ),
+                      const result = drawPreviewFrame(
+                          currentRenderer,
+                          currentOutline,
+                          currentSkin.skin,
+                          currentParticle,
+                          getChart(),
+                          input,
+                          selected,
                       )
+                      showBackground(result.backgroundQuad)
                       // The worker's last frame shows until the main host draws with the skin,
                       // which may still be decoding again after a handover.
                       if (

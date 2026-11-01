@@ -2,7 +2,7 @@ import { parseColor } from '../rendering/paint'
 import { curveTolerance, resolutionScale, roundCappedSegments } from '../rendering/strokeSegments'
 import { SELECTION_COLOR } from '../utils/colors'
 import type { Vec } from './engine/math'
-import { linkProgram } from './gl'
+import { linkProgram } from './program'
 import type { OutlineMarker } from './selectionOutline'
 
 // The selection outline's own small WebGL2 renderer, used by both preview hosts. It draws the
@@ -151,7 +151,7 @@ export const createOutlineRenderer = (
     const context = () => {
         if (gl || failed) return gl
         try {
-            const context = canvas.getContext('webgl2', {
+            const context = (canvas as HTMLCanvasElement).getContext('webgl2', {
                 alpha: true,
                 antialias: true,
                 depth: false,

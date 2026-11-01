@@ -1,7 +1,8 @@
 import type { BackgroundFit } from './engine/background'
+import type { Quad } from './engine/math'
 import type { PreviewChart } from './engine/model'
-import { renderPreviewFrame } from './engine/render'
-import type { PreviewRenderer } from './gl'
+import { previewBackgroundQuad, renderPreviewFrame } from './engine/render'
+import type { PreviewSurface } from './gl'
 import { markerSegments, outlineSegments, type OutlineRenderer } from './outlineRenderer'
 import type { PreviewParticle } from './particle'
 import { createSelectionOutline } from './selectionOutline'
@@ -35,47 +36,85 @@ export type PreviewSelection = {
     centers: ReadonlySet<number>
 }
 
-/** Draws a frame, its selection outline and markers; returns the quad the background image fills. */
+type FrameFailure = 'context' | 'resources' | 'size' | 'error'
+
+export type PreviewFrameResult =
+    | { drawn: true; backgroundQuad: Quad }
+    | { drawn: false; reason: FrameFailure; backgroundQuad: Quad }
+
+/** Draws the foreground and selection, retaining the quad for the host's background. */
 export const drawPreviewFrame = (
-    renderer: PreviewRenderer,
+    renderer: PreviewSurface,
     outline: OutlineRenderer | undefined,
-    skin: PreviewSkin,
+    skin: PreviewSkin | undefined,
     particle: PreviewParticle | undefined,
     chart: PreviewChart,
     input: PreviewFrameInput,
     selection: PreviewSelection | undefined,
-) => {
-    const edges = createSelectionOutline()
-    const quad = renderPreviewFrame(
-        renderer,
-        skin,
-        chart,
-        input.time,
-        input.width,
-        input.height,
-        input.displayWidth,
-        input.displayHeight,
-        input.noteSpeed,
-        input.showEffects,
-        particle,
-        selection && {
-            ...selection,
-            outline: edges.add,
-            line: edges.addLine,
-            marker: edges.addMarker,
-        },
-        input.leftLimit,
-        input.showHitboxes,
-        input.background,
-        input.showCombo,
+): PreviewFrameResult => {
+    const failed = (reason: FrameFailure): PreviewFrameResult => ({
+        drawn: false,
+        reason,
+        backgroundQuad: previewBackgroundQuad(
+            chart.isDynamicStages ? chart.cameras : [],
+            input.time,
+            input.displayWidth,
+            input.displayHeight,
+            input.leftLimit,
+            input.background,
+        ),
+    })
+    if (renderer.isContextLost()) return failed('context')
+    if (!skin) return failed('resources')
+    // The hosts still draw while replacement atlases load, but this is not a complete frame.
+    const resourcesReady =
+        renderer.hasTexture(0) && (!input.showEffects || !particle || renderer.hasTexture(1))
+    if (
+        ![input.width, input.height].every((size) => Number.isInteger(size) && size > 0) ||
+        ![input.displayWidth, input.displayHeight].every(
+            (size) => Number.isFinite(size) && size > 0,
+        ) ||
+        input.width > renderer.maxViewportSize.width ||
+        input.height > renderer.maxViewportSize.height
     )
-    outline?.draw(
-        outlineSegments(edges.edges(), input.displayWidth, input.displayHeight),
-        markerSegments(edges.markers(), input.displayWidth, input.displayHeight),
-        input.overlayWidth,
-        input.overlayHeight,
-        input.overlayWidth / input.displayWidth,
-        input.overlayHeight / input.displayHeight,
-    )
-    return quad
+        return failed('size')
+    try {
+        const edges = createSelectionOutline()
+        const quad = renderPreviewFrame(
+            renderer,
+            skin,
+            chart,
+            input.time,
+            input.width,
+            input.height,
+            input.displayWidth,
+            input.displayHeight,
+            input.noteSpeed,
+            input.showEffects,
+            particle,
+            selection && {
+                ...selection,
+                outline: edges.add,
+                line: edges.addLine,
+                marker: edges.addMarker,
+            },
+            input.leftLimit,
+            input.showHitboxes,
+            input.background,
+            input.showCombo,
+        )
+        outline?.draw(
+            outlineSegments(edges.edges(), input.displayWidth, input.displayHeight),
+            markerSegments(edges.markers(), input.displayWidth, input.displayHeight),
+            input.overlayWidth,
+            input.overlayHeight,
+            input.overlayWidth / input.displayWidth,
+            input.overlayHeight / input.displayHeight,
+        )
+        if (renderer.isContextLost()) return failed('context')
+        if (!resourcesReady) return { drawn: false, reason: 'resources', backgroundQuad: quad }
+        return { drawn: true, backgroundQuad: quad }
+    } catch {
+        return failed(renderer.isContextLost() ? 'context' : 'error')
+    }
 }

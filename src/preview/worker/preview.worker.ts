@@ -7,7 +7,7 @@ import { copyAtlasBitmap } from '../copyAtlasBitmap'
 import { drawPreviewFrame, type PreviewFrameInput, type PreviewSelection } from '../drawFrame'
 import { createPreviewChartBuilder } from '../engine/chart'
 import { readCombo } from '../engine/comboDraw'
-import { createPreviewRenderer, type PreviewRenderer } from '../gl'
+import { createPreviewRenderer, type PreviewSurface } from '../gl'
 import { createOutlineRenderer, type OutlineRenderer } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
@@ -36,7 +36,7 @@ let frameCount = 0
 
 let canvas: OffscreenCanvas | undefined
 let antialias = true
-let renderer: PreviewRenderer | undefined
+let renderer: PreviewSurface | undefined
 let lost = false
 let lose: WEBGL_lose_context | null | undefined
 let outline: OutlineRenderer | undefined
@@ -74,8 +74,7 @@ const createRenderer = () => {
     if (!canvas || renderer || lost) return
     if (testKeysOpen && flags.noWebgl)
         throw new Error('WebGL2 is unavailable or disabled in this browser')
-    // The renderer needs only a canvas's size and context, which an OffscreenCanvas has.
-    renderer = createPreviewRenderer(canvas as unknown as HTMLCanvasElement, antialias)
+    renderer = createPreviewRenderer(canvas, antialias)
     uploaded.length = 0
     upload()
 }
