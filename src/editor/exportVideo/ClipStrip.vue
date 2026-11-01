@@ -32,7 +32,15 @@ const rulerHeight = computed(() => (props.hideRuler ? 0 : 16))
 type Drag = {
     kind: 'in' | 'out' | 'playhead'
     pointer: number
-    from: { in: number; out: number; playhead: number; kind: RangeKind }
+    /** As the drag began: a shorter clip on the way may have trimmed the fades. */
+    from: {
+        in: number
+        out: number
+        playhead: number
+        kind: RangeKind
+        fadeIn: number
+        fadeOut: number
+    }
 }
 const drag = shallowRef<Drag>()
 const span = ref<[number, number]>([0, d.stripEnd])
@@ -153,7 +161,13 @@ const onPointerDown = (event: PointerEvent) => {
     drag.value = {
         kind,
         pointer: event.pointerId,
-        from: { ...d.range.value, playhead: d.playhead.value, kind: d.rangeKind.value },
+        from: {
+            ...d.range.value,
+            playhead: d.playhead.value,
+            kind: d.rangeKind.value,
+            fadeIn: d.form.fadeIn,
+            fadeOut: d.form.fadeOut,
+        },
     }
     root.value?.setPointerCapture(event.pointerId)
     emit('scrub')
@@ -185,8 +199,11 @@ const onDragKey = (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || !current) return
     event.preventDefault()
     event.stopPropagation()
-    if (current.kind !== 'playhead')
+    if (current.kind !== 'playhead') {
         d.setRange({ in: current.from.in, out: current.from.out }, current.from.kind)
+        d.form.fadeIn = current.from.fadeIn
+        d.form.fadeOut = current.from.fadeOut
+    }
     d.playhead.value = current.from.playhead
     if (root.value?.hasPointerCapture(current.pointer))
         root.value.releasePointerCapture(current.pointer)
