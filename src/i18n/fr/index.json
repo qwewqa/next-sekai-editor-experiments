@@ -2458,6 +2458,7 @@
     "notLocal": "« {0} » n’est pas encore disponible sur cet appareil.",
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "« {0} » n’a pas pu être écrit.",
+    "ownFileEmptied": "« {0} » est maintenant vide. La partition est toujours stockée dans ce navigateur.",
     "notPutBack": "« {0} » a été vidé et son contenu n’a pas pu être restauré.",
     "openedContentGone": "Le contenu de « {0} » a changé.",
     "replacedContentGone": "Le contenu de « {0} » a changé.",

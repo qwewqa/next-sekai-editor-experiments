@@ -2458,6 +2458,7 @@
     "notLocal": "“{0}”尚不在此设备上。",
     "noSpace": "空间不足，无法写入 {0}。",
     "writeFailed": "无法写入“{0}”。",
+    "ownFileEmptied": "“{0}”已被清空。谱面仍存储在此浏览器中。",
     "notPutBack": "“{0}”已被清空，且无法还原其内容。",
     "openedContentGone": "“{0}”的内容已更改。",
     "replacedContentGone": "“{0}”的内容已更改。",

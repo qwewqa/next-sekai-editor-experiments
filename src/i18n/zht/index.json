@@ -2458,6 +2458,7 @@
     "notLocal": "「{0}」尚不在此裝置上。",
     "noSpace": "空間不足，無法寫入 {0}。",
     "writeFailed": "無法寫入「{0}」。",
+    "ownFileEmptied": "「{0}」已被清空。譜面仍存放在此瀏覽器中。",
     "notPutBack": "「{0}」已被清空，且無法還原其內容。",
     "openedContentGone": "「{0}」的內容已變更。",
     "replacedContentGone": "「{0}」的內容已變更。",

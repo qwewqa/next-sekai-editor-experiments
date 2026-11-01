@@ -2458,6 +2458,7 @@
     "notLocal": "“{0}” henüz bu cihazda değil.",
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "“{0}” yazılamadı.",
+    "ownFileEmptied": "“{0}” artık boş. Nota çizelgesi hâlâ bu tarayıcıda saklanıyor.",
     "notPutBack": "“{0}” boşaltıldı ve içeriği geri yüklenemedi.",
     "openedContentGone": "“{0}” içeriği değişti.",
     "replacedContentGone": "“{0}” içeriği değişti.",

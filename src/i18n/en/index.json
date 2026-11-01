@@ -2458,6 +2458,7 @@
         "notLocal": "“{0}” is not available on this device yet.",
         "noSpace": "There is not enough space to write {0}.",
         "writeFailed": "“{0}” could not be written.",
+        "ownFileEmptied": "“{0}” is now empty. The chart is still stored in this browser.",
         "notPutBack": "“{0}” was emptied and its contents could not be restored.",
         "openedContentGone": "The contents of “{0}” have changed.",
         "replacedContentGone": "The contents of “{0}” have changed.",
