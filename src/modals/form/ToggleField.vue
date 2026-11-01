@@ -10,6 +10,7 @@ defineProps<{
     notes?: string[]
     /** What the setting or property does, behind an ⓘ after the label. */
     description?: string | null
+    disabled?: boolean
 }>()
 
 const modelValue = defineModel<boolean>({ required: true })
@@ -34,9 +35,10 @@ const shown = computed(() =>
                     :aria-labelledby="textId"
                     :value="shown"
                     :title="shown"
+                    :disabled
                     @click="modelValue = !modelValue"
                 />
-                <ToggleSwitch :value="modelValue" />
+                <ToggleSwitch :value="modelValue" :class="{ 'opacity-40': disabled }" />
             </div>
         </template>
     </BaseField>

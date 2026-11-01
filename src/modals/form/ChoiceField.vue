@@ -34,6 +34,11 @@ const props = defineProps<{
     variant?: 'multi' | 'optional'
     /** What the property does, behind an ⓘ: prose, or a line per option. */
     description?: string | ChoiceDescription<Extract<NoInfer<T>, string>> | null
+    /** Values shown but not offered; the notes say why. */
+    disabledValues?: readonly NoInfer<T>[]
+    disabled?: boolean
+    /** Short remarks under the field. */
+    notes?: string[]
 }>()
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -178,10 +183,11 @@ watch(
         :label-id="`${id}-label`"
         :mixed
         :description="described"
+        :notes
     >
         <div
             class="form-field-segmented flex min-w-0 rounded-full bg-recess p-0.5 shadow-track outline-none"
-            :class="{ 'text-fg/80': isMixed }"
+            :class="{ 'text-fg/80': isMixed, 'opacity-40': disabled }"
             role="radiogroup"
             :aria-labelledby="isMixed ? `${id}-label ${id}-mixed` : `${id}-label`"
         >
@@ -220,7 +226,7 @@ watch(
                     type="radio"
                     :name="id"
                     :value
-                    :disabled="readOnly"
+                    :disabled="readOnly || disabled || disabledValues?.includes(value)"
                     @change="resyncRadios($event, () => modelValue)"
                     @click="onClick"
                 />
@@ -268,5 +274,8 @@ watch(
         :label
         :options
         :description="selectDescription"
+        :disabled-values
+        :disabled
+        :notes
     />
 </template>

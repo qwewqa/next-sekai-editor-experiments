@@ -10,6 +10,7 @@ defineProps<{
     step?: number | 'any'
     /** What the setting or property does, behind an ⓘ after the label. */
     description?: string | null
+    disabled?: boolean
 }>()
 
 const input: Ref<HTMLInputElement | null> = useTemplateRef('input')
@@ -36,6 +37,7 @@ const onFocus = (event: FocusEvent) => {
             :min
             :max
             :step
+            :disabled
             required
             @focus="onFocus"
             @change="resyncInput($event, () => `${modelValue}`)"

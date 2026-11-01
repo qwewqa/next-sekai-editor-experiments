@@ -17,6 +17,10 @@ const props = defineProps<{
     optionGlyph?: OptionGlyph<NoInfer<T>>
     /** What the field does, behind an ⓘ: prose, or a line per option. */
     description?: string | ChoiceDescription<Extract<NoInfer<T>, string>> | null
+    /** Values shown but not offered; the notes say why. */
+    disabledValues?: readonly NoInfer<T>[]
+    /** Short remarks under the field. */
+    notes?: string[]
 }>()
 
 const modelValue = defineModel<T>({ required: true })
@@ -35,7 +39,7 @@ const glyphs = computed(() =>
 </script>
 
 <template>
-    <BaseField :label :description="described">
+    <BaseField :label :description="described" :notes>
         <div class="form-field-select group" :class="{ 'opacity-40': disabled }">
             <select
                 v-model.lazy="modelValue"
@@ -49,7 +53,12 @@ const glyphs = computed(() =>
                 <option v-if="unknown" :value="modelValue" disabled hidden>
                     {{ shown }}
                 </option>
-                <option v-for="([name, value], index) in options" :key="index" :value>
+                <option
+                    v-for="([name, value], index) in options"
+                    :key="index"
+                    :value
+                    :disabled="disabledValues?.includes(value)"
+                >
                     <OptionGlyphSlot v-if="glyphs" :glyph="optionGlyph!(value)" />{{ name }}
                 </option>
             </select>

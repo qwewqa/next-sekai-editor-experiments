@@ -2,7 +2,7 @@ import type { FileErrorCode } from '../../platform/types'
 
 export type VideoReportSettings = {
     format: 'mp4' | 'webm'
-    support: 'full' | 'webmOnly' | 'noAudio'
+    support: 'full' | 'webmOnly'
     resolution: 720 | 1080 | 1440 | 2160
     frameRate: 30 | 60
     aspect: '16:9' | '21:9' | '4:3'

@@ -7,6 +7,8 @@ import { createPlayerAudio, type PlayerAudio } from './playerAudio'
 import { createSoundScheduler } from './playerSoundScheduler'
 import { assetSession, setAudioDecoder, sfxSlots } from './preview/assets'
 import { settings } from './settings'
+import type { State } from './state'
+import type { Bgm } from './state/bgm'
 import { decodeWithinLimit } from './utils/bgmLimit'
 import { optional } from './utils/optional'
 
@@ -272,6 +274,78 @@ const startPreview = (bgmTime: number, duration: number) => {
         audio.stop()
     }, startDeadline)
     return audio
+}
+
+/** The sound effects as loaded now, for an export's mix. */
+export const loadedSfx = (): Partial<Record<keyof typeof sfxBuffers, AudioBuffer>> =>
+    Object.fromEntries(Object.entries(sfxBuffers).filter(([, buffer]) => buffer))
+
+/**
+ * Plays a fixed chart from `time` with its own BGM and volumes, on Play's context, for a dialog
+ * that previews a clip. The editor's playback stops, and its cursor is left alone.
+ */
+export const startClipPlayer = (options: {
+    time: number
+    source: Pick<State, 'store' | 'bpms'>
+    bgm: Bgm
+    volumes: { bgm: number; sfx: number }
+    onFailure: () => void
+}) => {
+    setAudioSession()
+    const replace = needsNewContext()
+    stopPlayback(replace)
+    stopPreviewPlayer()
+    if (replace) replaceContext()
+    const started = context
+    const startTime = started.currentTime
+    const contextTime = startTime + startupDelay
+    const sounds = createSoundScheduler({
+        context: started,
+        source: () => options.source,
+        buffers: { sfx: sfxBuffers, bgm: options.bgm },
+        volumes: { bgm: () => options.volumes.bgm, sfx: () => options.volumes.sfx },
+        start: { time: options.time, contextTime, speed: 1 },
+    })
+    let stopped = false
+    const clock = createDisplayClock()
+    const tick = () => {
+        if (started.state === 'running' && areSfxReady) sounds.schedule()
+    }
+    const interval = setInterval(tick, scheduleInterval)
+    const check = setTimeout(() => {
+        if (stopped || started.currentTime > startTime) return
+        stuckAt = startTime
+        fail()
+    }, startDeadline)
+    const stop = (immediately = false) => {
+        if (stopped) return
+        stopped = true
+        clearInterval(interval)
+        clearTimeout(check)
+        sounds.stop(immediately)
+    }
+    const fail = () => {
+        stop(true)
+        options.onFailure()
+    }
+    resumeContext(() => {
+        if (!stopped) fail()
+    })
+    sounds.startBgm()
+    if (areSfxReady) sounds.schedule()
+    return {
+        /** The chart time now playing, smoothed for drawing. */
+        time: () =>
+            Math.max(
+                0,
+                clock.read(
+                    started.currentTime,
+                    performance.now() / 1000,
+                    started.state === 'running',
+                ) - contextTime,
+            ) + options.time,
+        stop,
+    }
 }
 
 export const stopPreviewPlayer = () => {

@@ -48,6 +48,16 @@ const allowed: [string, RegExp, string][] = [
     ],
     ['src/editor/history/PeekBar.vue', /ring-accent/, 'the peek ring: a mode in force'],
     [
+        'src/editor/exportVideo/ExportVideoStage.vue',
+        /color-accent/,
+        'the peek ring on the frame view: a mode in force',
+    ],
+    [
+        'src/editor/exportVideo/ClipStrip.vue',
+        /border-accent-strong/,
+        'the clip range edges, so the range does not rely on the shade',
+    ],
+    [
         'src/preview/PreviewSettings.vue',
         /shadow-accent/,
         'range thumbs take the hover glow and cannot take a class',
