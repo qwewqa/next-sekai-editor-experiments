@@ -72,6 +72,8 @@ const isEditable = (element: Element | null) =>
 // can reach editor shortcuts. Fields and menus keep their own Escape.
 const onKeydown = (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || !drawerSide.value || modals.length || contextMenu.value) return
+    // An open info bubble closes first, and the next Escape closes the drawer.
+    if (document.querySelector('[data-field-info-bubble]')) return
     const target = event.target instanceof Element ? event.target : null
     if (isEditable(target) || target?.closest('[role="menu"]')) return
     // The History list takes Escape itself: back to Now first, then close.

@@ -4,22 +4,33 @@ let closeOpen: (() => void) | undefined
 </script>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    useId,
+    useTemplateRef,
+    watch,
+} from 'vue'
 import { vScrollEdges } from '../../directives/scrollEdges'
 import InfoIcon from '../../editor/history/InfoIcon.vue'
+import { dockKeysAttribute, isInWorkspaceDock, takesDockKeys } from '../../editor/workspace'
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
+import { swallowPress } from '../../utils/swallowPress'
 import { choiceLine, type FieldDescription } from './fieldDescription'
 import { CLOSE_DELAY_MS, OPEN_DELAY_MS } from './infoBubble'
 
-// The ⓘ after a setting's label: hover or focus shows its description after a moment, and a
-// click, tap, Enter or Space pins it. The bubble goes under the field, or above it when there is
-// no room below, and scrolls inside when it fits neither side.
+// The ⓘ after a setting's or property's label: hover or focus shows its description after a moment,
+// and a click, tap, Enter or Space pins it. The bubble goes under the field, or above it when there
+// is no room below, and scrolls inside when it fits neither side.
 
 defineProps<{
     label: string
     description: FieldDescription
-    /** The field's description for screen readers, which starts with this text. */
+    /** The id of the description's text for screen readers. */
     describedBy: string
 }>()
 
@@ -30,6 +41,7 @@ const button = useTemplateRef<HTMLButtonElement>('button')
 const bubble = useTemplateRef<HTMLDivElement>('bubble')
 const scroller = useTemplateRef<HTMLDivElement>('scroller')
 const bubbleId = useId()
+const buttonId = useId()
 
 /** Shown by hover or focus, or pinned by a press. */
 const state = ref<'closed' | 'shown' | 'pinned'>('closed')
@@ -37,6 +49,14 @@ const placement = ref<{ left: number; top: number; maxHeight?: number }>()
 // The field the bubble is placed against: the label and its control, a stacked control included.
 const field = () => button.value?.closest<HTMLElement>('.form-field')
 const container = computed(() => button.value?.closest('dialog') ?? 'body')
+// The bubble sits outside any dock, so it is marked for its keys to reach no shortcut, as in a
+// dock. A tool dialog stops shortcuts only in its fields, so its button is marked too.
+const inToolDialog = ref(false)
+const bubbleKeys = ref(false)
+onMounted(() => {
+    inToolDialog.value = !!button.value?.closest('[data-tool-dialog]')
+    bubbleKeys.value = inToolDialog.value || takesDockKeys(button.value)
+})
 
 let timer: ReturnType<typeof setTimeout> | undefined
 const stopTimer = () => {
@@ -51,6 +71,9 @@ const later = (ms: number, run: () => void) => {
 const close = () => {
     stopTimer()
     if (state.value === 'closed') return
+    // Focus in the bubble goes back to the button, so it never falls to the page. It moves while
+    // the bubble is open, so the focus does not show the bubble again.
+    if (bubble.value?.contains(document.activeElement)) button.value?.focus({ preventScroll: true })
     state.value = 'closed'
     placement.value = undefined
     if (closeOpen === close) closeOpen = undefined
@@ -173,8 +196,17 @@ const onBubbleLeave = (event: PointerEvent) => {
 
 // --- Closing from outside.
 const onOutside = (event: PointerEvent) => {
-    // The press goes on: a drag on the list still scrolls it.
-    if (!inside(event.target)) close()
+    if (inside(event.target)) return
+    // A press over the chart that closes a pinned bubble only closes it, so it edits nothing. In a
+    // dock or a dialog the press continues, so a drag on the list still scrolls it.
+    const target = event.target instanceof Element ? event.target : null
+    if (
+        state.value === 'pinned' &&
+        !isInWorkspaceDock(target) &&
+        !target?.closest('dialog, [data-tool-dialog]')
+    )
+        swallowPress(event)
+    close()
 }
 
 const onEscape = (event: KeyboardEvent) => {
@@ -182,8 +214,6 @@ const onEscape = (event: KeyboardEvent) => {
     // The bubble closes, and the dialog under it stays.
     event.preventDefault()
     event.stopImmediatePropagation()
-    // Focus goes back first, while the bubble is open, so the focus does not show it again.
-    if (bubble.value?.contains(document.activeElement)) button.value?.focus()
     close()
 }
 
@@ -232,10 +262,12 @@ onBeforeUnmount(() => {
 
 <template>
     <button
+        :id="buttonId"
         ref="button"
         type="button"
         class="ghost focus-out holds-open relative ml-1 flex size-6 shrink-0 items-center justify-center rounded-full text-fg/70 before:absolute before:-inset-2.5 hover:text-fg aria-expanded:text-fg"
         data-field-info
+        :[dockKeysAttribute]="inToolDialog ? '' : undefined"
         :aria-label="interpolateRaw(i18n.modals.form.about, label)"
         :aria-expanded="state !== 'closed'"
         :aria-controls="bubbleId"
@@ -260,7 +292,8 @@ onBeforeUnmount(() => {
                 top: `${placement?.top ?? 0}px`,
                 maxHeight: placement?.maxHeight === undefined ? '' : `${placement.maxHeight}px`,
             }"
-            data-field-info-bubble
+            :data-field-info-bubble="buttonId"
+            :[dockKeysAttribute]="bubbleKeys ? '' : undefined"
             @pointerenter="onBubbleEnter"
             @pointerleave="onBubbleLeave"
             @focusout="onFocusOut"

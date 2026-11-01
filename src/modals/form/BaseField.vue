@@ -33,13 +33,17 @@ const props = defineProps<{
     mixed?: MixedValue[]
     /** Short remarks under the field, such as a shortcut's conflicts. */
     notes?: string[]
-    /** What the setting does, behind an ⓘ after the label. */
-    description?: FieldDescription
+    /**
+     * What the setting or property does, behind an ⓘ after the label. Null shows no ⓘ but keeps
+     * the row as it is with one, so the control stays when the ⓘ comes or goes.
+     */
+    description?: FieldDescription | null
 }>()
 
 const field = useFieldUsage()
 const readOnly = useFieldReadOnly()
 const row = useTemplateRef<HTMLElement>('row')
+const stateId = useId()
 const descriptionId = useId()
 // Controls named by more than the label, as a shortcut by its binding, refer to it.
 const fallbackTextId = useId()
@@ -71,13 +75,12 @@ const values = computed(
 const join = (template: string, parts: string[]) =>
     parts.length ? parts.reduce((text, part) => interpolateRaw(template, text, part)) : ''
 
-// What screen readers hear after the control's name: the setting's description first.
-const spoken = computed(() => {
+// What screen readers hear after the control's name: its state, then the description.
+const state = computed(() => {
     const messages = i18n.value.modals.form
-    return join(
+    const text = join(
         messages.sentenceJoin,
         [
-            props.description && descriptionText(props.description),
             coverage.value &&
                 interpolateRaw(
                     messages.coverage,
@@ -95,7 +98,10 @@ const spoken = computed(() => {
             ...(props.notes ?? []),
         ].filter((part): part is string => !!part),
     )
+    // The state ends its sentence before the description.
+    return text && props.description ? interpolateRaw(messages.sentenceJoin, text, '') : text
 })
+const spokenDescription = computed(() => props.description && descriptionText(props.description))
 
 // A label longer than two lines takes back the room the control's 10rem minimum
 // claims, then wraps in full; one observer serves every field. Where asked, as in
@@ -184,8 +190,9 @@ onMounted(() => {
     if (fieldRoot.value) observeWidth(fieldRoot.value, refitLabel)
 })
 
+// The ⓘ takes room from the label, so the label refits when the description comes or goes.
 watch(
-    () => props.label,
+    [() => props.label, () => !!props.description],
     () => {
         fitLabel()
     },
@@ -307,7 +314,12 @@ const fitCoverage = (nextFrame = false, force = false) => {
         return
     }
     // Digits keep their width, so a count changing its digits alone keeps the fit.
-    const fitFor = [props.label, lineWidth, chips.value[0]?.text?.replace(/\d/g, '0')].join(' ')
+    const fitFor = [
+        props.label,
+        !!props.description,
+        lineWidth,
+        chips.value[0]?.text?.replace(/\d/g, '0'),
+    ].join(' ')
     if (!force && fitFor === fitted) return
     let stackedHeight = 0
     let fits = true
@@ -368,23 +380,27 @@ onMounted(() => {
     observeLine()
     document.fonts.addEventListener('loadingdone', refitFonts)
 })
-watch([coverageOnly, () => props.label, () => chips.value[0]?.text], observeLine, {
-    flush: 'post',
-})
+watch(
+    [coverageOnly, () => props.label, () => !!props.description, () => chips.value[0]?.text],
+    observeLine,
+    { flush: 'post' },
+)
 onBeforeUnmount(() => {
     lineObserver.disconnect()
     cancelFit(fitOwner)
     document.fonts.removeEventListener('loadingdone', refitFonts)
 })
 
-// The control is slotted, so it is linked to the description here.
+// The control is slotted, so it is linked to its state and description here.
 watchEffect(
     () => {
         const control = row.value?.querySelector(
             ':is([role="radiogroup"], input, select, button):not([data-field-info])',
         )
         if (!control) return
-        if (spoken.value) control.setAttribute('aria-describedby', descriptionId)
+        const ids = [state.value && stateId, spokenDescription.value && descriptionId]
+        const describedBy = ids.filter(Boolean).join(' ')
+        if (describedBy) control.setAttribute('aria-describedby', describedBy)
         else control.removeAttribute('aria-describedby')
     },
     { flush: 'post' },
@@ -393,13 +409,17 @@ watchEffect(
 // With an ⓘ, only the label's text is a label, and it names its control by id: around the ⓘ, a
 // label would show its control hovered and pressed whenever the ⓘ is. The control's name is the
 // label's text alone.
-const textLabel = computed(() => !!props.description && props.labelId === undefined)
-const controlId = ref<string>()
+const textLabel = computed(() => props.description !== undefined && props.labelId === undefined)
+// The control the label's text names, which may be a text box that is never fitted.
+const labelledControl = () =>
+    controlOf() ?? row.value?.querySelector<HTMLInputElement>(':scope > input[type="text"]')
 const fallbackControlId = useId()
+// Named from the first render, so a dialog that focuses its first field on opening finds it.
+const controlId = ref(fallbackControlId)
 watchEffect(
     () => {
-        if (!props.description) return
-        const control = controlOf()
+        if (props.description === undefined) return
+        const control = labelledControl()
         if (!control) return
         control.id ||= fallbackControlId
         controlId.value = control.id
@@ -416,7 +436,7 @@ watchEffect(
         <!-- Coverage alone joins the label's column where it fits. -->
         <div ref="line" :class="{ 'form-field-inline': coverageOnly }">
             <component
-                :is="labelId === undefined && !description ? 'label' : 'div'"
+                :is="labelId === undefined && description === undefined ? 'label' : 'div'"
                 ref="row"
                 class="form-field-row"
             >
@@ -475,7 +495,10 @@ watchEffect(
         <div v-if="notes?.length" class="form-field-notes" aria-hidden="true">
             <p v-for="note in notes" :key="note">{{ note }}</p>
         </div>
-        <span v-if="spoken" :id="descriptionId" class="sr-only">{{ spoken }}</span>
+        <span v-if="state" :id="stateId" class="sr-only">{{ state }}</span>
+        <span v-if="spokenDescription" :id="descriptionId" class="sr-only">{{
+            spokenDescription
+        }}</span>
     </div>
 </template>
 

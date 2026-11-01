@@ -5,6 +5,8 @@ import NoticeCard from '../editor/NoticeCard.vue'
 import { cardInDialog, noticeCard, notification, quickInDialog } from '../editor/notification'
 import NoticeRegion from '../editor/NoticeRegion.vue'
 import QuickNotice from '../editor/QuickNotice.vue'
+import { focusLost } from '../utils/focusFallback'
+import { focusOpener, rememberOpener, type Opener } from './openerFocus'
 
 const regularModals = computed(() => modals.filter((modal) => modal.presentation !== 'tool'))
 
@@ -128,8 +130,13 @@ onUnmounted(() => {
 // Ids for what describes a dialog, which has none of its own.
 let describedId = 0
 
+// What had focus before each dialog, for the focus to return to.
+const openedFrom = new WeakMap<HTMLDialogElement, Opener>()
+
 const vOpen = {
     mounted(el: HTMLDialogElement) {
+        const opener = rememberOpener()
+        if (opener) openedFrom.set(el, opener)
         const title = el.querySelector('[data-modal-title]')
         if (title) el.setAttribute('aria-labelledby', title.id)
         const described = [...el.querySelectorAll<HTMLElement>('[data-modal-description]')]
@@ -178,6 +185,9 @@ const vOpen = {
     // Closing first returns focus to the opener, as Escape does.
     beforeUnmount(el: HTMLDialogElement) {
         if (el.open) el.close()
+        // Focus still in the closed dialog goes to the page once the dialog is removed.
+        const opener = openedFrom.get(el)
+        if (opener && (focusLost() || el.contains(document.activeElement))) focusOpener(opener)
     },
 }
 </script>
