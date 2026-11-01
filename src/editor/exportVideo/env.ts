@@ -80,13 +80,20 @@ export const pageDestination = async (request: DestinationRequest): Promise<JobD
             return {
                 worker: { kind: 'memory', limit: destination.limit },
                 ready: {
-                    file: (result) =>
-                        Promise.resolve(
-                            new File(
-                                [result instanceof Blob ? result : (result as BlobPart)],
-                                request.name,
-                            ),
-                        ),
+                    file: (result) => {
+                        if (
+                            !result ||
+                            typeof result !== 'object' ||
+                            !('buffer' in result) ||
+                            !(result.buffer instanceof ArrayBuffer)
+                        )
+                            throw new Error('Video output is missing its buffer')
+                        return Promise.resolve(
+                            new File([result.buffer], request.name, {
+                                type: `video/${request.format}`,
+                            }),
+                        )
+                    },
                     // Share… is offered for staged files only.
                     deliver: async (file) => {
                         await handOver(file, request.name, performance.now(), undefined)
