@@ -153,6 +153,11 @@ export const helpSections = [
                 ],
             },
             {
+                id: 'exportVideo',
+                commands: ['exportVideo'],
+                lines: [{ text: () => i18n.value.help.exportVideo.contents }],
+            },
+            {
                 id: 'utilities',
                 commands: ['utilities'],
                 lines: [

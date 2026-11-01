@@ -29,6 +29,7 @@ import {
 } from './settings/defaultProperties'
 import { exportVideoChoices, exportVideoStop } from './settings/exportVideo'
 import { insertExportLevel } from './settings/toolbarExport'
+import { insertExportVideo } from './settings/toolbarExportVideo'
 import { insertMinimap } from './settings/toolbarMinimap'
 import { insertPreviewAssets } from './settings/toolbarPreviewAssets'
 import { insertSessionRestore } from './settings/toolbarSessionRestore'
@@ -291,6 +292,7 @@ const settingsProperties = {
                     'statistics',
                     'properties',
                     'reset',
+                    'exportVideo',
                     'exportLevel',
                     'saveAs',
                     'save',
@@ -625,6 +627,7 @@ const loadSetting = (key: string, defaultValue: unknown) => {
             ['toolbarSessionRestoreMigrated', insertSessionRestore],
             ['toolbarMinimapMigrated', insertMinimap],
             ['toolbarStatisticsMigrated', insertStatistics],
+            ['toolbarExportVideoMigrated', insertExportVideo],
         ] as const
         const pending = steps.filter(([flag]) => storageGet(flag, false) !== true)
         const loaded = storageGet(key, defaultValue)

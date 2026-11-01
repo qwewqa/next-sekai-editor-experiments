@@ -23,6 +23,7 @@ import { stagePivotEvent } from './events/stage/pivot'
 import { stageStyleEvent } from './events/stage/style'
 import { stageTransformEvent } from './events/stage/transform'
 import { exportLevel } from './exportLevel'
+import { exportVideo } from './exportVideo'
 import { flip } from './flip'
 import { flipVertical } from './flipVertical'
 import { fullscreen } from './fullscreen'
@@ -114,6 +115,7 @@ const builtInCommands = {
     save,
     saveAs,
     exportLevel,
+    exportVideo,
     reset,
     properties: levelInfo,
     statistics,

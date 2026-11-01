@@ -4,8 +4,7 @@ import { loadForAction } from '../../loadFailure'
 import { notify } from '../../notification'
 import FilmIcon from './FilmIcon.vue'
 
-// Export Video…: a video of the preview, of the chart on screen, peeks included. Not yet in
-// `builtInCommands`: it joins the toolbar, Help and the shortcut list once the file can be written.
+// Export Video…: a video of the preview, of the chart on screen, peeks included.
 export const exportVideo: Command = {
     readOnly: true,
     title: () => i18n.value.commands.exportVideo.title,

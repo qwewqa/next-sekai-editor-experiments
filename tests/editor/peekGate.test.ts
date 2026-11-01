@@ -82,6 +82,8 @@ const allowed = [
     'save',
     'saveAs',
     'exportLevel',
+    // The chart on screen, peeks included.
+    'exportVideo',
     // Reads the file and storage; it changes no chart state.
     'checkProject',
     // A device setting.

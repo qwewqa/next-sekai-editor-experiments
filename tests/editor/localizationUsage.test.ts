@@ -159,7 +159,6 @@ const dynamic: Record<string, string> = {
     'exportVideo.formatDescription.choices.': listLines,
     'exportVideo.qualities.': 'the Quality choices, aliased in ExportVideoSettings.vue',
     'exportVideo.errors.': 'VideoFailure reasons, read through text() in failure.ts',
-    'help.exportVideo.': 'the Help entry, added with the command once Export Video is offered',
     'settings.descriptions.elevationEditorSideBySide.': listLines,
     'settings.descriptions.groupsStagesSideBySide.': listLines,
     'settings.descriptions.playStartPosition.': listLines,

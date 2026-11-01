@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { insertExportLevel } from '../../src/settings/toolbarExport'
+import { insertExportVideo } from '../../src/settings/toolbarExportVideo'
 import { insertMinimap } from '../../src/settings/toolbarMinimap'
 import { insertPreviewAssets } from '../../src/settings/toolbarPreviewAssets'
 import { insertSessionRestore } from '../../src/settings/toolbarSessionRestore'
@@ -169,4 +170,56 @@ test('a customised first group, or a toolbar that has Statistics, is left as it 
 test('the Statistics step is idempotent', () => {
     const once = insertStatistics([formerFirst])
     assert.equal(insertStatistics(once), once)
+})
+
+const statisticsFirst = ['utilities', 'statistics', ...formerFirst.slice(1)]
+
+test('Export Video goes beside Export Level Data in the exact old first group, away from Open', () => {
+    assert.deepEqual(insertExportVideo([statisticsFirst, ['play']]), [
+        [
+            'utilities',
+            'statistics',
+            'properties',
+            'reset',
+            'exportVideo',
+            'exportLevel',
+            'saveAs',
+            'save',
+            'open',
+        ],
+        ['play'],
+    ])
+})
+
+test('a customised first group, or a toolbar that has Export Video, is left as it is', () => {
+    for (const groups of [
+        [statisticsFirst.slice(1)],
+        [[...statisticsFirst, 'help']],
+        [[...statisticsFirst].reverse()],
+        [formerFirst],
+        [['exportVideo'], statisticsFirst],
+    ]) {
+        assert.equal(insertExportVideo(groups), groups)
+    }
+})
+
+test('the Export Video step is idempotent', () => {
+    const once = insertExportVideo([statisticsFirst])
+    assert.equal(insertExportVideo(once), once)
+})
+
+test('the Statistics and Export Video steps in order take the old first group to the new default', () => {
+    assert.deepEqual(insertExportVideo(insertStatistics([formerFirst])), [
+        [
+            'utilities',
+            'statistics',
+            'properties',
+            'reset',
+            'exportVideo',
+            'exportLevel',
+            'saveAs',
+            'save',
+            'open',
+        ],
+    ])
 })

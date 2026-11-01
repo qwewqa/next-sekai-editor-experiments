@@ -215,6 +215,7 @@ const availableCommands: CommandName[] = [
     'save',
     'saveAs',
     'exportLevel',
+    'exportVideo',
     'reset',
     'properties',
     'statistics',

@@ -473,6 +473,8 @@ test('the toolbar step adds Statistics to the old first group once, and a remova
         ])
             localStorage.setItem(`${prefix}${flag}`, 'true')
         localStorage.removeItem(`${prefix}toolbarStatisticsMigrated`)
+        // The later Export Video step would match the new first group too.
+        localStorage.setItem(`${prefix}toolbarExportVideoMigrated`, 'true')
     }, former)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
