@@ -258,12 +258,13 @@ const formatDescription = computed(() => ({ choices: strings.value.formatDescrip
             <div class="export-span pt-1">
                 <button
                     type="button"
-                    class="export-hit btn btn-secondary relative h-9 max-w-full truncate rounded-full px-4"
+                    class="export-hit btn btn-secondary relative flex h-9 max-w-full items-center rounded-full px-4"
                     :disabled="busy"
                     data-export-restore
                     @click="d.restoreDefaults"
                 >
-                    {{ strings.restoreDefaults }}
+                    <!-- Truncated inside, so the button keeps its 44 px target. -->
+                    <span class="truncate">{{ strings.restoreDefaults }}</span>
                 </button>
             </div>
         </template>
