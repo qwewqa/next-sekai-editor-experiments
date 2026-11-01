@@ -10,7 +10,6 @@ declare global {
             preview: typeof import('../../src/preview/edit')
             scene: typeof import('../../src/editor/elevation/scene')
         }
-        scalingVertices: number[]
     }
 }
 
@@ -22,6 +21,7 @@ const settle = (page: Page) =>
         await new Promise<void>((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
+        await window.nsePreviewTest?.settled()
     })
 const summary = (page: Page) =>
     page.evaluate(() => {
@@ -217,19 +217,34 @@ test.beforeEach(async ({ page }) => {
     )
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript(() => {
-        window.scalingVertices = []
+        window.previewTest = {
+            uploads: 0,
+            frames: 0,
+            bitmaps: 0,
+            closes: 0,
+            vertices: [],
+            resolutions: 0,
+            aspect: 0,
+            errors: [],
+        }
         const isPreview = (gl: WebGL2RenderingContext) =>
             gl.canvas instanceof HTMLCanvasElement &&
             gl.canvas.matches('.preview-viewport > canvas:not(.preview-selection)')
         const clear = WebGL2RenderingContext.prototype.clear
         WebGL2RenderingContext.prototype.clear = function (...args) {
-            if (isPreview(this)) window.scalingVertices = []
+            // The background pass clears again after the foreground has been drawn.
+            if (
+                isPreview(this) &&
+                (this.getParameter(this.COLOR_CLEAR_VALUE) as Float32Array)[3] === 0
+            )
+                window.previewTest.vertices = []
             return clear.apply(this, args)
         }
         const upload = WebGL2RenderingContext.prototype.bufferSubData
         WebGL2RenderingContext.prototype.bufferSubData = function (...args: unknown[]) {
-            if (isPreview(this) && args[2] instanceof Float32Array)
-                window.scalingVertices.push(...args[2])
+            const data = args[2]
+            if (isPreview(this) && data instanceof Float32Array && data[5] !== 3)
+                window.previewTest.vertices.push(...data)
             return Reflect.apply(upload, this, args)
         }
     })
@@ -296,7 +311,12 @@ test('live factor leaves chart history untouched until Apply, with one undo', as
         window.editorTest.settings.leftDockWidth = 300
     })
     await expect(page.locator('.preview canvas').first()).toBeVisible()
-    await expect.poll(() => page.evaluate(() => window.scalingVertices.length)).toBeGreaterThan(0)
+    await expect
+        .poll(() => page.evaluate(() => window.previewTest.vertices.length))
+        .toBeGreaterThan(0)
+    expect(await page.evaluate(() => window.nsePreviewTest?.host)).toBe(
+        testInfo.project.name === 'chromium-worker' ? 'worker' : 'main',
+    )
     await open(page)
     await page.evaluate(() => {
         window.editorTest.view.cursorTime = 2.4
@@ -308,7 +328,7 @@ test('live factor leaves chart history untouched until Apply, with one undo', as
     await expect(page.getByTitle('Select', { exact: true })).toHaveCount(0)
     const original = await page.evaluate(() => ({
         chart: document.querySelector<HTMLCanvasElement>('canvas.editor-chart')!.toDataURL(),
-        preview: [...window.scalingVertices],
+        preview: [...window.previewTest.vertices],
     }))
     await factor(page).fill('2')
     await settle(page)
@@ -327,8 +347,9 @@ test('live factor leaves chart history untouched until Apply, with one undo', as
         )
         .not.toBe(original.chart)
     await expect
-        .poll(() => page.evaluate(() => window.scalingVertices))
+        .poll(() => page.evaluate(() => window.previewTest.vertices))
         .not.toEqual(original.preview)
+    const scaledPreview = await page.evaluate(() => [...window.previewTest.vertices])
     await page.screenshot({
         path: testInfo.outputPath('main-live-scaling.png'),
         style: '.notification { visibility: hidden }',
@@ -339,8 +360,12 @@ test('live factor leaves chart history untouched until Apply, with one undo', as
     await page.keyboard.press('z')
     expect((await summary(page)).stored.map((note) => note.beat)).toEqual([3, 5, 8])
     expect((await summary(page)).canUndo).toBe(false)
+    await settle(page)
+    expect(await page.evaluate(() => window.previewTest.vertices)).toEqual(original.preview)
     await page.keyboard.press('y')
     expect((await summary(page)).stored.map((note) => note.beat)).toEqual([3, 7, 8])
+    await settle(page)
+    expect(await page.evaluate(() => window.previewTest.vertices)).toEqual(scaledPreview)
 })
 
 test('Ctrl+Z and Ctrl+Y in the factor reach the editor only while it shows the factor it opened with', async ({
