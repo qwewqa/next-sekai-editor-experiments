@@ -375,11 +375,13 @@ const onPlacementChange = () => {
                 <span class="min-w-0 flex-1 truncate text-left">{{ i18n.preview.settings }}</span>
                 <ChevronIcon direction="up" />
             </button>
+            <!-- The reserved gutter keeps the rows' width, and so the measured height that
+            placement compares, the same whether or not the form scrolls. -->
             <div
                 :id="`${id}-body`"
                 ref="controlsBody"
                 v-scroll-edges
-                class="preview-controls-body flex min-h-0 touch-pan-y flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-3"
+                class="preview-controls-body flex min-h-0 touch-pan-y flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-3 [scrollbar-gutter:stable]"
             >
                 <div class="preview-setting">
                     <span class="preview-setting-label">{{ i18n.settings.preview.noteSpeed }}</span>

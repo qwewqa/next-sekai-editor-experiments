@@ -502,3 +502,58 @@ test('a manager list follows forced colors turned on or off after it mounts', as
     await expect.poll(inline).not.toBe('')
     expect(await gutter(list)).toBeGreaterThan(0)
 })
+
+test('Preview Settings keep their width and height whether or not they scroll', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    await page.addInitScript(installCanvasCounters)
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(async () => {
+        const { settings, nextTick, fixtures, show } = window.editorTest
+        Object.assign(settings, {
+            showSidebar: true,
+            showPreview: true,
+            previewControls: 'expanded',
+            leftDockWidth: 420,
+        })
+        show(fixtures.interaction, 3)
+        await nextTick()
+    })
+    const form = page.locator('.preview-controls')
+    await expect(form).toBeVisible()
+    await frames(page)
+    const measure = () =>
+        form.evaluate((element) => {
+            const body = element.querySelector<HTMLElement>('.preview-controls-body')!
+            return {
+                width: body.clientWidth,
+                height:
+                    element.firstElementChild!.getBoundingClientRect().height + body.scrollHeight,
+                margin: innerHeight - parseFloat(getComputedStyle(element).maxHeight),
+            }
+        })
+    const full = await measure()
+    // Room below the bar for four fifths of the form, so it scrolls there.
+    await page.setViewportSize({ width: 1600, height: Math.round(full.height * 0.8 + full.margin) })
+    await frames(page)
+    expect(await overflows(form.locator('.preview-controls-body'))).toBe(true)
+    const scrolling = await measure()
+    expect(scrolling.width).toBe(full.width)
+    expect(scrolling.height).toBe(full.height)
+    // Placement holds still from frame to frame.
+    const lefts = await form.evaluate(async (element) => {
+        const result = new Set<number>()
+        for (let frame = 0; frame < 20; frame++) {
+            await new Promise((resolve) => requestAnimationFrame(resolve))
+            result.add(element.getBoundingClientRect().left)
+        }
+        return [...result]
+    })
+    expect(lefts).toHaveLength(1)
+    const preview = (await page.locator('.preview').boundingBox())!
+    expect(lefts[0]).toBeGreaterThanOrEqual(preview.x)
+    expect(lefts[0]).toBeLessThan(preview.x + preview.width)
+})
