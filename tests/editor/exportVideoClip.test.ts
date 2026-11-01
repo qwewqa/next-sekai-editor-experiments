@@ -15,12 +15,7 @@ import {
 } from '../../src/editor/exportVideo/clipRange'
 import { formatClipTime, parseClipTime, rulerStep } from '../../src/editor/exportVideo/clipTime'
 import { videoFileName } from '../../src/editor/exportVideo/videoName'
-import {
-    estimateBytes,
-    estimateSeconds,
-    presetBitrate,
-    qualityOf,
-} from '../../src/exportVideo/estimate'
+import { estimateBytes, presetBitrate, qualityOf } from '../../src/exportVideo/estimate'
 import { calculateBpms } from '../../src/state/integrals/bpms'
 
 const close = (actual: number, expected: number) => assert.ok(Math.abs(actual - expected) < 1e-9)
@@ -135,12 +130,10 @@ test('presets follow the table, scale by width, and a typed bitrate is custom', 
     assert.equal(qualityOf(9e6, 1080, 30, 1920), 'custom')
 })
 
-test('size and time estimates', () => {
+test('size estimate', () => {
     // The 92.5 s example at 1080p30 Standard with 192 kbps audio is about 96.7 MB.
     assert.equal(Math.round(estimateBytes(92.5, 8e6, 192e3) / 1e5) / 10, 96.7)
     assert.equal(estimateBytes(10, 8e6, 0), ((10 * 8e6) / 8) * 1.02 + 64_000)
-    assert.equal(estimateSeconds(100, 1000, 0), undefined)
-    assert.equal(estimateSeconds(100, 1000, 50_000), 2)
 })
 
 test('the last object counts notes and events, and a selection counts connector tails', () => {

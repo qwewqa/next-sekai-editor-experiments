@@ -209,8 +209,6 @@ const settingsProperties = {
         { default: 192_000 },
     ),
     exportVideoAdvanced: Type.Boolean(),
-    // Render pixels a second that the last export of at least 10 s reached; 0 before one.
-    exportVideoThroughput: number(0, 0, Number.MAX_SAFE_INTEGER),
     // This device's render-pixel limit after exports of one size stopped twice; 0 for none.
     exportVideoPixelLimit: number(0, 0, Number.MAX_SAFE_INTEGER),
     // Exports that stopped before they ended, counted by their render pixels.

@@ -1,4 +1,4 @@
-// The quality presets' bitrates and the size and time estimates: pure.
+// The quality presets' bitrates and the size estimate: pure.
 
 export const RESOLUTIONS = [720, 1080, 1440, 2160] as const
 export type Resolution = (typeof RESOLUTIONS)[number]
@@ -49,7 +49,3 @@ const CONTAINER_BYTES = 64_000
 /** About how large the file is: an average, not a bound. No audio bitrate without sound. */
 export const estimateBytes = (seconds: number, videoBitrate: number, audioBitrate: number) =>
     ((seconds * (videoBitrate + audioBitrate)) / 8) * CONTAINER_FACTOR + CONTAINER_BYTES
-
-/** About how long an export takes, from this device's render pixels per second; none unmeasured. */
-export const estimateSeconds = (frames: number, renderPixels: number, throughput: number) =>
-    throughput > 0 ? (frames * renderPixels) / throughput : undefined
