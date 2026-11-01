@@ -73,6 +73,8 @@ const wantsWorker = () =>
 const initialHost: 'main' | 'worker' = wantsWorker() ? 'worker' : 'main'
 export const previewHost = reactive({
     kind: initialHost,
+    /** The worker is returning its atlases or starting their reload. */
+    handingOver: false,
     /** The worker's canvases still show its last frame, until the main host draws one. */
     retiring: false,
     /** Counts the workers started, so each gets canvases of its own. */
@@ -170,6 +172,7 @@ const startWorker = () => {
     ) => {
         if (stopped) return
         stopped = true
+        previewHost.handingOver = true
         for (const finish of copying.values())
             finish(undefined, new Error('Preview worker stopped'))
         settle()
@@ -210,6 +213,7 @@ const startWorker = () => {
         client = undefined
         previewHost.retiring = attached > 0
         previewHost.kind = 'main'
+        previewHost.handingOver = false
         if (responsive) {
             const end = () => {
                 afterTwoFrames(() => {

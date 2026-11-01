@@ -2,6 +2,70 @@ import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
 
+declare global {
+    interface Window {
+        atlasCopyTest: {
+            holdFrames: boolean
+            frameHeld: boolean
+            holdReturn: boolean
+            returnHeld: boolean
+            releaseReturn: () => void
+            statuses: (string | undefined)[]
+            results?: Promise<string[]>
+        }
+    }
+}
+
+const controlWorker = (page: Page) =>
+    page.addInitScript(() => {
+        localStorage.setItem('nse.test.previewHost', 'worker')
+        window.atlasCopyTest = {
+            holdFrames: false,
+            frameHeld: false,
+            holdReturn: false,
+            returnHeld: false,
+            releaseReturn: () => {},
+            statuses: [],
+        }
+        const post = Worker.prototype.postMessage
+        Worker.prototype.postMessage = function (...args: unknown[]) {
+            const { type } = args[0] as { type?: string }
+            const control = window.atlasCopyTest
+            if (type === 'frame' && control.holdFrames) {
+                control.frameHeld = true
+                return
+            }
+            if (type === 'return' && control.holdReturn) {
+                control.returnHeld = true
+                control.releaseReturn = () => Reflect.apply(post, this, args) as void
+                return
+            }
+            return Reflect.apply(post, this, args) as void
+        }
+    })
+
+const requestDuringTransition = (page: Page) =>
+    page.evaluate(async () => {
+        const { copyPreviewAtlases } = await window.editorTest.appImport<
+            typeof import('../../src/preview/copyPreviewAtlases')
+        >('/src/preview/copyPreviewAtlases.ts')
+        const cancelled = new AbortController()
+        const requests = [new AbortController(), new AbortController(), cancelled].map(
+            async (controller, index) => {
+                const result = await copyPreviewAtlases(controller.signal)
+                if (result.status === 'copied') {
+                    result.skin.texture.close()
+                    result.particle?.texture.close()
+                }
+                window.atlasCopyTest.statuses[index] = result.status
+                return result.status
+            },
+        )
+        window.atlasCopyTest.results = Promise.all(requests)
+        cancelled.abort()
+        await requests[2]
+    })
+
 const open = async (page: Page) => {
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
     await page.route('**/resource/particle.scp*', (route) =>
@@ -295,4 +359,156 @@ test('an asset load that never finishes reaches the copy deadline', async ({ pag
     await requested
     await page.clock.fastForward(30_001)
     expect(await result).toBe('failed')
+})
+
+for (const complete of [true, false])
+    test(`copies ${complete ? 'wait for held recovery loads after a worker timeout' : 'keep their deadline while recovery loads finish separately'}`, async ({
+        page,
+    }) => {
+        await controlWorker(page)
+        await open(page)
+        await showPreview(page)
+        await page.evaluate(() => window.nsePreviewTest!.settled())
+        await page.clock.install()
+        let releaseSkin!: () => void
+        let releaseParticle!: () => void
+        const skinHeld = new Promise<void>((resolve) => (releaseSkin = resolve))
+        const particleHeld = new Promise<void>((resolve) => (releaseParticle = resolve))
+        let loads = 0
+        await page.route(/\/resource\/(skin|particle)\.scp/, async (route) => {
+            loads++
+            const skin = route.request().url().includes('/skin.')
+            await (skin ? skinHeld : particleHeld)
+            await route.fulfill({
+                body: resource(skin ? 'skins' : 'particles', { title: 'Recovered' }),
+            })
+        })
+        try {
+            await page.evaluate(() => {
+                window.atlasCopyTest.holdFrames = true
+                window.editorTest.view.cursorTime = 2
+            })
+            await expect.poll(() => page.evaluate(() => window.atlasCopyTest.frameHeld)).toBe(true)
+            await page.clock.fastForward(10_001)
+            await expect.poll(() => loads).toBe(2)
+            await requestDuringTransition(page)
+            expect(
+                await page.evaluate(() =>
+                    [0, 1, 2].map((i) => window.atlasCopyTest.statuses[i] ?? 'pending'),
+                ),
+            ).toEqual(['pending', 'pending', 'cancelled'])
+            if (!complete) await page.clock.fastForward(20_000)
+            releaseSkin()
+            await expect
+                .poll(() =>
+                    page.evaluate(async () => {
+                        const { assetSession } = await window.editorTest.appImport<
+                            typeof import('../../src/preview/assets')
+                        >('/src/preview/assets/index.ts')
+                        return assetSession.slots.skin.value.value?.title
+                    }),
+                )
+                .toBe('Recovered')
+            if (complete) releaseParticle()
+            else await page.clock.fastForward(10_001)
+            expect(await page.evaluate(() => window.atlasCopyTest.results)).toEqual([
+                complete ? 'copied' : 'failed',
+                complete ? 'copied' : 'failed',
+                'cancelled',
+            ])
+            releaseParticle()
+            expect(await copyAndClose(page)).toMatchObject({ status: 'copied' })
+        } finally {
+            releaseSkin()
+            releaseParticle()
+        }
+    })
+
+test('copies wait while the worker hands its atlases back', async ({ page }) => {
+    await controlWorker(page)
+    await open(page)
+    await showPreview(page)
+    await page.evaluate(async () => {
+        const { previewWorker } = await window.editorTest.appImport<
+            typeof import('../../src/preview/worker/host')
+        >('/src/preview/worker/host.ts')
+        window.atlasCopyTest.holdReturn = true
+        void previewWorker().stop()
+    })
+    await expect.poll(() => page.evaluate(() => window.atlasCopyTest.returnHeld)).toBe(true)
+    await requestDuringTransition(page)
+    await page.evaluate(() => window.atlasCopyTest.releaseReturn())
+    expect(await page.evaluate(() => window.atlasCopyTest.results)).toEqual([
+        'copied',
+        'copied',
+        'cancelled',
+    ])
+    expect(await copyAndClose(page)).toMatchObject({ status: 'copied' })
+})
+
+test('copying restarts after a skin change and closes partial copies', async ({ page }) => {
+    await open(page)
+    expect(await copyAndClose(page)).toMatchObject({ status: 'copied' })
+    await page.route('**/builtin/skin.scp*', (route) =>
+        route.fulfill({ body: resource('skins', { title: 'Replacement' }) }),
+    )
+    expect(
+        await page.evaluate(async () => {
+            const { copyPreviewAtlases } = await window.editorTest.appImport<
+                typeof import('../../src/preview/copyPreviewAtlases')
+            >('/src/preview/copyPreviewAtlases.ts')
+            const { assetSession } = await window.editorTest.appImport<
+                typeof import('../../src/preview/assets')
+            >('/src/preview/assets/index.ts')
+            const { watch } =
+                await window.editorTest.appImport<typeof import('../helpers/vue')>(
+                    '/tests/helpers/vue.ts',
+                )
+            const original = window.createImageBitmap
+            const skin = assetSession.slots.skin.value.value!
+            const particle = assetSession.slots.particle.value.value!
+            const partial: ImageBitmap[] = []
+            let release!: () => void
+            const held = new Promise<void>((resolve) => (release = resolve))
+            let ready!: () => void
+            const started = new Promise<void>((resolve) => (ready = resolve))
+            window.createImageBitmap = (async (...args: unknown[]) => {
+                if (args[0] === skin.texture) await held
+                const bitmap = (await Reflect.apply(original, window, args)) as ImageBitmap
+                if (args[0] === particle.texture && !partial.length) {
+                    partial.push(bitmap)
+                    ready()
+                }
+                return bitmap
+            }) as typeof createImageBitmap
+            try {
+                const pending = copyPreviewAtlases(new AbortController().signal)
+                await started
+                const changed = new Promise<void>((resolve) => {
+                    const stop = watch(assetSession.slots.skin, (slot) => {
+                        if (slot.value === skin) return
+                        stop()
+                        resolve()
+                    })
+                })
+                const { settings } = window.editorTest
+                settings.previewAssets = { ...settings.previewAssets, skin: { source: 'builtin' } }
+                await changed
+                release()
+                const result = await pending
+                if (result.status === 'copied') {
+                    result.skin.texture.close()
+                    result.particle?.texture.close()
+                }
+                return {
+                    status: result.status,
+                    title: result.status === 'copied' ? result.skin.title : undefined,
+                    partialWidths: partial.map((bitmap) => bitmap.width),
+                }
+            } finally {
+                release()
+                window.createImageBitmap = original
+            }
+        }),
+    ).toEqual({ status: 'copied', title: 'Replacement', partialWidths: [0] })
 })

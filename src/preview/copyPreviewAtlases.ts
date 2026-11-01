@@ -4,7 +4,7 @@ import { copyAtlasBitmap } from './copyAtlasBitmap'
 import type { LoadedParticle } from './particle'
 import type { LoadedSkin } from './skin'
 import { ensurePreviewResources } from './usePreviewResources'
-import { copyWorkerAtlas } from './worker/host'
+import { copyWorkerAtlas, previewHost } from './worker/host'
 
 export type PreviewAtlasCopyResult =
     | { status: 'copied'; skin: LoadedSkin; particle?: LoadedParticle }
@@ -14,10 +14,8 @@ export type PreviewAtlasCopyResult =
 /** Copies the shown atlases. The caller owns and closes each returned texture. */
 export const copyPreviewAtlases = (signal: AbortSignal): Promise<PreviewAtlasCopyResult> =>
     new Promise((resolve) => {
-        const controller = new AbortController()
-        const copies: ImageBitmap[] = []
         let finished = false
-        let copying = false
+        let discardCopies: () => void = () => undefined
         let stopWatching: () => void = () => undefined
         const finish = (result: PreviewAtlasCopyResult) => {
             if (finished) return
@@ -25,8 +23,7 @@ export const copyPreviewAtlases = (signal: AbortSignal): Promise<PreviewAtlasCop
             clearTimeout(timer)
             stopWatching()
             signal.removeEventListener('abort', cancel)
-            controller.abort()
-            if (result.status !== 'copied') for (const bitmap of copies) bitmap.close()
+            discardCopies()
             resolve(result)
         }
         const cancel = () => {
@@ -42,18 +39,11 @@ export const copyPreviewAtlases = (signal: AbortSignal): Promise<PreviewAtlasCop
             return
         }
 
-        const copy = async (slot: 0 | 1, loaded: LoadedSkin | LoadedParticle) => {
-            const bitmap = await (loaded.texture.width
-                ? copyAtlasBitmap(loaded.texture)
-                : copyWorkerAtlas(slot, loaded, controller.signal))
-            // createImageBitmap cannot be cancelled; a late copy still needs closing.
-            if (finished) bitmap.close()
-            else copies.push(bitmap)
-            return bitmap
-        }
         const { slots } = assetSession
         const start = () => {
-            if (finished || copying) return
+            if (finished) return
+            discardCopies()
+            if (previewHost.handingOver) return
             const skin = slots.skin.value
             const particle = slots.particle.value
             if (skin.state === 'failed') {
@@ -61,14 +51,39 @@ export const copyPreviewAtlases = (signal: AbortSignal): Promise<PreviewAtlasCop
                 return
             }
             if (!skin.value || (particle.state !== 'ready' && particle.state !== 'failed')) return
-            copying = true
             const shownSkin = skin.value
             const shownParticle = particle.value
+            // Detached atlases stay in ready slots while a stopped worker's reload runs.
+            if (
+                previewHost.kind === 'main' &&
+                (!shownSkin.texture.width || (shownParticle && !shownParticle.texture.width))
+            )
+                return
+            const controller = new AbortController()
+            const copies: ImageBitmap[] = []
+            let active = true
+            discardCopies = () => {
+                active = false
+                controller.abort()
+                for (const bitmap of copies) bitmap.close()
+                copies.length = 0
+            }
+            const copy = async (slot: 0 | 1, loaded: LoadedSkin | LoadedParticle) => {
+                const bitmap = await (loaded.texture.width
+                    ? copyAtlasBitmap(loaded.texture)
+                    : copyWorkerAtlas(slot, loaded, controller.signal))
+                // createImageBitmap cannot be cancelled; a late copy still needs closing.
+                if (active) copies.push(bitmap)
+                else bitmap.close()
+                return bitmap
+            }
             void Promise.all([
                 copy(0, shownSkin),
                 shownParticle ? copy(1, shownParticle) : undefined,
             ]).then(
                 ([skinTexture, particleTexture]) => {
+                    if (!active) return
+                    copies.length = 0
                     finish({
                         status: 'copied',
                         skin: { ...shownSkin, texture: skinTexture },
@@ -79,11 +94,14 @@ export const copyPreviewAtlases = (signal: AbortSignal): Promise<PreviewAtlasCop
                     })
                 },
                 (error: unknown) => {
-                    finish({ status: 'failed', error })
+                    if (active) finish({ status: 'failed', error })
                 },
             )
         }
         ensurePreviewResources()
-        stopWatching = watch([slots.skin, slots.particle], start)
+        stopWatching = watch(
+            [slots.skin, slots.particle, () => previewHost.kind, () => previewHost.handingOver],
+            start,
+        )
         start()
     })
