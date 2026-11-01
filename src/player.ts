@@ -10,7 +10,7 @@ import { settings } from './settings'
 import { decodeWithinLimit } from './utils/bgmLimit'
 import { optional } from './utils/optional'
 
-const startupDelay = 0.2
+export const startupDelay = 0.2
 const scheduleInterval = 25
 // A running context whose clock stands still this long (ms) has stalled.
 const stallTime = 500

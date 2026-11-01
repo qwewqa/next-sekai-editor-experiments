@@ -54,6 +54,7 @@ const toggles = computed(
             ['previewShowHitboxes', i18n.value.settings.preview.showHitboxes],
             ['previewShowEffects', i18n.value.settings.preview.showEffects],
             ['previewShowTime', i18n.value.settings.preview.showTime],
+            ['previewShowCombo', i18n.value.settings.preview.showCombo],
         ] as const,
 )
 
@@ -234,7 +235,14 @@ if (props.focusPlacement) {
         () => props.placed,
         async () => {
             await nextTick()
-            placement.value?.focus({ preventScroll: true })
+            const field = placement.value
+            field?.focus({ preventScroll: true })
+            // A form taller than its space scrolls; the field is its last row.
+            const body = controlsBody.value
+            if (!field || !body) return
+            const below = field.getBoundingClientRect().bottom - body.getBoundingClientRect().bottom
+            if (below > 0)
+                body.scrollTop += below + parseFloat(getComputedStyle(body).paddingBottom)
         },
         { once: true },
     )

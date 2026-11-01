@@ -2221,6 +2221,22 @@ test('a preview settings refit reads every label before it sets any, so layout r
     ])
 })
 
+test('Show Combo draws the combo in the frame while it is on', async ({ page }) => {
+    const drawn = async () => {
+        await settle(page)
+        return page.evaluate(async () => (await window.nsePreviewTest!.comboPixels()) !== undefined)
+    }
+    // Every note of the chart is before this time.
+    await page.evaluate(() => (window.editorTest.view.cursorTime = 10))
+    expect(await drawn()).toBe(false)
+    const toggle = page.locator('.preview-controls').getByLabel('Show Combo', { exact: true })
+    await toggle.check()
+    expect(await page.evaluate(() => window.editorTest.settings.previewShowCombo)).toBe(true)
+    expect(await drawn()).toBe(true)
+    await toggle.uncheck()
+    expect(await drawn()).toBe(false)
+})
+
 test('preview options share persisted settings with the main options menu', async ({ page }) => {
     const preview = page.locator('.preview-controls')
     for (const label of ['Note Speed', 'Render Scale']) {
@@ -2248,6 +2264,7 @@ test('preview options share persisted settings with the main options menu', asyn
         'Show Hitboxes',
         'Show Effects',
         'Show Time',
+        'Show Combo',
         'Aspect Ratio',
         'Render Scale',
         'Antialiasing',

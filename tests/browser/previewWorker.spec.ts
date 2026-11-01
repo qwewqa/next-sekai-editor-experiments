@@ -452,7 +452,7 @@ const shot = async (page: Page) => {
     return page.locator('.preview-viewport').screenshot({ animations: 'disabled' })
 }
 
-test('both hosts draw the same pixels, paused and playing, with everything selected', async ({
+test('both hosts draw the same pixels, paused and playing, with everything selected and the combo', async ({
     browser,
     browserName,
 }) => {
@@ -504,18 +504,22 @@ test('both hosts draw the same pixels, paused and playing, with everything selec
             await expect.poll(() => drawn(page)).toBeGreaterThan(before)
         }
     }
+    // The combo counts the notes at 3, 3.5 and 4 s.
+    await change(() => (window.editorTest.settings.previewShowCombo = true))
     for (const time of [3.5, 4, 3]) {
         await change((time) => (window.editorTest.view.cursorTime = time), time)
         await compare(`paused at ${time}`)
     }
     await change(() => (window.editorTest.settings.previewShowHitboxes = true))
     await compare('paused with hitboxes')
-    // Playing, with the audio clock held so the time stays put.
+    // Playing 50 ms after a note, as the combo pops, with the audio clock held so the time
+    // stays put.
     const playing = []
     for (const page of pages)
         playing.push(
             await page.evaluate(async () => {
-                window.editorTest.view.cursorTime = 3.25
+                window.editorTest.settings.playStartPosition = 'cursor'
+                window.editorTest.view.cursorTime = 3.55
                 await window.editorTest.nextTick()
                 const { startOrStopPlayer } =
                     await window.editorTest.appImport<typeof import('../../src/editor/player')>(
@@ -536,7 +540,12 @@ test('both hosts draw the same pixels, paused and playing, with everything selec
         )
     // Both pages hold the same playing time.
     expect(playing[1]).toEqual(playing[0])
-    expect(playing[0]?.playing).toBe(true)
+    expect(playing[0]).toEqual({ playing: true, time: 3.55 })
     await compare('playing')
+    // Both drew the combo as it pops.
+    for (const page of pages)
+        expect(
+            await page.evaluate(async () => (await window.nsePreviewTest!.comboPixels())?.scale),
+        ).toBeGreaterThan(1)
     for (const page of pages) await page.context().close()
 })
