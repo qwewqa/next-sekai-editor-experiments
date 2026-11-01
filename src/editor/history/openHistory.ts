@@ -29,8 +29,8 @@ export const canFocusHistory = (surface: 'panel' | 'dialog') =>
     surface === 'dialog'
         ? historyId.value !== undefined && modals.at(-1)?.id === historyId.value
         : modals.length === 0
-// A dialog gives focus back to its opener. An opener that is gone or hidden gets none (and the sheet's
-// host has already given its own), so the chart takes it.
+// A dialog gives focus back to its opener, or to a control near it in the same dock. When none is left
+// (and the sheet's host has given none), the chart takes it.
 const focusChartIfLost = () => {
     const active = document.activeElement
     if (!active || active === document.body)
