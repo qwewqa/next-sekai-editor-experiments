@@ -1,5 +1,5 @@
 import { realTimers, type Timers } from '../local/locks'
-import { BLOB_URL_MS } from './handover'
+import { BLOB_URL_MS, fileErrorOf } from './handover'
 import type { LockService, VideoOutput } from './types'
 
 /** Only files in the export-video directory belong to this store. */
@@ -37,6 +37,8 @@ export const createVideoOutput = (
         timers.clearTimeout(job.timer)
         try {
             await store.remove(job.name)
+        } catch (error) {
+            throw fileErrorOf(error)
         } finally {
             // Leave failed deletions unlocked so a later sweep can retry them.
             job.ended = true
@@ -90,9 +92,13 @@ export const createVideoOutput = (
         file: async (id) => {
             const job = jobs.get(id)
             if (!job || job.ended) throw new Error('Video is no longer ready')
-            const file = await store.file(job.name)
-            files.set(file, job)
-            return file
+            try {
+                const file = await store.file(job.name)
+                files.set(file, job)
+                return file
+            } catch (error) {
+                throw fileErrorOf(error)
+            }
         },
         deliver: async (file, name, how) => {
             const job = files.get(file)

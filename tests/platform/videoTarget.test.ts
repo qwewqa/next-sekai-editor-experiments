@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { openPickedTarget, openStagedTarget } from '../../src/editor/exportVideo/worker/target'
+import { restoreExportError, serializeExportError } from '../../src/exportVideo/error'
 import { memoryVideoStore } from '../../src/platform/mockVideoOutput'
 
 const deferred = () => {
@@ -12,6 +13,31 @@ const deferred = () => {
         resolve: () => resolve(),
     }
 }
+
+for (const operation of ['open', 'abort'] as const)
+    test(`a staged ${operation} failure retains its FileError code across the worker`, async () => {
+        const handle = {
+            createSyncAccessHandle: () => {
+                if (operation === 'open') throw new DOMException('Full', 'QuotaExceededError')
+                return Promise.resolve({
+                    close: () => {
+                        throw new DOMException('Denied', 'NotAllowedError')
+                    },
+                })
+            },
+        } as unknown as FileSystemFileHandle
+        await assert.rejects(
+            async () => {
+                try {
+                    const target = await openStagedTarget(handle)
+                    await target.abort()
+                } catch (error) {
+                    throw restoreExportError(structuredClone(serializeExportError(error)))
+                }
+            },
+            { code: operation === 'open' ? 'no-space' : 'denied' },
+        )
+    })
 
 /** Models a picked file and a separate swap, with gates around the final read and close. */
 const pickedFile = (fault?: 'write' | 'close' | 'remove') => {

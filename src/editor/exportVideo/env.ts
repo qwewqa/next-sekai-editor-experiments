@@ -1,6 +1,7 @@
 // Where the dialog's export goes and what draws it: the page's own, or a test's.
 
 import type { VideoFormat } from '../../exportVideo/codecs'
+import { VideoOutputUnavailable } from '../../exportVideo/error'
 import type { JobDestination } from '../../exportVideo/job'
 import type { ExportFaults } from '../../exportVideo/protocol'
 import { i18n } from '../../i18n'
@@ -10,7 +11,7 @@ import { showNotPutBack } from '../commands/exportLevel/ui'
 import { pickUi } from '../save/flow'
 import { pickVideo } from '../save/videoPick'
 import { pickedDestination, prepareVideoDestination } from './destination'
-import { VideoOutputUnavailable, VideoPickRefused } from './failure'
+import { VideoPickRefused } from './failure'
 
 export type DestinationRequest = {
     signal: AbortSignal

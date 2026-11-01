@@ -31,6 +31,13 @@ test('a file error retains the code, step and file name across the worker', () =
     assert.equal(restored.fileName, 'clip.webm')
 })
 
+test('an allocation error retains its type across the worker', () => {
+    const restored = restoreExportError(
+        structuredClone(serializeExportError(new RangeError('Full'))),
+    )
+    assert.ok(restored instanceof RangeError)
+})
+
 test('a slow write gates submissions and the drain includes the pending add', async () => {
     const controller = new AbortController()
     const writes = Array.from({ length: 34 }, deferred)

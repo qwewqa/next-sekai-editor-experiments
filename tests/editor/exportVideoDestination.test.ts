@@ -97,7 +97,9 @@ test('only unavailable staging selects memory and the estimate limits that route
             },
         }
         if (name === 'QuotaExceededError')
-            await assert.rejects(prepareVideoDestination({ ...options(), platform }), { name })
+            await assert.rejects(prepareVideoDestination({ ...options(), platform }), {
+                code: 'no-space',
+            })
         else {
             assert.deepEqual(await prepareVideoDestination({ ...options(), platform }), {
                 kind: 'memory',

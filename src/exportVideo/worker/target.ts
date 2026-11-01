@@ -29,9 +29,14 @@ const target = (backend: Backend, signal?: AbortSignal): PositionTarget => {
     const detach = () => signal?.removeEventListener('abort', onAbort)
     const discard = () => {
         detach()
-        return (cleanup ??= backend.abort().finally(() => {
-            ended = true
-        }))
+        return (cleanup ??= Promise.resolve()
+            .then(() => backend.abort())
+            .catch((error: unknown) => {
+                throw fileErrorOf(error)
+            })
+            .finally(() => {
+                ended = true
+            }))
     }
     const enqueue = (run: () => Promise<void>) => {
         const next = queue.then(run)
@@ -190,9 +195,14 @@ export const openStagedTarget = async (
     signal?: AbortSignal,
 ): Promise<PositionTarget> => {
     signal?.throwIfAborted()
-    const access = await (
-        handle as FileSystemFileHandle & { createSyncAccessHandle(): Promise<SyncAccess> }
-    ).createSyncAccessHandle()
+    let access: SyncAccess
+    try {
+        access = await (
+            handle as FileSystemFileHandle & { createSyncAccessHandle(): Promise<SyncAccess> }
+        ).createSyncAccessHandle()
+    } catch (error) {
+        throw fileErrorOf(error)
+    }
     let size = 0
     const output = target(
         {

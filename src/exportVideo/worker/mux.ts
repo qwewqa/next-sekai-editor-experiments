@@ -9,6 +9,7 @@ import {
     WebMOutputFormat,
     type Target,
 } from 'mediabunny'
+import { VideoOutputUnavailable } from '../error'
 import type { ExportTarget } from '../types'
 import { aacPacketBound } from './encode'
 import type { WorkerOutput } from './export.worker'
@@ -109,7 +110,7 @@ export const openMuxOutput = async (
                   )
         target.on('write', ({ end }) => {
             if (destination.kind === 'memory' && end > destination.limit)
-                failure ??= new Error('Video exceeds the memory limit')
+                failure ??= new VideoOutputUnavailable('memoryLimit')
         })
         const packets = await createMuxSink(config, target)
         sink = packets

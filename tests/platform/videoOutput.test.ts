@@ -45,6 +45,21 @@ const setup = () => {
     }
 }
 
+for (const operation of ['file', 'remove'] as const)
+    test(`a staged ${operation} failure retains its FileError code`, async (t) => {
+        const w = setup()
+        await w.output.stage('failed', 'webm')
+        t.mock.method(w.store, operation, () => {
+            throw new DOMException('Denied', 'NotAllowedError')
+        })
+        try {
+            await assert.rejects(w.output[operation]('failed'), { code: 'denied' })
+        } finally {
+            t.mock.restoreAll()
+            await w.output.remove('failed')
+        }
+    })
+
 test('a delivered video stays locked throughout Ready and for ten minutes after Ready ends', async () => {
     const w = setup()
     const staged = await w.output.stage('ready', 'mp4')

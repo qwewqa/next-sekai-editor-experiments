@@ -1,6 +1,7 @@
 import type { VideoFormat } from '../../exportVideo/codecs'
 import type { JobDestination } from '../../exportVideo/job'
 import { removeVideoPick } from '../../exportVideo/worker/target'
+import { fileErrorOf } from '../../platform/handover'
 import type { Platform, StagedVideo, VideoOutput } from '../../platform/types'
 import type { PickedVideo, VideoPick, pickVideo } from '../save/videoPick'
 
@@ -47,7 +48,7 @@ export const prepareVideoDestination = async (options: {
             !(error instanceof DOMException) ||
             !['SecurityError', 'NotSupportedError'].includes(error.name)
         )
-            throw error
+            throw fileErrorOf(error)
         if (
             !Number.isFinite(options.estimatedBytes) ||
             options.estimatedBytes < 0 ||

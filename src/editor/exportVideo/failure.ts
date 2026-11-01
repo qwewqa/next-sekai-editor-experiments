@@ -1,5 +1,6 @@
 // What an export's failure says, and the reason its usage event records.
 
+import { VideoOutputUnavailable } from '../../exportVideo/error'
 import { i18n } from '../../i18n'
 import { FileError } from '../../platform/types'
 import { inlineName } from '../../utils/inlineName'
@@ -14,13 +15,6 @@ export class VideoPickRefused extends Error {
         readonly reason: 'ownProject' | 'known' | 'other',
     ) {
         super(`${fileName} cannot take the video`)
-    }
-}
-
-/** No route to a file in this browser, or too large for the in-memory route. */
-export class VideoOutputUnavailable extends Error {
-    constructor(readonly reason: 'output' | 'memoryLimit') {
-        super(`Video output unavailable: ${reason}`)
     }
 }
 

@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import {
+    restoreExportError,
+    serializeExportError,
+    VideoOutputUnavailable,
+} from '../../src/exportVideo/error'
 import type { MuxInput } from '../../src/exportVideo/worker/encode'
 import type { WorkerOutput } from '../../src/exportVideo/worker/export.worker'
 import { createMuxSink, muxStreamTarget, openMuxOutput } from '../../src/exportVideo/worker/mux'
@@ -24,16 +29,24 @@ const packet: MuxInput = {
 test('a memory export fails when container bytes exceed the limit', async () => {
     let output: WorkerOutput | undefined
     try {
-        await assert.rejects(async () => {
-            output = await openMuxOutput(
-                config,
-                { kind: 'memory', limit: 1 },
-                new AbortController().signal,
-            )
-            await output.sink.add(packet)
-            await output.sink.finalize()
-            await output.commit()
-        }, /memory limit/)
+        await assert.rejects(
+            async () => {
+                output = await openMuxOutput(
+                    config,
+                    { kind: 'memory', limit: 1 },
+                    new AbortController().signal,
+                )
+                await output.sink.add(packet)
+                await output.sink.finalize()
+                await output.commit()
+            },
+            (error: unknown) => {
+                const restored = restoreExportError(structuredClone(serializeExportError(error)))
+                assert.ok(restored instanceof VideoOutputUnavailable)
+                assert.equal(restored.reason, 'memoryLimit')
+                return true
+            },
+        )
     } finally {
         await output?.sink.abort()
         await output?.abort()
