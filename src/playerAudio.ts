@@ -5,7 +5,7 @@ export type PlayerAudio = {
     source: AudioBufferSourceNode
     start: (...args: Parameters<AudioBufferSourceNode['start']>) => void
     setVolume: (volume: number, when?: number) => void
-    fadeIn: (when?: number, duration?: number) => void
+    fadeIn: (when?: number, duration?: number, elapsed?: number) => void
     envelope: (when: number, duration: number, attack?: number) => void
     fadeOut: (duration?: number) => void
     stop: () => void
@@ -14,7 +14,7 @@ export type PlayerAudio = {
 export type ActivePlayerAudio = PlayerAudio & { endBeat: number; endTime: number }
 
 export const createPlayerAudio = (
-    context: AudioContext,
+    context: BaseAudioContext,
     options: AudioBufferSourceOptions,
     volume: number,
     onEnded: () => void,
@@ -67,11 +67,16 @@ export const createPlayerAudio = (
         if (when === context.currentTime) points = [point]
         return value
     }
-    const attackAt = (when: number, duration: number) => {
+    const attackAt = (when: number, duration: number, elapsed = 0) => {
         holdGain(when)
-        addPoint({ time: when, value: 0, linear: false })
-        addPoint({ time: when + duration, value: targetGain, linear: true })
-        attackEnvelope = { when, duration }
+        elapsed = Math.min(duration, Math.max(0, elapsed))
+        addPoint({
+            time: when,
+            value: duration ? (targetGain * elapsed) / duration : 0,
+            linear: false,
+        })
+        addPoint({ time: when + duration - elapsed, value: targetGain, linear: true })
+        attackEnvelope = { when: when - elapsed, duration }
     }
     const release = () => {
         if (ended) return
@@ -121,9 +126,9 @@ export const createPlayerAudio = (
             holdGain(when)
             addPoint({ time: when + 0.005, value: targetGain, linear: true })
         },
-        fadeIn(when = context.currentTime, duration = 0.005) {
+        fadeIn(when = context.currentTime, duration = 0.005, elapsed = 0) {
             if (ended || fading) return
-            attackAt(Math.max(when, context.currentTime), Math.max(0, duration))
+            attackAt(Math.max(when, context.currentTime), Math.max(0, duration), elapsed)
         },
         // Auditions keep their requested duration, with a short attack followed
         // by decay to silence. All gain automation must go through this helper.
