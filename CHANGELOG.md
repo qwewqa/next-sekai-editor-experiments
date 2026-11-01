@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- On slow devices, load notices can now appear later after startup. A reload also waits longer for the previous page to finish storing its work before opening a separate copy.
+- On slow devices, the editor now allows more time for startup notices to appear. Reloading also waits longer for the previous page to finish storing your work before opening a separate copy.
 
 - Changed how the preview blurs backgrounds.
 
