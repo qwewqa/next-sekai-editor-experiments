@@ -785,7 +785,7 @@
             "elevation": "Moves the selected notes to the beat of the earliest one, and sets each note’s Elevation to the number of beats it moved."
         },
         "scale": {
-            "drag": "While the dialog is open, you can also scale by dragging. For Scale Beats, drag the first or last selected object. For Scale Elevations, drag the highest or lowest selected note in the Elevation Editor. For Scale Width, drag the edge of a selected object.",
+            "drag": "While the dialog is open, you can also scale by dragging. For Scale Beats, drag the first or last selected note. For Scale Elevations, drag the highest or lowest selected note in the Elevation Editor. For Scale Width, drag the edge of a selected object.",
             "axes": "Scale Beats, Scale Elevations and Scale Width stretch or shrink the selection in time, in elevation or across the lanes."
         },
         "elevation": {

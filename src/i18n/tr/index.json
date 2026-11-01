@@ -785,7 +785,7 @@
       "elevation": "Seçili notaları en erken notanın vuruşuna taşır ve her notanın Yükseklik değerini taşındığı vuruş sayısına ayarlar."
     },
     "scale": {
-      "drag": "İletişim kutusu açıkken sürükleyerek de ölçekleyebilirsiniz. Vuruşları Ölçekle için seçili ilk veya son nesneyi sürükleyin. Yükseklikleri Ölçekle için Yükseklik Editörü’nde seçili en yüksek veya en alçak notayı sürükleyin. Genişliği Ölçekle için seçili bir nesnenin kenarını sürükleyin.",
+      "drag": "İletişim kutusu açıkken sürükleyerek de ölçekleyebilirsiniz. Vuruşları Ölçekle için seçili ilk veya son notayı sürükleyin. Yükseklikleri Ölçekle için Yükseklik Editörü’nde seçili en yüksek veya en alçak notayı sürükleyin. Genişliği Ölçekle için seçili bir nesnenin kenarını sürükleyin.",
       "axes": "Vuruşları Ölçekle, Yükseklikleri Ölçekle ve Genişliği Ölçekle, seçimi zaman, yükseklik veya şeritler boyunca genişletir veya daraltır."
     },
     "elevation": {

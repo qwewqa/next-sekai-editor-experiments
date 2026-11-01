@@ -785,7 +785,7 @@
       "elevation": "Déplace les notes sélectionnées au temps de la première et règle l’Élévation de chaque note sur le nombre de temps dont elle a été déplacée."
     },
     "scale": {
-      "drag": "Tant que la boîte de dialogue est ouverte, vous pouvez aussi redimensionner en faisant glisser. Pour Mettre les temps à l’échelle, faites glisser le premier ou le dernier objet sélectionné. Pour Mettre les élévations à l’échelle, faites glisser la note sélectionnée la plus haute ou la plus basse dans l’Éditeur d’élévation. Pour Redimensionner la largeur, faites glisser le bord d’un objet sélectionné.",
+      "drag": "Tant que la boîte de dialogue est ouverte, vous pouvez aussi redimensionner en faisant glisser. Pour Mettre les temps à l’échelle, faites glisser la première ou la dernière note sélectionnée. Pour Mettre les élévations à l’échelle, faites glisser la note sélectionnée la plus haute ou la plus basse dans l’Éditeur d’élévation. Pour Redimensionner la largeur, faites glisser le bord d’un objet sélectionné.",
       "axes": "Mettre les temps à l’échelle, Mettre les élévations à l’échelle et Redimensionner la largeur étirent ou réduisent la sélection dans le temps, en élévation ou sur les voies."
     },
     "elevation": {
