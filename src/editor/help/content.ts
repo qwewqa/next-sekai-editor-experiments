@@ -91,11 +91,7 @@ export const helpSections = [
                 id: 'keyboard',
                 input: 'pointer',
                 title: () => i18n.value.help.modal.keyboard.title,
-                lines: [
-                    { text: () => i18n.value.help.modal.keyboard.settings },
-                    { text: () => i18n.value.help.keyboard.notice },
-                    { text: () => i18n.value.help.shiftF10 },
-                ],
+                lines: [{ text: () => i18n.value.help.modal.keyboard.settings }],
             },
             {
                 id: 'adding',
@@ -145,7 +141,6 @@ export const helpSections = [
                 commands: ['save'],
                 lines: [
                     { text: () => i18n.value.help.save.projectFile },
-                    { text: () => i18n.value.help.moveBetweenDevices },
                     { text: () => i18n.value.help.recentSessions },
                 ],
             },
@@ -375,10 +370,6 @@ export const helpSections = [
                 id: 'bpm',
                 commands: ['bpm'],
                 lines: [
-                    {
-                        tap: () => i18n.value.help.bpmTool.edit,
-                        click: () => i18n.value.help.bpmTool.editClick,
-                    },
                     { text: () => i18n.value.help.modal.bpmTool.first },
                     { text: () => i18n.value.help.modal.bpmTool.replace },
                 ],
@@ -446,7 +437,6 @@ export const helpSections = [
                         tap: () => i18n.value.help.event.easeStep,
                         click: () => i18n.value.help.event.easeStepClick,
                     },
-                    { text: () => i18n.value.help.event.currentStage },
                 ],
             },
         ],

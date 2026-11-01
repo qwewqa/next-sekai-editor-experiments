@@ -666,14 +666,14 @@
         "pasteClick": "Cliquez ou faites glisser pour placer les objets copiés. Maintenez Maj pour les retourner horizontalement."
       },
       "noteTool": {
-        "presets": "Choisissez à nouveau Note pour afficher les propriétés par défaut et passer d’un préréglage à l’autre, de Note n° 1 à Note n° 4.",
-        "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Note n° 2 par défaut active ou désactive Critique.",
-        "quickEditClick": "Lorsque le panneau Propriétés est affiché, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Note n° 2 par défaut active ou désactive Critique."
+        "presets": "Choisissez à nouveau Note pour afficher les propriétés par défaut et passer d’un préréglage à l’autre.",
+        "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées.",
+        "quickEditClick": "Lorsque le panneau Propriétés est affiché, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées."
       },
       "slideTool": {
         "connect": "Lorsque des notes d’un même slide sont sélectionnées, appuyez sur une zone vide pour ajouter une autre note à ce slide. Choisissez Désélectionner avant de commencer un nouveau slide.",
         "connectClick": "Lorsque des notes d’un même slide sont sélectionnées, cliquez sur une zone vide pour ajouter une autre note à ce slide. Choisissez Désélectionner avant de commencer un nouveau slide.",
-        "presets": "Choisissez à nouveau Slide pour afficher les propriétés par défaut et passer d’un préréglage à l’autre, de Slide n° 1 à Slide n° 5.",
+        "presets": "Choisissez à nouveau Slide pour afficher les propriétés par défaut et passer d’un préréglage à l’autre.",
         "splitCombine": "Scinder le slide coupe la connexion après chaque note sélectionnée. Combiner en slide réunit les slides contenant les notes sélectionnées."
       },
       "generateSlideNotesTool": {
@@ -685,7 +685,7 @@
         "addClick": "Avec Note, Slide, BPM, Échelle de temps ou Événement, cliquez sur une zone vide pour ajouter un objet. Avec Note ou Slide, faites glisser dans une zone vide pour ajouter une note de cette largeur.",
         "edit": "Appuyez sur un objet sélectionné pour afficher ses propriétés.",
         "editClick": "Cliquez sur un objet sélectionné pour afficher ses propriétés.",
-        "move": "Faites glisser un objet pour déplacer uniquement cet objet. Pour déplacer plusieurs objets ensemble, utilisez Sélectionner.",
+        "move": "Faites glisser un objet pour déplacer uniquement cet objet.",
         "resize": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner.",
         "modifiers": "Maintenez Ctrl (Cmd sous macOS) et appuyez sur un objet pour l’ajouter à la sélection ou l’en retirer. Maintenez Maj et appuyez sur une note pour sélectionner son slide entier.",
         "modifiersClick": "Maintenez Ctrl (Cmd sous macOS) et cliquez sur un objet pour l’ajouter à la sélection ou l’en retirer. Maintenez Maj et cliquez sur une note pour sélectionner son slide entier."
@@ -706,9 +706,7 @@
         "drag": "Faites glisser vers le haut ou vers le bas pour modifier le décalage de la musique."
       }
     },
-    "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de l’élément qui a le focus.",
     "recentSessions": "Pour retrouver le travail non sauvegardé conservé dans ce navigateur, ouvrez Historique › Récentes.",
-    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier de projet, puis ouvrez ce fichier sur l’autre appareil.",
     "sections": {
       "controls": "Commandes",
       "file": "Fichier",
@@ -733,9 +731,6 @@
     "mouse": {
       "deselect": "Faites un clic droit sur une zone vide pour désélectionner."
     },
-    "keyboard": {
-      "notice": "Alt+N (Option+N sous macOS) place le focus sur une notification munie d’un bouton de fermeture. Appuyez sur Esc pour la fermer."
-    },
     "open": {
       "formats": "Ouvre les fichiers de projet, les paquets Sonolus, les données de niveau, les niveaux Chart Cyanvas et les partitions USC et SUS. Choisir un fichier audio remplace la musique."
     },
@@ -746,10 +741,10 @@
       "contents": "Les données de niveau contiennent la partition, la Vie initiale et le décalage de la musique, mais pas la musique ni le reste des Informations du niveau."
     },
     "utilities": {
-      "levelInfo": "L’Éditeur de la couverture et l’Éditeur de l’aperçu sauvegardent la couverture ou l’extrait audio qu’ils créent dans un fichier. Pour définir la couverture ou l’extrait audio du niveau, utilisez Éditeur de la couverture ou Créer à partir de la musique dans Informations du niveau."
+      "levelInfo": "L’Éditeur de la couverture et l’Éditeur de l’aperçu sauvegardent la couverture ou l’extrait audio qu’ils créent dans un fichier. Pour définir la couverture ou l’extrait audio du niveau, utilisez Informations du niveau."
     },
     "checkProject": {
-      "repair": "Vérifie si la Chronologie conservée dans ce navigateur est endommagée. L’éditeur vérifie aussi votre fichier de projet s’il peut le lire et si le fichier n’a pas changé depuis sa dernière ouverture ou sauvegarde. Il utilise ce fichier pour réparer les étapes endommagées de la Chronologie lorsque c’est possible."
+      "repair": "Vérifie si la Chronologie conservée dans ce navigateur est endommagée et utilise votre fichier de projet pour réparer les étapes endommagées de la Chronologie lorsque c’est possible."
     },
     "play": {
       "startPosition": "Pour que Lire démarre au curseur, réglez Position de départ sur Curseur dans Paramètres › Lecture.",
@@ -775,13 +770,13 @@
       "clipboardHistory": "L’Historique du presse-papiers du panneau Propriétés affiche vos copies récentes. Choisissez-en une pour la coller ensuite."
     },
     "selectTool": {
-      "resizeSelection": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner. S’il fait partie d’une sélection de plusieurs objets, ceux-ci sont redimensionnés ensemble s’ils sont tous du même type, et déplacés sinon."
+      "resizeSelection": "Lorsque vous faites glisser le bord d’un objet sélectionné, les objets sélectionnés sont redimensionnés ensemble s’ils sont tous du même type, et déplacés sinon."
     },
     "deselect": {
       "select": "Passe à l’outil Sélectionner lorsqu’aucun objet n’est sélectionné."
     },
     "flip": {
-      "mirror": "Retourne la sélection en miroir autour de la voie 0. Les directions des flicks et les rotations des événements sont aussi inversées, et les bordures gauche et droite des scènes sont échangées."
+      "mirror": "Retourne la sélection en miroir autour de la voie 0."
     },
     "flipVertical": {
       "reverse": "Inverse la sélection dans le temps, dans la plage de temps qu’elle occupe."
@@ -790,25 +785,21 @@
       "elevation": "Déplace les notes sélectionnées au temps de la première et règle l’Élévation de chaque note sur le nombre de temps dont elle a été déplacée."
     },
     "scale": {
-      "drag": "Tant que la boîte de dialogue est ouverte, vous pouvez aussi redimensionner en faisant glisser. L’autre extrémité de la sélection reste en place. Pour Mettre les temps à l’échelle, faites glisser la première ou la dernière note sélectionnée. Pour Mettre les élévations à l’échelle, faites glisser la note sélectionnée la plus haute ou la plus basse dans l’Éditeur d’élévation. Pour Redimensionner la largeur, faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène sélectionné."
+      "drag": "Tant que la boîte de dialogue est ouverte, vous pouvez aussi redimensionner en faisant glisser. Pour Mettre les temps à l’échelle, faites glisser la première ou la dernière note sélectionnée. Pour Mettre les élévations à l’échelle, faites glisser la note sélectionnée la plus haute ou la plus basse dans l’Éditeur d’élévation. Pour Redimensionner la largeur, faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène sélectionné."
     },
     "elevation": {
-      "beat": "Modifie les élévations des notes situées à un même temps. S’ouvre au temps de la note sélectionnée ou au curseur."
+      "beat": "Modifie les élévations des notes situées à un même temps."
     },
     "editorLayout": {
       "layouts": "Composée affiche les scènes et décale les notes latéralement selon la Voie du pivot et la Translation X des scènes. De base affiche chaque note sur sa propre voie."
     },
     "slideTool": {
-      "quickEditPanel": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
-      "quickEditPanelClick": "Lorsque le panneau Propriétés est affiché, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur."
+      "quickEditPanel": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées.",
+      "quickEditPanelClick": "Lorsque le panneau Propriétés est affiché, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées."
     },
     "generateSlideNotesTool": {
-      "fillSelection": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Appuyez sur une note sélectionnée pour remplir l’espace entre les notes sélectionnées de chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier.",
-      "fillSelectionClick": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Cliquez sur une note sélectionnée pour remplir l’espace entre les notes sélectionnées de chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier."
-    },
-    "bpmTool": {
-      "edit": "Appuyez sur un changement de BPM pour le sélectionner, puis appuyez à nouveau dessus pour modifier son BPM.",
-      "editClick": "Cliquez sur un changement de BPM pour le sélectionner, puis cliquez à nouveau dessus pour modifier son BPM."
+      "fillSelection": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Appuyez sur une note sélectionnée pour remplir l’espace entre les notes sélectionnées de chaque slide, ou le slide entier si une seule de ses notes est sélectionnée.",
+      "fillSelectionClick": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Cliquez sur une note sélectionnée pour remplir l’espace entre les notes sélectionnées de chaque slide, ou le slide entier si une seule de ses notes est sélectionnée."
     },
     "groups": {
       "current": "Appuyez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouveaux changements d’échelle de temps y sont ajoutés, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés.",
@@ -826,8 +817,7 @@
       "transform": "Événement de transformation de scène déplace et fait tourner toute la scène avec ses notes.",
       "width": "Avec Événement de caméra ou Événement de masque de scène, faites glisser dans une zone vide pour ajouter un événement de cette largeur.",
       "easeStep": "Lorsque le panneau Propriétés est affiché, appuyez sur un événement sélectionné pour faire passer son Type d’interp. à la valeur suivante.",
-      "easeStepClick": "Lorsque le panneau Propriétés est affiché, cliquez sur un événement sélectionné pour faire passer son Type d’interp. à la valeur suivante.",
-      "currentStage": "Chaque événement de scène appartient à une scène. Lorsqu’une scène est définie comme scène actuelle, les nouveaux événements de scène y sont ajoutés."
+      "easeStepClick": "Lorsque le panneau Propriétés est affiché, cliquez sur un événement sélectionné pour faire passer son Type d’interp. à la valeur suivante."
     },
     "minimap": {
       "changes": "Lorsque vous consultez une étape de la Chronologie, les repères sur la minicarte indiquent où cette étape a modifié la partition."

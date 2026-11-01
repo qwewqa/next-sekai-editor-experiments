@@ -646,7 +646,7 @@ test('a fork whose parent chain was deleted ends its Timeline with a line, and R
     expect((await flushIds(other)).chainId).toBe(copy.chainId)
 })
 
-test('Help names the menu key for rows and where unsaved work is', async ({ page }) => {
+test('Help says where unsaved work is', async ({ page }) => {
     errorsFail(page)
     await load(page)
     await page.evaluate(async () => {
@@ -657,6 +657,5 @@ test('Help names the menu key for rows and where unsaved work is', async ({ page
         await runCommand(commands.help, 'button')
     })
     const help = page.getByRole('dialog', { name: messages.help.modal.title })
-    await expect(help).toContainText(messages.help.shiftF10)
     await expect(help).toContainText(messages.help.recentSessions)
 })

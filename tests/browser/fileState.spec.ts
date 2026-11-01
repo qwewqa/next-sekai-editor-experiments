@@ -1003,25 +1003,3 @@ test.describe('the close prompts', () => {
         expect(await hidden({ browserStorage: false })).toBe(true)
     })
 })
-
-test.describe('Help', () => {
-    const help = async (page: Page) => {
-        await page.evaluate(async () => {
-            const { commands } =
-                (await import('/src/editor/commands/index.ts')) as typeof import('../../src/editor/commands')
-            const { runCommand } =
-                (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
-            await runCommand(commands.help, 'button')
-        })
-        return page.getByRole('dialog', { name: 'Help' })
-    }
-
-    test('the file section says how to move work', async ({ page, context }) => {
-        await seed(context)
-        await visit(page)
-        const dialog = await help(page)
-        await expect(dialog).toContainText(
-            'To move work to another device, save it as a project file, then open the file there.',
-        )
-    })
-})

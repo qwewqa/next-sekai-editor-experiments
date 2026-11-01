@@ -69,7 +69,6 @@ const pointerKeys = [
     'modal.slideTool.connect',
     'slideTool.quickEditPanel',
     'event.easeStep',
-    'bpmTool.edit',
     'history.view',
     'groups.current',
     'stages.current',

@@ -1,12 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
-import type english from '../../src/i18n/en/index.json'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { REPOSITORY } from './sourceRepository'
-
-const messages = JSON.parse(
-    readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
-) as typeof english
 
 // Notice cards, quick feedback, the live region and Alt+N.
 
@@ -244,21 +238,6 @@ test('Option+N on macOS (a dead key, matched by code) focuses the action', async
         )
     })
     await expect(pill(page).getByRole('button', { name: 'Open History' })).toBeFocused()
-})
-
-test('Help lists Alt+N', async ({ page }) => {
-    await boot(page)
-    await page.keyboard.press('Escape')
-    await page.evaluate(async () => {
-        const { appImport } = window.editorTest
-        const { showModal } =
-            await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
-        const { default: HelpModal } = await appImport<{
-            default: typeof import('../../src/editor/help/HelpModal.vue').default
-        }>('/src/editor/help/HelpModal.vue')
-        void showModal(HelpModal, {})
-    })
-    await expect(page.getByText(messages.help.keyboard.notice)).toBeVisible()
 })
 
 test.describe('the update line', () => {
