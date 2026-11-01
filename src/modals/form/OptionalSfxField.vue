@@ -4,16 +4,19 @@ import type { NoteSfx } from '../../chart/note'
 import { i18n } from '../../i18n'
 import OptionalSelectField from './OptionalSelectField.vue'
 import { sfxGlyph } from './noteGlyphs'
+import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<NoteSfx | undefined>({ required: true })
 
 // Default, unset, mixed and unknown values have no picture.
 const glyph = computed(() => (modelValue.value === undefined ? null : sfxGlyph(modelValue.value)))
+const description = usePropertyDescription((t) => t.modals.form.descriptions.sfx)
 </script>
 
 <template>
     <OptionalSelectField
         v-model="modelValue"
+        :description
         :label="i18n.modals.form.sfx.label"
         :options="[
             [i18n.modals.form.sfx.default, 'default'],

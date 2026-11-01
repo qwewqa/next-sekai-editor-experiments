@@ -3,13 +3,16 @@ import type { TimeScaleTransition } from '../../chart/timeScale.ts'
 import { i18n } from '../../i18n'
 import ChoiceField from './ChoiceField.vue'
 import TimeScaleTransitionIcon from './TimeScaleTransitionIcon.vue'
+import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<TimeScaleTransition | undefined>({ required: true })
+const description = usePropertyDescription((t) => t.modals.form.descriptions.timeScaleTransition)
 </script>
 
 <template>
     <ChoiceField
         v-model="modelValue"
+        :description
         :label="i18n.modals.form.timeScaleTransition.label"
         :options="[
             [i18n.modals.form.timeScaleTransition.timeScale, 'timeScale'],

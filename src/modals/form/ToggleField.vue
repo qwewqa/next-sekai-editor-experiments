@@ -8,8 +8,8 @@ defineProps<{
     label: string
     /** Short remarks under the field. */
     notes?: string[]
-    /** What the setting does, behind an ⓘ after the label. */
-    description?: string
+    /** What the setting or property does, behind an ⓘ after the label. */
+    description?: string | null
 }>()
 
 const modelValue = defineModel<boolean>({ required: true })

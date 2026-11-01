@@ -8,8 +8,8 @@ defineProps<{
     min?: number
     max?: number
     step?: number | 'any'
-    /** What the setting does, behind an ⓘ after the label. */
-    description?: string
+    /** What the setting or property does, behind an ⓘ after the label. */
+    description?: string | null
 }>()
 
 const input: Ref<HTMLInputElement | null> = useTemplateRef('input')

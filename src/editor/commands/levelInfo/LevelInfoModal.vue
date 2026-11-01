@@ -6,7 +6,8 @@ import BaseModal from '../../../modals/BaseModal.vue'
 import { showChoice } from '../../../modals/choice'
 import BaseField from '../../../modals/form/BaseField.vue'
 import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
-import NumberField from '../../../modals/form/NumberField.vue'
+import { providePropertyDescriptions } from '../../../modals/form/propertyDescription'
+import InitialLifeField from '../../../modals/form/InitialLifeField.vue'
 import OptionalNumberField from '../../../modals/form/OptionalNumberField.vue'
 import OptionalTextField from '../../../modals/form/OptionalTextField.vue'
 import TextAreaField from '../../../modals/form/TextAreaField.vue'
@@ -53,6 +54,8 @@ const emit = defineEmits<{
 
 // Long values go below their label, as in Settings.
 provide(stackLongValuesKey, true)
+// Only Initial Life is a chart property. The rest is the level's metadata.
+providePropertyDescriptions(true)
 
 // Shallow: a picked file's record goes into a step as it is, and a reactive proxy of it cannot be
 // cloned to the storage worker.
@@ -398,12 +401,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                 </MediaRow>
 
                 <fieldset class="contents" :disabled="readOnly">
-                    <NumberField
-                        v-model="draft.life"
-                        :label="i18n.commands.properties.modal.life"
-                        :min="1"
-                        :step="1"
-                    />
+                    <InitialLifeField v-model="draft.life" />
                 </fieldset>
             </div>
 

@@ -25,7 +25,10 @@ import OptionalSfxField from '../../../modals/form/OptionalSfxField.vue'
 import PresetField from '../../../modals/form/PresetField.vue'
 import { settings } from '../../../settings'
 import { useProperties } from '../../utils/properties'
+import { providePropertyDescriptions } from '../../../modals/form/propertyDescription'
 
+// The Tool section and the tool's settings dialog both show this.
+providePropertyDescriptions(true)
 const createModel = useProperties(defaultNoteProperties)
 
 // Unset fields copy the selected object while Copy Properties is on.

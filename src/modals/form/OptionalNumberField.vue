@@ -10,6 +10,8 @@ defineProps<{
     min?: number
     max?: number
     step?: number | 'any'
+    /** What the property does, behind an ⓘ after the label. */
+    description?: string | null
 }>()
 
 const emptyLabel = useEmptyLabel()
@@ -34,7 +36,7 @@ const onFocus = (event: FocusEvent) => {
 </script>
 
 <template>
-    <BaseField :label>
+    <BaseField :label :description>
         <input
             ref="input"
             v-model.lazy="modelValue"

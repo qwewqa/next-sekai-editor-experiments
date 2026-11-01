@@ -4,6 +4,7 @@ import type { NoteType } from '../../chart/note'
 import { i18n } from '../../i18n'
 import MultiSelectField from './MultiSelectField.vue'
 import { noteTypeGlyph } from './noteGlyphs'
+import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<NoteType | undefined>({ required: true })
 
@@ -11,11 +12,13 @@ const modelValue = defineModel<NoteType | undefined>({ required: true })
 const glyph = computed(() =>
     modelValue.value === undefined ? null : noteTypeGlyph(modelValue.value),
 )
+const description = usePropertyDescription((t) => t.modals.form.descriptions.noteType)
 </script>
 
 <template>
     <MultiSelectField
         v-model="modelValue"
+        :description
         :label="i18n.modals.form.noteType.label"
         :options="[
             [i18n.modals.form.noteType.default, 'default'],

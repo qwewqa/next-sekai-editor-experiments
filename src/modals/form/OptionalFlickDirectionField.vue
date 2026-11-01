@@ -6,6 +6,7 @@ import OptionalSelectField from './OptionalSelectField.vue'
 import { flickArrowPoints } from '../../flickArrow'
 import FlickIcon from './FlickIcon.vue'
 import type { OptionGlyph } from './optionGlyph'
+import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<FlickDirection | undefined>({ required: true })
 
@@ -17,11 +18,13 @@ const glyph = computed(() =>
 )
 const arrow: OptionGlyph<FlickDirection> = (value) =>
     value === 'none' ? null : h(FlickIcon, { direction: value })
+const description = usePropertyDescription((t) => t.modals.form.descriptions.flickDirection)
 </script>
 
 <template>
     <OptionalSelectField
         v-model="modelValue"
+        :description
         :label="i18n.modals.form.flickDirection.label"
         :options="[
             [i18n.modals.form.flickDirection.none, 'none'],

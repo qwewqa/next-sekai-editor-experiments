@@ -10,6 +10,7 @@ import GenerateSimLinesField from '../../../../../modals/form/GenerateSimLinesFi
 import IsFromStartField from '../../../../../modals/form/IsFromStartField.vue'
 import IsUntilEndField from '../../../../../modals/form/IsUntilEndField.vue'
 import NameField from '../../../../../modals/form/NameField.vue'
+import { providePropertyDescriptions } from '../../../../../modals/form/propertyDescription'
 import PropertiesModal from '../../../../../modals/form/PropertiesModal.vue'
 import type { StageEditKey } from '../../../../headerLabelText'
 import { stageEditOperation } from '../../../../headerLabels'
@@ -22,6 +23,7 @@ const props = defineProps<{
     readOnly?: boolean
 }>()
 const emit = defineEmits<{ close: [] }>()
+providePropertyDescriptions(true)
 const generation = stackGeneration()
 let expected = stages.value.get(props.stageId)
 let last: StageObject = expected ?? {

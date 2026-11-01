@@ -10,6 +10,10 @@ const control = (page: Page, label: string) =>
         .filter({ has: page.getByText(label, { exact: true }) })
         .locator('input, select')
 
+// Hides property descriptions, so a control's accessible description is its state alone.
+const hideDescriptions = (page: Page) =>
+    page.evaluate(() => (window.editorTest.settings.showPropertyDescriptions = false))
+
 const open = async (page: Page) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
@@ -154,6 +158,7 @@ test.describe('mixed values', () => {
     })
 
     test('numbers show their range and toggles list their values', async ({ page }) => {
+        await hideDescriptions(page)
         await expect(control(page, 'Lane')).toHaveAttribute('placeholder', '-4 … 4')
         const critical = selection(page)
             .locator('.form-field')
@@ -172,6 +177,7 @@ test.describe('mixed values', () => {
     test('fields used by part of the selection say how many objects they cover', async ({
         page,
     }) => {
+        await hideDescriptions(page)
         const attached = selection(page)
             .locator('.form-field')
             .filter({ has: page.getByText('Attached', { exact: true }) })
@@ -352,6 +358,7 @@ test.describe('mixed values', () => {
     })
 
     test("descriptions join coverage and values in each locale's punctuation", async ({ page }) => {
+        await hideDescriptions(page)
         const type = control(page, 'Ease Type')
         await expect(type).toHaveAccessibleDescription(
             'Applies to 2 of 5 selected objects. Mixed: In 1, Out 1',

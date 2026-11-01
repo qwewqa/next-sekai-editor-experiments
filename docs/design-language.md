@@ -88,13 +88,14 @@ Colour, elevation, hover, press and focus of every button family come from the r
 - **On/off** (`btn-toggle` with `aria-pressed`): mint and flat when on. The toolbar tool in use and Show Edits are examples.
 - **Floating pill with an icon:** `.manager-add` is `btn btn-secondary rounded-full p-0.5 pr-4`, the icon in a 36 px slot.
 - **Fields** (`field`): raised like a secondary button, `rounded-full`; `aria-invalid` adds a red ring that is separate from the focus ring.
-- **Info button** (`FieldInfo.vue`): the ⓘ after a described setting's label, `ghost holds-open focus-out size-6 rounded-full text-fg/70` with a 44 px `::before` target.
+- **Info button** (`FieldInfo.vue`): the ⓘ after a described setting's or chart property's label, `ghost holds-open focus-out size-6 rounded-full text-fg/70` with a 44 px `::before` target.
   - It sits after the label's text, so the text wraps 28 px earlier and the control keeps its column.
   - Hover or keyboard focus shows the description after 400 ms. A click, tap, Enter or Space pins it.
-  - The bubble is the menu surface (`.popup-surface`, `px-3 py-2 text-sm`, at most 20 rem), teleported into the dialog. It goes under the whole field, or above it when there is no room below, so it never covers its own row. When it fits neither side, it takes the roomier one and scrolls inside, by touch, wheel or the scroll keys on the ⓘ.
-  - A press, drag or scroll elsewhere closes it, as do Escape and opening another ⓘ.
+  - The bubble is the menu surface (`.popup-surface`, `px-3 py-2 text-sm`, at most 20 rem), teleported into the dialog, or into the page when there is no dialog. Keys pressed in it reach no shortcut, as in a dock. It goes under the whole field, or above it when there is no room below, so it never covers its own row. When it fits neither side, it takes the roomier one and scrolls inside, by touch, wheel or the scroll keys on the ⓘ.
+  - A press, drag or scroll elsewhere closes it, as do Escape and opening another ⓘ. A press outside docks and dialogs only closes a pinned bubble, so it never edits the chart.
   - A select's description lists its choices: the sentence, then one line per choice in the select's order. Each line starts with the choice's name and the locale's colon in `font-semibold`, in the same ink, with no bullet. Wrapped lines stay flush left. The list is 8 px below the sentence, with 4 px between lines.
-  - The full text, lines included, is also the field's screen-reader description.
+  - The full text, lines included, is also the field's screen-reader description, after the field's state (coverage and mixed values).
+  - Property descriptions show only on the surfaces that ask for them (`providePropertyDescriptions`): Selection, the tools' settings, Group Properties, Stage Properties and Level Info. Show Property Descriptions turns them off.
 - **Disabled:** `opacity-40` with no pointer events (the recipes do this), or `aria-disabled` with the same opacity when the control should stay focusable.
 - **Hover is pointer-only.** Tailwind is configured with `hoverOnlyWhenSupported` and the recipes sit under `(hover: hover) and (pointer: fine)`, so a tap leaves no hover look behind.
 - **Focus** is one rule: a 2 px ring drawn 2 px inside the face in the face's own ink, so the face shows on both sides of it. Faces under 32 px use `focus-out`; rows and menu rows use `focus-edge`. Outlines rest transparent so forced colours can paint them; `controls.css` and `index.css` thicken them to 4 px there. Do not suppress an outline without replacing it.

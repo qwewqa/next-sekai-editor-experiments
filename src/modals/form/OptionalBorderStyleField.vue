@@ -5,6 +5,8 @@ import OptionalSelectField from './OptionalSelectField.vue'
 
 defineProps<{
     label: string
+    /** The side's sentence before the styles' lines, behind an ⓘ. */
+    description?: string | null
 }>()
 
 const modelValue = defineModel<BorderStyle | undefined>({ required: true })
@@ -14,6 +16,12 @@ const modelValue = defineModel<BorderStyle | undefined>({ required: true })
     <OptionalSelectField
         v-model="modelValue"
         :label
+        :description="
+            description && {
+                intro: description,
+                choices: i18n.modals.form.descriptions.borderStyle.choices,
+            }
+        "
         :options="[
             [i18n.modals.form.borderStyle.default, 'default'],
             [i18n.modals.form.borderStyle.light, 'light'],

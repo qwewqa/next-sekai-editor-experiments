@@ -13,6 +13,21 @@ export type ChoiceLine = { name: string; text: string }
 /** What a field's ⓘ shows: prose, or a sentence and one line per choice in the select's order. */
 export type FieldDescription = string | { intro: string; lines: ChoiceLine[] }
 
+/** What a select's ⓘ shows: prose, or a line per option, named and ordered as its options. */
+export const describeChoices = <T>(
+    description: string | ChoiceDescription<Extract<T, string>> | null | undefined,
+    options: readonly (readonly [string, T])[],
+): FieldDescription | null | undefined =>
+    description == null || typeof description === 'string'
+        ? description
+        : {
+              intro: description.intro,
+              lines: options.map(([name, value]) => ({
+                  name,
+                  text: description.choices[value as Extract<T, string>],
+              })),
+          }
+
 /** The start of a choice's line: its name and the locale's colon, as "Beat: ". */
 export const choiceLine = (name: string) => {
     const template = i18n.value.modals.form.choiceLine

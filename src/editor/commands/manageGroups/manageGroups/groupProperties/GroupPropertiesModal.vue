@@ -6,8 +6,9 @@ import { onHistoryAction } from '../../../../../history/actions'
 import { isPeeking, liveState, stackGeneration } from '../../../../../history/stack'
 import { groups } from '../../../../../history/groups'
 import { i18n } from '../../../../../i18n'
+import ForceNoteSpeedField from '../../../../../modals/form/ForceNoteSpeedField.vue'
 import NameField from '../../../../../modals/form/NameField.vue'
-import OptionalNumberField from '../../../../../modals/form/OptionalNumberField.vue'
+import { providePropertyDescriptions } from '../../../../../modals/form/propertyDescription'
 import PropertiesModal from '../../../../../modals/form/PropertiesModal.vue'
 import type { GroupEditKey } from '../../../../headerLabelText'
 import { groupEditOperation } from '../../../../headerLabels'
@@ -20,6 +21,7 @@ const props = defineProps<{
     readOnly?: boolean
 }>()
 const emit = defineEmits<{ close: [] }>()
+providePropertyDescriptions(true)
 const generation = stackGeneration()
 let expected = groups.value.get(props.groupId)
 let last: GroupObject = expected ?? { name: '' }
@@ -100,13 +102,7 @@ const forceNoteSpeed = createModel('forceNoteSpeed')
     >
         <fieldset class="contents" :disabled="readOnly">
             <NameField v-model="name" />
-            <OptionalNumberField
-                v-model="forceNoteSpeed"
-                :label="i18n.commands.manageGroups.modal.properties.modal.forceNoteSpeed"
-                :min="1"
-                :max="12"
-                step="any"
-            />
+            <ForceNoteSpeedField v-model="forceNoteSpeed" />
         </fieldset>
     </PropertiesModal>
 </template>

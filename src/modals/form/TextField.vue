@@ -5,6 +5,8 @@ import { confirmOnEnter, resyncInput, revertOnEscape, trackTypedText } from './r
 
 defineProps<{
     label: string
+    /** What the property does, behind an ⓘ after the label. */
+    description?: string | null
 }>()
 
 const input: Ref<HTMLInputElement | null> = useTemplateRef('input')
@@ -22,7 +24,7 @@ const onFocus = (event: FocusEvent) => {
 </script>
 
 <template>
-    <BaseField :label>
+    <BaseField :label :description>
         <input
             ref="input"
             v-model.lazy="modelValue"

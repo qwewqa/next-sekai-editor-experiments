@@ -25,12 +25,15 @@ import OptionalSelectField from './OptionalSelectField.vue'
 import { resyncRadios } from './resync'
 import { choiceLayout, selectGlyphFits, type ChoiceLayout } from './segmented'
 import SelectField from './SelectField.vue'
+import { describeChoices, type ChoiceDescription } from './fieldDescription'
 
 const props = defineProps<{
     label: string
     options: (readonly [string, NoInfer<T>])[]
     /** `multi`: undefined means mixed. `optional`: undefined means not set, with its own option. */
     variant?: 'multi' | 'optional'
+    /** What the property does, behind an ⓘ: prose, or a sentence and a line per option. */
+    description?: string | ChoiceDescription<Extract<NoInfer<T>, string>> | null
 }>()
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -140,6 +143,15 @@ watch(
     () => void nextTick(measure),
 )
 
+const described = computed(() => describeChoices(props.description, props.options))
+// The plain select's value type includes undefined, which names no choice.
+const selectDescription = computed(() => {
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+    type Choices = Extract<NoInfer<T | undefined>, string>
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return props.description as string | ChoiceDescription<Choices> | null | undefined
+})
+
 // The swapped-in control keeps keyboard focus.
 watch(
     [segmented, unknown],
@@ -159,7 +171,14 @@ watch(
 </script>
 
 <template>
-    <BaseField v-if="segmented && !unknown" ref="field" :label :label-id="`${id}-label`" :mixed>
+    <BaseField
+        v-if="segmented && !unknown"
+        ref="field"
+        :label
+        :label-id="`${id}-label`"
+        :mixed
+        :description="described"
+    >
         <div
             class="form-field-segmented flex min-w-0 rounded-full bg-recess p-0.5 shadow-track outline-none"
             :class="{ 'text-fg/80': isMixed }"
@@ -223,6 +242,7 @@ watch(
         :label
         :options="selectOptions"
         :option-glyph="listGlyph"
+        :description
     >
         <template v-if="selectGlyph && modelValue !== undefined && !unknown" #leading>
             <slot name="glyph" :value="modelValue" />
@@ -235,10 +255,18 @@ watch(
         :label
         :options="selectOptions"
         :option-glyph="listGlyph"
+        :description
     >
         <template v-if="selectGlyph && modelValue !== undefined && !unknown" #leading>
             <slot name="glyph" :value="modelValue" />
         </template>
     </MultiSelectField>
-    <SelectField v-else ref="field" v-model="modelValue" :label :options />
+    <SelectField
+        v-else
+        ref="field"
+        v-model="modelValue"
+        :label
+        :options
+        :description="selectDescription"
+    />
 </template>

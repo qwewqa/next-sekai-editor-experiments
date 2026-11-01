@@ -10,6 +10,7 @@ import { i18n } from '../../i18n'
 import { useEmptyLabel, useUnsetChoice } from './emptyLabel'
 import { isUnknownValue, optionName } from './fieldUsage'
 import { unknownLabel } from './unknownLabel'
+import { describeChoices, type ChoiceDescription } from './fieldDescription'
 
 const props = defineProps<{
     label: string
@@ -21,6 +22,8 @@ const props = defineProps<{
     emptyLabel?: string
     /** Each value's picture in the shared list; the unset choice has none. */
     optionGlyph?: OptionGlyph<NoInfer<T>>
+    /** What the property does, behind an ⓘ: prose, or a sentence and a line per option. */
+    description?: string | ChoiceDescription<Extract<NoInfer<T>, string>> | null
 }>()
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -61,10 +64,17 @@ const glyphs = computed(() =>
 )
 
 const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
+
+const described = computed(() =>
+    describeChoices(
+        props.description,
+        allSections.value.flatMap((section) => section.options),
+    ),
+)
 </script>
 
 <template>
-    <BaseField :label>
+    <BaseField :label :description="described">
         <div
             ref="wrapper"
             class="form-field-select group"

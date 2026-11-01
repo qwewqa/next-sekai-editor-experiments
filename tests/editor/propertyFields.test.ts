@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { easeTypes } from '../../src/ease'
 import { aggregateValues, countOptions, valueRange } from '../../src/editor/utils/aggregate'
 import {
     brushFields,
@@ -429,4 +430,66 @@ test('qualified names drop a unit, unless only it tells two fields apart', () =>
     assert.equal(qualified('yOffsetBeat'), 'Y Offset (beats)')
     assert.equal(qualified('leftBorderStyle'), 'Border Style (Left)')
     for (const locale of locales) assert.doesNotMatch(qualified('skip', locale), /[(（]/, locale)
+})
+
+type Description = string | { intro?: string; choices: Record<string, string> }
+const descriptions = () =>
+    messages('en').modals.form.descriptions as unknown as Record<string, Description | undefined>
+
+test('every chart property has an English description', () => {
+    const all = descriptions()
+    const keys = [
+        ...propertyFields.map((field) => field.key),
+        // The second row of the ease fields.
+        'easeFunction',
+        'timeScaleEaseFunction',
+        // Group Properties, Stage Properties and Level Info.
+        'name',
+        'forceNoteSpeed',
+        'isFromStart',
+        'isUntilEnd',
+        'generateSimLines',
+        'initialLife',
+        // The tool options among the properties.
+        'copyProperties',
+        'copyPropertiesSlide',
+        'preset',
+    ]
+    for (const key of keys) {
+        const description = all[key]
+        const text = typeof description === 'string' ? description : description?.intro
+        assert.ok(text?.trim(), key)
+    }
+})
+
+test('each choice description has a line for every option of its select, and no others', () => {
+    const t = messages('en')
+    const form = t.modals.form as unknown as Record<string, Record<string, string>>
+    // A select names each option after its value, as noteType.forceTick names 'forceTick'.
+    const named = (section: string) =>
+        Object.keys(form[section]!).filter((key) => !['label', 'qualified'].includes(key))
+    const options: Record<string, string[]> = {
+        noteType: named('noteType'),
+        connectorType: named('connectorType'),
+        easeType: [...easeTypes],
+        connectorLayer: named('connectorLayer'),
+        connectorPresentation: named('connectorPresentation'),
+        timeScaleTransition: named('timeScaleTransition'),
+        cameraZoomVerticalAlign: named('cameraZoomVerticalAlign'),
+        divisionParity: named('divisionParity'),
+        judgmentLineStyle: named('judgmentLineStyle'),
+        borderStyle: named('borderStyle'),
+        rotationCenter: named('rotationCenter'),
+        anchor: named('anchor'),
+        generateSimLines: named('generateSimLines'),
+    }
+    const withChoices = Object.entries(descriptions()).filter(
+        (entry): entry is [string, Exclude<Description, string>] => typeof entry[1] === 'object',
+    )
+    assert.deepEqual(withChoices.map(([key]) => key).sort(), Object.keys(options).sort())
+    for (const [key, { choices }] of withChoices) {
+        assert.deepEqual(Object.keys(choices).sort(), [...options[key]!].sort(), key)
+        for (const [value, text] of Object.entries(choices))
+            assert.ok(text.trim(), `${key}.${value}`)
+    }
 })

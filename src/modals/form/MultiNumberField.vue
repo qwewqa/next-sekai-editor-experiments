@@ -31,6 +31,8 @@ const props = defineProps<{
     exclusiveMin?: boolean
     /** Sets a stepped value in place of the model, as Beat does to keep it on its grid. */
     setStep?: (value: number) => void
+    /** What the property does, behind an ⓘ after the label. */
+    description?: string | null
 }>()
 
 const input: Ref<HTMLInputElement | null> = useTemplateRef('input')
@@ -271,7 +273,7 @@ const onBlur = () => {
 </script>
 
 <template>
-    <BaseField :label :mixed="[]">
+    <BaseField :label :mixed="[]" :description>
         <input
             ref="input"
             :value="text"

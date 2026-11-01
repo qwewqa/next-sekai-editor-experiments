@@ -9,6 +9,7 @@ import { appVersion } from '../../platform'
 import { PRODUCT_NAME } from '../../product'
 import { interpolateRaw } from '../../utils/interpolate'
 import LanguageField from '../settings/LanguageField.vue'
+import PropertyDescriptionsField from '../settings/PropertyDescriptionsField.vue'
 import ThemeField from '../settings/ThemeField.vue'
 import UsageStatisticsField from '../settings/UsageStatisticsField.vue'
 import AgreementSentence from './AgreementSentence.vue'
@@ -49,6 +50,7 @@ provide(stackLongValuesKey, true)
         <div class="flex flex-col gap-3">
             <LanguageField />
             <ThemeField />
+            <PropertyDescriptionsField />
         </div>
 
         <UsageStatisticsField v-if="analyticsTarget" />

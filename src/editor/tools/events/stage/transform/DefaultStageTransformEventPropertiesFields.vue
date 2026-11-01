@@ -13,7 +13,10 @@ import OptionalCenterYOffsetField from '../../../../../modals/form/OptionalCente
 import OptionalYTranslationField from '../../../../../modals/form/OptionalYTranslationField.vue'
 import OptionalAnchorField from '../../../../../modals/form/OptionalAnchorField.vue'
 import OptionalElevationField from '../../../../../modals/form/OptionalElevationField.vue'
+import { providePropertyDescriptions } from '../../../../../modals/form/propertyDescription'
 
+// The Tool section and the tool's settings dialog both show this.
+providePropertyDescriptions(true)
 const createModel = useProperties(defaultStageTransformEventProperties)
 
 // Unset fields copy the selected object while Copy Properties is on.

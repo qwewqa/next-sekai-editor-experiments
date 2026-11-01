@@ -8,7 +8,10 @@ import OptionalEventEaseField from '../../../../../modals/form/OptionalEventEase
 import OptionalIsMaskNotesField from '../../../../../modals/form/OptionalIsMaskNotesField.vue'
 import OptionalMaskSizeField from '../../../../../modals/form/OptionalMaskSizeField.vue'
 import { useProperties } from '../../../../utils/properties'
+import { providePropertyDescriptions } from '../../../../../modals/form/propertyDescription'
 
+// The Tool section and the tool's settings dialog both show this.
+providePropertyDescriptions(true)
 const createModel = useProperties(defaultStageMaskEventProperties)
 
 // Unset fields copy the selected object while Copy Properties is on.

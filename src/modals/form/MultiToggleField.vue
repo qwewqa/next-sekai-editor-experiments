@@ -8,6 +8,8 @@ import ToggleSwitch from './ToggleSwitch.vue'
 
 defineProps<{
     label: string
+    /** What the property does, behind an ⓘ after the label. */
+    description?: string | null
 }>()
 
 const modelValue = defineModel<boolean | undefined>({ required: true })
@@ -25,7 +27,7 @@ const shown = computed(() =>
 </script>
 
 <template>
-    <BaseField :label>
+    <BaseField :label :description>
         <!-- Named by its row; a checkbox where it can be mixed, as ARIA has no mixed switch. -->
         <template #default="{ textId }">
             <div class="form-field-toggle">

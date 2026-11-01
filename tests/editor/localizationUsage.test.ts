@@ -134,7 +134,7 @@ const referenced = (key: string) => {
 }
 
 const listLines =
-    "the description's lines, read as choices[value] for each option in SelectField.vue"
+    "the description's lines, read as choices[value] for each option in fieldDescription.ts"
 
 /**
  * Sections whose keys are chosen at run time by a typed value (a reason, a kind, a key name), so
@@ -165,6 +165,19 @@ const dynamic: Record<string, string> = {
     'settings.descriptions.zeroWidthNotes.': listLines,
     'settings.descriptions.mouseSecondaryTool.': listLines,
     'settings.descriptions.touchQuickScrollShow.': listLines,
+    'modals.form.descriptions.noteType.': listLines,
+    'modals.form.descriptions.connectorType.': listLines,
+    'modals.form.descriptions.easeType.': listLines,
+    'modals.form.descriptions.connectorLayer.': listLines,
+    'modals.form.descriptions.connectorPresentation.': listLines,
+    'modals.form.descriptions.timeScaleTransition.': listLines,
+    'modals.form.descriptions.cameraZoomVerticalAlign.': listLines,
+    'modals.form.descriptions.divisionParity.': listLines,
+    'modals.form.descriptions.judgmentLineStyle.': listLines,
+    'modals.form.descriptions.borderStyle.': listLines,
+    'modals.form.descriptions.rotationCenter.': listLines,
+    'modals.form.descriptions.anchor.': listLines,
+    'modals.form.descriptions.generateSimLines.': listLines,
     'workspace.dock.': "the setting's options",
     'storage.': 'StorageLineKey',
     'save.': 'FileErrorKey',

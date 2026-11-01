@@ -16,7 +16,10 @@ import OptionalLeftBorderStyleField from '../../../../../modals/form/OptionalLef
 import OptionalNoteAlphaField from '../../../../../modals/form/OptionalNoteAlphaField.vue'
 import OptionalRightBorderStyleField from '../../../../../modals/form/OptionalRightBorderStyleField.vue'
 import { useProperties } from '../../../../utils/properties'
+import { providePropertyDescriptions } from '../../../../../modals/form/propertyDescription'
 
+// The Tool section and the tool's settings dialog both show this.
+providePropertyDescriptions(true)
 const createModel = useProperties(defaultStageStyleEventProperties)
 
 // Unset fields copy the selected object while Copy Properties is on.

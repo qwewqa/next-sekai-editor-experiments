@@ -13,7 +13,10 @@ import OptionalCameraZoomTargetYField from '../../../../modals/form/OptionalCame
 import OptionalCameraZoomVerticalAlignField from '../../../../modals/form/OptionalCameraZoomVerticalAlignField.vue'
 import OptionalEventEaseField from '../../../../modals/form/OptionalEventEaseField.vue'
 import { useProperties } from '../../../utils/properties'
+import { providePropertyDescriptions } from '../../../../modals/form/propertyDescription'
 
+// The Tool section and the tool's settings dialog both show this.
+providePropertyDescriptions(true)
 const createModel = useProperties(defaultCameraEventProperties)
 
 // Unset fields copy the selected object while Copy Properties is on.

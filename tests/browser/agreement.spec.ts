@@ -1,5 +1,8 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import en from '../../src/i18n/en/index.json' with { type: 'json' }
+import fr from '../../src/i18n/fr/index.json' with { type: 'json' }
+import ja from '../../src/i18n/ja/index.json' with { type: 'json' }
+import tr from '../../src/i18n/tr/index.json' with { type: 'json' }
 import { waitForStartup } from './editorFixture'
 
 // The agreement dialog in the dev build, which has both legal pages at revision 1: due at a load
@@ -192,6 +195,9 @@ test.describe('a first agreement', () => {
         await expect(shown).toContainText('Version 0.6.0')
         await expect(shown.getByRole('combobox', { name: 'Language' })).toBeVisible()
         await expect(shown.getByRole('combobox', { name: 'Theme' })).toBeVisible()
+        await expect(
+            shown.getByRole('switch', { name: en.settings.editor.showPropertyDescriptions }),
+        ).toBeVisible()
         await expect(shown.locator('[data-agreement-sentence]')).toHaveText(SENTENCE)
         await expect(shown.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute(
             'href',
@@ -210,7 +216,7 @@ test.describe('a first agreement', () => {
         )
         await expect(agreeButton(page)).toBeFocused()
         await expect(shown.getByRole('button', { name: /Close|×/ })).toHaveCount(0)
-        await expect(shown.getByRole('button')).toHaveCount(1)
+        await expect(shown.getByRole('button', { name: en.agreement.agree })).toHaveCount(1)
         expect(await record(page)).toBeNull()
     })
 
@@ -318,6 +324,10 @@ test.describe('a changed page', () => {
             await visit(page)
             const shown = dialog(page)
             await expect(shown.locator('[data-agreement-change]')).toHaveText(line)
+            // The settings stay, as on a first visit.
+            await expect(
+                shown.getByRole('switch', { name: en.settings.editor.showPropertyDescriptions }),
+            ).toBeVisible()
             // The changed page's line takes the first visit's place, and the title is the name.
             await expect(shown.locator('[data-agreement-intro]')).toHaveCount(0)
             await expect(shown).not.toContainText(en.agreement.intro)
@@ -626,8 +636,11 @@ for (const [width, height, locales] of [
             const page = await context.newPage()
             await visit(page)
             const shown = page.locator('dialog[open]')
+            const statistics = dialog(page).getByRole('switch', {
+                name: { en, fr, ja, tr }[locale].settings.about.usageStatistics,
+            })
             await expect(dialog(page)).toBeVisible()
-            await expect(dialog(page).getByRole('switch', { name: /./ })).toBeVisible()
+            await expect(statistics).toBeVisible()
             const box = (await shown.boundingBox())!
             expect(box.x).toBeGreaterThanOrEqual(8 - 0.5)
             expect(box.y).toBeGreaterThanOrEqual(8 - 0.5)
@@ -651,7 +664,7 @@ for (const [width, height, locales] of [
             )
             if (height < 390) expect(scrolls).toBe(true)
             await body.evaluate((element) => element.scrollTo({ top: element.scrollHeight }))
-            await expect(dialog(page).getByRole('switch', { name: /./ })).toBeInViewport()
+            await expect(statistics).toBeInViewport()
             await expect(sentence).toBeInViewport({ ratio: 1 })
             await expect(agreeAt).toBeInViewport({ ratio: 1 })
             await context.close()

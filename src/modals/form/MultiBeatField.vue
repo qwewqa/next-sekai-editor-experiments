@@ -7,6 +7,7 @@ import { view } from '../../editor/view'
 import { i18n } from '../../i18n'
 import { fromSteppedBeat } from './beatField'
 import MultiNumberField from './MultiNumberField.vue'
+import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<number | undefined>({ required: true })
 const displayedBeat = computed({
@@ -23,11 +24,13 @@ const setStep = (value: number) => {
         view.division,
     )
 }
+const description = usePropertyDescription((t) => t.modals.form.descriptions.beat)
 </script>
 
 <template>
     <MultiNumberField
         v-model="displayedBeat"
+        :description
         :label="i18n.modals.form.beat.label"
         :min="1"
         :max="maxBeat + 1"

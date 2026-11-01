@@ -885,6 +885,7 @@
       "elevationSideBySide": "Éditeur d’élévation côte à côte",
       "elevationConnectorArrows": "Flèches des connecteurs dans l’éditeur d’élévation",
       "minimap": "Afficher la minicarte",
+      "showPropertyDescriptions": "Afficher les descriptions des propriétés",
       "waveformVisualization": {
         "title": "Visualisation de la forme d’onde",
         "off": "Désactivée",
@@ -1127,7 +1128,8 @@
           "touch": "Colore le fond de la zone lorsque l’appareil prend en charge le tactile."
         }
       },
-      "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après un défilement tactile."
+      "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après un défilement tactile.",
+      "showPropertyDescriptions": "Affiche des boutons d’information à côté des propriétés de la partition."
     },
     "sections": "Rubriques",
     "localData": {
@@ -2062,7 +2064,178 @@
       },
       "unknown": "Inconnu ({0})",
       "coverageChip": "{0} sur {1}",
-      "selectCovered": "Sélectionner seulement les objets concernés ({0} sur {1})"
+      "selectCovered": "Sélectionner seulement les objets concernés ({0} sur {1})",
+      "descriptions": {
+        "beat": "Place l’objet dans le temps, en comptant les temps à partir de 1 au début de la partition.",
+        "groupId": "Définit le groupe auquel appartient l’objet. Chaque groupe a sa propre vitesse, réglée par ses changements d’échelle de temps.",
+        "stageId": "Définit la scène à laquelle appartient l’objet. Chaque scène a ses propres voies et événements de scène.",
+        "elevation": "Élève la scène ou la note, en voies.",
+        "left": "Définit le bord gauche de la note, en voies. La scène par défaut va de -6 à 6.",
+        "size": "Définit la largeur de la note, en voies.",
+        "noteType": {
+          "intro": "Définit comment jouer la note.",
+          "choices": {
+            "default": "Se joue par un tap, ou un flick si une Direction du flick est définie. À la fin d’un slide, elle se joue en relâchant ou par un flick. Au milieu, c’est un tick qui se joue en maintenant le slide.",
+            "trace": "Se joue par tout contact au moment de la note, sans tap. Si une Direction du flick est définie, un glissement est nécessaire.",
+            "anchor": "Définit la forme du connecteur sans être dessinée ni jouée.",
+            "damage": "Fait perdre de la vie au joueur lorsqu’il la touche.",
+            "forceTick": "Reste un tick même au début ou à la fin d’un slide, ou lorsqu’elle est seule.",
+            "forceNonTick": "Comme Par défaut, mais au milieu d’un slide, elle se joue par un tap ou un flick au lieu d’être un tick."
+          }
+        },
+        "noteStyle": "Définit la couleur de la note et de ses effets de frappe.",
+        "isAttached": "Place la note sur son connecteur, en prenant sa voie et sa largeur du connecteur.",
+        "isCritical": "Donne à la note l’apparence critique. Les notes critiques peuvent aussi jouer un son critique et rapporter plus de points.",
+        "flickDirection": "Définit si la note est un flick, joué par un glissement, et la direction de sa flèche. Haut et Bas acceptent un glissement dans n’importe quelle direction. Les flèches obliques indiquent dans quel sens glisser.",
+        "isFake": "Affiche la note sans jugement ni score. Elle ne joue aucun son.",
+        "sfx": "Définit le son joué lorsque la note est touchée.",
+        "isConnectorSeparator": "Commence un nouveau segment de connecteur à cette note, permettant d’y changer son Type, sa Couleur et ses autres propriétés.",
+        "connectorType": {
+          "intro": "Définit le rôle du connecteur pendant le jeu.",
+          "choices": {
+            "active": "Doit être maintenu.",
+            "guide": "Affiche un trajet qui ne demande aucune action.",
+            "damage": "Fait perdre de la vie au joueur lorsqu’il le touche."
+          }
+        },
+        "connectorStyle": "Définit la couleur du connecteur. Par défaut utilise la couleur habituelle de son type.",
+        "connectorEase": "Définit la courbe du connecteur entre cette note et la prochaine note non attachée.",
+        "easeType": {
+          "choices": {
+            "none": "Garde la valeur de départ, puis passe d’un coup à la valeur finale à la fin.",
+            "linear": "Change à un rythme constant.",
+            "in": "Change lentement au début, puis plus vite.",
+            "out": "Change vite au début, puis plus lentement.",
+            "inOut": "Change lentement aux deux extrémités et plus vite au milieu.",
+            "outIn": "Change vite aux deux extrémités et plus lentement au milieu."
+          }
+        },
+        "easeFunction": "Définit la courbe suivie par Accélération, Décélération, Accél.-décél. et Décél.-accél. Sinusoïdale, Quadratique, Cubique, Quartique, Quintique et Exponentielle donnent des variations de plus en plus marquées. Circulaire suit un quart de cercle. Recul part brièvement dans l’autre sens, et Élastique oscille. Palier change par sauts.",
+        "connectorIsFake": "Supprime toute action requise par un slide et rend un connecteur de dégâts inoffensif.",
+        "connectorActiveIsCritical": "Donne au slide l’apparence et le son de maintien critiques.",
+        "connectorGuideAlpha": "Définit l’opacité du guide à cette note, de 0 à 2. Elle évolue à un rythme constant vers la valeur du prochain séparateur, ou de la dernière note du guide. L’option Opacité du guide du joueur multiplie cette valeur. Les valeurs supérieures à 1 peuvent donc rendre les guides plus visibles.",
+        "connectorLayer": {
+          "intro": "Définit la couche où le connecteur est dessiné, parmi les objets de même élévation.",
+          "choices": {
+            "top": "Au-dessus de la scène et des connecteurs de la couche Inférieure, sous les notes.",
+            "bottom": "Au-dessus de la scène, sous les connecteurs de la couche Supérieure.",
+            "under": "Sous les voies et la ligne de jugement de la scène.",
+            "over": "Au-dessus des notes."
+          }
+        },
+        "connectorIsPassThrough": "Permet au connecteur de continuer à défiler au-delà de la ligne de jugement au lieu de s’y arrêter.",
+        "connectorPresentation": {
+          "intro": "Définit comment le connecteur est dessiné.",
+          "choices": {
+            "default": "Sous forme de bande le long des voies.",
+            "fullscreen": "Sur tout l’écran pendant que le connecteur traverse la ligne de jugement."
+          }
+        },
+        "bpm": "Définit le tempo de ce changement jusqu’au suivant. Les notes gardent leurs temps, donc un nouveau tempo modifie le moment où elles sont jouées.",
+        "meter": "Définit le nombre de temps par mesure à partir de ce changement de BPM. Seul l’éditeur l’utilise, pour les numéros de mesure et l’alignement sur les mesures.",
+        "editorLane": "Définit la voie où l’éditeur dessine le repère de l’objet.",
+        "timeScale": "Définit la vitesse de déplacement des notes du groupe à partir de ce changement. 1 correspond à la vitesse normale. Les valeurs négatives les font reculer. Les notes se jouent toujours aux mêmes moments.",
+        "skip": "Rapproche d’un coup les notes du groupe de la ligne de jugement à ce changement, de la distance parcourue en ce nombre de temps à vitesse normale. Les notes se jouent toujours aux mêmes moments.",
+        "timeScaleEase": "Définit l’évolution de la vitesse entre ce changement d’échelle de temps et le suivant dans son groupe.",
+        "timeScaleEaseFunction": "Définit la courbe suivie par Accélération, Décélération, Accél.-décél. et Décél.-accél. Sinusoïdale, Quadratique, Cubique, Quartique, Quintique et Exponentielle donnent des variations de plus en plus marquées. Circulaire suit un quart de cercle. Palier change par sauts.",
+        "timeScaleTransition": {
+          "intro": "Définit l’espacement des notes à l’écran pendant que ce changement s’applique.",
+          "choices": {
+            "timeScale": "Selon les vitesses auxquelles elles se déplaceront. Les changements à venir se traduisent donc par des espacements plus larges ou plus serrés.",
+            "scroll": "Selon la vitesse actuelle. Les notes à l’écran accélèrent et ralentissent donc ensemble."
+          }
+        },
+        "hideNotes": "Masque les notes du groupe et les segments de connecteur qui y commencent, jusqu’au prochain changement d’échelle de temps du groupe. Les notes peuvent toujours être jouées.",
+        "cameraLeft": "Définit le bord gauche de la vue de la caméra, en voies. Avec une Largeur du décalage de 12, -6 donne la vue par défaut.",
+        "cameraSize": "Définit la largeur de la vue de la caméra, de 6 à 24 voies. 12 donne la vue par défaut.",
+        "cameraZoom": "Modifie l’échelle de toute la vue autour de la cible du zoom. 1 ne change pas l’échelle.",
+        "cameraZoomTargetLane": "Définit la voie qui sert de centre à Zoom, comptée depuis le milieu de la vue de la caméra. La modifier décale la vue, même avec Zoom à 1.",
+        "cameraZoomTargetY": "Définit la hauteur sur la scène qui sert de centre à Zoom, de -1 à 1. 0 correspond à la ligne de jugement et 1 au haut de la scène.",
+        "cameraZoomVerticalAlign": {
+          "intro": "Définit la position de la cible du zoom à l’écran.",
+          "choices": {
+            "default": "À la hauteur habituelle de la ligne de jugement.",
+            "center": "Au milieu de l’écran."
+          }
+        },
+        "cameraRotation": "Fait tourner toute la vue autour du milieu de l’écran, en degrés. Les valeurs positives la font tourner dans le sens horaire.",
+        "cameraStageTilt": "Définit l’inclinaison de la scène vers l’arrière, de 0 à 1. 1 donne la perspective habituelle, et 0 une scène plate face à l’écran.",
+        "eventEase": "Définit l’évolution des valeurs entre cet événement et le prochain événement connecté.",
+        "maskLeft": "Définit le bord gauche du masque de la scène, en voies. Le masque est la partie de la scène où ses voies et sa ligne de jugement sont dessinées.",
+        "maskSize": "Définit la largeur du masque de la scène, en voies. 12 couvre la scène par défaut.",
+        "isMaskNotes": "Coupe les notes et les connecteurs aux bords du masque. Les contacts comptent sur la partie intérieure.",
+        "pivotLane": "Définit la voie qui sert de référence pour placer les notes et les lignes de division de la scène.",
+        "divisionSize": "Définit l’écart entre les lignes de division, en voies.",
+        "divisionParity": {
+          "intro": "Définit la position des lignes de division autour de la Voie du pivot.",
+          "choices": {
+            "even": "Place une ligne de division sur la Voie du pivot.",
+            "odd": "Place la Voie du pivot à mi-chemin entre deux lignes de division."
+          }
+        },
+        "yOffset": "Remonte la ligne de jugement sur la scène. 0 correspond à sa position habituelle et 1 au haut de la scène.",
+        "yOffsetBeat": "Remonte davantage la ligne de jugement, de la distance parcourue par les notes en ce nombre de temps.",
+        "laneColor": "Définit la couleur du fond des voies de la scène.",
+        "judgmentLineColor": "Définit la couleur de la ligne de jugement. Violet correspond à la scène par défaut.",
+        "judgmentLineStyle": {
+          "intro": "Définit comment la ligne de jugement est dessinée.",
+          "choices": {
+            "default": "Comme la barre habituelle.",
+            "singleLine": "Comme une seule ligne fine."
+          }
+        },
+        "leftBorderStyle": "Définit la ligne le long du bord gauche de la scène.",
+        "borderStyle": {
+          "choices": {
+            "default": "Une bordure épaisse juste à l’extérieur du bord.",
+            "light": "Une ligne fine, comme une ligne de division.",
+            "medium": "Une bordure deux fois moins épaisse que Par défaut.",
+            "disabled": "Aucune ligne sur le bord."
+          }
+        },
+        "rightBorderStyle": "Définit la ligne le long du bord droit de la scène.",
+        "isFullWidth": "Masque le fond des voies, les lignes de division et les bordures, et dessine la ligne de jugement bien au-delà des bords de la scène.",
+        "noteAlpha": "Définit l’opacité des notes et des connecteurs de la scène, de 0 à 1. Les notes à 0 peuvent toujours être jouées.",
+        "laneAlpha": "Définit l’opacité du fond des voies, des lignes de division et des bordures, de 0 à 1.",
+        "judgmentLineAlpha": "Définit l’opacité de la ligne de jugement, de 0 à 1.",
+        "divisionLineAlpha": "Définit l’opacité des lignes de division, de 0 à 1.",
+        "xTranslation": "Déplace la scène latéralement, en voies. Les valeurs positives la déplacent vers la droite.",
+        "yTranslation": "Déplace la scène vers le haut ou le bas, en voies. Les valeurs positives la déplacent vers le haut.",
+        "rotation": "Fait tourner la scène autour de son centre de rotation, en degrés. Les valeurs positives la font tourner dans le sens horaire.",
+        "rotationCenter": {
+          "intro": "Définit le point autour duquel Rotation fait tourner la scène. Translation X et Translation Y déplacent ce point avec la scène.",
+          "choices": {
+            "stage": "La voie 0 à la hauteur habituelle de la ligne de jugement.",
+            "mask": "Le milieu du masque à la hauteur habituelle de la ligne de jugement.",
+            "screen": "Le milieu de l’écran avec la caméra par défaut.",
+            "vanishingPoint": "Le point où les voies se rejoignent au loin."
+          }
+        },
+        "centerXOffset": "Déplace latéralement le centre de rotation depuis le point défini par Centre de rotation, en voies. Les valeurs positives le déplacent vers la droite.",
+        "centerYOffset": "Déplace le centre de rotation vers le haut ou le bas depuis le point défini par Centre de rotation, en voies. Les valeurs positives le déplacent vers le haut.",
+        "anchor": {
+          "intro": "Définit la position à partir de laquelle Translation Y déplace la scène.",
+          "choices": {
+            "default": "La position habituelle de la ligne de jugement.",
+            "center": "Le milieu de l’écran avec la caméra par défaut."
+          }
+        },
+        "copyProperties": "Lorsqu’un seul objet est sélectionné, les propriétés réglées sur Copier prennent leurs valeurs dans cet objet quand vous ajoutez un objet du même type.",
+        "copyPropertiesSlide": "Lorsqu’une seule note est sélectionnée, les propriétés réglées sur Copier prennent leurs valeurs dans cette note et son slide quand vous en ajoutez une.",
+        "preset": "Choisit le jeu de propriétés par défaut utilisé par l’outil.",
+        "name": "Seul l’éditeur affiche ce nom.",
+        "forceNoteSpeed": "Fixe la vitesse des notes du groupe, de 1 à 12, à la place de la Vitesse des notes du joueur.",
+        "isFromStart": "Dessine la scène dès le début du niveau, avant son premier événement de masque.",
+        "isUntilEnd": "Continue à dessiner la scène après son dernier événement de masque, jusqu’à la fin du niveau.",
+        "generateSimLines": {
+          "intro": "Définit quelles notes jouées en même temps sont reliées par une ligne de simultanéité.",
+          "choices": {
+            "global": "Relie les notes de cette scène à celles des autres scènes qui utilisent aussi ce choix.",
+            "isolated": "Relie les notes de cette scène uniquement entre elles."
+          }
+        },
+        "initialLife": "Définit la vie du joueur au début du niveau. C’est aussi sa vie maximale. Chaque note manquée coûte 80 points de vie. Un tick manqué, ou le contact avec une note ou un connecteur de dégâts, en coûte 40."
+      }
     },
     "confirm": {
       "delete": "Supprimer",

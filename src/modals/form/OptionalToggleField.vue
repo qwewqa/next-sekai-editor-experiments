@@ -6,6 +6,8 @@ import OptionalSelectField from './OptionalSelectField.vue'
 
 defineProps<{
     label: string
+    /** What the property does, behind an ⓘ after the label. */
+    description?: string | null
 }>()
 
 const modelValue = defineModel<boolean | undefined>({ required: true })
@@ -15,11 +17,12 @@ const unsetChoice = useUnsetChoice()
 </script>
 
 <template>
-    <MultiToggleField v-if="!unsetChoice" v-model="modelValue" :label />
+    <MultiToggleField v-if="!unsetChoice" v-model="modelValue" :label :description />
     <OptionalSelectField
         v-else
         v-model="modelValue"
         :label
+        :description
         :options="[
             [i18n.modals.form.toggle.disabled, false],
             [i18n.modals.form.toggle.enabled, true],

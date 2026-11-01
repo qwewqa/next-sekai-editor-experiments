@@ -247,6 +247,8 @@ const settingsProperties = {
 
     showOtherObjects: Type.Boolean({ default: true }),
 
+    showPropertyDescriptions: Type.Boolean({ default: true }),
+
     // Legacy key: the next peek's Show Edits default; bar choices remain local to that peek.
     dimUnchangedObjects: Type.Boolean({ default: true }),
 

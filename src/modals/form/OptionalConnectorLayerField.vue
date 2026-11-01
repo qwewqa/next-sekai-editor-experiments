@@ -2,13 +2,16 @@
 import type { ConnectorLayer } from '../../chart/note'
 import { i18n } from '../../i18n'
 import OptionalSelectField from './OptionalSelectField.vue'
+import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<ConnectorLayer | undefined>({ required: true })
+const description = usePropertyDescription((t) => t.modals.form.descriptions.connectorLayer)
 </script>
 
 <template>
     <OptionalSelectField
         v-model="modelValue"
+        :description
         :label="i18n.modals.form.connectorLayer.label"
         :options="[
             [i18n.modals.form.connectorLayer.top, 'top'],

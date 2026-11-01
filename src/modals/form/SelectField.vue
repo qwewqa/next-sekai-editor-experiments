@@ -7,7 +7,7 @@ import { resyncSelect } from './resync'
 import SelectValue from './SelectValue.vue'
 import { isUnknownValue, optionName } from './fieldUsage'
 import { unknownLabel } from './unknownLabel'
-import type { ChoiceDescription, FieldDescription } from './fieldDescription'
+import { describeChoices, type ChoiceDescription } from './fieldDescription'
 
 const props = defineProps<{
     label: string
@@ -15,8 +15,8 @@ const props = defineProps<{
     disabled?: boolean
     /** Each value's picture in the shared list. */
     optionGlyph?: OptionGlyph<NoInfer<T>>
-    /** What the setting does, behind an ⓘ after the label: a sentence and a line for each option. */
-    description?: ChoiceDescription<Extract<NoInfer<T>, string>>
+    /** What the field does, behind an ⓘ: prose, or a sentence and a line per option. */
+    description?: string | ChoiceDescription<Extract<NoInfer<T>, string>> | null
 }>()
 
 const modelValue = defineModel<T>({ required: true })
@@ -25,18 +25,7 @@ const unknown = computed(() => isUnknownValue(modelValue.value, props.options))
 const shown = computed(() =>
     unknown.value ? unknownLabel(modelValue.value) : optionName(modelValue.value, props.options),
 )
-// Each line is named and ordered as the options are.
-const described = computed((): FieldDescription | undefined => {
-    const description = props.description
-    if (!description) return undefined
-    return {
-        intro: description.intro,
-        lines: props.options.map(([name, value]) => ({
-            name,
-            text: description.choices[value as Extract<NoInfer<T>, string>],
-        })),
-    }
-})
+const described = computed(() => describeChoices(props.description, props.options))
 const glyphs = computed(() =>
     hasGlyphColumn(
         props.optionGlyph,

@@ -8,6 +8,7 @@ import type { Entity, EntityType } from '../../../state/entities'
 import { isEditableEntity } from '../../../state/operations/editable'
 import type { Store } from '../../../state/store'
 import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
+import { providePropertyDescriptions } from '../../../modals/form/propertyDescription'
 import { aggregateEntities, mergeAggregates, type EntitiesAggregate } from '../../utils/properties'
 import { generalKeys, layoutFields, sharedKeys, type SelectionContext } from './fields'
 import PropertiesBlock from './PropertiesBlock.vue'
@@ -20,6 +21,7 @@ const props = defineProps<{
 
 // Long values go below their label, as in View.
 provide(stackLongValuesKey, true)
+providePropertyDescriptions(true)
 
 const entities = computed(() =>
     selectedEntities.value.filter(
