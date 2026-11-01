@@ -10,6 +10,7 @@ import { isApplePlatform, isCommandChord, matchBindings } from '../editor/contro
 import { isTextEntry } from '../editor/controls/keyboard'
 import { isSaveChord } from '../editor/controls/saveChord'
 import ToggleSwitch from '../modals/form/ToggleSwitch.vue'
+import OverlayScrollbar from '../editor/workspace/OverlayScrollbar.vue'
 import { vScrollEdges } from '../directives/scrollEdges'
 import { getPanelPosition, setPanelPosition, workspaceDockAttribute } from '../editor/workspace'
 import type { PanelPosition } from '../editor/workspace/layout'
@@ -375,13 +376,13 @@ const onPlacementChange = () => {
                 <span class="min-w-0 flex-1 truncate text-left">{{ i18n.preview.settings }}</span>
                 <ChevronIcon direction="up" />
             </button>
-            <!-- The reserved gutter keeps the rows' width, and so the measured height that
-            placement compares, the same whether or not the form scrolls. -->
+            <!-- The overlay scrollbar takes no room, so the rows' width, and the measured height
+            that placement compares, stay the same whether or not the form scrolls. -->
             <div
                 :id="`${id}-body`"
                 ref="controlsBody"
                 v-scroll-edges
-                class="preview-controls-body flex min-h-0 touch-pan-y flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-3 [scrollbar-gutter:stable]"
+                class="preview-controls-body overlay-scroller flex min-h-0 touch-pan-y flex-col gap-3 overflow-y-auto overscroll-contain px-4 py-3"
             >
                 <div class="preview-setting">
                     <span class="preview-setting-label">{{ i18n.settings.preview.noteSpeed }}</span>
@@ -604,6 +605,7 @@ const onPlacementChange = () => {
                     </span>
                 </label>
             </div>
+            <OverlayScrollbar :target="controlsBody" />
         </div>
     </Teleport>
 </template>
@@ -760,6 +762,13 @@ const onPlacementChange = () => {
 
     .preview-controls-roomy .preview-setting:not(.preview-setting-stacked) {
         grid-template-columns: minmax(0, 1fr) 7.5rem;
+    }
+}
+
+/* Forced colors keep the native scrollbar; its gutter stays reserved for the same reason. */
+@media (forced-colors: active) {
+    .preview-controls-body {
+        scrollbar-gutter: stable;
     }
 }
 
