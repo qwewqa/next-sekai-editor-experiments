@@ -89,6 +89,7 @@ const requestView = async () => {
         if (isBusy() || at < requested - 8) bitmap.close()
         else show(bitmap)
     } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return
         if (job !== d.viewJob.value || isBusy()) return
         console.error(error)
         viewError.value = error instanceof Error ? error.message : String(error)

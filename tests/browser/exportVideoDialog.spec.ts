@@ -42,6 +42,33 @@ test.beforeEach(async ({ page }) => {
     await boot(page)
 })
 
+test('closing before the first view frame does not log an abort', async ({ page }) => {
+    const errors: string[] = []
+    page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text())
+    })
+    await page.evaluate(() => {
+        const Native = window.Worker
+        window.Worker = class extends Native {
+            override postMessage(message: unknown, transfer: Transferable[] = []) {
+                if ((message as { type: string }).type === 'prepare') {
+                    Reflect.set(window, 'heldExportPrepare', true)
+                    return
+                }
+                super.postMessage(message, transfer)
+            }
+        }
+    })
+    const dialog = await open(page)
+    await expect
+        .poll(() => page.evaluate(() => Reflect.get(window, 'heldExportPrepare') as boolean))
+        .toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect.poll(() => liveWorkers(page)).toBe(0)
+    expect(errors.filter((message) => message.includes('AbortError'))).toEqual([])
+})
+
 test('the everyday path reaches Ready, downloads and closes', async ({ page }) => {
     await page.evaluate(() => {
         window.editorTest.settings.exportVideoStops = {
