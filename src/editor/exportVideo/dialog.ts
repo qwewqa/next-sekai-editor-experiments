@@ -494,6 +494,8 @@ export const createExportDialog = (input: DialogInput) => {
             case 'cancelled':
                 break
         }
+        // An attempt ends once. A delivery reports Ready again, and `deliver` handles it.
+        if (!busyPhase.value) return
         // The attempt ended.
         busy(false)
         document.removeEventListener('visibilitychange', onHidden)

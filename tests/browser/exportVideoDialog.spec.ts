@@ -12,6 +12,22 @@ const boot = async (page: Page) => {
         route.fulfill({ body: resource('particles') }),
     )
     await page.addInitScript(installCanvasCounters)
+    // Counts the export workers still running, to find any the dialog leaves behind.
+    await page.addInitScript(() => {
+        const Native = window.Worker
+        const live = new Set<Worker>()
+        Reflect.set(window, 'liveExportWorkers', live)
+        window.Worker = class extends Native {
+            constructor(url: string | URL, options?: WorkerOptions) {
+                super(url, options)
+                if (options?.name === 'nse-export-test') live.add(this)
+            }
+            override terminate() {
+                live.delete(this)
+                super.terminate()
+            }
+        }
+    })
     await page.goto('/')
     await page.evaluate(installEditorFixture)
     await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.notes))
@@ -41,6 +57,9 @@ const shortClip = async (page: Page) => {
     await outField.press('Enter')
     await expect(dialog.locator('[data-export-summary]')).toContainText('00:01.000')
 }
+
+const liveWorkers = (page: Page) =>
+    page.evaluate(() => (Reflect.get(window, 'liveExportWorkers') as Set<Worker>).size)
 
 const phase = (page: Page) => page.locator('[data-export-phase]').getAttribute('data-export-phase')
 
@@ -80,9 +99,15 @@ test('the everyday path reaches Ready, downloads and closes', async ({ page }) =
     const downloaded = page.waitForEvent('download')
     await download.click()
     await downloaded
+    // A delivery again: each reports Ready, which must not end the attempt again.
+    const again = page.waitForEvent('download')
+    await download.click()
+    await again
     // A delivered file closes at once.
     await dialog.locator('[data-export-close]').click()
     await expect(dialog).toHaveCount(0)
+    // Every export worker ends with the dialog.
+    await expect.poll(() => liveWorkers(page)).toBe(0)
     // The choices written as the export started are remembered.
     expect(await page.evaluate(() => window.editorTest.settings.exportVideoResolution)).toBe(720)
 })
