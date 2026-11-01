@@ -7,6 +7,7 @@ import {
     sampleTimestamp,
     type AudioBlock,
 } from '../timing'
+import { withAvcColor } from './avcColor'
 
 export type EncodedPacket = {
     type: EncodedAudioChunkType
@@ -137,7 +138,7 @@ export const videoPacket = (
 ): MuxInput => ({
     track: 'video',
     packet: packetOf(chunk),
-    decoderConfig: metadata?.decoderConfig,
+    decoderConfig: metadata?.decoderConfig && withAvcColor(metadata.decoderConfig),
 })
 
 export const createAudioPacketAdapter = (options: {

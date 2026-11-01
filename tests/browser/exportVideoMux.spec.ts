@@ -94,7 +94,7 @@ for (const format of ['webm', 'mp4'] as const)
     for (const cancel of [false, true, 'writing'] as const)
         test(`${format} picked output ${cancel === 'writing' ? 'can be cancelled during a write' : cancel ? 'can be discarded after muxing' : 'preserves colour tags and pixels'}`, async ({
             page,
-        }) => {
+        }, testInfo) => {
             const result = await page.evaluate(
                 async ({ format, cancel }) => {
                     const { muxPickedVideo } = await import('/tests/helpers/muxPickedVideo.ts')
@@ -110,10 +110,19 @@ for (const format of ['webm', 'mp4'] as const)
                 expect(result!.writes).toBeGreaterThan(0)
                 if (cancel === 'writing') expect(result!.cancelledDuringWrite).toBe(true)
             } else {
+                await testInfo.attach('colour', {
+                    contentType: 'application/json',
+                    body: JSON.stringify(result),
+                })
                 expect(result!.size).toBeGreaterThan(0)
                 expect(result!.expectedColor).toBeDefined()
                 expect(result!.actualColor).toEqual(result!.expectedColor)
                 expect(result!.muxError).toBe(0)
+                expect(result!.directColor).toEqual(result!.expectedColor)
+                expect(result!.bitstreamColor?.matrix).toBe(result!.expectedColor?.matrix)
+                expect(result!.bitstreamColor?.fullRange).toBe(result!.expectedColor?.fullRange)
+                if (format === 'mp4') expect(result!.bitstreamColor).toEqual(result!.expectedColor)
+                expect(result!.rawModelError).toBeLessThanOrEqual(2)
                 expect(
                     result!.maxError,
                     JSON.stringify({
