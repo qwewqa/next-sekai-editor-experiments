@@ -3,9 +3,7 @@
 ## Unreleased
 
 - On slow devices, the editor now allows more time for startup notices to appear. Reloading also waits longer for the previous page to finish storing your work before opening a separate copy.
-
 - Changed how the preview blurs backgrounds.
-
 - Help entries now start by explaining what each tool does.
 - Added a message when a failed save or export leaves the project file empty.
 - Added Show Combo to Settings › Preview.
