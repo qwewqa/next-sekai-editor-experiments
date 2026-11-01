@@ -154,11 +154,6 @@ export const helpSections = [
                 commands: ['utilities'],
                 lines: [{ text: () => i18n.value.help.utilities.levelInfo }],
             },
-            {
-                id: 'checkProject',
-                commands: ['checkProject'],
-                lines: [{ text: () => i18n.value.help.checkProject.repair }],
-            },
         ],
     },
     {
@@ -488,6 +483,7 @@ export const NO_ENTRY = [
     'undo',
     'redo',
     // The label says it.
+    'checkProject',
     'copy',
     'cut',
     'deleteSelection',

@@ -743,12 +743,9 @@
     "utilities": {
       "levelInfo": "L’Éditeur de la couverture et l’Éditeur de l’aperçu sauvegardent la couverture ou l’extrait audio qu’ils créent dans un fichier. Pour définir la couverture ou l’extrait audio du niveau, utilisez Informations du niveau."
     },
-    "checkProject": {
-      "repair": "Vérifie si la Chronologie conservée dans ce navigateur est endommagée et utilise votre fichier de projet pour réparer les étapes endommagées de la Chronologie lorsque c’est possible."
-    },
     "play": {
-      "startPosition": "Pour que Lire démarre au curseur, réglez Position de départ sur Curseur dans Paramètres › Lecture.",
-      "stop": "Arrêter ramène le curseur au point de départ de la lecture. Pour arrêter à la position actuelle, choisissez à nouveau Lire."
+      "startPosition": "Pour que Lire démarre au curseur de lecture, réglez Position de départ sur Curseur dans Paramètres › Lecture.",
+      "stop": "Arrêter ramène le curseur de lecture au point de départ de la lecture. Pour arrêter à la position actuelle, choisissez à nouveau Lire."
     },
     "bgm": {
       "load": "Choisissez Musique pour charger la musique et régler son décalage."
@@ -757,8 +754,8 @@
       "browser": "Change l’apparence et le son de l’aperçu dans ce navigateur, pour toutes les partitions que vous ouvrez."
     },
     "preview": {
-      "drag": "Faites glisser horizontalement dans l’aperçu pour déplacer le curseur.",
-      "dragClick": "Faites glisser horizontalement dans l’aperçu ou utilisez la molette de la souris au-dessus pour déplacer le curseur."
+      "drag": "Faites glisser horizontalement dans l’aperçu pour déplacer le curseur de lecture.",
+      "dragClick": "Faites glisser horizontalement dans l’aperçu ou utilisez la molette de la souris au-dessus pour déplacer le curseur de lecture."
     },
     "history": {
       "view": "Appuyez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
@@ -1040,8 +1037,8 @@
       "previewRenderScale": "Ajuste la résolution de rendu de l’aperçu. Des valeurs plus basses réduisent les détails et le travail de rendu.",
       "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
       "toolbarQuickSwitch": "Permet de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
-      "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur pendant la lecture, de 0 en bas de la partition à 100 en haut.",
-      "playPreviewDuration": "Définit la durée de lecture de la musique lorsque vous déplacez le curseur ou sélectionnez un objet.",
+      "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur de lecture, de 0 en bas de la partition à 100 en haut.",
+      "playPreviewDuration": "Définit la durée de lecture de la musique lorsque vous déplacez le curseur de lecture ou sélectionnez un objet.",
       "mouseSecondaryTool": {
         "intro": "Définit l’action du clic droit et du glissement avec le bouton droit.",
         "choices": {
@@ -1103,10 +1100,10 @@
         "intro": "Définit où la commande Lire démarre.",
         "choices": {
           "view": "Démarre au bas de la partie visible de la partition, ou à la hauteur définie par Suivre la position lorsque Suivre est activé.",
-          "cursor": "Démarre au curseur."
+          "cursor": "Démarre au curseur de lecture."
         }
       },
-      "playFollow": "Fait défiler la partition pendant la lecture pour maintenir le curseur à la hauteur définie par Suivre la position.",
+      "playFollow": "Fait défiler la partition pendant la lecture pour maintenir le curseur de lecture à la hauteur définie par Suivre la position.",
       "touchQuickScrollWidth": "Définit la largeur de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt. Une valeur de 0 désactive cette zone.",
       "touchQuickScrollShow": {
         "intro": "Définit quand colorer le fond de la zone au bord droit de la partition où vous pouvez faire défiler avec un doigt.",

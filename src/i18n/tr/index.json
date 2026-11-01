@@ -743,12 +743,9 @@
     "utilities": {
       "levelInfo": "Kapak Editörü ve Önizleme Editörü, oluşturdukları kapağı veya önizleme sesini dosya olarak kaydeder. Seviyenin kapağını veya önizleme sesini ayarlamak için Seviye Bilgileri’ni kullanın."
     },
-    "checkProject": {
-      "repair": "Bu tarayıcıda saklanan Zaman Çizgisi’nde hasar olup olmadığını denetler ve proje dosyanızı kullanarak hasarlı Zaman Çizgisi adımlarını mümkün olduğunda onarır."
-    },
     "play": {
-      "startPosition": "Oynat komutunun imleçten başlaması için Ayarlar › Oynat bölümünde Başlangıç Konumu’nu İmleç olarak ayarlayın.",
-      "stop": "Durdur, imleci oynatmanın başladığı yere geri götürür. Bulunduğunuz yerde durmak için Oynat komutunu tekrar seçin."
+      "startPosition": "Oynat komutunun oynatma imlecinden başlaması için Ayarlar › Oynat bölümünde Başlangıç Konumu’nu İmleç olarak ayarlayın.",
+      "stop": "Durdur, oynatma imlecini oynatmanın başladığı yere geri götürür. Bulunduğunuz yerde durmak için Oynat komutunu tekrar seçin."
     },
     "bgm": {
       "load": "Müziği yüklemek ve zaman kaymasını ayarlamak için Arka Plan Müziği komutunu seçin."
@@ -757,8 +754,8 @@
       "browser": "Bu tarayıcıda açtığınız tüm çizelgeler için önizlemenin görünümünü ve sesini değiştirir."
     },
     "preview": {
-      "drag": "İmleci taşımak için önizleme üzerinde yatay sürükleyin.",
-      "dragClick": "İmleci taşımak için önizleme üzerinde yatay sürükleyin veya fare tekerleğini kullanın."
+      "drag": "Oynatma imlecini taşımak için önizleme üzerinde yatay sürükleyin.",
+      "dragClick": "Oynatma imlecini taşımak için önizleme üzerinde yatay sürükleyin veya fare tekerleğini kullanın."
     },
     "history": {
       "view": "Çizelgenin o zamanki hâlini görmek için bir Zaman Çizgisi adımına dokunun. Geri Yükle, bu sürümü yeni bir Zaman Çizgisi adımı olarak geri getirir.",
@@ -1040,8 +1037,8 @@
       "previewRenderScale": "Önizlemenin çizim çözünürlüğünü ölçekler. Daha düşük değerler ayrıntıyı ve çizim yükünü azaltır.",
       "previewInWorker": "Önizlemeyi editörün geri kalanıyla paralel olarak çizer. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
       "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçmenizi sağlar.",
-      "playFollowPosition": "Takip Et’in oynatma sırasında imleci hangi yükseklikte tutacağını belirler. Çizelgenin altı 0, üstü 100’dür.",
-      "playPreviewDuration": "İmleci taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin ne kadar süre çalacağını belirler.",
+      "playFollowPosition": "Takip Et’in oynatma imlecini hangi yükseklikte tutacağını belirler. Çizelgenin altı 0, üstü 100’dür.",
+      "playPreviewDuration": "Oynatma imlecini taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin ne kadar süre çalacağını belirler.",
       "mouseSecondaryTool": {
         "intro": "Sağ tıklamanın ve sağ tuşla sürüklemenin ne yapacağını belirler.",
         "choices": {
@@ -1103,10 +1100,10 @@
         "intro": "Oynat komutunun nereden başlayacağını belirler.",
         "choices": {
           "view": "Çizelgenin görünen kısmının altından veya Takip Et açıkken Pozisyonu Takip Et ayarında belirtilen konumdan başlar.",
-          "cursor": "İmlecin bulunduğu yerden başlar."
+          "cursor": "Oynatma imlecinin bulunduğu yerden başlar."
         }
       },
-      "playFollow": "Oynatma sırasında çizelgeyi kaydırarak imleci Pozisyonu Takip Et ayarında belirtilen konumda tutar.",
+      "playFollow": "Oynatma sırasında çizelgeyi kaydırarak oynatma imlecini Pozisyonu Takip Et ayarında belirtilen konumda tutar.",
       "touchQuickScrollWidth": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanın genişliğini belirler. 0 değeri bu alanı kapatır.",
       "touchQuickScrollShow": {
         "intro": "Çizelgenin sağ kenarında tek parmakla kaydırabileceğiniz alanın ne zaman gölgelendirileceğini belirler.",

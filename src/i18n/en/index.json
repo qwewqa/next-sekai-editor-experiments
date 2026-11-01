@@ -743,12 +743,9 @@
         "utilities": {
             "levelInfo": "Cover Editor and Preview Editor save the cover or preview audio they make as a file. To set the level’s cover or preview audio, use Level Info."
         },
-        "checkProject": {
-            "repair": "Checks the Timeline stored in this browser for damage, and uses your project file to repair damaged Timeline steps where possible."
-        },
         "play": {
-            "startPosition": "To make Play start at the cursor, set Start Position to Cursor in Settings › Play.",
-            "stop": "Stop moves the cursor back to where playback started. To stop where you are, choose Play again."
+            "startPosition": "To make Play start at the playback cursor, set Start Position to Cursor in Settings › Play.",
+            "stop": "Stop moves the playback cursor back to where playback started. To stop where you are, choose Play again."
         },
         "bgm": {
             "load": "Choose BGM to load the music and set its offset."
@@ -757,8 +754,8 @@
             "browser": "Changes how the preview looks and sounds in this browser, for every chart you open."
         },
         "preview": {
-            "drag": "Drag sideways across the preview to move the cursor.",
-            "dragClick": "Drag sideways across the preview, or use the mouse wheel over it, to move the cursor."
+            "drag": "Drag sideways across the preview to move the playback cursor.",
+            "dragClick": "Drag sideways across the preview, or use the mouse wheel over it, to move the playback cursor."
         },
         "history": {
             "view": "Tap a Timeline step to view the chart as it was then. Restore brings that version back as a new Timeline step.",
@@ -1040,8 +1037,8 @@
             "previewRenderScale": "Scales the preview’s rendering resolution. Lower values reduce detail and rendering work.",
             "previewInWorker": "Draws the preview in parallel with the rest of the editor. Turn this off if the preview looks wrong or does not appear.",
             "toolbarQuickSwitch": "Lets you hold a toolbar button and release on a tool to choose it.",
-            "playFollowPosition": "Sets where Follow keeps the cursor during playback, from 0 at the bottom of the chart to 100 at the top.",
-            "playPreviewDuration": "Sets how long the BGM plays when you move the cursor or select an object.",
+            "playFollowPosition": "Sets where Follow keeps the playback cursor, from 0 at the bottom of the chart to 100 at the top.",
+            "playPreviewDuration": "Sets how long the BGM plays when you move the playback cursor or select an object.",
             "mouseSecondaryTool": {
                 "intro": "Sets what right-click and right-drag do.",
                 "choices": {
@@ -1103,10 +1100,10 @@
                 "intro": "Sets where Play starts.",
                 "choices": {
                     "view": "Starts at the bottom of the visible chart, or at Follow Position when Follow is on.",
-                    "cursor": "Starts at the cursor."
+                    "cursor": "Starts at the playback cursor."
                 }
             },
-            "playFollow": "Scrolls the chart during playback to keep the cursor at Follow Position.",
+            "playFollow": "Scrolls the chart during playback to keep the playback cursor at Follow Position.",
             "touchQuickScrollWidth": "Sets the width of the zone at the chart’s right edge where you can scroll with one finger. A value of 0 turns it off.",
             "touchQuickScrollShow": {
                 "intro": "Sets when to shade the zone at the chart’s right edge where you can scroll with one finger.",
