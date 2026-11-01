@@ -106,10 +106,7 @@ export const createFrameLoop = (options: {
                         ((input.packet.timestamp + input.packet.duration) * AUDIO_RATE) / 1e6,
                     )
                     stats.written.audio =
-                        Math.max(
-                            0,
-                            Math.min(audioTrim.playableSamples, endSample - audioTrim.startSamples),
-                        ) / AUDIO_RATE
+                        Math.max(0, Math.min(audioTrim.playableSamples, endSample)) / AUDIO_RATE
                 }
                 wake()
             }

@@ -11,6 +11,7 @@ import { createPreviewRenderer } from '../../preview/gl'
 import { copyExportAssets } from './assets'
 
 export type ExportTestOptions = {
+    mux?: boolean
     settings?: Partial<ExportSettings>
     cancelAt?: JobState['phase'] | 'mix' | 'drain' | 'finalize' | 'view'
     loseContextAt?: number
@@ -183,23 +184,25 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
                 },
             }
         },
-        worker: () => {
-            const worker = new Worker(new URL('./test.worker.ts', import.meta.url), {
-                type: 'module',
-                name: options.incompleteTarget ?? 'nse-export-test',
-            })
-            if (options.cancelAt === 'view')
-                worker.addEventListener(
-                    'message',
-                    (event: MessageEvent<{ type: string; bitmap?: ImageBitmap }>) => {
-                        if (event.data.type !== 'view') return
-                        event.stopImmediatePropagation()
-                        event.data.bitmap?.close()
-                        job.cancel()
-                    },
-                )
-            return worker
-        },
+        worker: options.mux
+            ? undefined
+            : () => {
+                  const worker = new Worker(new URL('./test.worker.ts', import.meta.url), {
+                      type: 'module',
+                      name: options.incompleteTarget ?? 'nse-export-test',
+                  })
+                  if (options.cancelAt === 'view')
+                      worker.addEventListener(
+                          'message',
+                          (event: MessageEvent<{ type: string; bitmap?: ImageBitmap }>) => {
+                              if (event.data.type !== 'view') return
+                              event.stopImmediatePropagation()
+                              event.data.bitmap?.close()
+                              job.cancel()
+                          },
+                      )
+                  return worker
+              },
         changed: (next) => {
             phases.push(next.phase)
             if (next.phase === 'exporting' && runningPixels === undefined) {
@@ -277,6 +280,10 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
     const capturedMax = exported
         ? exported.reduce((max, value, i) => (i % 4 === 3 ? max : Math.max(max, value)), 0)
         : undefined
+    const bytes =
+        options.mux && result.phase === 'ready'
+            ? Array.from(new Uint8Array(await result.file.arrayBuffer()))
+            : undefined
     await job.dispose()
     let retained = false
     try {
@@ -289,6 +296,7 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error
     }
     return {
+        bytes,
         capturedSize,
         capturedMax,
         runningPixels,

@@ -19,10 +19,8 @@ export type AudioTiming = {
     startSamples: number
     playableSamples: number
     endSample: number
-    codecDelayNanoseconds: number
-    seekPreRollNanoseconds: number
 }
-export type AudioTrim = AudioTiming & { discardPaddingSamples: number }
+export type AudioAccounting = AudioTiming & { paddingSamples: number }
 /** Packet callbacks are synchronous. The frame loop owns their queue and drains it to the muxer. */
 export type MuxInput =
     | { track: 'video'; packet: EncodedPacket; decoderConfig?: VideoDecoderConfig }
@@ -32,7 +30,7 @@ export type MuxInput =
           decoderConfig?: AudioDecoderConfig
           timing?: AudioTiming
       }
-    | { track: 'audioEnd'; discardPaddingSamples: number }
+    | { track: 'audioEnd'; paddingSamples: number }
 
 const bytesOf = (buffer: AllowSharedBufferSource) =>
     ArrayBuffer.isView(buffer)
@@ -99,7 +97,7 @@ export const opusPreSkip = (description: AllowSharedBufferSource) => {
     return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint16(10, true)
 }
 
-const audioTiming = (delay: number, samples: number, opus: boolean): AudioTiming => {
+const audioTiming = (delay: number, samples: number): AudioTiming => {
     const startSamples = AUDIO_PAD + delay
     const endSample = startSamples + samples
     if (![delay, samples].every(Number.isSafeInteger) || delay < 0 || samples <= 0)
@@ -109,21 +107,18 @@ const audioTiming = (delay: number, samples: number, opus: boolean): AudioTiming
         startSamples,
         playableSamples: samples,
         endSample,
-        codecDelayNanoseconds: Math.round((startSamples * 1e9) / AUDIO_RATE),
-        seekPreRollNanoseconds: opus ? 80_000_000 : 0,
     }
 }
 
-export const audioTrim = (
+export const audioAccounting = (
     delay: number,
     samples: number,
     encodedSamples: number,
-    opus: boolean,
-): AudioTrim => {
-    const timing = audioTiming(delay, samples, opus)
+): AudioAccounting => {
+    const timing = audioTiming(delay, samples)
     if (!Number.isSafeInteger(encodedSamples) || encodedSamples < timing.endSample)
         throw new Error('Invalid encoded audio length')
-    return { ...timing, discardPaddingSamples: encodedSamples - timing.endSample }
+    return { ...timing, paddingSamples: encodedSamples - timing.endSample }
 }
 
 export const aacPacketBound = (samples: number, delayAllowance: number) =>
@@ -180,25 +175,23 @@ export const createAudioPacketAdapter = (options: {
             }
             if (!configured || delay === undefined) throw new Error('Audio timing is unknown')
             const timing =
-                firstTimestamp === undefined
-                    ? audioTiming(delay, options.samples, options.codec === 'opus')
-                    : undefined
+                firstTimestamp === undefined ? audioTiming(delay, options.samples) : undefined
             firstTimestamp ??= chunk.timestamp
             const packet = packetOf(chunk, firstTimestamp)
             if (packet.timestamp < 0) throw new Error('Audio packets are out of order')
             encodedEnd = Math.max(encodedEnd, packet.timestamp + packet.duration)
+            packet.timestamp -= ((AUDIO_PAD + delay) * 1e6) / AUDIO_RATE
             options.emit({ track: 'audio', packet, decoderConfig: config, timing })
         },
         finish() {
             if (ended || firstTimestamp === undefined || delay === undefined)
                 throw new Error('Audio output is incomplete')
-            const trim = audioTrim(
+            const trim = audioAccounting(
                 delay,
                 options.samples,
                 Math.round((encodedEnd * AUDIO_RATE) / 1e6),
-                options.codec === 'opus',
             )
-            options.emit({ track: 'audioEnd', discardPaddingSamples: trim.discardPaddingSamples })
+            options.emit({ track: 'audioEnd', paddingSamples: trim.paddingSamples })
             ended = true
             return trim
         },

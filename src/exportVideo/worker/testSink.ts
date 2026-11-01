@@ -6,7 +6,7 @@ import type { PacketSink, SinkConfig } from './sink'
 export const createTestSink = (config: SinkConfig) => {
     const inputs: MuxInput[] = []
     let frames = 0
-    let audioEnd = 0
+    let audioEnd: number | undefined
     let timing: AudioTiming | undefined
     let padding: number | undefined
     let videoConfigured = false
@@ -39,12 +39,12 @@ export const createTestSink = (config: SinkConfig) => {
             } else if (input.track === 'audio') {
                 check(!!config.codecs.audio && padding === undefined, 'Unexpected audio packet')
                 check(
-                    Math.abs(input.packet.timestamp - audioEnd) <= 1,
+                    audioEnd === undefined || Math.abs(input.packet.timestamp - audioEnd) <= 1,
                     'Missing or misplaced audio packet',
                 )
                 check(input.packet.duration > 0, 'Wrong audio duration')
                 if (input.timing) {
-                    check(!timing && audioEnd === 0, 'Audio timing was given twice')
+                    check(!timing && audioEnd === undefined, 'Audio timing was given twice')
                     timing = input.timing
                     check(
                         timing.sampleRate === AUDIO_RATE &&
@@ -53,11 +53,6 @@ export const createTestSink = (config: SinkConfig) => {
                             timing.endSample === timing.startSamples + config.samples,
                         'Wrong audio trim',
                     )
-                    check(
-                        timing.codecDelayNanoseconds ===
-                            Math.round((timing.startSamples * 1e9) / AUDIO_RATE),
-                        'Wrong codec delay',
-                    )
                     if (config.codecs.audio?.codec === 'opus') {
                         check(
                             !!input.decoderConfig?.description &&
@@ -65,20 +60,18 @@ export const createTestSink = (config: SinkConfig) => {
                                     timing.startSamples,
                             'Wrong Opus pre-skip',
                         )
-                        check(
-                            timing.seekPreRollNanoseconds === 80_000_000,
-                            'Wrong Opus seek preroll',
-                        )
                     }
                 }
                 audioEnd = input.packet.timestamp + input.packet.duration
             } else {
                 check(padding === undefined && !!timing, 'Unexpected audio end')
-                padding = input.discardPaddingSamples
+                padding = input.paddingSamples
                 check(
                     Number.isSafeInteger(padding) &&
                         padding >= 0 &&
-                        Math.round((audioEnd * AUDIO_RATE) / 1e6) - padding === timing?.endSample,
+                        audioEnd !== undefined &&
+                        Math.round((audioEnd * AUDIO_RATE) / 1e6) - padding ===
+                            timing?.playableSamples,
                     'Wrong audio padding',
                 )
             }

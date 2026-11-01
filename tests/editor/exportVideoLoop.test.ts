@@ -185,14 +185,17 @@ test('audio accounting excludes the pad, priming and final padding', async () =>
     loop.submitted('audio', 0.1)
     loop.emit({
         track: 'audio',
-        packet: { type: 'key', timestamp: 0, duration: 140000, data: new Uint8Array([1]) },
+        packet: {
+            type: 'key',
+            timestamp: -(1336 * 1e6) / 48000,
+            duration: 140000,
+            data: new Uint8Array([1]),
+        },
         timing: {
             sampleRate: 48000,
             startSamples: 1336,
             playableSamples: 4800,
             endSample: 6136,
-            codecDelayNanoseconds: 27833333,
-            seekPreRollNanoseconds: 80000000,
         },
     })
     await loop.drained()

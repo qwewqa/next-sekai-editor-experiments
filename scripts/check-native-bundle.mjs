@@ -145,6 +145,7 @@ export async function checkNativeBundle(directory, { root = defaultRoot, full = 
         'THIRD_PARTY_NOTICES.txt',
         'notices/Font-Awesome.txt',
         'notices/Outfit-OFL.txt',
+        'notices/Mediabunny-MPL-2.0.txt',
     ])
         if (!has(file)) problems.push(`${file} is missing`)
     const notices = contents.get('THIRD_PARTY_NOTICES.txt')?.toString('utf8') ?? ''

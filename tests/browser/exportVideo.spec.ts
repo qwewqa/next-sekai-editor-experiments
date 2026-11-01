@@ -14,7 +14,9 @@ test.beforeEach(async ({ page }) => {
 })
 
 for (const start of [0, 83])
-    test(`encodes a clip at ${start} s with exact frames and audio trims`, async ({ page }) => {
+    test(`encodes a clip at ${start} s with exact frames and audio accounting`, async ({
+        page,
+    }) => {
         const result = await page.evaluate(
             (start) => window.editorTest.exportVideo({ settings: { in: start, frames: 76 } }),
             start,
@@ -38,7 +40,10 @@ for (const start of [0, 83])
         expect(sink.timing.startSamples).toBeGreaterThanOrEqual(1024)
         expect(sink.padding).toBeGreaterThanOrEqual(0)
         expect(sink.inputs.filter((i) => i.track === 'video')).toHaveLength(76)
-        expect(sink.inputs.find((i) => i.track === 'audio')?.packet?.timestamp).toBe(0)
+        expect(sink.padding).toBeLessThan(960)
+        expect(sink.inputs.find((i) => i.track === 'audio')?.packet?.timestamp).toBe(
+            -(sink.timing.startSamples * 1e6) / 48000,
+        )
     })
 
 for (const cancelAt of ['preparing', 'exporting', 'mix', 'drain', 'finalize', 'view'] as const)

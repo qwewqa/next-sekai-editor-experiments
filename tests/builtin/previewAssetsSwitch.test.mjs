@@ -16,6 +16,7 @@ async function web(t, env) {
     Object.assign(process.env, env)
     try {
         await build({
+            configLoader: 'runner',
             root,
             logLevel: 'silent',
             publicDir: false,

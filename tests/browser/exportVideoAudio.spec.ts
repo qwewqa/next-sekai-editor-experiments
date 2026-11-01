@@ -179,7 +179,7 @@ for (const sourceRate of [48000, 96000]) {
     })
 }
 
-test('the real Opus encoder preserves the pad, exact end and separate seek pre-roll', async ({
+test('the real Opus encoder puts priming before zero and retains less than one packet of padding', async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {
@@ -216,10 +216,11 @@ test('the real Opus encoder preserves the pad, exact end and separate seek pre-r
         }
     })
     expect(result, 'Chromium must provide the automated Opus path').toBeDefined()
-    expect(result!.timestamps[0]).toBe(0)
+    expect(result!.timestamps[0]).toBe(-(result!.trim.startSamples * 1e6) / 48000)
     expect(result!.trim.playableSamples).toBe(800)
     expect(result!.trim.startSamples).toBeGreaterThanOrEqual(1024)
-    expect(result!.trim.seekPreRollNanoseconds).toBe(80000000)
+    expect(result!.trim.paddingSamples).toBeGreaterThanOrEqual(0)
+    expect(result!.trim.paddingSamples).toBeLessThan(960)
 })
 
 test('AAC calibration and the pad preserve sound within the first 1024 clip samples', async ({

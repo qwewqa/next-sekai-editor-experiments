@@ -175,6 +175,12 @@ path = "deployment/notices/**"
 SPDX-FileCopyrightText = "The authors of each text"
 SPDX-License-Identifier = "LicenseRef-Licence-Texts"
 
+# Mediabunny's unmodified licence text.
+[[annotations]]
+path = "deployment/notices/Mediabunny-MPL-2.0.txt"
+SPDX-FileCopyrightText = "Mozilla Foundation"
+SPDX-License-Identifier = "LicenseRef-Licence-Texts"
+
 # Test-only fonts, never shipped (tests/fonts/README.md).
 [[annotations]]
 path = "tests/fonts/selawik/**"

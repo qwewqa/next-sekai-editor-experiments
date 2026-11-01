@@ -188,7 +188,7 @@ export default defineConfig({
         },
     ],
     webServer: {
-        command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
+        command: `npm run dev -- --configLoader runner --host 127.0.0.1 --port ${port} --strictPort`,
         url: `http://127.0.0.1:${port}`,
         reuseExistingServer: false,
         timeout: 30_000,

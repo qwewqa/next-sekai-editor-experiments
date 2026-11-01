@@ -10,7 +10,7 @@ import {
 } from '../../src/exportVideo/timing'
 import {
     aacPacketBound,
-    audioTrim,
+    audioAccounting,
     createAacCalibration,
     createAudioFeeder,
     createAudioPacketAdapter,
@@ -112,7 +112,7 @@ test('every encoder receives the silent pad and contiguous units with an exact l
     assert.equal(aacPacketBound(5600, 2), 9)
 })
 
-test('AAC packets start at zero and carry the pad and delay only in the trim', () => {
+test('AAC packets put the pad and priming before zero and retain final padding', () => {
     const emitted: MuxInput[] = []
     const adapter = createAudioPacketAdapter({
         codec: 'aac',
@@ -137,17 +137,17 @@ test('AAC packets start at zero and carry the pad and delay only in the trim', (
     const trim = adapter.finish()
     assert.deepEqual(
         emitted.filter((x) => x.track === 'audio').map((x) => x.packet.timestamp),
-        [0, 21333, 42667],
+        [0, 21333, 42667].map((time) => time - (2048 * 1e6) / AUDIO_RATE),
     )
     assert.equal(trim.startSamples, 2048)
     assert.equal(trim.playableSamples, 800)
     assert.equal(trim.endSample, 2848)
-    assert.equal(trim.discardPaddingSamples, 224)
-    assert.deepEqual(emitted.at(-1), { track: 'audioEnd', discardPaddingSamples: 224 })
+    assert.equal(trim.paddingSamples, 224)
+    assert.deepEqual(emitted.at(-1), { track: 'audioEnd', paddingSamples: 224 })
     assert.throws(() => adapter.finish(), /incomplete/)
 })
 
-test('Opus pre-skip includes the pad while seek pre-roll stays 80 ms', () => {
+test('Opus pre-skip and negative timestamps include the pad', () => {
     const emitted: MuxInput[] = []
     const original = opusHead(312)
     const adapter = createAudioPacketAdapter({
@@ -169,10 +169,8 @@ test('Opus pre-skip includes the pad while seek pre-roll stays 80 ms', () => {
     const first = emitted[0]!
     assert.equal(first.track === 'audio' && opusPreSkip(first.decoderConfig!.description!), 1336)
     assert.equal(opusPreSkip(original), 312)
-    assert.equal(trim.codecDelayNanoseconds, 27833333)
-    assert.equal(trim.seekPreRollNanoseconds, 80000000)
-    assert.equal(trim.discardPaddingSamples, 744)
-    assert.throws(() => audioTrim(312, 800, 1000, true), /Invalid/)
+    assert.equal(trim.paddingSamples, 744)
+    assert.throws(() => audioAccounting(312, 800, 1000), /Invalid/)
 })
 
 test('video packets retain the encoder color metadata without a replacement tag', () => {

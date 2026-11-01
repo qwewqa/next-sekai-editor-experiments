@@ -35,6 +35,7 @@ export async function buildNative({ root = defaultRoot, outDir = join(root, 'dis
         await stageNativePublic(root, publicDir)
         const { build } = await import('vite')
         await build({
+            configLoader: 'runner',
             root,
             base: '/',
             mode: 'native',

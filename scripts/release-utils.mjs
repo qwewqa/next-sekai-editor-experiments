@@ -52,6 +52,7 @@ export const noticeFiles = [
     'notices/libtess.txt',
     'notices/pixi-colord.txt',
     'notices/Outfit-OFL.txt',
+    'notices/Mediabunny-MPL-2.0.txt',
 ]
 
 export function sha256(bytes) {
@@ -129,6 +130,10 @@ async function dependencyNotices(root, kind) {
         'Vendored libtess.js: notices/libtess.txt (SGI Free Software License B).',
         'libtess.js source: https://github.com/brendankenny/libtess.js',
         'Combo digits and label: glyph outlines from Outfit SemiBold and Bold, Copyright 2021 The Outfit Project Authors, SIL Open Font License 1.1: notices/Outfit-OFL.txt.',
+        '',
+        'Mediabunny 1.61.6 is used without source modifications in the export worker.',
+        'Source: https://github.com/Vanilagy/mediabunny/tree/v1.61.6',
+        'Mozilla Public License 2.0: notices/Mediabunny-MPL-2.0.txt.',
         '',
         'PixiJS 8.22.0 includes one checked source patch:',
         '- Resolve the initial default batcher through the registered batcher extension.',

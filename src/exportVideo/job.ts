@@ -94,7 +94,7 @@ export const createExportJob = (options: {
     services: ReturnType<typeof createExportServices>
     assets(signal: AbortSignal): Promise<ExportAssets>
     destination(signal: AbortSignal, id: string): Promise<JobDestination>
-    worker(): Worker
+    worker?(): Worker
     changed(state: JobState): void
     frame?(bitmap: ImageBitmap): void
     test?: { faults?: ExportFaults; event?(message: FromExportWorker): void }
@@ -198,7 +198,12 @@ export const createExportJob = (options: {
                     frameRate: settings.frameRate,
                     samples,
                 }
-                host = createExportHost(options.worker())
+                host = createExportHost(
+                    options.worker?.() ??
+                        new Worker(new URL('./worker/mux.worker.ts', import.meta.url), {
+                            type: 'module',
+                        }),
+                )
                 host.visibility(document.hidden)
                 const ready = host.prepare(start)
                 assets = undefined
