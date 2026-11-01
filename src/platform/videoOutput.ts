@@ -14,7 +14,7 @@ export const videoLock = (id: string) => `nse-export-video:${id}`
 const validId = /^[a-zA-Z0-9_-]+$/
 const stagedName = /^([a-zA-Z0-9_-]+)\.(mp4|webm)$/
 
-/** Owns each staged file's lock until deletion, including the wait after Ready. */
+/** Owns each staged file's lock through Ready, retention and the deletion attempt. */
 export const createVideoOutput = (
     store: VideoStore,
     locks: LockService,
@@ -35,10 +35,14 @@ export const createVideoOutput = (
         const job = jobs.get(id)
         if (!job) return
         timers.clearTimeout(job.timer)
-        await store.remove(job.name)
-        job.ended = true
-        jobs.delete(id)
-        job.release()
+        try {
+            await store.remove(job.name)
+        } finally {
+            // Leave failed deletions unlocked so a later sweep can retry them.
+            job.ended = true
+            jobs.delete(id)
+            job.release()
+        }
     }
 
     return {
@@ -74,7 +78,6 @@ export const createVideoOutput = (
                         job.ended = true
                         if (!job.delivered) return remove(id)
                         job.timer = timers.setTimeout(() => {
-                            // A failed deletion keeps the lock; an explicit remove can retry it.
                             void remove(id).catch(() => undefined)
                         }, BLOB_URL_MS)
                     },

@@ -179,7 +179,7 @@ The position-addressed targets in `src/editor/exportVideo/worker/target.ts` writ
 
 `platform.videoOutput` owns staged files under `export-video/`, each protected by `nse-export-video:<id>`. The worker closes its sync access handle before the owner removes a cancelled or failed output. A file remains locked while Ready is shown. After a successful delivery, `endReady()` starts the hand-over's ten-minute retention; an undelivered file is removed at once. Call it only after any required discard confirmation. Downloads use the existing hand-over, and shares use the video's MIME type. A dismissed share keeps the file available.
 
-The maintenance runner sweeps unlocked staged files before checking storage pressure. It never reads project media or History for this sweep. Web implements staging in OPFS, the mock keeps it in memory, and native leaves `videoOutput` absent.
+The maintenance runner sweeps unlocked staged files before checking storage pressure. A deletion attempt releases ownership even if it fails, so a later sweep can retry. The sweep never reads project media or History. Web implements staging in OPFS, the mock keeps it in memory, and native leaves `videoOutput` absent.
 
 ## Pinned Pixi seams and upgrade gate
 

@@ -112,3 +112,85 @@ test('a collision never truncates an existing staged file and releases the job l
     await w.output.sweep()
     assert.deepEqual(await w.store.names(), [])
 })
+
+test('a sweep retries a failed deletion after retention expires', async (t) => {
+    const w = setup()
+    const staged = await w.output.stage('expired', 'mp4')
+    const file = await w.output.file('expired')
+    await w.output.deliver(file, 'clip.mp4', 'download')
+    await staged.endReady()
+    const removal = t.mock.method(
+        w.store,
+        'remove',
+        async () => {
+            throw new Error('Removal failed')
+        },
+        { times: 1 },
+    )
+    for (const fn of w.timers.values()) fn()
+    assert.deepEqual(await w.store.names(), ['expired.mp4'])
+    assert.equal(removal.mock.callCount(), 1)
+    const locks = await w.manager.client(w.manager.scheduler.actor('observer')).query()
+    assert.ok(!locks.held.some((lock) => lock.name === videoLock('expired')))
+    await w.output.sweep()
+    assert.deepEqual(await w.store.names(), [])
+    await assert.rejects(w.output.deliver(file, 'clip.mp4', 'download'), /no longer ready/)
+})
+
+test('a sweep retries a failed deletion after discarding an undelivered video', async (t) => {
+    const w = setup()
+    const staged = await w.output.stage('discard', 'webm')
+    t.mock.method(
+        w.store,
+        'remove',
+        async () => {
+            throw new Error('Removal failed')
+        },
+        { times: 1 },
+    )
+    await assert.rejects(staged.endReady(), /Removal failed/)
+    assert.deepEqual(await w.store.names(), ['discard.webm'])
+    await staged.endReady()
+    await w.output.sweep()
+    assert.deepEqual(await w.store.names(), [])
+})
+
+for (const end of ['cancel', 'failure'] as const)
+    test(`a sweep retries a failed deletion after a ${end === 'cancel' ? 'cancelled' : 'failed'} export`, async (t) => {
+        const w = setup()
+        const staged = await w.output.stage(end, 'mp4')
+        const target = await openStagedTarget(staged.handle)
+        await target.write(new Uint8Array([1, 2, 3]), 0)
+        if (end === 'cancel') await target.abort()
+        else await assert.rejects(target.write(new Uint8Array([4]), -1))
+        t.mock.method(
+            w.store,
+            'remove',
+            async () => {
+                throw new Error('Removal failed')
+            },
+            { times: 1 },
+        )
+        await assert.rejects(w.output.remove(end), /Removal failed/)
+        assert.deepEqual(await w.store.names(), [`${end}.mp4`])
+        await w.output.sweep()
+        assert.deepEqual(await w.store.names(), [])
+        await assert.rejects(w.output.file(end), /no longer ready/)
+    })
+
+test('a sweep releases its lock after a failed deletion and retries on the next sweep', async (t) => {
+    const w = setup()
+    await w.store.create('orphan.mp4')
+    t.mock.method(
+        w.store,
+        'remove',
+        async () => {
+            throw new Error('Removal failed')
+        },
+        { times: 1 },
+    )
+    await assert.rejects(w.output.sweep(), /Removal failed/)
+    assert.deepEqual(await w.store.names(), ['orphan.mp4'])
+    await w.output.sweep()
+    assert.deepEqual(await w.store.names(), [])
+})

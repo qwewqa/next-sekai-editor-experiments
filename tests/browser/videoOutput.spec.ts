@@ -306,3 +306,52 @@ test('startup sweeps an orphan video before pressure cleanup and skips a held fi
         }),
     ).toEqual({ size: 0, media: 'project-media' })
 })
+
+test('a sweep retries a failed deletion of a video left by a closed page', async ({
+    page,
+    context,
+}) => {
+    await start(page)
+    await page.evaluate(async () => {
+        const { platform } = await import('/src/platform/index.ts')
+        await platform.videoOutput!.stage('closed', 'mp4')
+    })
+    const other = await context.newPage()
+    await start(other)
+    await page.close()
+    const result = await other.evaluate(async () => {
+        const { platform } = await import('/src/platform/index.ts')
+        const output = platform.videoOutput!
+        const dir = await (
+            await navigator.storage.getDirectory()
+        ).getDirectoryHandle('export-video')
+        const original = FileSystemDirectoryHandle.prototype.removeEntry
+        let attempts = 0
+        FileSystemDirectoryHandle.prototype.removeEntry = function (name, options) {
+            if (this.name === 'export-video' && name === 'closed.mp4' && ++attempts === 1)
+                return Promise.reject(new DOMException('Removal failed', 'UnknownError'))
+            return original.call(this, name, options)
+        }
+        try {
+            let failed = false
+            try {
+                await output.sweep()
+            } catch {
+                failed = true
+            }
+            const remaining = (await dir.getFileHandle('closed.mp4')).name
+            const held = (await navigator.locks.query()).held?.map((lock) => lock.name)
+            await output.sweep()
+            const names: string[] = []
+            for await (const name of dir.keys()) names.push(name)
+            return { failed, remaining, held, names, attempts }
+        } finally {
+            FileSystemDirectoryHandle.prototype.removeEntry = original
+        }
+    })
+    expect(result.failed).toBe(true)
+    expect(result.remaining).toBe('closed.mp4')
+    expect(result.held).not.toContain('nse-export-video:closed')
+    expect(result.names).toEqual([])
+    expect(result.attempts).toBe(2)
+})
