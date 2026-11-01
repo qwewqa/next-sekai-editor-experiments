@@ -15,7 +15,6 @@ import { previewHost } from './worker/host'
 
 const container = useTemplateRef<HTMLDivElement>('container')
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
-const background = useTemplateRef<HTMLDivElement>('background')
 const selectionCanvas = useTemplateRef<HTMLCanvasElement>('selection')
 const workerCanvas = useTemplateRef<HTMLCanvasElement>('workerCanvas')
 const workerSelection = useTemplateRef<HTMLCanvasElement>('workerSelection')
@@ -27,22 +26,6 @@ const firstPaintUrl = computed(() =>
         ? firstPaintBackgroundUrl
         : undefined,
 )
-// The image, blurred as its configuration says; the quad it fills is set per frame.
-const backgroundStyle = computed(() => {
-    const background = resources.background.value
-    return background
-        ? {
-              backgroundImage: `url("${background.url}")`,
-              filter: background.blur > 0 ? `blur(${background.blur}px)` : undefined,
-          }
-        : firstPaintUrl.value && { backgroundImage: `url("${firstPaintUrl.value}")` }
-})
-// Behind the image, where a contained or narrower one leaves the screen bare.
-const backgroundColor = computed(() => {
-    const color = resources.background.value?.color
-    return color && color !== 'transparent' ? color : undefined
-})
-const backgroundMask = computed(() => resources.background.value?.mask)
 // A load that fails while the browser reports no network says so.
 const offline = ref(!navigator.onLine)
 const updateOnline = () => (offline.value = !navigator.onLine)
@@ -67,8 +50,8 @@ const {
     onControlsResize,
     onTimeResize,
 } = viewport
-usePreviewRendering(
-    { canvas, selection: selectionCanvas, workerCanvas, workerSelection, background },
+const { hasFrame } = usePreviewRendering(
+    { canvas, selection: selectionCanvas, workerCanvas, workerSelection },
     resources,
     viewport,
 )
@@ -84,20 +67,13 @@ const isErrorDetailOpen = ref(false)
             <div
                 class="preview-viewport absolute overflow-hidden bg-black"
                 :class="{ 'inset-0': status !== 'ready' }"
-                :style="[status === 'ready' ? canvasStyle : undefined, { backgroundColor }]"
+                :style="status === 'ready' ? canvasStyle : undefined"
             >
                 <div
-                    ref="background"
-                    class="preview-background pointer-events-none absolute inset-0 origin-top-left"
-                    :style="backgroundStyle"
+                    v-if="!hasFrame && firstPaintUrl"
+                    class="preview-background pointer-events-none absolute inset-0"
+                    :style="{ backgroundImage: `url('${firstPaintUrl}')` }"
                     aria-hidden="true"
-                />
-                <div
-                    v-if="backgroundMask"
-                    class="pointer-events-none absolute inset-0"
-                    :style="{ backgroundColor: backgroundMask }"
-                    aria-hidden="true"
-                    data-background-mask
                 />
                 <!-- The worker host's canvases, which it draws into from its worker. After a
                 handover they keep its last frame until the main host draws over them. -->

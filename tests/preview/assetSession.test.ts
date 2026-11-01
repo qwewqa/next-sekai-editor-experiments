@@ -194,13 +194,14 @@ test('a background releases its object URL when replaced, and dispose closes eve
     const backgroundOf = (url: string) =>
         ({
             url,
+            texture: bitmap(),
             aspectRatio: 16 / 9,
             fit: 'cover',
             color: 'transparent',
             blur: 0,
             mask: undefined,
             dispose: () => released.push(url),
-        }) as Loaded['background']
+        }) as unknown as Loaded['background']
     const skin = skinOf('s')
     const { session, ref } = sessionOf(
         { background: async () => backgroundOf('default'), skin: async () => skin },

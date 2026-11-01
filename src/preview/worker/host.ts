@@ -6,6 +6,7 @@ import { PERF, recordSample } from '../../perf/probe'
 import { testKeysOpen } from '../../platform/testKeys'
 import { settings } from '../../settings'
 import type { State } from '../../state'
+import type { LoadedBackground } from '../assets/types'
 import type { PreviewFrameInput, PreviewSelection } from '../drawFrame'
 import type { ComboPixels } from '../engine/comboDraw'
 import type { OutlineAlpha } from '../outlineRenderer'
@@ -94,6 +95,7 @@ type PreviewTestCounters = {
     frames: number
     releases?: number
     vertices: number[]
+    backgroundVertices?: number[]
     aspect: number
 }
 
@@ -104,6 +106,7 @@ const addCounters = (counters: PreviewWorkerCounters) => {
     target.frames += counters.frames
     if (counters.releases) target.releases = (target.releases ?? 0) + counters.releases
     if (counters.vertices) target.vertices = counters.vertices
+    if (counters.backgroundVertices) target.backgroundVertices = counters.backgroundVertices
     if (counters.aspect !== undefined) target.aspect = counters.aspect
 }
 
@@ -128,6 +131,7 @@ const startWorker = () => {
 
     /** The worker's renderer's limit, once its context is ready. */
     const maxViewportSize = shallowRef<{ width: number; height: number }>()
+    const hasFrame = shallowRef(false)
     let stopped = false
     let attached = 0
     let timer: ReturnType<typeof setTimeout> | undefined
@@ -137,7 +141,7 @@ const startWorker = () => {
     const sender = createMirrorSender()
     let sentSelection: PreviewSelection | undefined | null = null
     // The objects whose atlases the worker holds, by slot: skin, then particle.
-    const lent: (LoadedSkin | LoadedParticle | undefined)[] = []
+    const lent: (LoadedSkin | LoadedParticle | LoadedBackground | undefined)[] = []
     let copyId = 0
     const copying = new Map<number, (bitmap?: ImageBitmap, error?: unknown) => void>()
     let onAtlases: ((bitmaps: (ImageBitmap | undefined)[]) => void) | undefined
@@ -269,6 +273,7 @@ const startWorker = () => {
                 settle()
                 inFlight = false
                 drew = true
+                hasFrame.value = true
                 recordSample('previewWorkerDraw', message.ms)
                 recordSample('previewWorkerAnswer', performance.now() - postedAt)
                 const next = pending
@@ -321,6 +326,7 @@ const startWorker = () => {
     }
 
     return {
+        hasFrame,
         maxViewportSize,
         copyAtlas: (slot: 0 | 1, loaded: LoadedSkin | LoadedParticle, signal: AbortSignal) =>
             new Promise<ImageBitmap>((resolve, reject) => {
@@ -380,7 +386,7 @@ const startWorker = () => {
             }
         },
         /** Moves an atlas to the worker, which keeps it and closes the one it replaces. */
-        lendAtlas: (slot: 0 | 1, loaded: LoadedSkin | LoadedParticle) => {
+        lendAtlas: (slot: 0 | 1 | 3, loaded: LoadedSkin | LoadedParticle | LoadedBackground) => {
             // A moved bitmap is detached, with no size: it is already the worker's.
             if (stopped || lent[slot] === loaded || !loaded.texture.width) return
             lent[slot] = loaded
@@ -389,8 +395,13 @@ const startWorker = () => {
                     type: 'atlas',
                     slot,
                     bitmap: loaded.texture,
-                    interpolation: loaded.interpolation,
-                    sprites: 'skin' in loaded ? loaded.skin : loaded.particle,
+                    interpolation: 'interpolation' in loaded ? loaded.interpolation : true,
+                    sprites:
+                        'skin' in loaded
+                            ? loaded.skin
+                            : 'particle' in loaded
+                              ? loaded.particle
+                              : undefined,
                 },
                 [loaded.texture],
             )

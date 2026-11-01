@@ -9,7 +9,7 @@ const updatePrefersDark = () => {
 }
 query.addEventListener('change', updatePrefersDark)
 
-const theme = computed(() =>
+export const theme = computed(() =>
     settings.theme === 'system' ? (prefersDark.value ? 'dark' : 'light') : settings.theme,
 )
 

@@ -1,3 +1,6 @@
+import { backgroundColor } from './backgroundBlur'
+import { createBackgroundPass } from './backgroundPass'
+import type { PreviewFrameInput } from './drawFrame'
 import type { Quad } from './engine/math'
 import { linkProgram } from './program'
 import { createRenderTarget, type RenderTarget, type RenderTargetOptions } from './renderTarget'
@@ -18,8 +21,8 @@ export const BlendMode = {
 
 export type BlendModeValue = (typeof BlendMode)[keyof typeof BlendMode]
 
-/** The renderer's textures: 0 the skin, 1 the particle and 2 text. */
-export type TextureSlot = 0 | 1 | 2
+/** The renderer's textures: 0 skin, 1 particle, 2 text and 3 background. */
+export type TextureSlot = 0 | 1 | 2 | 3
 
 export type PreviewRenderer = {
     maxViewportSize: {
@@ -78,13 +81,16 @@ precision highp float;
 uniform sampler2D u_texture0;
 uniform sampler2D u_texture1;
 uniform sampler2D u_texture2;
+uniform sampler2D u_texture3;
 in vec3 v_uvw;
 in float v_texture;
 in vec4 v_color;
 out vec4 outColor;
 void main() {
     vec2 uv = v_uvw.xy / v_uvw.z;
-    vec4 color = v_texture > 1.5
+    vec4 color = v_texture > 2.5
+        ? texture(u_texture3, uv)
+        : v_texture > 1.5
         ? texture(u_texture2, uv)
         : mix(texture(u_texture0, uv), texture(u_texture1, uv), v_texture);
     outColor = vec4(color.rgb * v_color.rgb * v_color.a, color.a * v_color.a);
@@ -159,6 +165,8 @@ const writeVertex = (
 }
 
 export type PreviewSurface = PreviewRenderer & {
+    prepareFrame: (width: number, height: number) => void
+    compositeBackground: (quad: Quad, input: PreviewFrameInput) => void
     hasTexture: (slot: TextureSlot) => boolean
     setRenderTarget: (options: RenderTargetOptions | undefined) => RenderTarget | undefined
     checkError: () => boolean
@@ -182,12 +190,15 @@ export const createPreviewRenderer = (
     let buffer: WebGLBuffer | null = null
     let restoreState = false
     let target: RenderTarget | undefined
+    let backgroundPass: ReturnType<typeof createBackgroundPass> | undefined
+    let backgroundIdentity: object | undefined
     let disposed = false
     const deleteResources = () => {
         if (disposed) return
         disposed = true
         target?.dispose()
         target = undefined
+        backgroundPass?.dispose()
         for (const texture of textures) gl.deleteTexture(texture)
         textures.length = 0
         if (buffer) {
@@ -205,7 +216,7 @@ export const createPreviewRenderer = (
     }
 
     const maxViewportDimensions = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array
-    const hasTextures = [false, false, false]
+    const hasTextures = [false, false, false, false]
     let aspectLocation: WebGLUniformLocation | null
 
     try {
@@ -221,6 +232,7 @@ export const createPreviewRenderer = (
         gl.uniform1i(gl.getUniformLocation(program, 'u_texture0'), 0)
         gl.uniform1i(gl.getUniformLocation(program, 'u_texture1'), 1)
         gl.uniform1i(gl.getUniformLocation(program, 'u_texture2'), 2)
+        gl.uniform1i(gl.getUniformLocation(program, 'u_texture3'), 3)
 
         buffer = gl.createBuffer()
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
@@ -241,7 +253,7 @@ export const createPreviewRenderer = (
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
         gl.clearColor(0, 0, 0, 0)
 
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 4; i++) {
             const texture = gl.createTexture()
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
             if (!texture) throw new Error('Failed to create preview texture')
@@ -264,7 +276,69 @@ export const createPreviewRenderer = (
     const inputs = new Array<number>(8)
     const outputs = new Array<number>(8)
 
-    return {
+    const renderer: PreviewSurface = {
+        prepareFrame(width, height) {
+            renderer.setRenderTarget({ width, height, antialias: target?.antialias ?? antialias })
+        },
+        compositeBackground(quad, input) {
+            if (!target) throw new Error('No foreground render target')
+            const foreground = target.resolve()
+            backgroundPass ??= createBackgroundPass(gl)
+            const background = input.background
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- All four textures were allocated at initialization.
+            const source = textures[3]!
+            const blurred =
+                background && hasTextures[3] && backgroundIdentity
+                    ? backgroundPass.blur(
+                          source,
+                          backgroundIdentity,
+                          input.width,
+                          input.height,
+                          (background.blur * input.height) / input.displayHeight,
+                      )
+                    : undefined
+            if (canvas.width !== input.width) canvas.width = input.width
+            if (canvas.height !== input.height) canvas.height = input.height
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+            gl.viewport(0, 0, input.width, input.height)
+            gl.useProgram(program)
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+            for (let i = 0; i < textures.length; i++) {
+                gl.activeTexture(gl.TEXTURE0 + i)
+                gl.bindTexture(
+                    gl.TEXTURE_2D,
+                    i === 3 ? (blurred?.texture ?? source) : (textures[i] ?? null),
+                )
+            }
+            gl.enable(gl.BLEND)
+            gl.uniform1f(aspectLocation, input.displayWidth / input.displayHeight)
+            const [r, g, b, a] = backgroundColor(background?.color)
+            const [br, bg, bb] = (background && input.backdrop) ?? [0, 0, 0]
+            gl.clearColor(r + br * (1 - a), g + bg * (1 - a), b + bb * (1 - a), 1)
+            entries.length = 0
+            if (background && hasTextures[3]) {
+                const mx = blurred?.marginX ?? 0
+                const my = blurred?.marginY ?? 0
+                const place = (x: number, y: number) => ({
+                    x: quad.tl.x + (quad.tr.x - quad.tl.x) * x + (quad.bl.x - quad.tl.x) * y,
+                    y: quad.tl.y + (quad.tr.y - quad.tl.y) * x + (quad.bl.y - quad.tl.y) * y,
+                })
+                renderer.draw(
+                    { texture: 3, u0: 0, v0: blurred ? 1 : 0, u1: 1, v1: blurred ? 0 : 1 },
+                    {
+                        tl: place(-mx, -my),
+                        tr: place(1 + mx, -my),
+                        bl: place(-mx, 1 + my),
+                        br: place(1 + mx, 1 + my),
+                    },
+                    [0],
+                    1,
+                )
+            }
+            renderer.flush()
+            backgroundPass.composite(foreground, background?.mask)
+            restoreState = true
+        },
         hasTexture: (slot) => hasTextures[slot] === true,
         setRenderTarget(options) {
             if (disposed) throw new Error('Preview renderer is disposed')
@@ -302,6 +376,7 @@ export const createPreviewRenderer = (
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
 
             hasTextures[index] = true
+            if (index === 3) backgroundIdentity = bitmap
         },
 
         reserveTexture(slot, width, height) {
@@ -394,6 +469,7 @@ export const createPreviewRenderer = (
                 if (!target) restoreState = false
             }
             gl.viewport(0, 0, width, height)
+            gl.clearColor(0, 0, 0, 0)
             gl.uniform1f(aspectLocation, aspectRatio)
 
             entries.length = 0
@@ -534,4 +610,5 @@ export const createPreviewRenderer = (
             packedData = new Float32Array(0)
         },
     }
+    return renderer
 }

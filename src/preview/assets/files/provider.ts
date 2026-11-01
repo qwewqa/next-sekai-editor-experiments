@@ -1,6 +1,7 @@
 import { isAbort } from '../../../utils/error'
 import { buildParticle } from '../../particle'
 import { buildSkin } from '../../skin'
+import { decodeBackground } from '../background'
 import {
     AssetError,
     type AssetType,
@@ -34,10 +35,13 @@ const toAssetError = (error: unknown, type: AssetType) => {
 const mime = (bytes: Uint8Array) =>
     readImageSize(bytes)?.format === 'jpeg' ? 'image/jpeg' : 'image/png'
 
-const buildBackground = (item: CheckedItem<'background'>): LoadedBackground => {
+const buildBackground = async (item: CheckedItem<'background'>): Promise<LoadedBackground> => {
     const { data, configuration, image, size } = item.parts
-    const url = URL.createObjectURL(new Blob([new Uint8Array(image)], { type: mime(image) }))
+    const blob = new Blob([new Uint8Array(image)], { type: mime(image) })
+    const texture = await decodeBackground(blob)
+    const url = URL.createObjectURL(blob)
     return {
+        texture,
         url,
         dispose: () => {
             URL.revokeObjectURL(url)

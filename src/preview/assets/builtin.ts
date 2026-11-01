@@ -11,6 +11,7 @@ import { loadParticleFromScp } from '../particle'
 import { loadPreviewResource } from '../resource'
 import { parseGzippedJson, parseScp } from '../scp'
 import { loadSkinFromScp } from '../skin'
+import { decodeBackground } from './background'
 import { decodeEffectClips } from './effectClips'
 import { readItem } from './scpItem'
 import { openRangedScp, type RangedScp } from './scpRange'
@@ -48,8 +49,11 @@ const loadBackground = async ({ signal }: LoadContext): Promise<LoadedBackground
 
     const data = parseGzippedJson<BackgroundData>(dataRaw)
     const configuration = parseGzippedJson<BackgroundConfiguration>(configurationRaw)
-    const url = URL.createObjectURL(new Blob([new Uint8Array(imageRaw)], { type: 'image/png' }))
+    const blob = new Blob([new Uint8Array(imageRaw)], { type: 'image/png' })
+    const texture = await decodeBackground(blob)
+    const url = URL.createObjectURL(blob)
     return {
+        texture,
         url,
         dispose: () => {
             URL.revokeObjectURL(url)

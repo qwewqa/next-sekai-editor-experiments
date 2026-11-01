@@ -724,16 +724,6 @@ test("a background's colour, blur, mask, aspect ratio and fit are drawn", async 
     await start(page)
     await expect.poll(() => skinTitle(page)).toBe('Fixture')
     const viewport = page.locator('.preview-viewport').first()
-    const background = page.locator('.preview-background')
-    const widths = async () => ({
-        image: (await background.boundingBox())!.width,
-        screen: (await viewport.boundingBox())!.width,
-    })
-    await expect.poll(async () => (await widths()).image).toBeGreaterThan(0)
-    const plain = await widths()
-    // The default fills the screen.
-    expect(plain.image).toBeGreaterThanOrEqual(plain.screen - 1)
-
     const png =
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg=='
     await page.evaluate(async (png) => {
@@ -745,6 +735,9 @@ test("a background's colour, blur, mask, aspect ratio and fit are drawn", async 
             ...slot.value,
             value: {
                 url: png,
+                texture: await createImageBitmap(await (await fetch(png)).blob(), {
+                    premultiplyAlpha: 'premultiply',
+                }),
                 aspectRatio: 1,
                 fit: 'contain',
                 color: '#223344',
@@ -753,14 +746,42 @@ test("a background's colour, blur, mask, aspect ratio and fit are drawn", async 
             },
         }
     }, png)
-    await expect(background).toHaveCSS('filter', 'blur(6px)')
-    await expect(viewport).toHaveCSS('background-color', 'rgb(34, 51, 68)')
-    await expect(page.locator('[data-background-mask]')).toHaveCSS(
-        'background-color',
-        'rgba(255, 0, 0, 0.5)',
-    )
-    // A square image contained in a wide screen is narrower than the screen.
-    await expect.poll(async () => (await widths()).image).toBeLessThan(plain.screen * 0.8)
+    await page.evaluate(() => {
+        const { show, fixtures } = window.editorTest
+        show({ ...fixtures.interaction, isDynamicStages: true, stages: new Map(), slides: [] })
+    })
+    const pixels = async () => {
+        await page.evaluate(async () => {
+            await window.editorTest.nextTick()
+            await new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            )
+            await window.nsePreviewTest?.settled()
+        })
+        const shot = await viewport.screenshot()
+        return page.evaluate(async (base64) => {
+            const image = new Image()
+            image.src = 'data:image/png;base64,' + base64
+            await image.decode()
+            const canvas = new OffscreenCanvas(image.width, image.height)
+            const context = canvas.getContext('2d')!
+            context.drawImage(image, 0, 0)
+            const read = (x: number) =>
+                Array.from(
+                    context.getImageData(Math.round(x), Math.round(image.height / 2), 1, 1).data,
+                )
+            return {
+                corner: read(2),
+                center: read(image.width / 2),
+                edge: read((image.width - image.height) / 2),
+            }
+        }, shot.toString('base64'))
+    }
+    const masked = await pixels()
+    expect(masked.corner).toEqual([145, 25, 34, 255])
+    expect(masked.center).toEqual([255, 127, 127, 255])
+    expect(masked.edge[1]).toBeGreaterThan(masked.corner[1]!)
+    expect(masked.edge[1]).toBeLessThan(masked.center[1]!)
     await shot(page, 'background-configured', viewport)
 
     // Without a mask no overlay is drawn.
@@ -771,8 +792,10 @@ test("a background's colour, blur, mask, aspect ratio and fit are drawn", async 
         const slot = assetSession.slots.background
         slot.value = { ...slot.value, value: { ...slot.value.value!, mask: undefined, blur: 0 } }
     })
-    await expect(page.locator('[data-background-mask]')).toHaveCount(0)
-    await expect(background).toHaveCSS('filter', 'none')
+    const plain = await pixels()
+    expect(plain.corner).toEqual([34, 51, 68, 255])
+    expect(plain.center).toEqual([255, 255, 255, 255])
+    await expect(page.locator('[data-background-mask], .preview-background')).toHaveCount(0)
 })
 
 test.describe('the review fixes', () => {

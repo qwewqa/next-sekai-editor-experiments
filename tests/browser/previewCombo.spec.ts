@@ -82,6 +82,23 @@ const open = async (page: Page) => {
     await expect(page.locator('.preview-viewport canvas').first()).toBeVisible()
     await expect.poll(() => page.evaluate(() => window.nsePreviewTest !== undefined)).toBe(true)
     await settle(page)
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { assetSession } = await window.editorTest.appImport<
+                    typeof import('../../src/preview/assets')
+                >('/src/preview/assets/index.ts')
+                return assetSession.slots.background.value.state
+            }),
+        )
+        .toBe('ready')
+    await page.evaluate(async () => {
+        const { assetSession } = await window.editorTest.appImport<
+            typeof import('../../src/preview/assets')
+        >('/src/preview/assets/index.ts')
+        assetSession.slots.background.value = { state: 'ready' }
+    })
+    await settle(page)
 }
 
 const comboPixels = async (page: Page) => {

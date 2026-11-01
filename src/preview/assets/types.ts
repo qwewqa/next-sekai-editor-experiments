@@ -25,6 +25,7 @@ export type AssetChoice =
 export type { BackgroundFit }
 
 export type LoadedBackground = {
+    texture: ImageBitmap
     /** The item's title, for a stored background. */
     title?: string
     /** Object URL or asset URL */

@@ -62,7 +62,7 @@ let counters: PreviewWorkerCounters | undefined
 
 const upload = () => {
     if (!renderer) return
-    for (const slot of [0, 1] as const) {
+    for (const slot of [0, 1, 3] as const) {
         const atlas = atlases[slot]
         if (!atlas || uploaded[slot] === atlas.bitmap) continue
         renderer.setTexture(slot, atlas.bitmap, atlas.interpolation)
@@ -150,10 +150,16 @@ const installCounters = () => {
         }
     }
     watch('texImage2D', (gl, args) => {
-        if (isPreview(gl) && args.some((arg) => arg instanceof ImageBitmap)) current.uploads++
+        if (
+            isPreview(gl) &&
+            gl.getParameter(gl.ACTIVE_TEXTURE) !== gl.TEXTURE3 &&
+            args.some((arg) => arg instanceof ImageBitmap)
+        )
+            current.uploads++
     })
     watch('getUniformLocation', (_gl, args, location) => {
         if (location) names.set(location, args[1])
+        if (args[0] && args[1] === 'u_aspect') names.set(args[0], true)
     })
     watch('uniform1f', (gl, [location, value]) => {
         if (isPreview(gl) && location && names.get(location) === 'u_aspect')
@@ -161,26 +167,36 @@ const installCounters = () => {
     })
     watch('clear', (gl) => {
         if (!isPreview(gl)) return
+        if ((gl.getParameter(gl.COLOR_CLEAR_VALUE) as Float32Array)[3] !== 0) return
         current.frames++
         current.vertices = []
     })
     watch('bufferSubData', (gl, args) => {
         const data = args[2]
-        if (isPreview(gl) && data instanceof Float32Array) current.vertices?.push(...data)
+        if (isPreview(gl) && data instanceof Float32Array) {
+            if (data[5] === 3) current.backgroundVertices = [...data]
+            else current.vertices?.push(...data)
+        }
     })
     // Each renderer deletes its program when it releases its context.
-    watch('deleteProgram', () => current.releases++)
+    watch('deleteProgram', (_gl, [program]) => {
+        if (program && names.has(program)) current.releases++
+    })
 }
 
 const report = () => {
     if (!testKeysOpen || !counters) return
-    const { uploads, frames, releases, vertices, aspect } = counters
+    const { uploads, frames, releases, vertices, backgroundVertices, aspect } = counters
     if (!uploads && !frames && !releases && aspect === undefined) return
-    post({ type: 'counters', counters: { uploads, frames, releases, vertices, aspect } })
+    post({
+        type: 'counters',
+        counters: { uploads, frames, releases, vertices, backgroundVertices, aspect },
+    })
     counters.uploads = 0
     counters.frames = 0
     counters.releases = 0
     counters.vertices = undefined
+    counters.backgroundVertices = undefined
     counters.aspect = undefined
 }
 
@@ -225,7 +241,7 @@ const handle = (message: ToPreviewWorker) => {
             if (previous && previous.bitmap !== message.bitmap) previous.bitmap.close()
             atlases[message.slot] = { bitmap: message.bitmap, interpolation: message.interpolation }
             if (message.slot === 0) skin = message.sprites as PreviewSkin
-            else particle = message.sprites as PreviewParticle
+            else if (message.slot === 1) particle = message.sprites as PreviewParticle
             upload()
             return
         }
@@ -256,7 +272,7 @@ const handle = (message: ToPreviewWorker) => {
         case 'return': {
             // The canvases stay. The main thread terminates the worker once the page no longer
             // shows them.
-            const bitmaps = [atlases[0]?.bitmap, atlases[1]?.bitmap]
+            const bitmaps = atlases.map((atlas) => atlas?.bitmap)
             atlases.length = 0
             post(
                 { type: 'atlases', bitmaps },

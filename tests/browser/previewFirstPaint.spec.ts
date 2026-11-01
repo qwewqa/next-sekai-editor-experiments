@@ -23,7 +23,7 @@ test('the preview background carries the first-paint image when it is first inse
         }).observe(document, { childList: true, subtree: true })
     })
     await page.goto('/')
-    await expect(page.locator('.preview-background')).toBeAttached()
+    await expect.poll(() => page.evaluate(() => window.firstBackgroundStyle)).toBeDefined()
     const style = await page.evaluate(() => window.firstBackgroundStyle)
     expect(style).toMatch(/background-image:\s*url\(["']?[^)]*bg[^)]*\.png/)
 })

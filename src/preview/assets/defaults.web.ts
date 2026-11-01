@@ -38,6 +38,6 @@ export default {
     skin: ({ signal }) => loadPreviewResource(resourceUrl('skin'), loadSkinFromScp, signal),
     particle: ({ signal }) =>
         loadPreviewResource(resourceUrl('particle'), loadParticleFromScp, signal),
-    background: () => Promise.resolve(syntheticBackground(backgroundUrl, TARGET_ASPECT_RATIO)),
+    background: ({ signal }) => syntheticBackground(backgroundUrl, TARGET_ASPECT_RATIO, signal),
     effect: (context) => loadEffectPackage(resourceUrl('effect'), context),
 } satisfies AssetDefaults

@@ -165,6 +165,7 @@ test('renderer explicitly releases resources once even without context-loss supp
         'texture',
         'texture',
         'texture',
+        'texture',
     ])
     assert.equal(renderer.isContextLost(), true)
     renderer.begin(320, 200)

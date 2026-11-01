@@ -41,6 +41,7 @@ export const reloadPreviewResources = () => {
 export const decodeAtlasesAgain = () => {
     assetSession.reload('skin')
     assetSession.reload('particle')
+    assetSession.reload('background')
 }
 
 if (import.meta.hot) {

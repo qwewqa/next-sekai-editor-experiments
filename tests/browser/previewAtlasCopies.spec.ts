@@ -97,7 +97,11 @@ const open = async (page: Page) => {
         const decode = window.createImageBitmap
         window.createImageBitmap = (async (...args: unknown[]) => {
             const options = args[1] as ImageBitmapOptions | undefined
-            if (args[0] instanceof Blob && options?.premultiplyAlpha === 'premultiply')
+            if (
+                args[0] instanceof Blob &&
+                options?.premultiplyAlpha === 'premultiply' &&
+                options.colorSpaceConversion === 'none'
+            )
                 window.previewTest.bitmaps++
             return (await Reflect.apply(decode, window, args)) as ImageBitmap
         }) as typeof createImageBitmap

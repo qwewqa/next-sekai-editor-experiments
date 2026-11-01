@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Changed how the preview blurs backgrounds.
+
 - Help entries now start by explaining what each tool does.
 - Added a message when a failed save or export leaves the project file empty.
 - Added Show Combo to Settings › Preview.

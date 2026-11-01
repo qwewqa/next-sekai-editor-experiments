@@ -50,7 +50,6 @@ for (const antialias of [false, true])
                         r.setTexture(1, particle.texture, false)
                     }
                     const gl = canvas.getContext('webgl2')!
-                    const referenceGl = referenceCanvas.getContext('webgl2')!
                     const read = (gl: WebGL2RenderingContext, width: number, height: number) => {
                         const data = new Uint8Array(width * height * 4)
                         gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data)
@@ -101,7 +100,13 @@ for (const antialias of [false, true])
                             input,
                             undefined,
                         )
-                        const source = read(referenceGl, width, height)
+                        const sourceTop = reference.readPixels('frame', 0, 0, width, height)
+                        const source = new Uint8Array(sourceTop.length)
+                        for (let y = 0; y < height; y++)
+                            source.set(
+                                sourceTop.subarray(y * width * 4, (y + 1) * width * 4),
+                                (height - 1 - y) * width * 4,
+                            )
                         let maxDifference = 0
                         let nonzero = 0
 

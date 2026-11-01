@@ -27,6 +27,7 @@ export type PreviewWorkerCounters = {
     releases: number
     /** The last frame's vertices, once a frame cleared since the last report. */
     vertices?: number[]
+    backgroundVertices?: number[]
     aspect?: number
 }
 
@@ -45,10 +46,10 @@ export type ToPreviewWorker =
     | { type: 'release' }
     | {
           type: 'atlas'
-          slot: 0 | 1
+          slot: 0 | 1 | 3
           bitmap: ImageBitmap
           interpolation: boolean
-          sprites: PreviewSkin | PreviewParticle
+          sprites?: PreviewSkin | PreviewParticle
       }
     | {
           type: 'frame'

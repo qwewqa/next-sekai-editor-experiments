@@ -7,16 +7,17 @@ import { cancelFrame, requestFrame } from '../frame'
 import { state } from '../history'
 import { timed } from '../perf/probe'
 import { isPlaying } from '../player'
+import { parseColor } from '../rendering/paint'
 import { settings } from '../settings'
 import type { State } from '../state'
 import { hasSameChartData } from '../state/data'
+import { theme } from '../theme'
+import type { LoadedBackground } from './assets/types'
 import { drawPreviewFrame, type PreviewFrameInput } from './drawFrame'
 import { getPreviewState, previewEdit } from './edit'
-import { createCameraCompiler, getPreviewChart } from './engine/chart'
+import { getPreviewChart } from './engine/chart'
 import { readCombo } from './engine/comboDraw'
-import type { Quad } from './engine/math'
 import type { PreviewChart } from './engine/model'
-import { previewBackgroundQuad } from './engine/render'
 import { createPreviewRenderer, type PreviewSurface } from './gl'
 import { createOutlineRenderer, type OutlineRenderer } from './outlineRenderer'
 import type { LoadedParticle } from './particle'
@@ -31,19 +32,6 @@ type PreviewViewport = {
     pixelRatio: Ref<number>
 }
 
-// While the worker draws, the main thread computes the background's quad in the frame that
-// posts the time, from the state's cameras alone.
-const compileCameras = createCameraCompiler()
-const backgroundQuadOf = (state: State, input: PreviewFrameInput) =>
-    previewBackgroundQuad(
-        compileCameras(state),
-        input.time,
-        input.displayWidth,
-        input.displayHeight,
-        input.leftLimit,
-        input.background,
-    )
-
 type CanvasRef = Readonly<Ref<HTMLCanvasElement | null>>
 
 /**
@@ -57,13 +45,11 @@ export const usePreviewRendering = (
         selection: selectionCanvas,
         workerCanvas,
         workerSelection,
-        background,
     }: {
         canvas: CanvasRef
         selection: CanvasRef
         workerCanvas: CanvasRef
         workerSelection: CanvasRef
-        background: Readonly<Ref<HTMLDivElement | null>>
     },
     {
         skin,
@@ -128,6 +114,19 @@ export const usePreviewRendering = (
     })
 
     const renderer = shallowRef<PreviewSurface>()
+    const hasFrame = shallowRef(false)
+    const backdrop = shallowRef<readonly [number, number, number]>()
+    watch(
+        theme,
+        () => {
+            const channels = getComputedStyle(document.documentElement).getPropertyValue(
+                '--color-preview',
+            )
+            const [r, g, b] = parseColor(`rgb(${channels.trim()})`)
+            backdrop.value = [r, g, b]
+        },
+        { immediate: true },
+    )
 
     let contextLost = false
 
@@ -179,9 +178,10 @@ export const usePreviewRendering = (
     let uploadedRenderer: PreviewSurface | undefined
     let uploadedSkin: LoadedSkin | undefined
     let uploadedParticle: LoadedParticle | undefined
+    let uploadedBackground: LoadedBackground | undefined
     watch(
-        [renderer, skin, particle, isAppActive],
-        ([nextRenderer, nextSkin, nextParticle, active]) => {
+        [renderer, skin, particle, loadedBackground, isAppActive],
+        ([nextRenderer, nextSkin, nextParticle, nextBackground, active]) => {
             if (!active || !nextRenderer) return
 
             try {
@@ -200,6 +200,13 @@ export const usePreviewRendering = (
                 ) {
                     nextRenderer.setTexture(1, nextParticle.texture, nextParticle.interpolation)
                     uploadedParticle = nextParticle
+                }
+                if (
+                    nextBackground?.texture.width &&
+                    (nextRenderer !== uploadedRenderer || nextBackground !== uploadedBackground)
+                ) {
+                    nextRenderer.setTexture(3, nextBackground.texture, true)
+                    uploadedBackground = nextBackground
                 }
                 uploadedRenderer = nextRenderer
             } catch (error) {
@@ -246,20 +253,20 @@ export const usePreviewRendering = (
         if (element && host) onCleanup(host.attachOverlay(element))
     })
     watch(
-        [worker, skin, particle],
-        ([host, nextSkin, nextParticle]) => {
+        [worker, skin, particle, loadedBackground],
+        ([host, nextSkin, nextParticle, nextBackground]) => {
             if (!host) return
             if (nextSkin) host.lendAtlas(0, nextSkin)
             if (nextParticle) host.lendAtlas(1, nextParticle)
+            if (nextBackground) host.lendAtlas(3, nextBackground)
         },
         { immediate: true },
     )
 
     let rafId = 0
     let renderFrame: (() => void) | undefined
-    let renderedBackground: HTMLDivElement | undefined
-    let renderedBackgroundTransform = ''
     let scheduledSize: { width: number; height: number } | undefined
+    let backgroundDisplayHeight: number | undefined
     let overlaySize: { width: number; height: number } | undefined
     // While a dock or tile is being dragged, keep the drawing buffers and let CSS
     // scale them: reallocating them on every pointer move was the costliest part
@@ -310,6 +317,9 @@ export const usePreviewRendering = (
             const resizing = isResizing.value
             const renderSize = resizing ? (scheduledSize ?? fullSize) : fullSize
             scheduledSize = renderSize
+            // Keep the blur's working pixels while CSS scales the held drawing buffer.
+            if (!resizing || backgroundDisplayHeight === undefined)
+                backgroundDisplayHeight = canvasHeight.value
             // The outline's backing store is kept the same way.
             const fullOverlaySize = {
                 width: Math.round(canvasWidth.value * pixelRatio.value),
@@ -320,7 +330,6 @@ export const usePreviewRendering = (
 
             const getState = stateRequest.value
             const getChart = chartRequest.value
-            const backgroundElement = background.value
             const input: PreviewFrameInput = {
                 time: view.cursorTime,
                 leftLimit: !isPlaying.value,
@@ -335,46 +344,27 @@ export const usePreviewRendering = (
                 // Only redraws: the overlay never changes the compiled chart.
                 showHitboxes: settings.previewShowHitboxes,
                 showCombo: settings.previewShowCombo,
+                backdrop: backdrop.value,
                 background: loadedBackground.value
                     ? {
                           aspectRatio: loadedBackground.value.aspectRatio,
                           fit: loadedBackground.value.fit,
+                          color: loadedBackground.value.color,
+                          blur:
+                              (loadedBackground.value.blur * canvasHeight.value) /
+                              backgroundDisplayHeight,
+                          mask: loadedBackground.value.mask,
                       }
                     : undefined,
             }
             const selected = selection.value
             const currentOutline = outline.value
             const currentParticle = particle.value?.particle
-            const showBackground = (quad: Quad) => {
-                if (!backgroundElement) return
-                // Map the complete image into the engine's screen-space quad in
-                // this same frame. CSS pixels have a downward-pointing y axis.
-                const { displayWidth, displayHeight } = input
-                const scale = displayHeight / 2
-                const transform = `matrix(${[
-                    ((quad.tr.x - quad.tl.x) * scale) / displayWidth,
-                    (-(quad.tr.y - quad.tl.y) * scale) / displayWidth,
-                    (quad.bl.x - quad.tl.x) / 2,
-                    -(quad.bl.y - quad.tl.y) / 2,
-                    displayWidth / 2 + quad.tl.x * scale,
-                    displayHeight / 2 - quad.tl.y * scale,
-                ].join(',')})`
-                if (
-                    renderedBackground !== backgroundElement ||
-                    renderedBackgroundTransform !== transform
-                ) {
-                    backgroundElement.style.backgroundSize = '100% 100%'
-                    backgroundElement.style.transform = transform
-                    renderedBackground = backgroundElement
-                    renderedBackgroundTransform = transform
-                }
-            }
             renderFrame = host
                 ? () => {
                       host.request(() => {
                           const state = getState()
                           host.post(state, selected, input)
-                          showBackground(backgroundQuadOf(state, input))
                       })
                   }
                 : () => {
@@ -388,7 +378,7 @@ export const usePreviewRendering = (
                           input,
                           selected,
                       )
-                      showBackground(result.backgroundQuad)
+                      if (result.drawn) hasFrame.value = true
                       // The worker's last frame shows until the main host draws with the skin,
                       // which may still be decoding again after a handover.
                       if (
@@ -425,10 +415,18 @@ export const usePreviewRendering = (
         setContextLost: (lost) => worker.value?.setContextLost(lost) ?? Promise.resolve(),
     })
 
+    watch(
+        () => worker.value?.hasFrame.value,
+        (drawn) => {
+            if (drawn) hasFrame.value = true
+        },
+    )
+
     onBeforeUnmount(() => {
         cancelFrame(rafId)
         renderer.value?.dispose()
         takeCanvas?.()
         hideTest()
     })
+    return { hasFrame }
 }

@@ -12,6 +12,7 @@ declare global {
             releases?: number
             bitmaps: number
             closes: number
+            backgroundVertices?: number[]
             vertices: number[]
             resolutions: number
             aspect: number
@@ -58,6 +59,7 @@ test.beforeEach(async ({ page }, testInfo) => {
             bitmaps: 0,
             closes: 0,
             vertices: [],
+            backgroundVertices: [],
             resolutions: 0,
             aspect: 0,
             errors: [],
@@ -69,7 +71,11 @@ test.beforeEach(async ({ page }, testInfo) => {
         const previewContexts = new WeakSet<WebGL2RenderingContext>()
         const upload = WebGL2RenderingContext.prototype.texImage2D
         WebGL2RenderingContext.prototype.texImage2D = function (...args: unknown[]) {
-            if (isPreview(this) && args.some((arg) => arg instanceof ImageBitmap)) {
+            if (
+                isPreview(this) &&
+                this.getParameter(this.ACTIVE_TEXTURE) !== this.TEXTURE3 &&
+                args.some((arg) => arg instanceof ImageBitmap)
+            ) {
                 window.previewTest.uploads++
                 previewContexts.add(this)
             }
@@ -78,7 +84,11 @@ test.beforeEach(async ({ page }, testInfo) => {
         // A renderer deletes its program when it releases its context.
         const deleteProgram = WebGL2RenderingContext.prototype.deleteProgram
         WebGL2RenderingContext.prototype.deleteProgram = function (program) {
-            if (previewContexts.has(this))
+            if (
+                previewContexts.has(this) &&
+                program &&
+                this.getUniformLocation(program, 'u_aspect')
+            )
                 window.previewTest.releases = (window.previewTest.releases ?? 0) + 1
             deleteProgram.call(this, program)
         }
@@ -98,7 +108,10 @@ test.beforeEach(async ({ page }, testInfo) => {
         }
         const clear = WebGL2RenderingContext.prototype.clear
         WebGL2RenderingContext.prototype.clear = function (...args) {
-            if (isPreview(this)) {
+            if (
+                isPreview(this) &&
+                (this.getParameter(this.COLOR_CLEAR_VALUE) as Float32Array)[3] === 0
+            ) {
                 window.previewTest.frames++
                 window.previewTest.vertices = []
             }
@@ -107,8 +120,10 @@ test.beforeEach(async ({ page }, testInfo) => {
         const bufferSubData = WebGL2RenderingContext.prototype.bufferSubData
         WebGL2RenderingContext.prototype.bufferSubData = function (...args: unknown[]) {
             const data = args[2]
-            if (isPreview(this) && data instanceof Float32Array)
-                window.previewTest.vertices.push(...data)
+            if (isPreview(this) && data instanceof Float32Array) {
+                if (data[5] === 3) window.previewTest.backgroundVertices = [...data]
+                else window.previewTest.vertices.push(...data)
+            }
             return Reflect.apply(bufferSubData, this, args)
         }
         const decode = window.createImageBitmap
@@ -1598,29 +1613,12 @@ test.describe('preview background camera', () => {
     }
 
     const background = (page: Page) =>
-        page.locator('.preview-background').evaluate((element) => {
-            const viewport = element.parentElement!
-            const width = Number.parseFloat(viewport.style.width)
-            const height = Number.parseFloat(viewport.style.height)
-            const style = getComputedStyle(element)
-            const matrix = new DOMMatrix(style.transform)
-            const corners = [
-                [0, height],
-                [0, 0],
-                [width, 0],
-                [width, height],
-            ].map(([x, y]) => {
-                const point = matrix.transformPoint({ x, y })
-                return [((point.x - width / 2) * 2) / height, 1 - (point.y * 2) / height]
-            })
-            return {
-                corners,
-                rotation: Math.atan2(matrix.b, matrix.a),
-                transform: style.transform,
-                size: style.backgroundSize,
-                clip: getComputedStyle(viewport).overflow,
-                canvasTransform: getComputedStyle(viewport.querySelector('canvas')!).transform,
-            }
+        page.evaluate(() => {
+            const vertices = window.previewTest.backgroundVertices!
+            const corners = [0, 10, 20, 50].map((i) => [vertices[i]!, vertices[i + 1]!])
+            const tl = corners[1]!,
+                tr = corners[2]!
+            return { corners, rotation: Math.atan2(-(tr[1]! - tl[1]!), tr[0]! - tl[0]!) }
         })
 
     test('matches engine background corners and stays synchronized while seeking and changing quality', async ({
@@ -1649,7 +1647,6 @@ test.describe('preview background camera', () => {
             expect(last.corners[i]![0]).toBeCloseTo(expected[i]![0]!, 4)
             expect(last.corners[i]![1]).toBeCloseTo(expected[i]![1]!, 4)
         }
-        expect(last).toMatchObject({ size: '100% 100%', clip: 'hidden', canvasTransform: 'none' })
         await page.evaluate(() => {
             window.editorTest.settings.previewRenderScale = 0.5
         })
@@ -1730,7 +1727,8 @@ test.describe('preview background camera', () => {
         // Switching to a static chart also removes all overscan and camera motion.
         await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.interaction))
         await settle(page)
-        expect((await background(page)).transform).toBe('matrix(1, 0, 0, 1, 0, 0)')
+        expect((await background(page)).rotation).toBeCloseTo(0)
+        expect((await background(page)).corners[0]![1]).toBe(-1)
     })
 })
 
@@ -3209,5 +3207,56 @@ test('Ctrl+Z and Ctrl+Y on preview sliders, switches and selects reach the edito
         await page.keyboard.press('ControlOrMeta+y')
         await expect.poll(canUndo).toBe(true)
         await expect(control).toBeFocused()
+    }
+})
+
+test("transparent backgrounds use the current theme's backdrop", async ({ page }) => {
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { assetSession } = await window.editorTest.appImport<
+                    typeof import('../../src/preview/assets')
+                >('/src/preview/assets/index.ts')
+                return assetSession.slots.background.value.state
+            }),
+        )
+        .toBe('ready')
+    await page.evaluate(async () => {
+        const { assetSession } = await window.editorTest.appImport<
+            typeof import('../../src/preview/assets')
+        >('/src/preview/assets/index.ts')
+        const slot = assetSession.slots.background
+        const previous = slot.value.value!
+        const image = new OffscreenCanvas(1, 1)
+        image.getContext('2d')!.clearRect(0, 0, 1, 1)
+        const texture = await createImageBitmap(image)
+        slot.value = {
+            state: 'ready',
+            value: { ...previous, texture, blur: 0, color: '#ffffff80', mask: undefined },
+        }
+    })
+    for (const [theme, expected] of [
+        ['light', [173, 174, 190]],
+        ['dark', [148, 149, 161]],
+    ] as const) {
+        await page.evaluate((theme) => {
+            window.editorTest.settings.theme = theme
+        }, theme)
+        await settle(page)
+        const shot = await page
+            .locator('.preview-viewport > canvas:not(.preview-selection)')
+            .screenshot()
+        const pixel = await page.evaluate(async (png) => {
+            const image = new Image()
+            image.src = `data:image/png;base64,${png}`
+            await image.decode()
+            const canvas = new OffscreenCanvas(image.width, image.height)
+            const context = canvas.getContext('2d')!
+            context.drawImage(image, 0, 0)
+            return [...context.getImageData(5, 5, 1, 1).data]
+        }, shot.toString('base64'))
+        for (const [channel, value] of expected.entries())
+            expect(Math.abs(pixel[channel]! - value)).toBeLessThanOrEqual(1)
+        expect(pixel[3]).toBe(255)
     }
 })

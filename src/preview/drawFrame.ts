@@ -26,7 +26,14 @@ export type PreviewFrameInput = {
     showEffects: boolean
     showHitboxes: boolean
     showCombo: boolean
-    background?: { aspectRatio: number; fit: BackgroundFit }
+    backdrop?: readonly [number, number, number]
+    background?: {
+        aspectRatio: number
+        fit: BackgroundFit
+        color: string
+        blur: number
+        mask?: string
+    }
 }
 
 export type PreviewSelection = {
@@ -42,7 +49,7 @@ export type PreviewFrameResult =
     | { drawn: true; backgroundQuad: Quad }
     | { drawn: false; reason: FrameFailure; backgroundQuad: Quad }
 
-/** Draws the foreground and selection, retaining the quad for the host's background. */
+/** Draws the foreground, composites it over the background, then draws the selection. */
 export const drawPreviewFrame = (
     renderer: PreviewSurface,
     outline: OutlineRenderer | undefined,
@@ -68,7 +75,9 @@ export const drawPreviewFrame = (
     if (!skin) return failed('resources')
     // The hosts still draw while replacement atlases load, but this is not a complete frame.
     const resourcesReady =
-        renderer.hasTexture(0) && (!input.showEffects || !particle || renderer.hasTexture(1))
+        renderer.hasTexture(0) &&
+        (!input.showEffects || !particle || renderer.hasTexture(1)) &&
+        (!input.background || renderer.hasTexture(3))
     if (
         ![input.width, input.height].every((size) => Number.isInteger(size) && size > 0) ||
         ![input.displayWidth, input.displayHeight].every(
@@ -79,6 +88,7 @@ export const drawPreviewFrame = (
     )
         return failed('size')
     try {
+        renderer.prepareFrame(input.width, input.height)
         const edges = createSelectionOutline()
         const quad = renderPreviewFrame(
             renderer,
@@ -103,6 +113,7 @@ export const drawPreviewFrame = (
             input.background,
             input.showCombo,
         )
+        renderer.compositeBackground(quad, input)
         outline?.draw(
             outlineSegments(edges.edges(), input.displayWidth, input.displayHeight),
             markerSegments(edges.markers(), input.displayWidth, input.displayHeight),

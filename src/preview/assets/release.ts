@@ -4,5 +4,9 @@ import type { AssetType, Loaded } from './types'
 export const release = (type: AssetType, value: Loaded[AssetType] | undefined) => {
     if (!value) return
     if (type === 'skin' || type === 'particle') (value as Loaded['skin']).texture.close()
-    else if (type === 'background') (value as Loaded['background']).dispose?.()
+    else if (type === 'background') {
+        const background = value as Loaded['background']
+        background.texture.close()
+        background.dispose?.()
+    }
 }
