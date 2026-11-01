@@ -43,6 +43,12 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('the everyday path reaches Ready, downloads and closes', async ({ page }) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.exportVideoStops = {
+            counts: { '2160:2': 1 },
+            last: { resolution: 2160, renderScale: 2 },
+        }
+    })
     const dialog = await open(page)
     // The frame view takes the first focus, and a frame arrives.
     await expect(dialog.locator('[data-export-frame]')).toBeFocused()
@@ -63,6 +69,13 @@ test('the everyday path reaches Ready, downloads and closes', async ({ page }) =
     await expect(dialog.locator('[data-export-cancel]')).toBeFocused()
     await expect(dialog.locator('[data-export-slot]')).toContainText('Keep this tab open')
     await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
+    expect(
+        await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished?.resolution),
+    ).toBe(720)
+    expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
+        counts: {},
+        last: null,
+    })
     await expect(dialog.locator('[data-export-ready]')).toContainText('Ready ·')
     const download = dialog.locator('[data-export-download]')
     await expect(download).toBeFocused()
@@ -117,6 +130,7 @@ test('Escape mid-export cancels, and a second Escape closes', async ({ page }) =
     await expect(out).toHaveAttribute('aria-valuetext', before!)
     await page.keyboard.press('Escape')
     await expect.poll(() => phase(page)).toBe('setup')
+    expect(await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished)).toBeNull()
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('[data-export-summary]')).toBeVisible()
     await page.keyboard.press('Escape')
@@ -131,6 +145,9 @@ test('a finished picked file says where it went, and a change returns to the sum
     await expect(exportButton(page)).toHaveText('Export…')
     await exportButton(page).click()
     await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('done')
+    expect(
+        await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished?.resolution),
+    ).toBe(720)
     await expect(dialog.locator('[data-export-done]')).toContainText('Exported to')
     await expect(dialog.locator('[data-export-close]')).toBeFocused()
     await dialog.getByRole('switch', { name: 'SFX' }).click()
@@ -143,6 +160,7 @@ test('a failed export shows why, and its Close takes focus', async ({ page }) =>
     await shortClip(page)
     await exportButton(page).click()
     await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('failed')
+    expect(await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished)).toBeNull()
     await expect(dialog.locator('[data-export-slot]')).toContainText(/./)
     await expect(dialog.locator('[data-export-close]')).toBeFocused()
     await expect(exportButton(page)).toBeEnabled()
@@ -278,6 +296,153 @@ test('4K at 2x is offered within the GPU limits', async ({ page }) => {
     await expect(dialog.getByRole('switch', { name: 'Antialiasing' })).toBeChecked()
     await expect(resolution.locator('option:disabled')).toHaveCount(0)
 })
+
+for (const finished of [true, false])
+    test(`a stopped export restores ${finished ? 'the last finished choices' : 'defaults'} without disabling sizes`, async ({
+        page,
+    }) => {
+        await page.evaluate((finished) => {
+            const settings = window.editorTest.settings
+            settings.exportVideoResolution = 2160
+            settings.exportVideoRenderScale = 2
+            settings.exportVideoFrameRate = 60
+            if (finished)
+                settings.exportVideoLastFinished = {
+                    resolution: 720,
+                    renderScale: 1.5,
+                    frameRate: 30,
+                    quality: 'high',
+                    format: 'webm',
+                    antialias: false,
+                    audioBitrate: 128_000,
+                }
+            localStorage.setItem(
+                'exportVideoRunning.abandoned',
+                JSON.stringify({
+                    resolution: 2160,
+                    renderScale: 2,
+                    pixels: 7680 * 4320,
+                }),
+            )
+        }, finished)
+        for (let opening = 0; opening < 2; opening++) {
+            const dialog = await open(page)
+            await expect(dialog.locator('[data-export-slot]')).toHaveText(
+                'The last export at 2160p at 2x did not finish.',
+            )
+            const resolution = dialog.getByRole('combobox', { name: 'Resolution' })
+            await expect(resolution.locator('option:checked')).toHaveText(
+                finished ? '720p' : '1080p',
+            )
+            await expect(resolution.locator('option:disabled')).toHaveCount(0)
+            if (opening === 0)
+                await dialog.getByRole('button', { name: 'Advanced', exact: true }).click()
+            await expect(
+                dialog.getByRole('radio', { name: finished ? '1.5x' : '1x', exact: true }),
+            ).toBeChecked()
+            for (const name of ['1x', '1.5x', '2x'])
+                await expect(dialog.getByRole('radio', { name, exact: true })).toBeEnabled()
+            await expect(dialog.getByRole('switch', { name: 'Antialiasing' })).toBeChecked({
+                checked: !finished,
+            })
+            await expect(
+                dialog
+                    .getByRole('combobox', { name: 'Quality', exact: true })
+                    .locator('option:checked'),
+            ).toHaveText(finished ? 'High' : 'Standard')
+            await resolution.selectOption({ label: '2160p' })
+            await dialog.getByRole('radio', { name: '2x', exact: true }).click()
+            await page.keyboard.press('Escape')
+            await expect(dialog).toHaveCount(0)
+        }
+        expect(
+            await page.evaluate(() => localStorage.getItem('exportVideoRunning.abandoned')),
+        ).toBeNull()
+        expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
+            counts: { '2160:2': 1 },
+            last: { resolution: 2160, renderScale: 2 },
+        })
+    })
+
+for (const reset of ['defaults', 'settings'])
+    test(`${reset === 'defaults' ? 'Reset to Defaults' : 'Reset Settings'} clears recovery and abandoned markers, leaving active jobs alone`, async ({
+        page,
+    }) => {
+        await page.evaluate(async () => {
+            const settings = window.editorTest.settings
+            settings.exportVideoResolution = 2160
+            settings.exportVideoRenderScale = 2
+            settings.exportVideoLastFinished = {
+                resolution: 720,
+                renderScale: 1,
+                frameRate: 60,
+                quality: 'high',
+                format: 'webm',
+                antialias: false,
+                audioBitrate: 128_000,
+            }
+            settings.exportVideoStops = {
+                counts: { '2160:2': 2 },
+                last: { resolution: 2160, renderScale: 2 },
+            }
+            await new Promise<void>((resolve) => {
+                void navigator.locks.request('nse-export-video:active', async () => {
+                    await new Promise<void>((release) => {
+                        Reflect.set(window, 'releaseVideoLock', release)
+                        resolve()
+                    })
+                })
+            })
+        })
+        const dialog = await open(page)
+        await page.evaluate(() => {
+            for (const id of ['active', 'abandoned'])
+                localStorage.setItem(
+                    `exportVideoRunning.${id}`,
+                    JSON.stringify({ resolution: 2160, renderScale: 2, pixels: 7680 * 4320 }),
+                )
+        })
+        if (reset === 'defaults') {
+            await dialog.getByRole('button', { name: 'Advanced', exact: true }).click()
+            await dialog.getByRole('button', { name: 'Reset to Defaults', exact: true }).click()
+        } else {
+            await page.evaluate(async () => {
+                const { resetSettings } =
+                    await window.editorTest.appImport<typeof import('../../src/settings')>(
+                        '/src/settings.ts',
+                    )
+                await resetSettings()
+            })
+        }
+        await expect(dialog.locator('[data-export-slot]')).toBeEmpty()
+        await expect
+            .poll(() => page.evaluate(() => localStorage.getItem('exportVideoRunning.abandoned')))
+            .toBeNull()
+        expect(
+            await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished),
+        ).toBeNull()
+        expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
+            counts: {},
+            last: null,
+        })
+        expect(await page.evaluate(() => window.editorTest.settings.exportVideoResolution)).toBe(
+            1080,
+        )
+        expect(
+            await page.evaluate(() => localStorage.getItem('exportVideoRunning.active')),
+        ).not.toBeNull()
+        await page.evaluate(() => {
+            localStorage.removeItem('exportVideoRunning.active')
+            ;(Reflect.get(window, 'releaseVideoLock') as () => void)()
+        })
+        await page.keyboard.press('Escape')
+        await expect(dialog).toHaveCount(0)
+        const reopened = await open(page)
+        await expect(reopened.locator('[data-export-slot]')).toBeEmpty()
+        await expect(
+            reopened.getByRole('combobox', { name: 'Resolution' }).locator('option:checked'),
+        ).toHaveText('1080p')
+    })
 
 test('while peeking, the line names the step as the peek bar does', async ({ page }) => {
     await page.evaluate(async () => {

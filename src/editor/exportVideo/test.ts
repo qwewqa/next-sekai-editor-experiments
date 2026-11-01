@@ -207,7 +207,9 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
             phases.push(next.phase)
             if (next.phase === 'exporting' && runningPixels === undefined) {
                 const marker = `exportVideoRunning.${job.id}`
-                runningPixels = Number(localStorage.getItem(marker))
+                runningPixels = (
+                    JSON.parse(localStorage.getItem(marker) ?? 'null') as { pixels: number } | null
+                )?.pixels
             }
             if (next.phase === options.cancelAt) {
                 if (next.phase === 'finishing') finishingCancel = job.cancel()

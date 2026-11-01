@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { i18n } from '../../i18n'
+import { interpolateRaw } from '../../utils/interpolate'
 import SeverityIcon from '../SeverityIcon.vue'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import type { ExportDialog } from './dialog'
@@ -27,7 +28,17 @@ const message = computed(() => {
             detail: outcome.failure.detail,
         }
     if (d.stoppedLine.value && d.phase.value === 'setup')
-        return { severity: 'warning' as const, text: i18n.value.exportVideo.stopped }
+        return {
+            severity: 'warning' as const,
+            text: interpolateRaw(
+                i18n.value.exportVideo.stopped,
+                interpolateRaw(
+                    i18n.value.statistics.at,
+                    `${d.stoppedLine.value.resolution}p`,
+                    `${d.stoppedLine.value.renderScale}x`,
+                ),
+            ),
+        }
     if (d.storageNearlyFull.value && !d.busy.value)
         return { severity: 'warning' as const, text: i18n.value.load.storageNearlyFull }
     return undefined

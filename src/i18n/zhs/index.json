@@ -2491,7 +2491,7 @@
     "ready": "已准备好",
     "keepOpen": "导出结束前，请保持此标签页打开。",
     "keepOpenVisible": "导出结束前，请保持此标签页打开并可见。",
-    "stopped": "视频导出多次中断。此设备上的分辨率和渲染比例现已受限。“重置为默认值”可解除此限制。",
+    "stopped": "The last export at {0} did not finish.",
     "discardTitle": "要放弃此视频吗？",
     "discard": "放弃视频",
     "unsupported": "此浏览器无法导出视频。",

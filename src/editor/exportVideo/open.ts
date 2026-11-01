@@ -14,6 +14,7 @@ import { view } from '../view'
 import type { createExportDialog, DialogInput } from './dialog'
 import type { ExportVideoEnv } from './env'
 import ExportVideoModal from './ExportVideoModal.vue'
+import { countStoppedExports } from './recovery'
 
 /** The shown session's name as a file name stem, or empty for `Video`. */
 const shownStem = () => {
@@ -49,6 +50,7 @@ export const openExportVideo = async (
     expose?: (dialog: ReturnType<typeof createExportDialog>) => void,
 ) => {
     stopPlayer()
+    await countStoppedExports()
     const snapshot = state.value
     const bgm = playbackBgm.value
     const input: DialogInput = {

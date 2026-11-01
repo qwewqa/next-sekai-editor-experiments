@@ -254,11 +254,13 @@ export const createExportJob = (options: {
                 })
                 await abortable(Promise.race([ready, lock]), signal)
             }
-            clearMarker = markVideoRunning(
-                id,
-                Math.round(settings.width * settings.renderScale) *
+            clearMarker = markVideoRunning(id, {
+                resolution: settings.height,
+                renderScale: settings.renderScale,
+                pixels:
+                    Math.round(settings.width * settings.renderScale) *
                     Math.round(settings.height * settings.renderScale),
-            )
+            })
             const prepared = await prepare()
             const start = { ...prepared, ...(await resolveConfig()) }
             await abortable(Promise.resolve(lastView), signal)

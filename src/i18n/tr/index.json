@@ -2491,7 +2491,7 @@
     "ready": "Hazır",
     "keepOpen": "Dışa aktarma bitene kadar bu sekmeyi açık tutun.",
     "keepOpenVisible": "Dışa aktarma bitene kadar bu sekmeyi açık ve görünür tutun.",
-    "stopped": "Video dışa aktarmaları tekrar tekrar durdu. Bu cihazda Çözünürlük ve Çizim Ölçeği artık sınırlı. Varsayılanlara Sıfırla bu sınırı kaldırır.",
+    "stopped": "The last export at {0} did not finish.",
     "discardTitle": "Bu video silinsin mi?",
     "discard": "Videoyu Sil",
     "unsupported": "Bu tarayıcı video dışa aktaramıyor.",

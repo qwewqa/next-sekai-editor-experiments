@@ -2491,7 +2491,7 @@
     "ready": "Prêt",
     "keepOpen": "Gardez cet onglet ouvert jusqu’à la fin de l’exportation.",
     "keepOpenVisible": "Gardez cet onglet ouvert et visible jusqu’à la fin de l’exportation.",
-    "stopped": "Les exportations vidéo se sont arrêtées à plusieurs reprises. Résolution et Échelle de rendu sont maintenant limitées sur cet appareil. Réinitialiser par défaut supprime cette limite.",
+    "stopped": "The last export at {0} did not finish.",
     "discardTitle": "Abandonner cette vidéo ?",
     "discard": "Abandonner la vidéo",
     "unsupported": "Ce navigateur ne peut pas exporter de vidéo.",

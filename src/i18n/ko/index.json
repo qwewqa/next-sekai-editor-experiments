@@ -2491,7 +2491,7 @@
     "ready": "준비됨",
     "keepOpen": "내보내기가 끝날 때까지 이 탭을 열어 두세요.",
     "keepOpenVisible": "내보내기가 끝날 때까지 이 탭을 열고 화면에 표시해 두세요.",
-    "stopped": "동영상 내보내기가 반복해서 중단되었습니다. 이 기기에서는 해상도와 렌더링 배율이 제한됩니다. 기본값으로 초기화를 사용하면 이 제한이 해제됩니다.",
+    "stopped": "The last export at {0} did not finish.",
     "discardTitle": "이 동영상을 버릴까요?",
     "discard": "동영상 버리기",
     "unsupported": "이 브라우저에서는 동영상을 내보낼 수 없습니다.",

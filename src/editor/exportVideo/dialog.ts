@@ -33,6 +33,7 @@ import { platform } from '../../platform'
 import { loadedSfx, sfxSettled } from '../../player'
 import { previewAspectRatios, previewNoteSpeed } from '../../preview/options'
 import { settings } from '../../settings'
+import type { ExportVideoChoices } from '../../settings/exportVideo'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
 import type { Entity } from '../../state/entities'
@@ -53,9 +54,14 @@ import {
     type ClipRange,
     type RangeKind,
 } from './clipRange'
-import { clearDeviceLimit, clearStops, countStoppedExports } from './deviceLimit'
 import type { ExportVideoEnv } from './env'
 import { describeVideoFailure, type VideoFailure } from './failure'
+import {
+    finishedVideoExport,
+    openingVideoChoices,
+    rememberedVideoChoices,
+    resetVideoChoices,
+} from './recovery'
 import { videoReport, type VideoReportEnd, type VideoReportSettings } from './report'
 import { videoFileName } from './videoName'
 
@@ -97,26 +103,29 @@ export type Outcome =
 
 export type Unavailable = 'browser' | 'device'
 
-const formFromSettings = (look: DialogInput['look']) => ({
-    aspect: previewAspectRatios.find(([, value]) => value === look.aspect)?.[1] ?? 16 / 9,
-    resolution: settings.exportVideoResolution,
-    frameRate: settings.exportVideoFrameRate,
-    quality: settings.exportVideoQuality as Quality | 'custom',
-    customBitrate: 8,
-    bgm: true,
-    sfx: true,
-    format: settings.exportVideoFormat,
-    antialias: settings.exportVideoAntialias,
-    renderScale: settings.exportVideoRenderScale,
-    noteSpeed: look.noteSpeed,
-    showEffects: look.showEffects,
-    showCombo: look.showCombo,
-    fadeIn: 0,
-    fadeOut: 0,
-    bgmVolume: settings.playBgmVolume,
-    sfxVolume: settings.playSfxVolume,
-    audioBitrate: settings.exportVideoAudioBitrate,
-})
+const formFromSettings = (look: DialogInput['look']) => {
+    const choices = openingVideoChoices()
+    return {
+        aspect: previewAspectRatios.find(([, value]) => value === look.aspect)?.[1] ?? 16 / 9,
+        resolution: choices.resolution,
+        frameRate: choices.frameRate,
+        quality: choices.quality as Quality | 'custom',
+        customBitrate: 8,
+        bgm: true,
+        sfx: true,
+        format: choices.format,
+        antialias: choices.antialias,
+        renderScale: choices.renderScale,
+        noteSpeed: look.noteSpeed,
+        showEffects: look.showEffects,
+        showCombo: look.showCombo,
+        fadeIn: 0,
+        fadeOut: 0,
+        bgmVolume: settings.playBgmVolume,
+        sfxVolume: settings.playSfxVolume,
+        audioBitrate: choices.audioBitrate,
+    }
+}
 export type DialogForm = ReturnType<typeof formFromSettings>
 
 export const createExportDialog = (input: DialogInput) => {
@@ -237,7 +246,9 @@ export const createExportDialog = (input: DialogInput) => {
         limits.value = data.limits
         limitsWorker.terminate()
     }
-    limitsWorker.onerror = () => limitsWorker.terminate()
+    limitsWorker.onerror = () => {
+        limitsWorker.terminate()
+    }
     limitsWorker.postMessage({ type: 'limits' })
     const fits = (resolution: Resolution, scale: number) =>
         !!limits.value &&
@@ -284,11 +295,6 @@ export const createExportDialog = (input: DialogInput) => {
     )
 
     // --- Estimates.
-    const renderPixels = computed(
-        () =>
-            Math.round(size.value.width * form.renderScale) *
-            Math.round(size.value.height * form.renderScale),
-    )
     const bytes = computed(() =>
         estimateBytes(length.value, videoBitrate.value, hasAudio.value ? form.audioBitrate : 0),
     )
@@ -347,31 +353,16 @@ export const createExportDialog = (input: DialogInput) => {
     })
 
     const restoreDefaults = () => {
-        const look = input.look
-        Object.assign(form, {
-            ...formFromSettings(look),
-            resolution: 1080,
-            frameRate: 30,
-            quality: 'standard',
-            format: 'automatic',
-            antialias: true,
-            renderScale: 1,
-            audioBitrate: 192_000,
-            bgm: !input.bgmMissing,
-            sfx: true,
-        } satisfies Partial<DialogForm>)
-        clearDeviceLimit()
-        stoppedLine.value = false
+        const cleared = resetVideoChoices()
+        Object.assign(form, formFromSettings(input.look), { bgm: !input.bgmMissing })
+        return cleared
     }
 
     // --- The job, its frames and its outcome.
     const phase = ref<Phase>('setup')
     const outcome = shallowRef<Outcome>()
     const progress = ref<{ fraction: number; eta?: number }>({ fraction: 0 })
-    const stoppedLine = ref(false)
-    void countStoppedExports().then((lowered) => {
-        if (lowered) stoppedLine.value = true
-    })
+    const stoppedLine = computed(() => settings.exportVideoStops.last)
     let frameSink: ((bitmap: ImageBitmap) => void) | undefined
     const onFrame = (draw: (bitmap: ImageBitmap) => void) => {
         frameSink = draw
@@ -453,6 +444,7 @@ export const createExportDialog = (input: DialogInput) => {
     // --- One usage event per attempt, after its delivery is known.
     const attempt: {
         settings?: VideoReportSettings
+        remembered?: ExportVideoChoices
         stage: NonNullable<VideoReportEnd['stage']>
         target: VideoReportEnd['target']
         hidden: boolean
@@ -561,7 +553,7 @@ export const createExportDialog = (input: DialogInput) => {
         if (ended) void ended.start().then(() => ended.dispose())
     }
     const succeeded = () => {
-        clearStops(renderPixels.value)
+        if (attempt.remembered) finishedVideoExport(attempt.remembered)
     }
     const finishDone = async (result: unknown) => {
         const name = picked?.name ?? fileName()
@@ -619,6 +611,7 @@ export const createExportDialog = (input: DialogInput) => {
         outcome.value = undefined
         Object.assign(attempt, {
             settings: reportSettings(),
+            remembered: rememberedVideoChoices(),
             stage: 'prepare',
             target: 'none',
             hidden: document.hidden,

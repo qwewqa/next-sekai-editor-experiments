@@ -2491,7 +2491,7 @@
     "ready": "已準備好",
     "keepOpen": "匯出結束前，請保持此分頁開啟。",
     "keepOpenVisible": "匯出結束前，請保持此分頁開啟並可見。",
-    "stopped": "影片匯出多次中斷。此裝置上的解析度和渲染比例現已受限。「重置為預設值」可解除此限制。",
+    "stopped": "The last export at {0} did not finish.",
     "discardTitle": "要捨棄此影片嗎？",
     "discard": "捨棄影片",
     "unsupported": "此瀏覽器無法匯出影片。",

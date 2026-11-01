@@ -10,6 +10,7 @@ import { defaultGroupsShare, isPanelId, panelIds, type PanelId } from './editor/
 import { defaultLocale } from './i18n/locale'
 import { localizations } from './i18n/localizations'
 import { CATEGORIES, DEFAULT_CATEGORIES } from './levelData/statistics'
+import { takeStoppedVideoMarkers } from './platform/videoRunning'
 import {
     DISMISSED_NOTICE_LIMIT,
     previewAssetsSchema,
@@ -26,6 +27,7 @@ import {
     defaultNoteSlidePropertiesSchema,
     type DefaultNoteSlideProperties,
 } from './settings/defaultProperties'
+import { exportVideoChoices, exportVideoStop } from './settings/exportVideo'
 import { insertExportLevel } from './settings/toolbarExport'
 import { insertMinimap } from './settings/toolbarMinimap'
 import { insertPreviewAssets } from './settings/toolbarPreviewAssets'
@@ -187,30 +189,19 @@ const settingsProperties = {
     ]),
 
     // Export Video's format choices, written when an export starts.
-    exportVideoResolution: Type.Union(
-        [Type.Literal(720), Type.Literal(1080), Type.Literal(1440), Type.Literal(2160)],
-        { default: 1080 },
-    ),
-    exportVideoFrameRate: Type.Union([Type.Literal(30), Type.Literal(60)], { default: 30 }),
-    exportVideoQuality: Type.Union(
-        [Type.Literal('low'), Type.Literal('standard'), Type.Literal('high')],
-        { default: 'standard' },
-    ),
-    exportVideoFormat: Type.Union(
-        [Type.Literal('automatic'), Type.Literal('mp4'), Type.Literal('webm')],
-        { default: 'automatic' },
-    ),
-    exportVideoAntialias: Type.Boolean({ default: true }),
-    exportVideoRenderScale: Type.Union([Type.Literal(1), Type.Literal(1.5), Type.Literal(2)], {
-        default: 1,
-    }),
-    exportVideoAudioBitrate: Type.Union(
-        [Type.Literal(128_000), Type.Literal(192_000), Type.Literal(256_000)],
-        { default: 192_000 },
-    ),
+    exportVideoResolution: exportVideoChoices.properties.resolution,
+    exportVideoFrameRate: exportVideoChoices.properties.frameRate,
+    exportVideoQuality: exportVideoChoices.properties.quality,
+    exportVideoFormat: exportVideoChoices.properties.format,
+    exportVideoAntialias: exportVideoChoices.properties.antialias,
+    exportVideoRenderScale: exportVideoChoices.properties.renderScale,
+    exportVideoAudioBitrate: exportVideoChoices.properties.audioBitrate,
     exportVideoAdvanced: Type.Boolean(),
-    // Exports that stopped before they ended, counted by their render pixels.
-    exportVideoStops: Type.Record(Type.String(), Type.Number(), { default: {} }),
+    exportVideoLastFinished: Type.Union([Type.Null(), exportVideoChoices], { default: null }),
+    exportVideoStops: Type.Object({
+        counts: Type.Record(Type.String(), Type.Number(), { default: {} }),
+        last: Type.Union([Type.Null(), exportVideoStop], { default: null }),
+    }),
 
     width: number(16, 16, 100),
 
@@ -762,6 +753,7 @@ export const resetSettings = () => {
     } finally {
         resetting = false
     }
+    return takeStoppedVideoMarkers()
 }
 
 export const resetKeybinds = () => {

@@ -2491,7 +2491,7 @@
         "ready": "Ready",
         "keepOpen": "Keep this tab open until the export finishes.",
         "keepOpenVisible": "Keep this tab open and visible until the export finishes.",
-        "stopped": "Video exports stopped repeatedly. Resolution and Render Scale are now limited on this device. Reset to Defaults removes this limit.",
+        "stopped": "The last export at {0} did not finish.",
         "discardTitle": "Discard this video?",
         "discard": "Discard Video",
         "unsupported": "This browser cannot export video.",
