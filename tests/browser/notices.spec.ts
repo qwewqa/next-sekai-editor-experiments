@@ -258,7 +258,7 @@ test('Help lists Alt+N', async ({ page }) => {
         }>('/src/editor/help/HelpModal.vue')
         void showModal(HelpModal, {})
     })
-    await expect(page.getByText(messages.help.altN)).toBeVisible()
+    await expect(page.getByText(messages.help.keyboard.notice)).toBeVisible()
 })
 
 test.describe('the update line', () => {

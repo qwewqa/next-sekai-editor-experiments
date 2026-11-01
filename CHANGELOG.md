@@ -56,6 +56,7 @@
 - Audio files can be up to 90 minutes long.
 - Opening a project file larger than 256 MB asks for confirmation first. Level files larger than 256 MB are not opened.
 - (Web) Added safe mode. If the editor does not start, add ?safe to its address.
+- Help now has an entry for each tool, in sections with an index as in Settings. It opens at the entry for the tool you are using, at History while you view a Timeline step or a session, or at the Elevation Editor when it fills the chart.
 - Hide group names when focusing a group and Hide stage names when focusing a stage are now Hide Group Names When One Group Is Current and Hide Stage Names When One Stage Is Current.
 
 ## 0.5.22 (2026-10-17)

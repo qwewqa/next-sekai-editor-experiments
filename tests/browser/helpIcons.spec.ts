@@ -1,56 +1,45 @@
 import { expect, test } from '@playwright/test'
 import { installCanvasCounters } from './editorFixture'
 
-test('Help marks each tool section with its toolbar icon', async ({ page }) => {
+test('Help marks each command of an entry with its toolbar icon', async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.getByRole('button', { name: 'Help', exact: true }).click()
     const dialog = page.locator('dialog[open]')
-    const headings = dialog.getByRole('heading', { level: 2 })
-    await expect(headings.first()).toBeVisible()
+    await expect(dialog.getByRole('heading', { level: 3 }).first()).toBeVisible()
 
-    const icons = await headings.evaluateAll((elements) =>
-        elements.map((heading) => [
-            [...heading.childNodes]
-                .filter((node) => node.nodeType === Node.TEXT_NODE)
-                .map((node) => node.textContent)
-                .join('')
-                .trim(),
-            heading.querySelector(':scope > [aria-hidden="true"] > *') !== null,
-        ]),
+    // Each member of a heading is an icon column and its command's name.
+    const entries = await dialog.getByRole('heading', { level: 3 }).evaluateAll((headings) =>
+        headings.map((heading) => ({
+            icons: [...heading.querySelectorAll(':scope > span > [aria-hidden="true"]')].filter(
+                (icon) => icon.firstElementChild !== null,
+            ).length,
+            members: heading.querySelectorAll(':scope > span').length,
+        })),
     )
-    const iconed = icons.filter(([, icon]) => icon).map(([title]) => title)
-    expect(iconed).toEqual([
-        'Select',
-        'Eraser',
-        'Brush',
-        'Paste',
-        'Generate Slide Notes',
-        'Note',
-        'Slide',
-        'BPM',
-        'Time Scale',
-        'Event',
-        'Offset',
-    ])
-    // Wide glyphs such as BPM fit the chip, so every iconed title starts at one edge.
-    const starts = await headings.evaluateAll((elements) =>
-        elements
-            .filter((heading) => heading.querySelector(':scope > [aria-hidden="true"]'))
-            .map((heading) => {
-                const range = document.createRange()
-                // The title is the heading's text node; a shortcut follows it in a <kbd>.
-                const title = [...heading.childNodes].find(
-                    (node) => node.nodeType === Node.TEXT_NODE && node.textContent!.trim(),
-                )!
-                range.selectNodeContents(title)
-                return range.getBoundingClientRect().left
-            }),
+    // Every command has an icon, and an entry with no command has none.
+    expect(entries.every((entry) => entry.icons === entry.members)).toBe(true)
+    expect(entries.filter((entry) => entry.members === 0)).toHaveLength(6)
+    expect(Math.max(...entries.map((entry) => entry.icons))).toBe(6)
+
+    // Wide glyphs such as BPM fit the chip, so every title starts at one edge.
+    const starts = await dialog.locator('h3 > span').evaluateAll((members) =>
+        members.map((member) => {
+            const range = document.createRange()
+            // The title is the member's text node; a shortcut follows it in a <kbd>.
+            const title = [...member.childNodes].find(
+                (node) => node.nodeType === Node.TEXT_NODE && node.textContent!.trim(),
+            )!
+            range.selectNodeContents(title)
+            return range.getBoundingClientRect().left - member.getBoundingClientRect().left
+        }),
     )
     expect(Math.max(...starts) - Math.min(...starts)).toBeLessThanOrEqual(0.5)
-    // Getting Started, Mouse and Keyboard have no single tool.
-    expect(icons.slice(0, 3).every(([, icon]) => !icon)).toBe(true)
     // The icon is decorative; the heading keeps its name, followed by the shortcut.
-    await expect(dialog.getByRole('heading', { name: /^BPM( |$)/ })).toBeVisible()
+    await expect(dialog.getByRole('heading', { level: 3, name: /^BPM( |$)/ })).toBeVisible()
+    // A family reads as a list of its commands.
+    await expect(
+        dialog.getByRole('heading', { level: 3, name: /^Slide( .)?, Slide #1/ }),
+    ).toBeVisible()
 })

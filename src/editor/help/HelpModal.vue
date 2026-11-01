@@ -1,160 +1,119 @@
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
+import SectionIndex from '../SectionIndex.vue'
+import { landOn } from '../sectionLanding'
 import AboutLinks from '../settings/AboutLinks.vue'
 import { isCoarsePointer } from '../workspace'
-import HelpInputSections from './HelpInputSections.vue'
-import HelpSection from './HelpSection.vue'
+import { helpSections, type HelpEntryDef, type HelpEntryId, type HelpSectionId } from './content'
+import HelpEntry from './HelpEntry.vue'
+import { requestedEntry } from './openHelp'
 
-// A line that names the primary pointer says tap on a touchscreen and click otherwise.
-const say = (tap: string, click: string) => (isCoarsePointer.value ? tap : click)
+const emit = defineEmits<{
+    close: []
+}>()
+
+// The current pointer's input entries come first and the other pointer's last.
+const ordered = (entries: readonly HelpEntryDef[]) => {
+    const current = isCoarsePointer.value ? 'touch' : 'pointer'
+    return [
+        ...entries.filter((entry) => entry.input === current),
+        ...entries.filter((entry) => !entry.input),
+        ...entries.filter((entry) => entry.input && entry.input !== current),
+    ]
+}
+
+const sections = computed(() =>
+    helpSections.map((section) => ({
+        id: section.id,
+        title: section.title(),
+        entries: ordered(section.entries),
+    })),
+)
+
+const index = computed(() => ({
+    items: sections.value.map((section) => ({ id: section.id, label: section.title })),
+    label: i18n.value.settings.sections,
+    indexAttribute: 'data-help-index',
+    pillAttribute: 'data-help-pill',
+}))
+
+// A pill scrolls its section to the top and focuses the section's heading.
+const goToSection = (id: HelpSectionId) => {
+    const section = document.getElementById(`help-${id}`)
+    if (section) landOn(section, section.querySelector<HTMLElement>('[data-help-section-heading]'))
+}
+
+// An entry is scrolled to the top and its heading focused. The first entry of a section scrolls
+// the section instead, so that the section's heading shows too.
+const goToEntry = (id: HelpEntryId) => {
+    const entry = document.getElementById(`help-entry-${id}`)
+    if (!entry) return
+    const section = entry.closest<HTMLElement>('section[data-help-section]')
+    const first = section?.querySelector('[data-help-heading]')
+    const heading = entry.querySelector<HTMLElement>('[data-help-heading]')
+    landOn(first === heading && section ? section : entry, heading)
+}
+
+// The dialog moves focus to its first button as it opens; the entry's heading follows it.
+let timer: ReturnType<typeof setTimeout> | undefined
+watch(
+    requestedEntry,
+    (request) => {
+        if (!request) return
+        clearTimeout(timer)
+        timer = setTimeout(() => {
+            goToEntry(request.id)
+        }, 0)
+    },
+    { immediate: true },
+)
+onBeforeUnmount(() => {
+    clearTimeout(timer)
+})
+
+// A short screen (a landscape phone) lets the index scroll away with the sections.
+const shortQuery = matchMedia('(max-height: 500px)')
+const short = ref(shortQuery.matches)
+const onShort = () => {
+    short.value = shortQuery.matches
+}
+onMounted(() => {
+    shortQuery.addEventListener('change', onShort)
+})
+onBeforeUnmount(() => {
+    shortQuery.removeEventListener('change', onShort)
+})
 </script>
 
 <template>
-    <BaseModal :title="i18n.help.modal.title">
-        <HelpSection :title="i18n.help.modal.gettingStarted.title">
-            <li>{{ i18n.help.modal.gettingStarted.bgm }}</li>
-            <li>
-                {{
-                    say(i18n.help.modal.gettingStarted.bpm, i18n.help.modal.gettingStarted.bpmClick)
-                }}
-            </li>
-            <li>
-                {{
-                    say(
-                        i18n.help.modal.gettingStarted.notes,
-                        i18n.help.modal.gettingStarted.notesClick,
-                    )
-                }}
-            </li>
-            <li>{{ i18n.help.modal.gettingStarted.save }}</li>
-        </HelpSection>
-
-        <HelpInputSections :input="isCoarsePointer ? 'touch' : 'pointer'" />
-
-        <HelpSection :title="i18n.help.fileTitle">
-            <li>{{ i18n.help.moveBetweenDevices }}</li>
-            <li>{{ i18n.help.recentSessions }}</li>
-        </HelpSection>
-
-        <HelpSection command="select">
-            <li>
-                {{ say(i18n.help.modal.selectTool.select, i18n.help.modal.selectTool.selectClick) }}
-            </li>
-            <li>{{ i18n.help.modal.selectTool.selectMultiple }}</li>
-            <li>{{ i18n.help.modal.selectTool.move }}</li>
-            <li>{{ i18n.help.modal.selectTool.resize }}</li>
-            <li>{{ i18n.help.modal.selectTool.modifiers }}</li>
-        </HelpSection>
-
-        <HelpSection command="eraser">
-            <li>
-                {{ say(i18n.help.modal.eraserTool.erase, i18n.help.modal.eraserTool.eraseClick) }}
-            </li>
-            <li>
-                {{
-                    say(
-                        i18n.help.modal.eraserTool.selection,
-                        i18n.help.modal.eraserTool.selectionClick,
-                    )
-                }}
-            </li>
-        </HelpSection>
-
-        <HelpSection command="brush">
-            <li>{{ i18n.help.modal.brushTool.properties }}</li>
-            <li>
-                {{ say(i18n.help.modal.brushTool.brush, i18n.help.modal.brushTool.brushClick) }}
-            </li>
-            <li>{{ i18n.help.modal.brushTool.shift }}</li>
-        </HelpSection>
-
-        <HelpSection command="paste">
-            <li>
-                {{ say(i18n.help.modal.pasteTool.paste, i18n.help.modal.pasteTool.pasteClick) }}
-            </li>
-        </HelpSection>
-
-        <HelpSection command="generateSlideNotes">
-            <li>
-                {{
-                    say(
-                        i18n.help.modal.generateSlideNotesTool.generate,
-                        i18n.help.modal.generateSlideNotesTool.generateClick,
-                    )
-                }}
-            </li>
-            <li>
-                {{
-                    say(
-                        i18n.help.modal.generateSlideNotesTool.generateMultiple,
-                        i18n.help.modal.generateSlideNotesTool.generateMultipleClick,
-                    )
-                }}
-            </li>
-        </HelpSection>
-
-        <HelpSection :title="i18n.help.modal.adding.title">
-            <li>{{ say(i18n.help.modal.adding.add, i18n.help.modal.adding.addClick) }}</li>
-            <li>{{ say(i18n.help.modal.adding.edit, i18n.help.modal.adding.editClick) }}</li>
-            <li>{{ i18n.help.modal.adding.move }}</li>
-            <li>{{ i18n.help.modal.adding.resize }}</li>
-            <li>
-                {{ say(i18n.help.modal.adding.modifiers, i18n.help.modal.adding.modifiersClick) }}
-            </li>
-        </HelpSection>
-
-        <HelpSection command="note">
-            <li>{{ i18n.help.modal.noteTool.presets }}</li>
-            <li>
-                {{
-                    say(i18n.help.modal.noteTool.quickEdit, i18n.help.modal.noteTool.quickEditClick)
-                }}
-            </li>
-        </HelpSection>
-
-        <HelpSection command="slide">
-            <li>
-                {{ say(i18n.help.modal.slideTool.connect, i18n.help.modal.slideTool.connectClick) }}
-            </li>
-            <li>{{ i18n.help.modal.slideTool.presets }}</li>
-            <li>
-                {{
-                    say(
-                        i18n.help.modal.slideTool.quickEdit,
-                        i18n.help.modal.slideTool.quickEditClick,
-                    )
-                }}
-            </li>
-            <li>{{ i18n.help.modal.slideTool.splitCombine }}</li>
-        </HelpSection>
-
-        <HelpSection command="bpm">
-            <li>{{ i18n.help.modal.bpmTool.first }}</li>
-            <li>{{ i18n.help.modal.bpmTool.replace }}</li>
-        </HelpSection>
-
-        <HelpSection command="timeScale">
-            <li>{{ i18n.help.modal.timeScaleTool.markers }}</li>
-            <li>{{ i18n.help.modal.timeScaleTool.ease }}</li>
-        </HelpSection>
-
-        <HelpSection command="event">
-            <li>{{ i18n.help.modal.event.next }}</li>
-            <li>{{ i18n.help.modal.event.defaults }}</li>
-            <li>
-                {{ say(i18n.help.modal.event.quickEdit, i18n.help.modal.event.quickEditClick) }}
-            </li>
-        </HelpSection>
-
-        <HelpSection command="offset">
-            <li>{{ i18n.help.modal.offset.drag }}</li>
-        </HelpSection>
-
-        <HelpInputSections :input="isCoarsePointer ? 'pointer' : 'touch'" />
-
-        <HelpSection :title="i18n.settings.about.title" plain>
-            <AboutLinks />
-        </HelpSection>
+    <BaseModal :title="i18n.help.modal.title" fill @close="emit('close')">
+        <SectionIndex v-if="!short" v-bind="index" class="px-4 py-2" @go="goToSection" />
+        <div
+            v-scroll-edges
+            class="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-2 [scrollbar-gutter:stable]"
+        >
+            <SectionIndex v-if="short" v-bind="index" class="py-1" @go="goToSection" />
+            <section
+                v-for="(section, i) in sections"
+                :id="`help-${section.id}`"
+                :key="section.id"
+                data-help-section
+                class="flex scroll-mt-2 flex-col gap-4"
+                :class="i > 0 && 'border-t border-fg/15 pt-4'"
+            >
+                <h2
+                    tabindex="-1"
+                    data-help-section-heading
+                    class="focus-out rounded text-lg font-bold outline outline-2 outline-transparent"
+                >
+                    {{ section.title }}
+                </h2>
+                <AboutLinks v-if="section.id === 'about'" />
+                <HelpEntry v-for="entry in section.entries" :key="entry.id" :entry="entry" />
+            </section>
+        </div>
     </BaseModal>
 </template>

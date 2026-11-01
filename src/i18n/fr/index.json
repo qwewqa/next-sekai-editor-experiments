@@ -623,15 +623,6 @@
   "help": {
     "modal": {
       "title": "Aide",
-      "gettingStarted": {
-        "title": "Premiers pas",
-        "bgm": "Choisissez Musique pour charger la musique et régler son décalage.",
-        "bpm": "Choisissez BPM et appuyez sur le changement de BPM au début de la partition. Appuyez à nouveau dessus pour modifier son BPM.",
-        "bpmClick": "Choisissez BPM et cliquez sur le changement de BPM au début de la partition. Cliquez à nouveau dessus pour modifier son BPM.",
-        "notes": "Choisissez Note et appuyez sur la partition pour ajouter une note. Pour ajouter un slide, choisissez Désélectionner, puis Slide, et appuyez à son point de départ et à son point de fin.",
-        "notesClick": "Choisissez Note et cliquez sur la partition pour ajouter une note. Pour ajouter un slide, choisissez Désélectionner, puis Slide, et cliquez à son point de départ et à son point de fin.",
-        "save": "Choisissez Sauvegarder pour conserver votre travail dans un fichier de projet (.nxsp). Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau."
-      },
       "touchscreen": {
         "title": "Écran tactile",
         "longPress": "Appuyez longuement sur un objet pour ouvrir le menu contextuel.",
@@ -655,7 +646,6 @@
         "select": "Lorsque des objets se superposent, chaque appui sélectionne le suivant.",
         "selectClick": "Lorsque des objets se superposent, chaque clic sélectionne le suivant.",
         "move": "Faites glisser un objet sélectionné pour déplacer toute la sélection.",
-        "resize": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner. Si tous les objets sélectionnés sont du même type, ils sont redimensionnés ensemble.",
         "modifiers": "Maintenez Ctrl (Cmd sous macOS) pour ajouter des objets à la sélection ou les en retirer. Maintenez Maj pour sélectionner des slides entiers.",
         "selectMultiple": "Tracez un cadre en faisant glisser depuis une zone vide pour sélectionner les objets à l’intérieur."
       },
@@ -684,18 +674,13 @@
         "connect": "Lorsque des notes d’un même slide sont sélectionnées, appuyez sur une zone vide pour ajouter une autre note à ce slide. Choisissez Désélectionner avant de commencer un nouveau slide.",
         "connectClick": "Lorsque des notes d’un même slide sont sélectionnées, cliquez sur une zone vide pour ajouter une autre note à ce slide. Choisissez Désélectionner avant de commencer un nouveau slide.",
         "presets": "Choisissez à nouveau Slide pour afficher les propriétés par défaut et passer d’un préréglage à l’autre, de Slide n° 1 à Slide n° 5.",
-        "quickEdit": "Comme avec Note, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
-        "quickEditClick": "Comme avec Note, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
         "splitCombine": "Scinder le slide coupe la connexion après chaque note sélectionnée. Combiner en slide réunit les slides contenant les notes sélectionnées."
       },
       "generateSlideNotesTool": {
         "generate": "Appuyez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide.",
-        "generateClick": "Cliquez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide.",
-        "generateMultiple": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Appuyez sur une note sélectionnée pour remplir chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier.",
-        "generateMultipleClick": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Cliquez sur une note sélectionnée pour remplir chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier."
+        "generateClick": "Cliquez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide."
       },
       "adding": {
-        "title": "Ajouter des objets",
         "add": "Avec Note, Slide, BPM, Échelle de temps ou Événement, appuyez sur une zone vide pour ajouter un objet. Avec Note ou Slide, faites glisser dans une zone vide pour ajouter une note de cette largeur.",
         "addClick": "Avec Note, Slide, BPM, Échelle de temps ou Événement, cliquez sur une zone vide pour ajouter un objet. Avec Note ou Slide, faites glisser dans une zone vide pour ajouter une note de cette largeur.",
         "edit": "Appuyez sur un objet sélectionné pour afficher ses propriétés.",
@@ -715,19 +700,141 @@
       },
       "event": {
         "next": "Choisissez Événement pour passer à un outil d’événement. Choisissez-le à nouveau pour parcourir les outils d’événement.",
-        "defaults": "Pour modifier les propriétés par défaut d’un outil d’événement, choisissez à nouveau son nom, par exemple Événement de caméra.",
-        "quickEdit": "Lorsque le panneau Propriétés est affiché, appuyer sur un événement sélectionné modifie aussi son interpolation.",
-        "quickEditClick": "Lorsque le panneau Propriétés est affiché, cliquer sur un événement sélectionné modifie aussi son interpolation."
+        "defaults": "Pour modifier les propriétés par défaut d’un outil d’événement, choisissez à nouveau son nom, par exemple Événement de caméra."
       },
       "offset": {
         "drag": "Faites glisser vers le haut ou vers le bas pour modifier le décalage de la musique."
       }
     },
-    "altN": "Alt+N (Option+N sous macOS) place le focus sur une notification qui reste à l’écran. Appuyez sur Esc pour la fermer.",
     "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de l’élément qui a le focus.",
     "recentSessions": "Pour retrouver le travail non sauvegardé conservé dans ce navigateur, ouvrez Historique › Récentes.",
-    "fileTitle": "Fichiers",
-    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier de projet, puis ouvrez ce fichier sur l’autre appareil."
+    "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier de projet, puis ouvrez ce fichier sur l’autre appareil.",
+    "sections": {
+      "controls": "Commandes",
+      "file": "Fichier",
+      "playback": "Lecture",
+      "editing": "Édition",
+      "transform": "Transformations",
+      "notes": "Notes et slides",
+      "timing": "Temps",
+      "groupsStages": "Groupes et scènes",
+      "events": "Événements",
+      "view": "Vue"
+    },
+    "basics": {
+      "title": "Ajouter et sélectionner des objets"
+    },
+    "toolbarPanels": {
+      "title": "Barre d’outils et panneaux",
+      "toolbar": "Pour changer les outils de la barre d’outils, ouvrez Paramètres › Barre d’outils.",
+      "panelTab": "Appuyez longuement sur l’onglet d’un panneau pour choisir où l’ancrer ou pour le fermer.",
+      "panelTabClick": "Faites un clic droit sur l’onglet d’un panneau pour choisir où l’ancrer ou pour le fermer."
+    },
+    "mouse": {
+      "deselect": "Faites un clic droit sur une zone vide pour désélectionner."
+    },
+    "keyboard": {
+      "notice": "Alt+N (Option+N sous macOS) place le focus sur une notification munie d’un bouton de fermeture. Appuyez sur Esc pour la fermer."
+    },
+    "open": {
+      "formats": "Ouvre les fichiers de projet, les paquets Sonolus, les données de niveau, les niveaux Chart Cyanvas et les partitions USC et SUS. Choisir un fichier audio remplace la musique."
+    },
+    "save": {
+      "projectFile": "Choisissez Sauvegarder pour conserver votre travail dans un fichier de projet (.nxsp). Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau."
+    },
+    "exportLevel": {
+      "contents": "Les données de niveau contiennent la partition, la Vie initiale et le décalage de la musique, mais pas la musique ni le reste des Informations du niveau."
+    },
+    "utilities": {
+      "levelInfo": "L’Éditeur de la couverture et l’Éditeur de l’aperçu sauvegardent la couverture ou l’extrait audio qu’ils créent dans un fichier. Pour définir la couverture ou l’extrait audio du niveau, utilisez Éditeur de la couverture ou Créer à partir de la musique dans Informations du niveau."
+    },
+    "checkProject": {
+      "repair": "Vérifie si la Chronologie conservée dans ce navigateur est endommagée. L’éditeur vérifie aussi votre fichier de projet s’il peut le lire et si le fichier n’a pas changé depuis sa dernière ouverture ou sauvegarde. Il utilise ce fichier pour réparer les étapes endommagées de la Chronologie lorsque c’est possible."
+    },
+    "play": {
+      "startPosition": "Pour que Lire démarre au curseur, réglez Position de départ sur Curseur dans Paramètres › Lecture.",
+      "stop": "Arrêter ramène le curseur au point de départ de la lecture. Pour arrêter à la position actuelle, choisissez à nouveau Lire."
+    },
+    "bgm": {
+      "load": "Choisissez Musique pour charger la musique et régler son décalage."
+    },
+    "previewAssets": {
+      "browser": "Change l’apparence et le son de l’aperçu dans ce navigateur, pour toutes les partitions que vous ouvrez."
+    },
+    "preview": {
+      "drag": "Faites glisser horizontalement dans l’aperçu pour déplacer le curseur.",
+      "dragClick": "Faites glisser horizontalement dans l’aperçu ou utilisez la molette de la souris au-dessus pour déplacer le curseur."
+    },
+    "history": {
+      "view": "Appuyez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
+      "viewClick": "Cliquez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
+      "showChange": "Afficher la modification fait défiler la partition jusqu’à la modification suivante de l’étape de la Chronologie que vous consultez.",
+      "editsHere": "Trouver les modifications ici affiche uniquement les étapes de la Chronologie qui ont modifié la partition entre le premier et le dernier objet sélectionnés. Sans sélection, la recherche porte sur la partie visible de la partition."
+    },
+    "pasteTool": {
+      "clipboardHistory": "L’Historique du presse-papiers du panneau Propriétés affiche vos copies récentes. Choisissez-en une pour la coller ensuite."
+    },
+    "selectTool": {
+      "resizeSelection": "Faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène pour le redimensionner. S’il fait partie d’une sélection de plusieurs objets, ceux-ci sont redimensionnés ensemble s’ils sont tous du même type, et déplacés sinon."
+    },
+    "deselect": {
+      "select": "Passe à l’outil Sélectionner lorsqu’aucun objet n’est sélectionné."
+    },
+    "flip": {
+      "mirror": "Retourne la sélection en miroir autour de la voie 0. Les directions des flicks et les rotations des événements sont aussi inversées, et les bordures gauche et droite des scènes sont échangées."
+    },
+    "flipVertical": {
+      "reverse": "Inverse la sélection dans le temps, dans la plage de temps qu’elle occupe."
+    },
+    "makeVertical": {
+      "elevation": "Déplace les notes sélectionnées au temps de la première et règle l’Élévation de chaque note sur le nombre de temps dont elle a été déplacée."
+    },
+    "scale": {
+      "drag": "Tant que la boîte de dialogue est ouverte, vous pouvez aussi redimensionner en faisant glisser. L’autre extrémité de la sélection reste en place. Pour Mettre les temps à l’échelle, faites glisser la première ou la dernière note sélectionnée. Pour Mettre les élévations à l’échelle, faites glisser la note sélectionnée la plus haute ou la plus basse dans l’Éditeur d’élévation. Pour Redimensionner la largeur, faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène sélectionné."
+    },
+    "elevation": {
+      "beat": "Modifie les élévations des notes situées à un même temps. S’ouvre au temps de la note sélectionnée ou au curseur."
+    },
+    "editorLayout": {
+      "layouts": "Composée affiche les scènes et décale les notes latéralement selon la Voie du pivot et la Translation X des scènes. De base affiche chaque note sur sa propre voie."
+    },
+    "slideTool": {
+      "quickEditPanel": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur.",
+      "quickEditPanelClick": "Lorsque le panneau Propriétés est affiché, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées. Par exemple, le préréglage Slide n° 1 par défaut modifie Interpolation du connecteur."
+    },
+    "generateSlideNotesTool": {
+      "fillSelection": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Appuyez sur une note sélectionnée pour remplir l’espace entre les notes sélectionnées de chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier.",
+      "fillSelectionClick": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Cliquez sur une note sélectionnée pour remplir l’espace entre les notes sélectionnées de chaque slide de la sélection. Si un slide ne contient qu’une seule note sélectionnée, il est rempli en entier."
+    },
+    "bpmTool": {
+      "edit": "Appuyez sur un changement de BPM pour le sélectionner, puis appuyez à nouveau dessus pour modifier son BPM.",
+      "editClick": "Cliquez sur un changement de BPM pour le sélectionner, puis cliquez à nouveau dessus pour modifier son BPM."
+    },
+    "groups": {
+      "current": "Appuyez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouveaux changements d’échelle de temps y sont ajoutés, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés.",
+      "currentClick": "Cliquez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouveaux changements d’échelle de temps y sont ajoutés, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés."
+    },
+    "stages": {
+      "current": "Appuyez sur une scène pour en faire la scène actuelle. Les nouvelles notes et les nouveaux événements de scène y sont ajoutés, et les objets des autres scènes ne peuvent pas être sélectionnés ni modifiés.",
+      "currentClick": "Cliquez sur une scène pour en faire la scène actuelle. Les nouvelles notes et les nouveaux événements de scène y sont ajoutés, et les objets des autres scènes ne peuvent pas être sélectionnés ni modifiés."
+    },
+    "event": {
+      "camera": "Événement de caméra permet de déplacer, de zoomer et de faire tourner la vue de toute la partition.",
+      "mask": "Événement de masque de scène définit les voies couvertes par une scène.",
+      "pivot": "Événement de pivot de scène décale latéralement les notes et les lignes de division d’une scène, et peut remonter sa ligne de jugement.",
+      "style": "Événement de style de scène définit l’apparence d’une scène, notamment ses couleurs et ses bordures.",
+      "transform": "Événement de transformation de scène déplace et fait tourner toute la scène avec ses notes.",
+      "width": "Avec Événement de caméra ou Événement de masque de scène, faites glisser dans une zone vide pour ajouter un événement de cette largeur.",
+      "easeStep": "Lorsque le panneau Propriétés est affiché, appuyez sur un événement sélectionné pour faire passer son Type d’interp. à la valeur suivante.",
+      "easeStepClick": "Lorsque le panneau Propriétés est affiché, cliquez sur un événement sélectionné pour faire passer son Type d’interp. à la valeur suivante.",
+      "currentStage": "Chaque événement de scène appartient à une scène. Lorsqu’une scène est définie comme scène actuelle, les nouveaux événements de scène y sont ajoutés."
+    },
+    "minimap": {
+      "changes": "Lorsque vous consultez une étape de la Chronologie, les repères sur la minicarte indiquent où cette étape a modifié la partition."
+    },
+    "snapping": {
+      "modes": "Absolu aligne les objets sur la grille lorsque vous les déplacez. Relatif les déplace par pas entiers de la grille, de sorte qu’un objet entre les lignes reste entre elles."
+    }
   },
   "elevation": {
     "edit": "Modifier les élévations",

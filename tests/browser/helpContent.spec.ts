@@ -12,6 +12,9 @@ const messages = JSON.parse(
 ) as typeof english
 const { modal } = messages.help
 
+const sectionTitles = Object.values(messages.help.sections)
+const aboutTitle = messages.settings.about.title
+
 const boot = async (page: Page) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
@@ -32,92 +35,109 @@ const openHelp = async (page: Page) => {
     return dialog
 }
 
-const titles = (dialog: ReturnType<Page['locator']>) =>
-    dialog.getByRole('heading', { level: 2 }).evaluateAll((headings) =>
-        headings.map((heading) =>
-            [...heading.childNodes]
-                .filter((node) => node.nodeType === Node.TEXT_NODE)
-                .map((node) => node.textContent)
-                .join('')
-                .trim(),
-        ),
+const textOf = (headings: Element[]) =>
+    headings.map((heading) =>
+        [...heading.childNodes]
+            .filter((node) => node.nodeType === Node.TEXT_NODE)
+            .map((node) => node.textContent)
+            .join('')
+            .trim(),
     )
+
+const sectionHeadings = (dialog: ReturnType<Page['locator']>) =>
+    dialog.getByRole('heading', { level: 2 }).evaluateAll(textOf)
+
+/** The entries of Controls, in order, by the id of the entry. */
+const controlsEntries = (dialog: ReturnType<Page['locator']>) =>
+    dialog
+        .locator('#help-controls [id^="help-entry-"]')
+        .evaluateAll((entries) => entries.map((entry) => entry.id.replace('help-entry-', '')))
 
 // The shared lines that name a pointer: each has a Click sibling key for a mouse.
 const pointerKeys = [
-    ['gettingStarted', 'bpm'],
-    ['gettingStarted', 'notes'],
-    ['selectTool', 'select'],
-    ['eraserTool', 'erase'],
-    ['eraserTool', 'selection'],
-    ['brushTool', 'brush'],
-    ['pasteTool', 'paste'],
-    ['generateSlideNotesTool', 'generate'],
-    ['generateSlideNotesTool', 'generateMultiple'],
-    ['adding', 'add'],
-    ['adding', 'edit'],
-    ['adding', 'modifiers'],
-    ['noteTool', 'quickEdit'],
-    ['slideTool', 'connect'],
-    ['slideTool', 'quickEdit'],
-    ['event', 'quickEdit'],
+    'modal.selectTool.select',
+    'modal.eraserTool.erase',
+    'modal.eraserTool.selection',
+    'modal.brushTool.brush',
+    'modal.pasteTool.paste',
+    'modal.generateSlideNotesTool.generate',
+    'generateSlideNotesTool.fillSelection',
+    'modal.adding.add',
+    'modal.adding.edit',
+    'modal.adding.modifiers',
+    'modal.noteTool.quickEdit',
+    'modal.slideTool.connect',
+    'slideTool.quickEditPanel',
+    'event.easeStep',
+    'bpmTool.edit',
+    'history.view',
+    'groups.current',
+    'stages.current',
+    'preview.drag',
 ] as const
 
-const lineText = (group: string, key: string) =>
-    (modal as unknown as Record<string, Record<string, string>>)[group]![key]!
+const lineText = (path: string) =>
+    path
+        .split('.')
+        .reduce<unknown>(
+            (value, key) => (value as Record<string, unknown>)[key],
+            messages.help,
+        ) as string
 
-/** The text of the lines in every section except those with the given titles. */
+/** The text of the lines in every entry except those with the given ids. */
 const linesOutside = (dialog: ReturnType<Page['locator']>, skipped: string[]) =>
     dialog
-        .locator('section')
+        .locator('[id^="help-entry-"]')
         .evaluateAll(
-            (sections, skipped) =>
-                sections
-                    .filter(
-                        (section) =>
-                            !skipped.includes(section.querySelector('h2')!.textContent!.trim()),
-                    )
-                    .flatMap((section) =>
-                        [...section.querySelectorAll('li')].map((li) => li.textContent!),
+            (entries, skipped) =>
+                entries
+                    .filter((entry) => !skipped.includes(entry.id.replace('help-entry-', '')))
+                    .flatMap((entry) =>
+                        [...entry.querySelectorAll('li')].map((li) => li.textContent!),
                     ),
             skipped,
         )
 
 const heading = (dialog: ReturnType<Page['locator']>, title: string) =>
-    dialog.getByRole('heading', { level: 2, name: new RegExp(`^${title}( |$)`) })
+    dialog.getByRole('heading', { level: 3, name: new RegExp(`^${title}( |,|$)`) })
 
 test.describe('with a fine pointer', () => {
-    test('Getting Started, Mouse and Keyboard come first and Touchscreen is before About', async ({
+    test('the sections come in order, with About last', async ({ page }) => {
+        await boot(page)
+        expect(await sectionHeadings(await openHelp(page))).toEqual([...sectionTitles, aboutTitle])
+    })
+
+    test('Controls has Mouse and Keyboard first, then the basics, and Touchscreen last', async ({
         page,
     }) => {
         await boot(page)
-        const all = await titles(await openHelp(page))
-        expect(all.slice(0, 4)).toEqual([
-            modal.gettingStarted.title,
-            modal.mouse.title,
-            modal.keyboard.title,
-            messages.help.fileTitle,
+        expect(await controlsEntries(await openHelp(page))).toEqual([
+            'mouse',
+            'keyboard',
+            'adding',
+            'toolbarPanels',
+            'touch',
         ])
-        expect(all.slice(-2)).toEqual([modal.touchscreen.title, messages.settings.about.title])
     })
 
-    test('the shared lines say click, and only the Touchscreen section says tap', async ({
+    test('the shared lines say click, and only the Touchscreen entry says tap', async ({
         page,
     }) => {
         await boot(page)
         const dialog = await openHelp(page)
-        for (const [group, key] of pointerKeys) {
-            await expect(dialog).toContainText(lineText(group, `${key}Click`))
-            await expect(dialog).not.toContainText(lineText(group, key))
+        for (const key of pointerKeys) {
+            await expect(dialog).toContainText(lineText(`${key}Click`))
+            await expect(dialog).not.toContainText(lineText(key))
         }
-        const lines = await linesOutside(dialog, [modal.touchscreen.title])
+        const lines = await linesOutside(dialog, ['touch'])
         expect(lines.filter((line) => /\btap/i.test(line))).toEqual([])
     })
 
-    test('the right button line follows the Secondary Tool setting', async ({ page }) => {
+    test('the right button lines follow the Secondary Tool setting', async ({ page }) => {
         await boot(page)
         const dialog = await openHelp(page)
         await expect(dialog).toContainText(modal.mouse.contextMenu)
+        await expect(dialog).toContainText(messages.help.mouse.deselect)
         await expect(dialog).not.toContainText(
             modal.mouse.secondary.slice(0, modal.mouse.secondary.indexOf('{0}')),
         )
@@ -127,6 +147,7 @@ test.describe('with a fine pointer', () => {
             modal.mouse.secondary.replace('{0}', messages.commands.select.title),
         )
         await expect(dialog).not.toContainText(modal.mouse.contextMenu)
+        await expect(dialog).not.toContainText(messages.help.mouse.deselect)
 
         await page.evaluate(() => (window.editorTest.settings.mouseSecondaryTool = 'eraser'))
         await expect(dialog).toContainText(
@@ -147,6 +168,19 @@ test.describe('with a fine pointer', () => {
         await expect(dialog).not.toContainText(modal.touchscreen.longPress)
         await expect(dialog).not.toContainText(modal.touchscreen.quickScroll)
         await expect(dialog).toContainText(modal.touchscreen.scroll)
+        // A mouse always has the right button for a panel tab.
+        await expect(dialog).toContainText(messages.help.toolbarPanels.panelTabClick)
+    })
+
+    test('Deselect has an entry only while it switches to Select', async ({ page }) => {
+        await boot(page)
+        const dialog = await openHelp(page)
+        await expect(heading(dialog, messages.commands.deselect.title)).toBeVisible()
+        await expect(dialog).toContainText(messages.help.deselect.select)
+
+        await page.evaluate(() => (window.editorTest.settings.deselectSwitchesToSelect = false))
+        await expect(heading(dialog, messages.commands.deselect.title)).toHaveCount(0)
+        await expect(dialog).not.toContainText(messages.help.deselect.select)
     })
 
     test('a tool heading shows its current shortcut, and none when it has no binding', async ({
@@ -155,13 +189,13 @@ test.describe('with a fine pointer', () => {
         await boot(page)
         const dialog = await openHelp(page)
         const note = heading(dialog, messages.commands.note.title.default)
-        await expect(note.locator('kbd')).toHaveText('A')
+        await expect(note.locator('kbd').first()).toHaveText('A')
 
         await page.evaluate(() => {
             const { settings } = window.editorTest
             settings.keyboardShortcuts = { ...settings.keyboardShortcuts, note: 'q' }
         })
-        await expect(note.locator('kbd')).toHaveText('Q')
+        await expect(note.locator('kbd').first()).toHaveText('Q')
 
         const offset = heading(dialog, messages.commands.offset.title)
         await expect(offset).toBeVisible()
@@ -172,40 +206,45 @@ test.describe('with a fine pointer', () => {
 test.describe('with a coarse pointer', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
-    test('Touchscreen comes after Getting Started, and Mouse and Keyboard are before About', async ({
+    test('Controls has Touchscreen first, then the basics, and Mouse and Keyboard last', async ({
         page,
     }) => {
         await boot(page)
         const dialog = await openHelp(page)
-        const all = await titles(dialog)
-        expect(all.slice(0, 3)).toEqual([
-            modal.gettingStarted.title,
-            modal.touchscreen.title,
-            messages.help.fileTitle,
+        expect(await controlsEntries(dialog)).toEqual([
+            'touch',
+            'adding',
+            'toolbarPanels',
+            'mouse',
+            'keyboard',
         ])
-        expect(all.slice(-3)).toEqual([
-            modal.mouse.title,
-            modal.keyboard.title,
-            messages.settings.about.title,
-        ])
+        expect(await sectionHeadings(dialog)).toEqual([...sectionTitles, aboutTitle])
     })
 
-    test('the shared lines say tap, and only the Mouse section says click', async ({ page }) => {
+    test('the shared lines say tap, and only the Mouse entry says click', async ({ page }) => {
         await boot(page)
         const dialog = await openHelp(page)
-        for (const [group, key] of pointerKeys) {
-            await expect(dialog).toContainText(lineText(group, key))
-            await expect(dialog).not.toContainText(lineText(group, `${key}Click`))
+        for (const key of pointerKeys) {
+            await expect(dialog).toContainText(lineText(key))
+            await expect(dialog).not.toContainText(lineText(`${key}Click`))
         }
-        const lines = await linesOutside(dialog, [modal.mouse.title])
+        const lines = await linesOutside(dialog, ['mouse'])
         expect(lines.filter((line) => /\bclick/i.test(line))).toEqual([])
+    })
+
+    test('the panel tab line follows the Long-Press for Context Menu setting', async ({ page }) => {
+        await boot(page)
+        const dialog = await openHelp(page)
+        await expect(dialog).toContainText(messages.help.toolbarPanels.panelTab)
+        await page.evaluate(() => (window.editorTest.settings.touchLongPressContextMenu = false))
+        await expect(dialog).not.toContainText(messages.help.toolbarPanels.panelTab)
     })
 
     test('headings show no shortcuts', async ({ page }) => {
         await boot(page)
         const dialog = await openHelp(page)
         await expect(heading(dialog, messages.commands.note.title.default)).toBeVisible()
-        await expect(dialog.locator('h2 kbd')).toHaveCount(0)
+        await expect(dialog.locator('h3 kbd')).toHaveCount(0)
     })
 
     test('the About links wrap inside the dialog', async ({ page }) => {
@@ -232,9 +271,8 @@ test.describe('with a coarse pointer', () => {
 // The About section ends Help with the links of Settings › About; settingsAbout.spec.ts checks
 // that the two rows agree.
 test.describe('About', () => {
-    const aboutTitle = messages.settings.about.title
     const aboutOf = (dialog: ReturnType<Page['locator']>) =>
-        dialog.locator('section').filter({
+        dialog.locator('section[data-help-section]').filter({
             has: dialog.page().getByRole('heading', { name: aboutTitle, exact: true }),
         })
 
@@ -243,7 +281,7 @@ test.describe('About', () => {
     }) => {
         await boot(page)
         const dialog = await openHelp(page)
-        const sections = dialog.locator('section')
+        const sections = dialog.locator('section[data-help-section]')
         const about = aboutOf(dialog)
         await expect(about).toHaveCount(1)
         await expect(sections.last()).toContainText(aboutTitle)

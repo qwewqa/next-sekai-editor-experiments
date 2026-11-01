@@ -1,7 +1,7 @@
 import type { Command } from '..'
 import { i18n } from '../../../i18n'
-import { showModal } from '../../../modals'
-import HelpModal from '../../help/HelpModal.vue'
+import { helpTarget } from '../../help/currentTarget'
+import { openHelp } from '../../help/openHelp'
 import HelpIcon from './HelpIcon.vue'
 
 export const help: Command = {
@@ -13,6 +13,6 @@ export const help: Command = {
     readOnly: true,
 
     execute() {
-        void showModal(HelpModal, {})
+        void openHelp(helpTarget())
     },
 }

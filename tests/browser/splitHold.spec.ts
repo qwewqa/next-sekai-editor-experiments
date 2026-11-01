@@ -360,10 +360,8 @@ test('Help explains Split Slide and Combine into Slide in English and Japanese o
 }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByRole('button', { name: 'Help', exact: true }).click()
-    const check = async (heading: string, text: string) => {
-        const section = page.locator('section').filter({
-            has: page.getByRole('heading', { name: new RegExp(`^${heading}( |$)`) }),
-        })
+    const check = async (text: string) => {
+        const section = page.locator('#help-entry-splitCombine')
         await section.scrollIntoViewIfNeeded()
         const line = section.locator('li').filter({ hasText: text })
         await expect(line).toBeVisible()
@@ -371,9 +369,9 @@ test('Help explains Split Slide and Combine into Slide in English and Japanese o
         expect(bounds!.x).toBeGreaterThanOrEqual(0)
         expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390)
     }
-    await check('Slide', english.help.modal.slideTool.splitCombine)
+    await check(english.help.modal.slideTool.splitCombine)
     await page.evaluate(() => {
         window.editorTest.settings.locale = 'ja'
     })
-    await check(japanese.commands.slide.title.default, japanese.help.modal.slideTool.splitCombine)
+    await check(japanese.help.modal.slideTool.splitCombine)
 })

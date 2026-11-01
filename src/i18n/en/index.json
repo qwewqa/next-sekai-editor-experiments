@@ -623,15 +623,6 @@
     "help": {
         "modal": {
             "title": "Help",
-            "gettingStarted": {
-                "title": "Getting Started",
-                "bgm": "Choose BGM to load the music and set its offset.",
-                "bpm": "Choose BPM and tap the BPM change at the start of the chart. Tap it again to edit its BPM.",
-                "bpmClick": "Choose BPM and click the BPM change at the start of the chart. Click it again to edit its BPM.",
-                "notes": "Choose Note and tap the chart to add a note. To add a slide, choose Deselect, then Slide, and tap at its start and its end.",
-                "notesClick": "Choose Note and click the chart to add a note. To add a slide, choose Deselect, then Slide, and click at its start and its end.",
-                "save": "Choose Save to keep your work in a project file (.nxsp). To create level data you can upload to a Sonolus server, use Export Level Data."
-            },
             "touchscreen": {
                 "title": "Touchscreen",
                 "longPress": "Long-press an object to open the context menu.",
@@ -655,7 +646,6 @@
                 "select": "Where objects overlap, each tap selects the next one.",
                 "selectClick": "Where objects overlap, each click selects the next one.",
                 "move": "Drag a selected object to move the whole selection.",
-                "resize": "Drag the edge of a note, camera event or stage mask event to resize it. If all selected objects are the same type, they resize together.",
                 "modifiers": "Hold Ctrl (Cmd on macOS) to add objects to the selection or remove them. Hold Shift to select whole slides.",
                 "selectMultiple": "Drag a box from empty space to select the objects in it."
             },
@@ -684,18 +674,13 @@
                 "connect": "When notes of one slide are selected, tap empty space to add another note to that slide. Choose Deselect before starting a new slide.",
                 "connectClick": "When notes of one slide are selected, click empty space to add another note to that slide. Choose Deselect before starting a new slide.",
                 "presets": "Choose Slide again to show the default properties and switch between the presets, Slide #1 to Slide #5.",
-                "quickEdit": "As with Note, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
-                "quickEditClick": "As with Note, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
                 "splitCombine": "Split Slide cuts the connection after each selected note. Combine into Slide joins the slides containing the selected notes."
             },
             "generateSlideNotesTool": {
                 "generate": "Tap a note to fill its slide with attached notes, one on each empty division line.",
-                "generateClick": "Click a note to fill its slide with attached notes, one on each empty division line.",
-                "generateMultiple": "Drag a box over two or more notes of a slide to fill only the part between them. Tap a selected note to fill each slide in the selection. For a slide with only one selected note, this fills the whole slide.",
-                "generateMultipleClick": "Drag a box over two or more notes of a slide to fill only the part between them. Click a selected note to fill each slide in the selection. For a slide with only one selected note, this fills the whole slide."
+                "generateClick": "Click a note to fill its slide with attached notes, one on each empty division line."
             },
             "adding": {
-                "title": "Adding Objects",
                 "add": "With Note, Slide, BPM, Time Scale or Event, tap empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
                 "addClick": "With Note, Slide, BPM, Time Scale or Event, click empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
                 "edit": "Tap a selected object to show its properties.",
@@ -715,19 +700,141 @@
             },
             "event": {
                 "next": "Choose Event to switch to an event tool. Choose it again to cycle through the event tools.",
-                "defaults": "To edit an event tool’s default properties, choose it again by name, such as Camera Event.",
-                "quickEdit": "When the Properties panel is shown, tapping a selected event also changes its ease.",
-                "quickEditClick": "When the Properties panel is shown, clicking a selected event also changes its ease."
+                "defaults": "To edit an event tool’s default properties, choose it again by name, such as Camera Event."
             },
             "offset": {
                 "drag": "Drag up or down to change the BGM offset."
             }
         },
-        "altN": "Alt+N (Option+N on macOS) moves focus to a notice that stays on screen. Press Esc to close it.",
         "shiftF10": "Shift+F10 or the Menu key opens the menu of the focused item.",
         "recentSessions": "To find unsaved work stored in this browser, open History › Recent Sessions.",
-        "fileTitle": "Files",
-        "moveBetweenDevices": "To move work to another device, save it as a project file, then open the file there."
+        "moveBetweenDevices": "To move work to another device, save it as a project file, then open the file there.",
+        "sections": {
+            "controls": "Controls",
+            "file": "File",
+            "playback": "Playback",
+            "editing": "Editing",
+            "transform": "Transform",
+            "notes": "Notes and Slides",
+            "timing": "Timing",
+            "groupsStages": "Groups and Stages",
+            "events": "Events",
+            "view": "View"
+        },
+        "basics": {
+            "title": "Adding and Selecting Objects"
+        },
+        "toolbarPanels": {
+            "title": "Toolbar and Panels",
+            "toolbar": "To change the tools on the toolbar, open Settings › Toolbar.",
+            "panelTab": "Long-press a panel’s tab to choose where the panel docks, or to close it.",
+            "panelTabClick": "Right-click a panel’s tab to choose where the panel docks, or to close it."
+        },
+        "mouse": {
+            "deselect": "Right-click empty space to deselect."
+        },
+        "keyboard": {
+            "notice": "Alt+N (Option+N on macOS) moves focus to a notice that has a close button. Press Esc to close it."
+        },
+        "open": {
+            "formats": "Opens project files, Sonolus packages, level data, Chart Cyanvas levels, and USC and SUS charts. Choosing an audio file replaces the BGM."
+        },
+        "save": {
+            "projectFile": "Choose Save to keep your work in a project file (.nxsp). To create level data you can upload to a Sonolus server, use Export Level Data."
+        },
+        "exportLevel": {
+            "contents": "Level data contains the chart, Initial Life and the BGM offset, but not the music or the rest of Level Info."
+        },
+        "utilities": {
+            "levelInfo": "Cover Editor and Preview Editor save the cover or preview audio they make as a file. To set the level’s cover or preview audio, use Edit in Cover Editor or Make from BGM in Level Info."
+        },
+        "checkProject": {
+            "repair": "Checks the Timeline stored in this browser for damage. The editor also checks your project file if it can read it and the file has not changed since you last opened or saved it. It uses the file to repair damaged Timeline steps where possible."
+        },
+        "play": {
+            "startPosition": "To make Play start at the cursor, set Start Position to Cursor in Settings › Play.",
+            "stop": "Stop moves the cursor back to where playback started. To stop where you are, choose Play again."
+        },
+        "bgm": {
+            "load": "Choose BGM to load the music and set its offset."
+        },
+        "previewAssets": {
+            "browser": "Changes how the preview looks and sounds in this browser, for every chart you open."
+        },
+        "preview": {
+            "drag": "Drag sideways across the preview to move the cursor.",
+            "dragClick": "Drag sideways across the preview, or use the mouse wheel over it, to move the cursor."
+        },
+        "history": {
+            "view": "Tap a Timeline step to view the chart as it was then. Restore brings that version back as a new Timeline step.",
+            "viewClick": "Click a Timeline step to view the chart as it was then. Restore brings that version back as a new Timeline step.",
+            "showChange": "Show Change scrolls to the next change in the Timeline step you are viewing.",
+            "editsHere": "Find Edits Here shows only the Timeline steps that changed the chart between the first and last selected objects. With nothing selected, it uses the part of the chart in view."
+        },
+        "pasteTool": {
+            "clipboardHistory": "Clipboard History in the Properties panel lists your recent copies. Choose one to paste it next."
+        },
+        "selectTool": {
+            "resizeSelection": "Drag the edge of a note, camera event or stage mask event to resize it. When it is part of a larger selection, the selected objects resize together if they are all the same type, and move if they are not."
+        },
+        "deselect": {
+            "select": "Switches to the Select tool when nothing is selected."
+        },
+        "flip": {
+            "mirror": "Mirrors the selection around lane 0. Flick directions and event rotations are mirrored too, and left and right stage borders swap."
+        },
+        "flipVertical": {
+            "reverse": "Reverses the selection in time, within the beats it covers."
+        },
+        "makeVertical": {
+            "elevation": "Moves the selected notes to the beat of the earliest one, and sets each note’s Elevation to the number of beats it moved."
+        },
+        "scale": {
+            "drag": "While the dialog is open, you can also scale by dragging, and the other end of the selection stays in place. For Scale Beats, drag the first or last selected note. For Scale Elevations, drag the highest or lowest selected note in the Elevation Editor. For Scale Width, drag the edge of a selected note, camera event or stage mask event."
+        },
+        "elevation": {
+            "beat": "Edits the elevations of the notes at one beat. It opens at the beat of the selected note, or at the cursor."
+        },
+        "editorLayout": {
+            "layouts": "Composed shows the stages, and shifts notes sideways by the stages’ Pivot Lane and X Translation. Basic shows each note at its own lane."
+        },
+        "slideTool": {
+            "quickEditPanel": "When the Properties panel is shown, tap a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease.",
+            "quickEditPanelClick": "When the Properties panel is shown, click a selected note to set or cycle the current preset’s properties on all selected notes. For example, the default Slide #1 preset changes Connector Ease."
+        },
+        "generateSlideNotesTool": {
+            "fillSelection": "Drag a box over two or more notes of a slide to fill only the part between them. Tap a selected note to fill between the selected notes of each slide in the selection. Where only one note of a slide is selected, the whole slide is filled.",
+            "fillSelectionClick": "Drag a box over two or more notes of a slide to fill only the part between them. Click a selected note to fill between the selected notes of each slide in the selection. Where only one note of a slide is selected, the whole slide is filled."
+        },
+        "bpmTool": {
+            "edit": "Tap a BPM change to select it, then tap it again to edit its BPM.",
+            "editClick": "Click a BPM change to select it, then click it again to edit its BPM."
+        },
+        "groups": {
+            "current": "Tap a group to make it the current group. New notes and time scales go into it, and objects in other groups cannot be selected or edited.",
+            "currentClick": "Click a group to make it the current group. New notes and time scales go into it, and objects in other groups cannot be selected or edited."
+        },
+        "stages": {
+            "current": "Tap a stage to make it the current stage. New notes and stage events go on it, and objects on other stages cannot be selected or edited.",
+            "currentClick": "Click a stage to make it the current stage. New notes and stage events go on it, and objects on other stages cannot be selected or edited."
+        },
+        "event": {
+            "camera": "Camera Event pans, zooms and rotates the view of the whole chart.",
+            "mask": "Stage Mask Event sets which lanes a stage covers.",
+            "pivot": "Stage Pivot Event shifts a stage’s notes and lane dividers sideways, and can raise its judgment line.",
+            "style": "Stage Style Event sets how a stage looks, such as its colors and borders.",
+            "transform": "Stage Transform Event moves and rotates the whole stage, with its notes.",
+            "width": "With Camera Event or Stage Mask Event, drag across empty space to add an event of that width.",
+            "easeStep": "When the Properties panel is shown, tap a selected event to switch its Ease Type to the next one.",
+            "easeStepClick": "When the Properties panel is shown, click a selected event to switch its Ease Type to the next one.",
+            "currentStage": "Each stage event belongs to one stage. While one stage is current, new stage events go on it."
+        },
+        "minimap": {
+            "changes": "While you view a Timeline step, marks on the minimap show where that step changed the chart."
+        },
+        "snapping": {
+            "modes": "Absolute snaps objects to the grid as you move them. Relative moves them by whole grid steps, so an object between grid lines stays between them."
+        }
     },
     "elevation": {
         "edit": "Edit Elevations",
