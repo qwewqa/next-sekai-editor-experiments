@@ -186,6 +186,36 @@ const settingsProperties = {
         Type.Literal(previewAspectRatios[2][1]),
     ]),
 
+    // Export Video's format choices, written when an export starts.
+    exportVideoResolution: Type.Union(
+        [Type.Literal(720), Type.Literal(1080), Type.Literal(1440), Type.Literal(2160)],
+        { default: 1080 },
+    ),
+    exportVideoFrameRate: Type.Union([Type.Literal(30), Type.Literal(60)], { default: 30 }),
+    exportVideoQuality: Type.Union(
+        [Type.Literal('low'), Type.Literal('standard'), Type.Literal('high')],
+        { default: 'standard' },
+    ),
+    exportVideoFormat: Type.Union(
+        [Type.Literal('automatic'), Type.Literal('mp4'), Type.Literal('webm')],
+        { default: 'automatic' },
+    ),
+    exportVideoAntialias: Type.Boolean({ default: true }),
+    exportVideoRenderScale: Type.Union([Type.Literal(1), Type.Literal(1.5), Type.Literal(2)], {
+        default: 1,
+    }),
+    exportVideoAudioBitrate: Type.Union(
+        [Type.Literal(128_000), Type.Literal(192_000), Type.Literal(256_000)],
+        { default: 192_000 },
+    ),
+    exportVideoAdvanced: Type.Boolean(),
+    // Render pixels a second that the last export of at least 10 s reached; 0 before one.
+    exportVideoThroughput: number(0, 0, Number.MAX_SAFE_INTEGER),
+    // This device's render-pixel limit after exports of one size stopped twice; 0 for none.
+    exportVideoPixelLimit: number(0, 0, Number.MAX_SAFE_INTEGER),
+    // Exports that stopped before they ended, counted by their render pixels.
+    exportVideoStops: Type.Record(Type.String(), Type.Number(), { default: {} }),
+
     width: number(16, 16, 100),
 
     maxLane: Type.Number({ default: 0, minimum: 0 }),
