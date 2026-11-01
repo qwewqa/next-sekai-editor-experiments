@@ -25,6 +25,9 @@ export const LAYER_SLOT_GLOW_EFFECT: Layer = { layer: 16, sublayer: 4 }
 export const LAYER_ACTIVE_SLIDE_CONNECTOR_OVER: Layer = { layer: 22, sublayer: 0 }
 export const LAYER_GUIDE_CONNECTOR_OVER: Layer = { layer: 23, sublayer: 0 }
 
+/** Above the notes and effects; the label is order 0 and the number order 1. */
+export const LAYER_COMBO: Layer = { layer: 200, sublayer: 0 }
+
 export const getZ = (
     currentTime: number,
     layer: Layer,

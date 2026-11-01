@@ -145,6 +145,22 @@ Child targets use resolution 1 and MSAA.
 
 Graphics, path-mesh and axis-line pools have 10,240-node limits. Ordinary sprite/container pools and crop-frame arrays currently keep their high-water count until context disposal. Native Pixi batch buffers and browser-owned root/AA/stencil attachments also have independent lifetimes. `maxSurfaceSize` is a dimension limit, not a memory budget. Diagnose memory with actual texture/buffer/renderbuffer allocations; do not add all logical pixel caps and call that the application's GPU memory.
 
+## The preview's combo
+
+Show Combo (`previewShowCombo`) draws the combo of a perfect play in the preview's own frame, so both hosts draw it with the same code. [`combo.ts`](../src/preview/engine/combo.ts) keeps each chart's combo times, from the classification that Statistics uses ([`scoring.ts`](../src/levelData/scoring.ts)), and a binary search gives the count at a frame's time: the notes the frame shows as passed. [`comboDraw.ts`](../src/preview/engine/comboDraw.ts) draws it last in `renderPreviewFrame`, with the plain `draw`, so a selection never outlines it.
+
+**Layers.** From back to front: the background (a DOM layer), the stage, connectors, notes and slot glow (layers 1 to 23), hitboxes (24), particles (100), then the combo's label and number at layer 200 (`LAYER_COMBO`). The selection outline and the panel's DOM are above the preview canvas.
+
+**Texture slots.** The renderer ([`gl.ts`](../src/preview/gl.ts)) samples one of three textures per sprite, chosen by `Sprite.texture`: 0 the skin, 1 the particle and 2 text. The fragment shader mixes slots 0 and 1 as before. `setTexture` uploads a whole atlas. `reserveTexture` allocates a transparent texture with linear filtering, and `setTextureRegion` uploads a bitmap into part of it, with the atlases' premultiplied upload.
+
+**The glyphs.** The label and the digits are Outfit SemiBold outlines, baked into [`comboGlyphs.ts`](../src/preview/engine/comboGlyphs.ts) by `scripts/bake-combo-glyphs.py` from a pinned font file. The bake keeps the coordinates that instancing and overlap removal produce, and measures each glyph's bounds and flat edges on the path data it writes. No font is loaded, so every locale and thread draws the same label.
+
+**The raster.** [`comboType.ts`](../src/preview/engine/comboType.ts) lays out the combo from the buffer's size alone: sizes are fractions of the 16:9 field's height, and the number is centred on the engine's combo anchor by its tabular box, so it moves only when it gains a digit. At rest, every flat edge, baseline and quad corner is on a whole device pixel. The label's ink box is centred on the number with a small optical shift, and its fractional position is drawn into its image. The label and the number are each one `Path2D`, stroked once and filled once on a CPU `OffscreenCanvas` (`willReadFrequently`) in the thread that draws. Touching outlines in one path are covered once. In Chromium, the CPU raster draws the same bytes on the main thread and in a worker. In Chromium, a glyph's edge pixels can change by a few levels when another glyph in the same row changes, because the coverage of a row depends on every edge that crosses it.
+
+**The cache.** Each renderer keeps its own combo state, so a new context, an Antialiasing change or a handover starts afresh. The text texture's layout depends only on the figure height, with room for 7 digits: a count change uploads the number again into the same region, and the label is drawn again only when its position within a pixel changes. Any allocation, such as for a new size or an eighth digit, draws both images again before the frame draws.
+
+**Motion.** After each increment, the number scales from 1.08 to 1 over 140 ms of chart time, with a cubic ease-out, about the centre of its tabular box. Paused frames are at rest. A frame depends only on its time, whether it is paused and its size, so playing to a time and seeking there draw the same pixels (`previewCombo.spec.ts`).
+
 ## Native fonts are the Canvas2D exception
 
 [`createFontContext()`](../src/rendering/textRaster.ts) is the centralized Canvas2D entry point for browser font metrics, whole-string shaping and immutable font sprites. This preserves system fallback, language-specific glyphs, kerning and color emoji. The editor scene, clipping and compositing remain WebGL. Do not replace these sprites with per-character quads or an unrelated font engine without a separate typography decision.

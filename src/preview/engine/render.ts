@@ -5,6 +5,7 @@ import type { PreviewSkin } from '../skin'
 import { getStyledSkin } from '../skin'
 import { layoutBackground, type BackgroundFit } from './background'
 import { attachEasedFrac, attachFrac } from './chart'
+import { drawCombo, skipCombo } from './comboDraw'
 import {
     ConnectorVisualState,
     drawConnector,
@@ -207,6 +208,7 @@ export const renderPreviewFrame = (
     leftLimit = false,
     showHitboxes = false,
     background?: { aspectRatio: number; fit: BackgroundFit },
+    showCombo = false,
 ) => {
     const hasReached = (target: number) => (leftLimit ? now > target : now >= target)
     const viewport = createViewport(displayWidth, displayHeight)
@@ -1456,6 +1458,9 @@ export const renderPreviewFrame = (
     }
 
     if (showHitboxes) drawHitboxes(draw, skin, chart, viewport, now, leftLimit)
+    // The plain draw: the combo is never outlined.
+    if (showCombo) drawCombo(renderer, draw, chart, now, leftLimit, width, height, viewport)
+    else skipCombo(renderer)
 
     renderer.flush()
     return layoutBackground(viewport, cameras, camera, background?.aspectRatio, background?.fit)

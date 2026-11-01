@@ -31,7 +31,12 @@ test('no user-facing count is written as a bare template literal or String()', (
         /`\$\{[^{}`]*(\.length|\.size|[cC]ount(\.value)?|\.total|\.covered|\.shown|\bshown|\btotal)\}`/
     const bareString = /String\((\w+\.)*\w*([cC]ount|total|covered|shown)\)(?!\.length)/
     assert.deepEqual(matches(bareTemplate), [])
-    assert.deepEqual(matches(bareString), [])
+    // The preview's combo is drawn from baked digit glyphs, without grouping in any locale, as
+    // the game draws it.
+    assert.deepEqual(
+        matches(bareString).filter((place) => !place.startsWith('preview/engine/comboDraw.ts:')),
+        [],
+    )
 })
 
 // A Vue interpolation shows a count raw when it names one outside formatCount(...): `{{ x.count }}`,

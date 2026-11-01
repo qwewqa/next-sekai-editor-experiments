@@ -24,6 +24,7 @@ export type PreviewFrameInput = {
     noteSpeed: number
     showEffects: boolean
     showHitboxes: boolean
+    showCombo: boolean
     background?: { aspectRatio: number; fit: BackgroundFit }
 }
 
@@ -66,6 +67,7 @@ export const drawPreviewFrame = (
         input.leftLimit,
         input.showHitboxes,
         input.background,
+        input.showCombo,
     )
     outline?.draw(
         outlineSegments(edges.edges(), input.displayWidth, input.displayHeight),

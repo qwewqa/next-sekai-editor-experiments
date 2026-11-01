@@ -1,4 +1,5 @@
 import type { PreviewFrameInput } from '../drawFrame'
+import type { ComboPixels } from '../engine/comboDraw'
 import type { OutlineAlpha } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
@@ -60,6 +61,7 @@ export type ToPreviewWorker =
     | { type: 'return' }
     | { type: 'copyAtlas'; id: number; slot: 0 | 1 }
     | { type: 'outlineAlpha' }
+    | { type: 'comboPixels' }
     | { type: 'loseContext' }
     | { type: 'restoreContext' }
 
@@ -73,4 +75,5 @@ export type FromPreviewWorker =
     | { type: 'atlasCopyFailed'; id: number; message: string }
     | { type: 'counters'; counters: PreviewWorkerCounters }
     | { type: 'outlineAlpha'; alpha?: OutlineAlpha }
+    | { type: 'comboPixels'; pixels?: ComboPixels }
     | { type: 'context'; lost: boolean }

@@ -6,6 +6,7 @@ import { testKeysOpen } from '../../platform/testKeys'
 import { copyAtlasBitmap } from '../copyAtlasBitmap'
 import { drawPreviewFrame, type PreviewFrameInput, type PreviewSelection } from '../drawFrame'
 import { createPreviewChartBuilder } from '../engine/chart'
+import { readCombo } from '../engine/comboDraw'
 import { createPreviewRenderer, type PreviewRenderer } from '../gl'
 import { createOutlineRenderer, type OutlineRenderer } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
@@ -289,6 +290,21 @@ const handle = (message: ToPreviewWorker) => {
             if (!testKeysOpen) return
             const alpha = outline?.alpha()
             post({ type: 'outlineAlpha', alpha }, alpha ? [alpha.data.buffer] : [])
+            return
+        }
+        case 'comboPixels': {
+            if (!testKeysOpen) return
+            draw()
+            const pixels = renderer && readCombo(renderer)
+            post(
+                { type: 'comboPixels', pixels },
+                pixels
+                    ? [pixels.label, pixels.number].flatMap(({ frame, texture }) => [
+                          frame.buffer,
+                          texture.buffer,
+                      ])
+                    : [],
+            )
             return
         }
         case 'loseContext':

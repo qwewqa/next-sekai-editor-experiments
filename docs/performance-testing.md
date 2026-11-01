@@ -71,6 +71,10 @@ Other builds define the flag false: `timed` returns its callback, and the hook i
 
 `--digest` adds a hash of every draw, and of paused frames with everything selected. A change that should draw exactly the same must leave the digest unchanged on several charts and windows. To compare with another commit, unpack its `src/` under `perf-results/` (`git archive <commit> src`) and pass it as `--src`. Hashing slows the frames, so take times from a run without `--digest`.
 
+`--size WxH` sets the drawing buffer, 384x216 by default. `--combo` draws the combo too, with blank bitmaps for its raster, which Node cannot draw. The combo's layout and draws are then timed and included in `--digest`. Without `--combo`, the digest does not change.
+
+`npm run perf:combo-raster` (`tests/samples/comboRaster.samples.ts`) measures the combo's raster in headless Chromium, on the main thread and in a worker, from field heights of 199 to 2,880 pixels: the first combo after the module loads, a new size, and a count change of 1 to 5 digits. It prints the median and maximum of 20 runs, and writes them to the JSON file that `NSE_COMBO_SAMPLES` names.
+
 ## Plans
 
 A plan is JSON (see `scripts/perf/plans/example.json`): `defaults` for every cell, then `groups`. Each group has:

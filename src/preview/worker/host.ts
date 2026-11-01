@@ -7,6 +7,7 @@ import { testKeysOpen } from '../../platform/testKeys'
 import { settings } from '../../settings'
 import type { State } from '../../state'
 import type { PreviewFrameInput, PreviewSelection } from '../drawFrame'
+import type { ComboPixels } from '../engine/comboDraw'
 import type { OutlineAlpha } from '../outlineRenderer'
 import type { LoadedParticle } from '../particle'
 import type { LoadedSkin } from '../skin'
@@ -141,6 +142,7 @@ const startWorker = () => {
     const copying = new Map<number, (bitmap?: ImageBitmap, error?: unknown) => void>()
     let onAtlases: ((bitmaps: (ImageBitmap | undefined)[]) => void) | undefined
     let onOutlineAlpha: ((alpha: OutlineAlpha | undefined) => void) | undefined
+    let onComboPixels: ((pixels: ComboPixels | undefined) => void) | undefined
     let onContext: ((lost: boolean) => void) | undefined
     let onSettled: (() => void)[] = []
     // The worker drew a frame, which the usage statistics report with a handover.
@@ -297,6 +299,9 @@ const startWorker = () => {
             case 'outlineAlpha':
                 onOutlineAlpha?.(message.alpha)
                 return
+            case 'comboPixels':
+                onComboPixels?.(message.pixels)
+                return
             case 'context':
                 onContext?.(message.lost)
                 return
@@ -432,6 +437,16 @@ const startWorker = () => {
                 }
                 onOutlineAlpha = resolve
                 post({ type: 'outlineAlpha' })
+            }),
+        /** For tests: the worker draws its last frame again and reads its combo. */
+        comboPixels: () =>
+            new Promise<ComboPixels | undefined>((resolve) => {
+                if (stopped) {
+                    resolve(undefined)
+                    return
+                }
+                onComboPixels = resolve
+                post({ type: 'comboPixels' })
             }),
         /** For tests: resolves once no frame is in flight or waiting. */
         settled: () =>

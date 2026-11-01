@@ -13,6 +13,7 @@ import { hasSameChartData } from '../state/data'
 import { drawPreviewFrame, type PreviewFrameInput } from './drawFrame'
 import { getPreviewState, previewEdit } from './edit'
 import { createCameraCompiler, getPreviewChart } from './engine/chart'
+import { readCombo } from './engine/comboDraw'
 import type { Quad } from './engine/math'
 import type { PreviewChart } from './engine/model'
 import { previewBackgroundQuad } from './engine/render'
@@ -333,6 +334,7 @@ export const usePreviewRendering = (
                 showEffects: settings.previewShowEffects,
                 // Only redraws: the overlay never changes the compiled chart.
                 showHitboxes: settings.previewShowHitboxes,
+                showCombo: settings.previewShowCombo,
                 background: loadedBackground.value
                     ? {
                           aspectRatio: loadedBackground.value.aspectRatio,
@@ -413,6 +415,13 @@ export const usePreviewRendering = (
             return previewHost.kind
         },
         outlineAlpha: () => worker.value?.outlineAlpha() ?? Promise.resolve(outline.value?.alpha()),
+        comboPixels: () => {
+            const host = worker.value
+            if (host) return host.comboPixels()
+            // The main host draws in this task, so the frame can still be read.
+            renderFrame?.()
+            return Promise.resolve(renderer.value && readCombo(renderer.value))
+        },
         settled: () => worker.value?.settled() ?? Promise.resolve(),
         setContextLost: (lost) => worker.value?.setContextLost(lost) ?? Promise.resolve(),
     })

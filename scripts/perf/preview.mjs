@@ -1,10 +1,11 @@
 // The preview frame's JavaScript cost in Node, with the real skin and particles, and a digest of
 // every draw to check that a change draws exactly the same (docs/performance-testing.md).
 //   npm run perf:preview -- <level.json> [--start 0] [--seconds 10] [--fps 240] [--digest]
-//     [--src <dir>]
+//     [--src <dir>] [--size 384x216] [--combo]
 // --src renders with another copy of src/, such as `git archive <commit> src` unpacked under
 // perf-results/, so two commits can be compared on the same chart. Hashing slows the frames, so
-// take timings from a run without --digest.
+// take timings from a run without --digest. --size sets the drawing buffer. --combo draws the
+// combo, with blank bitmaps for its raster, which Node cannot draw.
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -17,6 +18,7 @@ const args = { positional: [] }
 for (let i = 2; i < process.argv.length; i++) {
     const arg = process.argv[i]
     if (arg === '--digest') args.digest = true
+    else if (arg === '--combo') args.combo = true
     else if (arg.startsWith('--')) args[arg.slice(2)] = process.argv[++i]
     else args.positional.push(arg)
 }
@@ -33,6 +35,7 @@ const { parseLevelData } = await load('levelData/parse.ts')
 const { buildPreviewChart } = await load('preview/engine/chart.ts')
 const { getFrameIndex } = await load('preview/engine/frameIndex.ts')
 const { renderPreviewFrame } = await load('preview/engine/render.ts')
+const { setComboRaster } = args.combo ? await load('preview/engine/comboDraw.ts') : {}
 const { loadParticleFromScp } = await load('preview/particle.ts')
 const { loadSkinFromScp } = await load('preview/skin.ts')
 const { createState } = await load('state/index.ts')
@@ -66,6 +69,8 @@ let packed = new Float32Array(0)
 const renderer = {
     maxViewportSize: { width: 4096, height: 4096 },
     setTexture() {},
+    reserveTexture() {},
+    setTextureRegion() {},
     begin() {
         entries = []
     },
@@ -115,8 +120,17 @@ const selection = {
     line: (a, b) => hash?.update(`l${a.x},${a.y},${b.x},${b.y};`),
 }
 
-const w = 384
-const h = 216
+setComboRaster?.(() => {
+    const blank = ({ width, height }) => ({ width, height, close() {} })
+    return {
+        label: (_layout, texture) => blank(texture.label),
+        number: (_layout, texture) => blank(texture.number),
+    }
+})
+
+const [w, h] = (args.size ?? '384x216').split('x').map(Number)
+if (!(w > 0 && h > 0)) throw new Error('--size takes a width and a height, such as 1920x1080')
+const combo = args.combo === true
 const frames = Math.round(seconds * fps)
 const times = []
 let quads = 0
@@ -127,7 +141,24 @@ for (let pass = 0; pass < 2; pass++) {
     for (let i = 0; i < frames; i++) {
         const now = start + i / fps
         const before = performance.now()
-        renderPreviewFrame(renderer, skin, chart, now, w, h, w, h, 10, true, particle)
+        renderPreviewFrame(
+            renderer,
+            skin,
+            chart,
+            now,
+            w,
+            h,
+            w,
+            h,
+            10,
+            true,
+            particle,
+            undefined,
+            false,
+            false,
+            undefined,
+            combo,
+        )
         times.push(performance.now() - before)
         quads += entries.length
         if (hash && pass === 1 && i % 8 === 0) {
@@ -146,6 +177,9 @@ for (let pass = 0; pass < 2; pass++) {
                 particle,
                 selection,
                 true,
+                false,
+                undefined,
+                combo,
             )
         }
     }
