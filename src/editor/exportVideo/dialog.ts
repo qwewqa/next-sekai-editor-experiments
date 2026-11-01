@@ -5,10 +5,7 @@ import { computed, reactive, ref, shallowRef, watch, type Ref } from 'vue'
 import { bump, busy, record } from '../../analytics/tally'
 import {
     createCodecAvailability,
-    deviceClass,
-    fitsPixelBudget,
     outputSize,
-    qualifiedPixelBudgets,
     type CodecSettings,
     type CodecSupport,
 } from '../../exportVideo/codecs'
@@ -21,12 +18,14 @@ import {
     type Quality,
     type Resolution,
 } from '../../exportVideo/estimate'
+import { fitsGraphicsLimits, type GraphicsLimits } from '../../exportVideo/graphics'
 import {
     createExportJob,
     createExportServices,
     type JobDestination,
     type JobState,
 } from '../../exportVideo/job'
+import type { FromExportWorker } from '../../exportVideo/protocol'
 import type { ExportSettings } from '../../exportVideo/types'
 import { bgmEndOf } from '../../levelData/statistics'
 import { isNearlyFull } from '../../local/nearlyFull'
@@ -119,23 +118,6 @@ const formFromSettings = (look: DialogInput['look']) => ({
     audioBitrate: settings.exportVideoAudioBitrate,
 })
 export type DialogForm = ReturnType<typeof formFromSettings>
-
-/** What the GPU allows, read once from a throwaway context. */
-const graphicsLimits = () => {
-    try {
-        const gl = new OffscreenCanvas(1, 1).getContext('webgl2')
-        if (!gl) return undefined
-        const viewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array
-        const limits = {
-            viewport: [viewport[0] ?? 0, viewport[1] ?? 0] as const,
-            renderbuffer: gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number,
-        }
-        gl.getExtension('WEBGL_lose_context')?.loseContext()
-        return limits
-    } catch {
-        return undefined
-    }
-}
 
 export const createExportDialog = (input: DialogInput) => {
     const shared = (services ??= createExportServices())
@@ -248,25 +230,18 @@ export const createExportDialog = (input: DialogInput) => {
         },
         { immediate: true, deep: true },
     )
-    const limits = graphicsLimits()
-    const device = deviceClass({
-        deviceMemory: (navigator as Navigator & { deviceMemory?: number }).deviceMemory,
-        coarsePointer: matchMedia('(pointer: coarse)').matches,
-        screenWidth: screen.width,
-        screenHeight: screen.height,
-    })
+    const limits = shallowRef<GraphicsLimits>()
+    const limitsWorker = input.env.worker()
+    limitsWorker.onmessage = ({ data }: MessageEvent<FromExportWorker>) => {
+        if (data.type !== 'limits') return
+        limits.value = data.limits
+        limitsWorker.terminate()
+    }
+    limitsWorker.onerror = () => limitsWorker.terminate()
+    limitsWorker.postMessage({ type: 'limits' })
     const fits = (resolution: Resolution, scale: number) =>
-        !!limits &&
-        fitsPixelBudget(
-            outputSize(resolution, form.aspect),
-            scale,
-            {
-                ...limits,
-                deviceLimit: settings.exportVideoPixelLimit || undefined,
-            },
-            device,
-            input.env.budgets ?? qualifiedPixelBudgets,
-        )
+        !!limits.value &&
+        fitsGraphicsLimits(outputSize(resolution, form.aspect), scale, form.antialias, limits.value)
     const browserOk = (key: string) => {
         const choice = support.value.choices[key]
         return !choice || choice.supported
@@ -274,11 +249,9 @@ export const createExportDialog = (input: DialogInput) => {
     const unavailable = computed(() => {
         const out: Record<string, Unavailable | undefined> = {}
         for (const resolution of RESOLUTIONS)
-            out[`resolution:${resolution}`] = !fits(resolution, form.renderScale)
-                ? 'device'
-                : browserOk(`resolution:${resolution}`)
-                  ? undefined
-                  : 'browser'
+            out[`resolution:${resolution}`] = fits(resolution, form.renderScale)
+                ? undefined
+                : 'device'
         for (const scale of [1, 1.5, 2] as const)
             out[`renderScale:${scale}`] = fits(form.resolution, scale) ? undefined : 'device'
         for (const frameRate of [30, 60])
@@ -748,6 +721,7 @@ export const createExportDialog = (input: DialogInput) => {
     }
 
     const dispose = async () => {
+        limitsWorker.terminate()
         stopPlayback()
         document.removeEventListener('visibilitychange', onHidden)
         const running = current

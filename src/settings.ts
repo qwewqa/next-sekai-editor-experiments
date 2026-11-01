@@ -209,8 +209,6 @@ const settingsProperties = {
         { default: 192_000 },
     ),
     exportVideoAdvanced: Type.Boolean(),
-    // This device's render-pixel limit after exports of one size stopped twice; 0 for none.
-    exportVideoPixelLimit: number(0, 0, Number.MAX_SAFE_INTEGER),
     // Exports that stopped before they ended, counted by their render pixels.
     exportVideoStops: Type.Record(Type.String(), Type.Number(), { default: {} }),
 

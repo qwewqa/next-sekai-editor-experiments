@@ -49,7 +49,7 @@ export const createRenderTarget = (
     const viewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array
     const limit = Math.min(
         gl.getParameter(gl.MAX_TEXTURE_SIZE) as number,
-        gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number,
+        antialias ? (gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number) : Infinity,
     )
     if (
         !Number.isInteger(width) ||

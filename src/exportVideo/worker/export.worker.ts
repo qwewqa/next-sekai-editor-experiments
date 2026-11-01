@@ -1,6 +1,7 @@
 import { testKeysOpen } from '../../platform/testKeys'
 import { FileError } from '../../platform/types'
 import { exportError, serializeExportError } from '../error'
+import { readGraphicsLimits } from '../graphics'
 import type { FromExportWorker, ToExportWorker } from '../protocol'
 import type { AudioBlock } from '../timing'
 import type { ExportStart, ExportTarget } from '../types'
@@ -176,7 +177,9 @@ export const installExportWorker = (
         }
     }
     scope.onmessage = ({ data }) => {
-        if (data.type === 'visibility') hidden = data.hidden
+        if (data.type === 'limits') {
+            post({ type: 'limits', limits: readGraphicsLimits() })
+        } else if (data.type === 'visibility') hidden = data.hidden
         else if (data.type === 'prepare') {
             try {
                 prepare(data.start)

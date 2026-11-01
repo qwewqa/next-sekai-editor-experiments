@@ -1,6 +1,6 @@
 // Where the dialog's export goes and what draws it: the page's own, or a test's.
 
-import type { PixelBudgets, VideoFormat } from '../../exportVideo/codecs'
+import type { VideoFormat } from '../../exportVideo/codecs'
 import type { JobDestination } from '../../exportVideo/job'
 import type { ExportFaults } from '../../exportVideo/protocol'
 import { i18n } from '../../i18n'
@@ -28,7 +28,6 @@ export type ExportVideoEnv = {
     destination(request: DestinationRequest): Promise<JobDestination>
     /** A save picker names the file, so the button asks first (Export…). */
     picker: boolean
-    budgets?: PixelBudgets
     faults?: ExportFaults
 }
 

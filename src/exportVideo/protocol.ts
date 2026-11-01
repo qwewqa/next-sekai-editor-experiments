@@ -1,4 +1,5 @@
 import type { ExportFailure } from './error'
+import type { GraphicsLimits } from './graphics'
 import type { AudioBlock } from './timing'
 import type { ExportSettings, ExportStart, ExportTarget } from './types'
 
@@ -9,6 +10,7 @@ export type ExportFaults = {
     hold?: 'mix' | 'drain' | 'finalize'
 }
 export type ToExportWorker =
+    | { type: 'limits' }
     | { type: 'prepare'; start: ExportStart }
     | { type: 'view'; time: number; settings: ExportSettings }
     | { type: 'visibility'; hidden: boolean }
@@ -23,6 +25,7 @@ export type ToExportWorker =
     | { type: 'cancel' }
     | { type: 'commit' }
 export type FromExportWorker =
+    | { type: 'limits'; limits?: GraphicsLimits }
     | { type: 'prepared' }
     | { type: 'view'; bitmap: ImageBitmap }
     | { type: 'block' }

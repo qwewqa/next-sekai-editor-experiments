@@ -266,14 +266,17 @@ test('a time that cannot be read is not applied', async ({ page }) => {
     await expect(outField).toHaveValue(before)
 })
 
-test('sizes this device is not qualified for are not offered', async ({ page }) => {
-    const dialog = await open(page, { unqualified: true })
-    await expect(
-        dialog.locator('.form-field-notes', {
-            hasText: 'Unavailable on this device with these settings: 720p, 1080p',
-        }),
-    ).toBeVisible()
-    await expect(exportButton(page)).toBeDisabled()
+test('4K at 2x is offered within the GPU limits', async ({ page }) => {
+    const dialog = await open(page)
+    const resolution = dialog.getByRole('combobox', { name: 'Resolution' })
+    await expect(resolution.locator('option', { hasText: '2160p' })).toBeEnabled()
+    await resolution.selectOption({ label: '2160p' })
+    await dialog.getByRole('button', { name: 'Advanced', exact: true }).click()
+    const scale = dialog.getByRole('radio', { name: '2x', exact: true })
+    await expect(scale).toBeEnabled()
+    await scale.click()
+    await expect(dialog.getByRole('switch', { name: 'Antialiasing' })).toBeChecked()
+    await expect(resolution.locator('option:disabled')).toHaveCount(0)
 })
 
 test('while peeking, the line names the step as the peek bar does', async ({ page }) => {
