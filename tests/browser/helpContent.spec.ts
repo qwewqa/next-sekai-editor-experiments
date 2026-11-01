@@ -61,7 +61,6 @@ const pointerKeys = [
     'modal.brushTool.brush',
     'modal.pasteTool.paste',
     'modal.generateSlideNotesTool.generate',
-    'generateSlideNotesTool.fillSelection',
     'modal.adding.add',
     'modal.adding.edit',
     'modal.adding.modifiers',
@@ -73,6 +72,7 @@ const pointerKeys = [
     'groups.current',
     'stages.current',
     'preview.drag',
+    'minimap.overview',
 ] as const
 
 const lineText = (path: string) =>

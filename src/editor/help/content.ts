@@ -152,7 +152,10 @@ export const helpSections = [
             {
                 id: 'utilities',
                 commands: ['utilities'],
-                lines: [{ text: () => i18n.value.help.utilities.levelInfo }],
+                lines: [
+                    { text: () => i18n.value.help.utilities.editors },
+                    { text: () => i18n.value.help.utilities.levelInfo },
+                ],
             },
         ],
     },
@@ -349,10 +352,7 @@ export const helpSections = [
                         tap: () => i18n.value.help.modal.generateSlideNotesTool.generate,
                         click: () => i18n.value.help.modal.generateSlideNotesTool.generateClick,
                     },
-                    {
-                        tap: () => i18n.value.help.generateSlideNotesTool.fillSelection,
-                        click: () => i18n.value.help.generateSlideNotesTool.fillSelectionClick,
-                    },
+                    { text: () => i18n.value.help.generateSlideNotesTool.fillSelection },
                 ],
             },
         ],
@@ -365,6 +365,7 @@ export const helpSections = [
                 id: 'bpm',
                 commands: ['bpm'],
                 lines: [
+                    { text: () => i18n.value.help.bpm.tempo },
                     { text: () => i18n.value.help.modal.bpmTool.first },
                     { text: () => i18n.value.help.modal.bpmTool.replace },
                 ],
@@ -373,6 +374,7 @@ export const helpSections = [
                 id: 'timeScale',
                 commands: ['timeScale'],
                 lines: [
+                    { text: () => i18n.value.help.timeScale.speed },
                     { text: () => i18n.value.help.modal.timeScaleTool.markers },
                     { text: () => i18n.value.help.modal.timeScaleTool.ease },
                 ],
@@ -387,6 +389,7 @@ export const helpSections = [
                 id: 'groups',
                 commands: ['manageGroups', 'groupPrev', 'groupNext', 'groupAll'],
                 lines: [
+                    { text: () => i18n.value.help.groups.speed },
                     {
                         tap: () => i18n.value.help.groups.current,
                         click: () => i18n.value.help.groups.currentClick,
@@ -397,6 +400,7 @@ export const helpSections = [
                 id: 'stages',
                 commands: ['manageStages', 'stagePrev', 'stageNext', 'stageAll'],
                 lines: [
+                    { text: () => i18n.value.help.stages.lanes },
                     {
                         tap: () => i18n.value.help.stages.current,
                         click: () => i18n.value.help.stages.currentClick,
@@ -443,12 +447,26 @@ export const helpSections = [
             {
                 id: 'minimap',
                 commands: ['minimap'],
-                lines: [{ text: () => i18n.value.help.minimap.changes }],
+                lines: [
+                    {
+                        tap: () => i18n.value.help.minimap.overview,
+                        click: () => i18n.value.help.minimap.overviewClick,
+                    },
+                    { text: () => i18n.value.help.minimap.changes },
+                ],
             },
             {
                 id: 'snapping',
                 commands: ['snapping', 'laneSnapping'],
-                lines: [{ text: () => i18n.value.help.snapping.modes }],
+                lines: [
+                    { text: () => i18n.value.help.snapping.switch },
+                    { text: () => i18n.value.help.snapping.modes },
+                ],
+            },
+            {
+                id: 'statistics',
+                commands: ['statistics'],
+                lines: [{ text: () => i18n.value.help.statistics.contents }],
             },
         ],
     },
@@ -473,7 +491,6 @@ export const NO_ENTRY = [
     'reset',
     // Each opens a dialog whose fields name what they show or set.
     'properties',
-    'statistics',
     // The label and the notice say it.
     'speedDown',
     'speedUp',

@@ -643,8 +643,8 @@
         "settings": "Consultez et modifiez les raccourcis dans Paramètres › Raccourcis clavier."
       },
       "selectTool": {
-        "select": "Lorsque des objets se superposent, chaque appui sélectionne le suivant.",
-        "selectClick": "Lorsque des objets se superposent, chaque clic sélectionne le suivant.",
+        "select": "Appuyez sur un objet pour le sélectionner.",
+        "selectClick": "Cliquez sur un objet pour le sélectionner.",
         "move": "Faites glisser un objet sélectionné pour déplacer toute la sélection.",
         "modifiers": "Maintenez Ctrl (Cmd sous macOS) pour ajouter des objets à la sélection ou les en retirer. Maintenez Maj pour sélectionner des slides entiers.",
         "selectMultiple": "Tracez un cadre en faisant glisser depuis une zone vide pour sélectionner les objets à l’intérieur."
@@ -677,8 +677,8 @@
         "splitCombine": "Scinder le slide coupe la connexion après chaque note sélectionnée. Combiner en slide réunit les slides contenant les notes sélectionnées."
       },
       "generateSlideNotesTool": {
-        "generate": "Appuyez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide.",
-        "generateClick": "Cliquez sur une note pour remplir son slide de notes attachées, une sur chaque ligne de division vide."
+        "generate": "Appuyez sur une note pour ajouter des notes attachées le long de son slide, une sur chaque ligne de division vide.",
+        "generateClick": "Cliquez sur une note pour ajouter des notes attachées le long de son slide, une sur chaque ligne de division vide."
       },
       "adding": {
         "add": "Avec Note, Slide, BPM, Échelle de temps ou Événement, appuyez sur une zone vide pour ajouter un objet. Avec Note ou Slide, faites glisser dans une zone vide pour ajouter une note de cette largeur.",
@@ -741,7 +741,8 @@
       "contents": "Les données de niveau contiennent la partition, la Vie initiale et le décalage de la musique, mais pas la musique ni le reste des Informations du niveau."
     },
     "utilities": {
-      "levelInfo": "L’Éditeur de la couverture et l’Éditeur de l’aperçu sauvegardent la couverture ou l’extrait audio qu’ils créent dans un fichier. Pour définir la couverture ou l’extrait audio du niveau, utilisez Informations du niveau."
+      "editors": "L’Éditeur de la couverture crée une couverture à partir d’une image, et l’Éditeur de l’aperçu crée un extrait audio à partir d’une partie de la musique.",
+      "levelInfo": "Tous deux sauvegardent ce qu’ils créent dans un fichier. Pour définir la couverture ou l’extrait audio du niveau, utilisez Informations du niveau."
     },
     "play": {
       "startPosition": "Pour que Lire démarre au curseur de lecture, réglez Position de départ sur Curseur dans Paramètres › Lecture.",
@@ -761,13 +762,13 @@
       "view": "Appuyez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
       "viewClick": "Cliquez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
       "showChange": "Afficher la modification fait défiler la partition jusqu’à la modification suivante de l’étape de la Chronologie que vous consultez.",
-      "editsHere": "Trouver les modifications ici affiche uniquement les étapes de la Chronologie qui ont modifié la partition entre le premier et le dernier objet sélectionnés. Sans sélection, la recherche porte sur la partie visible de la partition."
+      "editsHere": "Trouver les modifications ici affiche les étapes de la Chronologie qui ont modifié la partie sélectionnée de la partition. Sans sélection, la recherche porte sur la partie visible de la partition."
     },
     "pasteTool": {
       "clipboardHistory": "L’Historique du presse-papiers du panneau Propriétés affiche vos copies récentes. Choisissez-en une pour la coller ensuite."
     },
     "selectTool": {
-      "resizeSelection": "Lorsque vous faites glisser le bord d’un objet sélectionné, les objets sélectionnés sont redimensionnés ensemble s’ils sont tous du même type, et déplacés sinon."
+      "resizeSelection": "Pour redimensionner plusieurs objets ensemble, sélectionnez des objets du même type et faites glisser le bord de l’un d’eux."
     },
     "deselect": {
       "select": "Passe à l’outil Sélectionner lorsqu’aucun objet n’est sélectionné."
@@ -782,27 +783,34 @@
       "elevation": "Déplace les notes sélectionnées au temps de la première et règle l’Élévation de chaque note sur le nombre de temps dont elle a été déplacée."
     },
     "scale": {
-      "drag": "Tant que la boîte de dialogue est ouverte, vous pouvez aussi redimensionner en faisant glisser. Pour Mettre les temps à l’échelle, faites glisser la première ou la dernière note sélectionnée. Pour Mettre les élévations à l’échelle, faites glisser la note sélectionnée la plus haute ou la plus basse dans l’Éditeur d’élévation. Pour Redimensionner la largeur, faites glisser le bord d’une note, d’un événement de caméra ou d’un événement de masque de scène sélectionné."
+      "drag": "Tant que la boîte de dialogue est ouverte, vous pouvez aussi redimensionner en faisant glisser. Pour Mettre les temps à l’échelle, faites glisser la première ou la dernière note sélectionnée. Pour Mettre les élévations à l’échelle, faites glisser la note sélectionnée la plus haute ou la plus basse dans l’Éditeur d’élévation. Pour Redimensionner la largeur, faites glisser le bord d’un objet sélectionné."
     },
     "elevation": {
       "beat": "Modifie les élévations des notes situées à un même temps."
     },
     "editorLayout": {
-      "layouts": "Composée affiche les scènes et décale les notes latéralement selon la Voie du pivot et la Translation X des scènes. De base affiche chaque note sur sa propre voie."
+      "layouts": "Composée affiche les scènes et place les notes par rapport à elles. De base affiche chaque note sur sa propre voie."
     },
     "slideTool": {
       "quickEditPanel": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées.",
       "quickEditPanelClick": "Lorsque le panneau Propriétés est affiché, cliquez sur une note sélectionnée pour définir les propriétés du préréglage actuel ou faire défiler leurs valeurs sur toutes les notes sélectionnées."
     },
     "generateSlideNotesTool": {
-      "fillSelection": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Appuyez sur une note sélectionnée pour remplir l’espace entre les notes sélectionnées de chaque slide, ou le slide entier si une seule de ses notes est sélectionnée.",
-      "fillSelectionClick": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles. Cliquez sur une note sélectionnée pour remplir l’espace entre les notes sélectionnées de chaque slide, ou le slide entier si une seule de ses notes est sélectionnée."
+      "fillSelection": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles."
+    },
+    "bpm": {
+      "tempo": "Ajoute des changements de BPM pour définir le tempo de la partition."
+    },
+    "timeScale": {
+      "speed": "Ajoute des changements d’échelle de temps pour régler la vitesse d’un groupe. Les notes se jouent toujours aux mêmes moments."
     },
     "groups": {
+      "speed": "Chaque groupe a sa propre vitesse, réglée par ses changements d’échelle de temps.",
       "current": "Appuyez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouveaux changements d’échelle de temps y sont ajoutés, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés.",
       "currentClick": "Cliquez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouveaux changements d’échelle de temps y sont ajoutés, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés."
     },
     "stages": {
+      "lanes": "Chaque scène a ses propres voies, et ses événements de scène définissent son apparence et ses mouvements.",
       "current": "Appuyez sur une scène pour en faire la scène actuelle. Les nouvelles notes et les nouveaux événements de scène y sont ajoutés, et les objets des autres scènes ne peuvent pas être sélectionnés ni modifiés.",
       "currentClick": "Cliquez sur une scène pour en faire la scène actuelle. Les nouvelles notes et les nouveaux événements de scène y sont ajoutés, et les objets des autres scènes ne peuvent pas être sélectionnés ni modifiés."
     },
@@ -817,10 +825,16 @@
       "easeStepClick": "Lorsque le panneau Propriétés est affiché, cliquez sur un événement sélectionné pour faire passer son Type d’interp. à la valeur suivante."
     },
     "minimap": {
+      "overviewClick": "La minicarte affiche toute la partition. Faites glisser son cadre pour faire défiler, ou cliquez ailleurs sur la minicarte pour aller à cet endroit.",
+      "overview": "La minicarte affiche toute la partition. Faites glisser son cadre pour faire défiler, ou appuyez ailleurs sur la minicarte pour aller à cet endroit.",
       "changes": "Lorsque vous consultez une étape de la Chronologie, les repères sur la minicarte indiquent où cette étape a modifié la partition."
     },
     "snapping": {
-      "modes": "Absolu aligne les objets sur la grille lorsque vous les déplacez. Relatif les déplace par pas entiers de la grille, de sorte qu’un objet entre les lignes reste entre elles."
+      "switch": "Alignement bascule entre Absolu et Relatif, et Alignement des voies fait de même pour les voies.",
+      "modes": "Absolu aligne les objets sur la grille lorsque vous les déplacez. Relatif les déplace par pas entiers de la grille."
+    },
+    "statistics": {
+      "contents": "Affiche le combo de la partition, le nombre de notes de chaque type et un graphique Notes par seconde."
     }
   },
   "elevation": {
@@ -1023,7 +1037,7 @@
         "intro": "Définit les notes dont la largeur peut être réglée sur zéro voie avec les outils d’édition.",
         "choices": {
           "off": "Exige une largeur supérieure à zéro.",
-          "anchors": "Permet uniquement aux ancres d’avoir une largeur de zéro voie.",
+          "anchors": "Permet aux ancres d’avoir une largeur de zéro voie.",
           "all": "Permet à toutes les notes d’avoir une largeur de zéro voie."
         }
       },
@@ -1034,7 +1048,7 @@
       "nameContrast": "Entoure les noms des groupes et des scènes d’un contour noir et éclaircit les noms des scènes.",
       "dragToPanY": "Fait défiler la partition vers le haut ou vers le bas lorsque vous faites glisser près de son bord supérieur ou inférieur.",
       "dragToPanX": "Fait défiler la partition horizontalement lorsque vous faites glisser près de son bord gauche ou droit.",
-      "previewRenderScale": "Ajuste la résolution de rendu de l’aperçu. Des valeurs plus basses réduisent les détails et le travail de rendu.",
+      "previewRenderScale": "Ajuste la résolution de rendu de l’aperçu, de 0.25 à 2. Des valeurs plus basses réduisent les détails et le travail de rendu.",
       "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
       "toolbarQuickSwitch": "Permet de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
       "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur de lecture, de 0 en bas de la partition à 100 en haut.",
@@ -1057,7 +1071,7 @@
       },
       "showGroupName": "Affiche les noms des groupes à côté des notes et des changements d’échelle de temps qui ne sont pas dans le groupe par défaut.",
       "showStageName": "Affiche les noms des scènes à côté des notes et des événements de scène lorsque Scènes dynamiques est activé.",
-      "maxScrollX": "Définit jusqu’où vous pouvez faire défiler la partition à gauche ou à droite de son centre. Avec la disposition Composée, vous pouvez aller plus loin pour atteindre les notes et les scènes.",
+      "maxScrollX": "Définit jusqu’où vous pouvez faire défiler la partition à gauche ou à droite de son centre.",
       "elevationEditorSideBySide": {
         "intro": "Définit si l’Éditeur d’élévation s’ouvre à côté de la partition ou à sa place.",
         "choices": {
@@ -1066,9 +1080,9 @@
           "disallow": "L’ouvre à la place de la partition."
         }
       },
-      "elevationConnectorArrows": "Affiche des flèches du début à la fin de chaque connecteur sur les slides sélectionnés ou survolés, là où il y a de la place entre les notes.",
+      "elevationConnectorArrows": "Affiche des flèches sur les connecteurs des slides sélectionnés ou survolés, pointant du début vers la fin.",
       "groupsStagesSideBySide": {
-        "intro": "Définit quand Groupes et Scènes s’affichent côte à côte sous Aperçu. Ce réglage s’applique lorsque ces trois panneaux sont tous affichés à gauche ou tous à droite.",
+        "intro": "Définit quand Groupes et Scènes s’affichent côte à côte sous Aperçu.",
         "choices": {
           "auto": "Les place côte à côte lorsque les panneaux sont larges.",
           "enabled": "Les place côte à côte dès que les deux y tiennent.",
@@ -1076,8 +1090,8 @@
         }
       },
       "confirmCloseUnsavedFile": "Demande confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet, même si elles sont stockées dans ce navigateur. Si la fermeture entraîne la perte de modifications, l’éditeur demande toujours confirmation.",
-      "previewNoteSpeed": "Plus la valeur est élevée, plus les notes approchent rapidement dans l’aperçu.",
-      "previewShowHitboxes": "Affiche les zones utilisées pour juger les notes et les slides, peu avant que les notes soient touchées et pendant que les slides sont actifs.",
+      "previewNoteSpeed": "Définit la vitesse à laquelle les notes approchent dans l’aperçu, de 1 à 12.",
+      "previewShowHitboxes": "Affiche les zones utilisées pour juger les notes et les slides.",
       "previewShowEffects": "Affiche des particules et des lueurs lorsque les notes sont touchées et pendant que les slides sont maintenus dans l’aperçu.",
       "previewAntialias": "Lisse les contours en escalier dans l’aperçu.",
       "previewTransportPosition": {
@@ -1113,7 +1127,7 @@
           "touch": "Colore le fond de la zone lorsque l’appareil prend en charge le tactile."
         }
       },
-      "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après un déplacement à deux doigts ou un glissement dans la zone de défilement rapide."
+      "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après un défilement tactile."
     },
     "sections": "Rubriques",
     "localData": {

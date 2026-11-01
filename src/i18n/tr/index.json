@@ -643,8 +643,8 @@
         "settings": "Kısayolları Ayarlar › Klavye Kısayolları bölümünde görüntüleyebilir ve değiştirebilirsiniz."
       },
       "selectTool": {
-        "select": "Nesnelerin üst üste geldiği yerlerde her dokunuş bir sonraki nesneyi seçer.",
-        "selectClick": "Nesnelerin üst üste geldiği yerlerde her tıklama bir sonraki nesneyi seçer.",
+        "select": "Bir nesneyi seçmek için ona dokunun.",
+        "selectClick": "Bir nesneyi seçmek için ona tıklayın.",
         "move": "Seçimin tamamını taşımak için seçili bir nesneyi sürükleyin.",
         "modifiers": "Seçime nesne eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutun. Kaydırmaların tamamını seçmek için Shift tuşunu basılı tutun.",
         "selectMultiple": "İçindeki nesneleri seçmek için boş alandan başlayıp sürükleyerek bir çerçeve çizin."
@@ -677,8 +677,8 @@
         "splitCombine": "Kaydırmayı Böl, seçili her notadan sonraki bağlantıyı keser. Kaydırmada Birleştir, seçili notaları içeren kaydırmaları birleştirir."
       },
       "generateSlideNotesTool": {
-        "generate": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine dokunun. Her boş bölüm çizgisine bir nota eklenir.",
-        "generateClick": "Bir kaydırmayı ekli notalarla doldurmak için notalarından birine tıklayın. Her boş bölüm çizgisine bir nota eklenir."
+        "generate": "Bir kaydırma boyunca ekli notalar eklemek için notalarından birine dokunun. Her boş bölüm çizgisine bir nota eklenir.",
+        "generateClick": "Bir kaydırma boyunca ekli notalar eklemek için notalarından birine tıklayın. Her boş bölüm çizgisine bir nota eklenir."
       },
       "adding": {
         "add": "Nota, Kaydırma, BPM, Zaman Ölçeği veya Olay aracında bir nesne eklemek için boş alana dokunun. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
@@ -741,7 +741,8 @@
       "contents": "Seviye verisi çizelgeyi, Başlangıç Canı’nı ve arka plan müziğinin zaman kaymasını içerir. Müziği ve Seviye Bilgileri’nin geri kalanını içermez."
     },
     "utilities": {
-      "levelInfo": "Kapak Editörü ve Önizleme Editörü, oluşturdukları kapağı veya önizleme sesini dosya olarak kaydeder. Seviyenin kapağını veya önizleme sesini ayarlamak için Seviye Bilgileri’ni kullanın."
+      "editors": "Kapak Editörü bir görselden kapak, Önizleme Editörü ise arka plan müziğinin bir bölümünden önizleme sesi oluşturur.",
+      "levelInfo": "İkisi de oluşturduklarını dosya olarak kaydeder. Seviyenin kapağını veya önizleme sesini ayarlamak için Seviye Bilgileri’ni kullanın."
     },
     "play": {
       "startPosition": "Oynat komutunun oynatma imlecinden başlaması için Ayarlar › Oynat bölümünde Başlangıç Konumu’nu İmleç olarak ayarlayın.",
@@ -761,13 +762,13 @@
       "view": "Çizelgenin o zamanki hâlini görmek için bir Zaman Çizgisi adımına dokunun. Geri Yükle, bu sürümü yeni bir Zaman Çizgisi adımı olarak geri getirir.",
       "viewClick": "Çizelgenin o zamanki hâlini görmek için bir Zaman Çizgisi adımına tıklayın. Geri Yükle, bu sürümü yeni bir Zaman Çizgisi adımı olarak geri getirir.",
       "showChange": "Değişikliği Göster, görüntülediğiniz Zaman Çizgisi adımındaki bir sonraki değişikliğe kaydırır.",
-      "editsHere": "Buradaki Düzenlemeleri Bul, yalnızca seçili ilk ve son nesne arasındaki çizelgeyi değiştiren Zaman Çizgisi adımlarını gösterir. Hiçbir şey seçili değilse çizelgenin görünür kısmını kullanır."
+      "editsHere": "Buradaki Düzenlemeleri Bul, çizelgenin seçili kısmını değiştiren Zaman Çizgisi adımlarını gösterir. Hiçbir şey seçili değilse çizelgenin görünür kısmını kullanır."
     },
     "pasteTool": {
       "clipboardHistory": "Özellikler panelindeki Pano Geçmişi, son kopyaladıklarınızı listeler. Bir sonraki yapıştırmada kullanmak için bunlardan birini seçin."
     },
     "selectTool": {
-      "resizeSelection": "Seçili bir nesnenin kenarını sürüklediğinizde, seçili nesnelerin tümü aynı türdeyse boyutları birlikte değişir; farklı türlerdeyse birlikte taşınırlar."
+      "resizeSelection": "Birden fazla nesnenin boyutunu birlikte değiştirmek için aynı türde nesneler seçin ve birinin kenarını sürükleyin."
     },
     "deselect": {
       "select": "Hiçbir şey seçili değilken Seç aracına geçer."
@@ -782,27 +783,34 @@
       "elevation": "Seçili notaları en erken notanın vuruşuna taşır ve her notanın Yükseklik değerini taşındığı vuruş sayısına ayarlar."
     },
     "scale": {
-      "drag": "İletişim kutusu açıkken sürükleyerek de ölçekleyebilirsiniz. Vuruşları Ölçekle için seçili ilk veya son notayı sürükleyin. Yükseklikleri Ölçekle için Yükseklik Editörü’nde seçili en yüksek veya en alçak notayı sürükleyin. Genişliği Ölçekle için seçili bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin."
+      "drag": "İletişim kutusu açıkken sürükleyerek de ölçekleyebilirsiniz. Vuruşları Ölçekle için seçili ilk veya son notayı sürükleyin. Yükseklikleri Ölçekle için Yükseklik Editörü’nde seçili en yüksek veya en alçak notayı sürükleyin. Genişliği Ölçekle için seçili bir nesnenin kenarını sürükleyin."
     },
     "elevation": {
       "beat": "Bir vuruştaki notaların yüksekliklerini düzenler."
     },
     "editorLayout": {
-      "layouts": "Birleşik, sahneleri gösterir ve notaları sahnelerin Referans Noktası Şeridi ve X Ötelemesi değerlerine göre yana kaydırır. Temel, her notayı kendi şeridinde gösterir."
+      "layouts": "Birleşik, sahneleri gösterir ve notaları sahnelere göre konumlandırır. Temel, her notayı kendi şeridinde gösterir."
     },
     "slideTool": {
       "quickEditPanel": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun.",
       "quickEditPanelClick": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya tıklayın."
     },
     "generateSlideNotesTool": {
-      "fillSelection": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Her kaydırmanın seçili notaları arasını veya yalnızca bir notası seçiliyse kaydırmanın tamamını doldurmak için seçili bir notaya dokunun.",
-      "fillSelectionClick": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın. Her kaydırmanın seçili notaları arasını veya yalnızca bir notası seçiliyse kaydırmanın tamamını doldurmak için seçili bir notaya tıklayın."
+      "fillSelection": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın."
+    },
+    "bpm": {
+      "tempo": "Çizelgenin temposunu belirlemek için BPM değişiklikleri ekler."
+    },
+    "timeScale": {
+      "speed": "Bir grubun hızını ayarlamak için zaman ölçeği değişiklikleri ekler. Notalara basılma zamanları değişmez."
     },
     "groups": {
+      "speed": "Her grubun kendi zaman ölçeği değişiklikleriyle belirlenen bir hızı vardır.",
       "current": "Bir grubu geçerli grup yapmak için ona dokunun. Yeni notalar ve zaman ölçeği değişiklikleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez.",
       "currentClick": "Bir grubu geçerli grup yapmak için ona tıklayın. Yeni notalar ve zaman ölçeği değişiklikleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez."
     },
     "stages": {
+      "lanes": "Her sahnenin kendi şeritleri vardır ve sahne olayları, sahnenin nasıl göründüğünü ve hareket ettiğini belirler.",
       "current": "Bir sahneyi geçerli sahne yapmak için ona dokunun. Yeni notalar ve sahne olayları bu sahneye eklenir; diğer sahnelerdeki nesneler seçilemez veya düzenlenemez.",
       "currentClick": "Bir sahneyi geçerli sahne yapmak için ona tıklayın. Yeni notalar ve sahne olayları bu sahneye eklenir; diğer sahnelerdeki nesneler seçilemez veya düzenlenemez."
     },
@@ -817,10 +825,16 @@
       "easeStepClick": "Özellikler paneli görünürken Yumuşatma Türü’nü bir sonrakine geçirmek için seçili bir olaya tıklayın."
     },
     "minimap": {
+      "overviewClick": "Mini harita çizelgenin tamamını gösterir. Kaydırmak için kutusunu sürükleyin veya mini haritada başka bir yere tıklayarak oraya atlayın.",
+      "overview": "Mini harita çizelgenin tamamını gösterir. Kaydırmak için kutusunu sürükleyin veya mini haritada başka bir yere dokunarak oraya atlayın.",
       "changes": "Bir Zaman Çizgisi adımını görüntülerken mini haritadaki işaretler, o adımın çizelgeyi nerede değiştirdiğini gösterir."
     },
     "snapping": {
-      "modes": "Mutlak, nesneleri taşırken ızgaraya hizalar. Göreceli, nesneleri ızgara aralığının tam katları kadar taşır; böylece ızgara çizgileri arasındaki bir nesne yine çizgiler arasında kalır."
+      "switch": "Hizalama, Mutlak ve Göreceli hizalama arasında geçiş yapar; Şerit Hizalama da şeritler için aynı geçişi yapar.",
+      "modes": "Mutlak, nesneleri taşırken ızgaraya hizalar. Göreceli, nesneleri ızgara aralığının tam katları kadar taşır."
+    },
+    "statistics": {
+      "contents": "Çizelgenin kombosunu, her türdeki nota sayısını ve Saniye Başına Nota grafiğini gösterir."
     }
   },
   "elevation": {
@@ -1023,7 +1037,7 @@
         "intro": "Düzenleme araçlarıyla hangi notaların sıfır şerit genişliğine getirilebileceğini belirler.",
         "choices": {
           "off": "Genişliğin sıfırdan büyük olmasını gerektirir.",
-          "anchors": "Yalnızca sabit noktaların sıfır şerit genişliğinde olmasına izin verir.",
+          "anchors": "Sabit noktaların sıfır şerit genişliğinde olmasına izin verir.",
           "all": "Tüm notaların sıfır şerit genişliğinde olmasına izin verir."
         }
       },
@@ -1034,7 +1048,7 @@
       "nameContrast": "Grup ve sahne adlarının çevresine siyah bir kontur ekler ve sahne adlarını daha parlak gösterir.",
       "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklediğinizde çizelgeyi yukarı veya aşağı kaydırır.",
       "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklediğinizde çizelgeyi yana kaydırır.",
-      "previewRenderScale": "Önizlemenin çizim çözünürlüğünü ölçekler. Daha düşük değerler ayrıntıyı ve çizim yükünü azaltır.",
+      "previewRenderScale": "Önizlemenin çizim çözünürlüğünü 0.25 ile 2 arasında ölçekler. Daha düşük değerler ayrıntıyı ve çizim yükünü azaltır.",
       "previewInWorker": "Önizlemeyi editörün geri kalanıyla paralel olarak çizer. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
       "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçmenizi sağlar.",
       "playFollowPosition": "Takip Et’in oynatma imlecini hangi yükseklikte tutacağını belirler. Çizelgenin altı 0, üstü 100’dür.",
@@ -1057,7 +1071,7 @@
       },
       "showGroupName": "Varsayılan grubun dışındaki notaların ve zaman ölçeği değişikliklerinin yanında grup adlarını gösterir.",
       "showStageName": "Dinamik Sahneler açıkken notaların ve sahne olaylarının yanında sahne adlarını gösterir.",
-      "maxScrollX": "Çizelgenin merkezinden sola veya sağa ne kadar kaydırabileceğinizi belirler. Birleşik düzende notalara ve sahnelere ulaşmak için daha uzağa kaydırabilirsiniz.",
+      "maxScrollX": "Çizelgenin merkezinden sola veya sağa ne kadar kaydırabileceğinizi belirler.",
       "elevationEditorSideBySide": {
         "intro": "Yükseklik Editörünün çizelgenin yanında mı yoksa yerine mi açılacağını belirler.",
         "choices": {
@@ -1066,9 +1080,9 @@
           "disallow": "Çizelgenin yerine açar."
         }
       },
-      "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmalarda, notaların arasında yer olan kısımlarda her bağlayıcının başlangıcından sonuna doğru oklar gösterir.",
+      "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmalarda, her bağlayıcının başlangıcından sonuna doğru oklar gösterir.",
       "groupsStagesSideBySide": {
-        "intro": "Gruplar ve Sahneler panellerinin Önizleme’nin altında ne zaman yan yana gösterileceğini belirler. Bu ayar, üçü de sol panellerde veya üçü de sağ panellerde gösterildiğinde geçerlidir.",
+        "intro": "Gruplar ve Sahneler panellerinin Önizleme’nin altında ne zaman yan yana gösterileceğini belirler.",
         "choices": {
           "auto": "Paneller geniş olduğunda yan yana yerleştirir.",
           "enabled": "İkisi de sığdığında yan yana yerleştirir.",
@@ -1076,8 +1090,8 @@
         }
       },
       "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa, bu tarayıcıda saklanıyor olsalar bile sayfa kapanmadan önce onay ister. Kapatmak değişikliklerin kaybolmasına yol açacaksa editör her zaman onay ister.",
-      "previewNoteSpeed": "Daha yüksek değerler, önizlemede notaların daha hızlı yaklaşmasını sağlar.",
-      "previewShowHitboxes": "Notalara basılmadan kısa bir süre önce ve kaydırmalar etkinken notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir.",
+      "previewNoteSpeed": "Önizlemede notaların yaklaşma hızını 1 ile 12 arasında belirler.",
+      "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir.",
       "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkları ve parlamaları gösterir.",
       "previewAntialias": "Önizlemedeki tırtıklı kenarları yumuşatır.",
       "previewTransportPosition": {
@@ -1113,7 +1127,7 @@
           "touch": "Dokunmatik giriş kullanılabiliyorsa alanı gölgelendirir."
         }
       },
-      "touchScrollInertia": "İki parmakla kaydırdıktan veya hızlı kaydırma alanında sürükledikten sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar."
+      "touchScrollInertia": "Dokunarak kaydırdıktan sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar."
     },
     "sections": "Bölümler",
     "localData": {
