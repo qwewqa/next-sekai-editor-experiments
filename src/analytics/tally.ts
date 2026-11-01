@@ -56,8 +56,8 @@ export const bumpCommand = (name: CommandName, source: Source) => {
     bump(key)
 }
 
-/** The events a flow records as they happen: `open`, `save`, `export`, `check`, `bgm` and `preview`. */
-type Recordable = 'open' | 'save' | 'export' | 'check' | 'bgm' | 'preview'
+/** The events a flow records as they happen. */
+type Recordable = 'open' | 'save' | 'export' | 'exportVideo' | 'check' | 'bgm' | 'preview'
 
 /**
  * A per-action event, such as a Save's outcome, kept until the client sends it. Sizes and times
@@ -91,7 +91,7 @@ export const peekShown = (ms: number | undefined) => {
 }
 
 let busyCount = 0
-/** An Open, Save, Restore, Check or BGM load is running, which the long frames are sorted by. */
+/** An Open, Save, Restore, Check, Export Video or BGM load is running. */
 export const busy = (on: boolean) => {
     const was = busyCount > 0
     busyCount = Math.max(0, busyCount + (on ? 1 : -1))

@@ -14,9 +14,55 @@ import {
     scales,
 } from '../../src/analytics/catalogue'
 import { requestFields, requestItem } from '../../src/analytics/rules'
+import { videoReport } from '../../src/editor/exportVideo/report'
 import { operationCodecs } from '../../src/history/operations/registry'
 
 const K = 1024
+
+test('the catalogue accepts video reports with device details and rejects private fields', () => {
+    const report = videoReport(
+        {
+            format: 'webm',
+            support: 'webmOnly',
+            resolution: 1080,
+            frameRate: 30,
+            aspect: '16:9',
+            quality: 'custom',
+            renderScale: 1.5,
+            antialias: true,
+            audio: 'both',
+            range: 'selection',
+            source: 'peek',
+        },
+        {
+            outcome: 'failed',
+            stage: 'finish',
+            reason: 'no-space',
+            target: 'picker',
+            hidden: true,
+            lengthSeconds: 123,
+            tookMs: 700_000,
+            renderingMs: 30_000,
+        },
+    )
+    const data = fromRaw('exportVideo', {
+        ...report,
+        cores: 8,
+        deviceMemory: '8',
+        engine: 'chromium',
+        touch: false,
+        dpr: 1,
+        viewport: 1600,
+        viewportHeight: 1000,
+        viewportAspect: 1.6,
+    })
+    assert.ok(Object.keys(data).length <= MAX_KEYS)
+    assert.ok(isValidEvent('exportVideo', data))
+    assert.equal(data.took, 600_000)
+    assert.equal(data.length, bucket('audio', 123_000))
+    for (const key of ['fileName', 'chartName', 'asset', 'in', 'out', 'bitrate', 'path', 'error'])
+        assert.equal(isValidEvent('exportVideo', { ...data, [key]: 'private' }), false, key)
+})
 
 test('each range starts at its limit and ends just below the next', () => {
     const edges: [Parameters<typeof bucket>[0], number, string][] = [

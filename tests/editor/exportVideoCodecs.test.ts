@@ -150,7 +150,7 @@ test('even output sizes must fit graphics, measured class and device limits', ()
     assert.deepEqual(outputSize(720, 21 / 9), { width: 1680, height: 720 })
     assert.equal(outputSize(721, 16 / 9).width % 2, 0)
     const limits = { viewport: [16384, 16384] as const, renderbuffer: 16384 }
-    assert.equal(fitsPixelBudget(outputSize(1080, 16 / 9), 1, limits, 'phone'), false)
+    assert.equal(fitsPixelBudget(outputSize(1080, 16 / 9), 1, limits, 'phone', {}), false)
     const budgets = { desktop: 20e6 }
     assert.equal(fitsPixelBudget(outputSize(1440, 16 / 9), 2, limits, 'desktop', budgets), true)
     assert.equal(fitsPixelBudget(outputSize(2160, 16 / 9), 1.5, limits, 'desktop', budgets), false)
@@ -169,4 +169,29 @@ test('even output sizes must fit graphics, measured class and device limits', ()
         deviceClass({ deviceMemory: 4, coarsePointer: true, screenWidth: 390, screenHeight: 844 }),
         'memory:4',
     )
+})
+
+test('provisional budgets allow 1080p at 2x on desktop and 1x on mobile and memory classes', () => {
+    const limits = { viewport: [16384, 16384] as const, renderbuffer: 16384 }
+    const fullHd = outputSize(1080, 16 / 9)
+    assert.equal(fitsPixelBudget(fullHd, 2, limits, 'desktop'), true)
+    assert.equal(fitsPixelBudget(outputSize(1080, 21 / 9), 2, limits, 'desktop'), false)
+    for (const device of [
+        'phone',
+        'tablet',
+        'memory:0.25',
+        'memory:0.5',
+        'memory:1',
+        'memory:2',
+        'memory:4',
+        'memory:8',
+        'memory:16',
+        'memory:32',
+    ] as const) {
+        assert.equal(fitsPixelBudget(fullHd, 1, limits, device), true, device)
+        assert.equal(fitsPixelBudget(fullHd, 1.5, limits, device), false, device)
+        assert.equal(fitsPixelBudget(outputSize(1080, 21 / 9), 1, limits, device), false, device)
+    }
+    assert.equal(fitsPixelBudget(fullHd, 1, { ...limits, renderbuffer: 1024 }, 'desktop'), false)
+    assert.equal(fitsPixelBudget(fullHd, 1, { ...limits, viewport: [1280, 720] }, 'desktop'), false)
 })

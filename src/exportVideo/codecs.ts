@@ -220,8 +220,23 @@ export const outputSize = (height: number, aspect: number) => ({
 })
 export type DeviceClass = 'phone' | 'tablet' | 'desktop' | `memory:${number}`
 export type PixelBudgets = Readonly<Partial<Record<DeviceClass, number>>>
-// No pair is offered until measurements qualify its class.
-export const qualifiedPixelBudgets: PixelBudgets = {}
+// Provisional desktop budget, pending headed qualification on the maintainer's machine.
+const DESKTOP_PIXEL_BUDGET = 1920 * 1080 * 2 ** 2
+// Provisional mobile budget, pending qualification on real devices. A memory class can be a phone.
+const MOBILE_PIXEL_BUDGET = 1920 * 1080
+export const qualifiedPixelBudgets: PixelBudgets = {
+    desktop: DESKTOP_PIXEL_BUDGET,
+    phone: MOBILE_PIXEL_BUDGET,
+    tablet: MOBILE_PIXEL_BUDGET,
+    'memory:0.25': MOBILE_PIXEL_BUDGET,
+    'memory:0.5': MOBILE_PIXEL_BUDGET,
+    'memory:1': MOBILE_PIXEL_BUDGET,
+    'memory:2': MOBILE_PIXEL_BUDGET,
+    'memory:4': MOBILE_PIXEL_BUDGET,
+    'memory:8': MOBILE_PIXEL_BUDGET,
+    'memory:16': MOBILE_PIXEL_BUDGET,
+    'memory:32': MOBILE_PIXEL_BUDGET,
+}
 export const deviceClass = (signals: {
     deviceMemory?: number
     coarsePointer: boolean

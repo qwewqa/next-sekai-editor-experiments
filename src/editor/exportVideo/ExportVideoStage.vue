@@ -125,7 +125,7 @@ const play = () => {
     }
     const { in: start, out } = d.range.value
     if (d.playhead.value < start || d.playhead.value >= out) d.playhead.value = start
-    d.used.playback = true
+    d.use('playback')
     player = startClipPlayer({
         time: d.playhead.value,
         source: d.input.snapshot,

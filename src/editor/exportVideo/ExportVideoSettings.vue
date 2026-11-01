@@ -97,7 +97,7 @@ const advanced = computed(() => settings.exportVideoAdvanced)
 const toggleAdvanced = async () => {
     settings.exportVideoAdvanced = !settings.exportVideoAdvanced
     if (!settings.exportVideoAdvanced) return
-    d.used.advanced = true
+    d.use('advanced')
     await nextTick()
     const disclosure = root.value?.querySelector<HTMLElement>('[data-export-advanced]')
     const scroller = disclosure?.closest<HTMLElement>('[data-export-scroller]')

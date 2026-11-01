@@ -2,7 +2,7 @@
 // renders this; the job owns every resource of an export (src/exportVideo/job.ts).
 
 import { computed, reactive, ref, shallowRef, watch, type Ref } from 'vue'
-import { busy } from '../../analytics/tally'
+import { bump, busy, record } from '../../analytics/tally'
 import {
     createCodecAvailability,
     deviceClass,
@@ -447,6 +447,7 @@ export const createExportDialog = (input: DialogInput) => {
     let picked: { name: string; handle?: FileSystemFileHandle; staged?: boolean } | undefined
     const destinationFor = async (signal: AbortSignal, id: string): Promise<JobDestination> => {
         const name = fileName()
+        attempt.stage = input.env.picker ? 'pick' : 'prepare'
         const destination = await input.env.destination({
             signal,
             id,
@@ -465,7 +466,8 @@ export const createExportDialog = (input: DialogInput) => {
                 : { name, staged: worker.kind === 'staged' }
         attempt.target =
             worker.kind === 'picked' ? 'picker' : worker.kind === 'memory' ? 'memory' : 'none'
-        attempt.stage = 'render'
+        attempt.pressed ??= performance.now()
+        attempt.stage = 'prepare'
         return destination
     }
     const fileName = () =>
@@ -475,27 +477,30 @@ export const createExportDialog = (input: DialogInput) => {
             format.value,
         )
 
-    // --- The usage event's attempt: built here, recorded once the catalogue has the event.
+    // --- One usage event per attempt, after its delivery is known.
     const attempt: {
         settings?: VideoReportSettings
         stage: NonNullable<VideoReportEnd['stage']>
         target: VideoReportEnd['target']
         hidden: boolean
-        pressed: number
+        pressed?: number
+        lengthSeconds: number
         renderStart?: number
         renderMs?: number
         workMs?: number
         size?: number
-    } = { stage: 'prepare', target: 'none', hidden: false, pressed: 0 }
-    const reports: ReturnType<typeof videoReport>[] = []
+    } = { stage: 'prepare', target: 'none', hidden: false, lengthSeconds: 0 }
     const report = (end: Omit<VideoReportEnd, 'target' | 'hidden' | 'lengthSeconds'>) => {
         if (!attempt.settings) return
-        reports.push(
+        record(
+            'exportVideo',
             videoReport(attempt.settings, {
+                tookMs: attempt.workMs,
+                renderingMs: attempt.renderMs,
                 ...end,
                 target: attempt.target,
                 hidden: attempt.hidden,
-                lengthSeconds: length.value,
+                lengthSeconds: attempt.lengthSeconds,
             }),
         )
         attempt.settings = undefined
@@ -520,6 +525,7 @@ export const createExportDialog = (input: DialogInput) => {
                 }
                 return
             case 'exporting':
+                attempt.stage = 'render'
                 attempt.renderStart ??= performance.now()
                 phase.value = 'exporting'
                 progress.value = { fraction: state.progress, eta: state.eta }
@@ -538,7 +544,8 @@ export const createExportDialog = (input: DialogInput) => {
         // The attempt ended.
         busy(false)
         document.removeEventListener('visibilitychange', onHidden)
-        attempt.workMs = performance.now() - attempt.pressed
+        attempt.workMs =
+            attempt.pressed === undefined ? undefined : performance.now() - attempt.pressed
         playhead.value = returnTo
         const ended = current
         if (state.phase === 'cancelled') {
@@ -610,7 +617,7 @@ export const createExportDialog = (input: DialogInput) => {
 
     const reportSettings = (): VideoReportSettings => ({
         format: format.value,
-        support: format.value === 'webm' && form.format === 'automatic' ? 'webmOnly' : 'full',
+        support: support.value.choices['format:mp4']?.supported ? 'full' : 'webmOnly',
         resolution: form.resolution,
         frameRate: form.frameRate,
         aspect: (previewAspectRatios.find(([, value]) => value === form.aspect)?.[0] ??
@@ -639,10 +646,11 @@ export const createExportDialog = (input: DialogInput) => {
         outcome.value = undefined
         Object.assign(attempt, {
             settings: reportSettings(),
-            stage: 'pick',
+            stage: 'prepare',
             target: 'none',
             hidden: document.hidden,
-            pressed: performance.now(),
+            pressed: input.env.picker ? undefined : performance.now(),
+            lengthSeconds: length.value,
             renderStart: undefined,
             renderMs: undefined,
             workMs: undefined,
@@ -687,8 +695,9 @@ export const createExportDialog = (input: DialogInput) => {
         const result = await ending.deliver(how)
         const shown = shownOutcome()
         if (result === 'delivered' && shown?.kind === 'ready') {
-            attempt.target = how
+            if (attempt.target !== 'memory') attempt.target = how
             outcome.value = { ...shown, delivered: true }
+            report({ outcome: 'done', sizeBytes: shown.size })
         }
         return result
     }
@@ -717,8 +726,13 @@ export const createExportDialog = (input: DialogInput) => {
         viewJob.value = job
         void old.dispose()
     }
-    /** Which optional parts were used, for the usage counters once they exist. */
+    /** Count each optional part once per dialog, at its first use. */
     const used = { playback: false, advanced: false }
+    const use = (part: keyof typeof used) => {
+        if (used[part]) return
+        used[part] = true
+        bump(part === 'playback' ? 'features.videoPlayback' : 'features.videoAdvanced')
+    }
     /** The view job draws with the settings as they are now. */
     const configureView = () => {
         if (!busyPhase.value) viewJob.value.configure(exportSettings())
@@ -773,7 +787,6 @@ export const createExportDialog = (input: DialogInput) => {
         stoppedLine,
         viewJob,
         playing,
-        reports,
         setRange,
         setClipEnd,
         useWhole,
@@ -789,7 +802,7 @@ export const createExportDialog = (input: DialogInput) => {
         exportSettings,
         configureView,
         resetViewJob,
-        used,
+        use,
         dispose,
         fps,
     }

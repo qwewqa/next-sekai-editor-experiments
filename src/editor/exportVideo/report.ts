@@ -1,3 +1,4 @@
+import type { RawData } from '../../analytics/catalogue'
 import type { FileErrorCode } from '../../platform/types'
 
 export type VideoReportSettings = {
@@ -34,7 +35,10 @@ export type VideoReportEnd = {
     tookMs?: number
     renderingMs?: number
 }
-export const videoSpeed = (lengthSeconds: number, renderingMs: number | undefined) => {
+export const videoSpeed = (
+    lengthSeconds: number,
+    renderingMs: number | undefined,
+): RawData<'exportVideo'>['speed'] => {
     if (
         renderingMs === undefined ||
         !Number.isFinite(renderingMs) ||
@@ -59,7 +63,7 @@ export const videoSpeed = (lengthSeconds: number, renderingMs: number | undefine
                   : '8+'
 }
 
-/** Call once at the attempt's end, with work time captured before Ready waits for delivery. */
+/** Call once at the attempt's end, with work time captured before the wait for delivery. */
 export const videoReport = (settings: VideoReportSettings, end: VideoReportEnd) => ({
     format: settings.format,
     support: settings.support,
@@ -73,12 +77,14 @@ export const videoReport = (settings: VideoReportSettings, end: VideoReportEnd) 
     range: settings.range,
     source: settings.source,
     outcome: end.outcome,
-    stage: end.outcome === 'done' ? undefined : end.stage,
-    reason: end.outcome === 'done' ? undefined : end.reason,
+    ...(end.outcome !== 'done' && end.stage !== undefined && { stage: end.stage }),
+    ...(end.outcome !== 'done' && end.reason !== undefined && { reason: end.reason }),
     target: end.target,
     hidden: end.hidden,
     length: end.lengthSeconds * 1000,
-    size: end.outcome === 'done' ? end.sizeBytes : undefined,
-    took: end.tookMs,
-    speed: videoSpeed(end.lengthSeconds, end.renderingMs),
+    ...(end.outcome === 'done' && end.sizeBytes !== undefined && { size: end.sizeBytes }),
+    ...(end.tookMs !== undefined && { took: end.tookMs }),
+    ...(videoSpeed(end.lengthSeconds, end.renderingMs) !== undefined && {
+        speed: videoSpeed(end.lengthSeconds, end.renderingMs),
+    }),
 })

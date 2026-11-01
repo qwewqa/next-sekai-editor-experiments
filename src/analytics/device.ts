@@ -4,7 +4,7 @@ import type { EventData } from './catalogue'
 import { bucket } from './scales'
 import { viewportDetails } from './viewport'
 
-// The device an event ran on. The recorded events (open, save, export, check, bgm) take it as the
+// The device an event ran on. The recorded events (open, save, export, exportVideo, check, bgm) take it as the
 // action ends, through the reader that start.ts gives `tally.record`, so a resize or a move to
 // another screen before the send does not relabel it. Startup, peek and perf, which cover a
 // stretch of time, take it when the client builds them. A few reads, nothing heavier.
@@ -49,7 +49,7 @@ export const device = (): Device => {
 }
 
 /** The recorded events that carry the device they ran on. */
-const measuredEvents = new Set(['open', 'save', 'export', 'check', 'bgm'])
+const measuredEvents = new Set(['open', 'save', 'export', 'exportVideo', 'check', 'bgm'])
 
 /** Reads the device for a recorded event that carries it, as the action ends. */
 export const deviceOf = (name: string) => (measuredEvents.has(name) ? device() : undefined)

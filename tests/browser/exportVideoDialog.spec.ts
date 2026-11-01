@@ -1,10 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import {
+    videoExportButton as exportButton,
+    openVideoDialog as open,
+    videoPhase as phase,
+    shortVideoClip as shortClip,
+} from './exportVideoDialog'
 import { resource } from './previewResourceFixture'
-
-type DialogOptions = Parameters<
-    (typeof import('../../src/editor/exportVideo/test'))['openExportVideoTest']
->[0]
 
 const boot = async (page: Page) => {
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
@@ -33,38 +35,8 @@ const boot = async (page: Page) => {
     await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.notes))
 }
 
-const open = async (page: Page, options: DialogOptions = {}) => {
-    await page.evaluate(async (options) => {
-        const { openExportVideoTest } = await window.editorTest.appImport<
-            typeof import('../../src/editor/exportVideo/test')
-        >('/src/editor/exportVideo/test.ts')
-        await openExportVideoTest(options)
-    }, options)
-    // Found by its content, so it is found in every language.
-    const dialog = page.locator('dialog:has([data-export-form])')
-    await expect(dialog).toBeVisible()
-    return dialog
-}
-
-/** A short clip at 720p, so an export takes a moment. */
-const shortClip = async (page: Page) => {
-    const dialog = page.getByRole('dialog', { name: 'Export Video' })
-    await dialog.getByRole('combobox', { name: 'Resolution' }).selectOption({ label: '720p' })
-    const inField = dialog.getByRole('textbox', { name: 'In' })
-    await inField.fill('0')
-    await inField.press('Enter')
-    const outField = dialog.getByRole('textbox', { name: 'Out' })
-    await outField.fill('1')
-    await outField.press('Enter')
-    await expect(dialog.locator('[data-export-summary]')).toContainText('00:01.000')
-}
-
 const liveWorkers = (page: Page) =>
     page.evaluate(() => (Reflect.get(window, 'liveExportWorkers') as Set<Worker>).size)
-
-const phase = (page: Page) => page.locator('[data-export-phase]').getAttribute('data-export-phase')
-
-const exportButton = (page: Page) => page.locator('[data-export-start]')
 
 test.beforeEach(async ({ page }) => {
     await boot(page)

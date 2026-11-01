@@ -316,6 +316,8 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
 }
 
 export type DialogTestOptions = {
+    /** Use the page's worker, destination and size budgets. */
+    production?: boolean
     /** `done` ends without Ready, as a picked file does. */
     route?: 'staged' | 'done'
     picker?: boolean
@@ -328,45 +330,54 @@ export type DialogTestOptions = {
 export const openExportVideoTest = async (options: DialogTestOptions = {}) => {
     if (!testKeysOpen) throw new Error('Export test hook is disabled')
     const { openExportVideo } = await import('./open')
+    const { pageEnv } = await import('./env')
     const budget = 16_800_000
     const budgets: Record<string, number> = { desktop: budget, tablet: budget, phone: budget }
     for (const memory of [0.25, 0.5, 1, 2, 4, 8, 16, 32]) budgets[`memory:${memory}`] = budget
     let exposed: ReturnType<typeof import('./dialog').createExportDialog> | undefined
     void openExportVideo(
-        {
-            picker: options.picker ?? false,
-            budgets: options.unqualified ? {} : budgets,
-            faults: options.faults,
-            worker: () =>
-                new Worker(new URL('./test.worker.ts', import.meta.url), {
-                    type: 'module',
-                    name: 'nse-export-test',
-                }),
-            destination: async ({ id, format }) => {
-                const stage = await webVideoOutput.stage(id, format)
-                const discard = async () => {
-                    await webVideoOutput.remove(id)
-                }
-                if (options.route === 'done')
-                    return {
-                        worker: { kind: 'staged', handle: stage.handle },
-                        // A finished file is removed at once: the test checks only the dialog.
-                        discard,
-                        ready: undefined,
-                    }
-                return {
-                    worker: { kind: 'staged', handle: stage.handle },
-                    ready: {
-                        file: () => webVideoOutput.file(id),
-                        deliver: (file, how) => webVideoOutput.deliver(file, `test.${format}`, how),
-                        end: async () => {
-                            await stage.endReady()
-                        },
-                    },
-                    discard,
-                }
-            },
-        },
+        options.production
+            ? pageEnv(
+                  () =>
+                      new Worker(new URL('./export.worker.ts', import.meta.url), {
+                          type: 'module',
+                      }),
+              )
+            : {
+                  picker: options.picker ?? false,
+                  budgets: options.unqualified ? {} : budgets,
+                  faults: options.faults,
+                  worker: () =>
+                      new Worker(new URL('./test.worker.ts', import.meta.url), {
+                          type: 'module',
+                          name: 'nse-export-test',
+                      }),
+                  destination: async ({ id, format }) => {
+                      const stage = await webVideoOutput.stage(id, format)
+                      const discard = async () => {
+                          await webVideoOutput.remove(id)
+                      }
+                      if (options.route === 'done')
+                          return {
+                              worker: { kind: 'staged', handle: stage.handle },
+                              // A finished file is removed at once: the test checks only the dialog.
+                              discard,
+                              ready: undefined,
+                          }
+                      return {
+                          worker: { kind: 'staged', handle: stage.handle },
+                          ready: {
+                              file: () => webVideoOutput.file(id),
+                              deliver: (file, how) =>
+                                  webVideoOutput.deliver(file, `test.${format}`, how),
+                              end: async () => {
+                                  await stage.endReady()
+                              },
+                          },
+                          discard,
+                      }
+                  },
+              },
         (dialog) => {
             exposed = dialog
             Reflect.set(window, 'exportVideoDialog', dialog)

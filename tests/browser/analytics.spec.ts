@@ -10,7 +10,9 @@ import { isValidEvent } from '../../src/analytics/catalogue'
 import type { Item } from '../../src/analytics/sender'
 import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
+import { openVideoDialog, shortVideoClip, videoExportButton, videoPhase } from './exportVideoDialog'
 import { wav } from './levelInfoFiles'
+import { resource } from './previewResourceFixture'
 import { confirmReset } from './resetConfirm'
 import { edit, notice, pressSave, readFile, start, submitSave } from './saveFlows'
 
@@ -159,6 +161,115 @@ const startOf = (items: Item[]) => names(items).slice(0, START.length)
 /** The data of the named event in a batch. */
 const dataOf = (items: Item[], name: string) =>
     items.find((item) => item.payload.name === name)?.payload.data
+
+for (const outcome of ['done', 'cancelled', 'failed'] as const)
+    test(`Export Video records ${outcome} once with its settings and device`, async ({
+        page,
+        context,
+    }) => {
+        test.setTimeout(60_000)
+        const { batches, stray } = await mock(context)
+        await page.route('**/resource/skin.scp*', (route) =>
+            route.fulfill({ body: resource('skins') }),
+        )
+        await page.route('**/resource/particle.scp*', (route) =>
+            route.fulfill({ body: resource('particles') }),
+        )
+        await boot(page)
+        await page.evaluate(installEditorFixture)
+        await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.notes))
+        await expect.poll(() => clientLoaded(page)).toBe(3)
+        const dialog = await openVideoDialog(page, {
+            faults:
+                outcome === 'cancelled'
+                    ? { hold: 'drain' }
+                    : outcome === 'failed'
+                      ? { failWrite: true }
+                      : undefined,
+        })
+        await shortVideoClip(page)
+        if (outcome === 'done') {
+            for (let i = 0; i < 2; i++) {
+                await dialog.locator('[data-export-play]').click()
+                await dialog.locator('[data-export-play]').click()
+                await dialog.locator('[data-export-advanced]').click()
+                await dialog.locator('[data-export-advanced]').click()
+            }
+        }
+        await expect(videoExportButton(page)).toBeEnabled()
+        await videoExportButton(page).click()
+        if (outcome === 'cancelled') {
+            await expect.poll(() => videoPhase(page), { timeout: 20_000 }).toBe('exporting')
+            await expect
+                .poll(
+                    () =>
+                        page.evaluate(() => {
+                            const dialog = Reflect.get(
+                                window,
+                                'exportVideoDialog',
+                            ) as import('../../src/editor/exportVideo/dialog').ExportDialog
+                            return dialog.progress.value.fraction
+                        }),
+                    { timeout: 20_000 },
+                )
+                .toBeGreaterThan(0)
+            await dialog.locator('[data-export-cancel]').click()
+            await expect.poll(() => videoPhase(page)).toBe('setup')
+        } else if (outcome === 'failed') {
+            await expect.poll(() => videoPhase(page), { timeout: 20_000 }).toBe('failed')
+        } else {
+            await expect.poll(() => videoPhase(page), { timeout: 20_000 }).toBe('ready')
+            // The user can wait and change the next clip before downloading the finished file.
+            await page.evaluate(() => {
+                const now = performance.now.bind(performance)
+                performance.now = () => now() + 120_000
+            })
+            const out = dialog.getByRole('textbox', { name: 'Out', exact: true })
+            await out.fill('10')
+            await out.press('Enter')
+            for (let i = 0; i < 2; i++) {
+                const downloaded = page.waitForEvent('download')
+                await dialog.locator('[data-export-download]').click()
+                await downloaded
+            }
+        }
+        // Delivery ends the attempt even while Ready stays open.
+        await firstSend(page, batches)
+        const events = batches.flat().filter((item) => item.payload.name === 'exportVideo')
+        expect(events).toHaveLength(1)
+        const data = events[0]!.payload.data!
+        expect(isValidEvent('exportVideo', data)).toBe(true)
+        expect(data).toMatchObject({
+            outcome,
+            resolution: '720',
+            frameRate: '30',
+            length: '<10',
+            range: 'custom',
+            source: 'live',
+            engine: 'chromium',
+        })
+        expect(data.took).toBeLessThan(120_000)
+        if (outcome === 'done') {
+            expect(data.target).toBe('download')
+            expect(data.size).toBeDefined()
+            expect(data.stage).toBeUndefined()
+            expect(dataOf(batches.flat(), 'features')).toMatchObject({
+                videoPlayback: 1,
+                videoAdvanced: 1,
+            })
+        } else {
+            expect(data.stage).toBe('render')
+            expect(data.size).toBeUndefined()
+            if (outcome === 'failed') expect(data.reason).toBe('no-space')
+        }
+        await dialog
+            .locator(outcome === 'cancelled' ? '[data-export-cancel]' : '[data-export-close]')
+            .click()
+        await expect(dialog).toHaveCount(0)
+        const beacons = await leave(page)
+        expect(beacons.flat().filter((item) => item.payload.name === 'exportVideo')).toHaveLength(0)
+        expect(stray).toEqual([])
+    })
 
 /** The built-in command names, as the page knows them. */
 const builtInCommandNames = async (page: Page) =>

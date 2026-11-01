@@ -296,6 +296,36 @@ Recorded when **Check File and History** finishes, unless it was cancelled.
 | `size` | The size of the file checked. Sent only when a file was checked | Range |
 | `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
+### `exportVideo`
+
+Recorded once per export attempt, when the file is written, the export fails or it is cancelled. A video prepared for download or sharing is recorded on its first successful delivery, or when it is discarded. Downloading it again adds no event. Time spent choosing a file or waiting to download or share is excluded from `took`.
+
+| Field | Meaning | Format |
+| --- | --- | --- |
+| `outcome` | The result of the export | `done`, `cancelled` or `failed` |
+| `stage` | Where the export was cancelled or failed. Omitted for a finished video | `prepare`, `pick`, `render` or `finish` |
+| `reason` | Why the export failed. Omitted for a finished video | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only`, `io`, `config`, `encoder`, `audio`, `graphics`, `memory`, `hidden`, `refused`, `ownProject` or `memoryLimit` |
+| `format` | The video format | `mp4` or `webm` |
+| `support` | Whether MP4 was available with the chosen settings | `full` or `webmOnly` |
+| `target` | `picker` means a file was chosen, even if the export failed. For a temporary file, `download` or `share` records its first successful delivery. `none` covers attempts with no delivery or chosen file. `memory` means the export used memory because a temporary file could not be written. It remains `memory` after a download | `picker`, `download`, `share`, `none` or `memory` |
+| `resolution` | The video height, in pixels | `720`, `1080`, `1440` or `2160` |
+| `frameRate` | The frames per second | `30` or `60` |
+| `aspect` | The aspect ratio | `16:9`, `21:9` or `4:3` |
+| `quality` | The quality preset, or a custom bitrate | `low`, `standard`, `high` or `custom` |
+| `renderScale` | The scale used to draw each frame | `1`, `1.5` or `2` |
+| `antialias` | Whether antialiasing was on | Yes or no |
+| `audio` | The chosen sound sources | `both`, `bgm`, `sfx` or `none` |
+| `range` | How the clip was chosen | `whole`, `selection` or `custom` |
+| `source` | Whether the video used the current chart or a Timeline step being viewed | `live` or `peek` |
+| `hidden` | Whether the page was hidden during the export | Yes or no |
+| `length` | The encoded clip length | Range, as for music length |
+| `size` | The finished file size. Omitted if the export did not finish | Range |
+| `took` | Time spent preparing and writing the video, excluding the file picker and the wait for delivery | Milliseconds |
+| `speed` | Clip length divided by time spent rendering | `<0.25`, `0.25-0.5`, `0.5-1`, `1-2`, `2-4`, `4-8` or `8+` |
+| `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
+
+No file names, chart names, asset identifiers, exact clip times, exact bitrates, paths or error messages are sent.
+
 ### `bgm`
 
 Recorded each time music is chosen.
@@ -344,6 +374,7 @@ Counts by edit type, including Timeline restores and uses of Undo and Redo.
 | `saveRowToFile`, `deleteSessions` | Uses of **Save…** for a stored session and confirmations of **Delete Sessions…** | Count |
 | `minimapDrag`, `minimapJump` | Drags and jumps using the minimap | Count |
 | `autoscroll`, `quickSwitch` | Times Autoscroll started and tools chosen through Quick Switch | Count |
+| `videoPlayback`, `videoAdvanced` | Uses of Play and openings of Advanced in Export Video. Each is counted once per dialog | Count |
 
 #### `notices`
 
@@ -377,7 +408,7 @@ Sent with every batch. Measurements cover the interval since the previous batch,
 | Field | Meaning | Format |
 | --- | --- | --- |
 | `loafSupported`, `eventTimingSupported` | Whether the browser can report long frames and slow responses | Yes or no |
-| `frames.<state>.<length>` | The number of long frames (frames that took 50 milliseconds or more), grouped by duration and by the editor’s state when the frame began. The state is `playing` for visible playback, `busy` during an Open, Save, Check, Restore or music load, and `other` for the rest | Count for each state and range |
+| `frames.<state>.<length>` | The number of long frames (frames that took 50 milliseconds or more), grouped by duration and by the editor’s state when the frame began. The state is `playing` for visible playback, `busy` during an Open, Save, Check, Restore, Export Video or music load, and `other` for the rest | Count for each state and range |
 | `frames.unclassified` | Long frames that began too long ago to be classified by state | Count |
 | `frameAttribution` | Whether every long frame in this batch was classified by state (`full`) or some were not (`partial`) | `full` or `partial` |
 | `slowEvents.<length>` | The number of clicks, key presses and similar inputs with response times of 104 milliseconds or more, grouped by duration | Count for each range |
