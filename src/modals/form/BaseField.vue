@@ -174,9 +174,8 @@ const fitLabel = (nextFrame = false) => {
                 stacked =
                     !!(stackLongValues && control && valueOverflows(control, others)) ||
                     (stackTallLabels && overTwoLines(text))
-                // Japanese may break between characters, so only its values stack.
-                if (!stacked && stackLongWords && !text.matches(':lang(ja)'))
-                    word = measureWord(text)
+                // A word, or a Japanese phrase (index.css), that would break stacks the value.
+                if (!stacked && stackLongWords) word = measureWord(text)
             },
             () => word?.prepare(),
             () => {

@@ -40,7 +40,8 @@ const open = async (page: Page, options: DialogOptions = {}) => {
         >('/src/editor/exportVideo/test.ts')
         await openExportVideoTest(options)
     }, options)
-    const dialog = page.getByRole('dialog', { name: 'Export Video' })
+    // Found by its content, so it is found in every language.
+    const dialog = page.locator('dialog:has([data-export-form])')
     await expect(dialog).toBeVisible()
     return dialog
 }
@@ -439,3 +440,57 @@ test('a staged export warns first when storage would pass the cleanup line', asy
     await expect(slot).not.toContainText('Browser storage is almost full.')
     await expect(exportButton(page)).toBeEnabled()
 })
+
+for (const size of [
+    { width: 1440, height: 900 },
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+])
+    test(`at ${size.width} px, no Japanese setting label breaks inside a phrase`, async ({
+        page,
+    }) => {
+        await page.setViewportSize(size)
+        await page.evaluate(() => {
+            Object.assign(window.editorTest.settings, { locale: 'ja', exportVideoAdvanced: true })
+        })
+        await open(page)
+        const settings = page.locator('[data-export-settings]')
+        await expect(settings.locator('.form-field-text').first()).toBeVisible()
+        // Each label's lines, as it wraps.
+        const lines = () =>
+            settings.locator('.form-field-text').evaluateAll((elements) =>
+                elements.map((element) => {
+                    const range = document.createRange()
+                    const result: string[] = []
+                    let top: number | undefined
+                    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+                    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                        const text = node.textContent!
+                        for (let index = 0; index < text.length; index++) {
+                            range.setStart(node, index)
+                            range.setEnd(node, index + 1)
+                            const rect = range.getClientRects()[0]
+                            if (!rect) continue
+                            const character = text.charAt(index)
+                            if (top === undefined || rect.top > top + 2) result.push(character)
+                            else result.push(`${result.pop() ?? ''}${character}`)
+                            top = rect.top
+                        }
+                    }
+                    return result.map((line) => line.trim())
+                }),
+            )
+        // Not "アンチエイリ / アス" or "フェードイ / ン (秒)": each phrase stays on one line.
+        for (const phrase of [
+            '動画ビットレート',
+            'アンチエイリアス',
+            'フェードイン',
+            'フェードアウト',
+            '音声ビットレート',
+        ])
+            await expect
+                .poll(async () =>
+                    (await lines()).some((label) => label.some((line) => line.includes(phrase))),
+                )
+                .toBe(true)
+    })

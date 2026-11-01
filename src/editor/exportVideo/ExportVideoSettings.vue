@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef } from 'vue'
+import { computed, nextTick, provide, useTemplateRef } from 'vue'
 import { AUDIO_BITRATES, RESOLUTIONS, type Quality } from '../../exportVideo/estimate'
 import { i18n } from '../../i18n'
 import { formatList } from '../../levelData/statistics'
 import ChoiceField from '../../modals/form/ChoiceField.vue'
+import { stackLongWordsKey } from '../../modals/form/fieldLayout'
 import NumberField from '../../modals/form/NumberField.vue'
 import SelectField from '../../modals/form/SelectField.vue'
 import ToggleField from '../../modals/form/ToggleField.vue'
@@ -20,6 +21,8 @@ const form = d.form
 const busy = d.busy
 const strings = computed(() => i18n.value.exportVideo)
 const root = useTemplateRef<HTMLDivElement>('root')
+// The column is narrow: a label that would break inside a word or phrase takes its own row.
+provide(stackLongWordsKey, true)
 
 const fps = (value: number) => interpolateRaw(strings.value.fps, `${value}`)
 const resolutionOptions = RESOLUTIONS.map((value) => [`${value}p`, value] as const)
