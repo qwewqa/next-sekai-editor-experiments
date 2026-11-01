@@ -6,7 +6,7 @@ import { cardInDialog, noticeCard, notification, quickInDialog } from '../editor
 import NoticeRegion from '../editor/NoticeRegion.vue'
 import QuickNotice from '../editor/QuickNotice.vue'
 import { focusLost } from '../utils/focusFallback'
-import { focusOpener, rememberOpener, type Opener } from './openerFocus'
+import { focusOpener, openerShown, rememberOpener, type Opener } from './openerFocus'
 
 const regularModals = computed(() => modals.filter((modal) => modal.presentation !== 'tool'))
 
@@ -184,10 +184,18 @@ const vOpen = {
     },
     // Closing first returns focus to the opener, as Escape does.
     beforeUnmount(el: HTMLDialogElement) {
+        // A dialog the browser closed earlier gave focus back then, to an opener still shown, so focus
+        // that fell to the page since was moved by the user.
+        const returned = !el.open
         if (el.open) el.close()
         // Focus still in the closed dialog goes to the page once the dialog is removed.
         const opener = openedFrom.get(el)
-        if (opener && (focusLost() || el.contains(document.activeElement))) focusOpener(opener)
+        if (!opener) return
+        if (
+            el.contains(document.activeElement) ||
+            (focusLost() && !(returned && openerShown(opener)))
+        )
+            focusOpener(opener)
     },
 }
 </script>

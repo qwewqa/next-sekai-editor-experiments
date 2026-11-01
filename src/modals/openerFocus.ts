@@ -36,6 +36,9 @@ export const rememberOpener = (): Opener | undefined => {
     return { element, button, around }
 }
 
+/** Whether what had focus is still shown, so that closing the dialog gave focus back to it. */
+export const openerShown = ({ element }: Opener) => shown(element)
+
 /**
  * Focuses the first of these that is left and takes focus: what had focus, its info button, its
  * field's control, else the first control in the nearest element around it.
