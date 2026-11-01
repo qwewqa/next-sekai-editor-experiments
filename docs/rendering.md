@@ -40,6 +40,14 @@ When the worker host fails, it hands over to the main host for the rest of the p
 
 A canvas's context in the worker is released only two animation frames after the canvas left the page. A replaced canvas, such as the old one after an Antialias change, keeps its context until the main thread sends `release`. A stopped worker that still responds keeps its canvases, and is terminated only after the main host has drawn and two more frames have passed. A worker that does not respond is terminated at once. In Firefox, releasing the context sooner, or terminating the worker while the page still shows its canvas, could stop the page from painting until the next input, or hang the worker until the 10 s limit. `previewWorker.spec.ts` holds the page's animation frames, and checks that neither the release nor the termination happens before they run.
 
+## Playback sound
+
+[`playerSounds.ts`](../src/playerSounds.ts) owns the pure sound rules. `planSounds` takes chart entities, BPMs, clip availability, a window in chart seconds and the previous spacing state. It returns hit times, visible hold pieces and the next state. `planActiveSound` decides whether a hold starts, extends an existing voice or is already covered. Its input includes the active voices and the current audio time; expired voices are returned for release.
+
+[`playerSoundScheduler.ts`](../src/playerSoundScheduler.ts) owns each playback's nodes, continuation state and indexes for slide info and hidden sections. It maps chart time to audio time, schedules ahead and checks the audio clock again before starting each sound. The grid traversal comes from `state/store/grid.ts`, shared with History. `playerAudio.ts` applies hold decisions and owns gain ramps, loops and node cleanup.
+
+`player.ts` owns Play's context, decoding, timer and stall recovery. Its scheduler does not depend on drawing frames. Stop and volume changes affect only that scheduler's nodes. `tests/editor/playerScheduling.test.ts` compares Play's calls with recordings from before this split; the browser playback specs also exercise the native audio clock.
+
 ## Ownership and draw boundaries
 
 [`src/rendering/context.ts`](../src/rendering/context.ts) is the editor's drawing API, not a complete Canvas2D compatibility layer. `getDrawContext(HTMLCanvasElement)` creates one `WebGLDrawContext` and one `RenderingResources` owner per root canvas. `createSurface()` creates a `RenderSurface` with its own drawing state, target, path cache and node pools, sharing the root's WebGL renderer and image cache. `drawImage(RenderSurface)` requires this shared owner; cross-owner targets are rejected.

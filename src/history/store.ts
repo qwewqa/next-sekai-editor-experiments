@@ -7,7 +7,7 @@ import type { State } from '../state'
 import type { Entity, EntityOfType, EntityType } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
 import type { Store } from '../state/store'
-import { beatToKey } from '../state/store/grid'
+import { beatToKey, cullGrids } from '../state/store/grid'
 
 export const store = computed(() => state.value.store)
 
@@ -36,29 +36,6 @@ export const cullEntities = <T extends EntityType>(
 
 export const cullAllEntities = (minKey: number, maxKey: number, source: Store = store.value) =>
     cullGrids<Entity>(Object.values(source.grid), minKey, maxKey)
-
-const cullGrids = <T extends Entity>(
-    grids: Iterable<Map<number, Set<T>>>,
-    minKey: number,
-    maxKey: number,
-) => {
-    if (!Number.isFinite(maxKey)) maxKey = minKey
-
-    const culled = new Set<T>()
-
-    for (const map of grids) {
-        for (let i = minKey; i <= maxKey; i++) {
-            const entities = map.get(i)
-            if (!entities) continue
-
-            for (const entity of entities) {
-                culled.add(entity)
-            }
-        }
-    }
-
-    return culled
-}
 
 // Connections are drawn across many beat buckets, but never have a hitbox.
 // Keep the classification exhaustive when a new entity type is introduced.

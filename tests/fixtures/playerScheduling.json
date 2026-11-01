@@ -1,0 +1,1401 @@
+[
+    [
+        [
+            "source",
+            0,
+            {
+                "buffer": {
+                    "clip": "bgm"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            1,
+            {
+                "gain": 0.6
+            }
+        ],
+        ["connect", 0, 1],
+        ["connect", 1, "destination"],
+        ["cancel", 1, 10.5],
+        ["set", 1, 0.6, 10.5],
+        ["set", 1, 0, 10.5],
+        ["ramp", 1, 0.6, 10.505],
+        ["start", 0, 10.5, 0],
+        [
+            "source",
+            2,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            3,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 2, 3],
+        ["connect", 3, "destination"],
+        ["start", 2, 10.2, 0],
+        [
+            "source",
+            4,
+            {
+                "buffer": {
+                    "clip": "criticalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            5,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 4, 5],
+        ["connect", 5, "destination"],
+        ["start", 4, 10.7, 0],
+        [
+            "source",
+            6,
+            {
+                "buffer": {
+                    "clip": "normalFlick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            7,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 6, 7],
+        ["connect", 7, "destination"],
+        ["start", 6, 10.45, 0],
+        ["window", 10.5],
+        [
+            "source",
+            8,
+            {
+                "buffer": {
+                    "clip": "criticalFlick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            9,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 8, 9],
+        ["connect", 9, "destination"],
+        ["start", 8, 10.95, 0],
+        [
+            "source",
+            10,
+            {
+                "buffer": {
+                    "clip": "normalTrace"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            11,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 10, 11],
+        ["connect", 11, "destination"],
+        ["start", 10, 11.2, 0],
+        ["window", 11],
+        [
+            "source",
+            12,
+            {
+                "buffer": {
+                    "clip": "normalFlick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            13,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 12, 13],
+        ["connect", 13, "destination"],
+        ["start", 12, 11.45, 0],
+        [
+            "source",
+            14,
+            {
+                "buffer": {
+                    "clip": "criticalTrace"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            15,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 14, 15],
+        ["connect", 15, "destination"],
+        ["start", 14, 11.7, 0],
+        ["window", 11.5],
+        [
+            "source",
+            16,
+            {
+                "buffer": {
+                    "clip": "criticalFlick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            17,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 16, 17],
+        ["connect", 17, "destination"],
+        ["start", 16, 11.95, 0],
+        ["window", 13],
+        ["window", 13.5],
+        [
+            "source",
+            18,
+            {
+                "buffer": {
+                    "clip": "normalTick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            19,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 18, 19],
+        ["connect", 19, "destination"],
+        ["start", 18, 14.2, 0],
+        ["window", 14],
+        [
+            "source",
+            20,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            21,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 20, 21],
+        ["connect", 21, "destination"],
+        ["start", 20, 14.7, 0],
+        [
+            "source",
+            22,
+            {
+                "buffer": {
+                    "clip": "normalTick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            23,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 22, 23],
+        ["connect", 23, "destination"],
+        ["start", 22, 14.325, 0],
+        [
+            "source",
+            24,
+            {
+                "buffer": {
+                    "clip": "criticalTick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            25,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 24, 25],
+        ["connect", 25, "destination"],
+        ["start", 24, 14.45, 0],
+        [
+            "source",
+            26,
+            {
+                "buffer": {
+                    "clip": "criticalTick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            27,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 26, 27],
+        ["connect", 27, "destination"],
+        ["start", 26, 14.575, 0],
+        ["window", 15],
+        [
+            "source",
+            28,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            29,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 28, 29],
+        ["connect", 29, "destination"],
+        ["start", 28, 15.2, 0],
+        [
+            "source",
+            30,
+            {
+                "buffer": {
+                    "clip": "criticalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            31,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 30, 31],
+        ["connect", 31, "destination"],
+        ["start", 30, 15.325, 0],
+        [
+            "source",
+            32,
+            {
+                "buffer": {
+                    "clip": "normalFlick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            33,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 32, 33],
+        ["connect", 33, "destination"],
+        ["start", 32, 15.45, 0],
+        [
+            "source",
+            34,
+            {
+                "buffer": {
+                    "clip": "criticalFlick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            35,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 34, 35],
+        ["connect", 35, "destination"],
+        ["start", 34, 15.075, 0],
+        [
+            "source",
+            36,
+            {
+                "buffer": {
+                    "clip": "criticalFlick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            37,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 36, 37],
+        ["connect", 37, "destination"],
+        ["start", 36, 15.575, 0],
+        [
+            "source",
+            38,
+            {
+                "buffer": {
+                    "clip": "normalTrace"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            39,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 38, 39],
+        ["connect", 39, "destination"],
+        ["start", 38, 15.7, 0],
+        ["window", 16],
+        [
+            "source",
+            40,
+            {
+                "buffer": {
+                    "clip": "criticalTick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            41,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 40, 41],
+        ["connect", 41, "destination"],
+        ["start", 40, 16.075, 0],
+        ["window", 17],
+        ["window", 18],
+        ["cancel", 3, 18],
+        ["set", 3, 0.8, 18],
+        ["ramp", 3, 0, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0, 18.005],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0, 18.005],
+        ["cancel", 23, 18],
+        ["set", 23, 0.8, 18],
+        ["ramp", 23, 0, 18.005],
+        ["cancel", 25, 18],
+        ["set", 25, 0.8, 18],
+        ["ramp", 25, 0, 18.005],
+        ["cancel", 27, 18],
+        ["set", 27, 0.8, 18],
+        ["ramp", 27, 0, 18.005],
+        ["cancel", 29, 18],
+        ["set", 29, 0.8, 18],
+        ["ramp", 29, 0, 18.005],
+        ["cancel", 31, 18],
+        ["set", 31, 0.8, 18],
+        ["ramp", 31, 0, 18.005],
+        ["cancel", 33, 18],
+        ["set", 33, 0.8, 18],
+        ["ramp", 33, 0, 18.005],
+        ["cancel", 35, 18],
+        ["set", 35, 0.8, 18],
+        ["ramp", 35, 0, 18.005],
+        ["cancel", 37, 18],
+        ["set", 37, 0.8, 18],
+        ["ramp", 37, 0, 18.005],
+        ["cancel", 39, 18],
+        ["set", 39, 0.8, 18],
+        ["ramp", 39, 0, 18.005],
+        ["cancel", 41, 18],
+        ["set", 41, 0.8, 18],
+        ["ramp", 41, 0, 18.005],
+        ["cancel", 3, 18],
+        ["set", 3, 0.8, 18],
+        ["ramp", 3, 0.8, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0.8, 18.005],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0.8, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0.8, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0.8, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0.8, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0.8, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0.8, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0.8, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0.8, 18.005],
+        ["cancel", 23, 18],
+        ["set", 23, 0.8, 18],
+        ["ramp", 23, 0.8, 18.005],
+        ["cancel", 25, 18],
+        ["set", 25, 0.8, 18],
+        ["ramp", 25, 0.8, 18.005],
+        ["cancel", 27, 18],
+        ["set", 27, 0.8, 18],
+        ["ramp", 27, 0.8, 18.005],
+        ["cancel", 29, 18],
+        ["set", 29, 0.8, 18],
+        ["ramp", 29, 0.8, 18.005],
+        ["cancel", 31, 18],
+        ["set", 31, 0.8, 18],
+        ["ramp", 31, 0.8, 18.005],
+        ["cancel", 33, 18],
+        ["set", 33, 0.8, 18],
+        ["ramp", 33, 0.8, 18.005],
+        ["cancel", 35, 18],
+        ["set", 35, 0.8, 18],
+        ["ramp", 35, 0.8, 18.005],
+        ["cancel", 37, 18],
+        ["set", 37, 0.8, 18],
+        ["ramp", 37, 0.8, 18.005],
+        ["cancel", 39, 18],
+        ["set", 39, 0.8, 18],
+        ["ramp", 39, 0.8, 18.005],
+        ["cancel", 41, 18],
+        ["set", 41, 0.8, 18],
+        ["ramp", 41, 0.8, 18.005],
+        ["cancel", 1, 18],
+        ["set", 1, 0.6, 18],
+        ["ramp", 1, 0, 18.005],
+        ["stop", 0, 18.005],
+        ["cancel", 3, 18],
+        ["set", 3, 0.8, 18],
+        ["ramp", 3, 0, 18.005],
+        ["stop", 2, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0, 18.005],
+        ["stop", 4, 18.005],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0, 18.005],
+        ["stop", 6, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0, 18.005],
+        ["stop", 8, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0, 18.005],
+        ["stop", 10, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0, 18.005],
+        ["stop", 12, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0, 18.005],
+        ["stop", 14, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0, 18.005],
+        ["stop", 16, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0, 18.005],
+        ["stop", 18, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0, 18.005],
+        ["stop", 20, 18.005],
+        ["cancel", 23, 18],
+        ["set", 23, 0.8, 18],
+        ["ramp", 23, 0, 18.005],
+        ["stop", 22, 18.005],
+        ["cancel", 25, 18],
+        ["set", 25, 0.8, 18],
+        ["ramp", 25, 0, 18.005],
+        ["stop", 24, 18.005],
+        ["cancel", 27, 18],
+        ["set", 27, 0.8, 18],
+        ["ramp", 27, 0, 18.005],
+        ["stop", 26, 18.005],
+        ["cancel", 29, 18],
+        ["set", 29, 0.8, 18],
+        ["ramp", 29, 0, 18.005],
+        ["stop", 28, 18.005],
+        ["cancel", 31, 18],
+        ["set", 31, 0.8, 18],
+        ["ramp", 31, 0, 18.005],
+        ["stop", 30, 18.005],
+        ["cancel", 33, 18],
+        ["set", 33, 0.8, 18],
+        ["ramp", 33, 0, 18.005],
+        ["stop", 32, 18.005],
+        ["cancel", 35, 18],
+        ["set", 35, 0.8, 18],
+        ["ramp", 35, 0, 18.005],
+        ["stop", 34, 18.005],
+        ["cancel", 37, 18],
+        ["set", 37, 0.8, 18],
+        ["ramp", 37, 0, 18.005],
+        ["stop", 36, 18.005],
+        ["cancel", 39, 18],
+        ["set", 39, 0.8, 18],
+        ["ramp", 39, 0, 18.005],
+        ["stop", 38, 18.005],
+        ["cancel", 41, 18],
+        ["set", 41, 0.8, 18],
+        ["ramp", 41, 0, 18.005],
+        ["stop", 40, 18.005]
+    ],
+    [
+        [
+            "source",
+            0,
+            {
+                "buffer": {
+                    "clip": "bgm"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            1,
+            {
+                "gain": 0.6
+            }
+        ],
+        ["connect", 0, 1],
+        ["connect", 1, "destination"],
+        ["cancel", 1, 10.2],
+        ["set", 1, 0.6, 10.2],
+        ["set", 1, 0, 10.2],
+        ["ramp", 1, 0.6, 10.205],
+        ["start", 0, 10.2, 0.3],
+        [
+            "source",
+            2,
+            {
+                "buffer": {
+                    "clip": "normalActive"
+                },
+                "loop": true
+            }
+        ],
+        [
+            "gain",
+            3,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 2, 3],
+        ["connect", 3, "destination"],
+        ["cancel", 3, 10],
+        ["set", 3, 0.8, 10],
+        ["set", 3, 0, 10],
+        ["ramp", 3, 0.8, 10.005],
+        ["start", 2, 10],
+        ["stop", 2, 10.6],
+        [
+            "source",
+            4,
+            {
+                "buffer": {
+                    "clip": "criticalActive"
+                },
+                "loop": true
+            }
+        ],
+        [
+            "gain",
+            5,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 4, 5],
+        ["connect", 5, "destination"],
+        ["cancel", 5, 10],
+        ["set", 5, 0.8, 10],
+        ["set", 5, 0, 10],
+        ["ramp", 5, 0.8, 10.005],
+        ["start", 4, 10],
+        ["stop", 4, 14.6],
+        ["window", 10.5],
+        [
+            "source",
+            6,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            7,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 6, 7],
+        ["connect", 7, "destination"],
+        ["start", 6, 11.1, 0],
+        ["window", 11],
+        [
+            "source",
+            8,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            9,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 8, 9],
+        ["connect", 9, "destination"],
+        ["start", 8, 11.6, 0],
+        [
+            "source",
+            10,
+            {
+                "buffer": {
+                    "clip": "normalTick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            11,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 10, 11],
+        ["connect", 11, "destination"],
+        ["start", 10, 11.6, 0],
+        ["stop", 2, null],
+        ["disconnect", 2],
+        ["disconnect", 3],
+        [
+            "source",
+            12,
+            {
+                "buffer": {
+                    "clip": "normalActive"
+                },
+                "loop": true
+            }
+        ],
+        [
+            "gain",
+            13,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 12, 13],
+        ["connect", 13, "destination"],
+        ["cancel", 13, 11.6],
+        ["set", 13, 0.8, 11.6],
+        ["set", 13, 0, 11.6],
+        ["ramp", 13, 0.8, 11.605],
+        ["start", 12, 11.6],
+        ["stop", 12, 14.1],
+        ["window", 11.5],
+        ["window", 13],
+        ["window", 13.5],
+        [
+            "source",
+            14,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            15,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 14, 15],
+        ["connect", 15, "destination"],
+        ["start", 14, 13.85, 0],
+        [
+            "source",
+            16,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            17,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 16, 17],
+        ["connect", 17, "destination"],
+        ["start", 16, 14.1, 0],
+        ["stop", 12, 15.1],
+        ["window", 14],
+        [
+            "source",
+            18,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            19,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 18, 19],
+        ["connect", 19, "destination"],
+        ["start", 18, 14.6, 0],
+        ["window", 15],
+        [
+            "source",
+            20,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            21,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 20, 21],
+        ["connect", 21, "destination"],
+        ["start", 20, 15.1, 0],
+        ["window", 16],
+        ["window", 17],
+        ["window", 18],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0, 18.005],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0.8, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0.8, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0.8, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0.8, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0.8, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0.8, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0.8, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0.8, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0.8, 18.005],
+        ["cancel", 1, 18],
+        ["set", 1, 0.6, 18],
+        ["ramp", 1, 0, 18.005],
+        ["stop", 0, 18.005],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0, 18.005],
+        ["stop", 6, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0, 18.005],
+        ["stop", 8, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0, 18.005],
+        ["stop", 10, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0, 18.005],
+        ["stop", 14, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0, 18.005],
+        ["stop", 16, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0, 18.005],
+        ["stop", 18, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0, 18.005],
+        ["stop", 20, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0, 18.005],
+        ["stop", 12, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0, 18.005],
+        ["stop", 4, 18.005]
+    ],
+    [
+        [
+            "source",
+            0,
+            {
+                "buffer": {
+                    "clip": "bgm"
+                },
+                "playbackRate": 1.5
+            }
+        ],
+        [
+            "gain",
+            1,
+            {
+                "gain": 0.6
+            }
+        ],
+        ["connect", 0, 1],
+        ["connect", 1, "destination"],
+        ["cancel", 1, 10.399999999999999],
+        ["set", 1, 0.6, 10.399999999999999],
+        ["set", 1, 0, 10.399999999999999],
+        ["ramp", 1, 0.6, 10.405],
+        ["start", 0, 10.399999999999999, 0],
+        [
+            "source",
+            2,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            3,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 2, 3],
+        ["connect", 3, "destination"],
+        ["start", 2, 10.2, 0],
+        [
+            "source",
+            4,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            5,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 4, 5],
+        ["connect", 5, "destination"],
+        ["start", 4, 10.213999999999999, 0],
+        [
+            "source",
+            6,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            7,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 6, 7],
+        ["connect", 7, "destination"],
+        ["start", 6, 10.693333333333333, 0],
+        [
+            "source",
+            8,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            9,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 8, 9],
+        ["connect", 9, "destination"],
+        ["start", 8, 10.707333333333333, 0],
+        [
+            "source",
+            10,
+            {
+                "buffer": {
+                    "clip": "criticalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            11,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 10, 11],
+        ["connect", 11, "destination"],
+        ["start", 10, 10.2, 0],
+        [
+            "source",
+            12,
+            {
+                "buffer": {
+                    "clip": "normalFlick"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            13,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 12, 13],
+        ["connect", 13, "destination"],
+        ["start", 12, 10.2, 0],
+        [
+            "source",
+            14,
+            {
+                "buffer": {
+                    "clip": "normalTrace"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            15,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 14, 15],
+        ["connect", 15, "destination"],
+        ["start", 14, 10.2, 0],
+        [
+            "source",
+            16,
+            {
+                "buffer": {
+                    "clip": "criticalActive"
+                },
+                "loop": true
+            }
+        ],
+        [
+            "gain",
+            17,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 16, 17],
+        ["connect", 17, "destination"],
+        ["cancel", 17, 10.2],
+        ["set", 17, 0.8, 10.2],
+        ["set", 17, 0, 10.2],
+        ["ramp", 17, 0.8, 10.205],
+        ["start", 16, 10.2],
+        ["stop", 16, 12.866666666666665],
+        ["window", 10.5],
+        [
+            "source",
+            18,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            19,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 18, 19],
+        ["connect", 19, "destination"],
+        ["start", 18, 11.2, 0],
+        ["window", 11],
+        ["window", 11.5],
+        [
+            "source",
+            20,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            21,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 20, 21],
+        ["connect", 21, "destination"],
+        ["start", 20, 11.866666666666665, 0],
+        ["window", 13],
+        [
+            "source",
+            22,
+            {
+                "buffer": {
+                    "clip": "normalActive"
+                },
+                "loop": true
+            }
+        ],
+        [
+            "gain",
+            23,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 22, 23],
+        ["connect", 23, "destination"],
+        ["cancel", 23, 13],
+        ["set", 23, 0.8, 13],
+        ["set", 23, 0, 13],
+        ["ramp", 23, 0.8, 13.005],
+        ["start", 22, 13],
+        ["stop", 22, 14.2],
+        ["window", 13.5],
+        [
+            "source",
+            24,
+            {
+                "buffer": {
+                    "clip": "normalTap"
+                },
+                "playbackRate": 1
+            }
+        ],
+        [
+            "gain",
+            25,
+            {
+                "gain": 0.8
+            }
+        ],
+        ["connect", 24, 25],
+        ["connect", 25, "destination"],
+        ["start", 24, 14.2, 0],
+        ["window", 14],
+        ["window", 15],
+        ["window", 16],
+        ["window", 17],
+        ["window", 18],
+        ["cancel", 3, 18],
+        ["set", 3, 0.8, 18],
+        ["ramp", 3, 0, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0, 18.005],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0, 18.005],
+        ["cancel", 25, 18],
+        ["set", 25, 0.8, 18],
+        ["ramp", 25, 0, 18.005],
+        ["cancel", 23, 18],
+        ["set", 23, 0.8, 18],
+        ["ramp", 23, 0, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0, 18.005],
+        ["cancel", 3, 18],
+        ["set", 3, 0.8, 18],
+        ["ramp", 3, 0.8, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0.8, 18.005],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0.8, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0.8, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0.8, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0.8, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0.8, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0.8, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0.8, 18.005],
+        ["cancel", 25, 18],
+        ["set", 25, 0.8, 18],
+        ["ramp", 25, 0.8, 18.005],
+        ["cancel", 23, 18],
+        ["set", 23, 0.8, 18],
+        ["ramp", 23, 0.8, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0.8, 18.005],
+        ["cancel", 1, 18],
+        ["set", 1, 0.6, 18],
+        ["ramp", 1, 0, 18.005],
+        ["stop", 0, 18.005],
+        ["cancel", 3, 18],
+        ["set", 3, 0.8, 18],
+        ["ramp", 3, 0, 18.005],
+        ["stop", 2, 18.005],
+        ["cancel", 5, 18],
+        ["set", 5, 0.8, 18],
+        ["ramp", 5, 0, 18.005],
+        ["stop", 4, 18.005],
+        ["cancel", 7, 18],
+        ["set", 7, 0.8, 18],
+        ["ramp", 7, 0, 18.005],
+        ["stop", 6, 18.005],
+        ["cancel", 9, 18],
+        ["set", 9, 0.8, 18],
+        ["ramp", 9, 0, 18.005],
+        ["stop", 8, 18.005],
+        ["cancel", 11, 18],
+        ["set", 11, 0.8, 18],
+        ["ramp", 11, 0, 18.005],
+        ["stop", 10, 18.005],
+        ["cancel", 13, 18],
+        ["set", 13, 0.8, 18],
+        ["ramp", 13, 0, 18.005],
+        ["stop", 12, 18.005],
+        ["cancel", 15, 18],
+        ["set", 15, 0.8, 18],
+        ["ramp", 15, 0, 18.005],
+        ["stop", 14, 18.005],
+        ["cancel", 19, 18],
+        ["set", 19, 0.8, 18],
+        ["ramp", 19, 0, 18.005],
+        ["stop", 18, 18.005],
+        ["cancel", 21, 18],
+        ["set", 21, 0.8, 18],
+        ["ramp", 21, 0, 18.005],
+        ["stop", 20, 18.005],
+        ["cancel", 25, 18],
+        ["set", 25, 0.8, 18],
+        ["ramp", 25, 0, 18.005],
+        ["stop", 24, 18.005],
+        ["cancel", 23, 18],
+        ["set", 23, 0.8, 18],
+        ["ramp", 23, 0, 18.005],
+        ["stop", 22, 18.005],
+        ["cancel", 17, 18],
+        ["set", 17, 0.8, 18],
+        ["ramp", 17, 0, 18.005],
+        ["stop", 16, 18.005]
+    ]
+]

@@ -1,3 +1,5 @@
+import { planActiveSound } from './playerSounds'
+
 export type PlayerAudio = {
     node: GainNode
     source: AudioBufferSourceNode
@@ -168,22 +170,20 @@ export const scheduleActivePlayerAudio = (
     whenStart: number,
     whenStop: number,
 ) => {
-    if (whenStop <= context.currentTime) return
-
-    for (const active of actives) {
-        // Audio time advances while the main thread is paused; its ended event may
-        // still be queued when playback catches up. A stopped source cannot restart.
-        if (active.endTime <= context.currentTime) {
-            active.stop()
-            continue
-        }
-        if (active.endBeat < startBeat) continue
-
-        // Overlapping shorter holds must not cut off a longer hold already playing.
-        if (endBeat <= active.endBeat) return
-        active.endBeat = endBeat
-        active.endTime = whenStop
-        active.source.stop(whenStop)
+    const { expired, next } = planActiveSound(
+        actives,
+        startBeat,
+        endBeat,
+        whenStart,
+        whenStop,
+        context.currentTime,
+    )
+    for (const active of expired) active.stop()
+    if (next.type === 'skip') return
+    if (next.type === 'extend') {
+        next.active.endBeat = endBeat
+        next.active.endTime = whenStop
+        next.active.source.stop(whenStop)
         return
     }
 
@@ -193,7 +193,7 @@ export const scheduleActivePlayerAudio = (
         endTime: whenStop,
     }
     actives.add(active)
-    const start = Math.max(whenStart, context.currentTime)
+    const start = Math.max(next.time, context.currentTime)
     active.fadeIn(start)
     active.start(start)
     active.source.stop(whenStop)

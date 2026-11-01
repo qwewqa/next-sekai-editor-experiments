@@ -1,4 +1,4 @@
-import type { EntityOfType, EntityType } from '../entities'
+import type { Entity, EntityOfType, EntityType } from '../entities'
 
 export type StoreGrid = {
     [T in EntityType]: Map<number, Set<EntityOfType<T>>>
@@ -94,4 +94,27 @@ export const replaceInStoreGrid = <T extends EntityType>(
         grid[entity.type].set(key, bucket)
         bucketOwners.get(grid)?.add(bucket)
     }
+}
+
+export const cullGrids = <T extends Entity>(
+    grids: Iterable<Map<number, Set<T>>>,
+    minKey: number,
+    maxKey: number,
+) => {
+    if (!Number.isFinite(maxKey)) maxKey = minKey
+
+    const culled = new Set<T>()
+
+    for (const map of grids) {
+        for (let i = minKey; i <= maxKey; i++) {
+            const entities = map.get(i)
+            if (!entities) continue
+
+            for (const entity of entities) {
+                culled.add(entity)
+            }
+        }
+    }
+
+    return culled
 }
