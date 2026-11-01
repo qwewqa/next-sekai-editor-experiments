@@ -627,7 +627,7 @@
                 "title": "Touchscreen",
                 "longPress": "Long-press an object to open the context menu.",
                 "scroll": "Drag with two fingers to scroll. Pinch vertically to zoom vertically, or horizontally to zoom horizontally.",
-                "quickScroll": "To scroll with one finger, drag in the quick scroll zone at the edge of the chart.",
+                "quickScroll": "Drag with one finger in the quick scroll zone at the edge of the chart to scroll.",
                 "gestures": "Tap with two fingers to deselect. Tap with three fingers to start or stop playback."
             },
             "mouse": {
@@ -640,7 +640,7 @@
             },
             "keyboard": {
                 "title": "Keyboard",
-                "settings": "View and change shortcuts in Settings › Keyboard Shortcuts."
+                "settings": "To view or change shortcuts, open Settings › Keyboard Shortcuts."
             },
             "selectTool": {
                 "select": "Tap an object to select it.",
@@ -650,13 +650,13 @@
                 "selectMultiple": "Drag a box from empty space to select the objects in it."
             },
             "eraserTool": {
-                "erase": "Tap an object to erase it, or drag a box to erase everything in it.",
-                "eraseClick": "Click an object to erase it, or drag a box to erase everything in it.",
+                "erase": "Tap an object to erase it, or drag a box to erase the objects in it.",
+                "eraseClick": "Click an object to erase it, or drag a box to erase the objects in it.",
                 "selection": "Tap a selected object to erase the whole selection.",
                 "selectionClick": "Click a selected object to erase the whole selection."
             },
             "brushTool": {
-                "properties": "Choose Brush, then set the properties to apply.",
+                "properties": "Applies the properties you set for the brush to objects.",
                 "brush": "Tap an object or drag a box to apply the brush. Tap a selected object to apply it to the whole selection.",
                 "brushClick": "Click an object or drag a box to apply the brush. Click a selected object to apply it to the whole selection.",
                 "shift": "Hold Shift to apply the brush to whole slides."
@@ -667,28 +667,27 @@
             },
             "noteTool": {
                 "presets": "Choose Note again to show the default properties and switch between the presets.",
-                "quickEdit": "When the Properties panel is shown, tap a selected note to set or cycle the current preset’s properties on all selected notes.",
-                "quickEditClick": "When the Properties panel is shown, click a selected note to set or cycle the current preset’s properties on all selected notes."
+                "quickEdit": "When the Properties panel is shown, tap a selected note to edit all selected notes with the current preset.",
+                "quickEditClick": "When the Properties panel is shown, click a selected note to edit all selected notes with the current preset."
             },
             "slideTool": {
                 "connect": "When notes of one slide are selected, tap empty space to add another note to that slide. Choose Deselect before starting a new slide.",
                 "connectClick": "When notes of one slide are selected, click empty space to add another note to that slide. Choose Deselect before starting a new slide.",
-                "presets": "Choose Slide again to show the default properties and switch between the presets.",
-                "splitCombine": "Split Slide cuts the connection after each selected note. Combine into Slide joins the slides containing the selected notes."
+                "presets": "Choose Slide again to show the default properties and switch between the presets."
             },
             "generateSlideNotesTool": {
-                "generate": "Tap a note to add attached notes along its slide, one on each empty division line.",
-                "generateClick": "Click a note to add attached notes along its slide, one on each empty division line."
+                "generate": "Tap a note to generate attached notes on empty division lines along its slide.",
+                "generateClick": "Click a note to generate attached notes on empty division lines along its slide."
             },
             "adding": {
-                "add": "With Note, Slide, BPM, Time Scale or Event, tap empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
-                "addClick": "With Note, Slide, BPM, Time Scale or Event, click empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
-                "edit": "Tap a selected object to show its properties.",
-                "editClick": "Click a selected object to show its properties.",
-                "move": "Drag an object to move only that object.",
+                "add": "With Note, Slide, BPM, Time Scale or an event tool, tap empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
+                "addClick": "With Note, Slide, BPM, Time Scale or an event tool, click empty space to add an object. With Note or Slide, drag across empty space to add a note of that width.",
+                "edit": "With the same tool, tap a selected object to edit its properties.",
+                "editClick": "With the same tool, click a selected object to edit its properties.",
+                "move": "With the same tool, drag an object to move only that object.",
                 "resize": "Drag the edge of a note, camera event or stage mask event to resize it.",
-                "modifiers": "Hold Ctrl (Cmd on macOS) and tap to add an object to the selection or remove it. Hold Shift and tap a note to select its whole slide.",
-                "modifiersClick": "Hold Ctrl (Cmd on macOS) and click to add an object to the selection or remove it. Hold Shift and click a note to select its whole slide."
+                "modifiers": "Hold Ctrl (Cmd on macOS) and tap an object to add it to the selection or remove it. Hold Shift and tap a note to select its whole slide.",
+                "modifiersClick": "Hold Ctrl (Cmd on macOS) and click an object to add it to the selection or remove it. Hold Shift and click a note to select its whole slide."
             },
             "bpmTool": {
                 "first": "The chart always starts with a BPM change. Dragging it adds a copy where you drop it.",
@@ -699,8 +698,8 @@
                 "ease": "The curve shows easing to the next change in the group."
             },
             "event": {
-                "next": "Choose Event to switch to an event tool. Choose it again to cycle through the event tools.",
-                "defaults": "To edit an event tool’s default properties, choose it again by name, such as Camera Event."
+                "next": "Event switches to an event tool. Choose it again to cycle through the event tools.",
+                "defaults": "Choose Camera Event or another event tool again to show its default properties."
             },
             "offset": {
                 "drag": "Drag up or down to change the BGM offset."
@@ -735,21 +734,23 @@
             "formats": "Opens project files, Sonolus packages, level data, Chart Cyanvas levels, and USC and SUS charts. Choosing an audio file replaces the BGM."
         },
         "save": {
-            "projectFile": "Choose Save to keep your work in a project file (.nxsp). To create level data you can upload to a Sonolus server, use Export Level Data."
+            "projectFile": "Saves your work in a project file (.nxsp)."
         },
         "exportLevel": {
-            "contents": "Level data contains the chart, Initial Life and the BGM offset, but not the music or the rest of Level Info."
+            "contents": "Level data contains the chart, Initial Life and the BGM offset, but not the music or the rest of Level Info.",
+            "levelData": "Exports level data (.nsld) you can upload to a Sonolus server."
         },
         "utilities": {
-            "editors": "Cover Editor makes a cover from an image, and Preview Editor makes preview audio from part of the BGM.",
+            "editors": "Opens Cover Editor to make a cover from an image, or Preview Editor to make preview audio from part of the BGM.",
             "levelInfo": "Both save what they make as a file. To set the level’s cover or preview audio, use Level Info."
         },
         "play": {
             "startPosition": "To make Play start at the playback cursor, set Start Position to Cursor in Settings › Play.",
-            "stop": "Stop moves the playback cursor back to where playback started. To stop where you are, choose Play again."
+            "stop": "Stop ends playback and moves the playback cursor back to where playback started.",
+            "toggle": "Play starts playback, or stops it at the current position."
         },
         "bgm": {
-            "load": "Choose BGM to load the music and set its offset."
+            "load": "Loads the music and sets its offset."
         },
         "previewAssets": {
             "browser": "Changes how the preview looks and sounds in this browser, for every chart you open."
@@ -762,16 +763,17 @@
             "view": "Tap a Timeline step to view the chart as it was then. Restore brings that version back as a new Timeline step.",
             "viewClick": "Click a Timeline step to view the chart as it was then. Restore brings that version back as a new Timeline step.",
             "showChange": "Show Change scrolls to the next change in the Timeline step you are viewing.",
-            "editsHere": "Find Edits Here shows the Timeline steps that changed the selected part of the chart, or the part in view if nothing is selected."
+            "editsHere": "Find Edits Here shows the Timeline steps with changes in the beats the selection covers, or in the beats in view if nothing is selected.",
+            "timeline": "History lists your edits, saves and exports as Timeline steps."
         },
         "pasteTool": {
             "clipboardHistory": "Clipboard History in the Properties panel lists your recent copies. Choose one to paste it next."
         },
         "selectTool": {
-            "resizeSelection": "To resize several objects together, select objects of one type and drag the edge of one."
+            "resizeSelection": "Select objects of one type, then drag the edge of one to resize them together."
         },
         "deselect": {
-            "select": "Switches to the Select tool when nothing is selected."
+            "select": "Deselects all objects, or switches to the Select tool when nothing is selected."
         },
         "flip": {
             "mirror": "Mirrors the selection around lane 0."
@@ -783,17 +785,21 @@
             "elevation": "Moves the selected notes to the beat of the earliest one, and sets each note’s Elevation to the number of beats it moved."
         },
         "scale": {
-            "drag": "While the dialog is open, you can also scale by dragging. For Scale Beats, drag the first or last selected note. For Scale Elevations, drag the highest or lowest selected note in the Elevation Editor. For Scale Width, drag the edge of a selected object."
+            "drag": "While the dialog is open, you can also scale by dragging. For Scale Beats, drag the first or last selected object. For Scale Elevations, drag the highest or lowest selected note in the Elevation Editor. For Scale Width, drag the edge of a selected object.",
+            "axes": "Scale Beats, Scale Elevations and Scale Width stretch or shrink the selection in time, in elevation or across the lanes."
         },
         "elevation": {
-            "beat": "Edits the elevations of the notes at one beat."
+            "beat": "Edits the elevations of the notes at the playback cursor."
         },
         "editorLayout": {
-            "layouts": "Composed shows the stages and positions notes relative to them. Basic shows each note at its own lane."
+            "layouts": "Composed shows the stages and positions notes relative to them. Basic shows each note at its own lane.",
+            "switch": "Switches between the Composed and Basic layouts."
         },
         "slideTool": {
-            "quickEditPanel": "When the Properties panel is shown, tap a selected note to set or cycle the current preset’s properties on all selected notes.",
-            "quickEditPanelClick": "When the Properties panel is shown, click a selected note to set or cycle the current preset’s properties on all selected notes."
+            "quickEditPanel": "When the Properties panel is shown, tap a selected note to edit all selected notes with the current preset.",
+            "quickEditPanelClick": "When the Properties panel is shown, click a selected note to edit all selected notes with the current preset.",
+            "adds": "Slide adds slides with the current preset’s default properties.",
+            "presetCommands": "Slide #1 to Slide #5 switch to Slide with the chosen preset."
         },
         "generateSlideNotesTool": {
             "fillSelection": "Drag a box over two or more notes of a slide to fill only the part between them."
@@ -806,28 +812,33 @@
         },
         "groups": {
             "speed": "Each group has its own speed, set by its time scale changes.",
-            "current": "Tap a group to make it the current group. New notes and time scales go into it, and objects in other groups cannot be selected or edited.",
-            "currentClick": "Click a group to make it the current group. New notes and time scales go into it, and objects in other groups cannot be selected or edited."
+            "current": "Tap a group to make it the current group. New notes and time scale changes go into it, and objects in other groups cannot be selected or edited.",
+            "currentClick": "Click a group to make it the current group. New notes and time scale changes go into it, and objects in other groups cannot be selected or edited.",
+            "manage": "Manage Groups lists the groups and lets you add, reorder and edit them.",
+            "switch": "Previous Group and Next Group change the current group, and All Groups switches to all groups."
         },
         "stages": {
             "lanes": "Each stage has its own lanes, and its stage events set how it looks and moves.",
             "current": "Tap a stage to make it the current stage. New notes and stage events go on it, and objects on other stages cannot be selected or edited.",
-            "currentClick": "Click a stage to make it the current stage. New notes and stage events go on it, and objects on other stages cannot be selected or edited."
+            "currentClick": "Click a stage to make it the current stage. New notes and stage events go on it, and objects on other stages cannot be selected or edited.",
+            "manage": "Manage Stages lists the stages and lets you add, reorder and edit them.",
+            "switch": "Previous Stage and Next Stage change the current stage, and All Stages switches to all stages."
         },
         "event": {
-            "camera": "Camera Event pans, zooms and rotates the view of the whole chart.",
-            "mask": "Stage Mask Event sets which lanes a stage covers.",
-            "pivot": "Stage Pivot Event shifts a stage’s notes and lane dividers sideways, and can raise its judgment line.",
-            "style": "Stage Style Event sets how a stage looks, such as its colors and borders.",
-            "transform": "Stage Transform Event moves and rotates the whole stage, with its notes.",
+            "camera": "Camera Event adds events that pan, zoom and rotate the view of the whole chart.",
+            "mask": "Stage Mask Event adds events that set which lanes a stage covers.",
+            "pivot": "Stage Pivot Event adds events that shift a stage’s notes and lane dividers sideways and raise its judgment line.",
+            "style": "Stage Style Event adds events that set how a stage looks, such as its colors and borders.",
+            "transform": "Stage Transform Event adds events that move and rotate the whole stage, with its notes.",
             "width": "With Camera Event or Stage Mask Event, drag across empty space to add an event of that width.",
             "easeStep": "When the Properties panel is shown, tap a selected event to switch its Ease Type to the next one.",
             "easeStepClick": "When the Properties panel is shown, click a selected event to switch its Ease Type to the next one."
         },
         "minimap": {
-            "overviewClick": "The minimap shows the whole chart. Drag its box to scroll, or click elsewhere on it to jump there.",
-            "overview": "The minimap shows the whole chart. Drag its box to scroll, or tap elsewhere on it to jump there.",
-            "changes": "While you view a Timeline step, marks on the minimap show where that step changed the chart."
+            "overviewClick": "Drag the box on the minimap to scroll, or click elsewhere on it to jump there.",
+            "overview": "Drag the box on the minimap to scroll, or tap elsewhere on it to jump there.",
+            "changes": "While you view a Timeline step, marks on the minimap show where that step changed the chart.",
+            "toggle": "Shows or hides the minimap, an overview of the whole chart."
         },
         "snapping": {
             "switch": "Snapping switches between Absolute and Relative snapping, and Lane Snapping does the same for lanes.",
@@ -835,6 +846,14 @@
         },
         "statistics": {
             "contents": "Shows the chart’s combo, the number of notes of each kind and a Notes per Second chart."
+        },
+        "splitCombine": {
+            "split": "Split Slide cuts the connection after each selected note.",
+            "combine": "Combine into Slide joins the selected notes and their slides into one slide."
+        },
+        "noteTool": {
+            "adds": "Note adds notes with the current preset’s default properties.",
+            "presetCommands": "Note #1 to Note #4 switch to Note with the chosen preset."
         }
     },
     "elevation": {

@@ -147,7 +147,10 @@ export const helpSections = [
             {
                 id: 'exportLevel',
                 commands: ['exportLevel'],
-                lines: [{ text: () => i18n.value.help.exportLevel.contents }],
+                lines: [
+                    { text: () => i18n.value.help.exportLevel.levelData },
+                    { text: () => i18n.value.help.exportLevel.contents },
+                ],
             },
             {
                 id: 'utilities',
@@ -167,6 +170,7 @@ export const helpSections = [
                 id: 'play',
                 commands: ['play', 'stop'],
                 lines: [
+                    { text: () => i18n.value.help.play.toggle },
                     { text: () => i18n.value.help.play.startPosition },
                     { text: () => i18n.value.help.play.stop },
                 ],
@@ -206,6 +210,7 @@ export const helpSections = [
                 id: 'history',
                 commands: ['history', 'showChange', 'editsHere'],
                 lines: [
+                    { text: () => i18n.value.help.history.timeline },
                     {
                         tap: () => i18n.value.help.history.view,
                         click: () => i18n.value.help.history.viewClick,
@@ -290,7 +295,10 @@ export const helpSections = [
             {
                 id: 'splitCombine',
                 commands: ['splitHold', 'combineNotes'],
-                lines: [{ text: () => i18n.value.help.modal.slideTool.splitCombine }],
+                lines: [
+                    { text: () => i18n.value.help.splitCombine.split },
+                    { text: () => i18n.value.help.splitCombine.combine },
+                ],
             },
             {
                 id: 'makeVertical',
@@ -300,7 +308,10 @@ export const helpSections = [
             {
                 id: 'scale',
                 commands: ['scaleBeat', 'scaleElevation', 'scaleWidth'],
-                lines: [{ text: () => i18n.value.help.scale.drag }],
+                lines: [
+                    { text: () => i18n.value.help.scale.axes },
+                    { text: () => i18n.value.help.scale.drag },
+                ],
             },
             {
                 id: 'elevation',
@@ -310,7 +321,10 @@ export const helpSections = [
             {
                 id: 'editorLayout',
                 commands: ['editorLayout'],
-                lines: [{ text: () => i18n.value.help.editorLayout.layouts }],
+                lines: [
+                    { text: () => i18n.value.help.editorLayout.switch },
+                    { text: () => i18n.value.help.editorLayout.layouts },
+                ],
             },
         ],
     },
@@ -322,6 +336,8 @@ export const helpSections = [
                 id: 'note',
                 commands: ['note', 'note0', 'note1', 'note2', 'note3'],
                 lines: [
+                    { text: () => i18n.value.help.noteTool.adds },
+                    { text: () => i18n.value.help.noteTool.presetCommands },
                     { text: () => i18n.value.help.modal.noteTool.presets },
                     {
                         tap: () => i18n.value.help.modal.noteTool.quickEdit,
@@ -333,11 +349,13 @@ export const helpSections = [
                 id: 'slide',
                 commands: ['slide', 'slide0', 'slide1', 'slide2', 'slide3', 'slide4'],
                 lines: [
+                    { text: () => i18n.value.help.slideTool.adds },
+                    { text: () => i18n.value.help.slideTool.presetCommands },
+                    { text: () => i18n.value.help.modal.slideTool.presets },
                     {
                         tap: () => i18n.value.help.modal.slideTool.connect,
                         click: () => i18n.value.help.modal.slideTool.connectClick,
                     },
-                    { text: () => i18n.value.help.modal.slideTool.presets },
                     {
                         tap: () => i18n.value.help.slideTool.quickEditPanel,
                         click: () => i18n.value.help.slideTool.quickEditPanelClick,
@@ -389,22 +407,26 @@ export const helpSections = [
                 id: 'groups',
                 commands: ['manageGroups', 'groupPrev', 'groupNext', 'groupAll'],
                 lines: [
-                    { text: () => i18n.value.help.groups.speed },
+                    { text: () => i18n.value.help.groups.manage },
                     {
                         tap: () => i18n.value.help.groups.current,
                         click: () => i18n.value.help.groups.currentClick,
                     },
+                    { text: () => i18n.value.help.groups.switch },
+                    { text: () => i18n.value.help.groups.speed },
                 ],
             },
             {
                 id: 'stages',
                 commands: ['manageStages', 'stagePrev', 'stageNext', 'stageAll'],
                 lines: [
-                    { text: () => i18n.value.help.stages.lanes },
+                    { text: () => i18n.value.help.stages.manage },
                     {
                         tap: () => i18n.value.help.stages.current,
                         click: () => i18n.value.help.stages.currentClick,
                     },
+                    { text: () => i18n.value.help.stages.switch },
+                    { text: () => i18n.value.help.stages.lanes },
                 ],
             },
         ],
@@ -424,12 +446,12 @@ export const helpSections = [
                     'stageTransformEvent',
                 ],
                 lines: [
+                    { text: () => i18n.value.help.modal.event.next },
                     { text: () => i18n.value.help.event.camera },
                     { text: () => i18n.value.help.event.mask },
                     { text: () => i18n.value.help.event.pivot },
                     { text: () => i18n.value.help.event.style },
                     { text: () => i18n.value.help.event.transform },
-                    { text: () => i18n.value.help.modal.event.next },
                     { text: () => i18n.value.help.modal.event.defaults },
                     { text: () => i18n.value.help.event.width },
                     {
@@ -448,6 +470,7 @@ export const helpSections = [
                 id: 'minimap',
                 commands: ['minimap'],
                 lines: [
+                    { text: () => i18n.value.help.minimap.toggle },
                     {
                         tap: () => i18n.value.help.minimap.overview,
                         click: () => i18n.value.help.minimap.overviewClick,

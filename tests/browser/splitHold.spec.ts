@@ -369,9 +369,11 @@ test('Help explains Split Slide and Combine into Slide in English and Japanese o
         expect(bounds!.x).toBeGreaterThanOrEqual(0)
         expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390)
     }
-    await check(english.help.modal.slideTool.splitCombine)
+    await check(english.help.splitCombine.split)
+    await check(english.help.splitCombine.combine)
     await page.evaluate(() => {
         window.editorTest.settings.locale = 'ja'
     })
-    await check(japanese.help.modal.slideTool.splitCombine)
+    await check(japanese.help.splitCombine.split)
+    await check(japanese.help.splitCombine.combine)
 })

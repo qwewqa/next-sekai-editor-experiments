@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Help now explains what each tool does before its other gestures and details.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
 - (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.

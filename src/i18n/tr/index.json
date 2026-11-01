@@ -627,7 +627,7 @@
         "title": "Dokunmatik Ekran",
         "longPress": "Bağlam menüsünü açmak için bir nesneye uzun basın.",
         "scroll": "Kaydırmak için iki parmakla sürükleyin. Dikey yakınlaştırma için parmaklarınızı dikey yönde, yatay yakınlaştırma için yatay yönde birbirine yaklaştırın veya birbirinden uzaklaştırın.",
-        "quickScroll": "Tek parmakla kaydırmak için çizelgenin kenarındaki hızlı kaydırma alanında sürükleyin.",
+        "quickScroll": "Kaydırmak için çizelgenin kenarındaki hızlı kaydırma alanında tek parmakla sürükleyin.",
         "gestures": "Seçimi kaldırmak için iki parmakla dokunun. Oynatmayı başlatmak veya durdurmak için üç parmakla dokunun."
       },
       "mouse": {
@@ -640,7 +640,7 @@
       },
       "keyboard": {
         "title": "Klavye",
-        "settings": "Kısayolları Ayarlar › Klavye Kısayolları bölümünde görüntüleyebilir ve değiştirebilirsiniz."
+        "settings": "Kısayolları görüntülemek veya değiştirmek için Ayarlar › Klavye Kısayolları bölümünü açın."
       },
       "selectTool": {
         "select": "Bir nesneyi seçmek için ona dokunun.",
@@ -650,13 +650,13 @@
         "selectMultiple": "İçindeki nesneleri seçmek için boş alandan başlayıp sürükleyerek bir çerçeve çizin."
       },
       "eraserTool": {
-        "erase": "Bir nesneyi silmek için ona dokunun veya içindeki her şeyi silmek için sürükleyerek bir çerçeve çizin.",
-        "eraseClick": "Bir nesneyi silmek için ona tıklayın veya içindeki her şeyi silmek için sürükleyerek bir çerçeve çizin.",
+        "erase": "Bir nesneyi silmek için ona dokunun veya içindeki nesneleri silmek için sürükleyerek bir çerçeve çizin.",
+        "eraseClick": "Bir nesneyi silmek için ona tıklayın veya içindeki nesneleri silmek için sürükleyerek bir çerçeve çizin.",
         "selection": "Seçimin tamamını silmek için seçili bir nesneye dokunun.",
         "selectionClick": "Seçimin tamamını silmek için seçili bir nesneye tıklayın."
       },
       "brushTool": {
-        "properties": "Fırça komutunu seçin, ardından uygulanacak özellikleri ayarlayın.",
+        "properties": "Fırça için ayarladığınız özellikleri nesnelere uygular.",
         "brush": "Fırçayı uygulamak için bir nesneye dokunun veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye dokunun.",
         "brushClick": "Fırçayı uygulamak için bir nesneye tıklayın veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye tıklayın.",
         "shift": "Fırçayı kaydırmaların tamamına uygulamak için Shift tuşunu basılı tutun."
@@ -667,28 +667,27 @@
       },
       "noteTool": {
         "presets": "Varsayılan özellikleri göstermek ve ön ayarlar arasında geçiş yapmak için Nota komutunu tekrar seçin.",
-        "quickEdit": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun.",
-        "quickEditClick": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya tıklayın."
+        "quickEdit": "Özellikler paneli görünürken seçili tüm notaları geçerli ön ayarla düzenlemek için seçili bir notaya dokunun.",
+        "quickEditClick": "Özellikler paneli görünürken seçili tüm notaları geçerli ön ayarla düzenlemek için seçili bir notaya tıklayın."
       },
       "slideTool": {
         "connect": "Aynı kaydırmanın notaları seçiliyken o kaydırmaya başka bir nota eklemek için boş alana dokunun. Yeni bir kaydırmaya başlamadan önce Seçimi Kaldır komutunu seçin.",
         "connectClick": "Aynı kaydırmanın notaları seçiliyken o kaydırmaya başka bir nota eklemek için boş alana tıklayın. Yeni bir kaydırmaya başlamadan önce Seçimi Kaldır komutunu seçin.",
-        "presets": "Varsayılan özellikleri göstermek ve ön ayarlar arasında geçiş yapmak için Kaydırma komutunu tekrar seçin.",
-        "splitCombine": "Kaydırmayı Böl, seçili her notadan sonraki bağlantıyı keser. Kaydırmada Birleştir, seçili notaları içeren kaydırmaları birleştirir."
+        "presets": "Varsayılan özellikleri göstermek ve ön ayarlar arasında geçiş yapmak için Kaydırma komutunu tekrar seçin."
       },
       "generateSlideNotesTool": {
-        "generate": "Bir kaydırma boyunca ekli notalar eklemek için notalarından birine dokunun. Her boş bölüm çizgisine bir nota eklenir.",
-        "generateClick": "Bir kaydırma boyunca ekli notalar eklemek için notalarından birine tıklayın. Her boş bölüm çizgisine bir nota eklenir."
+        "generate": "Kaydırması boyunca boş bölüm çizgilerinde ekli notalar oluşturmak için bir notaya dokunun.",
+        "generateClick": "Kaydırması boyunca boş bölüm çizgilerinde ekli notalar oluşturmak için bir notaya tıklayın."
       },
       "adding": {
-        "add": "Nota, Kaydırma, BPM, Zaman Ölçeği veya Olay aracında bir nesne eklemek için boş alana dokunun. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
-        "addClick": "Nota, Kaydırma, BPM, Zaman Ölçeği veya Olay aracında bir nesne eklemek için boş alana tıklayın. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
-        "edit": "Özelliklerini göstermek için seçili bir nesneye dokunun.",
-        "editClick": "Özelliklerini göstermek için seçili bir nesneye tıklayın.",
-        "move": "Bir nesneyi sürüklediğinizde yalnızca o nesne taşınır.",
+        "add": "Nota, Kaydırma, BPM, Zaman Ölçeği veya bir olay aracında bir nesne eklemek için boş alana dokunun. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
+        "addClick": "Nota, Kaydırma, BPM, Zaman Ölçeği veya bir olay aracında bir nesne eklemek için boş alana tıklayın. Nota veya Kaydırma aracında sürüklediğiniz alanın genişliğinde bir nota eklemek için boş alanda sürükleyin.",
+        "edit": "Aynı araçta, özelliklerini düzenlemek için seçili bir nesneye dokunun.",
+        "editClick": "Aynı araçta, özelliklerini düzenlemek için seçili bir nesneye tıklayın.",
+        "move": "Aynı araçta bir nesneyi sürükleyerek yalnızca o nesneyi taşıyın.",
         "resize": "Boyutunu değiştirmek için bir notanın, kamera olayının veya sahne maskesi olayının kenarını sürükleyin.",
-        "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun.",
-        "modifiersClick": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak tıklayın. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya tıklayın."
+        "modifiers": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak nesneye dokunun. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya dokunun.",
+        "modifiersClick": "Bir nesneyi seçime eklemek veya seçimden çıkarmak için Ctrl (macOS’ta Cmd) tuşunu basılı tutarak nesneye tıklayın. Bir notanın ait olduğu kaydırmanın tamamını seçmek için Shift tuşunu basılı tutarak notaya tıklayın."
       },
       "bpmTool": {
         "first": "Çizelge her zaman bir BPM değişikliğiyle başlar. Bunu sürüklediğinizde bıraktığınız yere bir kopyası eklenir.",
@@ -699,8 +698,8 @@
         "ease": "Eğri, gruptaki bir sonraki değişikliğe geçişi gösterir."
       },
       "event": {
-        "next": "Bir olay aracına geçmek için Olay komutunu seçin. Olay araçları arasında sırayla geçiş yapmak için tekrar seçin.",
-        "defaults": "Bir olay aracının varsayılan özelliklerini düzenlemek için Kamera Olayı gibi kendi adını tekrar seçin."
+        "next": "Olay, bir olay aracına geçer. Olay araçları arasında sırayla geçiş yapmak için tekrar seçin.",
+        "defaults": "Varsayılan özelliklerini göstermek için Kamera Olayı veya başka bir olay aracını tekrar seçin."
       },
       "offset": {
         "drag": "Arka plan müziğinin zaman kaymasını değiştirmek için yukarı veya aşağı sürükleyin."
@@ -735,21 +734,23 @@
       "formats": "Proje dosyalarını, Sonolus paketlerini, seviye verilerini, Chart Cyanvas seviyelerini ve USC ile SUS çizelgelerini açar. Ses dosyası seçmek arka plan müziğini değiştirir."
     },
     "save": {
-      "projectFile": "Çalışmanızı bir proje dosyasında (.nxsp) saklamak için Kaydet komutunu seçin. Sonolus sunucusuna yüklenecek seviye verisini oluşturmak için Seviye Verisini Dışa Aktar komutunu kullanın."
+      "projectFile": "Çalışmanızı bir proje dosyasına (.nxsp) kaydeder."
     },
     "exportLevel": {
-      "contents": "Seviye verisi çizelgeyi, Başlangıç Canı’nı ve arka plan müziğinin zaman kaymasını içerir. Müziği ve Seviye Bilgileri’nin geri kalanını içermez."
+      "contents": "Seviye verisi çizelgeyi, Başlangıç Canı’nı ve arka plan müziğinin zaman kaymasını içerir. Müziği ve Seviye Bilgileri’nin geri kalanını içermez.",
+      "levelData": "Sonolus sunucusuna yükleyebileceğiniz seviye verisini (.nsld) dışa aktarır."
     },
     "utilities": {
-      "editors": "Kapak Editörü bir görselden kapak, Önizleme Editörü ise arka plan müziğinin bir bölümünden önizleme sesi oluşturur.",
+      "editors": "Bir görselden kapak oluşturmak için Kapak Editörü’nü veya arka plan müziğinin bir bölümünden önizleme sesi oluşturmak için Önizleme Editörü’nü açar.",
       "levelInfo": "İkisi de oluşturduklarını dosya olarak kaydeder. Seviyenin kapağını veya önizleme sesini ayarlamak için Seviye Bilgileri’ni kullanın."
     },
     "play": {
       "startPosition": "Oynat komutunun oynatma imlecinden başlaması için Ayarlar › Oynat bölümünde Başlangıç Konumu’nu İmleç olarak ayarlayın.",
-      "stop": "Durdur, oynatma imlecini oynatmanın başladığı yere geri götürür. Bulunduğunuz yerde durmak için Oynat komutunu tekrar seçin."
+      "stop": "Durdur, oynatmayı sonlandırır ve oynatma imlecini oynatmanın başladığı yere geri götürür.",
+      "toggle": "Oynat, oynatmayı başlatır veya geçerli konumda durdurur."
     },
     "bgm": {
-      "load": "Müziği yüklemek ve zaman kaymasını ayarlamak için Arka Plan Müziği komutunu seçin."
+      "load": "Müziği yükler ve zaman kaymasını ayarlar."
     },
     "previewAssets": {
       "browser": "Bu tarayıcıda açtığınız tüm çizelgeler için önizlemenin görünümünü ve sesini değiştirir."
@@ -762,16 +763,17 @@
       "view": "Çizelgenin o zamanki hâlini görmek için bir Zaman Çizgisi adımına dokunun. Geri Yükle, bu sürümü yeni bir Zaman Çizgisi adımı olarak geri getirir.",
       "viewClick": "Çizelgenin o zamanki hâlini görmek için bir Zaman Çizgisi adımına tıklayın. Geri Yükle, bu sürümü yeni bir Zaman Çizgisi adımı olarak geri getirir.",
       "showChange": "Değişikliği Göster, görüntülediğiniz Zaman Çizgisi adımındaki bir sonraki değişikliğe kaydırır.",
-      "editsHere": "Buradaki Düzenlemeleri Bul, çizelgenin seçili kısmını değiştiren Zaman Çizgisi adımlarını gösterir. Hiçbir şey seçili değilse çizelgenin görünür kısmını kullanır."
+      "editsHere": "Buradaki Düzenlemeleri Bul, seçimin kapladığı vuruşlarda değişiklik içeren Zaman Çizgisi adımlarını gösterir. Hiçbir şey seçili değilse görünür vuruşları kullanır.",
+      "timeline": "Geçmiş, düzenlemelerinizi, kaydetme ve dışa aktarma işlemlerinizi Zaman Çizgisi adımları olarak listeler."
     },
     "pasteTool": {
       "clipboardHistory": "Özellikler panelindeki Pano Geçmişi, son kopyaladıklarınızı listeler. Bir sonraki yapıştırmada kullanmak için bunlardan birini seçin."
     },
     "selectTool": {
-      "resizeSelection": "Birden fazla nesnenin boyutunu birlikte değiştirmek için aynı türde nesneler seçin ve birinin kenarını sürükleyin."
+      "resizeSelection": "Aynı türde nesneler seçin, ardından boyutlarını birlikte değiştirmek için birinin kenarını sürükleyin."
     },
     "deselect": {
-      "select": "Hiçbir şey seçili değilken Seç aracına geçer."
+      "select": "Tüm nesnelerin seçimini kaldırır veya hiçbir şey seçili değilken Seçim aracına geçer."
     },
     "flip": {
       "mirror": "Seçimi şerit 0’a göre yatay olarak aynalar."
@@ -783,17 +785,21 @@
       "elevation": "Seçili notaları en erken notanın vuruşuna taşır ve her notanın Yükseklik değerini taşındığı vuruş sayısına ayarlar."
     },
     "scale": {
-      "drag": "İletişim kutusu açıkken sürükleyerek de ölçekleyebilirsiniz. Vuruşları Ölçekle için seçili ilk veya son notayı sürükleyin. Yükseklikleri Ölçekle için Yükseklik Editörü’nde seçili en yüksek veya en alçak notayı sürükleyin. Genişliği Ölçekle için seçili bir nesnenin kenarını sürükleyin."
+      "drag": "İletişim kutusu açıkken sürükleyerek de ölçekleyebilirsiniz. Vuruşları Ölçekle için seçili ilk veya son nesneyi sürükleyin. Yükseklikleri Ölçekle için Yükseklik Editörü’nde seçili en yüksek veya en alçak notayı sürükleyin. Genişliği Ölçekle için seçili bir nesnenin kenarını sürükleyin.",
+      "axes": "Vuruşları Ölçekle, Yükseklikleri Ölçekle ve Genişliği Ölçekle, seçimi zaman, yükseklik veya şeritler boyunca genişletir veya daraltır."
     },
     "elevation": {
-      "beat": "Bir vuruştaki notaların yüksekliklerini düzenler."
+      "beat": "Oynatma imlecindeki notaların yüksekliklerini düzenler."
     },
     "editorLayout": {
-      "layouts": "Birleşik, sahneleri gösterir ve notaları sahnelere göre konumlandırır. Temel, her notayı kendi şeridinde gösterir."
+      "layouts": "Birleşik, sahneleri gösterir ve notaları sahnelere göre konumlandırır. Temel, her notayı kendi şeridinde gösterir.",
+      "switch": "Birleşik ve Temel düzenleri arasında geçiş yapar."
     },
     "slideTool": {
-      "quickEditPanel": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya dokunun.",
-      "quickEditPanelClick": "Özellikler paneli görünürken geçerli ön ayarın özelliklerini seçili tüm notalarda ayarlamak veya değerlerini sırayla değiştirmek için seçili bir notaya tıklayın."
+      "quickEditPanel": "Özellikler paneli görünürken seçili tüm notaları geçerli ön ayarla düzenlemek için seçili bir notaya dokunun.",
+      "quickEditPanelClick": "Özellikler paneli görünürken seçili tüm notaları geçerli ön ayarla düzenlemek için seçili bir notaya tıklayın.",
+      "adds": "Kaydırma, geçerli ön ayarın varsayılan özellikleriyle kaydırmalar ekler.",
+      "presetCommands": "Kaydırma #1–Kaydırma #5 komutları, seçilen ön ayarla Kaydırma aracına geçer."
     },
     "generateSlideNotesTool": {
       "fillSelection": "Yalnızca aralarındaki kısmı doldurmak için aynı kaydırmanın iki veya daha fazla notasını sürükleyerek bir çerçeve içine alın."
@@ -807,27 +813,32 @@
     "groups": {
       "speed": "Her grubun kendi zaman ölçeği değişiklikleriyle belirlenen bir hızı vardır.",
       "current": "Bir grubu geçerli grup yapmak için ona dokunun. Yeni notalar ve zaman ölçeği değişiklikleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez.",
-      "currentClick": "Bir grubu geçerli grup yapmak için ona tıklayın. Yeni notalar ve zaman ölçeği değişiklikleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez."
+      "currentClick": "Bir grubu geçerli grup yapmak için ona tıklayın. Yeni notalar ve zaman ölçeği değişiklikleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez.",
+      "manage": "Grupları Yönet, grupları listeler ve grup eklemenizi, sıralamalarını değiştirmenizi ve düzenlemenizi sağlar.",
+      "switch": "Önceki Gruba Geç ve Sonraki Gruba Geç, geçerli grubu değiştirir; Tüm Gruplara Geç ise tüm gruplara geçer."
     },
     "stages": {
       "lanes": "Her sahnenin kendi şeritleri vardır ve sahne olayları, sahnenin nasıl göründüğünü ve hareket ettiğini belirler.",
       "current": "Bir sahneyi geçerli sahne yapmak için ona dokunun. Yeni notalar ve sahne olayları bu sahneye eklenir; diğer sahnelerdeki nesneler seçilemez veya düzenlenemez.",
-      "currentClick": "Bir sahneyi geçerli sahne yapmak için ona tıklayın. Yeni notalar ve sahne olayları bu sahneye eklenir; diğer sahnelerdeki nesneler seçilemez veya düzenlenemez."
+      "currentClick": "Bir sahneyi geçerli sahne yapmak için ona tıklayın. Yeni notalar ve sahne olayları bu sahneye eklenir; diğer sahnelerdeki nesneler seçilemez veya düzenlenemez.",
+      "manage": "Sahneleri Yönet, sahneleri listeler ve sahne eklemenizi, sıralamalarını değiştirmenizi ve düzenlemenizi sağlar.",
+      "switch": "Önceki Sahneye Geç ve Sonraki Sahneye Geç, geçerli sahneyi değiştirir; Tüm Sahnelere Geç ise tüm sahnelere geçer."
     },
     "event": {
-      "camera": "Kamera Olayı, çizelgenin tamamının görünümünü kaydırır, yakınlaştırıp uzaklaştırır ve döndürür.",
-      "mask": "Sahne Maskesi Olayı, sahnenin hangi şeritleri kapladığını belirler.",
-      "pivot": "Sahne Referans Noktası Olayı, sahnenin notalarını ve bölüm çizgilerini yana kaydırır ve vuruş çizgisini yükseltebilir.",
-      "style": "Sahne Stili Olayı, sahnenin renkleri ve kenarlıkları gibi görünüm özelliklerini belirler.",
-      "transform": "Sahne Dönüşüm Olayı, sahnenin tamamını notalarıyla birlikte taşır ve döndürür.",
+      "camera": "Kamera Olayı, çizelgenin tamamının görünümünü kaydıran, yakınlaştırıp uzaklaştıran ve döndüren olaylar ekler.",
+      "mask": "Sahne Maskesi Olayı, sahnenin hangi şeritleri kapladığını belirleyen olaylar ekler.",
+      "pivot": "Sahne Referans Noktası Olayı, sahnenin notalarını ve bölüm çizgilerini yana kaydıran ve vuruş çizgisini yükselten olaylar ekler.",
+      "style": "Sahne Stili Olayı, sahnenin renkleri ve kenarlıkları gibi görünüm özelliklerini belirleyen olaylar ekler.",
+      "transform": "Sahne Dönüşüm Olayı, sahnenin tamamını notalarıyla birlikte taşıyan ve döndüren olaylar ekler.",
       "width": "Kamera Olayı veya Sahne Maskesi Olayı aracında, sürüklediğiniz alanın genişliğinde bir olay eklemek için boş alanda sürükleyin.",
       "easeStep": "Özellikler paneli görünürken Yumuşatma Türü’nü bir sonrakine geçirmek için seçili bir olaya dokunun.",
       "easeStepClick": "Özellikler paneli görünürken Yumuşatma Türü’nü bir sonrakine geçirmek için seçili bir olaya tıklayın."
     },
     "minimap": {
-      "overviewClick": "Mini harita çizelgenin tamamını gösterir. Kaydırmak için kutusunu sürükleyin veya mini haritada başka bir yere tıklayarak oraya atlayın.",
-      "overview": "Mini harita çizelgenin tamamını gösterir. Kaydırmak için kutusunu sürükleyin veya mini haritada başka bir yere dokunarak oraya atlayın.",
-      "changes": "Bir Zaman Çizgisi adımını görüntülerken mini haritadaki işaretler, o adımın çizelgeyi nerede değiştirdiğini gösterir."
+      "overviewClick": "Kaydırmak için mini haritadaki kutuyu sürükleyin veya mini haritada başka bir yere tıklayarak oraya atlayın.",
+      "overview": "Kaydırmak için mini haritadaki kutuyu sürükleyin veya mini haritada başka bir yere dokunarak oraya atlayın.",
+      "changes": "Bir Zaman Çizgisi adımını görüntülerken mini haritadaki işaretler, o adımın çizelgeyi nerede değiştirdiğini gösterir.",
+      "toggle": "Çizelgenin tamamını görebileceğiniz mini haritayı gösterir veya gizler."
     },
     "snapping": {
       "switch": "Hizalama, Mutlak ve Göreceli hizalama arasında geçiş yapar; Şerit Hizalama da şeritler için aynı geçişi yapar.",
@@ -835,6 +846,14 @@
     },
     "statistics": {
       "contents": "Çizelgenin kombosunu, her türdeki nota sayısını ve Saniye Başına Nota grafiğini gösterir."
+    },
+    "splitCombine": {
+      "split": "Kaydırmayı Böl, seçili her notadan sonraki bağlantıyı keser.",
+      "combine": "Kaydırmada Birleştir, seçili notaları ve ait oldukları kaydırmaları tek bir kaydırmada birleştirir."
+    },
+    "noteTool": {
+      "adds": "Nota, geçerli ön ayarın varsayılan özellikleriyle notalar ekler.",
+      "presetCommands": "Nota #1–Nota #4 komutları, seçilen ön ayarla Nota aracına geçer."
     }
   },
   "elevation": {

@@ -56,3 +56,14 @@ These rules apply only to user-facing text: the strings in `src/i18n/`, Help, no
   - When a select's choices do different things, give a brief introduction, then one line per choice. The editor puts the choice's name before its line, so the line does not repeat it.
   - Use prose for a select whose choices are groups, stages or presets, and for one whose choice names already say what differs, as colors, sounds, flick directions and ease curves do. Toggles and number fields use prose too.
 - Label related controls the same way: if one has a suffix, its neighbours have one too, or none does. In each locale, put a name in the same place across related messages: "Added group {0}", "Deleted group {0}".
+
+### Help
+
+- Open a command entry with what the command does, in the present tense, with the command as the implied subject: "Mirrors the selection around lane 0." Never open with "Choose X to …", a condition, a secondary gesture or a side fact.
+- A tool used through one main gesture may open with that gesture when it says the result in plain words: "Tap an object to erase it." A gesture such as "apply the brush" does not explain the result, so the entry needs a first line that does.
+- In an entry for several commands, give each command a line in heading order, with its name as the subject. Commands that work alike share a line: "Previous Group and Next Group …". Put a line for one command after that command's line, and lines for several commands after all their command lines.
+- Put a gesture's action first, then "to" and the result: "Drag a box to select the objects in it." Put a condition or held key first when there is one: "When the Properties panel is shown, tap …", "Hold Shift to …". Choosing a command again reads "Choose X again to …". Tap and click forms differ only in gesture words and mouse-only extras, such as the wheel.
+- When pointing to a setting or another place, put the goal first: "To change the tools on the toolbar, open Settings › Toolbar."
+- After the gestures, give at most two facts that an author needs and would not assume. Leave out edge cases the author would not act on, explanations of familiar game terms, and what another entry already says for the same tool. Keep every claim accurate.
+- Write Controls as gestures and pointers in the same forms. Each line is one gesture, or a pair that belong together.
+- Keep an entry for one command to at most five lines. An entry for several commands has one more line for each command line it needs.
