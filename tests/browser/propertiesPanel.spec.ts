@@ -1097,7 +1097,7 @@ test('brush labels past two lines keep clear of their remove button', async ({ p
 })
 
 test('brush labels too narrow for a word take the line above their value', async ({ page }) => {
-    for (const locale of ['en', 'fr', 'ko', 'tr']) {
+    for (const locale of ['en', 'fr', 'ko', 'tr'] as const) {
         await page.goto('/')
         await open(page, {
             locale,
@@ -1118,34 +1118,57 @@ test('brush labels too narrow for a word take the line above their value', async
         })
         await page.keyboard.press('b')
         await expect(panel(page).locator('.brush-row').first()).toBeVisible()
-        await page.waitForTimeout(100)
-        const fields = await panel(page)
-            .locator('.brush-row .form-field')
-            .evaluateAll((fields) =>
-                fields.map((field) => {
-                    const text = field.querySelector('.form-field-text')!
-                    const node = text.firstChild!
-                    const content = node.textContent ?? ''
-                    const range = document.createRange()
-                    const broken: string[] = []
-                    // Words, also split before "(" and after "/", as in "Bölüm Tekliği/Çiftliği".
-                    for (const { 0: word, index } of content.matchAll(/\(?[^\s(/]+\/?/g)) {
-                        range.setStart(node, index)
-                        range.setEnd(node, index + word.length)
-                        if (range.getClientRects().length > 1) broken.push(word)
-                    }
-                    return {
-                        label: content,
-                        broken,
-                        stacked: field.classList.contains('form-field-value-stacked'),
-                    }
-                }),
-            )
-        expect(fields.length, locale).toBeGreaterThan(30)
-        for (const { label, broken } of fields)
-            expect({ label, broken }, locale).toEqual({ label, broken: [] })
-        // Labels that fit keep their value beside them.
-        expect(fields.filter((field) => !field.stacked).length, locale).toBeGreaterThan(20)
+        const readFields = () =>
+            panel(page)
+                .locator('.brush-row .form-field')
+                .evaluateAll((fields) =>
+                    fields.map((field) => {
+                        const text = field.querySelector('.form-field-text')!
+                        const node = text.firstChild!
+                        const content = node.textContent ?? ''
+                        const range = document.createRange()
+                        const broken: string[] = []
+                        // Words, also split before "(" and after "/", as in "Bölüm Tekliği/Çiftliği".
+                        for (const { 0: word, index } of content.matchAll(/\(?[^\s(/]+\/?/g)) {
+                            range.setStart(node, index)
+                            range.setEnd(node, index + word.length)
+                            if (range.getClientRects().length > 1) broken.push(word)
+                        }
+                        return {
+                            label: content,
+                            broken,
+                            stacked: field.classList.contains('form-field-value-stacked'),
+                            lines: Math.round(
+                                text.getBoundingClientRect().height /
+                                    parseFloat(getComputedStyle(text).lineHeight),
+                            ),
+                        }
+                    }),
+                )
+        await expect(async () => {
+            const fields = await readFields()
+            expect(fields.length, locale).toBeGreaterThan(30)
+            for (const { label, broken, stacked, lines } of fields) {
+                expect({ label, broken }, locale).toEqual({ label, broken: [] })
+                if (!stacked) expect(lines, `${locale}: ${label}`).toBeLessThanOrEqual(2)
+            }
+        }).toPass({ timeout: 5000 })
+        // Short labels and labels that fit in two lines keep their value beside them.
+        for (const key of ['size', 'flickDirection', 'connectorType'])
+            await expect(
+                panel(page).locator(`[data-brush-key="${key}"] .form-field`),
+            ).not.toHaveClass(/form-field-value-stacked/)
+        // These words would break across two lines beside the value.
+        const longWord = {
+            en: 'connectorPresentation',
+            fr: 'connectorPresentation',
+            ko: undefined,
+            tr: 'cameraZoom',
+        }[locale]
+        if (longWord)
+            await expect(
+                panel(page).locator(`[data-brush-key="${longWord}"] .form-field`),
+            ).toHaveClass(/form-field-value-stacked/)
     }
 })
 
