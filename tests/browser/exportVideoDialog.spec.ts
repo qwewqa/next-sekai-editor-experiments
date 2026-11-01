@@ -201,7 +201,9 @@ test('the strip: a handle drags, its keys step, and Escape puts a drag back', as
     await page.keyboard.press('Home')
     await expect(handle).toHaveAttribute('aria-valuetext', '00:00.000')
 
-    // Escape during a drag puts the handle back, and the dialog stays.
+    // Escape during a drag puts the handle back with its range kind, and the dialog stays.
+    await dialog.locator('[data-export-range]').click()
+    await page.getByRole('menuitemradio', { name: 'Whole Chart' }).click()
     const out = dialog.locator('[data-clip-handle="out"]')
     const outBefore = await out.getAttribute('aria-valuetext')
     const outBox = (await out.boundingBox())!
@@ -213,6 +215,12 @@ test('the strip: a handle drags, its keys step, and Escape puts a drag back', as
     await page.mouse.up()
     await expect(out).toHaveAttribute('aria-valuetext', outBefore!)
     await expect(dialog).toBeVisible()
+    // Still Whole Chart, which the next open recomputes for the chart as it is then.
+    await dialog.locator('[data-export-range]').click()
+    await expect(page.getByRole('menuitemradio', { name: 'Whole Chart' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    )
 })
 
 test('the strip takes a touch drag', async ({ page }) => {

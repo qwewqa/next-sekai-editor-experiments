@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, 
 import { i18n } from '../../i18n'
 import { chartModel, chartStatistics, mergeTimes } from '../../levelData/statistics'
 import { createFontContext } from '../../rendering/textRaster'
-import { toFrame, zoomSpan } from './clipRange'
+import { toFrame, zoomSpan, type RangeKind } from './clipRange'
 import { formatClipTime, rulerLabel, rulerStep } from './clipTime'
 import type { ExportDialog } from './dialog'
 
@@ -32,7 +32,7 @@ const rulerHeight = computed(() => (props.hideRuler ? 0 : 16))
 type Drag = {
     kind: 'in' | 'out' | 'playhead'
     pointer: number
-    from: { in: number; out: number; playhead: number }
+    from: { in: number; out: number; playhead: number; kind: RangeKind }
 }
 const drag = shallowRef<Drag>()
 const span = ref<[number, number]>([0, d.stripEnd])
@@ -153,7 +153,7 @@ const onPointerDown = (event: PointerEvent) => {
     drag.value = {
         kind,
         pointer: event.pointerId,
-        from: { ...d.range.value, playhead: d.playhead.value },
+        from: { ...d.range.value, playhead: d.playhead.value, kind: d.rangeKind.value },
     }
     root.value?.setPointerCapture(event.pointerId)
     emit('scrub')
@@ -186,7 +186,7 @@ const onDragKey = (event: KeyboardEvent) => {
     event.preventDefault()
     event.stopPropagation()
     if (current.kind !== 'playhead')
-        d.setRange({ in: current.from.in, out: current.from.out }, d.rangeKind.value)
+        d.setRange({ in: current.from.in, out: current.from.out }, current.from.kind)
     d.playhead.value = current.from.playhead
     if (root.value?.hasPointerCapture(current.pointer))
         root.value.releasePointerCapture(current.pointer)
