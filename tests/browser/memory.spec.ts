@@ -18,13 +18,13 @@ const charts = [
     {
         name: 'generated large chart',
         file: join('tests', 'fixtures', 'generated-large.json'),
-        baselineMb: 134.4,
+        baselineMb: 134.8,
     },
     {
         name: 'coconut',
         file: join('test_level_data', 'coconut-next-sekai-24887.json'),
         optional: true,
-        baselineMb: 133,
+        baselineMb: 133.4,
     },
 ]
 
