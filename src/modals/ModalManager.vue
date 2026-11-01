@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { closeModal, modals, type Modal } from '.'
+import { closeModal, ModalEntry, modals, type Modal } from '.'
 import NoticeCard from '../editor/NoticeCard.vue'
 import { cardInDialog, noticeCard, notification, quickInDialog } from '../editor/notification'
 import NoticeRegion from '../editor/NoticeRegion.vue'
@@ -211,12 +211,16 @@ const vOpen = {
         class="flex w-[calc(100%-1rem)] flex-col rounded-xl bg-modal text-fg shadow-xl outline-none backdrop:bg-scrim/75"
         :class="
             modal.size === 'large'
-                ? ['modal-large max-h-none', modal.tall ? 'max-w-2xl' : 'max-w-[40rem]']
+                ? [
+                      'modal-large max-h-none',
+                      modal.wide ? 'max-w-[72rem]' : modal.tall ? 'max-w-2xl' : 'max-w-[40rem]',
+                  ]
                 : 'max-h-[calc(100%-1rem)] max-w-2xl'
         "
         :style="modal.size === 'large' ? largeStyle(modal) : undefined"
         :data-size="modal.size"
         :data-tall="modal.tall || undefined"
+        :data-wide="modal.wide || undefined"
         :closedby="modal.persistent ? 'none' : undefined"
         @pointerdown.capture="onBackdropDown"
         @pointerup.capture="onBackdropUp"
@@ -226,7 +230,9 @@ const vOpen = {
     >
         <!-- The page behind a dialog is inert, so each dialog carries a region; only the top one is reachable. -->
         <NoticeRegion :over-only="modal.persistent" />
-        <component :is="modal.is" v-bind="modal.props" @close="closeModal(modal, $event)" />
+        <ModalEntry :modal>
+            <component :is="modal.is" v-bind="modal.props" @close="closeModal(modal, $event)" />
+        </ModalEntry>
         <div
             v-if="
                 modal === overModal &&
@@ -261,7 +267,14 @@ const vOpen = {
 
 /* A tall dialog keeps the full height at every width. */
 @media (min-width: 640px) {
-    .modal-large:not([data-tall]) {
+    .modal-large:not([data-tall], [data-wide]) {
+        height: min(var(--modal-height), var(--modal-cap, 48rem));
+    }
+}
+
+/* A wide dialog is capped only where it has room for two columns: 52rem plus its inset. */
+@media (min-width: 53rem) {
+    .modal-large[data-wide] {
         height: min(var(--modal-height), var(--modal-cap, 48rem));
     }
 }

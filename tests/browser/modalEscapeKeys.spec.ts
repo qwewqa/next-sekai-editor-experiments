@@ -423,3 +423,45 @@ test.describe('a persistent dialog', () => {
         for (const target of targets) expect(['app', 'BODY', 'HTML']).toContain(target)
     })
 })
+
+const chartInert = (page: Page) =>
+    page.evaluate(() => !!document.querySelector('canvas.editor-chart')?.closest('[inert]'))
+
+const setPersistent = (page: Page, value: boolean) =>
+    page.evaluate(async (value) => {
+        const { modals } =
+            await window.editorTest.appImport<typeof import('../../src/modals/index')>(
+                '/src/modals/index.ts',
+            )
+        modals[0]!.persistent = value
+        await window.editorTest.nextTick()
+    }, value)
+
+test('a dialog becomes persistent while open, and stops being so', async ({ page }) => {
+    await boot(page)
+    await openInfo(page, 'Changing')
+    const dialog = page.getByRole('dialog', { name: 'Changing' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog).not.toHaveAttribute('closedby')
+
+    await setPersistent(page, true)
+    await expect(dialog).toHaveAttribute('closedby', 'none')
+    await activate(page, 'Changing')
+    await page.keyboard.press('Escape')
+    const box = (await dialog.boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y / 2)
+    await settle(page)
+    await expect(dialog).toBeVisible()
+    expect(await closedCounts(page)).toEqual({ Changing: 0 })
+    // The page under it is inert while it is persistent.
+    await expect.poll(() => chartInert(page)).toBe(true)
+
+    await setPersistent(page, false)
+    await expect(dialog).not.toHaveAttribute('closedby')
+    await expect.poll(() => chartInert(page)).toBe(false)
+    await activate(page, 'Changing')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await settle(page)
+    expect(await closedCounts(page)).toEqual({ Changing: 1 })
+})

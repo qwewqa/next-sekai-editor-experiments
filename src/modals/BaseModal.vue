@@ -12,6 +12,8 @@ const props = withDefaults(
         fill?: boolean
         /** False for a dialog that only its own button closes; it then has no close button. */
         closable?: boolean
+        /** The close button is shown but off, for a step that cannot be stopped. */
+        closeDisabled?: boolean
     }>(),
     { closable: true },
 )
@@ -66,6 +68,7 @@ const titleId = useId()
             class="ghost ghost-band flex size-9 shrink-0 items-center justify-center rounded-full"
             :aria-label="i18n.modals.close"
             :title="i18n.modals.close"
+            :disabled="closeDisabled"
             @click="$emit('close')"
         >
             <CloseIcon class="size-4" />
