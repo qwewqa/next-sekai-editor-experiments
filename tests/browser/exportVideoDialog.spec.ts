@@ -50,12 +50,16 @@ test('closing before the first view frame does not log an abort', async ({ page 
     await page.evaluate(() => {
         const Native = window.Worker
         window.Worker = class extends Native {
-            override postMessage(message: unknown, transfer: Transferable[] = []) {
+            override postMessage(
+                message: unknown,
+                transfer: Transferable[] | StructuredSerializeOptions = [],
+            ) {
                 if ((message as { type: string }).type === 'prepare') {
                     Reflect.set(window, 'heldExportPrepare', true)
                     return
                 }
-                super.postMessage(message, transfer)
+                if (Array.isArray(transfer)) super.postMessage(message, transfer)
+                else super.postMessage(message, transfer)
             }
         }
     })

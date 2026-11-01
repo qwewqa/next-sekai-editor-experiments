@@ -56,7 +56,7 @@ test('stop markers retain the chosen pair and leave active exports alone', async
     markVideoRunning('abandoned', setting)
     const stops: unknown[] = []
     await takeStoppedVideoMarkers((value) => stops.push(value))
-    assert.deepEqual(stops, [setting])
+    assert.deepEqual([...stops], [setting])
     assert.equal(storage.getItem('exportVideoRunning.abandoned'), null)
     assert.deepEqual(JSON.parse(storage.getItem('exportVideoRunning.active')!), setting)
     clear()
