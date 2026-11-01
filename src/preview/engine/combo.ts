@@ -2,7 +2,11 @@ import { forEachExported, inCombo } from '../../levelData/scoring'
 import { beatToTime } from '../../state/integrals/bpms'
 import type { PreviewChart, PreviewNoteChain } from './model'
 
-const slideTimes = new WeakMap<PreviewNoteChain, Float64Array>()
+// Tempo edits replace chains but keep their infos, so each slide keeps one weak key.
+const slideTimes = new WeakMap<
+    PreviewNoteChain['infos'],
+    { bpms: PreviewNoteChain['bpms']; times: Float64Array }
+>()
 const chartTimes = new WeakMap<PreviewNoteChain[], Float64Array>()
 
 export const getComboTimes = (chart: PreviewChart): Float64Array => {
@@ -10,8 +14,8 @@ export const getComboTimes = (chart: PreviewChart): Float64Array => {
     if (cached) return cached
 
     const lists = chart.chains.map((chain) => {
-        const cached = slideTimes.get(chain)
-        if (cached) return cached
+        const cached = slideTimes.get(chain.infos)
+        if (cached?.bpms === chain.bpms) return cached.times
 
         const times: number[] = []
         forEachExported(chain.infos, (row, beat) => {
@@ -21,7 +25,7 @@ export const getComboTimes = (chart: PreviewChart): Float64Array => {
             times.push(Number.isFinite(time) ? time : Infinity)
         })
         const sorted = Float64Array.from(times).sort()
-        slideTimes.set(chain, sorted)
+        slideTimes.set(chain.infos, { bpms: chain.bpms, times: sorted })
         return sorted
     })
     if (lists.length === 1 && lists[0]) {

@@ -152,6 +152,11 @@ for (const [name, index, change] of edits) {
         const next = build(edited, 10)
         const times = check(edited, next)
         assert.notEqual(times, oldTimes)
+        assert.notEqual(next.chains[0]!.infos, first.chains[0]!.infos)
+        assert.notEqual(
+            getComboTimes({ ...next, chains: [next.chains[0]!] }),
+            getComboTimes({ ...first, chains: [first.chains[0]!] }),
+        )
         assert.deepEqual(times, getComboTimes(buildPreviewChart(edited, 10)))
         assert.ok(next.chains.includes(unchanged))
         assert.equal(getComboTimes({ ...next, chains: [unchanged] }), slideTimes)
@@ -179,12 +184,15 @@ test('adding and removing notes and slides refreshes the combo', () => {
     }
 })
 
-test('adding, moving, editing and removing BPMs replaces every cached slide', () => {
+test('BPM edits recompute times and reuse the cache across chain wrappers', () => {
     let state = source()
     const build = createPreviewChartBuilder()
     let previous = build(state, 10)
     check(state, previous)
     for (const action of ['add', 'move', 'edit', 'remove'] as const) {
+        const previousSlideTimes = previous.chains.map((chain) =>
+            getComboTimes({ ...previous, chains: [chain] }),
+        )
         const transaction = createTransaction(state)
         const bpm = [...state.store.grid.bpm.values()].flatMap((cell) => [...cell]).at(-1)!
         if (action === 'add') addBpm(transaction, { beat: 1, bpm: 60 })
@@ -198,6 +206,22 @@ test('adding, moving, editing and removing BPMs replaces every cached slide', ()
             next.chains.every((chain) => !previous.chains.includes(chain)),
             action,
         )
+        for (const [index, chain] of next.chains.entries()) {
+            const oldChain = previous.chains[index]!
+            assert.equal(chain.infos, oldChain.infos, action)
+            assert.notEqual(chain.bpms, oldChain.bpms, action)
+            const slideTimes = getComboTimes({ ...next, chains: [chain] })
+            assert.equal(getComboTimes({ ...next, chains: [{ ...chain }] }), slideTimes)
+
+            // Revisiting an older tempo must replace the latest per-slide times.
+            const oldTimes = getComboTimes({ ...previous, chains: [{ ...oldChain }] })
+            assert.deepEqual(oldTimes, previousSlideTimes[index])
+            assert.notEqual(oldTimes, slideTimes)
+            const restored = getComboTimes({ ...next, chains: [{ ...chain }] })
+            assert.deepEqual(restored, slideTimes)
+            assert.notEqual(restored, slideTimes)
+            assert.equal(getComboTimes({ ...next, chains: [{ ...chain }] }), restored)
+        }
         assert.notDeepEqual(times, getComboTimes(previous), action)
         assert.deepEqual(times, getComboTimes(buildPreviewChart(state, 10)))
         previous = next
