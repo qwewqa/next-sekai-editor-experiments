@@ -131,6 +131,54 @@ for (const sourceRate of [44100, 48000, 96000]) {
     })
 }
 
+for (const sourceRate of [48000, 96000]) {
+    test(`BGM resumes at its source offset in the 130 s block at ${sourceRate} Hz`, async ({
+        page,
+    }) => {
+        const result = await page.evaluate(async (sourceRate) => {
+            const { createMixPlan, renderMixBlock } = await import('/src/exportVideo/mix.ts')
+            const { exportSoundState, exportSoundSource } =
+                await import('/tests/helpers/exportVideo.ts')
+            const state = exportSoundState()
+            const buffer = new AudioBuffer({
+                numberOfChannels: 1,
+                length: sourceRate * 180,
+                sampleRate: sourceRate,
+            })
+            buffer.getChannelData(0).fill(0.25, sourceRate * 130, sourceRate * 135)
+            const settings = {
+                in: 0,
+                frames: 180 * 60,
+                frameRate: 60 as const,
+                bgm: true,
+                sfx: false,
+                bgmVolume: 100,
+                sfxVolume: 100,
+                fadeIn: 0,
+                fadeOut: 0,
+            }
+            const plan = createMixPlan(
+                exportSoundSource(state),
+                state.bpms,
+                { sfx: {}, bgm: { buffer, offset: 0 } },
+                settings,
+            )
+            let block = plan.next()!
+            while (block.startSample < 130 * 48000) block = plan.next()!
+            const rendered = await renderMixBlock(block, settings)
+            return rendered.planes.map((plane) => ({
+                length: plane.length,
+                playing: plane[48000],
+                silent: plane[6 * 48000],
+            }))
+        }, sourceRate)
+        expect(result).toEqual([
+            { length: 480000, playing: 0.25, silent: 0 },
+            { length: 480000, playing: 0.25, silent: 0 },
+        ])
+    })
+}
+
 test('the real Opus encoder preserves the pad, exact end and separate seek pre-roll', async ({
     page,
 }) => {

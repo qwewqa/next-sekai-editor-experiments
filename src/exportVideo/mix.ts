@@ -167,7 +167,7 @@ export const renderMixBlock = async (
         const elapsed = Math.max(0, origin - voice.start)
         const start = voice.start + Math.ceil(elapsed / period - 1e-9) * period
         if (voice.end <= start) continue
-        const when = start - origin
+        const when = Math.max(0, start - origin)
         const audio = createPlayerAudio(
             context,
             { buffer: voice.buffer, loop: !!voice.hold },
