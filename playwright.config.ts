@@ -16,7 +16,11 @@ const timingSpecs = [
 ]
 // The preview's drawing specs again, with the preview drawn in its worker
 // (previewWorker.spec.ts sets each host itself).
-const previewHostSpecs = ['preview.spec.ts', 'previewSelection.spec.ts']
+const previewHostSpecs = [
+    'preview.spec.ts',
+    'previewSelection.spec.ts',
+    'previewAtlasCopies.spec.ts',
+]
 // Tests CI does not run, each with its reason; npm run test:browser still runs them. An entry names
 // a spec and, to leave the rest of the spec in, a pattern for the test's title and the project.
 type CiExclusion = { spec: string; title?: string; project?: string; reason: string }

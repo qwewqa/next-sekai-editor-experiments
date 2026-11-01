@@ -58,6 +58,7 @@ export type ToPreviewWorker =
       }
     /** Hand the atlases back to the main thread. The canvases stay until the worker is terminated. */
     | { type: 'return' }
+    | { type: 'copyAtlas'; id: number; slot: 0 | 1 }
     | { type: 'outlineAlpha' }
     | { type: 'loseContext' }
     | { type: 'restoreContext' }
@@ -68,6 +69,8 @@ export type FromPreviewWorker =
     | { type: 'drawn'; ms: number }
     | { type: 'error'; message: string }
     | { type: 'atlases'; bitmaps: (ImageBitmap | undefined)[] }
+    | { type: 'atlasCopy'; id: number; bitmap: ImageBitmap }
+    | { type: 'atlasCopyFailed'; id: number; message: string }
     | { type: 'counters'; counters: PreviewWorkerCounters }
     | { type: 'outlineAlpha'; alpha?: OutlineAlpha }
     | { type: 'context'; lost: boolean }

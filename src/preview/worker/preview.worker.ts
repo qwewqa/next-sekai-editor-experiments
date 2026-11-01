@@ -3,6 +3,7 @@
 // the panel, and each frame reaches the screen when its message's task ends. The main thread
 // keeps the clock and decides what each frame shows; the worker draws when a frame is posted.
 import { testKeysOpen } from '../../platform/testKeys'
+import { copyAtlasBitmap } from '../copyAtlasBitmap'
 import { drawPreviewFrame, type PreviewFrameInput, type PreviewSelection } from '../drawFrame'
 import { createPreviewChartBuilder } from '../engine/chart'
 import { createPreviewRenderer, type PreviewRenderer } from '../gl'
@@ -260,6 +261,27 @@ const handle = (message: ToPreviewWorker) => {
             post(
                 { type: 'atlases', bitmaps },
                 bitmaps.filter((bitmap) => bitmap !== undefined),
+            )
+            return
+        }
+        case 'copyAtlas': {
+            const atlas = atlases[message.slot]
+            if (!atlas) {
+                post({ type: 'atlasCopyFailed', id: message.id, message: 'No preview atlas' })
+                return
+            }
+            void copyAtlasBitmap(atlas.bitmap).then(
+                (bitmap) => {
+                    try {
+                        post({ type: 'atlasCopy', id: message.id, bitmap }, [bitmap])
+                    } catch (error) {
+                        bitmap.close()
+                        post({ type: 'atlasCopyFailed', id: message.id, message: messageOf(error) })
+                    }
+                },
+                (error: unknown) => {
+                    post({ type: 'atlasCopyFailed', id: message.id, message: messageOf(error) })
+                },
             )
             return
         }

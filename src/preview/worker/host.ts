@@ -135,6 +135,8 @@ const startWorker = () => {
     let sentSelection: PreviewSelection | undefined | null = null
     // The objects whose atlases the worker holds, by slot: skin, then particle.
     const lent: (LoadedSkin | LoadedParticle | undefined)[] = []
+    let copyId = 0
+    const copying = new Map<number, (bitmap?: ImageBitmap, error?: unknown) => void>()
     let onAtlases: ((bitmaps: (ImageBitmap | undefined)[]) => void) | undefined
     let onOutlineAlpha: ((alpha: OutlineAlpha | undefined) => void) | undefined
     let onContext: ((lost: boolean) => void) | undefined
@@ -168,6 +170,8 @@ const startWorker = () => {
     ) => {
         if (stopped) return
         stopped = true
+        for (const finish of copying.values())
+            finish(undefined, new Error('Preview worker stopped'))
         settle()
         pending = undefined
         if (why) {
@@ -274,6 +278,15 @@ const startWorker = () => {
             case 'atlases':
                 onAtlases?.(message.bitmaps)
                 return
+            case 'atlasCopy': {
+                const finish = copying.get(message.id)
+                if (finish) finish(message.bitmap)
+                else message.bitmap.close()
+                return
+            }
+            case 'atlasCopyFailed':
+                copying.get(message.id)?.(undefined, new Error(message.message))
+                return
             case 'counters':
                 addCounters(message.counters)
                 return
@@ -300,6 +313,30 @@ const startWorker = () => {
 
     return {
         maxViewportSize,
+        copyAtlas: (slot: 0 | 1, loaded: LoadedSkin | LoadedParticle, signal: AbortSignal) =>
+            new Promise<ImageBitmap>((resolve, reject) => {
+                if (signal.aborted || stopped || lent[slot] !== loaded) {
+                    reject(new Error('Preview atlas is unavailable'))
+                    return
+                }
+                const id = ++copyId
+                const finish = (bitmap?: ImageBitmap, error?: unknown) => {
+                    copying.delete(id)
+                    signal.removeEventListener('abort', cancel)
+                    if (bitmap) resolve(bitmap)
+                    else reject(error instanceof Error ? error : new Error(String(error)))
+                }
+                const cancel = () => {
+                    finish(undefined, signal.reason)
+                }
+                copying.set(id, finish)
+                signal.addEventListener('abort', cancel, { once: true })
+                try {
+                    post({ type: 'copyAtlas', id, slot })
+                } catch (error) {
+                    finish(undefined, error)
+                }
+            }),
         /** Ends the worker, which hands the atlases back; the main host draws next. */
         stop: () => stop(undefined, true),
         /** A chart switch: the next frame sends a first copy, and a frame waiting for the old chart is dropped. */
@@ -410,6 +447,15 @@ const startWorker = () => {
 }
 
 let client: ReturnType<typeof startWorker> | undefined
+
+/** Copies an atlas already lent to the worker, without starting a host or moving the original. */
+export const copyWorkerAtlas = (
+    slot: 0 | 1,
+    loaded: LoadedSkin | LoadedParticle,
+    signal: AbortSignal,
+) =>
+    client?.copyAtlas(slot, loaded, signal) ??
+    Promise.reject(new Error('No preview worker holds this atlas'))
 
 /** The page's preview worker, started on first use. */
 export const previewWorker = () => (client ??= startWorker())
