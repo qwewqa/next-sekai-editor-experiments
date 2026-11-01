@@ -133,6 +133,7 @@ const flips: {
     stageTransformEventJoint: (entities, entity) => ({
         rotation: -entity.rotation,
         xTranslation: -entity.xTranslation,
+        centerXOffset: -entity.centerXOffset,
     }),
     stageTransformEventConnection: undefined,
 

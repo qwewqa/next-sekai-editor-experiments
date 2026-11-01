@@ -166,7 +166,10 @@
         { "name": "yTranslation", "type": "number" },
         { "name": "elevation", "type": "number" },
         { "name": "anchor", "type": "enum:anchor" },
-        { "name": "eventEase", "type": "enum:ease" }
+        { "name": "eventEase", "type": "enum:ease" },
+        { "name": "rotationCenter", "type": "enum:rotationCenter", "optional": true, "default": "mask" },
+        { "name": "centerXOffset", "type": "number", "optional": true, "default": 0 },
+        { "name": "centerYOffset", "type": "number", "optional": true, "default": 0 }
     ],
     "kinds": {
         "slides": "slide",
@@ -206,6 +209,7 @@
         "judgmentLineStyle": { "default": 1, "singleLine": 1 },
         "borderStyle": { "default": 1, "light": 1, "medium": 1, "disabled": 1 },
         "anchor": { "default": 1, "center": 1 },
+        "rotationCenter": { "mask": 1, "stage": 1, "screen": 1, "vanishingPoint": 1 },
         "generateSimLines": { "global": 1, "isolated": 1 }
     }
 }

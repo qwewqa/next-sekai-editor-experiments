@@ -39,6 +39,11 @@ const byTable = (name: string, model: unknown): RecordValue => {
         }
         out.push(fieldValue(field.type, value))
     }
+    // A writer leaves off a trailing run of optional positions that hold their defaults.
+    for (let field = form[out.length - 1]; field?.optional; field = form[out.length - 1]) {
+        if (field.default === undefined || out.at(-1) !== field.default) break
+        out.pop()
+    }
     return out
 }
 
@@ -203,6 +208,9 @@ const planTables: Record<string, string[]> = {
         'elevation',
         'anchor',
         'eventEase',
+        'rotationCenter?',
+        'centerXOffset?',
+        'centerYOffset?',
     ],
 }
 

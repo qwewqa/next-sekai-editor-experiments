@@ -7,6 +7,9 @@ import CopyPropertiesField from '../../../../../modals/form/CopyPropertiesField.
 import OptionalEventEaseField from '../../../../../modals/form/OptionalEventEaseField.vue'
 import { useProperties } from '../../../../utils/properties.ts'
 import OptionalRotationField from '../../../../../modals/form/OptionalRotationField.vue'
+import OptionalRotationCenterField from '../../../../../modals/form/OptionalRotationCenterField.vue'
+import OptionalCenterXOffsetField from '../../../../../modals/form/OptionalCenterXOffsetField.vue'
+import OptionalCenterYOffsetField from '../../../../../modals/form/OptionalCenterYOffsetField.vue'
 import OptionalYTranslationField from '../../../../../modals/form/OptionalYTranslationField.vue'
 import OptionalAnchorField from '../../../../../modals/form/OptionalAnchorField.vue'
 import OptionalElevationField from '../../../../../modals/form/OptionalElevationField.vue'
@@ -21,6 +24,9 @@ const copyLabel = computed(() =>
 )
 
 const rotation = createModel('rotation')
+const rotationCenter = createModel('rotationCenter')
+const centerXOffset = createModel('centerXOffset')
+const centerYOffset = createModel('centerYOffset')
 const yTranslation = createModel('yTranslation')
 const elevation = createModel('elevation')
 const anchor = createModel('anchor')
@@ -31,6 +37,9 @@ const copyProperties = createModel('copyProperties')
 <template>
     <EmptyLabelProvider :label="copyLabel">
         <OptionalRotationField v-model="rotation" />
+        <OptionalRotationCenterField v-model="rotationCenter" />
+        <OptionalCenterXOffsetField v-model="centerXOffset" />
+        <OptionalCenterYOffsetField v-model="centerYOffset" />
         <OptionalYTranslationField v-model="yTranslation" />
         <OptionalAnchorField v-model="anchor" />
         <OptionalEventEaseField v-model="eventEase" />

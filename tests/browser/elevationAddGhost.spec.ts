@@ -36,6 +36,9 @@ const setup = (page: Page, layout: Layout, slide: Point[]) =>
                 yTranslation: 0,
                 elevation: 0,
                 anchor: 'default' as const,
+                rotationCenter: 'mask' as const,
+                centerXOffset: 0,
+                centerYOffset: 0,
                 eventEase: 'linear' as const,
             }
             show(

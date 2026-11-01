@@ -1,5 +1,9 @@
 import type { BaseStageEventJointEntity } from '.'
-import type { Anchor, StageTransformEventObject } from '../../../../../chart/events/stage/transform'
+import type {
+    Anchor,
+    RotationCenter,
+    StageTransformEventObject,
+} from '../../../../../chart/events/stage/transform'
 
 export type StageTransformEventJointEntity = BaseStageEventJointEntity & {
     type: 'stageTransformEventJoint'
@@ -8,6 +12,9 @@ export type StageTransformEventJointEntity = BaseStageEventJointEntity & {
     yTranslation: number
     elevation: number
     anchor: Anchor
+    rotationCenter: RotationCenter
+    centerXOffset: number
+    centerYOffset: number
 }
 
 export const toStageTransformEventJointEntity = (
@@ -28,5 +35,8 @@ export const toStageTransformEventJointEntity = (
     yTranslation: object.yTranslation,
     elevation: object.elevation,
     anchor: object.anchor,
+    rotationCenter: object.rotationCenter,
+    centerXOffset: object.centerXOffset,
+    centerYOffset: object.centerYOffset,
     eventEase: object.eventEase,
 })

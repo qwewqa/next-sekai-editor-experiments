@@ -10,11 +10,15 @@ import {
     layoutSekaiStage,
     layoutStageLaneByEdges,
     perspectiveRect,
+    stageRotationFrame,
     stageTransformToAffine,
     tiltDepth,
     tiltWidenedEdge,
     tiltWidthFactor,
     transformedVecAt,
+    type LayoutTransform,
+    type PreviewViewport,
+    type StageRotationFrame,
     type StageScreenTransform,
     type StageTransform,
 } from './layout'
@@ -62,6 +66,9 @@ export type StageProps = {
     yLaneTranslate: number
     centerWeight: number
     elevation: number
+    rotationCenter: Transition<number>
+    rotationCenterXOffset: number
+    rotationCenterYOffset: number
 }
 
 const FULL_WIDTH_HALF_EXTENT = 48
@@ -160,6 +167,9 @@ export const getStageProps = (
         yLaneTranslate: 0,
         centerWeight: 0,
         elevation: 0,
+        rotationCenter: { start: 0, end: 0, progress: 0 },
+        rotationCenterXOffset: 0,
+        rotationCenterYOffset: 0,
     }
 
     const [maskA, maskB, maskProgress] = queryEvents(stage.masks, t, rightLimit)
@@ -305,6 +315,13 @@ export const getStageProps = (
         props.yLaneTranslate = transformA.yLaneTranslate
         props.centerWeight = transformA.centerWeight
         props.elevation = transformA.elevation
+        props.rotationCenter = {
+            start: transformA.rotationCenter,
+            end: transformA.rotationCenter,
+            progress: 0,
+        }
+        props.rotationCenterXOffset = transformA.rotationCenterXOffset
+        props.rotationCenterYOffset = transformA.rotationCenterYOffset
         if (transformB) {
             const p = transformProgress
             props.rotate = lerp(transformA.rotate, transformB.rotate, p)
@@ -312,6 +329,18 @@ export const getStageProps = (
             props.yLaneTranslate = lerp(transformA.yLaneTranslate, transformB.yLaneTranslate, p)
             props.centerWeight = lerp(transformA.centerWeight, transformB.centerWeight, p)
             props.elevation = lerp(transformA.elevation, transformB.elevation, p)
+            props.rotationCenter.end = transformB.rotationCenter
+            props.rotationCenter.progress = p
+            props.rotationCenterXOffset = lerp(
+                transformA.rotationCenterXOffset,
+                transformB.rotationCenterXOffset,
+                p,
+            )
+            props.rotationCenterYOffset = lerp(
+                transformA.rotationCenterYOffset,
+                transformB.rotationCenterYOffset,
+                p,
+            )
         }
     } else if (transformB) {
         props.rotate = transformB.rotate
@@ -319,6 +348,13 @@ export const getStageProps = (
         props.yLaneTranslate = transformB.yLaneTranslate
         props.centerWeight = transformB.centerWeight
         props.elevation = transformB.elevation
+        props.rotationCenter = {
+            start: transformB.rotationCenter,
+            end: transformB.rotationCenter,
+            progress: 0,
+        }
+        props.rotationCenterXOffset = transformB.rotationCenterXOffset
+        props.rotationCenterYOffset = transformB.rotationCenterYOffset
     }
 
     return props
@@ -364,20 +400,70 @@ export const stagePropsHasTransform = (props: StageProps) =>
     props.centerWeight !== 0 ||
     props.elevation !== 0
 
-export const stagePropsTransform = (
-    context: PreviewFrameContext,
-    props: StageProps,
-    elevationOffset = 0,
+export type StageTransformProps = Pick<
+    StageProps,
+    | 'rotate'
+    | 'xLaneTranslate'
+    | 'yLaneTranslate'
+    | 'lane'
+    | 'centerWeight'
+    | 'rotationCenter'
+    | 'rotationCenterXOffset'
+    | 'rotationCenterYOffset'
+>
+
+export const propsStageTransform = (
+    viewport: PreviewViewport,
+    camera: LayoutTransform,
+    props: StageTransformProps,
+    elevation: number,
 ): StageTransform =>
     computeStageTransform(
-        context.layout,
-        currentLayoutTransform(context.layout),
+        viewport,
+        camera,
         props.rotate,
         props.xLaneTranslate,
         props.yLaneTranslate,
         props.lane,
         props.centerWeight,
+        elevation,
+        props.rotationCenter.start,
+        props.rotationCenter.end,
+        props.rotationCenter.progress,
+        props.rotationCenterXOffset,
+        props.rotationCenterYOffset,
+    )
+
+export const stagePropsTransform = (
+    context: PreviewFrameContext,
+    props: StageProps,
+    elevationOffset = 0,
+): StageTransform =>
+    propsStageTransform(
+        context.layout,
+        currentLayoutTransform(context.layout),
+        props,
         props.elevation + elevationOffset,
+    )
+
+/** Where `stagePropsTransform` turns the stage: the screen point `center + offset`. */
+export const stagePropsRotationFrame = (
+    context: PreviewFrameContext,
+    props: StageProps,
+): StageRotationFrame =>
+    stageRotationFrame(
+        context.layout,
+        currentLayoutTransform(context.layout),
+        props.xLaneTranslate,
+        props.yLaneTranslate,
+        props.lane,
+        props.centerWeight,
+        props.elevation,
+        props.rotationCenter.start,
+        props.rotationCenter.end,
+        props.rotationCenter.progress,
+        props.rotationCenterXOffset,
+        props.rotationCenterYOffset,
     )
 
 const transitionWeight = (transition: Transition<number>, target: number) => {
@@ -512,6 +598,9 @@ export const drawStaticStage = (context: PreviewFrameContext, draw: Draw, skin: 
         yLaneTranslate: 0,
         centerWeight: 0,
         elevation: 0,
+        rotationCenter: { start: 0, end: 0, progress: 0 },
+        rotationCenterXOffset: 0,
+        rotationCenterYOffset: 0,
     })
 }
 

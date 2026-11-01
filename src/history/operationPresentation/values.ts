@@ -99,6 +99,7 @@ const enumText: { [F in EnumField]: (t: OperationStrings, value: FieldValue<F>) 
     judgmentLineStyle: (t, value) => t.modals.form.judgmentLineStyle[value],
     leftBorderStyle: (t, value) => t.modals.form.borderStyle[value],
     rightBorderStyle: (t, value) => t.modals.form.borderStyle[value],
+    rotationCenter: (t, value) => t.modals.form.rotationCenter[value],
     anchor: (t, value) => t.modals.form.anchor[value],
     noteType: (t, value) => t.modals.form.noteType[value],
     flickDirection: (t, value) => t.modals.form.flickDirection[value],

@@ -1019,6 +1019,7 @@ const pasteAuthored = (
                         stageId,
                         xTranslation: move(entity.xTranslation),
                         rotation: flip ? -entity.rotation : entity.rotation,
+                        centerXOffset: flip ? -entity.centerXOffset : entity.centerXOffset,
                     }),
                 )
                 break
@@ -1289,6 +1290,7 @@ const toMovedStageTransformEventObject = (
         stageId: view.stageId ?? entity.stageId,
         beat,
         rotation: flip ? -entity.rotation : entity.rotation,
+        centerXOffset: flip ? -entity.centerXOffset : entity.centerXOffset,
         xTranslation: flip
             ? alignComputed(-entity.xTranslation + alignLane(startLane) + alignLane(lane))
             : shiftComputed(entity.xTranslation, alignLane(lane) - alignLane(startLane)),

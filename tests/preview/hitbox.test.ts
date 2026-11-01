@@ -555,6 +555,9 @@ const transform = (
     yTranslation: 0,
     elevation: 0,
     anchor: 'default',
+    rotationCenter: 'mask',
+    centerXOffset: 0,
+    centerYOffset: 0,
     eventEase: 'inStep',
     ...overrides,
 })
@@ -611,6 +614,90 @@ test('input geometry holds every family, pivots included, at a step on the input
         const connector = bounds(render(slide, 2, { leftLimit })).filter(({ a }) => a === 0.6)
         assert.equal(connector.length, 6)
         toLine(connector, expectedBounds(-1, 1, 1, 2.5))
+    }
+})
+
+test('a rotated stage keeps its hitboxes in place when its mask moves, unless it turns about the mask', () => {
+    const hitbox = (
+        rotationCenter: StageTransformEventObject['rotationCenter'],
+        maskLeft: number,
+    ) =>
+        scoredHitbox(
+            preview(
+                chart([[note(2)]], {
+                    isDynamicStages: true,
+                    stageMaskEvents: [mask(0, maskLeft, 24)],
+                    stageTransformEvents: [transform(0, 90, { rotationCenter })],
+                }),
+            ),
+            () => true,
+        ).bounds
+    for (const center of ['stage', 'screen', 'vanishingPoint'] as const)
+        closeQuad(hitbox(center, -8), hitbox(center, -12))
+    const [moved, kept] = [hitbox('mask', -8), hitbox('mask', -12)]
+    assert.ok(Math.abs(moved.bl.x - kept.bl.x) + Math.abs(moved.bl.y - kept.bl.y) > 0.01)
+})
+
+test('input targets follow the drawn notes about every rotation center, raised and attached', () => {
+    const centroid = (draws: Draw[]) => {
+        const corners = draws.flatMap(({ quad }) => [quad.bl, quad.br, quad.tl, quad.tr])
+        return {
+            x: corners.reduce((sum, { x }) => sum + x, 0) / corners.length,
+            y: corners.reduce((sum, { y }) => sum + y, 0) / corners.length,
+        }
+    }
+    // A note's body centres on its target at the judge line, a tick's diamond too.
+    const check = (
+        source: PreviewChart,
+        predicate: (note: PreviewNote) => boolean,
+        sprite: string,
+    ) => {
+        const { target } = scoredHitbox(source, predicate)
+        const found = source.notes.find(predicate)!
+        const drawn = render(source, found.targetTime, { showHitboxes: false }).filter((draw) =>
+            draw.sprite?.startsWith(sprite),
+        )
+        assert.ok(drawn.length > 0, sprite)
+        closeVec(centroid(drawn), {
+            x: (target.l.x + target.r.x) / 2,
+            y: (target.l.y + target.r.y) / 2,
+        })
+    }
+    for (const rotationCenter of ['mask', 'stage', 'screen', 'vanishingPoint'] as const) {
+        const events: Partial<Chart> = {
+            isDynamicStages: true,
+            stageMaskEvents: [mask(0, -4, 16)],
+            stageTransformEvents: [
+                transform(0, 30, {
+                    rotationCenter,
+                    anchor: 'center',
+                    xTranslation: 0.5,
+                    centerXOffset: 1.5,
+                    centerYOffset: -0.25,
+                }),
+            ],
+        }
+        check(
+            preview(chart([[note(2, { elevation: 0.75 })]], events)),
+            () => true,
+            'Sekai Normal Note',
+        )
+        check(
+            preview(
+                chart(
+                    [
+                        [
+                            note(0, { elevation: 0.5 }),
+                            note(1, { isAttached: true }),
+                            note(2, { elevation: 1 }),
+                        ],
+                    ],
+                    events,
+                ),
+            ),
+            (note) => note.isAttached,
+            'Sekai Normal Slide Diamond',
+        )
     }
 })
 

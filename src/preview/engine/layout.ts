@@ -1,11 +1,15 @@
+import type { RotationCenter } from '../../chart/events/stage/transform'
 import { maxSize } from '../../chart/limits'
 import {
+    addVec,
     applyAffine,
     clamp,
     eventProgress,
     identityAffineTransform,
     lerp,
+    lerpVec,
     rotateVec,
+    scaleVec,
     subVec,
     translateQuad,
     unlerp,
@@ -46,6 +50,20 @@ export const FlickDirection = {
 } as const
 
 export type FlickDirectionValue = (typeof FlickDirection)[keyof typeof FlickDirection]
+
+export const StageRotationCenter = {
+    maskCenter: 0,
+    stageCenter: 1,
+    screenCenter: 2,
+    vanishingPoint: 3,
+} as const
+
+export const rotationCenterCodes: Record<RotationCenter, number> = {
+    mask: StageRotationCenter.maskCenter,
+    stage: StageRotationCenter.stageCenter,
+    screen: StageRotationCenter.screenCenter,
+    vanishingPoint: StageRotationCenter.vanishingPoint,
+}
 
 export type CameraChange = {
     time: number
@@ -521,6 +539,184 @@ const stageRotationPivot = (camera: LayoutTransform, judgeDepth: number): Vec =>
         -camera.rotate,
     )
 
+// An unknown rotation center reads as Mask Center.
+export const knownRotationCenter = (center: number): number =>
+    center >= StageRotationCenter.stageCenter &&
+    center <= StageRotationCenter.vanishingPoint &&
+    center === Math.floor(center)
+        ? center
+        : StageRotationCenter.maskCenter
+
+/** A rotation center on lane 0's axis that ignores elevation. */
+export const rotationCenterFixedPoint = (
+    camera: LayoutTransform,
+    travel: number,
+    centerLift: number,
+    anchorWeight: number,
+    center: number,
+): Vec => {
+    let y = travel * camera.hScale + camera.t
+    if (center === StageRotationCenter.screenCenter) {
+        // Where the Center anchor puts the judge line, with the anchor's own shift undone.
+        y -= (1 - anchorWeight) * centerLift
+    } else if (center === StageRotationCenter.vanishingPoint) {
+        // Where the lanes converge, held below the minimum tilt for extending the stage.
+        const vanishTilt = Math.max(camera.stageTilt, STAGE_TILT_VANISH_MIN)
+        y = ((-(1 - vanishTilt) * STAGE_WIDTH_MID) / vanishTilt) * camera.hScale + camera.t
+    }
+    return rotateVec(vec(camera.xTranslate, y), -camera.rotate)
+}
+
+/** A rotation center as `maskWeight * projection(mask) + fixed`. */
+export type RotationCenterTerms = {
+    maskWeight: number
+    mask: Vec
+    fixed: Vec
+}
+
+export const rotationCenterAt = (terms: RotationCenterTerms, projection: AffineTransform): Vec => {
+    if (terms.maskWeight === 1) {
+        const mask = applyAffine(projection, terms.mask)
+        return vec(mask.x + terms.fixed.x, mask.y + terms.fixed.y)
+    }
+    if (terms.maskWeight === 0) return terms.fixed
+    const mask = applyAffine(projection, terms.mask)
+    return vec(mask.x * terms.maskWeight + terms.fixed.x, mask.y * terms.maskWeight + terms.fixed.y)
+}
+
+/** Blends the rotation centers of two transform events by the transform progress. */
+export const rotationCenterTerms = (
+    camera: LayoutTransform,
+    travel: number,
+    width: number,
+    maskLane: number,
+    start: number,
+    end: number,
+    progress: number,
+    xOffset: number,
+    yOffset: number,
+    centerLift: number,
+    anchorWeight: number,
+): RotationCenterTerms => {
+    start = knownRotationCenter(start)
+    end = knownRotationCenter(end)
+    const startMask = start === StageRotationCenter.maskCenter
+    const endMask = end === StageRotationCenter.maskCenter
+    const fixedPoint = (center: number) =>
+        rotationCenterFixedPoint(camera, travel, centerLift, anchorWeight, center)
+    let maskWeight = 0
+    let fixed = vec(0, 0)
+    if (start === end) {
+        if (startMask) maskWeight = 1
+        else fixed = fixedPoint(start)
+    } else if (startMask) {
+        maskWeight = 1 - progress
+        fixed = scaleVec(fixedPoint(end), progress)
+    } else if (endMask) {
+        maskWeight = progress
+        fixed = scaleVec(fixedPoint(start), 1 - progress)
+    } else {
+        fixed = lerpVec(fixedPoint(start), fixedPoint(end), progress)
+    }
+    if (xOffset !== 0 || yOffset !== 0)
+        fixed = addVec(
+            fixed,
+            rotateVec(vec(xOffset * camera.wScale, yOffset * camera.wScale), -camera.rotate),
+        )
+    return {
+        maskWeight,
+        mask: rotateVec(
+            vec(
+                maskLane * width * camera.wScale + camera.xTranslate,
+                travel * camera.hScale + camera.t,
+            ),
+            -camera.rotate,
+        ),
+        fixed,
+    }
+}
+
+/** Where a stage turns, in screen space: about `center`, then translated by `offset`. */
+export type StageRotationFrame = { center: Vec; offset: Vec }
+
+const stageTransformTerms = (
+    context: PreviewViewport,
+    camera: LayoutTransform,
+    xLaneTranslate: number,
+    yLaneTranslate: number,
+    maskLane: number,
+    centerWeight: number,
+    elevation: number,
+    rotationCenter: number,
+    nextRotationCenter: number,
+    rotationCenterProgress: number,
+    rotationCenterXOffset: number,
+    rotationCenterYOffset: number,
+) => {
+    const travel = approachAtTilt(1, camera.stageTilt)
+    const width = widthFactorAtTilt(travel, camera.stageTilt)
+    const projection = elevationProjection(camera, elevation)
+    const baseT = context.fieldH * FIELD_T_FACTOR
+    const baseH = context.fieldH * FIELD_B_FACTOR - baseT
+    const centerJudgeY = camera.hScale * (travel + baseT / baseH)
+    const center = rotationCenterAt(
+        rotationCenterTerms(
+            camera,
+            travel,
+            width,
+            maskLane,
+            rotationCenter,
+            nextRotationCenter,
+            rotationCenterProgress,
+            rotationCenterXOffset,
+            rotationCenterYOffset,
+            centerJudgeY,
+            centerWeight,
+        ),
+        projection,
+    )
+    const offset = rotateVec(
+        vec(
+            xLaneTranslate * camera.wScale,
+            yLaneTranslate * camera.wScale - centerWeight * centerJudgeY,
+        ),
+        -camera.rotate,
+    )
+    return { travel, projection, center, offset }
+}
+
+/** `computeStageTransform`'s rotation center and translation. */
+export const stageRotationFrame = (
+    context: PreviewViewport,
+    camera: LayoutTransform,
+    xLaneTranslate: number,
+    yLaneTranslate: number,
+    maskLane: number,
+    centerWeight = 0,
+    elevation = 0,
+    rotationCenter: number = StageRotationCenter.maskCenter,
+    nextRotationCenter: number = StageRotationCenter.maskCenter,
+    rotationCenterProgress = 0,
+    rotationCenterXOffset = 0,
+    rotationCenterYOffset = 0,
+): StageRotationFrame => {
+    const { center, offset } = stageTransformTerms(
+        context,
+        camera,
+        xLaneTranslate,
+        yLaneTranslate,
+        maskLane,
+        centerWeight,
+        elevation,
+        rotationCenter,
+        nextRotationCenter,
+        rotationCenterProgress,
+        rotationCenterXOffset,
+        rotationCenterYOffset,
+    )
+    return { center, offset }
+}
+
 export const computeStageTransform = (
     context: PreviewViewport,
     camera: LayoutTransform,
@@ -530,35 +726,31 @@ export const computeStageTransform = (
     maskLane: number,
     centerWeight = 0,
     elevation = 0,
+    rotationCenter: number = StageRotationCenter.maskCenter,
+    nextRotationCenter: number = StageRotationCenter.maskCenter,
+    rotationCenterProgress = 0,
+    rotationCenterXOffset = 0,
+    rotationCenterYOffset = 0,
 ): StageTransform => {
-    const travel = approachAtTilt(1, camera.stageTilt)
-    const width = widthFactorAtTilt(travel, camera.stageTilt)
-    const projection = elevationProjection(camera, elevation)
-    const judgeCenter = applyAffine(
-        projection,
-        rotateVec(
-            vec(
-                maskLane * width * camera.wScale + camera.xTranslate,
-                travel * camera.hScale + camera.t,
-            ),
-            -camera.rotate,
-        ),
-    )
-    const baseT = context.fieldH * FIELD_T_FACTOR
-    const baseH = context.fieldH * FIELD_B_FACTOR - baseT
-    const centerJudgeY = camera.hScale * (travel + baseT / baseH)
-    const offset = rotateVec(
-        vec(
-            xLaneTranslate * camera.wScale,
-            yLaneTranslate * camera.wScale - centerWeight * centerJudgeY,
-        ),
-        -camera.rotate,
+    const { travel, projection, center, offset } = stageTransformTerms(
+        context,
+        camera,
+        xLaneTranslate,
+        yLaneTranslate,
+        maskLane,
+        centerWeight,
+        elevation,
+        rotationCenter,
+        nextRotationCenter,
+        rotationCenterProgress,
+        rotationCenterXOffset,
+        rotationCenterYOffset,
     )
     const pivot = applyAffine(projection, stageRotationPivot(camera, travel))
     const cs = Math.cos(stageRotate)
     const sn = Math.sin(stageRotate)
-    const dx = judgeCenter.x - pivot.x
-    const dy = judgeCenter.y - pivot.y
+    const dx = center.x - pivot.x
+    const dy = center.y - pivot.y
     return {
         sr: stageRotate,
         px: pivot.x,

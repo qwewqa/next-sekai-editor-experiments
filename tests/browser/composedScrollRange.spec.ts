@@ -28,6 +28,9 @@ const seed = (page: Page, layout: 'basic' | 'composed', travel = 3) =>
                         yTranslation: 0,
                         elevation: 0,
                         anchor: 'default' as const,
+                        rotationCenter: 'mask' as const,
+                        centerXOffset: 0,
+                        centerYOffset: 0,
                         eventEase: 'linear' as const,
                     })),
                     stageMaskEvents: [

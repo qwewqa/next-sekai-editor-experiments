@@ -249,6 +249,11 @@ test("an unknown choice value gives a report entry and the field's default", () 
     assert.equal(style('rightBorderStyle')?.rightBorderStyle, 'default')
     assert.equal(style('ease')?.eventEase, 'linear')
     assert.equal(run('StageTransformChange', 'anchor').stageTransformEvents[0]?.anchor, 'default')
+    // Mask Center, as the engine reads an unknown value, though a new event gets Stage Center.
+    assert.equal(
+        run('StageTransformChange', 'rotationCenter').stageTransformEvents[0]?.rotationCenter,
+        'mask',
+    )
     assert.equal(run('StageTransformChange', 'ease').stageTransformEvents[0]?.eventEase, 'linear')
 })
 
@@ -313,6 +318,14 @@ const exported = (entities: LevelDataEntity[]) => {
     )
 }
 
+/** Each entity's data of the archetype, by name, in the order written. */
+const dataOf = (entities: LevelDataEntity[], archetype: string) =>
+    entities
+        .filter((entity) => entity.archetype === archetype)
+        .map((entity) =>
+            entity.data.flatMap((item) => ('value' in item ? [[item.name, item.value]] : [])),
+        )
+
 /** The level without these fields on every entity of the archetype. */
 const without = (entities: LevelDataEntity[], archetype: string, names: string[]) =>
     entities.map((e) =>
@@ -320,6 +333,69 @@ const without = (entities: LevelDataEntity[], archetype: string, names: string[]
             ? { ...e, data: e.data.filter((d) => !names.includes(d.name)) }
             : e,
     )
+
+test('the rotation center and its offsets round trip, and absent ones read Mask Center and 0', () => {
+    const level = fullLevel()
+    const centers = (entities: LevelDataEntity[]) =>
+        parseLevelDataChart(entities).stageTransformEvents.map((event) => [
+            event.rotationCenter,
+            event.centerXOffset,
+            event.centerYOffset,
+        ])
+    assert.deepEqual(centers(level), [['screen', -1.5, 0.25]])
+    const absent = without(level, 'StageTransformChange', [
+        'rotationCenter',
+        'rotationCenterXOffset',
+        'rotationCenterYOffset',
+    ])
+    assert.deepEqual(centers(absent), [['mask', 0, 0]])
+    // Export writes all three after the anchor, for an event that had none.
+    assert.deepEqual(dataOf(exported(absent), 'StageTransformChange'), [
+        [
+            ['#BEAT', 0],
+            ['rotate', 5],
+            ['xLaneTranslate', 1],
+            ['yLaneTranslate', 1],
+            ['elevation', 0.5],
+            ['anchor', 1],
+            ['rotationCenter', 0],
+            ['rotationCenterXOffset', 0],
+            ['rotationCenterYOffset', 0],
+            ['ease', 6],
+        ],
+    ])
+
+    for (const [code, name] of ['mask', 'stage', 'screen', 'vanishingPoint'].entries()) {
+        let entities = withData(level, 'StageTransformChange', 'rotationCenter', code)
+        entities = withData(entities, 'StageTransformChange', 'rotationCenterXOffset', -1.5)
+        entities = withData(entities, 'StageTransformChange', 'rotationCenterYOffset', 0.25)
+        assert.deepEqual(centers(entities), [[name, -1.5, 0.25]])
+        const data = new Map(dataOf(exported(entities), 'StageTransformChange')[0] as never)
+        assert.deepEqual(
+            ['rotationCenter', 'rotationCenterXOffset', 'rotationCenterYOffset'].map((key) =>
+                data.get(key),
+            ),
+            [code, -1.5, 0.25],
+        )
+    }
+
+    // A code the engine reads as Mask Center is reported and read as Mask Center.
+    for (const code of [4, 1.5, -1]) {
+        const { chart, report } = parse(
+            withData(level, 'StageTransformChange', 'rotationCenter', code),
+        )
+        assert.equal(chart.stageTransformEvents[0]?.rotationCenter, 'mask')
+        assert.deepEqual(report.entries, [
+            {
+                kind: 'value',
+                archetype: 'StageTransformChange',
+                field: 'rotationCenter',
+                value: code,
+                count: 1,
+            },
+        ])
+    }
+})
 
 test('omitted transform, camera and ease fields read as the engine reads them, 0', () => {
     let level = without(fullLevel(), 'StageTransformChange', [

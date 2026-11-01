@@ -1,6 +1,10 @@
 import { ref } from 'vue'
 import type { Tool } from '../../..'
-import type { Anchor, StageTransformEventObject } from '../../../../../chart/events/stage/transform'
+import type {
+    Anchor,
+    RotationCenter,
+    StageTransformEventObject,
+} from '../../../../../chart/events/stage/transform'
 import { applyEaseEdit, cycleEase, type EaseEdit, type WithEaseEdits } from '../../../../../ease'
 import { pushState, replaceState, state } from '../../../../../history'
 import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
@@ -50,6 +54,9 @@ type DefaultStageTransformEventProperties = {
     yTranslation?: number
     elevation?: number
     anchor?: Anchor
+    rotationCenter?: RotationCenter
+    centerXOffset?: number
+    centerYOffset?: number
     eventEase?: EaseEdit
     copyProperties: boolean
 }
@@ -367,6 +374,18 @@ const getPropertiesFromSelection = () => {
             defaultStageTransformEventProperties.value.anchor ??
             stageTransformEventJoint?.anchor ??
             'default',
+        rotationCenter:
+            defaultStageTransformEventProperties.value.rotationCenter ??
+            stageTransformEventJoint?.rotationCenter ??
+            'stage',
+        centerXOffset:
+            defaultStageTransformEventProperties.value.centerXOffset ??
+            stageTransformEventJoint?.centerXOffset ??
+            0,
+        centerYOffset:
+            defaultStageTransformEventProperties.value.centerYOffset ??
+            stageTransformEventJoint?.centerYOffset ??
+            0,
         eventEase: applyEaseEdit(
             defaultStageTransformEventProperties.value.eventEase,
             stageTransformEventJoint?.eventEase ?? 'linear',

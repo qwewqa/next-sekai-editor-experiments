@@ -153,6 +153,9 @@ export type StageTransformEvent = {
     yLaneTranslate: number
     elevation: number
     centerWeight: number
+    rotationCenter: number
+    rotationCenterXOffset: number
+    rotationCenterYOffset: number
     ease: EaseTypeValue
 }
 

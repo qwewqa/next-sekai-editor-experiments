@@ -21,6 +21,9 @@ export const editSelectedStageTransformEvent = (
         yTranslation: object.yTranslation ?? entity.yTranslation,
         elevation: object.elevation ?? entity.elevation,
         anchor: object.anchor ?? entity.anchor,
+        rotationCenter: object.rotationCenter ?? entity.rotationCenter,
+        centerXOffset: object.centerXOffset ?? entity.centerXOffset,
+        centerYOffset: object.centerYOffset ?? entity.centerYOffset,
         eventEase: applyEaseEdit(object.eventEase, entity.eventEase),
     }
     // Same-beat joints keep their order on their track.

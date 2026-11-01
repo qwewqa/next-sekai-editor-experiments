@@ -276,6 +276,9 @@ const samples: Record<FieldId, FieldValue<FieldId>> = {
     judgmentLineAlpha: 0,
     divisionLineAlpha: 0,
     rotation: 0,
+    rotationCenter: 'stage',
+    centerXOffset: 1.5,
+    centerYOffset: -2,
     anchor: 'center',
     eventEase: 'outElastic',
     noteType: 'trace',
@@ -300,8 +303,8 @@ const samples: Record<FieldId, FieldValue<FieldId>> = {
     elevation: 0,
 }
 
-test('all 62 fields retain their qualified labels, applicability, typed values and units', () => {
-    assert.equal(Object.keys(samples).length, 62)
+test('all 65 fields retain their qualified labels, applicability, typed values and units', () => {
+    assert.equal(Object.keys(samples).length, 65)
     assert.deepEqual(Object.keys(samples).sort(), Object.keys(fieldCodecs).sort())
     for (const locale of locales) {
         const ctx = context(locale)

@@ -1,6 +1,7 @@
 import type { State } from '..'
 import type { StageId } from '../../chart/stages'
 import { easeValues } from '../../ease'
+import { rotationCenterCodes } from '../../preview/engine/layout'
 import { ease, lerp, safeUnlerpClamped, type EaseTypeValue } from '../../preview/engine/math'
 import type { PreviewChart, PreviewStage } from '../../preview/engine/model'
 import { getStageProps } from '../../preview/engine/stage'
@@ -55,6 +56,9 @@ const createStageLookup = (source: State, chart?: PreviewChart) => {
             yLaneTranslate: event.yTranslation,
             elevation: event.elevation,
             centerWeight: event.anchor === 'center' ? 1 : 0,
+            rotationCenter: rotationCenterCodes[event.rotationCenter],
+            rotationCenterXOffset: event.centerXOffset,
+            rotationCenterYOffset: event.centerYOffset,
             ease: easeValues[event.eventEase] as EaseTypeValue,
         }))
         stage = {

@@ -374,6 +374,9 @@ test('stage subdivision guides follow the translated pivot, clip to masks and st
             yTranslation: 0,
             elevation: 0,
             anchor: 'default',
+            rotationCenter: 'mask',
+            centerXOffset: 0,
+            centerYOffset: 0,
             eventEase: 'linear',
         },
     ]
@@ -553,6 +556,9 @@ test('an In-Out Step jump beside another breakpoint draws no horizontal border s
         yTranslation: 0,
         elevation: 0,
         anchor: 'default',
+        rotationCenter: 'mask',
+        centerXOffset: 0,
+        centerYOffset: 0,
         eventEase,
     }))
     const { context, strokes } = fixture(source)

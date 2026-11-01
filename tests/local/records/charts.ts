@@ -2,6 +2,7 @@ import type { Chart } from '../../../src/chart'
 import type { CameraEventObject } from '../../../src/chart/events/camera'
 import type { StageMaskEventObject } from '../../../src/chart/events/stage/mask'
 import type { StageStyleEventObject } from '../../../src/chart/events/stage/style'
+import type { StageTransformEventObject } from '../../../src/chart/events/stage/transform'
 import type { FolderId } from '../../../src/chart/folders'
 import type { GroupId } from '../../../src/chart/groups'
 import type { NoteObject } from '../../../src/chart/note'
@@ -96,6 +97,24 @@ export const style = (
     laneAlpha: 1,
     judgmentLineAlpha: 1,
     divisionLineAlpha: 1,
+    eventEase: 'linear',
+    ...extra,
+})
+
+export const transform = (
+    beat: number,
+    extra: Partial<StageTransformEventObject> = {},
+): StageTransformEventObject => ({
+    stageId: stage(1),
+    beat,
+    rotation: 0,
+    xTranslation: 0,
+    yTranslation: 0,
+    elevation: 0,
+    anchor: 'default',
+    rotationCenter: 'mask',
+    centerXOffset: 0,
+    centerYOffset: 0,
     eventEase: 'linear',
     ...extra,
 })
@@ -205,6 +224,9 @@ export const goldenChart = (): FixtureChart => ({
                 yTranslation: -1,
                 elevation: 0.25,
                 anchor: 'center',
+                rotationCenter: 'mask',
+                centerXOffset: 0,
+                centerYOffset: 0,
                 eventEase: 'inOutSine',
             },
         ],
@@ -340,8 +362,15 @@ export const edgeChart = (): FixtureChart => {
                     yTranslation: 2 ** 53,
                     elevation: 0.5,
                     anchor: 'default',
+                    rotationCenter: 'mask',
+                    centerXOffset: 0,
+                    centerYOffset: 0,
                     eventEase: 'none',
                 },
+                // Records that leave off two, one and none of their trailing defaults.
+                transform(1, { rotationCenter: 'stage' }),
+                transform(2, { rotationCenter: 'vanishingPoint', centerXOffset: -1.5 }),
+                transform(3, { rotationCenter: 'mask', centerYOffset: 0.25 }),
             ],
             timeScales: [
                 {

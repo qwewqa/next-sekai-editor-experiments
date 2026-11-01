@@ -105,16 +105,33 @@ export const stageStyleEventRecord = (e: StageStyleEventObject): Rec => [
     e.eventEase,
 ]
 
-export const stageTransformEventRecord = (e: StageTransformEventObject): Rec => [
-    e.stageId,
-    e.beat,
-    e.rotation,
-    e.xTranslation,
-    e.yTranslation,
-    e.elevation,
-    e.anchor,
-    e.eventEase,
-]
+/** A record without its trailing optional positions that hold their defaults. */
+const withoutTrailingDefaults = (record: Rec, defaults: Rec): Rec => {
+    const first = record.length - defaults.length
+    let end = record.length
+    while (end > first && record[end - 1] === defaults[end - 1 - first]) end--
+    return end === record.length ? record : record.slice(0, end)
+}
+
+const stageTransformDefaults: Rec = ['mask', 0, 0]
+
+export const stageTransformEventRecord = (e: StageTransformEventObject): Rec =>
+    withoutTrailingDefaults(
+        [
+            e.stageId,
+            e.beat,
+            e.rotation,
+            e.xTranslation,
+            e.yTranslation,
+            e.elevation,
+            e.anchor,
+            e.eventEase,
+            e.rotationCenter,
+            e.centerXOffset,
+            e.centerYOffset,
+        ],
+        stageTransformDefaults,
+    )
 
 /** Each kind's model object, and its record encoder. */
 type KindObjects = {

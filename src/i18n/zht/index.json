@@ -1630,6 +1630,14 @@
         "default": "預設",
         "center": "置中"
       },
+      "centerXOffset": {
+        "label": "中心 X 偏移",
+        "qualified": "旋轉中心 X 偏移"
+      },
+      "centerYOffset": {
+        "label": "中心 Y 偏移",
+        "qualified": "旋轉中心 Y 偏移"
+      },
       "connectorActiveIsCritical": {
         "label": "金色滑條"
       },
@@ -1863,6 +1871,13 @@
       },
       "rotation": {
         "label": "旋轉"
+      },
+      "rotationCenter": {
+        "label": "旋轉中心",
+        "stage": "舞台中心",
+        "mask": "遮罩中心",
+        "screen": "螢幕中心",
+        "vanishingPoint": "消失點"
       },
       "sfx": {
         "label": "音效",

@@ -346,7 +346,7 @@ A **slide** is a non-empty list of notes in beat order (ties in list order). A o
 | stage mask event (`stageMaskEvents`) | `stageId`, `beat`, `maskLeft`, `maskSize` (lanes; level data `>= 0`), `isMaskNotes` (boolean), `eventEase` |
 | stage pivot event (`stagePivotEvents`) | `stageId`, `beat`, `pivotLane`, `divisionSize` (level data: integer `>= 1`), `divisionParity` (`even` \| `odd`), `yOffset`, `yOffsetBeat`, `eventEase` |
 | stage style event (`stageStyleEvents`) | `stageId`, `beat`, `editorLane` (marker lane), `laneColor` (`default neutral red green blue yellow purple cyan black`), `judgmentLineColor` (`neutral red green blue yellow purple cyan black`), `judgmentLineStyle` (`default` \| `singleLine`), `leftBorderStyle`, `rightBorderStyle` (`default light medium disabled`), `isFullWidth` (boolean), `noteAlpha`, `laneAlpha`, `judgmentLineAlpha`, `divisionLineAlpha` (level data 0 to 1), `eventEase` |
-| stage transform event (`stageTransformEvents`) | `stageId`, `beat`, `rotation`, `xTranslation`, `yTranslation` (lanes), `elevation`, `anchor` (`default` \| `center`), `eventEase` |
+| stage transform event (`stageTransformEvents`) | `stageId`, `beat`, `rotation`, `xTranslation`, `yTranslation` (lanes), `elevation`, `anchor` (`default` \| `center`), `eventEase`, `rotationCenter` (`mask` \| `stage` \| `screen` \| `vanishingPoint`, default `mask`), `centerXOffset`, `centerYOffset` (lanes, default 0) |
 
 All unlisted numbers are finite numbers. `eventEase` is any ease (§6.7): the ease from this event to the next on its chain.
 
@@ -380,7 +380,7 @@ Ids are not in level data. A parse numbers groups, stages and folders afresh. De
 | 6 | `StageMaskChange` | dynamic only | `#BEAT`, `lane`, `size`, `maskNotes`, `ease`, `next` |
 | 7 | `StagePivotChange` | dynamic only | `#BEAT`, `lane`, `divisionSize`, `divisionParity`, `yOffset`, `yBeatOffset`, `ease`, `next` |
 | 8 | `StageStyleChange` | dynamic only | `#BEAT`, `editorLane`, `laneColor`, `judgeLineColor`, `judgeLineStyle`, `leftBorderStyle`, `rightBorderStyle`, `fullWidth`, `noteAlpha`, `laneAlpha`, `judgeLineAlpha`, `divisionLineAlpha`, `ease`, `next` |
-| 9 | `StageTransformChange` | dynamic only | `#BEAT`, `rotate`, `xLaneTranslate`, `yLaneTranslate`, `elevation`, `anchor`, `ease`, `next` |
+| 9 | `StageTransformChange` | dynamic only | `#BEAT`, `rotate`, `xLaneTranslate`, `yLaneTranslate`, `elevation`, `anchor`, `rotationCenter`, `rotationCenterXOffset`, `rotationCenterYOffset`, `ease`, `next` |
 | 10 | `#TIMESCALE_CHANGE` | per time scale | `#TIMESCALE_GROUP` (ref), `#BEAT`, `editorLane`, `#TIMESCALE`, `#TIMESCALE_SKIP`, `#TIMESCALE_EASE`, `transitionStyle` (0 timeScale, 1 scroll), `hideNotes` (0/1), `next` |
 | 11 | notes, then `TransientHiddenTickNote` / `TransientHiddenDamageTickNote` and `Connector` entities, slide by slide; then `SimLine` entities | per slide | note data in §7.3 |
 | 12 | `EditorGroupFolder` | per group folder | `editorName` (ref), `editorIndex` (value) |
@@ -423,6 +423,7 @@ Data: `#TIMESCALE_GROUP` (ref), `stage` (ref; dynamic stages only), `#BEAT`, `la
 | `judgeLineStyle` | default 0, singleLine 1 |
 | `leftBorderStyle`, `rightBorderStyle` | default 0, light 1, disabled 2, medium 3 (not the order of the names in §6.5) |
 | `anchor` | default 0, center 1 |
+| `rotationCenter` | mask 0, stage 1, screen 2, vanishingPoint 3 |
 | booleans (`fromStart`, `untilEnd`, `hideNotes`, `maskNotes`, `fullWidth`, `isAttached`, `isSeparator`, `segmentThroughJudgeLine`) | 1 or 0; a reader takes any non-zero number as true |
 | camera and mask `lane`, `size` | `lane = left + size / 2`, `size = size / 2` |
 
@@ -438,7 +439,7 @@ The editor's parse (`parseLevelDataChart`). A viewer that shows the head from le
 4. **Groups**: every `#TIMESCALE_GROUP` in entity order makes a group: name `editorName` (blank or absent: `#n`, one past the highest `#n` taken, or the localised "Default" for the first), `forceNoteSpeed` (0 reads as none), folder by `editorFolder`. None at all: one default group.
 5. **Stages**: every `Stage` makes a stage (blank name: `#n`) and turns dynamic stages on; `generateSimLines` default 0. None: one default stage named `#1`, From Start and Until End on, dynamic stages off.
 6. **Normalise folders** (§6.3): groups and stages are reordered into tree order (stage folders only with dynamic stages; without them stage folders are dropped).
-7. **Events**: each kind is read only along its chains, from `Initialization.firstCamera` and each stage's `first…Change` refs, following `next`; entities not reached are not read. Any chain without dynamic stages is refused. A loop is refused. Defaults for absent optional fields: camera `lane` 0, `size` 0 (sampling reads a size below 0.01 as 0.01), `zoom` 1, `zoomTargetLane` 0, `zoomTargetY` 0, `zoomVerticalAlign` 0, `rotate` 0, `stageTilt` 1; mask `maskNotes` 0; style `editorLane` 0, `laneColor` 0, `judgeLineStyle` 0, `fullWidth` 0, `noteAlpha` 1, `divisionLineAlpha` 1, and a legacy `alpha` (default 1) multiplies `laneAlpha` and `judgeLineAlpha`; transform `rotate` 0, `xLaneTranslate` 0, `yLaneTranslate` 0, `elevation` 0, `anchor` 0; every event `ease` 0. `lane`/`size` convert back as `left = lane - size`, `width = 2 * size`.
+7. **Events**: each kind is read only along its chains, from `Initialization.firstCamera` and each stage's `first…Change` refs, following `next`; entities not reached are not read. Any chain without dynamic stages is refused. A loop is refused. Defaults for absent optional fields: camera `lane` 0, `size` 0 (sampling reads a size below 0.01 as 0.01), `zoom` 1, `zoomTargetLane` 0, `zoomTargetY` 0, `zoomVerticalAlign` 0, `rotate` 0, `stageTilt` 1; mask `maskNotes` 0; style `editorLane` 0, `laneColor` 0, `judgeLineStyle` 0, `fullWidth` 0, `noteAlpha` 1, `divisionLineAlpha` 1, and a legacy `alpha` (default 1) multiplies `laneAlpha` and `judgeLineAlpha`; transform `rotate` 0, `xLaneTranslate` 0, `yLaneTranslate` 0, `elevation` 0, `anchor` 0, `rotationCenter` 0, `rotationCenterXOffset` 0, `rotationCenterYOffset` 0; every event `ease` 0. `lane`/`size` convert back as `left = lane - size`, `width = 2 * size`.
 8. **Time scales**: each group's chain from `first` along `next` (stopping at a missing or repeated entity), then every other `#TIMESCALE_CHANGE` in entity order. `editorLane` default −6, `transitionStyle` default 0, `hideNotes` default 0.
 9. **Notes**: a note entity without a name is a one-note slide (in entity order, these come first). Named notes are joined into slides by `next`; a slide is ordered by `#BEAT` (stable). For each note: `left = lane - size`, `size = 2 * size`, `elevation` default 0, `style` default 0, `effectKind` default 0, `isSeparator`, `segmentLayer`, `segmentThroughJudgeLine`, `segmentPresentation` default 0; connector type, fake and critical flags from `segmentKind`'s base kind; `connectorStyle` from the colour digit (guides 101–108 and coloured kinds), except that a note whose entity index is in `defaultGuideColors` and whose `segmentKind` is 103 has `connectorStyle: default`.
    - **Note archetypes** (`noteArchetypeNames` in `src/chart/parse/levelData/slide.ts`, 68 names), each with or without a leading `Fake`: `Normal` or `Critical`, then `Head`, `Tail` or nothing, then `Tap`, `Flick`, `Trace`, `TraceFlick` or `Release`, then `Note`; `NormalTickNote` and `CriticalTickNote`; `DamageNote` and `AnchorNote`. That is more than the writer uses (§7.3): `NormalReleaseNote`, `NormalHeadReleaseNote` and `NormalTailTapNote` are notes, not unknown archetypes.
@@ -449,7 +450,7 @@ The editor's parse (`parseLevelDataChart`). A viewer that shows the head from le
 10. **Ignored, rebuilt on export:** `Connector`, `SimLine`, `TransientHiddenTickNote`, `TransientHiddenDamageTickNote`; note fields `attachHead`, `attachTail`, `activeHead`; event fields `stage`; group field `editorHidden` (another editor's display flag). **Dropped:** `Skill`, `FeverChance`, `FeverStart`.
 11. **Validate**: a BPM change at beat 0 must exist; no negative beat; no negative note size; every BPM positive and finite; every number finite.
 
-**Report and refusal.** Unknown archetypes, unknown or doubled fields, a `ref` where a `value` belongs (or the reverse), and an engine `revision` above 2 are collected in a *level report*; any item makes the open partial ("Made by a newer version"). A choice value the parser does not know (a code outside §7.4's lists, a `forceNoteSpeed` outside 0 and 1–12) is reported and replaced by the field's default; the editor asks before opening such a file as a copy. An unknown event `ease` is replaced by 1 (linear), while an absent one reads 0. A required field missing, a value outside the parser's schema (for example `zoom` below 0.01, an alpha outside 0–1, a `segmentAlpha` outside 0–2, `divisionSize` not a whole number `>= 1`, `initialLife` not a whole number `>= 1`, a negative `#BEAT`), a missing ref, a loop, or events without dynamic stages **refuse** the level, and nothing opens. Required fields are those §7.2 lists for each archetype, except these optional ones: every `Initialization` field, `#BPM_CHANGE.meter`, every `editor…` field, `forceNoteSpeed`, `first`, `next`, `generateSimLines`, the `first…Change` refs, `lane` (camera), `size` (camera), `zoom`, `zoomTargetLane`, `zoomTargetY`, `zoomVerticalAlign`, `rotate`, `stageTilt`, `maskNotes`, `editorLane`, `laneColor`, `judgeLineStyle`, `fullWidth`, `noteAlpha`, `divisionLineAlpha`, `alpha`, `elevation`, `xLaneTranslate`, `yLaneTranslate`, `anchor`, `ease` (events), `transitionStyle`, `hideNotes`, and note `stage`, `elevation`, `style`, `isSeparator`, `segmentLayer`, `effectKind`, `segmentThroughJudgeLine`, `segmentPresentation`.
+**Report and refusal.** Unknown archetypes, unknown or doubled fields, a `ref` where a `value` belongs (or the reverse), and an engine `revision` above 2 are collected in a *level report*; any item makes the open partial ("Made by a newer version"). A choice value the parser does not know (a code outside §7.4's lists, a `forceNoteSpeed` outside 0 and 1–12) is reported and replaced by the field's default; the editor asks before opening such a file as a copy. An unknown event `ease` is replaced by 1 (linear), while an absent one reads 0. A required field missing, a value outside the parser's schema (for example `zoom` below 0.01, an alpha outside 0–1, a `segmentAlpha` outside 0–2, `divisionSize` not a whole number `>= 1`, `initialLife` not a whole number `>= 1`, a negative `#BEAT`), a missing ref, a loop, or events without dynamic stages **refuse** the level, and nothing opens. Required fields are those §7.2 lists for each archetype, except these optional ones: every `Initialization` field, `#BPM_CHANGE.meter`, every `editor…` field, `forceNoteSpeed`, `first`, `next`, `generateSimLines`, the `first…Change` refs, `lane` (camera), `size` (camera), `zoom`, `zoomTargetLane`, `zoomTargetY`, `zoomVerticalAlign`, `rotate`, `stageTilt`, `maskNotes`, `editorLane`, `laneColor`, `judgeLineStyle`, `fullWidth`, `noteAlpha`, `divisionLineAlpha`, `alpha`, `elevation`, `xLaneTranslate`, `yLaneTranslate`, `anchor`, `rotationCenter`, `rotationCenterXOffset`, `rotationCenterYOffset`, `ease` (events), `transitionStyle`, `hideNotes`, and note `stage`, `elevation`, `style`, `isSeparator`, `segmentLayer`, `effectKind`, `segmentThroughJudgeLine`, `segmentPresentation`.
 
 ### 7.6 `editor.defaultGuideColors`
 
@@ -506,9 +507,9 @@ Header checks: group ids unique, stage ids unique, folder ids unique across both
 | `stageMaskEvents` | stageMaskEvent | `stageId` id→stages, `beat`, `maskLeft`, `maskSize` numbers, `isMaskNotes` bool, `eventEase` enum |
 | `stagePivotEvents` | stagePivotEvent | `stageId`, `beat`, `pivotLane`, `divisionSize` numbers, `divisionParity` enum, `yOffset`, `yOffsetBeat` numbers, `eventEase` enum |
 | `stageStyleEvents` | stageStyleEvent | `stageId`, `beat`, `editorLane` number, `laneColor`, `judgmentLineColor`, `judgmentLineStyle`, `leftBorderStyle`, `rightBorderStyle` enums, `isFullWidth` bool, `noteAlpha`, `laneAlpha`, `judgmentLineAlpha`, `divisionLineAlpha` numbers, `eventEase` enum |
-| `stageTransformEvents` | stageTransformEvent | `stageId`, `beat`, `rotation`, `xTranslation`, `yTranslation`, `elevation` numbers, `anchor` enum, `eventEase` enum |
+| `stageTransformEvents` | stageTransformEvent | `stageId`, `beat`, `rotation`, `xTranslation`, `yTranslation`, `elevation` numbers, `anchor` enum, `eventEase` enum, `rotationCenter` enum (optional), `centerXOffset`, `centerYOffset` numbers (optional) |
 
-Enums are the string sets of §6 (the machine-readable list, with every record form, is `tools/fields-v1.json`, generated from `src/local/records/schema.ts`). Each record is checked for arity (all required positions, nothing past the last), types, finiteness and enum membership, and every `id→` field must name an id the header defines. **Ranges are never checked.**
+Enums are the string sets of §6 (the machine-readable list, with every record form, is `tools/fields-v1.json`, generated from `src/local/records/schema.ts`). Each record is checked for arity (all required positions, nothing past the last), types, finiteness and enum membership, and every `id→` field must name an id the header defines. **Ranges are never checked.** In a stage transform record, the writer leaves off trailing optional positions that hold their defaults (`mask`, 0, 0), and a reader reads an absent one as its default.
 
 ### 8.6 Decoding a snapshot
 
@@ -683,7 +684,7 @@ Allowed on: an entry, a step, a recovery context, its head and each dropped item
 | `subjectOfCounts(c)` | the one kind with a count, else `objects` |
 | *agrees*(subject, changed) | `changed` is `{}` or `subject == subjectOfCounts(changed)` |
 
-**Property fields.** An assignment names one of 62 field ids; each id is a model field (§6) with its value codec and the kinds it applies to:
+**Property fields.** An assignment names one of 65 field ids; each id is a model field (§6) with its value codec and the kinds it applies to:
 
 | Field ids | Value | Applies to |
 | --- | --- | --- |
@@ -696,8 +697,9 @@ Allowed on: an entry, a step, a recovery context, its head and each dropped item
 | `isMaskNotes` | boolean | stageMaskEvent |
 | `pivotLane`, `divisionSize`, `yOffset`, `yOffsetBeat` | finite | stagePivotEvent |
 | `divisionParity` | `even odd` | stagePivotEvent |
-| `xTranslation`, `yTranslation`, `rotation` | finite | stageTransformEvent |
+| `xTranslation`, `yTranslation`, `rotation`, `centerXOffset`, `centerYOffset` | finite | stageTransformEvent |
 | `anchor` | `default center` | stageTransformEvent |
+| `rotationCenter` | `mask stage screen vanishingPoint` | stageTransformEvent |
 | `bpm`, `meter` | finite | bpm |
 | `timeScale`, `skip` | finite | timeScale |
 | `timeScaleEase` | a time-scale ease | timeScale |
@@ -721,7 +723,7 @@ Allowed on: an entry, a step, a recovery context, its head and each dropped item
 
 An **assignment** is `{field, before, after}`; a side is `{mode: "varying"}` (the objects held different values) or `{mode: "uniform", value}` (all held `value`, and the value must pass the field's codec).
 
-**Property data** (brush and `nse.property.set`): `{subject, changed: NC+, assignments, displaced?: NC+, retainedInitialBpm?: true}` where `assignments` holds 1 to 62 assignments in strictly ascending field-id order (string comparison); `subject == subjectOfCounts(changed)`; `retainedInitialBpm` only with subject `bpm` or `objects`; `displaced` or `retainedInitialBpm` only with a `beat` assignment; every assignment applies to some changed kind and every changed kind has an assignment that applies to it.
+**Property data** (brush and `nse.property.set`): `{subject, changed: NC+, assignments, displaced?: NC+, retainedInitialBpm?: true}` where `assignments` holds 1 to 65 assignments in strictly ascending field-id order (string comparison); `subject == subjectOfCounts(changed)`; `retainedInitialBpm` only with subject `bpm` or `objects`; `displaced` or `retainedInitialBpm` only with a `beat` assignment; every assignment applies to some changed kind and every changed kind has an assignment that applies to it.
 
 **Collateral.** `displaced` counts objects the edit replaced that were not its operands (a BPM or time scale moved onto an occupied beat removes the one there). `retainedInitialBpm: true` says the beat-0 BPM change stayed in place or was added back. `false` is never written and fails.
 
@@ -762,7 +764,7 @@ Each id below has `version` 1. "Kind" is the entry or step kind it is written as
 
 | Id | `data` | Constraints | Meaning | Title |
 | --- | --- | --- | --- | --- |
-| `nse.object.flip` | `{axis: horizontal \| vertical, subject, changed: NC, displaced?: NC+, retainedInitialBpm?: true}` | *agrees*; collateral only for `vertical`; retained only with `bpm` or `objects` | Horizontal: lanes mirrored (a note's `left`, flick directions, event lanes, rotations, border styles). Vertical: beats mirrored between the selection's ends, connector properties and eases reversed. | "Flipped {sum of changed} object(s)", "Flipped {sum} object(s) vertically" |
+| `nse.object.flip` | `{axis: horizontal \| vertical, subject, changed: NC, displaced?: NC+, retainedInitialBpm?: true}` | *agrees*; collateral only for `vertical`; retained only with `bpm` or `objects` | Horizontal: lanes mirrored (a note's `left`, flick directions, event lanes, rotations, a transform's centre X offset, border styles). Vertical: beats mirrored between the selection's ends, connector properties and eases reversed. | "Flipped {sum of changed} object(s)", "Flipped {sum} object(s) vertically" |
 | `nse.object.scale` | `{axis: beats \| width \| elevation, subject, changed: NC, transform, displaced?, retainedInitialBpm?}` | `transform` `{mode: uniform, factor: finite, pivot: finite}` or `{mode: composed}`; collateral only for `beats` | Scale Beat, Width or Elevation. `uniform` when the result is one scale by `factor` about `pivot` (beats, lanes or elevation); `composed` after several adjustments. | "Scaled beats of {sum} object(s)", "Scaled width of {sum} object(s)", "Scaled elevations of {sum} object(s)" |
 
 ### 12.5 Property edits

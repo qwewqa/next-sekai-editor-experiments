@@ -10,6 +10,8 @@ import MultiCameraZoomField from '../../../modals/form/MultiCameraZoomField.vue'
 import MultiCameraZoomTargetLaneField from '../../../modals/form/MultiCameraZoomTargetLaneField.vue'
 import MultiCameraZoomTargetYField from '../../../modals/form/MultiCameraZoomTargetYField.vue'
 import MultiCameraZoomVerticalAlignField from '../../../modals/form/MultiCameraZoomVerticalAlignField.vue'
+import MultiCenterXOffsetField from '../../../modals/form/MultiCenterXOffsetField.vue'
+import MultiCenterYOffsetField from '../../../modals/form/MultiCenterYOffsetField.vue'
 import MultiConnectorActiveIsCriticalField from '../../../modals/form/MultiConnectorActiveIsCriticalField.vue'
 import MultiConnectorEaseField from '../../../modals/form/MultiConnectorEaseField.vue'
 import MultiConnectorGuideAlphaField from '../../../modals/form/MultiConnectorGuideAlphaField.vue'
@@ -49,6 +51,7 @@ import MultiNoteStyleField from '../../../modals/form/MultiNoteStyleField.vue'
 import MultiNoteTypeField from '../../../modals/form/MultiNoteTypeField.vue'
 import MultiPivotLaneField from '../../../modals/form/MultiPivotLaneField.vue'
 import MultiRightBorderStyleField from '../../../modals/form/MultiRightBorderStyleField.vue'
+import MultiRotationCenterField from '../../../modals/form/MultiRotationCenterField.vue'
 import MultiRotationField from '../../../modals/form/MultiRotationField.vue'
 import MultiSfxField from '../../../modals/form/MultiSfxField.vue'
 import MultiSizeField from '../../../modals/form/MultiSizeField.vue'
@@ -69,6 +72,8 @@ import OptionalCameraZoomField from '../../../modals/form/OptionalCameraZoomFiel
 import OptionalCameraZoomTargetLaneField from '../../../modals/form/OptionalCameraZoomTargetLaneField.vue'
 import OptionalCameraZoomTargetYField from '../../../modals/form/OptionalCameraZoomTargetYField.vue'
 import OptionalCameraZoomVerticalAlignField from '../../../modals/form/OptionalCameraZoomVerticalAlignField.vue'
+import OptionalCenterXOffsetField from '../../../modals/form/OptionalCenterXOffsetField.vue'
+import OptionalCenterYOffsetField from '../../../modals/form/OptionalCenterYOffsetField.vue'
 import OptionalConnectorActiveIsCriticalField from '../../../modals/form/OptionalConnectorActiveIsCriticalField.vue'
 import OptionalConnectorEaseField from '../../../modals/form/OptionalConnectorEaseField.vue'
 import OptionalConnectorGuideAlphaField from '../../../modals/form/OptionalConnectorGuideAlphaField.vue'
@@ -103,6 +108,7 @@ import OptionalNoteAlphaField from '../../../modals/form/OptionalNoteAlphaField.
 import OptionalNoteStyleField from '../../../modals/form/OptionalNoteStyleField.vue'
 import OptionalNoteTypeField from '../../../modals/form/OptionalNoteTypeField.vue'
 import OptionalRightBorderStyleField from '../../../modals/form/OptionalRightBorderStyleField.vue'
+import OptionalRotationCenterField from '../../../modals/form/OptionalRotationCenterField.vue'
 import OptionalRotationField from '../../../modals/form/OptionalRotationField.vue'
 import OptionalSfxField from '../../../modals/form/OptionalSfxField.vue'
 import OptionalSizeField from '../../../modals/form/OptionalSizeField.vue'
@@ -157,6 +163,9 @@ export const multiFieldComponents: Record<PropertyKey, Component> = {
     judgmentLineAlpha: MultiJudgmentLineAlphaField,
     divisionLineAlpha: MultiDivisionLineAlphaField,
     rotation: MultiRotationField,
+    rotationCenter: MultiRotationCenterField,
+    centerXOffset: MultiCenterXOffsetField,
+    centerYOffset: MultiCenterYOffsetField,
     anchor: MultiAnchorField,
     eventEase: MultiEventEaseField,
     noteType: MultiNoteTypeField,
@@ -213,6 +222,9 @@ export const optionalFieldComponents: Record<BrushKey, Component> = {
     judgmentLineAlpha: OptionalJudgmentLineAlphaField,
     divisionLineAlpha: OptionalDivisionLineAlphaField,
     rotation: OptionalRotationField,
+    rotationCenter: OptionalRotationCenterField,
+    centerXOffset: OptionalCenterXOffsetField,
+    centerYOffset: OptionalCenterYOffsetField,
     anchor: OptionalAnchorField,
     eventEase: OptionalEventEaseField,
     noteType: OptionalNoteTypeField,

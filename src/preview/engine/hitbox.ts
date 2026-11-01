@@ -55,7 +55,7 @@ import {
     type PreviewNote,
     type PreviewNoteChain,
 } from './model'
-import { getStageProps, type StageProps } from './stage'
+import { getStageProps, propsStageTransform, type StageProps } from './stage'
 import { createTimeIndex, queryTimeIndex, type TimeIndex } from './timeIndex'
 
 // The engine's Show Hitboxes debug overlay (sekai/lib/note.py draw_hitbox_overlay,
@@ -351,14 +351,10 @@ const stageGeometry = (context: GeometryContext, stageIndex: number) => {
         geometry = {
             props,
             // Untransformed stages still have a rotation pivot to blend with.
-            transform: computeStageTransform(
+            transform: propsStageTransform(
                 context.viewport,
                 context.layout,
-                props.rotate,
-                props.xLaneTranslate,
-                props.yLaneTranslate,
-                props.lane,
-                props.centerWeight,
+                props,
                 props.elevation,
             ),
         }
@@ -405,14 +401,10 @@ const basicInputGeometry = (context: GeometryContext, note: PreviewNote): InputG
         yOffset: props.yOffset,
         transform:
             elevation !== 0
-                ? computeStageTransform(
+                ? propsStageTransform(
                       context.viewport,
                       context.layout,
-                      props.rotate,
-                      props.xLaneTranslate,
-                      props.yLaneTranslate,
-                      props.lane,
-                      props.centerWeight,
+                      props,
                       props.elevation + elevation,
                   )
                 : stage.transform,

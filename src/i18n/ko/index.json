@@ -1630,6 +1630,14 @@
         "default": "기본",
         "center": "중심"
       },
+      "centerXOffset": {
+        "label": "중심 X 오프셋",
+        "qualified": "회전 중심 X 오프셋"
+      },
+      "centerYOffset": {
+        "label": "중심 Y 오프셋",
+        "qualified": "회전 중심 Y 오프셋"
+      },
       "connectorActiveIsCritical": {
         "label": "크리티컬 슬라이드"
       },
@@ -1863,6 +1871,13 @@
       },
       "rotation": {
         "label": "회전"
+      },
+      "rotationCenter": {
+        "label": "회전 중심",
+        "stage": "스테이지 중심",
+        "mask": "마스크 중심",
+        "screen": "화면 중심",
+        "vanishingPoint": "소실점"
       },
       "sfx": {
         "label": "효과음",

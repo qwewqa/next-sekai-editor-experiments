@@ -637,8 +637,15 @@ test.describe('brush', () => {
         await page.evaluate(async () => {
             const { brushProperties } = await import('/src/editor/tools/brush/index.ts')
             const { brushFields } = await import('/src/editor/workspace/properties/fields.ts')
+            const { defaultGroupId } = await import('/src/history/groups.ts')
+            const { defaultStageId } = await import('/src/history/stages.ts')
+            // Each value a row starts from; the group and stage are the current ones.
+            const current: Record<string, unknown> = {
+                groupId: defaultGroupId.value,
+                stageId: defaultStageId.value,
+            }
             brushProperties.value = Object.fromEntries(
-                brushFields.map((field) => [field.key, 0]),
+                brushFields.map((field) => [field.key, field.brush?.initial ?? current[field.key]]),
             ) as typeof brushProperties.value
         })
         await expect(add).toBeDisabled()

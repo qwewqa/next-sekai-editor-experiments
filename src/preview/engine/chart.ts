@@ -15,7 +15,12 @@ import { beatToTime } from '../../state/integrals/bpms'
 import type { StoreGrid } from '../../state/store/grid'
 import type { StoreSlides } from '../../state/store/slides'
 import { previewAttachmentFrac } from './elevation'
-import { FlickDirection, type CameraChange, type FlickDirectionValue } from './layout'
+import {
+    FlickDirection,
+    rotationCenterCodes,
+    type CameraChange,
+    type FlickDirectionValue,
+} from './layout'
 import { ease, lerp, type EaseTypeValue } from './math'
 import {
     ConnectorKind,
@@ -362,6 +367,9 @@ export const createPreviewChartBuilder = () => {
                                 yLaneTranslate: event.yTranslation,
                                 elevation: event.elevation,
                                 centerWeight: event.anchor === 'center' ? 1 : 0,
+                                rotationCenter: rotationCenterCodes[event.rotationCenter],
+                                rotationCenterXOffset: event.centerXOffset,
+                                rotationCenterYOffset: event.centerYOffset,
                                 ease: easeType(event.eventEase),
                             }))
 

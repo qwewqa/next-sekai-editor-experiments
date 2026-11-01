@@ -48,6 +48,18 @@ export const serializeStageTransformEventsToLevelDataEntities = (
                     value: anchors[joint.anchor],
                 },
                 {
+                    name: 'rotationCenter',
+                    value: rotationCenters[joint.rotationCenter],
+                },
+                {
+                    name: 'rotationCenterXOffset',
+                    value: joint.centerXOffset,
+                },
+                {
+                    name: 'rotationCenterYOffset',
+                    value: joint.centerYOffset,
+                },
+                {
                     name: 'ease',
                     value: easeValues[joint.eventEase],
                 },
@@ -61,4 +73,11 @@ export const serializeStageTransformEventsToLevelDataEntities = (
 const anchors = {
     default: 0,
     center: 1,
+}
+
+const rotationCenters = {
+    mask: 0,
+    stage: 1,
+    screen: 2,
+    vanishingPoint: 3,
 }

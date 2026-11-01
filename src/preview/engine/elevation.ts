@@ -1,13 +1,13 @@
 import { elevationGuideAlphaFraction } from '../../utils/guideAlpha'
 import {
     blendStageTransform,
-    computeStageTransform,
     type LayoutTransform,
     type PreviewViewport,
+    type StageTransform,
 } from './layout'
 import { ease, lerp, safeUnlerpClamped } from './math'
 import type { PreviewNote } from './model'
-import type { StageProps } from './stage'
+import { propsStageTransform, type StageProps, type StageTransformProps } from './stage'
 
 /** Authored beats, rather than times or scroll progress that can collapse. */
 export const sameAuthoredBeat = (head: PreviewNote, tail: PreviewNote) => {
@@ -69,7 +69,7 @@ export const noteTransformAtElevation = (
     note: PreviewNote,
     propsAt: StagePropsAt,
     elevation: number,
-): ReturnType<typeof computeStageTransform> => {
+): StageTransform => {
     const { attachHead, attachTail } = note
     if (note.isAttached && attachHead && attachTail) {
         const fraction = ease(attachHead.connectorEase, previewAttachmentFrac(note))
@@ -90,23 +90,15 @@ export const noteTransformAtElevation = (
             fraction,
         )
     }
-    const props = noteElevationTransform(propsAt(note.stageIndex))
-    return computeStageTransform(
+    return propsStageTransform(
         viewport,
         camera,
-        props.rotate,
-        props.xLaneTranslate,
-        props.yLaneTranslate,
-        props.lane,
-        props.centerWeight,
+        noteElevationTransform(propsAt(note.stageIndex)),
         elevation,
     )
 }
 
-export type ElevationTransform = Pick<
-    StageProps,
-    'rotate' | 'xLaneTranslate' | 'yLaneTranslate' | 'lane' | 'centerWeight' | 'elevation'
->
+export type ElevationTransform = StageTransformProps & Pick<StageProps, 'elevation'>
 
 export const noteElevationTransform = (
     props: StageProps | undefined,
@@ -117,6 +109,9 @@ export const noteElevationTransform = (
     yLaneTranslate: props?.yLaneTranslate ?? 0,
     lane: props?.lane ?? 0,
     centerWeight: props?.centerWeight ?? 0,
+    rotationCenter: props?.rotationCenter ?? { start: 0, end: 0, progress: 0 },
+    rotationCenterXOffset: props?.rotationCenterXOffset ?? 0,
+    rotationCenterYOffset: props?.rotationCenterYOffset ?? 0,
     elevation: (props?.elevation ?? 0) + elevation,
 })
 
@@ -131,16 +126,7 @@ export const blendElevationTransform = (
 ) => {
     const elevation = lerp(head.elevation, tail.elevation, elevationFrac)
     const at = (props: ElevationTransform) =>
-        computeStageTransform(
-            viewport,
-            camera,
-            props.rotate,
-            props.xLaneTranslate,
-            props.yLaneTranslate,
-            props.lane,
-            props.centerWeight,
-            elevation,
-        )
+        propsStageTransform(viewport, camera, props, elevation)
     // Recompute the projected rotation center too, including the elevation cap.
     return blendStageTransform(at(head), at(tail), geometryFrac)
 }

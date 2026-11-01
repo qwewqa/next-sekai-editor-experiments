@@ -3,6 +3,8 @@ import type { StageId } from '../../stages'
 
 export type Anchor = 'default' | 'center'
 
+export type RotationCenter = 'mask' | 'stage' | 'screen' | 'vanishingPoint'
+
 export type StageTransformEventObject = {
     stageId: StageId
     beat: number
@@ -11,5 +13,8 @@ export type StageTransformEventObject = {
     yTranslation: number
     elevation: number
     anchor: Anchor
+    rotationCenter: RotationCenter
+    centerXOffset: number
+    centerYOffset: number
     eventEase: EventEase
 }

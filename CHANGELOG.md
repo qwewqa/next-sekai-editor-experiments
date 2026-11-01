@@ -36,6 +36,7 @@
 - Added Statistics to the toolbar. It shows the combo, the count of each note type, Notes per Second and the times of the first and last notes. Copy Text copies the statistics, and Share Image… makes an image of them to share, copy or download. If you have customized the toolbar, add Statistics in Settings › Toolbar.
 - When Preview, Groups and Stages are all shown in the left panels or all in the right panels, and those panels are wide, Groups and Stages are now shown side by side below Preview. To widen the panels, drag the edge between the panels and the chart. To use this in narrower panels or turn it off, use Settings › Panels › Groups and Stages Side by Side.
 - Stage style events now support Lane Color. Color transitions use the event’s easing. The judgment line keeps its opacity during color transitions.
+- Stage transform events now support Rotation Center (Stage Center, Mask Center, Screen Center or Vanishing Point), Center X Offset and Center Y Offset. New stage transform events default to Stage Center.
 - Level data now opens when it leaves out a stage transform event’s rotation, translation or anchor, a camera event’s lane or size, or an event’s easing. It also opens with any camera size of 0 or more. The editor reads missing values as Sonolus does.
 - You can now middle-click in the chart or the Elevation Editor and move the mouse to scroll. Click again to stop.
 - With Settings › Toolbar › Quick Switch enabled, you can now press and hold a tool button, then drag along its toolbar row to select another tool.

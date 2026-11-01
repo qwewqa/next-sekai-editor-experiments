@@ -79,6 +79,9 @@ const transform = (
     rotation: 0,
     elevation: 0,
     anchor: 'default',
+    rotationCenter: 'mask',
+    centerXOffset: 0,
+    centerYOffset: 0,
     eventEase: 'linear',
     ...extra,
 })

@@ -1,7 +1,7 @@
 {
   "source.nxsp": {
-    "fingerprint": "zip:7991:0:aa582925",
-    "size": 7991,
+    "fingerprint": "zip:8011:0:7a5c1aae",
+    "size": 8011,
     "entries": [
       {
         "index": 0,
@@ -16,9 +16,9 @@
         "index": 1,
         "name": "level.json.gz",
         "method": 0,
-        "crc32": 2558595672,
-        "compressedSize": 1301,
-        "uncompressedSize": 1301,
+        "crc32": 454720386,
+        "compressedSize": 1325,
+        "uncompressedSize": 1325,
         "dataOffset": 823
       },
       {
@@ -28,7 +28,7 @@
         "crc32": 3553582427,
         "compressedSize": 1263,
         "uncompressedSize": 4850,
-        "dataOffset": 2175
+        "dataOffset": 2199
       },
       {
         "index": 3,
@@ -37,7 +37,7 @@
         "crc32": 1843323409,
         "compressedSize": 1174,
         "uncompressedSize": 100,
-        "dataOffset": 3486
+        "dataOffset": 3510
       },
       {
         "index": 4,
@@ -46,7 +46,7 @@
         "crc32": 136824160,
         "compressedSize": 15,
         "uncompressedSize": 15,
-        "dataOffset": 4706
+        "dataOffset": 4730
       },
       {
         "index": 5,
@@ -55,7 +55,7 @@
         "crc32": 3245599963,
         "compressedSize": 17,
         "uncompressedSize": 17,
-        "dataOffset": 4769
+        "dataOffset": 4793
       },
       {
         "index": 6,
@@ -64,7 +64,7 @@
         "crc32": 1553704227,
         "compressedSize": 12,
         "uncompressedSize": 12,
-        "dataOffset": 4838
+        "dataOffset": 4862
       },
       {
         "index": 7,
@@ -73,7 +73,7 @@
         "crc32": 3252100260,
         "compressedSize": 23,
         "uncompressedSize": 21,
-        "dataOffset": 4895
+        "dataOffset": 4919
       },
       {
         "index": 8,
@@ -82,34 +82,34 @@
         "crc32": 1045002871,
         "compressedSize": 73,
         "uncompressedSize": 78,
-        "dataOffset": 4960
+        "dataOffset": 4984
       },
       {
         "index": 9,
         "name": "sonolus/levels/info",
         "method": 8,
-        "crc32": 307198204,
-        "compressedSize": 649,
+        "crc32": 1626389773,
+        "compressedSize": 647,
         "uncompressedSize": 2029,
-        "dataOffset": 5082
+        "dataOffset": 5106
       },
       {
         "index": 10,
         "name": "sonolus/levels/list",
         "method": 8,
-        "crc32": 2857916748,
-        "compressedSize": 638,
+        "crc32": 3045691515,
+        "compressedSize": 636,
         "uncompressedSize": 1992,
-        "dataOffset": 5780
+        "dataOffset": 5802
       },
       {
         "index": 11,
         "name": "sonolus/levels/nse-a9d652881da36cd59456e01f3a9f54a2",
         "method": 8,
-        "crc32": 2704444592,
+        "crc32": 1979712976,
         "compressedSize": 682,
         "uncompressedSize": 2076,
-        "dataOffset": 6499
+        "dataOffset": 6519
       }
     ]
   }

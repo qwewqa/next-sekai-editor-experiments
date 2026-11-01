@@ -107,6 +107,9 @@ const decoders: Record<string, (entity: LevelDataEntity) => Values> = {
             yLaneTranslate: v('yLaneTranslate'),
             elevation: v('elevation', 0),
             anchor: v('anchor'),
+            rotationCenter: v('rotationCenter', 0),
+            rotationCenterXOffset: v('rotationCenterXOffset', 0),
+            rotationCenterYOffset: v('rotationCenterYOffset', 0),
             ease: v('ease'),
         }
     },

@@ -7,7 +7,7 @@ import type {
     JudgmentLineColor,
     JudgmentLineStyle,
 } from '../../../chart/events/stage/style'
-import type { Anchor } from '../../../chart/events/stage/transform.ts'
+import type { Anchor, RotationCenter } from '../../../chart/events/stage/transform.ts'
 import type { GroupId } from '../../../chart/groups'
 import type {
     ConnectorLayer,
@@ -100,6 +100,9 @@ export type BrushProperties = {
     judgmentLineAlpha?: number
     divisionLineAlpha?: number
     rotation?: number
+    rotationCenter?: RotationCenter
+    centerXOffset?: number
+    centerYOffset?: number
     yTranslation?: number
     elevation?: number
     anchor?: Anchor

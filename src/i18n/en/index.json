@@ -1630,6 +1630,14 @@
                 "default": "Default",
                 "center": "Center"
             },
+            "centerXOffset": {
+                "label": "Center X Offset",
+                "qualified": "Rotation Center X Offset"
+            },
+            "centerYOffset": {
+                "label": "Center Y Offset",
+                "qualified": "Rotation Center Y Offset"
+            },
             "connectorActiveIsCritical": {
                 "label": "Slide Critical"
             },
@@ -1863,6 +1871,13 @@
             },
             "rotation": {
                 "label": "Rotation"
+            },
+            "rotationCenter": {
+                "label": "Rotation Center",
+                "stage": "Stage Center",
+                "mask": "Mask Center",
+                "screen": "Screen Center",
+                "vanishingPoint": "Vanishing Point"
             },
             "sfx": {
                 "label": "SFX",

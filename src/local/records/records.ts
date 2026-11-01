@@ -278,6 +278,9 @@ export const stageTransformEventObject = (r: Rec): StageTransformEventObject => 
     yTranslation: asNumber(r[4]),
     elevation: asNumber(r[5]),
     anchor: asString(r[6]) as StageTransformEventObject['anchor'],
+    rotationCenter: asString(r[8] ?? 'mask') as StageTransformEventObject['rotationCenter'],
+    centerXOffset: asNumber(r[9] ?? 0),
+    centerYOffset: asNumber(r[10] ?? 0),
     eventEase: asString(r[7]) as StageTransformEventObject['eventEase'],
 })
 

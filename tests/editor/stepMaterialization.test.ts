@@ -62,6 +62,9 @@ const transform = (beat: number, elevation: number): StageTransformEventObject =
     yTranslation: 0,
     elevation,
     anchor: 'default',
+    rotationCenter: 'mask',
+    centerXOffset: 0,
+    centerYOffset: 0,
     eventEase: 'inStep',
 })
 

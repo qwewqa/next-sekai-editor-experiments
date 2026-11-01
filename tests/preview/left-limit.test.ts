@@ -142,6 +142,9 @@ test('paused frames sample the first tied stage transform without changing frame
         yLaneTranslate: 0,
         elevation: 0,
         centerWeight: 0,
+        rotationCenter: 0,
+        rotationCenterXOffset: 0,
+        rotationCenterYOffset: 0,
         ease: 1 as const,
     }
     const stage: PreviewStage = {
@@ -161,6 +164,9 @@ test('paused frames sample the first tied stage transform without changing frame
                 yLaneTranslate: 0,
                 elevation: 1,
                 centerWeight: 0,
+                rotationCenter: 0,
+                rotationCenterXOffset: 0,
+                rotationCenterYOffset: 0,
                 ease: 1,
             },
             {
@@ -170,6 +176,9 @@ test('paused frames sample the first tied stage transform without changing frame
                 yLaneTranslate: 0,
                 elevation: 4,
                 centerWeight: 0,
+                rotationCenter: 0,
+                rotationCenterXOffset: 0,
+                rotationCenterYOffset: 0,
                 ease: 1,
             },
         ],

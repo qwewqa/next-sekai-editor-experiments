@@ -1630,6 +1630,14 @@
         "default": "Par défaut",
         "center": "Centre"
       },
+      "centerXOffset": {
+        "label": "Décalage X du centre",
+        "qualified": "Décalage X du centre de rotation"
+      },
+      "centerYOffset": {
+        "label": "Décalage Y du centre",
+        "qualified": "Décalage Y du centre de rotation"
+      },
       "connectorActiveIsCritical": {
         "label": "Slide critique"
       },
@@ -1863,6 +1871,13 @@
       },
       "rotation": {
         "label": "Rotation"
+      },
+      "rotationCenter": {
+        "label": "Centre de rotation",
+        "stage": "Centre de la scène",
+        "mask": "Centre du masque",
+        "screen": "Centre de l’écran",
+        "vanishingPoint": "Point de fuite"
       },
       "sfx": {
         "label": "Effets sonores",

@@ -25,6 +25,10 @@ export const parseStageTransformEventsToChart = (
         yTranslation: getOptionalValue(entity, 'yLaneTranslate', yLaneTranslateSchema) ?? 0,
         elevation: getOptionalValue(entity, 'elevation', elevationSchema) ?? 0,
         anchor: anchors[getOptionalValue(entity, 'anchor', anchorSchema) ?? 0],
+        rotationCenter:
+            rotationCenters[getOptionalValue(entity, 'rotationCenter', rotationCenterSchema) ?? 0],
+        centerXOffset: getOptionalValue(entity, 'rotationCenterXOffset', offsetSchema) ?? 0,
+        centerYOffset: getOptionalValue(entity, 'rotationCenterYOffset', offsetSchema) ?? 0,
         eventEase: getEventEase(entity),
     }))
 }
@@ -43,3 +47,19 @@ const anchors = {
     0: 'default',
     1: 'center',
 } as const
+
+const rotationCenterSchema = Type.Union([
+    Type.Literal(0),
+    Type.Literal(1),
+    Type.Literal(2),
+    Type.Literal(3),
+])
+
+const rotationCenters = {
+    0: 'mask',
+    1: 'stage',
+    2: 'screen',
+    3: 'vanishingPoint',
+} as const
+
+const offsetSchema = Type.Number()

@@ -40,7 +40,18 @@ const stage = (rotate: number, xLaneTranslate: number, elevation: number): Previ
     styles: [],
     hasTransforms: true,
     transforms: [
-        { time: 0, rotate, xLaneTranslate, yLaneTranslate: 0, elevation, centerWeight: 0, ease: 1 },
+        {
+            time: 0,
+            rotate,
+            xLaneTranslate,
+            yLaneTranslate: 0,
+            elevation,
+            centerWeight: 0,
+            rotationCenter: 0,
+            rotationCenterXOffset: 0,
+            rotationCenterYOffset: 0,
+            ease: 1,
+        },
     ],
 })
 

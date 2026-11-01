@@ -13,7 +13,7 @@ export type KnownChoice = {
     values: Readonly<Record<number, Since>>
     /** Numbers in these ranges are read too, for a field whose values are not a list. */
     ranges?: readonly { min: number; max: number; since: Since }[]
-    /** The value an unknown one becomes: what a new object of this kind gets. */
+    /** The value an unknown one becomes: usually what a new object of this kind gets. */
     default: number
 }
 
@@ -236,6 +236,10 @@ export const knownArchetypes: Readonly<Record<string, KnownArchetype>> = {
             yLaneTranslate: value(),
             elevation: value(),
             anchor: choice([0, 1], 0),
+            // Mask Center, as the engine reads an unknown value; a new event gets Stage Center.
+            rotationCenter: choice([0, 1, 2, 3], 0),
+            rotationCenterXOffset: value(),
+            rotationCenterYOffset: value(),
             ease: eventEase,
             next: ref(),
         },

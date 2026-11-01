@@ -88,6 +88,9 @@ const fixture = (extraNotes: NoteObject[] = [], overrides: Partial<Chart> = {}) 
             yTranslation: 0,
             elevation: 0,
             anchor: 'default',
+            rotationCenter: 'mask',
+            centerXOffset: 0,
+            centerYOffset: 0,
             eventEase: 'linear',
         })),
         timeScales: [0, 16, 32].flatMap((beat) =>
@@ -992,6 +995,9 @@ const chainFixture = () => {
                 yTranslation: 0,
                 elevation: 0,
                 anchor: 'default',
+                rotationCenter: 'mask',
+                centerXOffset: 0,
+                centerYOffset: 0,
             })),
             timeScales: points.map(({ beat, stageId }) => ({
                 beat,

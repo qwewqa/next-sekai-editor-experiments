@@ -120,6 +120,9 @@ const chartFor = (notes: NoteObject[], rotated = false, masked = false): Chart =
                   yTranslation: 0.1,
                   elevation: 0.2,
                   anchor: 'center',
+                  rotationCenter: 'mask',
+                  centerXOffset: 0,
+                  centerYOffset: 0,
                   eventEase: 'linear',
               },
           ]

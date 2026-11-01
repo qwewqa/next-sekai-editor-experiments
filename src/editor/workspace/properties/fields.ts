@@ -62,7 +62,7 @@ export type PropertyField = {
     section: PropertySection
     kind: PropertyKind
     label: (t: Localization) => string
-    /** The label naming the object kind, for selections of several kinds. */
+    /** The label where the panel's context is missing, as in History and Brush's Remove. */
     qualifiedLabel?: (t: Localization) => string
     /** Shown in Selection for this selection. */
     show: (context: SelectionContext) => boolean
@@ -439,6 +439,33 @@ const fields: PropertyField[] = [
         section: 'values',
         kind: 'transform',
         label: (t) => t.modals.form.rotation.label,
+        show: type('stageTransformEventJoint'),
+        brush: { initial: 0 },
+    },
+    {
+        key: 'rotationCenter',
+        section: 'values',
+        kind: 'transform',
+        label: (t) => t.modals.form.rotationCenter.label,
+        show: type('stageTransformEventJoint'),
+        valueLabel: optionLabel((t) => t.modals.form.rotationCenter),
+        brush: { initial: 'stage' },
+    },
+    {
+        key: 'centerXOffset',
+        section: 'values',
+        kind: 'transform',
+        label: (t) => t.modals.form.centerXOffset.label,
+        qualifiedLabel: (t) => t.modals.form.centerXOffset.qualified,
+        show: type('stageTransformEventJoint'),
+        brush: { initial: 0 },
+    },
+    {
+        key: 'centerYOffset',
+        section: 'values',
+        kind: 'transform',
+        label: (t) => t.modals.form.centerYOffset.label,
+        qualifiedLabel: (t) => t.modals.form.centerYOffset.qualified,
         show: type('stageTransformEventJoint'),
         brush: { initial: 0 },
     },

@@ -7,14 +7,14 @@
     "event": "Olay",
     "cameraEvent": "Kamera Olayı",
     "stageMaskEvent": "Sahne Maskesi Olayı",
-    "stagePivotEvent": "Sahne Dönme Merkezi Olayı",
+    "stagePivotEvent": "Sahne Referans Noktası Olayı",
     "stageStyleEvent": "Sahne Stili Olayı",
     "stageTransformEvent": "Sahne Dönüşüm Olayı"
   },
   "eventKinds": {
     "cameraEvent": "kamera",
     "stageMaskEvent": "sahne maskesi",
-    "stagePivotEvent": "sahne dönme merkezi",
+    "stagePivotEvent": "sahne referans noktası",
     "stageStyleEvent": "sahne stili",
     "stageTransformEvent": "sahne dönüşüm"
   },
@@ -415,7 +415,7 @@
           "note": "Nota",
           "cameraEvent": "Kamera Olayı",
           "stageMaskEvent": "Sahne Maskesi Olayı",
-          "stagePivotEvent": "Sahne Dönme Merkezi Olayı",
+          "stagePivotEvent": "Sahne Referans Noktası Olayı",
           "stageStyleEvent": "Sahne Stili Olayı",
           "stageTransformEvent": "Sahne Dönüşüm Olayı",
           "timeScale": "Zaman Ölçeği",
@@ -1128,7 +1128,7 @@
         "timeScale": "Zaman Ölçeği",
         "camera": "Kamera Olayı",
         "mask": "Sahne Maskesi Olayı",
-        "pivot": "Sahne Dönme Merkezi Olayı",
+        "pivot": "Sahne Referans Noktası Olayı",
         "style": "Sahne Stili Olayı",
         "transform": "Sahne Dönüşüm Olayı",
         "event": "Olaylar"
@@ -1630,6 +1630,14 @@
         "default": "Varsayılan",
         "center": "Merkez"
       },
+      "centerXOffset": {
+        "label": "Merkezin X Kayması",
+        "qualified": "Dönüş Merkezinin X Kayması"
+      },
+      "centerYOffset": {
+        "label": "Merkezin Y Kayması",
+        "qualified": "Dönüş Merkezinin Y Kayması"
+      },
       "connectorActiveIsCritical": {
         "label": "Kritik Kaydırma"
       },
@@ -1853,7 +1861,7 @@
         "forceNonTick": "Ara Vuruşu Devre Dışı Bırak"
       },
       "pivotLane": {
-        "label": "Dönme Merkezi Şeridi"
+        "label": "Referans Noktası Şeridi"
       },
       "preset": {
         "label": "Ön Ayar"
@@ -1863,6 +1871,13 @@
       },
       "rotation": {
         "label": "Dönüş"
+      },
+      "rotationCenter": {
+        "label": "Dönüş Merkezi",
+        "stage": "Sahne Merkezi",
+        "mask": "Maske Merkezi",
+        "screen": "Ekran Merkezi",
+        "vanishingPoint": "Kaçış Noktası"
       },
       "sfx": {
         "label": "Ses Efekti",
@@ -2116,7 +2131,7 @@
         "timeScale": "Zaman Ölçekleri",
         "cameraEventJoint": "Kamera Olayları",
         "stageMaskEventJoint": "Sahne Maskesi Olayları",
-        "stagePivotEventJoint": "Sahne Dönme Merkezi Olayları",
+        "stagePivotEventJoint": "Sahne Referans Noktası Olayları",
         "stageStyleEventJoint": "Sahne Stili Olayları",
         "stageTransformEventJoint": "Sahne Dönüşüm Olayları"
       },

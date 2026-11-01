@@ -45,6 +45,9 @@ const translate = (
     yTranslation: 0,
     elevation: 0,
     anchor: 'default',
+    rotationCenter: 'mask',
+    centerXOffset: 0,
+    centerYOffset: 0,
     eventEase,
 })
 

@@ -433,6 +433,9 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
             yTranslation: 0,
             elevation: 0,
             anchor: 'default',
+            rotationCenter: 'mask',
+            centerXOffset: 0,
+            centerYOffset: 0,
             eventEase,
         })
         events.timeScales.push({

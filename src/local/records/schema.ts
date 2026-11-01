@@ -8,7 +8,11 @@ import type {
     JudgmentLineStyle,
     StageStyleEventObject,
 } from '../../chart/events/stage/style'
-import type { Anchor, StageTransformEventObject } from '../../chart/events/stage/transform'
+import type {
+    Anchor,
+    RotationCenter,
+    StageTransformEventObject,
+} from '../../chart/events/stage/transform'
 import type { FolderObject } from '../../chart/folders'
 import type { GroupObject } from '../../chart/groups'
 import type {
@@ -101,6 +105,7 @@ const choices = {
     judgmentLineStyle: ['default', 'singleLine'],
     borderStyle: ['default', 'light', 'medium', 'disabled'],
     anchor: ['default', 'center'],
+    rotationCenter: ['mask', 'stage', 'screen', 'vanishingPoint'],
     generateSimLines: ['global', 'isolated'],
 } as const satisfies Record<string, readonly string[]>
 
@@ -137,8 +142,9 @@ export const enumsMatchModel: [
     Same<ChoiceOf<'judgmentLineStyle'>, JudgmentLineStyle>,
     Same<ChoiceOf<'borderStyle'>, BorderStyle>,
     Same<ChoiceOf<'anchor'>, Anchor>,
+    Same<ChoiceOf<'rotationCenter'>, RotationCenter>,
     Same<ChoiceOf<'generateSimLines'>, GenerateSimLines>,
-] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
+] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
 
 /** Eases are built above, so a test checks them against `ease.ts` and `TimeScaleEase`. */
 export type EaseSets = { ease: Ease; timeScaleEase: TimeScaleEase }
@@ -168,10 +174,10 @@ export type Field<N extends string = string> = {
     readonly ref?: RefTarget
     /** A `ref` within its own map whose links never loop: no record is its own ancestor. */
     readonly acyclic?: true
-    /** Only trailing fields; an unset one is left off. */
+    /** Only trailing fields; left off when unset, and in stage transforms when at `default`. */
     readonly optional?: true
     readonly minItems?: number
-    /** What `toRecords` writes when the model leaves the field out. */
+    /** What `toRecords` writes when the model leaves the field out; an absent one reads as it. */
     readonly default?: RecordValue
 }
 
@@ -348,6 +354,9 @@ export const records = {
         f('elevation', 'number'),
         f('anchor', 'enum:anchor'),
         f('eventEase', 'enum:ease'),
+        f('rotationCenter', 'enum:rotationCenter', { ...optional, default: 'mask' }),
+        f('centerXOffset', 'number', { ...optional, default: 0 }),
+        f('centerYOffset', 'number', { ...optional, default: 0 }),
     ],
 } as const satisfies Record<string, RecordForm>
 

@@ -1630,6 +1630,14 @@
         "default": "デフォルト",
         "center": "中央"
       },
+      "centerXOffset": {
+        "label": "中心のXオフセット",
+        "qualified": "回転中心のXオフセット"
+      },
+      "centerYOffset": {
+        "label": "中心のYオフセット",
+        "qualified": "回転中心のYオフセット"
+      },
       "connectorActiveIsCritical": {
         "label": "スライドクリティカル"
       },
@@ -1863,6 +1871,13 @@
       },
       "rotation": {
         "label": "回転"
+      },
+      "rotationCenter": {
+        "label": "回転中心",
+        "stage": "ステージの中心",
+        "mask": "マスクの中心",
+        "screen": "画面の中心",
+        "vanishingPoint": "消失点"
       },
       "sfx": {
         "label": "SE",

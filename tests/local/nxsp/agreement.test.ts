@@ -308,6 +308,26 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
         ),
         'unknown-key': await probe(manifest((m) => (m.entries[0].zz = 1))),
         'extra-position': await probe(changeHeadChunk('header', (header) => [...header, 0, 1])),
+        // A stage transform record has three trailing optional positions.
+        ...Object.fromEntries(
+            await Promise.all(
+                (
+                    [
+                        ['transform-center', ['stage']],
+                        ['transform-offsets', ['screen', 1.5, -0.25]],
+                        ['transform-extra-position', ['mask', 0, 0, 0]],
+                        ['transform-unknown-center', ['lane0']],
+                    ] as const
+                ).map(async ([name, tail]) => [
+                    name,
+                    await probe(
+                        changeHeadChunk('stageTransformEvents', (records) =>
+                            records.map((record) => [...(record as RecordValue[]), ...tail]),
+                        ),
+                    ),
+                ]),
+            ),
+        ),
         'newer-level': await probe(project((p) => (p.levelVersion = 2))),
         'newer-minor': await probe(project((p) => (p.minor = 2))),
         'newer-patch': await probe(project((p) => (p.patch = 1))),
@@ -559,6 +579,11 @@ const expectedByPlan: Record<string, Opened> = {
     'huge-int-rating': { kind: 'nxsp', open: 'partial', reasons: ['invalid-key'] },
     // level.json's numbers are the level parser's, not the reader's.
     'huge-int-level': { kind: 'nxsp', open: 'full', reasons: [] },
+    // Stage transform records: up to 11 positions read; a 12th or an unknown center is damage.
+    'transform-center': { kind: 'nxsp', open: 'full', reasons: [] },
+    'transform-offsets': { kind: 'nxsp', open: 'full', reasons: [] },
+    'transform-extra-position': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'transform-unknown-center': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
 }
 
 const openedBy = async (bytes: Uint8Array): Promise<Opened> => {

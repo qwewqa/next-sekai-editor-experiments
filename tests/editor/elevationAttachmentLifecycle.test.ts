@@ -66,6 +66,9 @@ const chart = (): Chart => ({
         yTranslation: 0,
         rotation: 0,
         anchor: 'default',
+        rotationCenter: 'mask',
+        centerXOffset: 0,
+        centerYOffset: 0,
         eventEase: 'linear',
     })),
     slides: [

@@ -132,6 +132,9 @@ test('a cross-stage slide on dynamic stages keeps its ticks attached at exact po
         yTranslation: 0,
         elevation,
         anchor: 'default' as const,
+        rotationCenter: 'mask' as const,
+        centerXOffset: 0,
+        centerYOffset: 0,
         eventEase: 'linear' as const,
     })
     const source = state(

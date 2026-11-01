@@ -1630,6 +1630,14 @@
         "default": "默认",
         "center": "中心"
       },
+      "centerXOffset": {
+        "label": "中心 X 偏移",
+        "qualified": "旋转中心 X 偏移"
+      },
+      "centerYOffset": {
+        "label": "中心 Y 偏移",
+        "qualified": "旋转中心 Y 偏移"
+      },
       "connectorActiveIsCritical": {
         "label": "关键长按音符"
       },
@@ -1863,6 +1871,13 @@
       },
       "rotation": {
         "label": "旋转"
+      },
+      "rotationCenter": {
+        "label": "旋转中心",
+        "stage": "舞台中心",
+        "mask": "遮罩中心",
+        "screen": "屏幕中心",
+        "vanishingPoint": "消失点"
       },
       "sfx": {
         "label": "音效",

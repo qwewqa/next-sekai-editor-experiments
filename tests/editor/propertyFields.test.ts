@@ -131,7 +131,7 @@ test('the brush offers only properties it can apply', () => {
         'xTranslation',
     ])
         assert.ok(!keys.includes(key), key)
-    assert.equal(keys.length, 53)
+    assert.equal(keys.length, 56)
     assert.equal(propertyField.get('connectorEase')?.ease, true)
 })
 
@@ -400,6 +400,26 @@ test('fields of several kinds close the selection under General', () => {
 
 test('a brushed time scale ease starts from None, which writes NONE', () => {
     assert.equal(propertyField.get('timeScaleEase')?.brush?.initial, 'none')
+})
+
+test('the rotation center fields follow Rotation, with qualified names for History and Brush', () => {
+    const keys = shown({ types: { stageTransformEventJoint: true } })
+    const at = keys.indexOf('rotation')
+    assert.deepEqual(keys.slice(at, at + 5), [
+        'rotation',
+        'rotationCenter',
+        'centerXOffset',
+        'centerYOffset',
+        'anchor',
+    ])
+    const t = messages('en')
+    const label = (key: string, qualified: boolean) =>
+        fieldLabel(propertyField.get(key as never)!, t, qualified)
+    assert.equal(label('rotationCenter', true), 'Rotation Center')
+    assert.equal(label('centerXOffset', false), 'Center X Offset')
+    assert.equal(label('centerXOffset', true), 'Rotation Center X Offset')
+    assert.equal(label('centerYOffset', true), 'Rotation Center Y Offset')
+    assert.equal(propertyField.get('rotationCenter')?.brush?.initial, 'stage')
 })
 
 test('qualified names drop a unit, unless only it tells two fields apart', () => {
