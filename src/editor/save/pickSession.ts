@@ -330,12 +330,13 @@ export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
     /** Called at the commit point, when the picker returned a file. */
     readonly committed?: () => void
     readonly ui: AttemptSpec['ui'] & {
-        /** `replaced`: a takeover left the file holding another document's content. */
+        /** `replaced`: a takeover wrote another document. `own`: an emptied own file with no bytes read. */
         notPutBack(
             name: string,
             emptied: boolean,
             downloadable: boolean,
             replaced: boolean,
+            own: boolean,
         ): Promise<'download' | undefined>
         /** Downloads the bytes of an offer, and says so. */
         download(name: string, bytes: Blob): Promise<void>
@@ -384,8 +385,8 @@ export type PickSession = Omit<SaveAttempt, 'write' | 'commit' | 'closePreparing
     ): Promise<T | Dismissed | Ending>
     /** A download browser's: no picker here. */
     download(request: { suggestedName: string; blob: Blob }): Promise<SaveResult>
-    /** The offer shown for the pick, once it was: `emptied` when the file was left empty. */
-    readonly offered: { readonly emptied: boolean } | undefined
+    /** The offer shown: `own` only for an emptied own file with no bytes read. Its failure follows. */
+    readonly offered: { readonly emptied: boolean; readonly own?: true } | undefined
 }
 
 /** Rejects with `Cancelled` when `signal` aborts first. */
@@ -442,7 +443,7 @@ export const withPickSession = <T>(
     return withSaveAttempt(attemptSpec, async (attempt) => {
         /** The newest bytes read of the chain's own file: one slot for the session. */
         let slot: PreRead | undefined
-        let offered: { emptied: boolean } | undefined
+        let offered: PickSession['offered']
         let settled: Promise<void> | undefined
 
         /** The read, awaited; one retry for a failed one, never for a genuine "no handle". */
@@ -478,7 +479,9 @@ export const withPickSession = <T>(
             let result: R | undefined
             let failure: { error: unknown } | undefined
             let landed = false
-            let offer: { emptied: boolean; bytes: Blob | undefined; replaced?: true } | undefined
+            let offer:
+                | { emptied: boolean; bytes: Blob | undefined; replaced?: true; own?: true }
+                | undefined
             await withBind('exclusive', async () => {
                 let found: DiskState | undefined
                 let identity: Picked | undefined
@@ -594,8 +597,15 @@ export const withPickSession = <T>(
                 }
                 if (!bytes) {
                     // Emptied, with nothing readable to give back.
-                    if (identity.kind === 'refused' && (await isEmpty()))
-                        offer = { emptied: true, bytes: undefined }
+                    if (
+                        (identity.kind === 'refused' || identity.kind === 'own') &&
+                        (await isEmpty())
+                    )
+                        offer = {
+                            emptied: true,
+                            bytes: undefined,
+                            ...(identity.kind === 'own' ? { own: true } : {}),
+                        }
                     return
                 }
                 if ((await isEmpty()) && (await putBack(target, bytes))) return
@@ -615,8 +625,9 @@ export const withPickSession = <T>(
                     offer.emptied,
                     offer.bytes !== undefined,
                     offer.replaced === true,
+                    offer.own === true,
                 )
-                offered = { emptied: offer.emptied }
+                offered = { emptied: offer.emptied, ...(offer.own ? { own: true } : {}) }
                 if (choice === 'download' && offer.bytes) await spec.ui.download(name, offer.bytes)
             }
             if (failure) throw named(failure.error, name)

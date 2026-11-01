@@ -173,6 +173,7 @@ export type SaveUi = {
         emptied: boolean,
         downloadable: boolean,
         replaced?: boolean,
+        own?: boolean,
     ) => Promise<'download' | undefined>
     saved: (feedback: SavedFeedback) => void
     /** "No changes since … was saved/opened/downloaded", the last with Download Again. */
@@ -387,8 +388,8 @@ export const defaultSaveUi: SaveUi = {
             ],
         })
     },
-    notPutBack: (name, emptied, downloadable, replaced = false) =>
-        showNotPutBack(title, name, emptied, downloadable, replaced),
+    notPutBack: (name, emptied, downloadable, replaced = false, own = false) =>
+        showNotPutBack(title, name, emptied, downloadable, replaced, own),
     saved: (feedback) => {
         const text =
             feedback.kind === 'saved' && isPeeking.value && !feedback.ofStored && simple(feedback)

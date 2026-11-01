@@ -48,6 +48,7 @@ export type ExportUi = {
         name: string,
         emptied: boolean,
         downloadable: boolean,
+        own?: boolean,
     ) => Promise<'download' | undefined>
     notFound: (name: string) => Promise<'chooseAnother' | undefined>
     denied: (name: string) => Promise<'tryAgain' | 'chooseAnother' | undefined>

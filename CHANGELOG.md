@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Help entries now start by explaining what each tool does.
+- Added a message when a failed save or export leaves the project file empty.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
 - (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.

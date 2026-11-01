@@ -532,8 +532,13 @@ const largeDownload = (estimated: number | undefined): estimated is number =>
 /** What the pick session shows and does for the Save family (it loads in Node: no UI import). */
 export const pickUi = {
     ...preparingUi,
-    notPutBack: (name: string, emptied: boolean, downloadable: boolean, replaced: boolean) =>
-        saveUi.notPutBack(name, emptied, downloadable, replaced),
+    notPutBack: (
+        name: string,
+        emptied: boolean,
+        downloadable: boolean,
+        replaced: boolean,
+        own: boolean,
+    ) => saveUi.notPutBack(name, emptied, downloadable, replaced, own),
     download: (name: string, bytes: Blob) => downloadBytes(name, bytes),
 }
 
@@ -617,11 +622,15 @@ const saveBody = async (
 
 /**
  * An offer takes a refusal dialog's place, and the failure's when the file was emptied and its
- * bytes could not go back: the offer says what matters. Else the outcome follows it.
+ * bytes could not go back. An own-file offer without bytes keeps the outcome that explains why.
  */
 const withoutOffered = <T extends Outcome | Dismissed>(session: PickSession, picked: T) => {
     const offer = session.offered
-    if (offer && (picked.kind === 'refused' || (offer.emptied && picked.kind !== 'done')))
+    if (
+        offer &&
+        !offer.own &&
+        (picked.kind === 'refused' || (offer.emptied && picked.kind !== 'done'))
+    )
         return { kind: 'cancelled' } as const
     return picked
 }

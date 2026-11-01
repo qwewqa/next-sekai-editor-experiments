@@ -66,9 +66,11 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
                 preparing: pickUi.preparing,
                 download: pickUi.download,
                 // Export's dialog closes before an offer shows.
-                notPutBack: (name, emptied, downloadable) => {
+                notPutBack: (name, emptied, downloadable, _replaced, own) => {
                     ctx.leave()
-                    return ctx.ui.notPutBack(name, emptied, downloadable)
+                    return own
+                        ? ctx.ui.notPutBack(name, emptied, downloadable, true)
+                        : ctx.ui.notPutBack(name, emptied, downloadable)
                 },
             },
         },
@@ -90,10 +92,11 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
                 (file) => levelDataPicked(ctx, session, blob, file),
                 blob.size,
             )
-            // An offer takes a refusal's place, and the failure's when the file was left empty.
+            // An own-file offer without bytes keeps the Save core's reason for the failure.
             const offer = session.offered
             if (
                 offer &&
+                !offer.own &&
                 picked.kind !== 'written' &&
                 picked.kind !== 'ownProject' &&
                 (picked.kind === 'refused' || offer.emptied)

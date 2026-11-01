@@ -29,14 +29,17 @@ export const showNotPutBack = async (
     emptied: boolean,
     downloadable: boolean,
     replaced = false,
+    own = false,
 ) => {
     const message = interpolate(
         () =>
-            replaced
-                ? i18n.value.save.replacedContentGone
-                : emptied
-                  ? i18n.value.save.notPutBack
-                  : i18n.value.save.openedContentGone,
+            own
+                ? i18n.value.save.ownFileEmptied
+                : replaced
+                  ? i18n.value.save.replacedContentGone
+                  : emptied
+                    ? i18n.value.save.notPutBack
+                    : i18n.value.save.openedContentGone,
         inlineName(name),
     )
     if (!downloadable) {
@@ -104,7 +107,8 @@ export const exportUi: ExportUi = {
             message: interpolate(() => i18n.value.export.unsupportedParts, inlineName(name)),
             choices: [chooseAnother],
         }),
-    notPutBack: (name, emptied, downloadable) => showNotPutBack(title, name, emptied, downloadable),
+    notPutBack: (name, emptied, downloadable, own = false) =>
+        showNotPutBack(title, name, emptied, downloadable, false, own),
     notFound: (name) =>
         showChoice({
             title,
