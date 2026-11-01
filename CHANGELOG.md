@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Help now explains what each tool does before its other gestures and details.
+- Help entries now start by explaining what each tool does.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
 - (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.
@@ -10,7 +10,7 @@
 - (Web) Before you first use the editor, it asks you to agree to the Terms of Service in a welcome window that also has the Language, Theme, Show Property Descriptions and Send Usage Statistics settings. It asks again after some changes to the Terms of Service or the Privacy Notice. Usage statistics from the editor are sent only after you agree. The unsupported-browser page may send a browser report before you agree.
 - (Web) Added the Terms of Service, linked from Settings › About, Help and the privacy page.
 - Some settings now have an info button that shows what the setting does.
-- Chart properties now have an info button that shows what the property does. To hide these buttons, turn off Settings › Editor › Show Property Descriptions.
+- Some chart properties now have an info button that shows what the property does. To hide these buttons, turn off Settings › Editor › Show Property Descriptions.
 - Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open (O) opens project files.
 - Project files now include Sonolus package metadata and a gzipped chart, with references to the Next SEKAI engine.
 - The Sonolus package in a project file now includes a black cover and silent BGM when those media are left out. These assets are used only by the Sonolus package.
