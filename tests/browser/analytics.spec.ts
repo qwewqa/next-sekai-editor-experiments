@@ -493,9 +493,10 @@ test('a scripted visit counts each press once by name and source, and sends the 
         'scrollDown.key': 1,
         'zoomYIn.wheel': 1,
     })
-    // The desktop snapshot: the 32 settings, 34 keys, and no touch options.
+    // The desktop snapshot: the 33 settings, 35 keys, and no touch options.
     const settings = dataOf(first, 'settings') ?? {}
-    expect(Object.keys(settings)).toHaveLength(34)
+    expect(Object.keys(settings)).toHaveLength(35)
+    expect(settings).toHaveProperty('previewShowCombo', false)
     expect(settings).toHaveProperty('groupsStagesSideBySide', 'auto')
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
@@ -554,11 +555,16 @@ test('the settings snapshot reports where each panel is placed and which are sho
 test('the touch settings snapshot adds the touch options', async ({ page }) => {
     await start(page)
     const snapshot = await page.evaluate(async () => {
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
         const { settingsSnapshot } =
             (await import('/src/analytics/snapshot.ts')) as typeof import('../../src/analytics/snapshot')
+        settings.previewShowCombo = true
         return settingsSnapshot(true, false)
     })
+    expect(Object.keys(snapshot)).toHaveLength(39)
     expect(snapshot).toMatchObject({
+        previewShowCombo: true,
         touchQuickScrollShow: 'touch',
         touchQuickScrollSide: 'right',
         touchLongPressContextMenu: true,

@@ -171,6 +171,7 @@ export const catalogue = {
         previewRenderScale: oneOf(...renderScales),
         previewAntialias: 'boolean',
         previewShowHitboxes: 'boolean',
+        previewShowCombo: 'boolean',
         previewNoteSpeed: scale('noteSpeed'),
         'previewAssets.skin': assetSource,
         'previewAssets.particle': assetSource,

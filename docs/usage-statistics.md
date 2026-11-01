@@ -132,7 +132,7 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `locale` | The editor’s language setting | `en`, `fr`, `ja`, `ko`, `tr`, `zhs` or `zht` |
 | `previewInWorker` | Whether the preview may draw in a separate thread | Yes or no |
 | `previewRenderScale` | The preview’s render scale, rounded to the nearest quarter | `0.25`, `0.5`, `0.75`, `1`, `1.25`, `1.5`, `1.75` or `2` |
-| `previewAntialias`, `previewShowHitboxes` | Whether antialiasing is enabled and whether hitboxes are shown | Yes or no |
+| `previewAntialias`, `previewShowHitboxes`, `previewShowCombo` | Whether antialiasing is enabled, whether hitboxes are shown and whether the combo is shown | Yes or no |
 | `previewNoteSpeed` | The preview’s note speed | Range |
 | `previewAssets.skin`, `previewAssets.particle`, `previewAssets.background`, `previewAssets.effect` | The source of each kind of preview asset. A package from a server is reported as `file` | `default`, `builtin`, `bundled` or `file` |
 | `showPreview`, `showHistory` | Whether the preview and the History panel are shown | Yes or no |

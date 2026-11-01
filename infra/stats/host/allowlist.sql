@@ -162,6 +162,7 @@ INSERT INTO nse_allowed (event, property, kind, value, max) VALUES
     ('settings', 'previewRenderScale', 'text', '2', NULL),
     ('settings', 'previewAntialias', 'boolean', '', NULL),
     ('settings', 'previewShowHitboxes', 'boolean', '', NULL),
+    ('settings', 'previewShowCombo', 'boolean', '', NULL),
     ('settings', 'previewNoteSpeed', 'text', '1-5', NULL),
     ('settings', 'previewNoteSpeed', 'text', '5-8', NULL),
     ('settings', 'previewNoteSpeed', 'text', '8-9', NULL),

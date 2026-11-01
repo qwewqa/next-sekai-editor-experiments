@@ -31,6 +31,7 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
         previewRenderScale: renderScaleOf(settings.previewRenderScale),
         previewAntialias: settings.previewAntialias,
         previewShowHitboxes: settings.previewShowHitboxes,
+        previewShowCombo: settings.previewShowCombo,
         previewNoteSpeed: bucket('noteSpeed', settings.previewNoteSpeed),
         'previewAssets.skin': source('skin'),
         'previewAssets.particle': source('particle'),
