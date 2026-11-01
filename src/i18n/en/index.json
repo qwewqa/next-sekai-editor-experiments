@@ -659,7 +659,7 @@
                 "selectionClick": "Click a selected object to erase the whole selection."
             },
             "brushTool": {
-                "properties": "Applies the properties you set for the brush to objects.",
+                "properties": "Applies the brush’s properties to objects.",
                 "brush": "Tap an object or drag a box to apply the brush. Tap a selected object to apply it to the whole selection.",
                 "brushClick": "Click an object or drag a box to apply the brush. Click a selected object to apply it to the whole selection.",
                 "shift": "Hold Shift to apply the brush to whole slides."
@@ -689,8 +689,8 @@
                 "editClick": "With the same tool, click a selected object to edit its properties.",
                 "move": "With the same tool, drag an object to move only that object.",
                 "resize": "Drag the edge of a note, camera event or stage mask event to resize it.",
-                "modifiers": "Hold Ctrl (Cmd on macOS) and tap an object to add it to the selection or remove it. Hold Shift and tap a note to select its whole slide.",
-                "modifiersClick": "Hold Ctrl (Cmd on macOS) and click an object to add it to the selection or remove it. Hold Shift and click a note to select its whole slide."
+                "modifiers": "Hold Ctrl (Cmd on macOS) and tap an object to add it to or remove it from the selection. Hold Shift and tap a note to select its whole slide.",
+                "modifiersClick": "Hold Ctrl (Cmd on macOS) and click an object to add it to or remove it from the selection. Hold Shift and click a note to select its whole slide."
             },
             "bpmTool": {
                 "first": "The chart always starts with a BPM change. Dragging it adds a copy where you drop it.",
@@ -727,8 +727,8 @@
         "toolbarPanels": {
             "title": "Toolbar and Panels",
             "toolbar": "To change the tools on the toolbar, open Settings › Toolbar.",
-            "panelTab": "Long-press a panel’s tab to choose where the panel docks, or to close it.",
-            "panelTabClick": "Right-click a panel’s tab to choose where the panel docks, or to close it."
+            "panelTab": "Long-press a panel’s tab to move or close the panel.",
+            "panelTabClick": "Right-click a panel’s tab to move or close the panel."
         },
         "mouse": {
             "deselect": "Right-click empty space to deselect."
@@ -748,7 +748,7 @@
         },
         "utilities": {
             "editors": "Opens Cover Editor to make a cover from an image, or Preview Editor to make preview audio from part of the BGM.",
-            "levelInfo": "Both save what they make as a file. To set the level’s cover or preview audio, use Level Info."
+            "levelInfo": "Both export to a file. To set the level’s cover or preview audio, use Level Info."
         },
         "play": {
             "startPosition": "To make Play start at the playback cursor, set Start Position to Cursor in Settings › Play.",
@@ -769,7 +769,7 @@
             "view": "Tap a Timeline step to view the chart as it was then. Restore brings that version back as a new Timeline step.",
             "viewClick": "Click a Timeline step to view the chart as it was then. Restore brings that version back as a new Timeline step.",
             "showChange": "Show Change scrolls to the next change in the Timeline step you are viewing.",
-            "editsHere": "Find Edits Here shows the Timeline steps with changes in the beats the selection covers, or in the beats in view if nothing is selected.",
+            "editsHere": "Find Edits Here lists the Timeline steps that changed the beats the selection covers, or the beats in view when nothing is selected.",
             "timeline": "History lists your edits, saves and exports as Timeline steps."
         },
         "pasteTool": {
@@ -851,7 +851,7 @@
             "modes": "Absolute snaps objects to the grid as you move them. Relative moves them by whole grid steps."
         },
         "statistics": {
-            "contents": "Shows the chart’s combo, the number of notes of each kind and a Notes per Second chart."
+            "contents": "Shows the chart’s combo, the number of notes of each kind and a Notes per Second graph."
         },
         "splitCombine": {
             "split": "Split Slide cuts the connection after each selected note.",
@@ -1089,7 +1089,7 @@
             "previewRenderScale": "Scales the preview’s resolution from 0.25× to 2×. Lower values reduce sharpness and can improve performance.",
             "previewInWorker": "Draws the preview in parallel with the rest of the editor. Turn this off if the preview looks wrong or does not appear.",
             "toolbarQuickSwitch": "Lets you hold a toolbar button and release on a tool to choose it.",
-            "playFollowPosition": "Sets where Follow keeps the playback cursor, from 0 at the bottom of the visible chart to 100 at the top.",
+            "playFollowPosition": "Sets where Follow keeps the playback cursor. 0 is the bottom of the visible chart and 100 is the top.",
             "playPreviewDuration": "Sets how long the BGM plays when you move the playback cursor or select an object.",
             "mouseSecondaryTool": {
                 "intro": "Sets what right-click and right-drag do.",
@@ -1118,7 +1118,7 @@
                     "disallow": "Opens it in place of the chart."
                 }
             },
-            "elevationConnectorArrows": "Shows arrows from start to end on the connectors of selected or hovered slides.",
+            "elevationConnectorArrows": "Shows arrows on the connectors of selected or hovered slides, pointing from start to end.",
             "groupsStagesSideBySide": {
                 "intro": "Sets when Groups and Stages are shown side by side while they are docked below Preview.",
                 "choices": {
@@ -1156,16 +1156,16 @@
                 }
             },
             "playFollow": "Scrolls the chart during playback to keep the playback cursor at Follow Position.",
-            "touchQuickScrollWidth": "Sets the width of the zone where you can scroll with one finger. A value of 0 turns it off.",
+            "touchQuickScrollWidth": "Sets the width of the zone for one-finger scrolling. 0 turns the zone off.",
             "touchQuickScrollShow": {
-                "intro": "Sets when to shade the zone where you can scroll with one finger.",
+                "intro": "Sets when to shade the quick scroll zone.",
                 "choices": {
                     "on": "Shades the zone on any device.",
                     "off": "Leaves the zone unshaded.",
                     "touch": "Shades the zone when touch input is available."
                 }
             },
-            "touchScrollInertia": "Lets the chart keep scrolling and slow down gradually after you lift your finger.",
+            "touchScrollInertia": "Keeps the chart scrolling after you lift your finger, then slows it to a stop.",
             "showPropertyDescriptions": "Shows info buttons beside chart properties."
         },
         "sections": "Sections",
@@ -1477,7 +1477,7 @@
     "player": {
         "started": "Started playing",
         "stopped": "Stopped playing",
-        "startFailed": "Could not start playing. Try again.",
+        "startFailed": "Could not start playback. Try again.",
         "changed": "Changed playback speed to {0}×"
     },
     "history": {
@@ -2112,7 +2112,7 @@
                         "anchor": "Invisible. Shapes connectors without adding combo.",
                         "damage": "Counts as a miss if touched.",
                         "forceTick": "Always a tick, even outside a slide.",
-                        "forceNonTick": "Like Default, but a tap or flick in the middle of a slide."
+                        "forceNonTick": "Never a tick, even in the middle of a slide."
                     }
                 },
                 "noteStyle": "Note color override.",
@@ -2142,7 +2142,7 @@
                 },
                 "meter": "Beats per measure. Only the editor uses it.",
                 "timeScale": "Speed multiplier for the group’s notes. Negative values move them backward.",
-                "skip": "Jumps the group’s notes toward the judgment line by the distance notes travel in this many beats at time scale 1.",
+                "skip": "Jumps the group’s notes toward the judgment line. 1 is the distance notes travel in one beat at time scale 1.",
                 "timeScaleEase": "How the speed changes until the group’s next time scale change.",
                 "timeScaleTransition": {
                     "choices": {
@@ -2150,7 +2150,7 @@
                         "scroll": "Note spacing follows the current speed."
                     }
                 },
-                "hideNotes": "Hides the group’s notes and the connector segments that start in the group, until its next time scale change.",
+                "hideNotes": "Hides the group’s notes and the connector segments that start in it. Lasts until the group’s next time scale change.",
                 "cameraLeft": "Left edge of the camera’s view, in lanes.",
                 "cameraSize": "Width of the camera’s view, 6 to 24 lanes.",
                 "cameraZoomTargetLane": "Lane that the zoom centers on, counted from the middle of the camera’s view.",
@@ -2173,12 +2173,12 @@
                     }
                 },
                 "yOffset": "Raises the judgment line. 1 is the top of the stage.",
-                "yOffsetBeat": "Raises the judgment line further by the distance notes travel in this many beats at time scale 1.",
+                "yOffsetBeat": "Raises the judgment line further. 1 is the distance notes travel in one beat at time scale 1.",
                 "borderStyle": {
                     "choices": {
                         "default": "Thick border just outside the edge.",
                         "light": "Thin line on the edge.",
-                        "medium": "Half as thick as Default.",
+                        "medium": "Border just outside the edge, half as thick as Default.",
                         "disabled": "No line."
                     }
                 },
@@ -2469,7 +2469,7 @@
             }
         },
         "videoBitrate": "Video Bitrate (Mbps)",
-        "renderScaleDescription": "Scales the resolution that each frame is drawn at. Higher values give smoother edges and make the export slower.",
+        "renderScaleDescription": "Scales the resolution used to draw each frame. Higher values give smoother edges but slow the export.",
         "fadeIn": "Fade In (s)",
         "fadeOut": "Fade Out (s)",
         "audioBitrate": "Audio Bitrate",
@@ -2489,8 +2489,8 @@
         "cancelling": "Cancelling…",
         "exported": "Exported to {0}",
         "ready": "Ready",
-        "keepOpen": "Keep this tab open until the export ends.",
-        "keepOpenVisible": "Keep this tab open and visible until the export ends.",
+        "keepOpen": "Keep this tab open until the export finishes.",
+        "keepOpenVisible": "Keep this tab open and visible until the export finishes.",
         "stopped": "Video exports stopped repeatedly. Resolution and Render Scale are now limited on this device. Reset to Defaults removes this limit.",
         "discardTitle": "Discard this video?",
         "discard": "Discard Video",
@@ -2498,7 +2498,7 @@
         "errors": {
             "ownProject": "Saved to {0}. Choose another name for the video.",
             "refused": "“{0}” is a chart file. Choose another name.",
-            "refusedOther": "“{0}” is now empty. Use Save in its session to write the project file again. Choose another name for the video.",
+            "refusedOther": "“{0}” is now empty. Open its session and use Save to write the file again. Choose another name for the video.",
             "config": "These video settings are not available in this browser. Choose a lower resolution or frame rate.",
             "encoder": "The video could not be created.",
             "audio": "The audio could not be prepared.",

@@ -106,7 +106,7 @@ const freezeClock = (page: Page) =>
         Object.defineProperty(context, 'currentTime', { configurable: true, get: () => time })
     })
 
-const startFailed = 'Could not start playing. Try again.'
+const startFailed = 'Could not start playback. Try again.'
 
 // Waits past the start deadline.
 const untilStopped = (page: Page) =>

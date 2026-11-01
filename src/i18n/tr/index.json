@@ -659,7 +659,7 @@
         "selectionClick": "Seçimin tamamını silmek için seçili bir nesneye tıklayın."
       },
       "brushTool": {
-        "properties": "Fırça için ayarladığınız özellikleri nesnelere uygular.",
+        "properties": "Fırçanın özelliklerini nesnelere uygular.",
         "brush": "Fırçayı uygulamak için bir nesneye dokunun veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye dokunun.",
         "brushClick": "Fırçayı uygulamak için bir nesneye tıklayın veya sürükleyerek bir çerçeve çizin. Seçimin tamamına uygulamak için seçili bir nesneye tıklayın.",
         "shift": "Fırçayı kaydırmaların tamamına uygulamak için Shift tuşunu basılı tutun."
@@ -727,8 +727,8 @@
     "toolbarPanels": {
       "title": "Araç Çubuğu ve Paneller",
       "toolbar": "Araç çubuğundaki araçları değiştirmek için Ayarlar › Araç Çubuğu bölümünü açın.",
-      "panelTab": "Panelin nereye yerleştirileceğini seçmek veya paneli kapatmak için sekmesine uzun basın.",
-      "panelTabClick": "Panelin nereye yerleştirileceğini seçmek veya paneli kapatmak için sekmesine sağ tıklayın."
+      "panelTab": "Paneli taşımak veya kapatmak için sekmesine uzun basın.",
+      "panelTabClick": "Paneli taşımak veya kapatmak için sekmesine sağ tıklayın."
     },
     "mouse": {
       "deselect": "Seçimi kaldırmak için boş alana sağ tıklayın."
@@ -748,7 +748,7 @@
     },
     "utilities": {
       "editors": "Bir görselden kapak oluşturmak için Kapak Editörü’nü veya arka plan müziğinin bir bölümünden önizleme sesi oluşturmak için Önizleme Editörü’nü açar.",
-      "levelInfo": "İkisi de oluşturduklarını dosya olarak kaydeder. Seviyenin kapağını veya önizleme sesini ayarlamak için Seviye Bilgileri’ni kullanın."
+      "levelInfo": "İkisi de dosyaya dışa aktarır. Seviyenin kapağını veya önizleme sesini ayarlamak için Seviye Bilgileri’ni kullanın."
     },
     "play": {
       "startPosition": "Oynat komutunun oynatma imlecinden başlaması için Ayarlar › Oynat bölümünde Başlangıç Konumu’nu İmleç olarak ayarlayın.",
@@ -769,7 +769,7 @@
       "view": "Çizelgenin o zamanki hâlini görmek için bir Zaman Çizgisi adımına dokunun. Geri Yükle, bu sürümü yeni bir Zaman Çizgisi adımı olarak geri getirir.",
       "viewClick": "Çizelgenin o zamanki hâlini görmek için bir Zaman Çizgisi adımına tıklayın. Geri Yükle, bu sürümü yeni bir Zaman Çizgisi adımı olarak geri getirir.",
       "showChange": "Değişikliği Göster, görüntülediğiniz Zaman Çizgisi adımındaki bir sonraki değişikliğe kaydırır.",
-      "editsHere": "Buradaki Düzenlemeleri Bul, seçimin kapladığı vuruşlarda değişiklik içeren Zaman Çizgisi adımlarını gösterir. Hiçbir şey seçili değilse görünür vuruşları kullanır.",
+      "editsHere": "Buradaki Düzenlemeleri Bul, seçimin kapladığı vuruşlarda değişiklik içeren Zaman Çizgisi adımlarını listeler. Hiçbir şey seçili değilse görünür vuruşları kullanır.",
       "timeline": "Geçmiş, düzenlemelerinizi, kaydetme ve dışa aktarma işlemlerinizi Zaman Çizgisi adımları olarak listeler."
     },
     "pasteTool": {
@@ -1118,7 +1118,7 @@
           "disallow": "Çizelgenin yerine açar."
         }
       },
-      "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmalarda, her bağlayıcının başlangıcından sonuna doğru oklar gösterir.",
+      "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmaların bağlayıcılarında, kaydırmanın başlangıcından sonuna doğru oklar gösterir.",
       "groupsStagesSideBySide": {
         "intro": "Gruplar ve Sahneler panellerinin Önizleme’nin altına yerleştirildiklerinde ne zaman yan yana gösterileceğini belirler.",
         "choices": {
@@ -1158,14 +1158,14 @@
       "playFollow": "Oynatma sırasında çizelgeyi kaydırarak oynatma imlecini Pozisyonu Takip Et ayarında belirtilen konumda tutar.",
       "touchQuickScrollWidth": "Tek parmakla kaydırabileceğiniz alanın genişliğini belirler. 0 değeri bu alanı kapatır.",
       "touchQuickScrollShow": {
-        "intro": "Tek parmakla kaydırabileceğiniz alanın ne zaman gölgelendirileceğini belirler.",
+        "intro": "Hızlı kaydırma alanının ne zaman gölgelendirileceğini belirler.",
         "choices": {
           "on": "Alanı tüm cihazlarda gölgelendirir.",
           "off": "Alanı gölgelendirmez.",
           "touch": "Dokunmatik giriş kullanılabiliyorsa alanı gölgelendirir."
         }
       },
-      "touchScrollInertia": "Parmağınızı kaldırdıktan sonra çizelgenin kaymaya devam etmesini ve giderek yavaşlamasını sağlar.",
+      "touchScrollInertia": "Parmağınızı kaldırdıktan sonra çizelgenin kaymaya devam etmesini, ardından yavaşlayarak durmasını sağlar.",
       "showPropertyDescriptions": "Çizelge özelliklerinin yanında bilgi düğmeleri gösterir."
     },
     "sections": "Bölümler",
@@ -2112,7 +2112,7 @@
             "anchor": "Görünmez. Kombo eklemeden bağlayıcılara şekil verir.",
             "damage": "Dokunulduğunda kaçırılmış sayılır.",
             "forceTick": "Kaydırma dışında bile her zaman ara vuruş.",
-            "forceNonTick": "Varsayılan gibidir, ancak kaydırmanın ortasında dokunma veya fiske olur."
+            "forceNonTick": "Kaydırmanın ortasında bile asla ara vuruş olmaz."
           }
         },
         "noteStyle": "Varsayılan nota renginin yerine kullanılacak renk.",
@@ -2142,7 +2142,7 @@
         },
         "meter": "Ölçü başına vuruş sayısı. Yalnızca editörde kullanılır.",
         "timeScale": "Grubun notaları için hız çarpanı. Negatif değerler notaları geriye hareket ettirir.",
-        "skip": "Grubun notalarını, zaman ölçeği 1 iken belirtilen vuruş sayısında alacakları yol kadar bir anda vuruş çizgisine yaklaştırır.",
+        "skip": "Grubun notalarını bir anda vuruş çizgisine yaklaştırır. 1, notaların zaman ölçeği 1 iken bir vuruşta aldığı yoldur.",
         "timeScaleEase": "Grubun sonraki zaman ölçeği değişikliğine kadar hızın nasıl değişeceği.",
         "timeScaleTransition": {
           "choices": {
@@ -2150,7 +2150,7 @@
             "scroll": "Nota aralıkları geçerli hıza göre değişir."
           }
         },
-        "hideNotes": "Grubun notalarını ve grupta başlayan bağlayıcı bölümlerini, grubun sonraki zaman ölçeği değişikliğine kadar gizler.",
+        "hideNotes": "Grubun notalarını ve grupta başlayan bağlayıcı bölümlerini gizler. Grubun sonraki zaman ölçeği değişikliğine kadar sürer.",
         "cameraLeft": "Kameranın gördüğü alanın sol kenarı, şerit biriminde.",
         "cameraSize": "Kameranın gördüğü alanın genişliği, 6 ile 24 şerit arasında.",
         "cameraZoomTargetLane": "Yakınlaştırmanın merkez aldığı şerit, kameranın gördüğü alanın ortasından sayılır.",
@@ -2173,12 +2173,12 @@
           }
         },
         "yOffset": "Vuruş çizgisini yükseltir. 1 sahnenin üstüdür.",
-        "yOffsetBeat": "Vuruş çizgisini, notaların zaman ölçeği 1 iken belirtilen vuruş sayısında aldığı yol kadar daha yükseltir.",
+        "yOffsetBeat": "Vuruş çizgisini daha yükseltir. 1, notaların zaman ölçeği 1 iken bir vuruşta aldığı yoldur.",
         "borderStyle": {
           "choices": {
             "default": "Kenarın hemen dışında kalın bir kenarlık.",
             "light": "Kenar üzerinde ince bir çizgi.",
-            "medium": "Varsayılan’ın yarısı kalınlığında.",
+            "medium": "Kenarın hemen dışında, Varsayılan’ın yarısı kalınlığında bir kenarlık.",
             "disabled": "Çizgi yok."
           }
         },
@@ -2469,7 +2469,7 @@
       }
     },
     "videoBitrate": "Video Bit Hızı (Mbps)",
-    "renderScaleDescription": "Her karenin çizildiği çözünürlüğü ölçekler. Daha yüksek değerler kenarları yumuşatır ve dışa aktarmayı yavaşlatır.",
+    "renderScaleDescription": "Her kareyi çizmek için kullanılan çözünürlüğü ölçekler. Daha yüksek değerler kenarları yumuşatır ancak dışa aktarmayı yavaşlatır.",
     "fadeIn": "Giriş Geçişi (sn)",
     "fadeOut": "Çıkış Geçişi (sn)",
     "audioBitrate": "Ses Bit Hızı",
@@ -2498,7 +2498,7 @@
     "errors": {
       "ownProject": "{0} dosyasına kaydedildi. Video için başka bir ad seçin.",
       "refused": "“{0}” bir nota çizelgesi dosyasıdır. Başka bir ad seçin.",
-      "refusedOther": "“{0}” artık boş. Proje dosyasını yeniden yazmak için bu dosyanın oturumunda Kaydet komutunu kullanın. Video için başka bir ad seçin.",
+      "refusedOther": "“{0}” artık boş. Bu dosyanın oturumunu açın ve dosyayı yeniden yazmak için Kaydet komutunu kullanın. Video için başka bir ad seçin.",
       "config": "Bu video ayarları bu tarayıcıda kullanılamıyor. Daha düşük bir çözünürlük veya kare hızı seçin.",
       "encoder": "Video oluşturulamadı.",
       "audio": "Ses hazırlanamadı.",

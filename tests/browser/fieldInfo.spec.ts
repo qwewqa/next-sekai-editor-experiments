@@ -224,7 +224,7 @@ test.describe('in Settings', () => {
     test("Show Quick Scroll Zone's description is its own", async ({ page }) => {
         const dialog = await openSettings(page)
         const { root, info } = field(dialog, 'Show Quick Scroll Zone')
-        const intro = 'Sets when to shade the zone where you can scroll with one finger.'
+        const intro = 'Sets when to shade the quick scroll zone.'
         const lines = [
             'On: Shades the zone on any device.',
             'Off: Leaves the zone unshaded.',

@@ -659,7 +659,7 @@
         "selectionClick": "Cliquez sur un objet sélectionné pour effacer toute la sélection."
       },
       "brushTool": {
-        "properties": "Applique aux objets les propriétés que vous avez définies pour le pinceau.",
+        "properties": "Applique les propriétés du pinceau aux objets.",
         "brush": "Appuyez sur un objet ou tracez un cadre en faisant glisser pour appliquer le pinceau. Appuyez sur un objet sélectionné pour l’appliquer à toute la sélection.",
         "brushClick": "Cliquez sur un objet ou tracez un cadre en faisant glisser pour appliquer le pinceau. Cliquez sur un objet sélectionné pour l’appliquer à toute la sélection.",
         "shift": "Maintenez Maj pour appliquer le pinceau à des slides entiers."
@@ -727,8 +727,8 @@
     "toolbarPanels": {
       "title": "Barre d’outils et panneaux",
       "toolbar": "Pour changer les outils de la barre d’outils, ouvrez Paramètres › Barre d’outils.",
-      "panelTab": "Appuyez longuement sur l’onglet d’un panneau pour choisir où l’ancrer ou pour le fermer.",
-      "panelTabClick": "Faites un clic droit sur l’onglet d’un panneau pour choisir où l’ancrer ou pour le fermer."
+      "panelTab": "Appuyez longuement sur l’onglet d’un panneau pour déplacer ou fermer le panneau.",
+      "panelTabClick": "Faites un clic droit sur l’onglet d’un panneau pour déplacer ou fermer le panneau."
     },
     "mouse": {
       "deselect": "Faites un clic droit sur une zone vide pour désélectionner."
@@ -748,7 +748,7 @@
     },
     "utilities": {
       "editors": "Ouvre l’Éditeur de la couverture pour créer une couverture à partir d’une image, ou l’Éditeur de l’aperçu pour créer un extrait audio à partir d’une partie de la musique.",
-      "levelInfo": "Tous deux sauvegardent ce qu’ils créent dans un fichier. Pour définir la couverture ou l’extrait audio du niveau, utilisez Informations du niveau."
+      "levelInfo": "Tous deux exportent vers un fichier. Pour définir la couverture ou l’extrait audio du niveau, utilisez Informations du niveau."
     },
     "play": {
       "startPosition": "Pour que Lire démarre au curseur de lecture, réglez Position de départ sur Curseur dans Paramètres › Lecture.",
@@ -769,7 +769,7 @@
       "view": "Appuyez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
       "viewClick": "Cliquez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
       "showChange": "Afficher la modification fait défiler la partition jusqu’à la modification suivante de l’étape de la Chronologie que vous consultez.",
-      "editsHere": "Trouver les modifications ici affiche les étapes de la Chronologie avec des modifications aux temps couverts par la sélection, ou aux temps visibles si rien n’est sélectionné.",
+      "editsHere": "Trouver les modifications ici liste les étapes de la Chronologie avec des modifications aux temps couverts par la sélection, ou aux temps visibles si rien n’est sélectionné.",
       "timeline": "Historique affiche vos modifications, sauvegardes et exportations sous forme d’étapes de la Chronologie."
     },
     "pasteTool": {
@@ -1089,7 +1089,7 @@
       "previewRenderScale": "Ajuste la résolution de l’aperçu, de 0.25× à 2×. Des valeurs plus basses réduisent la netteté et peuvent améliorer les performances.",
       "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
       "toolbarQuickSwitch": "Permet de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
-      "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur de lecture, de 0 en bas de la partie visible de la partition à 100 en haut.",
+      "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur de lecture. 0 correspond au bas de la partie visible de la partition et 100 au haut.",
       "playPreviewDuration": "Définit la durée de lecture de la musique lorsque vous déplacez le curseur de lecture ou sélectionnez un objet.",
       "mouseSecondaryTool": {
         "intro": "Définit l’action du clic droit et du glissement avec le bouton droit.",
@@ -1158,14 +1158,14 @@
       "playFollow": "Fait défiler la partition pendant la lecture pour maintenir le curseur de lecture à la hauteur définie par Suivre la position.",
       "touchQuickScrollWidth": "Définit la largeur de la zone où vous pouvez faire défiler avec un doigt. Une valeur de 0 désactive cette zone.",
       "touchQuickScrollShow": {
-        "intro": "Définit quand colorer le fond de la zone où vous pouvez faire défiler avec un doigt.",
+        "intro": "Définit quand colorer le fond de la zone de défilement rapide.",
         "choices": {
           "on": "Colore le fond de la zone sur tous les appareils.",
           "off": "Ne colore pas le fond de la zone.",
           "touch": "Colore le fond de la zone lorsque l’appareil prend en charge le tactile."
         }
       },
-      "touchScrollInertia": "Permet à la partition de continuer à défiler et de ralentir progressivement après avoir levé le doigt.",
+      "touchScrollInertia": "Maintient le défilement de la partition après que vous avez levé le doigt, puis le ralentit jusqu’à l’arrêt.",
       "showPropertyDescriptions": "Affiche des boutons d’information à côté des propriétés de la partition."
     },
     "sections": "Rubriques",
@@ -2112,7 +2112,7 @@
             "anchor": "Invisible. Donne leur forme aux connecteurs sans ajouter de combo.",
             "damage": "Compte comme un miss si elle est touchée.",
             "forceTick": "Toujours un tick, même en dehors d’un slide.",
-            "forceNonTick": "Comme Par défaut, mais un tap ou un flick au milieu d’un slide."
+            "forceNonTick": "Jamais un tick, même au milieu d’un slide."
           }
         },
         "noteStyle": "Couleur de remplacement des notes.",
@@ -2142,7 +2142,7 @@
         },
         "meter": "Nombre de temps par mesure. Seul l’éditeur l’utilise.",
         "timeScale": "Multiplicateur de vitesse des notes du groupe. Les valeurs négatives les font reculer.",
-        "skip": "Rapproche d’un coup les notes du groupe de la ligne de jugement, de la distance parcourue par les notes en ce nombre de temps à une échelle de temps de 1.",
+        "skip": "Rapproche d’un coup les notes du groupe de la ligne de jugement. 1 correspond à la distance parcourue par les notes en un temps à une échelle de temps de 1.",
         "timeScaleEase": "Évolution de la vitesse jusqu’au prochain changement d’échelle de temps du groupe.",
         "timeScaleTransition": {
           "choices": {
@@ -2150,7 +2150,7 @@
             "scroll": "L’espacement des notes suit la vitesse actuelle."
           }
         },
-        "hideNotes": "Masque les notes du groupe et les segments de connecteur qui y commencent, jusqu’au prochain changement d’échelle de temps du groupe.",
+        "hideNotes": "Masque les notes du groupe et les segments de connecteur qui y commencent. Dure jusqu’au prochain changement d’échelle de temps du groupe.",
         "cameraLeft": "Bord gauche de la vue de la caméra, en voies.",
         "cameraSize": "Largeur de la vue de la caméra, de 6 à 24 voies.",
         "cameraZoomTargetLane": "Voie qui sert de centre au zoom, comptée depuis le milieu de la vue de la caméra.",
@@ -2173,12 +2173,12 @@
           }
         },
         "yOffset": "Remonte la ligne de jugement. 1 correspond au haut de la scène.",
-        "yOffsetBeat": "Remonte davantage la ligne de jugement, de la distance parcourue par les notes en ce nombre de temps à une échelle de temps de 1.",
+        "yOffsetBeat": "Remonte davantage la ligne de jugement. 1 correspond à la distance parcourue par les notes en un temps à une échelle de temps de 1.",
         "borderStyle": {
           "choices": {
             "default": "Bordure épaisse juste à l’extérieur du bord.",
             "light": "Ligne fine sur le bord.",
-            "medium": "Deux fois moins épaisse que Par défaut.",
+            "medium": "Bordure deux fois moins épaisse que Par défaut, juste à l’extérieur du bord.",
             "disabled": "Aucune ligne."
           }
         },
@@ -2469,7 +2469,7 @@
       }
     },
     "videoBitrate": "Débit vidéo (Mbps)",
-    "renderScaleDescription": "Ajuste la résolution de rendu de chaque image. Des valeurs plus élevées rendent les contours plus lisses et ralentissent l’exportation.",
+    "renderScaleDescription": "Ajuste la résolution de rendu de chaque image. Des valeurs plus élevées rendent les contours plus lisses mais ralentissent l’exportation.",
     "fadeIn": "Fondu d’entrée (s)",
     "fadeOut": "Fondu de sortie (s)",
     "audioBitrate": "Débit audio",
@@ -2498,7 +2498,7 @@
     "errors": {
       "ownProject": "Sauvegardé dans {0}. Choisissez un autre nom pour la vidéo.",
       "refused": "« {0} » est un fichier de partition. Choisissez un autre nom.",
-      "refusedOther": "« {0} » est maintenant vide. Utilisez Sauvegarder dans sa session pour réécrire le fichier de projet. Choisissez un autre nom pour la vidéo.",
+      "refusedOther": "« {0} » est maintenant vide. Ouvrez sa session et utilisez Sauvegarder pour réécrire le fichier. Choisissez un autre nom pour la vidéo.",
       "config": "Ces paramètres vidéo ne sont pas disponibles dans ce navigateur. Choisissez une résolution ou une fréquence d’images plus basse.",
       "encoder": "La vidéo n’a pas pu être créée.",
       "audio": "Le son n’a pas pu être préparé.",
