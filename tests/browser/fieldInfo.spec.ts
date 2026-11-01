@@ -1179,17 +1179,29 @@ test.describe('on chart properties', () => {
     }) => {
         await page.evaluate(() => (window.editorTest.settings.showSidebar = true))
         await selectNote(page)
-        const left = () => page.evaluate(() => window.editorTest.snapshot().selected[0]?.left)
-        expect(await left()).toBe(-4)
-        const lane = row(selection(page), 'Lane').getByRole('spinbutton')
-        await lane.fill('2')
-        await lane.press('Enter')
-        await expect.poll(left).toBe(2)
+        const elevation = () =>
+            page.evaluate(
+                () =>
+                    window.editorTest.history.state.value.selectedEntities.find(
+                        (entity) => entity.type === 'note',
+                    )?.elevation,
+            )
+        expect(await elevation()).toBe(0)
+        const field = row(selection(page), 'Elevation')
+        const input = field.getByRole('spinbutton')
+        const info = field.locator('[data-field-info]')
+        await expect(info).toBeVisible()
+        await input.fill('2')
+        await input.press('Enter')
+        await expect.poll(elevation).toBe(2)
         await showDescriptions(page, false)
+        await expect(info).toHaveCount(0)
         await showDescriptions(page, true)
-        await lane.focus()
+        await expect(info).toBeVisible()
+        await expect(input).toHaveValue('2')
+        await input.focus()
         await page.keyboard.press('Control+z')
-        await expect.poll(left).toBe(-4)
+        await expect.poll(elevation).toBe(0)
     })
 
     test('a choice shows its lines as segments and as a select', async ({ page }) => {
