@@ -351,3 +351,27 @@ test('the landscape chip opens a field that applies on a press outside', async (
     await dialog.locator('[data-export-transport]').click({ position: { x: 200, y: 5 } })
     await expect(dialog.locator('[data-clip-chip="In"]')).toContainText('00:02.000')
 })
+
+test('an export waits for the sound effects, which it takes as it starts', async ({ page }) => {
+    // The page again, with its sound effects still loading when the dialog opens.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/resource/effect.scp*', async (route) => {
+        await held
+        await route.continue()
+    })
+    await boot(page)
+    const dialog = await open(page)
+    await shortClip(page)
+    await expect(dialog.locator('[data-export-summary]')).toBeVisible()
+    await expect(exportButton(page)).toBeDisabled()
+    // With SFX off, nothing waits.
+    await dialog.getByRole('switch', { name: 'SFX' }).click()
+    await expect(exportButton(page)).toBeEnabled()
+    await dialog.getByRole('switch', { name: 'SFX' }).click()
+    await expect(exportButton(page)).toBeDisabled()
+    release()
+    await expect(exportButton(page)).toBeEnabled()
+    await exportButton(page).click()
+    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
+})

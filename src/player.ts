@@ -432,6 +432,9 @@ const recheckContext = () => {
 document.addEventListener('visibilitychange', recheckContext)
 window.addEventListener('pageshow', recheckContext)
 
+/** Whether the current sound effects have loaded, or failed to: an export captures them then. */
+export const sfxSettled = ref(false)
+
 // The sound effects the preview and playback use; a choice change loads them again in place.
 const loadSfx = () => {
     setAudioDecoder(decode)
@@ -440,6 +443,7 @@ const loadSfx = () => {
         ({ state, value }) => {
             if (value) for (const slot of sfxSlots) sfxBuffers[slot] = value.buffers[slot]
             if (state === 'ready' || state === 'failed') areSfxReady = true
+            sfxSettled.value = state === 'ready' || state === 'failed'
         },
         { immediate: true },
     )

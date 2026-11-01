@@ -30,7 +30,7 @@ import {
 import type { ExportSettings } from '../../exportVideo/types'
 import { bgmEndOf } from '../../levelData/statistics'
 import { platform } from '../../platform'
-import { loadedSfx } from '../../player'
+import { loadedSfx, sfxSettled } from '../../player'
 import { previewAspectRatios, previewNoteSpeed } from '../../preview/options'
 import { settings } from '../../settings'
 import type { State } from '../../state'
@@ -304,7 +304,9 @@ export const createExportDialog = (input: DialogInput) => {
             !support.value.pending &&
             !!resolved.value &&
             fits(form.resolution, form.renderScale) &&
-            frames.value > 0,
+            frames.value > 0 &&
+            // The sound effects an export mixes are taken as it starts.
+            (!form.sfx || sfxSettled.value),
     )
 
     // --- Estimates.
@@ -371,8 +373,14 @@ export const createExportDialog = (input: DialogInput) => {
     const onFrame = (draw: (bitmap: ImageBitmap) => void) => {
         frameSink = draw
     }
-    const sfxBuffers = loadedSfx()
+    // The sound effects each job was made with: an export takes those loaded when it starts.
+    const jobSfx = new WeakMap<object, ReturnType<typeof loadedSfx>>()
+    const sameSfx = (a: ReturnType<typeof loadedSfx>, b: ReturnType<typeof loadedSfx> = {}) => {
+        const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof typeof a>
+        return [...keys].every((key) => a[key] === b[key])
+    }
     const newJob = () => {
+        const sfx = loadedSfx()
         const created: ReturnType<typeof createExportJob> = createExportJob({
             snapshot: input.snapshot,
             settings: exportSettings(),
@@ -381,7 +389,7 @@ export const createExportDialog = (input: DialogInput) => {
                     input.bgm.buffer && !input.bgmMissing
                         ? { buffer: input.bgm.buffer, offset: input.bgm.offset }
                         : undefined,
-                sfx: sfxBuffers,
+                sfx,
             },
             platform,
             services: shared,
@@ -397,6 +405,7 @@ export const createExportDialog = (input: DialogInput) => {
             },
             test: input.env.faults ? { faults: input.env.faults } : undefined,
         })
+        jobSfx.set(created, sfx)
         return created
     }
     let job = newJob()
@@ -611,6 +620,13 @@ export const createExportDialog = (input: DialogInput) => {
         })
         document.addEventListener('visibilitychange', onHidden)
         busy(true)
+        // Sound effects that loaded after this job was made need a job with them.
+        if (!sameSfx(loadedSfx(), jobSfx.get(job))) {
+            const old = job
+            job = newJob()
+            viewJob.value = job
+            void old.dispose()
+        }
         current = job
         picked = undefined
         job.configure(exportSettings())
