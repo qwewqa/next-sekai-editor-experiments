@@ -160,6 +160,15 @@ for (const format of ['compressed', 'unversioned'] as const) {
         for (const entity of upgraded.entities) {
             if (entity.archetype === '#BPM_CHANGE' && !entity.data.some((d) => d.name === 'meter'))
                 entity.data.push({ name: 'meter', value: 4 })
+            // Export writes the legacy Mask Center and zero offsets explicitly.
+            if (entity.archetype === 'StageTransformChange')
+                entity.data.splice(
+                    entity.data.findIndex((d) => d.name === 'anchor') + 1,
+                    0,
+                    { name: 'rotationCenter', value: 0 },
+                    { name: 'rotationCenterXOffset', value: 0 },
+                    { name: 'rotationCenterYOffset', value: 0 },
+                )
         }
         // And the latest engine revision, after the initial life.
         upgraded.entities[0]!.data.splice(1, 0, { name: 'revision', value: 2 })
