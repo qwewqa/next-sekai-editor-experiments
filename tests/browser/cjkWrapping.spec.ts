@@ -100,6 +100,39 @@ test('Preview Settings labels make room for a phrase rather than break inside it
         )
 })
 
+test('Japanese Preview Settings show in a dock just tall enough for their fitted height', async ({
+    page,
+}) => {
+    const openPreview = async (height: number) => {
+        await page.setViewportSize({ width: 1280, height })
+        await page.goto('/')
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await page.evaluate(async () => {
+            const { settings, nextTick, fixtures, show } = window.editorTest
+            Object.assign(settings, { locale: 'ja', showSidebar: true, showPreview: true })
+            show(fixtures.interaction, 3)
+            await nextTick()
+        })
+    }
+    await page.addInitScript(installCanvasCounters)
+    await openPreview(1000)
+    const form = page.locator('.preview-controls:not(.invisible)')
+    await expect(form).toBeVisible()
+    await expect(form.locator('.preview-controls-roomy')).toHaveCount(1)
+    // The form's height after the fit, and how much shorter its room is than the window.
+    const { height, margin } = await form.evaluate((element) => {
+        const body = element.querySelector('.preview-controls-body')!
+        return {
+            height: element.firstElementChild!.getBoundingClientRect().height + body.scrollHeight,
+            margin: innerHeight - parseFloat(getComputedStyle(element).maxHeight),
+        }
+    })
+    // Before the fit, the labels wrap inside phrases and the form is taller than this room.
+    await openPreview(Math.ceil(height + margin) + 4)
+    await expect(form).toBeVisible()
+})
+
 test('Korean labels too long for two lines by word still break between words', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await open(page, 'ko')

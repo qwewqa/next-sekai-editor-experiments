@@ -2229,11 +2229,13 @@ test('Show Combo draws the combo in the frame while it is on', async ({ page }) 
     // Every note of the chart is before this time.
     await page.evaluate(() => (window.editorTest.view.cursorTime = 10))
     expect(await drawn()).toBe(false)
-    const toggle = page.locator('.preview-controls').getByLabel('Show Combo', { exact: true })
-    await toggle.check()
+    await page.keyboard.press(',')
+    const toggle = page.getByRole('dialog').getByRole('switch', { name: 'Show Combo', exact: true })
+    await toggle.click()
     expect(await page.evaluate(() => window.editorTest.settings.previewShowCombo)).toBe(true)
     expect(await drawn()).toBe(true)
-    await toggle.uncheck()
+    await toggle.click()
+    expect(await page.evaluate(() => window.editorTest.settings.previewShowCombo)).toBe(false)
     expect(await drawn()).toBe(false)
 })
 
@@ -2257,14 +2259,13 @@ test('preview options share persisted settings with the main options menu', asyn
         'auto',
     )
     // Both entry points list the shared options in the same order; Settings adds the Assets row,
-    // and Parallel Rendering, a setting for a device whose preview looks wrong.
+    // Show Combo, and Parallel Rendering, a setting for a device whose preview looks wrong.
     const order = [
         'Note Speed',
         'Highlight Selection',
         'Show Hitboxes',
         'Show Effects',
         'Show Time',
-        'Show Combo',
         'Aspect Ratio',
         'Render Scale',
         'Antialiasing',
@@ -2301,7 +2302,9 @@ test('preview options share persisted settings with the main options menu', asyn
         (await section.locator('.form-field-text').allTextContents()).map((text) => text.trim()),
     ).toEqual([
         'Assets',
-        ...order.slice(0, -1),
+        ...order.slice(0, 5),
+        'Show Combo',
+        ...order.slice(5, -1),
         'Parallel Rendering',
         'Playback Controls',
         'Preview Settings Panel',

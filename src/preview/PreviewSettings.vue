@@ -54,7 +54,6 @@ const toggles = computed(
             ['previewShowHitboxes', i18n.value.settings.preview.showHitboxes],
             ['previewShowEffects', i18n.value.settings.preview.showEffects],
             ['previewShowTime', i18n.value.settings.preview.showTime],
-            ['previewShowCombo', i18n.value.settings.preview.showCombo],
         ] as const,
 )
 
@@ -129,6 +128,8 @@ watch([controls, controlsBody], ([element, body], _previous, onCleanup) => {
         // callback would trigger same-frame ResizeObserver loop warnings.
         frame = requestAnimationFrame(() => {
             frame = 0
+            // Fit the rows to a new width first, so the form is measured only after the fit.
+            fitRows()
             const headerHeight = element.firstElementChild?.getBoundingClientRect().height ?? 0
             // The natural height stays stable while max-height makes the body
             // scroll, so placement cannot feed back into this measurement.
