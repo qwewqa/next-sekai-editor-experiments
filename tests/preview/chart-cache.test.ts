@@ -134,6 +134,9 @@ test('live same-beat property edits and history restore match fresh preview fram
         const renderer: PreviewRenderer = {
             maxViewportSize: { width: 1600, height: 900 },
             setTexture() {},
+            reserveTexture() {},
+            setTextureRegion() {},
+            readPixels: () => new Uint8Array(),
             begin() {},
             flush() {},
             dispose() {},
@@ -417,6 +420,9 @@ test('camera edits retain note arrays and indexes while fresh camera geometry re
         const renderer: PreviewRenderer = {
             maxViewportSize: { width: 1600, height: 900 },
             setTexture() {},
+            reserveTexture() {},
+            setTextureRegion() {},
+            readPixels: () => new Uint8Array(),
             begin() {},
             draw: (...args) => draws.push(args),
             flush() {},

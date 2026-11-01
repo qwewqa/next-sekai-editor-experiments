@@ -138,6 +138,9 @@ const render = (
     const renderer: PreviewRenderer = {
         maxViewportSize: { width, height },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         draw(sprite, quad, z, a) {
             if (sprite && a > 0) draws.push({ sprite: spriteName(sprite), quad, z, a })

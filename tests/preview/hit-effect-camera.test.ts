@@ -94,6 +94,9 @@ const effects = (source: PreviewChart, now: number) => {
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1920, height: 1920 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         draw: (sprite, quad) => {
             if (sprite === slot) draws[0]?.push(quad)

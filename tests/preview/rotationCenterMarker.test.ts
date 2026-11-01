@@ -121,6 +121,9 @@ const stage = (event: StageTransformEvent, drawEndTime = 1e8): PreviewStage => (
 const renderer: PreviewRenderer = {
     maxViewportSize: { width: 1600, height: 900 },
     setTexture() {},
+    reserveTexture() {},
+    setTextureRegion() {},
+    readPixels: () => new Uint8Array(),
     begin() {},
     draw() {},
     flush() {},

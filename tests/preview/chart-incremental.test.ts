@@ -46,6 +46,9 @@ let draws: string[] = []
 const renderer: PreviewRenderer = {
     maxViewportSize: { width: 1600, height: 900 },
     setTexture() {},
+    reserveTexture() {},
+    setTextureRegion() {},
+    readPixels: () => new Uint8Array(),
     begin() {},
     draw(sprite, quad, z, alpha) {
         if (sprite && alpha > 0) draws.push(JSON.stringify([quad, z, alpha]))

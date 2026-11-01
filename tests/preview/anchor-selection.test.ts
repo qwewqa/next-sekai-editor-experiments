@@ -96,6 +96,9 @@ test('invisible anchors highlight only when selected and approaching or exactly 
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1600, height: 900 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         draw() {},
         flush() {},

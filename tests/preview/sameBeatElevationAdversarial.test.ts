@@ -139,6 +139,9 @@ const render = (chart: PreviewChart, now = 0.7, alphas?: number[]) => {
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1920, height: 1080 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         flush() {},
         dispose() {},

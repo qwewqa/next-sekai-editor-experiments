@@ -16,12 +16,30 @@ export const BlendMode = {
 
 export type BlendModeValue = (typeof BlendMode)[keyof typeof BlendMode]
 
+/** The renderer's textures: 0 the skin, 1 the particle and 2 text. */
+export type TextureSlot = 0 | 1 | 2
+
 export type PreviewRenderer = {
     maxViewportSize: {
         width: number
         height: number
     }
-    setTexture: (index: 0 | 1, texture: ImageBitmap, interpolation: boolean) => void
+    setTexture: (index: TextureSlot, texture: ImageBitmap, interpolation: boolean) => void
+    /** Replaces the texture in `slot` with a transparent one, with linear filtering. */
+    reserveTexture: (slot: TextureSlot, width: number, height: number) => void
+    /** Uploads `bitmap` into the texture in `slot`, with its top left corner at `x`, `y`. */
+    setTextureRegion: (slot: TextureSlot, x: number, y: number, bitmap: ImageBitmap) => void
+    /**
+     * Test builds: premultiplied RGBA rows, top first, read from the drawn frame before it is
+     * shown, or from the texture in a slot. Coordinates are pixels from the top left corner.
+     */
+    readPixels: (
+        source: 'frame' | TextureSlot,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+    ) => Uint8Array
     begin: (width: number, height: number, aspectRatio?: number) => void
     draw: (
         sprite: Sprite | undefined,
@@ -57,13 +75,16 @@ const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 uniform sampler2D u_texture0;
 uniform sampler2D u_texture1;
+uniform sampler2D u_texture2;
 in vec3 v_uvw;
 in float v_texture;
 in vec4 v_color;
 out vec4 outColor;
 void main() {
     vec2 uv = v_uvw.xy / v_uvw.z;
-    vec4 color = mix(texture(u_texture0, uv), texture(u_texture1, uv), v_texture);
+    vec4 color = v_texture > 1.5
+        ? texture(u_texture2, uv)
+        : mix(texture(u_texture0, uv), texture(u_texture1, uv), v_texture);
     outColor = vec4(color.rgb * v_color.rgb * v_color.a, color.a * v_color.a);
 }
 `
@@ -217,7 +238,7 @@ export const createPreviewRenderer = (
     }
 
     const maxViewportDimensions = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array
-    const hasTextures = [false, false]
+    const hasTextures = [false, false, false]
     let aspectLocation: WebGLUniformLocation | null
 
     try {
@@ -232,6 +253,7 @@ export const createPreviewRenderer = (
 
         gl.uniform1i(gl.getUniformLocation(program, 'u_texture0'), 0)
         gl.uniform1i(gl.getUniformLocation(program, 'u_texture1'), 1)
+        gl.uniform1i(gl.getUniformLocation(program, 'u_texture2'), 2)
 
         buffer = gl.createBuffer()
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
@@ -252,7 +274,7 @@ export const createPreviewRenderer = (
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
         gl.clearColor(0, 0, 0, 0)
 
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) {
             const texture = gl.createTexture()
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
             if (!texture) throw new Error('Failed to create preview texture')
@@ -296,6 +318,73 @@ export const createPreviewRenderer = (
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
 
             hasTextures[index] = true
+        },
+
+        reserveTexture(slot, width, height) {
+            if (disposed) return
+            gl.activeTexture(gl.TEXTURE0 + slot)
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            gl.bindTexture(gl.TEXTURE_2D, textures[slot]!)
+            gl.texImage2D(
+                gl.TEXTURE_2D,
+                0,
+                gl.RGBA,
+                width,
+                height,
+                0,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                null,
+            )
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+            hasTextures[slot] = true
+        },
+
+        setTextureRegion(slot, x, y, bitmap) {
+            if (disposed) return
+            gl.activeTexture(gl.TEXTURE0 + slot)
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            gl.bindTexture(gl.TEXTURE_2D, textures[slot]!)
+            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, bitmap)
+        },
+
+        readPixels(source, x, y, width, height) {
+            const pixels = new Uint8Array(width * height * 4)
+            if (disposed) return pixels
+            if (source === 'frame') {
+                gl.readPixels(
+                    x,
+                    gl.drawingBufferHeight - y - height,
+                    width,
+                    height,
+                    gl.RGBA,
+                    gl.UNSIGNED_BYTE,
+                    pixels,
+                )
+                // The drawing buffer's rows start at the bottom.
+                const row = width * 4
+                const flipped = new Uint8Array(pixels.length)
+                for (let i = 0; i < height; i++)
+                    flipped.set(pixels.subarray(i * row, (i + 1) * row), (height - 1 - i) * row)
+                return flipped
+            }
+            const framebuffer = gl.createFramebuffer()
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+            gl.framebufferTexture2D(
+                gl.FRAMEBUFFER,
+                gl.COLOR_ATTACHMENT0,
+                gl.TEXTURE_2D,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                textures[source]!,
+                0,
+            )
+            // A texture's rows start at the top of the image uploaded to it.
+            gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+            gl.deleteFramebuffer(framebuffer)
+            return pixels
         },
 
         begin(width, height, aspectRatio = width / height) {

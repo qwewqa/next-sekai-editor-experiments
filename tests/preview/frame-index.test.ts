@@ -180,6 +180,9 @@ test('interleaved frames retain their viewport, camera, effect geometry and laye
         const renderer: PreviewRenderer = {
             maxViewportSize: { width: 1920, height: 1920 },
             setTexture() {},
+            reserveTexture() {},
+            setTextureRegion() {},
+            readPixels: () => new Uint8Array(),
             begin() {},
             draw(...args) {
                 draws.push(args)
@@ -667,6 +670,9 @@ test('culled frames match full future traversal with eased speeds, offsets, atta
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1920, height: 1080 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         draw(sprite, quad, z, alpha) {
             if (sprite && alpha > 0) draws.push({ quad, z, alpha })
@@ -708,6 +714,9 @@ test('culled frames of real charts match full traversal at stops and scroll tran
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1600, height: 900 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         draw(sprite, quad, z, alpha) {
             if (sprite && alpha > 0) draws.push(JSON.stringify([quad, z, alpha]))

@@ -82,6 +82,9 @@ const renderSprite = (
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1920, height: 1080 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {
             beginCount++
         },

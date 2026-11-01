@@ -1,6 +1,7 @@
 import { SkinSpriteName, type SkinData, type SkinItem } from '@sonolus/core'
 import { noteStyles, type NoteStyle } from '../chart/noteStyle'
 import { readItem, type ResourceGetter } from './assets/scpItem'
+import type { TextureSlot } from './gl'
 import { parseGzippedJson } from './scp'
 
 export type Sprite = {
@@ -9,7 +10,7 @@ export type Sprite = {
     u1: number
     v1: number
     transform?: number[]
-    texture?: 0 | 1
+    texture?: TextureSlot
 }
 
 export const toSpriteUv = (

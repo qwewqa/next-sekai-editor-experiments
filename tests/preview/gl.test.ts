@@ -23,6 +23,7 @@ const createFixture = (
     let clears = 0
     let textureCount = 0
     let currentProgram: unknown
+    const textureCalls: unknown[][] = []
     const noop = () => {}
     const gl = {
         MAX_VIEWPORT_DIMS: 0x0d3a,
@@ -75,7 +76,8 @@ const createFixture = (
         bindTexture: noop,
         texParameteri: noop,
         pixelStorei: noop,
-        texImage2D: noop,
+        texImage2D: (...args: unknown[]) => textureCalls.push(['texImage2D', ...args]),
+        texSubImage2D: (...args: unknown[]) => textureCalls.push(['texSubImage2D', ...args]),
         viewport: noop,
         clear: () => clears++,
         bufferData: (target: number, size: number, usage: number) => {
@@ -111,7 +113,16 @@ const createFixture = (
     }
     const renderer = createPreviewRenderer(canvas as unknown as HTMLCanvasElement)
     renderer.setTexture(0, {} as ImageBitmap, true)
-    return { renderer, canvas, allocations, uploads, draws, deleted, clears: () => clears }
+    return {
+        renderer,
+        canvas,
+        allocations,
+        uploads,
+        draws,
+        deleted,
+        textureCalls,
+        clears: () => clears,
+    }
 }
 
 test('preview requires WebGL2 and only retries its antialias option', () => {
@@ -151,6 +162,7 @@ test('renderer explicitly releases resources once even without context-loss supp
         'program',
         'shader',
         'shader',
+        'texture',
         'texture',
         'texture',
     ])
@@ -213,6 +225,40 @@ test('renderer preserves perspective UVs, transforms, texture selection and vert
         }
     }
     assert.deepEqual(uploads[0]!.data, new Float32Array(expected))
+})
+
+test('the text slot draws once reserved, chosen per sprite, with regions uploaded in place', () => {
+    const { renderer, uploads, textureCalls } = createFixture()
+    const text: Sprite = { ...sprite, texture: 2 }
+    renderer.begin(1600, 900)
+    renderer.draw(text, quad, [0], 1)
+    renderer.flush()
+    assert.equal(uploads.length, 0)
+
+    textureCalls.length = 0
+    const bitmap = {} as ImageBitmap
+    renderer.reserveTexture(2, 64, 32)
+    renderer.setTextureRegion(2, 0, 17, bitmap)
+    assert.deepEqual(
+        textureCalls.map((call) => call.slice(0, 2)),
+        [
+            ['texImage2D', undefined],
+            ['texSubImage2D', undefined],
+        ],
+    )
+    assert.deepEqual(textureCalls[0]!.slice(4, 10), [64, 32, 0, undefined, undefined, null])
+    assert.deepEqual(textureCalls[1]!.slice(3, 5), [0, 17])
+    assert.equal(textureCalls[1]!.at(-1), bitmap)
+
+    renderer.begin(1600, 900)
+    renderer.draw(sprite, quad, [0], 1)
+    renderer.draw(text, quad, [1], 1)
+    renderer.flush()
+    const data = uploads.at(-1)!.data
+    assert.deepEqual(
+        Array.from({ length: 12 }, (_, vertex) => data[vertex * 10 + 5]),
+        [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
+    )
 })
 
 test('renderer keeps lexicographic depth, submission ties and contiguous blend runs across frames', () => {

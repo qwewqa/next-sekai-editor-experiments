@@ -90,6 +90,9 @@ const guideQuads = (ease: Ease, now = 0.7, camera?: Camera) => {
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1920, height: 1080 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         draw(sprite, quad, _z, alpha) {
             if (sprite === guide && alpha > 0) quads.push(quad)
@@ -244,6 +247,9 @@ test('slide heads interpolate between the sizes of the connector around them', (
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1920, height: 1080 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         draw(sprite, quad, _z, alpha) {
             // Only the moving head is at the judge line.
@@ -311,6 +317,9 @@ test("a passed head's crossed masks reach each segment uncollapsed, as the engin
     const renderer: PreviewRenderer = {
         maxViewportSize: { width: 1920, height: 1080 },
         setTexture() {},
+        reserveTexture() {},
+        setTextureRegion() {},
+        readPixels: () => new Uint8Array(),
         begin() {},
         draw(sprite, quad, _z, alpha) {
             if (sprite === guide && alpha > 0) quads.push(quad)
