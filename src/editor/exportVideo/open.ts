@@ -3,12 +3,12 @@
 import { isPeeking, state } from '../../history'
 import { playbackBgm } from '../../history/bgm'
 import { session } from '../../history/session'
-import { i18n } from '../../i18n'
 import { displayName, namePartsOf, prefillOf } from '../../local/names'
 import { showModal } from '../../modals'
 import { parseColor } from '../../rendering/paint'
 import { settings } from '../../settings'
 import { validName } from '../commands/exportLevel/fileName'
+import { peekedInfo, peekedSession } from '../history/selection'
 import { stopPlayer } from '../player'
 import { view } from '../view'
 import type { createExportDialog, DialogInput } from './dialog'
@@ -34,6 +34,14 @@ const backdrop = (): DialogInput['look']['backdrop'] => {
     const channels = getComputedStyle(document.documentElement).getPropertyValue('--color-preview')
     const [r, g, b] = parseColor(`rgb(${channels.trim()})`)
     return [r, g, b]
+}
+
+/** The step on screen, as the History peek bar names it: a session by its name. */
+const peekStep = () => {
+    const session = peekedSession.value
+    if (session) return { name: session.name, time: session.time }
+    const info = peekedInfo.value
+    return info && { time: info.time }
 }
 
 export const openExportVideo = async (
@@ -65,7 +73,7 @@ export const openExportVideo = async (
         ExportVideoModal,
         {
             input,
-            peekLine: input.source === 'peek' ? i18n.value.exportVideo.peek : undefined,
+            peekStep: input.source === 'peek' ? peekStep() : undefined,
             expose,
         },
         { size: 'large', wide: true },

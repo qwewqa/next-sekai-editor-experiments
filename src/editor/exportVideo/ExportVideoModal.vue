@@ -6,6 +6,10 @@ import BaseModal from '../../modals/BaseModal.vue'
 import { showChoice } from '../../modals/choice'
 import { useModal } from '../../modals'
 import { createFontContext } from '../../rendering/textRaster'
+import { settings } from '../../settings'
+import { interpolateRaw } from '../../utils/interpolate'
+import { useHistoryCalendar } from '../history/calendarClock'
+import { historyFormat } from '../history/historyFormat'
 import { formatClipTime } from './clipTime'
 import { createExportDialog, type DialogInput, type Phase } from './dialog'
 import ExportVideoFooter from './ExportVideoFooter.vue'
@@ -16,13 +20,28 @@ import type { StageLayout } from './layout'
 
 const props = defineProps<{
     input: DialogInput
-    peekLine?: string
+    /** The History step on screen while peeking: its time, and a session's name. */
+    peekStep?: { time: number; name?: string }
     /** Gives tests the dialog's state. */
     expose?: (dialog: ReturnType<typeof createExportDialog>) => void
 }>()
 const emit = defineEmits<{ close: [] }>()
 
 const d = createExportDialog(props.input)
+
+// The peek bar's own words for the step on screen.
+const calendar = useHistoryCalendar()
+const peekLine = computed(() => {
+    const step = props.peekStep
+    if (!step) return undefined
+    const when = historyFormat(calendar.value, settings.locale).dateTimeSeconds(step.time)
+    return interpolateRaw(
+        i18n.value.history.announceViewing,
+        step.name === undefined
+            ? when
+            : `${interpolateRaw(i18n.value.history.quoted, step.name)} · ${when}`,
+    )
+})
 props.expose?.(d)
 const modal = useModal()
 const phase = d.phase
@@ -134,7 +153,7 @@ const applyLayout = () => {
             (compactStrip ? 48 : 56) +
             (land ? 32 : stacked ? 56 : 36) +
             3 * gap +
-            (props.peekLine ? 16 + gap : 0) +
+            (peekLine.value ? 16 + gap : 0) +
             (length === 'line' ? 12 : 0)
         return { transportFit, stacked, length, fixed }
     }
@@ -299,7 +318,7 @@ const title = computed(() => i18n.value.exportVideo.title)
                 class="export-grid"
                 :data-export-scroller="form === 'short' ? '' : undefined"
             >
-                <ExportVideoStage ref="stage" :dialog="d" :layout :peek-line />
+                <ExportVideoStage ref="stage" :dialog="d" :layout :peek-line="peekLine" />
                 <div
                     class="export-side"
                     :class="{ 'export-side-edge': form === 'two' || form === 'land' }"

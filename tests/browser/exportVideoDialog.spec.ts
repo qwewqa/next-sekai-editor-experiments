@@ -301,13 +301,22 @@ test('sizes this device is not qualified for are not offered', async ({ page }) 
     await expect(exportButton(page)).toBeDisabled()
 })
 
-test('while peeking, the line names it and the frame view is ringed', async ({ page }) => {
-    await page.evaluate(() => {
-        const { history } = window.editorTest
+test('while peeking, the line names the step as the peek bar does', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { history, appImport } = window.editorTest
+        const { peekedSession } = await appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
         history.peek.value = { source: 'test', state: history.liveState.value }
+        peekedSession.value = {
+            name: 'coconut',
+            time: Date.UTC(2024, 9, 31, 14, 2, 5),
+        } as typeof peekedSession.value
     })
     const dialog = await open(page)
-    await expect(dialog.locator('[data-export-peek]')).toHaveText('Viewing history')
+    await expect(dialog.locator('[data-export-peek]')).toHaveText(
+        'Viewing “coconut” · Oct 31, 2024, 2:02:05 PM',
+    )
 })
 
 for (const { name, width, height, form, fit } of [
