@@ -35,7 +35,11 @@ test.beforeEach(async ({ page }) => {
             gl.canvas.matches('.preview-viewport > canvas:not(.preview-selection)')
         const clear = WebGL2RenderingContext.prototype.clear
         WebGL2RenderingContext.prototype.clear = function (...args) {
-            if (isPreview(this)) {
+            // Reset the geometry count only when the foreground is cleared.
+            if (
+                isPreview(this) &&
+                (this.getParameter(this.COLOR_CLEAR_VALUE) as Float32Array)[3] === 0
+            ) {
                 window.hitboxTest.frames++
                 window.hitboxTest.vertices = 0
             }
@@ -75,7 +79,8 @@ test.beforeEach(async ({ page }) => {
     await expect(
         page.locator('.preview-controls').getByText('Note Speed', { exact: true }),
     ).toBeVisible()
-    await expect.poll(() => page.evaluate(() => window.hitboxTest.uploads)).toBe(2)
+    // Skin, particle and background each upload once when the preview opens.
+    await expect.poll(() => page.evaluate(() => window.hitboxTest.uploads)).toBe(3)
 })
 
 test('show hitboxes redraws immediately, persists and adds no history', async ({ page }) => {
@@ -104,7 +109,7 @@ test('show hitboxes redraws immediately, persists and adds no history', async ({
 
     // Neither the chart nor its resources change.
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
-    expect(await page.evaluate(() => window.hitboxTest.uploads)).toBe(2)
+    expect(await page.evaluate(() => window.hitboxTest.uploads)).toBe(3)
 
     await page.reload()
     await page.evaluate(installEditorFixture)
