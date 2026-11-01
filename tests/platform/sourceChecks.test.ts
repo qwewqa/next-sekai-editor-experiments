@@ -61,9 +61,9 @@ test('comments and the inside of strings do not read as calls', () => {
     }
 })
 
-test('navigator.share and canShare appear only in Share Image', () => {
-    // Files are never handed over through the Web Share API; sharing the statistics card is a share.
-    assert.deepEqual(matching(/navigator\.share|canShare/), [
+test('Web Share is used only by Share Image and the video platform adapter', () => {
+    assert.deepEqual(matching(/navigator\.(share|canShare)/), [
+        'src/platform/webVideoOutput.ts',
         'src/editor/statistics/ShareImageModal.vue',
     ])
 })

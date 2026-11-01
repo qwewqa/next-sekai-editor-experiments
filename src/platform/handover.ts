@@ -333,7 +333,7 @@ const dataUrlOf = async (blob: Blob) => {
 }
 
 /** How long a download's Blob URL is kept: iOS may ask "Download?" long after the tap. */
-const BLOB_URL_MS = 10 * 60_000
+export const BLOB_URL_MS = 10 * 60_000
 
 const blobUrls = new Set<string>()
 let releasesOnHide = false

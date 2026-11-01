@@ -35,6 +35,7 @@ import {
     type SaveResult,
 } from './types'
 import { appVersion } from './version'
+import { webVideoOutput } from './webVideoOutput'
 
 declare const __NSE_BUILTIN_ONLY__: boolean
 
@@ -270,6 +271,7 @@ export const platform: Platform = {
 
     pickFiles,
     saveFile,
+    videoOutput: webVideoOutput,
     get pickSaveFile() {
         return hasSavePicker() ? pickSaveFile : undefined
     },

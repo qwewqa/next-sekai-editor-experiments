@@ -77,6 +77,25 @@ export type FileBody = Blob | { kind: 'blob'; blob: Blob } | ZipBody
 
 export type SaveKind = 'nxsp' | 'nsld' | 'archive' | 'audio' | 'image' | 'recovery'
 
+export type VideoExtension = 'mp4' | 'webm'
+
+export type StagedVideo = {
+    /** The worker opens and closes a sync access handle for this file. */
+    handle: FileSystemFileHandle
+    /** After Ready ends: deletes an undelivered file, or starts retention for a delivered one. */
+    endReady(): Promise<void>
+}
+
+export type VideoOutput = {
+    stage(id: string, ext: VideoExtension): Promise<StagedVideo>
+    file(id: string): Promise<File>
+    deliver(file: File, name: string, how: 'download' | 'share'): Promise<'delivered' | 'cancelled'>
+    canShare(file: File): boolean
+    /** After the worker closes its handle; cancellation and failure delete at once. */
+    remove(id: string): Promise<void>
+    sweep(): Promise<void>
+}
+
 /** A file type a save picker offers. */
 export type SavePickerType = { description: string; extension: string }
 
@@ -234,6 +253,7 @@ export type Platform = {
      * download. Absent where there's no save picker.
      */
     pickSaveFile?: (req: PickSaveRequest) => Promise<FileTarget | undefined>
+    readonly videoOutput?: VideoOutput
     /** The changed-on-disk check; `nxsp` reads the revision id and `<cd>` (level data by default). */
     inspect: (target: FileTarget, kind?: SaveKind) => Promise<DiskState | 'missing'>
     read: (target: FileTarget) => Promise<Blob>

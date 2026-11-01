@@ -411,9 +411,17 @@ export const startStorage = async () => {
                     appVersion: appVersion().appVersion,
                 })
                 const context = recovery
-                // Only what definitely deleted chains left can be reclaimed.
-                const reclaim = () =>
-                    reclaimOrphans(worker, { chains: keptCopyChains, remove: removeKeptCopy })
+                // Reclaim staged videos and copies left by deleted chains before pressure cleanup.
+                const reclaim = async () => {
+                    try {
+                        await platform.videoOutput?.sweep()
+                    } finally {
+                        await reclaimOrphans(worker, {
+                            chains: keptCopyChains,
+                            remove: removeKeptCopy,
+                        })
+                    }
+                }
                 const maintenance = startMaintenance({
                     worker,
                     locks: platform.locks,

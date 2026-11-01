@@ -192,7 +192,7 @@ const kept = async (opened: OpenedSource) =>
 const identify = async (
     env: Env | undefined,
     handle: FileSystemFileHandle,
-    purpose: 'save' | 'export' | 'saveToFile' = 'save',
+    purpose: PickSpec['purpose'] = 'save',
 ): Promise<Picked> => {
     const { opened } = exportMemory
     if (opened && (await same(handle, opened.handle))) {
@@ -322,7 +322,7 @@ export const projectPicker = (startIn: SavePicker['startIn'] = 'documents'): Sav
 })
 
 export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
-    readonly purpose: 'save' | 'export' | 'saveToFile'
+    readonly purpose: 'save' | 'export' | 'saveToFile' | 'video'
     /** The dialog's read of the chain's own file, or `'start'`: one starting now, with a grant held. */
     readonly read: Promise<ReadResult> | 'start'
     /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */

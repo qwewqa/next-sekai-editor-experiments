@@ -2,6 +2,7 @@ import { MemoryStorage, storageJournalStore, type JournalStorage } from '../loca
 import { FakeLockManager } from '../local/testing/locks'
 import { levelDataDiskState, nxspDiskState, sameContent } from './fingerprint'
 import { toBlob } from './handover'
+import { memoryVideoStore } from './mockVideoOutput'
 import {
     FileError,
     type DiagnosticInfo,
@@ -21,6 +22,7 @@ import {
     type SaveResult,
     type ServerFetchInit,
 } from './types'
+import { createVideoOutput } from './videoOutput'
 
 // The in-memory platform for tests, injected with setPlatformForTests. It has the `.nxsp` revision
 // semantics (the revision id and `<cd>`), pinned sources whose reads fail once the file changed, as
@@ -140,6 +142,7 @@ const mockLocks = () => {
 }
 
 export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatform => {
+    const locks = options.locks ?? mockLocks()
     const kind = options.kind ?? 'web'
     const journalStorage = options.journalStorage ?? new MemoryStorage()
     const os = options.os ?? 'windows'
@@ -399,7 +402,14 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             lifecycleHandlers.add(handler)
             return () => lifecycleHandlers.delete(handler)
         },
-        locks: options.locks ?? mockLocks(),
+        locks,
+        videoOutput: createVideoOutput(memoryVideoStore(), locks, {
+            canShare: () => true,
+            deliver: (_file, name, how) => {
+                calls.push(`video:${how}:${name}`)
+                return Promise.resolve('delivered')
+            },
+        }),
         journal: storageJournalStore(() => journalStorage, 'mock.'),
 
         openExternal: (url) => {

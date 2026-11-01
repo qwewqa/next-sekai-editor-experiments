@@ -171,6 +171,16 @@ The minimap strip (`src/editor/minimap/`) draws its content with Canvas2D, a sec
 - **Zero work while moving.** A wheel scroll, playback with Follow and a held chart drag paint nothing: the box and the cursor move by transform, written by one watcher outside the template. `minimapStats.paints`, `.changePaints` and `.selectionPaints` (read through `editorTest.appImport`) stay unchanged over those, with a selection shown, and `tests/browser/minimap.spec.ts` checks it.
 - **Hidden means free.** The strip is unmounted when off, so its watchers, observers and canvases do not exist.
 
+## Streamed video output
+
+The position-addressed targets in `src/editor/exportVideo/worker/target.ts` write chunks through a picked file's writable stream or an OPFS sync access handle. They support rewriting headers without collecting the whole output in memory. The caller awaits each write and closes or aborts the target before releasing its destination.
+
+`src/editor/save/videoPick.ts` uses the shared pick session. Only an unknown, empty file becomes a video destination. A pick of the chain's own project runs the same `ownPick.ts` rewrite as Export Level Data. Other known files are refused, with any held bytes restored or offered by the session. Streaming starts after the session releases `nse-bind`. Before committing, the target must still be empty with the modification time read at the pick. Cancellation before the commit aborts the swap and removes only that unchanged empty file. The read-to-close and read-to-remove windows can still race another writer.
+
+`platform.videoOutput` owns staged files under `export-video/`, each protected by `nse-export-video:<id>`. The worker closes its sync access handle before the owner removes a cancelled or failed output. A file remains locked while Ready is shown. After a successful delivery, `endReady()` starts the hand-over's ten-minute retention; an undelivered file is removed at once. Call it only after any required discard confirmation. Downloads use the existing hand-over, and shares use the video's MIME type. A dismissed share keeps the file available.
+
+The maintenance runner sweeps unlocked staged files before checking storage pressure. It never reads project media or History for this sweep. Web implements staging in OPFS, the mock keeps it in memory, and native leaves `videoOutput` absent.
+
 ## Pinned Pixi seams and upgrade gate
 
 The portable package pins **Pixi 8.22.0** exactly. `postinstall` runs [`patch-pixi-default-batcher.mjs`](../scripts/patch-pixi-default-batcher.mjs). It validates the version and full original hashes of both ESM/CommonJS files before writing; partial application or drift fails. Re-running is a no-op. `--check` validates already-patched output without writing. Release staging invokes that read-only mode and checks package/lock pins before publishing patch notices.
