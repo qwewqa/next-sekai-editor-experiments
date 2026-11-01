@@ -112,6 +112,11 @@ const stop = () => {
     d.playing.value = false
 }
 d.setStopPlayback(stop)
+// The stop at Out and the fades follow animation frames, which a hidden page does not get.
+const onVisibility = () => {
+    if (document.hidden) pause()
+}
+document.addEventListener('visibilitychange', onVisibility)
 const play = () => {
     if (busy.value) return
     if (d.playing.value) {
@@ -277,6 +282,7 @@ onMounted(() => {
     void nextTick(requestView)
 })
 onBeforeUnmount(() => {
+    document.removeEventListener('visibilitychange', onVisibility)
     stop()
     endHold()
     clearTimeout(loadingTimer)

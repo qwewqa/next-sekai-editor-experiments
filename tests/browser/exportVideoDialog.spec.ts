@@ -494,3 +494,53 @@ for (const size of [
                 )
                 .toBe(true)
     })
+
+test('Escape after a strip drag puts back the fades the shorter clip trimmed', async ({ page }) => {
+    const dialog = await open(page)
+    const setTime = async (name: 'In' | 'Out', value: string) => {
+        const field = dialog.getByRole('textbox', { name, exact: true })
+        await field.fill(value)
+        await field.press('Enter')
+    }
+    await setTime('In', '0')
+    await setTime('Out', '10')
+    await dialog.locator('[data-export-advanced]').click()
+    for (const name of ['Fade In (s)', 'Fade Out (s)']) {
+        const field = dialog.getByRole('spinbutton', { name })
+        await field.fill('3')
+        await field.press('Enter')
+    }
+    // Out dragged to about 2 s trims the fades while the drag lasts.
+    const out = dialog.locator('[data-clip-handle="out"]')
+    const end = Number(await out.getAttribute('aria-valuemax'))
+    const strip = (await dialog.locator('[data-clip-strip]').boundingBox())!
+    const handle = (await out.boundingBox())!
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(strip.x + (strip.width * 2) / end, handle.y + handle.height / 2, {
+        steps: 4,
+    })
+    await expect(dialog.getByRole('spinbutton', { name: 'Fade Out (s)' })).toHaveValue('0')
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
+    await expect(out).toHaveAttribute('aria-valuetext', '00:10.000')
+    await expect(dialog.getByRole('spinbutton', { name: 'Fade In (s)' })).toHaveValue('3')
+    await expect(dialog.getByRole('spinbutton', { name: 'Fade Out (s)' })).toHaveValue('3')
+})
+
+test('playback pauses when the tab is hidden, so it never plays past Out', async ({ page }) => {
+    await page.evaluate(() => (window.editorTest.view.cursorTime = 0))
+    const dialog = await open(page)
+    const play = dialog.locator('[data-export-play]')
+    await play.click()
+    await expect(play).toHaveAttribute('aria-label', 'Pause')
+    await page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => true })
+        Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            get: () => 'hidden',
+        })
+        document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await expect(play).toHaveAttribute('aria-label', 'Play')
+})
