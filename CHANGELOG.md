@@ -2,7 +2,6 @@
 
 ## Unreleased
 
-- Reworded descriptions and Help entries for clarity.
 - On slow devices, the editor now allows more time for startup notices to appear. Reloading also waits longer for the previous page to finish storing your work before opening a separate copy.
 - Changed how the preview blurs backgrounds.
 - Help entries now start by explaining what each tool does.
