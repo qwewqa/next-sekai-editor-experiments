@@ -51,6 +51,7 @@
 - Large level files open faster, especially on phones.
 - In the preview, hit effects now stay on their notes when the camera moves, and notes attached across stages line up as they do in Sonolus.
 - On iPhone and iPad, audio now plays in silent mode.
+- On iPhone and iPad, Play now works after the audio is interrupted, for example by a call or another app.
 - Session names and suggested file names containing dots, such as “feat. Miku”, are no longer cut off at the first dot.
 - (Web) If a session did not finish opening last time, the editor asks whether to try again or start blank. The session stays in Recent Sessions.
 - Audio files can be up to 90 minutes long.
