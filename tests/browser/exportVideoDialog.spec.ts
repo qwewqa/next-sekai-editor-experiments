@@ -395,6 +395,76 @@ for (const finished of [true, false])
         })
     })
 
+for (const action of ['finish', 'reset', 'stop'] as const)
+    test(`the dialog reads current recovery records after ${action} in another tab`, async ({
+        page,
+        context,
+    }) => {
+        await page.evaluate(() => {
+            const settings = window.editorTest.settings
+            settings.exportVideoResolution = 2160
+            settings.exportVideoRenderScale = 2
+            settings.exportVideoLastFinished = {
+                resolution: 1440,
+                renderScale: 1,
+                frameRate: 30,
+                quality: 'standard',
+                format: 'webm',
+                antialias: true,
+                audioBitrate: 192_000,
+            }
+            settings.exportVideoStops = {
+                counts: { '2160:2': 1 },
+                last: { resolution: 2160, renderScale: 2 },
+            }
+        })
+        const other = await context.newPage()
+        await boot(other)
+        let dialog = await open(other)
+        await expect(dialog.locator('[data-export-slot]')).toContainText('did not finish')
+        await other.keyboard.press('Escape')
+        await expect(dialog).toHaveCount(0)
+
+        await page.evaluate(async (action) => {
+            const { settings, resetSettings } =
+                await window.editorTest.appImport<typeof import('../../src/settings')>(
+                    '/src/settings.ts',
+                )
+            const { finishedVideoExport, rememberedVideoChoices } =
+                await window.editorTest.appImport<
+                    typeof import('../../src/editor/exportVideo/recovery')
+                >('/src/editor/exportVideo/recovery.ts')
+            if (action === 'reset') await resetSettings()
+            else {
+                settings.exportVideoResolution = 720
+                settings.exportVideoRenderScale = 1
+                finishedVideoExport(rememberedVideoChoices())
+                if (action === 'stop') {
+                    settings.exportVideoResolution = 2160
+                    settings.exportVideoRenderScale = 2
+                    localStorage.setItem(
+                        'exportVideoRunning.abandoned',
+                        JSON.stringify({ resolution: 2160, renderScale: 2, pixels: 7680 * 4320 }),
+                    )
+                }
+            }
+        }, action)
+
+        dialog = await open(other)
+        const slot = dialog.locator('[data-export-slot]')
+        if (action === 'stop') await expect(slot).toContainText('did not finish')
+        else await expect(slot).not.toContainText('did not finish')
+        await expect(dialog.getByRole('combobox', { name: 'Resolution' })).toHaveValue(
+            action === 'reset' ? '1080' : '720',
+        )
+        expect(await other.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual(
+            action === 'stop'
+                ? { counts: { '2160:2': 1 }, last: { resolution: 2160, renderScale: 2 } }
+                : { counts: {}, last: null },
+        )
+        await other.close()
+    })
+
 for (const reset of ['defaults', 'settings'])
     test(`${reset === 'defaults' ? 'Reset to Defaults' : 'Reset Settings'} clears recovery and abandoned markers, leaving active jobs alone`, async ({
         page,

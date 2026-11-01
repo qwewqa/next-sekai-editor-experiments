@@ -678,6 +678,13 @@ const normalize = <T extends Type.TSchema>(schema: T, value: unknown) =>
 // The settings keys safe mode may write.
 registerSettingKeys(Object.keys(settingsProperties))
 
+const settingRefreshers = new Map<string, () => void>()
+
+/** Refresh cached settings from storage. */
+export const refreshSettings = (keys: (keyof typeof settingsProperties)[]) => {
+    for (const key of keys) settingRefreshers.get(key)?.()
+}
+
 export const settings = Object.defineProperties(
     {},
     Object.fromEntries(
@@ -695,9 +702,22 @@ export const settings = Object.defineProperties(
                     ),
                 ),
             )
+            let refreshing = false
+            settingRefreshers.set(key, () => {
+                refreshing = true
+                try {
+                    prop.value = normalize(
+                        schema,
+                        migrateSetting(key, loadSetting(key, defaultValue)),
+                    )
+                } finally {
+                    refreshing = false
+                }
+            })
             watch(
                 prop,
                 (value) => {
+                    if (refreshing) return
                     try {
                         if (Value.Equal(value, defaultValue)) {
                             storageRemove(key)

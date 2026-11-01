@@ -1,6 +1,6 @@
 import Value from 'typebox/value'
 import { takeStoppedVideoMarkers } from '../../platform/videoRunning'
-import { settings } from '../../settings'
+import { refreshSettings, settings } from '../../settings'
 import {
     exportVideoChoices,
     exportVideoStop,
@@ -22,8 +22,19 @@ export const openingVideoChoices = () =>
         ? (settings.exportVideoLastFinished ?? Value.Create(exportVideoChoices))
         : rememberedVideoChoices()
 
-export const countStoppedExports = () =>
-    takeStoppedVideoMarkers((value) => {
+export const countStoppedExports = () => {
+    refreshSettings([
+        'exportVideoStops',
+        'exportVideoLastFinished',
+        'exportVideoResolution',
+        'exportVideoFrameRate',
+        'exportVideoQuality',
+        'exportVideoFormat',
+        'exportVideoAntialias',
+        'exportVideoRenderScale',
+        'exportVideoAudioBitrate',
+    ])
+    return takeStoppedVideoMarkers((value) => {
         if (!Value.Check(exportVideoStop, value)) return
         const { resolution, renderScale } = value
         const key = `${resolution}:${renderScale}`
@@ -33,6 +44,7 @@ export const countStoppedExports = () =>
             last: { resolution, renderScale },
         }
     })
+}
 
 export const finishedVideoExport = (choices: ExportVideoChoices) => {
     settings.exportVideoLastFinished = choices
