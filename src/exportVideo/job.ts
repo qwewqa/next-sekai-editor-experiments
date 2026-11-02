@@ -220,6 +220,11 @@ export const createExportJob = (options: {
     const run = async (): Promise<JobState> => {
         let release: (() => void) | undefined
         let clearMarker: (() => void) | undefined
+        const mark = () =>
+            markVideoRunning(id, {
+                resolution: settings.height,
+                renderScale: settings.renderScale,
+            })
         active = true
         stopClose = options.platform.onCloseRequested(
             () => !active && !(state.phase === 'ready' && !state.delivered),
@@ -238,9 +243,18 @@ export const createExportJob = (options: {
                 throw new Error('Invalid export settings')
             clipSamples(settings.frames, settings.frameRate)
             signal.throwIfAborted()
-            const prepared = await prepare()
-            const start = { ...prepared, ...(await resolveConfig()) }
-            await abortable(Promise.resolve(lastView), signal)
+            // Track interrupted preparation under its own hold. The destination takes this lock later.
+            const start = await navigator.locks.request(videoLock(id), { signal }, async () => {
+                const clear = mark()
+                try {
+                    const prepared = await prepare()
+                    const config = { ...prepared, ...(await resolveConfig()) }
+                    await abortable(Promise.resolve(lastView), signal)
+                    return config
+                } finally {
+                    clear()
+                }
+            })
             if (!host) throw new Error('Export worker is unavailable')
             signal.throwIfAborted()
             destination = await options.destination(signal, id)
@@ -259,10 +273,7 @@ export const createExportJob = (options: {
                 })
                 await abortable(Promise.race([ready, lock]), signal)
             }
-            clearMarker = markVideoRunning(id, {
-                resolution: settings.height,
-                renderScale: settings.renderScale,
-            })
+            clearMarker = mark()
             const audio = mixAudio(soundSource(snapshot), snapshot.bpms, buffers, settings, signal)
             set({ phase: 'exporting', frames: 0, total: settings.frames, progress: 0 })
             signal.throwIfAborted()

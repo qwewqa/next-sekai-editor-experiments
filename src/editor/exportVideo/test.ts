@@ -4,6 +4,7 @@ import type { ExportSettings } from '../../exportVideo/types'
 import { state } from '../../history'
 import { testKeysOpen } from '../../platform/testKeys'
 import { FileError } from '../../platform/types'
+import { videoLock } from '../../platform/videoOutput'
 import { webVideoOutput } from '../../platform/webVideoOutput'
 import { drawPreviewFrame } from '../../preview/drawFrame'
 import { createPreviewChartBuilder } from '../../preview/engine/chart'
@@ -55,6 +56,7 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
     let exported: Uint8Array | undefined
     let capturedSize: number[] | undefined
     let finishingCancel: boolean | undefined
+    let preparationTracked = false
     let prepared = false
     let preparedAtDestination = false
     let configCalls = 0
@@ -99,6 +101,10 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
             },
         },
         assets: async (signal) => {
+            const locks = await navigator.locks.query()
+            preparationTracked =
+                localStorage.getItem(`exportVideoRunning.${job.id}`) !== null &&
+                !!locks.held?.some((lock) => lock.name === videoLock(job.id))
             const assets = await copyExportAssets(signal)
             if (assets.background && options.backgroundBlur !== undefined)
                 assets.background.blur = options.backgroundBlur
@@ -316,6 +322,7 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         mixStarted,
         errorCode,
         viewSize,
+        preparationTracked,
         preparedAtDestination,
         configCallsAtDestination,
         phase: result.phase,
