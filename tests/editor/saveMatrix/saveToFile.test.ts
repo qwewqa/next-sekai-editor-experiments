@@ -115,6 +115,26 @@ test("Recent Sessions' Save revokes the open chain's binding", async () => {
     assert.deepEqual(kinds(w, 'notPutBack'), [])
 })
 
+for (const stored of [true, false])
+    test(`Recent Sessions' Save followed by Save As records the new binding when revocation ${stored ? 'succeeds' : 'fails'}`, async (t) => {
+        const { w } = await world()
+        let now = Date.now()
+        t.mock.method(Date, 'now', () => ++now)
+        if (!stored) w.behaviour.set('takeOver', () => 'throw')
+        w.pick('own.nxsp', 'fresh.nxsp')
+        w.answers.saveDialog.push(answer('own.nxsp'), answer('fresh.nxsp'))
+        await flow.saveToFile('session-other')
+        const record = (await w.storedChains()).find((row) => row.chainId === 'chain-own')!
+        assert.deepEqual(w.session.chain?.replaced, record.replaced)
+        assert.deepEqual(w.session.chain?.file, record.file)
+        await flow.saveAs()
+        await settle()
+        const saved = (await w.storedChains()).find((row) => row.chainId === 'chain-own')!
+        assert.equal((saved.file as { name: string } | undefined)?.name, 'fresh.nxsp')
+        assert.equal(saved.replaced, undefined)
+        assert.deepEqual(kinds(w, 'saved'), [['own.nxsp'], ['fresh.nxsp']])
+    })
+
 /** Recent Sessions' Save with "suggested" typed and `fresh.nxsp` picked. */
 const renamed = async (rebuild?: 'throw' | { refuse: string }) => {
     const r = await world()

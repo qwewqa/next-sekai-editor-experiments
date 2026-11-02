@@ -439,15 +439,16 @@ const nameTime = (time: number) => formatDateTime(settings.locale, time).replace
 
 /** Revokes a matching stored association. Exports still use the failure result. */
 export const revoke = async (env: Env, owner: HandleOwner | undefined) => {
+    const at = Date.now()
     try {
         const done = await env.worker.call('takeOver', {
             ...(owner ? { owner } : {}),
             by: env.chainId,
-            at: Date.now(),
+            at,
         })
-        return { ok: true, ...done }
+        return { ok: true as const, ...done, at }
     } catch {
-        return { ok: false, revoked: false }
+        return { ok: false as const, revoked: false }
     }
 }
 
@@ -464,11 +465,12 @@ const revokePicked = async (env: Env, handle: FileSystemFileHandle, own: boolean
     const binding = quickBinding(env).file
     const ownHandle = binding && (await bindingHandle(env, binding))
     const pickedOwn = ownHandle?.storedRead === 'value' && (await matches(ownHandle.storedValue))
-    if (pickedOwn && !own) setDiskFinding('changed')
+    if (pickedOwn) setDiskFinding('changed')
     const list = await storedRead(env.worker, 'listHandleOwners', undefined)
     // A failed lookup finds no association; the writer still checks the file.
     const owners = list.storedRead === 'value' ? list.storedValue : []
     let revoked = false
+    let replaced: Binding['replaced']
     for (const owner of owners) {
         if (
             owner.role === 'kept' ||
@@ -479,14 +481,17 @@ const revokePicked = async (env: Env, handle: FileSystemFileHandle, own: boolean
         if (read.storedRead !== 'value' || !(await matches(read.storedValue))) continue
         const done = await revoke(env, owner)
         revoked ||= done.revoked
+        if (done.ok && done.revoked && owner.role === 'file' && owner.chainId === env.chainId)
+            replaced = { by: env.chainId, at: done.at, name: owner.name }
     }
     if (await matches(exportMemory.target?.handle)) clearExportTarget()
-    if (own && pickedOwn && binding) {
+    // Only a stored revocation changes the record's preconditions.
+    if (own && pickedOwn && replaced) {
         env.session.identity = undefined
         const { file: _file, ...chain } = env.session.chain ?? {}
         env.session.chain = {
             ...chain,
-            replaced: { by: env.chainId, at: Date.now(), name: binding.name },
+            replaced,
             edited: true,
             hasContent: true,
         }
