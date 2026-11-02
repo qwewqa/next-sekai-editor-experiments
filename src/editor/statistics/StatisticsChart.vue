@@ -265,7 +265,14 @@ const onKeydown = (event: KeyboardEvent) => {
         : current.steps
           ? (current.x1 - current.x0) / current.steps.length
           : 1
-    const step = { ArrowLeft: -1, ArrowRight: 1, PageDown: 10, PageUp: -10 }[event.key]
+    const step = {
+        ArrowLeft: -1,
+        ArrowDown: -1,
+        ArrowRight: 1,
+        ArrowUp: 1,
+        PageDown: -10,
+        PageUp: 10,
+    }[event.key]
     const time =
         step !== undefined
             ? (cursor.value ?? 0) + step * unit
@@ -305,7 +312,9 @@ const fitLabelLine = async () => {
     await nextTick()
     const element = probe.value
     if (!element) return
-    lines.value = Math.max(1, Math.round(element.getBoundingClientRect().height / 20))
+    const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
+    if (!(lineHeight > 0)) return
+    lines.value = Math.max(1, Math.round(element.getBoundingClientRect().height / lineHeight))
 }
 watch([probeText, () => size.value.width], fitLabelLine)
 
