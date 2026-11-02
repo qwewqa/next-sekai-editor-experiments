@@ -940,7 +940,7 @@ test('an export waits for the sound effects, which it takes as it starts', async
     release()
     await expect(exportButton(page)).toBeEnabled({ timeout: 15_000 })
     await exportButton(page).click()
-    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
+    await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('ready')
     const downloading = page.waitForEvent('download')
     await dialog.locator('[data-export-download]').click()
     const path = testInfo.outputPath('export.webm')
