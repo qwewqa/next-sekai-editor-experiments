@@ -77,6 +77,14 @@ test('conflicting declarations and incomplete colour metadata fail instead of gu
     assert.throws(() => withAvcColor(config(truncatedSps)), /Truncated/)
 })
 
+test('a measured conversion overwrites the colour that the SPS states', () => {
+    const measured = { ...colorSpace, matrix: 'smpte170m', fullRange: false } as const
+    const result = withAvcColor({ ...config(expected), colorSpace: measured }, true)
+    assert.equal((result.description as Uint8Array).length, expected.length)
+    assert.deepEqual(withAvcColor(result), result)
+    assert.throws(() => withAvcColor({ ...result, colorSpace }), /Conflicting/)
+})
+
 test('VP9 configuration passes through unchanged', () => {
     const vp9 = { codec: 'vp09.00.20.08', colorSpace }
     assert.equal(withAvcColor(vp9), vp9)

@@ -1,6 +1,11 @@
 import { ALL_FORMATS, BufferSource, Input, VideoSampleSink } from 'mediabunny'
 import { createCodecProbes } from '../../src/exportVideo/codecs'
 import { videoPacket, type MuxInput } from '../../src/exportVideo/worker/encode'
+import {
+    measureEncoderColor,
+    STRIPES,
+    type ColorCandidate,
+} from '../../src/exportVideo/worker/encoderColor'
 import { openMuxOutput } from '../../src/exportVideo/worker/mux'
 
 /** OPFS handles exercise the picked target's writable stream without opening a picker. */
@@ -46,9 +51,12 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean | '
     )
     const packets: MuxInput[] = []
     let failure: unknown
+    let color: ColorCandidate | undefined
+    let reportedColor: VideoColorSpaceInit | undefined
     const encoder = new VideoEncoder({
         output: (chunk, metadata) => {
-            packets.push(videoPacket(chunk, metadata))
+            reportedColor ??= metadata?.decoderConfig?.colorSpace
+            packets.push(videoPacket(chunk, metadata, color))
         },
         error: (error) => {
             failure = error
@@ -57,6 +65,14 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean | '
     try {
         const canvas = new OffscreenCanvas(320, 180)
         const context = canvas.getContext('2d')!
+        // The file declares the measured conversion, as an export does, so colours round-trip.
+        color = await measureEncoderColor(codecs.video, 30, (edges) => {
+            STRIPES.forEach(([r, g, b], i) => {
+                context.fillStyle = `rgb(${r} ${g} ${b})`
+                context.fillRect(edges[i]!, 0, edges[i + 1]! - edges[i]!, 180)
+            })
+            return new VideoFrame(canvas, { timestamp: 0, duration: 33333 })
+        })
         const colors = [
             '#000000',
             '#404040',
@@ -252,6 +268,7 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean | '
                 muxError,
                 expectedColor:
                     first.track === 'video' ? first.decoderConfig?.colorSpace : undefined,
+                reportedColor,
                 actualColor: config?.colorSpace,
                 size: bytes.length,
                 indexBeforeMedia:

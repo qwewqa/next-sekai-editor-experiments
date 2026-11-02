@@ -255,6 +255,50 @@ test('trials run one at a time, only at the selected video settings, and a rejec
     assert.equal(overlapped, false)
     // With sound, MP4 needs AAC first, so no H.264 trial runs.
     trials.length = 0
-    await probes.resolve({ ...settings, videoBitrate: 10e6 })
-    assert.deepEqual(trials, ['vp09.00.41.08 1080'])
+    await probes.resolve({ ...settings, width: 1280, height: 720 })
+    assert.deepEqual(trials, ['vp09.00.40.08 720'])
+})
+
+test('Export waits only for its own trials, and a trial that no update wants is skipped, not failed', async () => {
+    const trials: string[] = []
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+        release = resolve
+    })
+    const probes = createCodecProbes({
+        video: async () => ({ supported: true }),
+        trial: async (c) => {
+            trials.push(`${c.codec.slice(0, 7)} ${c.height}`)
+            await held
+            return !c.codec.startsWith('avc1.64')
+        },
+    })
+    const availability = createCodecAvailability(probes)
+    const silent = { ...settings, bgm: false, sfx: false }
+    const first = availability.update(silent, {})
+    await new Promise((resolve) => setImmediate(resolve))
+    const shown: { codec?: string; webm: boolean }[] = []
+    const second = availability.update(
+        { ...silent, width: 1280, height: 720 },
+        { webm: { format: 'webm' } },
+        (state) => {
+            const codec = state.current?.supported ? state.current.video.codec : undefined
+            shown.push({ codec: codec?.slice(0, 7), webm: 'webm' in state.choices })
+        },
+    )
+    release()
+    await Promise.all([first, second])
+    // The first update's Main trial was queued behind the second update's and skipped.
+    assert.deepEqual(trials, ['avc1.64 1080', 'avc1.64 720', 'avc1.4d 720', 'vp09.00 720'])
+    // The selection is published before the WebM choice's trial.
+    assert.deepEqual(shown, [
+        { codec: 'avc1.4d', webm: false },
+        { codec: 'avc1.4d', webm: true },
+    ])
+    const again = await probes.resolve(silent)
+    assert.equal(again.supported && again.video.codec.slice(0, 7), 'avc1.4d')
+    assert.equal(trials.at(-1), 'avc1.4d 1080')
+    // Bitrate is not part of a trial's key.
+    await probes.resolve({ ...silent, videoBitrate: 11e6 })
+    assert.equal(trials.length, 5)
 })

@@ -264,8 +264,9 @@ export const createExportDialog = (input: DialogInput) => {
             for (const audioBitrate of AUDIO_BITRATES)
                 choices[`audioBitrate:${audioBitrate}`] = { audioBitrate }
             support.value = { ...support.value, pending: true }
-            const state = await availability.update(value, choices)
-            if (state === availability.state) support.value = state
+            await availability.update(value, choices, (state) => {
+                support.value = state
+            })
         },
         { immediate: true, deep: true },
     )

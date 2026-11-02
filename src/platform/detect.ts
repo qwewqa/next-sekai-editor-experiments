@@ -2,7 +2,8 @@ import { HOST_GLOBALS, looksLikeInAppBrowser } from './inAppBrowser'
 import { testKeysOpen } from './testKeys'
 import type { PlatformOs } from './types'
 
-// Detection is for wording and hand-over paths only: nothing stored depends on it.
+// Detection is for wording, hand-over paths and the WebKit H.264 profile in
+// src/exportVideo/codecs.ts. Nothing stored depends on it.
 
 export type Engine = 'webkit' | 'chromium' | 'firefox' | 'other'
 

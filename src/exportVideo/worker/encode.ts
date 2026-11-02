@@ -146,6 +146,7 @@ export const videoPacket = (
             config &&
             withAvcColor(
                 color ? { ...config, colorSpace: { ...config.colorSpace, ...color } } : config,
+                !!color,
             ),
     }
 }

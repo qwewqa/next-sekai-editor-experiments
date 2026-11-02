@@ -65,9 +65,9 @@ const toYuv = ([r, g, b]: readonly [number, number, number], candidate: ColorCan
 }
 
 /**
- * Encodes the stripes as the export captures them, then as I420 frames made with each candidate,
- * and decodes all of them with one decoder. The candidate whose frame decodes like the captured
- * one is the encoder's conversion.
+ * Encodes the stripes as the export captures them, then as raw YUV frames made with each
+ * candidate, and decodes all of them with one decoder. The candidate whose frame decodes like the
+ * captured one is the encoder's conversion.
  */
 export const measureEncoderColor = async (
     config: VideoEncoderConfig,

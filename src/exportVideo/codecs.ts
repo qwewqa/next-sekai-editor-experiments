@@ -139,17 +139,15 @@ const trialEncode = async (config: TrialConfig) => {
     const frames = 3
     const at = (i: number) => frameTimestamp(i, config.framerate)
     const chunks: TrialChunk[] = []
-    let failure: DOMException | undefined
-    const encoder = new VideoEncoder({
-        output: (chunk, metadata) => {
-            const { type, timestamp, duration } = chunk
-            chunks.push({ type, timestamp, duration, decoderConfig: metadata?.decoderConfig })
-        },
-        error: (error) => {
-            failure = error
-        },
-    })
+    let encoder: VideoEncoder | undefined
     try {
+        encoder = new VideoEncoder({
+            output: (chunk, metadata) => {
+                const { type, timestamp, duration } = chunk
+                chunks.push({ type, timestamp, duration, decoderConfig: metadata?.decoderConfig })
+            },
+            error: () => undefined,
+        })
         const canvas = new OffscreenCanvas(config.width, config.height)
         const context = canvas.getContext('2d')
         if (!context) throw new Error('2D canvas is unavailable')
@@ -167,12 +165,11 @@ const trialEncode = async (config: TrialConfig) => {
             }
         }
         await encoder.flush()
-    } catch (error) {
-        const reason = failure ?? error
-        if (reason instanceof DOMException && reason.name === 'EncodingError') return false
-        throw reason
+    } catch {
+        // Any failure counts as unsupported, so the next configuration is tried.
+        return false
     } finally {
-        if (encoder.state !== 'closed') encoder.close()
+        if (encoder && encoder.state !== 'closed') encoder.close()
     }
     return usableTrial(config, chunks, frames)
 }
@@ -197,6 +194,16 @@ export const h264Profiles = (engine?: Engine) =>
               ['main', '4d00'],
               ['baseline', '4200'],
           ] as const)
+
+/** A queued trial that no update or export still needs is skipped and not cached. */
+class Superseded extends Error {}
+
+export type ResolveOptions = {
+    /** When false, only isConfigSupported decides. */
+    trial?: boolean
+    /** Whether the caller still wants the result. */
+    wanted?: () => boolean
+}
 
 /** The page owner keeps this instance for both settings and export jobs. */
 export const createCodecProbes = (
@@ -223,21 +230,41 @@ export const createCodecProbes = (
         }
         return result
     }
+    // A trial's outcome depends on the encoder, the codec string, the size and the frame rate.
+    // Bitrate only selects the level in the codec string, so the key leaves it out.
+    // The callers are kept only until the trial starts.
+    type Trial = { callers?: (() => boolean)[]; result: Promise<boolean> }
+    const trials = new Map<string, Trial>()
     // Trials run one at a time, since each holds an encoder and full-size frames.
-    let lastTrial: Promise<unknown> = Promise.resolve()
-    const passesTrial = (config: TrialConfig) => {
+    let queue: Promise<unknown> = Promise.resolve()
+    const passesTrial = (config: TrialConfig, wanted: () => boolean) => {
         const run = probes.trial
         if (!run) return true
-        return probe('trial', config, (c) => {
-            const result = lastTrial.then(() => run(c))
-            lastTrial = result.catch(() => undefined)
-            return result.then((supported) => ({ supported }))
-        })
+        const key = configurationKey({ ...config, bitrate: undefined })
+        const cached = trials.get(key)
+        if (cached) {
+            cached.callers?.push(wanted)
+            return cached.result
+        }
+        const trial: Trial = {
+            callers: [wanted],
+            result: queue.then(() => {
+                const needed = trial.callers?.some((caller) => caller())
+                trial.callers = undefined
+                if (needed) return run(config)
+                trials.delete(key)
+                throw new Superseded()
+            }),
+        }
+        queue = trial.result.catch(() => undefined)
+        trials.set(key, trial)
+        return trial.result
     }
     const resolveFormat = async (
         s: CodecSettings,
         format: VideoFormat,
         trial: boolean,
+        wanted: () => boolean,
     ): Promise<CodecSupport> => {
         if (!probes.video) return { supported: false, reason: 'videoEncoder' }
         let audio: AudioEncoderConfig | undefined
@@ -287,50 +314,70 @@ export const createCodecProbes = (
         for (const video of configs) {
             if (
                 (await probe('video', video, probes.video)) &&
-                (!trial || (await passesTrial(video)))
+                (!trial || (await passesTrial(video, wanted)))
             )
                 return { supported: true, format, video, audio }
         }
         return { supported: false, reason: 'videoConfig' }
     }
-    /** With `trial` false, isConfigSupported alone decides. */
-    const resolve = async (s: CodecSettings, trial = true): Promise<CodecSupport> => {
-        if (s.format !== 'automatic') return resolveFormat(s, s.format, trial)
-        const mp4 = await resolveFormat(s, 'mp4', trial)
-        return mp4.supported ? mp4 : resolveFormat(s, 'webm', trial)
+    /** Rejects with `Superseded` when a trial it needs is skipped. */
+    const resolve = async (
+        s: CodecSettings,
+        { trial = true, wanted = () => true }: ResolveOptions = {},
+    ): Promise<CodecSupport> => {
+        if (s.format !== 'automatic') return resolveFormat(s, s.format, trial, wanted)
+        const mp4 = await resolveFormat(s, 'mp4', trial, wanted)
+        return mp4.supported ? mp4 : resolveFormat(s, 'webm', trial, wanted)
     }
     return { resolve }
 }
 
-/** Each update resolves all offered choices. A late result cannot enable an obsolete selection. */
+/** Each update resolves the selection, then all offered choices. A late result changes nothing. */
 export const createCodecAvailability = (probes: ReturnType<typeof createCodecProbes>) => {
     type State = { pending: boolean; current?: CodecSupport; choices: Record<string, CodecSupport> }
     let state: State = { pending: true, choices: {} }
+    let shownChoices: State['choices'] = {}
     let revision = 0
     return {
         get state() {
             return state
         },
-        async update(settings: CodecSettings, choices: Record<string, Partial<CodecSettings>>) {
+        /** `changed` receives the selection, then the choices, while the update is the latest. */
+        async update(
+            settings: CodecSettings,
+            choices: Record<string, Partial<CodecSettings>>,
+            changed: (state: State) => void = () => undefined,
+        ) {
             const currentRevision = ++revision
+            const wanted = () => currentRevision === revision
+            const publish = (next: State) => {
+                if (!wanted()) return
+                state = next
+                changed(next)
+            }
             state = { pending: true, choices: {} }
-            // Trials encode full-size frames, so choices at another size, frame rate or bitrate
-            // skip them.
-            const sameVideo = (choice: CodecSettings) =>
-                (['width', 'height', 'frameRate', 'videoBitrate'] as const).every(
-                    (key) => choice[key] === settings[key],
-                )
-            const [current, resolved] = await Promise.all([
-                probes.resolve({ ...settings }),
-                Promise.all(
+            try {
+                // The selection first, so that Export waits only for its own probes and trials.
+                const current = await probes.resolve({ ...settings }, { wanted })
+                publish({ pending: false, current, choices: shownChoices })
+                // Trials encode full-size frames, so choices at another size or frame rate
+                // skip them.
+                const sameVideo = (choice: CodecSettings) =>
+                    (['width', 'height', 'frameRate'] as const).every(
+                        (key) => choice[key] === settings[key],
+                    )
+                const resolved = await Promise.all(
                     Object.entries(choices).map(async ([key, patch]) => {
                         const choice = { ...settings, ...patch }
-                        return [key, await probes.resolve(choice, sameVideo(choice))] as const
+                        const trial = sameVideo(choice)
+                        return [key, await probes.resolve(choice, { trial, wanted })] as const
                     }),
-                ),
-            ])
-            if (currentRevision === revision)
-                state = { pending: false, current, choices: Object.fromEntries(resolved) }
+                )
+                if (wanted()) shownChoices = Object.fromEntries(resolved)
+                publish({ pending: false, current, choices: shownChoices })
+            } catch (error) {
+                if (!(error instanceof Superseded)) throw error
+            }
             return state
         },
     }

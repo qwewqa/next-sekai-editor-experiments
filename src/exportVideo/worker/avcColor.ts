@@ -4,8 +4,11 @@ const matrices = { rgb: 0, bt709: 1, bt470bg: 5, smpte170m: 6 }
 
 const byteBits = (value: number) => value.toString(2).padStart(8, '0')
 
-/** Fill absent colour fields in the SPS from the encoder's description of its YUV output. */
-export const withAvcColor = (config: VideoDecoderConfig): VideoDecoderConfig => {
+/**
+ * Fills absent colour fields in the SPS from `config.colorSpace`. With `replace`, for a measured
+ * conversion, it also overwrites the fields that the SPS states.
+ */
+export const withAvcColor = (config: VideoDecoderConfig, replace = false): VideoDecoderConfig => {
     if (!config.codec.startsWith('avc1.')) return config
     const color = config.colorSpace
     if (
@@ -32,7 +35,7 @@ export const withAvcColor = (config: VideoDecoderConfig): VideoDecoderConfig => 
         const size = (high << 8) | low
         at += 2
         if (!size || at + size > bytes.length) throw new Error('Invalid AVC sequence parameter set')
-        const sps = fillColor(bytes.subarray(at, at + size), values, color.fullRange)
+        const sps = fillColor(bytes.subarray(at, at + size), values, color.fullRange, replace)
         if (sps.length > 65535) throw new Error('AVC sequence parameter set is too large')
         result.push(sps.length >> 8, sps.length & 255, ...sps)
         at += size
@@ -41,7 +44,7 @@ export const withAvcColor = (config: VideoDecoderConfig): VideoDecoderConfig => 
     return { ...config, description: new Uint8Array(result) }
 }
 
-const fillColor = (sps: Uint8Array, values: number[], fullRange: boolean) => {
+const fillColor = (sps: Uint8Array, values: number[], fullRange: boolean, replace: boolean) => {
     // Remove emulation prevention before reading H.264 sequence_parameter_set_rbsp.
     const bits = Array.from(sps)
         .filter((value, i) => !(value === 3 && sps[i - 1] === 0 && sps[i - 2] === 0))
@@ -119,18 +122,17 @@ const fillColor = (sps: Uint8Array, values: number[], fullRange: boolean) => {
             replacement = `1101${fields}` // unspecified video_format
         else {
             read(3) // video_format
-            if (read() !== Number(fullRange)) throw new Error('Conflicting H.264 colour range')
             start = position
-            if (!read()) replacement = `1${values.map(byteBits).join('')}`
-            else {
-                start = position
-                for (const value of values) {
-                    const declared = read(8)
-                    if (declared !== 2 && declared !== value)
-                        throw new Error('Conflicting H.264 colour description')
-                }
-                replacement = values.map(byteBits).join('')
-            }
+            const range = read()
+            const declared = read() ? [read(8), read(8), read(8)] : []
+            // 2 is unspecified.
+            if (
+                !replace &&
+                (range !== Number(fullRange) ||
+                    declared.some((value, i) => value !== 2 && value !== values[i]))
+            )
+                throw new Error('Conflicting H.264 colour description')
+            replacement = fields
         }
     }
     // Keep rbsp_stop_one_bit and all later VUI fields, then restore byte alignment.
