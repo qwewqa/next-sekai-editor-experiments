@@ -22,7 +22,7 @@ export const fileErrorText = (name: string, error: FileError) =>
 export const showEmptied = async (dialogTitle: () => string, name: string) => {
     await showChoice({
         title: dialogTitle,
-        message: interpolate(() => i18n.value.save.ownFileEmptied, inlineName(name)),
+        message: interpolate(() => i18n.value.save.emptied, inlineName(name)),
         choices: [],
         cancelIsDefault: true,
         cancelLabel: () => i18n.value.modals.info.ok,

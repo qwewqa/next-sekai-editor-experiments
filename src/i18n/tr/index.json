@@ -2564,7 +2564,7 @@
     "notLocal": "“{0}” henüz bu cihazda değil.",
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "“{0}” yazılamadı.",
-    "ownFileEmptied": "“{0}” yazılamadı. Dosya artık boş.",
+    "emptied": "“{0}” yazılamadı. Dosya artık boş.",
     "openedContentGone": "“{0}” içeriği değişti.",
     "title": "Proje Dosyasını Kaydet",
     "titleAs": "Farklı Kaydet",

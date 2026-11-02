@@ -51,7 +51,7 @@ export const describeVideoFailure = async (
     return handle && file?.size === 0
         ? {
               ...failure,
-              message: interpolate(() => i18n.value.save.ownFileEmptied, inlineName(handle.name)),
+              message: interpolate(() => i18n.value.save.emptied, inlineName(handle.name)),
           }
         : failure
 }
