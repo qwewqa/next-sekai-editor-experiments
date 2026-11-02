@@ -986,10 +986,12 @@ test('while peeking, the line names the step as the peek bar does', async ({ pag
     )
 })
 
+// Each size is clear of its fit's limits, as text widths differ by a few pixels between systems:
+// at 844 x 390 the names fit with 2 px to spare on Windows, and Linux shows icons.
 for (const { name, width, height, form, fit } of [
     { name: 'phone portrait', width: 390, height: 844, form: 'one', fit: 'icons' },
     { name: 'a small phone', width: 360, height: 640, form: 'short', fit: 'menu' },
-    { name: 'phone landscape', width: 844, height: 390, form: 'land', fit: 'names' },
+    { name: 'phone landscape', width: 915, height: 412, form: 'land', fit: 'names' },
     { name: 'a narrow landscape phone', width: 740, height: 360, form: 'land', fit: 'icons' },
     { name: 'tablet portrait', width: 768, height: 1024, form: 'one', fit: 'names' },
 ] as const)
