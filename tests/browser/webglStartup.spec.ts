@@ -124,6 +124,25 @@ for (const mode of ['sync', 'async'] as const) {
     })
 }
 
+test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+    test('a tap on Error Details over the chart opens it, and a second tap closes it', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            window.rendererInitProbe = { mode: 'sync', selector: '.editor-chart' }
+        })
+        await openEditor(page, false)
+        const details = page.locator('.rendering-error details')
+        await details.locator('summary').tap()
+        await expect(details).toHaveAttribute('open', '')
+        await expect(details.getByText('Unable to create the editor WebGL2 context')).toBeVisible()
+        await details.locator('summary').tap()
+        await expect(details).not.toHaveAttribute('open', '')
+    })
+})
+
 test('a late initialization rejection after pane teardown stays rejected without publishing stale UI', async ({
     page,
 }) => {

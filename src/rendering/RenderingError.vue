@@ -10,10 +10,16 @@ const isDetailOpen = ref(false)
 </script>
 
 <template>
+    <!-- The chart's controls under it take mouse and touch presses and cancel a tap's click. -->
     <div
         role="alert"
         class="rendering-error absolute inset-0 z-40 flex items-center justify-center overflow-auto bg-bg/95 p-4 text-center text-sm"
         @pointerdown.stop
+        @mousedown.stop
+        @touchstart.stop
+        @touchmove.stop
+        @touchend.stop
+        @touchcancel.stop
         @click.stop
         @keydown.stop
     >
