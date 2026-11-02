@@ -42,7 +42,7 @@ test('a streamed pick refuses a changed file at commit and keeps the other bytes
     const result = await page.evaluate(async () => {
         const { pickVideo } = await import('/src/editor/save/videoPick.ts')
         const { pickUi } = await import('/src/editor/save/flow.ts')
-        const { openPickedTarget } = await import('/src/editor/exportVideo/worker/target.ts')
+        const { openPickedTarget } = await import('/src/exportVideo/worker/target.ts')
         const picked = await pickVideo({
             name: 'clip.mp4',
             type: { description: 'MP4', extension: '.mp4' },
@@ -71,7 +71,7 @@ test('cancelling a streamed pick removes only its unchanged empty file', async (
         await page.evaluate(async () => {
             const { pickVideo } = await import('/src/editor/save/videoPick.ts')
             const { pickUi } = await import('/src/editor/save/flow.ts')
-            const { openPickedTarget } = await import('/src/editor/exportVideo/worker/target.ts')
+            const { openPickedTarget } = await import('/src/exportVideo/worker/target.ts')
             const picked = await pickVideo({
                 name: 'clip.mp4',
                 type: { description: 'MP4', extension: '.mp4' },

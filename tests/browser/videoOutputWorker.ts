@@ -1,4 +1,4 @@
-import { openStagedTarget } from '../../src/editor/exportVideo/worker/target'
+import { openStagedTarget } from '../../src/exportVideo/worker/target'
 
 self.onmessage = async ({
     data,

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { restoreExportError, serializeExportError } from '../../src/exportVideo/error'
 import {
     openPickedTarget,
     openStagedFile,
     openStagedTarget,
-} from '../../src/editor/exportVideo/worker/target'
-import { restoreExportError, serializeExportError } from '../../src/exportVideo/error'
+} from '../../src/exportVideo/worker/target'
 import { memoryVideoStore } from '../../src/platform/mockVideoOutput'
 
 const deferred = () => {

@@ -1,7 +1,7 @@
 import { installExportWorker } from '../../exportVideo/worker/export.worker'
+import { openStagedFile } from '../../exportVideo/worker/target'
 import { createTestSink } from '../../exportVideo/worker/testSink'
 import { testKeysOpen } from '../../platform/testKeys'
-import { openStagedFile } from './worker/target'
 
 if (testKeysOpen) {
     const target = self.name

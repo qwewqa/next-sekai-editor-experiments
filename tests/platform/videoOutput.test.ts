@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { openStagedTarget } from '../../src/editor/exportVideo/worker/target'
+import { openStagedTarget } from '../../src/exportVideo/worker/target'
 import { FakeLockManager } from '../../src/local/testing/locks'
 import { BLOB_URL_MS } from '../../src/platform/handover'
 import { memoryVideoStore } from '../../src/platform/mockVideoOutput'
