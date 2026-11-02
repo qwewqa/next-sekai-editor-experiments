@@ -288,6 +288,7 @@ const startExport = async () => {
     d.start()
 }
 const deliver = async (how: 'download' | 'share') => {
+    deliverFailed.value = undefined
     try {
         await d.deliver(how)
     } catch (error) {

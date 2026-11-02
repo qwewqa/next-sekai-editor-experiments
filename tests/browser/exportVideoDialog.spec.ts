@@ -346,9 +346,24 @@ test('the everyday path reaches Ready, downloads and closes', async ({ page }) =
     // Ready is persistent: Escape does nothing.
     await page.keyboard.press('Escape')
     await expect(dialog).toBeVisible()
+    // A failed download says so until the next attempt.
+    await page.evaluate(async () => {
+        const { webVideoOutput } = await window.editorTest.appImport<
+            typeof import('../../src/platform/webVideoOutput')
+        >('/src/platform/webVideoOutput.ts')
+        const deliver = webVideoOutput.deliver
+        webVideoOutput.deliver = () => {
+            webVideoOutput.deliver = deliver
+            return Promise.reject(new Error('Download failed'))
+        }
+    })
+    await download.click()
+    const failed = dialog.getByRole('alert')
+    await expect(failed).toHaveText('The video could not be downloaded.')
     const downloaded = page.waitForEvent('download')
     await download.click()
     await downloaded
+    await expect(failed).toHaveCount(0)
     // A delivery again: each reports Ready, which must not end the attempt again.
     const again = page.waitForEvent('download')
     await download.click()
