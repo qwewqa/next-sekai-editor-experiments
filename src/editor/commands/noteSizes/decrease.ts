@@ -12,6 +12,8 @@ export const decreaseNoteSize: Command = {
         is: NoteSizeIcon,
     },
 
+    readOnly: true,
+
     execute() {
         view.noteSize = Math.max(
             0,

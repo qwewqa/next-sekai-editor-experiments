@@ -12,6 +12,8 @@ export const increaseNoteSize: Command = {
         is: NoteSizeIcon,
     },
 
+    readOnly: true,
+
     execute() {
         view.noteSize = alignNear(view.noteSize + 1 / view.laneDivision, view.laneDivision)
 
