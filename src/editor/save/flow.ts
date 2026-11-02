@@ -48,7 +48,7 @@ import {
 } from '../commands/exportLevel/memory'
 import { knownTargetAvailable } from '../commands/exportLevel/ownership'
 import { fileErrorText } from '../commands/exportLevel/ui'
-import { bindFile, unbindFile } from '../file'
+import { bindFile } from '../file'
 import { firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
 import { loadForAction } from '../loadFailure'
@@ -116,7 +116,7 @@ import {
     type SaveAttempt,
 } from './saveAttempt'
 import { unlinkSession } from './unlink'
-import { refreshBinding } from './watch'
+import { applyRevoked, refreshBinding } from './watch'
 
 // Save, Save As… and Recent Sessions' Save…: write-back with
 // `requestPermission` first, the changed-on-disk check, our own completed Save, the Save dialog,
@@ -459,7 +459,7 @@ export const notTakenOver = (name: string): Outcome =>
         : { kind: 'failed', error: new FileError('io', name + ' was not taken over'), name }
 
 /** Revokes every matching association before a picked Save, as far as storage allows. */
-const revokePicked = async (env: Env, handle: FileSystemFileHandle, own: boolean) => {
+const revokePicked = async (env: Env, handle: FileSystemFileHandle, revokeOwn: boolean) => {
     const matches = async (stored: FileSystemFileHandle | undefined) =>
         !!stored && ((await sameEntry(handle, stored)) || (await sameEntry(stored, handle)))
     const binding = quickBinding(env).file
@@ -474,7 +474,7 @@ const revokePicked = async (env: Env, handle: FileSystemFileHandle, own: boolean
     for (const owner of owners) {
         if (
             owner.role === 'kept' ||
-            (!own && owner.role === 'file' && owner.chainId === env.chainId)
+            (!revokeOwn && owner.role === 'file' && owner.chainId === env.chainId)
         )
             continue
         const read = await handleOf(env.worker, owner.chainId, owner.role)
@@ -486,18 +486,9 @@ const revokePicked = async (env: Env, handle: FileSystemFileHandle, own: boolean
     }
     if (await matches(exportMemory.target?.handle)) clearExportTarget()
     // Only a stored revocation changes the record's preconditions.
-    if (own && pickedOwn && replaced) {
-        env.session.identity = undefined
-        const { file: _file, ...chain } = env.session.chain ?? {}
-        env.session.chain = {
-            ...chain,
-            replaced,
-            edited: true,
-            hasContent: true,
-        }
-        env.session.edited = true
+    if (revokeOwn && pickedOwn && replaced) {
+        applyRevoked(env.session, env.session.chain ?? {}, replaced, replaced.name)
         forgetHandle(env.chainId)
-        if (currentSession.value.sessionId === env.session.id) unbindFile()
     }
     if (revoked) broadcastUpdated()
 }
@@ -651,14 +642,13 @@ const saveBody = async (
     session.checkpoint()
     if (!platform.pickSaveFile) return downloadBuilt(session, env, reserved, built, request)
 
-    const picked = await projectPick(
+    return projectPick(
         session,
         projectPicker(request.startIn),
         request.fileName,
         (file) => projectPicked(session, env, reserved, built, request, binding, file),
         built.blob.size,
     )
-    return picked
 }
 
 /** Downloads a built file (download browsers, a binding by name), binding it by name. */
@@ -811,16 +801,13 @@ const writePickedProject = async (
         event: 'saved',
         handle,
     })
-    const written = built
-    const parent = written.identity.revision.ancestors.length
-        ? (binding.revision?.id ?? null)
-        : null
+    const parent = built.identity.revision.ancestors.length ? (binding.revision?.id ?? null) : null
     let result: SaveResult
     try {
         result = await picked.write({
             kind: 'nxsp',
-            blob: written.blob,
-            marker: () => markerOf(env, written, reservation, parent, file),
+            blob: built.blob,
+            marker: () => markerOf(env, built, reservation, parent, file),
         })
     } catch (error) {
         const failure = fileError(error)
@@ -829,11 +816,11 @@ const writePickedProject = async (
     if (result.status !== 'saved') return { kind: 'cancelled' }
     await savePoint('closed')
     rememberHandle(env.chainId, handle)
-    await bindWrite(env, session, reservation, written, state, {
+    await bindWrite(env, session, reservation, built, state, {
         ...file,
         ...(result.disk ? { disk: result.disk } : {}),
     })
-    feedback(written, 'saved', name)
+    feedback(built, 'saved', name)
     return { kind: 'done' }
 }
 
@@ -2046,14 +2033,13 @@ const sessionFileBody = async (
         markFirstSaveDone()
         return { kind: 'done' }
     }
-    const picked = await projectPick(
+    return projectPick(
         session,
         projectPicker(),
         request.fileName,
         (file) => sessionFilePicked(env, request, built, file),
         built.blob.size,
     )
-    return picked
 }
 
 /**

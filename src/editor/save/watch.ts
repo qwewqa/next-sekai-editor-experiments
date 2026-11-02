@@ -1,5 +1,6 @@
 import { session as currentSession } from '../../history/session'
 import { hasChainRecord, type Flusher, type FlushSession } from '../../local/flush'
+import { keptNameOf } from '../../local/names'
 import { storedRead, type ReadWorker } from '../../local/storedRead'
 import type { StorageWorker } from '../../local/worker/client'
 import { unbindFile } from '../file'
@@ -26,10 +27,30 @@ export const refreshBinding = async (worker: ReadWorker, flusher: Flusher | unde
     const record = read.storedValue
     const replaced = revokedOf(record, session)
     if (!replaced) return
+    applyRevoked(session, record, replaced)
+}
+
+/**
+ * Drops the session's binding after a takeover: the chain counts as edited and the label shows
+ * unsaved. `keepName` is the file name the chain takes as its name, for a takeover this tab made.
+ */
+export const applyRevoked = (
+    session: FlushSession,
+    record: Row,
+    replaced: Row,
+    keepName?: string,
+) => {
     // A binding kept in memory (storage paused) was made before the takeover: it goes too.
     session.identity = undefined
     const { file: _gone, ...rest } = record
-    session.chain = { ...rest, replaced, edited: true, hasContent: true }
+    const name = keepName === undefined ? undefined : keptNameOf(rest.name, keepName)
+    session.chain = {
+        ...rest,
+        ...(name === undefined ? {} : { name }),
+        replaced,
+        edited: true,
+        hasContent: true,
+    }
     session.edited = true
     if (currentSession.value.sessionId === session.id && currentSession.value.file) unbindFile()
 }
