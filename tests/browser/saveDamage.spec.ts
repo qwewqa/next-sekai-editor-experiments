@@ -127,9 +127,8 @@ test("the Save dialog opens though the worker doesn't answer whether it holds th
         ;(window as unknown as { calls: string[] }).calls = calls
         worker.call = ((method: string, ...rest: unknown[]) => {
             calls.push(method)
-            // A worker that never answers whether it holds the BGM, however it's asked.
-            if (method === 'mediaHeld' || method === 'saveNeeds')
-                return new Promise(() => undefined)
+            // A worker that never answers whether it holds the BGM.
+            if (method === 'mediaHeld') return new Promise(() => undefined)
             return (call as (...args: unknown[]) => unknown)(method, ...rest)
         }) as typeof worker.call
     })
@@ -137,7 +136,6 @@ test("the Save dialog opens though the worker doesn't answer whether it holds th
     await expect(saveDialog(page)).toBeVisible({ timeout: 3000 })
     const calls = await page.evaluate(() => (window as unknown as { calls: string[] }).calls)
     expect(calls).toContain('mediaHeld')
-    expect(calls).not.toContain('saveNeeds')
     // Not known to be held, so the row defaults; the build still takes the stored BGM.
     const downloading = page.waitForEvent('download')
     await submitSave(page, 'coconut')

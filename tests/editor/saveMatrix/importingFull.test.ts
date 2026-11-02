@@ -13,7 +13,7 @@ afterEach(() => {
 })
 
 const refusedLine = async (status: (typeof storageStatus)['value']) => {
-    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: true })
     storageStatus.value = status
     w.behaviour.set('buildSave', () => ({ refuse: 'importing' }))
     await flow.save()

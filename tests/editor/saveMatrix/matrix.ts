@@ -121,7 +121,7 @@ export const PATHS: PathDef[] = [
     {
         id: 'save-as',
         family: 'save',
-        setup: { own: 'bound', storage: 'lacks' },
+        setup: { own: 'bound' },
         plans: savePlans,
         dialog: true,
         picker: true,
@@ -134,21 +134,8 @@ export const PATHS: PathDef[] = [
     {
         id: 'save-as/reloaded',
         family: 'save',
-        setup: { own: 'bound', storage: 'lacks', held: false },
+        setup: { own: 'bound', held: false },
         plans: ['own', 'other', 'partial', 'opened', 'dismiss'].map(plan),
-        dialog: true,
-        picker: true,
-        writes: true,
-        lock: 'exclusive',
-        importWait: true,
-        build: true,
-        run: () => flow.saveAs(),
-    },
-    {
-        id: 'save-as/stored',
-        family: 'save',
-        setup: { own: 'bound', storage: 'holds' },
-        plans: ['own', 'other', 'unknown', 'dismiss'].map(plan),
         dialog: true,
         picker: true,
         writes: true,
@@ -161,7 +148,7 @@ export const PATHS: PathDef[] = [
         id: 'save-as/ahead',
         family: 'save',
         // The own file changed on disk since the binding: Save As replaces it with a new document.
-        setup: { own: 'bound', storage: 'lacks', ownDisk: 'ahead' },
+        setup: { own: 'bound', ownDisk: 'ahead' },
         plans: ['own', 'other', 'opened', 'dismiss'].map(plan),
         dialog: true,
         picker: true,
@@ -174,7 +161,7 @@ export const PATHS: PathDef[] = [
     {
         id: 'separate',
         family: 'save',
-        setup: { own: 'bound', storage: 'lacks', ownDisk: 'ahead' },
+        setup: { own: 'bound', ownDisk: 'ahead' },
         plans: savePlans,
         // The conflict dialog's choice, not a Save dialog, starts it.
         dialog: false,
@@ -191,7 +178,7 @@ export const PATHS: PathDef[] = [
     {
         id: 'notfound-saveas',
         family: 'save',
-        setup: { own: 'missing', storage: 'lacks' },
+        setup: { own: 'missing' },
         plans: ['own', 'other', 'unknown', 'fresh', 'dismiss', 'opened'].map(plan),
         dialog: true,
         picker: true,
@@ -207,7 +194,7 @@ export const PATHS: PathDef[] = [
     {
         id: 'save-to-file',
         family: 'save',
-        setup: { own: 'bound', storage: 'lacks' },
+        setup: { own: 'bound' },
         plans: savePlans,
         dialog: true,
         picker: true,
@@ -220,7 +207,7 @@ export const PATHS: PathDef[] = [
     {
         id: 'write-back',
         family: 'save',
-        setup: { own: 'bound', storage: 'lacks' },
+        setup: { own: 'bound' },
         plans: [plan('own')],
         dialog: false,
         picker: false,
@@ -259,7 +246,7 @@ export const PATHS: PathDef[] = [
     {
         id: 'export',
         family: 'export',
-        setup: { own: 'bound', storage: 'lacks' },
+        setup: { own: 'bound' },
         plans: exportPlans,
         dialog: false,
         picker: true,
@@ -272,7 +259,7 @@ export const PATHS: PathDef[] = [
     {
         id: 'export/reloaded',
         family: 'export',
-        setup: { own: 'bound', storage: 'lacks', held: false },
+        setup: { own: 'bound', held: false },
         plans: ['own', 'other', 'partial', 'chart', 'dismiss'].map(plan),
         dialog: false,
         picker: true,
@@ -285,7 +272,7 @@ export const PATHS: PathDef[] = [
     {
         id: 'export/ahead',
         family: 'export',
-        setup: { own: 'bound', storage: 'lacks', ownDisk: 'ahead' },
+        setup: { own: 'bound', ownDisk: 'ahead' },
         plans: ['own', 'chart', 'dismiss'].map(plan),
         dialog: false,
         picker: true,
@@ -499,7 +486,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'write-no-space',
-        exit: 'write: no space, and the put-back too',
+        exit: 'write: no space',
         applies: (path, p) =>
             path.writes &&
             path.lock !== 'none' &&
@@ -553,7 +540,6 @@ export const FAULTS: FaultDef[] = [
         applies: (path, p) =>
             (reserves(path) || ['export', 'write-back', 'download-again'].includes(path.id)) &&
             path.id !== 'save-first' &&
-            path.id !== 'save-as/stored' &&
             single(p) &&
             ['own', 'dismiss'].includes(last(p)),
         arm: (w, path) => {

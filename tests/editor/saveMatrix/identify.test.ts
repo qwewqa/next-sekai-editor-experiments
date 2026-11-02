@@ -9,7 +9,6 @@ type World = Awaited<ReturnType<typeof createWorld>>
 const run = async (arm: (w: World) => void) => {
     const w = await createWorld({
         own: 'bound',
-        storage: 'lacks',
         held: true,
         other: true,
         target: true,

@@ -21,7 +21,7 @@ const slot = () => ({
 })
 
 test('an import of another session of the chain, running here, is waited for in "Preparing…"', async () => {
-    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: true })
     let finish!: () => void
     const gate = new Promise<void>((resolve) => {
         finish = resolve
@@ -65,7 +65,7 @@ test('an import of another session of the chain, running here, is waited for in 
 })
 
 test("an import running nowhere here is polled for the bound, then left to the build's refusal", async () => {
-    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: true })
     w.pendingImports.add('session-before')
     const started = Date.now()
     const outcome = await waitForChainImports(
@@ -79,7 +79,7 @@ test("an import running nowhere here is polled for the bound, then left to the b
 })
 
 test('an import no tab runs is resumed by the wait, and the Save goes on', async () => {
-    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: true })
     // Pending in storage, run by no tab: its run threw, or the tab that ran it closed.
     w.pendingImports.add('session-orphan')
     let resumed = 0

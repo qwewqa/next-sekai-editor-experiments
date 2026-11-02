@@ -16,7 +16,7 @@ type Build = {
 }
 
 const world = async (setup: Setup = {}) => {
-    const w = await createWorld({ own: 'bound', storage: 'lacks', ...setup })
+    const w = await createWorld({ own: 'bound', ...setup })
     setDiskFinding(undefined)
     const builds: Build[] = []
     w.on('worker:buildSave', (_n, arg) => {
@@ -94,7 +94,6 @@ test("Recent Sessions' Save writes over level data", async () => {
     w.answers.saveDialog.push(answer('opened.nsld'))
     await flow.saveToFile('session-other')
     await settle()
-    assert.deepEqual(kinds(w, 'refused'), [])
     await onlyStored(r)
     assert.deepEqual(kinds(w, 'saved'), [['opened.nsld']])
 })

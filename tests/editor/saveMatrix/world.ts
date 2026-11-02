@@ -84,8 +84,6 @@ export type Setup = {
     own?: 'bound' | 'unbound' | 'missing'
     /** The own file's name in place of own.nxsp. */
     ownFile?: string
-    /** Whether storage holds all the bound file contains. */
-    storage?: 'holds' | 'lacks'
     /** `ahead`: the own file changed on disk since the binding. */
     ownDisk?: 'base' | 'ahead'
     /** The binding matches the live chart, so nothing changed since own.nxsp was saved. */
@@ -146,7 +144,6 @@ const createWorld = async (setup: Setup = {}) => {
         platform: setup.platform ?? 'picker',
         own: setup.own ?? 'bound',
         ownFile: setup.ownFile ?? 'own.nxsp',
-        storage: setup.storage ?? 'lacks',
         ownDisk: setup.ownDisk ?? 'base',
         unchanged: setup.unchanged ?? false,
         held: setup.held ?? true,
@@ -368,10 +365,6 @@ const createWorld = async (setup: Setup = {}) => {
                     sessionId,
                     chainId: ownSession.chainId,
                 }))
-            case 'saveNeeds': // the real one reads the stored snapshot rows, which the seeded sessions do not carry; `s.storage` says what they hold
-                return s.storage === 'holds'
-                    ? { carries: true, lacking: [] }
-                    : { carries: false, lacking: [] }
             case 'buildSave': // the real build packs the editor's snapshot into a file; the matrix scripts its result and its timing
                 return build(a, how)
             case 'readSessionStarts': // only a binding kept in memory needs it, and the matrix has none
@@ -514,7 +507,6 @@ const createWorld = async (setup: Setup = {}) => {
     // The dialogs: what a user would answer, queued by the scenario ----------------------
     const answers = {
         saveDialog: [] as (Row | undefined)[],
-        refused: [] as ('chooseAnother' | undefined)[],
         conflict: [] as ('separate' | 'openOther' | 'replace' | undefined)[],
         emptied: async (name: string) => {
             await shown('emptied', [name], [], undefined)

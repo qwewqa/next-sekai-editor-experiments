@@ -1,19 +1,10 @@
 import { centralDirectoryOf } from '../../platform/fingerprint'
-import { hashKey } from '../db'
-import { fromHex16, toHex } from '../hash'
+import { toHex } from '../hash'
 import { isObject } from '../nxsp/json'
 import { unpackHashes } from '../records/rows'
-import { reachedHashes, stillBad, type SaveStore } from './bodies'
+import type { SaveStore } from './bodies'
 import { CUT_STORES, readCut, type ChainCut } from './cut'
-import { isStoredMediaWhole } from './media'
-import {
-    bindingHasHistory,
-    carryStatus,
-    chainRows,
-    isLater,
-    ModelError,
-    type CarryStatus,
-} from './model'
+import { bindingHasHistory, carryStatus, chainRows, ModelError, type CarryStatus } from './model'
 
 // Comparing files: the relation of two revisions, the content
 // predicate "N holds O" from `project.json` and the chain record alone, and the web's Replace
@@ -120,9 +111,6 @@ export const carryStatusOf = (cut: ChainCut): CarryStatus => {
     }
 }
 
-/** Whether the chain's next write that isn't an append would carry its base. */
-export const wouldCarry = (cut: ChainCut) => carryStatusOf(cut) === 'carries'
-
 export type ReplaceDecision = {
     /**
      * Replace is disabled: `missing` when the chain holds fewer of the base's rows ("It holds earlier
@@ -173,71 +161,4 @@ export const knownDamage = async (store: SaveStore) => {
         if (isObject(chain) && chain.badChunks instanceof Uint8Array)
             for (const hash of unpackHashes(chain.badChunks)) known.add(toHex(hash))
     return known
-}
-
-/**
- * Whether a kept row up to the cut needs a body of `bad`: a state the base held that a write from
- * storage would leave out while the carry test passes, since it counts flags, not bodies.
- */
-export const keptRowsNeed = async (store: SaveStore, cut: ChainCut, bad: ReadonlySet<string>) => {
-    const entry = cut.chain.file?.entry
-    if (!entry || !bindingHasHistory(cut.chain.file) || !bad.size) return false
-    let rows
-    try {
-        rows = chainRows(cut)
-    } catch (error) {
-        if (error instanceof ModelError) return false
-        throw error
-    }
-    const roots = new Set<string>()
-    for (const row of rows) {
-        if (!row.entry.kept || isLater(row, entry)) continue
-        roots.add(toHex(row.entry.snapshot))
-        for (const slot of row.entry.stack?.push ?? []) roots.add(toHex(slot.snapshot))
-    }
-    if ([...roots].some((hex) => bad.has(hex))) return true
-    const reached = await reachedHashes(store, roots)
-    return [...bad].some((hex) => reached.has(hex))
-}
-
-/** What a write from storage would leave out that the chain's own file may hold. */
-export type SaveNeeds = {
-    /**
-     * The next write from storage carries the base's `completeFrom` (the carry test), and no
-     * damage storage knows of is under a kept row the base held.
-     */
-    carries: boolean
-    /** Of the head's media given (by hash), those the media store doesn't hold. */
-    lacking: string[]
-}
-
-/**
- * Whether reading the chain's own file before an export picker could keep anything: rows of
- * its base storage lacks, or head media storage lacks. Read from storage alone, so a dialog knows
- * whether to ask for read access before it reads the file.
- */
-export const readSaveNeeds = async (
-    store: SaveStore,
-    chainId: string,
-    media: readonly string[],
-): Promise<SaveNeeds> => {
-    const cut = await store.read(CUT_STORES, (tx) => readCut(tx, chainId))
-    const lacking = await store.read(['media'], async (tx) => {
-        const missing: string[] = []
-        for (const hash of media)
-            if ((await tx.getKey('media', hashKey(fromHex16(hash)))) === undefined)
-                missing.push(hash)
-        return missing
-    })
-    // Damage storage already knows of is short too: the carry test and a key can't see it.
-    const known = await knownDamage(store)
-    const bad = known.size ? await stillBad(store, [...known]) : new Set<string>()
-    for (const hash of media)
-        if (known.has(hash) && !lacking.includes(hash) && !(await isStoredMediaWhole(store, hash)))
-            lacking.push(hash)
-    const carried =
-        !cut ||
-        !bindingHasHistory(cut.chain.file) ||
-        (wouldCarry(cut) && !(await keptRowsNeed(store, cut, bad)))
-    return { carries: carried, lacking }
 }

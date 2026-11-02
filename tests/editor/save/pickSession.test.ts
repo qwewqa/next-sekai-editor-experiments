@@ -67,12 +67,9 @@ const setup = async () => {
             },
         } as Record<string, unknown>,
     }
-    const calls: string[] = []
     const worker = {
         call: async (method: string) => {
-            calls.push(method)
             if (method === 'openPendingImports' || method === 'listHandleOwners') return []
-            if (method === 'saveNeeds') return { carries: false, lacking: [] }
             return undefined
         },
     }
@@ -132,7 +129,6 @@ const setup = async () => {
         session,
         worker,
         log,
-        calls,
         ui,
         spec,
         picker,
@@ -231,7 +227,6 @@ test('Save opens its picker without reading the bound file first', async () => {
         session.pick(t.picker, 'a.nxsp', (picked) => picked.write({ kind: 'nxsp', blob: next })),
     )
     assert.deepEqual(t.log, ['picker:active'])
-    assert.equal(t.calls.includes('saveNeeds'), false)
     assert.deepEqual(await bytesOf(t.mock.files.get('a.nxsp')), await bytesOf(next))
     assert.deepEqual(t.offers, [])
 })

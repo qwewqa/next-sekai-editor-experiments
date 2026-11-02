@@ -20,7 +20,7 @@ for (const [name, setup] of [
     ['fresh.nxsp', {}],
 ] satisfies [string, Setup][])
     test(`Save As writes the requested document to ${name} (${setup.opened ?? 'project'})`, async () => {
-        const w = await createWorld({ own: 'bound', storage: 'lacks', held: true, ...setup })
+        const w = await createWorld({ own: 'bound', held: true, ...setup })
         const options: { history: boolean; bgm: boolean }[] = []
         w.on('worker:buildSave', (_n, arg) => {
             options.push((arg as { options: (typeof options)[number] }).options)

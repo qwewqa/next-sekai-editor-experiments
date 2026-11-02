@@ -1,3 +1,3 @@
 import { defineMatrix } from './define'
 
-defineMatrix(['save-as/reloaded', 'save-as/stored', 'save-as/ahead', 'separate'])
+defineMatrix(['save-as/reloaded', 'save-as/ahead', 'separate'])

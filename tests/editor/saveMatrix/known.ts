@@ -29,7 +29,6 @@ export const KNOWN: Known[] = [
             'save-first',
             'save-as',
             'save-as/reloaded',
-            'save-as/stored',
             'save-as/ahead',
             'separate',
             'notfound-saveas',

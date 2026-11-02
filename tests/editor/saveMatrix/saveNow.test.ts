@@ -9,7 +9,7 @@ import { createWorld, flow, settle } from './world'
 
 const run = async (failures: number) => {
     // Bound to own.nxsp, the handle not held in memory, storage holds all the own file holds.
-    const w = await createWorld({ own: 'bound', held: false, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: false })
     w.behaviour.set('readHandle', (n) => (n <= failures ? 'throw' : undefined))
     const file = () => w.chains.get(w.session.chainId)?.file as { event?: string } | undefined
     const before = file()?.event
@@ -42,7 +42,7 @@ test('V-P5: a Save whose handle read fails downloads nothing, rebinds nothing an
 })
 
 test('V-P5: the next press reads again, and a handle read that answers writes back', async () => {
-    const w = await createWorld({ own: 'bound', held: false, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: false })
     w.behaviour.set('readHandle', (n) => (n === 1 ? 'throw' : undefined))
     await flow.save()
     await settle()
@@ -54,7 +54,7 @@ test('V-P5: the next press reads again, and a handle read that answers writes ba
 })
 
 test('Open the Other Version: a handle read that fails says so, and is not the file being unreadable', async () => {
-    const w = await createWorld({ own: 'bound', held: false, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: false })
     w.behaviour.set('readHandle', () => 'throw')
     await flow.openOtherVersion()
     await settle()
@@ -67,7 +67,7 @@ test('Open the Other Version: a handle read that fails says so, and is not the f
 // session that is gone. It said "Use Export Level Data…" for both.
 
 const saveToFileSays = async (readSession: () => Promise<unknown>) => {
-    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: true })
     const fake = w.worker.call
     w.worker.call = (method: string, arg?: unknown) =>
         method === 'readSession' ? (readSession() as Promise<never>) : fake(method, arg)

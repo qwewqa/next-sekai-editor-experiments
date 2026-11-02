@@ -91,7 +91,7 @@ for (const { name, setup, denied, shown } of [
     },
 ])
     test(`a Save that writes nothing stores nothing of the visit: ${name}`, async () => {
-        const w = await createWorld({ storage: 'holds', ...setup })
+        const w = await createWorld(setup)
         if (denied) w.tune.writePermission = 'denied'
         const session = await visit(w)
         await flow.save()
@@ -104,7 +104,7 @@ for (const { name, setup, denied, shown } of [
     })
 
 test("a write-back commits the visit's first row before it writes the file", async () => {
-    const w = await createWorld({ storage: 'holds' })
+    const w = await createWorld()
     const session = await visit(w)
     const storedAtWrite: boolean[] = []
     const push = w.mock.calls.push.bind(w.mock.calls)
@@ -122,7 +122,7 @@ test("a write-back commits the visit's first row before it writes the file", asy
 })
 
 test('a commit before the write that forks the session writes nothing and opens the Save dialog', async () => {
-    const w = await createWorld({ storage: 'holds' })
+    const w = await createWorld()
     const fork = { ...w.session, id: 'session-fork', chainId: 'chain-fork', chain: {} }
     w.flusher.flush = () => {
         // Another tab continued the chain first, so the commit went on as a fork, without the binding.

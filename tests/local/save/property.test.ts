@@ -4,19 +4,13 @@ import test from 'node:test'
 import { hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
-import {
-    isChunkRowIntact,
-    packHashes,
-    unpackHashes,
-    type ChunkRow,
-} from '../../../src/local/records/rows'
+import { isChunkRowIntact, packHashes, type ChunkRow } from '../../../src/local/records/rows'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import type { PendingRecords, SaveStore } from '../../../src/local/save/bodies'
 import type { IdentityInput, SaveTarget } from '../../../src/local/save/build'
 import { commitIdentity, IDENTITY_STORES, type IdentityUnit } from '../../../src/local/save/commit'
 import { buildSave } from '../../../src/local/save/execute'
 import { addRecords, headInput } from '../../../src/local/save/pending'
-import { readSaveNeeds } from '../../../src/local/save/predicate'
 import { sessionChecks } from '../../../src/local/testing/invariants'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
@@ -46,10 +40,8 @@ import {
 //   remainder (a flagged row whose state the base held through the stack, the head or its
 //   own root): never a repeated line after nothing was lost;
 // - the undo stack is replay's;
-// - a self-pick loses no row of the picked file (damage storage knows of reads it first, and
-//   so does damage the build before the picker finds, with a grant held), except, with no grant,
-//   a row whose state needs a chunk gone bad that storage didn't know of: that row is written
-//   `kept: false` and the line shows.
+// - a self-pick is written from storage, and the line shows whenever it lacks a row of the
+//   picked file with its state.
 // Every file passes `tools/nxsp_check.py` at the end of each run. `npm test` runs a few; set
 // NSE_SAVE_RUNS=<n> for more. Every run is seeded, and a failure prints the NSE_SAVE_SEED that
 // reruns it and the NSE_SAVE_SCRIPT (JSON: the first state and the ops) that replays its shrunk
@@ -109,8 +101,7 @@ type Op =
     | {
           t: 'undo' | 'redo' | 'continue' | 'save' | 'download' | 'saveAs' | 'replace' | 'touch'
       }
-    /** `granted`: read access held, so a damaged build reads the file first without a prompt. */
-    | { t: 'pick'; granted: boolean }
+    | { t: 'pick' }
     | { t: 'pause' | 'resume' }
     | { t: 'saveToFile' | 'delete'; s: number }
     | { t: 'thin' | 'flag'; s: number; r: number }
@@ -229,44 +220,6 @@ class Scenario {
             }
             return bad
         })
-    }
-
-    /** Every chain's `badChunks`: damage storage knows of, as hex. */
-    private async knownBad() {
-        const chains = await this.fixture.store.read(['chains'], (tx) => tx.getAll('chains'))
-        const known = new Set<string>()
-        for (const chain of chains as { badChunks?: unknown }[])
-            if (chain.badChunks instanceof Uint8Array)
-                for (const hash of unpackHashes(chain.badChunks)) known.add(toHex(hash))
-        return known
-    }
-
-    /** The build a save picker's flow makes before the picker: a copy, marks and all. */
-    private async probe() {
-        const { fixture } = this
-        await fixture.flush()
-        const head = fixture.head
-        const build = async (more = {}) => {
-            const { options } = saveOptions(fixture, {
-                head: headInput(fixture.stateOf(head)),
-                ...more,
-            })
-            return buildSave(fixture.store, fixture.chainId, { kind: 'copy' }, options, [])
-        }
-        let built = await build()
-        if ('refused' in built && built.refused === 'unreadableHead') {
-            const records: PendingRecords = { roots: {}, nodes: {}, chunks: {} }
-            addRecords(records, fixture.stateOf(head))
-            built = await build({ pending: { entries: [], records } })
-        }
-        assert.ok(!('refused' in built), JSON.stringify(built))
-        return built
-    }
-
-    /** The chunks a state's snapshot needs, as hex. */
-    private chunksOf(snapshot: string) {
-        const encoded = encodeSnapshot(toRecords(this.fixture.stateOf(snapshot)))
-        return [encoded.header, ...encoded.chunks].map((chunk) => toHex(chunk.hash))
     }
 
     /** The oracle. */
@@ -429,48 +382,21 @@ class Scenario {
                 return
             }
             case 'pick': {
-                // A save picker returns the chain's own file. The
-                // dialog reads it first when storage may lack what it holds (`saveNeeds`: the
-                // carry test, and damage storage knows of), asking for access if it must. The
-                // build before the picker may still find damage; with a grant held the file is
-                // read then, before the picker empties it.
+                // A save picker returns the chain's own file. It is written from storage, without
+                // reading the file first: a row of the file that the write lacks shows the line.
                 if (this.pause || !this.disk) return
                 const old = this.files.find((each) => each.file === this.disk)
                 if (!old) return
-                const needs = await readSaveNeeds(fixture.store, fixture.chainId, [])
-                const known = await this.knownBad()
-                const bad = await this.badChunks()
-                let read = !needs.carries || needs.lacking.length > 0
-                if (!read) {
-                    const probe = await this.probe()
-                    read = op.granted && (probe.damaged.length > 0 || probe.marked > 0)
-                }
-                if (!read) this.disk = undefined
-                await this.write(
-                    read ? { kind: 'append', source: 'target' } : { kind: 'copy' },
-                    'saved',
-                )
-                // No version is lost: the new file holds every row of the picked one, with its
-                // state. Only unread, with no grant to read it after the build found damage, is a
-                // row lost: one whose state needs a chunk gone bad that storage didn't know of. It
-                // is written `kept: false`, and the write says so.
+                this.disk = undefined
+                await this.write({ kind: 'copy' }, 'saved')
                 const n = this.files.at(-1)
                 assert.ok(n)
-                const script = this.log.join('\n')
-                for (const [row, count] of old.rows) {
-                    if ((n.rows.get(row) ?? 0) >= count) continue
-                    const snapshot = row.slice(row.lastIndexOf('|') + 1)
-                    assert.ok(
-                        !read &&
-                            this.chunksOf(snapshot).some((hex) => bad.has(hex) && !known.has(hex)),
-                        `a self-pick lost ${row}\n${script}`,
+                if (lacks(n.rows, old.rows))
+                    assert.equal(
+                        this.line,
+                        true,
+                        `a self-pick lost a row silently\n${this.log.join('\n')}`,
                     )
-                    assert.ok(
-                        (n.all.get(row) ?? 0) >= count,
-                        `a self-pick dropped ${row}\n${script}`,
-                    )
-                    assert.equal(this.line, true, `a self-pick lost ${row} silently\n${script}`)
-                }
                 return
             }
             case 'pause':
@@ -551,7 +477,7 @@ const op: fc.Arbitrary<Op> = fc.oneof(
     { weight: 4, arbitrary: fc.record({ t: fc.constant('damage'), i: nat(1000) }) },
     { weight: 2, arbitrary: fc.constant({ t: 'known' }) },
     { weight: 3, arbitrary: fc.constant({ t: 'touch' }) },
-    { weight: 6, arbitrary: fc.record({ t: fc.constant('pick'), granted: fc.boolean() }) },
+    { weight: 6, arbitrary: fc.constant({ t: 'pick' }) },
     { weight: 3, arbitrary: fc.constant({ t: 'pause' }) },
     { weight: 4, arbitrary: fc.constant({ t: 'resume' }) },
 ) as fc.Arbitrary<Op>
@@ -577,7 +503,7 @@ const runScript = async (start: number, ops: Iterable<Op>) => {
     checkRows(scenario, { t: 'save' })
 }
 
-test('random edits and Saves never lose a version, over-claim or repeat the line', async () => {
+test('random edits and Saves never lose a version silently, over-claim or repeat the line', async () => {
     if (script) {
         const { start, ops } = JSON.parse(script) as { start: number; ops: Op[] }
         await runScript(start, ops)
@@ -616,19 +542,11 @@ test('random edits and Saves never lose a version, over-claim or repeat the line
     throw failure
 })
 
-const cases = [
-    { name: 'no build has found, without a grant held', granted: false, known: false },
-    { name: 'no build has found, with a grant held', granted: true, known: false },
-    { name: "another chain's build found, without a grant held", granted: false, known: true },
-]
-
-for (const { name, granted, known } of cases)
-    test(`a self-pick after damage ${name}`, async () => {
-        // The sequence "edit, edit, save, edit, edit, damage, pick": the damaged
-        // chunk is the one only `init`'s state needs, so the carry test (stored rows only) can't
-        // see it and the dialog doesn't read the file. The build before the picker finds it:
-        // with a grant held the file is read then and appended to, keeping `init`;
-        // without one, the write from storage marks `init` and says so.
+for (const known of [false, true])
+    test(`a self-pick after damage ${known ? "another chain's build found" : 'no build has found'}`, async () => {
+        // The sequence "edit, edit, save, edit, edit, damage, pick": the damaged chunk is the one
+        // only `init`'s state needs. The write from storage marks `init` and says so, whether or
+        // not storage already knew of the damage.
         const fixture = await Fixture.create()
         await fixture.storeMedia([BGM, COVER, PREVIEW])
         await fixture.start(1)
@@ -649,9 +567,8 @@ for (const { name, granted, known } of cases)
         )
         assert.ok(i >= 0)
         await scenario.apply({ t: 'damage', i })
-        // Known damage reads the file first whatever the grant (the dialog asks for one).
         if (known) await scenario.apply({ t: 'known' })
-        await scenario.apply({ t: 'pick', granted })
-        assert.equal(scenario.line, !granted && !known)
+        await scenario.apply({ t: 'pick' })
+        assert.equal(scenario.line, true)
         await scenario.end()
     })

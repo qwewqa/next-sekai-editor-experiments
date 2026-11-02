@@ -11,7 +11,7 @@ const { storageStatus } = await import('../../../src/local/startup/events')
 // holder of earlier Timeline steps.
 
 const reason = async (guard: (w: Awaited<ReturnType<typeof createWorld>>) => unknown) => {
-    const w = await createWorld({ own: 'bound', storage: 'lacks', ownDisk: 'ahead' })
+    const w = await createWorld({ own: 'bound', ownDisk: 'ahead' })
     // Storing works, so the dialog's own reason for a storage that cannot take the file is absent.
     storageStatus.value = { mode: 'stored' }
     await guard(w)

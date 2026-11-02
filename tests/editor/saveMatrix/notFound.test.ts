@@ -10,7 +10,7 @@ const { diskFinding, setDiskFinding } = await import('../../../src/editor/file/s
 // is still bound to, and a picked file gone before it was inspected was named as typed.
 
 const world = async (own: 'bound' | 'missing') => {
-    const w = await createWorld({ own, storage: 'holds' })
+    const w = await createWorld({ own })
     setDiskFinding(undefined)
     return w
 }

@@ -8,19 +8,21 @@ import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import type { SaveStore } from '../../../src/local/save/bodies'
 import { stillBad } from '../../../src/local/save/bodies'
 import { buildSave } from '../../../src/local/save/execute'
-import { readReplaceDecision, readSaveNeeds } from '../../../src/local/save/predicate'
+import { isStoredMediaWhole } from '../../../src/local/save/media'
+import { readReplaceDecision } from '../../../src/local/save/predicate'
 import { repairFromSource } from '../../../src/local/save/repair'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
 import { Fixture, heldRows, inspectNxsp, save, saveOptions, sourceOf, stateAt } from './fixture'
 
-// A save picker returning the chain's own file: the file is read first only when storage lacks what it holds (the
-// Replace guard's test), and then appended to, so nothing is lost; with the read declined it is
-// written from storage, and the write says "Some earlier Timeline steps were not kept.".
+// A save picker returning the chain's own file writes it from storage: a step storage cannot give
+// whole is written `kept: false`, and the write says "Some earlier Timeline steps were not kept.".
+// A write-back appends to the file, and puts right from it what storage knows is bad.
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))
 
-const needsRead = async (fixture: Fixture, file: File) => {
+/** Whether the file holds steps that a write from storage would lose (the Replace guard's test). */
+const holdsMore = async (fixture: Fixture, file: File) => {
     const disk = await nxspDiskState(file, file.lastModified)
     const { projectJson } = await inspectNxsp(file, {
         token: 'pick',
@@ -48,9 +50,9 @@ const chainWithFile = async () => {
     return { fixture, file: first.file }
 }
 
-test('storage holding everything: no read, and the self-pick written from storage loses nothing', async () => {
+test('storage holding everything: the self-pick written from storage loses nothing', async () => {
     const { fixture, file } = await chainWithFile()
-    assert.equal(await needsRead(fixture, file), false)
+    assert.equal(await holdsMore(fixture, file), false)
     const { built, file: written } = await save(fixture, { kind: 'copy' }, { disk: diskOf })
     assert.ok(!('refused' in built) && written)
     assert.equal(built.stepsLine, 'none')
@@ -59,13 +61,13 @@ test('storage holding everything: no read, and the self-pick written from storag
     for (const [row, count] of old) assert.ok((now.get(row) ?? 0) >= count, row)
 })
 
-test('storage short: the file is read first and appended to; declined, the line shows', async () => {
+test('storage short: an append keeps every row of the file; a write from storage says what it lacks', async () => {
     const { fixture, file } = await chainWithFile()
     await fixture.flush()
     assert.ok(await fixture.thin(0, 2))
-    assert.equal(await needsRead(fixture, file), true)
+    assert.equal(await holdsMore(fixture, file), true)
 
-    // Read first: an append to the bytes read, every row of the file kept.
+    // An append to the file keeps every row it holds.
     const appended = await save(
         fixture,
         { kind: 'append', source: 'target' },
@@ -77,21 +79,10 @@ test('storage short: the file is read first and appended to; declined, the line 
     const now = (await heldRows(appended.file)).rows
     for (const [row, count] of old) assert.ok((now.get(row) ?? 0) >= count, row)
 
-    // The read declined: written from storage, and the write says so.
+    // Written from storage, the write says so.
     const declined = await save(fixture, { kind: 'copy' }, { disk: diskOf, binds: false })
     assert.ok(!('refused' in declined.built))
     assert.equal(declined.built.stepsLine, 'notKept')
-})
-
-test('whether to read the file first is known from storage alone: rows it lacks, or head media', async () => {
-    const { fixture } = await chainWithFile()
-    const missing = 'ff'.repeat(16)
-    const full = await readSaveNeeds(fixture.store, fixture.chainId, [missing])
-    assert.equal(full.carries, true)
-    // Media the media store doesn't hold is lacking: the file may hold it.
-    assert.deepEqual(full.lacking, [missing])
-    assert.ok(await fixture.thin(0, 2))
-    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
 })
 
 /** Flips a byte of a stored chunk that only `k`'s state needs, as bit rot no build has found yet. */
@@ -115,8 +106,8 @@ const damageOnly = async (fixture: Fixture, k: number, others: number[]) => {
 
 test('damage no build has found: the self-pick is written from storage, the step kept: false and the line shown', async () => {
     // The sequence "edit, edit, save, edit, edit, damage, pick": the carry test
-    // reads stored rows only, so it can't see a bad chunk, and the file isn't read. The write
-    // from storage finds the damage, marks the row and says so.
+    // reads stored rows only, so it can't see a bad chunk. The write from storage finds the
+    // damage, marks the row and says so.
     const fixture = await Fixture.create()
     await fixture.start(1)
     await fixture.edit(2)
@@ -129,7 +120,7 @@ test('damage no build has found: the self-pick is written from storage, the step
     await fixture.edit(5)
     await fixture.flush()
     const hex = await damageOnly(fixture, 1, [2, 3, 4, 5])
-    assert.equal(await needsRead(fixture, file), false)
+    assert.equal(await holdsMore(fixture, file), false)
     const { built, file: written } = await save(fixture, { kind: 'copy' }, { disk: diskOf })
     assert.ok(!('refused' in built) && written)
     assert.deepEqual(built.damaged, [hex])
@@ -154,64 +145,6 @@ test('damage no build has found: the self-pick is written from storage, the step
     assert.equal(stored?.kept, false)
 })
 
-/** Flips the first byte of a stored chunk: once makes it bad, twice makes it whole again. */
-const flip = (fixture: Fixture, hex: string) =>
-    fixture.store.write(['chunks'], async (tx) => {
-        const key = hashKey(fromHex16(hex))
-        const row = (await tx.get('chunks', key)) as { bytes: Uint8Array }
-        const bytes = row.bytes.slice()
-        bytes[0] = (bytes[0] ?? 0) ^ 0x5a
-        await tx.put('chunks', { ...row, bytes }, key)
-    })
-
-test('damage storage knows of under a kept row the base held makes the next write short', async () => {
-    // Bodies are shared between chains: another chain's build found the bad chunk and recorded it
-    // in its `badChunks`, marking only its own rows. This chain's rows of that state stay kept, so
-    // the carry test passes; the known damage makes the write short, and the file is read first.
-    const { fixture, file } = await chainWithFile()
-    const hex = await damageOnly(fixture, 3, [0, 1, 2, 4])
-    await fixture.store.write(['chains'], (tx) =>
-        tx.put('chains', {
-            chainId: 'another',
-            docId: 'another',
-            lineageId: 'lineage',
-            badChunks: packHashes([fromHex16(hex)]),
-        }),
-    )
-    assert.equal(await needsRead(fixture, file), false)
-    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
-    // Stored again whole, the hash is no longer short.
-    await flip(fixture, hex)
-    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, true)
-})
-
-test('a stored BGM a build found bad counts as lacking, so the file holding it is read first', async () => {
-    const { fixture } = await chainWithFile()
-    await fixture.storeMedia([BGM, COVER, PREVIEW])
-    const key = hashKey(fromHex16(BGM.ref.hash))
-    const row = (await fixture.store.read(['media'], (tx) => tx.get('media', key))) as {
-        blob: Blob
-    }
-    const bytes = new Uint8Array(await row.blob.arrayBuffer())
-    bytes[0] = (bytes[0] ?? 0) ^ 0x5a
-    await fixture.store.write(['media'], (tx) =>
-        tx.put('media', { ...row, blob: new Blob([bytes]) }, key),
-    )
-    // The key is there, so before any build it reads as held.
-    assert.deepEqual(
-        (await readSaveNeeds(fixture.store, fixture.chainId, [BGM.ref.hash])).lacking,
-        [],
-    )
-    // A download finds it bad and records it.
-    const download = await save(fixture, { kind: 'copy' }, { binds: false })
-    assert.ok(!('refused' in download.built))
-    assert.ok(download.built.damaged.includes(BGM.ref.hash))
-    assert.deepEqual(
-        (await readSaveNeeds(fixture.store, fixture.chainId, [BGM.ref.hash])).lacking,
-        [BGM.ref.hash],
-    )
-})
-
 /** The case above: a chunk only state 3 needs gone bad, found by another chain's build. */
 const knownToAnother = async () => {
     const { fixture, file } = await chainWithFile()
@@ -224,7 +157,7 @@ const knownToAnother = async () => {
             badChunks: packHashes([fromHex16(hex)]),
         }),
     )
-    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
+    assert.deepEqual([...(await stillBad(fixture.store, [hex]))], [hex])
     return { fixture, file, hex }
 }
 
@@ -238,9 +171,8 @@ test("known damage the own file holds is put right by the append, so the next Sa
     assert.ok(!('refused' in appended.built) && appended.file)
     assert.deepEqual(appended.built.damaged, [])
     assert.equal(appended.built.stepsLine, 'none')
-    // Stored again from the file's bytes, which hash to its key: no longer bad, and no longer short.
+    // Stored again from the file's bytes, which hash to its key: no longer bad.
     assert.deepEqual([...(await stillBad(fixture.store, [hex]))], [])
-    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, true)
     // A write from storage now finds nothing missing and keeps every step.
     const copy = await save(fixture, { kind: 'copy' }, { binds: false })
     assert.ok(!('refused' in copy.built))
@@ -291,7 +223,6 @@ test('a repair that fails leaves the Save as it was and the damage known', async
     assert.deepEqual(built.damaged, [])
     assert.equal(built.stepsLine, 'none')
     assert.deepEqual([...(await stillBad(fixture.store, [hex]))], [hex])
-    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
     // The same file as a build whose repair succeeds.
     const again = await buildSave(fixture.store, fixture.chainId, target, options, files)
     assert.ok(!('refused' in again))
@@ -349,7 +280,6 @@ test('a known-bad root and kind node the own file holds are put right by the app
     })
     await knownBad(fixture, [root, node])
     assert.deepEqual([...(await stillBad(fixture.store, [root, node]))].sort(), [root, node].sort())
-    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
 
     const appended = await save(
         fixture,
@@ -357,9 +287,8 @@ test('a known-bad root and kind node the own file holds are put right by the app
         { files: [await sourceOf(file)], disk: diskOf },
     )
     assert.ok(!('refused' in appended.built) && appended.file)
-    // Stored again from the file's records, which hash to their keys: whole, and no longer short.
+    // Stored again from the file's records, which hash to their keys: whole.
     assert.deepEqual([...(await stillBad(fixture.store, [root, node]))], [])
-    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, true)
     // The root's row carries its header's media again, as an import stores it.
     const row = (await fixture.store.read(['nodes'], (tx) =>
         tx.get('nodes', hashKey(fromHex16(root))),
@@ -416,24 +345,18 @@ test('a known-bad stored BGM the own file holds is put right by the append', asy
     await fixture.store.write(['media'], (tx) =>
         tx.put('media', { ...row, blob: new Blob([bytes]) }, key),
     )
-    // A download finds it bad and records it: every later dialog reads the file first.
+    // A download finds it bad and records it.
     const download = await save(fixture, { kind: 'copy' }, { binds: false })
     assert.ok(!('refused' in download.built) && download.built.damaged.includes(BGM.ref.hash))
-    assert.deepEqual(
-        (await readSaveNeeds(fixture.store, fixture.chainId, [BGM.ref.hash])).lacking,
-        [BGM.ref.hash],
-    )
+    assert.equal(await isStoredMediaWhole(fixture.store, BGM.ref.hash), false)
     const appended = await save(
         fixture,
         { kind: 'append', source: 'target' },
         { files: [await sourceOf(file)], disk: diskOf },
     )
     assert.ok(!('refused' in appended.built))
-    // Stored again from the file's entry, which hashes to its `sha256`: no longer lacking.
-    assert.deepEqual(
-        (await readSaveNeeds(fixture.store, fixture.chainId, [BGM.ref.hash])).lacking,
-        [],
-    )
+    // Stored again from the file's entry, which hashes to its `sha256`: whole.
+    assert.equal(await isStoredMediaWhole(fixture.store, BGM.ref.hash), true)
     const next = await save(fixture, { kind: 'copy' }, { binds: false })
     assert.ok(!('refused' in next.built))
     assert.ok(!next.built.damaged.includes(BGM.ref.hash))

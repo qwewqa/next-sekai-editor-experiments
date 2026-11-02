@@ -10,7 +10,7 @@ import { bytesOf, createWorld, flow, settle } from './world'
 const ANOTHER = 'bytes another chain wrote to the file'
 
 test('a write-back whose record cannot be read says so; the next press meets the conflict dialog for a file another chain wrote', async () => {
-    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: true })
     w.mock.writeFile('own.nxsp', new Blob([ANOTHER]))
     w.behaviour.set('readChainRecord', (n) => (n === 1 ? 'throw' : undefined))
 

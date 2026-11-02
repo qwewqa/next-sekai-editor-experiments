@@ -10,7 +10,6 @@ for (const command of ['saveAs', 'first', 'separate', 'missing', 'stored'] as co
             const w = await createWorld({
                 own: command === 'first' ? 'unbound' : command === 'missing' ? 'missing' : 'bound',
                 ownDisk: command === 'separate' ? 'ahead' : 'base',
-                storage: 'holds',
             })
             const original = await w.fileBytes('own.nxsp')
             const builds: {

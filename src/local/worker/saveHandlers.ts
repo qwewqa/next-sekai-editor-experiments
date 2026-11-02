@@ -6,7 +6,7 @@ import { loadBodies, type SaveStore } from '../save/bodies'
 import { setSaveHooksForTests, type SaveOptions, type SaveTarget } from '../save/build'
 import { estimateSaveSize } from '../save/estimate'
 import { buildSave, setBuiltHookForTests, type SaveSourceFile } from '../save/execute'
-import { readReplaceDecision, readSaveNeeds } from '../save/predicate'
+import { readReplaceDecision } from '../save/predicate'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
@@ -99,9 +99,6 @@ export const saveHandlers = (context: WorkerContext) => {
             projectJson: unknown
             fingerprint: string
         }) => readReplaceDecision(store, chainId, projectJson, fingerprint),
-        /** Whether the chain's own file may hold what storage lacks, from storage alone. */
-        saveNeeds: ({ chainId, media }: { chainId: string; media: string[] }) =>
-            readSaveNeeds(store, chainId, media),
 
         /**
          * Of `hashes`, those the media store holds ("held"): one key read each, so a

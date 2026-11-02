@@ -36,7 +36,7 @@ const failList = (w: World, failures = Infinity) => {
 }
 
 test('the wait reads a failed pending list again, and goes on once it answers', async () => {
-    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    const w = await createWorld({ own: 'bound', held: true })
     const reads = failList(w, 2)
     const started = Date.now()
     const outcome = await waitForChainImports(environment(w), slot())
@@ -46,7 +46,7 @@ test('the wait reads a failed pending list again, and goes on once it answers', 
 })
 
 test('Export whose pending list cannot be read goes on to its picker at the bound', async () => {
-    const w = await createWorld({ own: 'bound', held: true, storage: 'lacks' })
+    const w = await createWorld({ own: 'bound', held: true })
     const reads = failList(w)
     const started = Date.now()
     w.pick('own.nxsp')

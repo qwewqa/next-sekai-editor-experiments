@@ -42,7 +42,6 @@ const CLASSES = {
     readTimelineIndex: 'read',
     readChanges: 'read',
     estimateSaveSize: 'read',
-    saveNeeds: 'read',
     mediaHeld: 'read',
     readMedia: 'read',
     readSessionStarts: 'read',
