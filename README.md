@@ -111,7 +111,8 @@ Linux CI runs the audio tests without the stub.
 ## Renderer Maintenance
 
 [Renderer Ownership and Upgrades](docs/rendering.md) covers GPU resource ownership,
-text rendering, the pinned Pixi patches and how to verify the Rust/Lyon geometry kernel.
+text rendering, playback sound, the preview's background and combo, the minimap, video
+export, the pinned Pixi patches and how to verify the Rust/Lyon geometry kernel.
 [Performance Testing](docs/performance-testing.md) explains how to measure scrolling
 and playback.
 
