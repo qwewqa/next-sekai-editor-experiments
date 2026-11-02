@@ -51,13 +51,8 @@ const loadBackground = async ({ signal }: LoadContext): Promise<LoadedBackground
     const configuration = parseGzippedJson<BackgroundConfiguration>(configurationRaw)
     const blob = new Blob([new Uint8Array(imageRaw)], { type: 'image/png' })
     const texture = await decodeBackground(blob)
-    const url = URL.createObjectURL(blob)
     return {
         texture,
-        url,
-        dispose: () => {
-            URL.revokeObjectURL(url)
-        },
         aspectRatio: data.aspectRatio ?? 16 / 9,
         fit: data.fit,
         color: data.color,

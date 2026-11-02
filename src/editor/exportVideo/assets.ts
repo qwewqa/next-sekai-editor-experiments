@@ -8,17 +8,7 @@ export const copyExportAssets = async (signal: AbortSignal): Promise<ExportAsset
             ? result.error
             : new DOMException('Atlas copy cancelled', 'AbortError')
     const assets: ExportAssets = { skin: result.skin, particle: result.particle }
-    const background = result.background
-    if (background)
-        assets.background = {
-            texture: background.texture,
-            url: background.url,
-            aspectRatio: background.aspectRatio,
-            fit: background.fit,
-            color: background.color,
-            blur: background.blur,
-            mask: background.mask,
-        }
+    if (result.background) assets.background = result.background
     if (signal.aborted) {
         closeExportAssets(assets)
         signal.throwIfAborted()

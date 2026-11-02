@@ -28,17 +28,13 @@ export type LoadedBackground = {
     texture: ImageBitmap
     /** The item's title, for a stored background. */
     title?: string
-    /** Object URL or asset URL */
-    url: string
     aspectRatio: number
     fit: BackgroundFit
-    /** CSS colour behind the image */
+    /** Hex colour behind the image, or `transparent` */
     color: string
     blur: number
-    /** CSS colour of an overlay, if any */
+    /** Hex colour of an overlay, if any */
     mask: string | undefined
-    /** Releases an object URL when the background is replaced. */
-    dispose?: () => void
 }
 
 export const sfxSlots = [

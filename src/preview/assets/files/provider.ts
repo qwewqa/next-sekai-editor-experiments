@@ -39,13 +39,8 @@ const buildBackground = async (item: CheckedItem<'background'>): Promise<LoadedB
     const { data, configuration, image, size } = item.parts
     const blob = new Blob([new Uint8Array(image)], { type: mime(image) })
     const texture = await decodeBackground(blob)
-    const url = URL.createObjectURL(blob)
     return {
         texture,
-        url,
-        dispose: () => {
-            URL.revokeObjectURL(url)
-        },
         title: item.title,
         // Without a ratio of its own, the image's natural one.
         aspectRatio: data.aspectRatio ?? size.width / size.height,

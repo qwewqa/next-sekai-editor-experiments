@@ -15,7 +15,7 @@ import { loadParticle } from '../../src/preview/particle'
 import { loadSkin } from '../../src/preview/skin'
 
 // The loader tests pass a fake defaults provider and never import the web defaults.
-const background = { url: 'bg', aspectRatio: 16 / 9, fit: 'cover', color: 'transparent', blur: 0 }
+const background = { aspectRatio: 16 / 9, fit: 'cover', color: 'transparent', blur: 0 }
 const fakeDefaults = (overrides: Partial<AssetDefaults> = {}): AssetDefaults => ({
     skin: async () => ({ title: 'default skin' }) as Loaded['skin'],
     particle: async () => ({ title: 'default particle' }) as Loaded['particle'],

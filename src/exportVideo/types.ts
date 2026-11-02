@@ -24,7 +24,7 @@ export type ExportSettings = CodecSettings &
 export type ExportAssets = {
     skin: LoadedSkin
     particle?: LoadedParticle
-    background?: Omit<LoadedBackground, 'dispose'>
+    background?: LoadedBackground
 }
 export const closeExportAssets = (assets: ExportAssets) => {
     assets.skin.texture.close()

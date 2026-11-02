@@ -189,34 +189,35 @@ test('a failed switch keeps the shown asset', async (t) => {
     assert.equal(session.slots.skin.value.status?.reason, 'corrupt')
 })
 
-test('a background releases its object URL when replaced, and dispose closes everything', async () => {
-    const released: string[] = []
-    const backgroundOf = (url: string) =>
+test('a background closes its bitmap when replaced, and dispose closes everything', async () => {
+    const backgroundOf = () =>
         ({
-            url,
             texture: bitmap(),
             aspectRatio: 16 / 9,
             fit: 'cover',
             color: 'transparent',
             blur: 0,
             mask: undefined,
-            dispose: () => released.push(url),
         }) as unknown as Loaded['background']
+    const closed = (background: Loaded['background']) =>
+        (background.texture as unknown as { closed: number }).closed
+    const first = backgroundOf()
+    const second = backgroundOf()
     const skin = skinOf('s')
     const { session, ref } = sessionOf(
-        { background: async () => backgroundOf('default'), skin: async () => skin },
+        { background: async () => first, skin: async () => skin },
         choices(),
-        { background: async () => backgroundOf('built-in') },
+        { background: async () => second },
     )
     session.ensure('background')
     session.ensure('skin')
     await flush()
     ref.value = { ...ref.value, background: { source: 'builtin' } }
     await flush()
-    assert.deepEqual(released, ['default'])
+    assert.deepEqual([closed(first), closed(second)], [1, 0])
 
     session.dispose()
-    assert.deepEqual(released, ['default', 'built-in'])
+    assert.deepEqual([closed(first), closed(second)], [1, 1])
     assert.equal((skin.texture as unknown as { closed: number }).closed, 1)
     assert.equal(session.slots.background.value.state, 'idle')
 })

@@ -284,7 +284,10 @@ export const checkBackgroundData = (raw: unknown): BackgroundData => {
     }
 }
 
-/** The blur is capped so a hostile value cannot make the filter cost a frame. */
+/**
+ * The blur is capped. The blurred texture's margin grows with it, so a hostile value would
+ * shrink the image to a few pixels.
+ */
 const MAX_BLUR = 100
 
 export const checkBackgroundConfiguration = (raw: unknown): BackgroundConfiguration => {

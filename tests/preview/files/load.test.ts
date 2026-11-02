@@ -135,7 +135,6 @@ test("a background with no aspect ratio uses its image's own", async () => {
     const result = await load('background', scp('background'))
     const background = result?.value as Loaded['background']
     assert.equal(background.aspectRatio, 160 / 90)
-    background.dispose?.()
     const withRatio = await load(
         'background',
         scp('background', { resources: { data: gz(backgroundData({ aspectRatio: 2 })) } }),

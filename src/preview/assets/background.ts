@@ -7,7 +7,6 @@ export const syntheticBackground = async (
     signal?: AbortSignal,
 ): Promise<LoadedBackground> => ({
     texture: await decodeBackground(await (await fetch(url, { signal })).blob()),
-    url,
     aspectRatio,
     fit: 'cover',
     color: 'transparent',

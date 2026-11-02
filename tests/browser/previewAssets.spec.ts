@@ -734,7 +734,6 @@ test("a background's colour, blur, mask, aspect ratio and fit are drawn", async 
         slot.value = {
             ...slot.value,
             value: {
-                url: png,
                 texture: await createImageBitmap(await (await fetch(png)).blob(), {
                     premultiplyAlpha: 'premultiply',
                 }),
