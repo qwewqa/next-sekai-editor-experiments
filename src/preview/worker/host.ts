@@ -144,7 +144,7 @@ const startWorker = () => {
     let pending: (() => void) | undefined
     const sender = createMirrorSender()
     let sentSelection: PreviewSelection | undefined | null = null
-    // The objects whose atlases the worker holds, by slot: skin, then particle.
+    // The objects whose atlases the worker holds, by slot: skin, particle, background.
     const lent: (LoadedSkin | LoadedParticle | LoadedBackground | undefined)[] = []
     let copyId = 0
     const copying = new Map<number, (bitmap?: ImageBitmap, error?: unknown) => void>()

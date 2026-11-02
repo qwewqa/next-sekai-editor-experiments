@@ -10,8 +10,8 @@ import { draftOver, type Draft } from './draft'
 export type ApplyResult = 'applied' | 'unchanged' | 'refused'
 
 /**
- * Pushes the draft as one step over the live state, which the dialog's own BGM changes may have
- * moved on from, so only the fields the user changed are written. Nothing is applied when a peek
+ * Pushes the draft as one step over the live state, which may have moved on since the dialog
+ * opened, so only the fields the user changed are written. Nothing is applied when a peek
  * began or the stack was replaced (another session) since the dialog opened, or when nothing
  * changed.
  */

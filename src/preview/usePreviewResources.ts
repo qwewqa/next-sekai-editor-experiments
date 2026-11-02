@@ -2,7 +2,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { errorMessage } from '../utils/error'
 import { AssetError, assetSession } from './assets'
 
-// Decoded skin and particle atlases are shared by every preview mount for the
+// Decoded skin, particle and background atlases are shared by every preview mount for the
 // lifetime of the page. Closing, covering, moving, or recreating a preview's
 // WebGL context re-uploads these bitmaps instead of downloading and decoding
 // them again. Only successful loads are cached; failures retry on next use.
@@ -37,7 +37,7 @@ export const reloadPreviewResources = () => {
     ensurePreviewResources()
 }
 
-/** Decodes the skin's and particle's atlases again, for atlases a stopped worker kept. */
+/** Decodes the skin's, particle's and background's atlases again, for atlases a stopped worker kept. */
 export const decodeAtlasesAgain = () => {
     assetSession.reload('skin')
     assetSession.reload('particle')

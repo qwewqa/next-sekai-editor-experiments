@@ -81,7 +81,7 @@ export const pageDestination = async (request: DestinationRequest): Promise<JobD
                             }),
                         )
                     },
-                    // Share… is offered for staged files only.
+                    // Share Video is offered for staged files only.
                     deliver: async (file) => {
                         await handOver(file, request.name, performance.now(), undefined)
                         return 'delivered'

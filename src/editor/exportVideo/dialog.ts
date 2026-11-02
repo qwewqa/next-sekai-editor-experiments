@@ -146,7 +146,12 @@ export const createExportDialog = (input: DialogInput) => {
         lastBeat === undefined ? undefined : beatToTime(input.snapshot.bpms, lastBeat),
     )
     const stripEnd = stripEndOf(wholeEnd, bgmEnd)
-    const initial = openingRange(input.chain === undefined ? undefined : rangeMemory.get(input.chain), wholeEnd, bgmEnd, fps())
+    const initial = openingRange(
+        input.chain === undefined ? undefined : rangeMemory.get(input.chain),
+        wholeEnd,
+        bgmEnd,
+        fps(),
+    )
     const rangeKind = ref<RangeKind>(initial.kind)
     const range = ref<ClipRange>(initial.range)
     const playhead = ref(Math.min(stripEnd, Math.max(0, toFrame(input.cursor, fps()))))
@@ -583,7 +588,7 @@ export const createExportDialog = (input: DialogInput) => {
                     kind: 'ready',
                     size: state.file.size,
                     delivered: false,
-                    // Share… is offered for a coarse pointer, as Share Image is.
+                    // Share Video is offered for a coarse pointer, as Share Image is.
                     shareable:
                         !!picked?.staged &&
                         matchMedia('(pointer: coarse)').matches &&

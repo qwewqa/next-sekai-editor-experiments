@@ -45,7 +45,7 @@ let outline: OutlineRenderer | undefined
 // can stop the page from painting, or hang this worker.
 const retired: { dispose: () => void }[] = []
 
-// The skin's and the particle's atlases, kept for the page's lifetime and uploaded to every
+// The skin's, particle's and background's atlases, kept for the page's lifetime and uploaded to every
 // new context.
 const atlases: ({ bitmap: ImageBitmap; interpolation: boolean } | undefined)[] = []
 const uploaded: (ImageBitmap | undefined)[] = []
