@@ -58,6 +58,47 @@ export const settleHeldBgm = async () => {
     }
 }
 
+/** Waits for the current BGM to load, change or time out. False means timed out. */
+export const waitForCurrentBgm = async (maxWaitMs: number) => {
+    const id = session.value.sessionId
+    const bgm = liveState.value.bgm
+    const hash = bgm.meta?.hash
+    if (bgm.buffer || !hash) return true
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let stop: (() => void) | undefined
+    const changed = new Promise<boolean>((resolve) => {
+        stop = watch(
+            [() => session.value.sessionId, () => liveState.value.bgm.meta?.hash],
+            () => {
+                resolve(true)
+            },
+            { flush: 'sync' },
+        )
+    })
+    const expired = new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => {
+            resolve(false)
+        }, maxWaitMs)
+    })
+    const loaded = async () => {
+        // Let the watcher start the current load before looking it up.
+        await nextTick()
+        if (session.value.sessionId === id && liveState.value.bgm.meta?.hash === hash) {
+            // Reattachment reports refusals; export uses the existing not-loaded state.
+            await fetching.get(hash)?.parts.catch(() => undefined)
+            await nextTick()
+        }
+        return true
+    }
+    try {
+        return await Promise.race([loaded(), changed, expired])
+    } finally {
+        clearTimeout(timer)
+        stop?.()
+    }
+}
+
 let environment: HeldEnvironment | undefined
 let unheldNotice: ((hash: string) => void) | undefined
 

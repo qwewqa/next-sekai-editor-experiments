@@ -9,7 +9,7 @@ import { parseColor } from '../../rendering/paint'
 import { settings } from '../../settings'
 import { validName } from '../commands/exportLevel/fileName'
 import { peekedInfo, peekedSession } from '../history/selection'
-import { settleHeldBgm } from '../media/heldBgm'
+import { waitForCurrentBgm } from '../media/heldBgm'
 import { stopPlayer } from '../player'
 import { view } from '../view'
 import type { createExportDialog, DialogInput } from './dialog'
@@ -46,40 +46,52 @@ const peekStep = () => {
     return info && { time: info.time }
 }
 
+let opening = false
+
 export const openExportVideo = async (
     env: ExportVideoEnv,
     expose?: (dialog: ReturnType<typeof createExportDialog>) => void,
+    bgmWaitMs = 10_000,
 ) => {
-    stopPlayer()
-    await countStoppedExports()
-    await settleHeldBgm()
-    const snapshot = state.value
-    const bgm = playbackBgm.value
-    const input: DialogInput = {
-        snapshot,
-        source: isPeeking.value ? 'peek' : 'live',
-        chain: session.value.docId,
-        cursor: view.cursorTime,
-        stem: shownStem(),
-        look: {
-            aspect: settings.previewAspectRatio,
-            noteSpeed: settings.previewNoteSpeed,
-            showEffects: settings.previewShowEffects,
-            showCombo: settings.previewShowCombo,
-            backdrop: backdrop(),
-        },
-        bgm,
-        bgmMissing: bgm.buffer ? undefined : bgm.meta ? 'notLoaded' : 'none',
-        selection: [...snapshot.selectedEntities],
-        env,
+    if (opening) return
+    opening = true
+    const origin = session.value.sessionId
+    try {
+        stopPlayer()
+        const [loaded] = await Promise.all([waitForCurrentBgm(bgmWaitMs), countStoppedExports()])
+        if (session.value.sessionId !== origin) return
+        const snapshot = state.value
+        const bgm = loaded
+            ? playbackBgm.value
+            : { ...playbackBgm.value, buffer: undefined, waveform: undefined }
+        const input: DialogInput = {
+            snapshot,
+            source: isPeeking.value ? 'peek' : 'live',
+            chain: session.value.docId,
+            cursor: view.cursorTime,
+            stem: shownStem(),
+            look: {
+                aspect: settings.previewAspectRatio,
+                noteSpeed: settings.previewNoteSpeed,
+                showEffects: settings.previewShowEffects,
+                showCombo: settings.previewShowCombo,
+                backdrop: backdrop(),
+            },
+            bgm,
+            bgmMissing: bgm.buffer ? undefined : bgm.meta ? 'notLoaded' : 'none',
+            selection: [...snapshot.selectedEntities],
+            env,
+        }
+        await showModal(
+            ExportVideoModal,
+            {
+                input,
+                peekStep: input.source === 'peek' ? peekStep() : undefined,
+                expose,
+            },
+            { size: 'large', wide: true },
+        )
+    } finally {
+        opening = false
     }
-    await showModal(
-        ExportVideoModal,
-        {
-            input,
-            peekStep: input.source === 'peek' ? peekStep() : undefined,
-            expose,
-        },
-        { size: 'large', wide: true },
-    )
 }

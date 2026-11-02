@@ -2,12 +2,14 @@ import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import {
     videoExportButton as exportButton,
+    holdVideoBgm,
     openVideoDialog as open,
     videoPhase as phase,
+    releaseVideoBgm,
+    requestVideoDialog,
     shortVideoClip as shortClip,
     videoDialog,
 } from './exportVideoDialog'
-import { wav } from './levelInfoFiles'
 import { resource } from './previewResourceFixture'
 
 const boot = async (page: Page) => {
@@ -93,70 +95,9 @@ for (const outcome of ['default', 'wholeChart', 'failed'] as const)
             await page.keyboard.press('Escape')
             await expect(dialog).toHaveCount(0)
         }
-        await page.evaluate(
-            async ({ bytes, fails }) => {
-                const { configureHeldBgm, decodeBgmData } = await window.editorTest.appImport<
-                    typeof import('../../src/editor/media/heldBgm')
-                >('/src/editor/media/heldBgm.ts')
-                const gate = new Promise<void>((resolve) => {
-                    Reflect.set(window, 'releaseBgmDecode', resolve)
-                })
-                configureHeldBgm({
-                    read: async () => new Uint8Array(bytes).buffer,
-                    decode: async (data) => {
-                        Reflect.set(window, 'bgmDecodeStarted', true)
-                        await gate
-                        if (fails) throw new Error('BGM decode failed')
-                        return decodeBgmData(data)
-                    },
-                })
-                const { history } = window.editorTest
-                history.replaceState({
-                    ...history.state.value,
-                    bgm: {
-                        offset: 0.25,
-                        meta: {
-                            hash: 'a'.repeat(32),
-                            filename: 'loading.wav',
-                            size: bytes.length,
-                            type: 'audio/wav',
-                        },
-                    },
-                })
-            },
-            { bytes: [...wav(12)], fails: outcome === 'failed' },
-        )
-        await expect
-            .poll(() => page.evaluate(() => Reflect.get(window, 'bgmDecodeStarted') as boolean))
-            .toBe(true)
-
-        const pending = await page.evaluate(async () => {
-            const { appImport } = window.editorTest
-            const { openExportVideo } = await appImport<
-                typeof import('../../src/editor/exportVideo/open')
-            >('/src/editor/exportVideo/open.ts')
-            const { pageEnv } = await appImport<typeof import('../../src/editor/exportVideo/env')>(
-                '/src/editor/exportVideo/env.ts',
-            )
-            const { countStoppedExports } = await appImport<
-                typeof import('../../src/editor/exportVideo/recovery')
-            >('/src/editor/exportVideo/recovery.ts')
-            const { modals } =
-                await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
-            void openExportVideo(
-                pageEnv(
-                    () =>
-                        new Worker('/src/editor/exportVideo/export.worker.ts', { type: 'module' }),
-                ),
-            )
-            // With no stopped exports, this resolves after the opening check.
-            await countStoppedExports()
-            return modals.length
-        })
-        expect(pending).toBe(0)
-        await page.evaluate(() => {
-            ;(Reflect.get(window, 'releaseBgmDecode') as () => void)()
-        })
+        await holdVideoBgm(page, outcome === 'failed')
+        expect(await requestVideoDialog(page)).toBe(0)
+        await releaseVideoBgm(page)
         const dialog = videoDialog(page)
         await expect(dialog).toBeVisible()
         const out = dialog.getByRole('textbox', { name: 'Out', exact: true })
@@ -184,6 +125,63 @@ for (const outcome of ['default', 'wholeChart', 'failed'] as const)
             await dialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
             await expect(out).toHaveValue('00:11.767')
         }
+    })
+
+test('pressing Export Video twice during decoding opens one dialog', async ({ page }) => {
+    await holdVideoBgm(page)
+    expect(await requestVideoDialog(page, 2)).toBe(0)
+    await releaseVideoBgm(page)
+    const dialog = videoDialog(page)
+    await expect(dialog).toHaveCount(1)
+    await expect(dialog).toBeVisible()
+    expect(await requestVideoDialog(page)).toBe(1)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await open(page)
+})
+
+test('switching chart during the BGM wait cancels Export Video', async ({ page }) => {
+    await holdVideoBgm(page)
+    expect(await requestVideoDialog(page)).toBe(0)
+    await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.interaction))
+    await releaseVideoBgm(page)
+    await expect(videoDialog(page)).toHaveCount(0)
+    await page.evaluate(() => Reflect.get(window, 'videoOpenCalls') as Promise<unknown>)
+    await open(page)
+})
+
+test('a stuck BGM decode opens Export Video after the timeout without BGM', async ({ page }) => {
+    await holdVideoBgm(page)
+    await requestVideoDialog(page, 1, 50)
+    const dialog = videoDialog(page)
+    await expect(dialog).toBeVisible()
+    const bgm = dialog.getByRole('switch', { name: 'BGM', exact: true })
+    await expect(bgm).toBeDisabled()
+    await expect(bgm).not.toBeChecked()
+    await expect(bgm).toHaveAccessibleDescription('BGM not loaded')
+    await expect(dialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue('00:09.500')
+    await dialog.locator('[data-export-range]').click()
+    await expect(dialog.getByRole('menuitemradio')).toHaveText(['Whole Chart', 'Selection'])
+    await releaseVideoBgm(page)
+    await expect(bgm).toBeDisabled()
+})
+
+for (const change of ['replace', 'remove'] as const)
+    test(`${change === 'replace' ? 'replacing' : 'removing'} the BGM ends the wait for its decode`, async ({
+        page,
+    }) => {
+        await holdVideoBgm(page)
+        expect(await requestVideoDialog(page)).toBe(0)
+        await page.evaluate((change) => {
+            const { history, addWaveform } = window.editorTest
+            if (change === 'replace') return addWaveform()
+            else history.replaceState({ ...history.state.value, bgm: { offset: 0 } })
+        }, change)
+        const dialog = videoDialog(page)
+        await expect(dialog).toBeVisible()
+        const bgm = dialog.getByRole('switch', { name: 'BGM', exact: true })
+        if (change === 'replace') await expect(bgm).toBeEnabled()
+        else await expect(bgm).toBeDisabled()
     })
 
 test('replacing the BGM keeps the open clip and uses the new length on reopening', async ({

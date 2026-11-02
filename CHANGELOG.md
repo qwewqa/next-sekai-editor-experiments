@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Export Video now waits for BGM loading to finish before opening.
+- Export Video waits up to 10 seconds for the current BGM to load before opening. Repeated presses open one dialog. Changing charts cancels a pending open.
 - Clarified chart property descriptions and added choice descriptions for Connector Type, Presentation and Zoom Vertical Align.
 - Export Video now defaults to Whole BGM when its length is known. Whole Chart ends after the last object.
 - On slow devices, the editor now allows more time for startup notices to appear. Reloading also waits longer for the previous page to finish storing your work before opening a separate copy.
