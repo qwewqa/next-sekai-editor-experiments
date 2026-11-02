@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
 
@@ -16,8 +16,10 @@ declare global {
     }
 }
 
-const controlWorker = (page: Page) =>
-    page.addInitScript(() => {
+/** These tests set the worker host themselves, so the worker project would only repeat them. */
+const controlWorker = (page: Page, testInfo: TestInfo) => {
+    test.skip(testInfo.project.name === 'chromium-worker', 'The test sets the host itself')
+    return page.addInitScript(() => {
         localStorage.setItem('nse.test.previewHost', 'worker')
         window.atlasCopyTest = {
             holdFrames: false,
@@ -43,6 +45,7 @@ const controlWorker = (page: Page) =>
             return Reflect.apply(post, this, args) as void
         }
     })
+}
 
 const requestDuringTransition = (page: Page) =>
     page.evaluate(async () => {
@@ -368,8 +371,8 @@ test('an asset load that never finishes reaches the copy deadline', async ({ pag
 for (const complete of [true, false])
     test(`copies ${complete ? 'wait for held recovery loads after a worker timeout' : 'keep their deadline while recovery loads finish separately'}`, async ({
         page,
-    }) => {
-        await controlWorker(page)
+    }, testInfo) => {
+        await controlWorker(page, testInfo)
         await open(page)
         await showPreview(page)
         await page.evaluate(() => window.nsePreviewTest!.settled())
@@ -428,8 +431,8 @@ for (const complete of [true, false])
         }
     })
 
-test('copies wait while the worker hands its atlases back', async ({ page }) => {
-    await controlWorker(page)
+test('copies wait while the worker hands its atlases back', async ({ page }, testInfo) => {
+    await controlWorker(page, testInfo)
     await open(page)
     await showPreview(page)
     await page.evaluate(async () => {
