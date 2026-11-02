@@ -870,19 +870,28 @@ for (const [code, line, button, label] of [
                 (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
             const own = module.platform
             let failed = false
+            let unreadable = false
             module.setPlatformForTests({
                 ...own,
-                read: (target) =>
-                    failed && target.kind === 'handle' && target.handle.name === 'failed.nxsp'
-                        ? Promise.reject(
-                              new module.FileError('denied', 'The file could not be read'),
-                          )
-                        : own.read(target),
+                inspect: (target, kind) => {
+                    if (
+                        !unreadable ||
+                        target.kind !== 'handle' ||
+                        target.handle.name !== 'failed.nxsp'
+                    )
+                        return own.inspect(target, kind)
+                    // Only the check right after the failed write.
+                    unreadable = false
+                    return Promise.reject(
+                        new module.FileError('denied', 'The file could not be read'),
+                    )
+                },
                 saveFile: (request) => {
                     const target = request.target
                     if (failed || target?.kind !== 'handle' || target.handle.name !== 'failed.nxsp')
                         return own.saveFile(request)
                     failed = true
+                    unreadable = true
                     return Promise.reject(new module.FileError(code, 'The write failed'))
                 },
             })
