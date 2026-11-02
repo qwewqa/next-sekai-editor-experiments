@@ -277,7 +277,6 @@ test('lane limit commands clamp note placement in the production editor', async 
 
 test('preview decodes textures and renders after opening and resizing', async ({ page }) => {
     // Counted on the main thread, where the preview draws with Parallel Rendering off.
-    // The 3 uploads are the skin, particle and background textures.
     await page.evaluate(() =>
         localStorage.setItem('sonolus-next-sekai-editor.previewInWorker', 'false'),
     )
@@ -285,7 +284,9 @@ test('preview decodes textures and renders after opening and resizing', async ({
     await editorReady(page)
     await page.setViewportSize({ width: 1600, height: 1000 })
     await page.getByRole('tab', { name: 'Preview', exact: true }).click()
-    await expect.poll(() => page.evaluate(() => window.productionSmoke.uploads)).toBe(3)
+    await expect
+        .poll(() => page.evaluate(() => window.productionSmoke.uploadedSlots))
+        .toEqual(expect.arrayContaining([0, 1, 3]))
     const frames = await page.evaluate(() => window.productionSmoke.preview)
     await page.setViewportSize({ width: 390, height: 844 })
     await expect
@@ -311,9 +312,9 @@ test('by default the preview draws in its worker where the browser can', async (
     if (!supported) return
     if (drawsInWorker)
         expect(
-            await page.evaluate(() => window.productionSmoke.uploads),
+            await page.evaluate(() => window.productionSmoke.uploadedSlots),
             await diagnostics(page),
-        ).toBe(0)
+        ).toEqual([])
     else
         await expect
             .poll(() => diagnostics(page))

@@ -53,8 +53,8 @@ declare global {
             preview: number
             chart: number
             overlay: number
-            // Preview ImageBitmap uploads: the skin, particle and background textures. Update the specs when preview textures change.
-            uploads: number
+            // Texture slots that received an ImageBitmap from texImage2D on the preview canvas: 0 skin, 1 particle, 3 background. Region uploads (the combo text) are not counted.
+            uploadedSlots: number[]
             fftTiles: number
             fftDraws: number
         }
@@ -71,7 +71,7 @@ export const instrumentRendering = () => {
         preview: 0,
         chart: 0,
         overlay: 0,
-        uploads: 0,
+        uploadedSlots: [],
         fftTiles: 0,
         fftDraws: 0,
     }
@@ -109,8 +109,11 @@ export const instrumentRendering = () => {
     }
     const upload = (gl: GL, args: unknown[], sub: boolean) => {
         const target = kind(gl)
-        if (target === 'preview' && args.some((arg) => arg instanceof ImageBitmap))
-            window.productionSmoke.uploads++
+        if (!sub && target === 'preview' && args.some((arg) => arg instanceof ImageBitmap)) {
+            const slot = Number(gl.getParameter(gl.ACTIVE_TEXTURE)) - gl.TEXTURE0
+            if (!window.productionSmoke.uploadedSlots.includes(slot))
+                window.productionSmoke.uploadedSlots.push(slot)
+        }
         if (target !== 'chart' || !pngPublished) return
         const [width, height] = textureSize(args, sub)
         // FFT tiles keep their 128 columns at every max-reduction level. Only

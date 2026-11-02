@@ -142,14 +142,19 @@ for (const inWorker of [false, true])
             expect(requested.some((path) => /\/preview\.worker-[\w-]+\.js$/.test(path))).toBe(true)
             await expect.poll(() => previewPixels(page)).toBeGreaterThan(100)
         } else
-            // A preview SCP load: the default skin, particle and background (one more upload) decoded and uploaded to the preview.
+            // A preview SCP load: the default skin, particle and background decoded and uploaded to the preview.
             await expect
-                .poll(() => page.evaluate(() => window.productionSmoke.uploads))
-                .toBe(
-                    1 +
-                        manifest.previewAssets.filter(({ file }) =>
-                            ['resource/skin.scp', 'resource/particle.scp'].includes(file),
-                        ).length,
+                .poll(() => page.evaluate(() => window.productionSmoke.uploadedSlots))
+                .toEqual(
+                    expect.arrayContaining([
+                        0,
+                        ...(manifest.previewAssets.some(
+                            ({ file }) => file === 'resource/particle.scp',
+                        )
+                            ? [1]
+                            : []),
+                        3,
+                    ]),
                 )
 
         expect((await read(page)).violations).toEqual([])
