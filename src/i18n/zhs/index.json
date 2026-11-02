@@ -1127,7 +1127,7 @@
           "disabled": "保持上下排列。"
         }
       },
-      "confirmCloseUnsavedFile": "有尚未保存到项目文件的更改时，会在关闭页面前询问，即使这些更改已存储在此浏览器中。如果关闭会丢失更改，编辑器始终会询问。",
+      "confirmCloseUnsavedFile": "有尚未保存到项目文件的更改时，会在关闭页面前询问，即使这些更改已存储在此浏览器中。",
       "previewNoteSpeed": "设置预览中音符接近的速度，范围为 1 到 12。",
       "previewShowHitboxes": "显示用于判定音符和长按音符的区域。",
       "previewShowEffects": "音符被击中时以及长按音符被按住期间，在预览中显示粒子和发光效果。",

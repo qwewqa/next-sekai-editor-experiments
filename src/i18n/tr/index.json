@@ -1127,7 +1127,7 @@
           "disabled": "Alt alta tutar."
         }
       },
-      "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa, bu tarayıcıda saklanıyor olsalar bile sayfa kapanmadan önce onay ister. Kapatmak değişikliklerin kaybolmasına yol açacaksa editör her zaman onay ister.",
+      "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa, bu tarayıcıda saklanıyor olsalar bile sayfa kapanmadan önce onay ister.",
       "previewNoteSpeed": "Önizlemede notaların yaklaşma hızını 1 ile 12 arasında belirler.",
       "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir.",
       "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkları ve parlamaları gösterir.",

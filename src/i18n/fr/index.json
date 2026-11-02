@@ -1127,7 +1127,7 @@
           "disabled": "Les garde l’un au-dessus de l’autre."
         }
       },
-      "confirmCloseUnsavedFile": "Demande confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet, même si elles sont stockées dans ce navigateur. Si la fermeture entraîne la perte de modifications, l’éditeur demande toujours confirmation.",
+      "confirmCloseUnsavedFile": "Demande confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet, même si elles sont stockées dans ce navigateur.",
       "previewNoteSpeed": "Définit la vitesse à laquelle les notes approchent dans l’aperçu, de 1 à 12.",
       "previewShowHitboxes": "Affiche les zones utilisées pour juger les notes et les slides.",
       "previewShowEffects": "Affiche des particules et des lueurs lorsque les notes sont touchées et pendant que les slides sont maintenus dans l’aperçu.",

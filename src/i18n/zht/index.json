@@ -1127,7 +1127,7 @@
           "disabled": "保持上下排列。"
         }
       },
-      "confirmCloseUnsavedFile": "有尚未儲存到專案檔案的變更時，會在關閉頁面前詢問，即使這些變更已存放在此瀏覽器中。如果關閉會遺失變更，編輯器一律會詢問。",
+      "confirmCloseUnsavedFile": "有尚未儲存到專案檔案的變更時，會在關閉頁面前詢問，即使這些變更已存放在此瀏覽器中。",
       "previewNoteSpeed": "設定預覽中音符接近的速度，範圍為 1 到 12。",
       "previewShowHitboxes": "顯示用於判定音符和滑條的範圍。",
       "previewShowEffects": "音符被擊中時及按住滑條期間，在預覽中顯示粒子與發光效果。",

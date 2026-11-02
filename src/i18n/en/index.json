@@ -1127,7 +1127,7 @@
                     "disabled": "Keeps them stacked."
                 }
             },
-            "confirmCloseUnsavedFile": "Asks before the page closes while changes are not saved to a project file, even when they are stored in this browser. When closing would lose edits, the editor always asks.",
+            "confirmCloseUnsavedFile": "Asks before the page closes while changes are not saved to a project file, even when they are stored in this browser.",
             "previewNoteSpeed": "Sets how fast notes approach in the preview, from 1 to 12.",
             "previewShowHitboxes": "Shows the areas used to judge notes and slides.",
             "previewShowEffects": "Shows particles and glows when notes are hit and while slides are held in the preview.",
