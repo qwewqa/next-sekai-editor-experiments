@@ -176,9 +176,9 @@ test('Save changes its binding and identity only after a verified write', async 
     await submitSave(b)
     await reached(b, 'revoked')
     expect((await sessionOf(b)).file).toBeUndefined()
-    const preBound = (await chainById(b, bChain.chainId))!
-    expect(preBound.replaced).toBeDefined()
-    expect(preBound.docId).toBe(bChain.docId)
+    const revoked = (await chainById(b, bChain.chainId))!
+    expect(revoked.replaced).toBeDefined()
+    expect(revoked.docId).toBe(bChain.docId)
     await release(b)
     await expect(notice(b).filter({ hasText: 'Saved to coconut (2).nxsp' })).toBeVisible()
 

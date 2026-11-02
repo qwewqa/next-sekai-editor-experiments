@@ -464,11 +464,11 @@ for (const state of ['empty', 'filled', 'missing', 'unreadable'] as const)
             }),
         ).catch((error) => error)
         assert.equal(t.offers.length, state === 'empty' ? 1 : 0)
+        assert.ok(result.error instanceof FileError)
         if (state === 'empty') {
-            assert.ok(result.error instanceof FileError)
             assert.equal(t.offers[0]?.lockHeld, false)
             assert.equal(t.offers[0]?.downloadable, false)
-        } else assert.ok(result.error instanceof FileError)
+        }
     })
 
 test('a picked project filled before the write is refused as changed', async () => {

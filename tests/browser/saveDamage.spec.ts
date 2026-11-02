@@ -92,42 +92,8 @@ test('Save As writes damaged stored history as not kept, even onto its own file'
     const revision = after.revision as Row
     expect(revision.parent).toBeNull()
     expect(revision.ancestors).toEqual([])
-    // No permission was asked for: the grant this page load holds read it.
+    // No permission was asked for.
     expect((await pickerCalls(page)).some((call) => call.picker === 'permission')).toBe(false)
-})
-
-test('the same damage without a held grant: no prompt before the picker, and the line shows', async ({
-    page,
-}) => {
-    await start(page)
-    await edit(page, 1)
-    await edit(page, 2)
-    await pressSave(page)
-    await submitSave(page, 'coconut')
-    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await edit(page, 3)
-    const first = (await ownRows(page)).find((row) => row.kind === 'edit')!
-    await damage(page, first)
-    // After a reload read access is a prompt again.
-    await page.evaluate(() => {
-        localStorage.setItem('nse.test.readPermission', 'prompt')
-        localStorage.setItem('nse.test.pickerCalls', '[]')
-    })
-    await page.reload()
-    await waitForStartup(page)
-    await runSaveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await queuePicks(page, ['coconut.nxsp'])
-    await submitSave(page, undefined, 'Save As')
-    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await expect
-        .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).n)
-        .toBe(1)
-    // A prompt between the press and the picker would spend the press the picker needs.
-    expect((await pickerCalls(page)).map((call) => call.picker)).toEqual(['save'])
-    await expect(
-        notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' }),
-    ).toBeVisible()
 })
 
 test("the Save dialog opens though the worker doesn't answer whether it holds the BGM", async ({

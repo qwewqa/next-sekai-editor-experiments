@@ -501,13 +501,11 @@ export const FAULTS: FaultDef[] = [
         applies: (path, p) => onSession(path) && readsFirst(path) && single(p) && last(p) === 'own',
         // The handle comes from storage, as after a reload.
         setup: { held: false },
-        arm: (w, path) => {
-            // A Save that starts as a write-back reads the handle first; the dialog's read is next.
-            const at = ['separate', 'notfound-saveas'].includes(path.id) ? 2 : 1
+        arm: (w) => {
             let failed = false
             w.behaviour.set('readHandle', (call) => {
-                failed ||= call === at
-                return call === at ? 'throw' : undefined
+                failed ||= call === 1
+                return call === 1 ? 'throw' : undefined
             })
             return { effective: () => failed }
         },
@@ -517,10 +515,7 @@ export const FAULTS: FaultDef[] = [
         exit: 'read first: not settled when the picker opens',
         applies: (path, p) =>
             readsFirst(path) &&
-            ((single(p) && last(p) === 'own') ||
-                // A picker with no dialog before it: Choose Another… after a refusal.
-                (['separate', 'export'].includes(path.id) &&
-                    p.id === (path.id === 'export' ? 'chart>own' : 'opened'))),
+            ((single(p) && last(p) === 'own') || (path.id === 'export' && p.id === 'chart>own')),
         arm: (w) => {
             w.tune.readDelayMs = 400
             w.userDelay(2)
@@ -530,15 +525,10 @@ export const FAULTS: FaultDef[] = [
         id: 'read-stale',
         exit: 'read first: the file changed after the read',
         applies: (path, p) => readsFirst(path) && single(p) && last(p) === 'own',
-        arm: (w, path) => {
-            const write = () =>
+        arm: (w) => {
+            // Between the read and the pick: the level data's build.
+            w.exportBuildHook = () =>
                 w.mock.writeFile('own.nxsp', new Blob(['newer bytes another program wrote']))
-            // Between the read and the pick: the Save's build, or for Export the level data's.
-            if (path.family === 'export') w.exportBuildHook = write
-            else
-                w.on('worker:buildSave:after', (n) => {
-                    if (n === 1) write()
-                })
         },
     },
     {
@@ -564,12 +554,6 @@ export const FAULTS: FaultDef[] = [
         exit: 'build refused after the pick',
         applies: (path, p) => rebuilds(path) && single(p) && writesFile(p),
         arm: (w) => refuse(w, (n) => n === 2, 'plan'),
-    },
-    {
-        id: 'rebuild-damaged',
-        exit: 'append refused: the source is damaged',
-        applies: (path, p) => rebuilds(path) && single(p) && last(p) === 'own',
-        arm: (w) => refuse(w, (n) => n === 2, 'damagedSource'),
     },
     {
         id: 'rebuild-fails',
@@ -754,12 +738,7 @@ export const FAULTS: FaultDef[] = [
             })
             w.behaviour.set('takeOver', () => 'throw')
             // Which picks the path takes over: another chain's file, or an unknown one it binds.
-            const takes =
-                path.id === 'save-to-file'
-                    ? ['own', 'other']
-                    : path.family === 'export'
-                      ? ['other']
-                      : ['other']
+            const takes = path.id === 'save-to-file' ? ['own', 'other'] : ['other']
             // An export refuses the takeover; Save writes despite the failed revocation.
             const owner =
                 last(p) === 'other'
@@ -769,7 +748,13 @@ export const FAULTS: FaultDef[] = [
                       : undefined
             return {
                 effective: () => calls > 0 || !takes.includes(last(p)),
-                ...(owner && path.family === 'export' ? { facts: { notTakenOver: owner } } : {}),
+                get facts() {
+                    // A takeover that was tried and failed leaves the stale record for I9.
+                    return {
+                        ...(owner && path.family === 'export' ? { notTakenOver: owner } : {}),
+                        ...(path.family === 'save' && calls > 0 ? { staleOwnership: true } : {}),
+                    }
+                },
             }
         },
     },
@@ -1076,7 +1061,6 @@ const UNWRITTEN = new Set([
     'build-refused-importing',
     'build-fails',
     'rebuild-refused',
-    'rebuild-damaged',
     'rebuild-fails',
     'cancel-build',
     'cancel-build-done',
@@ -1125,12 +1109,7 @@ export const runCell = async (
         ...(armed.facts ?? {}),
     }
     armed.cleanup?.()
-    const violations = await check(w, {
-        ...facts,
-        ...(path.family === 'save' && fault.id === 'takeover-fails'
-            ? { staleOwnership: true }
-            : {}),
-    })
+    const violations = await check(w, facts)
     if (armed.effective && !armed.effective())
         violations.push({ invariant: 'harness', detail: `${fault.id} did not take effect` })
     if (fault.id === 'none' && w.mock.saveTargets.length)

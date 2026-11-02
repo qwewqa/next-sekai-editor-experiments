@@ -130,7 +130,6 @@ test('Save As onto its own file creates a new document', async ({ page }) => {
     await queuePicks(page, ['coconut.nxsp'])
     await submitSave(page, undefined, 'Save As')
     await expect.poll(async () => (await projectOf(page, 'coconut.nxsp')).id).not.toBe(first.id)
-    expect((await projectOf(page, 'coconut.nxsp')).id).not.toBe(first.id)
     await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps' })).toHaveCount(0)
 })
 

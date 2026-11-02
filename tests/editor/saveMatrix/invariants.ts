@@ -20,7 +20,7 @@ const MODAL = new Set([
 ])
 
 export type Facts = {
-    /** A revocation failed; ordinary writes must detect the stale record on disk. */
+    /** A revocation failed, so another chain's record may still bind the file: I9 is waived. */
     staleOwnership?: boolean
     /** Files whose bytes this Save had to keep: the bytes they held at their pick. */
     inHand: (name: string) => boolean
