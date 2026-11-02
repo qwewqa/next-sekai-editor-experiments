@@ -6,9 +6,10 @@ import { wav } from './levelInfoFiles'
 import { resource } from './previewResourceFixture'
 
 // Firefox has no save picker, so the file is staged in OPFS and the Ready state's Download
-// delivers it. It makes WebM. Firefox is slower than Chromium, so the clip is three seconds.
-const seconds = 3
+// delivers it. It makes WebM. Firefox is slower than Chromium, so the clips are three seconds
+// or shorter.
 const frameRate = 30
+const threeSeconds = 3 * frameRate
 
 test.skip(({ browserName }) => browserName !== 'firefox', 'Firefox behaviour')
 
@@ -36,18 +37,19 @@ const setBgm = (page: Page, bytes: number[]) =>
         history.replaceState({ ...history.state.value, bgm: { offset: 0, ...decoded } })
     }, bytes)
 
-const openClip = async (page: Page) => {
+const openClip = async (page: Page, frames = threeSeconds) => {
     const dialog = await openVideoDialog(page, { production: true })
     await dialog.getByRole('combobox', { name: 'Resolution' }).selectOption({ label: '720p' })
     for (const [name, value] of [
         ['In', '0'],
-        ['Out', String(seconds)],
+        ['Out', String(frames / frameRate)],
     ]) {
         const field = dialog.getByRole('textbox', { name, exact: true })
         await field.fill(value!)
         await field.press('Enter')
     }
-    await expect(dialog.locator('[data-export-summary]')).toContainText('00:03.000')
+    const length = (frames / frameRate).toFixed(3).padStart(6, '0')
+    await expect(dialog.locator('[data-export-summary]')).toContainText(`00:${length}`)
     await dialog.locator('[data-export-advanced]').click()
     await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption('webm')
     return dialog
@@ -91,20 +93,24 @@ const finish = async (page: Page, testInfo: TestInfo) => {
 
 type Media = Awaited<ReturnType<typeof finish>>
 
-const expectVideo = (media: Media) => {
+const expectVideo = (media: Media, frames = threeSeconds) => {
     expect(media.format).toBe('WebM')
     expect(media.videoCodec).toBe('vp9')
     expect(media.width).toBe(1280)
     expect(media.height).toBe(720)
-    expect(media.frames).toBe(seconds * frameRate)
+    expect(media.frames).toBe(frames)
     expect(media.firstVideo).toBe(0)
-    expect(media.videoEnd).toBeCloseTo(seconds, 3)
+    // WebM timestamps are whole milliseconds.
+    expect(Math.abs(media.videoEnd - frames / frameRate)).toBeLessThan(0.0011)
 }
 
-const expectAudio = (media: Media) => {
+const expectAudio = (media: Media, frames = threeSeconds) => {
     expect(media.trackCount).toBe(2)
     expect(media.audio?.codec).toBe('opus')
-    expect(media.audio?.end).toBeCloseTo(seconds, 1)
+    // The sound runs to the clip's end, then less than one 20 ms packet of padding.
+    const over = media.audio!.end - frames / frameRate
+    expect(over).toBeGreaterThan(-0.0011)
+    expect(over).toBeLessThan(0.0211)
 }
 
 test.describe('Export Video on Firefox', () => {
@@ -143,12 +149,13 @@ test.describe('Export Video on Firefox', () => {
         const silent = wav(12)
         silent.fill(0, 44)
         await setBgm(page, [...silent])
-        const dialog = await openClip(page)
+        // At 32 frames, the Opus packets end less than the pre-skip after the clip.
+        const dialog = await openClip(page, 32)
         await dialog.getByRole('switch', { name: 'SFX' }).click()
         await expect(dialog.getByRole('switch', { name: 'BGM', exact: true })).toBeChecked()
         const media = await finish(page, testInfo)
-        expectVideo(media)
-        expectAudio(media)
+        expectVideo(media, 32)
+        expectAudio(media, 32)
         expect(media.audio?.peak).toBeLessThan(1e-4)
     })
 

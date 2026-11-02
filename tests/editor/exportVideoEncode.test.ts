@@ -137,7 +137,7 @@ test('AAC packets put the pad and priming before zero and retain final padding',
     const trim = adapter.finish()
     assert.deepEqual(
         emitted.filter((x) => x.track === 'audio').map((x) => x.packet.timestamp),
-        [0, 21333, 42667].map((time) => time - (2048 * 1e6) / AUDIO_RATE),
+        [0, 1024, 2048].map((sample) => ((sample - 2048) * 1e6) / AUDIO_RATE),
     )
     assert.equal(trim.startSamples, 2048)
     assert.equal(trim.playableSamples, 800)
@@ -171,6 +171,44 @@ test('Opus pre-skip and negative timestamps include the pad', () => {
     assert.equal(opusPreSkip(original), 312)
     assert.equal(trim.paddingSamples, 744)
     assert.throws(() => audioAccounting(312, 800, 1000), /Invalid/)
+})
+
+test('Opus packets are placed end to end at every clip length, also when stamped early by the pre-skip after the first, as Firefox does', () => {
+    const config = {
+        codec: 'opus',
+        sampleRate: 48000,
+        numberOfChannels: 2,
+        description: opusHead(312),
+    }
+    // At both rates, 1 to 6 frames cover every remainder after whole 960-sample packets.
+    for (const fps of [30, 60] as const)
+        for (let frames = 1; frames <= 6; frames++)
+            for (const early of [0, 312]) {
+                const samples = clipSamples(frames, fps)
+                const count = Math.ceil((AUDIO_PAD + 312 + samples) / 960)
+                const emitted: MuxInput[] = []
+                const adapter = createAudioPacketAdapter({
+                    codec: 'opus',
+                    samples,
+                    emit: (input) => emitted.push(input),
+                })
+                for (let i = 0; i < count; i++)
+                    adapter.output(
+                        chunk(sampleTimestamp(i * 960 - AUDIO_PAD - (i ? early : 0)), 20000),
+                        i ? undefined : { decoderConfig: config },
+                    )
+                const trim = adapter.finish()
+                const packets = emitted.flatMap((x) => (x.track === 'audio' ? [x.packet] : []))
+                assert.deepEqual(
+                    packets.map((packet) => [packet.timestamp, packet.duration]),
+                    Array.from({ length: count }, (_, i) => [
+                        ((i * 960 - AUDIO_PAD - 312) * 1e6) / AUDIO_RATE,
+                        20000,
+                    ]),
+                )
+                assert.equal(trim.endSample, AUDIO_PAD + 312 + samples)
+                assert.ok(trim.paddingSamples >= 0 && trim.paddingSamples < 960)
+            }
 })
 
 test('video packets retain the encoder color metadata without a replacement tag', () => {

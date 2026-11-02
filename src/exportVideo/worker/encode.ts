@@ -147,9 +147,8 @@ export const createAudioPacketAdapter = (options: {
     aacDelay?: number
     emit: (input: MuxInput) => void
 }) => {
-    let firstTimestamp: number | undefined
     let delay = options.codec === 'aac' ? options.aacDelay : undefined
-    let encodedEnd = 0
+    let encodedSamples = 0
     let configured = false
     let ended = false
     return {
@@ -175,23 +174,21 @@ export const createAudioPacketAdapter = (options: {
                 configured = true
             }
             if (!configured || delay === undefined) throw new Error('Audio timing is unknown')
-            const timing =
-                firstTimestamp === undefined ? audioTiming(delay, options.samples) : undefined
-            firstTimestamp ??= chunk.timestamp
-            const packet = packetOf(chunk, firstTimestamp)
-            if (packet.timestamp < 0) throw new Error('Audio packets are out of order')
-            encodedEnd = Math.max(encodedEnd, packet.timestamp + packet.duration)
-            packet.timestamp -= ((AUDIO_PAD + delay) * 1e6) / AUDIO_RATE
+            const timing = encodedSamples === 0 ? audioTiming(delay, options.samples) : undefined
+            // Packets are placed end to end by their durations. Firefox's Opus timestamps after
+            // the first packet are early by the pre-skip.
+            const packet = packetOf(chunk)
+            const samples = Math.round((packet.duration * AUDIO_RATE) / 1e6)
+            if (samples <= 0) throw new Error('Invalid audio packet duration')
+            packet.timestamp = ((encodedSamples - AUDIO_PAD - delay) * 1e6) / AUDIO_RATE
+            packet.duration = (samples * 1e6) / AUDIO_RATE
+            encodedSamples += samples
             options.emit({ track: 'audio', packet, decoderConfig: config, timing })
         },
         finish() {
-            if (ended || firstTimestamp === undefined || delay === undefined)
+            if (ended || encodedSamples === 0 || delay === undefined)
                 throw new Error('Audio output is incomplete')
-            const trim = audioAccounting(
-                delay,
-                options.samples,
-                Math.round((encodedEnd * AUDIO_RATE) / 1e6),
-            )
+            const trim = audioAccounting(delay, options.samples, encodedSamples)
             options.emit({ track: 'audioEnd', paddingSamples: trim.paddingSamples })
             ended = true
             return trim
