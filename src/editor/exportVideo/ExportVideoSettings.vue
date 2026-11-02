@@ -14,7 +14,7 @@ import { interpolateRaw } from '../../utils/interpolate'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import type { ExportDialog, Unavailable } from './dialog'
 
-// The settings column: Main, then Advanced folded away (design: Export Video, settings model).
+// The settings column: Main, then Advanced folded away.
 const props = defineProps<{ dialog: ExportDialog }>()
 const d = props.dialog
 const form = d.form

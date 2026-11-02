@@ -55,7 +55,7 @@ const stage = useTemplateRef<{
 }>('stage')
 const footer = useTemplateRef<{ focusFor(phase: Phase): void }>('footer')
 
-// --- The form: short, phone landscape, two columns or one (design: layout per device class).
+// --- The form: short, phone landscape, two columns or one.
 type Form = StageLayout['form']
 const layout = ref<StageLayout>({
     form: 'two',
