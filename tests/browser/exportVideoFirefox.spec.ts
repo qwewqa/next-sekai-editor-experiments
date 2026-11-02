@@ -65,6 +65,18 @@ const finish = async (page: Page, testInfo: TestInfo) => {
     const path = testInfo.outputPath('export.webm')
     await download.saveAs(path)
     const bytes = await readFile(path)
+    // The download comes from the staged file, not a fallback held in memory.
+    const staged = await page.evaluate(async () => {
+        const directory = await (
+            await navigator.storage.getDirectory()
+        ).getDirectoryHandle('export-video')
+        const sizes: number[] = []
+        for await (const [name, handle] of directory.entries())
+            if (name.endsWith('.webm') && handle.kind === 'file')
+                sizes.push((await (handle as FileSystemFileHandle).getFile()).size)
+        return sizes
+    })
+    expect(staged).toEqual([bytes.length])
     const media = await page.evaluate(
         async (bytes) => {
             const { readTracks } = await import('/tests/helpers/readVideo.ts')
