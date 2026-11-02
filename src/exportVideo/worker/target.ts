@@ -189,6 +189,22 @@ export const openPickedTarget = async (
     return output
 }
 
+/** Safari cannot send a file handle to a worker, so the worker finds the staged file by name. */
+export const openStagedFile = async (
+    name: string,
+    signal?: AbortSignal,
+): Promise<PositionTarget> => {
+    let handle: FileSystemFileHandle
+    try {
+        const root = await navigator.storage.getDirectory()
+        const directory = await root.getDirectoryHandle('export-video')
+        handle = await directory.getFileHandle(name)
+    } catch (error) {
+        throw fileErrorOf(error)
+    }
+    return openStagedTarget(handle, signal)
+}
+
 /** The owner deletes the staged file through videoOutput.remove after this handle closes. */
 export const openStagedTarget = async (
     handle: FileSystemFileHandle,

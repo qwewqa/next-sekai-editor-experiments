@@ -170,7 +170,7 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         destination: async (_signal, id) => {
             const stage = await webVideoOutput.stage(id, 'webm')
             return {
-                worker: { kind: 'staged', handle: stage.handle },
+                worker: { kind: 'staged', name: stage.handle.name },
                 ready: {
                     file: () => webVideoOutput.file(id),
                     deliver: (file, how) => webVideoOutput.deliver(file, 'test.webm', how),
@@ -347,13 +347,13 @@ export const openExportVideoTest = async (options: DialogTestOptions = {}) => {
                       }
                       if (options.route === 'done')
                           return {
-                              worker: { kind: 'staged', handle: stage.handle },
+                              worker: { kind: 'staged', name: stage.handle.name },
                               // A finished file is removed at once: the test checks only the dialog.
                               discard,
                               ready: undefined,
                           }
                       return {
-                          worker: { kind: 'staged', handle: stage.handle },
+                          worker: { kind: 'staged', name: stage.handle.name },
                           ready: {
                               file: () => webVideoOutput.file(id),
                               deliver: (file, how) =>

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { openPickedTarget, openStagedTarget } from '../../src/editor/exportVideo/worker/target'
+import {
+    openPickedTarget,
+    openStagedFile,
+    openStagedTarget,
+} from '../../src/editor/exportVideo/worker/target'
 import { restoreExportError, serializeExportError } from '../../src/exportVideo/error'
 import { memoryVideoStore } from '../../src/platform/mockVideoOutput'
 
@@ -225,4 +229,44 @@ test('a staged write handles partial writes and releases its access handle after
     await output.abort()
     assert.deepEqual(positions, [0, 2])
     assert.equal(closed, 1)
+})
+
+test('a staged file opens from its name in the export-video directory', async () => {
+    const opened: string[] = []
+    const handle = {
+        createSyncAccessHandle: () =>
+            Promise.resolve({
+                write: (data: Uint8Array) => data.length,
+                truncate: () => undefined,
+                flush: () => undefined,
+                close: () => undefined,
+            }),
+    }
+    const root = {
+        getDirectoryHandle: (name: string) => {
+            opened.push(name)
+            return Promise.resolve({
+                getFileHandle: (file: string) => {
+                    opened.push(file)
+                    if (file !== 'a1.mp4') throw new DOMException('Missing', 'NotFoundError')
+                    return Promise.resolve(handle)
+                },
+            })
+        },
+    }
+    const saved = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    Object.defineProperty(globalThis, 'navigator', {
+        configurable: true,
+        value: { storage: { getDirectory: () => Promise.resolve(root) } },
+    })
+    try {
+        const output = await openStagedFile('a1.mp4')
+        await output.write(new Uint8Array([1]), 0)
+        await output.close()
+        assert.deepEqual(opened, ['export-video', 'a1.mp4'])
+        await assert.rejects(openStagedFile('b2.mp4'), { code: 'not-found' })
+    } finally {
+        if (saved) Object.defineProperty(globalThis, 'navigator', saved)
+        else Reflect.deleteProperty(globalThis, 'navigator')
+    }
 })

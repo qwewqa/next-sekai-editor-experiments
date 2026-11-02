@@ -9,7 +9,7 @@ import type { SinkConfig } from './worker/sink'
 
 export type ExportTarget =
     | { kind: 'picked'; pick: { handle: FileSystemFileHandle; lastModified: number } }
-    | { kind: 'staged'; handle: FileSystemFileHandle }
+    | { kind: 'staged'; name: string }
     | { kind: 'memory'; limit: number }
 
 export type ExportSettings = CodecSettings &

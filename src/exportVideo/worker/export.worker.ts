@@ -15,6 +15,15 @@ export type WorkerOutput = {
     abort(): Promise<void>
 }
 
+/** The in-memory route's finished file moves to the page instead of being copied. */
+const transferableBuffer = (result: unknown): Transferable[] =>
+    typeof result === 'object' &&
+    result &&
+    'buffer' in result &&
+    result.buffer instanceof ArrayBuffer
+        ? [result.buffer]
+        : []
+
 /** The muxer supplies the sink and the target's commit and abort methods. */
 export const installExportWorker = (
     open: (
@@ -155,7 +164,7 @@ export const installExportWorker = (
             await output.commit()
             started = false
             committing = false
-            post({ type: 'done', result })
+            post({ type: 'done', result }, transferableBuffer(result))
         } catch (error) {
             let cleanupError: unknown
             try {

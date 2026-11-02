@@ -1,7 +1,7 @@
 import { installExportWorker } from '../../exportVideo/worker/export.worker'
 import { createTestSink } from '../../exportVideo/worker/testSink'
 import { testKeysOpen } from '../../platform/testKeys'
-import { openStagedTarget } from './worker/target'
+import { openStagedFile } from './worker/target'
 
 if (testKeysOpen) {
     const target = self.name
@@ -17,8 +17,7 @@ if (testKeysOpen) {
     }
     installExportWorker(async (start, destination, signal) => {
         if (destination.kind !== 'staged') throw new Error('Test sink requires a staged target')
-        const { handle } = destination
-        const target = await openStagedTarget(handle, signal)
+        const target = await openStagedFile(destination.name, signal)
         const sink = createTestSink(start)
         let position = 0
         return {

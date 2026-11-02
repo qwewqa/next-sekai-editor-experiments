@@ -14,7 +14,7 @@ import type { ExportTarget } from '../types'
 import { aacPacketBound } from './encode'
 import type { WorkerOutput } from './export.worker'
 import type { PacketSink, SinkConfig } from './sink'
-import { openPickedTarget, openStagedTarget, type PositionTarget } from './target'
+import { openPickedTarget, openStagedFile, type PositionTarget } from './target'
 
 export type MuxResult = { frames: number; paddingSamples?: number; buffer?: ArrayBuffer }
 
@@ -106,7 +106,7 @@ export const openMuxOutput = async (
                       (file =
                           destination.kind === 'picked'
                               ? await openPickedTarget(destination.pick, signal)
-                              : await openStagedTarget(destination.handle, signal)),
+                              : await openStagedFile(destination.name, signal)),
                   )
         target.on('write', ({ end }) => {
             if (destination.kind === 'memory' && end > destination.limit)

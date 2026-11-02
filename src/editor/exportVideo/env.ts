@@ -68,7 +68,7 @@ export const pageDestination = async (request: DestinationRequest): Promise<JobD
         case 'staged': {
             const { id, stage, output } = destination
             return {
-                worker: { kind: 'staged', handle: stage.handle },
+                worker: { kind: 'staged', name: stage.handle.name },
                 ready: {
                     file: () => output.file(id),
                     deliver: (file, how) => output.deliver(file, request.name, how),
