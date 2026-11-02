@@ -17,8 +17,8 @@ import { clipSamples } from './timing'
 import {
     closeExportAssets,
     type ExportAssets,
+    type ExportScene,
     type ExportSettings,
-    type ExportStart,
     type ExportTarget,
 } from './types'
 import { createAacCalibration } from './worker/encode'
@@ -120,7 +120,7 @@ export const createExportJob = (options: {
     let visibleElapsed = 0
     let firstProgress: number | undefined
     let host: ReturnType<typeof createExportHost> | undefined
-    let preparation: Promise<ExportStart> | undefined
+    let preparation: Promise<ExportScene> | undefined
     let lastView: Promise<unknown> | undefined
     let encoding = false
     const set = (value: JobState) => {
@@ -178,27 +178,10 @@ export const createExportJob = (options: {
             let assets: ExportAssets | undefined
             try {
                 signal.throwIfAborted()
-                const samples = clipSamples(settings.frames, settings.frameRate)
-                const codecs = await abortable(options.services.probes.resolve(settings), signal)
-                if (!codecs.supported)
-                    throw new Error(`Encoder configuration unavailable: ${codecs.reason}`)
                 assets = await abortable(options.assets(signal), signal, closeExportAssets)
-                const aacDelay =
-                    codecs.audio?.codec === 'mp4a.40.2'
-                        ? await abortable(options.services.calibrate(codecs.audio), signal)
-                        : undefined
                 const mirror = createMirrorSender().diff(snapshot)
                 if (!mirror) throw new Error('Export snapshot is missing')
-                const start: ExportStart = {
-                    settings,
-                    assets,
-                    mirror,
-                    codecs,
-                    aacDelay,
-                    frames: settings.frames,
-                    frameRate: settings.frameRate,
-                    samples,
-                }
+                const scene: ExportScene = { settings, assets, mirror }
                 host = createExportHost(
                     options.worker?.() ??
                         new Worker(new URL('./worker/mux.worker.ts', import.meta.url), {
@@ -206,10 +189,10 @@ export const createExportJob = (options: {
                         }),
                 )
                 host.visibility(document.hidden)
-                const ready = host.prepare(start)
+                const ready = host.prepare(scene)
                 assets = undefined
                 await abortable(ready, signal)
-                return start
+                return scene
             } catch (error) {
                 if (assets) closeExportAssets(assets)
                 host?.dispose()

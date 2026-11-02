@@ -36,9 +36,9 @@ export const assetTransfers = (assets: ExportAssets): Transferable[] => [
     ...(assets.particle ? [assets.particle.texture] : []),
     ...(assets.background ? [assets.background.texture] : []),
 ]
-export type ExportStart = SinkConfig & {
+export type ExportScene = {
     mirror: MirrorDiff
     settings: ExportSettings
     assets: ExportAssets
-    aacDelay?: number
 }
+export type ExportStart = SinkConfig & ExportScene & { aacDelay?: number }

@@ -229,5 +229,5 @@ test('video preparation and configuration finish before destination selection', 
     expect(result.phase).toBe('ready')
     expect(result.preparationTracked).toBe(true)
     expect(result.preparedAtDestination).toBe(true)
-    expect(result.configCallsAtDestination).toBe(2)
+    expect(result.configCallsAtDestination).toBe(1)
 })

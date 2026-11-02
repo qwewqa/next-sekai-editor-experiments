@@ -5,13 +5,13 @@ import { linkProgram } from '../../preview/program'
 import { createRenderTarget } from '../../preview/renderTarget'
 import { applyMirror } from '../../preview/worker/mirror'
 import { frameTimestamp } from '../timing'
-import { closeExportAssets, type ExportSettings, type ExportStart } from '../types'
+import { closeExportAssets, type ExportScene, type ExportSettings } from '../types'
 import { STRIPES } from './encoderColor'
 
 export class GraphicsError extends Error {}
 
-export const createExportRenderer = (start: ExportStart, fail: (error: unknown) => void) => {
-    const { settings: s, assets } = start
+export const createExportRenderer = (scene: ExportScene, fail: (error: unknown) => void) => {
+    const { settings: s, assets } = scene
     const canvas = new OffscreenCanvas(s.width, s.height)
     const renderer = (() => {
         try {
@@ -65,7 +65,7 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
         )
         const alpha = gl.getUniformLocation(fade, 'u_alpha')
         const build = createPreviewChartBuilder()
-        const mirror = applyMirror(undefined, start.mirror)
+        const mirror = applyMirror(undefined, scene.mirror)
         const draw = (time: number, clipTime?: number, settings: ExportSettings = s) => {
             try {
                 const s = settings

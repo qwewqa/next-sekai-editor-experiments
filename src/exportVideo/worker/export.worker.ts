@@ -4,7 +4,7 @@ import { exportError, serializeExportError } from '../error'
 import { readGraphicsLimits } from '../graphics'
 import type { FromExportWorker, ToExportWorker } from '../protocol'
 import type { AudioBlock } from '../timing'
-import type { ExportStart, ExportTarget } from '../types'
+import type { ExportScene, ExportStart, ExportTarget } from '../types'
 import { GraphicsError, createExportRenderer } from './renderer'
 import { runExport } from './run'
 import type { PacketSink } from './sink'
@@ -43,7 +43,7 @@ export const installExportWorker = (
     let started = false
     let cancelled = false
     let hidden = false
-    let prepared: ExportStart | undefined
+    let prepared: ExportScene | undefined
     let renderer: ReturnType<typeof createExportRenderer> | undefined
     let committing = false
     let block: ((value: AudioBlock | undefined) => void) | undefined
@@ -70,9 +70,9 @@ export const installExportWorker = (
             ),
         })
     }
-    const prepare = (start: ExportStart) => {
-        prepared = start
-        renderer = createExportRenderer(start, (error) => {
+    const prepare = (scene: ExportScene) => {
+        prepared = scene
+        renderer = createExportRenderer(scene, (error) => {
             controller.abort(error)
             if (!started) failed(error)
         })
@@ -95,10 +95,12 @@ export const installExportWorker = (
         let output: WorkerOutput | undefined
         try {
             if (message.start) prepare(message.start)
-            const start = prepared
-            if (!start || !renderer) throw new Error('Export renderer is not prepared')
-            Object.assign(start.settings, message.config.settings)
-            Object.assign(start, { ...message.config, settings: start.settings })
+            if (!prepared || !renderer) throw new Error('Export renderer is not prepared')
+            Object.assign(prepared.settings, message.config.settings)
+            const start: ExportStart = Object.assign(prepared, {
+                ...message.config,
+                settings: prepared.settings,
+            })
             output = await open(start, message.destination, controller.signal)
             controller.signal.throwIfAborted()
             const faults = testKeysOpen ? message.faults : undefined
@@ -191,7 +193,7 @@ export const installExportWorker = (
         } else if (data.type === 'visibility') hidden = data.hidden
         else if (data.type === 'prepare') {
             try {
-                prepare(data.start)
+                prepare(data.scene)
                 post({ type: 'prepared' })
             } catch (error) {
                 failed(error)

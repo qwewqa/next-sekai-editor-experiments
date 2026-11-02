@@ -1,7 +1,7 @@
 import type { ExportFailure } from './error'
 import type { GraphicsLimits } from './graphics'
 import type { AudioBlock } from './timing'
-import type { ExportSettings, ExportStart, ExportTarget } from './types'
+import type { ExportScene, ExportSettings, ExportStart, ExportTarget } from './types'
 
 export type ExportFaults = {
     failWrite?: boolean
@@ -11,7 +11,7 @@ export type ExportFaults = {
 }
 export type ToExportWorker =
     | { type: 'limits' }
-    | { type: 'prepare'; start: ExportStart }
+    | { type: 'prepare'; scene: ExportScene }
     | { type: 'view'; time: number; settings: ExportSettings }
     | { type: 'visibility'; hidden: boolean }
     | {

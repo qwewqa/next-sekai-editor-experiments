@@ -1,7 +1,13 @@
 import { exportError, restoreExportError } from './error'
 import type { ExportFaults, FromExportWorker, ToExportWorker } from './protocol'
 import type { AudioBlock } from './timing'
-import { assetTransfers, type ExportSettings, type ExportStart, type ExportTarget } from './types'
+import {
+    assetTransfers,
+    type ExportScene,
+    type ExportSettings,
+    type ExportStart,
+    type ExportTarget,
+} from './types'
 
 export const createExportHost = (worker: Worker) => {
     let running = false
@@ -62,10 +68,10 @@ export const createExportHost = (worker: Worker) => {
         visibility(hidden: boolean) {
             post({ type: 'visibility', hidden })
         },
-        prepare(start: ExportStart) {
+        prepare(scene: ExportScene) {
             return new Promise<void>((resolve, reject) => {
                 preparedWait = { resolve, reject }
-                post({ type: 'prepare', start }, assetTransfers(start.assets))
+                post({ type: 'prepare', scene }, assetTransfers(scene.assets))
             })
         },
         view(time: number, settings: ExportSettings) {
