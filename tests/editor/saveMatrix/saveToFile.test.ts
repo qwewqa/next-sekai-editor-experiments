@@ -1,9 +1,20 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { test, type TestContext } from 'node:test'
+import type { JournalApplyBatch } from '../../../src/local/journal/apply'
+import type { OpenDeps } from '../../../src/local/startup/open'
+import type { RecoveryContext } from '../../../src/local/startup/steps'
+import type { JournalFound } from '../../../src/platform/types'
 import { createWorld, flow, sameBytes, settle, type Setup, type World } from './world'
 
 const { FileError } = await import('../../../src/platform')
 const { diskFinding, setDiskFinding } = await import('../../../src/editor/file/state')
+const { i18n } = await import('../../../src/i18n')
+const { setSessionContext } = await import('../../../src/local/startup/api')
+const { journalContent } = await import('../../../src/local/journal/content')
+const { JOURNAL_VERSION } = await import('../../../src/local/journal/format')
+const { RECORDS_V, SESSION_V } = await import('../../../src/local/records/version')
+const { goldenChart, stateOf } = await import('../../local/records/charts')
+const { initialStep } = await import('../../helpers/historySteps')
 
 // In Recent Sessions' Save of a session that is not open, every button after a failed write
 // acts on that session, and the file records the name the picker gave it. Try Again
@@ -172,3 +183,145 @@ for (const [how, rebuild] of [
         )
         assert.ok(sameBytes(written, w.builtLog[0]!.bytes), 'the first build is written whole')
     })
+
+// A tab that had the stored session open died with edits only its journal holds. The Save
+// replays that journal first, as Restore does, and never writes the stored session without them.
+
+/** That journal, as the dead tab wrote it. */
+const journalText = () =>
+    JSON.stringify({
+        journalVersion: JOURNAL_VERSION,
+        kind: 'journal',
+        recordsV: RECORDS_V,
+        appVersion: 'test',
+        writtenAt: 1,
+        sessionId: 'session-other',
+        seq: 2,
+        descriptor: {
+            v: SESSION_V,
+            origin: 'new',
+            startedAt: 0,
+            chainId: 'chain-other',
+            docId: 'doc-other',
+            lineageId: 'lineage-other',
+        },
+        ...journalContent(stateOf(goldenChart())),
+        stack: {
+            keep: 0,
+            context: { head: initialStep(), headIndex: 0, dropped: [], omitted: 0 },
+            head: true,
+            index: 0,
+        },
+    })
+
+type Pending = {
+    text?: string
+    applyJournal?: (batch: JournalApplyBatch) => Promise<unknown>
+    read?: () => Promise<JournalFound[]>
+}
+
+/** Startup's context with `text` pending for the stored session; the real replay runs over it. */
+const pending = (t: TestContext, w: World, setup: Pending = {}) => {
+    const applied: JournalApplyBatch[] = []
+    let journals: JournalFound[] = [
+        {
+            sessionId: 'session-other',
+            from: 'journal.session-other',
+            text: setup.text ?? journalText(),
+        },
+    ]
+    setSessionContext(
+        { locks: w.mock.locks } as unknown as OpenDeps,
+        {
+            status: { mode: 'stored' },
+            locks: w.mock.locks,
+            journal: {
+                read: setup.read ?? (() => Promise.resolve(journals)),
+                remove: (found: JournalFound) => {
+                    journals = journals.filter((each) => each !== found)
+                },
+            },
+            worker: {
+                applyJournal: (batch: JournalApplyBatch) => {
+                    applied.push(batch)
+                    return (
+                        setup.applyJournal?.(batch) ??
+                        Promise.resolve({ kind: 'applied', created: false })
+                    )
+                },
+                keepRecovered: () => Promise.resolve(true),
+            },
+            appVersion: 'test',
+            operations: { recovered: () => 'Recovered' },
+            outcomes: [],
+        } as unknown as RecoveryContext,
+    )
+    t.after(() => {
+        journals = []
+    })
+    return { applied, left: () => journals.length }
+}
+
+for (const [how, setup, message] of [
+    [
+        'failed to apply',
+        { applyJournal: () => Promise.reject(new Error('QuotaExceededError')) },
+        () => i18n.value.save.sessionUnavailable,
+    ],
+    [
+        'could not be listed',
+        { read: () => Promise.reject(new Error('SecurityError')) },
+        () => i18n.value.save.sessionUnavailable,
+    ],
+    [
+        'a newer build wrote',
+        { text: JSON.stringify({ journalVersion: JOURNAL_VERSION + 1 }) },
+        () => i18n.value.load.sessionLater,
+    ],
+] as const)
+    test(`Recent Sessions' Save of a session whose journal ${how} stops before the picker`, async (t) => {
+        const { w } = await world()
+        const journal = pending(t, w, setup)
+        await flow.saveToFile('session-other')
+        await settle()
+        assert.deepEqual(kinds(w, 'error'), [[message()]])
+        assert.deepEqual(kinds(w, 'saveDialog'), [])
+        assert.deepEqual(w.writes, [])
+        assert.deepEqual(kinds(w, 'saved'), [])
+        assert.equal(journal.left(), 1, 'the journal stays for a later try')
+    })
+
+test("Recent Sessions' Save of a session whose journal was kept as a recovery session saves that one, and Save As after a failure saves it again", async (t) => {
+    const r = await world()
+    const { w, builds } = r
+    const journal = pending(t, w, {
+        applyJournal: (batch) =>
+            Promise.resolve({ kind: 'recovery', ...batch.recovery, why: 'continued elsewhere' }),
+    })
+    failOnce(w, 'fresh.nxsp', () => new FileError('no-space', 'The write failed'))
+    w.pick('fresh.nxsp', 'unknown.nxsp')
+    w.answers.saveDialog.push(answer('fresh.nxsp'), answer('unknown.nxsp'))
+    w.answers.failed.push('saveAs')
+    await flow.saveToFile('session-other')
+    await settle()
+    const kept = journal.applied[0]?.recovery.sessionId
+    assert.ok(kept)
+    assert.equal(journal.left(), 0)
+    assert.ok(builds.length > 1)
+    assert.deepEqual(new Set(builds.map((build) => build.target.sessionId)), new Set([kept]))
+    assert.deepEqual(kinds(w, 'saved'), [['unknown.nxsp']])
+})
+
+test("Recent Sessions' Save of a session whose journal this build cannot read saves the session as stored", async (t) => {
+    const r = await world()
+    const { w } = r
+    const journal = pending(t, w, { text: 'not json' })
+    w.pick('fresh.nxsp')
+    w.answers.saveDialog.push(answer('fresh.nxsp'))
+    await flow.saveToFile('session-other')
+    await settle()
+    assert.deepEqual(journal.applied, [])
+    assert.equal(journal.left(), 0, 'its bytes went to Local Data')
+    await onlyStored(r)
+    assert.deepEqual(kinds(w, 'saved'), [['fresh.nxsp']])
+})
