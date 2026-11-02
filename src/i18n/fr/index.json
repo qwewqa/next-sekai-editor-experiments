@@ -2805,7 +2805,7 @@
     }
   },
   "file": {
-    "replaced": "« {0} » a été remplacé. La sauvegarde créera un fichier séparé.",
+    "replaced": "« {0} » a été remplacé. La sauvegarde créera un fichier séparé.",
     "downloaded": "{0} · téléchargé {1}",
     "opened": "{0} · ouvert {1}"
   },

@@ -390,18 +390,18 @@ test.describe('the Save dialog', () => {
         await seed(context)
         await visit(page)
         await openSave(page, {
-            lines: ['“coconut.nxsp” was replaced from another tab or window.'],
+            lines: ['“coconut.nxsp” was replaced. Saving will create a separate file.'],
             storageLine: 'Safari deletes stored work after 7 days without a visit.',
             peeking: true,
         })
         await expect(dialog(page).locator('[data-save-line]')).toHaveText(
-            '“coconut.nxsp” was replaced from another tab or window.',
+            '“coconut.nxsp” was replaced. Saving will create a separate file.',
         )
         // File Name's description opens with the situation line, then the Export note.
         await expect(
             dialog(page).getByRole('textbox', { name: 'File Name' }),
         ).toHaveAccessibleDescription(
-            /^“coconut\.nxsp” was replaced from another tab or window\..*use Export Level Data…/,
+            /^“coconut\.nxsp” was replaced\. Saving will create a separate file\..*use Export Level Data…/,
         )
         await expect(dialog(page).locator('[data-save-export] p').first()).toHaveText(
             'Project files (.nxsp) are only for this editor. To create level data you can upload to a Sonolus server, use Export Level Data…',

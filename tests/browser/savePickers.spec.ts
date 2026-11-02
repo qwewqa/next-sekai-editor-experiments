@@ -81,7 +81,9 @@ test('a takeover: A picks the file B is bound to; B loses it passively and its n
     expect(await prompts(b)).toBe(true)
     await pressSave(b)
     const dialog = saveDialog(b)
-    await expect(dialog).toContainText('“coconut.nxsp” was replaced from another tab or window.')
+    await expect(dialog).toContainText(
+        '“coconut.nxsp” was replaced. Saving will create a separate file.',
+    )
     await expect(dialog.getByRole('textbox')).toHaveValue('coconut (2)')
     await submitSave(b)
     await expect(notice(b).filter({ hasText: 'Saved to coconut (2).nxsp' })).toBeVisible()
@@ -504,7 +506,7 @@ test("B frozen while A takes its file: once shown, B's label goes and its Save a
     await edit(b, 3)
     await pressSave(b)
     await expect(saveDialog(b)).toContainText(
-        '“coconut.nxsp” was replaced from another tab or window.',
+        '“coconut.nxsp” was replaced. Saving will create a separate file.',
     )
 })
 

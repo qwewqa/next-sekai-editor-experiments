@@ -149,7 +149,7 @@ test('a write-back that finds itself revoked opens the Save dialog with the reas
     await edit(b, 3)
     await pressSave(b)
     await expect(saveDialog(b)).toContainText(
-        '“coconut.nxsp” was replaced from another tab or window.',
+        '“coconut.nxsp” was replaced. Saving will create a separate file.',
     )
     await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
 })
