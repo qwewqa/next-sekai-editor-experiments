@@ -10,7 +10,7 @@
 - Improved preview performance for curved connectors between elevated notes.
 - (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.
 - (Web) By default, the editor now sends usage statistics unless Do Not Track or Global Privacy Control is enabled in your browser. To stop sending them, turn off Settings › About › Send Usage Statistics. The privacy page lists what is sent and how long it is kept.
-- (Web) Before you first use the editor, it asks you to agree to the Terms of Service in a welcome window that also has the Language, Theme, Show Property Descriptions and Send Usage Statistics settings. It asks again after some changes to the Terms of Service or the Privacy Notice. Usage statistics from the editor are sent only after you agree. The unsupported-browser page may send a browser report before you agree.
+- (Web) Before you first use the editor, it asks you to agree to the Terms of Service in a welcome window that also has the Language, Theme and Send Usage Statistics settings. It asks again after some changes to the Terms of Service or the Privacy Notice. Usage statistics from the editor are sent only after you agree. The unsupported-browser page may send a browser report before you agree.
 - (Web) Added the Terms of Service, linked from Settings › About, Help and the privacy page.
 - Some settings now have an info button that shows what the setting does.
 - Some chart properties now have an info button that shows what the property does. To hide these buttons, turn off Settings › Editor › Show Property Descriptions.

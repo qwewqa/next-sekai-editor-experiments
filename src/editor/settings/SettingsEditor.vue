@@ -10,7 +10,6 @@ import InfoModal from '../../modals/InfoModal.vue'
 import { settings } from '../../settings'
 import { isMinimapShown } from '../workspace'
 import LanguageField from './LanguageField.vue'
-import PropertyDescriptionsField from './PropertyDescriptionsField.vue'
 import SettingsSection from './SettingsSection.vue'
 import ThemeField from './ThemeField.vue'
 
@@ -86,7 +85,11 @@ watch(
             ]"
         />
 
-        <PropertyDescriptionsField />
+        <ToggleField
+            v-model="settings.showPropertyDescriptions"
+            :label="i18n.settings.editor.showPropertyDescriptions"
+            :description="i18n.settings.descriptions.showPropertyDescriptions"
+        />
 
         <ToggleField
             v-model="settings.dimUnchangedObjects"

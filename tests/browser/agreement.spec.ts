@@ -197,7 +197,7 @@ test.describe('a first agreement', () => {
         await expect(shown.getByRole('combobox', { name: 'Theme' })).toBeVisible()
         await expect(
             shown.getByRole('switch', { name: en.settings.editor.showPropertyDescriptions }),
-        ).toBeVisible()
+        ).toHaveCount(0)
         await expect(shown.locator('[data-agreement-sentence]')).toHaveText(SENTENCE)
         await expect(shown.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute(
             'href',
@@ -216,7 +216,7 @@ test.describe('a first agreement', () => {
         )
         await expect(agreeButton(page)).toBeFocused()
         await expect(shown.getByRole('button', { name: /Close|×/ })).toHaveCount(0)
-        await expect(shown.getByRole('button', { name: en.agreement.agree })).toHaveCount(1)
+        await expect(shown.getByRole('button')).toHaveCount(1)
         expect(await record(page)).toBeNull()
     })
 
@@ -325,9 +325,7 @@ test.describe('a changed page', () => {
             const shown = dialog(page)
             await expect(shown.locator('[data-agreement-change]')).toHaveText(line)
             // The settings stay, as on a first visit.
-            await expect(
-                shown.getByRole('switch', { name: en.settings.editor.showPropertyDescriptions }),
-            ).toBeVisible()
+            await expect(shown.getByRole('combobox', { name: 'Language' })).toBeVisible()
             // The changed page's line takes the first visit's place, and the title is the name.
             await expect(shown.locator('[data-agreement-intro]')).toHaveCount(0)
             await expect(shown).not.toContainText(en.agreement.intro)
