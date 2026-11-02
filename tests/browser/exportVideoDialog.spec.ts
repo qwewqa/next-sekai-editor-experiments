@@ -358,12 +358,12 @@ test('the everyday path reaches Ready, downloads and closes', async ({ page }) =
         }
     })
     await download.click()
-    const failed = dialog.getByRole('alert')
-    await expect(failed).toHaveText('The video could not be downloaded.')
+    const slot = dialog.locator('[data-export-slot]')
+    await expect(slot).toHaveText('The video could not be downloaded.')
     const downloaded = page.waitForEvent('download')
     await download.click()
     await downloaded
-    await expect(failed).toHaveCount(0)
+    await expect(slot).toBeEmpty()
     // A delivery again: each reports Ready, which must not end the attempt again.
     const again = page.waitForEvent('download')
     await download.click()

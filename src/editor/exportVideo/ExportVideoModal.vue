@@ -370,7 +370,11 @@ const title = computed(() => i18n.value.exportVideo.title)
                     >
                         <ExportVideoSettings :dialog="d" />
                     </section>
-                    <ExportVideoSlot v-if="form !== 'short'" :dialog="d" />
+                    <ExportVideoSlot
+                        v-if="form !== 'short'"
+                        :dialog="d"
+                        :deliver-failed="deliverFailed"
+                    />
                     <ExportVideoFooter
                         v-if="form === 'land'"
                         ref="footer"
@@ -383,18 +387,7 @@ const title = computed(() => i18n.value.exportVideo.title)
                     />
                 </div>
             </div>
-            <ExportVideoSlot v-if="form === 'short'" :dialog="d" />
-            <p
-                v-if="deliverFailed"
-                role="alert"
-                class="shrink-0 border-t border-fg/15 px-4 py-3 text-sm"
-            >
-                {{
-                    deliverFailed === 'share'
-                        ? i18n.exportVideo.errors.share
-                        : i18n.exportVideo.errors.download
-                }}
-            </p>
+            <ExportVideoSlot v-if="form === 'short'" :dialog="d" :deliver-failed="deliverFailed" />
             <ExportVideoFooter
                 v-if="form !== 'land'"
                 ref="footer"

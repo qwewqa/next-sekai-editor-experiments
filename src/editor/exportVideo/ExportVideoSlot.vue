@@ -8,7 +8,7 @@ import type { ExportDialog } from './dialog'
 
 // One line above the footer for a message about the whole dialog. Its status region stays
 // mounted, empty and unpadded while there is no message, so a failure placed in it is read.
-const props = defineProps<{ dialog: ExportDialog }>()
+const props = defineProps<{ dialog: ExportDialog; deliverFailed?: 'download' | 'share' }>()
 const d = props.dialog
 const detailsOpen = ref(false)
 const coarse = matchMedia('(pointer: coarse)').matches
@@ -26,6 +26,14 @@ const message = computed(() => {
             severity: 'error' as const,
             text: outcome.failure.message(),
             detail: outcome.failure.detail,
+        }
+    if (props.deliverFailed)
+        return {
+            severity: 'error' as const,
+            text:
+                props.deliverFailed === 'share'
+                    ? i18n.value.exportVideo.errors.share
+                    : i18n.value.exportVideo.errors.download,
         }
     if (d.stoppedLine.value && d.phase.value === 'setup')
         return {
