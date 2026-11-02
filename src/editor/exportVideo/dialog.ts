@@ -477,12 +477,7 @@ export const createExportDialog = (input: DialogInput) => {
         attempt.stage = 'prepare'
         return destination
     }
-    const fileName = () =>
-        videoFileName(
-            input.stem,
-            rangeKind.value === 'whole' ? undefined : range.value,
-            format.value,
-        )
+    const fileName = () => videoFileName(input.stem, rangeKind.value, range.value, format.value)
 
     // --- One usage event per attempt, after its delivery is known.
     const attempt: {

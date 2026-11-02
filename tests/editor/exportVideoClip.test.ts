@@ -173,17 +173,20 @@ test('the ruler keeps labels 64 px apart', () => {
     assert.equal(rulerStep(0.01), 7200)
 })
 
-test('file names: the whole chart, a clip, tenths under 10 s, and no stem', () => {
-    assert.equal(videoFileName('coconut', undefined, 'mp4'), 'coconut.mp4')
+test('file names: the whole BGM or chart, a clip, tenths under 10 s, and no stem', () => {
+    const whole = { in: 0, out: 135.2 }
+    assert.equal(videoFileName('coconut', 'whole', whole, 'mp4'), 'coconut.mp4')
+    assert.equal(videoFileName('coconut', 'bgm', whole, 'mp4'), 'coconut.mp4')
+    assert.equal(videoFileName('coconut', 'custom', whole, 'mp4'), 'coconut 0m00s-2m16s.mp4')
     assert.equal(
-        videoFileName('coconut', { in: 83.4, out: 105.2 }, 'webm'),
+        videoFileName('coconut', 'custom', { in: 83.4, out: 105.2 }, 'webm'),
         'coconut 1m23s-1m46s.webm',
     )
     assert.equal(
-        videoFileName('coconut', { in: 5.55, out: 8.96 }, 'mp4'),
+        videoFileName('coconut', 'selection', { in: 5.55, out: 8.96 }, 'mp4'),
         'coconut 0m05.5s-0m09.0s.mp4',
     )
-    assert.equal(videoFileName('', undefined, 'mp4'), 'Video.mp4')
+    assert.equal(videoFileName('', 'whole', whole, 'mp4'), 'Video.mp4')
 })
 
 test('presets follow the table, scale by width, and a typed bitrate is custom', () => {

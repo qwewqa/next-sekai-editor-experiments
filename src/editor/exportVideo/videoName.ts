@@ -1,6 +1,6 @@
 // The video's suggested file name: pure.
 
-import type { ClipRange } from './clipRange'
+import type { ClipRange, RangeKind } from './clipRange'
 
 const pad = (value: number) => `${value}`.padStart(2, '0')
 
@@ -14,16 +14,18 @@ const stamp = (time: number, tenths: boolean) => {
 }
 
 /**
- * `coconut.mp4` for the whole chart, `coconut 1m23s-1m45s.mp4` for a clip: In rounded down and Out
- * up to whole seconds, or to tenths under 10 s. `Video.mp4` with no usable stem.
+ * `coconut.mp4` for Whole BGM and Whole Chart, `coconut 1m23s-1m45s.mp4` for another range: In
+ * rounded down and Out up to whole seconds, or to tenths under 10 s. `Video.mp4` with no usable
+ * stem.
  */
 export const videoFileName = (
     stem: string,
-    range: ClipRange | undefined,
+    kind: RangeKind,
+    range: ClipRange,
     extension: 'mp4' | 'webm',
 ) => {
     const base = stem.trim() || 'Video'
-    if (!range) return `${base}.${extension}`
+    if (kind === 'whole' || kind === 'bgm') return `${base}.${extension}`
     const tenths = range.out - range.in < 10
     const scale = tenths ? 10 : 1
     const from = Math.floor(range.in * scale + 1e-6) / scale
