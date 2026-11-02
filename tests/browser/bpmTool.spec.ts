@@ -228,7 +228,10 @@ test.describe('with touch', () => {
 
     test('a touch drag from empty space below beat 0 adds a change', async ({ page }) => {
         await page.evaluate(() => {
-            const { fixtures, show } = window.editorTest
+            const { fixtures, show, settings } = window.editorTest
+            // A finger held still for half a second opens the context menu and ends the drag, which
+            // a loaded runner can leave between a gesture's events.
+            settings.touchLongPressContextMenu = false
             show(fixtures.interaction, 1.5)
         })
         await page.keyboard.press('q')
