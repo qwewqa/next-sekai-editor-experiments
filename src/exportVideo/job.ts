@@ -1,4 +1,5 @@
 import type { GroupId } from '../chart/groups'
+import { detection } from '../platform/detect'
 import type { Platform } from '../platform/types'
 import { videoLock } from '../platform/videoOutput'
 import { markVideoRunning } from '../platform/videoRunning'
@@ -7,7 +8,7 @@ import type { SoundSource } from '../playerSounds'
 import { createMirrorSender } from '../preview/worker/mirror'
 import type { State } from '../state'
 import { createSlideInfoLookup } from '../state/entities/slides/lookup'
-import { createCodecProbes } from './codecs'
+import { browserEncoderProbes, createCodecProbes } from './codecs'
 import { exportError } from './error'
 import { createExportHost } from './host'
 import { mixAudio, type MixBuffers } from './mix'
@@ -82,7 +83,7 @@ const soundSource = ({ store }: State): SoundSource => {
 
 /** Share these caches between jobs for the life of the page. */
 export const createExportServices = () => ({
-    probes: createCodecProbes(),
+    probes: createCodecProbes(browserEncoderProbes(), detection().engine),
     calibrate: createAacCalibration(),
 })
 

@@ -132,14 +132,23 @@ const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk, shift = 0): Enco
     return { data, type: chunk.type, timestamp: chunk.timestamp - shift, duration: chunk.duration }
 }
 
+/** `color` replaces the matrix and range that the encoder reports. */
 export const videoPacket = (
     chunk: EncodedVideoChunk,
     metadata?: EncodedVideoChunkMetadata,
-): MuxInput => ({
-    track: 'video',
-    packet: packetOf(chunk),
-    decoderConfig: metadata?.decoderConfig && withAvcColor(metadata.decoderConfig),
-})
+    color?: Pick<VideoColorSpaceInit, 'matrix' | 'fullRange'>,
+): MuxInput => {
+    const config = metadata?.decoderConfig
+    return {
+        track: 'video',
+        packet: packetOf(chunk),
+        decoderConfig:
+            config &&
+            withAvcColor(
+                color ? { ...config, colorSpace: { ...config.colorSpace, ...color } } : config,
+            ),
+    }
+}
 
 export const createAudioPacketAdapter = (options: {
     codec: 'aac' | 'opus'

@@ -78,7 +78,7 @@ for (const format of ['webm', 'mp4'] as const)
             expect(
                 Math.abs(media.duration - Math.max(media.videoEnd, media.audioEnd)),
             ).toBeLessThan(0.0011)
-            expect(media.colorSpace).toBeDefined()
+            expect(media.colorSpace).toMatchObject({ matrix: 'bt709', fullRange: true })
         })
 
 test('cancel before finalising a real mux removes the staged file', async ({ page }) => {

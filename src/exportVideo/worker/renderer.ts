@@ -6,6 +6,7 @@ import { createRenderTarget } from '../../preview/renderTarget'
 import { applyMirror } from '../../preview/worker/mirror'
 import { frameTimestamp } from '../timing'
 import { closeExportAssets, type ExportSettings, type ExportStart } from '../types'
+import { STRIPES } from './encoderColor'
 
 export class GraphicsError extends Error {}
 
@@ -149,6 +150,21 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
                         frameTimestamp(index + 1, s.frameRate) - frameTimestamp(index, s.frameRate),
                     alpha: 'discard',
                 })
+            },
+            /** Draws STRIPES between `edges` and captures them as `capture` does. */
+            captureStripes: (edges: readonly number[]) => {
+                if (canvas.width !== s.width) canvas.width = s.width
+                if (canvas.height !== s.height) canvas.height = s.height
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+                gl.enable(gl.SCISSOR_TEST)
+                for (const [i, [r, g, b]] of STRIPES.entries()) {
+                    const x = edges[i] ?? 0
+                    gl.scissor(x, 0, (edges[i + 1] ?? x) - x, s.height)
+                    gl.clearColor(r / 255, g / 255, b / 255, 1)
+                    gl.clear(gl.COLOR_BUFFER_BIT)
+                }
+                gl.disable(gl.SCISSOR_TEST)
+                return new VideoFrame(canvas, { timestamp: 0, alpha: 'discard' })
             },
             loseContext() {
                 gl.getExtension('WEBGL_lose_context')?.loseContext()

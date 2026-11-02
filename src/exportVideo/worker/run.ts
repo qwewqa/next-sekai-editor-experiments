@@ -1,6 +1,7 @@
 import { AUDIO_RATE, audioUnits, frameTimestamp, type AudioBlock } from '../timing'
 import type { ExportStart } from '../types'
 import { createAudioFeeder, createAudioPacketAdapter, videoPacket } from './encode'
+import { measureEncoderColor } from './encoderColor'
 import { createFrameLoop } from './loop'
 import { createExportRenderer } from './renderer'
 import type { PacketSink } from './sink'
@@ -44,6 +45,13 @@ export const runExport = async (
     const metadataState = { configured: false }
     try {
         renderer = options.renderer ?? createExportRenderer(start, loop.fail)
+        // The measurement only corrects the colour label. If it fails, the file keeps the
+        // encoder's own label.
+        const color = await loop.guard(
+            measureEncoderColor(start.codecs.video, s.frameRate, renderer.captureStripes).catch(
+                () => undefined,
+            ),
+        )
         video = new VideoEncoder({
             error: loop.fail,
             output: (chunk, metadata) => {
@@ -62,7 +70,7 @@ export const runExport = async (
                         throw new Error('Encoded dimensions changed')
                     if (metadata?.decoderConfig) metadataState.configured = true
                     emitted++
-                    loop.emit(videoPacket(chunk, metadata))
+                    loop.emit(videoPacket(chunk, metadata, color))
                 } catch (error) {
                     loop.fail(error)
                 }

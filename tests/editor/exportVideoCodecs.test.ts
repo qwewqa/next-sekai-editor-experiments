@@ -6,7 +6,9 @@ import {
     h264Level,
     h264Levels,
     outputSize,
+    usableTrial,
     type CodecSettings,
+    type TrialChunk,
 } from '../../src/exportVideo/codecs'
 
 const settings: CodecSettings = {
@@ -142,4 +144,117 @@ test('late support results never enable an obsolete selection', async () => {
         availability.state.current?.supported && availability.state.current.video.width,
         2520,
     )
+})
+
+test('WebKit is offered only Constrained Baseline for MP4', async () => {
+    const offered = async (engine: 'webkit' | 'chromium' | 'firefox') => {
+        const codecs: string[] = []
+        await createCodecProbes(
+            {
+                video: async (c) => {
+                    codecs.push(c.codec)
+                    return { supported: false }
+                },
+            },
+            engine,
+        ).resolve({ ...settings, format: 'mp4', bgm: false, sfx: false })
+        return codecs
+    }
+    assert.deepEqual(await offered('webkit'), ['avc1.42402a'])
+    for (const engine of ['chromium', 'firefox'] as const)
+        assert.deepEqual(await offered(engine), ['avc1.64002a', 'avc1.4d002a', 'avc1.42002a'])
+})
+
+test('a trial encode accepts only output the frame loop can use', () => {
+    const config = { codec: 'avc1.64001f', width: 1280, height: 720, framerate: 30 as const }
+    const at = (i: number) => Math.round((i * 1e6) / 30)
+    const record = (sps: number[]) =>
+        new Uint8Array([
+            1,
+            0x64,
+            0,
+            0x1f,
+            0xff,
+            0xe1,
+            0,
+            sps.length,
+            ...sps,
+            1,
+            0,
+            4,
+            0x68,
+            0xee,
+            0x3c,
+            0x80,
+        ])
+    const output = (description?: Uint8Array): TrialChunk[] =>
+        [0, 1, 2].map((i) => ({
+            type: i ? 'delta' : 'key',
+            timestamp: at(i),
+            duration: at(i + 1) - at(i),
+            decoderConfig: i
+                ? undefined
+                : { codec: config.codec, codedWidth: 1280, codedHeight: 720, description },
+        }))
+    const good = output(record([0x67, 0x64, 0, 0x1f, 0xac, 0xd9]))
+    assert.equal(usableTrial(config, good, 3), true)
+    const vp9 = { ...config, codec: 'vp09.00.31.08' }
+    assert.equal(usableTrial(vp9, output(), 3), true)
+    // Firefox's High and Main output is one frame late and in decode order. Each fault fails alone.
+    const shifted = good.map((chunk, i) => ({ ...chunk, timestamp: at(i + 1) }))
+    assert.equal(usableTrial(config, shifted, 3), false)
+    const [first, second, third] = good
+    const reordered = [first!, { ...third!, duration: second!.duration }, second!]
+    assert.equal(usableTrial(config, reordered, 3), false)
+    assert.equal(usableTrial(config, good.slice(0, 2), 3), false)
+    assert.equal(usableTrial(config, [{ ...first!, type: 'delta' }, second!, third!], 3), false)
+    assert.equal(
+        usableTrial(vp9, [{ ...first!, decoderConfig: undefined }, second!, third!], 3),
+        false,
+    )
+    assert.equal(usableTrial(config, output(), 3), false)
+    // Firefox's SPS repeats its NAL header byte in every profile.
+    assert.equal(usableTrial(config, output(record([0x67, 0x67, 0x64, 0, 0x1f, 0xac])), 3), false)
+    assert.equal(usableTrial({ ...config, codec: 'avc1.4d001f' }, good, 3), false)
+    assert.equal(usableTrial(config, output(record([0x68, 0x64, 0, 0x1f, 0xac, 0xd9])), 3), false)
+})
+
+test('trials run one at a time, only at the selected video settings, and a rejected one is unsupported', async () => {
+    const trials: string[] = []
+    let running = 0
+    let overlapped = false
+    const probes = createCodecProbes({
+        video: async () => ({ supported: true }),
+        audio: async (c) => ({ supported: c.codec === 'opus' }),
+        trial: async (c) => {
+            overlapped ||= running > 0
+            running++
+            await new Promise((resolve) => setImmediate(resolve))
+            running--
+            trials.push(`${c.codec} ${c.height}`)
+            return c.codec.startsWith('vp09')
+        },
+    })
+    const availability = createCodecAvailability(probes)
+    const silent = { ...settings, bgm: false, sfx: false }
+    const state = await availability.update(silent, {
+        mp4: { format: 'mp4' },
+        webm: { format: 'webm' },
+        small: { width: 1280, height: 720 },
+    })
+    assert.equal(state.current?.supported && state.current.format, 'webm')
+    assert.deepEqual(state.choices.mp4, { supported: false, reason: 'videoConfig' })
+    assert.equal(state.choices.webm?.supported, true)
+    assert.equal(state.choices.small?.supported && state.choices.small.format, 'mp4')
+    assert.deepEqual(trials.sort(), [
+        'avc1.42002a 1080',
+        'avc1.4d002a 1080',
+        'avc1.64002a 1080',
+        'vp09.00.41.08 1080',
+    ])
+    assert.equal(overlapped, false)
+    // With sound, MP4 needs AAC first, so no H.264 trial runs.
+    trials.length = 0
+    await probes.resolve({ ...settings, videoBitrate: 10e6 })
+    assert.deepEqual(trials, ['vp09.00.41.08 1080'])
 })

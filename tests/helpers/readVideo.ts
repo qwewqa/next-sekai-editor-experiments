@@ -111,6 +111,7 @@ export const readTracks = async (bytes: number[]) => {
             format: (await input.getFormat()).name,
             trackCount: (await input.getTracks()).length,
             videoCodec: await video.getCodec(),
+            colorSpace: (await video.getDecoderConfig())?.colorSpace,
             frames,
             firstVideo,
             videoEnd,

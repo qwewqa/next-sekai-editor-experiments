@@ -6,8 +6,8 @@ import { wav } from './levelInfoFiles'
 import { resource } from './previewResourceFixture'
 
 // Firefox has no save picker, so the file is staged in OPFS and the Ready state's Download
-// delivers it. It makes WebM. Firefox is slower than Chromium, so the clips are three seconds
-// or shorter.
+// delivers it. It makes WebM, because it has no AAC encoder and its H.264 output fails the trial
+// encode. Firefox is slower than Chromium, so the clips are three seconds or shorter.
 const frameRate = 30
 const threeSeconds = 3 * frameRate
 
@@ -37,7 +37,13 @@ const setBgm = (page: Page, bytes: number[]) =>
         history.replaceState({ ...history.state.value, bgm: { offset: 0, ...decoded } })
     }, bytes)
 
-const openClip = async (page: Page, frames = threeSeconds) => {
+const openClip = async (
+    page: Page,
+    {
+        frames = threeSeconds,
+        format = 'webm',
+    }: { frames?: number; format?: 'automatic' | 'webm' } = {},
+) => {
     const dialog = await openVideoDialog(page, { production: true })
     await dialog.getByRole('combobox', { name: 'Resolution' }).selectOption({ label: '720p' })
     for (const [name, value] of [
@@ -51,13 +57,14 @@ const openClip = async (page: Page, frames = threeSeconds) => {
     const length = (frames / frameRate).toFixed(3).padStart(6, '0')
     await expect(dialog.locator('[data-export-summary]')).toContainText(`00:${length}`)
     await dialog.locator('[data-export-advanced]').click()
-    await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption('webm')
+    await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption(format)
     return dialog
 }
 
 const finish = async (page: Page, testInfo: TestInfo) => {
     const dialog = videoDialog(page)
-    await expect(videoExportButton(page)).toBeEnabled()
+    // Export waits for the trial encodes, which are slow while other tests encode.
+    await expect(videoExportButton(page)).toBeEnabled({ timeout: 60_000 })
     await videoExportButton(page).click()
     await expect.poll(() => videoPhase(page), { timeout: 150_000 }).toBe('ready')
     const downloading = page.waitForEvent('download')
@@ -102,6 +109,8 @@ const expectVideo = (media: Media, frames = threeSeconds) => {
     expect(media.firstVideo).toBe(0)
     // WebM timestamps are whole milliseconds.
     expect(Math.abs(media.videoEnd - frames / frameRate)).toBeLessThan(0.0011)
+    // Firefox's VP9 encoder converts with BT.601 limited range, whatever it reports.
+    expect(media.colorSpace).toMatchObject({ matrix: 'smpte170m', fullRange: false })
 }
 
 const expectAudio = (media: Media, frames = threeSeconds) => {
@@ -150,7 +159,7 @@ test.describe('Export Video on Firefox', () => {
         silent.fill(0, 44)
         await setBgm(page, [...silent])
         // At 32 frames, the Opus packets end less than the pre-skip after the clip.
-        const dialog = await openClip(page, 32)
+        const dialog = await openClip(page, { frames: 32 })
         await dialog.getByRole('switch', { name: 'SFX' }).click()
         await expect(dialog.getByRole('switch', { name: 'BGM', exact: true })).toBeChecked()
         const media = await finish(page, testInfo)
@@ -159,11 +168,20 @@ test.describe('Export Video on Firefox', () => {
         expect(media.audio?.peak).toBeLessThan(1e-4)
     })
 
-    test('no BGM and SFX off exports a video with no audio track', async ({ page }, testInfo) => {
-        const dialog = await openClip(page)
+    test('no BGM and SFX off exports a WebM with no audio track from Automatic', async ({
+        page,
+    }, testInfo) => {
+        const dialog = await openClip(page, { format: 'automatic' })
         await expect(dialog.getByRole('switch', { name: 'BGM', exact: true })).toBeDisabled()
         await dialog.getByRole('switch', { name: 'SFX' }).click()
         await expect(dialog.getByRole('switch', { name: 'SFX' })).not.toBeChecked()
+        // The trial encodes of the three H.264 profiles take a few seconds in Firefox.
+        await expect(videoExportButton(page)).toBeEnabled({ timeout: 60_000 })
+        await expect(
+            dialog
+                .getByRole('combobox', { name: 'Format', exact: true })
+                .getByRole('option', { name: 'MP4' }),
+        ).toBeDisabled()
         const media = await finish(page, testInfo)
         expectVideo(media)
         expect(media.trackCount).toBe(1)

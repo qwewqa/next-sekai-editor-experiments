@@ -222,6 +222,17 @@ test('video packets retain the encoder color metadata without a replacement tag'
     const result = videoPacket(chunk(0, 16667), { decoderConfig: config })
     assert.ok(result.track === 'video')
     assert.equal(result.decoderConfig?.colorSpace, colorSpace)
+    const measured = videoPacket(
+        chunk(0, 16667),
+        { decoderConfig: config },
+        { matrix: 'smpte170m', fullRange: false },
+    )
+    assert.ok(measured.track === 'video')
+    assert.deepEqual(measured.decoderConfig?.colorSpace, {
+        ...colorSpace,
+        matrix: 'smpte170m',
+        fullRange: false,
+    })
 })
 
 test('AAC delay calibration caches the whole configuration and retries failed measurements', async () => {
