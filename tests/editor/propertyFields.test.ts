@@ -437,6 +437,7 @@ const descriptions = () =>
 
 // Their labels and choices say enough.
 const undescribed = [
+    'name',
     'beat',
     'groupId',
     'stageId',
