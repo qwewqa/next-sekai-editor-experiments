@@ -66,9 +66,9 @@ const changedFailure = (name: string): CheckOutcome => ({
 })
 
 /** A chain this build cannot judge ends the run with its own line, not the storage one. */
-const refusedFailure = (reason: ModelRefusal, name: string): CheckOutcome => ({
+const refusedFailure = (reason: ModelRefusal, name: string, fileRead: boolean): CheckOutcome => ({
     kind: 'failed',
-    message: refusalLine(reason, name, checkText),
+    message: refusalLine(reason, name, checkText, fileRead),
 })
 
 /** Ends the run with this outcome from any depth. */
@@ -183,7 +183,7 @@ const silentPreparing = (signal: AbortSignal): ReturnType<PreparingSlot['ui']['p
 
 /** The strings of the report, each named where it is read. */
 const checkText = (): CheckText => {
-    const { check, open, load, save } = i18n.value
+    const { check, open, load, save, settings } = i18n.value
     return {
         check: {
             noDamage: check.noDamage,
@@ -195,7 +195,11 @@ const checkText = (): CheckText => {
             scopeStored: check.scopeStored,
         },
         media: open.media,
-        refusal: { later: load.sessionLater, unreadable: save.readFailed },
+        refusal: {
+            later: load.sessionLater,
+            unreadable: save.readFailed,
+            storedUnreadable: settings.localData.exportRawUnreadable,
+        },
     }
 }
 
@@ -315,7 +319,7 @@ const perform = async (
     const opened = await storedRead(env.worker, 'checkStoredOpen', env.chainId)
     if (opened.storedRead === 'failed') throw new End(storageFailed())
     if (opened.storedValue.kind === 'refused')
-        throw new End(refusedFailure(opened.storedValue.reason, name))
+        throw new End(refusedFailure(opened.storedValue.reason, name, !!plan.file))
     if (opened.storedValue.kind === 'opened') {
         const stored = opened.storedValue
         storedId = stored.id
@@ -327,7 +331,7 @@ const perform = async (
             const batch = await storedRead(env.worker, 'checkStoredBatch', { id: stored.id, n })
             if (batch.storedRead === 'failed') throw new End(storageFailed())
             if (batch.storedValue.kind === 'refused')
-                throw new End(refusedFailure(batch.storedValue.reason, name))
+                throw new End(refusedFailure(batch.storedValue.reason, name, !!plan.file))
             if (batch.storedValue.kind !== 'done') throw new End(storageFailed())
             done += batch.storedValue.roots
         }
@@ -369,7 +373,8 @@ const perform = async (
             throw new End(storageFailed())
         }
         held.ids.delete(id)
-        if (finished.kind === 'refused') throw new End(refusedFailure(finished.reason, name))
+        if (finished.kind === 'refused')
+            throw new End(refusedFailure(finished.reason, name, !!plan.file))
         if (finished.kind !== 'done') throw new End(storageFailed())
         // Rows that could not be marked would be called damaged without being so.
         if (finished.markFailed) throw new End(storageFailed())

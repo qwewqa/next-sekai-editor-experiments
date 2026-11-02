@@ -17,22 +17,29 @@ export type CheckText = {
         string
     >
     media: Record<MediaKind, string>
-    /** `load.sessionLater` and `save.readFailed`: what a refused chain says. */
-    refusal: { later: string; unreadable: string }
+    /**
+     * What a refused chain says: `load.sessionLater`, `save.readFailed` when the file was read,
+     * and `settings.localData.exportRawUnreadable` when only the stored history was.
+     */
+    refusal: { later: string; unreadable: string; storedUnreadable: string }
 }
 
 /**
  * The line for a chain this build cannot judge: a newer version's, or one it cannot read. Never
- * the storage line: storage worked.
+ * the storage line: storage worked. Without `fileRead`, the file was not read, so the line names
+ * the stored work instead.
  */
 export const refusalLine = (
     reason: 'needsNewer' | 'unreadableHead' | 'order',
     name: string,
     text: () => CheckText,
+    fileRead = true,
 ): (() => string) =>
     reason === 'needsNewer'
         ? () => text().refusal.later
-        : interpolate(() => text().refusal.unreadable, name)
+        : fileRead
+          ? interpolate(() => text().refusal.unreadable, name)
+          : () => text().refusal.storedUnreadable
 
 export type Findings = {
     /** The file checked in full; absent when only the stored history was. */

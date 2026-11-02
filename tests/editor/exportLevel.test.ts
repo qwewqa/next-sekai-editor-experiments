@@ -474,10 +474,13 @@ test('a remembered target the platform refuses to read is downloaded instead', a
             ? Promise.reject(new FileError('denied', 'Refused', undefined, 'read'))
             : saveFile(req)
     const { ui, asked, feedback } = scriptedUi([])
-    assert.equal(await exportToTarget(context(ui, 7), target), 'done')
+    assert.equal(await exportToTarget(context(ui, 7, { exportName: 'Coconut' }), target), 'done')
     assert.deepEqual(asked, [])
     assert.deepEqual(feedback, [`download:Coconut.nsld:${level(7).size}`])
     assert.deepEqual((await read(mock, 'LevelData')).entities, [{ n: 0 }])
+    // The last export is the download: the destination is forgotten, the name kept.
+    assert.equal(remembered(), undefined)
+    assert.equal(exportMemory.exportName, 'Coconut')
 })
 
 test('Export to a remembered target that now holds a project is refused and leaves it', async () => {

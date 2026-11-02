@@ -17,12 +17,17 @@ const en = JSON.parse(
     open: { media: CheckText['media'] }
     load: { sessionLater: string }
     save: { readFailed: string }
+    settings: { localData: { exportRawUnreadable: string } }
 }
 
 const strings = (): CheckText => ({
     check: en.check,
     media: en.open.media,
-    refusal: { later: en.load.sessionLater, unreadable: en.save.readFailed },
+    refusal: {
+        later: en.load.sessionLater,
+        unreadable: en.save.readFailed,
+        storedUnreadable: en.settings.localData.exportRawUnreadable,
+    },
 })
 
 const text = (found: Findings) => reportLines(found, strings).map((line) => line())
@@ -85,9 +90,15 @@ test('a chain this build cannot judge says so, never that storage is unavailable
         refusalLine('needsNewer', 'coconut.nxsp', strings)(),
         'This session requires a newer version of the editor.',
     )
-    for (const reason of ['unreadableHead', 'order'] as const)
+    for (const reason of ['unreadableHead', 'order'] as const) {
         assert.equal(
             refusalLine(reason, 'coconut.nxsp', strings)(),
             '“coconut.nxsp” could not be read.',
         )
+        // Only the stored history was checked: the file was not read.
+        assert.equal(
+            refusalLine(reason, 'coconut.nxsp', strings, false)(),
+            'The stored work could not be read.',
+        )
+    }
 })
