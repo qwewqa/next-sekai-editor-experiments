@@ -142,6 +142,9 @@ test('the playhead stays inside the span, on the frame grid', () => {
     close(clampToSpan(12, [8.98, 10.01], 30), 10)
     close(clampToSpan(5, [8.98, 10.01], 30), 9)
     close(clampToSpan(9.51, [8.98, 10.01], 30), 9.5)
+    // The span when zoomed to 6 s to 8.1 s. Out dragged to its edge rounds to 9.067 s.
+    close(clampToSpan(9 + 2 / 30, [5.05, 9.05], 30), 9 + 1 / 30)
+    close(clampToSpan(5, [5.05, 9.05], 30), 5 + 2 / 30)
     // A playhead outside the span moves to the nearer end of the range.
     const range = { in: 10, out: 11 }
     assert.equal(keepInSpan(2, [8.5, 12.5], range), 10)

@@ -162,16 +162,17 @@ export const createExportDialog = (input: DialogInput) => {
     )
     /** Moves the playhead. Playback stops first, or its next frame would put its own time back. */
     const movePlayhead = (time: number) => {
-        if (time === playhead.value) return
         stopPlayback()
         playhead.value = time
     }
-    const seek = (time: number) => {
-        movePlayhead(clampToSpan(time, stripSpan.value, fps()))
+    /** Moves the playhead to the frame nearest a time, inside the span the strip draws. */
+    const seek = (time: number, within: readonly [number, number] = stripSpan.value) => {
+        movePlayhead(clampToSpan(time, within, fps()))
     }
     /** A playhead outside the strip moves to the range's nearer end. */
     const keepPlayhead = (time = playhead.value) => {
-        movePlayhead(keepInSpan(time, stripSpan.value, range.value))
+        const next = keepInSpan(time, stripSpan.value, range.value)
+        if (next !== playhead.value) movePlayhead(next)
     }
     const setZoomed = (on: boolean) => {
         zoomed.value = on
@@ -770,6 +771,7 @@ export const createExportDialog = (input: DialogInput) => {
         range,
         rangeKind,
         playhead,
+        movePlayhead,
         seek,
         zoomed,
         stripSpan,

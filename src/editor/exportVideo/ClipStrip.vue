@@ -139,11 +139,11 @@ const target = (px: number, py: number): Drag['kind'] => {
     return 'playhead'
 }
 const moveTo = (kind: Drag['kind'], time: number) => {
-    if (kind === 'playhead') d.seek(time)
+    if (kind === 'playhead') d.seek(time, span.value)
     else {
         d.setClipEnd(kind, time)
         // The frame view shows the end being moved.
-        d.playhead.value = d.range.value[kind]
+        d.seek(d.range.value[kind], span.value)
     }
 }
 const onPointerDown = (event: PointerEvent) => {
@@ -167,7 +167,7 @@ const onPointerDown = (event: PointerEvent) => {
     emit('scrub')
     // A handle is grabbed where it is; the playhead jumps to the press.
     if (kind === 'playhead') moveTo(kind, timeAt(px))
-    else d.playhead.value = d.range.value[kind]
+    else d.movePlayhead(d.range.value[kind])
     window.addEventListener('keydown', onDragKey, true)
     event.preventDefault()
 }
@@ -198,7 +198,7 @@ const onDragKey = (event: KeyboardEvent) => {
         d.form.fadeIn = current.from.fadeIn
         d.form.fadeOut = current.from.fadeOut
     }
-    d.playhead.value = current.from.playhead
+    d.movePlayhead(current.from.playhead)
     if (root.value?.hasPointerCapture(current.pointer))
         root.value.releasePointerCapture(current.pointer)
     endDrag()
