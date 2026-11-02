@@ -71,7 +71,8 @@ for (const route of ['staged', 'memory'])
 
 /** The page with a save picker whose file the page may not read, and the worker's refusal. */
 const refusingVideoPage = async (page: Page, refuse: NonNullable<ExportFaults['refuse']>) => {
-    await refusingPicker(page, { read: 'always' })
+    // The user renames the file in the picker.
+    await refusingPicker(page, { read: 'always', as: 'renamed.webm' })
     // The press keeps its activation: the picker opens without a Ready press.
     await page.addInitScript(installTestPlatform, { activation: true })
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
@@ -122,7 +123,8 @@ for (const refuse of ['open', 'write', 'close'] as const)
         const downloading = page.waitForEvent('download')
         await dialog.locator('[data-export-download]').click()
         const download = await downloading
-        expect(download.suggestedFilename()).toMatch(/\.webm$/)
+        // The name given in the picker.
+        expect(download.suggestedFilename()).toBe('renamed.webm')
         const path = testInfo.outputPath('export.webm')
         await download.saveAs(path)
         expect(await framesOf(page, await readFile(path))).toBe(6)

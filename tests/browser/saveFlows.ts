@@ -379,6 +379,8 @@ export const preparingDialog = (page: Page, name = 'coconut.nxsp') =>
 
 /** What a platform that refuses picked files refuses, as Chrome for Android does. */
 export type Refusal = {
+    /** The name the picker gives the file, as when the user renames it; the suggestion by default. */
+    as?: string
     /**
      * `getFile()` on the picked handle: always, once its write has closed, or while
      * `window.refuseReads` is true.
@@ -408,7 +410,7 @@ export const refusingPicker = (page: Page, refusal: Refusal) =>
         Object.defineProperty(window, 'showSaveFilePicker', {
             configurable: true,
             value: async (options: { suggestedName?: string }) => {
-                const name = options.suggestedName ?? 'Untitled'
+                const name = refusal.as ?? options.suggestedName ?? 'Untitled'
                 picks.push(name)
                 const root = await navigator.storage.getDirectory()
                 const handle = await root.getFileHandle(name, { create: true })

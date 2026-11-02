@@ -466,7 +466,8 @@ export const createExportDialog = (input: DialogInput) => {
         id: string,
         fallback = false,
     ): Promise<JobDestination> => {
-        const name = fileName()
+        // The fallback keeps the name the picker gave the file.
+        const name = (fallback ? picked?.name : undefined) ?? fileName()
         const picker = input.env.picker && !fallback
         attempt.stage = picker ? 'pick' : 'prepare'
         const opened = performance.now()
