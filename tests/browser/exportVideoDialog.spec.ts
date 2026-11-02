@@ -383,6 +383,54 @@ test('Close in Ready asks before discarding a video that was not downloaded', as
     await expect(dialog).toHaveCount(0)
 })
 
+test('failed cleanup releases the page-close warning and closes the dialog', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { platform } =
+            await window.editorTest.appImport<typeof import('../../src/platform')>(
+                '/src/platform/index.ts',
+            )
+        const onCloseRequested = platform.onCloseRequested.bind(platform)
+        Reflect.set(window, 'exportCloseGuards', 0)
+        platform.onCloseRequested = (handler) => {
+            Reflect.set(window, 'exportCloseGuards', 1)
+            const stop = onCloseRequested(handler)
+            return () => {
+                stop()
+                Reflect.set(window, 'exportCloseGuards', 0)
+            }
+        }
+    })
+    const dialog = await open(page)
+    await shortClip(page)
+    await exportButton(page).click()
+    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
+    expect(await page.evaluate(() => Reflect.get(window, 'exportCloseGuards'))).toBe(1)
+    await page.evaluate(() => {
+        const remove = FileSystemDirectoryHandle.prototype.removeEntry
+        FileSystemDirectoryHandle.prototype.removeEntry = function (name, options) {
+            if (this.name === 'export-video') {
+                FileSystemDirectoryHandle.prototype.removeEntry = remove
+                return Promise.reject(new DOMException('Cleanup failed', 'UnknownError'))
+            }
+            return remove.call(this, name, options)
+        }
+    })
+    const errors: string[] = []
+    page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text())
+    })
+    await page.clock.install()
+    await dialog.locator('[data-export-close]').click()
+    const ask = page.getByRole('dialog', { name: 'Discard this video?' })
+    await expect(ask).toBeVisible()
+    await page.clock.fastForward(350)
+    await ask.getByRole('button', { name: 'Discard Video' }).click()
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, 'exportCloseGuards'))).toBe(0)
+    await expect(dialog).toHaveCount(0)
+    await expect.poll(() => liveWorkers(page)).toBe(0)
+    expect(errors.some((message) => message.includes('Cleanup failed'))).toBe(true)
+})
+
 test('Escape mid-export cancels, and a second Escape closes', async ({ page }) => {
     const dialog = await open(page, { faults: { hold: 'drain' } })
     await shortClip(page)
@@ -548,6 +596,19 @@ test('a time that cannot be read is not applied', async ({ page }) => {
     await expect(dialog.getByRole('alert')).toBeVisible()
     await outField.press('Escape')
     await expect(outField).toHaveValue(before)
+})
+
+test('resolutions unsupported by the encoder show the browser reason', async ({ page }) => {
+    await page.evaluate(() => {
+        VideoEncoder.isConfigSupported = (config) =>
+            Promise.resolve({ supported: config.height <= 1080, config })
+    })
+    const dialog = await open(page)
+    await expect(exportButton(page)).toBeEnabled()
+    const resolution = dialog.getByRole('combobox', { name: 'Resolution' })
+    await expect(resolution.locator('option', { hasText: '1080p' })).not.toHaveAttribute('disabled')
+    await expect(resolution.locator('option', { hasText: '2160p' })).toHaveAttribute('disabled', '')
+    await expect(resolution).toHaveAccessibleDescription(/browser.*1440p.*2160p/)
 })
 
 test('4K at 2x is offered within the GPU limits', async ({ page }) => {

@@ -260,9 +260,11 @@ export const createExportDialog = (input: DialogInput) => {
     const unavailable = computed(() => {
         const out: Record<string, Unavailable | undefined> = {}
         for (const resolution of RESOLUTIONS)
-            out[`resolution:${resolution}`] = fits(resolution, form.renderScale)
-                ? undefined
-                : 'device'
+            out[`resolution:${resolution}`] = !fits(resolution, form.renderScale)
+                ? 'device'
+                : browserOk(`resolution:${resolution}`)
+                  ? undefined
+                  : 'browser'
         for (const scale of [1, 1.5, 2] as const)
             out[`renderScale:${scale}`] = fits(form.resolution, scale) ? undefined : 'device'
         for (const frameRate of [30, 60])
@@ -653,7 +655,12 @@ export const createExportDialog = (input: DialogInput) => {
         }
         outcome.value = undefined
         phase.value = 'setup'
-        await ending?.dispose()
+        try {
+            await ending?.dispose()
+        } catch (error) {
+            // Files whose deletion fails remain unlocked for the next sweep.
+            console.error(error)
+        }
     }
     const deliver = async (how: 'download' | 'share') => {
         const ending = current

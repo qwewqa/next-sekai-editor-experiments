@@ -401,10 +401,13 @@ export const createExportJob = (options: {
         async endReady() {
             if (state.phase !== 'ready') return
             const result = state.result
-            await destination?.ready?.end()
-            stopClose?.()
-            stopClose = undefined
-            set({ phase: 'done', result })
+            try {
+                await destination?.ready?.end()
+            } finally {
+                stopClose?.()
+                stopClose = undefined
+                set({ phase: 'done', result })
+            }
         },
         async dispose() {
             if (active && state.phase !== 'finishing') {
