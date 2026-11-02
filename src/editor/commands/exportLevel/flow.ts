@@ -306,11 +306,17 @@ export const exportToTarget = async (
         if (caught === revoked) return exportByPicker(ctx)
         error = fileError(caught)
         // A destination the platform refuses to read cannot be checked: the export is
-        // downloaded instead, and the destination, which no longer holds the last export, is
-        // forgotten. The name is kept.
+        // downloaded instead. An earlier export's destination no longer holds the last export, so
+        // it is forgotten, unless a write after a failed download remembered another. The opened
+        // file stays, as it names the source.
         if (error.code === 'denied' && error.step === 'read') {
             const outcome = await exportByDownload(ctx)
-            if (outcome === 'done' && sameSession(ctx)) {
+            if (
+                outcome === 'done' &&
+                sameSession(ctx) &&
+                target.exported &&
+                exportMemory.target === target
+            ) {
                 clearExportTarget()
                 await rememberExport()
             }

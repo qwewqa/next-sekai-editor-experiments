@@ -468,6 +468,7 @@ test('a picked write the platform refuses to read back remembers only the name',
 
 test('a remembered target the platform refuses to read is downloaded instead', async () => {
     const target = await openedTarget()
+    target.exported = true
     const saveFile = mock.saveFile
     mock.saveFile = (req) =>
         req.target
@@ -481,6 +482,42 @@ test('a remembered target the platform refuses to read is downloaded instead', a
     // The last export is the download: the destination is forgotten, the name kept.
     assert.equal(remembered(), undefined)
     assert.equal(exportMemory.exportName, 'Coconut')
+})
+
+test('an opened target the platform refuses to read stays after the download, naming the source', async () => {
+    const target = await openedTarget()
+    const saveFile = mock.saveFile
+    mock.saveFile = (req) =>
+        req.target
+            ? Promise.reject(new FileError('denied', 'Refused', undefined, 'read'))
+            : saveFile(req)
+    const { ui } = scriptedUi([])
+    // The source's own name: the dialog passes no export name.
+    assert.equal(await exportToTarget(context(ui, 7), target), 'done')
+    assert.equal(remembered(), target)
+    assert.equal(exportMemory.exportName, undefined)
+})
+
+test('a destination remembered by Choose Another after a failed download stays', async () => {
+    const target = await openedTarget()
+    target.exported = true
+    const saveFile = mock.saveFile
+    let downloads = 0
+    mock.saveFile = (req) => {
+        if (req.target && !req.picked)
+            return Promise.reject(new FileError('denied', 'Refused', undefined, 'read'))
+        if (!req.target && downloads++ === 0)
+            return Promise.reject(new FileError('io', 'Download failed', undefined, 'download'))
+        return saveFile(req)
+    }
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Other.nsld') })
+    const { ui, asked } = scriptedUi(['chooseAnother'])
+    assert.equal(await exportToTarget(context(ui, 8), target), 'done')
+    assert.deepEqual(
+        asked.map(({ dialog }) => dialog),
+        ['failed'],
+    )
+    assert.equal(remembered()?.name, 'Other.nsld')
 })
 
 test('Export to a remembered target that now holds a project is refused and leaves it', async () => {
