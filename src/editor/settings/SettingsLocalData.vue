@@ -36,8 +36,8 @@ import {
 } from './storageLine'
 
 // Settings › Local Data: the storage (a warning line, what the browser holds, why changes are not
-// being stored, Delete Sessions…), the recovery (Open History, the rows for what the recovery
-// order set aside, Export Raw Data) and Startup Notices, this load's notices. In safe mode it
+// being stored), one row of buttons (Delete Sessions…, Open History, Export Raw Data), the rows
+// for what the recovery order set aside and Startup Notices, this load's notices. In safe mode it
 // only reads: no Delete Sessions…, no Discard….
 
 const strings = computed(() => i18n.value.settings.localData)
@@ -90,14 +90,6 @@ const retryOrReload = async (action: 'retry' | 'reload') => {
         retrying.value = false
     }
 }
-
-const hasStorage = computed(
-    () =>
-        storageLine.value !== undefined ||
-        storedText.value !== undefined ||
-        notStoredLine.value !== undefined ||
-        canDeleteSessions.value,
-)
 
 // --- Recovery rows. The storage-side modules load when a row is acted on.
 const api = () => import('../../local/startup/api')
@@ -277,108 +269,93 @@ const exportRaw = async () => {
             data-confirm-close
         />
 
-        <div v-if="hasStorage" class="flex flex-col gap-3" data-local-data-storage>
-            <p v-if="storageLine" class="text-sm text-fg/80" data-storage-line>{{ storageLine }}</p>
+        <p v-if="storageLine" class="text-sm text-fg/80" data-storage-line>{{ storageLine }}</p>
 
-            <p v-if="storedText" data-stored-total>{{ storedText }}</p>
+        <p v-if="storedText" data-stored-total>{{ storedText }}</p>
 
-            <div
-                v-if="notStoredLine"
-                class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
-                data-not-stored-line
-            >
-                <div class="flex min-w-0 flex-1 basis-60 items-start gap-2">
-                    <SeverityIcon severity="warning" class="mt-1 size-4" />
-                    <div class="flex min-w-0 flex-col">
-                        <span>{{ i18n.notSaving.bar }}</span>
-                        <span v-if="notStoredLine.text" data-not-stored-reason>{{
-                            notStoredLine.text
-                        }}</span>
-                    </div>
+        <div
+            v-if="notStoredLine"
+            class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
+            data-not-stored-line
+        >
+            <div class="flex min-w-0 flex-1 basis-60 items-start gap-2">
+                <SeverityIcon severity="warning" class="mt-1 size-4" />
+                <div class="flex min-w-0 flex-col">
+                    <span>{{ i18n.notSaving.bar }}</span>
+                    <span v-if="notStoredLine.text" data-not-stored-reason>{{
+                        notStoredLine.text
+                    }}</span>
                 </div>
-                <button
-                    type="button"
-                    :class="buttonClass"
-                    :disabled="retrying"
-                    data-not-stored-action
-                    @click="retryOrReload(notStoredLine.action)"
-                >
-                    {{
-                        notStoredLine.action === 'reload'
-                            ? i18n.notStored.reload
-                            : i18n.load.tryAgain
-                    }}
-                </button>
             </div>
-
-            <div v-if="canDeleteSessions">
-                <button
-                    type="button"
-                    :class="buttonClass"
-                    :disabled="deleteSessionsRunning"
-                    data-delete-sessions-open
-                    @click="deleteSessions"
-                >
-                    {{ strings.deleteSessions }}
-                </button>
-            </div>
-        </div>
-
-        <div class="flex flex-col gap-3" data-local-data-recovery>
-            <div>
-                <button type="button" :class="buttonClass" data-open-history @click="openHistory">
-                    {{ strings.openHistory }}
-                </button>
-            </div>
-
-            <div
-                v-for="item in items"
-                :key="item.kind === 'recovered' ? item.id : item.key"
-                v-focus-rescue="afterRowGone"
-                class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
-                :data-recovery-row="item.kind"
+            <button
+                type="button"
+                :class="buttonClass"
+                :disabled="retrying"
+                data-not-stored-action
+                @click="retryOrReload(notStoredLine.action)"
             >
-                <span class="min-w-0 flex-1 basis-60">{{ label(item) }}</span>
-                <span class="flex flex-wrap gap-2">
-                    <button
-                        v-if="
-                            (item.kind === 'journal' || item.kind === 'autoSave') && item.readable
-                        "
-                        type="button"
-                        :class="buttonClass"
-                        data-recovery-open
-                        @click="open(item)"
-                    >
-                        {{ i18n.settings.localData.open }}
-                    </button>
-                    <button
-                        type="button"
-                        :class="buttonClass"
-                        data-recovery-download
-                        @click="download(item)"
-                    >
-                        {{ i18n.save.download }}
-                    </button>
-                    <button
-                        v-if="!safe && (item.kind === 'autoSave' || item.kind === 'recovered')"
-                        type="button"
-                        :class="buttonClass"
-                        data-recovery-discard
-                        @click="discard(item)"
-                    >
-                        {{ strings.discard }}
-                    </button>
-                </span>
-            </div>
-
-            <p v-if="unreadable" data-recovery-unreadable>{{ strings.recovery.listFailed }}</p>
-
-            <div>
-                <button type="button" :class="buttonClass" data-export-raw @click="exportRaw">
-                    {{ strings.exportRaw }}
-                </button>
-            </div>
+                {{ notStoredLine.action === 'reload' ? i18n.notStored.reload : i18n.load.tryAgain }}
+            </button>
         </div>
+
+        <div class="flex flex-wrap gap-2" data-local-data-actions>
+            <button
+                v-if="canDeleteSessions"
+                type="button"
+                :class="buttonClass"
+                :disabled="deleteSessionsRunning"
+                data-delete-sessions-open
+                @click="deleteSessions"
+            >
+                {{ strings.deleteSessions }}
+            </button>
+            <button type="button" :class="buttonClass" data-open-history @click="openHistory">
+                {{ strings.openHistory }}
+            </button>
+            <button type="button" :class="buttonClass" data-export-raw @click="exportRaw">
+                {{ strings.exportRaw }}
+            </button>
+        </div>
+
+        <div
+            v-for="item in items"
+            :key="item.kind === 'recovered' ? item.id : item.key"
+            v-focus-rescue="afterRowGone"
+            class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
+            :data-recovery-row="item.kind"
+        >
+            <span class="min-w-0 flex-1 basis-60">{{ label(item) }}</span>
+            <span class="flex flex-wrap gap-2">
+                <button
+                    v-if="(item.kind === 'journal' || item.kind === 'autoSave') && item.readable"
+                    type="button"
+                    :class="buttonClass"
+                    data-recovery-open
+                    @click="open(item)"
+                >
+                    {{ i18n.settings.localData.open }}
+                </button>
+                <button
+                    type="button"
+                    :class="buttonClass"
+                    data-recovery-download
+                    @click="download(item)"
+                >
+                    {{ i18n.save.download }}
+                </button>
+                <button
+                    v-if="!safe && (item.kind === 'autoSave' || item.kind === 'recovered')"
+                    type="button"
+                    :class="buttonClass"
+                    data-recovery-discard
+                    @click="discard(item)"
+                >
+                    {{ strings.discard }}
+                </button>
+            </span>
+        </div>
+
+        <p v-if="unreadable" data-recovery-unreadable>{{ strings.recovery.listFailed }}</p>
 
         <div v-if="loadNotices.length" class="flex flex-col gap-3" data-at-load>
             <h3 class="text-sm font-bold text-fg/80">{{ strings.startupNoticesHeading }}</h3>

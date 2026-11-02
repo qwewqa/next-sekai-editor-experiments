@@ -627,11 +627,11 @@ test('Local Data lists the unreadable recovered work', async ({ browser, browser
         const { openSettings } = await import('/src/editor/settings/openSettings.ts')
         void openSettings('localData')
     })
-    const recovery = page.locator('[data-local-data-recovery]')
-    await expect(recovery).toBeVisible()
-    await expect(recovery.locator('[data-recovery-row="recovered"]')).toHaveCount(1)
+    const section = page.locator('#settings-localData')
+    await expect(section).toBeVisible()
+    await expect(section.locator('[data-recovery-row="recovered"]')).toHaveCount(1)
     await expect(
-        recovery.locator('[data-recovery-row="recovered"]').getByRole('button'),
+        section.locator('[data-recovery-row="recovered"]').getByRole('button'),
     ).toContainText(['Download'])
     await context.close()
 })

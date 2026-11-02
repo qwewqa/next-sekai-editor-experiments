@@ -120,7 +120,7 @@ const openLocalData = async (page: Page) => {
             (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
         void openSettings('localData')
     })
-    await expect(page.locator('[data-local-data-storage]')).toBeVisible()
+    await expect(page.locator('[data-local-data-actions]')).toBeVisible()
 }
 
 const deleteDialog = (page: Page) => page.getByRole('dialog', { name: local.deleteTitle })
@@ -356,12 +356,13 @@ test('Storage shows what the browser holds, only when the estimate says both fig
     await load(page)
     await openLocalData(page)
     await expect(stored(page)).toHaveText('Stored in this browser: 84 MB of about 2.1 GB')
-    // Delete Sessions… sits under it.
-    await expect(
-        page.locator('[data-local-data-storage] [data-delete-sessions-open]'),
-    ).toBeVisible()
-    await expect(page.locator('[data-local-data-recovery] [data-open-history]')).toBeVisible()
-    await expect(page.locator('[data-local-data-storage] [data-not-stored-line]')).toHaveCount(0)
+    // The three buttons share one row, in this order.
+    await expect(page.locator('[data-local-data-actions] > button')).toHaveText([
+        local.deleteSessions,
+        local.openHistory,
+        local.exportRaw,
+    ])
+    await expect(page.locator('[data-not-stored-line]')).toHaveCount(0)
 })
 
 test('Local Data shows the total at once, from the read after startup', async ({ page }) => {
@@ -455,7 +456,7 @@ test.describe('almost full', () => {
         await load(page)
         await expect(line(page)).toBeVisible({ timeout: 15_000 })
         await line(page).getByRole('button', { name: messages.load.localData }).click()
-        await expect(page.locator('[data-local-data-storage]')).toBeVisible()
+        await expect(page.locator('[data-local-data-actions]')).toBeVisible()
         // Local Data lists it among this load's notices.
         await expect(page.locator('[data-at-load] li')).toContainText([
             messages.load.storageNearlyFull,
