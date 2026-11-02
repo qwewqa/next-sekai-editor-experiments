@@ -94,7 +94,7 @@ export const createExportJob = (options: {
     services: ReturnType<typeof createExportServices>
     assets(signal: AbortSignal): Promise<ExportAssets>
     destination(signal: AbortSignal, id: string): Promise<JobDestination>
-    worker?(): Worker
+    worker(): Worker
     changed(state: JobState): void
     frame?(bitmap: ImageBitmap): void
     test?: { faults?: ExportFaults; event?(message: FromExportWorker): void }
@@ -180,12 +180,7 @@ export const createExportJob = (options: {
                 assets = await abortable(options.assets(signal), signal, closeExportAssets)
                 const mirror = createMirrorSender().diff(snapshot)
                 if (!mirror) throw new Error('Export snapshot is missing')
-                host = createExportHost(
-                    options.worker?.() ??
-                        new Worker(new URL('./worker/mux.worker.ts', import.meta.url), {
-                            type: 'module',
-                        }),
-                )
+                host = createExportHost(options.worker())
                 host.visibility(document.hidden)
                 const ready = host.prepare({ settings, assets, mirror })
                 assets = undefined

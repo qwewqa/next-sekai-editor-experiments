@@ -205,7 +205,7 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
             }
         },
         worker: options.mux
-            ? undefined
+            ? () => new Worker(new URL('./export.worker.ts', import.meta.url), { type: 'module' })
             : () => {
                   const worker = new Worker(new URL('./test.worker.ts', import.meta.url), {
                       type: 'module',
