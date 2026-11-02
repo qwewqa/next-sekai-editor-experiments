@@ -4,7 +4,7 @@ let keptLink = ''
 </script>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, useTemplateRef } from 'vue'
 import { i18n } from '../../i18n'
 import {
     ROWS,
@@ -51,7 +51,16 @@ const emit = defineEmits<{
 
 const formId = useId()
 const link = ref(keptLink)
-const failure = ref<'copy' | 'share'>()
+// A failed download keeps the file error the status line names.
+const failure = shallowRef<'copy' | 'share' | { name: string; error: FileError }>()
+const failureText = () => {
+    const shown = failure.value
+    if (!shown) return ''
+    if (typeof shown === 'object') return fileErrorText(shown.name, shown.error)
+    return shown === 'copy'
+        ? i18n.value.statistics.notCopiedImage
+        : i18n.value.statistics.notSharedImage
+}
 
 // Share on a phone or tablet that shares files; elsewhere Copy Image where the clipboard takes
 // images. Download Image is always there. Insecure origins have no clipboard object.
@@ -241,6 +250,7 @@ const share = async () => {
     }
 }
 const download = async () => {
+    failure.value = undefined
     const name = fileName.value
     const promise = cardFor().promise
     // A render that fails is a failed build, which the file error card names.
@@ -252,7 +262,7 @@ const download = async () => {
         await platform.saveFile({ kind: 'image', suggestedName: name, build })
     } catch (error) {
         if (!(error instanceof FileError)) throw error
-        notify(() => fileErrorText(name, error), { card: true, severity: 'error' })
+        if (open) failure.value = { name, error }
     }
 }
 const submit = () => {
@@ -313,11 +323,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
         <p class="flex items-start gap-2 text-sm empty:hidden" role="status">
             <template v-if="failure">
                 <SeverityIcon severity="error" class="mt-0.5 size-4 shrink-0" />
-                <span data-share-failure>{{
-                    failure === 'copy'
-                        ? i18n.statistics.notCopiedImage
-                        : i18n.statistics.notSharedImage
-                }}</span>
+                <span data-share-failure>{{ failureText() }}</span>
             </template>
         </p>
         <div ref="glyphHost" class="hidden" aria-hidden="true">

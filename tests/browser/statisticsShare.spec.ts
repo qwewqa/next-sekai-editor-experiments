@@ -285,11 +285,9 @@ test('a card that fails to encode shows the file error on Download Image, and th
     await failed(page, 1)
     await expect(preview(page)).toHaveCount(0)
     await shareDialog(page).locator('[data-share-download]').click()
-    await expect(
-        page.locator('[data-notice-card], .notification', {
-            hasText: '“Brain Rot.png” could not be prepared.',
-        }),
-    ).toBeVisible()
+    await expect(shareDialog(page).locator('[data-share-failure]')).toHaveText(
+        '“Brain Rot.png” could not be prepared.',
+    )
     const download = page.waitForEvent('download')
     await shareDialog(page).locator('[data-share-download]').click()
     expect((await download).suggestedFilename()).toBe('Brain Rot.png')
