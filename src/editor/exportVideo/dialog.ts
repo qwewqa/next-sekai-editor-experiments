@@ -58,7 +58,7 @@ import {
     type ClipRange,
     type RangeKind,
 } from './clipRange'
-import type { ExportVideoEnv } from './env'
+import type { DestinationRequest, ExportVideoEnv } from './env'
 import { describeVideoFailure, type VideoFailure } from './failure'
 import {
     finishedVideoExport,
@@ -435,6 +435,12 @@ export const createExportDialog = (input: DialogInput) => {
             services: shared,
             assets: copyExportAssets,
             destination: (signal, id) => destinationFor(signal, id),
+            ...(input.env.fallback
+                ? {
+                      fallback: (signal: AbortSignal, id: string) =>
+                          destinationFor(signal, id, true),
+                  }
+                : {}),
             worker: () => input.env.worker(),
             changed: (state) => {
                 if (created === current) void onState(state)
@@ -455,25 +461,33 @@ export const createExportDialog = (input: DialogInput) => {
 
     // The press's destination, kept for the file's name and size at the end.
     let picked: { name: string; handle?: FileSystemFileHandle; staged?: boolean } | undefined
-    const destinationFor = async (signal: AbortSignal, id: string): Promise<JobDestination> => {
+    const destinationFor = async (
+        signal: AbortSignal,
+        id: string,
+        fallback = false,
+    ): Promise<JobDestination> => {
         const name = fileName()
-        attempt.stage = input.env.picker ? 'pick' : 'prepare'
+        const picker = input.env.picker && !fallback
+        attempt.stage = picker ? 'pick' : 'prepare'
         const opened = performance.now()
+        const request: DestinationRequest = {
+            signal,
+            id,
+            name,
+            format: format.value,
+            estimatedBytes: bytes.value,
+            dismissed: () => {
+                attempt.target = 'none'
+                current?.cancel()
+            },
+        }
         let destination: JobDestination
         try {
-            destination = await input.env.destination({
-                signal,
-                id,
-                name,
-                format: format.value,
-                estimatedBytes: bytes.value,
-                dismissed: () => {
-                    attempt.target = 'none'
-                    current?.cancel()
-                },
-            })
+            destination = await (fallback && input.env.fallback
+                ? input.env.fallback(request)
+                : input.env.destination(request))
         } finally {
-            if (input.env.picker) attempt.pickMs = performance.now() - opened
+            if (picker) attempt.pickMs = performance.now() - opened
         }
         const worker = destination.worker
         picked =

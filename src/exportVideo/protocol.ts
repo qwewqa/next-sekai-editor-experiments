@@ -8,6 +8,8 @@ export type ExportFaults = {
     loseContextAt?: number
     pixelsAt?: number
     hold?: 'mix' | 'drain' | 'finalize'
+    /** Refuses one operation on a picked file in the worker: reading, opening, writing or closing. */
+    refuse?: 'read' | 'open' | 'write' | 'close'
 }
 export type ToExportWorker =
     | { type: 'limits' }

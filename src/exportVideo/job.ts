@@ -1,5 +1,6 @@
 import type { GroupId } from '../chart/groups'
 import { detection } from '../platform/detect'
+import { isWriteRefusal } from '../platform/handover'
 import type { Platform } from '../platform/types'
 import { videoLock } from '../platform/videoOutput'
 import { markVideoRunning } from '../platform/videoRunning'
@@ -17,6 +18,7 @@ import { clipSamples } from './timing'
 import {
     closeExportAssets,
     type ExportAssets,
+    type ExportConfig,
     type ExportSettings,
     type ExportTarget,
 } from './types'
@@ -93,6 +95,8 @@ export const createExportJob = (options: {
     services: ReturnType<typeof createExportServices>
     assets(signal: AbortSignal): Promise<ExportAssets>
     destination(signal: AbortSignal, id: string): Promise<JobDestination>
+    /** The route without a picker, for a picked file the platform refuses to write. */
+    fallback?(signal: AbortSignal, id: string): Promise<JobDestination>
     worker(): Worker
     changed(state: JobState): void
     frame?(bitmap: ImageBitmap): void
@@ -193,6 +197,8 @@ export const createExportJob = (options: {
         })())
     const run = async (): Promise<JobState> => {
         let release: (() => void) | undefined
+        /** Settles once the job lock taken for a picked file is released. */
+        let unlocked: Promise<unknown> | undefined
         let clearMarker: (() => void) | undefined
         const mark = () =>
             markVideoRunning(id, {
@@ -205,36 +211,12 @@ export const createExportJob = (options: {
         )
         document.addEventListener('visibilitychange', visibility)
         void requestWake()
-        set({ phase: 'preparing' })
-        try {
-            if (
-                !Number.isFinite(settings.in) ||
-                settings.in < 0 ||
-                ![30, 60].includes(settings.frameRate) ||
-                ![1, 1.5, 2].includes(settings.renderScale) ||
-                ![settings.width, settings.height].every((n) => Number.isInteger(n) && n > 0)
-            )
-                throw new Error('Invalid export settings')
-            clipSamples(settings.frames, settings.frameRate)
-            signal.throwIfAborted()
-            // Track interrupted preparation under its own hold. The destination takes this lock later.
-            const config = await navigator.locks.request(videoLock(id), { signal }, async () => {
-                const clear = mark()
-                try {
-                    await prepare()
-                    const config = await resolveConfig()
-                    await abortable(Promise.resolve(lastView), signal)
-                    return config
-                } finally {
-                    clear()
-                }
-            })
+        /** One export into `target`, under the job lock unless staging holds it. */
+        const encode = async (target: JobDestination, config: ExportConfig) => {
             if (!host) throw new Error('Export worker is unavailable')
-            signal.throwIfAborted()
-            destination = await options.destination(signal, id)
-            signal.throwIfAborted()
+            const runner = host
             // Staging already holds the job lock, through Ready and retention.
-            if (destination.worker.kind !== 'staged') {
+            if (target.worker.kind !== 'staged') {
                 let acquired!: () => void
                 const ready = new Promise<void>((resolve) => {
                     acquired = resolve
@@ -246,6 +228,7 @@ export const createExportJob = (options: {
                     acquired()
                     await held
                 })
+                unlocked = lock.catch(() => undefined)
                 await abortable(Promise.race([ready, lock]), signal)
             }
             clearMarker = mark()
@@ -253,7 +236,7 @@ export const createExportJob = (options: {
             set({ phase: 'exporting', frames: 0, total: settings.frames, progress: 0 })
             signal.throwIfAborted()
             encoding = true
-            const resultPromise = host.run(config, destination.worker, {
+            return await runner.run(config, target.worker, {
                 signal,
                 block: async () => {
                     const next = await audio.next()
@@ -290,12 +273,76 @@ export const createExportJob = (options: {
                     }
                 },
             })
-            const result = await resultPromise
-            if (destination.ready)
+        }
+        set({ phase: 'preparing' })
+        try {
+            if (
+                !Number.isFinite(settings.in) ||
+                settings.in < 0 ||
+                ![30, 60].includes(settings.frameRate) ||
+                ![1, 1.5, 2].includes(settings.renderScale) ||
+                ![settings.width, settings.height].every((n) => Number.isInteger(n) && n > 0)
+            )
+                throw new Error('Invalid export settings')
+            clipSamples(settings.frames, settings.frameRate)
+            signal.throwIfAborted()
+            // Track interrupted preparation under its own hold. The destination takes this lock later.
+            const config = await navigator.locks.request(videoLock(id), { signal }, async () => {
+                const clear = mark()
+                try {
+                    await prepare()
+                    const config = await resolveConfig()
+                    await abortable(Promise.resolve(lastView), signal)
+                    return config
+                } finally {
+                    clear()
+                }
+            })
+            if (!host) throw new Error('Export worker is unavailable')
+            signal.throwIfAborted()
+            let target = (destination = await options.destination(signal, id))
+            // A picked file the platform refuses to write is exported again, once, by the
+            // route without a picker, and offered from Ready.
+            let result: unknown
+            for (let retried = false; ; retried = true) {
+                signal.throwIfAborted()
+                try {
+                    result = await encode(target, config)
+                    break
+                } catch (error) {
+                    if (
+                        retried ||
+                        !options.fallback ||
+                        target.worker.kind !== 'picked' ||
+                        signal.aborted ||
+                        !isWriteRefusal(error)
+                    )
+                        throw error
+                }
+                encoding = false
+                clearMarker?.()
+                clearMarker = undefined
+                release?.()
+                release = undefined
+                // Staging takes the job lock only when it is free.
+                await unlocked
+                host?.dispose()
+                host = undefined
+                preparation = undefined
+                firstProgress = undefined
+                set({ phase: 'preparing' })
+                // The worker cleaned up after the picked file; a picked file it could not read
+                // stays as it is.
+                await target.discard().catch(() => undefined)
+                destination = undefined
+                await prepare()
+                target = destination = await options.fallback(signal, id)
+            }
+            if (target.ready)
                 set({
                     phase: 'ready',
                     result,
-                    file: await destination.ready.file(result),
+                    file: await target.ready.file(result),
                     delivered: false,
                 })
             else set({ phase: 'done', result })

@@ -2,7 +2,7 @@ import { testKeysOpen } from '../../platform/testKeys'
 import { FileError } from '../../platform/types'
 import { exportError, serializeExportError } from '../error'
 import { readGraphicsLimits } from '../graphics'
-import type { FromExportWorker, ToExportWorker } from '../protocol'
+import type { ExportFaults, FromExportWorker, ToExportWorker } from '../protocol'
 import type { AudioBlock } from '../timing'
 import type { ExportScene, ExportStart, ExportTarget } from '../types'
 import { GraphicsError, createExportRenderer } from './renderer'
@@ -23,6 +23,18 @@ const transferableBuffer = (result: unknown): Transferable[] =>
     result.buffer instanceof ArrayBuffer
         ? [result.buffer]
         : []
+
+/** A test's refusal of one file operation in this worker, as a platform that refuses it. */
+const refuse = (operation: NonNullable<ExportFaults['refuse']>) => {
+    const refused = () => Promise.reject(new DOMException('Refused by the test', 'NotAllowedError'))
+    const [prototype, method] =
+        operation === 'read'
+            ? [FileSystemFileHandle.prototype, 'getFile']
+            : operation === 'open'
+              ? [FileSystemFileHandle.prototype, 'createWritable']
+              : [FileSystemWritableFileStream.prototype, operation]
+    Object.defineProperty(prototype, method, { configurable: true, value: refused })
+}
 
 /** The muxer supplies the sink and the target's commit and abort methods. */
 export const installExportWorker = (
@@ -100,9 +112,10 @@ export const installExportWorker = (
                 ...message.config,
                 settings: prepared.settings,
             })
+            const faults = testKeysOpen ? message.faults : undefined
+            if (faults?.refuse && message.destination.kind === 'picked') refuse(faults.refuse)
             output = await open(start, message.destination, controller.signal)
             controller.signal.throwIfAborted()
-            const faults = testKeysOpen ? message.faults : undefined
             const sink = output.sink
             const result = await runExport(start, {
                 signal: controller.signal,

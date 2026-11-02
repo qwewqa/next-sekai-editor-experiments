@@ -353,12 +353,15 @@ export const openExportVideoTest = async (options: DialogTestOptions = {}) => {
     let exposed: ReturnType<typeof import('./dialog').createExportDialog> | undefined
     void openExportVideo(
         options.production
-            ? pageEnv(
-                  () =>
-                      new Worker(new URL('./export.worker.ts', import.meta.url), {
-                          type: 'module',
-                      }),
-              )
+            ? {
+                  ...pageEnv(
+                      () =>
+                          new Worker(new URL('./export.worker.ts', import.meta.url), {
+                              type: 'module',
+                          }),
+                  ),
+                  ...(options.faults ? { faults: options.faults } : {}),
+              }
             : {
                   picker: options.picker ?? false,
                   faults: options.faults,
