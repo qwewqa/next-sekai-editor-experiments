@@ -17,7 +17,6 @@ import { clipSamples } from './timing'
 import {
     closeExportAssets,
     type ExportAssets,
-    type ExportScene,
     type ExportSettings,
     type ExportTarget,
 } from './types'
@@ -120,7 +119,7 @@ export const createExportJob = (options: {
     let visibleElapsed = 0
     let firstProgress: number | undefined
     let host: ReturnType<typeof createExportHost> | undefined
-    let preparation: Promise<ExportScene> | undefined
+    let preparation: Promise<void> | undefined
     let lastView: Promise<unknown> | undefined
     let encoding = false
     const set = (value: JobState) => {
@@ -181,7 +180,6 @@ export const createExportJob = (options: {
                 assets = await abortable(options.assets(signal), signal, closeExportAssets)
                 const mirror = createMirrorSender().diff(snapshot)
                 if (!mirror) throw new Error('Export snapshot is missing')
-                const scene: ExportScene = { settings, assets, mirror }
                 host = createExportHost(
                     options.worker?.() ??
                         new Worker(new URL('./worker/mux.worker.ts', import.meta.url), {
@@ -189,10 +187,9 @@ export const createExportJob = (options: {
                         }),
                 )
                 host.visibility(document.hidden)
-                const ready = host.prepare(scene)
+                const ready = host.prepare({ settings, assets, mirror })
                 assets = undefined
                 await abortable(ready, signal)
-                return scene
             } catch (error) {
                 if (assets) closeExportAssets(assets)
                 host?.dispose()
@@ -227,11 +224,11 @@ export const createExportJob = (options: {
             clipSamples(settings.frames, settings.frameRate)
             signal.throwIfAborted()
             // Track interrupted preparation under its own hold. The destination takes this lock later.
-            const start = await navigator.locks.request(videoLock(id), { signal }, async () => {
+            const config = await navigator.locks.request(videoLock(id), { signal }, async () => {
                 const clear = mark()
                 try {
-                    const prepared = await prepare()
-                    const config = { ...prepared, ...(await resolveConfig()) }
+                    await prepare()
+                    const config = await resolveConfig()
                     await abortable(Promise.resolve(lastView), signal)
                     return config
                 } finally {
@@ -261,7 +258,7 @@ export const createExportJob = (options: {
             set({ phase: 'exporting', frames: 0, total: settings.frames, progress: 0 })
             signal.throwIfAborted()
             encoding = true
-            const resultPromise = host.run(start, destination.worker, {
+            const resultPromise = host.run(config, destination.worker, {
                 signal,
                 block: async () => {
                     const next = await audio.next()

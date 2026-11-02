@@ -41,4 +41,5 @@ export type ExportScene = {
     settings: ExportSettings
     assets: ExportAssets
 }
-export type ExportStart = SinkConfig & ExportScene & { aacDelay?: number }
+export type ExportConfig = SinkConfig & { settings: ExportSettings; aacDelay?: number }
+export type ExportStart = ExportScene & ExportConfig

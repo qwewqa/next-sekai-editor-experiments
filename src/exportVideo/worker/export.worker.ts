@@ -94,7 +94,6 @@ export const installExportWorker = (
     const run = async (message: Extract<ToExportWorker, { type: 'start' }>) => {
         let output: WorkerOutput | undefined
         try {
-            if (message.start) prepare(message.start)
             if (!prepared || !renderer) throw new Error('Export renderer is not prepared')
             Object.assign(prepared.settings, message.config.settings)
             const start: ExportStart = Object.assign(prepared, {

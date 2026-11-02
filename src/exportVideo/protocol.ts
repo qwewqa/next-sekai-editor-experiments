@@ -1,7 +1,7 @@
 import type { ExportFailure } from './error'
 import type { GraphicsLimits } from './graphics'
 import type { AudioBlock } from './timing'
-import type { ExportScene, ExportSettings, ExportStart, ExportTarget } from './types'
+import type { ExportConfig, ExportScene, ExportSettings, ExportTarget } from './types'
 
 export type ExportFaults = {
     failWrite?: boolean
@@ -16,8 +16,7 @@ export type ToExportWorker =
     | { type: 'visibility'; hidden: boolean }
     | {
           type: 'start'
-          start?: ExportStart
-          config: Omit<ExportStart, 'assets' | 'mirror'>
+          config: ExportConfig
           destination: ExportTarget
           faults?: ExportFaults
       }

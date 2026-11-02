@@ -3,7 +3,7 @@ import type { ExportStart } from '../types'
 import { createAudioFeeder, createAudioPacketAdapter, videoPacket } from './encode'
 import { measureEncoderColor } from './encoderColor'
 import { createFrameLoop } from './loop'
-import { createExportRenderer } from './renderer'
+import type { createExportRenderer } from './renderer'
 import type { PacketSink } from './sink'
 
 /** A message task yields even when both codecs consume input synchronously. */
@@ -22,7 +22,7 @@ export const runExport = async (
     start: ExportStart,
     options: {
         signal: AbortSignal
-        renderer?: ReturnType<typeof createExportRenderer>
+        renderer: ReturnType<typeof createExportRenderer>
         sink: PacketSink
         block: () => Promise<AudioBlock | undefined>
         progress: (frames: number, bitmap?: ImageBitmap) => void
@@ -32,9 +32,9 @@ export const runExport = async (
     },
 ) => {
     const { settings: s } = start
+    const { renderer } = options
     let video: VideoEncoder | undefined
     let audio: AudioEncoder | undefined
-    let renderer: ReturnType<typeof createExportRenderer> | undefined
     const loop = createFrameLoop({
         signal: options.signal,
         audio: !!start.codecs.audio,
@@ -44,7 +44,6 @@ export const runExport = async (
     let emitted = 0
     const metadataState = { configured: false }
     try {
-        renderer = options.renderer ?? createExportRenderer(start, loop.fail)
         // The measurement only corrects the colour label. If it fails, the file keeps the
         // encoder's own label.
         const color = await loop.guard(
@@ -166,7 +165,6 @@ export const runExport = async (
     } finally {
         if (video?.state !== 'closed') video?.close()
         if (audio?.state !== 'closed') audio?.close()
-        if (!options.renderer) renderer?.dispose()
         loop.dispose()
     }
 }

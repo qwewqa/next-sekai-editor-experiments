@@ -3,9 +3,9 @@ import type { ExportFaults, FromExportWorker, ToExportWorker } from './protocol'
 import type { AudioBlock } from './timing'
 import {
     assetTransfers,
+    type ExportConfig,
     type ExportScene,
     type ExportSettings,
-    type ExportStart,
     type ExportTarget,
 } from './types'
 
@@ -83,7 +83,7 @@ export const createExportHost = (worker: Worker) => {
             })
         },
         run(
-            start: ExportStart,
+            config: ExportConfig,
             destination: ExportTarget,
             options: {
                 signal: AbortSignal
@@ -151,23 +151,7 @@ export const createExportHost = (worker: Worker) => {
                     }
                 }
                 options.signal.addEventListener('abort', cancel, { once: true })
-                post(
-                    {
-                        type: 'start',
-                        start: prepared ? undefined : start,
-                        config: {
-                            settings: start.settings,
-                            frames: start.frames,
-                            frameRate: start.frameRate,
-                            samples: start.samples,
-                            codecs: start.codecs,
-                            aacDelay: start.aacDelay,
-                        },
-                        destination,
-                        faults: options.faults,
-                    },
-                    prepared ? [] : assetTransfers(start.assets),
-                )
+                post({ type: 'start', config, destination, faults: options.faults })
                 if (options.signal.aborted) cancel()
             })
         },
