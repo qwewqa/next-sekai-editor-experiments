@@ -1,7 +1,13 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { installEditorFixture } from './editorFixture'
-import { openVideoDialog, videoDialog, videoExportButton, videoPhase } from './exportVideoDialog'
+import {
+    openVideoDialog,
+    shortVideoClip,
+    videoDialog,
+    videoExportButton,
+    videoPhase,
+} from './exportVideoDialog'
 import { wav } from './levelInfoFiles'
 import { resource } from './previewResourceFixture'
 
@@ -45,17 +51,7 @@ const openClip = async (
     }: { frames?: number; format?: 'automatic' | 'webm' } = {},
 ) => {
     const dialog = await openVideoDialog(page, { production: true })
-    await dialog.getByRole('combobox', { name: 'Resolution' }).selectOption({ label: '720p' })
-    for (const [name, value] of [
-        ['In', '0'],
-        ['Out', String(frames / frameRate)],
-    ]) {
-        const field = dialog.getByRole('textbox', { name, exact: true })
-        await field.fill(value!)
-        await field.press('Enter')
-    }
-    const length = (frames / frameRate).toFixed(3).padStart(6, '0')
-    await expect(dialog.locator('[data-export-summary]')).toContainText(`00:${length}`)
+    await shortVideoClip(page, frames / frameRate)
     await dialog.locator('[data-export-advanced]').click()
     await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption(format)
     return dialog

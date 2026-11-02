@@ -5,63 +5,40 @@ import {
     EncodedPacketSink,
     Input,
     VideoSampleSink,
+    type InputAudioTrack,
 } from 'mediabunny'
 
-export const readVideo = async (bytes: number[]) => {
-    const input = new Input({
-        formats: ALL_FORMATS,
-        source: new BufferSource(new Uint8Array(bytes)),
-    })
-    try {
-        const video = await input.getPrimaryVideoTrack()
-        const audio = await input.getPrimaryAudioTrack()
-        if (!video || !audio) throw new Error('Missing media track')
-        let frames = 0
-        let firstVideo: number | undefined
-        let videoEnd = 0
-        for await (const packet of new EncodedPacketSink(video).packets()) {
-            firstVideo ??= packet.timestamp
-            videoEnd = packet.timestamp + packet.duration
-            frames++
-        }
-        let audioEnd = 0
-        let firstAudio: number | undefined
-        let firstSound: number | undefined
-        let earlyPeak = 0
-        for await (const sample of new AudioSampleSink(audio).samples()) {
-            try {
-                firstAudio ??= sample.timestamp
-                const plane = new Float32Array(sample.numberOfFrames)
-                sample.copyTo(plane, { planeIndex: 0, format: 'f32-planar' })
-                for (let i = 0; i < plane.length; i++) {
-                    const time = sample.timestamp + i / sample.sampleRate
-                    const magnitude = Math.abs(plane[i]!)
-                    if (magnitude > 0.1) firstSound ??= time
-                    if (time >= 0 && time < 1024 / 48000) earlyPeak = Math.max(earlyPeak, magnitude)
-                }
-                audioEnd = sample.timestamp + sample.duration
-            } finally {
-                sample.close()
+const readAudio = async (track: InputAudioTrack) => {
+    let first: number | undefined
+    let end = 0
+    let peak = 0
+    let firstSound: number | undefined
+    let earlyPeak = 0
+    for await (const sample of new AudioSampleSink(track).samples()) {
+        try {
+            first ??= sample.timestamp
+            const plane = new Float32Array(sample.numberOfFrames)
+            sample.copyTo(plane, { planeIndex: 0, format: 'f32-planar' })
+            for (let i = 0; i < plane.length; i++) {
+                const time = sample.timestamp + i / sample.sampleRate
+                const magnitude = Math.abs(plane[i]!)
+                peak = Math.max(peak, magnitude)
+                if (magnitude > 0.1) firstSound ??= time
+                if (time >= 0 && time < 1024 / 48000) earlyPeak = Math.max(earlyPeak, magnitude)
             }
+            end = sample.timestamp + sample.duration
+        } finally {
+            sample.close()
         }
-        const frame = await new VideoSampleSink(video).getSample(0)
-        if (!frame) throw new Error('Video could not be decoded')
-        frame.close()
-        return {
-            frames,
-            firstVideo,
-            videoEnd,
-            audioEnd,
-            firstAudio,
-            firstSound,
-            earlyPeak,
-            width: await video.getDisplayWidth(),
-            height: await video.getDisplayHeight(),
-            colorSpace: (await video.getDecoderConfig())?.colorSpace,
-            duration: await input.computeDuration(),
-        }
-    } finally {
-        input.dispose()
+    }
+    return {
+        codec: await track.getCodec(),
+        channels: await track.getNumberOfChannels(),
+        first,
+        end,
+        peak,
+        firstSound,
+        earlyPeak,
     }
 }
 
@@ -86,27 +63,7 @@ export const readTracks = async (bytes: number[]) => {
         const frame = await new VideoSampleSink(video).getSample(0)
         if (!frame) throw new Error('Video could not be decoded')
         frame.close()
-        let audio: { codec: string | null; channels: number; end: number; peak: number } | undefined
-        if (track) {
-            let end = 0
-            let peak = 0
-            for await (const sample of new AudioSampleSink(track).samples()) {
-                try {
-                    const plane = new Float32Array(sample.numberOfFrames)
-                    sample.copyTo(plane, { planeIndex: 0, format: 'f32-planar' })
-                    for (const value of plane) peak = Math.max(peak, Math.abs(value))
-                    end = sample.timestamp + sample.duration
-                } finally {
-                    sample.close()
-                }
-            }
-            audio = {
-                codec: await track.getCodec(),
-                channels: await track.getNumberOfChannels(),
-                end,
-                peak,
-            }
-        }
+        const audio = track && (await readAudio(track))
         return {
             format: (await input.getFormat()).name,
             trackCount: (await input.getTracks()).length,
@@ -122,5 +79,18 @@ export const readTracks = async (bytes: number[]) => {
         }
     } finally {
         input.dispose()
+    }
+}
+
+/** A file with video and audio, with the audio's timing beside the video's. */
+export const readVideo = async (bytes: number[]) => {
+    const { audio, ...video } = await readTracks(bytes)
+    if (!audio) throw new Error('Missing audio track')
+    return {
+        ...video,
+        firstAudio: audio.first,
+        audioEnd: audio.end,
+        firstSound: audio.firstSound,
+        earlyPeak: audio.earlyPeak,
     }
 }

@@ -110,17 +110,19 @@ export const videoPhase = (page: Page) =>
     videoDialog(page).locator('[data-export-phase]').getAttribute('data-export-phase')
 export const videoExportButton = (page: Page) => videoDialog(page).locator('[data-export-start]')
 
-/** A one-second clip at 720p. */
-export const shortVideoClip = async (page: Page) => {
+/** A clip from 0 at 720p, one second long by default. */
+export const shortVideoClip = async (page: Page, seconds = 1) => {
     const dialog = videoDialog(page)
     await dialog.getByRole('combobox', { name: 'Resolution' }).selectOption({ label: '720p' })
     for (const [name, value] of [
         ['In', '0'],
-        ['Out', '1'],
+        ['Out', String(seconds)],
     ]) {
         const field = dialog.getByRole('textbox', { name, exact: true })
         await field.fill(value!)
         await field.press('Enter')
     }
-    await expect(dialog.locator('[data-export-summary]')).toContainText('00:01.000')
+    await expect(dialog.locator('[data-export-summary]')).toContainText(
+        `00:${seconds.toFixed(3).padStart(6, '0')}`,
+    )
 }
