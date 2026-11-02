@@ -32,7 +32,7 @@ export const REAL_DOOR: ReadonlySet<string> = new Set([
     'readChainRecord',
     'listHandleOwners',
     'readHandle',
-    'takeOver',
+    'revokeOwner',
     'recordOwnSave',
     'unlinkChain',
 ])

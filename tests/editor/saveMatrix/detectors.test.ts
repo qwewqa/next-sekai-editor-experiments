@@ -146,10 +146,10 @@ test('the door hands out a new handle object on every read, and stores nothing f
     assert.equal(await picked.isSameEntry(read), true)
 
     // E-4: the fault fires before the handler, so nothing is stored.
-    world.behaviour.set('takeOver', () => 'throw')
+    world.behaviour.set('revokeOwner', () => 'throw')
     const before = JSON.stringify(await world.worker.call('readChainRecord', 'chain-other'))
     await assert.rejects(
-        world.worker.call('takeOver', {
+        world.worker.call('revokeOwner', {
             owner: {
                 chainId: 'chain-other',
                 role: 'file',
@@ -160,7 +160,7 @@ test('the door hands out a new handle object on every read, and stores nothing f
             by: 'chain-own',
             at: 5,
         }),
-        /takeOver #1/,
+        /revokeOwner #1/,
     )
     assert.equal(JSON.stringify(await world.worker.call('readChainRecord', 'chain-other')), before)
     assert.ok(world.handleRows.has('chain-other:file'))

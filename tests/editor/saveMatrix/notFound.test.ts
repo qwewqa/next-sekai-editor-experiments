@@ -51,7 +51,7 @@ test('a Save As whose picked file disappears keeps its previous binding', async 
 
 test('a Save As whose binding was not recorded, then not found at the write, leaves the bound file unmarked', async () => {
     const w = await world('bound')
-    w.behaviour.set('takeOver', () => 'throw')
+    w.behaviour.set('revokeOwner', () => 'throw')
     await saveAsNotFound(w)
     assert.equal(w.boundName(), 'own.nxsp')
     assert.equal(diskFinding.value, undefined)

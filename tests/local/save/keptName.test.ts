@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readNxsp } from '../../../src/local/nxsp/read'
 import { writeUnlink } from '../../../src/local/open/importWrite'
-import { BIND_STORES, takeOver } from '../../../src/local/save/bind'
+import { BIND_STORES, revokeOwner } from '../../../src/local/save/bind'
 import { Fixture, save } from './fixture'
 
 // A chain that loses its file keeps the file's stem as its name: the file's stem
@@ -46,7 +46,7 @@ const owner = (fixture: Fixture, name: string) => ({
 test("a takeover leaves the chain its file's stem, dots and all", async () => {
     const fixture = await boundChain('feat. Miku.nxsp')
     const done = await fixture.store.write(BIND_STORES, (tx) =>
-        takeOver(tx, { owner: owner(fixture, 'feat. Miku.nxsp'), by: 'other', at: 9 }),
+        revokeOwner(tx, { owner: owner(fixture, 'feat. Miku.nxsp'), by: 'other', at: 9 }),
     )
     assert.equal(done.revoked, true)
     const chain = await chainOf(fixture)
@@ -75,7 +75,7 @@ test('a fork later saved as a file takes that file\'s stem over its "(2)" name w
     // A fork "Coconut (2)" saved as melt.nxsp, then taken over or unlinked: it reads "melt".
     const taken = await boundChain('melt.nxsp', 'Coconut (2)')
     await taken.store.write(BIND_STORES, (tx) =>
-        takeOver(tx, { owner: owner(taken, 'melt.nxsp'), by: 'other', at: 9 }),
+        revokeOwner(tx, { owner: owner(taken, 'melt.nxsp'), by: 'other', at: 9 }),
     )
     assert.equal((await chainOf(taken)).name, 'melt')
     const unlinked = await boundChain('melt.nxsp', 'Coconut (2)')

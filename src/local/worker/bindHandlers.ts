@@ -6,9 +6,9 @@ import {
     readChainRecord,
     readSessionStarts,
     recordOwnSave,
-    takeOver,
+    revokeOwner,
     type OwnSaveRecord,
-    type TakeOver,
+    type Revocation,
 } from '../save/bind'
 import type { WorkerContext } from './handlers'
 
@@ -28,8 +28,8 @@ export const bindHandlers = (context: WorkerContext) => ({
     listHandleOwners: () => context.core.read(['chains', 'handles'], listHandleOwners),
 
     /** Revokes a matching association in one transaction. */
-    takeOver: (request: TakeOver) =>
-        context.core.write(BIND_STORES, (tx) => takeOver(tx, request), { durability: 'strict' }),
+    revokeOwner: (request: Revocation) =>
+        context.core.write(BIND_STORES, (tx) => revokeOwner(tx, request), { durability: 'strict' }),
 
     /**
      * An append that met damage in the chain's own file: the chain unlinks (a new

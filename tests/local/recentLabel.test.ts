@@ -3,7 +3,7 @@ import { registerHooks } from 'node:module'
 import test from 'node:test'
 import { HANDLES } from '../../src/local/handleRows'
 import { listRecent } from '../../src/local/recent'
-import { takeOver } from '../../src/local/save/bind'
+import { revokeOwner } from '../../src/local/save/bind'
 import { createWorld } from '../../src/local/testing/world'
 import { editStep, futureFixtureOperation } from '../helpers/historySteps'
 import '../helpers/lockChecks'
@@ -79,7 +79,7 @@ test('a row whose file another chain took over reads "Unsaved"', async () => {
     assert.equal(await row(), 'coconut.nxsp')
     // Another chain's picker wrote over the file.
     await write(async (tx) => {
-        const { revoked } = await takeOver(tx, {
+        const { revoked } = await revokeOwner(tx, {
             owner: {
                 chainId: session.chainId,
                 role: 'file',

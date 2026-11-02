@@ -439,14 +439,10 @@ const copyStem = (stem: string, ofFile: boolean) =>
 const nameTime = (time: number) => formatDateTime(settings.locale, time).replaceAll(':', '.')
 
 /** Revokes a matching stored association. A failed write to storage does not prevent the file write. */
-export const revoke = async (env: Env, owner: HandleOwner | undefined) => {
+const revoke = async (env: Env, owner: HandleOwner) => {
     const at = Date.now()
     try {
-        const done = await env.worker.call('takeOver', {
-            ...(owner ? { owner } : {}),
-            by: env.chainId,
-            at,
-        })
+        const done = await env.worker.call('revokeOwner', { owner, by: env.chainId, at })
         return { ok: true as const, ...done, at }
     } catch {
         return { ok: false as const, revoked: false }

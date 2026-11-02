@@ -282,7 +282,7 @@ test('a chain is not saved when it has content in no file, or is bound and chang
 test('a chain whose file another chain took over counts as not saved', async () => {
     const { world, chains, read } = await setup(1)
     const [takenOver] = chains as [Chain]
-    // As `takeOver` leaves the owner: no binding, `replaced`, edited, with content.
+    // As `revokeOwner` leaves the owner: no binding, `replaced`, edited, with content.
     await edit(world, async (tx) => {
         const row = (await tx.get('chains', takenOver.first.chainId)) as Record<string, unknown>
         const rest = { ...row }
@@ -566,7 +566,7 @@ test('a chain counted as saved whose file is taken over or rebound after the rea
         })
     const found = await read()
     assert.ok(found.every((chain) => !chain.notSaved))
-    // Another tab's picker overwrote the file: `takeOver` drops the binding, as it leaves `updatedAt`.
+    // Another tab's picker overwrote the file: `revokeOwner` drops the binding, as it leaves `updatedAt`.
     await edit(world, async (tx) => {
         const row = (await tx.get('chains', takenOver.first.chainId)) as Record<string, unknown>
         const rest = { ...row }

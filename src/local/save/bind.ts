@@ -38,7 +38,7 @@ export type HandleOwner = {
     chainId: string
     role: 'file' | 'exportTarget'
     name: string
-    /** The binding's `at`, which a takeover checks is unchanged. */
+    /** The binding's `at`, which a revocation checks is unchanged. */
     at?: number
     /** Whether a handle is stored for it. */
     handle: boolean
@@ -75,44 +75,39 @@ export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
     return owners
 }
 
-/** A binding or Export target to revoke. */
-export type TakeOver = {
-    owner?: HandleOwner
+/** A binding or Export target to revoke, for the chain `by` at `at`. */
+export type Revocation = {
+    owner: HandleOwner
     by: string
     at: number
 }
 
 /**
- * Revokes the owner, when its field is still the one identified (the same `name` and `at`), with
+ * Revokes the owner, when its field is still the one listed (the same `name` and `at`), with
  * `replaced: { by, at, name }`, `edited` and `hasContent` for a binding (an Export target just
  * goes). Returns whether it revoked the association.
  */
-export const takeOver = async (tx: KvTx, request: TakeOver) => {
-    let revoked = false
-    const { owner } = request
-    if (owner) {
-        const chain = await tx.get('chains', owner.chainId)
-        const field = isRow(chain) ? chain[owner.role] : undefined
-        if (
-            isRow(chain) &&
-            isRow(field) &&
-            field.name === owner.name &&
-            (owner.role !== 'file' || field.at === owner.at)
-        ) {
-            const record: Row = { ...chain }
-            Reflect.deleteProperty(record, owner.role)
-            if (owner.role === 'file') {
-                keepName(record, owner.name)
-                record.replaced = { by: request.by, at: request.at, name: owner.name }
-                record.edited = true
-                record.hasContent = true
-            }
-            await deleteHandleRow(tx, owner.chainId, owner.role)
-            await tx.put('chains', record)
-            revoked = true
-        }
+export const revokeOwner = async (tx: KvTx, { owner, by, at }: Revocation) => {
+    const chain = await tx.get('chains', owner.chainId)
+    const field = isRow(chain) ? chain[owner.role] : undefined
+    if (
+        !isRow(chain) ||
+        !isRow(field) ||
+        field.name !== owner.name ||
+        (owner.role === 'file' && field.at !== owner.at)
+    )
+        return { revoked: false }
+    const record: Row = { ...chain }
+    Reflect.deleteProperty(record, owner.role)
+    if (owner.role === 'file') {
+        keepName(record, owner.name)
+        record.replaced = { by, at, name: owner.name }
+        record.edited = true
+        record.hasContent = true
     }
-    return { revoked }
+    await deleteHandleRow(tx, owner.chainId, owner.role)
+    await tx.put('chains', record)
+    return { revoked: true }
 }
 
 /** A Save's `save` entry as a marker keeps it (hashes as hex). */

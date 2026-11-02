@@ -64,7 +64,7 @@ test("Save refuses a picked file filled by its owner's Save while the pick waite
 
 test('a revocation that cannot be stored does not block the picked write', async () => {
     const w = await createWorld({ own: 'bound', other: true })
-    w.behaviour.set('takeOver', () => 'throw')
+    w.behaviour.set('revokeOwner', () => 'throw')
     w.pick('other.nxsp')
     w.answers.saveDialog.push(answer('other.nxsp'))
     await flow.saveAs()

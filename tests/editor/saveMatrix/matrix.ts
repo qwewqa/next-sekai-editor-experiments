@@ -592,8 +592,8 @@ export const FAULTS: FaultDef[] = [
         },
     },
     {
-        id: 'takeover-fails',
-        exit: 'storage paused: the takeover cannot be recorded',
+        id: 'revoke-fails',
+        exit: 'storage paused: the revocation cannot be stored',
         applies: (path, p) =>
             path.picker &&
             path.writes &&
@@ -601,16 +601,20 @@ export const FAULTS: FaultDef[] = [
             ['other', 'unknown', 'own', 'fresh'].includes(last(p)),
         arm: (w, path, p) => {
             let calls = 0
-            w.on('worker:takeOver', () => {
+            w.on('worker:revokeOwner', () => {
                 calls++
             })
-            w.behaviour.set('takeOver', () => 'throw')
-            // Which picks the path takes over: another chain's file, or an unknown one it binds.
-            const takes = path.id === 'save-to-file' ? ['own', 'other'] : ['other']
+            w.behaviour.set('revokeOwner', () => 'throw')
+            // The picks with an owner the path revokes: another chain's file, and the chain's own
+            // for a path that is not a Save of it.
+            const revokes =
+                path.id === 'save-to-file' || path.family === 'export'
+                    ? ['own', 'other']
+                    : ['other']
             return {
-                effective: () => calls > 0 || !takes.includes(last(p)),
+                effective: () => calls > 0 || !revokes.includes(last(p)),
                 get facts() {
-                    // A takeover that was tried and failed leaves the stale record for I9.
+                    // A revocation that was tried and failed leaves the stale record for I9.
                     return calls > 0 ? { staleOwnership: true } : {}
                 },
             }
