@@ -33,7 +33,7 @@ const saveAs = (page: Page) =>
         void runCommand(commands.saveAs, 'button')
     })
 
-/** A dialog ignores presses in its first moments; a read first has time to finish. */
+/** A dialog ignores presses in its first moments. */
 const settle = (page: Page) => page.waitForTimeout(400)
 
 /** Saves coconut.nxsp with an undone row. */

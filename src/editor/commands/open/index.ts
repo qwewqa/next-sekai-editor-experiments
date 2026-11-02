@@ -290,7 +290,7 @@ export const showOpenWarning = (warning: OpenWarning) => {
 
 /**
  * Opens parsed level data: a new session, with its handle and Export's target when it was read
- * whole. Content this build did not read makes it partial: no file is written over.
+ * whole. Content this build did not read makes it partial, with no target, so Export asks where.
  */
 const applyLevelData = async (
     file: File,
