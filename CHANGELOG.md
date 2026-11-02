@@ -25,7 +25,8 @@
 - Added Find Edits Here to the chart’s context menu. It filters the Timeline to steps that changed the selected beats or the beats in view.
 - Undo now supports up to 1,000 steps, even after you reload the page. Earlier Timeline steps are available in History.
 - (Web) When browser storage runs low, the editor deletes audio and cover images used only by earlier Timeline steps. Once storage is full, new changes are not stored until you free up space, for example with Delete Sessions… in Settings › Local Data.
-- Settings › Local Data replaces the Auto Save settings.
+- Settings › Local Data replaces the Auto Save settings. It has Export Raw Data, which saves everything the editor has stored in your browser as a ZIP file, for reporting a problem.
+- Reset Settings… and Reset Shortcuts… now ask for confirmation before they reset.
 - (Web) Except on iPhone and iPad, the editor asks for confirmation when you close a tab with unsaved changes. This also applies after an export. To turn this off, use Settings › Local Data › Ask Before Closing with Unsaved Changes.
 - Level Properties is now Level Info, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file. The text fields in Level Info and the names of groups, stages and folders now have a maximum length.
 - The BGM dialog now has a Download BGM button. When the BGM is not loaded, a notice offers Choose Audio… to load an audio file.
