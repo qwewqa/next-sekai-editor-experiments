@@ -16,7 +16,7 @@
 - Some chart properties now have an info button that shows what the property does. To hide these buttons, turn off Settings › Editor › Show Property Descriptions.
 - Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open (O) opens project files.
 - Export Level Data (Shift+P) exports level data for Sonolus.
-- (Web) In desktop Chrome and Edge, saving again updates the project file and exporting again updates the exported file. Other browsers ask for the file again or download a new one.
+- (Web) In desktop Chrome and Edge, saving again updates the project file and exporting again updates the exported file. In other browsers, the file picker opens again or a new file downloads.
 - (Web) The editor stores your work in your browser as sessions and resumes your last session when you return. On the first launch after this update, it opens your old auto save. Save a project file to keep your work.
 - Reset is now New (N). New shows a confirmation when the chart has unsaved changes. The previous session stays in Recent Sessions. The notice shown after New has a Reopen button to return to it.
 - Added History (Shift+H), with Timeline and Recent Sessions tabs. Timeline lists each change. You can view the chart at any Timeline step and choose Restore to return to that version.
