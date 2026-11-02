@@ -575,6 +575,26 @@ for (const read of ['always', 'afterClose'] as const)
         await expect(page.getByRole('dialog')).toHaveCount(0)
     })
 
+test('a bound file whose reads are refused later is picked again at Save, never refused as a write', async ({
+    page,
+}) => {
+    await refusingStart(page, { read: 'onFlag' })
+    await savedTo(page, 'coconut.nxsp')
+    // Read back and checked: the binding has its disk state.
+    expect((await chainOf(page)).file).toHaveProperty('disk')
+    const first = await projectOf(page, 'coconut.nxsp')
+    await page.evaluate(() => Reflect.set(window, 'refuseReads', true))
+    await edit(page, 2)
+    await pressSave(page)
+    await expect.poll(() => refusingPicks(page)).toEqual(['coconut.nxsp', 'coconut.nxsp'])
+    await expect
+        .poll(async () => (await projectOf(page, 'coconut.nxsp')).revision)
+        .not.toEqual(first.revision)
+    expect((await projectOf(page, 'coconut.nxsp')).id).toBe(first.id)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByText('The browser did not allow writing')).toHaveCount(0)
+})
+
 for (const write of ['create', 'write', 'close'] as const)
     test(`a picked file refusing reads and ${write} gets nothing; the project downloads once, bound by name`, async ({
         page,

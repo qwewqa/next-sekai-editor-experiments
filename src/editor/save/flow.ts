@@ -871,9 +871,18 @@ const check = async (env: Env, handle: FileSystemFileHandle): Promise<Checked> =
     try {
         disk = await platform.inspect({ kind: 'handle', handle }, 'nxsp')
     } catch (error) {
+        const failure = fileError(error)
         return {
             kind: 'outcome',
-            outcome: { kind: 'failed', error: fileError(error), name: file.name },
+            outcome: {
+                kind: 'failed',
+                // `inspect` only reads: a refusal is a refused read, as the write's own check.
+                error:
+                    failure.code === 'denied'
+                        ? new FileError('denied', failure.message, undefined, 'read')
+                        : failure,
+                name: file.name,
+            },
         }
     }
     if (disk === 'missing')
@@ -1661,15 +1670,7 @@ const saveNow = async (env: Env) => {
     // A Save the platform refused to read back has no disk state to check the file against:
     // the next Save opens the picker at that file, never writing over it unchecked.
     if (file.event === 'saved' && !file.disk) {
-        await afterOutcome(
-            env,
-            await pickAndWrite(env, {
-                fileName: file.name,
-                ...DEFAULT_OPTIONS,
-                target: 'copy',
-                startIn: handle,
-            }),
-        )
+        await pickAt(env, file, handle)
         return
     }
     // The gesture's first call.
@@ -1703,8 +1704,32 @@ const saveNow = async (env: Env) => {
         saveUi.noChanges(file.name, outcome.event === 'opened' ? 'opened' : 'saved')
         return
     }
+    // The platform refused to read the file, so it cannot be checked: the picker opens at it.
+    if (
+        outcome.kind === 'failed' &&
+        outcome.error.code === 'denied' &&
+        outcome.error.step === 'read'
+    ) {
+        await pickAt(env, file, handle)
+        return
+    }
     await afterOutcome(env, outcome)
 }
+
+/**
+ * Save through the picker at the bound file, with its identity and the default options: the
+ * pick confirms the write where the file cannot be checked.
+ */
+const pickAt = async (env: Env, file: StoredFile, handle: FileSystemFileHandle) =>
+    afterOutcome(
+        env,
+        await pickAndWrite(env, {
+            fileName: file.name,
+            ...DEFAULT_OPTIONS,
+            target: 'copy',
+            startIn: handle,
+        }),
+    )
 
 /** Save As…: always the dialog, a new `docId`. */
 export const saveAs = () =>

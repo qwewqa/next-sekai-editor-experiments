@@ -379,8 +379,11 @@ export const preparingDialog = (page: Page, name = 'coconut.nxsp') =>
 
 /** What a platform that refuses picked files refuses, as Chrome for Android does. */
 export type Refusal = {
-    /** `getFile()` on the picked handle: always, or once its write has closed. */
-    read?: 'always' | 'afterClose'
+    /**
+     * `getFile()` on the picked handle: always, once its write has closed, or while
+     * `window.refuseReads` is true.
+     */
+    read?: 'always' | 'afterClose' | 'onFlag'
     /** One step of writing it. */
     write?: 'create' | 'write' | 'close'
 }
@@ -417,7 +420,9 @@ export const refusingPicker = (page: Page, refusal: Refusal) =>
                 const createWritable = handle.createWritable.bind(handle)
                 Object.defineProperty(handle, 'getFile', {
                     value: () =>
-                        refusal.read === 'always' || (refusal.read === 'afterClose' && closed)
+                        refusal.read === 'always' ||
+                        (refusal.read === 'afterClose' && closed) ||
+                        (refusal.read === 'onFlag' && Reflect.get(window, 'refuseReads') === true)
                             ? refused()
                             : getFile(),
                 })
