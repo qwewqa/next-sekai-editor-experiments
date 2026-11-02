@@ -2103,30 +2103,33 @@
       "coverageChip": "{0} sur {1}",
       "selectCovered": "Sélectionner seulement les objets concernés ({0} sur {1})",
       "descriptions": {
-        "groupId": "Chaque groupe a ses propres changements d’échelle de temps.",
-        "elevation": "En voies.",
+        "elevation": "Hauteur, en voies.",
         "noteType": {
           "choices": {
             "default": "Tap, flick, relâchement ou tick, selon sa place dans un slide et sa Direction du flick.",
             "trace": "Trace ou trace flick.",
-            "anchor": "Invisible. Donne leur forme aux connecteurs sans ajouter de combo.",
-            "damage": "Compte comme un miss si elle est touchée.",
+            "anchor": "Note invisible qui donne leur forme aux connecteurs sans ajouter de combo.",
+            "damage": "Note qui provoque un miss si elle est touchée.",
             "forceTick": "Toujours un tick, même en dehors d’un slide.",
             "forceNonTick": "Jamais un tick, même au milieu d’un slide."
           }
         },
         "noteStyle": "Couleur de remplacement des notes.",
-        "isAttached": "Prend sa voie et sa taille du connecteur.",
-        "isFake": "Sans jugement, son ni effet de frappe.",
+        "isAttached": "Donne à cette note la voie et la taille du connecteur sur lequel elle se trouve.",
+        "isFake": "Désactive le jugement, le son et les effets de frappe.",
         "sfx": "Effet sonore de remplacement.",
         "isConnectorSeparator": "Commence un nouveau segment de connecteur avec les propriétés de connecteur de cette note.",
         "connectorType": {
-          "intro": "Un connecteur Dégâts provoque des miss tant qu’il est touché."
+          "choices": {
+            "active": "Connecteur à maintenir appuyé.",
+            "guide": "Connecteur uniquement visuel.",
+            "damage": "Connecteur qui provoque des miss si on le touche."
+          }
         },
         "connectorStyle": "Couleur de remplacement du connecteur.",
         "connectorEase": "Courbe du connecteur jusqu’à la prochaine note non attachée.",
-        "connectorIsFake": "Sans jugement.",
-        "connectorGuideAlpha": "Opacité du guide à cette note, de 0 à 2. Elle varie uniformément le long de chaque segment. L’option Opacité du guide du joueur multiplie cette valeur.",
+        "connectorIsFake": "Désactive le jugement.",
+        "connectorGuideAlpha": "Opacité du guide à cette note, de 0 à 2. 1 correspond à l’opacité habituelle. Elle varie uniformément le long de chaque segment.",
         "connectorLayer": {
           "intro": "Ordre parmi les objets de même élévation.",
           "choices": {
@@ -2138,16 +2141,19 @@
         },
         "connectorIsPassThrough": "Continue à défiler au-delà de la ligne de jugement.",
         "connectorPresentation": {
-          "intro": "Plein écran dessine le connecteur sur tout l’écran pendant qu’il traverse la ligne de jugement."
+          "choices": {
+            "default": "Connecteur dessiné entre ses notes.",
+            "fullscreen": "Connecteur dessiné sur tout l’écran pendant sa durée."
+          }
         },
         "meter": "Nombre de temps par mesure. Seul l’éditeur l’utilise.",
         "timeScale": "Multiplicateur de vitesse des notes du groupe. Les valeurs négatives les font reculer.",
-        "skip": "Rapproche d’un coup les notes du groupe de la ligne de jugement. 1 correspond à la distance parcourue par les notes en un temps à une échelle de temps de 1.",
+        "skip": "Distance du saut des notes du groupe vers la ligne de jugement. 1 correspond à la distance parcourue par les notes en un temps à une échelle de temps de 1.",
         "timeScaleEase": "Évolution de la vitesse jusqu’au prochain changement d’échelle de temps du groupe.",
         "timeScaleTransition": {
           "choices": {
-            "timeScale": "L’espacement des notes montre les changements de vitesse à venir.",
-            "scroll": "L’espacement des notes suit la vitesse actuelle."
+            "timeScale": "Espacement des notes selon les changements de vitesse à venir.",
+            "scroll": "Espacement des notes selon la vitesse actuelle."
           }
         },
         "hideNotes": "Masque les notes du groupe et les segments de connecteur qui y commencent. Dure jusqu’au prochain changement d’échelle de temps du groupe.",
@@ -2156,9 +2162,13 @@
         "cameraZoomTargetLane": "Voie qui sert de centre au zoom, comptée depuis le milieu de la vue de la caméra.",
         "cameraZoomTargetY": "Hauteur qui sert de centre au zoom, de -1 à 1. 0 correspond à la ligne de jugement et 1 au haut de la scène.",
         "cameraZoomVerticalAlign": {
-          "intro": "Position verticale de la cible du zoom à l’écran. Par défaut correspond à la hauteur habituelle de la ligne de jugement."
+          "intro": "Position verticale de la cible du zoom à l’écran.",
+          "choices": {
+            "default": "Hauteur habituelle de la ligne de jugement.",
+            "center": "Milieu de l’écran."
+          }
         },
-        "cameraRotation": "Fait tourner toute la vue autour du milieu de l’écran. En degrés, valeurs positives dans le sens horaire.",
+        "cameraRotation": "Rotation de toute la vue autour du milieu de l’écran. En degrés, valeurs positives dans le sens horaire.",
         "cameraStageTilt": "Inclinaison de la scène vers l’arrière, de 0 à 1. 1 donne la perspective habituelle.",
         "eventEase": "Évolution des valeurs jusqu’au prochain événement connecté.",
         "maskLeft": "Bord gauche de la partie dessinée de la scène, en voies.",
@@ -2168,12 +2178,12 @@
         "divisionSize": "Écart entre les lignes de division, en voies.",
         "divisionParity": {
           "choices": {
-            "even": "Place une ligne de division sur la Voie du pivot.",
-            "odd": "Place la Voie du pivot à mi-chemin entre deux lignes de division."
+            "even": "Ligne de division sur la Voie du pivot.",
+            "odd": "Voie du pivot à mi-chemin entre deux lignes de division."
           }
         },
-        "yOffset": "Remonte la ligne de jugement. 1 correspond au haut de la scène.",
-        "yOffsetBeat": "Remonte davantage la ligne de jugement. 1 correspond à la distance parcourue par les notes en un temps à une échelle de temps de 1.",
+        "yOffset": "Hauteur de la ligne de jugement. 1 correspond au haut de la scène.",
+        "yOffsetBeat": "Hauteur supplémentaire de la ligne de jugement. 1 correspond à la distance parcourue par les notes en un temps à une échelle de temps de 1.",
         "borderStyle": {
           "choices": {
             "default": "Bordure épaisse juste à l’extérieur du bord.",
@@ -2207,19 +2217,19 @@
             "center": "Milieu de l’écran avec la caméra par défaut."
           }
         },
-        "copyProperties": "Lorsqu’un seul objet est sélectionné, les propriétés réglées sur Copier prennent leurs valeurs dans cet objet quand vous ajoutez un objet du même type.",
-        "copyPropertiesSlide": "Lorsqu’une seule note est sélectionnée, les propriétés réglées sur Copier prennent leurs valeurs dans cette note et son slide quand vous en ajoutez une.",
+        "copyProperties": "Copie les propriétés réglées sur Copier depuis un seul objet sélectionné quand vous ajoutez un objet du même type.",
+        "copyPropertiesSlide": "Copie les propriétés réglées sur Copier depuis une seule note sélectionnée et son slide quand vous ajoutez une note.",
         "name": "Seul l’éditeur affiche ce nom.",
         "forceNoteSpeed": "Vitesse de remplacement des notes du groupe, de 1 à 12.",
         "isFromStart": "Dessine la scène avant son premier événement de masque.",
         "isUntilEnd": "Dessine la scène après son dernier événement de masque.",
         "generateSimLines": {
           "choices": {
-            "global": "Relie les notes de toutes les scènes réglées sur Globalement.",
-            "isolated": "Relie les notes uniquement au sein de cette scène."
+            "global": "Lignes de simultanéité entre toutes les scènes réglées sur Globalement.",
+            "isolated": "Lignes de simultanéité au sein de cette scène uniquement."
           }
         },
-        "initialLife": "Vie initiale et maximale. Chaque miss coûte 80, ou 40 pour les ticks et les dégâts."
+        "initialLife": "Vie initiale et maximale."
       }
     },
     "confirm": {

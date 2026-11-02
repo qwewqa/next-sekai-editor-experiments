@@ -6,7 +6,7 @@ import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<CameraZoomVerticalAlign | undefined>({ required: true })
 const description = usePropertyDescription(
-    (t) => t.modals.form.descriptions.cameraZoomVerticalAlign.intro,
+    (t) => t.modals.form.descriptions.cameraZoomVerticalAlign,
 )
 </script>
 

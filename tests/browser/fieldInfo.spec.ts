@@ -921,6 +921,7 @@ test.describe('on chart properties', () => {
     // Their labels and choices say enough.
     const undescribed = new Set([
         'Beat',
+        'Group',
         'Stage',
         'Lane',
         'Size',
@@ -1203,6 +1204,71 @@ test.describe('on chart properties', () => {
         await page.keyboard.press('Control+z')
         await expect.poll(elevation).toBe(0)
     })
+
+    for (const where of ['selection', 'tool'] as const)
+        for (const key of [
+            'connectorType',
+            'connectorPresentation',
+            'cameraZoomVerticalAlign',
+        ] as const)
+            test(`${key} in ${where} describes every choice in control order`, async ({ page }) => {
+                const camera = key === 'cameraZoomVerticalAlign'
+                await selectEveryKind(page)
+                await page.evaluate(async (camera) => {
+                    const { history, store, settings, nextTick } = window.editorTest
+                    settings.rightDockWidth = 480
+                    history.replaceState({
+                        ...history.state.value,
+                        selectedEntities: [...store.getAllEntities()]
+                            .filter(
+                                (entity) => entity.type === (camera ? 'cameraEventJoint' : 'note'),
+                            )
+                            .slice(0, 1),
+                    })
+                    await nextTick()
+                }, camera)
+                if (where === 'tool') await useTool(page, camera ? 'cameraEvent' : 'slide')
+                const scope = where === 'selection' ? selection(page) : toolSection(page)
+                const field = row(scope, en.modals.form[key].label)
+                const description = en.modals.form.descriptions[key]
+                const intro = 'intro' in description ? description.intro : undefined
+                const values = camera
+                    ? ['default', 'center']
+                    : key === 'connectorPresentation'
+                      ? ['default', 'fullscreen']
+                      : ['active', 'guide', 'damage']
+                const labels = en.modals.form[key] as Record<string, string>
+                const choices = description.choices as Record<string, string>
+                const names = values.map((value) => labels[value]!)
+                const lines = values.map((value) => `${labels[value]}: ${choices[value]}`)
+                const accessible = [intro, ...lines].filter(Boolean).join(' ')
+                for (const width of key === 'connectorType' ? [480] : [480, 300]) {
+                    await page.evaluate(
+                        (width) => (window.editorTest.settings.rightDockWidth = width),
+                        width,
+                    )
+                    const segmented = key !== 'connectorType' && width === 480
+                    const control = field.getByRole(segmented ? 'radiogroup' : 'combobox')
+                    await expect(control).toBeVisible()
+                    if (segmented) {
+                        const radios = field.getByRole('radio')
+                        const radioNames = where === 'tool' ? ['Copy', ...names] : names
+                        for (const [index, name] of radioNames.entries())
+                            await expect(radios.nth(index)).toHaveAccessibleName(name)
+                        await expect(radios).toHaveCount(radioNames.length)
+                    } else {
+                        const options = await control.locator('option').allTextContents()
+                        expect(options.filter((name) => names.includes(name))).toEqual(names)
+                    }
+                    const info = field.locator('[data-field-info]')
+                    await info.click()
+                    await expect(bubble(page).locator('li')).toHaveText(lines)
+                    await expect(bubble(page).locator('p')).toHaveText(intro ? [intro] : [])
+                    await expect(info).toHaveAccessibleDescription(accessible)
+                    await expect(control).toHaveAccessibleDescription(accessible)
+                    await page.keyboard.press('Escape')
+                }
+            })
 
     test('a choice shows its lines as segments and as a select', async ({ page }) => {
         await page.evaluate(async () => {

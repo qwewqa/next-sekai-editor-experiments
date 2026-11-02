@@ -2103,30 +2103,33 @@
       "coverageChip": "{1} 個中的 {0} 個",
       "selectCovered": "僅選取適用的物件（{1} 個中的 {0} 個）",
       "descriptions": {
-        "groupId": "各圖層都有自己的時間倍率變更。",
-        "elevation": "以軌道為單位。",
+        "elevation": "高度，以軌道為單位。",
         "noteType": {
           "choices": {
             "default": "依滑條中的位置和「滑動方向」，作為點按、滑動、放開或判定點。",
             "trace": "描跡或描跡滑動。",
-            "anchor": "不可見。決定連接線的形狀，不增加連擊數。",
-            "damage": "觸碰時判為 miss。",
+            "anchor": "決定連接線形狀但不增加連擊數的不可見音符。",
+            "damage": "觸碰時會產生 miss 的音符。",
             "forceTick": "始終作為判定點，即使不在滑條中。",
             "forceNonTick": "始終不作為判定點，即使在滑條中間。"
           }
         },
         "noteStyle": "覆寫音符顏色。",
-        "isAttached": "軌道和尺寸取自連接線。",
-        "isFake": "不進行判定，也不播放聲音或擊中特效。",
+        "isAttached": "使此音符的軌道和尺寸取自其所在的連接線。",
+        "isFake": "停用判定、聲音和擊中特效。",
         "sfx": "覆寫音效。",
         "isConnectorSeparator": "從此音符開始新的連接線區段，使用此音符的連接線屬性。",
         "connectorType": {
-          "intro": "觸碰「傷害」連接線時會產生 miss。"
+          "choices": {
+            "active": "需要持續按住的連接線。",
+            "guide": "僅用於顯示的連接線。",
+            "damage": "觸碰時會產生 miss 的連接線。"
+          }
         },
         "connectorStyle": "覆寫連接線顏色。",
         "connectorEase": "從此音符到下一個非依附音符的連接線曲線。",
-        "connectorIsFake": "不進行判定。",
-        "connectorGuideAlpha": "引導線在此音符處的不透明度，範圍為 0 到 2。沿每段均勻變化。此值會乘以玩家的「引導線不透明度」選項。",
+        "connectorIsFake": "停用判定。",
+        "connectorGuideAlpha": "引導線在此音符處的不透明度，範圍為 0 到 2。1 是通常的不透明度。沿每段均勻變化。",
         "connectorLayer": {
           "intro": "相同高度的物件之間的繪製順序。",
           "choices": {
@@ -2138,16 +2141,19 @@
         },
         "connectorIsPassThrough": "越過判定線後繼續捲動。",
         "connectorPresentation": {
-          "intro": "「全螢幕」在連接線經過判定線期間將連接線繪製到整個螢幕。"
+          "choices": {
+            "default": "繪製在其音符之間的連接線。",
+            "fullscreen": "在持續期間覆蓋整個螢幕的連接線。"
+          }
         },
         "meter": "每小節的節拍數。僅供編輯器使用。",
         "timeScale": "圖層內音符的速度倍率。負值使音符反向移動。",
-        "skip": "將圖層內的音符向判定線瞬移。1 是時間倍率為 1 時音符在一拍內移動的距離。",
+        "skip": "圖層內音符向判定線瞬移的距離。1 是時間倍率為 1 時音符在一拍內移動的距離。",
         "timeScaleEase": "圖層下次時間倍率變更前的速度變化方式。",
         "timeScaleTransition": {
           "choices": {
-            "timeScale": "音符間距反映前方的速度變化。",
-            "scroll": "音符間距隨目前速度變化。"
+            "timeScale": "根據後續速度變化決定的音符間距。",
+            "scroll": "根據目前速度決定的音符間距。"
           }
         },
         "hideNotes": "隱藏圖層內的音符及從該圖層開始的連接線區段。持續到該圖層的下一次時間倍率變更。",
@@ -2156,9 +2162,13 @@
         "cameraZoomTargetLane": "「縮放」的中心軌道，從攝影機視野的中央開始計數。",
         "cameraZoomTargetY": "「縮放」中心的高度，範圍為 -1 到 1。0 是判定線，1 是舞台頂部。",
         "cameraZoomVerticalAlign": {
-          "intro": "縮放目標在螢幕上的垂直位置。「預設」為判定線通常的高度。"
+          "intro": "縮放目標在螢幕上的垂直位置。",
+          "choices": {
+            "default": "判定線通常的高度。",
+            "center": "螢幕中央。"
+          }
         },
-        "cameraRotation": "以螢幕中央為中心旋轉整個視野。單位為度，正值順時針。",
+        "cameraRotation": "整個視野繞螢幕中央的旋轉。單位為度，正值順時針。",
         "cameraStageTilt": "舞台向後傾斜的程度，範圍為 0 到 1。1 是通常的透視效果。",
         "eventEase": "下一個相連事件之前的數值變化方式。",
         "maskLeft": "舞台繪製區域的左邊緣，以軌道為單位。",
@@ -2168,12 +2178,12 @@
         "divisionSize": "分隔線之間的距離，以軌道為單位。",
         "divisionParity": {
           "choices": {
-            "even": "在「樞軸軌道」上放置一條分隔線。",
-            "odd": "使「樞軸軌道」位於兩條分隔線的正中間。"
+            "even": "分隔線位於「樞軸軌道」上。",
+            "odd": "「樞軸軌道」位於兩條分隔線的正中間。"
           }
         },
-        "yOffset": "抬高判定線。1 是舞台頂部。",
-        "yOffsetBeat": "進一步抬高判定線。1 是時間倍率為 1 時音符在一拍內移動的距離。",
+        "yOffset": "判定線的高度。1 是舞台頂部。",
+        "yOffsetBeat": "判定線的附加高度。1 是時間倍率為 1 時音符在一拍內移動的距離。",
         "borderStyle": {
           "choices": {
             "default": "緊靠邊緣外側的粗邊框。",
@@ -2215,11 +2225,11 @@
         "isUntilEnd": "在舞台的最後一個遮罩事件之後繪製舞台。",
         "generateSimLines": {
           "choices": {
-            "global": "連接所有「全域」舞台之間的音符。",
-            "isolated": "僅連接此舞台內的音符。"
+            "global": "跨越所有「全域」舞台的同時押線。",
+            "isolated": "僅在此舞台內的同時押線。"
           }
         },
-        "initialLife": "起始生命值和生命值上限。每次 miss 扣除 80 生命值，判定點和傷害則扣除 40。"
+        "initialLife": "起始生命值和生命值上限。"
       }
     },
     "confirm": {

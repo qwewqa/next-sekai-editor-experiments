@@ -438,6 +438,7 @@ const descriptions = () =>
 // Their labels and choices say enough.
 const undescribed = [
     'beat',
+    'groupId',
     'stageId',
     'left',
     'size',
@@ -499,6 +500,9 @@ test('each choice description has a line for every option of its select, and no 
         Object.keys(form[section]!).filter((key) => !['label', 'qualified'].includes(key))
     const options: Record<string, string[]> = {
         noteType: named('noteType'),
+        connectorType: named('connectorType'),
+        connectorPresentation: named('connectorPresentation'),
+        cameraZoomVerticalAlign: named('cameraZoomVerticalAlign'),
         connectorLayer: named('connectorLayer'),
         timeScaleTransition: named('timeScaleTransition'),
         divisionParity: named('divisionParity'),

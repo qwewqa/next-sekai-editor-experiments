@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Clarified chart property descriptions and added choice descriptions for Connector Type, Presentation and Zoom Vertical Align.
 - On slow devices, the editor now allows more time for startup notices to appear. Reloading also waits longer for the previous page to finish storing your work before opening a separate copy.
 - Changed how the preview blurs backgrounds.
 - Help entries now start by explaining what each tool does.

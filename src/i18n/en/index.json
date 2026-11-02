@@ -2103,30 +2103,33 @@
             "coverageChip": "{0} of {1}",
             "selectCovered": "Select only objects this property applies to ({0} of {1})",
             "descriptions": {
-                "groupId": "Each group has its own time scale changes.",
-                "elevation": "In lanes.",
+                "elevation": "Height, in lanes.",
                 "noteType": {
                     "choices": {
                         "default": "Tap, flick, release or tick, depending on its place in a slide and its Flick Direction.",
                         "trace": "Trace or trace flick.",
-                        "anchor": "Invisible. Shapes connectors without adding combo.",
-                        "damage": "Counts as a miss if touched.",
+                        "anchor": "Invisible note that shapes connectors without adding combo.",
+                        "damage": "Note that causes a miss if touched.",
                         "forceTick": "Always a tick, even outside a slide.",
                         "forceNonTick": "Never a tick, even in the middle of a slide."
                     }
                 },
                 "noteStyle": "Note color override.",
-                "isAttached": "Takes its lane and size from the connector.",
-                "isFake": "Not judged, with no sound or hit effect.",
+                "isAttached": "Makes this note inherit its lane and size from the connector it is on.",
+                "isFake": "Disables judgment, sound and hit effects.",
                 "sfx": "Sound effect override.",
                 "isConnectorSeparator": "Starts a new connector segment with this note’s connector properties.",
                 "connectorType": {
-                    "intro": "A Damage connector causes misses while touched."
+                    "choices": {
+                        "active": "Connector that must be held.",
+                        "guide": "Visual-only connector.",
+                        "damage": "Connector that causes misses if touched."
+                    }
                 },
                 "connectorStyle": "Connector color override.",
                 "connectorEase": "How the connector curves to the next unattached note.",
-                "connectorIsFake": "Not judged.",
-                "connectorGuideAlpha": "Opacity of the guide at this note, 0 to 2. It changes evenly along each segment. The player’s Guide Alpha option scales it.",
+                "connectorIsFake": "Disables judgment.",
+                "connectorGuideAlpha": "Opacity of the guide at this note, 0 to 2. 1 is the usual opacity. It changes evenly along each segment.",
                 "connectorLayer": {
                     "intro": "Order among objects at the same elevation.",
                     "choices": {
@@ -2138,16 +2141,19 @@
                 },
                 "connectorIsPassThrough": "Keeps scrolling past the judgment line.",
                 "connectorPresentation": {
-                    "intro": "Fullscreen draws the connector over the whole screen while it passes the judgment line."
+                    "choices": {
+                        "default": "Connector drawn between its notes.",
+                        "fullscreen": "Connector drawn over the whole screen for its duration."
+                    }
                 },
                 "meter": "Beats per measure. Only the editor uses it.",
                 "timeScale": "Speed multiplier for the group’s notes. Negative values move them backward.",
-                "skip": "Jumps the group’s notes toward the judgment line. 1 is the distance notes travel in one beat at time scale 1.",
+                "skip": "Distance the group’s notes jump toward the judgment line. 1 is the distance notes travel in one beat at time scale 1.",
                 "timeScaleEase": "How the speed changes until the group’s next time scale change.",
                 "timeScaleTransition": {
                     "choices": {
-                        "timeScale": "Note spacing shows the speed changes ahead.",
-                        "scroll": "Note spacing follows the current speed."
+                        "timeScale": "Note spacing based on upcoming speed changes.",
+                        "scroll": "Note spacing based on the current speed."
                     }
                 },
                 "hideNotes": "Hides the group’s notes and the connector segments that start in it. Lasts until the group’s next time scale change.",
@@ -2156,10 +2162,14 @@
                 "cameraZoomTargetLane": "Lane that the zoom centers on, counted from the middle of the camera’s view.",
                 "cameraZoomTargetY": "Height that the zoom centers on, -1 to 1. 0 is the judgment line and 1 is the top of the stage.",
                 "cameraZoomVerticalAlign": {
-                    "intro": "Vertical position of the zoom target on the screen. Default is the judgment line’s usual height."
+                    "intro": "Vertical position of the zoom target on the screen.",
+                    "choices": {
+                        "default": "Usual height of the judgment line.",
+                        "center": "Middle of the screen."
+                    }
                 },
-                "cameraRotation": "Turns the whole view around the middle of the screen. In degrees, positive clockwise.",
-                "cameraStageTilt": "How far the stage leans back, 0 to 1. 1 is the usual perspective.",
+                "cameraRotation": "Rotation of the whole view around the middle of the screen. In degrees, positive clockwise.",
+                "cameraStageTilt": "Backward tilt of the stage, 0 to 1. 1 is the usual perspective.",
                 "eventEase": "How the values change until the next connected event.",
                 "maskLeft": "Left edge of the drawn part of the stage, in lanes.",
                 "maskSize": "Width of the drawn part of the stage, in lanes.",
@@ -2168,12 +2178,12 @@
                 "divisionSize": "Distance between lane dividers, in lanes.",
                 "divisionParity": {
                     "choices": {
-                        "even": "Puts a divider on the Pivot Lane.",
-                        "odd": "Puts the Pivot Lane halfway between two dividers."
+                        "even": "Divider on the Pivot Lane.",
+                        "odd": "Pivot Lane halfway between two dividers."
                     }
                 },
-                "yOffset": "Raises the judgment line. 1 is the top of the stage.",
-                "yOffsetBeat": "Raises the judgment line further. 1 is the distance notes travel in one beat at time scale 1.",
+                "yOffset": "Height of the judgment line. 1 is the top of the stage.",
+                "yOffsetBeat": "Additional height of the judgment line. 1 is the distance notes travel in one beat at time scale 1.",
                 "borderStyle": {
                     "choices": {
                         "default": "Thick border just outside the edge.",
@@ -2207,19 +2217,19 @@
                         "center": "Middle of the screen with the default camera."
                     }
                 },
-                "copyProperties": "With exactly one object selected, properties set to Copy take their values from it when you add an object of the same kind.",
-                "copyPropertiesSlide": "With exactly one note selected, properties set to Copy take their values from it and its slide when you add a note.",
+                "copyProperties": "Copies properties set to Copy from a single selected object when you add one of the same kind.",
+                "copyPropertiesSlide": "Copies properties set to Copy from a single selected note and its slide when you add a note.",
                 "name": "Only the editor shows this name.",
                 "forceNoteSpeed": "Note speed override for the group, 1 to 12.",
                 "isFromStart": "Draws the stage before its first mask event.",
                 "isUntilEnd": "Draws the stage after its last mask event.",
                 "generateSimLines": {
                     "choices": {
-                        "global": "Joins notes across all Global stages.",
-                        "isolated": "Joins notes only within this stage."
+                        "global": "Sim lines across all Global stages.",
+                        "isolated": "Sim lines within this stage only."
                     }
                 },
-                "initialLife": "Starting and maximum life. Each miss costs 80, or 40 for ticks and damage."
+                "initialLife": "Starting and maximum life."
             }
         },
         "confirm": {

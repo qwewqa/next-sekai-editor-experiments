@@ -5,9 +5,7 @@ import ChoiceField from './ChoiceField.vue'
 import { usePropertyDescription } from './propertyDescription'
 
 const modelValue = defineModel<ConnectorPresentation | undefined>({ required: true })
-const description = usePropertyDescription(
-    (t) => t.modals.form.descriptions.connectorPresentation.intro,
-)
+const description = usePropertyDescription((t) => t.modals.form.descriptions.connectorPresentation)
 </script>
 
 <template>

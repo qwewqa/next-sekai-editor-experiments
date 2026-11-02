@@ -2103,30 +2103,33 @@
       "coverageChip": "{1} içinden {0}",
       "selectCovered": "Yalnızca uygulandığı nesneleri seç ({1} içinden {0})",
       "descriptions": {
-        "groupId": "Her grubun kendi zaman ölçeği değişiklikleri vardır.",
-        "elevation": "Şerit biriminde.",
+        "elevation": "Yükseklik, şerit biriminde.",
         "noteType": {
           "choices": {
             "default": "Kaydırmadaki yerine ve Fiske Yönü’ne göre dokunma, fiske, bırakma veya ara vuruş.",
             "trace": "İz veya iz fiskesi.",
-            "anchor": "Görünmez. Kombo eklemeden bağlayıcılara şekil verir.",
-            "damage": "Dokunulduğunda kaçırılmış sayılır.",
+            "anchor": "Kombo eklemeden bağlayıcılara şekil veren görünmez nota.",
+            "damage": "Dokunulduğunda kaçırmaya neden olan nota.",
             "forceTick": "Kaydırma dışında bile her zaman ara vuruş.",
             "forceNonTick": "Kaydırmanın ortasında bile asla ara vuruş olmaz."
           }
         },
         "noteStyle": "Varsayılan nota renginin yerine kullanılacak renk.",
-        "isAttached": "Şeridini ve boyutunu bağlayıcıdan alır.",
-        "isFake": "Değerlendirilmez, ses veya vuruş efekti oluşturmaz.",
+        "isAttached": "Bu notanın şeridini ve boyutunu üzerinde bulunduğu bağlayıcıdan almasını sağlar.",
+        "isFake": "Değerlendirmeyi, sesi ve vuruş efektlerini devre dışı bırakır.",
         "sfx": "Varsayılan ses efektinin yerine kullanılacak efekt.",
         "isConnectorSeparator": "Bu notanın bağlayıcı özellikleriyle yeni bir bağlayıcı bölümü başlatır.",
         "connectorType": {
-          "intro": "Hasar bağlayıcısı, dokunulduğu sürece kaçırmalara neden olur."
+          "choices": {
+            "active": "Basılı tutulması gereken bağlayıcı.",
+            "guide": "Yalnızca görsel amaçlı bağlayıcı.",
+            "damage": "Dokunulduğunda kaçırmalara neden olan bağlayıcı."
+          }
         },
         "connectorStyle": "Varsayılan bağlayıcı renginin yerine kullanılacak renk.",
         "connectorEase": "Bağlayıcının sonraki ekli olmayan notaya kadar nasıl kıvrılacağı.",
-        "connectorIsFake": "Değerlendirilmez.",
-        "connectorGuideAlpha": "Kılavuzun bu notadaki opaklığı, 0 ile 2 arasında. Her bölüm boyunca eşit oranda değişir. Oyuncunun Kılavuz Opaklığı seçeneği bu değeri çarpar.",
+        "connectorIsFake": "Değerlendirmeyi devre dışı bırakır.",
+        "connectorGuideAlpha": "Kılavuzun bu notadaki opaklığı, 0 ile 2 arasında. 1 normal opaklıktır. Her bölüm boyunca eşit oranda değişir.",
         "connectorLayer": {
           "intro": "Aynı yükseklikteki nesneler arasındaki sıralama.",
           "choices": {
@@ -2138,16 +2141,19 @@
         },
         "connectorIsPassThrough": "Vuruş çizgisini geçip kaymaya devam eder.",
         "connectorPresentation": {
-          "intro": "Tam Ekran, bağlayıcıyı vuruş çizgisinden geçerken tüm ekranı kaplayacak şekilde çizer."
+          "choices": {
+            "default": "Notaları arasında çizilen bağlayıcı.",
+            "fullscreen": "Süresi boyunca tüm ekranı kaplayacak şekilde çizilen bağlayıcı."
+          }
         },
         "meter": "Ölçü başına vuruş sayısı. Yalnızca editörde kullanılır.",
         "timeScale": "Grubun notaları için hız çarpanı. Negatif değerler notaları geriye hareket ettirir.",
-        "skip": "Grubun notalarını bir anda vuruş çizgisine yaklaştırır. 1, notaların zaman ölçeği 1 iken bir vuruşta aldığı yoldur.",
+        "skip": "Grubun notalarının vuruş çizgisine doğru bir anda atladığı mesafe. 1, notaların zaman ölçeği 1 iken bir vuruşta aldığı yoldur.",
         "timeScaleEase": "Grubun sonraki zaman ölçeği değişikliğine kadar hızın nasıl değişeceği.",
         "timeScaleTransition": {
           "choices": {
-            "timeScale": "Nota aralıkları ilerideki hız değişikliklerini gösterir.",
-            "scroll": "Nota aralıkları geçerli hıza göre değişir."
+            "timeScale": "İlerideki hız değişikliklerine göre nota aralıkları.",
+            "scroll": "Geçerli hıza göre nota aralıkları."
           }
         },
         "hideNotes": "Grubun notalarını ve grupta başlayan bağlayıcı bölümlerini gizler. Grubun sonraki zaman ölçeği değişikliğine kadar sürer.",
@@ -2156,9 +2162,13 @@
         "cameraZoomTargetLane": "Yakınlaştırmanın merkez aldığı şerit, kameranın gördüğü alanın ortasından sayılır.",
         "cameraZoomTargetY": "Yakınlaştırmanın merkez aldığı yükseklik, -1 ile 1 arasında. 0 vuruş çizgisi, 1 sahnenin üstüdür.",
         "cameraZoomVerticalAlign": {
-          "intro": "Yakınlaştırma hedefinin ekrandaki dikey konumu. Varsayılan, vuruş çizgisinin normal yüksekliğidir."
+          "intro": "Yakınlaştırma hedefinin ekrandaki dikey konumu.",
+          "choices": {
+            "default": "Vuruş çizgisinin normal yüksekliği.",
+            "center": "Ekranın ortası."
+          }
         },
-        "cameraRotation": "Tüm görünümü ekranın ortası çevresinde döndürür. Derece biriminde, pozitif değerler saat yönünde.",
+        "cameraRotation": "Tüm görünümün ekranın ortası çevresindeki dönüşü. Derece biriminde, pozitif değerler saat yönünde.",
         "cameraStageTilt": "Sahnenin geriye eğim miktarı, 0 ile 1 arasında. 1 normal perspektiftir.",
         "eventEase": "Sonraki bağlı olaya kadar değerlerin nasıl değişeceği.",
         "maskLeft": "Sahnenin çizilen bölümünün sol kenarı, şerit biriminde.",
@@ -2168,12 +2178,12 @@
         "divisionSize": "Bölüm çizgileri arasındaki uzaklık, şerit biriminde.",
         "divisionParity": {
           "choices": {
-            "even": "Referans Noktası Şeridi üzerine bir bölüm çizgisi koyar.",
-            "odd": "Referans Noktası Şeridi’ni iki bölüm çizgisinin tam ortasına yerleştirir."
+            "even": "Referans Noktası Şeridi üzerinde bölüm çizgisi.",
+            "odd": "İki bölüm çizgisinin tam ortasında Referans Noktası Şeridi."
           }
         },
-        "yOffset": "Vuruş çizgisini yükseltir. 1 sahnenin üstüdür.",
-        "yOffsetBeat": "Vuruş çizgisini daha yükseltir. 1, notaların zaman ölçeği 1 iken bir vuruşta aldığı yoldur.",
+        "yOffset": "Vuruş çizgisinin yüksekliği. 1 sahnenin üstüdür.",
+        "yOffsetBeat": "Vuruş çizgisine eklenen yükseklik. 1, notaların zaman ölçeği 1 iken bir vuruşta aldığı yoldur.",
         "borderStyle": {
           "choices": {
             "default": "Kenarın hemen dışında kalın bir kenarlık.",
@@ -2207,19 +2217,19 @@
             "center": "Varsayılan kamerada ekranın ortası."
           }
         },
-        "copyProperties": "Tam olarak bir nesne seçiliyken aynı türden bir nesne eklediğinizde, Kopyala olarak ayarlanmış özellikler değerlerini seçili nesneden alır.",
-        "copyPropertiesSlide": "Tam olarak bir nota seçiliyken nota eklediğinizde, Kopyala olarak ayarlanmış özellikler değerlerini seçili notadan ve kaydırmasından alır.",
+        "copyProperties": "Aynı türden bir nesne eklediğinizde, Kopyala olarak ayarlanmış özellikleri seçili tek bir nesneden kopyalar.",
+        "copyPropertiesSlide": "Bir nota eklediğinizde, Kopyala olarak ayarlanmış özellikleri seçili tek bir notadan ve kaydırmasından kopyalar.",
         "name": "Bu adı yalnızca editör gösterir.",
         "forceNoteSpeed": "Grubun nota hızının yerine kullanılacak hız, 1 ile 12 arasında.",
         "isFromStart": "Sahneyi ilk maske olayından önce çizer.",
         "isUntilEnd": "Sahneyi son maske olayından sonra çizer.",
         "generateSimLines": {
           "choices": {
-            "global": "Genel seçili tüm sahnelerdeki notaları birleştirir.",
-            "isolated": "Notaları yalnızca bu sahne içinde birleştirir."
+            "global": "Genel seçili tüm sahneler arasında eşzamanlılık çizgileri.",
+            "isolated": "Yalnızca bu sahne içinde eşzamanlılık çizgileri."
           }
         },
-        "initialLife": "Başlangıç ve en yüksek can. Her kaçırma 80 can azaltır, ara vuruşlarda ve hasarda ise 40."
+        "initialLife": "Başlangıç ve en yüksek can."
       }
     },
     "confirm": {
