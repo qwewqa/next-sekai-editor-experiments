@@ -479,7 +479,8 @@ const place = () => {
     const group = groups.value[activeIndex.value]
     const element = openFlyout()
     if (!group || !element) return
-    if (!element.matches(':popover-open')) element.showPopover()
+    // Without the Popover API the flyout stays a fixed-position element in the editor's layer.
+    if ('showPopover' in element && !element.matches(':popover-open')) element.showPopover()
     const { clientWidth, clientHeight } = document.documentElement
     const tool = group.getBoundingClientRect()
     const width = element.getBoundingClientRect().width
