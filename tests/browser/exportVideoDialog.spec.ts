@@ -625,6 +625,11 @@ test('Zoom to Range keeps the playhead in the strip', async ({ page }) => {
     await expect(play).toHaveAttribute('aria-label', 'Play')
     await expect(readout).toHaveText('00:09.000')
     await expectInside()
+    // Home on Out makes the clip one frame from 0, and the playhead follows Out into the strip.
+    await dialog.locator('[data-clip-handle="out"]').focus()
+    await page.keyboard.press('Home')
+    await expect(readout).toHaveText('00:00.033')
+    await expectInside()
 })
 
 test('I, O and the arrows work after a click on a button, and Space plays', async ({ page }) => {

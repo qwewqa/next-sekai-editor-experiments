@@ -139,11 +139,13 @@ const target = (px: number, py: number): Drag['kind'] => {
     return 'playhead'
 }
 const moveTo = (kind: Drag['kind'], time: number) => {
-    if (kind === 'playhead') d.seek(time, span.value)
+    // A drag keeps the span it began with; a key uses the span after the change.
+    const within = drag.value ? span.value : undefined
+    if (kind === 'playhead') d.seek(time, within)
     else {
         d.setClipEnd(kind, time)
         // The frame view shows the end being moved.
-        d.seek(d.range.value[kind], span.value)
+        d.seek(d.range.value[kind], within)
     }
 }
 const onPointerDown = (event: PointerEvent) => {
