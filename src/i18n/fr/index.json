@@ -2146,7 +2146,7 @@
             "fullscreen": "Connecteur dessiné sur tout l’écran pendant sa durée."
           }
         },
-        "meter": "Nombre de temps par mesure. Seul l’éditeur l’utilise.",
+        "meter": "Nombre de temps par mesure.",
         "timeScale": "Multiplicateur de vitesse des notes du groupe. Les valeurs négatives les font reculer.",
         "skip": "Distance du saut des notes du groupe vers la ligne de jugement. 1 correspond à la distance parcourue par les notes en un temps à une échelle de temps de 1.",
         "timeScaleEase": "Évolution de la vitesse jusqu’au prochain changement d’échelle de temps du groupe.",

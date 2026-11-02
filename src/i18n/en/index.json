@@ -2146,7 +2146,7 @@
                         "fullscreen": "Connector drawn over the whole screen for its duration."
                     }
                 },
-                "meter": "Beats per measure. Only the editor uses it.",
+                "meter": "Beats per measure.",
                 "timeScale": "Speed multiplier for the group’s notes. Negative values move them backward.",
                 "skip": "Distance the group’s notes jump toward the judgment line. 1 is the distance notes travel in one beat at time scale 1.",
                 "timeScaleEase": "How the speed changes until the group’s next time scale change.",

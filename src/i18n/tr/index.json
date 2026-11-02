@@ -2146,7 +2146,7 @@
             "fullscreen": "Süresi boyunca tüm ekranı kaplayacak şekilde çizilen bağlayıcı."
           }
         },
-        "meter": "Ölçü başına vuruş sayısı. Yalnızca editörde kullanılır.",
+        "meter": "Ölçü başına vuruş sayısı.",
         "timeScale": "Grubun notaları için hız çarpanı. Negatif değerler notaları geriye hareket ettirir.",
         "skip": "Grubun notalarının vuruş çizgisine doğru bir anda atladığı mesafe. 1, notaların zaman ölçeği 1 iken bir vuruşta aldığı yoldur.",
         "timeScaleEase": "Grubun sonraki zaman ölçeği değişikliğine kadar hızın nasıl değişeceği.",
