@@ -1697,8 +1697,9 @@ export const saveAs = () =>
 
 /**
  * Recent Sessions' Save…: the session's pending journal applied first under its lock, its head with its
- * history written as a new `.nxsp` with a new `docId`, binding nothing. A journal kept as a
- * recovery session saves that session; one it cannot apply stops it. Its picker follows the
+ * history written as a new `.nxsp` with a new `docId`, binding nothing. When the journal is kept
+ * as a recovery session, that session is saved. A newer build's journal, or one that failed to
+ * apply, stops the Save before the picker. Its picker follows the
  * rules above: a file a chain is bound to is taken from it. A session open in another
  * tab is written as storage holds it, and the feedback says so. Recent Sessions' ⋯ menu is its
  * entry point.
@@ -1736,7 +1737,7 @@ const saveToFileNow = async (env: Env, asked: string) => {
         saveUi.error(() => i18n.value.save.sessionUnavailable)
         return
     }
-    // Kept as a recovery session (continued elsewhere since): that one holds the work.
+    // A journal kept as a recovery session holds the work, so that session is saved.
     const sessionId =
         replay && 'result' in replay && replay.result.kind === 'recovery'
             ? replay.result.sessionId
