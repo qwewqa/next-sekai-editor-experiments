@@ -706,6 +706,50 @@ test('4K at 2x is offered within the GPU limits', async ({ page }) => {
     await expect(resolution.locator('option:disabled')).toHaveCount(0)
 })
 
+test('sizes show as too large for the device only once its limits are read', async ({ page }) => {
+    // The request for the limits is held, so the test can answer it.
+    await page.evaluate(() => {
+        const post = Worker.prototype.postMessage
+        Worker.prototype.postMessage = function (
+            this: Worker,
+            message: unknown,
+            transfer?: Transferable[] | StructuredSerializeOptions,
+        ) {
+            if ((message as { type?: string }).type === 'limits')
+                Reflect.set(window, 'limitsWorker', this)
+            else Reflect.apply(post, this, [message, transfer])
+        }
+    })
+    const dialog = await open(page)
+    // With sound effects off and the encoder support read, only the limits are pending.
+    await dialog.getByRole('switch', { name: 'SFX' }).click()
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    (
+                        Reflect.get(window, 'exportVideoDialog') as {
+                            support: { value: { pending: boolean } }
+                        }
+                    ).support.value.pending,
+            ),
+        )
+        .toBe(false)
+    const resolution = dialog.getByRole('combobox', { name: 'Resolution' })
+    await expect(resolution).not.toHaveAccessibleDescription(/device/)
+    await expect(resolution.locator('option:disabled')).toHaveCount(0)
+    await expect(exportButton(page)).toBeDisabled()
+    // A worker without WebGL2 sends no limits.
+    await page.evaluate(() => {
+        const worker = Reflect.get(window, 'limitsWorker') as Worker
+        worker.onmessage?.call(worker, new MessageEvent('message', { data: { type: 'limits' } }))
+    })
+    await expect(resolution).toHaveAccessibleDescription(
+        /on this device with these settings: 720p, 1080p, 1440p, 2160p/,
+    )
+    await expect(exportButton(page)).toBeDisabled()
+})
+
 for (const finished of [true, false])
     test(`a stopped export restores ${finished ? 'the last finished choices' : 'defaults'} without disabling sizes`, async ({
         page,

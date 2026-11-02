@@ -269,20 +269,25 @@ export const createExportDialog = (input: DialogInput) => {
         },
         { immediate: true, deep: true },
     )
-    const limits = shallowRef<GraphicsLimits>()
+    // Undefined until the worker replies; null where it has no WebGL2 or fails.
+    const limits = shallowRef<GraphicsLimits | null>()
     const limitsWorker = input.env.worker()
     limitsWorker.onmessage = ({ data }: MessageEvent<FromExportWorker>) => {
         if (data.type !== 'limits') return
-        limits.value = data.limits
+        limits.value = data.limits ?? null
         limitsWorker.terminate()
     }
     limitsWorker.onerror = () => {
+        limits.value = null
         limitsWorker.terminate()
     }
     limitsWorker.postMessage({ type: 'limits' })
     const fits = (resolution: Resolution, scale: number) =>
         !!limits.value &&
         fitsGraphicsLimits(outputSize(resolution, form.aspect), scale, form.antialias, limits.value)
+    /** Known not to fit; Export still waits for the limits. */
+    const tooLarge = (resolution: Resolution, scale: number) =>
+        limits.value !== undefined && !fits(resolution, scale)
     const browserOk = (key: string) => {
         const choice = support.value.choices[key]
         return !choice || choice.supported
@@ -290,13 +295,13 @@ export const createExportDialog = (input: DialogInput) => {
     const unavailable = computed(() => {
         const out: Record<string, Unavailable | undefined> = {}
         for (const resolution of RESOLUTIONS)
-            out[`resolution:${resolution}`] = !fits(resolution, form.renderScale)
+            out[`resolution:${resolution}`] = tooLarge(resolution, form.renderScale)
                 ? 'device'
                 : browserOk(`resolution:${resolution}`)
                   ? undefined
                   : 'browser'
         for (const scale of [1, 1.5, 2] as const)
-            out[`renderScale:${scale}`] = fits(form.resolution, scale) ? undefined : 'device'
+            out[`renderScale:${scale}`] = tooLarge(form.resolution, scale) ? 'device' : undefined
         for (const frameRate of [30, 60])
             out[`frameRate:${frameRate}`] = browserOk(`frameRate:${frameRate}`)
                 ? undefined
