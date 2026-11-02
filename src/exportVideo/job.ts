@@ -31,7 +31,6 @@ export type JobState =
 
 export type JobDestination = {
     worker: ExportTarget
-    /** Staging already holds the job lock, through Ready and retention. */
     ready?: {
         file(result: unknown): Promise<File>
         deliver(file: File, how: 'download' | 'share'): Promise<'delivered' | 'cancelled'>
@@ -234,6 +233,7 @@ export const createExportJob = (options: {
             signal.throwIfAborted()
             destination = await options.destination(signal, id)
             signal.throwIfAborted()
+            // Staging already holds the job lock, through Ready and retention.
             if (destination.worker.kind !== 'staged') {
                 let acquired!: () => void
                 const ready = new Promise<void>((resolve) => {
