@@ -273,7 +273,7 @@ export const catalogue = {
             'failed',
             'error',
         ),
-        reason: oneOf(...fileError, 'notKept', 'notProject', 'levelData', 'safeMode'),
+        reason: oneOf(...fileError, 'safeMode'),
         step: oneOf('build', 'read', 'readBack', 'download', 'check'),
         ...device,
     },

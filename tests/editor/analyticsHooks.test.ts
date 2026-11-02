@@ -132,17 +132,12 @@ test('a Save records its action, options, target, size, outcome and time, and en
     assert.ok(isValidEvent('save', sent))
 })
 
-test('a failed Save records its reason in analytics after its warning; a dialog alone is cancelled', () => {
+test('a Save that fails or is refused says why; one that only reached a dialog is cancelled', () => {
     startSave('saveAs')
     startWrite('writeBack')
     finishSave({ kind: 'failed', error: new FileError('denied', '', undefined, 'read'), name: 'a' })
     startSave('saveToFile')
-    finishSave({
-        kind: 'failed',
-        error: new FileError('no-space', ''),
-        name: 'a',
-        reported: true,
-    })
+    finishSave({ kind: 'refused', name: 'a', reason: 'safeMode' })
     startSave('downloadAgain')
     finishSave()
     assert.deepEqual(
@@ -163,8 +158,8 @@ test('a failed Save records its reason in analytics after its warning; a dialog 
             },
             {
                 action: 'saveToFile',
-                outcome: 'failed',
-                reason: 'no-space',
+                outcome: 'refused',
+                reason: 'safeMode',
                 step: undefined,
                 target: undefined,
             },
