@@ -333,7 +333,7 @@ onBeforeUnmount(() => {
         <div
             class="clip-knob focus-ring focus-out absolute z-[2] size-2 rounded-full bg-fg-strong ring-2"
             :class="hideRuler ? 'ring-button' : 'ring-modal'"
-            :style="{ left: `${xPlayhead - 4}px`, top: hideRuler ? '4px' : '4px' }"
+            :style="{ left: `${xPlayhead - 4}px`, top: '4px' }"
             role="slider"
             :tabindex="0"
             :aria-label="i18n.exportVideo.playhead"

@@ -188,7 +188,7 @@ const onStepDown = (event: PointerEvent, direction: -1 | 1) => {
     const began = performance.now()
     const repeat = () => {
         const elapsed = performance.now() - began - 400
-        // From one frame, eased up to 0.25 s a step by 1 s of repeating.
+        // One frame a step, then 0.25 s a step after 1 s of repeating.
         const size = elapsed < 1000 ? undefined : 0.25
         stepBy(direction, size)
         hold = setTimeout(repeat, 50)
