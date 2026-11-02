@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createWorld, flow, type Setup } from '../saveMatrix/world'
+import { activation, createWorld, flow, type Setup } from '../saveMatrix/world'
 
 const { pickVideo } = await import('../../../src/editor/save/videoPick')
 const pick = () =>
@@ -20,7 +20,21 @@ for (const [name, setup] of [
     test('a video pick accepts ' + name + ' and revokes its associations', async () => {
         const w = await createWorld(setup)
         w.pick(name)
+        // The new file's case also starts with the press lapsed, so Export Video's press shows.
+        const fresh = name === 'clip.mp4'
+        if (fresh) activation.active = false
         const result = await pick()
+        if (fresh) {
+            assert.deepEqual(
+                w.preparing.map((dialog) => dialog.kind),
+                ['video'],
+            )
+            assert.deepEqual(w.mock.pickerCalls[0]!.picker, {
+                id: 'nse-video',
+                types: [{ description: 'MP4', extension: '.mp4' }],
+                excludeAll: true,
+            })
+        }
         assert.equal(result.kind, 'accepted')
         assert.equal(w.lockHeld(), false)
         assert.equal(w.writes.length, 0)

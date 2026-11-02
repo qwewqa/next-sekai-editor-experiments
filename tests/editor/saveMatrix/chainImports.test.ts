@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import type { PreparingKind } from '../../../src/editor/save/dialogs'
 import { createWorld } from './world'
 
 // The wait for a chain's imports (`waitForChainImports`): a Save waits for every import of
@@ -15,7 +16,7 @@ const dialogs = await import('../../../src/editor/save/dialogs')
 const slot = () => ({
     name: 'coconut.nxsp',
     ui: {
-        preparing: (name: string, kind?: 'save' | 'export') => dialogs.saveUi.preparing(name, kind),
+        preparing: (name: string, kind?: PreparingKind) => dialogs.saveUi.preparing(name, kind),
     },
     cancel: new AbortController(),
 })

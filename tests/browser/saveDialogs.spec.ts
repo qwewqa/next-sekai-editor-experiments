@@ -673,7 +673,7 @@ test.describe('the Preparing dialog', () => {
         await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(true)
     })
 
-    test('Save is the button when the picker is next, and Cancel aborts the build', async ({
+    test('the button names the command when the picker is next, and Cancel aborts the build', async ({
         page,
         context,
     }) => {
@@ -692,6 +692,24 @@ test.describe('the Preparing dialog', () => {
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
         await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(false)
+        await expect(dialog(page)).toHaveCount(0)
+        // Export Video's press, whose video has no size yet.
+        await page.evaluate(async () => {
+            const { saveUi } =
+                (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
+            window.saveSeen = {}
+            void saveUi
+                .preparing('clip.mp4', 'video')
+                .ready('save', 0)
+                .then((go) => (window.saveSeen.result = go))
+        })
+        await expect(dialog(page)).toHaveAccessibleName('Export Video')
+        await expect(dialog(page).locator('[data-save-preparing]')).toHaveText('Ready')
+        const press = dialog(page).getByRole('button', { name: 'Export', exact: true })
+        await expect(press).toBeFocused()
+        await guard(page)
+        await press.click()
+        await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(true)
     })
 
     test('Cancel before it is ready stops the Save', async ({ page, context }) => {

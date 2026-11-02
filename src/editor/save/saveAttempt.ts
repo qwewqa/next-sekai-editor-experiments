@@ -5,7 +5,7 @@ import { FileError, platform, type SaveRequest, type SaveResult } from '../../pl
 import type { State } from '../../state'
 import { fileError } from '../commands/exportLevel/errorText'
 import { environment, type Env } from './binding'
-import type { SaveUi } from './dialogs'
+import type { PreparingKind, SaveUi } from './dialogs'
 import { removeMarker, savedState, writeMarker, type SaveMarker } from './env'
 import { openPreparing, PREPARING_MS, waitForChainImports, type PreparingSlot } from './imports'
 
@@ -42,7 +42,7 @@ export type AttemptSpec = {
     readonly env: Env | undefined
     /** "Preparing <name>…", and the name a throw is shown under. */
     readonly name: string
-    readonly surface: 'save' | 'export'
+    readonly surface: PreparingKind
     readonly ui: { preparing: SaveUi['preparing'] }
     readonly commitFirst: boolean
     /** 'chain': waits for every import of the chain, a failed list counting as pending. */
@@ -119,7 +119,7 @@ export const withSaveAttempt = async <T>(
         name: spec.name,
         ui: spec.ui,
         cancel: new AbortController(),
-        ...(spec.surface === 'export' ? { kind: 'export' as const } : {}),
+        ...(spec.surface === 'save' ? {} : { kind: spec.surface }),
     }
     const { signal } = slot.cancel
     if (spec.signal)

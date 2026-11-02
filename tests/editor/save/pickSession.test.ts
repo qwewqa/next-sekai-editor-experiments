@@ -116,7 +116,6 @@ const setup = async () => {
         env,
         name: 'out.nxsp',
         surface: 'save' as const,
-        purpose: 'export' as const,
         commitFirst: false,
         ui,
         ...more,
@@ -182,14 +181,8 @@ test("Recent Sessions' Save writes its prepared project without restoring the ol
     const t = await setup()
     t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
     const other = await nxsp('rev-other')
-    await withPickSession(
-        t.spec({
-            purpose: 'saveToFile' as const,
-        }),
-        (session) =>
-            session.pick(t.picker, 'out.nxsp', (picked) =>
-                picked.write({ kind: 'nxsp', blob: other }),
-            ),
+    await withPickSession(t.spec(), (session) =>
+        session.pick(t.picker, 'out.nxsp', (picked) => picked.write({ kind: 'nxsp', blob: other })),
     )
     // The selected session replaces the file.
     assert.deepEqual(await bytesOf(t.mock.files.get('a.nxsp')), await bytesOf(other))
@@ -205,7 +198,7 @@ test('level data is never written over bytes that arrive between the two looks a
         if (kind === 'nsld') t.mock.writeFile('a.nxsp', new Blob(['a sync client wrote this']))
         return inspect(target, kind)
     }
-    const code = await withPickSession(t.spec({ purpose: 'export' as const }), (session) =>
+    const code = await withPickSession(t.spec(), (session) =>
         session.pick(t.picker, 'out.nsld', async (picked) => {
             try {
                 await picked.write({ kind: 'nsld', blob: new Blob(['level']) })
@@ -223,7 +216,7 @@ test('Save opens its picker without reading the bound file first', async () => {
     const t = await setup()
     t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
     const next = await nxsp('new-document')
-    await withPickSession(t.spec({ purpose: 'save' }), (session) =>
+    await withPickSession(t.spec(), (session) =>
         session.pick(t.picker, 'a.nxsp', (picked) => picked.write({ kind: 'nxsp', blob: next })),
     )
     assert.deepEqual(t.log, ['picker:active'])
@@ -235,7 +228,7 @@ for (const state of ['empty', 'filled', 'missing', 'unreadable'] as const)
     test('a failed Save reports emptiness only when confirmed: ' + state, async () => {
         const t = await setup()
         t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
-        const result = await withPickSession(t.spec({ purpose: 'save' }), (session) =>
+        const result = await withPickSession(t.spec(), (session) =>
             session.pick(t.picker, 'a.nxsp', async () => {
                 if (state === 'filled') t.mock.writeFile('a.nxsp', new Blob(['changed']))
                 if (state === 'missing') t.mock.files.delete('a.nxsp')
@@ -253,7 +246,7 @@ test('a picked project filled before the write is refused as changed', async () 
     const t = await setup()
     t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
     const next = await nxsp('new-document')
-    const result = await withPickSession(t.spec({ purpose: 'save' }), (session) =>
+    const result = await withPickSession(t.spec(), (session) =>
         session.pick(t.picker, 'a.nxsp', async (picked) => {
             t.mock.writeFile('a.nxsp', new Blob(['changed']))
             return picked.write({ kind: 'nxsp', blob: next })

@@ -22,7 +22,6 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
             env,
             name: ctx.suggestedName,
             surface: 'export',
-            purpose: 'export',
             commitFirst: false,
             ...(ctx.signal ? { signal: ctx.signal } : {}),
             ...(ctx.committed ? { committed: ctx.committed } : {}),

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import type { PreparingKind } from '../../../src/editor/save/dialogs'
 import { createWorld, type World } from './world'
 
 // A pending list that cannot be read counts as pending: `waitForChainImports`
@@ -15,7 +16,7 @@ const dialogs = await import('../../../src/editor/save/dialogs')
 const slot = () => ({
     name: 'coconut.nxsp',
     ui: {
-        preparing: (name: string, kind?: 'save' | 'export') => dialogs.saveUi.preparing(name, kind),
+        preparing: (name: string, kind?: PreparingKind) => dialogs.saveUi.preparing(name, kind),
     },
     cancel: new AbortController(),
 })

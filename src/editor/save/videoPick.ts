@@ -23,8 +23,7 @@ export const pickVideo = async (options: {
         {
             env,
             name: options.name,
-            surface: 'export',
-            purpose: 'video',
+            surface: 'video',
             commitFirst: false,
             ui: options.ui,
             ...(options.signal ? { signal: options.signal } : {}),

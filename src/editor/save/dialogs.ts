@@ -72,6 +72,9 @@ export type SaveDialogResult =
     | { action: 'export' }
     | undefined
 
+/** The command a "Preparing…" dialog is titled and pressed as: Save, or an export's picker. */
+export type PreparingKind = 'save' | 'export' | 'video'
+
 /** The small dialog a slow build shows, opened at once and kept to the end. */
 export type Preparing = {
     /** Aborted by the dialog's Cancel, × or Escape: the Save stops (an accepted pick runs on). */
@@ -81,8 +84,8 @@ export type Preparing = {
     /** The file's size: the estimate while it builds, the built size once known. */
     built: (size: number) => void
     /**
-     * The build outlasted the press: the button becomes `[Download]` or `[Save]` (focused), whose
-     * press is the gesture; true on it, false on Cancel.
+     * The build outlasted the press: the button becomes `[Download]`, `[Save]` or `[Export]`
+     * (focused), whose press is the gesture; true on it, false on Cancel.
      */
     ready: (action: 'download' | 'save', size: number) => Promise<boolean>
     close: () => void
@@ -144,8 +147,7 @@ export type SavedFeedback = {
 
 export type SaveUi = {
     saveDialog: (input: SaveDialogInput) => Promise<SaveDialogResult>
-    /** `export`: Export's picker waiting for an open's import, titled and pressed as Export. */
-    preparing: (name: string, kind?: 'save' | 'export') => Preparing
+    preparing: (name: string, kind?: PreparingKind) => Preparing
     conflict: (input: ConflictInput) => Promise<ConflictChoice | undefined>
     /** `save.notFound`: `[Cancel]` `[Save As…]` (focused). */
     notFound: (name: string) => Promise<'saveAs' | undefined>

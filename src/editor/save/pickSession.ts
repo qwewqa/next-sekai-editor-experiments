@@ -41,7 +41,6 @@ export const projectPicker = (startIn: SavePicker['startIn'] = 'documents'): Sav
 })
 
 export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
-    readonly purpose: 'save' | 'export' | 'saveToFile' | 'video'
     /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */
     readonly importChain?: string
     /** Called at the commit point with the destination. */
@@ -195,7 +194,7 @@ export const withPickSession = <T>(
                     }
                 }
                 // Video failures are reported after the stream has been cleaned up.
-                if (landed || spec.purpose === 'video') return
+                if (landed || spec.surface === 'video') return
                 const now = await platform.read(target).catch(() => undefined)
                 emptied = now?.size === 0
             })

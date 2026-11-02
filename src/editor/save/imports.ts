@@ -2,7 +2,7 @@ import { isImporting, onImportProgress, whenImported } from '../../local/open/im
 import { storedRead } from '../../local/storedRead'
 import { appVersion } from '../../platform'
 import type { BuildEnv } from './build'
-import type { Preparing, SaveUi } from './dialogs'
+import type { Preparing, PreparingKind, SaveUi } from './dialogs'
 
 // The wait for a chain's open imports: a Save, Save As… and Export wait
 // for them in "Preparing…" before they read the chain, and our own completed Save is recorded only
@@ -17,8 +17,8 @@ export type PreparingSlot = {
     name: string
     /** How its dialog opens: the Save UI's, given by the flow (this module loads in Node). */
     ui: { preparing: SaveUi['preparing'] }
-    /** Export's picker waiting for an open's import. */
-    kind?: 'export'
+    /** An export's picker: its dialog is titled and pressed as that export. */
+    kind?: Exclude<PreparingKind, 'save'>
     timer?: ReturnType<typeof setTimeout>
     cancel: AbortController
 }

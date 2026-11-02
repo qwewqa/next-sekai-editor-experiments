@@ -69,6 +69,7 @@ import {
     type BgmRow,
     type ConflictChoice,
     type DiskVersion,
+    type PreparingKind,
     type SaveDialogInput,
     type SaveDialogKind,
 } from './dialogs'
@@ -142,7 +143,7 @@ const saveOperation = (name: string, download: boolean) =>
 
 /** How a Save opens its "Preparing…": the Save UI's, which tests replace. */
 const preparingUi = {
-    preparing: (name: string, kind?: 'save' | 'export') => saveUi.preparing(name, kind),
+    preparing: (name: string, kind?: PreparingKind) => saveUi.preparing(name, kind),
 }
 
 /** How often a dialog counts again while an import is pending that runs nowhere here. */
@@ -575,7 +576,6 @@ const pickAndWrite = async (
             env,
             name: retry.target?.handle.name ?? request.fileName,
             surface: 'save',
-            purpose: 'save',
             commitFirst: true,
             ...(retry.target
                 ? { target: retry.target, permission: requestWrite(retry.target.handle) }
@@ -1842,7 +1842,6 @@ const writeSessionFile = async (
                 env,
                 name: retry.target?.handle.name ?? request.fileName,
                 surface: 'save',
-                purpose: 'saveToFile',
                 commitFirst: false,
                 ...(retry.target ? { target: retry.target } : {}),
                 ...(permission ? { permission } : {}),
