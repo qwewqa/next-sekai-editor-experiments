@@ -1,10 +1,12 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Download, type Page } from '@playwright/test'
+import { readFile as readFileBytes } from 'node:fs/promises'
 import { crafted } from '../local/nxsp/craft'
 import { closePage, waitForStartup } from './editorFixture'
 import {
     chainById,
     chainOf,
     edit,
+    flushed,
     notice,
     pauseAt,
     pickerCalls,
@@ -15,6 +17,8 @@ import {
     queuePicks,
     reached,
     readFile,
+    refusingPicker,
+    refusingPicks,
     release,
     rows,
     saveDialog,
@@ -22,6 +26,7 @@ import {
     start,
     submitSave,
     writeFile,
+    type Refusal,
 } from './saveFlows'
 
 // The save picker's rules
@@ -531,4 +536,101 @@ test('Save replaces the original file of a partial open with the requested proje
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     expect(await readFile(page, 'coconut.nxsp')).not.toEqual(bytes)
     expect((await projectOf(page, 'coconut.nxsp')).id).toBe((await chainOf(page)).docId)
+})
+
+// A browser that refuses reading, or writing, the file its save picker returned (Chrome for
+// Android refuses getFile()). The press keeps its activation, so a download needs no Ready press.
+const refusingStart = async (page: Page, refusal: Refusal) => {
+    await refusingPicker(page, refusal)
+    await start(page, { fileSystemAccess: true, override: { activation: true } })
+}
+
+for (const read of ['always', 'afterClose'] as const)
+    test(`a picked file refusing reads ${read === 'always' ? 'from the start' : 'after its write'} is saved, and the next Save picks again`, async ({
+        page,
+    }) => {
+        await refusingStart(page, { read })
+        await edit(page, 1)
+        // Save As for one, a first Save for the other: both go through the pick session.
+        if (read === 'always') await saveAs(page)
+        else await pressSave(page)
+        await submitSave(page, 'coconut', read === 'always' ? 'Save As' : undefined)
+        await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        const first = await projectOf(page, 'coconut.nxsp')
+        // Nothing was read back, so the binding has no disk state to check the file by.
+        await expect
+            .poll(async () => (await chainOf(page)).file)
+            .toMatchObject({
+                name: 'coconut.nxsp',
+                event: 'saved',
+            })
+        expect((await chainOf(page)).file).not.toHaveProperty('disk')
+        await edit(page, 2)
+        await pressSave(page)
+        await expect.poll(() => refusingPicks(page)).toEqual(['coconut.nxsp', 'coconut.nxsp'])
+        await expect
+            .poll(async () => (await projectOf(page, 'coconut.nxsp')).revision)
+            .not.toEqual(first.revision)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+    })
+
+for (const write of ['create', 'write', 'close'] as const)
+    test(`a picked file refusing reads and ${write} gets nothing; the project downloads once, bound by name`, async ({
+        page,
+    }) => {
+        await refusingStart(page, { read: 'always', write })
+        const downloads: Download[] = []
+        page.on('download', (download) => downloads.push(download))
+        await edit(page, 1)
+        await pressSave(page)
+        await submitSave(page, 'coconut')
+        await expect(
+            notice(page).filter({ hasText: 'Download started: coconut.nxsp' }),
+        ).toBeVisible()
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await expect.poll(() => downloads.length).toBe(1)
+        expect(downloads[0]!.suggestedFilename()).toBe('coconut.nxsp')
+        const bytes = await readFileBytes(await downloads[0]!.path())
+        // A whole ZIP: its end record closes the file.
+        expect([...bytes.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04])
+        expect([...bytes.subarray(-22, -18)]).toEqual([0x50, 0x4b, 0x05, 0x06])
+        expect(await readFile(page, 'coconut.nxsp')).toEqual([])
+        await expect
+            .poll(async () => (await chainOf(page)).file)
+            .toMatchObject({
+                name: 'coconut.nxsp',
+                event: 'downloaded',
+            })
+        const chain = await chainOf(page)
+        const { handles } = await rows(page, ['handles'])
+        expect(handles!.filter((row) => row.value.chainId === chain.chainId)).toEqual([])
+    })
+
+test("Recent Sessions' Save… to a picked file refusing reads writes it and binds nothing", async ({
+    page,
+}) => {
+    await refusingStart(page, { read: 'always' })
+    await edit(page, 1)
+    await flushed(page)
+    const earlier = await sessionOf(page)
+    await page.evaluate(async () => {
+        const { resetState } = await import('/src/history/index.ts')
+        resetState(false)
+    })
+    await edit(page, 2)
+    await flushed(page)
+    const open = await chainOf(page)
+    await page.evaluate((sessionId) => {
+        void import('/src/editor/save/flow.ts').then((flow) => flow.saveToFile(sessionId))
+    }, earlier.sessionId)
+    await submitSave(page, 'restored')
+    await expect(notice(page).filter({ hasText: 'Saved to restored.nxsp' })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect((await projectOf(page, 'restored.nxsp')).revision).toBeDefined()
+    const { chains } = await rows(page, ['chains'])
+    expect(
+        chains!.some((row) => (row.value.file as Row | undefined)?.name === 'restored.nxsp'),
+    ).toBe(false)
+    expect((await chainOf(page)).file).toEqual(open.file)
 })

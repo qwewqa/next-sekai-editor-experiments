@@ -124,6 +124,12 @@ export type SaveRequest = {
     target?: FileTarget
     /** The precondition: write only if the target still matches. */
     expected?: DiskState | 'absent'
+    /**
+     * A file the user just picked. The pick authorizes replacing it, so a check the platform
+     * refuses to read is skipped (a change it reads still stops the write). A refused write to a
+     * file the platform also refuses to read downloads the file instead.
+     */
+    picked?: boolean
     /** A `.nxsp` write-back: a target found empty holds nothing to keep, and is written. */
     overEmpty?: boolean
     replaced?: 'keep' | 'discard'
@@ -138,6 +144,7 @@ export type SaveRequest = {
 }
 
 export type SaveResult =
+    /** `disk` is absent when the platform refused to read the file back. */
     | { status: 'saved'; target: FileTarget; name: string; disk?: DiskState }
     | { status: 'download-started'; name: string }
     | { status: 'exported'; name: string }

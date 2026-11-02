@@ -33,11 +33,19 @@ export const levelDataDiskState = async (file: File): Promise<DiskState> =>
 export const isNotReadable = (error: unknown) =>
     error instanceof DOMException && error.name === 'NotReadableError'
 
+/** A read the browser or the platform refused: never damage. */
+export const isRefusedRead = (error: unknown) =>
+    error instanceof DOMException && ['NotAllowedError', 'SecurityError'].includes(error.name)
+
+/** A failed read that says nothing about the content: thrown, never taken for damage. */
+const saysNothing = (error: unknown) => isNotReadable(error) || isRefusedRead(error)
+
 /**
  * A `.nxsp` file's disk state: its central directory's CRC and `project.json`'s
  * `revision.id`, read from the tail every time. A file that isn't a readable ZIP (a 0-byte file
  * included) gets the `damaged:` fingerprint, which never equals a binding's. A read that fails
- * because the file changed under it (`NotReadableError`) is thrown, never taken for damage.
+ * because the file changed under it (`NotReadableError`), or a refused one, is thrown, never taken
+ * for damage.
  */
 export const nxspDiskState = async (file: Blob, lastModified: number): Promise<DiskState> => {
     const time = Math.trunc(lastModified)
@@ -51,7 +59,7 @@ export const nxspDiskState = async (file: Blob, lastModified: number): Promise<D
     try {
         fingerprint = await zipFingerprint(file, time)
     } catch (error) {
-        if (isNotReadable(error)) throw error
+        if (saysNothing(error)) throw error
         return damaged
     }
     let revisionId: string | undefined
@@ -65,7 +73,7 @@ export const nxspDiskState = async (file: Blob, lastModified: number): Promise<D
             if (typeof id === 'string' && id) revisionId = id
         }
     } catch (error) {
-        if (isNotReadable(error)) throw error
+        if (saysNothing(error)) throw error
         // A ZIP whose project.json doesn't read has no revision: still not ours.
     }
     return {

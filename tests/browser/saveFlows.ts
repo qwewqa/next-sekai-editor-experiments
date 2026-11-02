@@ -376,3 +376,76 @@ export const preparingDialog = (page: Page, name = 'coconut.nxsp') =>
     page.getByRole('dialog').filter({
         hasText: new RegExp(`(Preparing|Ready:) ${name.replaceAll('.', '\\.')}`),
     })
+
+/** What a platform that refuses picked files refuses, as Chrome for Android does. */
+export type Refusal = {
+    /** `getFile()` on the picked handle: always, or once its write has closed. */
+    read?: 'always' | 'afterClose'
+    /** One step of writing it. */
+    write?: 'create' | 'write' | 'close'
+}
+
+/**
+ * Before the page loads: `showSaveFilePicker` returns an emptied OPFS file of the suggested name,
+ * its handle refusing what `refusal` names with the browser's `NotAllowedError`. Use with
+ * `start(page, { fileSystemAccess: true })`. Reading the file through another handle
+ * (`readFile`) still works. Each pick's name is added to `window.refusingPicks`.
+ */
+export const refusingPicker = (page: Page, refusal: Refusal) =>
+    page.addInitScript((refusal: Refusal) => {
+        const refused = () =>
+            Promise.reject(
+                new DOMException(
+                    'The request is not allowed by the user agent or the platform in the current context.',
+                    'NotAllowedError',
+                ),
+            )
+        const picks: string[] = []
+        Reflect.set(window, 'refusingPicks', picks)
+        Object.defineProperty(window, 'showSaveFilePicker', {
+            configurable: true,
+            value: async (options: { suggestedName?: string }) => {
+                const name = options.suggestedName ?? 'Untitled'
+                picks.push(name)
+                const root = await navigator.storage.getDirectory()
+                const handle = await root.getFileHandle(name, { create: true })
+                // The picker empties the file it returns.
+                const emptying = await handle.createWritable()
+                await emptying.close()
+                let closed = false
+                const getFile = handle.getFile.bind(handle)
+                const createWritable = handle.createWritable.bind(handle)
+                Object.defineProperty(handle, 'getFile', {
+                    value: () =>
+                        refusal.read === 'always' || (refusal.read === 'afterClose' && closed)
+                            ? refused()
+                            : getFile(),
+                })
+                Object.defineProperty(handle, 'createWritable', {
+                    value: async (options?: FileSystemCreateWritableOptions) => {
+                        if (refusal.write === 'create') return refused()
+                        const writable = await createWritable(options)
+                        const write = writable.write.bind(writable)
+                        const close = writable.close.bind(writable)
+                        Object.defineProperty(writable, 'write', {
+                            value: (data: FileSystemWriteChunkType) =>
+                                refusal.write === 'write' ? refused() : write(data),
+                        })
+                        Object.defineProperty(writable, 'close', {
+                            value: async () => {
+                                if (refusal.write === 'close') return refused()
+                                await close()
+                                closed = true
+                            },
+                        })
+                        return writable
+                    },
+                })
+                return handle
+            },
+        })
+    }, refusal)
+
+/** The names `refusingPicker`'s picker returned, in order. */
+export const refusingPicks = (page: Page) =>
+    page.evaluate(() => Reflect.get(window, 'refusingPicks') as string[])

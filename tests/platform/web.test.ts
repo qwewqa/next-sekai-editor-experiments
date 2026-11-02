@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { gzip, ungzip } from 'pako'
-import { levelDataDiskState } from '../../src/platform/fingerprint'
+import { levelDataDiskState, nxspDiskState } from '../../src/platform/fingerprint'
 import { DATA_URL_LIMIT } from '../../src/platform/handover'
 import { FileError } from '../../src/platform/types'
 import { platform } from '../../src/platform/web'
@@ -234,6 +234,156 @@ test('a write that does not read back as written fails', async () => {
         }),
         { code: 'io', step: 'readBack' },
     )
+})
+
+// A platform that refuses reading a file it lets us write (Chrome for Android).
+const emptyDisk = () => levelDataDiskState(new File([], 'chart', { lastModified: 1000 }))
+
+for (const refuseRead of ['always', 'afterClose'] as const)
+    test(`a picked write whose reads are refused ${refuseRead === 'always' ? 'from the first' : 'after close'} is saved, without a disk state`, async () => {
+        browser.downloads.length = 0
+        const events: string[] = []
+        const handle = recordingHandle(events, { initial: new Blob([]), refuseRead })
+        const result = await platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'chart',
+            target: { kind: 'handle', handle },
+            expected: await emptyDisk(),
+            picked: true,
+            build: levelData(events, 3),
+        })
+        assert.deepEqual(result, {
+            status: 'saved',
+            target: { kind: 'handle', handle },
+            name: 'chart',
+        })
+        assert.deepEqual(events, [
+            'requestPermission',
+            'build',
+            'create',
+            `write:${levelBlob(3).size}`,
+            'close',
+        ])
+        assert.equal(browser.downloads.length, 0)
+    })
+
+test('a read-back refused after close is saved without a disk state; a check refused stops a write', async () => {
+    const events: string[] = []
+    const after = recordingHandle(events, { initial: levelBlob(0), refuseRead: 'afterClose' })
+    const result = await platform.saveFile({
+        kind: 'nsld',
+        suggestedName: 'chart',
+        target: { kind: 'handle', handle: after },
+        expected: await levelDataDiskState(await after.getFile()),
+        build: levelData(events, 1),
+    })
+    assert.equal(result.status, 'saved')
+    assert.equal(result.status === 'saved' && result.disk, undefined)
+
+    // Only a pick authorizes a write over a file the platform refuses to read.
+    events.length = 0
+    const refused = recordingHandle(events, { initial: levelBlob(0), refuseRead: 'always' })
+    await assert.rejects(
+        platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'chart',
+            target: { kind: 'handle', handle: refused },
+            expected: await levelDataDiskState(levelBlob(0) as File),
+            build: levelData(events, 1),
+        }),
+        { code: 'denied', step: 'read' },
+    )
+    assert.ok(!events.includes('create'))
+})
+
+test('a refused byte read of a .nxsp is thrown, never taken for damage', async () => {
+    const refusing = {
+        size: 100,
+        slice: () => ({
+            arrayBuffer: () => Promise.reject(new DOMException('Not allowed', 'NotAllowedError')),
+        }),
+    } as unknown as Blob
+    await assert.rejects(nxspDiskState(refusing, 0), { name: 'NotAllowedError' })
+})
+
+test('a picked file seen filled is still a conflict, never a download', async () => {
+    browser.downloads.length = 0
+    const events: string[] = []
+    const handle = recordingHandle(events, { initial: levelBlob(9) })
+    await assert.rejects(
+        platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'chart',
+            target: { kind: 'handle', handle },
+            expected: await emptyDisk(),
+            picked: true,
+            build: levelData(events, 1),
+        }),
+        { code: 'conflict' },
+    )
+    assert.ok(!events.includes('create'))
+    assert.equal(browser.downloads.length, 0)
+})
+
+for (const refuse of ['permission', 'create', 'write', 'close'] as const)
+    test(`a picked write refused at ${refuse}, its file unreadable, downloads the built file once`, async () => {
+        browser.downloads.length = 0
+        const events: string[] = []
+        const handle = recordingHandle(events, {
+            initial: new Blob([]),
+            refuseRead: 'always',
+            ...(refuse === 'permission' ? { permission: 'denied' as const } : { refuse }),
+        })
+        const result = await platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'chart.nsld',
+            target: { kind: 'handle', handle },
+            expected: await emptyDisk(),
+            picked: true,
+            build: levelData(events, 2),
+        })
+        assert.deepEqual(result, { status: 'download-started', name: 'chart.nsld' })
+        assert.equal(browser.downloads.length, 1)
+        assert.equal(browser.downloads[0]!.name, 'chart.nsld')
+        assert.deepEqual(await parsed(browser.downloads[0]!.blob!), levelJson(2))
+        assert.ok(!events.includes('close') || refuse === 'close')
+        if (refuse !== 'permission' && refuse !== 'create') assert.ok(events.includes('abort'))
+    })
+
+test('a picked write refused while its file reads is a failure, never a download', async () => {
+    browser.downloads.length = 0
+    const events: string[] = []
+    const handle = recordingHandle(events, { initial: new Blob([]), refuse: 'create' })
+    await assert.rejects(
+        platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'chart',
+            target: { kind: 'handle', handle },
+            expected: await emptyDisk(),
+            picked: true,
+            build: levelData(events, 1),
+        }),
+        { code: 'denied', step: undefined },
+    )
+    assert.equal(browser.downloads.length, 0)
+})
+
+test('a picked write that fails for space is a failure, never a download', async () => {
+    browser.downloads.length = 0
+    const events: string[] = []
+    const handle = recordingHandle(events, { initial: new Blob([]), failWrite: true })
+    await assert.rejects(
+        platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'chart',
+            target: { kind: 'handle', handle },
+            expected: await emptyDisk(),
+            picked: true,
+            build: levelData(events, 1),
+        }),
+        { code: 'no-space' },
+    )
+    assert.equal(browser.downloads.length, 0)
 })
 
 test('a denied permission is denied, never not-found', async () => {

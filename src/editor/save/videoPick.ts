@@ -3,8 +3,11 @@ import { environment } from './binding'
 import { revokePicked } from './flow'
 import { withPickSession, type PickSpec } from './pickSession'
 
-/** An empty picked file, checked under nse-bind before streaming starts. */
-export type VideoPick = { handle: FileSystemFileHandle; lastModified: number }
+/**
+ * An empty picked file, checked under nse-bind before streaming starts. `lastModified` is absent
+ * when the platform refused to read the file.
+ */
+export type VideoPick = { handle: FileSystemFileHandle; lastModified?: number }
 
 export type PickedVideo =
     | { kind: 'accepted'; pick: VideoPick }
@@ -38,7 +41,10 @@ export const pickVideo = async (options: {
                     await revokePicked(env, target.handle, true)
                     return {
                         kind: 'accepted',
-                        pick: { handle: target.handle, lastModified: found.lastModified },
+                        pick: {
+                            handle: target.handle,
+                            ...(found ? { lastModified: found.lastModified } : {}),
+                        },
                     }
                 },
             ),

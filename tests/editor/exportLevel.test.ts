@@ -411,6 +411,75 @@ test('the mock empties a picked file at the pick and creates a new name empty, a
     }
 })
 
+// A platform that refuses to read or write the picked file: the pick still receives the export,
+// or it is downloaded once instead.
+test('a picked file the platform refuses to read still receives the level data', async () => {
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
+    const inspect = mock.inspect
+    mock.inspect = (target, kind) =>
+        target.kind === 'handle' && target.handle.name === 'Coconut.nsld'
+            ? Promise.reject(new FileError('denied', 'Refused'))
+            : inspect(target, kind)
+    const { ui, asked, feedback } = scriptedUi([])
+    assert.equal(await exportByPicker(context(ui, 4)), 'done')
+    assert.deepEqual(asked, [])
+    assert.deepEqual(feedback, ['exported:Coconut.nsld'])
+    assert.deepEqual((await read(mock, 'Coconut.nsld')).entities, [{ n: 4 }])
+})
+
+test('a picked file the platform refuses to read and to write is downloaded once instead', async () => {
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
+    const refused = () => Promise.reject(new FileError('denied', 'Refused'))
+    mock.inspect = refused
+    mock.read = refused
+    mock.fault = (point) => {
+        if (point === 'checked') throw new FileError('denied', 'Refused')
+    }
+    const { ui, asked, feedback } = scriptedUi([])
+    assert.equal(await exportByPicker(context(ui, 5, { exportName: 'Coconut' })), 'done')
+    assert.deepEqual(asked, [])
+    assert.deepEqual(feedback, [`download:Coconut.nsld:${level(5).size}`])
+    assert.deepEqual(
+        mock.downloads.map((download) => [download.kind, download.name]),
+        [['nsld', 'Coconut.nsld']],
+    )
+    assert.equal(mock.files.get('Coconut.nsld')?.size, 0)
+    assert.equal(remembered(), undefined)
+    assert.equal(exportMemory.exportName, 'Coconut')
+})
+
+test('a picked write the platform refuses to read back remembers only the name', async () => {
+    await openedTarget()
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
+    const saveFile = mock.saveFile
+    mock.saveFile = async (req) => {
+        const result = await saveFile(req)
+        if (result.status !== 'saved') return result
+        const unverified = { ...result }
+        delete unverified.disk
+        return unverified
+    }
+    const { ui, feedback } = scriptedUi([])
+    assert.equal(await exportByPicker(context(ui, 6, { exportName: 'Coconut' })), 'done')
+    assert.deepEqual(feedback, ['exported:Coconut.nsld'])
+    assert.equal(remembered(), undefined)
+    assert.equal(exportMemory.exportName, 'Coconut')
+})
+
+test('a remembered target the platform refuses to read is downloaded instead', async () => {
+    const target = await openedTarget()
+    const saveFile = mock.saveFile
+    mock.saveFile = (req) =>
+        req.target
+            ? Promise.reject(new FileError('denied', 'Refused', undefined, 'read'))
+            : saveFile(req)
+    const { ui, asked, feedback } = scriptedUi([])
+    assert.equal(await exportToTarget(context(ui, 7), target), 'done')
+    assert.deepEqual(asked, [])
+    assert.deepEqual(feedback, [`download:Coconut.nsld:${level(7).size}`])
+    assert.deepEqual((await read(mock, 'LevelData')).entities, [{ n: 0 }])
+})
+
 test('Export to a remembered target that now holds a project is refused and leaves it', async () => {
     const project = await buildZip([
         {

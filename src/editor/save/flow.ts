@@ -725,6 +725,15 @@ const writePickedProject = async (
         const failure = fileError(error)
         return { kind: 'failed', error: failure, name }
     }
+    // The platform refused writing the picked file: the download is bound by name, as a
+    // download browser's is, never to the handle.
+    if (result.status === 'download-started') {
+        const downloadedFile = await bindingFile(built, reservation, { name, event: 'downloaded' })
+        await bindWrite(env, session, reservation, built, state, downloadedFile)
+        forgetHandle(env.chainId)
+        feedback(built, 'download', name)
+        return { kind: 'done' }
+    }
     if (result.status !== 'saved') return { kind: 'cancelled' }
     await savePoint('closed')
     rememberHandle(env.chainId, handle)
@@ -1649,6 +1658,20 @@ const saveNow = async (env: Env) => {
         await downloadAgain(env, file)
         return
     }
+    // A Save the platform refused to read back has no disk state to check the file against:
+    // the next Save opens the picker at that file, never writing over it unchecked.
+    if (file.event === 'saved' && !file.disk) {
+        await afterOutcome(
+            env,
+            await pickAndWrite(env, {
+                fileName: file.name,
+                ...DEFAULT_OPTIONS,
+                target: 'copy',
+                startIn: handle,
+            }),
+        )
+        return
+    }
     // The gesture's first call.
     const permission = requestWrite(handle)
     permission.catch(() => undefined)
@@ -1982,13 +2005,16 @@ const sessionFilePicked = async (
     // is revoked.
     const built = name === request.fileName ? first : await renamedBuild(env, request, first, name)
     await revokePicked(env, target.handle, true)
+    let result: SaveResult
     try {
-        await picked.write({ kind: 'nxsp', blob: built.blob })
+        result = await picked.write({ kind: 'nxsp', blob: built.blob })
     } catch (error) {
         return { kind: 'failed', error: fileError(error), name }
     }
+    if (result.status !== 'saved' && result.status !== 'download-started')
+        return { kind: 'cancelled' }
     saveUi.saved({
-        ...savedOf(built, 'saved', name),
+        ...savedOf(built, result.status === 'saved' ? 'saved' : 'download', name),
         committedState: request.committed,
         ofStored: true,
     })

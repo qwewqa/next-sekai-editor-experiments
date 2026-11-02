@@ -1,6 +1,7 @@
+import { isRefusedRead } from '../../platform/fingerprint'
 import { fileErrorOf } from '../../platform/handover'
 import { FileError } from '../../platform/types'
-type VideoPick = { handle: FileSystemFileHandle; lastModified: number }
+type VideoPick = { handle: FileSystemFileHandle; lastModified?: number }
 
 export type PositionTarget = {
     write(data: Uint8Array<ArrayBuffer>, position: number): Promise<void>
@@ -93,19 +94,25 @@ const target = (backend: Backend, signal?: AbortSignal): PositionTarget => {
     }
 }
 
-const unchanged = (file: File, pick: VideoPick) =>
-    file.size === 0 && file.lastModified === pick.lastModified
+/** Seen written since the pick: not empty, or with a time other than the one recorded. */
+const changed = (file: File, pick: VideoPick) =>
+    file.size !== 0 || (pick.lastModified !== undefined && file.lastModified !== pick.lastModified)
 
-/** A file found changed or unreadable is never removed. */
+/**
+ * Removes the picked file only when it is known to be empty and unchanged: a file found changed,
+ * unreadable, or picked without a recorded time is left alone. A refused read is ignored, so
+ * it never replaces the original failure.
+ */
 export const removeVideoPick = async (pick: VideoPick) => {
     let file: File
     try {
         file = await pick.handle.getFile()
     } catch (error) {
         if (error instanceof DOMException && error.name === 'NotFoundError') return
+        if (isRefusedRead(error)) return
         throw fileErrorOf(error)
     }
-    if (!unchanged(file, pick)) return
+    if (pick.lastModified === undefined || changed(file, pick)) return
     try {
         await (pick.handle as FileSystemFileHandle & { remove(): Promise<void> }).remove()
     } catch (error) {
@@ -154,9 +161,14 @@ export const openPickedTarget = async (
             },
             close: async (commit) => {
                 try {
-                    const file = await pick.handle.getFile()
+                    // A file the platform refuses to read is not observed: the pick
+                    // authorizes the commit.
+                    const file = await pick.handle.getFile().catch((error: unknown) => {
+                        if (isRefusedRead(error)) return undefined
+                        throw error
+                    })
                     signal?.throwIfAborted()
-                    if (!unchanged(file, pick))
+                    if (file && changed(file, pick))
                         throw new FileError(
                             'conflict',
                             `${pick.handle.name} changed`,

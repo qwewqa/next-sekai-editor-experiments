@@ -1,7 +1,9 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Download, type Page } from '@playwright/test'
+import { readFile as readFileBytes } from 'node:fs/promises'
+import { gunzipSync } from 'node:zlib'
 import type { PlatformOverride } from '../../src/platform/detect'
 import { installCanvasCounters, installEditorFixture, installTestPlatform } from './editorFixture'
-import { projectOf } from './saveFlows'
+import { projectOf, refusingPicker } from './saveFlows'
 
 // Export Level Data…: Chromium's pickers run on OPFS handles through the
 // platform override; download browsers are simulated with fileSystemAccess: false.
@@ -941,3 +943,49 @@ test('Export Level Data onto the project writes level data and unbinds it', asyn
     await page.keyboard.press('p')
     await expect(dialog(page)).toContainText('Save Project File')
 })
+
+// A browser that refuses reading, or reading and writing, the file its save picker returned
+// (Chrome for Android refuses getFile()). The press keeps its activation: no Ready press.
+for (const read of ['always', 'afterClose'] as const)
+    test(`a picked file refusing reads ${read === 'always' ? 'from the start' : 'after its write'} receives the export, which remembers no destination`, async ({
+        page,
+    }) => {
+        await refusingPicker(page, { read })
+        await start(page, { fileSystemAccess: true, activation: true })
+        await openExport(page)
+        await page.keyboard.press('Enter')
+        await expect(notice(page)).toHaveText('Exported to LevelData.nsld')
+        await expect(dialog(page)).toHaveCount(0)
+        expect(await readFile(page, 'LevelData.nsld')).toBe(0)
+        // Nothing read back: no destination to check later, so the next Export picks again.
+        await openExport(page)
+        await expect(dialog(page).locator('[data-export-target-name]')).toHaveCount(0)
+    })
+
+for (const write of ['create', 'write', 'close'] as const)
+    test(`a picked file refusing reads and ${write} gets nothing; the level data downloads once`, async ({
+        page,
+    }) => {
+        await refusingPicker(page, { read: 'always', write })
+        await start(page, { fileSystemAccess: true, activation: true })
+        const downloads: Download[] = []
+        page.on('download', (download) => downloads.push(download))
+        await openExport(page)
+        await page.keyboard.press('Enter')
+        await expect(notice(page)).toContainText('Download started: LevelData.nsld')
+        await expect(dialog(page)).toHaveCount(0)
+        await expect.poll(() => downloads.length).toBe(1)
+        expect(downloads[0]!.suggestedFilename()).toBe('LevelData.nsld')
+        const json = JSON.parse(
+            gunzipSync(await readFileBytes(await downloads[0]!.path())).toString(),
+        ) as { entities: unknown[] }
+        expect(Array.isArray(json.entities)).toBe(true)
+        expect(await opfsSize(page, 'LevelData.nsld')).toBe(0)
+    })
+
+/** An OPFS file's size, read through a handle of its own. */
+const opfsSize = (page: Page, name: string) =>
+    page.evaluate(async (name) => {
+        const root = await navigator.storage.getDirectory()
+        return (await (await root.getFileHandle(name)).getFile()).size
+    }, name)

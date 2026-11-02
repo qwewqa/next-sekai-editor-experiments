@@ -16,6 +16,7 @@ import type { PickedLevelData } from '../../save/exportPick'
 import { isLevelDataContent, mayBeLevelData } from './content'
 import { fileError } from './errorText'
 import {
+    clearExportTarget,
     exportGeneration,
     exportMemory,
     ownsExportTarget,
@@ -135,10 +136,21 @@ const remember = async (ctx: ExportContext, target: ExportTarget) => {
     await rememberExport()
 }
 
-/** Remembers a written file as the target; inside the hold that wrote it. */
+/**
+ * Remembers a written file as the target, inside the hold that wrote it. When the platform
+ * refused to read the file back, there is no disk state to check later, so only the name is
+ * remembered and no earlier destination is kept.
+ */
 export const rememberWritten = async (ctx: ExportContext, result: SaveResult) => {
     if (result.status !== 'saved') return
-    if (result.target.kind !== 'handle' || !result.disk) throw new Error('Not a handle write')
+    if (result.target.kind !== 'handle') throw new Error('Not a handle write')
+    if (!result.disk) {
+        if (!sameSession(ctx)) return
+        clearExportTarget()
+        if (ctx.exportName !== undefined) exportMemory.exportName = ctx.exportName
+        await rememberExport()
+        return
+    }
     await remember(ctx, {
         name: result.name,
         handle: result.target.handle,
@@ -293,6 +305,9 @@ export const exportToTarget = async (
         if (cancelled(ctx)) return 'cancelled'
         if (caught === revoked) return exportByPicker(ctx)
         error = fileError(caught)
+        // A destination the platform refuses to read cannot be checked: the export is
+        // downloaded instead.
+        if (error.code === 'denied' && error.step === 'read') return exportByDownload(ctx)
         reportExport('picker', undefined, error)
     }
 
@@ -351,13 +366,20 @@ export const exportByPicker = async (context: ExportContext): Promise<ExportOutc
         }
         if (picked.kind === 'failed' && cancelled(ctx) && !pick.committed) return 'cancelled'
         if (picked.kind === 'written') reportExport('picker', sized)
+        if (picked.kind === 'downloaded') {
+            reportExport('download', sized)
+            return downloaded(ctx, picked.name, sized.size())
+        }
         return afterPick(ctx, picked)
     }
     return exportByDownload(ctx)
 }
 
 /** What follows a pick: the feedback, or the dialog that says why nothing was exported. */
-const afterPick = async (ctx: ExportContext, picked: PickedLevelData): Promise<ExportOutcome> => {
+const afterPick = async (
+    ctx: ExportContext,
+    picked: Exclude<PickedLevelData, { kind: 'downloaded' }>,
+): Promise<ExportOutcome> => {
     switch (picked.kind) {
         case 'written': {
             const { result } = picked
@@ -397,15 +419,20 @@ const exportByDownload = async (context: ExportContext): Promise<ExportOutcome> 
         case 'saved':
         case 'download-started':
         case 'exported':
-            if (ctx.exportName !== undefined && sameSession(ctx)) {
-                exportMemory.exportName = ctx.exportName
-                await rememberExport()
-            }
             reportExport('download', body)
-            if (sameSession(ctx)) ctx.ui.markExported?.(result.name, 'download')
-            ctx.ui.downloadStarted(result.name, body.size())
-            return 'done'
+            return downloaded(ctx, result.name, body.size())
         case 'cancelled':
             return 'back'
     }
+}
+
+/** A download that started: the name is remembered, and the feedback shown. */
+const downloaded = async (ctx: ExportContext, name: string, size: number): Promise<'done'> => {
+    if (ctx.exportName !== undefined && sameSession(ctx)) {
+        exportMemory.exportName = ctx.exportName
+        await rememberExport()
+    }
+    if (sameSession(ctx)) ctx.ui.markExported?.(name, 'download')
+    ctx.ui.downloadStarted(name, size)
+    return 'done'
 }

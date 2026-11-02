@@ -140,10 +140,15 @@ export const recordingHandle = (
         permission?: PermissionState
         /** Read when requestPermission is called, as the gesture's activation. */
         activation?: () => boolean
+        /** When getFile() is refused (NotAllowedError): always, or once the write has closed. */
+        refuseRead?: 'always' | 'afterClose'
+        /** The one write step that is refused (NotAllowedError). */
+        refuse?: 'create' | 'write' | 'close'
     } = {},
 ) => {
     let content = options.initial
     let written = false
+    const refused = () => new DOMException('Not allowed', 'NotAllowedError')
     const handle = {
         name: 'chart',
         requestPermission: () => {
@@ -156,6 +161,8 @@ export const recordingHandle = (
         },
         isSameEntry: (other: unknown) => Promise.resolve(other === handle),
         getFile: () => {
+            if (options.refuseRead === 'always' || (options.refuseRead === 'afterClose' && written))
+                return Promise.reject(refused())
             if (!content) return Promise.reject(new DOMException('Not found', 'NotFoundError'))
             const blob = written && options.readBack ? options.readBack(content) : content
             return Promise.resolve(new File([blob], 'chart', { lastModified: 1000 }))
@@ -165,17 +172,20 @@ export const recordingHandle = (
         },
         createWritable: () => {
             events.push('create')
+            if (options.refuse === 'create') return Promise.reject(refused())
             const parts: Blob[] = []
             return Promise.resolve({
                 write: async (blob: Blob) => {
                     events.push(`write:${blob.size}`)
                     parts.push(blob)
                     await options.onWrite?.()
+                    if (options.refuse === 'write') throw refused()
                     if (options.failWrite) throw new DOMException('Disk full', 'QuotaExceededError')
                 },
                 close: () => {
                     events.push('close')
                     if (options.failClose) return Promise.reject(options.failClose)
+                    if (options.refuse === 'close') return Promise.reject(refused())
                     content = new Blob(parts)
                     written = true
                     return Promise.resolve()

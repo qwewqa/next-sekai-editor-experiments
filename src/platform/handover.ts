@@ -133,7 +133,35 @@ const readDisk = async (
         return { file, disk: await diskStateOf(kind, file) }
     } catch (error) {
         if (errorName(error) === 'NotFoundError') return
-        throw fileErrorOf(error)
+        const failure = fileErrorOf(error)
+        if (failure.code === 'denied')
+            throw new FileError('denied', failure.message, undefined, 'read')
+        throw failure
+    }
+}
+
+/** A read the platform refused (`denied` at `read`); a write's own refusal has no step. */
+const isRefusedRead = (error: unknown) =>
+    error instanceof FileError && error.code === 'denied' && error.step === 'read'
+
+/** A refusal of the write itself: requesting access, `createWritable`, `write` or `close`. */
+export const isWriteRefusal = (error: unknown) =>
+    error instanceof FileError && error.code === 'denied' && error.step === undefined
+
+/**
+ * The check of a write: undefined when it was not observed, as for a picked file the platform
+ * refuses to read. The pick authorizes the write, so the check is skipped, never taken as passed.
+ */
+const observe = async (
+    req: SaveRequest,
+    handle: FileSystemFileHandle,
+    expected: DiskState | 'absent',
+): Promise<{ found: Found } | undefined> => {
+    try {
+        return { found: await readDisk(req.kind, handle, expected) }
+    } catch (error) {
+        if (req.picked && isRefusedRead(error)) return
+        throw error
     }
 }
 
@@ -188,9 +216,10 @@ const writeTo = async (
     // from the File taken at this check.
     const sources: PinnedSource[] = []
     let pinned: DiskState | undefined
-    if (expected !== undefined) {
-        const found = await readDisk(kind, handle, expected)
-        signal?.throwIfAborted()
+    const first = expected === undefined ? undefined : await observe(req, handle, expected)
+    signal?.throwIfAborted()
+    if (expected !== undefined && first) {
+        const { found } = first
         // An empty target holds nothing to keep: written over, with nothing to copy.
         const empty = overEmpty(req, found)
         if (!empty && !matches(found, expected)) throw changedError(handle, found, expected)
@@ -233,9 +262,10 @@ const writeTo = async (
             // Checked again just before the commit; a `.nxsp` by the whole
             // fingerprint of the File pinned at the first check, so a change during the build or
             // the write is never overwritten unseen. A target emptied meanwhile is written.
-            const found = await readDisk(kind, handle, expected)
+            const again = await observe(req, handle, expected)
             signal?.throwIfAborted()
-            if (!overEmpty(req, found)) {
+            const found = again?.found
+            if (again && !overEmpty(req, found)) {
                 if (!matches(found, expected)) throw changedError(handle, found, expected)
                 if (
                     kind === 'nxsp' &&
@@ -261,21 +291,26 @@ const writeTo = async (
         throw fileErrorOf(error)
     }
 
-    // The read-back: `saved` means the file holds exactly the bytes built.
+    // The read-back: `saved` with `disk` means the file holds exactly the bytes built. A platform
+    // that refuses the read leaves the closed write saved, unverified and without `disk`.
     await savePoint('readBack')
-    let disk: DiskState
+    let disk: DiskState | undefined
     try {
         const file = await handle.getFile()
-        disk = await levelDataDiskState(file)
-        if (kind === 'nxsp' && disk.fingerprint === `sha256:${written}`)
-            disk = await nxspDiskState(file, file.lastModified)
+        const bytes = await levelDataDiskState(file)
+        disk =
+            kind === 'nxsp' && bytes.fingerprint === `sha256:${written}`
+                ? await nxspDiskState(file, file.lastModified)
+                : bytes
     } catch (error) {
-        throw fileErrorOf(error)
+        const failure = fileErrorOf(error)
+        if (failure.code !== 'denied') throw failure
     }
     if (
-        kind === 'nxsp'
+        disk &&
+        (kind === 'nxsp'
             ? !disk.fingerprint.startsWith('zip:')
-            : disk.fingerprint !== `sha256:${written}`
+            : disk.fingerprint !== `sha256:${written}`)
     )
         throw new FileError(
             'io',
@@ -283,13 +318,15 @@ const writeTo = async (
             undefined,
             'readBack',
         )
-    return { status: 'saved', target, name: handle.name, disk }
+    return { status: 'saved', target, name: handle.name, ...(disk ? { disk } : {}) }
 }
 
 /**
  * Writes through a handle. With `expected`, the file is checked first, and again just before
- * `close()`; a change aborts the write, leaving the target untouched. Then the file is read
- * back and its sha256 compared, so `saved` means verified. A failure names the handle's file.
+ * `close()`; a change aborts the write, leaving the target untouched. A `picked` write skips a
+ * check the platform refuses to read. Then the file is read back and its sha256 compared, so
+ * `saved` with `disk` means verified; without `disk`, the platform refused the read-back. A
+ * failure names the handle's file.
  */
 export const writeHandle = async (
     req: SaveRequest,

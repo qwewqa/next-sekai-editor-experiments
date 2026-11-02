@@ -44,7 +44,9 @@ for (const operation of ['open', 'abort'] as const)
     })
 
 /** Models a picked file and a separate swap, with gates around the final read and close. */
-const pickedFile = (fault?: 'write' | 'close' | 'remove') => {
+const pickedFile = (fault?: 'write' | 'close' | 'remove' | 'open') => {
+    /** getFile() refused, as on a platform that refuses to read the picked file. */
+    let refused = false
     let file: File | undefined = new File([], 'clip.mp4', { lastModified: 42 })
     let swap = new Uint8Array()
     let removed = 0
@@ -58,6 +60,7 @@ const pickedFile = (fault?: 'write' | 'close' | 'remove') => {
         getFile: async () => {
             reading.resolve()
             await readGate?.promise
+            if (refused) throw new DOMException('Not allowed', 'NotAllowedError')
             if (!file) throw new DOMException('Gone', 'NotFoundError')
             return file
         },
@@ -67,27 +70,30 @@ const pickedFile = (fault?: 'write' | 'close' | 'remove') => {
             file = undefined
             return Promise.resolve()
         },
-        createWritable: async () => ({
-            write: ({ position, data }: { position: number; data: Uint8Array }) => {
-                if (fault === 'write') throw new DOMException('Full', 'QuotaExceededError')
-                const next = new Uint8Array(Math.max(swap.length, position + data.length))
-                next.set(swap)
-                next.set(data, position)
-                swap = next
-                return Promise.resolve()
-            },
-            close: async () => {
-                closing.resolve()
-                await closeGate?.promise
-                if (fault === 'close') throw new DOMException('Full', 'QuotaExceededError')
-                file = new File([swap], 'clip.mp4', { lastModified: 43 })
-            },
-            abort: () => {
-                aborted++
-                swap = new Uint8Array()
-                return Promise.resolve()
-            },
-        }),
+        createWritable: async () => {
+            if (fault === 'open') throw new DOMException('Not allowed', 'NotAllowedError')
+            return {
+                write: ({ position, data }: { position: number; data: Uint8Array }) => {
+                    if (fault === 'write') throw new DOMException('Full', 'QuotaExceededError')
+                    const next = new Uint8Array(Math.max(swap.length, position + data.length))
+                    next.set(swap)
+                    next.set(data, position)
+                    swap = next
+                    return Promise.resolve()
+                },
+                close: async () => {
+                    closing.resolve()
+                    await closeGate?.promise
+                    if (fault === 'close') throw new DOMException('Full', 'QuotaExceededError')
+                    file = new File([swap], 'clip.mp4', { lastModified: 43 })
+                },
+                abort: () => {
+                    aborted++
+                    swap = new Uint8Array()
+                    return Promise.resolve()
+                },
+            }
+        },
     } as unknown as FileSystemFileHandle
     return {
         pick: { handle, lastModified: 42 },
@@ -102,6 +108,9 @@ const pickedFile = (fault?: 'write' | 'close' | 'remove') => {
         },
         change: (text: string) => {
             file = new File([text], 'clip.mp4', { lastModified: 43 })
+        },
+        refuseReads: () => {
+            refused = true
         },
         holdRead: () => {
             readGate = deferred()
@@ -270,3 +279,25 @@ test('a staged file opens from its name in the export-video directory', async ()
         else Reflect.deleteProperty(globalThis, 'navigator')
     }
 })
+
+test('a picked file the platform refuses to read is committed, never checked as changed', async () => {
+    const f = pickedFile()
+    const output = await openPickedTarget({ handle: f.pick.handle })
+    await output.write(new Uint8Array([5, 6]), 0)
+    f.refuseReads()
+    await output.close()
+    assert.deepEqual([...new Uint8Array(await f.file!.arrayBuffer())], [5, 6])
+})
+
+for (const unreadable of ['refused', 'no time'] as const)
+    test(`cleanup leaves a picked file it cannot establish as unchanged: ${unreadable}`, async () => {
+        const f = pickedFile('open')
+        if (unreadable === 'refused') f.refuseReads()
+        // The refusal to write is reported, never the refused read of the cleanup after it.
+        await assert.rejects(
+            openPickedTarget(unreadable === 'refused' ? f.pick : { handle: f.pick.handle }),
+            { code: 'denied', step: undefined, fileName: 'clip.mp4' },
+        )
+        assert.equal(f.removed, 0)
+        assert.equal(f.file!.size, 0)
+    })

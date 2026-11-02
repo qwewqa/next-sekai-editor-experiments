@@ -58,11 +58,14 @@ export type Dismissed = { readonly kind: 'dismissed' }
 
 export type PickedFile = {
     readonly target: FileTarget & { kind: 'handle' }
-    /** Inspected inside the hold: the write's precondition. */
-    readonly found: DiskState
     /**
-     * The failure when the file was written since the pick (by a sync client or another tab). The
-     * flow ends with it before it revokes or writes anything.
+     * Inspected inside the hold, as the write's precondition. Undefined when the platform refused
+     * to read the file; it is then never taken as empty or unchanged.
+     */
+    readonly found: DiskState | undefined
+    /**
+     * The failure when the file was seen written since the pick (by a sync client or another tab).
+     * The flow ends with it before it revokes or writes anything.
      */
     readonly changed: FileError | undefined
     /** The one write to the picked file, over `found`. A failure is thrown. */
@@ -91,6 +94,19 @@ export type PickSession = Omit<SaveAttempt, 'write' | 'commit' | 'closePreparing
      * then says so.
      */
     readonly emptied: boolean
+}
+
+/**
+ * The picked file as the platform reads it: undefined when the read is refused. The pick
+ * authorizes the write, so such a check is skipped.
+ */
+const observe = async (target: FileTarget, kind: 'nxsp' | 'nsld') => {
+    try {
+        return await platform.inspect(target, kind)
+    } catch (error) {
+        if (error instanceof FileError && error.code === 'denied') return
+        throw error
+    }
 }
 
 /** How often a picker waiting for an import running in this tab looks again. */
@@ -135,46 +151,38 @@ export const withPickSession = <T>(
             let failure: { error: unknown } | undefined
             let landed = false
             await withBind('exclusive', async () => {
-                let found: DiskState | undefined
+                const missing = () =>
+                    new FileError(
+                        'not-found',
+                        `${name} cannot be found`,
+                        undefined,
+                        undefined,
+                        name,
+                    )
+                let inspected: { disk: DiskState | undefined } | undefined
                 try {
-                    const disk = await platform.inspect(target, 'nxsp')
-                    if (disk === 'missing')
-                        throw new FileError(
-                            'not-found',
-                            `${name} cannot be found`,
-                            undefined,
-                            undefined,
-                            name,
-                        )
-                    found = disk
+                    const disk = await observe(target, 'nxsp')
+                    if (disk === 'missing') throw missing()
+                    inspected = { disk }
                 } catch (error) {
                     failure = { error }
                 }
-                if (found && !failure) {
-                    const disk = found
+                if (inspected) {
+                    const { disk } = inspected
                     const picked: PickedFile = {
                         target,
                         found: disk,
                         changed:
-                            disk.size === 0
+                            !disk || disk.size === 0
                                 ? undefined
                                 : new FileError('conflict', `${name} changed`, disk, 'check', name),
                         write: async (request) => {
                             // The empty file as this write's kind measures it.
                             const expected =
-                                request.kind === 'nxsp'
-                                    ? disk
-                                    : await platform.inspect(target, request.kind)
-                            if (expected === 'missing')
-                                throw new FileError(
-                                    'not-found',
-                                    `${name} cannot be found`,
-                                    undefined,
-                                    undefined,
-                                    name,
-                                )
+                                request.kind === 'nxsp' ? disk : await observe(target, request.kind)
+                            if (expected === 'missing') throw missing()
                             // Every pick must still be empty, whatever output is being written.
-                            if (expected.size !== 0)
+                            if (expected && expected.size !== 0)
                                 throw new FileError(
                                     'conflict',
                                     `${name} changed`,
@@ -187,13 +195,14 @@ export const withPickSession = <T>(
                                     kind: request.kind,
                                     suggestedName: name,
                                     target,
-                                    expected,
+                                    ...(expected ? { expected } : {}),
+                                    picked: true,
                                     build: () =>
                                         Promise.resolve({ kind: 'blob', blob: request.blob }),
                                 },
                                 request.marker,
                             )
-                            if (written.status === 'saved') landed = true
+                            if (written.status !== 'cancelled') landed = true
                             return written
                         },
                     }

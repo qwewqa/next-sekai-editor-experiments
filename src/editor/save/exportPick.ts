@@ -9,6 +9,8 @@ import { named, withPickSession, type PickSession } from './pickSession'
 
 export type PickedLevelData =
     | { kind: 'written'; result: SaveResult & { status: 'saved' } }
+    /** The platform refused writing the picked file: the level data was downloaded instead. */
+    | { kind: 'downloaded'; name: string }
     | { kind: 'dismissed' }
     | { kind: 'cancelled' }
     | { kind: 'failed'; error: FileError; emptied?: boolean }
@@ -44,6 +46,8 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
                     await revokePicked(env, picked.target.handle, true)
                     try {
                         const result = await picked.write({ kind: 'nsld', blob })
+                        if (result.status === 'download-started')
+                            return { kind: 'downloaded', name: result.name }
                         if (result.status !== 'saved') return { kind: 'cancelled' }
                         await rememberWritten(ctx, result).catch(recordError)
                         return { kind: 'written', result }

@@ -1,7 +1,7 @@
 import { MemoryStorage, storageJournalStore, type JournalStorage } from '../local/journal/store'
 import { FakeLockManager } from '../local/testing/locks'
 import { levelDataDiskState, nxspDiskState, sameContent } from './fingerprint'
-import { toBlob } from './handover'
+import { isWriteRefusal, toBlob } from './handover'
 import { memoryVideoStore } from './mockVideoOutput'
 import {
     FileError,
@@ -253,6 +253,27 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
 
     // Honours the signal at the same points as the web, in the same order.
     const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
+        if (!req.picked) return writeTarget(req)
+        // A picked file the platform refuses to write and to read is downloaded once, as on the
+        // web. A test refuses the read by replacing `read`.
+        try {
+            return await writeTarget(req)
+        } catch (error) {
+            const target = req.target
+            const refused =
+                !!target &&
+                (await mock.read(target).then(
+                    () => false,
+                    (failure: unknown) => failure instanceof FileError && failure.code === 'denied',
+                ))
+            if (!isWriteRefusal(error) || !refused) throw error
+            const body = await toBlob(await req.build([]))
+            downloads.push({ kind: req.kind, name: req.suggestedName, blob: body })
+            return { status: 'download-started', name: req.suggestedName }
+        }
+    }
+
+    const writeTarget = async (req: SaveRequest): Promise<SaveResult> => {
         const { signal, kind } = req
         if (req.target) {
             // The gesture's first call, as on the web.

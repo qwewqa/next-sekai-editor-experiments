@@ -9,10 +9,12 @@ import {
     isStandalone,
     usesOpfsPickers,
 } from './detect'
+import { isRefusedRead } from './fingerprint'
 import {
     diskStateOf,
     fileErrorOf,
     handOver,
+    isWriteRefusal,
     requestWrite,
     toBlob,
     verifyBuilt,
@@ -156,13 +158,21 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
         const handle = req.target.handle
         const write = () => writeHandle(req, handle, permission)
         const locked = () => (req.lock ? req.lock(write) : write())
-        if (req.expected !== undefined) return locked()
-        return locked().catch(async () => {
+        const download = async () => {
             signal?.throwIfAborted()
             const blob = await toBlob(await req.build([]))
             await verifyBuilt(req.kind, blob)
             return handOver(blob, req.suggestedName, startedAt, req.ready)
-        })
+        }
+        // A picked file the platform refuses to write and to read is downloaded once instead.
+        // Every other failure is the caller's to show, with whether the picked file is now empty.
+        if (req.picked)
+            return locked().catch(async (error: unknown) => {
+                if (isWriteRefusal(error) && (await readRefused(handle))) return download()
+                throw error
+            })
+        if (req.expected !== undefined) return locked()
+        return locked().catch(download)
     }
 
     // Without a target a save only downloads: the save picker is `pickSaveFile`, opened only by
@@ -173,6 +183,13 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
     signal?.throwIfAborted()
     return handOver(blob, req.suggestedName, startedAt, req.ready)
 }
+
+/** Whether the platform refuses to read the file, so whether it is now empty is unknown. */
+const readRefused = (handle: FileSystemFileHandle) =>
+    handle.getFile().then(
+        () => false,
+        (error: unknown) => isRefusedRead(error),
+    )
 
 const inspect = async (target: FileTarget, kind?: SaveKind): Promise<DiskState | 'missing'> => {
     if (target.kind !== 'handle') throw new Error('No file paths on the web')

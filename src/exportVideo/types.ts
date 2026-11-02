@@ -8,7 +8,7 @@ import type { MixSettings } from './mix'
 import type { SinkConfig } from './worker/sink'
 
 export type ExportTarget =
-    | { kind: 'picked'; pick: { handle: FileSystemFileHandle; lastModified: number } }
+    | { kind: 'picked'; pick: { handle: FileSystemFileHandle; lastModified?: number } }
     | { kind: 'staged'; name: string }
     | { kind: 'memory'; limit: number }
 
