@@ -2219,7 +2219,6 @@
                 },
                 "copyProperties": "Copies properties set to Copy from a single selected object when you add one of the same kind.",
                 "copyPropertiesSlide": "Copies properties set to Copy from a single selected note and its slide when you add a note.",
-                "name": "Only the editor shows this name.",
                 "forceNoteSpeed": "Note speed override for the group, 1 to 12.",
                 "isFromStart": "Draws the stage before its first mask event.",
                 "isUntilEnd": "Draws the stage after its last mask event.",
