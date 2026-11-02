@@ -23,8 +23,6 @@ const { resetStates } = await import('../../../src/history/stack')
 const { chartState } = await import('../chartFixture')
 const { initialStep } = await import('../../helpers/historySteps')
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
-
 const nxsp = async (revision: string) =>
     new Blob(
         assembleZip([
@@ -193,16 +191,26 @@ test('the picker opens only after the read has settled, and a failed read is tri
     const t = await setup()
     t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
     let seen: unknown
-    // A read that fails first and is slow: the session waits for it, then reads again.
-    const read = sleep(150).then(() => ({ kind: 'failed' as const }))
+    let failRead!: () => void
+    const read = new Promise<{ kind: 'failed' }>((resolve) => {
+        failRead = () => resolve({ kind: 'failed' })
+    })
+    const preparing = new Promise<void>((resolve) => {
+        const original = t.ui.preparing
+        t.ui.preparing = () => {
+            resolve()
+            return original()
+        }
+    })
     const running = withPickSession(t.spec({ read }), (session) =>
         session.pick(t.picker, 'out.nxsp', (picked) => {
             seen = picked.pre
             return Promise.resolve('none')
         }),
     )
-    await sleep(60)
+    await Promise.race([preparing, running])
     assert.deepEqual(t.log, [], 'no picker while the read has not settled')
+    failRead()
     await running
     assert.deepEqual(t.log, ['picker:active'])
     assert.deepEqual(await bytesOf((seen as { blob: Blob }).blob), t.original, 'the retry read it')
