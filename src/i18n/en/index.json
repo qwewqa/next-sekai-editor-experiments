@@ -1064,7 +1064,7 @@
         },
         "descriptions": {
             "waveform": {
-                "intro": "Sets how the BGM is visualized on the chart.",
+                "intro": "How the BGM is visualized on the chart.",
                 "choices": {
                     "volume": "Shows its loudness.",
                     "fft": "Shows its frequencies.",
@@ -1072,27 +1072,27 @@
                 }
             },
             "zeroWidthNotes": {
-                "intro": "Sets which notes can be made zero lanes wide with the editing tools.",
+                "intro": "Which notes can be made zero lanes wide with the editing tools.",
                 "choices": {
                     "off": "Requires a width greater than zero.",
                     "anchors": "Lets anchors be zero lanes wide.",
                     "all": "Lets any note be zero lanes wide."
                 }
             },
-            "dimUnchangedObjects": "Sets the default for Show Edits when you view Timeline steps.",
-            "showOtherGroups": "Shows objects in other groups, faded, while a group is focused.",
-            "showOtherStages": "Shows objects on other stages, faded, while a stage is focused.",
-            "showOtherObjects": "Shows objects of the types you have hidden, faded.",
-            "nameContrast": "Outlines group and stage names in black and brightens stage names.",
-            "dragToPanY": "Scrolls the chart up or down when you drag near its top or bottom edge.",
-            "dragToPanX": "Scrolls the chart sideways when you drag near its left or right edge.",
-            "previewRenderScale": "Scales the preview’s resolution from 0.25× to 2×. Lower values reduce sharpness and can improve performance.",
-            "previewInWorker": "Draws the preview in parallel with the rest of the editor. Turn this off if the preview looks wrong or does not appear.",
-            "toolbarQuickSwitch": "Lets you hold a toolbar button and release on a tool to choose it.",
-            "playFollowPosition": "Sets where Follow keeps the playback cursor. 0 is the bottom of the visible chart and 100 is the top.",
-            "playPreviewDuration": "Sets how long the BGM plays when you move the playback cursor or select an object.",
+            "dimUnchangedObjects": "Whether Show Edits is on by default when you view Timeline steps.",
+            "showOtherGroups": "Whether to show objects in other groups, faded, while a group is focused.",
+            "showOtherStages": "Whether to show objects on other stages, faded, while a stage is focused.",
+            "showOtherObjects": "Whether to show objects of the types you have hidden, faded.",
+            "nameContrast": "Whether to outline group and stage names in black and brighten stage names.",
+            "dragToPanY": "Whether to scroll the chart up or down when you drag near its top or bottom edge.",
+            "dragToPanX": "Whether to scroll the chart sideways when you drag near its left or right edge.",
+            "previewRenderScale": "Resolution multiplier for the preview, 0.25× to 2×. Lower values reduce sharpness and can improve performance.",
+            "previewInWorker": "Whether to draw the preview in parallel with the rest of the editor. Turn this off if the preview looks wrong or does not appear.",
+            "toolbarQuickSwitch": "Whether you can hold a toolbar button and release on a tool to choose it.",
+            "playFollowPosition": "Where Follow keeps the playback cursor. 0 is the bottom of the visible chart and 100 is the top.",
+            "playPreviewDuration": "How long the BGM plays when you move the playback cursor or select an object.",
             "mouseSecondaryTool": {
-                "intro": "Sets what right-click and right-drag do.",
+                "intro": "What right-click and right-drag do.",
                 "choices": {
                     "eraser": "Deletes objects with a right-click or objects in an area with a right-drag.",
                     "select": "Lets you select, move or resize objects with the right mouse button.",
@@ -1100,40 +1100,40 @@
                 }
             },
             "beatDisplay": {
-                "intro": "Sets how beat positions are numbered.",
+                "intro": "How beat positions are numbered.",
                 "choices": {
                     "beat": "Shows a continuous count from 1 across the chart.",
                     "measure": "Shows the measure and the beat within it, and aligns snapping to measures.",
                     "both": "Shows the two formats together, and aligns snapping to measures."
                 }
             },
-            "showGroupName": "Shows group names beside notes and time scale changes outside the default group.",
-            "showStageName": "Shows stage names beside notes and stage events when Dynamic Stages is on.",
-            "maxScrollX": "Sets how far you can scroll left or right from the chart’s center.",
+            "showGroupName": "Whether to show group names beside notes and time scale changes outside the default group.",
+            "showStageName": "Whether to show stage names beside notes and stage events when Dynamic Stages is on.",
+            "maxScrollX": "How far you can scroll left or right from the chart’s center. In the Composed layout, you can scroll farther to reach stages beyond this limit.",
             "elevationEditorSideBySide": {
-                "intro": "Sets whether the Elevation Editor opens beside the chart or in place of it.",
+                "intro": "Whether the Elevation Editor opens beside the chart or in place of it.",
                 "choices": {
                     "auto": "Opens it beside the chart when there is room.",
                     "allow": "Opens it beside the chart even when the chart gets narrow.",
                     "disallow": "Opens it in place of the chart."
                 }
             },
-            "elevationConnectorArrows": "Shows arrows on the connectors of selected or hovered slides, pointing from start to end.",
+            "elevationConnectorArrows": "Whether to show arrows on the connectors of selected or hovered slides. Arrows point from start to end.",
             "groupsStagesSideBySide": {
-                "intro": "Sets when Groups and Stages are shown side by side while they are docked below Preview.",
+                "intro": "When to show Groups and Stages side by side while they are docked below Preview.",
                 "choices": {
                     "auto": "Puts them side by side when the panels are wide.",
                     "enabled": "Puts them side by side whenever both fit.",
                     "disabled": "Keeps them stacked."
                 }
             },
-            "confirmCloseUnsavedFile": "Asks before the page closes while changes are not saved to a project file, even when they are stored in this browser.",
-            "previewNoteSpeed": "Sets how fast notes approach in the preview, from 1 to 12.",
-            "previewShowHitboxes": "Shows the areas used to judge notes and slides.",
-            "previewShowEffects": "Shows particles and glows when notes are hit and while slides are held in the preview.",
-            "previewAntialias": "Smooths jagged edges in the preview.",
+            "confirmCloseUnsavedFile": "Whether to ask before the page closes while changes are not saved to a project file.",
+            "previewNoteSpeed": "How fast notes approach in the preview, from 1 to 12.",
+            "previewShowHitboxes": "Whether to show the areas used to judge notes and slides.",
+            "previewShowEffects": "Whether to show particles and glows in the preview when notes are hit and while slides are held.",
+            "previewAntialias": "Whether to smooth jagged edges in the preview.",
             "previewTransportPosition": {
-                "intro": "Sets where the preview’s playback controls appear.",
+                "intro": "Where the preview’s playback controls appear.",
                 "choices": {
                     "auto": "Places them below the preview when it fits without shrinking, and over its lower edge otherwise.",
                     "below": "Reserves space under the preview, shrinking it if needed.",
@@ -1141,32 +1141,32 @@
                 }
             },
             "previewControls": {
-                "intro": "Sets how the preview settings are shown while playback is stopped.",
+                "intro": "How the preview settings are shown while playback is stopped.",
                 "choices": {
-                    "auto": "Starts with the settings form open when you use a mouse and it fits in the preview panel, or a button otherwise.",
+                    "auto": "Starts with the settings form open when you use a mouse and most of it fits in the preview panel, or with a button otherwise.",
                     "expanded": "Shows the settings form.",
                     "collapsed": "Shows a button that opens the settings."
                 }
             },
             "playStartPosition": {
-                "intro": "Sets where Play starts.",
+                "intro": "Where Play starts.",
                 "choices": {
                     "view": "Starts at the bottom of the visible chart, or at Follow Position when Follow is on.",
                     "cursor": "Starts at the playback cursor."
                 }
             },
-            "playFollow": "Scrolls the chart during playback to keep the playback cursor at Follow Position.",
-            "touchQuickScrollWidth": "Sets the width of the zone for one-finger scrolling. 0 turns the zone off.",
+            "playFollow": "Whether to scroll the chart during playback to keep the playback cursor at Follow Position.",
+            "touchQuickScrollWidth": "Width of the zone for one-finger scrolling. 0 turns the zone off.",
             "touchQuickScrollShow": {
-                "intro": "Sets when to shade the quick scroll zone.",
+                "intro": "When to shade the quick scroll zone.",
                 "choices": {
                     "on": "Shades the zone on any device.",
                     "off": "Leaves the zone unshaded.",
                     "touch": "Shades the zone when touch input is available."
                 }
             },
-            "touchScrollInertia": "Keeps the chart scrolling after you lift your finger, then slows it to a stop.",
-            "showPropertyDescriptions": "Shows info buttons beside chart properties."
+            "touchScrollInertia": "Whether the chart keeps scrolling after you lift your finger, slowing to a stop.",
+            "showPropertyDescriptions": "Whether to show info buttons beside chart properties."
         },
         "sections": "Sections",
         "localData": {
@@ -2108,14 +2108,14 @@
                     "choices": {
                         "default": "Tap, flick, release or tick, depending on its place in a slide and its Flick Direction.",
                         "trace": "Trace or trace flick.",
-                        "anchor": "Invisible note that shapes connectors without adding combo.",
+                        "anchor": "Invisible note without judgment. Used to shape connectors.",
                         "damage": "Note that causes a miss if touched.",
                         "forceTick": "Always a tick, even outside a slide.",
                         "forceNonTick": "Never a tick, even in the middle of a slide."
                     }
                 },
                 "noteStyle": "Note color override.",
-                "isAttached": "Makes this note inherit its lane and size from the connector it is on.",
+                "isAttached": "Takes its lane and size from the connector it is on.",
                 "isFake": "Disables judgment, sound and hit effects.",
                 "sfx": "Sound effect override.",
                 "isConnectorSeparator": "Starts a new connector segment with this note’s connector properties.",
@@ -2143,7 +2143,7 @@
                 "connectorPresentation": {
                     "choices": {
                         "default": "Connector drawn between its notes.",
-                        "fullscreen": "Connector drawn over the whole screen for its duration."
+                        "fullscreen": "Connector drawn over the whole screen between its start and end beats."
                     }
                 },
                 "meter": "Beats per measure.",
@@ -2152,8 +2152,8 @@
                 "timeScaleEase": "How the speed changes until the group’s next time scale change.",
                 "timeScaleTransition": {
                     "choices": {
-                        "timeScale": "Note spacing based on upcoming speed changes.",
-                        "scroll": "Note spacing based on the current speed."
+                        "timeScale": "Note spacing shows upcoming speed changes.",
+                        "scroll": "Note spacing follows the current speed."
                     }
                 },
                 "hideNotes": "Hides the group’s notes and the connector segments that start in it. Lasts until the group’s next time scale change.",
@@ -2168,7 +2168,7 @@
                         "center": "Middle of the screen."
                     }
                 },
-                "cameraRotation": "Rotation of the whole view around the middle of the screen. In degrees, positive clockwise.",
+                "cameraRotation": "Rotation of the whole view around the middle of the screen, in degrees. Positive values turn it clockwise.",
                 "cameraStageTilt": "Backward tilt of the stage, 0 to 1. 1 is the usual perspective.",
                 "eventEase": "How the values change until the next connected event.",
                 "maskLeft": "Left edge of the drawn part of the stage, in lanes.",
@@ -2197,9 +2197,9 @@
                 "laneAlpha": "Opacity of the lane background, dividers and borders, 0 to 1.",
                 "judgmentLineAlpha": "Opacity of the judgment line, 0 to 1.",
                 "divisionLineAlpha": "Opacity of the lane dividers, 0 to 1.",
-                "xTranslation": "In lanes, positive to the right.",
-                "yTranslation": "In lanes, positive up.",
-                "rotation": "In degrees, positive clockwise.",
+                "xTranslation": "Horizontal shift of the stage, in lanes. Positive values move it right.",
+                "yTranslation": "Vertical shift of the stage, in lanes. Positive values move it up.",
+                "rotation": "Rotation of the stage around its Rotation Center, in degrees. Positive values turn it clockwise.",
                 "rotationCenter": {
                     "choices": {
                         "stage": "Lane 0 at the judgment line’s usual height.",
@@ -2208,8 +2208,8 @@
                         "vanishingPoint": "Where the lanes meet in the distance."
                     }
                 },
-                "centerXOffset": "In lanes, positive to the right.",
-                "centerYOffset": "In lanes, positive up.",
+                "centerXOffset": "Horizontal shift of the Rotation Center, in lanes. Positive values move it right.",
+                "centerYOffset": "Vertical shift of the Rotation Center, in lanes. Positive values move it up.",
                 "anchor": {
                     "intro": "Reference point for Y Translation.",
                     "choices": {
@@ -2478,8 +2478,8 @@
             }
         },
         "videoBitrate": "Video Bitrate (Mbps)",
-        "antialiasDescription": "Smooths jagged edges in the video.",
-        "renderScaleDescription": "Scales the resolution used to draw each frame. Higher values give smoother edges but slow the export.",
+        "antialiasDescription": "Whether to smooth jagged edges in the video.",
+        "renderScaleDescription": "Resolution multiplier used to draw each frame. Higher values give smoother edges but slow the export.",
         "fadeIn": "Fade In (s)",
         "fadeOut": "Fade Out (s)",
         "audioBitrate": "Audio Bitrate",

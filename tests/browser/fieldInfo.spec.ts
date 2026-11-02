@@ -110,10 +110,10 @@ test.describe('in Settings', () => {
         const toggle = root.getByRole('switch')
         await expect(toggle).toHaveAccessibleName('Name Contrast')
         await expect(toggle).toHaveAccessibleDescription(
-            'Outlines group and stage names in black and brightens stage names.',
+            'Whether to outline group and stage names in black and brighten stage names.',
         )
         await expect(info).toHaveAccessibleDescription(
-            'Outlines group and stage names in black and brightens stage names.',
+            'Whether to outline group and stage names in black and brighten stage names.',
         )
         // A select and a number field are named by their label's text alone, too.
         await expect(
@@ -169,7 +169,7 @@ test.describe('in Settings', () => {
         })
         const dialog = await openSettings(page)
         const { root, info } = field(dialog, 'Elevation Editor Side by Side')
-        const intro = 'Sets whether the Elevation Editor opens beside the chart or in place of it.'
+        const intro = 'Whether the Elevation Editor opens beside the chart or in place of it.'
         const lines = [
             'Auto: Opens it beside the chart when there is room.',
             'Always: Opens it beside the chart even when the chart gets narrow.',
@@ -225,7 +225,7 @@ test.describe('in Settings', () => {
     test("Show Quick Scroll Zone's description is its own", async ({ page }) => {
         const dialog = await openSettings(page)
         const { root, info } = field(dialog, 'Show Quick Scroll Zone')
-        const intro = 'Sets when to shade the quick scroll zone.'
+        const intro = 'When to shade the quick scroll zone.'
         const lines = [
             'On: Shades the zone on any device.',
             'Off: Leaves the zone unshaded.',
@@ -281,7 +281,7 @@ test.describe('in Settings', () => {
         await info.scrollIntoViewIfNeeded()
         await info.hover()
         await expect(bubble(page)).toHaveText(
-            'Shows objects in other groups, faded, while a group is focused.',
+            'Whether to show objects in other groups, faded, while a group is focused.',
         )
         await expect(info).toHaveAttribute('aria-expanded', 'true')
         const opened = await times(page)
@@ -350,7 +350,7 @@ test.describe('in Settings', () => {
         await page.keyboard.press('Tab')
         await expect(info).toBeFocused()
         await expect(bubble(page).locator('p')).toHaveText(
-            'Sets which notes can be made zero lanes wide with the editing tools.',
+            'Which notes can be made zero lanes wide with the editing tools.',
         )
         await page.keyboard.press('Enter')
         await expect(info).toHaveAttribute('aria-expanded', 'true')
@@ -429,7 +429,7 @@ test.describe('in Settings', () => {
         await second.info.click()
         await expect(bubble(page)).toHaveCount(1)
         await expect(bubble(page)).toHaveText(
-            'Shows objects on other stages, faded, while a stage is focused.',
+            'Whether to show objects on other stages, faded, while a stage is focused.',
         )
         await expect(first.info).toHaveAttribute('aria-expanded', 'false')
     })

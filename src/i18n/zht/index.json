@@ -1064,7 +1064,7 @@
     },
     "descriptions": {
       "waveform": {
-        "intro": "設定 BGM 在譜面上的視覺化方式。",
+        "intro": "BGM 在譜面上的視覺化方式。",
         "choices": {
           "volume": "顯示 BGM 的響度。",
           "fft": "顯示 BGM 的頻率。",
@@ -1072,27 +1072,27 @@
         }
       },
       "zeroWidthNotes": {
-        "intro": "設定使用編輯工具時，哪些音符的寬度可以設為 0 條軌道。",
+        "intro": "使用編輯工具時，寬度可以設為 0 條軌道的音符。",
         "choices": {
           "off": "要求所有音符的寬度大於 0。",
           "anchors": "允許將錨點的寬度設為 0 條軌道。",
           "all": "允許將任何音符的寬度設為 0 條軌道。"
         }
       },
-      "dimUnchangedObjects": "設定檢視時間軸中的步驟時，「顯示變更」的預設狀態。",
-      "showOtherGroups": "聚焦圖層時，以淡色顯示其他圖層中的物件。",
-      "showOtherStages": "聚焦舞台時，以淡色顯示其他舞台上的物件。",
-      "showOtherObjects": "以淡色顯示已隱藏類型的物件。",
-      "nameContrast": "為圖層名稱和舞台名稱加上黑色描邊，並提高舞台名稱的亮度。",
-      "dragToPanY": "在譜面頂部或底部邊緣附近拖曳時，向上或向下捲動譜面。",
-      "dragToPanX": "在譜面左側或右側邊緣附近拖曳時，水平捲動譜面。",
-      "previewRenderScale": "縮放預覽的解析度，範圍為 0.25 倍到 2 倍。數值越低，清晰度越低，並可能提升效能。",
-      "previewInWorker": "與編輯器的其他部分平行繪製預覽。如果預覽顯示異常或沒有顯示，請關閉此項。",
-      "toolbarQuickSwitch": "按住工具列按鈕，再在要選擇的工具上放開即可。",
-      "playFollowPosition": "設定「跟隨」將播放游標保持的位置。可見譜面的底部為 0，頂部為 100。",
-      "playPreviewDuration": "設定移動播放游標或選取物件時 BGM 的播放時長。",
+      "dimUnchangedObjects": "檢視時間軸中的步驟時，是否預設開啟「顯示變更」。",
+      "showOtherGroups": "聚焦圖層時，是否以淡色顯示其他圖層中的物件。",
+      "showOtherStages": "聚焦舞台時，是否以淡色顯示其他舞台上的物件。",
+      "showOtherObjects": "是否以淡色顯示已隱藏類型的物件。",
+      "nameContrast": "是否為圖層名稱和舞台名稱加上黑色描邊，並提高舞台名稱的亮度。",
+      "dragToPanY": "在譜面頂部或底部邊緣附近拖曳時，是否向上或向下捲動譜面。",
+      "dragToPanX": "在譜面左側或右側邊緣附近拖曳時，是否水平捲動譜面。",
+      "previewRenderScale": "預覽的解析度倍率，範圍為 0.25 倍到 2 倍。數值越低，清晰度越低，並可能提升效能。",
+      "previewInWorker": "是否與編輯器的其他部分平行繪製預覽。如果預覽顯示異常或沒有顯示，請關閉此項。",
+      "toolbarQuickSwitch": "是否可以按住工具列按鈕，再在要選擇的工具上放開。",
+      "playFollowPosition": "「跟隨」將播放游標保持的位置。可見譜面的底部為 0，頂部為 100。",
+      "playPreviewDuration": "移動播放游標或選取物件時 BGM 的播放時長。",
       "mouseSecondaryTool": {
-        "intro": "設定以右鍵按一下和按住右鍵拖曳的操作。",
+        "intro": "以右鍵按一下和按住右鍵拖曳的操作。",
         "choices": {
           "eraser": "按一下右鍵可刪除物件，按住右鍵拖曳可刪除區域內的物件。",
           "select": "可用滑鼠右鍵選取、移動或調整物件大小。",
@@ -1100,40 +1100,40 @@
         }
       },
       "beatDisplay": {
-        "intro": "設定節拍位置的編號方式。",
+        "intro": "節拍位置的編號方式。",
         "choices": {
           "beat": "從 1 開始對整個譜面連續計數。",
           "measure": "顯示小節及其中的節拍，並以小節為基準進行吸附。",
           "both": "同時顯示這兩種格式，並以小節為基準進行吸附。"
         }
       },
-      "showGroupName": "在預設圖層以外的音符和時間倍率變更旁顯示圖層名稱。",
-      "showStageName": "開啟「動態舞台」時，在音符和舞台事件旁顯示舞台名稱。",
-      "maxScrollX": "設定從譜面中心向左或向右捲動的範圍。",
+      "showGroupName": "是否在預設圖層以外的音符和時間倍率變更旁顯示圖層名稱。",
+      "showStageName": "開啟「動態舞台」時，是否在音符和舞台事件旁顯示舞台名稱。",
+      "maxScrollX": "從譜面中心向左或向右捲動的範圍。在「合成」配置中，可以捲動得更遠，到達此範圍之外的舞台。",
       "elevationEditorSideBySide": {
-        "intro": "設定高度編輯器是在譜面旁開啟，還是取代譜面。",
+        "intro": "高度編輯器是在譜面旁開啟，還是取代譜面。",
         "choices": {
           "auto": "在空間足夠時，在譜面旁開啟高度編輯器。",
           "allow": "即使譜面變窄，也在譜面旁開啟高度編輯器。",
           "disallow": "開啟高度編輯器，取代譜面。"
         }
       },
-      "elevationConnectorArrows": "在選取或指標停留的滑條的連接線上顯示箭頭，從滑條的起點指向終點。",
+      "elevationConnectorArrows": "是否在選取或指標停留的滑條的連接線上顯示箭頭。箭頭從滑條的起點指向終點。",
       "groupsStagesSideBySide": {
-        "intro": "設定「圖層」和「舞台」停靠在「預覽」下方時並排顯示的條件。",
+        "intro": "「圖層」和「舞台」停靠在「預覽」下方時並排顯示的條件。",
         "choices": {
           "auto": "在面板較寬時並排顯示。",
           "enabled": "只要兩個面板放得下，就並排顯示。",
           "disabled": "保持上下排列。"
         }
       },
-      "confirmCloseUnsavedFile": "有尚未儲存到專案檔案的變更時，會在關閉頁面前詢問，即使這些變更已存放在此瀏覽器中。",
-      "previewNoteSpeed": "設定預覽中音符接近的速度，範圍為 1 到 12。",
-      "previewShowHitboxes": "顯示用於判定音符和滑條的範圍。",
-      "previewShowEffects": "音符被擊中時及按住滑條期間，在預覽中顯示粒子與發光效果。",
-      "previewAntialias": "平滑預覽中的鋸齒邊緣。",
+      "confirmCloseUnsavedFile": "有尚未儲存到專案檔案的變更時，是否在關閉頁面前詢問。",
+      "previewNoteSpeed": "預覽中音符接近的速度，範圍為 1 到 12。",
+      "previewShowHitboxes": "是否顯示用於判定音符和滑條的範圍。",
+      "previewShowEffects": "音符被擊中時及按住滑條期間，是否在預覽中顯示粒子與發光效果。",
+      "previewAntialias": "是否平滑預覽中的鋸齒邊緣。",
       "previewTransportPosition": {
-        "intro": "設定預覽播放控制項的顯示位置。",
+        "intro": "預覽播放控制項的顯示位置。",
         "choices": {
           "auto": "預覽不必縮小就能放得下時，將控制項放在下方，否則疊放在預覽的下邊緣。",
           "below": "在預覽下方為控制項留出空間，必要時縮小預覽。",
@@ -1141,32 +1141,32 @@
         }
       },
       "previewControls": {
-        "intro": "設定播放停止時預覽設定的顯示方式。",
+        "intro": "播放停止時預覽設定的顯示方式。",
         "choices": {
-          "auto": "使用滑鼠且預覽面板能容納各項設定時，一開始會展開設定，否則顯示按鈕。",
+          "auto": "使用滑鼠且預覽面板能容納大部分設定時，一開始會展開設定，否則顯示按鈕。",
           "expanded": "顯示各項設定。",
           "collapsed": "顯示用於開啟設定的按鈕。"
         }
       },
       "playStartPosition": {
-        "intro": "設定「播放」的開始位置。",
+        "intro": "「播放」的開始位置。",
         "choices": {
           "view": "從可見譜面的底部開始；開啟「跟隨」時，則從「跟隨位置」開始。",
           "cursor": "從播放游標位置開始。"
         }
       },
-      "playFollow": "播放時捲動譜面，讓播放游標保持在「跟隨位置」。",
-      "touchQuickScrollWidth": "設定可用單指捲動的區域寬度。數值為 0 時關閉此區域。",
+      "playFollow": "是否在播放時捲動譜面，讓播放游標保持在「跟隨位置」。",
+      "touchQuickScrollWidth": "可用單指捲動的區域寬度。數值為 0 時關閉此區域。",
       "touchQuickScrollShow": {
-        "intro": "設定何時為快速捲動區加上底色。",
+        "intro": "為快速捲動區加上底色的條件。",
         "choices": {
           "on": "在所有裝置上都為該區域加上底色。",
           "off": "不為該區域加上底色。",
           "touch": "裝置支援觸控時，為該區域加上底色。"
         }
       },
-      "touchScrollInertia": "讓譜面在抬起手指後繼續捲動，然後減速至停止。",
-      "showPropertyDescriptions": "在譜面屬性旁顯示資訊按鈕。"
+      "touchScrollInertia": "是否讓譜面在抬起手指後繼續捲動，並減速至停止。",
+      "showPropertyDescriptions": "是否在譜面屬性旁顯示資訊按鈕。"
     },
     "sections": "分區",
     "localData": {
@@ -2108,14 +2108,14 @@
           "choices": {
             "default": "依滑條中的位置和「滑動方向」，作為點按、滑動、放開或判定點。",
             "trace": "描跡或描跡滑動。",
-            "anchor": "決定連接線形狀但不增加連擊數的不可見音符。",
+            "anchor": "沒有判定的不可見音符。用於決定連接線形狀。",
             "damage": "觸碰時會產生 miss 的音符。",
             "forceTick": "始終作為判定點，即使不在滑條中。",
             "forceNonTick": "始終不作為判定點，即使在滑條中間。"
           }
         },
         "noteStyle": "覆寫音符顏色。",
-        "isAttached": "使此音符的軌道和尺寸取自其所在的連接線。",
+        "isAttached": "軌道和尺寸取自此音符所在的連接線。",
         "isFake": "停用判定、聲音和擊中特效。",
         "sfx": "覆寫音效。",
         "isConnectorSeparator": "從此音符開始新的連接線區段，使用此音符的連接線屬性。",
@@ -2143,7 +2143,7 @@
         "connectorPresentation": {
           "choices": {
             "default": "繪製在其音符之間的連接線。",
-            "fullscreen": "在持續期間覆蓋整個螢幕的連接線。"
+            "fullscreen": "在起始節拍和結束節拍之間覆蓋整個螢幕的連接線。"
           }
         },
         "meter": "每小節的節拍數。",
@@ -2152,8 +2152,8 @@
         "timeScaleEase": "圖層下次時間倍率變更前的速度變化方式。",
         "timeScaleTransition": {
           "choices": {
-            "timeScale": "根據後續速度變化決定的音符間距。",
-            "scroll": "根據目前速度決定的音符間距。"
+            "timeScale": "音符間距反映後續速度變化。",
+            "scroll": "音符間距隨目前速度變化。"
           }
         },
         "hideNotes": "隱藏圖層內的音符及從該圖層開始的連接線區段。持續到該圖層的下一次時間倍率變更。",
@@ -2168,7 +2168,7 @@
             "center": "螢幕中央。"
           }
         },
-        "cameraRotation": "整個視野繞螢幕中央的旋轉。單位為度，正值順時針。",
+        "cameraRotation": "整個視野繞螢幕中央的旋轉，以度為單位。正值使視野順時針旋轉。",
         "cameraStageTilt": "舞台向後傾斜的程度，範圍為 0 到 1。1 是通常的透視效果。",
         "eventEase": "下一個相連事件之前的數值變化方式。",
         "maskLeft": "舞台繪製區域的左邊緣，以軌道為單位。",
@@ -2197,9 +2197,9 @@
         "laneAlpha": "軌道背景、分隔線和邊框的不透明度，範圍為 0 到 1。",
         "judgmentLineAlpha": "判定線的不透明度，範圍為 0 到 1。",
         "divisionLineAlpha": "分隔線的不透明度，範圍為 0 到 1。",
-        "xTranslation": "以軌道為單位，正值向右。",
-        "yTranslation": "以軌道為單位，正值向上。",
-        "rotation": "以度為單位，正值順時針。",
+        "xTranslation": "舞台的水平偏移，以軌道為單位。正值使舞台向右移動。",
+        "yTranslation": "舞台的垂直偏移，以軌道為單位。正值使舞台向上移動。",
+        "rotation": "舞台繞其「旋轉中心」的旋轉，以度為單位。正值使舞台順時針旋轉。",
         "rotationCenter": {
           "choices": {
             "stage": "位於判定線通常高度的軌道 0。",
@@ -2208,8 +2208,8 @@
             "vanishingPoint": "軌道在遠處匯聚的點。"
           }
         },
-        "centerXOffset": "以軌道為單位，正值向右。",
-        "centerYOffset": "以軌道為單位，正值向上。",
+        "centerXOffset": "「旋轉中心」的水平偏移，以軌道為單位。正值使旋轉中心向右移動。",
+        "centerYOffset": "「旋轉中心」的垂直偏移，以軌道為單位。正值使旋轉中心向上移動。",
         "anchor": {
           "intro": "「Y 平移」的參考點。",
           "choices": {
@@ -2478,8 +2478,8 @@
       }
     },
     "videoBitrate": "影片位元率（Mbps）",
-    "antialiasDescription": "平滑影片中的鋸齒邊緣。",
-    "renderScaleDescription": "按比例調整繪製每個影格時的解析度。數值越高，邊緣越平滑，但匯出耗時越長。",
+    "antialiasDescription": "是否平滑影片中的鋸齒邊緣。",
+    "renderScaleDescription": "繪製每個影格時使用的解析度倍率。數值越高，邊緣越平滑，但匯出耗時越長。",
     "fadeIn": "淡入（秒）",
     "fadeOut": "淡出（秒）",
     "audioBitrate": "音訊位元率",

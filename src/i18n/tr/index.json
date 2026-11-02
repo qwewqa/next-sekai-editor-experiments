@@ -1064,7 +1064,7 @@
     },
     "descriptions": {
       "waveform": {
-        "intro": "Arka plan müziğinin çizelgede nasıl görselleştirileceğini belirler.",
+        "intro": "Arka plan müziğinin çizelgede görselleştirilme biçimi.",
         "choices": {
           "volume": "Ses yüksekliğini gösterir.",
           "fft": "Frekanslarını gösterir.",
@@ -1072,27 +1072,27 @@
         }
       },
       "zeroWidthNotes": {
-        "intro": "Düzenleme araçlarıyla hangi notaların sıfır şerit genişliğine getirilebileceğini belirler.",
+        "intro": "Düzenleme araçlarıyla sıfır şerit genişliğine getirilebilecek notalar.",
         "choices": {
           "off": "Genişliğin sıfırdan büyük olmasını gerektirir.",
           "anchors": "Sabit noktaların sıfır şerit genişliğinde olmasına izin verir.",
           "all": "Tüm notaların sıfır şerit genişliğinde olmasına izin verir."
         }
       },
-      "dimUnchangedObjects": "Zaman Çizgisi’ndeki adımları görüntülerken Değişiklikleri Göster’in varsayılan değerini belirler.",
-      "showOtherGroups": "Bir gruba odaklanırken diğer gruplardaki nesneleri soluk gösterir.",
-      "showOtherStages": "Bir sahneye odaklanırken diğer sahnelerdeki nesneleri soluk gösterir.",
-      "showOtherObjects": "Gizlediğiniz türlerdeki nesneleri soluk gösterir.",
-      "nameContrast": "Grup ve sahne adlarının çevresine siyah bir kontur ekler ve sahne adlarını daha parlak gösterir.",
-      "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklediğinizde çizelgeyi yukarı veya aşağı kaydırır.",
-      "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklediğinizde çizelgeyi yana kaydırır.",
-      "previewRenderScale": "Önizlemenin çözünürlüğünü 0.25 ile 2 kat arasında ölçekler. Daha düşük değerler keskinliği azaltır ve performansı artırabilir.",
-      "previewInWorker": "Önizlemeyi editörün geri kalanıyla paralel olarak çizer. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
-      "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçmenizi sağlar.",
-      "playFollowPosition": "Takip Et’in oynatma imlecini hangi yükseklikte tutacağını belirler. Çizelgenin görünen kısmının altı 0, üstü 100’dür.",
-      "playPreviewDuration": "Oynatma imlecini taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin ne kadar süre çalacağını belirler.",
+      "dimUnchangedObjects": "Zaman Çizgisi’ndeki adımları görüntülerken Değişiklikleri Göster’in varsayılan olarak açık olması.",
+      "showOtherGroups": "Bir gruba odaklanırken diğer gruplardaki nesnelerin soluk gösterilmesi.",
+      "showOtherStages": "Bir sahneye odaklanırken diğer sahnelerdeki nesnelerin soluk gösterilmesi.",
+      "showOtherObjects": "Gizlediğiniz türlerdeki nesnelerin soluk gösterilmesi.",
+      "nameContrast": "Grup ve sahne adlarının çevresine siyah bir kontur eklenmesi ve sahne adlarının daha parlak gösterilmesi.",
+      "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklediğinizde çizelgenin yukarı veya aşağı kaydırılması.",
+      "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklediğinizde çizelgenin yana kaydırılması.",
+      "previewRenderScale": "Önizlemenin çözünürlük çarpanı, 0.25 ile 2 kat arasında. Daha düşük değerler keskinliği azaltır ve performansı artırabilir.",
+      "previewInWorker": "Önizlemenin editörün geri kalanıyla paralel olarak çizilmesi. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
+      "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçebilme.",
+      "playFollowPosition": "Takip Et’in oynatma imlecini tuttuğu yükseklik. Çizelgenin görünen kısmının altı 0, üstü 100’dür.",
+      "playPreviewDuration": "Oynatma imlecini taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin çalma süresi.",
       "mouseSecondaryTool": {
-        "intro": "Sağ tıklamanın ve sağ tuşla sürüklemenin ne yapacağını belirler.",
+        "intro": "Sağ tıklamanın ve sağ tuşla sürüklemenin işlevi.",
         "choices": {
           "eraser": "Sağ tıklamayla nesneleri, sağ tuşla sürüklemeyle bir alandaki nesneleri siler.",
           "select": "Farenin sağ tuşuyla nesneleri seçmenizi, taşımanızı veya yeniden boyutlandırmanızı sağlar.",
@@ -1100,40 +1100,40 @@
         }
       },
       "beatDisplay": {
-        "intro": "Vuruş konumlarının nasıl numaralandırılacağını belirler.",
+        "intro": "Vuruş konumlarının numaralandırılma biçimi.",
         "choices": {
           "beat": "Çizelge boyunca 1’den başlayan kesintisiz bir sayım gösterir.",
           "measure": "Ölçüyü ve içindeki vuruşu gösterir ve hizalamayı ölçülere göre yapar.",
           "both": "İki gösterimi birlikte gösterir ve hizalamayı ölçülere göre yapar."
         }
       },
-      "showGroupName": "Varsayılan grubun dışındaki notaların ve zaman ölçeği değişikliklerinin yanında grup adlarını gösterir.",
-      "showStageName": "Dinamik Sahneler açıkken notaların ve sahne olaylarının yanında sahne adlarını gösterir.",
-      "maxScrollX": "Çizelgenin merkezinden sola veya sağa ne kadar kaydırabileceğinizi belirler.",
+      "showGroupName": "Varsayılan grubun dışındaki notaların ve zaman ölçeği değişikliklerinin yanında grup adlarının gösterilmesi.",
+      "showStageName": "Dinamik Sahneler açıkken notaların ve sahne olaylarının yanında sahne adlarının gösterilmesi.",
+      "maxScrollX": "Çizelgenin merkezinden sola veya sağa kaydırabileceğiniz mesafe. Birleşik düzende bu sınırın ötesindeki sahnelere ulaşmak için daha uzağa kaydırabilirsiniz.",
       "elevationEditorSideBySide": {
-        "intro": "Yükseklik Editörünün çizelgenin yanında mı yoksa yerine mi açılacağını belirler.",
+        "intro": "Yükseklik Editörünün çizelgenin yanında mı yoksa yerine mi açılacağı.",
         "choices": {
           "auto": "Yer olduğunda çizelgenin yanında açar.",
           "allow": "Çizelge daralsa bile yanında açar.",
           "disallow": "Çizelgenin yerine açar."
         }
       },
-      "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmaların bağlayıcılarında, kaydırmanın başlangıcından sonuna doğru oklar gösterir.",
+      "elevationConnectorArrows": "Seçili veya işaretçiyle üzerine gelinen kaydırmaların bağlayıcılarında okların gösterilmesi. Oklar kaydırmanın başlangıcından sonuna doğru yönelir.",
       "groupsStagesSideBySide": {
-        "intro": "Gruplar ve Sahneler panellerinin Önizleme’nin altına yerleştirildiklerinde ne zaman yan yana gösterileceğini belirler.",
+        "intro": "Gruplar ve Sahneler panellerinin Önizleme’nin altına yerleştirildiklerinde yan yana gösterilme koşulları.",
         "choices": {
           "auto": "Paneller geniş olduğunda yan yana yerleştirir.",
           "enabled": "İkisi de sığdığında yan yana yerleştirir.",
           "disabled": "Alt alta tutar."
         }
       },
-      "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa, bu tarayıcıda saklanıyor olsalar bile sayfa kapanmadan önce onay ister.",
-      "previewNoteSpeed": "Önizlemede notaların yaklaşma hızını 1 ile 12 arasında belirler.",
-      "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanları gösterir.",
-      "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkları ve parlamaları gösterir.",
-      "previewAntialias": "Önizlemedeki tırtıklı kenarları yumuşatır.",
+      "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa sayfa kapanmadan önce onay istenmesi.",
+      "previewNoteSpeed": "Önizlemede notaların yaklaşma hızı, 1 ile 12 arasında.",
+      "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanların gösterilmesi.",
+      "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkların ve parlamaların gösterilmesi.",
+      "previewAntialias": "Önizlemedeki tırtıklı kenarların yumuşatılması.",
       "previewTransportPosition": {
-        "intro": "Önizlemenin oynatma denetimlerinin nerede görüneceğini belirler.",
+        "intro": "Önizlemenin oynatma denetimlerinin görüneceği yer.",
         "choices": {
           "auto": "Önizleme küçülmeden sığıyorsa denetimleri altına, aksi halde alt kenarının üzerine yerleştirir.",
           "below": "Önizlemenin altında yer ayırır ve gerekirse önizlemeyi küçültür.",
@@ -1141,32 +1141,32 @@
         }
       },
       "previewControls": {
-        "intro": "Oynatma durmuşken önizleme ayarlarının nasıl gösterileceğini belirler.",
+        "intro": "Oynatma durmuşken önizleme ayarlarının gösterilme biçimi.",
         "choices": {
-          "auto": "Fare kullanıyorsanız ve ayar formu önizleme paneline sığıyorsa başlangıçta formu, aksi halde bir düğme gösterir.",
+          "auto": "Fare kullanıyorsanız ve ayar formunun büyük kısmı önizleme paneline sığıyorsa başlangıçta formu, aksi halde bir düğme gösterir.",
           "expanded": "Ayar formunu gösterir.",
           "collapsed": "Ayarları açan bir düğme gösterir."
         }
       },
       "playStartPosition": {
-        "intro": "Oynat komutunun nereden başlayacağını belirler.",
+        "intro": "Oynat komutunun başlangıç konumu.",
         "choices": {
           "view": "Çizelgenin görünen kısmının altından veya Takip Et açıkken Pozisyonu Takip Et ayarında belirtilen konumdan başlar.",
           "cursor": "Oynatma imlecinin bulunduğu yerden başlar."
         }
       },
-      "playFollow": "Oynatma sırasında çizelgeyi kaydırarak oynatma imlecini Pozisyonu Takip Et ayarında belirtilen konumda tutar.",
-      "touchQuickScrollWidth": "Tek parmakla kaydırabileceğiniz alanın genişliğini belirler. 0 değeri bu alanı kapatır.",
+      "playFollow": "Oynatma sırasında oynatma imlecini Pozisyonu Takip Et ayarında belirtilen konumda tutmak için çizelgenin kaydırılması.",
+      "touchQuickScrollWidth": "Tek parmakla kaydırabileceğiniz alanın genişliği. 0 değeri bu alanı kapatır.",
       "touchQuickScrollShow": {
-        "intro": "Hızlı kaydırma alanının ne zaman gölgelendirileceğini belirler.",
+        "intro": "Hızlı kaydırma alanının gölgelendirilme koşulları.",
         "choices": {
           "on": "Alanı tüm cihazlarda gölgelendirir.",
           "off": "Alanı gölgelendirmez.",
           "touch": "Dokunmatik giriş kullanılabiliyorsa alanı gölgelendirir."
         }
       },
-      "touchScrollInertia": "Parmağınızı kaldırdıktan sonra çizelgenin kaymaya devam etmesini, ardından yavaşlayarak durmasını sağlar.",
-      "showPropertyDescriptions": "Çizelge özelliklerinin yanında bilgi düğmeleri gösterir."
+      "touchScrollInertia": "Parmağınızı kaldırdıktan sonra çizelgenin kaymaya devam edip yavaşlayarak durması.",
+      "showPropertyDescriptions": "Çizelge özelliklerinin yanında bilgi düğmelerinin gösterilmesi."
     },
     "sections": "Bölümler",
     "localData": {
@@ -2108,14 +2108,14 @@
           "choices": {
             "default": "Kaydırmadaki yerine ve Fiske Yönü’ne göre dokunma, fiske, bırakma veya ara vuruş.",
             "trace": "İz veya iz fiskesi.",
-            "anchor": "Kombo eklemeden bağlayıcılara şekil veren görünmez nota.",
+            "anchor": "Değerlendirilmeyen görünmez nota. Bağlayıcılara şekil vermek için kullanılır.",
             "damage": "Dokunulduğunda kaçırmaya neden olan nota.",
             "forceTick": "Kaydırma dışında bile her zaman ara vuruş.",
             "forceNonTick": "Kaydırmanın ortasında bile asla ara vuruş olmaz."
           }
         },
         "noteStyle": "Varsayılan nota renginin yerine kullanılacak renk.",
-        "isAttached": "Bu notanın şeridini ve boyutunu üzerinde bulunduğu bağlayıcıdan almasını sağlar.",
+        "isAttached": "Şeridini ve boyutunu üzerinde bulunduğu bağlayıcıdan alır.",
         "isFake": "Değerlendirmeyi, sesi ve vuruş efektlerini devre dışı bırakır.",
         "sfx": "Varsayılan ses efektinin yerine kullanılacak efekt.",
         "isConnectorSeparator": "Bu notanın bağlayıcı özellikleriyle yeni bir bağlayıcı bölümü başlatır.",
@@ -2143,7 +2143,7 @@
         "connectorPresentation": {
           "choices": {
             "default": "Notaları arasında çizilen bağlayıcı.",
-            "fullscreen": "Süresi boyunca tüm ekranı kaplayacak şekilde çizilen bağlayıcı."
+            "fullscreen": "Başlangıç ve bitiş vuruşları arasında tüm ekranı kaplayacak şekilde çizilen bağlayıcı."
           }
         },
         "meter": "Ölçü başına vuruş sayısı.",
@@ -2152,8 +2152,8 @@
         "timeScaleEase": "Grubun sonraki zaman ölçeği değişikliğine kadar hızın nasıl değişeceği.",
         "timeScaleTransition": {
           "choices": {
-            "timeScale": "İlerideki hız değişikliklerine göre nota aralıkları.",
-            "scroll": "Geçerli hıza göre nota aralıkları."
+            "timeScale": "Nota aralıkları ilerideki hız değişikliklerini gösterir.",
+            "scroll": "Nota aralıkları geçerli hızı takip eder."
           }
         },
         "hideNotes": "Grubun notalarını ve grupta başlayan bağlayıcı bölümlerini gizler. Grubun sonraki zaman ölçeği değişikliğine kadar sürer.",
@@ -2168,7 +2168,7 @@
             "center": "Ekranın ortası."
           }
         },
-        "cameraRotation": "Tüm görünümün ekranın ortası çevresindeki dönüşü. Derece biriminde, pozitif değerler saat yönünde.",
+        "cameraRotation": "Tüm görünümün ekranın ortası çevresindeki dönüşü, derece biriminde. Pozitif değerler görünümü saat yönünde döndürür.",
         "cameraStageTilt": "Sahnenin geriye eğim miktarı, 0 ile 1 arasında. 1 normal perspektiftir.",
         "eventEase": "Sonraki bağlı olaya kadar değerlerin nasıl değişeceği.",
         "maskLeft": "Sahnenin çizilen bölümünün sol kenarı, şerit biriminde.",
@@ -2197,9 +2197,9 @@
         "laneAlpha": "Şerit arka planının, bölüm çizgilerinin ve kenarlıkların opaklığı, 0 ile 1 arasında.",
         "judgmentLineAlpha": "Vuruş çizgisinin opaklığı, 0 ile 1 arasında.",
         "divisionLineAlpha": "Bölüm çizgilerinin opaklığı, 0 ile 1 arasında.",
-        "xTranslation": "Şerit biriminde, pozitif değerler sağa.",
-        "yTranslation": "Şerit biriminde, pozitif değerler yukarı.",
-        "rotation": "Derece biriminde, pozitif değerler saat yönünde.",
+        "xTranslation": "Sahnenin yatay kayması, şerit biriminde. Pozitif değerler sahneyi sağa kaydırır.",
+        "yTranslation": "Sahnenin dikey kayması, şerit biriminde. Pozitif değerler sahneyi yukarı kaydırır.",
+        "rotation": "Sahnenin Dönüş Merkezi çevresindeki dönüşü, derece biriminde. Pozitif değerler sahneyi saat yönünde döndürür.",
         "rotationCenter": {
           "choices": {
             "stage": "Vuruş çizgisinin normal yüksekliğindeki şerit 0.",
@@ -2208,8 +2208,8 @@
             "vanishingPoint": "Şeritlerin uzakta birleştiği nokta."
           }
         },
-        "centerXOffset": "Şerit biriminde, pozitif değerler sağa.",
-        "centerYOffset": "Şerit biriminde, pozitif değerler yukarı.",
+        "centerXOffset": "Dönüş Merkezinin yatay kayması, şerit biriminde. Pozitif değerler Dönüş Merkezini sağa kaydırır.",
+        "centerYOffset": "Dönüş Merkezinin dikey kayması, şerit biriminde. Pozitif değerler Dönüş Merkezini yukarı kaydırır.",
         "anchor": {
           "intro": "Y Ötelemesi için referans noktası.",
           "choices": {
@@ -2478,8 +2478,8 @@
       }
     },
     "videoBitrate": "Video Bit Hızı (Mbps)",
-    "antialiasDescription": "Videodaki tırtıklı kenarları yumuşatır.",
-    "renderScaleDescription": "Her kareyi çizmek için kullanılan çözünürlüğü ölçekler. Daha yüksek değerler kenarları yumuşatır ancak dışa aktarmayı yavaşlatır.",
+    "antialiasDescription": "Videodaki tırtıklı kenarların yumuşatılması.",
+    "renderScaleDescription": "Her kareyi çizmek için kullanılan çözünürlük çarpanı. Daha yüksek değerler kenarları yumuşatır ancak dışa aktarmayı yavaşlatır.",
     "fadeIn": "Giriş Geçişi (sn)",
     "fadeOut": "Çıkış Geçişi (sn)",
     "audioBitrate": "Ses Bit Hızı",

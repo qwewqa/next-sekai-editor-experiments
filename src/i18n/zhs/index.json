@@ -1064,7 +1064,7 @@
     },
     "descriptions": {
       "waveform": {
-        "intro": "设置背景音乐在谱面上的可视化方式。",
+        "intro": "背景音乐在谱面上的可视化方式。",
         "choices": {
           "volume": "显示背景音乐的响度。",
           "fft": "显示背景音乐的频率。",
@@ -1072,27 +1072,27 @@
         }
       },
       "zeroWidthNotes": {
-        "intro": "设置使用编辑工具时，哪些音符的宽度可以设为 0 条轨道。",
+        "intro": "使用编辑工具时，宽度可以设为 0 条轨道的音符。",
         "choices": {
           "off": "要求所有音符的宽度大于 0。",
           "anchors": "允许将锚点的宽度设为 0 条轨道。",
           "all": "允许将任何音符的宽度设为 0 条轨道。"
         }
       },
-      "dimUnchangedObjects": "设置查看时间线中的步骤时，“显示更改”的默认状态。",
-      "showOtherGroups": "聚焦群组时，以淡色显示其他群组中的对象。",
-      "showOtherStages": "聚焦舞台时，以淡色显示其他舞台上的对象。",
-      "showOtherObjects": "以淡色显示已隐藏类型的对象。",
-      "nameContrast": "为群组名称和舞台名称加上黑色描边，并提高舞台名称的亮度。",
-      "dragToPanY": "在谱面顶部或底部边缘附近拖动时，向上或向下滚动谱面。",
-      "dragToPanX": "在谱面左侧或右侧边缘附近拖动时，横向滚动谱面。",
-      "previewRenderScale": "缩放预览的分辨率，范围为 0.25 倍到 2 倍。数值越低，清晰度越低，并可能提升性能。",
-      "previewInWorker": "与编辑器的其他部分并行绘制预览。如果预览显示异常或没有显示，请关闭此项。",
-      "toolbarQuickSwitch": "按住工具栏按钮，再在要选择的工具上松开即可。",
-      "playFollowPosition": "设置“跟随”将播放光标保持的位置。可见谱面的底部为 0，顶部为 100。",
-      "playPreviewDuration": "设置移动播放光标或选择对象时背景音乐的播放时长。",
+      "dimUnchangedObjects": "查看时间线中的步骤时，是否默认开启“显示更改”。",
+      "showOtherGroups": "聚焦群组时，是否以淡色显示其他群组中的对象。",
+      "showOtherStages": "聚焦舞台时，是否以淡色显示其他舞台上的对象。",
+      "showOtherObjects": "是否以淡色显示已隐藏类型的对象。",
+      "nameContrast": "是否为群组名称和舞台名称加上黑色描边，并提高舞台名称的亮度。",
+      "dragToPanY": "在谱面顶部或底部边缘附近拖动时，是否向上或向下滚动谱面。",
+      "dragToPanX": "在谱面左侧或右侧边缘附近拖动时，是否横向滚动谱面。",
+      "previewRenderScale": "预览的分辨率倍率，范围为 0.25 倍到 2 倍。数值越低，清晰度越低，并可能提升性能。",
+      "previewInWorker": "是否与编辑器的其他部分并行绘制预览。如果预览显示异常或没有显示，请关闭此项。",
+      "toolbarQuickSwitch": "是否可以按住工具栏按钮，再在要选择的工具上松开。",
+      "playFollowPosition": "“跟随”将播放光标保持的位置。可见谱面的底部为 0，顶部为 100。",
+      "playPreviewDuration": "移动播放光标或选择对象时背景音乐的播放时长。",
       "mouseSecondaryTool": {
-        "intro": "设置右键单击和按住右键拖动的操作。",
+        "intro": "右键单击和按住右键拖动的操作。",
         "choices": {
           "eraser": "右键单击可删除对象，按住右键拖动可删除区域内的对象。",
           "select": "可用鼠标右键选择、移动或调整对象大小。",
@@ -1100,40 +1100,40 @@
         }
       },
       "beatDisplay": {
-        "intro": "设置节拍位置的编号方式。",
+        "intro": "节拍位置的编号方式。",
         "choices": {
           "beat": "从 1 开始对整个谱面连续计数。",
           "measure": "显示小节及其中的节拍，并以小节为基准进行吸附。",
           "both": "同时显示这两种格式，并以小节为基准进行吸附。"
         }
       },
-      "showGroupName": "在默认群组之外的音符和时间尺度变化旁显示群组名称。",
-      "showStageName": "开启“动态舞台”时，在音符和舞台事件旁显示舞台名称。",
-      "maxScrollX": "设置从谱面中心向左或向右滚动的范围。",
+      "showGroupName": "是否在默认群组之外的音符和时间尺度变化旁显示群组名称。",
+      "showStageName": "开启“动态舞台”时，是否在音符和舞台事件旁显示舞台名称。",
+      "maxScrollX": "从谱面中心向左或向右滚动的范围。在“合成”布局中，可以滚动得更远，到达此范围之外的舞台。",
       "elevationEditorSideBySide": {
-        "intro": "设置高度编辑器是在谱面旁打开，还是取代谱面。",
+        "intro": "高度编辑器是在谱面旁打开，还是取代谱面。",
         "choices": {
           "auto": "在空间足够时，在谱面旁打开高度编辑器。",
           "allow": "即使谱面变窄，也在谱面旁打开高度编辑器。",
           "disallow": "打开高度编辑器，取代谱面。"
         }
       },
-      "elevationConnectorArrows": "在选中或指针悬停的长按音符的连接上显示箭头，从长按音符的起点指向终点。",
+      "elevationConnectorArrows": "是否在选中或指针悬停的长按音符的连接上显示箭头。箭头从长按音符的起点指向终点。",
       "groupsStagesSideBySide": {
-        "intro": "设置“群组”和“舞台”停靠在“预览”下方时并排显示的条件。",
+        "intro": "“群组”和“舞台”停靠在“预览”下方时并排显示的条件。",
         "choices": {
           "auto": "在面板较宽时并排显示。",
           "enabled": "只要两个面板放得下，就并排显示。",
           "disabled": "保持上下排列。"
         }
       },
-      "confirmCloseUnsavedFile": "有尚未保存到项目文件的更改时，会在关闭页面前询问，即使这些更改已存储在此浏览器中。",
-      "previewNoteSpeed": "设置预览中音符接近的速度，范围为 1 到 12。",
-      "previewShowHitboxes": "显示用于判定音符和长按音符的区域。",
-      "previewShowEffects": "音符被击中时以及长按音符被按住期间，在预览中显示粒子和发光效果。",
-      "previewAntialias": "平滑预览中的锯齿边缘。",
+      "confirmCloseUnsavedFile": "有尚未保存到项目文件的更改时，是否在关闭页面前询问。",
+      "previewNoteSpeed": "预览中音符接近的速度，范围为 1 到 12。",
+      "previewShowHitboxes": "是否显示用于判定音符和长按音符的区域。",
+      "previewShowEffects": "音符被击中时以及长按音符被按住期间，是否在预览中显示粒子和发光效果。",
+      "previewAntialias": "是否平滑预览中的锯齿边缘。",
       "previewTransportPosition": {
-        "intro": "设置预览播放控件的显示位置。",
+        "intro": "预览播放控件的显示位置。",
         "choices": {
           "auto": "预览无需缩小就能放得下时，将控件放在下方，否则叠放在预览的下边缘。",
           "below": "在预览下方为控件留出空间，必要时缩小预览。",
@@ -1141,32 +1141,32 @@
         }
       },
       "previewControls": {
-        "intro": "设置播放停止时预览设置的显示方式。",
+        "intro": "播放停止时预览设置的显示方式。",
         "choices": {
-          "auto": "使用鼠标且预览面板能容纳各项设置时，最初会展开设置，否则显示按钮。",
+          "auto": "使用鼠标且预览面板能容纳大部分设置时，最初会展开设置，否则显示按钮。",
           "expanded": "显示各项设置。",
           "collapsed": "显示用于打开设置的按钮。"
         }
       },
       "playStartPosition": {
-        "intro": "设置“播放”的开始位置。",
+        "intro": "“播放”的开始位置。",
         "choices": {
           "view": "从可见谱面的底部开始；开启“跟随”时，则从“跟随位置”开始。",
           "cursor": "从播放光标位置开始。"
         }
       },
-      "playFollow": "播放时滚动谱面，使播放光标保持在“跟随位置”。",
-      "touchQuickScrollWidth": "设置可用单指滚动的区域宽度。数值为 0 时关闭此区域。",
+      "playFollow": "是否在播放时滚动谱面，使播放光标保持在“跟随位置”。",
+      "touchQuickScrollWidth": "可用单指滚动的区域宽度。数值为 0 时关闭此区域。",
       "touchQuickScrollShow": {
-        "intro": "设置何时为快速滚动区域加上底色。",
+        "intro": "为快速滚动区域加上底色的条件。",
         "choices": {
           "on": "在所有设备上都为该区域加上底色。",
           "off": "不为该区域加上底色。",
           "touch": "设备支持触控时，为该区域加上底色。"
         }
       },
-      "touchScrollInertia": "让谱面在抬起手指后继续滚动，然后减速至停止。",
-      "showPropertyDescriptions": "在谱面属性旁显示信息按钮。"
+      "touchScrollInertia": "是否让谱面在抬起手指后继续滚动，并减速至停止。",
+      "showPropertyDescriptions": "是否在谱面属性旁显示信息按钮。"
     },
     "sections": "分区",
     "localData": {
@@ -2108,14 +2108,14 @@
           "choices": {
             "default": "根据在长按音符中的位置和“滑动方向”，作为点击、滑动、松手或中继点。",
             "trace": "描迹或描迹滑动。",
-            "anchor": "决定连接形状但不增加连击数的不可见音符。",
+            "anchor": "没有判定的不可见音符。用于决定连接形状。",
             "damage": "触碰时会产生 miss 的音符。",
             "forceTick": "始终作为中继点，即使不在长按音符中。",
             "forceNonTick": "始终不作为中继点，即使在长按音符中间。"
           }
         },
         "noteStyle": "覆盖音符颜色。",
-        "isAttached": "使此音符的轨道和尺寸取自其所在的连接。",
+        "isAttached": "轨道和尺寸取自此音符所在的连接。",
         "isFake": "禁用判定、声音和击中特效。",
         "sfx": "覆盖音效。",
         "isConnectorSeparator": "从此音符开始新的连接段，使用此音符的连接属性。",
@@ -2143,7 +2143,7 @@
         "connectorPresentation": {
           "choices": {
             "default": "绘制在其音符之间的连接。",
-            "fullscreen": "在持续期间覆盖整个屏幕的连接。"
+            "fullscreen": "在起始节拍和结束节拍之间覆盖整个屏幕的连接。"
           }
         },
         "meter": "每小节的节拍数。",
@@ -2152,8 +2152,8 @@
         "timeScaleEase": "群组下次时间尺度变化前的速度变化方式。",
         "timeScaleTransition": {
           "choices": {
-            "timeScale": "根据后续速度变化确定的音符间距。",
-            "scroll": "根据当前速度确定的音符间距。"
+            "timeScale": "音符间距反映后续速度变化。",
+            "scroll": "音符间距随当前速度变化。"
           }
         },
         "hideNotes": "隐藏群组内的音符及从该群组开始的连接段。持续到该群组的下一次时间尺度变化。",
@@ -2168,7 +2168,7 @@
             "center": "屏幕中央。"
           }
         },
-        "cameraRotation": "整个视野绕屏幕中央的旋转。单位为度，正值顺时针。",
+        "cameraRotation": "整个视野绕屏幕中央的旋转，以度为单位。正值使视野顺时针旋转。",
         "cameraStageTilt": "舞台向后倾斜的程度，范围为 0 到 1。1 是通常的透视效果。",
         "eventEase": "下一个相连事件之前的数值变化方式。",
         "maskLeft": "舞台绘制区域的左边缘，以轨道为单位。",
@@ -2197,9 +2197,9 @@
         "laneAlpha": "轨道背景、分割线和边框的不透明度，范围为 0 到 1。",
         "judgmentLineAlpha": "判定线的不透明度，范围为 0 到 1。",
         "divisionLineAlpha": "分割线的不透明度，范围为 0 到 1。",
-        "xTranslation": "以轨道为单位，正值向右。",
-        "yTranslation": "以轨道为单位，正值向上。",
-        "rotation": "以度为单位，正值顺时针。",
+        "xTranslation": "舞台的水平偏移，以轨道为单位。正值使舞台向右移动。",
+        "yTranslation": "舞台的垂直偏移，以轨道为单位。正值使舞台向上移动。",
+        "rotation": "舞台绕其“旋转中心”的旋转，以度为单位。正值使舞台顺时针旋转。",
         "rotationCenter": {
           "choices": {
             "stage": "位于判定线通常高度的轨道 0。",
@@ -2208,8 +2208,8 @@
             "vanishingPoint": "轨道在远处汇聚的点。"
           }
         },
-        "centerXOffset": "以轨道为单位，正值向右。",
-        "centerYOffset": "以轨道为单位，正值向上。",
+        "centerXOffset": "“旋转中心”的水平偏移，以轨道为单位。正值使旋转中心向右移动。",
+        "centerYOffset": "“旋转中心”的垂直偏移，以轨道为单位。正值使旋转中心向上移动。",
         "anchor": {
           "intro": "“Y 平移”的参考点。",
           "choices": {
@@ -2478,8 +2478,8 @@
       }
     },
     "videoBitrate": "视频码率（Mbps）",
-    "antialiasDescription": "平滑视频中的锯齿边缘。",
-    "renderScaleDescription": "按比例调整绘制每帧时的分辨率。数值越高，边缘越平滑，但导出耗时越长。",
+    "antialiasDescription": "是否平滑视频中的锯齿边缘。",
+    "renderScaleDescription": "绘制每帧时使用的分辨率倍率。数值越高，边缘越平滑，但导出耗时越长。",
     "fadeIn": "淡入（秒）",
     "fadeOut": "淡出（秒）",
     "audioBitrate": "音频码率",

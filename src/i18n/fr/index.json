@@ -1064,7 +1064,7 @@
     },
     "descriptions": {
       "waveform": {
-        "intro": "Définit comment la musique est représentée sur la partition.",
+        "intro": "Mode de représentation de la musique sur la partition.",
         "choices": {
           "volume": "Affiche son intensité sonore.",
           "fft": "Affiche ses fréquences.",
@@ -1072,27 +1072,27 @@
         }
       },
       "zeroWidthNotes": {
-        "intro": "Définit les notes dont la largeur peut être réglée sur zéro voie avec les outils d’édition.",
+        "intro": "Notes dont la largeur peut être réglée sur zéro voie avec les outils d’édition.",
         "choices": {
           "off": "Exige une largeur supérieure à zéro.",
           "anchors": "Permet aux ancres d’avoir une largeur de zéro voie.",
           "all": "Permet à toutes les notes d’avoir une largeur de zéro voie."
         }
       },
-      "dimUnchangedObjects": "Définit la valeur par défaut d’Afficher les modifications lorsque vous consultez des étapes de la chronologie.",
-      "showOtherGroups": "Affiche les objets des autres groupes en les estompant lorsqu’un groupe est ciblé.",
-      "showOtherStages": "Affiche les objets des autres scènes en les estompant lorsqu’une scène est ciblée.",
-      "showOtherObjects": "Affiche les objets des types que vous avez masqués en les estompant.",
-      "nameContrast": "Entoure les noms des groupes et des scènes d’un contour noir et éclaircit les noms des scènes.",
-      "dragToPanY": "Fait défiler la partition vers le haut ou vers le bas lorsque vous faites glisser près de son bord supérieur ou inférieur.",
-      "dragToPanX": "Fait défiler la partition horizontalement lorsque vous faites glisser près de son bord gauche ou droit.",
-      "previewRenderScale": "Ajuste la résolution de l’aperçu, de 0.25× à 2×. Des valeurs plus basses réduisent la netteté et peuvent améliorer les performances.",
-      "previewInWorker": "Dessine l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
-      "toolbarQuickSwitch": "Permet de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
-      "playFollowPosition": "Définit la hauteur à laquelle Suivre maintient le curseur de lecture. 0 correspond au bas de la partie visible de la partition et 100 au haut.",
-      "playPreviewDuration": "Définit la durée de lecture de la musique lorsque vous déplacez le curseur de lecture ou sélectionnez un objet.",
+      "dimUnchangedObjects": "Activation par défaut d’Afficher les modifications lorsque vous consultez des étapes de la chronologie.",
+      "showOtherGroups": "Affichage des objets des autres groupes en les estompant lorsqu’un groupe est ciblé.",
+      "showOtherStages": "Affichage des objets des autres scènes en les estompant lorsqu’une scène est ciblée.",
+      "showOtherObjects": "Affichage des objets des types que vous avez masqués en les estompant.",
+      "nameContrast": "Ajout d’un contour noir aux noms des groupes et des scènes et éclaircissement des noms des scènes.",
+      "dragToPanY": "Défilement de la partition vers le haut ou vers le bas lorsque vous faites glisser près de son bord supérieur ou inférieur.",
+      "dragToPanX": "Défilement horizontal de la partition lorsque vous faites glisser près de son bord gauche ou droit.",
+      "previewRenderScale": "Multiplicateur de résolution de l’aperçu, de 0.25× à 2×. Des valeurs plus basses réduisent la netteté et peuvent améliorer les performances.",
+      "previewInWorker": "Rendu de l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
+      "toolbarQuickSwitch": "Possibilité de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
+      "playFollowPosition": "Hauteur à laquelle Suivre maintient le curseur de lecture. 0 correspond au bas de la partie visible de la partition et 100 au haut.",
+      "playPreviewDuration": "Durée de lecture de la musique lorsque vous déplacez le curseur de lecture ou sélectionnez un objet.",
       "mouseSecondaryTool": {
-        "intro": "Définit l’action du clic droit et du glissement avec le bouton droit.",
+        "intro": "Action du clic droit et du glissement avec le bouton droit.",
         "choices": {
           "eraser": "Supprime les objets avec un clic droit, ou les objets d’une zone en faisant glisser avec le bouton droit.",
           "select": "Permet de sélectionner, de déplacer ou de redimensionner les objets avec le bouton droit de la souris.",
@@ -1100,40 +1100,40 @@
         }
       },
       "beatDisplay": {
-        "intro": "Définit la numérotation des positions des temps.",
+        "intro": "Numérotation des positions des temps.",
         "choices": {
           "beat": "Affiche une numérotation continue à partir de 1 sur toute la partition.",
           "measure": "Affiche la mesure et le temps dans celle-ci, et règle l’alignement par rapport aux mesures.",
           "both": "Affiche les deux formats ensemble et règle l’alignement par rapport aux mesures."
         }
       },
-      "showGroupName": "Affiche les noms des groupes à côté des notes et des changements d’échelle de temps qui ne sont pas dans le groupe par défaut.",
-      "showStageName": "Affiche les noms des scènes à côté des notes et des événements de scène lorsque Scènes dynamiques est activé.",
-      "maxScrollX": "Définit jusqu’où vous pouvez faire défiler la partition à gauche ou à droite de son centre.",
+      "showGroupName": "Affichage des noms des groupes à côté des notes et des changements d’échelle de temps qui ne sont pas dans le groupe par défaut.",
+      "showStageName": "Affichage des noms des scènes à côté des notes et des événements de scène lorsque Scènes dynamiques est activé.",
+      "maxScrollX": "Distance de défilement à gauche ou à droite du centre de la partition. Dans la disposition Composée, vous pouvez faire défiler plus loin pour atteindre les scènes au-delà de cette limite.",
       "elevationEditorSideBySide": {
-        "intro": "Définit si l’Éditeur d’élévation s’ouvre à côté de la partition ou à sa place.",
+        "intro": "Emplacement de l’Éditeur d’élévation, à côté de la partition ou à sa place.",
         "choices": {
           "auto": "L’ouvre à côté de la partition lorsque la place le permet.",
           "allow": "L’ouvre à côté de la partition même lorsque celle-ci devient étroite.",
           "disallow": "L’ouvre à la place de la partition."
         }
       },
-      "elevationConnectorArrows": "Affiche des flèches pointant du début vers la fin sur les connecteurs des slides sélectionnés ou survolés.",
+      "elevationConnectorArrows": "Affichage de flèches sur les connecteurs des slides sélectionnés ou survolés. Les flèches pointent du début vers la fin.",
       "groupsStagesSideBySide": {
-        "intro": "Définit quand Groupes et Scènes s’affichent côte à côte lorsqu’ils sont ancrés sous Aperçu.",
+        "intro": "Conditions d’affichage de Groupes et Scènes côte à côte lorsqu’ils sont ancrés sous Aperçu.",
         "choices": {
           "auto": "Les place côte à côte lorsque les panneaux sont larges.",
           "enabled": "Les place côte à côte dès que les deux y tiennent.",
           "disabled": "Les garde l’un au-dessus de l’autre."
         }
       },
-      "confirmCloseUnsavedFile": "Demande confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet, même si elles sont stockées dans ce navigateur.",
-      "previewNoteSpeed": "Définit la vitesse à laquelle les notes approchent dans l’aperçu, de 1 à 12.",
-      "previewShowHitboxes": "Affiche les zones utilisées pour juger les notes et les slides.",
-      "previewShowEffects": "Affiche des particules et des lueurs lorsque les notes sont touchées et pendant que les slides sont maintenus dans l’aperçu.",
-      "previewAntialias": "Lisse les contours en escalier dans l’aperçu.",
+      "confirmCloseUnsavedFile": "Demande de confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet.",
+      "previewNoteSpeed": "Vitesse à laquelle les notes approchent dans l’aperçu, de 1 à 12.",
+      "previewShowHitboxes": "Affichage des zones utilisées pour juger les notes et les slides.",
+      "previewShowEffects": "Affichage de particules et de lueurs dans l’aperçu lorsque les notes sont touchées et pendant que les slides sont maintenus.",
+      "previewAntialias": "Lissage des contours en escalier dans l’aperçu.",
       "previewTransportPosition": {
-        "intro": "Définit où les commandes de lecture de l’aperçu s’affichent.",
+        "intro": "Emplacement des commandes de lecture de l’aperçu.",
         "choices": {
           "auto": "Les place sous l’aperçu lorsqu’il tient sans être réduit, et sur son bord inférieur dans le cas contraire.",
           "below": "Réserve de la place sous l’aperçu et le réduit si nécessaire.",
@@ -1141,32 +1141,32 @@
         }
       },
       "previewControls": {
-        "intro": "Définit comment les paramètres de l’aperçu s’affichent lorsque la lecture est arrêtée.",
+        "intro": "Mode d’affichage des paramètres de l’aperçu lorsque la lecture est arrêtée.",
         "choices": {
-          "auto": "Affiche au départ le formulaire des paramètres si vous utilisez une souris et qu’il tient dans le panneau d’aperçu, ou un bouton dans le cas contraire.",
+          "auto": "Affiche au départ le formulaire des paramètres si vous utilisez une souris et que la majeure partie du formulaire tient dans le panneau d’aperçu, ou un bouton dans le cas contraire.",
           "expanded": "Affiche le formulaire des paramètres.",
           "collapsed": "Affiche un bouton qui ouvre les paramètres."
         }
       },
       "playStartPosition": {
-        "intro": "Définit où la commande Lire démarre.",
+        "intro": "Position de départ de la commande Lire.",
         "choices": {
           "view": "Démarre au bas de la partie visible de la partition, ou à la hauteur définie par Suivre la position lorsque Suivre est activé.",
           "cursor": "Démarre au curseur de lecture."
         }
       },
-      "playFollow": "Fait défiler la partition pendant la lecture pour maintenir le curseur de lecture à la hauteur définie par Suivre la position.",
-      "touchQuickScrollWidth": "Définit la largeur de la zone où vous pouvez faire défiler avec un doigt. Une valeur de 0 désactive cette zone.",
+      "playFollow": "Défilement de la partition pendant la lecture pour maintenir le curseur de lecture à la hauteur définie par Suivre la position.",
+      "touchQuickScrollWidth": "Largeur de la zone où vous pouvez faire défiler avec un doigt. Une valeur de 0 désactive cette zone.",
       "touchQuickScrollShow": {
-        "intro": "Définit quand colorer le fond de la zone de défilement rapide.",
+        "intro": "Conditions de coloration du fond de la zone de défilement rapide.",
         "choices": {
           "on": "Colore le fond de la zone sur tous les appareils.",
           "off": "Ne colore pas le fond de la zone.",
           "touch": "Colore le fond de la zone lorsque l’appareil prend en charge le tactile."
         }
       },
-      "touchScrollInertia": "Maintient le défilement de la partition après que vous avez levé le doigt, puis le ralentit jusqu’à l’arrêt.",
-      "showPropertyDescriptions": "Affiche des boutons d’information à côté des propriétés de la partition."
+      "touchScrollInertia": "Poursuite du défilement de la partition après que vous avez levé le doigt, avec ralentissement jusqu’à l’arrêt.",
+      "showPropertyDescriptions": "Affichage de boutons d’information à côté des propriétés de la partition."
     },
     "sections": "Rubriques",
     "localData": {
@@ -2108,14 +2108,14 @@
           "choices": {
             "default": "Tap, flick, relâchement ou tick, selon sa place dans un slide et sa Direction du flick.",
             "trace": "Trace ou trace flick.",
-            "anchor": "Note invisible qui donne leur forme aux connecteurs sans ajouter de combo.",
+            "anchor": "Note invisible sans jugement. Sert à donner leur forme aux connecteurs.",
             "damage": "Note qui provoque un miss si elle est touchée.",
             "forceTick": "Toujours un tick, même en dehors d’un slide.",
             "forceNonTick": "Jamais un tick, même au milieu d’un slide."
           }
         },
         "noteStyle": "Couleur de remplacement des notes.",
-        "isAttached": "Donne à cette note la voie et la taille du connecteur sur lequel elle se trouve.",
+        "isAttached": "Prend la voie et la taille du connecteur sur lequel cette note se trouve.",
         "isFake": "Désactive le jugement, le son et les effets de frappe.",
         "sfx": "Effet sonore de remplacement.",
         "isConnectorSeparator": "Commence un nouveau segment de connecteur avec les propriétés de connecteur de cette note.",
@@ -2143,7 +2143,7 @@
         "connectorPresentation": {
           "choices": {
             "default": "Connecteur dessiné entre ses notes.",
-            "fullscreen": "Connecteur dessiné sur tout l’écran pendant sa durée."
+            "fullscreen": "Connecteur dessiné sur tout l’écran entre ses temps de début et de fin."
           }
         },
         "meter": "Nombre de temps par mesure.",
@@ -2152,8 +2152,8 @@
         "timeScaleEase": "Évolution de la vitesse jusqu’au prochain changement d’échelle de temps du groupe.",
         "timeScaleTransition": {
           "choices": {
-            "timeScale": "Espacement des notes selon les changements de vitesse à venir.",
-            "scroll": "Espacement des notes selon la vitesse actuelle."
+            "timeScale": "L’espacement des notes montre les changements de vitesse à venir.",
+            "scroll": "L’espacement des notes suit la vitesse actuelle."
           }
         },
         "hideNotes": "Masque les notes du groupe et les segments de connecteur qui y commencent. Dure jusqu’au prochain changement d’échelle de temps du groupe.",
@@ -2168,7 +2168,7 @@
             "center": "Milieu de l’écran."
           }
         },
-        "cameraRotation": "Rotation de toute la vue autour du milieu de l’écran. En degrés, valeurs positives dans le sens horaire.",
+        "cameraRotation": "Rotation de toute la vue autour du milieu de l’écran, en degrés. Les valeurs positives la font tourner dans le sens horaire.",
         "cameraStageTilt": "Inclinaison de la scène vers l’arrière, de 0 à 1. 1 donne la perspective habituelle.",
         "eventEase": "Évolution des valeurs jusqu’au prochain événement connecté.",
         "maskLeft": "Bord gauche de la partie dessinée de la scène, en voies.",
@@ -2197,9 +2197,9 @@
         "laneAlpha": "Opacité du fond des voies, des lignes de division et des bordures, de 0 à 1.",
         "judgmentLineAlpha": "Opacité de la ligne de jugement, de 0 à 1.",
         "divisionLineAlpha": "Opacité des lignes de division, de 0 à 1.",
-        "xTranslation": "En voies, valeurs positives vers la droite.",
-        "yTranslation": "En voies, valeurs positives vers le haut.",
-        "rotation": "En degrés, valeurs positives dans le sens horaire.",
+        "xTranslation": "Décalage horizontal de la scène, en voies. Les valeurs positives la déplacent vers la droite.",
+        "yTranslation": "Décalage vertical de la scène, en voies. Les valeurs positives la déplacent vers le haut.",
+        "rotation": "Rotation de la scène autour de son Centre de rotation, en degrés. Les valeurs positives la font tourner dans le sens horaire.",
         "rotationCenter": {
           "choices": {
             "stage": "Voie 0 à la hauteur habituelle de la ligne de jugement.",
@@ -2208,8 +2208,8 @@
             "vanishingPoint": "Point où les voies se rejoignent au loin."
           }
         },
-        "centerXOffset": "En voies, valeurs positives vers la droite.",
-        "centerYOffset": "En voies, valeurs positives vers le haut.",
+        "centerXOffset": "Décalage horizontal du Centre de rotation, en voies. Les valeurs positives le déplacent vers la droite.",
+        "centerYOffset": "Décalage vertical du Centre de rotation, en voies. Les valeurs positives le déplacent vers le haut.",
         "anchor": {
           "intro": "Point de référence pour Translation Y.",
           "choices": {
@@ -2478,8 +2478,8 @@
       }
     },
     "videoBitrate": "Débit vidéo (Mbps)",
-    "antialiasDescription": "Lisse les contours en escalier dans la vidéo.",
-    "renderScaleDescription": "Ajuste la résolution de rendu de chaque image. Des valeurs plus élevées rendent les contours plus lisses mais ralentissent l’exportation.",
+    "antialiasDescription": "Lissage des contours en escalier dans la vidéo.",
+    "renderScaleDescription": "Multiplicateur de résolution de rendu de chaque image. Des valeurs plus élevées rendent les contours plus lisses mais ralentissent l’exportation.",
     "fadeIn": "Fondu d’entrée (s)",
     "fadeOut": "Fondu de sortie (s)",
     "audioBitrate": "Débit audio",
