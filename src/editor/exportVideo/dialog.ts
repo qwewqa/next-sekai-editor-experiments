@@ -164,6 +164,13 @@ export const createExportDialog = (input: DialogInput) => {
         playhead.value = clampToSpan(time, stripSpan.value, fps())
     }
     const kept = (time: number) => keepInSpan(time, stripSpan.value, range.value)
+    /** After a range edit, a playhead outside the strip stops playback and moves into the range. */
+    const keepPlayhead = () => {
+        const next = kept(playhead.value)
+        if (next === playhead.value) return
+        stopPlayback()
+        playhead.value = next
+    }
     const setZoomed = (on: boolean) => {
         zoomed.value = on
         const [from, to] = stripSpan.value
@@ -172,14 +179,14 @@ export const createExportDialog = (input: DialogInput) => {
 
     const setRange = (next: ClipRange, kind: RangeKind = 'custom') => {
         range.value = clampRange(next, stripEnd, fps())
-        playhead.value = kept(playhead.value)
+        keepPlayhead()
         rangeKind.value = kind
         remember()
         changed()
     }
     const setClipEnd = (end: 'in' | 'out', time: number) => {
         range.value = setEnd(range.value, end, time, stripEnd, fps())
-        playhead.value = kept(playhead.value)
+        keepPlayhead()
         rangeKind.value = 'custom'
         remember()
         changed()
