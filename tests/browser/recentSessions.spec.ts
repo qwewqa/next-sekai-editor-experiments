@@ -873,13 +873,13 @@ for (const [code, line, button, label] of [
             let unreadable = false
             module.setPlatformForTests({
                 ...own,
-                inspect: (target, kind) => {
+                read: (target) => {
                     if (
                         !unreadable ||
                         target.kind !== 'handle' ||
                         target.handle.name !== 'failed.nxsp'
                     )
-                        return own.inspect(target, kind)
+                        return own.read(target)
                     // Only the check right after the failed write.
                     unreadable = false
                     return Promise.reject(
