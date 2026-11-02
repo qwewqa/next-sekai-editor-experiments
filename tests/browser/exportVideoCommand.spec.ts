@@ -48,7 +48,7 @@ test('the File group opens it, and Escape closes it', async ({ page }) => {
 })
 
 test('a reload defaults to Whole BGM and uses Whole Chart after BGM removal', async ({ page }) => {
-    test.setTimeout(60_000)
+    test.slow()
     await page.goto('/')
     await waitForStartup(page)
     await page.evaluate(installEditorFixture)

@@ -109,9 +109,14 @@ export const videoDialog = (page: Page) => page.locator('dialog:has([data-export
 export const videoPhase = (page: Page) =>
     videoDialog(page).locator('[data-export-phase]').getAttribute('data-export-phase')
 export const videoExportButton = (page: Page) => videoDialog(page).locator('[data-export-start]')
+/**
+ * How long a short clip's export may take. Chromium on the Linux runner has no H.264 encoder, so
+ * Automatic makes WebM, encoded in software, with the preview drawn in software too.
+ */
+export const videoExportTimeout = process.env.CI ? 60_000 : 20_000
 
-/** A clip from 0 at 720p, one second long by default. */
-export const shortVideoClip = async (page: Page, seconds = 1) => {
+/** A clip from 0 at 720p, 0.2 s (6 frames at 30 fps) long by default. */
+export const shortVideoClip = async (page: Page, seconds = 0.2) => {
     const dialog = videoDialog(page)
     await dialog.getByRole('combobox', { name: 'Resolution' }).selectOption({ label: '720p' })
     for (const [name, value] of [

@@ -10,6 +10,7 @@ import {
     requestVideoDialog,
     shortVideoClip as shortClip,
     videoDialog,
+    videoExportTimeout,
 } from './exportVideoDialog'
 import { resource } from './previewResourceFixture'
 
@@ -331,7 +332,7 @@ test('the everyday path reaches Ready, downloads and closes', async ({ page }) =
     // Focus moves to the one control the export offers.
     await expect(dialog.locator('[data-export-cancel]')).toBeFocused()
     await expect(dialog.locator('[data-export-slot]')).toContainText('Keep this tab open')
-    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('ready')
     expect(
         await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished?.resolution),
     ).toBe(720)
@@ -377,7 +378,7 @@ test('Close in Ready asks before discarding a video that was not downloaded', as
     const dialog = await open(page)
     await shortClip(page)
     await exportButton(page).click()
-    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('ready')
     await dialog.locator('[data-export-close]').click()
     const ask = page.getByRole('dialog', { name: 'Discard this video?' })
     await expect(ask).toBeVisible()
@@ -413,7 +414,7 @@ test('failed cleanup releases the page-close warning and closes the dialog', asy
     const dialog = await open(page)
     await shortClip(page)
     await exportButton(page).click()
-    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('ready')
     expect(await page.evaluate(() => Reflect.get(window, 'exportCloseGuards'))).toBe(1)
     await page.evaluate(() => {
         const remove = FileSystemDirectoryHandle.prototype.removeEntry
@@ -445,14 +446,14 @@ test('Escape mid-export cancels, and a second Escape closes', async ({ page }) =
     const dialog = await open(page, { faults: { hold: 'drain' } })
     await shortClip(page)
     await exportButton(page).click()
-    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('exporting')
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('exporting')
     // The dialog keys do nothing while busy.
     const out = dialog.locator('[data-clip-handle="out"]')
     const before = await out.getAttribute('aria-valuetext')
     await page.keyboard.press('o')
     await expect(out).toHaveAttribute('aria-valuetext', before!)
     await page.keyboard.press('Escape')
-    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('setup')
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('setup')
     expect(await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished)).toBeNull()
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('[data-export-summary]')).toBeVisible()
@@ -463,12 +464,12 @@ test('Escape mid-export cancels, and a second Escape closes', async ({ page }) =
 test('a finished picked file says where it went, and a change returns to the summary', async ({
     page,
 }) => {
-    test.setTimeout(60_000)
+    test.slow()
     const dialog = await open(page, { route: 'done', picker: true })
     await shortClip(page)
     await expect(exportButton(page)).toHaveText('Export…')
     await exportButton(page).click()
-    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('done')
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('done')
     expect(
         await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished?.resolution),
     ).toBe(720)
@@ -483,7 +484,7 @@ test('a failed export shows why, and its Close takes focus', async ({ page }) =>
     const dialog = await open(page, { faults: { failWrite: true } })
     await shortClip(page)
     await exportButton(page).click()
-    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('failed')
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('failed')
     expect(await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished)).toBeNull()
     await expect(dialog.locator('[data-export-slot]')).toContainText(
         'There is not enough space to write',

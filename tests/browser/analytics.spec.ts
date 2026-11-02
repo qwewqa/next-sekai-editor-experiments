@@ -10,7 +10,13 @@ import { isValidEvent } from '../../src/analytics/catalogue'
 import type { Item } from '../../src/analytics/sender'
 import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
-import { openVideoDialog, shortVideoClip, videoExportButton, videoPhase } from './exportVideoDialog'
+import {
+    openVideoDialog,
+    shortVideoClip,
+    videoExportButton,
+    videoExportTimeout,
+    videoPhase,
+} from './exportVideoDialog'
 import { wav } from './levelInfoFiles'
 import { resource } from './previewResourceFixture'
 import { confirmReset } from './resetConfirm'
@@ -166,7 +172,7 @@ test('exceeding the memory limit shows advice and records memoryLimit', async ({
     page,
     context,
 }) => {
-    test.setTimeout(60_000)
+    test.slow()
     const { batches, stray } = await mock(context)
     await page.addInitScript(() => Reflect.deleteProperty(window, 'showSaveFilePicker'))
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
@@ -202,7 +208,7 @@ test('exceeding the memory limit shows advice and records memoryLimit', async ({
     await shortVideoClip(page)
     await expect(videoExportButton(page)).toBeEnabled({ timeout: 20_000 })
     await videoExportButton(page).click()
-    await expect.poll(() => videoPhase(page), { timeout: 20_000 }).toBe('failed')
+    await expect.poll(() => videoPhase(page), { timeout: videoExportTimeout }).toBe('failed')
     await expect
         .soft(dialog.locator('[data-export-slot]'))
         .toContainText(
@@ -224,7 +230,7 @@ for (const outcome of ['done', 'cancelled', 'failed'] as const)
         page,
         context,
     }) => {
-        test.setTimeout(60_000)
+        test.slow()
         const { batches, stray } = await mock(context)
         await page.route('**/resource/skin.scp*', (route) =>
             route.fulfill({ body: resource('skins') }),
@@ -256,7 +262,9 @@ for (const outcome of ['done', 'cancelled', 'failed'] as const)
         await expect(videoExportButton(page)).toBeEnabled()
         await videoExportButton(page).click()
         if (outcome === 'cancelled') {
-            await expect.poll(() => videoPhase(page), { timeout: 20_000 }).toBe('exporting')
+            await expect
+                .poll(() => videoPhase(page), { timeout: videoExportTimeout })
+                .toBe('exporting')
             await expect
                 .poll(
                     () =>
@@ -267,15 +275,17 @@ for (const outcome of ['done', 'cancelled', 'failed'] as const)
                             ) as import('../../src/editor/exportVideo/dialog').ExportDialog
                             return dialog.progress.value.fraction
                         }),
-                    { timeout: 20_000 },
+                    { timeout: videoExportTimeout },
                 )
                 .toBeGreaterThan(0)
             await dialog.locator('[data-export-cancel]').click()
             await expect.poll(() => videoPhase(page)).toBe('setup')
         } else if (outcome === 'failed') {
-            await expect.poll(() => videoPhase(page), { timeout: 20_000 }).toBe('failed')
+            await expect
+                .poll(() => videoPhase(page), { timeout: videoExportTimeout })
+                .toBe('failed')
         } else {
-            await expect.poll(() => videoPhase(page), { timeout: 20_000 }).toBe('ready')
+            await expect.poll(() => videoPhase(page), { timeout: videoExportTimeout }).toBe('ready')
             // The user can wait and change the next clip before downloading the finished file.
             await page.evaluate(() => {
                 const now = performance.now.bind(performance)

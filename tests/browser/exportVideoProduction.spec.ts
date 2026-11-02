@@ -1,14 +1,20 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { installEditorFixture } from './editorFixture'
-import { openVideoDialog, shortVideoClip, videoExportButton, videoPhase } from './exportVideoDialog'
+import {
+    openVideoDialog,
+    shortVideoClip,
+    videoExportButton,
+    videoExportTimeout,
+    videoPhase,
+} from './exportVideoDialog'
 import { resource } from './previewResourceFixture'
 
 for (const route of ['staged', 'memory'])
     test(`the ${route} route downloads a WebM file that can be read and decoded`, async ({
         page,
     }, testInfo) => {
-        test.setTimeout(60_000)
+        test.slow()
         await page.addInitScript(() => {
             Reflect.deleteProperty(window, 'showSaveFilePicker')
         })
@@ -36,7 +42,7 @@ for (const route of ['staged', 'memory'])
         await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption('webm')
         await expect(videoExportButton(page)).toBeEnabled()
         await videoExportButton(page).click()
-        await expect.poll(() => videoPhase(page), { timeout: 20_000 }).toBe('ready')
+        await expect.poll(() => videoPhase(page), { timeout: videoExportTimeout }).toBe('ready')
         const downloading = page.waitForEvent('download')
         await dialog.locator('[data-export-download]').click()
         const download = await downloading
@@ -51,11 +57,11 @@ for (const route of ['staged', 'memory'])
             },
             [...bytes],
         )
-        expect(media.frames).toBe(30)
+        expect(media.frames).toBe(6)
         expect(media.width).toBe(1280)
         expect(media.height).toBe(720)
         expect(media.firstVideo).toBe(0)
-        expect(media.videoEnd).toBeCloseTo(1, 3)
+        expect(media.videoEnd).toBeCloseTo(0.2, 3)
         expect(media.firstAudio).toBeLessThanOrEqual(0.001)
         await dialog.locator('[data-export-close]').click()
         await expect(dialog).toHaveCount(0)
