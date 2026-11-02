@@ -608,7 +608,7 @@ test('a clock that stops during playback makes the next Play use a new context',
     await toggle(page)
     await expect.poll(() => cursor(page)).toBeGreaterThan(0.3)
     await freezeClock(page)
-    await page.waitForTimeout(700)
+    await page.waitForTimeout(1500)
     expect(await isPlaying(page)).toBe(true)
     await toggle(page)
     const paused = await cursor(page)
