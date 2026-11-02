@@ -39,7 +39,7 @@ test('stop markers retain the chosen pair and leave active exports alone', async
             else Reflect.deleteProperty(globalThis, key)
         })
     }
-    const setting = { resolution: 2160, renderScale: 2, pixels: 7680 * 4320 }
+    const setting = { resolution: 2160, renderScale: 2 }
     let release!: () => void
     let acquired!: () => void
     const ready = new Promise<void>((resolve) => {

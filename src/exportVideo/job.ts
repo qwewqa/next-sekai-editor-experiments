@@ -257,9 +257,6 @@ export const createExportJob = (options: {
             clearMarker = markVideoRunning(id, {
                 resolution: settings.height,
                 renderScale: settings.renderScale,
-                pixels:
-                    Math.round(settings.width * settings.renderScale) *
-                    Math.round(settings.height * settings.renderScale),
             })
             const prepared = await prepare()
             const start = { ...prepared, ...(await resolveConfig()) }

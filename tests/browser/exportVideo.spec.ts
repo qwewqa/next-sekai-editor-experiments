@@ -25,7 +25,6 @@ for (const start of [0, 83])
         expect(result.phase).toBe('ready')
         expect(result.guarded).toBe(true)
         expect(result.retained).toBe(false)
-        expect(result.runningPixels).toBe(320 * 180)
         expect(result.markerLeft).toBe(false)
         const sink = result.result as {
             frames: number
@@ -190,7 +189,6 @@ test('pagehide clears the running marker without cancelling the export', async (
     })
     expect(result.error).toBeUndefined()
     expect(result.phase).toBe('ready')
-    expect(result.runningPixels).toBe(480 * 270)
     expect(pagehideCleared).toBe(true)
     expect(result.markerLeft).toBe(false)
 })

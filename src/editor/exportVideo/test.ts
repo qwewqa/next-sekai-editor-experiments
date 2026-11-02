@@ -55,7 +55,6 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
     let exported: Uint8Array | undefined
     let capturedSize: number[] | undefined
     let finishingCancel: boolean | undefined
-    let runningPixels: number | undefined
     const bgm = new AudioBuffer({
         numberOfChannels: 2,
         sampleRate: 48000,
@@ -205,12 +204,6 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
               },
         changed: (next) => {
             phases.push(next.phase)
-            if (next.phase === 'exporting' && runningPixels === undefined) {
-                const marker = `exportVideoRunning.${job.id}`
-                runningPixels = (
-                    JSON.parse(localStorage.getItem(marker) ?? 'null') as { pixels: number } | null
-                )?.pixels
-            }
             if (next.phase === options.cancelAt) {
                 if (next.phase === 'finishing') finishingCancel = job.cancel()
                 else job.cancel()
@@ -301,7 +294,6 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         bytes,
         capturedSize,
         capturedMax,
-        runningPixels,
         markerLeft: localStorage.getItem(`exportVideoRunning.${job.id}`) !== null,
         mixStarted,
         errorCode,

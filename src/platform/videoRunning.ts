@@ -5,7 +5,7 @@ const PREFIX = 'exportVideoRunning.'
 /** Call under the job lock; clear the marker before releasing that lock. */
 export const markVideoRunning = (
     id: string,
-    setting: { resolution: number; renderScale: number; pixels: number },
+    setting: { resolution: number; renderScale: number },
 ) => {
     const key = `${PREFIX}${id}`
     const clear = () => {

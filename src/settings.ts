@@ -200,7 +200,6 @@ const settingsProperties = {
     exportVideoAdvanced: Type.Boolean(),
     exportVideoLastFinished: Type.Union([Type.Null(), exportVideoChoices], { default: null }),
     exportVideoStops: Type.Object({
-        counts: Type.Record(Type.String(), Type.Number(), { default: {} }),
         last: Type.Union([Type.Null(), exportVideoStop], { default: null }),
     }),
 

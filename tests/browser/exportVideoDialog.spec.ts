@@ -310,7 +310,6 @@ test('closing before the first view frame does not log an abort', async ({ page 
 test('the everyday path reaches Ready, downloads and closes', async ({ page }) => {
     await page.evaluate(() => {
         window.editorTest.settings.exportVideoStops = {
-            counts: { '2160:2': 1 },
             last: { resolution: 2160, renderScale: 2 },
         }
     })
@@ -338,7 +337,6 @@ test('the everyday path reaches Ready, downloads and closes', async ({ page }) =
         await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished?.resolution),
     ).toBe(720)
     expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
-        counts: {},
         last: null,
     })
     await expect(dialog.locator('[data-export-ready]')).toContainText('Ready ·')
@@ -648,7 +646,6 @@ for (const finished of [true, false])
                 JSON.stringify({
                     resolution: 2160,
                     renderScale: 2,
-                    pixels: 7680 * 4320,
                 }),
             )
         }, finished)
@@ -687,7 +684,6 @@ for (const finished of [true, false])
             await page.evaluate(() => localStorage.getItem('exportVideoRunning.abandoned')),
         ).toBeNull()
         expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
-            counts: { '2160:2': 1 },
             last: { resolution: 2160, renderScale: 2 },
         })
     })
@@ -711,7 +707,6 @@ for (const action of ['finish', 'reset', 'stop'] as const)
                 audioBitrate: 192_000,
             }
             settings.exportVideoStops = {
-                counts: { '2160:2': 1 },
                 last: { resolution: 2160, renderScale: 2 },
             }
         })
@@ -741,7 +736,7 @@ for (const action of ['finish', 'reset', 'stop'] as const)
                     settings.exportVideoRenderScale = 2
                     localStorage.setItem(
                         'exportVideoRunning.abandoned',
-                        JSON.stringify({ resolution: 2160, renderScale: 2, pixels: 7680 * 4320 }),
+                        JSON.stringify({ resolution: 2160, renderScale: 2 }),
                     )
                 }
             }
@@ -755,9 +750,7 @@ for (const action of ['finish', 'reset', 'stop'] as const)
             action === 'reset' ? '1080' : '720',
         )
         expect(await other.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual(
-            action === 'stop'
-                ? { counts: { '2160:2': 1 }, last: { resolution: 2160, renderScale: 2 } }
-                : { counts: {}, last: null },
+            action === 'stop' ? { last: { resolution: 2160, renderScale: 2 } } : { last: null },
         )
         await other.close()
     })
@@ -780,7 +773,6 @@ for (const reset of ['defaults', 'settings'])
                 audioBitrate: 128_000,
             }
             settings.exportVideoStops = {
-                counts: { '2160:2': 2 },
                 last: { resolution: 2160, renderScale: 2 },
             }
             await new Promise<void>((resolve) => {
@@ -797,7 +789,7 @@ for (const reset of ['defaults', 'settings'])
             for (const id of ['active', 'abandoned'])
                 localStorage.setItem(
                     `exportVideoRunning.${id}`,
-                    JSON.stringify({ resolution: 2160, renderScale: 2, pixels: 7680 * 4320 }),
+                    JSON.stringify({ resolution: 2160, renderScale: 2 }),
                 )
         })
         if (reset === 'defaults') {
@@ -820,7 +812,6 @@ for (const reset of ['defaults', 'settings'])
             await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished),
         ).toBeNull()
         expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
-            counts: {},
             last: null,
         })
         expect(await page.evaluate(() => window.editorTest.settings.exportVideoResolution)).toBe(

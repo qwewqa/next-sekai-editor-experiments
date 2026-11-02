@@ -5,7 +5,6 @@ export type Resolution = (typeof RESOLUTIONS)[number]
 export const QUALITIES = ['low', 'standard', 'high'] as const
 export type Quality = (typeof QUALITIES)[number]
 export const AUDIO_BITRATES = [128_000, 192_000, 256_000] as const
-export type AudioBitrate = (typeof AUDIO_BITRATES)[number]
 
 // Standard at 30 fps, 16:9: YouTube's recommended SDR uploads. 2160p is 2.25 times 1440p.
 const STANDARD_30: Record<Resolution, number> = {

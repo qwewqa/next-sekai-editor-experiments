@@ -1,7 +1,7 @@
 // The Export Video dialog's state: the clip, the settings, the job and its outcome. The dialog
 // renders this; the job owns every resource of an export (src/exportVideo/job.ts).
 
-import { computed, reactive, ref, shallowRef, watch, type Ref } from 'vue'
+import { computed, reactive, ref, shallowRef, watch } from 'vue'
 import { bump, busy, record } from '../../analytics/tally'
 import {
     createCodecAvailability,
@@ -31,7 +31,7 @@ import { bgmEndOf } from '../../levelData/statistics'
 import { isNearlyFull } from '../../local/nearlyFull'
 import { platform } from '../../platform'
 import { loadedSfx, sfxSettled } from '../../player'
-import { previewAspectRatios, previewNoteSpeed } from '../../preview/options'
+import { previewAspectRatios } from '../../preview/options'
 import { settings } from '../../settings'
 import type { ExportVideoChoices } from '../../settings/exportVideo'
 import type { State } from '../../state'
@@ -127,7 +127,6 @@ const formFromSettings = (look: DialogInput['look']) => {
         audioBitrate: choices.audioBitrate,
     }
 }
-export type DialogForm = ReturnType<typeof formFromSettings>
 
 export const createExportDialog = (input: DialogInput) => {
     const shared = (services ??= createExportServices())
@@ -784,5 +783,3 @@ export const createExportDialog = (input: DialogInput) => {
 }
 
 export type ExportDialog = ReturnType<typeof createExportDialog>
-export type { Ref }
-export const NOTE_SPEED = previewNoteSpeed
