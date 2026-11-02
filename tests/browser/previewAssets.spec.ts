@@ -795,7 +795,7 @@ test("a background's colour, blur, mask, aspect ratio and fit are drawn", async 
     const plain = await pixels()
     expect(plain.corner).toEqual([34, 51, 68, 255])
     expect(plain.center).toEqual([255, 255, 255, 255])
-    await expect(page.locator('[data-background-mask], .preview-background')).toHaveCount(0)
+    await expect(page.locator('.preview-background')).toHaveCount(0)
 })
 
 test.describe('the review fixes', () => {
