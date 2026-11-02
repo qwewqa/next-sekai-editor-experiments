@@ -3,6 +3,7 @@ import test from 'node:test'
 import './saveMatrix/env'
 
 const { describeVideoFailure } = await import('../../src/editor/exportVideo/failure')
+const { FileError } = await import('../../src/platform/types')
 
 test('a failed video adds that the picked file is now empty when cleanup could not remove it', async () => {
     const handle = {
@@ -25,4 +26,19 @@ test('a removed, unreadable or changed video target keeps the original failure',
         assert.equal(failure.reason, 'encoder')
         assert.doesNotMatch(failure.message(), /The file is now empty/)
     }
+})
+
+test('a file failure without a name names the picked file, not the suggested one', async () => {
+    const handle = {
+        name: 'Picked.mp4',
+        getFile: () => Promise.reject(new DOMException('', 'NotAllowedError')),
+    } as FileSystemFileHandle
+    const failure = await describeVideoFailure(
+        new FileError('denied', 'Access was revoked'),
+        'clip.mp4',
+        handle,
+    )
+    assert.equal(failure.reason, 'denied')
+    assert.match(failure.message(), /Picked\.mp4/)
+    assert.doesNotMatch(failure.message(), /clip\.mp4/)
 })

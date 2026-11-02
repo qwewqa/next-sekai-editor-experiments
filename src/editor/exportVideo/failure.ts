@@ -44,7 +44,7 @@ export const describeVideoFailure = async (
     name: string,
     handle?: FileSystemFileHandle,
 ): Promise<VideoFailure> => {
-    const failure = describeFailure(error, name)
+    const failure = describeFailure(error, handle?.name ?? name)
     const file = await handle?.getFile().catch(() => undefined)
     return handle && file?.size === 0
         ? { ...failure, message: () => `${failure.message()} ${i18n.value.save.fileNowEmpty}` }
