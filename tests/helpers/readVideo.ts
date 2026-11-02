@@ -64,3 +64,62 @@ export const readVideo = async (bytes: number[]) => {
         input.dispose()
     }
 }
+
+/** The tracks of a file, where the audio track may be absent. */
+export const readTracks = async (bytes: number[]) => {
+    const input = new Input({
+        formats: ALL_FORMATS,
+        source: new BufferSource(new Uint8Array(bytes)),
+    })
+    try {
+        const [video] = await input.getVideoTracks()
+        const [track] = await input.getAudioTracks()
+        if (!video) throw new Error('Missing video track')
+        let frames = 0
+        let firstVideo: number | undefined
+        let videoEnd = 0
+        for await (const packet of new EncodedPacketSink(video).packets()) {
+            firstVideo ??= packet.timestamp
+            videoEnd = packet.timestamp + packet.duration
+            frames++
+        }
+        const frame = await new VideoSampleSink(video).getSample(0)
+        if (!frame) throw new Error('Video could not be decoded')
+        frame.close()
+        let audio: { codec: string | null; channels: number; end: number; peak: number } | undefined
+        if (track) {
+            let end = 0
+            let peak = 0
+            for await (const sample of new AudioSampleSink(track).samples()) {
+                try {
+                    const plane = new Float32Array(sample.numberOfFrames)
+                    sample.copyTo(plane, { planeIndex: 0, format: 'f32-planar' })
+                    for (const value of plane) peak = Math.max(peak, Math.abs(value))
+                    end = sample.timestamp + sample.duration
+                } finally {
+                    sample.close()
+                }
+            }
+            audio = {
+                codec: await track.getCodec(),
+                channels: await track.getNumberOfChannels(),
+                end,
+                peak,
+            }
+        }
+        return {
+            format: (await input.getFormat()).name,
+            trackCount: (await input.getTracks()).length,
+            videoCodec: await video.getCodec(),
+            frames,
+            firstVideo,
+            videoEnd,
+            width: await video.getDisplayWidth(),
+            height: await video.getDisplayHeight(),
+            duration: await input.computeDuration(),
+            audio,
+        }
+    } finally {
+        input.dispose()
+    }
+}

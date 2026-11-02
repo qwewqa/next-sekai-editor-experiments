@@ -42,6 +42,7 @@ export default defineConfig({
         'recordVectors.spec.ts',
         'assetSelectGap.spec.ts',
         'openActivation.spec.ts',
+        'exportVideoFirefox.spec.ts',
     ],
     outputDir: 'test-results-compatibility',
     // Firefox under xvfb sometimes fails to create its first WebGL2 context. A test that passes
