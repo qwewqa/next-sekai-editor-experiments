@@ -28,6 +28,7 @@ import { interpolate } from '../../../utils/interpolate'
 import { formatCount } from '../../../utils/size'
 import { editorNavigation } from '../../navigation'
 import { notify } from '../../notification'
+import { canRemove } from '../../tools/eraser'
 import { view, xToLane, yToValidBeat } from '../../view'
 import {
     clipboardSource,
@@ -96,10 +97,7 @@ export const cut: Command = {
         })
 
         // A type with no remover leaves the chart as it is, so it is copied and never removed.
-        const removeEntities = entities.filter(
-            (entity) =>
-                removes[entity.type] && (canRemoves[entity.type]?.(entity as never) ?? true),
-        )
+        const removeEntities = entities.filter(canRemove)
         if (!removeEntities.length) {
             // Copied but nothing could go, so there is no step to undo.
             replaceState({
@@ -142,31 +140,6 @@ const getEntities = <T extends EntityType>(entities: Entity[], type: T) =>
         entities.filter((entity): entity is EntityOfType<T> => entity.type === type),
         (entity) => entity,
     )
-
-const canRemoves: {
-    [T in Entity as T['type']]: ((entity: T) => boolean) | undefined
-} = {
-    bpm: (entity) => entity.beat > 0,
-    timeScale: undefined,
-
-    cameraEventJoint: undefined,
-    cameraEventConnection: undefined,
-
-    stageMaskEventJoint: undefined,
-    stageMaskEventConnection: undefined,
-
-    stagePivotEventJoint: undefined,
-    stagePivotEventConnection: undefined,
-
-    stageStyleEventJoint: undefined,
-    stageStyleEventConnection: undefined,
-
-    stageTransformEventJoint: undefined,
-    stageTransformEventConnection: undefined,
-
-    note: undefined,
-    connector: undefined,
-}
 
 const removes: {
     [T in Entity as T['type']]: RemoveMutation<T> | undefined
