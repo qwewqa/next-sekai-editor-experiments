@@ -78,7 +78,8 @@ const rangeMemory = new Map<string, { kind: RangeKind; range: ClipRange }>()
 export type DialogInput = {
     snapshot: State
     source: 'live' | 'peek'
-    chain: string
+    /** The chart's chain; none for a peeked session, so its range is not remembered. */
+    chain?: string
     /** The editor's playback cursor, where the playhead starts. */
     cursor: number
     stem: string
@@ -145,14 +146,16 @@ export const createExportDialog = (input: DialogInput) => {
         lastBeat === undefined ? undefined : beatToTime(input.snapshot.bpms, lastBeat),
     )
     const stripEnd = stripEndOf(wholeEnd, bgmEnd)
-    const initial = openingRange(rangeMemory.get(input.chain), wholeEnd, bgmEnd, fps())
+    const initial = openingRange(input.chain === undefined ? undefined : rangeMemory.get(input.chain), wholeEnd, bgmEnd, fps())
     const rangeKind = ref<RangeKind>(initial.kind)
     const range = ref<ClipRange>(initial.range)
     const playhead = ref(Math.min(stripEnd, Math.max(0, toFrame(input.cursor, fps()))))
     const span = computed(() => selectionSpan(input.selection, input.snapshot.bpms))
     const hours = stripEnd >= 3600
-    const remember = () =>
-        rangeMemory.set(input.chain, { kind: rangeKind.value, range: range.value })
+    const remember = () => {
+        if (input.chain !== undefined)
+            rangeMemory.set(input.chain, { kind: rangeKind.value, range: range.value })
+    }
 
     // --- The span the strip shows: the whole strip, or the range's under Zoom to Range. The
     // playhead stays inside it.
