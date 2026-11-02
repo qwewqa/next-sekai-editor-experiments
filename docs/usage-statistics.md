@@ -80,7 +80,7 @@ The page shown to unsupported browsers sends only `website`, `hostname`, `timest
 
 ## Device Details in Events
 
-The events `startup`, `open`, `save`, `export`, `check`, `bgm`, `peek` and `perf` include the device details below. `visit` includes them too.
+The events `startup`, `open`, `save`, `export`, `exportVideo`, `check`, `bgm`, `peek` and `perf` include the device details below. `visit` includes them too.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -93,7 +93,7 @@ The events `startup`, `open`, `save`, `export`, `check`, `bgm`, `peek` and `perf
 | `viewportHeight` | The height of the editor’s workspace in pixels | Range |
 | `viewportAspect` | The workspace’s width divided by its height. Below 1, it is taller than it is wide | Range |
 
-For `open`, `save`, `export`, `check` and `bgm`, device details are recorded when the action ends. For `startup`, they are recorded when statistics collection starts. For `peek` and `perf`, they are recorded when the events are sent.
+For `open`, `save`, `export`, `exportVideo`, `check` and `bgm`, device details are recorded when the action ends. For `startup`, they are recorded when statistics collection starts. For `peek` and `perf`, they are recorded when the events are sent.
 
 ## Events and Fields
 
