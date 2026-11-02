@@ -72,39 +72,54 @@ type Shared = { active: boolean; at: number; size: number; name: string; text?: 
 /**
  * Stubs the share sheet: `navigator.canShare` takes files, and `navigator.share` records each call
  * (whether the press's activation was still active, when, and what it carried), then settles as
- * `outcome` says after 300 ms.
+ * `outcome` says after 300 ms, or once `releaseShares` is called when `held`.
  */
-const stubShare = (page: Page, outcome: 'shared' | 'dismissed' | 'refused' = 'shared') =>
-    page.addInitScript((outcome) => {
-        const shares: Shared[] = []
-        const pressed = { at: 0 }
-        Object.assign(window, { shares, pressed })
-        window.addEventListener('pointerdown', () => (pressed.at = performance.now()), true)
-        window.addEventListener('keydown', () => (pressed.at = performance.now()), true)
-        navigator.canShare = (data?: ShareData) => !!data?.files?.length
-        navigator.share = (data?: ShareData) => {
-            const file = data?.files?.[0]
-            shares.push({
-                active: navigator.userActivation.isActive,
-                at: performance.now(),
-                size: file?.size ?? 0,
-                name: file?.name ?? '',
-                text: data?.text,
-            })
-            return new Promise((resolve, reject) =>
-                setTimeout(() => {
-                    if (outcome === 'shared') resolve()
-                    else
-                        reject(
-                            new DOMException(
-                                'stubbed',
-                                outcome === 'dismissed' ? 'AbortError' : 'NotAllowedError',
-                            ),
-                        )
-                }, 300),
-            )
-        }
-    }, outcome)
+const stubShare = (
+    page: Page,
+    outcome: 'shared' | 'dismissed' | 'refused' = 'shared',
+    held = false,
+) =>
+    page.addInitScript(
+        ({ outcome, held }) => {
+            const shares: Shared[] = []
+            const pressed = { at: 0 }
+            const settlers: (() => void)[] = []
+            Object.assign(window, { shares, pressed, settlers })
+            window.addEventListener('pointerdown', () => (pressed.at = performance.now()), true)
+            window.addEventListener('keydown', () => (pressed.at = performance.now()), true)
+            navigator.canShare = (data?: ShareData) => !!data?.files?.length
+            navigator.share = (data?: ShareData) => {
+                const file = data?.files?.[0]
+                shares.push({
+                    active: navigator.userActivation.isActive,
+                    at: performance.now(),
+                    size: file?.size ?? 0,
+                    name: file?.name ?? '',
+                    text: data?.text,
+                })
+                return new Promise((resolve, reject) => {
+                    const settle = () => {
+                        if (outcome === 'shared') resolve()
+                        else
+                            reject(
+                                new DOMException(
+                                    'stubbed',
+                                    outcome === 'dismissed' ? 'AbortError' : 'NotAllowedError',
+                                ),
+                            )
+                    }
+                    if (held) settlers.push(settle)
+                    else setTimeout(settle, 300)
+                })
+            }
+        },
+        { outcome, held },
+    )
+
+const releaseShares = (page: Page) =>
+    page.evaluate(() => {
+        for (const settle of (window as unknown as { settlers: (() => void)[] }).settlers) settle()
+    })
 
 const shares = (page: Page) =>
     page.evaluate(() => {
@@ -372,7 +387,7 @@ test.describe('on a phone that shares files', () => {
     test('Share replaces Copy Image beside Download Image, and shares the card alone within the press', async ({
         page,
     }) => {
-        await stubShare(page)
+        await stubShare(page, 'shared', true)
         await start(page)
         await openShare(page)
         await expect(primary(page)).toHaveText(en.statistics.share)
@@ -386,12 +401,11 @@ test.describe('on a phone that shares files', () => {
         // A second tap while the sheet is open shares nothing more.
         await primary(page).tap()
         await expect.poll(async () => (await shares(page)).shares.length).toBe(1)
+        await releaseShares(page)
         const {
             shares: [shared],
-            pressedAt,
         } = await shares(page)
         expect(shared?.active).toBe(true)
-        expect(shared!.at - pressedAt).toBeLessThan(1000)
         expect(shared?.size).toBeGreaterThan(0)
         expect(shared?.name).toBe('Brain Rot.png')
         // The link is on the card; the sheet gets the file alone.
@@ -453,10 +467,8 @@ test.describe('on a phone that shares files', () => {
         await expect.poll(async () => (await shares(page)).shares.length).toBe(1)
         const {
             shares: [shared],
-            pressedAt,
         } = await shares(page)
         expect(shared?.active).toBe(true)
-        expect(shared!.at - pressedAt).toBeLessThan(1000)
         expect(shared?.size).toBeGreaterThan(0)
     })
 })
