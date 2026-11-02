@@ -1,10 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import type {
-    ConflictInput,
-    DiskVersion,
-    RefusedReason,
-    SavedFeedback,
-} from '../../src/editor/save/dialogs'
+import type { ConflictInput, DiskVersion, SavedFeedback } from '../../src/editor/save/dialogs'
 import en from '../../src/i18n/en/index.json' with { type: 'json' }
 
 // The Save dialogs: the Save and Save As dialog with File Name's rules, the
@@ -590,7 +585,7 @@ type DialogRequest =
       }
     | { kind: 'notFound' | 'denied' | 'readOnly'; name: string }
     | { kind: 'failed'; name: string; message: string; saveAs: boolean }
-    | { kind: 'refused'; name: string; reason: RefusedReason }
+    | { kind: 'refused'; name: string; reason: 'safeMode' }
     | { kind: 'notPutBack'; name: string; emptied: boolean; downloadable: boolean }
 
 const open = (page: Page, input: DialogRequest) =>
@@ -938,22 +933,6 @@ test.describe('the dialogs for a file that cannot be written', () => {
         await expect(buttons(page)).toHaveText(['OK'])
     })
 
-    test('a refused pick: the level data one adds the Export hint and its button', async ({
-        page,
-        context,
-    }) => {
-        await seed(context)
-        await visit(page)
-        await open(page, { kind: 'refused', name: 'LevelData', reason: 'levelData' })
-        await expect(dialog(page)).toContainText('“LevelData” is not a project file.')
-        await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data.')
-        await expect(buttons(page)).toHaveText(['Cancel', 'Export Level Data…', 'Choose Another…'])
-        await expect(dialog(page).getByRole('button', { name: 'Choose Another…' })).toBeFocused()
-        await guard(page)
-        await dialog(page).getByRole('button', { name: 'Export Level Data…' }).click()
-        await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe('export')
-    })
-
     for (const emptied of [true, false])
         test(`a file that could not be put back says what Download gives, only with a copy (emptied: ${emptied})`, async ({
             page,
@@ -986,16 +965,9 @@ test.describe('the dialogs for a file that cannot be written', () => {
             await expect(buttons(page)).toHaveText(['OK'])
         })
 
-    test('a refused partial open and safe mode name why', async ({ page, context }) => {
+    test('an export takeover refused in safe mode says why', async ({ page, context }) => {
         await seed(context)
         await visit(page)
-        await open(page, { kind: 'refused', name: 'melt.nxsp', reason: 'notKept' })
-        await expect(dialog(page)).toContainText(
-            'Not saved. “melt.nxsp” could not be read in full.',
-        )
-        await expect(buttons(page)).toHaveText(['Cancel', 'Choose Another…'])
-        await guard(page)
-        await dialog(page).getByRole('button', { name: 'Cancel' }).click()
         await open(page, { kind: 'refused', name: 'melt.nxsp', reason: 'safeMode' })
         await expect(dialog(page)).toContainText(
             'Not saved. Files cannot be replaced in safe mode.',

@@ -20,6 +20,8 @@ const MODAL = new Set([
 ])
 
 export type Facts = {
+    /** A revocation failed; ordinary writes must detect the stale record on disk. */
+    staleOwnership?: boolean
     /** Files whose bytes this Save had to keep: the bytes they held at their pick. */
     inHand: (name: string) => boolean
     /** The exit is known not to have written: no marker may stay (I7). */
@@ -137,6 +139,7 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
         if (target?.name) targets.set(target.name, [...(targets.get(target.name) ?? []), chainId])
     }
     for (const [name, chainIds] of bound) {
+        if (facts.staleOwnership) continue
         if (chainIds.length > 1) add('I9', `${name} is bound to ${chainIds.join(' and ')}`)
         for (const target of targets.get(name) ?? [])
             if (!chainIds.includes(target))

@@ -24,6 +24,7 @@ const saveAsNotFound = async (w: World) => {
     w.mock.fault = (point, name) => {
         if (point !== 'checked' || name !== 'fresh.nxsp' || fired) return
         fired = true
+        w.mock.files.delete(name)
         throw new FileError('not-found', 'Not found')
     }
     w.pick('fresh.nxsp')
@@ -41,11 +42,11 @@ test('a Save whose bound file is gone marks it missing (control)', async () => {
     assert.equal(diskFinding.value, 'missing')
 })
 
-test('a Save As bound to the picked file, then not found at the write, marks it missing (control)', async () => {
+test('a Save As whose picked file disappears keeps its previous binding', async () => {
     const w = await world('bound')
     await saveAsNotFound(w)
-    assert.equal(w.boundName(), 'fresh.nxsp')
-    assert.equal(diskFinding.value, 'missing')
+    assert.equal(w.boundName(), 'own.nxsp')
+    assert.equal(diskFinding.value, undefined)
 })
 
 test('a Save As whose binding was not recorded, then not found at the write, leaves the bound file unmarked', async () => {

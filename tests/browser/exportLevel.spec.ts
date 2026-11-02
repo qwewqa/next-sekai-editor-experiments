@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { PlatformOverride } from '../../src/platform/detect'
 import { installCanvasCounters, installEditorFixture, installTestPlatform } from './editorFixture'
+import { projectOf } from './saveFlows'
 
 // Export Level Data…: Chromium's pickers run on OPFS handles through the
 // platform override; download browsers are simulated with fileSystemAccess: false.
@@ -407,7 +408,7 @@ test('level data with an unknown archetype gets no Export target', async ({ page
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
 })
 
-test('a partial level picked anyway is refused and put back, through Export and p', async ({
+test('Export restores a picked partial level; Save replaces it with a project', async ({
     page,
 }) => {
     await start(page, opfs)
@@ -424,15 +425,13 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
 
-    // p saves a project file: its picker refuses the opened level data too, and puts it back
-    // with the Export hint.
+    // Save writes the project even when the original partial level is picked.
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('p')
     await saveProjectFile(page)
-    await expect(dialog(page)).toContainText('“LevelData” is not a project file.')
-    await expect(dialog(page)).toContainText('For Sonolus, use Export Level Data.')
+    await expect(notice(page)).toContainText('Saved to LevelData')
     expect((await pickerCalls(page)).at(-1)).toMatchObject({ picker: 'save', id: 'nse-project' })
-    expect(await archetypes(page, 'LevelData')).toContain('Unheard')
+    expect((await projectOf(page, 'LevelData')).id).toBeTruthy()
     expect(await opfsNames(page)).toEqual(['LevelData'])
 })
 
@@ -536,14 +535,16 @@ test('Cancel during a write to the target closes at once and leaves the target',
     }
 })
 
-test("p's failed download of a refused pick's bytes says so in its own words", async ({ page }) => {
+test("Export's failed download of a refused pick's bytes says so in its own words", async ({
+    page,
+}) => {
     await start(page, opfs)
     await openPartial(page, 'LevelData')
     // Putting the bytes back fails, so the file stays as the picker left it.
     await holdWrites(page, 'fail')
     await queuePicks(page, ['LevelData'])
-    await page.keyboard.press('p')
-    await saveProjectFile(page)
+    await openExport(page)
+    await page.keyboard.press('Enter')
     await expect(
         page.getByText('“LevelData” was emptied and its contents could not be restored.'),
     ).toBeVisible()

@@ -1,7 +1,7 @@
 import { FileError } from '../../platform'
 import { quickBinding, type Env } from './binding'
 import type { PickedLevelData } from './exportPick'
-import { afterOutcome, DEFAULT_OPTIONS, projectPicked, type Outcome } from './flow'
+import { afterOutcome, DEFAULT_OPTIONS, rewriteOwnProject, type Outcome } from './flow'
 import type { PickedFile, PickSession } from './pickSession'
 import { enqueueSave } from './queue'
 
@@ -26,11 +26,10 @@ export const ownProject = async (
     const reserved = file ? await picked.reserve() : undefined
     const outcome: Outcome =
         file && reserved
-            ? await projectPicked(
+            ? await rewriteOwnProject(
                   session,
                   env,
                   reserved,
-                  undefined,
                   { dialog: 'save', fileName: name, ...DEFAULT_OPTIONS, target: 'copy' },
                   binding,
                   picked,

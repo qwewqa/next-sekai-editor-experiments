@@ -61,9 +61,7 @@ test('Save As: failed reads after a completed write do not mean the own file is 
     const failure = saveDialog(page, 'Save')
     await expect(failure).toBeVisible()
     await expect(failure).not.toContainText('is now empty')
-    await expect(failure).toContainText(
-        '“coconut.nxsp” has changed since you opened or saved it here.',
-    )
+    await expect(failure).toContainText('“coconut.nxsp” changed while it was being written.')
     expect(
         await page.evaluate(() =>
             (window as unknown as { restoreFileReads: () => number }).restoreFileReads(),
@@ -73,7 +71,7 @@ test('Save As: failed reads after a completed write do not mean the own file is 
 })
 
 for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const) {
-    test(`${flow}: an emptied own file is explained before the write failure`, async ({ page }) => {
+    test(`${flow}: a failed write reports confirmed emptiness`, async ({ page }) => {
         await start(page)
         await edit(page, 1)
         await flushed(page)
@@ -88,7 +86,7 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
         await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
         const before = await chainOf(page)
         const entries = (await rows(page, ['entries'])).entries!
-        // The file is at its base and storage holds it, so the pick has no bytes to put back.
+        // Even Export has no bytes to restore. The file is at its base and storage holds it.
         expect(
             await page.evaluate(async () => {
                 const { environment, quickBinding } = await import('/src/editor/save/binding.ts')
@@ -111,6 +109,12 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
                         throw new module.FileError('no-space', 'Disk full')
                     }
                     return original.saveFile(request)
+                },
+                read: async (target) => {
+                    const found = await original.read(target)
+                    if (seen.ownFileEvents.includes('no-space'))
+                        seen.ownFileEvents.push(`read:${found.size}`)
+                    return found
                 },
                 inspect: async (target, kind) => {
                     const found = await original.inspect(target, kind)
@@ -144,7 +148,7 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
 
         const offer = saveDialog(page, flow === 'Export Level Data' ? flow : 'Save')
         await expect(offer).toContainText(
-            '“coconut.nxsp” could not be written. The file is now empty. The chart is still stored in this browser.',
+            '“coconut.nxsp” could not be written. The file is now empty.',
         )
         await expect(offer.getByRole('button', { name: 'OK', exact: true })).toBeVisible()
         await expect(offer.getByRole('button', { name: 'Download', exact: true })).toHaveCount(0)
@@ -154,14 +158,18 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
             await page.evaluate(
                 () => (window as unknown as { ownFileEvents: string[] }).ownFileEvents,
             ),
-        ).toEqual(['no-space', 'inspected:0'])
+        ).toEqual(
+            flow === 'Export Level Data' ? ['no-space', 'inspected:0'] : ['no-space', 'read:0'],
+        )
         const locks = await page.evaluate(async () => (await navigator.locks.query()).held)
         expect(locks?.some((lock) => lock.name === 'nse-bind')).toBe(false)
 
         await page.keyboard.press('Escape')
-        await expect(saveDialog(page, 'Save')).toContainText(
-            'There is not enough space to write coconut.nxsp.',
-        )
+        if (flow === 'Export Level Data')
+            await expect(saveDialog(page, 'Save')).toContainText(
+                'There is not enough space to write coconut.nxsp.',
+            )
+        else await expect(saveDialog(page, 'Save')).toHaveCount(0)
         expect((await chainOf(page)).file).toEqual(
             flow === 'Recent Sessions' ? undefined : before.file,
         )

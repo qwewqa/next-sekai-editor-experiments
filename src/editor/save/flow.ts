@@ -7,7 +7,7 @@ import { i18n } from '../../i18n'
 import { formatDateTime } from '../../i18n/dateTime'
 import { formatDate } from '../../i18n/when'
 import type { SaveReservation } from '../../local/flush'
-import { storableHandle } from '../../local/handles'
+import { handleOf, storableHandle } from '../../local/handles'
 import { toHex } from '../../local/hash'
 import {
     displayName,
@@ -40,10 +40,15 @@ import { inlineName } from '../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { fileError } from '../commands/exportLevel/errorText'
 import { nameKey, validName } from '../commands/exportLevel/fileName'
-import { clearExportDestination, exportMemory } from '../commands/exportLevel/memory'
+import {
+    clearExportDestination,
+    clearExportTarget,
+    exportMemory,
+    sameEntry,
+} from '../commands/exportLevel/memory'
 import { knownTargetAvailable } from '../commands/exportLevel/ownership'
 import { fileErrorText } from '../commands/exportLevel/ui'
-import { bindFile } from '../file'
+import { bindFile, unbindFile } from '../file'
 import { firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
 import { loadForAction } from '../loadFailure'
@@ -64,7 +69,6 @@ import {
     type BgmRow,
     type ConflictChoice,
     type DiskVersion,
-    type RefusedReason,
     type SaveDialogInput,
     type SaveDialogKind,
 } from './dialogs'
@@ -87,12 +91,10 @@ import {
 import { pause, RESUME_WAIT_MS } from './imports'
 import {
     projectPicker,
-    readOwnFile,
     withPickSession,
     type Dismissed,
     type PickedFile,
     type PickSession,
-    type ReadResult,
 } from './pickSession'
 import {
     estimatedTotal,
@@ -435,57 +437,64 @@ const copyStem = (stem: string, ofFile: boolean) =>
 /** A file time for a name: "Oct 16, 2.41 PM" (no colon in a file name). */
 const nameTime = (time: number) => formatDateTime(settings.locale, time).replaceAll(':', '.')
 
-/** A disk state of an empty file: what a save picker leaves. */
-const EMPTY_DISK: DiskState = { fingerprint: 'damaged:0:0', size: 0, lastModified: 0 }
-
-/** The hash no state has: a pre-bound chain counts as changed. */
-const NO_HASH = new Uint8Array(16)
-
-type Revoked = { ok: boolean; revoked: boolean; preBound: boolean }
-
-/** Takes a file over from another chain; a takeover storage can't record is refused. */
-export const revoke = async (
-    env: Env,
-    owner: HandleOwner | undefined,
-    preBind: { file: Row; docId?: string } | undefined,
-): Promise<Revoked> => {
-    const at = Date.now()
+/** Revokes a matching stored association. Exports still use the failure result. */
+export const revoke = async (env: Env, owner: HandleOwner | undefined) => {
     try {
         const done = await env.worker.call('takeOver', {
             ...(owner ? { owner } : {}),
-            ...(preBind ? { preBind: { chainId: env.chainId, ...preBind } } : {}),
             by: env.chainId,
-            at,
+            at: Date.now(),
         })
         return { ok: true, ...done }
     } catch {
-        // Storage paused, full or in safe mode: another chain's binding can't be revoked, so its
-        // file is refused; a file no chain is bound to goes on.
-        return { ok: !owner, revoked: false, preBound: false }
+        return { ok: false, revoked: false }
     }
 }
 
-/** A takeover storage could not record: nothing is written. */
+/** An export takeover that storage could not record. Nothing is written. */
 export const notTakenOver = (name: string): Outcome =>
     isSafeMode()
         ? { kind: 'refused', name, reason: 'safeMode' }
-        : { kind: 'failed', error: new FileError('io', `${name} was not taken over`), name }
+        : { kind: 'failed', error: new FileError('io', name + ' was not taken over'), name }
 
-/**
- * The open session follows a pre-bind: its record, its `docId`, and a label bound to the
- * emptied file, which counts as changed until the write is recorded.
- */
-const followPreBind = async (env: Env, reservation: SaveReservation, name: string) => {
-    const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
-    // After a failed read, the session follows the next read of its record.
-    const record = read.storedRead === 'value' ? read.storedValue : undefined
-    if (!record) return
-    env.session.chain = record
-    if (typeof record.docId === 'string') env.session.docId = record.docId
-    if (currentSession.value.sessionId !== reservation.session.id) return
-    const { copyOf: _copy, ...rest } = currentSession.value
-    currentSession.value = { ...rest, docId: env.session.docId }
-    bindFile({ name, event: 'saved', at: reservation.wall, hash: toHex(NO_HASH) })
+/** Revokes every matching association before a picked Save, as far as storage allows. */
+const revokePicked = async (env: Env, handle: FileSystemFileHandle, own: boolean) => {
+    const matches = async (stored: FileSystemFileHandle | undefined) =>
+        !!stored && ((await sameEntry(handle, stored)) || (await sameEntry(stored, handle)))
+    const binding = quickBinding(env).file
+    const ownHandle = binding && (await bindingHandle(env, binding))
+    const pickedOwn = ownHandle?.storedRead === 'value' && (await matches(ownHandle.storedValue))
+    if (pickedOwn && !own) setDiskFinding('changed')
+    const list = await storedRead(env.worker, 'listHandleOwners', undefined)
+    // A failed lookup finds no association; the writer still checks the file.
+    const owners = list.storedRead === 'value' ? list.storedValue : []
+    let revoked = false
+    for (const owner of owners) {
+        if (
+            owner.role === 'kept' ||
+            (!own && owner.role === 'file' && owner.chainId === env.chainId)
+        )
+            continue
+        const read = await handleOf(env.worker, owner.chainId, owner.role)
+        if (read.storedRead !== 'value' || !(await matches(read.storedValue))) continue
+        const done = await revoke(env, owner)
+        revoked ||= done.revoked
+    }
+    if (await matches(exportMemory.target?.handle)) clearExportTarget()
+    if (own && pickedOwn && binding) {
+        env.session.identity = undefined
+        const { file: _file, ...chain } = env.session.chain ?? {}
+        env.session.chain = {
+            ...chain,
+            replaced: { by: env.chainId, at: Date.now(), name: binding.name },
+            edited: true,
+            hasContent: true,
+        }
+        env.session.edited = true
+        forgetHandle(env.chainId)
+        if (currentSession.value.sessionId === env.session.id) unbindFile()
+    }
+    if (revoked) broadcastUpdated()
 }
 
 /**
@@ -503,8 +512,6 @@ type PickRequest = {
     /** `new` mints a `docId` (Save As…); `copy` keeps the chain's identity. */
     target: 'new' | 'copy'
     startIn?: FileSystemHandle
-    /** The dialog's read of the chain's own file; else the session starts one. */
-    read?: Promise<ReadResult>
     /** The size the Save dialog estimated for the options answered, in bytes. */
     estimated?: number
 }
@@ -516,10 +523,10 @@ export type Outcome =
     | { kind: 'forked' }
     /** The chain's own file was damaged and the chain unlinked from it: Save As… follows. */
     | { kind: 'unlinked'; name: string }
-    /** What the file held that was not put back was offered by the pick session. */
-    | { kind: 'refused'; name: string; reason: RefusedReason }
+    /** An export takeover that storage could not record. */
+    | { kind: 'refused'; name: string; reason: 'safeMode' }
     | { kind: 'conflict'; handle: FileSystemFileHandle; binding: Binding }
-    | { kind: 'failed'; error: FileError; name: string }
+    | { kind: 'failed'; error: FileError; name: string; reported?: true }
     | { kind: 'error'; message: () => string }
 
 /** A download whose build would likely outlast the tap: over 2 MB estimated, on a touch device. */
@@ -532,22 +539,35 @@ const largeDownload = (estimated: number | undefined): estimated is number =>
 /** What the pick session shows and does for the Save family (it loads in Node: no UI import). */
 export const pickUi = {
     ...preparingUi,
-    notPutBack: (
-        name: string,
-        emptied: boolean,
-        downloadable: boolean,
-        replaced: boolean,
-        own: boolean,
-    ) => saveUi.notPutBack(name, emptied, downloadable, replaced, own),
+    notPutBack: (name: string, emptied: boolean, downloadable: boolean, own: boolean) =>
+        saveUi.notPutBack(name, emptied, downloadable, own),
     download: (name: string, bytes: Blob) => downloadBytes(name, bytes),
 }
 
-/** A browser without a save picker reads no file first. */
-const NO_READ: Promise<ReadResult> = Promise.resolve({ kind: 'noAccess' })
+/** Keeps a picked failure's outcome after the empty-file warning has reported it. */
+const projectPick = async (
+    session: PickSession,
+    picker: Parameters<PickSession['pick']>[0],
+    name: string,
+    inLock: (picked: PickedFile) => Promise<Outcome>,
+    size: number,
+): Promise<Outcome | Dismissed> => {
+    let outcome: Outcome | Dismissed
+    try {
+        outcome = await session.pick(picker, name, inLock, size)
+    } catch (error) {
+        if (!session.offered?.emptied) throw error
+        const failure = fileError(error)
+        outcome = { kind: 'failed', error: failure, name: failure.fileName ?? name }
+    }
+    return outcome.kind === 'failed' && session.offered?.emptied
+        ? { ...outcome, reported: true }
+        : outcome
+}
 
 /**
  * Saves through the picker, or downloads where there's none: one pick session for every picker
- * of the Save family. The file is built and verified first, then picked, identified
+ * of the Save family. The file is built and verified first, then picked, checked
  * under `nse-bind` exclusive, written over the emptied file (its empty state the precondition)
  * and bound.
  */
@@ -559,7 +579,6 @@ const pickAndWrite = async (env: Env, request: PickRequest): Promise<Outcome> =>
             surface: 'save',
             purpose: 'save',
             commitFirst: true,
-            read: platform.pickSaveFile ? (request.read ?? 'start') : NO_READ,
             // A large download on a touch device would outlast the tap: "Preparing…" opens at
             // once, with the estimated size.
             ...(largeDownload(request.estimated) ? { estimated: request.estimated } : {}),
@@ -606,32 +625,13 @@ const saveBody = async (
     session.checkpoint()
     if (!platform.pickSaveFile) return downloadBuilt(session, env, reserved, built, request)
 
-    // The build found damage in storage that the check of the base's rows could not see. The
-    // chain's own file is still whole until a picker empties it, so it is read now, and a pick of
-    // it appends.
-    if (binding.file && (built.damaged.length > 0 || built.marked > 0)) await session.readAgain()
-
-    const picked = await session.pick(
+    const picked = await projectPick(
+        session,
         projectPicker(request.startIn),
         request.fileName,
         (file) => projectPicked(session, env, reserved, built, request, binding, file),
         built.blob.size,
     )
-    return withoutOffered(session, picked)
-}
-
-/**
- * An offer takes a refusal dialog's place, and the failure's when the file was emptied and its
- * bytes could not go back. An own-file offer without bytes keeps the outcome that explains why.
- */
-const withoutOffered = <T extends Outcome | Dismissed>(session: PickSession, picked: T) => {
-    const offer = session.offered
-    if (
-        offer &&
-        !offer.own &&
-        (picked.kind === 'refused' || (offer.emptied && picked.kind !== 'done'))
-    )
-        return { kind: 'cancelled' } as const
     return picked
 }
 
@@ -662,168 +662,133 @@ const downloadBuilt = async (
     return { kind: 'done' }
 }
 
-const notBuilt = (name: string) => new FileError('io', `${name} was not built`)
-
-/**
- * The Save family's pick, inside the session's hold on `nse-bind`: the write and the
- * binding. What the editor holds of a file that was not written is put back or offered by the
- * session once this returns.
- */
-export const projectPicked = async (
+/** Writes the prepared project to any empty pick, then records its binding. */
+const projectPicked = async (
     session: PickSession,
     env: Env,
     { reservation, state }: Reserved,
-    /** Built before the picker; Export's pick of the chain's own file builds after it. */
-    prebuilt: BuiltSave | undefined,
+    first: BuiltSave,
     request: PickRequest,
     binding: Binding,
     picked: PickedFile,
 ): Promise<Outcome> => {
-    const { target, found, filled, identity, pre } = picked
+    const { target, filled } = picked
     const { handle } = target
     const name = handle.name
     startWrite('picker')
-    let built: BuiltSave | undefined = prebuilt
-    let bound = binding
-    switch (identity.kind) {
-        case 'refused':
-        case 'target':
-            // Refused: the bytes held of it go back, or are offered, in the session.
-            return {
-                kind: 'refused',
-                name,
-                reason: identity.kind === 'refused' ? identity.reason : 'levelData',
-            }
-        case 'own': {
-            // This chain's own file keeps the identity, appending to the bytes read first.
-            if (filled) return { kind: 'conflict', handle, binding }
-            // Not at the base: the version read goes back (the session, offered as a download when
-            // it can't), and the conflict dialog shows it.
-            if (pre && !pre.atBase) return { kind: 'conflict', handle, binding }
-            // The dialog's ticks apply to this write, but history the file holds stays.
-            const history = bindingHasHistory(binding.file) || request.history
-            const rebuild = () =>
-                runBuild(
-                    env,
-                    {
-                        target: pre ? { kind: 'append', source: 'pre' } : { kind: 'copy' },
-                        history,
-                        bgm: request.bgm,
-                        fileName: name,
-                        save: { time: reservation.wall, operation: saveOperation(name, false) },
-                        state,
-                    },
-                    pre
-                        ? [
-                              {
-                                  token: 'pre',
-                                  role: 'target',
-                                  file: pre.blob,
-                                  fingerprint: pre.disk.fingerprint,
-                              },
-                          ]
-                        : [],
-                )
-            try {
-                built = await rebuild().catch(async (error: unknown) => {
-                    // A refusal is the same on a second try; a worker that failed may not be.
-                    if (error instanceof BuildRefused) throw error
-                    recordError(error)
-                    return rebuild()
-                })
-            } catch (error) {
-                // Nothing read first: the emptied file gets what this rebuild would have written,
-                // the chain's own identity, History and BGM. The build before the picker is that
-                // only when it was made so: a Save (`copy`) with the same History. Else the file
-                // stays empty, which the next Save fills from storage, and the bytes read, if any,
-                // go back (the session).
-                if (!pre && prebuilt && request.target === 'copy' && request.history === history) {
-                    recordError(error)
-                    break
-                }
-                if (error instanceof BuildRefused)
-                    return { kind: 'error', message: refusalText(error, name) }
-                return { kind: 'failed', error: fileError(error), name }
-            }
-            break
-        }
-        case 'other':
-        case 'unknown': {
-            // Only a Save that built before its picker meets these.
-            if (!built) return { kind: 'failed', error: notBuilt(name), name }
-            // Filled while this pick waited: taken over only when it's its owner's own last Save.
-            const owners =
-                identity.kind === 'other' ? await ownerDisk(env, identity.owner) : undefined
-            const ownersOwn = filled && !!owners && sameContent(found, owners)
-            if (filled && identity.kind === 'other' && !ownersOwn) return changedWhilePicked(name)
-            // A picker that renamed the file: its own name goes into the build (`save` entry and
-            // `revision.fileName`). Rebuilt only now, once the file is known to be written, so a
-            // refused pick is put back as soon as it is known, and before anything is revoked. A
-            // rebuild that fails leaves the first build, which differs only in that name.
-            if (name !== request.fileName && !(filled && !ownersOwn)) {
-                try {
-                    built = await runBuild(env, {
-                        target:
-                            request.target === 'new'
-                                ? { kind: 'new', docId: built.identity.docId }
-                                : { kind: 'copy' },
-                        history: request.history,
-                        bgm: request.bgm,
-                        fileName: name,
-                        save: { time: reservation.wall, operation: saveOperation(name, false) },
-                        state,
-                    })
-                } catch (error) {
-                    // The first build is the same file under the typed name, and the picked file
-                    // is empty: it is written, never left empty by a Save that ends here.
-                    recordError(error)
-                }
-            }
-            const preBind = {
-                file: {
-                    name,
-                    handle: await storableHandle(handle),
-                    event: 'saved',
-                    at: reservation.wall,
-                    hash: NO_HASH,
-                    // A sync client's bytes are never the pre-bind's: the next Save meets them.
-                    disk: filled && !ownersOwn ? EMPTY_DISK : found,
-                },
-                // Save As…'s new identity goes with its file (one unit).
-                ...(request.target === 'new' ? { docId: built.identity.docId } : {}),
-            }
-            const done = await revoke(
-                env,
-                identity.kind === 'other' ? identity.owner : undefined,
-                preBind,
-            )
-            if (!done.ok) return notTakenOver(name)
-            const tookOver = done.revoked
-            if (done.preBound) {
-                await followPreBind(env, reservation, name)
-                const reread = await readBinding(env)
-                // A failed read keeps the binding the Save started from.
-                bound = reread.storedRead === 'value' ? reread.storedValue : binding
-            }
-            if (tookOver) broadcastUpdated()
-            await savePoint('revoked')
-            // A sync client's write after the pick: pre-bound, never written over.
-            if (filled && !ownersOwn)
-                return done.preBound
-                    ? { kind: 'conflict', handle, binding: bound }
-                    : changedWhilePicked(name)
-            break
+    if (filled) return changedWhilePicked(name)
+    let built = first
+    if (name !== request.fileName) {
+        try {
+            built = await runBuild(env, {
+                target:
+                    request.target === 'new'
+                        ? { kind: 'new', docId: first.identity.docId }
+                        : { kind: 'copy' },
+                history: request.history,
+                bgm: request.bgm,
+                fileName: name,
+                save: { time: reservation.wall, operation: saveOperation(name, false) },
+                state,
+            })
+        } catch (error) {
+            // The verified first build differs only in its recorded filename.
+            recordError(error)
         }
     }
+    await revokePicked(env, handle, false)
+    await savePoint('revoked')
+    return writePickedProject(session, env, { reservation, state }, built, binding, picked)
+}
 
-    if (!built) return { kind: 'failed', error: notBuilt(name), name }
+/** Rewrites the open project's file when an export picks it. */
+export const rewriteOwnProject = async (
+    session: PickSession,
+    env: Env,
+    { reservation, state }: Reserved,
+    request: PickRequest,
+    binding: Binding,
+    picked: PickedFile,
+): Promise<Outcome> => {
+    const { target, filled, pre } = picked
+    const { handle } = target
+    const name = handle.name
+    startWrite('picker')
+    let built: BuiltSave
+    // This chain's own file keeps the identity, appending to the bytes read first.
+    if (filled) return { kind: 'conflict', handle, binding }
+    // Not at the base: the version read goes back (the session, offered as a download when
+    // it can't), and the conflict dialog shows it.
+    if (pre && !pre.atBase) return { kind: 'conflict', handle, binding }
+    // The export rewrite uses the default options and keeps the file's history.
+    const history = bindingHasHistory(binding.file) || request.history
+    const rebuild = () =>
+        runBuild(
+            env,
+            {
+                target: pre ? { kind: 'append', source: 'pre' } : { kind: 'copy' },
+                history,
+                bgm: request.bgm,
+                fileName: name,
+                save: { time: reservation.wall, operation: saveOperation(name, false) },
+                state,
+            },
+            pre
+                ? [
+                      {
+                          token: 'pre',
+                          role: 'target',
+                          file: pre.blob,
+                          fingerprint: pre.disk.fingerprint,
+                      },
+                  ]
+                : [],
+        )
+    try {
+        built = await rebuild().catch(async (error: unknown) => {
+            // Retry a worker failure once. A build refusal will not change on retry.
+            if (error instanceof BuildRefused) throw error
+            recordError(error)
+            return rebuild()
+        })
+    } catch (error) {
+        if (error instanceof BuildRefused)
+            return { kind: 'error', message: refusalText(error, name) }
+        return { kind: 'failed', error: fileError(error), name }
+    }
+    const outcome = await writePickedProject(
+        session,
+        env,
+        { reservation, state },
+        built,
+        binding,
+        picked,
+    )
+    return outcome.kind === 'failed' && outcome.error.code === 'conflict'
+        ? { kind: 'conflict', handle, binding }
+        : outcome
+}
+
+/** Records one verified project write and its Save entry. */
+const writePickedProject = async (
+    session: PickSession,
+    env: Env,
+    { reservation, state }: Reserved,
+    built: BuiltSave,
+    binding: Binding,
+    picked: PickedFile,
+): Promise<Outcome> => {
+    const handle = picked.target.handle
+    const name = handle.name
     const file = await bindingFile(built, reservation, {
         name,
         event: 'saved',
         handle,
     })
     const written = built
-    const parent = written.identity.revision.ancestors.length ? (bound.revision?.id ?? null) : null
+    const parent = written.identity.revision.ancestors.length
+        ? (binding.revision?.id ?? null)
+        : null
     let result: SaveResult
     try {
         result = await picked.write({
@@ -833,7 +798,6 @@ export const projectPicked = async (
         })
     } catch (error) {
         const failure = fileError(error)
-        if (failure.code === 'conflict') return { kind: 'conflict', handle, binding: bound }
         return { kind: 'failed', error: failure, name }
     }
     if (result.status !== 'saved') return { kind: 'cancelled' }
@@ -845,15 +809,6 @@ export const projectPicked = async (
     })
     feedback(written, 'saved', name)
     return { kind: 'done' }
-}
-
-/** The disk state another chain's binding records, for a file filled while a pick waited. */
-const ownerDisk = async (env: Env, owner: HandleOwner) => {
-    const read = await storedRead(env.worker, 'readChainRecord', owner.chainId)
-    // After a failed read, no disk state is known for the other chain's file.
-    const record = read.storedRead === 'value' ? read.storedValue : undefined
-    const file = isRow(record?.file) ? record.file : undefined
-    return file && file.at === owner.at && isRow(file.disk) ? (file.disk as DiskState) : undefined
 }
 
 /** A picked file holding what nobody here wrote: nothing is written over it. */
@@ -1228,14 +1183,12 @@ const replaceUnavailable = (facts: DiskFacts, disk: DiskState | undefined) => {
 }
 
 const conflictFlow = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
-    // The version on disk read first, in case Save as a Separate File…'s picker returns it.
-    const read = platform.pickSaveFile ? readOwnFile(env, binding) : undefined
     const { input, pinned, newer } = await conflictInput(env, binding, handle)
     setDiskFinding(newer ? 'newer' : 'changed')
     const choice: ConflictChoice | undefined = await saveUi.conflict(input)
     switch (choice) {
         case 'separate':
-            await separateFile(env, binding, handle, read)
+            await separateFile(env, binding, handle)
             return
         case 'openOther':
             await openOther(handle, handle.name)
@@ -1327,13 +1280,7 @@ const replace = async (
 }
 
 /** Save as a Separate File…: keeps the `docId`, in the original's folder. */
-const separateFile = async (
-    env: Env,
-    binding: Binding,
-    handle: FileSystemFileHandle,
-    /** The conflict dialog's read; a Choose Another… starts one before its picker. */
-    read?: Promise<ReadResult>,
-) => {
+const separateFile = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
     const stem = stemOf(handle.name)
     const engine = deviceLabel().replace(/^Web \((.*)\)$/, '$1')
     const name = await suggestion(env, `${stem} (${engine}, ${nameTime(Date.now())})`)
@@ -1345,17 +1292,13 @@ const separateFile = async (
             ...DEFAULT_OPTIONS,
             target: 'copy',
             startIn: handle,
-            ...(read ? { read } : {}),
         }),
         () => separateFile(env, quickBinding(env), handle),
     )
 }
 
 /**
- * Shows what an outcome needs: a follow-up dialog, or nothing. `again` is a refusal's Choose
- * Another: the same Save once more, with its own read of the chain's file first; without
- * it, the Save dialog. `of` is `stored` for Recent Sessions' Save of a session that is not open.
- * Its Try Again and Save As are then `again` too, so no button acts on the open session.
+ * Shows a follow-up dialog. Recent Sessions' retries repeat the selected session's Save.
  */
 export const afterOutcome = async (
     env: Env,
@@ -1364,6 +1307,7 @@ export const afterOutcome = async (
     of: 'open' | 'stored' = 'open',
 ): Promise<void> => {
     finishSave(outcome)
+    if (outcome.kind === 'failed' && outcome.reported) return
     const stored = of === 'stored'
     switch (outcome.kind) {
         case 'done':
@@ -1396,13 +1340,8 @@ export const afterOutcome = async (
             await conflictFlow(env, outcome.binding, outcome.handle)
             return
         case 'refused': {
-            // Export Level Data exports the open session, so a stored session's refusal omits it.
-            const reason = stored && outcome.reason === 'levelData' ? 'notProject' : outcome.reason
-            const choice = await saveUi.refused(outcome.name, reason)
+            const choice = await saveUi.refused(outcome.name, outcome.reason)
             if (choice === 'chooseAnother') await again()
-            else if (choice === 'export') {
-                await openExport()
-            }
             return
         }
         case 'failed': {
@@ -1441,14 +1380,14 @@ export const afterOutcome = async (
     }
 }
 
-/** Export Level Data… (the Save dialog's Export line, its refusal), as its command runs. */
+/** Export Level Data (the Save dialog's Export line), as its command runs. */
 const openExport = async () => {
     const { commands } = await import('../commands')
     const { runCommand } = await import('../commands/runCommand')
     await runCommand(commands.exportLevel, 'button')
 }
 
-/** Downloads the bytes of an offer: the file the Save could not put back. */
+/** Downloads held bytes that an export could not restore. */
 const downloadBytes = async (name: string, bytes: Blob) => {
     try {
         const result = await platform.saveFile({
@@ -1678,9 +1617,6 @@ const dialogSave = async (
     const replacedLine = replaced
         ? [interpolate(() => i18n.value.file.replacedElsewhere, inlineName(replaced.name))]
         : []
-    // This chain's own file read first, when it may hold what storage lacks: for every kind,
-    // since any picker may return it.
-    const read = binding.file && platform.pickSaveFile ? readOwnFile(env, binding) : undefined
     const input = await dialogInput(env, kind, names, [...lines, ...replacedLine])
     const result = await saveUi.saveDialog(input)
     if (!result) return
@@ -1698,7 +1634,6 @@ const dialogSave = async (
             ...estimateOf(input, result),
             // Save As… gives a new `docId`; a first Save, a fork's and a taken-over chain's keep it.
             target: kind === 'saveAs' && !unlinked ? 'new' : 'copy',
-            ...(read ? { read } : {}),
         }),
         // Choose Another… is this Save again, Save As… staying Save As… (a new `docId`).
         () => dialogSave(env, kind, lines, unlinked),
@@ -1838,7 +1773,7 @@ const saveNow = async (env: Env) => {
     )
     if (outcome === 'revoked') {
         // Taken over: the label goes, and the dialog says why.
-        await refreshOwn(env)
+        await refreshBinding(env.worker, env.flusher)
         await dialogSave(env, 'save')
         return
     }
@@ -1941,10 +1876,6 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
             },
         },
     }
-    // The open chain's own file is read while the dialog is open; a pick of it takes it.
-    const ownRead = platform.pickSaveFile
-        ? readOwnFile(env, quickBinding(env), { prompt: false })
-        : undefined
     const result = await saveUi.saveDialog(input)
     if (result?.action !== 'save') return
     const options = answered(input, result)
@@ -1960,7 +1891,6 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
             ...options,
             ...(estimated === undefined ? {} : { estimated }),
             committed: applied === 'held',
-            ...(ownRead ? { read: ownRead } : {}),
         }),
     )
     // Choose Another, Try Again and Save As are Recent Sessions' Save for this session again,
@@ -1988,15 +1918,9 @@ type SessionFileRequest = {
     bgm: boolean
     estimated?: number
     committed: boolean
-    /** The open chain's own file, read when the dialog opened; else the session starts one. */
-    read?: Promise<ReadResult>
 }
 
-/**
- * Builds a session that isn't open as a new file and writes it, binding nothing: one pick session
- * with no reservation. Its read is of the open chain's own file, which a pick of
- * it takes from this chain.
- */
+/** Builds a stored session as a new file, binding nothing and taking no reservation. */
 const writeSessionFile = async (env: Env, request: SessionFileRequest): Promise<Outcome> => {
     const ended = await withPickSession(
         {
@@ -2008,7 +1932,6 @@ const writeSessionFile = async (env: Env, request: SessionFileRequest): Promise<
             // The written session's imports are waited for; the pick's own last check covers any
             // this tab runs.
             importChain: request.chainId,
-            read: platform.pickSaveFile ? (request.read ?? 'start') : NO_READ,
             ...(largeDownload(request.estimated) ? { estimated: request.estimated } : {}),
             ui: pickUi,
         },
@@ -2081,13 +2004,14 @@ const sessionFileBody = async (
         markFirstSaveDone()
         return { kind: 'done' }
     }
-    const picked = await session.pick(
+    const picked = await projectPick(
+        session,
         projectPicker(),
         request.fileName,
         (file) => sessionFilePicked(env, request, built, file),
         built.blob.size,
     )
-    return withoutOffered(session, picked)
+    return picked
 }
 
 /**
@@ -2118,16 +2042,9 @@ const sessionFilePicked = async (
     first: BuiltSave,
     picked: PickedFile,
 ): Promise<Outcome> => {
-    const { target, filled, identity } = picked
+    const { target, filled } = picked
     const name = target.handle.name
     startWrite('picker')
-    // Refused: what the editor holds of it goes back, or is offered, in the session.
-    if (identity.kind === 'refused' || identity.kind === 'target')
-        return {
-            kind: 'refused',
-            name,
-            reason: identity.kind === 'refused' ? identity.reason : 'levelData',
-        }
     // Written since the pick (a sync client): never written over unseen.
     if (filled)
         return {
@@ -2139,34 +2056,12 @@ const sessionFilePicked = async (
     // `revision.fileName`, as a Save's does. Rebuilt after the checks above and before anything
     // is revoked.
     const built = name === request.fileName ? first : await renamedBuild(env, request, first, name)
-    let tookOver = false
-    if (identity.kind !== 'unknown') {
-        // It binds nothing: the chain bound to the file loses it.
-        const own = quickBinding(env).file
-        const owner: HandleOwner | undefined =
-            identity.kind === 'other'
-                ? identity.owner
-                : own && {
-                      chainId: env.chainId,
-                      role: 'file',
-                      name: own.name,
-                      at: own.at,
-                      handle: true,
-                  }
-        const done = await revoke(env, owner, undefined)
-        if (!done.ok) return notTakenOver(name)
-        tookOver = done.revoked
-        if (identity.kind === 'own' && done.revoked) {
-            forgetHandle(env.chainId)
-            void refreshOwn(env)
-        }
-    }
+    await revokePicked(env, target.handle, true)
     try {
         await picked.write({ kind: 'nxsp', blob: built.blob })
     } catch (error) {
         return { kind: 'failed', error: fileError(error), name }
     }
-    if (tookOver) broadcastUpdated()
     saveUi.saved({
         ...savedOf(built, 'saved', name),
         committedState: request.committed,
@@ -2175,9 +2070,6 @@ const sessionFilePicked = async (
     markFirstSaveDone()
     return { kind: 'done' }
 }
-
-/** The open chain lost its file to this tab's own Recent Sessions' Save…: its label follows. */
-const refreshOwn = (env: Env) => refreshBinding(env.worker, env.flusher)
 
 /** A destination never registered here still cannot write over another known owner. */
 export const exportTargetAvailable = async (handle: FileSystemFileHandle) => {

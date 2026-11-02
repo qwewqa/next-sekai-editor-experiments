@@ -20,7 +20,7 @@ import {
 
 // What a Save writes is chosen per Save: every Save starts
 // from History and BGM included, a Save dialog's ticks apply to that one write, and nothing is
-// remembered on the binding. A file that already holds history keeps it.
+// remembered on the binding. A write-back keeps the file's existing history.
 
 type Row = Record<string, unknown>
 
@@ -185,8 +185,8 @@ test("Save As… with History ticked onto the chain's own file without history i
     await edit(page, 2)
     const written = await saveAsOwn(page)
     expect(written.history).toBeDefined()
-    // The chain's own file keeps its identity.
-    expect(written.id).toBe(plain.id)
+    // Save As creates a new document even at the same path.
+    expect(written.id).not.toBe(plain.id)
 })
 
 test("Save As… with BGM ticked onto the chain's own file that left its BGM out includes it", async ({
@@ -241,9 +241,7 @@ test('a file opened with its BGM left out and not held gets the BGM as metadata'
     expect(bgm.file).toBeUndefined()
 })
 
-test('a file with history keeps it when Save As… onto it leaves History unticked', async ({
-    page,
-}) => {
+test('Save As onto its own file omits History when unticked', async ({ page }) => {
     await start(page)
     await edit(page, 1)
     await firstSave(page, [])
@@ -251,6 +249,5 @@ test('a file with history keeps it when Save As… onto it leaves History untick
     expect(before).toBeDefined()
     await edit(page, 2)
     const after = (await saveAsOwn(page, ['history'])).history as Row
-    expect(after).toBeDefined()
-    expect(after.entries as number).toBeGreaterThan(before.entries as number)
+    expect(after).toBeUndefined()
 })

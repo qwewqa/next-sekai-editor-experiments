@@ -6,7 +6,6 @@ import {
     edit,
     notice,
     pauseAt,
-    pickerCalls,
     pressSave,
     projectOf,
     queuePicks,
@@ -114,7 +113,7 @@ test('a self-pick killed after the pick: the next Save fills the file, keeping t
     expect((after.revision as Row).parent).toBe((before.revision as Row).id)
 })
 
-test("a kill during the picker's write: the reload is bound to the emptied file, and Save fills it", async ({
+test('a kill during the first Save leaves the session unbound, and its next Save asks where', async ({
     context,
 }) => {
     const a = await context.newPage()
@@ -129,98 +128,35 @@ test("a kill during the picker's write: the reload is bound to the emptied file,
     await kill(a)
 
     const next = await visitAgain(context)
-    await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
+    expect((await sessionOf(next)).file).toBeUndefined()
     await pressSave(next)
+    await submitSave(next, 'coconut')
     await expect(notice(next).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     await noDialog(next)
     expect((await readFile(next, 'coconut.nxsp'))!.length).toBeGreaterThan(0)
 })
 
-test("a kill after the picker's close(): the next Save records the binding silently and adds no row, then writes in place", async ({
+test('a completed first Save killed before binding leaves a file that can be reopened', async ({
     context,
 }) => {
-    const a = await context.newPage()
-    await start(a)
-    await edit(a, 1)
-    await pauseAt(a, 'closed')
-    await queuePicks(a, ['coconut.nxsp'])
-    await pressSave(a)
-    await submitSave(a, 'coconut')
-    await reached(a, 'closed')
-    const written = await projectOf(a, 'coconut.nxsp')
-    await kill(a)
-
+    const page = await context.newPage()
+    await start(page)
+    await edit(page, 1)
+    await pauseAt(page, 'closed')
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await reached(page, 'closed')
+    const written = await projectOf(page, 'coconut.nxsp')
+    await kill(page)
     const next = await visitAgain(context)
-    await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
-    // Unchanged: our own completed Save is recorded, and nothing more is written.
-    await pressSave(next)
-    await expect(
-        notice(next).filter({ hasText: 'No changes since coconut.nxsp was saved' }),
-    ).toBeVisible()
-    await noDialog(next)
-    const chain = await chainOf(next)
-    expect(chain.revision).toMatchObject({ id: (written.revision as Row).id })
-    const { entries } = await rows(next, ['entries'])
-    // The recognised Save has no row: its state is the one before it.
-    expect(
-        entries!
-            .map((row) => row.value)
-            .filter((row) => row.revisionId === (written.revision as Row).id),
-    ).toEqual([])
-    // The handle stays the binding's: the next Save writes the file in place.
-    await edit(next, 2)
-    await pressSave(next)
-    await expect(notice(next).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    expect(((await projectOf(next, 'coconut.nxsp')).revision as Row).parent).toBe(
-        (written.revision as Row).id,
-    )
-    expect(await pickerCalls(next)).toHaveLength(1)
+    expect((await sessionOf(next)).file).toBeUndefined()
+    await queuePicks(next, ['coconut.nxsp'])
+    await next.keyboard.press('o')
+    await expect(notice(next).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    expect((await sessionOf(next)).docId).toBe(written.id)
 })
 
-test("a kill after the picker's close(): the next Save As… says once that earlier steps may not be included", async ({
-    context,
-}) => {
-    const a = await context.newPage()
-    await start(a)
-    await edit(a, 1)
-    await pauseAt(a, 'closed')
-    await queuePicks(a, ['coconut.nxsp'])
-    await pressSave(a)
-    await submitSave(a, 'coconut')
-    await reached(a, 'closed')
-    await kill(a)
-
-    const next = await visitAgain(context)
-    await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
-    // The Save records the binding and adds no row; the cut still counts the row it lacks.
-    await pressSave(next)
-    await expect(
-        notice(next).filter({ hasText: 'No changes since coconut.nxsp was saved' }),
-    ).toBeVisible()
-    const saveAs = async (beat: number, name?: string) => {
-        await edit(next, beat)
-        await next.evaluate(async () => {
-            const { commands } = await import('/src/editor/commands/index.ts')
-            const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-            void runCommand(commands.saveAs, 'button')
-        })
-        await submitSave(next, name, 'Save As')
-    }
-    await saveAs(2)
-    await expect(
-        notice(next).filter({
-            hasText: 'Saved to coconut (2).nxsp. Some earlier Timeline steps may not be included.',
-        }),
-    ).toBeVisible()
-    // Once: the file it wrote holds its own row, so the next Save As… carries it.
-    await saveAs(3, 'melt')
-    await expect(notice(next).filter({ hasText: 'Saved to melt.nxsp' })).toBeVisible()
-    await expect(notice(next).filter({ hasText: 'Some earlier Timeline steps' })).toHaveCount(0)
-})
-
-test('two pickers on one unknown file: the last to take nse-bind owns it, and the other loses it', async ({
-    context,
-}) => {
+test('a picker waiting for nse-bind refuses a file filled by another Save', async ({ context }) => {
     const a = await context.newPage()
     await start(a)
     await edit(a, 5)
@@ -241,21 +177,14 @@ test('two pickers on one unknown file: the last to take nse-bind owns it, and th
     await expect(notice(b).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     const bChain = await chainOf(b)
 
+    const written = await readFile(b, 'coconut.nxsp')
     await release(a)
-    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await noDialog(a)
-    const aChain = await chainOf(a)
-    expect((await projectOf(a, 'coconut.nxsp')).id).toBe(aChain.docId)
-    const lost = (await chainById(a, bChain.chainId))!
-    expect(lost.file).toBeUndefined()
-    expect(lost.edited).toBe(true)
-    // Both states are in storage.
-    const { entries } = await rows(a, ['entries'])
-    const sessions = new Set(entries!.map((row) => row.value.sessionId))
-    expect(sessions).toContain(aChain.head)
-    expect(sessions).toContain(bChain.head)
-    await b.bringToFront()
-    await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
+    await expect(saveDialog(a, 'Save')).toContainText(
+        'The contents of “coconut.nxsp” have changed.',
+    )
+    expect(await readFile(a, 'coconut.nxsp')).toEqual(written)
+    expect((await sessionOf(a)).file).toBeUndefined()
+    expect((await chainById(a, bChain.chainId))?.file).toMatchObject({ name: 'coconut.nxsp' })
 })
 
 test('the file replaced between the write and the read-back leaves the binding as it was', async ({

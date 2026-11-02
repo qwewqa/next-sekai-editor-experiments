@@ -10,7 +10,6 @@ import {
     projectOf,
     queuePicks,
     reached,
-    readFile,
     release,
     saveDialog,
     start,
@@ -18,14 +17,11 @@ import {
     thinUndone,
 } from './saveFlows'
 
-// The Save As… dialog reads the chain's own
-// file before its picker when storage lacks rows the file holds, asking for read access when it
-// opens if it isn't granted, so a pick of that file appends to what was read and keeps every
-// earlier step.
+// Save As builds from the stored session before the picker, even when its file holds more.
 
 type Row = Record<string, unknown>
 
-test('storage short after a reload: Save As… asks to read the file, and a pick of it keeps every step', async ({
+test('after a reload with history missing from storage: Save As writes a new document without asking to read the file', async ({
     page,
 }) => {
     await start(page)
@@ -50,24 +46,19 @@ test('storage short after a reload: Save As… asks to read the file, and a pick
         void runCommand(commands.saveAs, 'button')
     })
     await expect(saveDialog(page, 'Save As')).toBeVisible()
-    // Asked when the dialog opened, before any picker.
-    await expect
-        .poll(async () => (await pickerCalls(page)).map((call) => call.picker))
-        .toEqual(['permission'])
-    await page.waitForTimeout(300)
+    expect(await pickerCalls(page)).toEqual([])
     await queuePicks(page, ['coconut.nxsp'])
     await submitSave(page, undefined, 'Save As')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     await expect(
         notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' }),
-    ).toHaveCount(0)
-    expect((await pickerCalls(page)).map((call) => call.picker)).toEqual(['permission', 'save'])
+    ).toBeVisible()
+    expect((await pickerCalls(page)).map((call) => call.picker)).toEqual(['save'])
     const after = await projectOf(page, 'coconut.nxsp')
-    expect(after.id).toBe(before.id)
+    expect(after.id).not.toBe(before.id)
     const revision = after.revision as Row
-    expect(revision.parent).toBe((before.revision as Row).id)
-    // An append: the file's base is carried.
-    expect(revision.completeFrom).toBe((before.revision as Row).completeFrom)
+    expect(revision.parent).toBeNull()
+    expect(revision.ancestors).toEqual([])
 })
 
 test('storage holding everything: Save As… asks for nothing', async ({ page }) => {
@@ -99,35 +90,7 @@ const saveAs = (page: import('@playwright/test').Page) =>
         void runCommand(commands.saveAs, 'button')
     })
 
-test("a pick of the chain's own file whose append then fails gets the bytes read back", async ({
-    page,
-}) => {
-    await start(page)
-    await editPastUndo(page, 1)
-    await pressSave(page)
-    await submitSave(page, 'coconut')
-    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    const before = await readFile(page, 'coconut.nxsp')
-    expect(before?.length).toBeGreaterThan(0)
-    // Storage short: the dialog reads the file first.
-    expect(await thinUndone(page)).toBe(true)
-    await saveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await page.waitForTimeout(300)
-    await queuePicks(page, ['coconut.nxsp'])
-    await pauseAt(page, 'picked')
-    await submitSave(page, undefined, 'Save As')
-    await reached(page, 'picked')
-    // The picker emptied the file; the append from the bytes read fails (a worker restart).
-    expect(await readFile(page, 'coconut.nxsp')).toEqual([])
-    await builds(page, 'fail')
-    await release(page)
-    await expect(page.getByRole('dialog')).toContainText('coconut.nxsp')
-    await expect.poll(() => readFile(page, 'coconut.nxsp')).toEqual(before)
-    await builds(page, undefined)
-})
-
-test("Save As… picking the chain's own file with nothing read: a rebuild that failed once is tried again, keeping the file's identity and History", async ({
+test('Save As onto its own file uses the chosen History option even if a rename rebuild fails', async ({
     page,
 }) => {
     await start(page)
@@ -136,58 +99,18 @@ test("Save As… picking the chain's own file with nothing read: a rebuild that 
     await submitSave(page, 'coconut')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     const before = await projectOf(page, 'coconut.nxsp')
-    // Storage holds everything: nothing is read first. Save As… without History.
     await saveAs(page)
     const dialog = saveDialog(page, 'Save As')
-    await expect(dialog).toBeVisible()
     await dialog.getByRole('checkbox', { name: 'History' }).uncheck()
     await queuePicks(page, ['coconut.nxsp'])
     await pauseAt(page, 'picked')
     await submitSave(page, undefined, 'Save As')
     await reached(page, 'picked')
-    await builds(page, 'failOnce')
-    await release(page)
-    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await builds(page, undefined)
-    // The file's own identity, its History, and its revision lineage, never Save As…'s.
-    const after = await projectOf(page, 'coconut.nxsp')
-    expect(after.id).toBe(before.id)
-    expect((after.revision as Row).parent).toBe((before.revision as Row).id)
-    expect((after.history as Row | undefined)?.entries).toBeGreaterThan(0)
-})
-
-test("Save As… picking the chain's own file with nothing read: a rebuild that keeps failing never writes Save As…'s identity, and the next Save fills it", async ({
-    page,
-}) => {
-    await start(page)
-    await editPastUndo(page, 1)
-    await pressSave(page)
-    await submitSave(page, 'coconut')
-    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    const before = await projectOf(page, 'coconut.nxsp')
-    await saveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await queuePicks(page, ['coconut.nxsp'])
-    await pauseAt(page, 'picked')
-    await submitSave(page, undefined, 'Save As')
-    await reached(page, 'picked')
     await builds(page, 'fail')
     await release(page)
-    // Shown as not written; storage holds all the file did, so it's left empty.
-    const failed = saveDialog(page, 'Save')
-    await expect(failed).toContainText(
-        '“coconut.nxsp” could not be written. The file is now empty. The chart is still stored in this browser.',
-    )
-    await page.keyboard.press('Escape')
-    await expect(failed).not.toContainText('is now empty')
-    await expect(failed).toContainText('“coconut.nxsp” could not be written.')
-    expect(await readFile(page, 'coconut.nxsp')).toEqual([])
-    await page.keyboard.press('Escape')
-    await expect(failed).toHaveCount(0)
-    await builds(page, undefined)
-    await pressSave(page)
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     const after = await projectOf(page, 'coconut.nxsp')
-    expect(after.id).toBe(before.id)
-    expect((after.history as Row | undefined)?.entries).toBeGreaterThan(0)
+    expect(after.id).not.toBe(before.id)
+    expect((after.revision as Row).parent).toBeNull()
+    expect(after.history).toBeUndefined()
 })

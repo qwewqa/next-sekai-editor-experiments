@@ -57,7 +57,7 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
                 preparing: pickUi.preparing,
                 download: pickUi.download,
                 // Export's dialog closes before an offer shows.
-                notPutBack: (name, emptied, downloadable, _replaced, own) => {
+                notPutBack: (name, emptied, downloadable, own) => {
                     ctx.leave()
                     return own
                         ? ctx.ui.notPutBack(name, emptied, downloadable, true)
@@ -143,7 +143,7 @@ const levelDataPicked = async (
                     ? identity.owner
                     : undefined
             if (owner && env) {
-                const done = await revoke(env, owner, undefined)
+                const done = await revoke(env, owner)
                 if (!done.ok) return shown(env, notTakenOver(name))
                 if (done.revoked) broadcastUpdated()
             }

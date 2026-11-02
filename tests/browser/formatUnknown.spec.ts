@@ -8,7 +8,6 @@ import {
     pressSave,
     projectOf,
     queuePicks,
-    readFile,
     rows,
     start,
     submitSave,
@@ -16,7 +15,7 @@ import {
 } from './saveFlows'
 
 for (const where of ['entity', 'data', 'value and ref'])
-    test(`unknown ${where} content opens unbound and cannot replace its original`, async ({
+    test(`unknown ${where} content opens unbound; Save replaces the original file when picked`, async ({
         page,
     }) => {
         await start(page)
@@ -46,10 +45,8 @@ for (const where of ['entity', 'data', 'value and ref'])
         await queuePicks(page, ['coconut.nxsp'])
         await pressSave(page)
         await submitSave(page)
-        await expect(page.getByRole('dialog')).toContainText(
-            'Not saved. “coconut.nxsp” could not be read in full.',
-        )
-        expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
+        await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+        expect((await projectOf(page, 'coconut.nxsp')).id).toBe(chain.docId)
     })
 
 test("a newer patch alone opens bound with its history, says so once, and saving writes this build's patch", async ({

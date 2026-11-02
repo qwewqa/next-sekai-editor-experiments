@@ -212,7 +212,6 @@ const createWorld = async (setup: Setup = {}) => {
     /** Knobs a fault turns: the own handle's read delay and the answer to a write permission. */
     const tune = {
         readDelayMs: 0,
-        readWaitsForDialog: false,
         buildMs: 5,
         writePermission: 'granted' as PermissionState,
     }
@@ -286,8 +285,6 @@ const createWorld = async (setup: Setup = {}) => {
                 log.push(`getFile:${name}`)
                 if (tune.readDelayMs && name === s.ownFile)
                     await new Promise((resolve) => setTimeout(resolve, tune.readDelayMs))
-                if (tune.readWaitsForDialog && name === s.ownFile)
-                    await world.until(() => preparing.some((p) => p.open), 'Preparing…', 8000)
                 if (readFails.has(name) || readFailsOnce.delete(name))
                     throw new DOMException('Not readable', 'NotReadableError')
                 return inner.getFile()
@@ -508,7 +505,7 @@ const createWorld = async (setup: Setup = {}) => {
             reservations.push({ reservation, ends: [] })
             return reservation
         },
-        endSave(
+        async endSave(
             reservation: SaveReservation,
             entry?: Row,
             identity?: Row,
@@ -520,24 +517,19 @@ const createWorld = async (setup: Setup = {}) => {
             if (session.reserved !== reservation) return Promise.resolve('ended')
             session.reserved = undefined
             if (entry) {
-                // The fake flusher writes the maps, not the store; the door's next call replaces them
-                // with what storage holds.
+                // The matrix models entries through reservations. Completed bindings use the
+                // real handler so ownership assertions read the same store as revocations.
                 if (identity) {
                     ;(session as { identity?: unknown }).identity = {
                         ...identity,
                         seq: reservation.seq,
                     }
-                    const file = { ...(identity.file as Row) }
-                    const picked = file.handle as FileSystemFileHandle | undefined
-                    delete file.handle
-                    const chain = chains.get(session.chainId) ?? {}
-                    chains.set(session.chainId, {
-                        ...chain,
-                        docId: identity.docId,
-                        revision: identity.revision,
-                        file,
+                    session.docId = String(identity.docId)
+                    await worker.call('recordOwnSave', {
+                        chainId: session.chainId,
+                        writer: { sessionId: session.id },
+                        unit: identity,
                     })
-                    if (picked) handleRows.set(`${session.chainId}:file`, picked)
                 }
             } else if (!keep && session.nextSeq - 1 === reservation.seq) session.nextSeq--
             return Promise.resolve(entry ? 'added' : keep ? 'kept' : 'letGo')
@@ -561,7 +553,7 @@ const createWorld = async (setup: Setup = {}) => {
     // The dialogs: what a user would answer, queued by the scenario ----------------------
     const answers = {
         saveDialog: [] as (Row | undefined)[],
-        refused: [] as ('chooseAnother' | 'export' | undefined)[],
+        refused: [] as ('chooseAnother' | undefined)[],
         conflict: [] as ('separate' | 'openOther' | 'replace' | undefined)[],
         notPutBack: [] as ('download' | undefined)[],
         notFound: [] as ('saveAs' | undefined)[],

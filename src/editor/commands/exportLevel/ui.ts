@@ -20,26 +20,22 @@ export const fileErrorText = (name: string, error: FileError) =>
 
 /**
  * What the pick could not put back, emptied or not: Download keeps the bytes. Without `downloadable`
- * there is nothing to give: [OK] only. `replaced`: Recent Sessions' Save… wrote another document over the
- * chain's own file. Export's dialog and the Save family's are this one, each with its own title.
+ * there is nothing to give: [OK] only. Save uses this dialog for a confirmed-empty file.
  */
 export const showNotPutBack = async (
     dialogTitle: () => string,
     name: string,
     emptied: boolean,
     downloadable: boolean,
-    replaced = false,
     own = false,
 ) => {
     const message = interpolate(
         () =>
             own
                 ? i18n.value.save.ownFileEmptied
-                : replaced
-                  ? i18n.value.save.replacedContentGone
-                  : emptied
-                    ? i18n.value.save.notPutBack
-                    : i18n.value.save.openedContentGone,
+                : emptied
+                  ? i18n.value.save.notPutBack
+                  : i18n.value.save.openedContentGone,
         inlineName(name),
     )
     if (!downloadable) {
@@ -108,7 +104,7 @@ export const exportUi: ExportUi = {
             choices: [chooseAnother],
         }),
     notPutBack: (name, emptied, downloadable, own = false) =>
-        showNotPutBack(title, name, emptied, downloadable, false, own),
+        showNotPutBack(title, name, emptied, downloadable, own),
     notFound: (name) =>
         showChoice({
             title,

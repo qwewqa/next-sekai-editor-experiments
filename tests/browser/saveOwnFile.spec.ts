@@ -3,7 +3,6 @@ import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { waitForStartup } from './editorFixture'
 import {
-    builds,
     chainOf,
     deferResume,
     edit,
@@ -11,15 +10,12 @@ import {
     holdImport,
     importing,
     notice,
-    pauseAt,
     pickerCalls,
     pressSave,
     projectOf,
     prompts,
     queuePicks,
-    reached,
     readFile,
-    release,
     releaseImport,
     resumeImport,
     rows,
@@ -31,9 +27,8 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The chain's own file around a save picker: every picker that may return it reads it first, not only a dialog's
-// first; the bytes read go back under the same lock as the pick, or are offered when something
-// else filled the file; a Save during an open's import waits for it, also after a reload.
+// Export reads the chain's own file before its picker and restores held bytes under the pick's
+// lock. Save waits for an open's import, also after a reload.
 
 type Row = Record<string, unknown>
 
@@ -58,42 +53,6 @@ const shortChain = async (page: Page) => {
     const bytes = await readFile(page, 'coconut.nxsp')
     return { before, bytes }
 }
-
-test("Save As…'s Choose Another… after a refused pick reads the chain's own file again and stays Save As…", async ({
-    page,
-}) => {
-    const { before } = await shortChain(page)
-    // An Export target: a project picker refuses it as level data.
-    await queuePicks(page, ['LevelData'])
-    await page.keyboard.press('Shift+P')
-    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
-    await page.keyboard.press('Enter')
-    await expect(notice(page).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
-    expect(await thinUndone(page)).toBe(true)
-
-    await saveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await settle(page)
-    await queuePicks(page, ['LevelData'])
-    await submitSave(page, undefined, 'Save As')
-    const refused = page.getByRole('dialog').filter({ hasText: 'is not a project file' })
-    await expect(refused).toBeVisible()
-    await settle(page)
-    await queuePicks(page, ['coconut.nxsp'])
-    await refused.getByRole('button', { name: 'Choose Another…' }).click()
-    // Save As… again, with its own read of the file first.
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await settle(page)
-    await submitSave(page, undefined, 'Save As')
-    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await expect(
-        notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' }),
-    ).toHaveCount(0)
-    // An append to the bytes read: the file's identity, and its base carried.
-    const after = await projectOf(page, 'coconut.nxsp')
-    expect(after.id).toBe(before.id)
-    expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
-})
 
 test("Export's Choose Another… after its dialog closed reads the chain's own file again before its picker", async ({
     page,
@@ -139,73 +98,6 @@ test("Export's pick of the chain's own file that is not written again gets the b
     await page.keyboard.press('Enter')
     await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
     expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
-})
-
-test('the bytes read go back under the same nse-bind exclusive lock as the pick', async ({
-    page,
-}) => {
-    const { bytes } = await shortChain(page)
-    expect(await thinUndone(page)).toBe(true)
-    await page.evaluate(async () => {
-        const module =
-            (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
-        const own = module.platform
-        const seen = window as unknown as { putBackLocks?: string[] }
-        module.setPlatformForTests({
-            ...own,
-            saveFile: async (req) => {
-                if (req.kind === 'recovery')
-                    seen.putBackLocks = ((await navigator.locks.query()).held ?? []).map(
-                        (lock) => `${lock.name}:${lock.mode}`,
-                    )
-                return own.saveFile(req)
-            },
-        })
-    })
-    await saveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await settle(page)
-    await queuePicks(page, ['coconut.nxsp'])
-    await pauseAt(page, 'picked')
-    await submitSave(page, undefined, 'Save As')
-    await reached(page, 'picked')
-    await builds(page, 'fail')
-    await release(page)
-    await expect(page.getByRole('dialog')).toContainText('coconut.nxsp')
-    await expect.poll(() => readFile(page, 'coconut.nxsp')).toEqual(bytes)
-    await builds(page, undefined)
-    expect(
-        await page.evaluate(() => (window as unknown as { putBackLocks?: string[] }).putBackLocks),
-    ).toContain('nse-bind:exclusive')
-})
-
-test("the chain's own file filled by another write after the pick: the bytes read are offered, then the conflict shows", async ({
-    page,
-}) => {
-    await shortChain(page)
-    expect(await thinUndone(page)).toBe(true)
-    await saveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await settle(page)
-    await queuePicks(page, ['coconut.nxsp'])
-    await pauseAt(page, 'picked')
-    await submitSave(page, undefined, 'Save As')
-    await reached(page, 'picked')
-    // A sync client writes another version into the emptied file.
-    const other = new Uint8Array(
-        await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer(),
-    )
-    await writeFile(page, 'coconut.nxsp', other)
-    await release(page)
-    const offer = page
-        .getByRole('dialog')
-        .filter({ hasText: 'The contents of “coconut.nxsp” have changed.' })
-    await expect(offer).toBeVisible()
-    await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
-    // Nothing was written over the other version.
-    expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
 })
 
 test("a stale reservation's release never ends a later Save's reservation of the same seq", async ({
@@ -360,83 +252,6 @@ test('a Save whose import startup never resumed resumes it and saves, never "cou
         timeout: 20_000,
     })
     await expect(page.getByText('could not be prepared')).toHaveCount(0)
-})
-
-test("a pick of the chain's own file that storage can't place is still the own file: the bytes read are appended to", async ({
-    page,
-}) => {
-    const { before } = await shortChain(page)
-    expect(await thinUndone(page)).toBe(true)
-    const chain = await chainOf(page)
-    await saveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await settle(page)
-    await queuePicks(page, ['coconut.nxsp'])
-    await pauseAt(page, 'picked')
-    await submitSave(page, undefined, 'Save As')
-    await reached(page, 'picked')
-    // At the pick, as after a reload: no handle held, and storage's owners can't be read.
-    await page.evaluate(async (chainId) => {
-        const { forgetHandle } = await import('/src/editor/save/env.ts')
-        forgetHandle(chainId)
-        type Call = (method: string, ...rest: unknown[]) => Promise<unknown>
-        const worker = window.nseStorageTest!.worker as unknown as { call: Call }
-        const own = worker.call.bind(worker)
-        worker.call = (method, ...rest) =>
-            method === 'listHandleOwners'
-                ? Promise.reject(new Error('The storage worker restarted'))
-                : own(method, ...rest)
-    }, chain.chainId as string)
-    await release(page)
-    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    // An append to the bytes read: the file's identity, and its base carried.
-    const after = await projectOf(page, 'coconut.nxsp')
-    expect(after.id).toBe(before.id)
-    expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
-})
-
-test('a put-back over a file filled meanwhile learns it from its size, never reading it whole', async ({
-    page,
-}) => {
-    await shortChain(page)
-    expect(await thinUndone(page)).toBe(true)
-    await page.evaluate(async () => {
-        const module =
-            (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
-        const own = module.platform
-        const seen = window as unknown as { inspected?: [string | null, number][] }
-        seen.inspected = []
-        module.setPlatformForTests({
-            ...own,
-            inspect: async (target, kind) => {
-                const found = await own.inspect(target, kind)
-                seen.inspected!.push([kind ?? null, found === 'missing' ? -1 : found.size])
-                return found
-            },
-        })
-    })
-    await saveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await settle(page)
-    await queuePicks(page, ['coconut.nxsp'])
-    await pauseAt(page, 'picked')
-    await submitSave(page, undefined, 'Save As')
-    await reached(page, 'picked')
-    const other = new Uint8Array(
-        await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer(),
-    )
-    await writeFile(page, 'coconut.nxsp', other)
-    await release(page)
-    const offer = page
-        .getByRole('dialog')
-        .filter({ hasText: 'The contents of “coconut.nxsp” have changed.' })
-    await expect(offer).toBeVisible()
-    const inspected = await page.evaluate(
-        () => (window as unknown as { inspected: [string | null, number][] }).inspected,
-    )
-    // Level data's measure reads and hashes the whole file: never over a filled one.
-    expect(inspected.filter(([kind, size]) => kind === null && size > 0)).toEqual([])
-    expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
 })
 
 test("Export waits for an open's import before its picker, so a pick of the file never stops the import", async ({

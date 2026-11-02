@@ -18,10 +18,8 @@ import {
     type IdentityUnit,
 } from './commit'
 
-// The storage side of the Save core's bindings: reading a
-// chain's binding again under `nse-bind`, the handles a save picker's pick is compared with,
-// a takeover's revocation and pre-bind in one transaction, and our own completed
-// Save's binding recorded.
+// Storage operations for Save: reading bindings and handle owners, revoking matching
+// associations and recording completed writes.
 
 type Row = Record<string, unknown>
 
@@ -94,14 +92,9 @@ export const keepHandle = async (tx: KvTx, chainId: string, name: string, handle
     return true
 }
 
-/** A takeover: another chain's binding or Export target revoked, this chain pre-bound. */
+/** A binding or Export target to revoke. */
 export type TakeOver = {
     owner?: HandleOwner
-    /**
-     * This chain, bound to the picked file in its empty state; none for Recent Sessions' Save…. Save As…
-     * gives its new `docId`, with no revision yet (the identity fields are one unit).
-     */
-    preBind?: { chainId: string; file: Row; docId?: string }
     by: string
     at: number
 }
@@ -109,7 +102,7 @@ export type TakeOver = {
 /**
  * Revokes the owner, when its field is still the one identified (the same `name` and `at`), with
  * `replaced: { by, at, name }`, `edited` and `hasContent` for a binding (an Export target just
- * goes), and pre-binds this chain, in one transaction. Returns what it did.
+ * goes). Returns whether it revoked the association.
  */
 export const takeOver = async (tx: KvTx, request: TakeOver) => {
     let revoked = false
@@ -136,26 +129,7 @@ export const takeOver = async (tx: KvTx, request: TakeOver) => {
             revoked = true
         }
     }
-    let preBound = false
-    if (request.preBind) {
-        const chain = await tx.get('chains', request.preBind.chainId)
-        if (isRow(chain)) {
-            const { docId } = request.preBind
-            const fields = await splitHandles(tx, request.preBind.chainId, {
-                file: request.preBind.file,
-            })
-            const record: Row = { ...chain, file: fields.file }
-            // Bound again: a revocation it had is over.
-            delete record.replaced
-            if (docId !== undefined) {
-                record.docId = docId
-                delete record.revision
-            }
-            await tx.put('chains', record)
-            preBound = true
-        }
-    }
-    return { revoked, preBound }
+    return { revoked }
 }
 
 /** A Save's `save` entry as a marker keeps it (hashes as hex). */

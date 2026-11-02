@@ -4,13 +4,10 @@ import {
     edit,
     flushed,
     notice,
-    pauseAt,
     pickerCalls,
     pressSave,
     projectOf,
     queuePicks,
-    reached,
-    release,
     rows,
     saveDialog,
     sessionOf,
@@ -18,10 +15,7 @@ import {
     submitSave,
 } from './saveFlows'
 
-// Damage in storage that no build has seen yet: a bad stored
-// head chunk never refuses a Save, the head is written from the live records; and when the build
-// made before the picker finds damage, the chain's own file is read before the picker opens, so a
-// pick of it appends to what it holds and nothing it held is lost.
+// Save builds the head from live records and marks damaged stored history as not kept.
 
 type Row = Record<string, unknown>
 
@@ -69,7 +63,7 @@ test('a bad stored head chunk never refuses a Save: the head is written from the
     expect((project.revision as Row).id).toBeTruthy()
 })
 
-test('damage the build before the picker finds: the own file is read first and appended to', async ({
+test('Save As writes damaged stored history as not kept, even onto its own file', async ({
     page,
 }) => {
     await start(page)
@@ -89,16 +83,15 @@ test('damage the build before the picker finds: the own file is read first and a
     await submitSave(page, undefined, 'Save As')
     await expect
         .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).n)
-        .toBe(2)
+        .toBe(1)
     await expect(
         notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' }),
-    ).toHaveCount(0)
+    ).toBeVisible()
     const after = await projectOf(page, 'coconut.nxsp')
-    expect(after.id).toBe(before.id)
+    expect(after.id).not.toBe(before.id)
     const revision = after.revision as Row
-    expect(revision.parent).toBe((before.revision as Row).id)
-    // An append: the file's base is carried, so every step it held is still in it.
-    expect(revision.completeFrom).toBe((before.revision as Row).completeFrom)
+    expect(revision.parent).toBeNull()
+    expect(revision.ancestors).toEqual([])
     // No permission was asked for: the grant this page load holds read it.
     expect((await pickerCalls(page)).some((call) => call.picker === 'permission')).toBe(false)
 })
@@ -129,7 +122,7 @@ test('the same damage without a held grant: no prompt before the picker, and the
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     await expect
         .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).n)
-        .toBe(2)
+        .toBe(1)
     // A prompt between the press and the picker would spend the press the picker needs.
     expect((await pickerCalls(page)).map((call) => call.picker)).toEqual(['save'])
     await expect(
@@ -204,42 +197,4 @@ test("the Save dialog opens though the worker doesn't answer whether it holds th
     )
     expect(written.sha256?.startsWith(bgm)).toBe(true)
     expect(written.size).toBe(4096)
-})
-
-test('Cancel on "Preparing…" while the own file is read before the picker cancels the Save', async ({
-    page,
-}) => {
-    await start(page)
-    await edit(page, 1)
-    await edit(page, 2)
-    await pressSave(page)
-    await submitSave(page, 'coconut')
-    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await edit(page, 3)
-    const first = (await ownRows(page)).find((row) => row.kind === 'edit')!
-    await damage(page, first)
-    const pickers = (await pickerCalls(page)).length
-    // The build finds the damage, and the read before the picker is held.
-    await pauseAt(page, 'preRead')
-    await runSaveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await queuePicks(page, ['coconut.nxsp'])
-    await submitSave(page, undefined, 'Save As')
-    await reached(page, 'preRead')
-    const preparing = page.getByRole('dialog').filter({ hasText: 'Preparing' })
-    await expect(preparing).toBeVisible()
-    await preparing.getByRole('button', { name: 'Cancel' }).click()
-    await release(page)
-    await expect(preparing).toHaveCount(0)
-    // No picker opened, and the file is as it was.
-    await page.waitForTimeout(300)
-    expect((await pickerCalls(page)).length).toBe(pickers)
-    expect(((await projectOf(page, 'coconut.nxsp')).revision as Row).n).toBe(1)
-    // The Save ended: the next one goes on and appends.
-    await runSaveAs(page)
-    await expect(saveDialog(page, 'Save As')).toBeVisible()
-    await submitSave(page, undefined, 'Save As')
-    await expect
-        .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).n)
-        .toBe(2)
 })

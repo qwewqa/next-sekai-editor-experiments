@@ -47,13 +47,12 @@ export const pageDestination = async (request: DestinationRequest): Promise<JobD
             ui: {
                 preparing: pickUi.preparing,
                 download: pickUi.download,
-                notPutBack: (name, emptied, downloadable, replaced, own) =>
+                notPutBack: (name, emptied, downloadable, own) =>
                     showNotPutBack(
                         () => i18n.value.exportVideo.title,
                         name,
                         emptied,
                         downloadable,
-                        replaced,
                         own,
                     ),
             },

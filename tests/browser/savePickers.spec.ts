@@ -120,7 +120,7 @@ test('opening the file just saved keeps the session; a copy of it elsewhere is a
     expect(opened.file).toMatchObject({ name: 'copy.nxsp', event: 'opened' })
 })
 
-test('a self-pick at the base keeps the docId and ancestry, with no line', async ({ page }) => {
+test('Save As onto its own file creates a new document', async ({ page }) => {
     await start(page)
     await savedTo(page, 'coconut.nxsp')
     const first = await projectOf(page, 'coconut.nxsp')
@@ -129,10 +129,8 @@ test('a self-pick at the base keeps the docId and ancestry, with no line', async
     await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('coconut (2)')
     await queuePicks(page, ['coconut.nxsp'])
     await submitSave(page, undefined, 'Save As')
-    await expect
-        .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).parent)
-        .toBe((first.revision as Row).id)
-    expect((await projectOf(page, 'coconut.nxsp')).id).toBe(first.id)
+    await expect.poll(async () => (await projectOf(page, 'coconut.nxsp')).id).not.toBe(first.id)
+    expect((await projectOf(page, 'coconut.nxsp')).id).not.toBe(first.id)
     await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps' })).toHaveCount(0)
 })
 
@@ -153,13 +151,11 @@ test("a self-pick's file is empty from the pick until the write closes, then hol
     const reading = projectOf(page, 'coconut.nxsp')
     await release(page)
     const project = await reading
-    expect((project.revision as Row).parent).toBe((first.revision as Row).id)
-    expect(project.id).toBe(first.id)
+    expect((project.revision as Row).parent).toBeNull()
+    expect(project.id).not.toBe(first.id)
 })
 
-test("the chain's own file changed on disk: a pick puts its bytes back and opens the conflict dialog", async ({
-    page,
-}) => {
+test('Save As replaces its own changed file after the picker confirms it', async ({ page }) => {
     await start(page)
     await savedTo(page, 'coconut.nxsp')
     // Another revision of the file, as another device would write it.
@@ -186,11 +182,9 @@ test("the chain's own file changed on disk: a pick puts its bytes back and opens
     await edit(page, 2)
     await saveAs(page)
     await queuePicks(page, ['coconut.nxsp'])
-    // The read before the picker has time to finish.
-    await page.waitForTimeout(500)
     await submitSave(page, undefined, 'Save As')
-    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
-    expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await expect.poll(() => readFile(page, 'coconut.nxsp')).not.toEqual(changed)
 })
 
 test('Save As… suggests a dotted file name whole, as it is shown', async ({ page }) => {
@@ -269,7 +263,7 @@ for (const [compression, variant] of [
     ["the browser's stream", 0],
     ['level 9', 1],
 ] as const)
-    test(`level data gzipped by ${compression}, opened in this tab and picked in the project picker, is refused and put back`, async ({
+    test(`Save replaces opened level data gzipped by ${compression} with a project`, async ({
         page,
     }) => {
         await start(page)
@@ -286,10 +280,8 @@ for (const [compression, variant] of [
         await queuePicks(page, ['LevelData'])
         await pressSave(page)
         await submitSave(page, 'LevelData')
-        const dialog = page.getByRole('dialog')
-        await expect(dialog).toContainText('“LevelData” is not a project file.')
-        await expect(dialog.getByRole('button', { name: 'Export Level Data…' })).toBeVisible()
-        expect(await readFile(page, 'LevelData')).toEqual(level)
+        await expect(notice(page).filter({ hasText: 'Saved to LevelData' })).toBeVisible()
+        expect((await projectOf(page, 'LevelData')).id).toBe((await chainOf(page)).docId)
     })
 
 test('a download browser downloads, binds by name, and offers Download Again unchanged', async ({
@@ -362,7 +354,7 @@ test("Export's picker: the chain's own project file is refused and written again
     expect((after.revision as Row).parent).toBe((before.revision as Row).id)
 })
 
-test("with storing paused, a takeover writes nothing, and the owner's binding stands across its reload", async ({
+test("with storing paused, Save writes and the owner's stale binding finds a conflict after reload", async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -379,7 +371,8 @@ test("with storing paused, a takeover writes nothing, and the owner's binding st
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(a.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    const written = await readFile(a, 'coconut.nxsp')
 
     await b.reload()
     await waitForStartup(b)
@@ -387,6 +380,10 @@ test("with storing paused, a takeover writes nothing, and the owner's binding st
     const after = chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)!
     expect(after.file).toMatchObject({ name: 'coconut.nxsp', at: (bChain.file as Row).at })
     expect(after.replaced).toBeUndefined()
+    await edit(b, 2)
+    await pressSave(b)
+    await expect(b.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
+    expect(await readFile(b, 'coconut.nxsp')).toEqual(written)
 })
 
 test("Recent Sessions' Save… writes a session that isn't open as a new file, binding nothing", async ({
@@ -431,11 +428,13 @@ test('a sync client writing into the picked file after the pick: nothing is writ
     await reached(page, 'picked')
     await writeFile(page, 'coconut.nxsp', [1, 2, 3, 4])
     await release(page)
-    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
+    await expect(page.getByRole('dialog')).toContainText(
+        'The contents of “coconut.nxsp” have changed.',
+    )
     expect(await readFile(page, 'coconut.nxsp')).toEqual([1, 2, 3, 4])
 })
 
-test('a kill after the revocation: the reload is bound to the emptied file, and Save fills it', async ({
+test('a kill after revocation leaves the session unbound and the picked file empty', async ({
     context,
 }) => {
     const a = await context.newPage()
@@ -453,14 +452,13 @@ test('a kill after the revocation: the reload is bound to the emptied file, and 
     const next = await context.newPage()
     await next.goto('/')
     await waitForStartup(next)
-    await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
+    expect((await sessionOf(next)).file).toBeUndefined()
     await pressSave(next)
-    await expect(notice(next).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await expect(next.getByRole('dialog')).toHaveCount(0)
-    expect((await readFile(next, 'coconut.nxsp'))!.length).toBeGreaterThan(0)
+    await expect(saveDialog(next)).toBeVisible()
+    expect(await readFile(next, 'coconut.nxsp')).toEqual([])
 })
 
-test("B mid-write: A's pick waits for B to finish, then takes the file over", async ({
+test("B mid-write: A's pick waits for B to finish, then refuses the filled file", async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -488,13 +486,13 @@ test("B mid-write: A's pick waits for B to finish, then takes the file over", as
         .poll(async () => ((await chainById(a, bChain.chainId))?.revision as Row | undefined)?.n)
         .toBe(2)
     await expect(b.getByRole('dialog')).toHaveCount(0)
-    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible({
-        timeout: 15_000,
-    })
-    expect((await projectOf(a, 'coconut.nxsp')).id).toBe((await chainOf(a)).docId)
+    await expect(a.getByRole('dialog')).toContainText(
+        'The contents of “coconut.nxsp” have changed.',
+    )
+    expect((await projectOf(a, 'coconut.nxsp')).id).toBe(bChain.docId)
     const { chains } = await rows(a, ['chains'])
     const revoked = chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)!
-    expect(revoked.file).toBeUndefined()
+    expect(revoked.file).toMatchObject({ name: 'coconut.nxsp' })
 })
 
 test("B frozen while A takes its file: once shown, B's label goes and its Save asks", async ({
@@ -525,7 +523,7 @@ test("B frozen while A takes its file: once shown, B's label goes and its Save a
     )
 })
 
-test("a partial open's file picked in the project picker is refused and put back", async ({
+test('Save replaces the original file of a partial open with the requested project', async ({
     page,
 }) => {
     await start(page)
@@ -543,8 +541,7 @@ test("a partial open's file picked in the project picker is refused and put back
     await queuePicks(page, ['coconut.nxsp'])
     await pressSave(page)
     await submitSave(page)
-    await expect(page.getByRole('dialog')).toContainText(
-        'Not saved. “coconut.nxsp” could not be read in full.',
-    )
-    expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    expect(await readFile(page, 'coconut.nxsp')).not.toEqual(bytes)
+    expect((await projectOf(page, 'coconut.nxsp')).id).toBe((await chainOf(page)).docId)
 })

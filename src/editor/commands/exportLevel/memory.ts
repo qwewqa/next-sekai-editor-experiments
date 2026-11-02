@@ -28,11 +28,11 @@ export type OpenedSource = {
     handle: FileSystemFileHandle
     /** This engine's level data by content; a chart or another engine's level is not. */
     levelData: boolean
-    /** Level data whose import left parts out, so it is never written over. */
+    /** Level data whose import left parts out; Export refuses to replace it. */
     partial: boolean
-    /** The bytes read, for a file never written over, to put back if a picker empties it. */
+    /** The bytes read, restored if an export picker refuses the file. */
     bytes?: ArrayBuffer
-    /** A `.nxsp`: whole, it's the chain's own bound file; partial, it's never written over. */
+    /** A `.nxsp`: whole, it is the chain's bound file; partial, Export refuses to replace it. */
     project?: true
     /**
      * A partial or unlinked `.nxsp` open's bytes, kept for a picker that empties the file:
@@ -40,8 +40,7 @@ export type OpenedSource = {
      */
     keptCopy?: Promise<Blob | undefined>
     /**
-     * The bytes read, for the project picker: it never writes over level data or a chart,
-     * which Export may.
+     * The bytes read, for export pickers that refuse the opened file.
      */
     kept?: ArrayBuffer
 }
@@ -84,10 +83,15 @@ export const replaceExportTarget = async (target: ExportTarget, current: () => b
     return true
 }
 
-/** Drops the destination and name after a new-identity Save As. */
-export const clearExportDestination = () => {
+/** Drops a destination that another write has replaced, keeping the suggested name. */
+export const clearExportTarget = () => {
     storedTarget = undefined
     delete exportMemory.target
+}
+
+/** Drops the destination and name after a new-identity Save As. */
+export const clearExportDestination = () => {
+    clearExportTarget()
     delete exportMemory.exportName
     delete exportMemory.sourceName
 }

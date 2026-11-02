@@ -864,7 +864,7 @@ for (const [code, line, button, label] of [
         await load(page, { platform: { fileSystemAccess: 'opfs' } })
         await closedChain(page, { title: 'Alpha', life: 990 })
         await edit(page, { title: 'Beta', life: 980 })
-        // The first write to failed.nxsp fails.
+        // The first write fails, and the resulting file cannot be read.
         await page.evaluate(async (code) => {
             const module =
                 (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
@@ -872,6 +872,12 @@ for (const [code, line, button, label] of [
             let failed = false
             module.setPlatformForTests({
                 ...own,
+                read: (target) =>
+                    failed && target.kind === 'handle' && target.handle.name === 'failed.nxsp'
+                        ? Promise.reject(
+                              new module.FileError('denied', 'The file could not be read'),
+                          )
+                        : own.read(target),
                 saveFile: (request) => {
                     const target = request.target
                     if (failed || target?.kind !== 'handle' || target.handle.name !== 'failed.nxsp')

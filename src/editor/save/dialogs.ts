@@ -158,21 +158,16 @@ export type SaveUi = {
     readOnly: (name: string) => Promise<'saveAs' | undefined>
     /** Other errors, with the plain reason; `saveAs` false where there is no other place. */
     failed: (name: string, message: () => string, saveAs: boolean) => Promise<'saveAs' | undefined>
-    /** `[Cancel]` `[Export Level Data…]` (level data only) `[Choose Another…]` (focused). */
-    refused: (
-        name: string,
-        reason: RefusedReason,
-    ) => Promise<'chooseAnother' | 'export' | undefined>
+    /** An export takeover refused in safe mode. */
+    refused: (name: string, reason: 'safeMode') => Promise<'chooseAnother' | undefined>
     /**
      * Bytes held of a picked file that could not be put back; Download keeps them. Without
-     * `downloadable` there is nothing to give: [OK] only. `replaced`: Recent Sessions' Save… wrote another
-     * document over the chain's own file.
+     * `downloadable` there is nothing to give: [OK] only.
      */
     notPutBack: (
         name: string,
         emptied: boolean,
         downloadable: boolean,
-        replaced?: boolean,
         own?: boolean,
     ) => Promise<'download' | undefined>
     saved: (feedback: SavedFeedback) => void
@@ -362,34 +357,20 @@ export const defaultSaveUi: SaveUi = {
         })
         return undefined
     },
-    refused: (name, reason) => {
-        const { save } = i18n.value
-        const message =
-            reason === 'notKept'
-                ? interpolate(() => i18n.value.save.notKept, inlineName(name))
-                : reason === 'safeMode'
-                  ? () => i18n.value.save.notKeptSafe
-                  : reason === 'levelData'
-                    ? () =>
-                          `${interpolate(() => i18n.value.save.notProject, inlineName(name))()}\n${save.exportHintText}`
-                    : interpolate(() => i18n.value.save.notProject, inlineName(name))
-        return showChoice<'chooseAnother' | 'export'>({
+    refused: () =>
+        showChoice({
             title,
-            message,
+            message: () => i18n.value.save.notKeptSafe,
             choices: [
-                ...(reason === 'levelData'
-                    ? [{ value: 'export' as const, label: () => i18n.value.save.openExport }]
-                    : []),
                 {
-                    value: 'chooseAnother',
+                    value: 'chooseAnother' as const,
                     label: () => i18n.value.save.chooseAnother,
                     default: true,
                 },
             ],
-        })
-    },
-    notPutBack: (name, emptied, downloadable, replaced = false, own = false) =>
-        showNotPutBack(title, name, emptied, downloadable, replaced, own),
+        }),
+    notPutBack: (name, emptied, downloadable, own = false) =>
+        showNotPutBack(title, name, emptied, downloadable, own),
     saved: (feedback) => {
         const text =
             feedback.kind === 'saved' && isPeeking.value && !feedback.ofStored && simple(feedback)

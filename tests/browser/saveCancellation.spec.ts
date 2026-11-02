@@ -158,14 +158,16 @@ test('a successful Save writes once and binds the picked file', async ({ page })
     expect(await bound(page)).toBe('coconut.nxsp')
 })
 
-test('a write that fails before close() aborts, stays bound to the emptied file and offers Save As…', async ({
+test('a failed first Save aborts, reports the empty file and leaves the session unbound', async ({
     page,
 }) => {
     await installSave(page, 'writeFailure')
     await firstSave(page)
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('There is not enough space to write coconut.nxsp.')
-    await expect(dialog.getByRole('button', { name: 'Save As…' })).toBeVisible()
+    await expect(dialog).toContainText(
+        '“coconut.nxsp” could not be written. The file is now empty.',
+    )
+    await expect(dialog.getByRole('button', { name: 'OK', exact: true })).toBeVisible()
     expect(await page.evaluate(() => window.saveReview.events)).toEqual([
         'picker',
         'create',
@@ -173,8 +175,7 @@ test('a write that fails before close() aborts, stays bound to the emptied file 
         'abort',
     ])
     expect(await page.evaluate(() => window.saveReview.downloads)).toEqual([])
-    // The pick emptied the file, so the session is pre-bound to it: the next Save fills it.
-    expect(await bound(page)).toBe('coconut.nxsp')
+    expect(await bound(page)).toBeUndefined()
 })
 
 test('a browser without a save picker downloads, bound by name', async ({ page }) => {

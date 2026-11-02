@@ -5,8 +5,8 @@ import { createWorld, flow, sameBytes, settle, type Setup, type World } from './
 const { FileError } = await import('../../../src/platform')
 const { diskFinding, setDiskFinding } = await import('../../../src/editor/file/state')
 
-// In Recent Sessions' Save of a session that is not open, every button after a failed write or a
-// refused pick acts on that session, and the file records the name the picker gave it. Try Again
+// In Recent Sessions' Save of a session that is not open, every button after a failed write
+// acts on that session, and the file records the name the picker gave it. Try Again
 // and Save As used to save the open session and report success.
 
 type Build = {
@@ -33,6 +33,7 @@ const failOnce = (w: World, name: string, error: () => Error) => {
     w.mock.fault = (point, at) => {
         if (point !== 'checked' || at !== name || fired) return
         fired = true
+        w.mock.files.delete(name)
         throw error()
     }
 }
@@ -87,18 +88,32 @@ test("Recent Sessions' Save: a picked file that is not found leaves the open ses
     assert.equal(diskFinding.value, undefined)
 })
 
-test("Recent Sessions' Save: a refused level data file offers no Export Level Data", async () => {
+test("Recent Sessions' Save writes over level data", async () => {
     const r = await world({ opened: 'levelData' })
     const { w } = r
-    w.pick('opened.nsld', 'unknown.nxsp')
-    w.answers.saveDialog.push(answer('opened.nsld'), answer('unknown.nxsp'))
-    w.answers.refused.push('chooseAnother')
+    w.pick('opened.nsld')
+    w.answers.saveDialog.push(answer('opened.nsld'))
     await flow.saveToFile('session-other')
     await settle()
-    assert.deepEqual(kinds(w, 'refused'), [['opened.nsld', 'notProject']])
-    assert.deepEqual(kinds(w, 'saveDialog'), [['saveToFile'], ['saveToFile']])
+    assert.deepEqual(kinds(w, 'refused'), [])
     await onlyStored(r)
-    assert.deepEqual(kinds(w, 'saved'), [['unknown.nxsp']])
+    assert.deepEqual(kinds(w, 'saved'), [['opened.nsld']])
+})
+
+test("Recent Sessions' Save revokes the open chain's binding", async () => {
+    const { w, builds } = await world()
+    w.pick('own.nxsp')
+    w.answers.saveDialog.push(answer('own.nxsp'))
+    await flow.saveToFile('session-other')
+    await settle()
+    assert.equal(w.boundName(), undefined)
+    assert.equal(
+        (await w.storedChains()).find((row) => row.chainId === 'chain-own')?.file,
+        undefined,
+    )
+    assert.ok(builds.every((build) => build.target.sessionId === 'session-other'))
+    assert.deepEqual(kinds(w, 'saved'), [['own.nxsp']])
+    assert.deepEqual(kinds(w, 'notPutBack'), [])
 })
 
 /** Recent Sessions' Save with "suggested" typed and `fresh.nxsp` picked. */

@@ -18,7 +18,7 @@ const { FileError } = await import('../../../src/platform')
 
 /**
  * `opened`, `chart` and `partial` are the file the session was opened from: level data, a chart
- * that is not level data, and level data with parts left out (the Save core refuses all three).
+ * that is not level data, and level data with parts left out (Save accepts all three).
  */
 export type PickName =
     'own' | 'other' | 'unknown' | 'fresh' | 'target' | 'opened' | 'chart' | 'partial' | 'dismiss'
@@ -97,10 +97,6 @@ const savePlans = [
     'chart',
     'partial',
     'dismiss',
-    'opened>own',
-    'opened>other',
-    'opened>opened>own',
-    'opened>dismiss',
 ].map(plan)
 // Export writes over whole level data it was opened from; it refuses a chart and a partial import.
 const exportPlans = [
@@ -190,7 +186,7 @@ export const PATHS: PathDef[] = [
         id: 'save-as/reloaded',
         family: 'save',
         setup: { own: 'bound', storage: 'lacks', held: false },
-        plans: ['own', 'other', 'partial', 'opened>own', 'dismiss'].map(plan),
+        plans: ['own', 'other', 'partial', 'opened', 'dismiss'].map(plan),
         dialog: true,
         picker: true,
         writes: true,
@@ -215,9 +211,9 @@ export const PATHS: PathDef[] = [
     {
         id: 'save-as/ahead',
         family: 'save',
-        // The own file changed on disk since the binding: a pick of it goes back, then conflicts.
+        // The own file changed on disk since the binding: Save As replaces it with a new document.
         setup: { own: 'bound', storage: 'lacks', ownDisk: 'ahead' },
-        plans: ['own', 'other', 'opened>own', 'dismiss'].map(plan),
+        plans: ['own', 'other', 'opened', 'dismiss'].map(plan),
         dialog: true,
         picker: true,
         writes: true,
@@ -247,7 +243,7 @@ export const PATHS: PathDef[] = [
         id: 'notfound-saveas',
         family: 'save',
         setup: { own: 'missing', storage: 'lacks' },
-        plans: ['own', 'other', 'unknown', 'fresh', 'dismiss', 'opened>fresh'].map(plan),
+        plans: ['own', 'other', 'unknown', 'fresh', 'dismiss', 'opened'].map(plan),
         dialog: true,
         picker: true,
         writes: true,
@@ -380,8 +376,8 @@ const last = (plan: PickPlan) => plan.picks.at(-1)!
 const single = (plan: PickPlan) => plan.picks.length === 1
 const writesFile = (plan: PickPlan) => ['own', 'other', 'unknown', 'fresh'].includes(last(plan))
 const pickerPath = (path: PathDef) => path.picker
-/** A picker that reads the chain's own file first: every picker, Recent Sessions' Save… included. */
-const readsFirst = (path: PathDef) => path.picker && path.setup.own === 'bound'
+/** An export picker that reads the chain's own file first. */
+const readsFirst = (path: PathDef) => path.family === 'export' && path.setup.own === 'bound'
 /** A picker whose pick is built again afterwards: Recent Sessions' Save… and Export build once. */
 const rebuilds = (path: PathDef) =>
     pickerPath(path) && path.family === 'save' && path.id !== 'save-to-file'
@@ -524,7 +520,7 @@ export const FAULTS: FaultDef[] = [
             ((single(p) && last(p) === 'own') ||
                 // A picker with no dialog before it: Choose Another… after a refusal.
                 (['separate', 'export'].includes(path.id) &&
-                    p.id === (path.id === 'export' ? 'chart>own' : 'opened>own'))),
+                    p.id === (path.id === 'export' ? 'chart>own' : 'opened'))),
         arm: (w) => {
             w.tune.readDelayMs = 400
             w.userDelay(2)
@@ -763,8 +759,8 @@ export const FAULTS: FaultDef[] = [
                     ? ['own', 'other']
                     : path.family === 'export'
                       ? ['other']
-                      : ['other', 'unknown', 'fresh']
-            // Another chain's file is refused: Recent Sessions' Save… takes the open chain's own too.
+                      : ['other']
+            // An export refuses the takeover; Save writes despite the failed revocation.
             const owner =
                 last(p) === 'other'
                     ? { chainId: 'chain-other', name: FILES.other }
@@ -773,7 +769,7 @@ export const FAULTS: FaultDef[] = [
                       : undefined
             return {
                 effective: () => calls > 0 || !takes.includes(last(p)),
-                ...(owner ? { facts: { notTakenOver: owner } } : {}),
+                ...(owner && path.family === 'export' ? { facts: { notTakenOver: owner } } : {}),
             }
         },
     },
@@ -1003,36 +999,6 @@ export const FAULTS: FaultDef[] = [
         },
     },
     {
-        id: 'cancel-preread',
-        exit: 'cancel in "Preparing…" during the damaged re-read',
-        applies: (path, p) =>
-            path.picker &&
-            readsFirst(path) &&
-            reserves(path) &&
-            path.dialog &&
-            path.id !== 'save-as/ahead' &&
-            single(p) &&
-            last(p) === 'own',
-        // Storage holds all the file does, so no read came first: the damaged build asks for one.
-        setup: { damaged: true, storage: 'holds' },
-        arm: (w) => {
-            w.tune.readDelayMs = 0
-            w.on('worker:buildSave:after', (n) => {
-                if (n === 1) w.tune.readWaitsForDialog = true
-            })
-            const driver = w.atPoint('preRead', () => {
-                w.cancelled = w.cancel()
-            })
-            return {
-                driver,
-                effective: () => w.cancelled,
-                get facts() {
-                    return { cancelled: w.cancelled && !w.committedWrite() }
-                },
-            }
-        },
-    },
-    {
         id: 'export-cancel',
         exit: 'Export dialog cancelled during its build',
         applies: (path, p) =>
@@ -1088,10 +1054,11 @@ export type CellResult = {
     observed?: boolean
 }
 
-/** Whether the bytes a Save had to keep were expected in hand for this setup. */
+/** Whether an export should hold the file's bytes for this setup. */
 const expectInHand = (path: PathDef, w: World) => (name: string) => {
-    // Export writes over the level data it was opened from; the Save core refuses all three.
-    if (name === 'opened.nsld') return path.family !== 'export' || w.setup.opened !== 'levelData'
+    if (path.family !== 'export') return false
+    // Export still restores sources it refuses.
+    if (name === 'opened.nsld') return w.setup.opened !== 'levelData'
     if (name !== 'own.nxsp') return false
     const s = w.setup
     if (s.own !== 'bound' || s.read === 'denied') return false
@@ -1113,7 +1080,6 @@ const UNWRITTEN = new Set([
     'rebuild-fails',
     'cancel-build',
     'cancel-build-done',
-    'cancel-preread',
     'import-running-cancel',
     'import-pending-never-starts',
     'activation-lapsed-cancel',
@@ -1159,7 +1125,12 @@ export const runCell = async (
         ...(armed.facts ?? {}),
     }
     armed.cleanup?.()
-    const violations = await check(w, facts)
+    const violations = await check(w, {
+        ...facts,
+        ...(path.family === 'save' && fault.id === 'takeover-fails'
+            ? { staleOwnership: true }
+            : {}),
+    })
     if (armed.effective && !armed.effective())
         violations.push({ invariant: 'harness', detail: `${fault.id} did not take effect` })
     if (fault.id === 'none' && w.mock.saveTargets.length)
