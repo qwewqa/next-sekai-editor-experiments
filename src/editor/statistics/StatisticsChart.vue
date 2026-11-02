@@ -29,7 +29,7 @@ import { formatIntegerTime, formatTime } from '../../utils/format'
 import { fill } from '../../utils/interpolate'
 import { formatCount, formatTenths } from '../../utils/size'
 import { formatBeatPosition } from '../beatDisplay'
-import { drawChart, readAt, yLabel, type Reading } from './drawing'
+import { drawChart, readAt, timeLabelAlign, yLabel, type Reading } from './drawing'
 import { chartCategoryColors } from './marks'
 import { statisticsStrings } from './text'
 
@@ -133,7 +133,8 @@ const ink = computed(() => mode.value === 'rolling')
 
 const xTicks = computed(() => {
     const current = model.value
-    if (!current) return []
+    const drawn = drawing.value
+    if (!current || !drawn) return []
     const wide = new Set(timeTicks(current.x1, 6))
     const narrow = new Set(timeTicks(current.x1, 3))
     return [...new Set([...wide, ...narrow])]
@@ -141,6 +142,7 @@ const xTicks = computed(() => {
         .map((time) => ({
             time,
             left: ((time - current.x0) / (current.x1 - current.x0)) * 100,
+            align: timeLabelAlign(drawn.px(time), drawn.width),
             wide: wide.has(time),
             narrow: narrow.has(time),
         }))
@@ -530,7 +532,7 @@ const figureLines = computed(() => figureRows(props.figures, strings.value, loca
                         v-for="tick in xTicks"
                         :key="tick.time"
                         class="stats-tick stats-tick-x"
-                        :class="{ end: tick.left > 95, wide: tick.wide, narrow: tick.narrow }"
+                        :class="[tick.align, { wide: tick.wide, narrow: tick.narrow }]"
                         :style="{ left: `${tick.left}%` }"
                         >{{ formatIntegerTime(tick.time) }}</span
                     >

@@ -11,7 +11,7 @@ import {
 } from '../../levelData/statistics'
 import { formatIntegerTime } from '../../utils/format'
 import { formatCount } from '../../utils/size'
-import { drawChart, yLabel } from './drawing'
+import { drawChart, timeLabelAlign, yLabel } from './drawing'
 import { chartCategoryColors } from './marks'
 
 // The share card: 800 x 450 units drawn at 1600 x 900 px, built like a dialog: a band with the
@@ -417,7 +417,7 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
         g.textBaseline = 'top'
         for (const time of timeTicks(model.x1, 6)) {
             const x = drawing.px(time)
-            g.textAlign = x > drawing.width - 20 ? 'right' : x < 20 ? 'left' : 'center'
+            g.textAlign = timeLabelAlign(x, drawing.width)
             g.fillText(formatIntegerTime(time), x, plotHeight + 5)
         }
         g.restore()

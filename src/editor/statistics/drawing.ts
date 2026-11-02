@@ -32,6 +32,13 @@ export type Drawing = {
 export const yLabel = (value: number, locale: string) => formatCount(value, locale)
 
 /**
+ * A time label's alignment at plot x `x`: centred, or by its start near the plot's left edge and by
+ * its end near the right edge, so it stays within the plot.
+ */
+export const timeLabelAlign = (x: number, width: number) =>
+    x > width - 20 ? 'right' : x < 20 ? 'left' : 'center'
+
+/**
  * Draws a model in a plot of `width` x `height` CSS px at `dpr` device pixels per CSS px, edges
  * snapped to whole device pixels from the plot's origin.
  */

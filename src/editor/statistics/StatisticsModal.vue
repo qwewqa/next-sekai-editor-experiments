@@ -539,7 +539,10 @@ const share = () => {
     top: calc(100% + 0.25rem);
     transform: translateX(-50%);
 }
-.stats-tick-x.end {
+.stats-tick-x.left {
+    transform: none;
+}
+.stats-tick-x.right {
     transform: translateX(-100%);
 }
 .stats-tick-x:not(.narrow) {
