@@ -13,7 +13,7 @@ const isDetailOpen = ref(false)
     <!-- The chart's controls under it take mouse and touch presses and cancel a tap's click. -->
     <div
         role="alert"
-        class="rendering-error absolute inset-0 z-40 flex items-center justify-center overflow-auto bg-bg/95 p-4 text-center text-sm"
+        class="rendering-error absolute inset-0 z-40 flex items-center justify-center overflow-auto bg-bg p-4 text-center text-sm text-white/90"
         @pointerdown.stop
         @mousedown.stop
         @touchstart.stop
