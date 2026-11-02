@@ -297,8 +297,6 @@ export const catalogue = {
             'graphics',
             'memory',
             'hidden',
-            'refused',
-            'ownProject',
             'memoryLimit',
         ),
         format: oneOf('mp4', 'webm'),
