@@ -562,9 +562,16 @@ export const withPickSession = <T>(
                     }
                 }
                 if (landed) return
+                const isEmpty = async (unreadableIsEmpty = true) => {
+                    const now = await platform.inspect(target, 'nxsp').catch(() => undefined)
+                    // Restoration treats an unreadable file as emptied because the picker emptied it.
+                    // The own-file warning requires a confirmed size of zero.
+                    return now === undefined
+                        ? unreadableIsEmpty
+                        : now !== 'missing' && now.size === 0
+                }
                 if (saving) {
-                    const now = await platform.read(target).catch(() => undefined)
-                    if (now?.size === 0) offer = { emptied: true, bytes: undefined, own: true }
+                    if (await isEmpty(false)) offer = { emptied: true, bytes: undefined, own: true }
                     return
                 }
                 if (!identity) return
@@ -576,14 +583,6 @@ export const withPickSession = <T>(
                           ? await Promise.resolve(identity.bytes).catch(() => undefined)
                           : undefined
                 const bytes = held && held.size > 0 ? held : undefined
-                const isEmpty = async (unreadableIsEmpty = true) => {
-                    const now = await platform.inspect(target, 'nxsp').catch(() => undefined)
-                    // Restoration treats an unreadable file as emptied because the picker emptied it.
-                    // The own-file warning requires a confirmed size of zero.
-                    return now === undefined
-                        ? unreadableIsEmpty
-                        : now !== 'missing' && now.size === 0
-                }
                 if (!bytes) {
                     // Emptied, with nothing readable to give back.
                     if (

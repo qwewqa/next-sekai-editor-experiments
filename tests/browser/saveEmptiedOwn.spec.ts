@@ -110,12 +110,6 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
                     }
                     return original.saveFile(request)
                 },
-                read: async (target) => {
-                    const found = await original.read(target)
-                    if (seen.ownFileEvents.includes('no-space'))
-                        seen.ownFileEvents.push(`read:${found.size}`)
-                    return found
-                },
                 inspect: async (target, kind) => {
                     const found = await original.inspect(target, kind)
                     if (seen.ownFileEvents.includes('no-space') && found !== 'missing')
@@ -158,9 +152,7 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
             await page.evaluate(
                 () => (window as unknown as { ownFileEvents: string[] }).ownFileEvents,
             ),
-        ).toEqual(
-            flow === 'Export Level Data' ? ['no-space', 'inspected:0'] : ['no-space', 'read:0'],
-        )
+        ).toEqual(['no-space', 'inspected:0'])
         const locks = await page.evaluate(async () => (await navigator.locks.query()).held)
         expect(locks?.some((lock) => lock.name === 'nse-bind')).toBe(false)
 
