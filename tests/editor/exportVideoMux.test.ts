@@ -103,7 +103,10 @@ test('an MP4 with AAC puts moov before mdat and starts the audio at the AAC dela
     ])
     const delay = 2112
     const videoFrames = 3
-    const audioPackets = 6
+    const samples = 4096
+    // As many packets as an encoder emits for the 1024-sample pad, the delay and the samples.
+    const encoded = 1024 + delay + samples
+    const audioPackets = Math.ceil(encoded / 1024)
     const mp4: SinkConfig = {
         codecs: {
             supported: true,
@@ -113,7 +116,7 @@ test('an MP4 with AAC puts moov before mdat and starts the audio at the AAC dela
         },
         frames: videoFrames,
         frameRate: 30,
-        samples: 4096,
+        samples,
     }
     const target = new BufferTarget()
     const sink = await createMuxSink({ ...mp4, aacDelay: delay }, target)
@@ -149,7 +152,7 @@ test('an MP4 with AAC puts moov before mdat and starts the audio at the AAC dela
                 description: new Uint8Array([0x11, 0x90]),
             },
         })
-    await sink.add({ track: 'audioEnd', paddingSamples: 0 })
+    await sink.add({ track: 'audioEnd', paddingSamples: audioPackets * 1024 - encoded })
     await sink.finalize()
 
     const bytes = new Uint8Array(target.buffer!)
