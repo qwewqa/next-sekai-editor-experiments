@@ -160,21 +160,23 @@ export const createExportDialog = (input: DialogInput) => {
     const stripSpan = computed((): [number, number] =>
         zoomed.value ? zoomSpan(range.value, stripEnd) : [0, stripEnd],
     )
-    const seek = (time: number) => {
-        playhead.value = clampToSpan(time, stripSpan.value, fps())
-    }
-    const kept = (time: number) => keepInSpan(time, stripSpan.value, range.value)
-    /** After a range edit, a playhead outside the strip stops playback and moves into the range. */
-    const keepPlayhead = () => {
-        const next = kept(playhead.value)
-        if (next === playhead.value) return
+    /** Moves the playhead. Playback stops first, or its next frame would put its own time back. */
+    const movePlayhead = (time: number) => {
+        if (time === playhead.value) return
         stopPlayback()
-        playhead.value = next
+        playhead.value = time
+    }
+    const seek = (time: number) => {
+        movePlayhead(clampToSpan(time, stripSpan.value, fps()))
+    }
+    /** A playhead outside the strip moves to the range's nearer end. */
+    const keepPlayhead = (time = playhead.value) => {
+        movePlayhead(keepInSpan(time, stripSpan.value, range.value))
     }
     const setZoomed = (on: boolean) => {
         zoomed.value = on
         const [from, to] = stripSpan.value
-        if (playhead.value < from || playhead.value > to) playhead.value = range.value.in
+        if (playhead.value < from || playhead.value > to) movePlayhead(range.value.in)
     }
 
     const setRange = (next: ClipRange, kind: RangeKind = 'custom') => {
@@ -541,7 +543,7 @@ export const createExportDialog = (input: DialogInput) => {
         attempt.workMs =
             attempt.pressed === undefined ? undefined : performance.now() - attempt.pressed
         // Zoom to Range may have been pressed during the export.
-        playhead.value = kept(returnTo)
+        keepPlayhead(returnTo)
         const ended = current
         if (state.phase === 'cancelled') {
             report({ outcome: 'cancelled', stage: attempt.stage })

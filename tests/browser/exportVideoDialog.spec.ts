@@ -604,6 +604,27 @@ test('Zoom to Range keeps the playhead in the strip', async ({ page }) => {
     await expect(play).toHaveAttribute('aria-label', 'Play')
     await expect(readout).toHaveText('00:06.000')
     await expectInside()
+    // Zoom to Range pressed during playback, before In, moves it to In and stops playback.
+    const zoom = dialog.locator('[data-export-zoom]')
+    await zoom.click()
+    await expect(zoom).toHaveAttribute('aria-pressed', 'false')
+    await field('Out').fill('9.5')
+    await field('Out').press('Enter')
+    await field('In').fill('0')
+    await field('In').press('Enter')
+    await knob.focus()
+    await page.keyboard.press('Home')
+    await expect(readout).toHaveText('00:00.000')
+    await play.click()
+    await expect(play).toHaveAttribute('aria-label', 'Pause')
+    // The strip then shows 7.25 s to 11.25 s.
+    await field('In').fill('9')
+    await field('In').press('Enter')
+    await expect(play).toHaveAttribute('aria-label', 'Pause')
+    await zoom.click()
+    await expect(play).toHaveAttribute('aria-label', 'Play')
+    await expect(readout).toHaveText('00:09.000')
+    await expectInside()
 })
 
 test('I, O and the arrows work after a click on a button, and Space plays', async ({ page }) => {
