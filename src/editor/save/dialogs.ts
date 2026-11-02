@@ -161,8 +161,8 @@ export type SaveUi = {
     /** An export takeover refused in safe mode. */
     refused: (name: string, reason: 'safeMode') => Promise<'chooseAnother' | undefined>
     /**
-     * Bytes held of a picked file that could not be put back; Download keeps them. Without
-     * `downloadable` there is nothing to give: [OK] only.
+     * Reports a failed Save whose file is confirmed empty, or bytes an export could not put back.
+     * Download keeps any bytes offered. Without `downloadable`, only OK is shown.
      */
     notPutBack: (
         name: string,

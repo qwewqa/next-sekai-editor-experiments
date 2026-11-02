@@ -13,9 +13,8 @@ import {
 } from '../save/bind'
 import type { WorkerContext } from './handlers'
 
-// The storage worker's methods for the Save core's bindings: each a short
-// transaction, committed strictly, so a takeover or a recorded Save is on disk before the write
-// that relies on it.
+// Storage worker methods for Save bindings. Each write uses a short transaction
+// committed strictly.
 
 export const bindHandlers = (context: WorkerContext) => ({
     /** A chain's record without handles, read again before a write. */
@@ -33,7 +32,7 @@ export const bindHandlers = (context: WorkerContext) => ({
     keepHandle: ({ chainId, name, handle }: { chainId: string; name: string; handle: unknown }) =>
         context.core.write(['chains', HANDLES], (tx) => keepHandle(tx, chainId, name, handle)),
 
-    /** A save picker's revocation and pre-bind, in one transaction. */
+    /** Revokes a picked file's matching association in one transaction. */
     takeOver: (request: TakeOver) =>
         context.core.write(BIND_STORES, (tx) => takeOver(tx, request), { durability: 'strict' }),
 

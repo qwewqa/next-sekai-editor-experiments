@@ -86,7 +86,7 @@ export type Setup = {
     own?: 'bound' | 'unbound' | 'missing'
     /** The own file's name in place of own.nxsp. */
     ownFile?: string
-    /** Whether storage holds all the own file holds (the read-first is then not needed). */
+    /** Whether storage holds all the own file holds, so Export needs no pre-read. */
     storage?: 'holds' | 'lacks'
     /** `ahead`: the own file changed on disk since the binding. */
     ownDisk?: 'base' | 'ahead'
@@ -104,7 +104,7 @@ export type Setup = {
     target?: boolean
     /** The session was opened from opened.nsld: a chart, level data, or a partial import. */
     opened?: 'notProject' | 'levelData' | 'partial'
-    /** The build reports damage in storage: the own file is read again before the picker. */
+    /** The build reports damage in storage: Export reads the own file again before its picker. */
     damaged?: boolean
     /**
      * `afterReload`: the session was opened from opened.nsld and the page has reloaded since, so

@@ -72,13 +72,13 @@ import { headInput as headOf } from './pending'
 
 /**
  * What kind of write this is:
- * - `append`: a write-back to the chain's own file at the base, or a save picker's return of it
- *   with its bytes read first; `source` is the pinned source's token.
+ * - `append`: a write-back to the chain's own file at the base, or an export's rewrite of it
+ *   with its bytes read before the picker; `source` is the pinned source's token.
  * - `replace`: keep-first (the conflict dialog's Replace; the kept copy is the caller's, committed
  *   before this write), writing `replaces`.
  * - `copy`: a new file keeping the `docId` and the chain's revision as parent: a download, Save as
- *   a Separate File, the not-found dialog's Save As…, the chain's own file picked without its bytes
- *   read, the first Save after a takeover, a write-back over a 0-byte file, and an unbound chain's
+ *   a Separate File, the not-found dialog's Save As, an export rewriting the project without source
+ *   bytes, the first Save after a takeover, a write-back over a 0-byte file, and an unbound chain's
  *   first Save.
  * - `new`: a new `docId` with no parent: Save As…, and with `sessionId` Recent Sessions' Save… of that
  *   session, which binds nothing.

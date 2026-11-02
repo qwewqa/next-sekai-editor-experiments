@@ -43,7 +43,7 @@ export const readChainRecord = async (tx: KvTx, chainId: string) => {
 /** A stored binding or Export target: what a pick is compared with. */
 export type HandleOwner = {
     chainId: string
-    /** `kept`: the file a partial open came from, refused and put back. */
+    /** `kept`: the file a partial open came from. */
     role: 'file' | 'exportTarget' | typeof KEPT_ROLE
     name: string
     /** The binding's `at`, which a takeover checks is unchanged. */

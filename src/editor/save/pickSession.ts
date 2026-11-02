@@ -38,7 +38,7 @@ import {
 
 // Reading the chain's own file before an export picker.
 
-/** The chain's own file read before a picker: its bytes, and the handle they were read from. */
+/** The chain's own file read before an export picker: its bytes and their source handle. */
 export type PreRead = { blob: Blob; disk: DiskState; atBase: boolean; handle: FileSystemFileHandle }
 
 export type ReadResult =
@@ -156,7 +156,7 @@ const sameOrUnsure = async (
 }
 
 /**
- * A pick `identify` can't place (storage's owners unread, no handle held) that is the file the
+ * An export pick `identify` can't place (storage's owners unread, no handle held) that is the file the
  * bytes in hand were read from, or may be: the chain's own. So bytes read from what may be
  * the picked file are appended to or put back, never written over.
  */
@@ -361,9 +361,10 @@ export type PickedFile = {
 
 export type PickSession = Omit<SaveAttempt, 'write' | 'commit' | 'closePreparing'> & {
     /**
-     * Opens the picker and runs `inLock` on its pick inside the hold. For an export that did not
-     * write, restores or offers the held bytes before returning. A failed Save reports the file
-     * here only when it is confirmed empty. `size` is the built file's, for a lapsed activation's press.
+     * Uses the retry destination or opens the picker, then runs `inLock` inside the hold.
+     * An export that did not write restores or offers the held bytes before returning. A failed
+     * Save reports the file here only when it is confirmed empty. `size` is the built file's,
+     * for a lapsed activation's press.
      */
     pick<T>(
         picker: SavePicker,

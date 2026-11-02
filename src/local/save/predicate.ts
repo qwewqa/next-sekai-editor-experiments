@@ -212,7 +212,7 @@ export type SaveNeeds = {
 }
 
 /**
- * Whether reading the chain's own file before a picker could keep anything: rows of
+ * Whether reading the chain's own file before an export picker could keep anything: rows of
  * its base storage lacks, or head media storage lacks. Read from storage alone, so a dialog knows
  * whether to ask for read access before it reads the file.
  */
