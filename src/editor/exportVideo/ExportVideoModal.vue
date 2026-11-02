@@ -81,6 +81,17 @@ const relayout = () => {
     cancelAnimationFrame(frame)
     frame = requestAnimationFrame(applyLayout)
 }
+/** A field in the dialog has focus, a chip's popover included. */
+const typing = (dialog: HTMLDialogElement) => {
+    const active = document.activeElement
+    return (
+        !!active &&
+        dialog.contains(active) &&
+        active.matches('input:not([type="button"], [type="checkbox"], [type="radio"]), textarea')
+    )
+}
+/** A layout that waits for the field being typed into to lose focus. */
+let held = false
 const applyLayout = () => {
     const root = body.value
     const dialog = root?.closest('dialog')
@@ -160,6 +171,10 @@ const applyLayout = () => {
     const baseFit = fit(dialog.clientWidth - side - 32, base === 'land')
     const short = room < baseFit.fixed + 120 + (base === 'one' ? 160 : 0)
     const formNow: Form = short ? 'short' : base
+    // An on-screen keyboard shrinks the viewport. Into or out of land, In and Out swap between a
+    // chip and a field, and the swap would remove the field being typed into.
+    held = (formNow === 'land') !== (form.value === 'land') && typing(dialog)
+    if (held) return
     const stageWidth = dialog.clientWidth - (short ? 0 : side) - 32
     const { transportFit, stacked, length, fixed } = short ? fit(stageWidth, false) : baseFit
     const aspect = d.size.value.width / d.size.value.height
@@ -183,11 +198,18 @@ const applyLayout = () => {
 watch([() => d.size.value, () => d.length.value, phase, () => i18n.value], relayout)
 
 let observer: ResizeObserver | undefined
+const onFocusChange = () => {
+    if (held) relayout()
+}
+let dialogElement: HTMLDialogElement | null | undefined
 onMounted(() => {
-    const dialog = body.value?.closest('dialog')
+    dialogElement = body.value?.closest('dialog')
     observer = new ResizeObserver(relayout)
-    if (dialog) observer.observe(dialog)
+    if (dialogElement) observer.observe(dialogElement)
     window.visualViewport?.addEventListener('resize', relayout)
+    // The chip popovers are teleported to the dialog, outside this component.
+    dialogElement?.addEventListener('focusin', onFocusChange)
+    dialogElement?.addEventListener('focusout', onFocusChange)
     applyLayout()
     // Once more after the fonts and the first layout settle.
     relayout()
@@ -197,6 +219,8 @@ onBeforeUnmount(() => {
     cancelAnimationFrame(frame)
     observer?.disconnect()
     window.visualViewport?.removeEventListener('resize', relayout)
+    dialogElement?.removeEventListener('focusin', onFocusChange)
+    dialogElement?.removeEventListener('focusout', onFocusChange)
     void d.dispose()
 })
 

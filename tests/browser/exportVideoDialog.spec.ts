@@ -985,6 +985,72 @@ test('the landscape chip opens a field that applies on a press outside', async (
     await expect(dialog.locator('[data-clip-chip="In"]')).toContainText('00:02.000')
 })
 
+/** The frames a layout pass can take: the one it is asked in, then its resize observer's. */
+const layoutFrames = (page: Page) =>
+    page.evaluate(
+        () =>
+            new Promise<void>((resolve) => {
+                let left = 3
+                const next = () => (--left ? requestAnimationFrame(next) : resolve())
+                requestAnimationFrame(next)
+            }),
+    )
+
+const resizeDialog = async (page: Page, size: { width: number; height: number }) => {
+    const dialog = videoDialog(page)
+    const before = await dialog.evaluate((element) => element.clientHeight)
+    await page.setViewportSize(size)
+    await expect.poll(() => dialog.evaluate((element) => element.clientHeight)).not.toBe(before)
+    await layoutFrames(page)
+}
+
+// Playwright has no on-screen keyboard. A shorter viewport stands in for one.
+for (const { name, width, height, keyboard, form, settled } of [
+    { name: 'a phone', width: 844, height: 390, keyboard: 180, form: 'land', settled: 'short' },
+    { name: 'a tablet', width: 1180, height: 820, keyboard: 400, form: 'two', settled: 'land' },
+] as const)
+    test(`In keeps its focus and text in landscape on ${name} as the keyboard opens`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width, height })
+        const dialog = await open(page)
+        const shownForm = dialog.locator('[data-export-form]')
+        await expect(shownForm).toHaveAttribute('data-export-form', form)
+        const chip = dialog.locator('[data-clip-chip="In"]')
+        const field =
+            form === 'land'
+                ? dialog.getByRole('group', { name: 'In' }).getByRole('textbox')
+                : dialog.getByRole('textbox', { name: 'In', exact: true })
+        await (form === 'land' ? chip : field).click()
+        await expect(field).toBeFocused()
+        await resizeDialog(page, { width, height: keyboard })
+        await expect(shownForm).toHaveAttribute('data-export-form', form)
+        await expect(field).toBeFocused()
+        await page.keyboard.type('2')
+        await expect(field).toHaveValue('2')
+        await field.press('Enter')
+        if (form !== 'land') await field.blur()
+        // Once the field loses focus, the dialog takes the form for the room it has.
+        await expect(shownForm).toHaveAttribute('data-export-form', settled)
+        await resizeDialog(page, { width, height })
+        await expect(shownForm).toHaveAttribute('data-export-form', form)
+        if (form !== 'land') {
+            await expect(field).toHaveValue('00:02.000')
+            return
+        }
+        await expect(chip).toContainText('00:02.000')
+        // A popover left open with a time that cannot be read closes when its chip goes.
+        await chip.click()
+        await field.fill('1:2:3:4')
+        await dialog.locator('[data-export-transport]').click({ position: { x: 200, y: 5 } })
+        await expect(field).toBeVisible()
+        await resizeDialog(page, { width, height: keyboard })
+        await expect(shownForm).toHaveAttribute('data-export-form', 'short')
+        await resizeDialog(page, { width, height })
+        await expect(chip).toBeVisible()
+        await expect(dialog.getByRole('group', { name: 'In' })).toHaveCount(0)
+    })
+
 test('an export waits for the sound effects, which it takes as it starts', async ({
     page,
 }, testInfo) => {

@@ -81,6 +81,8 @@ const onFocus = () => {
 // --- The chip's popover.
 const open = ref(false)
 const place = ref<{ left: number; top: number }>()
+// Read again after a wait.
+const isOpen = () => open.value
 const openPopover = async () => {
     if (props.busy) return
     open.value = true
@@ -98,6 +100,7 @@ const openPopover = async () => {
     }
     // Shown once placed; a hidden field cannot take focus.
     await nextTick()
+    if (!isOpen()) return
     input.value?.focus()
     window.addEventListener('pointerdown', onOutside, true)
 }
@@ -112,6 +115,13 @@ const onOutside = (event: PointerEvent) => {
     // A press outside applies, as Done on the iOS keyboard does; one that cannot be read stays.
     if (apply()) close(false)
 }
+// A change of form that replaces the chip with a field closes its popover.
+watch(
+    () => props.chip,
+    (chip) => {
+        if (!chip && open.value) close(false)
+    },
+)
 onBeforeUnmount(() => {
     window.removeEventListener('pointerdown', onOutside, true)
 })
