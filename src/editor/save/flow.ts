@@ -1515,7 +1515,7 @@ const dialogSave = async (
     const names = await fieldNames(env, copy ? copyStem(stem, !!binding.file) : stem)
     const replaced = binding.replaced
     const replacedLine = replaced
-        ? [interpolate(() => i18n.value.file.replacedElsewhere, inlineName(replaced.name))]
+        ? [interpolate(() => i18n.value.file.replaced, inlineName(replaced.name))]
         : []
     const input = await dialogInput(env, kind, names, [...lines, ...replacedLine])
     const result = await saveUi.saveDialog(input)

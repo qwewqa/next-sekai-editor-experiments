@@ -2805,7 +2805,7 @@
     }
   },
   "file": {
-    "replacedElsewhere": "“{0}” başka bir sekmeden veya pencereden değiştirildi.",
+    "replaced": "“{0}” dosyasının üzerine yazıldı. Kaydettiğinizde ayrı bir dosya oluşturulacak.",
     "downloaded": "{0} · {1} indirildi",
     "opened": "{0} · {1} açıldı"
   },

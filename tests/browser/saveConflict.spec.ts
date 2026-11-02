@@ -383,6 +383,6 @@ for (const reload of [false, true])
         await edit(a, 9)
         await pressSave(a)
         await expect(saveDialog(a)).toContainText(
-            '“coconut.nxsp” was replaced from another tab or window.',
+            '“coconut.nxsp” was replaced. Saving will create a separate file.',
         )
     })

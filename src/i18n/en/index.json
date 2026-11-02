@@ -2805,7 +2805,7 @@
         }
     },
     "file": {
-        "replacedElsewhere": "“{0}” was replaced from another tab or window.",
+        "replaced": "“{0}” was replaced. Saving will create a separate file.",
         "downloaded": "{0} · downloaded {1}",
         "opened": "{0} · opened {1}"
     },

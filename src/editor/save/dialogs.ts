@@ -47,7 +47,7 @@ export type SaveDialogInput = {
      * saves it.
      */
     placeholder: string
-    /** Lines shown first, such as `file.replacedElsewhere` or `open.damagedHistory`. */
+    /** Lines shown first, such as `file.replaced` or `open.damagedHistory`. */
     lines: (() => string)[]
     history: HistoryRow
     bgm: BgmRow

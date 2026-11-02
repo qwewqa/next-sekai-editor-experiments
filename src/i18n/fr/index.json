@@ -2805,7 +2805,7 @@
     }
   },
   "file": {
-    "replacedElsewhere": "« {0} » a été remplacé depuis un autre onglet ou une autre fenêtre.",
+    "replaced": "« {0} » a été remplacé. La sauvegarde créera un fichier séparé.",
     "downloaded": "{0} · téléchargé {1}",
     "opened": "{0} · ouvert {1}"
   },
