@@ -13,10 +13,13 @@ const invariants = async (
     extra: Partial<Facts> = {},
 ) => (await check(world, { ...facts, ...extra })).map((v) => v.invariant)
 
-test('I1 sees a picked file left empty with no failure shown', async () => {
+test('I1 sees a picked file left empty with no failure shown for it', async () => {
     const world = await createWorld()
     world.before.set('other.nxsp', new Blob(['the bytes it held at its pick']))
     world.mock.writeFile('other.nxsp', new Blob([]))
+    assert.deepEqual(await invariants(world), ['I1'])
+    // The missing-file Save As: its notFound dialog is the bound file's, not the pick's.
+    world.dialogs.push({ kind: 'notFound', args: ['own.nxsp'], lockHeld: false })
     assert.deepEqual(await invariants(world), ['I1'])
     world.dialogs.push({ kind: 'emptied', args: ['other.nxsp'], lockHeld: false })
     assert.deepEqual(await invariants(world), ['info:emptied'])

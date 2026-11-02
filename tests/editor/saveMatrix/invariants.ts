@@ -49,12 +49,13 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     const found: Violation[] = []
     const add = (invariant: string, detail: string) => found.push({ invariant, detail })
 
-    // I1: a picked file that held bytes and ends empty was reported. Reported, it is the accepted
-    // residual of a failed write, recorded for the survey.
-    const reported = world.dialogs.some((dialog) => FAILURE.has(dialog.kind))
+    // I1: a picked file that held bytes and ends empty was reported, by a failure dialog naming it.
+    // Reported, it is the accepted residual of a failed write, recorded for the survey.
+    const reported = (name: string) =>
+        world.dialogs.some((dialog) => FAILURE.has(dialog.kind) && dialog.args[0] === name)
     for (const [name, blob] of world.before)
         if (blob?.size && (await bytesOf(world.mock.files.get(name)))?.length === 0)
-            if (reported) add('info:emptied', name + ' ends empty')
+            if (reported(name)) add('info:emptied', name + ' ends empty')
             else add('I1', `${name} held ${blob.size} bytes at its pick and ends empty, unreported`)
 
     // I2: a write to a picked file holds `nse-bind` exclusive.
