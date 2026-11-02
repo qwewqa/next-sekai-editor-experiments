@@ -1409,6 +1409,11 @@ test('Escape over a hovered flyout cancels a rename', async ({ page }) => {
 
 test('Escape over a hovered flyout closes a dialog opened over it', async ({ page }) => {
     await page.mouse.click(700, 300)
+    // The dialog opens under the resting pointer. Over an info button, the pointer shows its
+    // description after 400 ms, and Escape then closes the description, not the dialog. The
+    // stopped clock keeps the description closed however slow the machine is.
+    await page.clock.install()
+    await page.clock.pauseAt(new Date(Date.now() + 60_000))
     for (const key of [',', 'h']) {
         await hoverFlyout(page)
         await page.keyboard.press(key)
