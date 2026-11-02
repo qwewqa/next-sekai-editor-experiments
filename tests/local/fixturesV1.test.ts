@@ -617,11 +617,7 @@ test('the main dump holds every stored row form of v1', async () => {
         assert.ok(summary.has(field), `summary.${field}`)
 
     const handles = valuesOf(dump, 'handles')
-    assert.deepEqual([...new Set(handles.map((row) => row.role))].sort(), [
-        'exportTarget',
-        'file',
-        'kept',
-    ])
+    assert.deepEqual([...new Set(handles.map((row) => row.role))].sort(), ['exportTarget', 'file'])
     for (const row of handles)
         assert.deepEqual(Object.keys(row.handle as object).sort(), ['$handle', 'name'])
 

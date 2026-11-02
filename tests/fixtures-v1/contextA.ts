@@ -541,9 +541,7 @@ export const stepA9 = async (a: A, tab: Tab) => {
     chains.P = opened.chainId as string
     expect(opened.file).toBeUndefined()
     expect(opened.partialImport).toBe(true)
-    expect((await tab.stored('handles')).find((row) => row.chainId === chains.P)).toMatchObject({
-        role: 'kept',
-    })
+    expect((await tab.stored('handles')).filter((row) => row.chainId === chains.P)).toEqual([])
     await saveAs(tab, { pick: forkName, name: 'fork', history: true })
     await expect(tab.notice(`Saved to ${forkName}`)).toBeVisible()
     await tab.stored_()
