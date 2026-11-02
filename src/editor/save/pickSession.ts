@@ -48,7 +48,11 @@ export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
     /** A denied Save retries its picked file without opening another picker. */
     readonly target?: FileTarget & { kind: 'handle' }
     readonly ui: AttemptSpec['ui'] & {
-        emptied(name: string): Promise<void>
+        /**
+         * Reports a failed write that left the picked file confirmed empty, after the hold. Video
+         * has none: it describes its failure once the stream is cleaned up.
+         */
+        readonly emptied?: (name: string) => Promise<void>
     }
 }
 
@@ -193,12 +197,11 @@ export const withPickSession = <T>(
                         failure = { error }
                     }
                 }
-                // Video failures are reported after the stream has been cleaned up.
-                if (landed || spec.surface === 'video') return
+                if (landed || !spec.ui.emptied) return
                 const now = await platform.read(target).catch(() => undefined)
                 emptied = now?.size === 0
             })
-            if (emptied) await spec.ui.emptied(name)
+            if (emptied) await spec.ui.emptied?.(name)
             if (failure) throw named(failure.error, name)
             return result as R
         }

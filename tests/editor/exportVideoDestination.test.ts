@@ -26,7 +26,6 @@ const options = (): Parameters<typeof prepareVideoDestination>[0] => ({
             preparing: () => {
                 throw new Error('Unexpected UI')
             },
-            emptied: async () => undefined,
         },
     },
 })

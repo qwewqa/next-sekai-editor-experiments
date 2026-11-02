@@ -16,7 +16,7 @@ export const pickVideo = async (options: {
     name: string
     type: SavePickerType
     signal?: AbortSignal
-    ui: PickSpec['ui']
+    ui: Pick<PickSpec['ui'], 'preparing'>
 }): Promise<PickedVideo> => {
     const env = environment()
     const result = await withPickSession<PickedVideo>(
@@ -25,7 +25,7 @@ export const pickVideo = async (options: {
             name: options.name,
             surface: 'video',
             commitFirst: false,
-            ui: options.ui,
+            ui: { preparing: options.ui.preparing },
             ...(options.signal ? { signal: options.signal } : {}),
         },
         (session) =>

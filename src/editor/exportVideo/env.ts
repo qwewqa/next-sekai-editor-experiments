@@ -7,7 +7,6 @@ import type { ExportFaults } from '../../exportVideo/protocol'
 import { i18n } from '../../i18n'
 import { platform } from '../../platform'
 import { handOver } from '../../platform/handover'
-import { showEmptied } from '../commands/exportLevel/ui'
 import { pickUi } from '../save/flow'
 import { pickVideo } from '../save/videoPick'
 import { pickedDestination, prepareVideoDestination } from './destination'
@@ -43,10 +42,7 @@ export const pageDestination = async (request: DestinationRequest): Promise<JobD
                 extension: `.${request.format}`,
             },
             signal: request.signal,
-            ui: {
-                preparing: pickUi.preparing,
-                emptied: (name) => showEmptied(() => i18n.value.exportVideo.title, name),
-            },
+            ui: { preparing: pickUi.preparing },
         },
         id: request.id,
         format: request.format,
