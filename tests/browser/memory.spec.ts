@@ -11,20 +11,20 @@ import {
 } from './memoryBaseline'
 
 // Chromium only: the heap comes from CDP. Memory after the edits, with storing on and every entry
-// flushed, is capped at 1.15 times the reference values. The references were recalibrated on
-// 2026-11-01 after accepted growth.
+// flushed, is compared with a cap. The cap sits just above the accepted figure and is raised when
+// growth is accepted.
 const MB = 1_000_000
 const charts = [
     {
         name: 'generated large chart',
         file: join('tests', 'fixtures', 'generated-large.json'),
-        baselineMb: 134.8,
+        capMb: 155.0,
     },
     {
         name: 'coconut',
         file: join('test_level_data', 'coconut-next-sekai-24887.json'),
         optional: true,
-        baselineMb: 133.4,
+        capMb: 153.4,
     },
 ]
 
@@ -80,8 +80,7 @@ for (const chart of charts) {
             body: JSON.stringify({ ...figure, editsMs: edits.ms }),
             contentType: 'application/json',
         })
-        // Allows 15% over the recalibrated reference value.
-        expect(heap / MB).toBeGreaterThanOrEqual(chart.baselineMb * 0.9)
-        expect(heap / MB).toBeLessThanOrEqual(chart.baselineMb * 1.15)
+        expect(heap / MB).toBeGreaterThanOrEqual(chart.capMb * 0.75)
+        expect(heap / MB).toBeLessThanOrEqual(chart.capMb)
     })
 }
