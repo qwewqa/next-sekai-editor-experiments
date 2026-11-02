@@ -76,7 +76,7 @@ The client reads the rest: the settings (`snapshot.ts`), the load events, the st
 - the browser is not automated (`navigator.webdriver`), unless a dev build's test key or a loopback origin points it at a mock;
 - the page is on its site's host (`nse.qwewqa.dev` or `test.nse.qwewqa.dev`) or on this machine, so a copy of the files hosted elsewhere sends nothing.
 
-The switch appears only in a build with a target. Reset Settings… skips it, and its hint says so in those builds.
+The switch appears only in a build with a target. Reset Settings… skips it, and its confirmation says so in those builds.
 
 ## Privacy rules
 

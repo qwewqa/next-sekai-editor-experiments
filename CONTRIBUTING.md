@@ -131,7 +131,7 @@ Read these before you change a format:
 
 Read this before you write or review code or tests:
 
-- [docs/engineering-principles.md](docs/engineering-principles.md): defaults and unknowns, one source per fact, owned module state, failures that are not empty, honest tests, shared spec helpers, true text, explicit prerelease compatibility boundaries, proportionate protection, and tests and UI elements that earn their place.
+- [docs/engineering-principles.md](docs/engineering-principles.md): defaults and unknowns, one source per fact, owned module state, failures that are not empty, honest tests, shared spec helpers, true text, explicit prerelease compatibility boundaries, proportionate protection, tests and UI elements that earn their place, and users deleting history while automatic processes do not.
 
 ## Performance
 

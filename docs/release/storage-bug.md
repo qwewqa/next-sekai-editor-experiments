@@ -55,12 +55,6 @@ There is no `tools/recover.py`. It is deferred until a storage bug needs it.
 
 Send the files back privately, as a link by email. Then delete the user’s ZIP, the copy in `samples/`, every other copy, and the browser profile you loaded it into. The privacy page says how such files are handled: they are used only to fix the problem and deleted when it is fixed.
 
-## 8. Tried once
+## 8. Last tried
 
-The steps above were tried on 2026-10-26, at commit `72311609` (branch `release-fixtures`), with the dev server on port 5597, `NSE_SAMPLES_DIR` set to a scratch folder and a fresh Chromium profile without the save picker, driven by a script.
-
-- `tests/fixtures/web-storage-v1/raw-export.zip` (411 kB) is `dump.json` (1.56 MB) followed by five `blobs/<n>` entries: `format` `nse-local-data-dump`, `version` 1, `appVersion` `0.5.22+0d503931`, database `nse-local-data` version 1.
-- The ZIP was copied unchanged to the scratch folder as `trial.zip`. `/?seedSample=trial.zip` seeded the profile, the console said `[seedSample] Seeded trial.zip; reloading.`, and the editor opened.
-- History › Recent Sessions listed six chains: `fixture` (the one the editor continued, 544 notes), `fork.nxsp` (542), `no-history.nxsp` (27), `fork` (not saved to a file, 2), `no-media.nxsp` (1) and `Untitled` (0).
-- Restore Session of `no-media.nxsp` opened it.
-- ⋯ › Save… on `fork.nxsp` opened the Save Project File dialog (History 8 steps, 8.4 kB; BGM 48 kB; about 82.7 kB in all), and Save downloaded `fork (restored Nov 5).nxsp` (83,581 bytes). The editor’s reader opens it fully with an empty report and nine History entries (the eight steps and the Save).
+The steps above were last tried on 2026-10-26.

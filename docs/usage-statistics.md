@@ -211,7 +211,7 @@ Recorded when the storage status or the number of sessions in Recent Sessions be
 
 ### `chart`
 
-Recorded after a chart is opened through **Open File…**, a stored session is shown or a chart is saved. The chart must contain notes or animation events.
+Recorded after a chart is opened through **Open…**, a stored session is shown or a chart is saved. The chart must contain notes or animation events.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -240,7 +240,7 @@ Recorded when statistics collection starts, if the preview is shown, and when th
 
 ### `open`
 
-Recorded when an attempt to open a chart through **Open File…** ends, including a level opened from a Sonolus package. Opening audio or archives, the list of a package’s items, and dropping files onto the editor are not recorded.
+Recorded when an attempt to open a chart through **Open…** ends, including a level opened from a Sonolus package. Opening audio or archives, the list of a package’s items, and dropping files onto the editor are not recorded.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
