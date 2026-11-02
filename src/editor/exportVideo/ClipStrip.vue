@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, 
 import { i18n } from '../../i18n'
 import { chartModel, chartStatistics, mergeTimes } from '../../levelData/statistics'
 import { createFontContext } from '../../rendering/textRaster'
-import { toFrame, zoomSpan, type RangeKind } from './clipRange'
+import type { RangeKind } from './clipRange'
 import { formatClipTime, rulerLabel, rulerStep } from './clipTime'
 import type { ExportDialog } from './dialog'
 
@@ -11,7 +11,6 @@ import type { ExportDialog } from './dialog'
 // playhead. The playhead, In and Out are sliders, in that tab order.
 const props = defineProps<{
     dialog: ExportDialog
-    zoomed: boolean
     /** 48 px on phones and in phone landscape, else 56. */
     compact: boolean
     /** Below a 360 px body in phone landscape: the knob moves into the track. */
@@ -43,17 +42,13 @@ type Drag = {
     }
 }
 const drag = shallowRef<Drag>()
-const span = ref<[number, number]>([0, d.stripEnd])
+const span = ref<[number, number]>(d.stripSpan.value)
 const remap = () => {
-    span.value = props.zoomed ? zoomSpan(d.range.value, d.stripEnd) : [0, d.stripEnd]
+    span.value = d.stripSpan.value
 }
-watch(
-    () => [props.zoomed, d.range.value] as const,
-    () => {
-        if (!drag.value) remap()
-    },
-    { immediate: true },
-)
+watch(d.stripSpan, () => {
+    if (!drag.value) remap()
+})
 const x = (time: number) => ((time - span.value[0]) / (span.value[1] - span.value[0])) * width.value
 const timeAt = (px: number) =>
     span.value[0] +
@@ -144,8 +139,7 @@ const target = (px: number, py: number): Drag['kind'] => {
     return 'playhead'
 }
 const moveTo = (kind: Drag['kind'], time: number) => {
-    const fps = d.fps()
-    if (kind === 'playhead') d.playhead.value = Math.min(d.stripEnd, toFrame(time, fps))
+    if (kind === 'playhead') d.seek(time)
     else {
         d.setClipEnd(kind, time)
         // The frame view shows the end being moved.
@@ -341,8 +335,8 @@ onBeforeUnmount(() => {
             role="slider"
             :tabindex="0"
             :aria-label="i18n.exportVideo.playhead"
-            :aria-valuemin="0"
-            :aria-valuemax="Math.round(d.stripEnd * 1000) / 1000"
+            :aria-valuemin="Math.round(span[0] * 1000) / 1000"
+            :aria-valuemax="Math.round(span[1] * 1000) / 1000"
             :aria-valuenow="Math.round(d.playhead.value * 1000) / 1000"
             :aria-valuetext="sliderText(d.playhead.value)"
             :aria-disabled="d.busy.value || undefined"

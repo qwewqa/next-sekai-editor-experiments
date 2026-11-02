@@ -551,6 +551,47 @@ test('the strip takes a touch drag', async ({ page }) => {
     expect(value).toBeLessThan(end * 0.6)
 })
 
+test('Zoom to Range keeps the playhead in the strip', async ({ page }) => {
+    await page.evaluate(() => (window.editorTest.view.cursorTime = 0))
+    const dialog = await open(page)
+    const field = (name: string) => dialog.getByRole('textbox', { name, exact: true })
+    for (const [name, value] of [
+        ['In', '6'],
+        ['Out', '8'],
+    ] as const) {
+        await field(name).fill(value)
+        await field(name).press('Enter')
+    }
+    const strip = dialog.locator('[data-clip-strip]')
+    const knob = dialog.locator('[data-clip-playhead]')
+    const readout = dialog.locator('[data-export-readout]')
+    const expectInside = async () => {
+        const edge = (await strip.boundingBox())!
+        const box = (await knob.boundingBox())!
+        const center = box.x + box.width / 2
+        expect(center).toBeGreaterThanOrEqual(edge.x - 0.5)
+        expect(center).toBeLessThanOrEqual(edge.x + edge.width + 0.5)
+    }
+    // The strip shows 5 s to 9 s, and the playhead at 0 moves to In.
+    await dialog.locator('[data-export-zoom]').click()
+    await expect(readout).toHaveText('00:06.000')
+    await expectInside()
+    // Steps past an edge stop there: the knob's keys, then the dialog's.
+    await knob.focus()
+    for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowRight')
+    await expect(readout).toHaveText('00:09.000')
+    await expectInside()
+    await dialog.locator('[data-export-frame]').focus()
+    for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowLeft')
+    await expect(readout).toHaveText('00:05.000')
+    await expectInside()
+    // A range change that leaves the playhead outside the strip moves it to the nearer end.
+    await field('In').fill('7.5')
+    await field('In').press('Enter')
+    await expect(readout).toHaveText('00:07.500')
+    await expectInside()
+})
+
 test('I, O and the arrows work after a click on a button, and Space plays', async ({ page }) => {
     // The playhead starts at the editor's cursor.
     await page.evaluate(() => (window.editorTest.view.cursorTime = 0))

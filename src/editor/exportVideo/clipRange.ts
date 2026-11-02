@@ -181,3 +181,14 @@ export const zoomSpan = (range: ClipRange, stripEnd: number): [number, number] =
     }
     return [from, to]
 }
+
+/** A playhead time: on the frame grid, inside the span. */
+export const clampToSpan = (time: number, span: readonly [number, number], fps: number) =>
+    Math.min(
+        toFrame(span[1], fps, 'down'),
+        Math.max(toFrame(span[0], fps, 'up'), toFrame(time, fps)),
+    )
+
+/** A playhead outside the span moves to the range's nearer end. */
+export const keepInSpan = (time: number, span: readonly [number, number], range: ClipRange) =>
+    time < span[0] ? range.in : time > span[1] ? range.out : time

@@ -41,8 +41,10 @@ import { beatToTime } from '../../state/integrals/bpms'
 import { copyExportAssets } from './assets'
 import {
     clampRange,
+    clampToSpan,
     clipLength,
     frameCount,
+    keepInSpan,
     lastObjectBeat,
     openingRange,
     selectionRange,
@@ -52,6 +54,7 @@ import {
     toFrame,
     wholeChartEnd,
     wholeRange,
+    zoomSpan,
     type ClipRange,
     type RangeKind,
 } from './clipRange'
@@ -151,14 +154,32 @@ export const createExportDialog = (input: DialogInput) => {
     const remember = () =>
         rangeMemory.set(input.chain, { kind: rangeKind.value, range: range.value })
 
+    // --- The span the strip shows: the whole strip, or the range's under Zoom to Range. The
+    // playhead stays inside it.
+    const zoomed = ref(false)
+    const stripSpan = computed((): [number, number] =>
+        zoomed.value ? zoomSpan(range.value, stripEnd) : [0, stripEnd],
+    )
+    const seek = (time: number) => {
+        playhead.value = clampToSpan(time, stripSpan.value, fps())
+    }
+    const kept = (time: number) => keepInSpan(time, stripSpan.value, range.value)
+    const setZoomed = (on: boolean) => {
+        zoomed.value = on
+        const [from, to] = stripSpan.value
+        if (playhead.value < from || playhead.value > to) playhead.value = range.value.in
+    }
+
     const setRange = (next: ClipRange, kind: RangeKind = 'custom') => {
         range.value = clampRange(next, stripEnd, fps())
+        playhead.value = kept(playhead.value)
         rangeKind.value = kind
         remember()
         changed()
     }
     const setClipEnd = (end: 'in' | 'out', time: number) => {
         range.value = setEnd(range.value, end, time, stripEnd, fps())
+        playhead.value = kept(playhead.value)
         rangeKind.value = 'custom'
         remember()
         changed()
@@ -512,7 +533,8 @@ export const createExportDialog = (input: DialogInput) => {
         document.removeEventListener('visibilitychange', onHidden)
         attempt.workMs =
             attempt.pressed === undefined ? undefined : performance.now() - attempt.pressed
-        playhead.value = returnTo
+        // Zoom to Range may have been pressed during the export.
+        playhead.value = kept(returnTo)
         const ended = current
         if (state.phase === 'cancelled') {
             report({ outcome: 'cancelled', stage: attempt.stage })
@@ -739,6 +761,10 @@ export const createExportDialog = (input: DialogInput) => {
         range,
         rangeKind,
         playhead,
+        seek,
+        zoomed,
+        stripSpan,
+        setZoomed,
         span,
         frames,
         length,

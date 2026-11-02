@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
     clampRange,
+    clampToSpan,
     frameCount,
+    keepInSpan,
     lastObjectBeat,
     leadIn,
     openingRange,
@@ -133,6 +135,18 @@ test('zoom maps the range with 10 % a side, at least 4 s, inside the strip', () 
     assert.deepEqual(zoomSpan({ in: 10, out: 11 }, 100), [8.5, 12.5])
     assert.deepEqual(zoomSpan({ in: 0, out: 1 }, 100), [0, 4])
     assert.deepEqual(zoomSpan({ in: 99, out: 100 }, 100), [96, 100])
+})
+
+test('the playhead stays inside the span, on the frame grid', () => {
+    // Seeks and steps stop at the first and last frames inside it.
+    close(clampToSpan(12, [8.98, 10.01], 30), 10)
+    close(clampToSpan(5, [8.98, 10.01], 30), 9)
+    close(clampToSpan(9.51, [8.98, 10.01], 30), 9.5)
+    // A playhead outside the span moves to the nearer end of the range.
+    const range = { in: 10, out: 11 }
+    assert.equal(keepInSpan(2, [8.5, 12.5], range), 10)
+    assert.equal(keepInSpan(20, [8.5, 12.5], range), 11)
+    assert.equal(keepInSpan(9, [8.5, 12.5], range), 9)
 })
 
 test('clip times are written and read', () => {

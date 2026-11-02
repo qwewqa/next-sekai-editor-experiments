@@ -37,7 +37,6 @@ const isBusy = () => d.busy.value
 const frameBox = useTemplateRef<HTMLDivElement>('frameBox')
 const wrap = useTemplateRef<HTMLDivElement>('wrap')
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
-const zoomed = ref(false)
 
 // --- The frame view: the output frame at the playhead, drawn by the export worker.
 const wrapSize = ref({ width: 0, height: 0 })
@@ -176,10 +175,7 @@ const stepBy = (direction: -1 | 1, seconds?: number) => {
     pause()
     const fps = d.fps()
     const size = seconds === undefined ? 1 / fps : Math.max(1 / fps, toFrame(seconds, fps))
-    d.playhead.value = Math.min(
-        d.stripEnd,
-        Math.max(0, toFrame(d.playhead.value + direction * size, fps)),
-    )
+    d.seek(d.playhead.value + direction * size)
 }
 const endHold = () => {
     clearTimeout(hold)
@@ -274,7 +270,7 @@ const onMenuSelect = (key: string, keyboard: boolean) => {
     else if (key === 'selection') d.useSelection()
 }
 const toggleZoom = () => {
-    zoomed.value = !zoomed.value
+    d.setZoomed(!d.zoomed.value)
 }
 
 // --- In, Out and Length.
@@ -504,7 +500,6 @@ defineExpose({ play, pause, stepBy, setIn, setOut, frameBox })
         <div class="flex shrink-0 items-end gap-2" data-export-timeline>
             <ClipStrip
                 :dialog
-                :zoomed
                 :compact="layout.compactStrip"
                 :hide-ruler="layout.hideRuler"
                 @scrub="pause"
@@ -513,7 +508,7 @@ defineExpose({ play, pause, stepBy, setIn, setOut, frameBox })
                 type="button"
                 class="export-hit btn btn-secondary btn-toggle relative flex size-9 shrink-0 items-center justify-center rounded-full"
                 :style="{ marginBottom: `${((layout.compactStrip ? 48 : 56) - 36) / 2}px` }"
-                :aria-pressed="zoomed"
+                :aria-pressed="d.zoomed.value"
                 :title="i18n.exportVideo.zoom"
                 :aria-label="i18n.exportVideo.zoom"
                 data-export-zoom
