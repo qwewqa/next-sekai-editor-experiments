@@ -5,15 +5,11 @@ import {
     bgmInput,
     bgmOffsetInput,
     groupEditInput,
-    initialLifeInput,
     stageEditInput,
     type BgmParts,
     type GroupEditKey,
     type StageEditKey,
 } from './headerLabelText'
-
-export const initialLifeOperation = (before: number, after: number) =>
-    createHistoryOperation(initialLifeInput(before, after))
 
 export const bgmOffsetOperation = (before: number, after: number) =>
     createHistoryOperation(bgmOffsetInput(before, after))

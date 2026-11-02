@@ -11,14 +11,6 @@ import type { CanvasBounds } from './types'
 // A new or opened chart leaves the previous one's geometry unused.
 onResetState(releaseUnusedPaths)
 
-/** Erases a surface in backing pixels, independently of the scene transform. */
-export const clearSurface = (ctx: WebGLDrawContext, width: number, height: number) => {
-    ctx.save()
-    ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.clearRect(0, 0, width, height)
-    ctx.restore()
-}
-
 /** Backing dimensions of a surface at least one device pixel across. */
 export const deviceSize = (width: number, height: number, pixelRatio: number) =>
     [

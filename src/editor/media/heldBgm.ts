@@ -3,7 +3,6 @@ import { recordError } from '../../diagnostics'
 import { session } from '../../history/session'
 import { isPeeking, liveState, replaceState } from '../../history/stack'
 import type { BatchMedia } from '../../local/flushWrite'
-import type { StorageWorker } from '../../local/worker/client'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
 import { TaskFailure } from '../../utils/error'
@@ -294,19 +293,6 @@ export const isHeldHere = (bgm: Bgm) =>
 
 /** Whether the media store holds a hash; `failed` when it could not be asked, which says nothing. */
 export type StoredStatus = 'held' | 'absent' | 'failed'
-
-/** One key read of the media store. */
-export const storedStatus = async (
-    worker: Pick<StorageWorker, 'call'>,
-    hash: string,
-): Promise<StoredStatus> => {
-    try {
-        return (await worker.call('mediaHeld', [hash])).includes(hash) ? 'held' : 'absent'
-    } catch (error) {
-        recordError(error)
-        return 'failed'
-    }
-}
 
 /**
  * Whether a notice about an unheld hash may be said now: once per hash per session (cleared when
