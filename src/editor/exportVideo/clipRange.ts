@@ -126,7 +126,10 @@ export const clampRange = (range: ClipRange, stripEnd: number, fps: number): Cli
     return { in: toFrame(start, fps), out }
 }
 
-/** Restore the remembered kind, or use Whole BGM when its end is known. */
+/**
+ * Restore the remembered kind, or use Whole BGM when its end is known. A remembered Selection
+ * opens as custom times, since the selection may have changed.
+ */
 export const openingRange = (
     remembered: { kind: RangeKind; range: ClipRange } | undefined,
     wholeEnd: number,
@@ -136,8 +139,10 @@ export const openingRange = (
     let kind = remembered?.kind ?? (bgmEnd === undefined ? 'whole' : 'bgm')
     let range: ClipRange
     if (kind === 'bgm' && bgmEnd !== undefined) range = wholeRange(bgmEnd, fps)
-    else if (remembered && (kind === 'selection' || kind === 'custom')) range = remembered.range
-    else {
+    else if (remembered && (kind === 'selection' || kind === 'custom')) {
+        kind = 'custom'
+        range = remembered.range
+    } else {
         kind = 'whole'
         range = wholeRange(wholeEnd, fps)
     }

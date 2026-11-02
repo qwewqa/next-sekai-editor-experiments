@@ -85,6 +85,14 @@ test('a remembered Whole BGM uses Whole Chart after the BGM is removed', () => {
     })
 })
 
+test('a remembered Selection opens as custom with its times', () => {
+    const remembered = { kind: 'selection' as const, range: { in: 2, out: 5 } }
+    assert.deepEqual(openingRange(remembered, wholeChartEnd(30), 60, 30), {
+        kind: 'custom',
+        range: { in: 2, out: 5 },
+    })
+})
+
 test('frames are whole: In inclusive, Out exclusive, and a frame rate change keeps the ends', () => {
     assert.equal(frameCount({ in: 12.5, out: 105 }, 30), 2775)
     assert.equal(frameCount({ in: 12.5, out: 105 }, 60), 5550)
