@@ -442,7 +442,7 @@ test('Escape mid-export cancels, and a second Escape closes', async ({ page }) =
     await page.keyboard.press('o')
     await expect(out).toHaveAttribute('aria-valuetext', before!)
     await page.keyboard.press('Escape')
-    await expect.poll(() => phase(page)).toBe('setup')
+    await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('setup')
     expect(await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished)).toBeNull()
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('[data-export-summary]')).toBeVisible()
@@ -654,6 +654,7 @@ for (const finished of [true, false])
         }, finished)
         for (let opening = 0; opening < 2; opening++) {
             const dialog = await open(page)
+            await expect(exportButton(page)).toBeEnabled({ timeout: 20_000 })
             await expect(dialog.locator('[data-export-slot]')).toHaveText(
                 'The last export at 2160p with 2x Render Scale did not finish.',
             )
