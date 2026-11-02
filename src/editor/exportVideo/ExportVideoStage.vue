@@ -235,10 +235,20 @@ const menuItems = computed((): ManagerMenuItem[] => [
               { key: 'setOut', label: i18n.value.exportVideo.setOut, icon: SetOutIcon },
           ]
         : []),
+    ...(d.bgmEnd === undefined
+        ? []
+        : [
+              {
+                  key: 'bgm',
+                  label: i18n.value.exportVideo.wholeBgm,
+                  separated: props.layout.transportFit > 1,
+                  checked: d.rangeKind.value === 'bgm',
+              },
+          ]),
     {
         key: 'whole',
         label: i18n.value.exportVideo.wholeChart,
-        separated: props.layout.transportFit > 1,
+        separated: props.layout.transportFit > 1 && d.bgmEnd === undefined,
         checked: d.rangeKind.value === 'whole',
     },
     {
@@ -260,6 +270,7 @@ const onMenuSelect = (key: string, keyboard: boolean) => {
     if (key === 'setIn') setIn()
     else if (key === 'setOut') setOut()
     else if (key === 'whole') d.useWhole()
+    else if (key === 'bgm') d.useBgm()
     else if (key === 'selection') d.useSelection()
 }
 const toggleZoom = () => {

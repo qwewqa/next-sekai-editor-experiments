@@ -312,7 +312,7 @@ export const catalogue = {
         renderScale: oneOf('1', '1.5', '2'),
         antialias: 'boolean',
         audio: oneOf('both', 'bgm', 'sfx', 'none'),
-        range: oneOf('whole', 'selection', 'custom'),
+        range: oneOf('bgm', 'whole', 'selection', 'custom'),
         source: oneOf('live', 'peek'),
         hidden: 'boolean',
         length: scale('audio'),

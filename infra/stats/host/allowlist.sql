@@ -1414,6 +1414,7 @@ INSERT INTO nse_allowed (event, property, kind, value, max) VALUES
     ('exportVideo', 'audio', 'text', 'bgm', NULL),
     ('exportVideo', 'audio', 'text', 'sfx', NULL),
     ('exportVideo', 'audio', 'text', 'none', NULL),
+    ('exportVideo', 'range', 'text', 'bgm', NULL),
     ('exportVideo', 'range', 'text', 'whole', NULL),
     ('exportVideo', 'range', 'text', 'selection', NULL),
     ('exportVideo', 'range', 'text', 'custom', NULL),

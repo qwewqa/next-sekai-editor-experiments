@@ -44,6 +44,7 @@ import {
     clipLength,
     frameCount,
     lastObjectBeat,
+    openingRange,
     selectionRange,
     selectionSpan,
     setEnd,
@@ -140,16 +141,11 @@ export const createExportDialog = (input: DialogInput) => {
     const lastBeat = lastObjectBeat(input.snapshot)
     const wholeEnd = wholeChartEnd(
         lastBeat === undefined ? undefined : beatToTime(input.snapshot.bpms, lastBeat),
-        bgmEnd,
     )
-    const stripEnd = stripEndOf(wholeEnd)
-    const remembered = rangeMemory.get(input.chain)
-    const rangeKind = ref<RangeKind>(remembered?.kind ?? 'whole')
-    const range = ref<ClipRange>(
-        remembered && remembered.kind !== 'whole'
-            ? clampRange(remembered.range, stripEnd, fps())
-            : wholeRange(wholeEnd, fps()),
-    )
+    const stripEnd = stripEndOf(wholeEnd, bgmEnd)
+    const initial = openingRange(rangeMemory.get(input.chain), wholeEnd, bgmEnd, fps())
+    const rangeKind = ref<RangeKind>(initial.kind)
+    const range = ref<ClipRange>(initial.range)
     const playhead = ref(Math.min(stripEnd, Math.max(0, toFrame(input.cursor, fps()))))
     const span = computed(() => selectionSpan(input.selection, input.snapshot.bpms))
     const hours = stripEnd >= 3600
@@ -170,6 +166,10 @@ export const createExportDialog = (input: DialogInput) => {
     }
     const useWhole = () => {
         setRange(wholeRange(wholeEnd, fps()), 'whole')
+    }
+    const useBgm = () => {
+        if (bgmEnd === undefined) return
+        setRange(wholeRange(bgmEnd, fps()), 'bgm')
     }
     const useSelection = () => {
         if (!span.value) return
@@ -757,6 +757,7 @@ export const createExportDialog = (input: DialogInput) => {
         setRange,
         setClipEnd,
         useWhole,
+        useBgm,
         useSelection,
         restoreDefaults,
         start,

@@ -1,5 +1,6 @@
 import type { RawData } from '../../analytics/catalogue'
 import type { FileErrorCode } from '../../platform/types'
+import type { RangeKind } from './clipRange'
 
 export type VideoReportSettings = {
     format: 'mp4' | 'webm'
@@ -11,7 +12,7 @@ export type VideoReportSettings = {
     renderScale: 1 | 1.5 | 2
     antialias: boolean
     audio: 'both' | 'bgm' | 'sfx' | 'none'
-    range: 'whole' | 'selection' | 'custom'
+    range: RangeKind
     source: 'live' | 'peek'
 }
 export type VideoReportEnd = {

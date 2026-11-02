@@ -2441,6 +2441,7 @@
         "setIn": "Set In",
         "setOut": "Set Out",
         "range": "Range",
+        "wholeBgm": "Whole BGM",
         "wholeChart": "Whole Chart",
         "selection": "Selection",
         "nothingSelected": "Nothing selected",

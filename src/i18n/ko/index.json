@@ -2441,6 +2441,7 @@
     "setIn": "시작점 지정",
     "setOut": "종료점 지정",
     "range": "범위",
+    "wholeBgm": "배경음 전체",
     "wholeChart": "채보 전체",
     "selection": "선택 영역",
     "nothingSelected": "선택한 항목 없음",

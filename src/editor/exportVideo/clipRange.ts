@@ -9,8 +9,8 @@ import { beatToTime } from '../../state/integrals/bpms'
 import { MIN_END } from '../minimap/range'
 
 export type ClipRange = { in: number; out: number }
-/** `whole` is recomputed for the chart at each open; the others are kept as times. */
-export type RangeKind = 'whole' | 'selection' | 'custom'
+/** `bgm` and `whole` are recomputed at each open; the others are kept as times. */
+export type RangeKind = 'bgm' | 'whole' | 'selection' | 'custom'
 
 /** After the last object, so its last hit effect finishes. */
 export const LEAD_OUT = MAX_HIT_EFFECT_DURATION
@@ -65,20 +65,19 @@ export const lastObjectBeat = (state: Pick<State, 'store'>) => {
     return last
 }
 
-/**
- * The Whole Chart's end: the later of the BGM end and the last object plus the lead-out; the BGM
- * end with no objects; 10 s with neither.
- */
-export const wholeChartEnd = (lastObject: number | undefined, bgmEnd: number | undefined) => {
-    const objects = lastObject === undefined ? undefined : Math.max(0, lastObject) + LEAD_OUT
-    const end = Math.max(objects ?? -Infinity, bgmEnd ?? -Infinity)
+/** The Whole Chart's end: the last object plus the lead-out; 10 s with no objects. */
+export const wholeChartEnd = (lastObject: number | undefined) => {
+    const end = lastObject === undefined ? MIN_END : Math.max(0, lastObject) + LEAD_OUT
     return Number.isFinite(end) && end > 0 ? end : MIN_END
 }
 
-/** The strip runs from 0 to the Whole Chart end plus 5 %, at least 2 s. */
-export const stripEndOf = (wholeEnd: number) => wholeEnd + Math.max(wholeEnd * 0.05, 2)
+/** The strip covers both ends plus 5 %, at least 2 s. */
+export const stripEndOf = (wholeEnd: number, bgmEnd?: number) => {
+    const end = Math.max(wholeEnd, bgmEnd ?? 0)
+    return end + Math.max(end * 0.05, 2)
+}
 
-/** The whole chart: from 0 to its end, which Out reaches on the grid. */
+/** A whole preset: from 0 to its end, rounded up to the frame grid. */
 export const wholeRange = (wholeEnd: number, fps: number): ClipRange => ({
     in: 0,
     out: toFrame(wholeEnd, fps, 'up'),
@@ -125,6 +124,24 @@ export const clampRange = (range: ClipRange, stripEnd: number, fps: number): Cli
     const out = Math.min(end, Math.max(frame, toFrame(range.out, fps)))
     const start = Math.min(out - frame, Math.max(0, toFrame(range.in, fps)))
     return { in: toFrame(start, fps), out }
+}
+
+/** Restore the remembered kind, or use Whole BGM when its end is known. */
+export const openingRange = (
+    remembered: { kind: RangeKind; range: ClipRange } | undefined,
+    wholeEnd: number,
+    bgmEnd: number | undefined,
+    fps: number,
+): { kind: RangeKind; range: ClipRange } => {
+    let kind = remembered?.kind ?? (bgmEnd === undefined ? 'whole' : 'bgm')
+    let range: ClipRange
+    if (kind === 'bgm' && bgmEnd !== undefined) range = wholeRange(bgmEnd, fps)
+    else if (remembered && (kind === 'selection' || kind === 'custom')) range = remembered.range
+    else {
+        kind = 'whole'
+        range = wholeRange(wholeEnd, fps)
+    }
+    return { kind, range: clampRange(range, stripEndOf(wholeEnd, bgmEnd), fps) }
 }
 
 /**

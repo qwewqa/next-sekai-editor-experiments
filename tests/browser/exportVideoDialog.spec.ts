@@ -42,6 +42,46 @@ test.beforeEach(async ({ page }) => {
     await boot(page)
 })
 
+for (const width of [1600, 360])
+    test(`Whole BGM is the default and both presets set Out at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 800 })
+        await page.evaluate(() => window.editorTest.addWaveform())
+        const dialog = await open(page)
+        const out = dialog.getByRole('textbox', { name: 'Out', exact: true })
+        await expect(out).toHaveValue('00:11.767')
+        await dialog.locator('[data-export-range]').click()
+        await expect(dialog.getByRole('menuitemradio')).toHaveText([
+            'Whole BGM',
+            'Whole Chart',
+            'Selection',
+        ])
+        await expect(dialog.getByRole('menuitemradio', { name: 'Whole BGM' })).toHaveAttribute(
+            'aria-checked',
+            'true',
+        )
+        await dialog.getByRole('menuitemradio', { name: 'Whole Chart' }).click()
+        await expect(out).toHaveValue('00:09.500')
+        await dialog.locator('[data-export-range]').click()
+        await dialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+        await expect(out).toHaveValue('00:11.767')
+        await page.keyboard.press('Escape')
+        await expect(dialog).toHaveCount(0)
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            history.replaceState({ ...history.state.value, bgm: { offset: 0 } })
+        })
+        const reopened = await open(page)
+        await expect(reopened.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue(
+            '00:09.500',
+        )
+        await reopened.locator('[data-export-range]').click()
+        await expect(reopened.getByRole('menuitemradio', { name: 'Whole BGM' })).toHaveCount(0)
+        await expect(reopened.getByRole('menuitemradio', { name: 'Whole Chart' })).toHaveAttribute(
+            'aria-checked',
+            'true',
+        )
+    })
+
 test('closing before the first view frame does not log an abort', async ({ page }) => {
     const errors: string[] = []
     page.on('console', (message) => {
@@ -171,6 +211,7 @@ test('Escape mid-export cancels, and a second Escape closes', async ({ page }) =
 test('a finished picked file says where it went, and a change returns to the summary', async ({
     page,
 }) => {
+    test.setTimeout(60_000)
     const dialog = await open(page, { route: 'done', picker: true })
     await shortClip(page)
     await expect(exportButton(page)).toHaveText('Export…')

@@ -315,7 +315,7 @@ Recorded once per export attempt, when the file is written, the export fails or 
 | `renderScale` | The scale used to draw each frame | `1`, `1.5` or `2` |
 | `antialias` | Whether antialiasing was on | Yes or no |
 | `audio` | The chosen sound sources | `both`, `bgm`, `sfx` or `none` |
-| `range` | How the clip was chosen | `whole`, `selection` or `custom` |
+| `range` | How the clip was chosen | `bgm`, `whole`, `selection` or `custom` |
 | `source` | Whether the video used the current chart or a Timeline step being viewed | `live` or `peek` |
 | `hidden` | Whether the page was hidden during the export | Yes or no |
 | `length` | The encoded clip length | Range, as for music length |

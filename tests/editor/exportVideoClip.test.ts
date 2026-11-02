@@ -5,6 +5,7 @@ import {
     frameCount,
     lastObjectBeat,
     leadIn,
+    openingRange,
     selectionRange,
     selectionSpan,
     setEnd,
@@ -16,22 +17,70 @@ import {
 import { formatClipTime, parseClipTime, rulerStep } from '../../src/editor/exportVideo/clipTime'
 import { videoFileName } from '../../src/editor/exportVideo/videoName'
 import { estimateBytes, presetBitrate, qualityOf } from '../../src/exportVideo/estimate'
+import { bgmEndOf } from '../../src/levelData/statistics'
+import type { Bgm } from '../../src/state/bgm'
 import { calculateBpms } from '../../src/state/integrals/bpms'
 
 const close = (actual: number, expected: number) => assert.ok(Math.abs(actual - expected) < 1e-9)
 
-test('whole chart ends at the later of the BGM and the last object plus one second', () => {
-    assert.equal(wholeChartEnd(120, 151.2), 151.2)
-    assert.equal(wholeChartEnd(160, 151.2), 161)
-    assert.equal(wholeChartEnd(undefined, 151.2), 151.2)
-    assert.equal(wholeChartEnd(30, undefined), 31)
+test('whole chart ends one second after the last object', () => {
+    assert.equal(wholeChartEnd(120), 121)
+    assert.equal(wholeChartEnd(160), 161)
+    assert.equal(wholeChartEnd(30), 31)
     // An empty stage can still be exported.
-    assert.equal(wholeChartEnd(undefined, undefined), 10)
+    assert.equal(wholeChartEnd(undefined), 10)
 })
 
-test('the strip leaves room after the whole chart', () => {
-    close(stripEndOf(151.2), 151.2 * 1.05)
+test('the strip leaves room after both the chart and BGM', () => {
+    close(stripEndOf(121, 151.2), 151.2 * 1.05)
+    close(stripEndOf(161, 151.2), 161 * 1.05)
     close(stripEndOf(10), 12)
+})
+
+for (const lastObject of [120, 160])
+    test(`Whole BGM defaults to the music end with the last object at ${lastObject}`, () => {
+        const bgmEnd = bgmEndOf({ offset: 0.25, buffer: { duration: 151.46 } } as Bgm)
+        const wholeEnd = wholeChartEnd(lastObject)
+        const initial = openingRange(undefined, wholeEnd, bgmEnd, 30)
+        assert.equal(initial.kind, 'bgm')
+        assert.equal(initial.range.in, 0)
+        close(initial.range.out, 4537 / 30)
+        assert.deepEqual(
+            openingRange({ kind: 'whole', range: initial.range }, wholeEnd, bgmEnd, 30),
+            { kind: 'whole', range: { in: 0, out: lastObject + 1 } },
+        )
+    })
+
+for (const [name, bgm] of [
+    ['no BGM', { offset: 0 }],
+    [
+        'a BGM with no known length',
+        { offset: 0, meta: { hash: 'music', filename: 'music.ogg', size: 100, type: 'audio/ogg' } },
+    ],
+] as const)
+    test(`Whole Chart is the default with ${name}`, () => {
+        const end = bgmEndOf(bgm)
+        assert.equal(end, undefined)
+        assert.deepEqual(openingRange(undefined, wholeChartEnd(30), end, 30), {
+            kind: 'whole',
+            range: { in: 0, out: 31 },
+        })
+    })
+
+test('a remembered Whole BGM uses Whole Chart after the BGM is removed', () => {
+    const remembered = { kind: 'bgm' as const, range: { in: 0, out: 200 } }
+    assert.deepEqual(openingRange(remembered, wholeChartEnd(30), undefined, 30), {
+        kind: 'whole',
+        range: { in: 0, out: 31 },
+    })
+    assert.deepEqual(openingRange(remembered, wholeChartEnd(30), 60, 30), {
+        kind: 'bgm',
+        range: { in: 0, out: 60 },
+    })
+    assert.deepEqual(openingRange({ ...remembered, kind: 'custom' }, 31, undefined, 30), {
+        kind: 'custom',
+        range: { in: 0, out: 33 },
+    })
 })
 
 test('frames are whole: In inclusive, Out exclusive, and a frame rate change keeps the ends', () => {
