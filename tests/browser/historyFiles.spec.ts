@@ -112,8 +112,9 @@ const keep = async (page: Page, name: string, as = name) => {
 }
 
 /** A fresh context and page with the platform override: nothing stored, so a file opens as a new chain. */
-const freshPage = async (browser: Browser) => {
+const freshPage = async (browser: Browser, time?: number) => {
     const context = await browser.newContext()
+    if (time !== undefined) await sampleClock(context, time)
     const page = await context.newPage()
     errorsFail(page)
     await load(page, { platform: opfs, chart: 'keep' })
@@ -266,6 +267,8 @@ test('a 520-entry file crosses a segment, pages in order, restores and appends',
     browser,
 }) => {
     test.slow()
+    // Keep the original and restored history entries on one day, even when the test runs across midnight.
+    const clock = await sampleClock(page.context(), Date.UTC(2026, 0, 15, 12))
     await load(page, { platform: opfs })
     const start = await liveOf(page)
     await pushFuture(page, 'Step', 515)
@@ -285,7 +288,7 @@ test('a 520-entry file crosses a segment, pages in order, restores and appends',
     expect(first.manifest.entries).toHaveLength(total - 500)
     await keep(page, 'f2.nxsp')
 
-    const { context, page: other } = await freshPage(browser)
+    const { context, page: other } = await freshPage(browser, clock.now)
     try {
         await store(other, 'f2.nxsp', await encoded(page, 'f2.nxsp'))
         await openFile(other, 'f2.nxsp')
