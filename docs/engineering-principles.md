@@ -76,7 +76,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** Every extra rule is code to keep and a new place for bugs, and some of those bugs lose data themselves. Session History already lets a user recover from most rare failures.
 
-**Example.** The Save picker design grew through seven reviews, each finding a narrower case; it was cut to one attempt, one queue and one pick session, with the rarer cases listed as residuals. A partly imported `.nsld` written over after a reload, with storage failing as the pick is identified, is accepted: a user editing the chart would notice first, and the file is not the source of truth.
+**Example.** The Save picker design grew through seven reviews, each finding a narrower case; it was cut to one attempt, one queue and one pick session, with the rarer cases listed as residuals. It was later cut again. The operating system already asks before a pick replaces a file, so every pick now receives the command's output, and the refusals, the restoring of old bytes and the reads before the picker were removed.
 
 ## 10. A test earns its place
 
