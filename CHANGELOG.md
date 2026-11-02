@@ -2,11 +2,10 @@
 
 ## Unreleased
 
-- On slow devices, the editor now allows more time for startup notices to appear. Reloading also waits longer for the previous page to finish storing your work before opening a separate copy.
-- Changed how the preview blurs backgrounds.
-- Help entries now start by explaining what each tool does.
-- Added a message when a failed save or export leaves the chosen file empty.
+- When a failed save or export leaves the chosen file empty, its error message says so.
 - Added Show Combo to Preview Settings and Settings › Preview.
+- Preview Settings now opens in the Preview panel when most of it fits, and scrolls the rest.
+- In Brush Properties, a value now goes below its label when the label would wrap onto more than two lines.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
 - (Web) The editor now requires Safari 17 or later, or iOS 17 or later on iPhone and iPad.
@@ -16,8 +15,6 @@
 - Some settings now have an info button that shows what the setting does.
 - Some chart properties now have an info button that shows what the property does. To hide these buttons, turn off Settings › Editor › Show Property Descriptions.
 - Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open (O) opens project files.
-- Project files now include Sonolus package metadata and a gzipped chart, with references to the Next SEKAI engine.
-- The Sonolus package in a project file now includes a black cover and silent BGM when those media are left out. These assets are used only by the Sonolus package.
 - Export Level Data (Shift+P) exports level data for Sonolus.
 - (Web) In desktop Chrome and Edge, and in Chrome 132 or later on Android, saving again updates the project file and exporting again updates the exported file. Other browsers download a new file each time.
 - (Web) The editor stores your work in your browser as sessions and resumes your last session when you return. On the first launch after this update, it opens your old auto save. Save a project file to keep your work.
@@ -30,21 +27,18 @@
 - (Web) When browser storage runs low, the editor deletes audio and cover images used only by earlier Timeline steps. Once storage is full, new changes are not stored until you free up space, for example with Delete Sessions… in Settings › Local Data.
 - Settings › Local Data replaces the Auto Save settings.
 - (Web) Except on iPhone and iPad, the editor asks for confirmation when you close a tab with unsaved changes. This also applies after an export. To turn this off, use Settings › Local Data › Ask Before Closing with Unsaved Changes.
-- Level Properties is now Level Info, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file.
+- Level Properties is now Level Info, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file. The text fields in Level Info and the names of groups, stages and folders now have a maximum length.
 - The BGM dialog now has a Download BGM button. When the BGM is not loaded, a notice offers Choose Audio… to load an audio file.
 - Level Info now has a Check button for the project file and the history stored in your browser. It uses the file to repair damaged history where possible and reports any remaining damage. In Settings › Toolbar and Settings › Keyboard Shortcuts, the command is named Check File and History.
 - Added Preview Assets to the toolbar and the Preview panel’s menu for choosing the skin, particle effects, background and sound effects.
 - Open (O) now opens Sonolus packages (.scp). A package with one level and nothing else opens that level. Otherwise, a list shows each level with Open, and each skin, particle effect, background and set of sound effects with Import. Import adds the item to Preview Assets and uses it.
 - (Web) The editor now also includes the Next SEKAI 02 skin and sound effects.
-- Added a Minimap beside the chart. It shows the whole chart and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its edge next to the chart to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap.
-- The Minimap shows the selection. Selected notes are white, and cyan bars at its right edge show where the selected objects are, including BPM changes, time scales and events.
-- The Minimap shows only what the chart shows: hiding or isolating groups and stages, and hiding notes, also applies to the Minimap.
+- Added a Minimap beside the chart. It shows the whole chart and the selection, and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its edge next to the chart to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap, and choose its side in Settings › Editor › Minimap Side.
 - Added Statistics to the toolbar. It shows the combo, the count of each note type, Notes per Second and the times of the first and last notes. Copy Text copies the statistics, and Share Image… makes an image of them to share, copy or download. If you have customized the toolbar, add Statistics in Settings › Toolbar.
 - (Web) Added Export Video to the toolbar. It makes a video of the preview for the whole chart or part of it, with optional BGM and sound effects. If you have customized the toolbar, add Export Video in Settings › Toolbar. Usage statistics include each export’s settings, outcome and time taken. They also record whether you used Play or opened Advanced in Export Video.
 - When Preview, Groups and Stages are all shown in the left panels or all in the right panels, and those panels are wide, Groups and Stages are now shown side by side below Preview. To widen the panels, drag the edge between the panels and the chart. To use this in narrower panels or turn it off, use Settings › Panels › Groups and Stages Side by Side.
 - Stage style events now support Lane Color. Color transitions use the event’s easing. The judgment line keeps its opacity during color transitions.
-- Stage transform events now support Rotation Center (Stage Center, Mask Center, Screen Center or Vanishing Point), Center X Offset and Center Y Offset. New stage transform events default to Stage Center.
-- While Highlight Selection is on, the preview shows an X at the rotation center of each stage with a selected stage transform event.
+- Stage transform events now support Rotation Center (Stage Center, Mask Center, Screen Center or Vanishing Point), Center X Offset and Center Y Offset. New stage transform events default to Stage Center. While Highlight Selection is on, the preview shows an X at the rotation center of each stage with a selected stage transform event.
 - Level data now opens when it leaves out a stage transform event’s rotation, translation or anchor, a camera event’s lane or size, or an event’s easing. It also opens with any camera size of 0 or more. The editor reads missing values as Sonolus does.
 - You can now middle-click in the chart or the Elevation Editor and move the mouse to scroll. Click again to stop.
 - With Settings › Toolbar › Quick Switch enabled, you can now press and hold a tool button, then drag along its toolbar row to select another tool.
@@ -59,13 +53,13 @@
 - In the preview, hit effects now stay on their notes when the camera moves, and notes attached across stages line up as they do in Sonolus.
 - On iPhone and iPad, audio now plays in silent mode.
 - On iPhone and iPad, Play now works after the audio is interrupted, for example by a call or another app.
-- Session names and suggested file names containing dots, such as “feat. Miku”, are no longer cut off at the first dot.
+- Suggested file names containing dots, such as “feat. Miku”, are no longer cut off at the first dot.
 - (Web) If a session did not finish opening last time, the editor asks whether to try again or start blank. The session stays in Recent Sessions.
 - Audio files can be up to 90 minutes long.
 - Opening a project file larger than 256 MB asks for confirmation first. Level files larger than 256 MB are not opened.
 - (Web) Added safe mode. If the editor does not start, add ?safe to its address.
-- Help now has an entry for each tool, in sections with an index as in Settings. It opens at the entry for the tool you are using, at History while you view a Timeline step or a session, or at the Elevation Editor when it fills the chart.
-- Added Settings › Editor › Minimap Side and Settings › Touch › Quick Scroll Zone Side.
+- Help now has an entry for each tool, in sections with an index as in Settings. It opens at the entry for the tool you are using, at History while you view a Timeline step or a session, or at the Elevation Editor when it fills the chart. Each entry starts by explaining what its tool does.
+- Added Settings › Touch › Quick Scroll Zone Side.
 - Added Settings › Touch › Show Resize Handles.
 
 ## 0.5.22 (2026-10-17)
