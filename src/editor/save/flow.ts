@@ -672,11 +672,11 @@ const projectPicked = async (
     binding: Binding,
     picked: PickedFile,
 ): Promise<Outcome> => {
-    const { target, filled } = picked
+    const { target, changed } = picked
     const { handle } = target
     const name = handle.name
     startWrite('picker')
-    if (filled) return changedWhilePicked(name)
+    if (changed) return { kind: 'failed', error: changed, name }
     let built = first
     if (name !== request.fileName) {
         try {
@@ -740,8 +740,8 @@ const writePickedProject = async (
     return { kind: 'done' }
 }
 
-/** A picked file holding what nobody here wrote: nothing is written over it. */
-const changedWhilePicked = (name: string): Outcome => ({
+/** A file holding what nobody here wrote: nothing is written over it. */
+const changedOnDisk = (name: string): Outcome => ({
     kind: 'failed',
     error: new FileError('conflict', `${name} changed on disk`, undefined, 'check'),
     name,
@@ -1259,7 +1259,7 @@ export const afterOutcome = async (
         case 'conflict':
             // Only a binding of this very file has a conflict dialog: anything else changed.
             if (outcome.binding.file?.name !== outcome.handle.name) {
-                await afterOutcome(env, changedWhilePicked(outcome.handle.name))
+                await afterOutcome(env, changedOnDisk(outcome.handle.name))
                 return
             }
             await conflictFlow(env, outcome.binding, outcome.handle)
@@ -1949,16 +1949,10 @@ const sessionFilePicked = async (
     first: BuiltSave,
     picked: PickedFile,
 ): Promise<Outcome> => {
-    const { target, filled } = picked
+    const { target, changed } = picked
     const name = target.handle.name
     startWrite('picker')
-    // Written since the pick (a sync client): never written over unseen.
-    if (filled)
-        return {
-            kind: 'failed',
-            error: new FileError('conflict', `${name} changed`, undefined, 'check'),
-            name,
-        }
+    if (changed) return { kind: 'failed', error: changed, name }
     // A picker that renamed the file: its own name goes into the `save` entry and
     // `revision.fileName`, as a Save's does. Rebuilt after the checks above and before anything
     // is revoked.

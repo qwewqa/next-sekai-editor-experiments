@@ -45,18 +45,7 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
                 { id: 'levelData', types: ctx.types },
                 ctx.suggestedName,
                 async (picked): Promise<PickedLevelData> => {
-                    const name = picked.target.handle.name
-                    if (picked.filled)
-                        return {
-                            kind: 'failed',
-                            error: new FileError(
-                                'conflict',
-                                name + ' changed',
-                                picked.found,
-                                'check',
-                                name,
-                            ),
-                        }
+                    if (picked.changed) return { kind: 'failed', error: picked.changed }
                     await revokePicked(env, picked.target.handle, true)
                     try {
                         const result = await picked.write({ kind: 'nsld', blob })

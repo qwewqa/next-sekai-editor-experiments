@@ -62,8 +62,11 @@ export type PickedFile = {
     readonly target: FileTarget & { kind: 'handle' }
     /** Inspected inside the hold: the write's precondition. */
     readonly found: DiskState
-    /** Written since the pick (a sync client, another tab): the file is not empty. */
-    readonly filled: boolean
+    /**
+     * Set when the file was written since the pick (a sync client, another tab): the failure the
+     * flow ends with, before it revokes or writes anything.
+     */
+    readonly changed: FileError | undefined
     /** The one write to the picked file, over `found`. A failure is thrown. */
     write(request: {
         kind: 'nxsp' | 'nsld'
@@ -152,7 +155,10 @@ export const withPickSession = <T>(
                     const picked: PickedFile = {
                         target,
                         found: disk,
-                        filled: disk.size !== 0,
+                        changed:
+                            disk.size === 0
+                                ? undefined
+                                : new FileError('conflict', `${name} changed`, disk, 'check', name),
                         write: async (request) => {
                             // The empty file as this write's kind measures it.
                             const expected =

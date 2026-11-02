@@ -33,10 +33,8 @@ export const pickVideo = async (options: {
                 { id: 'nse-video', types: [options.type], excludeAll: true },
                 options.name,
                 async (picked): Promise<PickedVideo> => {
-                    const { target, found } = picked
-                    const name = target.handle.name
-                    if (picked.filled)
-                        throw new FileError('conflict', name + ' changed', found, 'check', name)
+                    const { target, found, changed } = picked
+                    if (changed) throw changed
                     await revokePicked(env, target.handle, true)
                     return {
                         kind: 'accepted',
