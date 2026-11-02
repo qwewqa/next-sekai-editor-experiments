@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { setMaxListeners } from 'node:events'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import test from 'node:test'
 import { queryObjects } from 'node:v8'
@@ -139,9 +139,10 @@ test('Play keeps its recorded hit, hold, catch-up and stop calls', async (t) => 
         player.stopPlayer()
         recordings.push(calls)
     }
-    const expected = JSON.parse(
-        readFileSync(new URL('../fixtures/playerScheduling.json', import.meta.url), 'utf8'),
-    )
+    const fixture = new URL('../fixtures/playerScheduling.json', import.meta.url)
+    if (process.env.NSE_WRITE_GOLDEN === '1')
+        writeFileSync(fixture, JSON.stringify(recordings, null, 4) + '\n')
+    const expected = JSON.parse(readFileSync(fixture, 'utf8'))
     assert.deepEqual(recordings, expected)
 })
 
