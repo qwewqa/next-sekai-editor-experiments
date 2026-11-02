@@ -1253,6 +1253,9 @@ test.describe('on chart properties', () => {
                         expect(options.filter((name) => names.includes(name))).toEqual(names)
                     }
                     const info = field.locator('[data-field-info]')
+                    // Finish scrolling before opening a bubble that closes on scroll.
+                    await info.scrollIntoViewIfNeeded()
+                    await page.evaluate(() => new Promise(requestAnimationFrame))
                     await info.click()
                     await expect(bubble(page).locator('li')).toHaveText(lines)
                     await expect(bubble(page).locator('p')).toHaveText(intro ? [intro] : [])
