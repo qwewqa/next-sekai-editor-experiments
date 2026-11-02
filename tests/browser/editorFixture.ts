@@ -549,6 +549,7 @@ export const useTool = (page: Page, name: string) =>
             typeof import('../../src/editor/tools')
         >('/src/editor/tools/index.ts')
         switchToolTo(name as never)
+        await window.editorTest.nextTick()
     }, name)
 
 /** Sends the touches still down, by id, with CDP modifier bits (2 is Ctrl). */

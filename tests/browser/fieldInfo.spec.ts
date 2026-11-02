@@ -5,6 +5,7 @@ import {
     installCanvasCounters,
     installEditorFixture,
     touchInput,
+    useTool,
 } from './editorFixture'
 
 // The info button after a described setting's or chart property's label, and its bubble: the
@@ -819,15 +820,6 @@ test.describe('on chart properties', () => {
             })),
         )
     const infoPerField = (scope: Locator) => infoIn(scope.locator('.form-field'))
-
-    const useTool = (page: Page, name: string) =>
-        page.evaluate(async (name) => {
-            const { switchToolTo } = await window.editorTest.appImport<
-                typeof import('../../src/editor/tools')
-            >('/src/editor/tools/index.ts')
-            switchToolTo(name as never)
-            await window.editorTest.nextTick()
-        }, name)
 
     /** The tool's button, pressed while its tool is in use and Properties is hidden. */
     const openToolDialog = (page: Page, name: string) =>
