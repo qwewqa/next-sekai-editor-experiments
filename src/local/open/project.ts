@@ -423,9 +423,8 @@ const notifyDamaged = (name: string) => {
 
 /**
  * Damage found after the open unlinked the chain: when the session is open in this
- * tab it takes the new identity, its journal is written again with it, its
- * label reads "Separate copy of …", and the file's bytes are kept for a picker that would empty
- * it. The notice comes with the first damage found.
+ * tab it takes the new identity, its journal is written again with it, and its
+ * label reads "Separate copy of …". The notice comes with the first damage found.
  */
 const unlinkedSession = (
     sessionId: string,
