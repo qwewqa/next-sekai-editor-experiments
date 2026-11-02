@@ -912,6 +912,7 @@ test.describe('on chart properties', () => {
 
     // Their labels and choices say enough.
     const undescribed = new Set([
+        'Name',
         'Beat',
         'Group',
         'Stage',
@@ -943,8 +944,8 @@ test.describe('on chart properties', () => {
         }
         expect(surfaces.selection!.filter(({ info }) => info).length).toBeGreaterThan(45)
         expect(surfaces.selection!.filter(({ info }) => !info).length).toBeGreaterThan(10)
-        // Group Properties has Name and Force Note Speed; in Level Info, only Initial Life.
-        expect(surfaces.group!.map(({ info }) => info)).toEqual([1, 1])
+        // Group Properties: Name has none, Force Note Speed has one; Level Info: only Initial Life.
+        expect(surfaces.group!.map(({ info }) => info)).toEqual([0, 1])
         expect(initialLife!.map(({ info }) => info)).toEqual([1])
         expect(levelInfo!.reduce((sum, { info }) => sum + info, 0)).toBe(1)
 
@@ -1063,7 +1064,7 @@ test.describe('on chart properties', () => {
                     input.selectionEnd === input.value.length && input.value.length > 0,
                 ]),
             ).toEqual([0, true])
-            await expect(dialog.locator('[data-field-info]')).toHaveCount(shown ? 2 : 0)
+            await expect(dialog.locator('[data-field-info]')).toHaveCount(shown ? 1 : 0)
             await dialog.getByRole('spinbutton', { name: 'Force Note Speed', exact: true }).focus()
             await row(dialog, 'Name').locator('.form-field-text').click()
             await expect(name).toBeFocused()
