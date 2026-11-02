@@ -1333,7 +1333,6 @@ export const afterOutcome = async (
     of: 'open' | 'stored' = 'open',
 ): Promise<void> => {
     finishSave(outcome)
-    if (outcome.kind === 'failed' && outcome.reported) return
     const stored = of === 'stored'
     switch (outcome.kind) {
         case 'done':
@@ -1374,6 +1373,7 @@ export const afterOutcome = async (
             const { error, name } = outcome
             recordError(error)
             console.warn('A Save failed', error)
+            if (outcome.reported) return
             const writable = !!platform.pickSaveFile
             const saveAs = stored ? again : () => dialogSave(env, 'saveAs')
             let choice: 'saveAs' | 'tryAgain' | undefined
