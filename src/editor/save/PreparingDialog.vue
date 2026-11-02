@@ -21,7 +21,7 @@ const ids = useId()
 const readyButton = useTemplateRef<HTMLButtonElement>('readyButton')
 
 const text = computed(() => {
-    // A video has no size until it is written: Export Video's own "Preparing…" and "Ready".
+    // A video has no size until it is written, so it shows Export Video's own lines.
     if (props.kind === 'video')
         return props.model.ready ? i18n.value.exportVideo.ready : i18n.value.exportVideo.preparing
     return interpolate(

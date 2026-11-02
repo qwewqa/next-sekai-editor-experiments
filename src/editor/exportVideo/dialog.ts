@@ -492,7 +492,7 @@ export const createExportDialog = (input: DialogInput) => {
         target: VideoReportEnd['target']
         hidden: boolean
         pressed?: number
-        /** Time spent in the picker, its press and its waits, which `took` leaves out. */
+        /** Time in the picker and in the waits and Ready press before it. `took` leaves it out. */
         pickMs?: number
         lengthSeconds: number
         renderStart?: number

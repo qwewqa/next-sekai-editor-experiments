@@ -20,7 +20,7 @@ for (const [name, setup] of [
     test('a video pick accepts ' + name + ' and revokes its associations', async () => {
         const w = await createWorld(setup)
         w.pick(name)
-        // The new file's case also starts with the press lapsed, so Export Video's press shows.
+        // The new file's case also starts with activation expired: the Ready dialog shows.
         const fresh = name === 'clip.mp4'
         if (fresh) activation.active = false
         const result = await pick()

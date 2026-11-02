@@ -72,7 +72,7 @@ export type SaveDialogResult =
     | { action: 'export' }
     | undefined
 
-/** The command a "Preparing…" dialog is titled and pressed as: Save, or an export's picker. */
+/** The command that sets a "Preparing…" dialog's title and button. */
 export type PreparingKind = 'save' | 'export' | 'video'
 
 /** The small dialog a slow build shows, opened at once and kept to the end. */

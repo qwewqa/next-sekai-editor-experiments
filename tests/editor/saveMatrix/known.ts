@@ -24,7 +24,7 @@ export const KNOWN: Known[] = [
     {
         id: 'R8-owners',
         kind: 'accepted',
-        title: "storage fails as the owners are listed, so another chain keeps its binding, or its Export target, on a file that now holds this chain's project",
+        title: "storage fails while the owners are listed, so another chain keeps its binding, or its Export target, on a file that now holds this chain's project",
         paths: [
             'save-first',
             'save-as',

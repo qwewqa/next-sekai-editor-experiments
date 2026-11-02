@@ -693,7 +693,7 @@ test.describe('the Preparing dialog', () => {
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
         await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(false)
         await expect(dialog(page)).toHaveCount(0)
-        // Export Video's press, whose video has no size yet.
+        // Export Video's Ready dialog: no size, and the button reads Export.
         await page.evaluate(async () => {
             const { saveUi } =
                 (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')

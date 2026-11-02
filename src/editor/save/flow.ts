@@ -1225,8 +1225,8 @@ const separateFile = async (env: Env, binding: Binding, handle: FileSystemFileHa
 }
 
 /**
- * Shows a follow-up dialog. Recent Sessions' Save passes `again`, its Save of the selected session,
- * which Save As and Try Again repeat instead of acting on the open session.
+ * Shows a follow-up dialog. Recent Sessions' Save passes `again`, its Save of the selected session.
+ * Save As and Try Again repeat it instead of acting on the open session.
  */
 export const afterOutcome = async (
     env: Env,

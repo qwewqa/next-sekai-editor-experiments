@@ -17,7 +17,7 @@ export type PreparingSlot = {
     name: string
     /** How its dialog opens: the Save UI's, given by the flow (this module loads in Node). */
     ui: { preparing: SaveUi['preparing'] }
-    /** An export's picker: its dialog is titled and pressed as that export. */
+    /** An export's picker: its dialog's title and button name that export. */
     kind?: Exclude<PreparingKind, 'save'>
     timer?: ReturnType<typeof setTimeout>
     cancel: AbortController

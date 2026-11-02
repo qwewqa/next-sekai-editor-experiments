@@ -49,8 +49,8 @@ export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
     readonly target?: FileTarget & { kind: 'handle' }
     readonly ui: AttemptSpec['ui'] & {
         /**
-         * Reports a failed write that left the picked file confirmed empty, after the hold. Video
-         * has none: it describes its failure once the stream is cleaned up.
+         * After the hold, reports a failed write that left the picked file confirmed empty. Video
+         * passes none and reports its failure once the stream is cleaned up.
          */
         readonly emptied?: (name: string) => Promise<void>
     }
@@ -63,8 +63,8 @@ export type PickedFile = {
     /** Inspected inside the hold: the write's precondition. */
     readonly found: DiskState
     /**
-     * Set when the file was written since the pick (a sync client, another tab): the failure the
-     * flow ends with, before it revokes or writes anything.
+     * The failure when the file was written since the pick (by a sync client or another tab). The
+     * flow ends with it before it revokes or writes anything.
      */
     readonly changed: FileError | undefined
     /** The one write to the picked file, over `found`. A failure is thrown. */
