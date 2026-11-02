@@ -1,9 +1,11 @@
 import { bytesOf, type World } from './world'
 
-// The invariants (I1 to I10), as checks over what
-// a world recorded: the marker only for a write that may have landed
-// (I7), cancel at any await (I8: nothing written, nothing held), one binding per file (I9), and a
-// cancel after the pick that stops nothing (I10).
+// The invariants I1 to I10, as checks over what a world recorded: a picked file left empty is
+// reported (I1), a picked write holds `nse-bind` exclusive (I2), each reservation ends once (I3), no
+// picker opens without activation (I4) or during an import (I5), no modal dialog shows under the
+// lock (I6), the marker stays only for a write that may have landed (I7), a cancel before the pick
+// writes and holds nothing (I8), one binding per file (I9), and a cancel after the pick stops
+// nothing (I10).
 
 export type Violation = { invariant: string; detail: string }
 
@@ -16,6 +18,18 @@ const MODAL = new Set([
     'readOnly',
     'failed',
     'emptied',
+])
+
+/** Dialogs that report a failed write: a picked file left empty shows one of them (I1). */
+const FAILURE = new Set([
+    'emptied',
+    'failed',
+    'notFound',
+    'denied',
+    'readOnly',
+    'export.failed',
+    'export.notFound',
+    'export.denied',
 ])
 
 export type Facts = {
@@ -35,10 +49,13 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     const found: Violation[] = []
     const add = (invariant: string, detail: string) => found.push({ invariant, detail })
 
-    // Empty files after failed writes are recorded for the matrix report.
+    // I1: a picked file that held bytes and ends empty was reported. Reported, it is the accepted
+    // residual of a failed write, recorded for the survey.
+    const reported = world.dialogs.some((dialog) => FAILURE.has(dialog.kind))
     for (const [name, blob] of world.before)
         if (blob?.size && (await bytesOf(world.mock.files.get(name)))?.length === 0)
-            add('info:emptied', name + ' ends empty')
+            if (reported) add('info:emptied', name + ' ends empty')
+            else add('I1', `${name} held ${blob.size} bytes at its pick and ends empty, unreported`)
 
     // I2: a write to a picked file holds `nse-bind` exclusive.
     for (const write of world.writes)

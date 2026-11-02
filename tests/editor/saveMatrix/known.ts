@@ -24,7 +24,7 @@ export const KNOWN: Known[] = [
     {
         id: 'R8-owners',
         kind: 'accepted',
-        title: "storage fails when the pick is identified: the owners are unread, so another chain keeps its binding, or its Export target, on a file that now holds this chain's project",
+        title: "storage fails as the owners are listed, so another chain keeps its binding, or its Export target, on a file that now holds this chain's project",
         paths: [
             'save-first',
             'save-as',
@@ -34,7 +34,7 @@ export const KNOWN: Known[] = [
             'notfound-saveas',
         ],
         invariant: 'I9',
-        fault: 'identify-fails',
+        fault: 'owners-unread',
         plans: ['other', 'target'],
         detail: /is bound to chain-other and chain-own|is chain-target's Export target/,
     },

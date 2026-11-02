@@ -310,14 +310,10 @@ export type FaultDef = {
 
 const last = (plan: PickPlan) => plan.picks.at(-1)!
 const single = (plan: PickPlan) => plan.picks.length === 1
-const writesFile = (plan: PickPlan) => ['own', 'other', 'unknown', 'fresh'].includes(last(plan))
-const pickerPath = (path: PathDef) => path.picker
-/** A picker whose pick is built again afterwards: Recent Sessions' Save… and Export build once. */
-const rebuilds = (path: PathDef) =>
-    pickerPath(path) && path.family === 'save' && path.id !== 'save-to-file'
-const anyPick = (path: PathDef) => path.picker
-/** A picker on the pick session: every one. */
-const onSession = (path: PathDef) => path.picker
+/** A pick that receives the command's output: every file the picker returns. */
+const writesFile = (plan: PickPlan) => last(plan) !== 'dismiss'
+/** A Save-family picker: its pick is built again under the picked name. Export builds once. */
+const rebuilds = (path: PathDef) => path.picker && path.family === 'save'
 /** A picker of the Save family that reserves: Export and Recent Sessions' Save… reserve nothing of their own. */
 const reserves = (path: PathDef) =>
     path.picker && path.family === 'save' && path.id !== 'save-to-file'
@@ -397,9 +393,9 @@ export const FAULTS: FaultDef[] = [
         },
     },
     {
-        id: 'identify-fails',
-        exit: 'identify fails (storage unavailable)',
-        applies: (path, p) => anyPick(path) && single(p) && last(p) !== 'dismiss',
+        id: 'owners-unread',
+        exit: 'the owners cannot be listed (storage unavailable)',
+        applies: (path, p) => path.picker && single(p) && writesFile(p),
         arm: (w) => {
             w.behaviour.set('listHandleOwners', () => 'throw')
         },
@@ -560,7 +556,7 @@ export const FAULTS: FaultDef[] = [
             } else session.reserved = held
             // A path that reserves outside a hold waits for it, in "Preparing…": the other flow
             // ends its reservation once that dialog shows, and the Save goes on. The write-back
-            // reserves inside its hold and does not wait; neither does Export's own pick.
+            // reserves inside its hold and does not wait, and Export takes no reservation.
             if (path.id === 'export' || path.id === 'write-back') return { cleanup }
             const driver = (async () => {
                 await dialogOpen(w)
@@ -754,7 +750,7 @@ export const FAULTS: FaultDef[] = [
     {
         id: 'import-other-running',
         exit: "another session's import runs in this tab (waited for at the pick, then picker)",
-        applies: (path, p) => onSession(path) && single(p) && writesFile(p),
+        applies: (path, p) => path.picker && single(p) && writesFile(p),
         arm: (w) => {
             const imp = w.startOtherImport()
             const driver = (async () => {
@@ -849,9 +845,7 @@ export const FAULTS: FaultDef[] = [
     {
         id: 'export-cancel-after-pick',
         exit: 'Export dialog cancelled as the picker returns a file (the commit point)',
-        // Not export/ahead: its own pick meets the conflict dialog and writes nothing by design.
-        applies: (path, p) =>
-            path.family === 'export' && path.id !== 'export/ahead' && single(p) && writesFile(p),
+        applies: (path, p) => path.family === 'export' && single(p) && writesFile(p),
         arm: (w) => {
             const driver = w.atPoint('picked', () => {
                 w.cancelled = true
@@ -890,7 +884,7 @@ const HANG_MS = 14000
 const UNWRITTEN = new Set([
     'none',
     'dialog-cancelled',
-    'identify-fails',
+    'owners-unread',
     'build-refused',
     'build-refused-importing',
     'build-fails',

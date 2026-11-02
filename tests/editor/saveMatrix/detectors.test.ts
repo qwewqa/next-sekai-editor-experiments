@@ -13,6 +13,15 @@ const invariants = async (
     extra: Partial<Facts> = {},
 ) => (await check(world, { ...facts, ...extra })).map((v) => v.invariant)
 
+test('I1 sees a picked file left empty with no failure shown', async () => {
+    const world = await createWorld()
+    world.before.set('other.nxsp', new Blob(['the bytes it held at its pick']))
+    world.mock.writeFile('other.nxsp', new Blob([]))
+    assert.deepEqual(await invariants(world), ['I1'])
+    world.dialogs.push({ kind: 'emptied', args: ['other.nxsp'], lockHeld: false })
+    assert.deepEqual(await invariants(world), ['info:emptied'])
+})
+
 test('I2 sees a picked file written without nse-bind exclusive', async () => {
     const world = await createWorld()
     world.writes.push({ name: 'own.nxsp', exclusive: false, shared: true, picked: true })
