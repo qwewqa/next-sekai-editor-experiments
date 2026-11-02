@@ -497,7 +497,6 @@ export const DEFAULT_OPTIONS = { history: true, bgm: true } as const
 
 /** What a Save that picks wants written. */
 type PickRequest = {
-    dialog: SaveDialogKind | 'separate' | 'notFound'
     fileName: string
     history: boolean
     bgm: boolean
@@ -1221,27 +1220,24 @@ const separateFile = async (env: Env, binding: Binding, handle: FileSystemFileHa
     await afterOutcome(
         env,
         await pickAndWrite(env, {
-            dialog: 'separate',
             fileName: `${name}.nxsp`,
             ...DEFAULT_OPTIONS,
             target: 'copy',
             startIn: handle,
         }),
-        () => separateFile(env, quickBinding(env), handle),
     )
 }
 
 /**
- * Shows a follow-up dialog. Recent Sessions' retries repeat the selected session's Save.
+ * Shows a follow-up dialog. Recent Sessions' Save passes `again`, its Save of the selected session,
+ * which Save As and Try Again repeat instead of acting on the open session.
  */
 export const afterOutcome = async (
     env: Env,
     outcome: Outcome | { kind: 'noChanges' },
-    again: () => Promise<void> = () => dialogSave(env, 'save'),
-    of: 'open' | 'stored' = 'open',
+    again?: () => Promise<void>,
 ): Promise<void> => {
     finishSave(outcome)
-    const stored = of === 'stored'
     switch (outcome.kind) {
         case 'done':
         case 'cancelled':
@@ -1278,22 +1274,22 @@ export const afterOutcome = async (
             console.warn('A Save failed', error)
             if (outcome.reported) return
             const writable = !!platform.pickSaveFile
-            const saveAs = stored ? again : () => dialogSave(env, 'saveAs')
+            const saveAs = again ?? (() => dialogSave(env, 'saveAs'))
             let choice: 'saveAs' | 'tryAgain' | undefined
             switch (error.code) {
                 case 'not-found':
                     // Only the file the session is bound to now is marked, never a pick that the
                     // binding did not move to or a stored session's pick.
-                    if (!stored && quickBinding(env).file?.name === name) setDiskFinding('missing')
+                    if (!again && quickBinding(env).file?.name === name) setDiskFinding('missing')
                     choice = await saveUi.notFound(name)
-                    if (choice === 'saveAs') await (stored ? again() : notFoundSaveAs(env))
+                    if (choice === 'saveAs') await (again ? again() : notFoundSaveAs(env))
                     return
                 case 'denied':
                     choice = await saveUi.denied(name)
                     // Try Again asks for permission again, on this press.
                     if (choice === 'tryAgain') {
-                        if (outcome.retry) await afterOutcome(env, await outcome.retry(), again, of)
-                        else await (stored ? again() : saveNow(env))
+                        if (outcome.retry) await afterOutcome(env, await outcome.retry(), again)
+                        else await (again ? again() : saveNow(env))
                     } else if (choice === 'saveAs') await saveAs()
                     return
                 case 'no-space':
@@ -1334,13 +1330,11 @@ const notFoundSaveAs = async (env: Env) => {
     await afterOutcome(
         env,
         await pickAndWrite(env, {
-            dialog: 'notFound',
             fileName: result.fileName,
             ...answered(input, result),
             ...estimateOf(input, result),
             target: 'copy',
         }),
-        () => notFoundSaveAs(env),
     )
 }
 
@@ -1538,15 +1532,12 @@ const dialogSave = async (
     await afterOutcome(
         env,
         await pickAndWrite(env, {
-            dialog: kind,
             fileName: result.fileName,
             ...answered(input, result),
             ...estimateOf(input, result),
             // Save As… gives a new `docId`; a first Save, a fork's and a taken-over chain's keep it.
             target: kind === 'saveAs' && !unlinked ? 'new' : 'copy',
         }),
-        // Choose Another… is this Save again, Save As… staying Save As… (a new `docId`).
-        () => dialogSave(env, kind, lines, unlinked),
     )
 }
 
@@ -1564,7 +1555,7 @@ const downloadAgain = async (env: Env, file: StoredFile) => {
         },
         async (attempt): Promise<Outcome> => {
             if (attempt.imported === 'unlinked') return { kind: 'unlinked', name: file.name }
-            // Another flow's reservation (Export's own pick) is waited for: nothing is held here.
+            // Another flow's reservation is waited for: nothing is held here.
             const reserved = await attempt.reserve()
             if (!reserved) return { kind: 'cancelled' }
             const { reservation, state } = reserved
@@ -1792,7 +1783,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
     startSave('saveToFile', options)
     const estimated = estimatedTotal(input, options)
     // Its session hold before the build, so Delete Sessions… skips it. Released
-    // before what follows, so Choose Another… holds it again for its own write.
+    // before what follows, so a retry holds it again for its own write.
     const outcome = await writeSessionFile(env, {
         chainId,
         sessionId,
@@ -1801,9 +1792,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
         ...(estimated === undefined ? {} : { estimated }),
         committed: applied === 'held',
     })
-    // Choose Another, Try Again and Save As are Recent Sessions' Save for this session again,
-    // never the open one's Save.
-    await afterOutcome(env, outcome, () => saveToFileNow(env, sessionId), 'stored')
+    await afterOutcome(env, outcome, () => saveToFileNow(env, sessionId))
 }
 
 /** Holds a session's lock shared while it's written, when no tab holds it exclusively. */
