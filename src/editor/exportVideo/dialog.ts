@@ -450,17 +450,23 @@ export const createExportDialog = (input: DialogInput) => {
     const destinationFor = async (signal: AbortSignal, id: string): Promise<JobDestination> => {
         const name = fileName()
         attempt.stage = input.env.picker ? 'pick' : 'prepare'
-        const destination = await input.env.destination({
-            signal,
-            id,
-            name,
-            format: format.value,
-            estimatedBytes: bytes.value,
-            dismissed: () => {
-                attempt.target = 'none'
-                current?.cancel()
-            },
-        })
+        const opened = performance.now()
+        let destination: JobDestination
+        try {
+            destination = await input.env.destination({
+                signal,
+                id,
+                name,
+                format: format.value,
+                estimatedBytes: bytes.value,
+                dismissed: () => {
+                    attempt.target = 'none'
+                    current?.cancel()
+                },
+            })
+        } finally {
+            if (input.env.picker) attempt.pickMs = performance.now() - opened
+        }
         const worker = destination.worker
         picked =
             worker.kind === 'picked'
@@ -468,7 +474,6 @@ export const createExportDialog = (input: DialogInput) => {
                 : { name, staged: worker.kind === 'staged' }
         attempt.target =
             worker.kind === 'picked' ? 'picker' : worker.kind === 'memory' ? 'memory' : 'none'
-        attempt.pressed ??= performance.now()
         attempt.stage = 'prepare'
         return destination
     }
@@ -487,6 +492,8 @@ export const createExportDialog = (input: DialogInput) => {
         target: VideoReportEnd['target']
         hidden: boolean
         pressed?: number
+        /** Time spent in the picker, its press and its waits, which `took` leaves out. */
+        pickMs?: number
         lengthSeconds: number
         renderStart?: number
         renderMs?: number
@@ -554,7 +561,9 @@ export const createExportDialog = (input: DialogInput) => {
         busy(false)
         document.removeEventListener('visibilitychange', onHidden)
         attempt.workMs =
-            attempt.pressed === undefined ? undefined : performance.now() - attempt.pressed
+            attempt.pressed === undefined
+                ? undefined
+                : performance.now() - attempt.pressed - (attempt.pickMs ?? 0)
         // Zoom to Range may have been pressed during the export.
         keepPlayhead(returnTo)
         if (state.phase === 'cancelled') {
@@ -658,7 +667,8 @@ export const createExportDialog = (input: DialogInput) => {
             stage: 'prepare',
             target: 'none',
             hidden: document.hidden,
-            pressed: input.env.picker ? undefined : performance.now(),
+            pressed: performance.now(),
+            pickMs: undefined,
             lengthSeconds: length.value,
             renderStart: undefined,
             renderMs: undefined,
