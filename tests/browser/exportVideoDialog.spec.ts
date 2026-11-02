@@ -495,6 +495,31 @@ test('a failed export shows why, and its Close takes focus', async ({ page }) =>
     await expect(dialog).toHaveCount(0)
 })
 
+test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 760 }, isMobile: true, hasTouch: true })
+
+    test('a tap on Error Details opens it, and it stays open as the form turns short', async ({
+        page,
+    }) => {
+        const dialog = await open(page, { faults: { failWrite: true } })
+        await shortClip(page)
+        await exportButton(page).click()
+        await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('failed')
+        // At this height the closed details fit the one-column form and the open ones do not.
+        const form = dialog.locator('[data-export-form]')
+        await expect(form).toHaveAttribute('data-export-form', 'one')
+        const details = dialog.locator('[data-export-slot] details')
+        const summary = details.locator('summary')
+        await summary.tap()
+        await expect(form).toHaveAttribute('data-export-form', 'short')
+        await expect(details).toHaveAttribute('open', '')
+        await expect(details.locator('p')).toBeVisible()
+        await summary.tap()
+        await expect(details).not.toHaveAttribute('open', '')
+        await expect(form).toHaveAttribute('data-export-form', 'one')
+    })
+})
+
 test('the strip: a handle drags, its keys step, and Escape puts a drag back', async ({ page }) => {
     const dialog = await open(page)
     const handle = dialog.locator('[data-clip-handle="in"]')

@@ -376,7 +376,7 @@ const title = computed(() => i18n.value.exportVideo.title)
                         <ExportVideoSettings :dialog="d" />
                     </section>
                     <ExportVideoSlot
-                        v-if="form !== 'short'"
+                        v-if="form === 'two' || form === 'land'"
                         :dialog="d"
                         :deliver-failed="deliverFailed"
                     />
@@ -392,7 +392,13 @@ const title = computed(() => i18n.value.exportVideo.title)
                     />
                 </div>
             </div>
-            <ExportVideoSlot v-if="form === 'short'" :dialog="d" :deliver-failed="deliverFailed" />
+            <!-- One and short share this place: the slot's own height can switch between them,
+            and a remount would close its Error Details. -->
+            <ExportVideoSlot
+                v-if="form === 'one' || form === 'short'"
+                :dialog="d"
+                :deliver-failed="deliverFailed"
+            />
             <ExportVideoFooter
                 v-if="form !== 'land'"
                 ref="footer"
