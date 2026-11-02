@@ -14,6 +14,7 @@ import {
     queuePicks,
     reached,
     readFile,
+    refusingPicker,
     releaseImport,
     rows,
     saveDialog,
@@ -422,4 +423,27 @@ test('unbound work with a stored step damaged: Check marks it, and Save As… st
     // The marked step never refuses the Save: it is written, without that step's own state.
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     await expect(notice(page).filter({ hasText: 'could not be read in full' })).toHaveCount(0)
+})
+
+test('a Save not read back has no disk state: only the stored history is checked, with no change claimed', async ({
+    page,
+}) => {
+    // The browser refuses reads while the Save writes, then allows them again.
+    await refusingPicker(page, { read: 'onFlag' })
+    await start(page, { fileSystemAccess: true, override: { activation: true } })
+    await page.evaluate(() => Reflect.set(window, 'refuseReads', true))
+    await edit(page, 1)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await expect
+        .poll(async () => (await chainOf(page)).file)
+        .toMatchObject({ name: 'coconut.nxsp' })
+    expect((await chainOf(page)).file).not.toHaveProperty('disk')
+    await page.evaluate(() => Reflect.set(window, 'refuseReads', false))
+    await runCheck(page)
+    const dialog = checkDialog(page)
+    await expect(dialog).toContainText('No damage found.')
+    await expect(dialog).toContainText('Checked the history stored in this browser.')
+    await expect(dialog).not.toContainText('on disk')
 })

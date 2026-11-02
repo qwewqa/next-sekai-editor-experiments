@@ -105,8 +105,9 @@ const changedLine = async (env: Env, name: string, found: File, disk: DiskState)
 /**
  * Decides which file the run checks, on the press: read access is asked for here, so the browser
  * can prompt. The bound file is checked only when it still has the fingerprint the binding holds;
- * otherwise only the stored history is, with a reason line where one applies. A download binding
- * or unbound work has none. Returns undefined when storage cannot say (a failed read).
+ * otherwise only the stored history is, with a reason line where one applies. A download binding,
+ * a binding with no disk state to compare with (a Save the platform refused to read back) and
+ * unbound work have none. Returns undefined when storage cannot say (a failed read).
  */
 export const planCheck = async (env: Env, shownName: string): Promise<Plan | undefined> => {
     const binding = quickBinding(env)
@@ -116,7 +117,8 @@ export const planCheck = async (env: Env, shownName: string): Promise<Plan | und
     const read = platform.pickSaveFile ? await bindingHandle(env, file) : readValue(undefined)
     if (read.storedRead === 'failed') return undefined
     const handle = read.storedValue
-    if (!handle) return { env, name }
+    if (!handle || !file.disk) return { env, name }
+    const expected = file.disk
     if (!(await requestRead(handle))) return { env, name, reason: readFailedLine(name) }
     let found: File
     let disk: DiskState
@@ -126,9 +128,9 @@ export const planCheck = async (env: Env, shownName: string): Promise<Plan | und
     } catch {
         return { env, name, reason: readFailedLine(name) }
     }
-    if (!file.disk || !sameContent(disk, file.disk))
+    if (!sameContent(disk, expected))
         return { env, name, reason: await changedLine(env, name, found, disk) }
-    return { env, name, file: { handle, found, disk: file.disk } }
+    return { env, name, file: { handle, found, disk: expected } }
 }
 
 // The run.
