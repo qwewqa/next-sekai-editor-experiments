@@ -1051,6 +1051,20 @@ for (const { name, width, height, keyboard, form, settled } of [
         await expect(dialog.getByRole('group', { name: 'In' })).toHaveCount(0)
     })
 
+test('in phone landscape, Export keeps the form and the focus with the message showing', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 844, height: 390 })
+    const dialog = await open(page, { faults: { hold: 'drain' } })
+    const shownForm = dialog.locator('[data-export-form]')
+    await expect(shownForm).toHaveAttribute('data-export-form', 'land')
+    await exportButton(page).click()
+    await expect(dialog.locator('[data-export-slot]')).toContainText('Keep this tab open')
+    await layoutFrames(page)
+    await expect(shownForm).toHaveAttribute('data-export-form', 'land')
+    await expect(dialog.locator('[data-export-cancel]')).toBeFocused()
+})
+
 test('an export waits for the sound effects, which it takes as it starts', async ({
     page,
 }, testInfo) => {

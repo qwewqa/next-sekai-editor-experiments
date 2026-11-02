@@ -104,8 +104,9 @@ const applyLayout = () => {
         vh < 480 && vw >= 640 ? 'land' : dialog.clientWidth >= 52 * rem ? 'two' : 'one'
     const header = root.parentElement?.previousElementSibling?.getBoundingClientRect().height ?? 48
     const footerHeight = root.querySelector<HTMLElement>('[data-export-footer]')?.offsetHeight ?? 69
+    // The slot sits under the stage in one and short, and in the side column otherwise.
     const slotHeight = root.querySelector<HTMLElement>('[data-export-slot]')?.offsetHeight ?? 0
-    const room = dialog.clientHeight - header - (base === 'land' ? 0 : footerHeight) - slotHeight
+    const room = dialog.clientHeight - header - (base === 'land' ? 0 : footerHeight)
     const hideRuler = base === 'land' && room < 360
     const compactStrip = vw < 640 || base === 'land'
     const side =
@@ -169,7 +170,8 @@ const applyLayout = () => {
         return { transportFit, stacked, length, fixed }
     }
     const baseFit = fit(dialog.clientWidth - side - 32, base === 'land')
-    const short = room < baseFit.fixed + 120 + (base === 'one' ? 160 : 0)
+    const short =
+        room - (base === 'one' ? slotHeight : 0) < baseFit.fixed + 120 + (base === 'one' ? 160 : 0)
     const formNow: Form = short ? 'short' : base
     // An on-screen keyboard shrinks the viewport. Into or out of land, In and Out swap between a
     // chip and a field, and the swap would remove the field being typed into.
@@ -182,7 +184,7 @@ const applyLayout = () => {
         formNow === 'one'
             ? Math.floor(Math.min(stageWidth / aspect, 0.45 * dialog.clientHeight))
             : formNow === 'short'
-              ? Math.floor(Math.max(120, Math.min(stageWidth / aspect, room - fixed)))
+              ? Math.floor(Math.max(120, Math.min(stageWidth / aspect, room - slotHeight - fixed)))
               : undefined
 
     layout.value = {
@@ -198,6 +200,17 @@ const applyLayout = () => {
 watch([() => d.size.value, () => d.length.value, phase, () => i18n.value], relayout)
 
 let observer: ResizeObserver | undefined
+// A message in the slot comes and goes without a change of phase, and in one it takes room from
+// the stage.
+let slot: Element | undefined
+const observeSlot = () => {
+    const next = body.value?.querySelector('[data-export-slot]') ?? undefined
+    if (next === slot) return
+    if (slot) observer?.unobserve(slot)
+    slot = next
+    if (slot) observer?.observe(slot)
+}
+watch(form, observeSlot, { flush: 'post' })
 const onFocusChange = () => {
     if (held) relayout()
 }
@@ -206,6 +219,7 @@ onMounted(() => {
     dialogElement = body.value?.closest('dialog')
     observer = new ResizeObserver(relayout)
     if (dialogElement) observer.observe(dialogElement)
+    observeSlot()
     window.visualViewport?.addEventListener('resize', relayout)
     // The chip popovers are teleported to the dialog, outside this component.
     dialogElement?.addEventListener('focusin', onFocusChange)
