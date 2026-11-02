@@ -21,7 +21,7 @@ import { showChoice } from '../../../modals/choice'
 import InfoModal from '../../../modals/InfoModal.vue'
 import { describeFailure } from '../../../modals/loadingFailure'
 import LoadingModal from '../../../modals/LoadingModal.vue'
-import { levelDataDiskState } from '../../../platform'
+import { FileError, levelDataDiskState } from '../../../platform'
 import { createState } from '../../../state'
 import { errorMessage } from '../../../utils/error'
 import { getFilename, pickFileForOpen } from '../../../utils/file'
@@ -62,11 +62,31 @@ export const open: Command = {
             if (!(await confirmSwitch()) || !request.isCurrent()) return
 
             // Unfiltered, keeping the handle where the picker exists.
-            const { file, handle } = await pickFileForOpen('nse-open')
+            let picked: Awaited<ReturnType<typeof pickFileForOpen>>
+            try {
+                picked = await pickFileForOpen('nse-open')
+            } catch (error) {
+                // A file chosen that could not be read; a dismissed picker returns nothing.
+                recordError(error)
+                if (request.isCurrent()) notifyUnread(error)
+                return
+            }
+            const { file, handle } = picked
             if (!file || !request.isCurrent()) return
             await openPicked({ file, handle, confirmed: true, request })
         })
     },
+}
+
+/** The line for a picked file that could not be read. */
+const notifyUnread = (error: unknown) => {
+    const name = error instanceof FileError ? error.fileName : undefined
+    notify(
+        name === undefined
+            ? () => describeFailure(error).headline?.() ?? errorMessage(error)
+            : interpolate(() => i18n.value.save.readFailed, inlineName(name)),
+        { card: true, severity: 'error' },
+    )
 }
 
 /** A file to open, from any entry point. */

@@ -252,7 +252,7 @@ export type Platform = {
     readonly os: PlatformOs
     readonly capabilities: PlatformCapabilities
 
-    /** Open File…; [] when cancelled. */
+    /** Open File…; [] when cancelled. A file chosen but not read is a `FileError` naming it. */
     pickFiles: (opts: PickOptions) => Promise<OpenedFile[]>
     /** Every file the editor writes. */
     saveFile: (req: SaveRequest) => Promise<SaveResult>

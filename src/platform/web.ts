@@ -88,14 +88,21 @@ const pickFiles = async ({ id, handles }: PickOptions): Promise<OpenedFile[]> =>
         return file ? [{ file }] : []
     }
 
+    let handle: FileSystemFileHandle | undefined
     try {
-        const [handle] = usesOpfsPickers()
+        ;[handle] = usesOpfsPickers()
             ? await opfsOpenPicker({ id })
             : await window.showOpenFilePicker({ id })
-        if (!handle) return []
-        return [{ file: await handle.getFile(), handle }]
     } catch {
         return []
+    }
+    if (!handle) return []
+    // A file chosen but not read is a failure, never a cancel.
+    try {
+        return [{ file: await handle.getFile(), handle }]
+    } catch (error) {
+        const failure = fileErrorOf(error)
+        throw new FileError(failure.code, failure.message, undefined, 'read', handle.name)
     }
 }
 

@@ -670,7 +670,7 @@ test('a write plan is executed before it is handed over; inspect and read take h
     await assert.rejects(platform.read(target), { code: 'not-found' })
 })
 
-test('picking with handles uses the open picker, and a failure is a cancel', async () => {
+test('picking with handles uses the open picker; a failed picker is a cancel, a file not read a failure', async () => {
     const file = new File(['x'], 'chart.json')
     const handle = { getFile: () => Promise.resolve(file) }
     browser.window.showOpenFilePicker = (options) => {
@@ -683,6 +683,21 @@ test('picking with handles uses the open picker, and a failure is a cancel', asy
         ])
         browser.window.showOpenFilePicker = () => Promise.reject(new Error('Blocked'))
         assert.deepEqual(await platform.pickFiles({ id: 'levelData', handles: true }), [])
+        // A file chosen that the browser refuses to read fails, naming it.
+        browser.window.showOpenFilePicker = () =>
+            Promise.resolve([
+                {
+                    name: 'chart.json',
+                    getFile: () =>
+                        Promise.reject(new DOMException('Not allowed', 'NotAllowedError')),
+                },
+            ])
+        await assert.rejects(platform.pickFiles({ id: 'levelData', handles: true }), {
+            name: 'FileError',
+            code: 'denied',
+            step: 'read',
+            fileName: 'chart.json',
+        })
     } finally {
         delete browser.window.showOpenFilePicker
     }

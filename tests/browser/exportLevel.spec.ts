@@ -989,3 +989,24 @@ const opfsSize = (page: Page, name: string) =>
         const root = await navigator.storage.getDirectory()
         return (await (await root.getFileHandle(name)).getFile()).size
     }, name)
+
+test('a file chosen in Open that the browser refuses to read says so, never a cancel', async ({
+    page,
+}) => {
+    await page.addInitScript(() => {
+        const getFile = FileSystemFileHandle.prototype.getFile
+        Object.defineProperty(FileSystemFileHandle.prototype, 'getFile', {
+            configurable: true,
+            value(this: FileSystemFileHandle) {
+                return this.name === 'Refused.nsld'
+                    ? Promise.reject(new DOMException('Not allowed', 'NotAllowedError'))
+                    : getFile.call(this)
+            },
+        })
+    })
+    await start(page, opfs)
+    await writeFile(page, 'Refused.nsld')
+    await queuePicks(page, ['Refused.nsld'])
+    await page.keyboard.press('o')
+    await expect(notice(page)).toContainText('“Refused.nsld” could not be read.')
+})
