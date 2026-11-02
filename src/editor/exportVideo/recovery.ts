@@ -18,13 +18,13 @@ export const rememberedVideoChoices = (): ExportVideoChoices => ({
 })
 
 export const openingVideoChoices = () =>
-    settings.exportVideoStops.last
+    settings.exportVideoLastStopped
         ? (settings.exportVideoLastFinished ?? Value.Create(exportVideoChoices))
         : rememberedVideoChoices()
 
-export const countStoppedExports = () => {
+export const takeStoppedExports = () => {
     refreshSettings([
-        'exportVideoStops',
+        'exportVideoLastStopped',
         'exportVideoLastFinished',
         'exportVideoResolution',
         'exportVideoFrameRate',
@@ -37,15 +37,13 @@ export const countStoppedExports = () => {
     return takeStoppedVideoMarkers((value) => {
         if (!Value.Check(exportVideoStop, value)) return
         const { resolution, renderScale } = value
-        settings.exportVideoStops = {
-            last: { resolution, renderScale },
-        }
+        settings.exportVideoLastStopped = { resolution, renderScale }
     })
 }
 
 export const finishedVideoExport = (choices: ExportVideoChoices) => {
     settings.exportVideoLastFinished = choices
-    settings.exportVideoStops = { last: null }
+    settings.exportVideoLastStopped = null
 }
 
 export const resetVideoChoices = () => {
@@ -58,6 +56,6 @@ export const resetVideoChoices = () => {
     settings.exportVideoRenderScale = defaults.renderScale
     settings.exportVideoAudioBitrate = defaults.audioBitrate
     settings.exportVideoLastFinished = null
-    settings.exportVideoStops = { last: null }
+    settings.exportVideoLastStopped = null
     return takeStoppedVideoMarkers()
 }

@@ -15,7 +15,7 @@ import { view } from '../view'
 import type { createExportDialog, DialogInput } from './dialog'
 import type { ExportVideoEnv } from './env'
 import ExportVideoModal from './ExportVideoModal.vue'
-import { countStoppedExports } from './recovery'
+import { takeStoppedExports } from './recovery'
 
 /** The shown session's name as a file name stem, or empty for `Video`. */
 const shownStem = () => {
@@ -58,7 +58,7 @@ export const openExportVideo = async (
     const origin = session.value.sessionId
     try {
         stopPlayer()
-        const [loaded] = await Promise.all([waitForCurrentBgm(bgmWaitMs), countStoppedExports()])
+        const [loaded] = await Promise.all([waitForCurrentBgm(bgmWaitMs), takeStoppedExports()])
         if (session.value.sessionId !== origin) return
         const snapshot = state.value
         const bgm = loaded

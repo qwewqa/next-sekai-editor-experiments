@@ -310,9 +310,7 @@ test('closing before the first view frame does not log an abort', async ({ page 
 
 test('the everyday path reaches Ready, downloads and closes', async ({ page }) => {
     await page.evaluate(() => {
-        window.editorTest.settings.exportVideoStops = {
-            last: { resolution: 2160, renderScale: 2 },
-        }
+        window.editorTest.settings.exportVideoLastStopped = { resolution: 2160, renderScale: 2 }
     })
     const dialog = await open(page)
     // The frame view takes the first focus, and a frame arrives.
@@ -337,9 +335,7 @@ test('the everyday path reaches Ready, downloads and closes', async ({ page }) =
     expect(
         await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished?.resolution),
     ).toBe(720)
-    expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
-        last: null,
-    })
+    expect(await page.evaluate(() => window.editorTest.settings.exportVideoLastStopped)).toBeNull()
     await expect(dialog.locator('[data-export-ready]')).toContainText('Ready ·')
     const download = dialog.locator('[data-export-download]')
     await expect(download).toBeFocused()
@@ -826,9 +822,9 @@ for (const finished of [true, false])
         expect(
             await page.evaluate(() => localStorage.getItem('exportVideoRunning.abandoned')),
         ).toBeNull()
-        expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
-            last: { resolution: 2160, renderScale: 2 },
-        })
+        expect(
+            await page.evaluate(() => window.editorTest.settings.exportVideoLastStopped),
+        ).toEqual({ resolution: 2160, renderScale: 2 })
     })
 
 for (const action of ['finish', 'reset', 'stop'] as const)
@@ -849,9 +845,7 @@ for (const action of ['finish', 'reset', 'stop'] as const)
                 antialias: true,
                 audioBitrate: 192_000,
             }
-            settings.exportVideoStops = {
-                last: { resolution: 2160, renderScale: 2 },
-            }
+            settings.exportVideoLastStopped = { resolution: 2160, renderScale: 2 }
         })
         const other = await context.newPage()
         await boot(other)
@@ -892,9 +886,9 @@ for (const action of ['finish', 'reset', 'stop'] as const)
         await expect(dialog.getByRole('combobox', { name: 'Resolution' })).toHaveValue(
             action === 'reset' ? '1080' : '720',
         )
-        expect(await other.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual(
-            action === 'stop' ? { last: { resolution: 2160, renderScale: 2 } } : { last: null },
-        )
+        expect(
+            await other.evaluate(() => window.editorTest.settings.exportVideoLastStopped),
+        ).toEqual(action === 'stop' ? { resolution: 2160, renderScale: 2 } : null)
         await other.close()
     })
 
@@ -915,9 +909,7 @@ for (const reset of ['defaults', 'settings'])
                 antialias: false,
                 audioBitrate: 128_000,
             }
-            settings.exportVideoStops = {
-                last: { resolution: 2160, renderScale: 2 },
-            }
+            settings.exportVideoLastStopped = { resolution: 2160, renderScale: 2 }
             await new Promise<void>((resolve) => {
                 void navigator.locks.request('nse-export-video:active', async () => {
                     await new Promise<void>((release) => {
@@ -954,9 +946,9 @@ for (const reset of ['defaults', 'settings'])
         expect(
             await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished),
         ).toBeNull()
-        expect(await page.evaluate(() => window.editorTest.settings.exportVideoStops)).toEqual({
-            last: null,
-        })
+        expect(
+            await page.evaluate(() => window.editorTest.settings.exportVideoLastStopped),
+        ).toBeNull()
         expect(await page.evaluate(() => window.editorTest.settings.exportVideoResolution)).toBe(
             1080,
         )

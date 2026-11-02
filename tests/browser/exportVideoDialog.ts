@@ -50,7 +50,7 @@ export const requestVideoDialog = async (page: Page, presses = 1, bgmWaitMs?: nu
             const { pageEnv } = await appImport<typeof import('../../src/editor/exportVideo/env')>(
                 '/src/editor/exportVideo/env.ts',
             )
-            const { countStoppedExports } = await appImport<
+            const { takeStoppedExports } = await appImport<
                 typeof import('../../src/editor/exportVideo/recovery')
             >('/src/editor/exportVideo/recovery.ts')
             const { modals } =
@@ -71,7 +71,7 @@ export const requestVideoDialog = async (page: Page, presses = 1, bgmWaitMs?: nu
                 )
             Reflect.set(window, 'videoOpenCalls', Promise.all(calls))
             // With no stopped exports, this resolves after the opening check.
-            await countStoppedExports()
+            await takeStoppedExports()
             return modals.length
         },
         { presses, bgmWaitMs },

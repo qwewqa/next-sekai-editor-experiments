@@ -400,7 +400,7 @@ export const createExportDialog = (input: DialogInput) => {
     const phase = ref<Phase>('setup')
     const outcome = shallowRef<Outcome>()
     const progress = ref<{ fraction: number; eta?: number }>({ fraction: 0 })
-    const stoppedLine = computed(() => settings.exportVideoStops.last)
+    const stoppedLine = computed(() => settings.exportVideoLastStopped)
     let frameSink: ((bitmap: ImageBitmap) => void) | undefined
     const onFrame = (draw: (bitmap: ImageBitmap) => void) => {
         frameSink = draw

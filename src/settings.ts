@@ -199,9 +199,7 @@ const settingsProperties = {
     exportVideoAudioBitrate: exportVideoChoices.properties.audioBitrate,
     exportVideoAdvanced: Type.Boolean(),
     exportVideoLastFinished: Type.Union([Type.Null(), exportVideoChoices], { default: null }),
-    exportVideoStops: Type.Object({
-        last: Type.Union([Type.Null(), exportVideoStop], { default: null }),
-    }),
+    exportVideoLastStopped: Type.Union([Type.Null(), exportVideoStop], { default: null }),
 
     width: number(16, 16, 100),
 
