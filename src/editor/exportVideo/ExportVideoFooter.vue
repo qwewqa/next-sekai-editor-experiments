@@ -191,7 +191,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
             </p>
         </div>
         <template v-if="ready">
-            <div class="flex gap-2">
+            <div class="flex max-w-full flex-wrap justify-end gap-2">
                 <button
                     ref="secondary"
                     type="button"
@@ -199,7 +199,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                     data-export-close
                     @click="emit('close')"
                 >
-                    <span class="truncate">{{ i18n.modals.close }}</span>
+                    <span class="block truncate">{{ i18n.modals.close }}</span>
                 </button>
                 <button
                     type="button"
@@ -208,10 +208,10 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                     data-export-start
                     @click="emit('export')"
                 >
-                    <span class="truncate">{{ exportLabel }}</span>
+                    <span class="block truncate">{{ exportLabel }}</span>
                 </button>
             </div>
-            <div class="flex gap-2">
+            <div class="flex max-w-full flex-wrap justify-end gap-2">
                 <button
                     v-if="ready.shareable"
                     type="button"
@@ -219,7 +219,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                     data-export-share
                     @click="emit('deliver', 'share')"
                 >
-                    <span class="truncate">{{ strings.share }}</span>
+                    <span class="block truncate">{{ strings.share }}</span>
                 </button>
                 <button
                     ref="download"
@@ -228,7 +228,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                     data-export-download
                     @click="emit('deliver', 'download')"
                 >
-                    <span class="truncate">{{ strings.download }}</span>
+                    <span class="block truncate">{{ strings.download }}</span>
                 </button>
             </div>
         </template>
@@ -240,7 +240,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 data-export-start
                 @click="emit('export')"
             >
-                <span class="truncate">{{ exportLabel }}</span>
+                <span class="block truncate">{{ exportLabel }}</span>
             </button>
             <button
                 ref="primary"
@@ -249,7 +249,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 data-export-close
                 @click="emit('close')"
             >
-                <span class="truncate">{{ i18n.modals.close }}</span>
+                <span class="block truncate">{{ i18n.modals.close }}</span>
             </button>
         </template>
         <template v-else>
@@ -262,7 +262,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 :data-export-close="phase === 'failed' ? '' : undefined"
                 @click="onSecondary"
             >
-                <span class="truncate">{{
+                <span class="block truncate">{{
                     phase === 'failed' ? i18n.modals.close : i18n.modals.confirm.cancel
                 }}</span>
             </button>
@@ -273,7 +273,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 data-export-start
                 @click="emit('export')"
             >
-                <span class="truncate">{{ exportLabel }}</span>
+                <span class="block truncate">{{ exportLabel }}</span>
             </button>
         </template>
     </footer>
