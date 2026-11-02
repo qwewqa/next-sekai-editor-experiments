@@ -1,5 +1,5 @@
 import { binAt, roundParts, yScale, type ChartModel } from '../../levelData/statistics'
-import { formatDecimal } from '../../utils/size'
+import { formatCount } from '../../utils/size'
 
 // The chart at a plot's size: the coordinates of its layers, Bars' tiles and the gridlines, and
 // the readout read from the same coordinates, so the dot and the values sit on the drawn edges.
@@ -28,9 +28,8 @@ export type Drawing = {
     snap: (value: number) => number
 }
 
-/** A y-axis label: at most three decimals in the locale. */
-export const yLabel = (value: number, locale: string) =>
-    formatDecimal(Math.round(value * 1e6) / 1e6, locale)
+/** A y-axis label: a whole number in the locale. */
+export const yLabel = (value: number, locale: string) => formatCount(value, locale)
 
 /**
  * Draws a model in a plot of `width` x `height` CSS px at `dpr` device pixels per CSS px, edges

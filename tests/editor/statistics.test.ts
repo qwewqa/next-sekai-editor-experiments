@@ -516,11 +516,15 @@ test('Bars puts each note in one bin by the window rule, with the width from the
 
 // --- The axes and the readout's rounding.
 
-test('the y axis takes a nice top, and the time labels stay few on any length', () => {
+test('the y axis takes a nice top in whole steps, and the time labels stay few on any length', () => {
     assert.deepEqual(yScale(21), { step: 5, top: 25 })
     assert.deepEqual(yScale(476), { step: 100, top: 500 })
     assert.deepEqual(yScale(600), { step: 200, top: 600 })
     assert.deepEqual(yScale(10), { step: 5, top: 10 })
+    assert.deepEqual(yScale(12), { step: 5, top: 15 })
+    assert.deepEqual(yScale(0.4), { step: 1, top: 1 })
+    for (let top = 0.05; top < 300; top += 0.35)
+        for (const max of [3, 4]) assert.ok(Number.isInteger(yScale(top, max).step), `${top}`)
     const end = (100000 * 60) / 120
     assert.ok(timeTicks(end, 6).length <= 6)
     assert.ok(timeTicks(end, 3).length <= 3)

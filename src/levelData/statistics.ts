@@ -572,13 +572,19 @@ export const chartModel = (
 
 // --- The axes.
 
+/** Each unit times each power of ten from `10 ** from` up, whole numbers only. */
 function* niceSteps(units: readonly number[], from: number) {
-    for (let exponent = from; ; exponent++) for (const unit of units) yield unit * 10 ** exponent
+    for (let exponent = Math.max(0, from); ; exponent++)
+        for (const unit of units) {
+            const step = unit * 10 ** exponent
+            if (Number.isInteger(step)) yield step
+        }
 }
 
 /**
  * The y step and top: the first step of 1, 2 or 5 times a power of ten that reaches `top` in at
- * most `max` steps, unless `max + 1` steps of 1, 2, 2.5 or 5 reach a lower top.
+ * most `max` steps, unless `max + 1` steps of 1, 2, 2.5 or 5 times a power of ten reach a lower
+ * top. Steps are whole numbers, so Rolling's and 1 s Bars' counts sit on gridlines.
  */
 export const yScale = (top: number, max = 4) => {
     const from = Math.floor(Math.log10(top)) - 1
