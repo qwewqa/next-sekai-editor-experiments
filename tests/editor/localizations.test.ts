@@ -241,8 +241,6 @@ test('Preview Editor units stay on the line of the word before them', () => {
 // values identical when this test was added; a new entry needs a reason.
 const identicalToEnglish: Record<string, string[]> = {
     fr: [
-        // Temporary English until the recovery message is translated.
-        'exportVideo.stopped',
         'commands.bpm.title',
         'commands.divisions.custom.modal.division',
         'commands.events.title',
@@ -323,8 +321,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'workspace.properties.kinds.note',
     ],
     ja: [
-        // Temporary English until the recovery message is translated.
-        'exportVideo.stopped',
         'commands.bgm.title',
         'commands.bpm.title',
         'commands.events.title',
@@ -366,8 +362,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'workspace.properties.kinds.bpm',
     ],
     ko: [
-        // Temporary English until the recovery message is translated.
-        'exportVideo.stopped',
         'commands.bpm.title',
         'commands.events.title',
         'commands.previewAssets.nextSekai',
@@ -412,8 +406,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'workspace.properties.kinds.bpm',
     ],
     tr: [
-        // Temporary English until the recovery message is translated.
-        'exportVideo.stopped',
         'commands.bpm.title',
         'commands.events.title',
         'commands.previewAssets.nextSekai',
@@ -462,8 +454,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'workspace.properties.kinds.bpm',
     ],
     zhs: [
-        // Temporary English until the recovery message is translated.
-        'exportVideo.stopped',
         'commands.bpm.title',
         'commands.events.title',
         'commands.previewAssets.nextSekai',
@@ -501,8 +491,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'workspace.properties.kinds.bpm',
     ],
     zht: [
-        // Temporary English until the recovery message is translated.
-        'exportVideo.stopped',
         'commands.bgm.title',
         'commands.bpm.title',
         'commands.events.title',

@@ -2502,7 +2502,7 @@
     "ready": "準備完了",
     "keepOpen": "出力が終わるまで、このタブを開いたままにしてください。",
     "keepOpenVisible": "出力が終わるまで、このタブを開いて表示したままにしてください。",
-    "stopped": "The last export at {0} did not finish.",
+    "stopped": "解像度 {0}、描画解像度 {1} での前回の出力は完了しませんでした。",
     "discardTitle": "この動画を破棄しますか？",
     "discard": "動画を破棄",
     "unsupported": "このブラウザーでは動画を出力できません。",

@@ -32,11 +32,8 @@ const message = computed(() => {
             severity: 'warning' as const,
             text: interpolateRaw(
                 i18n.value.exportVideo.stopped,
-                interpolateRaw(
-                    i18n.value.statistics.at,
-                    `${d.stoppedLine.value.resolution}p`,
-                    `${d.stoppedLine.value.renderScale}x`,
-                ),
+                `${d.stoppedLine.value.resolution}p`,
+                `${d.stoppedLine.value.renderScale}x`,
             ),
         }
     if (d.storageNearlyFull.value && !d.busy.value)

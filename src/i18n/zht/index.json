@@ -2502,7 +2502,7 @@
     "ready": "已準備好",
     "keepOpen": "匯出結束前，請保持此分頁開啟。",
     "keepOpenVisible": "匯出結束前，請保持此分頁開啟並可見。",
-    "stopped": "The last export at {0} did not finish.",
+    "stopped": "上次以 {0} 解析度和 {1} 渲染比例進行的匯出未完成。",
     "discardTitle": "要捨棄此影片嗎？",
     "discard": "捨棄影片",
     "unsupported": "此瀏覽器無法匯出影片。",

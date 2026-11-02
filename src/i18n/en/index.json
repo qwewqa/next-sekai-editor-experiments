@@ -2502,7 +2502,7 @@
         "ready": "Ready",
         "keepOpen": "Keep this tab open until the export finishes.",
         "keepOpenVisible": "Keep this tab open and visible until the export finishes.",
-        "stopped": "The last export at {0} did not finish.",
+        "stopped": "The last export at {0} with {1} Render Scale did not finish.",
         "discardTitle": "Discard this video?",
         "discard": "Discard Video",
         "unsupported": "This browser cannot export video.",

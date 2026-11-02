@@ -2502,7 +2502,7 @@
     "ready": "已准备好",
     "keepOpen": "导出结束前，请保持此标签页打开。",
     "keepOpenVisible": "导出结束前，请保持此标签页打开并可见。",
-    "stopped": "The last export at {0} did not finish.",
+    "stopped": "上次以 {0} 分辨率和 {1} 渲染比例进行的导出未完成。",
     "discardTitle": "要放弃此视频吗？",
     "discard": "放弃视频",
     "unsupported": "此浏览器无法导出视频。",

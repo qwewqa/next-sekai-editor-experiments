@@ -400,7 +400,7 @@ for (const finished of [true, false])
         for (let opening = 0; opening < 2; opening++) {
             const dialog = await open(page)
             await expect(dialog.locator('[data-export-slot]')).toHaveText(
-                'The last export at 2160p at 2x did not finish.',
+                'The last export at 2160p with 2x Render Scale did not finish.',
             )
             const resolution = dialog.getByRole('combobox', { name: 'Resolution' })
             await expect(resolution.locator('option:checked')).toHaveText(

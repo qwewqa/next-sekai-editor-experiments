@@ -7,7 +7,7 @@
 - On slow devices, the editor now allows more time for startup notices to appear. Reloading also waits longer for the previous page to finish storing your work before opening a separate copy.
 - Changed how the preview blurs backgrounds.
 - Help entries now start by explaining what each tool does.
-- Added a message when a failed save or export leaves the project file empty.
+- Added a message when a failed save or export leaves the chosen file empty.
 - Added Show Combo to Preview Settings and Settings › Preview.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
@@ -42,7 +42,7 @@
 - The Minimap shows the selection. Selected notes are white, and cyan bars at its right edge show where the selected objects are, including BPM changes, time scales and events.
 - The Minimap shows only what the chart shows: hiding or isolating groups and stages, and hiding notes, also applies to the Minimap.
 - Added Statistics to the toolbar. It shows the combo, the count of each note type, Notes per Second and the times of the first and last notes. Copy Text copies the statistics, and Share Image… makes an image of them to share, copy or download. If you have customized the toolbar, add Statistics in Settings › Toolbar.
-- (Web) Added Export Video to the toolbar. It makes a video of the preview for the whole chart or part of it, with optional BGM and sound effects. If you have customized the toolbar, add Export Video in Settings › Toolbar.
+- (Web) Added Export Video to the toolbar. It makes a video of the preview for the whole chart or part of it, with optional BGM and sound effects. If you have customized the toolbar, add Export Video in Settings › Toolbar. Usage statistics include each export’s settings, outcome and time taken. They also record whether you used Play or opened Advanced in Export Video.
 - When Preview, Groups and Stages are all shown in the left panels or all in the right panels, and those panels are wide, Groups and Stages are now shown side by side below Preview. To widen the panels, drag the edge between the panels and the chart. To use this in narrower panels or turn it off, use Settings › Panels › Groups and Stages Side by Side.
 - Stage style events now support Lane Color. Color transitions use the event’s easing. The judgment line keeps its opacity during color transitions.
 - Stage transform events now support Rotation Center (Stage Center, Mask Center, Screen Center or Vanishing Point), Center X Offset and Center Y Offset. New stage transform events default to Stage Center.

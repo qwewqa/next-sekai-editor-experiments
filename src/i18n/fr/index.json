@@ -2502,7 +2502,7 @@
     "ready": "Prêt",
     "keepOpen": "Gardez cet onglet ouvert jusqu’à la fin de l’exportation.",
     "keepOpenVisible": "Gardez cet onglet ouvert et visible jusqu’à la fin de l’exportation.",
-    "stopped": "The last export at {0} did not finish.",
+    "stopped": "La dernière exportation en {0} avec une Échelle de rendu de {1} ne s’est pas terminée.",
     "discardTitle": "Abandonner cette vidéo ?",
     "discard": "Abandonner la vidéo",
     "unsupported": "Ce navigateur ne peut pas exporter de vidéo.",

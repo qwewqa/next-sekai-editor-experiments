@@ -2502,7 +2502,7 @@
     "ready": "준비됨",
     "keepOpen": "내보내기가 끝날 때까지 이 탭을 열어 두세요.",
     "keepOpenVisible": "내보내기가 끝날 때까지 이 탭을 열고 화면에 표시해 두세요.",
-    "stopped": "The last export at {0} did not finish.",
+    "stopped": "해상도 {0}, 렌더링 배율 {1}로 진행한 마지막 내보내기가 완료되지 않았습니다.",
     "discardTitle": "이 동영상을 버릴까요?",
     "discard": "동영상 버리기",
     "unsupported": "이 브라우저에서는 동영상을 내보낼 수 없습니다.",
