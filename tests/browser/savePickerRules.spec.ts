@@ -520,7 +520,9 @@ for (const how of ['a new visit', 'Reopen']) {
     })
 }
 
-test('Export refuses a takeover while storing is paused', async ({ context }) => {
+test('Export writes while storing is paused and the stale owner finds a conflict', async ({
+    context,
+}) => {
     const owner = await context.newPage()
     await start(owner)
     await savedTo(owner, 'coconut.nxsp')
@@ -536,16 +538,15 @@ test('Export refuses a takeover while storing is paused', async ({ context }) =>
         exporter.getByRole('dialog').filter({ hasText: 'Export Level Data' }),
     ).toBeVisible()
     await exporter.keyboard.press('Enter')
-    await expect(exporter.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
-    expect(await readFile(owner, 'coconut.nxsp')).toEqual([])
+    await expect(notice(exporter).filter({ hasText: 'Exported to coconut.nxsp' })).toBeVisible()
+    const written = await readFile(owner, 'coconut.nxsp')
+    expect(written?.slice(0, 2)).toEqual([0x1f, 0x8b])
     expect((await chainOf(owner)).file).toMatchObject({ name: 'coconut.nxsp' })
     await owner.bringToFront()
     await edit(owner, 4)
     await pressSave(owner)
-    await expect
-        .poll(async () => (await readFile(owner, 'coconut.nxsp'))?.length ?? 0)
-        .toBeGreaterThan(0)
-    expect((await projectOf(owner, 'coconut.nxsp')).id).toBe((await chainOf(owner)).docId)
+    await expect(saveDialog(owner, '“coconut.nxsp” Changed')).toBeVisible()
+    expect(await readFile(owner, 'coconut.nxsp')).toEqual(written)
 })
 
 test('a completed Save As without a binding can be reopened after reload', async ({ page }) => {
