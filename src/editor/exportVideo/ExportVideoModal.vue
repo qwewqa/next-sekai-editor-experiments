@@ -340,7 +340,12 @@ const title = computed(() => i18n.value.exportVideo.title)
 </script>
 
 <template>
-    <BaseModal :title fill :close-disabled="phase === 'finishing'" @close="close">
+    <BaseModal
+        :title
+        fill
+        :close-disabled="phase === 'finishing' || phase === 'cancelling'"
+        @close="close"
+    >
         <div
             ref="body"
             class="export-video flex min-h-0 flex-1 flex-col"
