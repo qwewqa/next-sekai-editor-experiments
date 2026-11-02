@@ -73,6 +73,8 @@ export type PickedFile = {
         kind: 'nxsp' | 'nsld'
         blob: Blob
         marker?: () => SaveMarker | undefined
+        /** The file a fallback download takes, when it records the download differently. */
+        download?: () => Promise<Blob>
     }): Promise<SaveResult>
 }
 
@@ -190,6 +192,7 @@ export const withPickSession = <T>(
                                     'check',
                                     name,
                                 )
+                            const { download } = request
                             const written = await attempt.write(
                                 {
                                     kind: request.kind,
@@ -199,6 +202,14 @@ export const withPickSession = <T>(
                                     picked: true,
                                     build: () =>
                                         Promise.resolve({ kind: 'blob', blob: request.blob }),
+                                    ...(download
+                                        ? {
+                                              buildDownload: async () => ({
+                                                  kind: 'blob' as const,
+                                                  blob: await download(),
+                                              }),
+                                          }
+                                        : {}),
                                 },
                                 request.marker,
                             )

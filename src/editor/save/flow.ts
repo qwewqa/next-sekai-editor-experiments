@@ -673,20 +673,23 @@ const projectPicked = async (
     const name = handle.name
     startWrite('picker')
     if (changed) return { kind: 'failed', error: changed, name }
+    // The request built again under the picked name, its entry saying how it was delivered.
+    const buildAs = (download: boolean) =>
+        runBuild(env, {
+            target:
+                request.target === 'new'
+                    ? { kind: 'new', docId: first.identity.docId }
+                    : { kind: 'copy' },
+            history: request.history,
+            bgm: request.bgm,
+            fileName: name,
+            save: { time: reservation.wall, operation: saveOperation(name, download) },
+            state,
+        })
     let built = first
     if (name !== request.fileName) {
         try {
-            built = await runBuild(env, {
-                target:
-                    request.target === 'new'
-                        ? { kind: 'new', docId: first.identity.docId }
-                        : { kind: 'copy' },
-                history: request.history,
-                bgm: request.bgm,
-                fileName: name,
-                save: { time: reservation.wall, operation: saveOperation(name, false) },
-                state,
-            })
+            built = await buildAs(false)
         } catch (error) {
             // The verified first build differs only in its recorded filename.
             recordError(error)
@@ -694,7 +697,9 @@ const projectPicked = async (
     }
     await revokePicked(env, handle, false)
     await savePoint('revoked')
-    return writePickedProject(session, env, { reservation, state }, built, binding, picked)
+    return writePickedProject(session, env, { reservation, state }, built, binding, picked, () =>
+        buildAs(true),
+    )
 }
 
 /** Records one verified project write and its Save entry. */
@@ -705,6 +710,8 @@ const writePickedProject = async (
     built: BuiltSave,
     binding: Binding,
     picked: PickedFile,
+    /** The same project with its entry saying it was downloaded. */
+    buildDownload: () => Promise<BuiltSave>,
 ): Promise<Outcome> => {
     const handle = picked.target.handle
     const name = handle.name
@@ -715,11 +722,22 @@ const writePickedProject = async (
     })
     const parent = built.identity.revision.ancestors.length ? (binding.revision?.id ?? null) : null
     let result: SaveResult
+    // What a fallback download delivered: built again so that its entry says it was downloaded.
+    let delivered = built
     try {
         result = await picked.write({
             kind: 'nxsp',
             blob: built.blob,
             marker: () => markerOf(env, built, reservation, parent, file),
+            download: async () => {
+                try {
+                    delivered = await buildDownload()
+                } catch (error) {
+                    // The verified build differs only in its entry's delivery.
+                    recordError(error)
+                }
+                return delivered.blob
+            },
         })
     } catch (error) {
         const failure = fileError(error)
@@ -728,10 +746,13 @@ const writePickedProject = async (
     // The platform refused writing the picked file: the download is bound by name, as a
     // download browser's is, never to the handle.
     if (result.status === 'download-started') {
-        const downloadedFile = await bindingFile(built, reservation, { name, event: 'downloaded' })
-        await bindWrite(env, session, reservation, built, state, downloadedFile)
+        const downloadedFile = await bindingFile(delivered, reservation, {
+            name,
+            event: 'downloaded',
+        })
+        await bindWrite(env, session, reservation, delivered, state, downloadedFile)
         forgetHandle(env.chainId)
-        feedback(built, 'download', name)
+        feedback(delivered, 'download', name)
         return { kind: 'done' }
     }
     if (result.status !== 'saved') return { kind: 'cancelled' }
@@ -1920,7 +1941,13 @@ const writeSessionFile = async (
 }
 
 /** The session as a new document `docId`, in a file named `fileName`. */
-const buildSession = (env: Env, request: SessionFileRequest, docId: string, fileName: string) =>
+const buildSession = (
+    env: Env,
+    request: SessionFileRequest,
+    docId: string,
+    fileName: string,
+    download = !platform.pickSaveFile,
+) =>
     env.worker.call(
         'buildSave',
         {
@@ -1932,7 +1959,7 @@ const buildSession = (env: Env, request: SessionFileRequest, docId: string, file
                 fileName,
                 save: {
                     time: Date.now(),
-                    operation: saveOperation(fileName, !platform.pickSaveFile),
+                    operation: saveOperation(fileName, download),
                 },
                 context: {
                     now: Date.now(),
@@ -2031,15 +2058,30 @@ const sessionFilePicked = async (
     const built = name === request.fileName ? first : await renamedBuild(env, request, first, name)
     await revokePicked(env, target.handle, true)
     let result: SaveResult
+    // What a fallback download delivered: built again so that its entry says it was downloaded.
+    let delivered = built
     try {
-        result = await picked.write({ kind: 'nxsp', blob: built.blob })
+        result = await picked.write({
+            kind: 'nxsp',
+            blob: built.blob,
+            download: async () => {
+                try {
+                    const again = await buildSession(env, request, built.identity.docId, name, true)
+                    if ('refused' in again) recordError(new BuildRefused(again))
+                    else delivered = again
+                } catch (error) {
+                    recordError(error)
+                }
+                return delivered.blob
+            },
+        })
     } catch (error) {
         return { kind: 'failed', error: fileError(error), name }
     }
     if (result.status !== 'saved' && result.status !== 'download-started')
         return { kind: 'cancelled' }
     saveUi.saved({
-        ...savedOf(built, result.status === 'saved' ? 'saved' : 'download', name),
+        ...savedOf(delivered, result.status === 'saved' ? 'saved' : 'download', name),
         committedState: request.committed,
         ofStored: true,
     })

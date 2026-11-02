@@ -135,6 +135,8 @@ export type SaveRequest = {
     replaced?: 'keep' | 'discard'
     replaces?: string
     build: (sources: PinnedSource[]) => Promise<FileBody>
+    /** What a fallback download takes in place of `build`'s file: one that records the download. */
+    buildDownload?: () => Promise<FileBody>
     /** Cancels a pending write before it commits. */
     signal?: AbortSignal
     /** Held around the write to `target` (`nse-bind`). */

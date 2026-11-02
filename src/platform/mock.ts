@@ -267,7 +267,9 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
                     (failure: unknown) => failure instanceof FileError && failure.code === 'denied',
                 ))
             if (!isWriteRefusal(error) || !refused) throw error
-            const body = await toBlob(await req.build([]))
+            const body = await toBlob(
+                await (req.buildDownload ? req.buildDownload() : req.build([])),
+            )
             downloads.push({ kind: req.kind, name: req.suggestedName, blob: body })
             return { status: 'download-started', name: req.suggestedName }
         }

@@ -160,7 +160,9 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
         const locked = () => (req.lock ? req.lock(write) : write())
         const download = async () => {
             signal?.throwIfAborted()
-            const blob = await toBlob(await req.build([]))
+            const blob = await toBlob(
+                await (req.buildDownload ? req.buildDownload() : req.build([])),
+            )
             await verifyBuilt(req.kind, blob)
             return handOver(blob, req.suggestedName, startedAt, req.ready)
         }

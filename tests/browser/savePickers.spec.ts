@@ -1,5 +1,6 @@
 import { expect, test, type Download, type Page } from '@playwright/test'
 import { readFile as readFileBytes } from 'node:fs/promises'
+import { readNxsp } from '../../src/local/nxsp'
 import { crafted } from '../local/nxsp/craft'
 import { closePage, waitForStartup } from './editorFixture'
 import {
@@ -625,6 +626,16 @@ for (const write of ['create', 'write', 'close'] as const)
         const chain = await chainOf(page)
         const { handles } = await rows(page, ['handles'])
         expect(handles!.filter((row) => row.value.chainId === chain.chainId)).toEqual([])
+        // The Timeline's save entry and the one in the downloaded file both say it downloaded.
+        const read = await readNxsp(new Blob([bytes]))
+        if (read.kind !== 'nxsp' || !read.history) throw new Error('The download has no history')
+        const inFile = read.history.entries.filter((entry) => entry.kind === 'save')
+        expect(JSON.stringify(inFile.at(-1)?.operation)).toContain('"delivery":"download"')
+        await flushed(page)
+        const { entries } = await rows(page, ['entries'])
+        const stored = entries!.filter((row) => row.value.kind === 'save')
+        expect(stored).toHaveLength(1)
+        expect(JSON.stringify(stored[0]!.value.operation)).toContain('"delivery":"download"')
     })
 
 test("Recent Sessions' Save… to a picked file refusing reads writes it and binds nothing", async ({
