@@ -5,6 +5,7 @@ import {
     openVideoDialog as open,
     videoPhase as phase,
     shortVideoClip as shortClip,
+    videoDialog,
 } from './exportVideoDialog'
 import { wav } from './levelInfoFiles'
 import { resource } from './previewResourceFixture'
@@ -83,12 +84,17 @@ for (const width of [1600, 360])
         )
     })
 
-for (const chooseChart of [false, true])
-    test(`after BGM decoding, reopening ${chooseChart ? 'keeps an explicit Whole Chart choice' : 'defaults to Whole BGM'}`, async ({
-        page,
-    }) => {
+for (const outcome of ['default', 'wholeChart', 'failed'] as const)
+    test(`opening during BGM decoding waits for the result: ${outcome}`, async ({ page }) => {
+        if (outcome === 'wholeChart') {
+            const dialog = await open(page)
+            await dialog.locator('[data-export-range]').click()
+            await dialog.getByRole('menuitemradio', { name: 'Whole Chart' }).click()
+            await page.keyboard.press('Escape')
+            await expect(dialog).toHaveCount(0)
+        }
         await page.evaluate(
-            async (bytes) => {
+            async ({ bytes, fails }) => {
                 const { configureHeldBgm, decodeBgmData } = await window.editorTest.appImport<
                     typeof import('../../src/editor/media/heldBgm')
                 >('/src/editor/media/heldBgm.ts')
@@ -100,6 +106,7 @@ for (const chooseChart of [false, true])
                     decode: async (data) => {
                         Reflect.set(window, 'bgmDecodeStarted', true)
                         await gate
+                        if (fails) throw new Error('BGM decode failed')
                         return decodeBgmData(data)
                     },
                 })
@@ -117,54 +124,66 @@ for (const chooseChart of [false, true])
                     },
                 })
             },
-            [...wav(12)],
+            { bytes: [...wav(12)], fails: outcome === 'failed' },
         )
         await expect
             .poll(() => page.evaluate(() => Reflect.get(window, 'bgmDecodeStarted') as boolean))
             .toBe(true)
 
-        const dialog = await open(page)
-        await expect(dialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue(
-            '00:09.500',
-        )
-        await dialog.locator('[data-export-range]').click()
-        await expect(dialog.getByRole('menuitemradio')).toHaveText(['Whole Chart', 'Selection'])
-        await expect(dialog.getByRole('menuitemradio', { name: 'Whole Chart' })).toHaveAttribute(
-            'aria-checked',
-            'true',
-        )
-        if (chooseChart) await dialog.getByRole('menuitemradio', { name: 'Whole Chart' }).click()
-        else await page.keyboard.press('Escape')
-
-        await page.evaluate(async () => {
-            ;(Reflect.get(window, 'releaseBgmDecode') as () => void)()
-            const { settleHeldBgm } = await window.editorTest.appImport<
-                typeof import('../../src/editor/media/heldBgm')
-            >('/src/editor/media/heldBgm.ts')
-            await settleHeldBgm()
+        const pending = await page.evaluate(async () => {
+            const { appImport } = window.editorTest
+            const { openExportVideo } = await appImport<
+                typeof import('../../src/editor/exportVideo/open')
+            >('/src/editor/exportVideo/open.ts')
+            const { pageEnv } = await appImport<typeof import('../../src/editor/exportVideo/env')>(
+                '/src/editor/exportVideo/env.ts',
+            )
+            const { countStoppedExports } = await appImport<
+                typeof import('../../src/editor/exportVideo/recovery')
+            >('/src/editor/exportVideo/recovery.ts')
+            const { modals } =
+                await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
+            void openExportVideo(
+                pageEnv(
+                    () =>
+                        new Worker('/src/editor/exportVideo/export.worker.ts', { type: 'module' }),
+                ),
+            )
+            // With no stopped exports, this resolves after the opening check.
+            await countStoppedExports()
+            return modals.length
         })
-        expect(
-            await page.evaluate(() => window.editorTest.history.state.value.bgm.buffer?.duration),
-        ).toBe(12)
-        await page.keyboard.press('Escape')
-        await expect(dialog).toHaveCount(0)
-
-        const reopened = await open(page)
-        const out = reopened.getByRole('textbox', { name: 'Out', exact: true })
-        await expect(out).toHaveValue(chooseChart ? '00:09.500' : '00:11.767')
-        await reopened.locator('[data-export-range]').click()
-        await expect(reopened.getByRole('menuitemradio')).toHaveText([
-            'Whole BGM',
-            'Whole Chart',
-            'Selection',
-        ])
+        expect(pending).toBe(0)
+        await page.evaluate(() => {
+            ;(Reflect.get(window, 'releaseBgmDecode') as () => void)()
+        })
+        const dialog = videoDialog(page)
+        await expect(dialog).toBeVisible()
+        const out = dialog.getByRole('textbox', { name: 'Out', exact: true })
+        await expect(out).toHaveValue(outcome === 'default' ? '00:11.767' : '00:09.500')
+        const bgm = dialog.getByRole('switch', { name: 'BGM', exact: true })
+        if (outcome === 'failed') {
+            await expect(bgm).toBeDisabled()
+            await expect(bgm).not.toBeChecked()
+        } else {
+            await expect(bgm).toBeEnabled()
+            await expect(bgm).toBeChecked()
+        }
+        await dialog.locator('[data-export-range]').click()
+        await expect(dialog.getByRole('menuitemradio')).toHaveText(
+            outcome === 'failed'
+                ? ['Whole Chart', 'Selection']
+                : ['Whole BGM', 'Whole Chart', 'Selection'],
+        )
         await expect(
-            reopened.getByRole('menuitemradio', {
-                name: chooseChart ? 'Whole Chart' : 'Whole BGM',
+            dialog.getByRole('menuitemradio', {
+                name: outcome === 'default' ? 'Whole BGM' : 'Whole Chart',
             }),
         ).toHaveAttribute('aria-checked', 'true')
-        await reopened.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
-        await expect(out).toHaveValue('00:11.767')
+        if (outcome !== 'failed') {
+            await dialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+            await expect(out).toHaveValue('00:11.767')
+        }
     })
 
 test('replacing the BGM keeps the open clip and uses the new length on reopening', async ({

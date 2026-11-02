@@ -9,6 +9,7 @@ import { parseColor } from '../../rendering/paint'
 import { settings } from '../../settings'
 import { validName } from '../commands/exportLevel/fileName'
 import { peekedInfo, peekedSession } from '../history/selection'
+import { settleHeldBgm } from '../media/heldBgm'
 import { stopPlayer } from '../player'
 import { view } from '../view'
 import type { createExportDialog, DialogInput } from './dialog'
@@ -51,6 +52,7 @@ export const openExportVideo = async (
 ) => {
     stopPlayer()
     await countStoppedExports()
+    await settleHeldBgm()
     const snapshot = state.value
     const bgm = playbackBgm.value
     const input: DialogInput = {
