@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import {
     videoExportButton as exportButton,
@@ -473,7 +474,9 @@ test('a failed export shows why, and its Close takes focus', async ({ page }) =>
     await exportButton(page).click()
     await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('failed')
     expect(await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished)).toBeNull()
-    await expect(dialog.locator('[data-export-slot]')).toContainText(/./)
+    await expect(dialog.locator('[data-export-slot]')).toContainText(
+        'There is not enough space to write',
+    )
     await expect(dialog.locator('[data-export-close]')).toBeFocused()
     await expect(exportButton(page)).toBeEnabled()
     await page.keyboard.press('Escape')
@@ -901,7 +904,10 @@ test('the landscape chip opens a field that applies on a press outside', async (
     await expect(dialog.locator('[data-clip-chip="In"]')).toContainText('00:02.000')
 })
 
-test('an export waits for the sound effects, which it takes as it starts', async ({ page }) => {
+test('an export waits for the sound effects, which it takes as it starts', async ({
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000)
     // The page again, with its sound effects still loading when the dialog opens.
     let release!: () => void
     const held = new Promise<void>((resolve) => (release = resolve))
@@ -910,19 +916,44 @@ test('an export waits for the sound effects, which it takes as it starts', async
         await route.continue()
     })
     await boot(page)
-    const dialog = await open(page)
+    await page.evaluate(() => Reflect.deleteProperty(window, 'showSaveFilePicker'))
+    const dialog = await open(page, { production: true })
     await shortClip(page)
+    // The fixture chart has no BGM and its first notes are at 1 s.
+    for (const [name, value] of [
+        ['Out', '1.5'],
+        ['In', '0.5'],
+    ]) {
+        const field = dialog.getByRole('textbox', { name, exact: true })
+        await field.fill(value!)
+        await field.press('Enter')
+    }
+    await dialog.locator('[data-export-advanced]').click()
+    await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption('webm')
     await expect(dialog.locator('[data-export-summary]')).toBeVisible()
     await expect(exportButton(page)).toBeDisabled()
     // With SFX off, nothing waits.
     await dialog.getByRole('switch', { name: 'SFX' }).click()
-    await expect(exportButton(page)).toBeEnabled()
+    await expect(exportButton(page)).toBeEnabled({ timeout: 15_000 })
     await dialog.getByRole('switch', { name: 'SFX' }).click()
     await expect(exportButton(page)).toBeDisabled()
     release()
-    await expect(exportButton(page)).toBeEnabled()
+    await expect(exportButton(page)).toBeEnabled({ timeout: 15_000 })
     await exportButton(page).click()
     await expect.poll(() => phase(page), { timeout: 20_000 }).toBe('ready')
+    const downloading = page.waitForEvent('download')
+    await dialog.locator('[data-export-download]').click()
+    const path = testInfo.outputPath('export.webm')
+    await (await downloading).saveAs(path)
+    const bytes = await readFile(path)
+    const media = await page.evaluate(
+        async (bytes) => {
+            const { readTracks } = await import('/tests/helpers/readVideo.ts')
+            return readTracks(bytes)
+        },
+        [...bytes],
+    )
+    expect(media.audio?.peak).toBeGreaterThan(0.01)
 })
 
 test('the fades shown are those the export uses, together at most the clip', async ({ page }) => {
