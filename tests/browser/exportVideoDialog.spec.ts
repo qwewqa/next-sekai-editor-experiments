@@ -6,6 +6,7 @@ import {
     videoPhase as phase,
     shortVideoClip as shortClip,
 } from './exportVideoDialog'
+import { wav } from './levelInfoFiles'
 import { resource } from './previewResourceFixture'
 
 const boot = async (page: Page) => {
@@ -81,6 +82,182 @@ for (const width of [1600, 360])
             'true',
         )
     })
+
+for (const chooseChart of [false, true])
+    test(`after BGM decoding, reopening ${chooseChart ? 'keeps an explicit Whole Chart choice' : 'defaults to Whole BGM'}`, async ({
+        page,
+    }) => {
+        await page.evaluate(
+            async (bytes) => {
+                const { configureHeldBgm, decodeBgmData } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/media/heldBgm')
+                >('/src/editor/media/heldBgm.ts')
+                const gate = new Promise<void>((resolve) => {
+                    Reflect.set(window, 'releaseBgmDecode', resolve)
+                })
+                configureHeldBgm({
+                    read: async () => new Uint8Array(bytes).buffer,
+                    decode: async (data) => {
+                        Reflect.set(window, 'bgmDecodeStarted', true)
+                        await gate
+                        return decodeBgmData(data)
+                    },
+                })
+                const { history } = window.editorTest
+                history.replaceState({
+                    ...history.state.value,
+                    bgm: {
+                        offset: 0.25,
+                        meta: {
+                            hash: 'a'.repeat(32),
+                            filename: 'loading.wav',
+                            size: bytes.length,
+                            type: 'audio/wav',
+                        },
+                    },
+                })
+            },
+            [...wav(12)],
+        )
+        await expect
+            .poll(() => page.evaluate(() => Reflect.get(window, 'bgmDecodeStarted') as boolean))
+            .toBe(true)
+
+        const dialog = await open(page)
+        await expect(dialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue(
+            '00:09.500',
+        )
+        await dialog.locator('[data-export-range]').click()
+        await expect(dialog.getByRole('menuitemradio')).toHaveText(['Whole Chart', 'Selection'])
+        await expect(dialog.getByRole('menuitemradio', { name: 'Whole Chart' })).toHaveAttribute(
+            'aria-checked',
+            'true',
+        )
+        if (chooseChart) await dialog.getByRole('menuitemradio', { name: 'Whole Chart' }).click()
+        else await page.keyboard.press('Escape')
+
+        await page.evaluate(async () => {
+            ;(Reflect.get(window, 'releaseBgmDecode') as () => void)()
+            const { settleHeldBgm } = await window.editorTest.appImport<
+                typeof import('../../src/editor/media/heldBgm')
+            >('/src/editor/media/heldBgm.ts')
+            await settleHeldBgm()
+        })
+        expect(
+            await page.evaluate(() => window.editorTest.history.state.value.bgm.buffer?.duration),
+        ).toBe(12)
+        await page.keyboard.press('Escape')
+        await expect(dialog).toHaveCount(0)
+
+        const reopened = await open(page)
+        const out = reopened.getByRole('textbox', { name: 'Out', exact: true })
+        await expect(out).toHaveValue(chooseChart ? '00:09.500' : '00:11.767')
+        await reopened.locator('[data-export-range]').click()
+        await expect(reopened.getByRole('menuitemradio')).toHaveText([
+            'Whole BGM',
+            'Whole Chart',
+            'Selection',
+        ])
+        await expect(
+            reopened.getByRole('menuitemradio', {
+                name: chooseChart ? 'Whole Chart' : 'Whole BGM',
+            }),
+        ).toHaveAttribute('aria-checked', 'true')
+        await reopened.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+        await expect(out).toHaveValue('00:11.767')
+    })
+
+test('replacing the BGM keeps the open clip and uses the new length on reopening', async ({
+    page,
+}) => {
+    await page.evaluate(() => window.editorTest.addWaveform())
+    const dialog = await open(page)
+    const out = dialog.getByRole('textbox', { name: 'Out', exact: true })
+    await expect(out).toHaveValue('00:11.767')
+    await dialog.locator('[data-export-range]').click()
+    await dialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        history.replaceState({
+            ...history.state.value,
+            bgm: {
+                offset: 0.5,
+                buffer: new AudioBuffer({
+                    length: 20 * 8000,
+                    sampleRate: 8000,
+                    numberOfChannels: 1,
+                }),
+            },
+        })
+    })
+    // An open export uses the chart and BGM captured when it opened.
+    await expect(out).toHaveValue('00:11.767')
+    await dialog.locator('[data-export-range]').click()
+    await dialog.getByRole('menuitemradio', { name: 'Whole Chart' }).click()
+    await expect(out).toHaveValue('00:09.500')
+    await dialog.locator('[data-export-range]').click()
+    await dialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+    await expect(out).toHaveValue('00:11.767')
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    const reopened = await open(page)
+    await expect(reopened.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue(
+        '00:19.500',
+    )
+    await reopened.locator('[data-export-range]').click()
+    await expect(reopened.getByRole('menuitemradio', { name: 'Whole BGM' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    )
+})
+
+test('reopening remembers the chosen range kind and falls back after BGM removal', async ({
+    page,
+}) => {
+    await page.evaluate(() => window.editorTest.addWaveform())
+    let dialog = await open(page)
+    await dialog.locator('[data-export-range]').click()
+    await dialog.getByRole('menuitemradio', { name: 'Whole Chart' }).click()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+
+    dialog = await open(page)
+    await expect(dialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue('00:09.500')
+    await dialog.locator('[data-export-range]').click()
+    await expect(dialog.getByRole('menuitemradio', { name: 'Whole Chart' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    )
+    await dialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+
+    dialog = await open(page)
+    await expect(dialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue('00:11.767')
+    await dialog.locator('[data-export-range]').click()
+    await expect(dialog.getByRole('menuitemradio', { name: 'Whole BGM' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    )
+    await dialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+
+    await page.evaluate(() => {
+        const { history } = window.editorTest
+        history.replaceState({ ...history.state.value, bgm: { offset: 0 } })
+    })
+    dialog = await open(page)
+    await expect(dialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue('00:09.500')
+    await dialog.locator('[data-export-range]').click()
+    await expect(dialog.getByRole('menuitemradio')).toHaveText(['Whole Chart', 'Selection'])
+    await expect(dialog.getByRole('menuitemradio', { name: 'Whole Chart' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    )
+})
 
 test('closing before the first view frame does not log an abort', async ({ page }) => {
     const errors: string[] = []

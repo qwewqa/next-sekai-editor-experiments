@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import en from '../../src/i18n/en/index.json' with { type: 'json' }
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
+import { openVideoDialog } from './exportVideoDialog'
+import { wav } from './levelInfoFiles'
 
 // The Export Video command: the toolbar opens it, a peek exports the step on screen, a browser
 // without the encoders gets a notice, and the toolbar step adds it to the old first group.
@@ -43,6 +45,104 @@ test('the File group opens it, and Escape closes it', async ({ page }) => {
     await expect(dialog(page)).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
+})
+
+test('a reload defaults to Whole BGM and uses Whole Chart after BGM removal', async ({ page }) => {
+    test.setTimeout(60_000)
+    await page.goto('/')
+    await waitForStartup(page)
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.notes))
+    await page.keyboard.press('m')
+    const bgm = page.getByRole('dialog', { name: 'BGM', exact: true })
+    const audio = bgm.locator('input[type="button"]')
+    const choosing = page.waitForEvent('filechooser')
+    await audio.click()
+    await (
+        await choosing
+    ).setFiles({
+        name: 'reload.wav',
+        mimeType: 'audio/wav',
+        buffer: wav(12),
+    })
+    await expect(audio).toHaveValue(/^00:12/)
+    await bgm.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect(bgm).toHaveCount(0)
+
+    const flush = () =>
+        page.evaluate(async () => {
+            const { flusher } =
+                (await import('/src/local/storing.ts')) as typeof import('../../src/local/storing')
+            if (!flusher) throw new Error('No flusher')
+            await flusher.flush({ strict: true })
+        })
+    const chain = () =>
+        page.evaluate(async () => {
+            const { session } =
+                (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+            return session.value.docId
+        })
+    await flush()
+    const before = await chain()
+    let exportDialog = await openVideoDialog(page)
+    await exportDialog.locator('[data-export-range]').click()
+    await exportDialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+    await expect(exportDialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue(
+        '00:12.000',
+    )
+    // Whole Chart distinguishes a reset to the default from a remembered Whole BGM choice.
+    await exportDialog.locator('[data-export-range]').click()
+    await exportDialog.getByRole('menuitemradio', { name: 'Whole Chart' }).click()
+    await page.keyboard.press('Escape')
+    await expect(exportDialog).toHaveCount(0)
+
+    await page.reload()
+    await waitForStartup(page)
+    expect(await chain()).toBe(before)
+    await page.evaluate(async () => {
+        const { settleHeldBgm } =
+            (await import('/src/editor/media/heldBgm.ts')) as typeof import('../../src/editor/media/heldBgm')
+        await settleHeldBgm()
+    })
+    exportDialog = await openVideoDialog(page)
+    await expect(exportDialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue(
+        '00:12.000',
+    )
+    await exportDialog.locator('[data-export-range]').click()
+    await expect(exportDialog.getByRole('menuitemradio', { name: 'Whole BGM' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    )
+    await exportDialog.getByRole('menuitemradio', { name: 'Whole BGM' }).click()
+    await page.keyboard.press('Escape')
+    await expect(exportDialog).toHaveCount(0)
+
+    // Undo the BGM addition before storing and reloading the same chart again.
+    await page.locator('canvas.editor-chart').focus()
+    await page.keyboard.press('Control+z')
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { liveState } =
+                    (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+                return !!liveState.value.bgm.meta || !!liveState.value.bgm.buffer
+            }),
+        )
+        .toBe(false)
+    await flush()
+    await page.reload()
+    await waitForStartup(page)
+    expect(await chain()).toBe(before)
+    exportDialog = await openVideoDialog(page)
+    await expect(exportDialog.getByRole('textbox', { name: 'Out', exact: true })).toHaveValue(
+        '00:09.500',
+    )
+    await exportDialog.locator('[data-export-range]').click()
+    await expect(exportDialog.getByRole('menuitemradio')).toHaveText(['Whole Chart', 'Selection'])
+    await expect(exportDialog.getByRole('menuitemradio', { name: 'Whole Chart' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    )
 })
 
 test('while peeking, it runs and takes the chart of the step on screen', async ({ page }) => {

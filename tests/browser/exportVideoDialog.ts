@@ -6,9 +6,12 @@ type DialogOptions = Parameters<
 
 export const openVideoDialog = async (page: Page, options: DialogOptions = {}) => {
     await page.evaluate(async (options) => {
-        const { openExportVideoTest } = await window.editorTest.appImport<
-            typeof import('../../src/editor/exportVideo/test')
-        >('/src/editor/exportVideo/test.ts')
+        const path = '/src/editor/exportVideo/test.ts'
+        const { openExportVideoTest } = window.editorTest
+            ? await window.editorTest.appImport<typeof import('../../src/editor/exportVideo/test')>(
+                  path,
+              )
+            : ((await import(path)) as typeof import('../../src/editor/exportVideo/test'))
         await openExportVideoTest(options)
     }, options)
     const dialog = videoDialog(page)
