@@ -5,7 +5,7 @@ import { playbackBgm } from '../../history/bgm'
 import { session } from '../../history/session'
 import { displayName, namePartsOf, prefillOf } from '../../local/names'
 import { showModal } from '../../modals'
-import { parseColor } from '../../rendering/paint'
+import { readPreviewBackdrop } from '../../preview/backdrop'
 import { settings } from '../../settings'
 import { validName } from '../commands/exportLevel/fileName'
 import { peekedInfo, peekedSession } from '../history/selection'
@@ -29,13 +29,6 @@ const shownStem = () => {
         state.value,
     )
     return validName(prefillOf(displayName(parts)))
-}
-
-/** The preview's backdrop colour, as the preview reads it for the current theme. */
-const backdrop = (): DialogInput['look']['backdrop'] => {
-    const channels = getComputedStyle(document.documentElement).getPropertyValue('--color-preview')
-    const [r, g, b] = parseColor(`rgb(${channels.trim()})`)
-    return [r, g, b]
 }
 
 /** The step on screen, as the History peek bar names it: a session by its name. */
@@ -75,7 +68,7 @@ export const openExportVideo = async (
                 noteSpeed: settings.previewNoteSpeed,
                 showEffects: settings.previewShowEffects,
                 showCombo: settings.previewShowCombo,
-                backdrop: backdrop(),
+                backdrop: readPreviewBackdrop(),
             },
             bgm,
             bgmMissing: bgm.buffer ? undefined : bgm.meta ? 'notLoaded' : 'none',

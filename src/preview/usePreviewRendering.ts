@@ -7,12 +7,12 @@ import { cancelFrame, requestFrame } from '../frame'
 import { state } from '../history'
 import { timed } from '../perf/probe'
 import { isPlaying } from '../player'
-import { parseColor } from '../rendering/paint'
 import { settings } from '../settings'
 import type { State } from '../state'
 import { hasSameChartData } from '../state/data'
 import { theme } from '../theme'
 import type { LoadedBackground } from './assets/types'
+import { readPreviewBackdrop } from './backdrop'
 import { drawPreviewFrame, type PreviewFrameInput } from './drawFrame'
 import { getPreviewState, previewEdit } from './edit'
 import { getPreviewChart } from './engine/chart'
@@ -119,11 +119,7 @@ export const usePreviewRendering = (
     watch(
         theme,
         () => {
-            const channels = getComputedStyle(document.documentElement).getPropertyValue(
-                '--color-preview',
-            )
-            const [r, g, b] = parseColor(`rgb(${channels.trim()})`)
-            backdrop.value = [r, g, b]
+            backdrop.value = readPreviewBackdrop()
         },
         { immediate: true },
     )
