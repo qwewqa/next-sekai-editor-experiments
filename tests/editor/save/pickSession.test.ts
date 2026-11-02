@@ -459,7 +459,7 @@ for (const state of ['empty', 'filled', 'missing', 'unreadable'] as const)
                 if (state === 'filled') t.mock.writeFile('a.nxsp', new Blob(['changed']))
                 if (state === 'missing') t.mock.files.delete('a.nxsp')
                 if (state === 'unreadable')
-                    t.mock.read = () => Promise.reject(new Error('unreadable'))
+                    t.mock.inspect = () => Promise.reject(new Error('unreadable'))
                 throw new FileError('io', 'failed')
             }),
         ).catch((error) => error)
