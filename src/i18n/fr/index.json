@@ -770,7 +770,7 @@
       "viewClick": "Cliquez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
       "showChange": "Afficher la modification fait défiler la partition jusqu’à la modification suivante de l’étape de la Chronologie que vous consultez.",
       "editsHere": "Trouver les modifications ici liste les étapes de la Chronologie avec des modifications aux temps couverts par la sélection, ou aux temps visibles si rien n’est sélectionné.",
-      "timeline": "Historique affiche vos modifications, sauvegardes et exportations sous forme d’étapes de la Chronologie."
+      "timeline": "Historique affiche vos modifications, vos sauvegardes et vos exportations de données de niveau sous forme d’étapes de la Chronologie."
     },
     "pasteTool": {
       "clipboardHistory": "L’Historique du presse-papiers du panneau Propriétés affiche vos copies récentes. Choisissez-en une pour la coller ensuite."
@@ -2479,6 +2479,7 @@
       }
     },
     "videoBitrate": "Débit vidéo (Mbps)",
+    "antialiasDescription": "Lisse les contours en escalier dans la vidéo.",
     "renderScaleDescription": "Ajuste la résolution de rendu de chaque image. Des valeurs plus élevées rendent les contours plus lisses mais ralentissent l’exportation.",
     "fadeIn": "Fondu d’entrée (s)",
     "fadeOut": "Fondu de sortie (s)",

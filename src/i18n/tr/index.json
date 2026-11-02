@@ -770,7 +770,7 @@
       "viewClick": "Çizelgenin o zamanki hâlini görmek için bir Zaman Çizgisi adımına tıklayın. Geri Yükle, bu sürümü yeni bir Zaman Çizgisi adımı olarak geri getirir.",
       "showChange": "Değişikliği Göster, görüntülediğiniz Zaman Çizgisi adımındaki bir sonraki değişikliğe kaydırır.",
       "editsHere": "Buradaki Düzenlemeleri Bul, seçimin kapladığı vuruşlarda değişiklik içeren Zaman Çizgisi adımlarını listeler. Hiçbir şey seçili değilse görünür vuruşları kullanır.",
-      "timeline": "Geçmiş, düzenlemelerinizi, kaydetme ve dışa aktarma işlemlerinizi Zaman Çizgisi adımları olarak listeler."
+      "timeline": "Geçmiş, düzenlemelerinizi, kaydetme ve seviye verisini dışa aktarma işlemlerinizi Zaman Çizgisi adımları olarak listeler."
     },
     "pasteTool": {
       "clipboardHistory": "Özellikler panelindeki Pano Geçmişi, son kopyaladıklarınızı listeler. Bir sonraki yapıştırmada kullanmak için bunlardan birini seçin."
@@ -2479,6 +2479,7 @@
       }
     },
     "videoBitrate": "Video Bit Hızı (Mbps)",
+    "antialiasDescription": "Videodaki tırtıklı kenarları yumuşatır.",
     "renderScaleDescription": "Her kareyi çizmek için kullanılan çözünürlüğü ölçekler. Daha yüksek değerler kenarları yumuşatır ancak dışa aktarmayı yavaşlatır.",
     "fadeIn": "Giriş Geçişi (sn)",
     "fadeOut": "Çıkış Geçişi (sn)",

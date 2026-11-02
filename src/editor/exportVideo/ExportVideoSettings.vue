@@ -184,7 +184,7 @@ const formatDescription = computed(() => ({ choices: strings.value.formatDescrip
             <ToggleField
                 v-model="form.antialias"
                 :label="i18n.settings.preview.antialias"
-                :description="i18n.settings.descriptions.previewAntialias"
+                :description="strings.antialiasDescription"
                 :disabled="busy"
             />
             <ChoiceField

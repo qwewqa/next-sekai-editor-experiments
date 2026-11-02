@@ -770,7 +770,7 @@
             "viewClick": "Click a Timeline step to view the chart as it was then. Restore brings that version back as a new Timeline step.",
             "showChange": "Show Change scrolls to the next change in the Timeline step you are viewing.",
             "editsHere": "Find Edits Here lists the Timeline steps that changed the beats the selection covers, or the beats in view when nothing is selected.",
-            "timeline": "History lists your edits, saves and exports as Timeline steps."
+            "timeline": "History lists your edits, saves and level data exports as Timeline steps."
         },
         "pasteTool": {
             "clipboardHistory": "Clipboard History in the Properties panel lists your recent copies. Choose one to paste it next."
@@ -2479,6 +2479,7 @@
             }
         },
         "videoBitrate": "Video Bitrate (Mbps)",
+        "antialiasDescription": "Smooths jagged edges in the video.",
         "renderScaleDescription": "Scales the resolution used to draw each frame. Higher values give smoother edges but slow the export.",
         "fadeIn": "Fade In (s)",
         "fadeOut": "Fade Out (s)",
