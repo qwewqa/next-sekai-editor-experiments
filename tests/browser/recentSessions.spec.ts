@@ -897,10 +897,11 @@ for (const [code, line, button, label] of [
         // A choice ignores a press in its first 300 ms.
         await page.waitForTimeout(350)
         await failure.getByRole('button', { name: button }).click()
-        await submitSave(page, 'alpha')
-        await expect(notice(page).filter({ hasText: 'Saved to alpha.nxsp' })).toBeVisible()
+        if (code !== 'denied') await submitSave(page, 'alpha')
+        const savedName = code === 'denied' ? 'failed.nxsp' : 'alpha.nxsp'
+        await expect(notice(page).filter({ hasText: `Saved to ${savedName}` })).toBeVisible()
         // The file holds the session chosen in Recent Sessions.
-        const project = await projectOf(page, 'alpha.nxsp')
+        const project = await projectOf(page, savedName)
         expect((project.metadata as { title?: string } | undefined)?.title).toBe('Alpha')
     })
 

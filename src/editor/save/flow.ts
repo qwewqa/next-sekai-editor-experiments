@@ -526,7 +526,13 @@ export type Outcome =
     /** An export takeover that storage could not record. */
     | { kind: 'refused'; name: string; reason: 'safeMode' }
     | { kind: 'conflict'; handle: FileSystemFileHandle; binding: Binding }
-    | { kind: 'failed'; error: FileError; name: string; reported?: true }
+    | {
+          kind: 'failed'
+          error: FileError
+          name: string
+          reported?: true
+          retry?: () => Promise<Outcome>
+      }
     | { kind: 'error'; message: () => string }
 
 /** A download whose build would likely outlast the tap: over 2 MB estimated, on a touch device. */
@@ -565,27 +571,41 @@ const projectPick = async (
         : outcome
 }
 
+/** The document identity and destination retained by Try Again. */
+type PickRetry = { docId: string; target?: PickedFile['target'] }
+
 /**
  * Saves through the picker, or downloads where there's none: one pick session for every picker
  * of the Save family. The file is built and verified first, then picked, checked
  * under `nse-bind` exclusive, written over the emptied file (its empty state the precondition)
  * and bound.
  */
-const pickAndWrite = async (env: Env, request: PickRequest): Promise<Outcome> => {
+const pickAndWrite = async (
+    env: Env,
+    request: PickRequest,
+    retry: PickRetry = { docId: crypto.randomUUID() },
+): Promise<Outcome> => {
     const ended = await withPickSession(
         {
             env,
-            name: request.fileName,
+            name: retry.target?.handle.name ?? request.fileName,
             surface: 'save',
             purpose: 'save',
             commitFirst: true,
+            ...(retry.target
+                ? { target: retry.target, permission: requestWrite(retry.target.handle) }
+                : {}),
+            committed: (target) => {
+                retry.target = target
+            },
             // A large download on a touch device would outlast the tap: "Preparing…" opens at
             // once, with the estimated size.
             ...(largeDownload(request.estimated) ? { estimated: request.estimated } : {}),
             ui: pickUi,
         },
-        (session) => saveBody(session, env, request),
+        (session) => saveBody(session, env, request, retry.docId),
     )
+    if (ended.kind === 'failed') return { ...ended, retry: () => pickAndWrite(env, request, retry) }
     return ended.kind === 'dismissed' ? { kind: 'cancelled' } : ended
 }
 
@@ -593,12 +613,13 @@ const saveBody = async (
     session: PickSession,
     env: Env,
     request: PickRequest,
+    newDocId: string,
 ): Promise<Outcome | Dismissed> => {
     const reserved = await session.reserve()
     if (!reserved) return { kind: 'cancelled' }
     const { reservation, state } = reserved
     const binding = quickBinding(env)
-    const docId = request.target === 'new' ? crypto.randomUUID() : binding.docId
+    const docId = request.target === 'new' ? newDocId : binding.docId
     let built: BuiltSave
     try {
         built = await session.preparing(() =>
@@ -1362,8 +1383,10 @@ export const afterOutcome = async (
                 case 'denied':
                     choice = await saveUi.denied(name)
                     // Try Again asks for permission again, on this press.
-                    if (choice === 'tryAgain') await (stored ? again() : saveNow(env))
-                    else if (choice === 'saveAs') await saveAs()
+                    if (choice === 'tryAgain') {
+                        if (outcome.retry) await afterOutcome(env, await outcome.retry(), again, of)
+                        else await (stored ? again() : saveNow(env))
+                    } else if (choice === 'saveAs') await saveAs()
                     return
                 case 'no-space':
                 case 'not-local':
@@ -1883,16 +1906,14 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
     const estimated = estimatedTotal(input, options)
     // Its session hold before the build, so Delete Sessions… skips it. Released
     // before what follows, so Choose Another… holds it again for its own write.
-    const outcome = await withSessionHold(sessionId, () =>
-        writeSessionFile(env, {
-            chainId,
-            sessionId,
-            fileName: result.fileName,
-            ...options,
-            ...(estimated === undefined ? {} : { estimated }),
-            committed: applied === 'held',
-        }),
-    )
+    const outcome = await writeSessionFile(env, {
+        chainId,
+        sessionId,
+        fileName: result.fileName,
+        ...options,
+        ...(estimated === undefined ? {} : { estimated }),
+        committed: applied === 'held',
+    })
     // Choose Another, Try Again and Save As are Recent Sessions' Save for this session again,
     // never the open one's Save.
     await afterOutcome(env, outcome, () => saveToFileNow(env, sessionId), 'stored')
@@ -1921,22 +1942,37 @@ type SessionFileRequest = {
 }
 
 /** Builds a stored session as a new file, binding nothing and taking no reservation. */
-const writeSessionFile = async (env: Env, request: SessionFileRequest): Promise<Outcome> => {
-    const ended = await withPickSession(
-        {
-            env,
-            name: request.fileName,
-            surface: 'save',
-            purpose: 'saveToFile',
-            commitFirst: false,
-            // The written session's imports are waited for; the pick's own last check covers any
-            // this tab runs.
-            importChain: request.chainId,
-            ...(largeDownload(request.estimated) ? { estimated: request.estimated } : {}),
-            ui: pickUi,
-        },
-        (session) => sessionFileBody(session, env, request),
+const writeSessionFile = async (
+    env: Env,
+    request: SessionFileRequest,
+    retry: PickRetry = { docId: crypto.randomUUID() },
+): Promise<Outcome> => {
+    const permission = retry.target ? requestWrite(retry.target.handle) : undefined
+    permission?.catch(() => undefined)
+    const ended = await withSessionHold(request.sessionId, () =>
+        withPickSession(
+            {
+                env,
+                name: retry.target?.handle.name ?? request.fileName,
+                surface: 'save',
+                purpose: 'saveToFile',
+                commitFirst: false,
+                ...(retry.target ? { target: retry.target } : {}),
+                ...(permission ? { permission } : {}),
+                committed: (target) => {
+                    retry.target = target
+                },
+                // The written session's imports are waited for; the pick's own last check covers any
+                // this tab runs.
+                importChain: request.chainId,
+                ...(largeDownload(request.estimated) ? { estimated: request.estimated } : {}),
+                ui: pickUi,
+            },
+            (session) => sessionFileBody(session, env, request, retry.docId),
+        ),
     )
+    if (ended.kind === 'failed')
+        return { ...ended, retry: () => writeSessionFile(env, request, retry) }
     return ended.kind === 'dismissed' ? { kind: 'cancelled' } : ended
 }
 
@@ -1970,12 +2006,13 @@ const sessionFileBody = async (
     session: PickSession,
     env: Env,
     request: SessionFileRequest,
+    docId: string,
 ): Promise<Outcome | Dismissed> => {
     let began = 0
     const built = await session
         .preparing(() => {
             began = performance.now()
-            return buildSession(env, request, crypto.randomUUID(), request.fileName)
+            return buildSession(env, request, docId, request.fileName)
         })
         .catch((error: unknown) => fileError(error))
     if (began) builtIn(performance.now() - began)

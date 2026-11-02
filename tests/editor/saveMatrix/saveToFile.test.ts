@@ -52,7 +52,6 @@ const onlyStored = async (r: Awaited<ReturnType<typeof world>>) => {
 }
 
 for (const [code, dialog, choice, label] of [
-    ['denied', 'denied', 'tryAgain', 'Try Again'],
     ['denied', 'denied', 'saveAs', 'Save As'],
     ['no-space', 'failed', 'saveAs', 'Save As'],
     ['read-only', 'readOnly', 'saveAs', 'Save As'],

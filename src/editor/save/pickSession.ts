@@ -316,8 +316,10 @@ export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
     readonly read?: Promise<ReadResult> | 'start'
     /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */
     readonly importChain?: string
-    /** Called at the commit point, when the picker returned a file. */
-    readonly committed?: () => void
+    /** Called at the commit point with the destination. */
+    readonly committed?: (target: FileTarget & { kind: 'handle' }) => void
+    /** A denied Save retries its picked file without opening another picker. */
+    readonly target?: FileTarget & { kind: 'handle' }
     readonly ui: AttemptSpec['ui'] & {
         /** `own`: a failed write left a confirmed-empty file. */
         notPutBack(
@@ -658,7 +660,7 @@ export const withPickSession = <T>(
                         continue
                     }
                     // A wait that outlasted the press asks for a new one.
-                    if (!pressed && lapsed()) {
+                    if (!spec.target && !pressed && lapsed()) {
                         if (!(await attempt.ready('save', size))) throw new Cancelled()
                         startedAt = performance.now()
                         pressed = true
@@ -668,11 +670,11 @@ export const withPickSession = <T>(
                 }
                 // The activation check was the last step: only microtasks until the picker opens.
                 attempt.closePreparing()
-                const target = await open({ suggestedName, picker })
+                const target = spec.target ?? (await open({ suggestedName, picker }))
                 if (target?.kind !== 'handle') return { kind: 'dismissed' }
                 // The commit point: no Cancel has any effect from here.
                 attempt.commit()
-                spec.committed?.()
+                spec.committed?.(target)
                 await savePoint('picked')
                 const result = await hold(target, inLock)
                 return result
