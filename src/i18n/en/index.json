@@ -2427,8 +2427,7 @@
         "export": "Export",
         "exported": "Exported to {0}",
         "notLevelData": "“{0}” is not level data.",
-        "fileType": "Next SEKAI level data",
-        "unsupportedParts": "“{0}” has parts that this version of the editor does not support."
+        "fileType": "Next SEKAI level data"
     },
     "exportVideo": {
         "title": "Export Video",
@@ -2507,9 +2506,6 @@
         "discard": "Discard Video",
         "unsupported": "This browser cannot export video.",
         "errors": {
-            "ownProject": "Saved to {0}. Choose another name for the video.",
-            "refused": "“{0}” is a chart file. Choose another name.",
-            "refusedOther": "“{0}” is now empty. Open its session and use Save to write the file again. Choose another name for the video.",
             "config": "These video settings are not available in this browser. Choose a lower resolution or frame rate.",
             "encoder": "The video could not be created.",
             "audio": "The audio could not be prepared.",
@@ -2569,9 +2565,7 @@
         "noSpace": "There is not enough space to write {0}.",
         "writeFailed": "“{0}” could not be written.",
         "ownFileEmptied": "“{0}” could not be written. The file is now empty.",
-        "notPutBack": "“{0}” was emptied and its contents could not be restored.",
         "openedContentGone": "The contents of “{0}” have changed.",
-        "downloadPreviousContents": "You can download a copy of the previous contents.",
         "title": "Save Project File",
         "titleAs": "Save As",
         "history": "History",
@@ -2582,7 +2576,6 @@
         "exportHintNames": "Level data files may have no extension or end in .nsld or .json.gz.",
         "readOnly": "“{0}” cannot be written to.",
         "notKept": "Not saved. “{0}” could not be read in full.",
-        "notKeptSafe": "Not saved. Files cannot be replaced in safe mode.",
         "notKeptFull": "Not saved. Browser storage is full. Delete sessions in Settings › Local Data, then save again.",
         "saved": "Saved to {0}",
         "savedWithoutBgmLarge": "Saved to {0} without its BGM",

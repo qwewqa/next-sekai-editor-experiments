@@ -41,8 +41,7 @@ const scriptedUi = (answers: unknown[]) => {
     const ui = {
         conflict: ask('conflict'),
         notLevelData: ask('notLevelData'),
-        unsupportedParts: ask('unsupportedParts'),
-        notPutBack: ask('notPutBack'),
+        emptied: ask('emptied'),
         notFound: ask('notFound'),
         denied: ask('denied'),
         failed: ask('failed'),
@@ -54,7 +53,7 @@ const scriptedUi = (answers: unknown[]) => {
 
 let mock: MockPlatform
 
-/** What the Save core's own feedback said: the offer's download, or its failure. */
+/** The Save feedback is separate from export feedback. */
 let saveFeedback: string[] = []
 
 // Read through a call, so an assertion does not narrow it for later reads.
@@ -217,20 +216,6 @@ test('a browser without a save picker downloads, and reports its name and size',
     assert.equal(exportMemory.target, undefined)
 })
 
-test('a picked file this tab opened as a chart is refused and put back as it was read', async () => {
-    const usc = new TextEncoder().encode('{"usc":{"objects":[],"offset":0},"version":2}')
-    const handle = mock.createHandle('chart.usc')
-    exportMemory.opened = { handle, levelData: false, partial: false, bytes: usc.buffer }
-    // The file holds the chart; the pick empties it before the editor sees it.
-    mock.writeFile('chart.usc', new Blob([usc]))
-    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('chart.usc') })
-    const { ui, asked } = scriptedUi([undefined])
-    assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    assert.deepEqual(asked, [{ dialog: 'notLevelData', args: ['chart.usc'] }])
-    assert.deepEqual(new Uint8Array(await mock.files.get('chart.usc')!.arrayBuffer()), usc)
-    assert.equal(exportMemory.target, undefined)
-})
-
 test('requestPermission is the first call on the gesture through exportToTarget', async () => {
     const target = await openedTarget()
     // The gesture's activation ends at the first await; a later call would see it expired.
@@ -327,119 +312,6 @@ test('a target that cannot be read is reported as such, not as "not level data"'
     assert.equal(error.step, 'read')
 })
 
-test('a picked level whose import left parts out is refused and put back as it was read', async () => {
-    const original = new Uint8Array(await level(4).arrayBuffer())
-    const handle = mock.createHandle('LevelData')
-    exportMemory.opened = { handle, levelData: true, partial: true, bytes: original.slice().buffer }
-    // The file holds the level; the pick empties it.
-    mock.writeFile('LevelData', new Blob([original]))
-    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('LevelData') })
-    const { ui, asked } = scriptedUi([undefined])
-    assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    assert.deepEqual(asked, [{ dialog: 'unsupportedParts', args: ['LevelData'] }])
-    assert.deepEqual(new Uint8Array(await mock.files.get('LevelData')!.arrayBuffer()), original)
-    assert.equal(exportMemory.target, undefined)
-})
-
-test('a picked chart that cannot be put back is reported, with its bytes to download', async () => {
-    const usc = new TextEncoder().encode('{"usc":{"objects":[],"offset":0},"version":2}')
-    exportMemory.opened = {
-        handle: mock.createHandle('chart.usc'),
-        levelData: false,
-        partial: false,
-        bytes: usc.buffer,
-    }
-    mock.writeFile('chart.usc', new Blob([usc]))
-    // Writing it back is not allowed.
-    const picked = mock.createHandle('chart.usc', { permission: () => 'denied' })
-    mock.saveTargets.push({ kind: 'handle', handle: picked })
-    const { ui, asked, feedback } = scriptedUi(['download'])
-    assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    assert.deepEqual(asked, [{ dialog: 'notPutBack', args: ['chart.usc', true, true] }])
-    assert.equal(mock.files.get('chart.usc')!.size, 0)
-    assert.deepEqual(
-        mock.downloads.map(({ kind, name }) => ({ kind, name })),
-        [{ kind: 'recovery', name: 'chart.usc' }],
-    )
-    assert.deepEqual(new Uint8Array(await mock.downloads[0]!.blob.arrayBuffer()), usc)
-    assert.deepEqual(feedback, [])
-    assert.deepEqual(saveFeedback, [`download:chart.usc:${usc.byteLength}`])
-})
-
-/** A chart this tab opened from `chart.usc`, whose pick the picker emptied. */
-const openedChart = () => {
-    const usc = new TextEncoder().encode('{"usc":{"objects":[],"offset":0},"version":2}')
-    exportMemory.opened = {
-        handle: mock.createHandle('chart.usc'),
-        levelData: false,
-        partial: false,
-        bytes: usc.buffer,
-    }
-    // The file holds the chart; the pick empties it.
-    mock.writeFile('chart.usc', new Blob([usc]))
-    return usc
-}
-
-test('a refused pick another program wrote since is left as it is, and said so', async () => {
-    openedChart()
-    // A sync client writes it between the pick and the check.
-    const other = new Blob(['other content'])
-    const inspect = mock.inspect
-    mock.inspect = (target) => {
-        mock.writeFile('chart.usc', other)
-        mock.inspect = inspect
-        return inspect(target)
-    }
-    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('chart.usc') })
-    const { ui, asked } = scriptedUi([undefined])
-    assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    assert.deepEqual(asked, [{ dialog: 'notPutBack', args: ['chart.usc', false, true] }])
-    assert.equal(await mock.files.get('chart.usc')!.text(), 'other content')
-    assert.deepEqual(mock.calls, [])
-})
-
-test('a refused pick that is gone is not said to be emptied', async () => {
-    openedChart()
-    // Deleted after the pick, which emptied it.
-    const inspect = mock.inspect
-    mock.inspect = (target) => {
-        mock.files.delete('chart.usc')
-        mock.inspect = inspect
-        return inspect(target)
-    }
-    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('chart.usc') })
-    const { ui, asked } = scriptedUi([undefined, undefined])
-    assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    // The offer says the content is gone, then the file that cannot be found is said as well.
-    assert.deepEqual(
-        asked.map(({ dialog, args }) => [dialog, args[0], args[1]]),
-        [
-            ['notPutBack', 'chart.usc', false],
-            ['failed', 'chart.usc', asked[1]?.args[1]],
-        ],
-    )
-    assert.equal(mock.files.has('chart.usc'), false)
-})
-
-test('a failed download of the opened bytes is said to be a download failure', async () => {
-    openedChart()
-    const picked = mock.createHandle('chart.usc', { permission: () => 'denied' })
-    mock.saveTargets.push({ kind: 'handle', handle: picked })
-    const saveFile = mock.saveFile
-    mock.saveFile = (req) =>
-        req.kind === 'recovery' && !req.target
-            ? Promise.reject(new TypeError('Failed to create a Blob URL'))
-            : saveFile(req)
-    const { ui, asked } = scriptedUi(['download'])
-    assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    assert.deepEqual(
-        asked.map(({ dialog, args }) => [dialog, args[0]]),
-        [['notPutBack', 'chart.usc']],
-    )
-    // The Save core's own line, which the offer's download shares with the Save family.
-    assert.deepEqual(saveFeedback, ['error'])
-})
-
 test('a cancel once the picker returned a file is written to its end and reported', async () => {
     const controller = new AbortController()
     let committed = 0
@@ -499,7 +371,7 @@ test('a failed picked write names the picked file, not the suggested one', async
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
     assert.deepEqual(
         asked.map(({ dialog, args }) => [dialog, args[0]]),
-        [['failed', 'Typed.nsld']],
+        [['emptied', 'Typed.nsld']],
     )
 })
 

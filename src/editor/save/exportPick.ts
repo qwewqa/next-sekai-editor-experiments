@@ -1,48 +1,22 @@
-import { FileError, platform, type SavePicker, type SaveResult } from '../../platform'
+import { recordError } from '../../diagnostics'
+import { FileError, type SaveResult } from '../../platform'
 import { verifyBuilt } from '../../platform/handover'
 import { fileError } from '../commands/exportLevel/errorText'
 import { rememberWritten, type ExportContext } from '../commands/exportLevel/flow'
-import { environment, quickBinding } from './binding'
-import { broadcastUpdated, notTakenOver, pickUi, revoke } from './flow'
-import { ownProject, shown } from './ownPick'
-import { readOwnFile, withPickSession, type PickedFile, type PickSession } from './pickSession'
+import { environment } from './binding'
+import { pickUi, revokePicked } from './flow'
+import { withPickSession } from './pickSession'
 
-// Export Level Data…'s pick, on a pick session: the level data is built and
-// verified in the session, which opens the picker and holds `nse-bind` from the pick to the end of
-// the write. This module only decides what each kind of picked file is for Export. It keeps
-// nothing between calls, and loads on first use.
-
-/** What a pick of Export's picker came to; the follow-up dialogs are `exportByPicker`'s. */
 export type PickedLevelData =
-    /** The level data was written, and the file is the new target. */
     | { kind: 'written'; result: SaveResult & { status: 'saved' } }
     | { kind: 'dismissed' }
     | { kind: 'cancelled' }
-    | { kind: 'failed'; error: FileError }
-    /** An opened chart, partial level data or partial open: never written over. */
-    | { kind: 'refused'; name: string; reason: 'notLevelData' | 'unsupportedParts' }
-    /** The chain's own project was written again instead, so the file is not level data. */
-    | { kind: 'ownProject'; name: string }
-    /** What the Save core shows about the chain's own file or a takeover, after Export's dialog. */
-    | { kind: 'show'; show: () => Promise<void> }
+    | { kind: 'failed'; error: FileError; reported?: boolean }
 
-/** Export's save picker: its folder, and the `.nsld` type or "All files" alone. */
-const levelDataPicker = (types: ExportContext['types']): SavePicker => ({ id: 'levelData', types })
-
-/** The read the dialog starts: the chain's own file, read now when it may hold more. */
-export const startExportRead = () => {
-    const env = environment()
-    return env && platform.pickSaveFile
-        ? readOwnFile(env, quickBinding(env))
-        : Promise.resolve({ kind: 'noAccess' } as const)
-}
-
-/**
- * Builds and verifies the level data, then runs the picker and the write. A cancel of the dialog
- * counts until the picker returns a file; after that the write runs to its end.
- */
+/** Builds and verifies level data before the picker, then writes it under nse-bind. */
 export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData> => {
     const env = environment()
+    let reported = false
     const ended = await withPickSession<PickedLevelData>(
         {
             env,
@@ -50,111 +24,55 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
             surface: 'export',
             purpose: 'export',
             commitFirst: false,
-            read: ctx.read ?? 'start',
             ...(ctx.signal ? { signal: ctx.signal } : {}),
             ...(ctx.committed ? { committed: ctx.committed } : {}),
             ui: {
                 preparing: pickUi.preparing,
-                download: pickUi.download,
-                // Export's dialog closes before an offer shows.
-                notPutBack: (name, emptied, downloadable, own) => {
+                emptied: async (name) => {
                     ctx.leave()
-                    return own
-                        ? ctx.ui.notPutBack(name, emptied, downloadable, true)
-                        : ctx.ui.notPutBack(name, emptied, downloadable)
+                    await ctx.ui.emptied(name)
+                    reported = true
                 },
             },
         },
         async (session) => {
-            let blob: Blob
-            try {
-                blob = await session.preparing(async () => {
-                    const made = await ctx.build()
-                    await verifyBuilt('nsld', made)
-                    return made
-                })
-            } catch (error) {
-                return { kind: 'failed', error: fileError(error) }
-            }
+            const blob = await session.preparing(async () => {
+                const made = await ctx.build()
+                await verifyBuilt('nsld', made)
+                return made
+            })
             session.checkpoint()
-            const picked = await session.pick(
-                levelDataPicker(ctx.types),
+            return session.pick(
+                { id: 'levelData', types: ctx.types },
                 ctx.suggestedName,
-                (file) => levelDataPicked(ctx, session, blob, file),
+                async (picked): Promise<PickedLevelData> => {
+                    const name = picked.target.handle.name
+                    if (picked.filled)
+                        return {
+                            kind: 'failed',
+                            error: new FileError(
+                                'conflict',
+                                name + ' changed',
+                                picked.found,
+                                'check',
+                                name,
+                            ),
+                        }
+                    await revokePicked(env, picked.target.handle, true)
+                    try {
+                        const result = await picked.write({ kind: 'nsld', blob })
+                        if (result.status !== 'saved') return { kind: 'cancelled' }
+                        await rememberWritten(ctx, result).catch(recordError)
+                        return { kind: 'written', result }
+                    } catch (error) {
+                        return { kind: 'failed', error: fileError(error) }
+                    }
+                },
                 blob.size,
             )
-            // An own-file offer without bytes keeps the Save core's reason for the failure.
-            const offer = session.offered
-            if (
-                offer &&
-                !offer.own &&
-                picked.kind !== 'written' &&
-                picked.kind !== 'ownProject' &&
-                (picked.kind === 'refused' || offer.emptied)
-            )
-                return { kind: 'cancelled' }
-            return picked
         },
     )
     if (ended.kind === 'forked') return { kind: 'cancelled' }
-    // The session's own failure (a throw) is shown by `exportByPicker`.
-    if (ended.kind === 'failed') return { kind: 'failed', error: ended.error }
+    if (ended.kind === 'failed') return { kind: 'failed', error: fileError(ended.error), reported }
     return ended
-}
-
-/** A picked file the level data may not be written over, found inside the hold. */
-const changed = (name: string, found: PickedFile['found']) =>
-    new FileError('conflict', `${name} changed`, found, 'check', name)
-
-/** The pick, inside the session's hold on `nse-bind`: what the file is, and what Export does. */
-const levelDataPicked = async (
-    ctx: ExportContext,
-    session: PickSession,
-    blob: Blob,
-    picked: PickedFile,
-): Promise<PickedLevelData> => {
-    const { env } = session
-    const { identity, filled } = picked
-    const name = picked.target.handle.name
-    switch (identity.kind) {
-        case 'refused':
-            // A chart, level data with parts left out or a partial open's file: the session
-            // puts back what the editor holds of it, or offers it.
-            return {
-                kind: 'refused',
-                name,
-                reason: identity.reason === 'levelData' ? 'unsupportedParts' : 'notLevelData',
-            }
-        case 'own':
-            // The chain's own project is written again, keeping its identity, never level data.
-            return env
-                ? ownProject(session, env, picked)
-                : { kind: 'refused', name, reason: 'notLevelData' }
-        case 'other':
-        case 'target':
-        case 'unknown': {
-            // Written since the pick (a sync client, or its owner): never written over unseen, and
-            // nothing is revoked for it.
-            if (filled) return { kind: 'failed', error: changed(name, picked.found) }
-            // Another chain's file or Export target is taken from it.
-            const owner =
-                identity.kind === 'other' ||
-                (identity.kind === 'target' && identity.owner.chainId !== env?.chainId)
-                    ? identity.owner
-                    : undefined
-            if (owner && env) {
-                const done = await revoke(env, owner)
-                if (!done.ok) return shown(env, notTakenOver(name))
-                if (done.revoked) broadcastUpdated()
-            }
-            try {
-                const result = await picked.write({ kind: 'nsld', blob })
-                if (result.status !== 'saved') return { kind: 'cancelled' }
-                await rememberWritten(ctx, result)
-                return { kind: 'written', result }
-            } catch (error) {
-                return { kind: 'failed', error: fileError(error) }
-            }
-        }
-    }
 }

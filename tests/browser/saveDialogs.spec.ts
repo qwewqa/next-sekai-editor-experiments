@@ -1,6 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import type { ConflictInput, DiskVersion, SavedFeedback } from '../../src/editor/save/dialogs'
-import en from '../../src/i18n/en/index.json' with { type: 'json' }
 
 // The Save dialogs: the Save and Save As dialog with File Name's rules, the
 // History and BGM rows and the size preview, the Preparing dialog, the conflict dialog, the
@@ -585,8 +584,7 @@ type DialogRequest =
       }
     | { kind: 'notFound' | 'denied' | 'readOnly'; name: string }
     | { kind: 'failed'; name: string; message: string; saveAs: boolean }
-    | { kind: 'refused'; name: string; reason: 'safeMode' }
-    | { kind: 'notPutBack'; name: string; emptied: boolean; downloadable: boolean }
+    | { kind: 'emptied'; name: string }
 
 const open = (page: Page, input: DialogRequest) =>
     page.evaluate(async (input) => {
@@ -610,10 +608,8 @@ const open = (page: Page, input: DialogRequest) =>
                     return saveUi.readOnly(input.name)
                 case 'failed':
                     return saveUi.failed(input.name, () => input.message, input.saveAs)
-                case 'refused':
-                    return saveUi.refused(input.name, input.reason)
-                case 'notPutBack':
-                    return saveUi.notPutBack(input.name, input.emptied, input.downloadable)
+                case 'emptied':
+                    return saveUi.emptied(input.name)
             }
         }
         void run().then((result) => {
@@ -931,47 +927,6 @@ test.describe('the dialogs for a file that cannot be written', () => {
             saveAs: false,
         })
         await expect(buttons(page)).toHaveText(['OK'])
-    })
-
-    for (const emptied of [true, false])
-        test(`a file that could not be put back says what Download gives, only with a copy (emptied: ${emptied})`, async ({
-            page,
-            context,
-        }) => {
-            await seed(context)
-            await visit(page)
-            const message = emptied
-                ? '“coconut.nxsp” was emptied and its contents could not be restored.'
-                : 'The contents of “coconut.nxsp” have changed.'
-            await open(page, {
-                kind: 'notPutBack',
-                name: 'coconut.nxsp',
-                emptied,
-                downloadable: true,
-            })
-            await expect(dialog(page)).toContainText(message)
-            await expect(dialog(page)).toContainText(en.save.downloadPreviousContents)
-            await expect(buttons(page)).toHaveText(['Cancel', 'Download'])
-            await guard(page)
-            await dialog(page).getByRole('button', { name: 'Cancel' }).click()
-            await open(page, {
-                kind: 'notPutBack',
-                name: 'coconut.nxsp',
-                emptied,
-                downloadable: false,
-            })
-            await expect(dialog(page)).toContainText(message)
-            await expect(dialog(page)).not.toContainText(en.save.downloadPreviousContents)
-            await expect(buttons(page)).toHaveText(['OK'])
-        })
-
-    test('an export takeover refused in safe mode says why', async ({ page, context }) => {
-        await seed(context)
-        await visit(page)
-        await open(page, { kind: 'refused', name: 'melt.nxsp', reason: 'safeMode' })
-        await expect(dialog(page)).toContainText(
-            'Not saved. Files cannot be replaced in safe mode.',
-        )
     })
 })
 

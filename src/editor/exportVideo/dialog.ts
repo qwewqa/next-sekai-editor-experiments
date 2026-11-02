@@ -429,7 +429,7 @@ export const createExportDialog = (input: DialogInput) => {
             destination: (signal, id) => destinationFor(signal, id),
             worker: () => input.env.worker(),
             changed: (state) => {
-                if (created === current) onState(state)
+                if (created === current) void onState(state)
             },
             frame: (bitmap) => {
                 if (frameSink) frameSink(bitmap)
@@ -513,7 +513,7 @@ export const createExportDialog = (input: DialogInput) => {
     }
 
     let returnTo = 0
-    const onState = (state: JobState) => {
+    const onState = async (state: JobState) => {
         switch (state.phase) {
             case 'preparing':
             case 'cancelling':
@@ -544,6 +544,12 @@ export const createExportDialog = (input: DialogInput) => {
         }
         // An attempt ends once. A delivery reports Ready again, and `deliver` handles it.
         if (!busyPhase.value) return
+        const ended = current
+        const failure =
+            state.phase === 'failed'
+                ? await describeVideoFailure(state.error, fileName(), picked?.handle)
+                : undefined
+        if (current !== ended) return
         // The attempt ended.
         busy(false)
         document.removeEventListener('visibilitychange', onHidden)
@@ -551,15 +557,13 @@ export const createExportDialog = (input: DialogInput) => {
             attempt.pressed === undefined ? undefined : performance.now() - attempt.pressed
         // Zoom to Range may have been pressed during the export.
         keepPlayhead(returnTo)
-        const ended = current
         if (state.phase === 'cancelled') {
             report({ outcome: 'cancelled', stage: attempt.stage })
             outcome.value = undefined
             phase.value = 'setup'
             current = undefined
             retire(ended)
-        } else if (state.phase === 'failed') {
-            const failure = describeVideoFailure(state.error, fileName())
+        } else if (failure) {
             report({ outcome: 'failed', stage: attempt.stage, reason: failure.reason })
             outcome.value = { kind: 'failed', failure }
             phase.value = 'failed'

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createWorld, startExportRead, type World } from './world'
+import { createWorld, type World } from './world'
 
 // A pending list that cannot be read counts as pending: `waitForChainImports`
 // reads it again within the bound it uses for a real pending import, for every caller. At the bound
@@ -58,7 +58,6 @@ test('Export whose pending list cannot be read goes on to its picker at the boun
         types: [],
         leave: () => undefined,
         ready: () => w.exportReady(),
-        read: startExportRead(),
         signal: controller.signal,
         committed: () => undefined,
     } as never)

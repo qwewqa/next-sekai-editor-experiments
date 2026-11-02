@@ -4,7 +4,6 @@ import { vFocusRescue } from '../../../directives/focusRescue'
 import { i18n } from '../../../i18n'
 import BaseModal from '../../../modals/BaseModal.vue'
 import type { ReadyPrompt } from '../../../platform'
-import type { ReadResult } from '../../save/pickSession'
 import { inlineName } from '../../../utils/inlineName'
 import { interpolate } from '../../../utils/interpolate'
 import { buildLevelData } from './build'
@@ -22,8 +21,6 @@ const props = defineProps<{
     /** The field shows the source file's own name, which the picker suggests as it is. */
     sourceName: boolean
     peeking: boolean
-    /** The chain's own file, read when the dialog opened. */
-    read: Promise<ReadResult>
 }>()
 
 const emit = defineEmits<{
@@ -128,7 +125,6 @@ const context = (): ExportContext => ({
         emit('close')
     },
     ready,
-    read: props.read,
     signal: controller.signal,
     committed: () => {
         committed = true

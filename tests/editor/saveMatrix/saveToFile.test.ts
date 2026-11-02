@@ -112,7 +112,7 @@ test("Recent Sessions' Save revokes the open chain's binding", async () => {
     )
     assert.ok(builds.every((build) => build.target.sessionId === 'session-other'))
     assert.deepEqual(kinds(w, 'saved'), [['own.nxsp']])
-    assert.deepEqual(kinds(w, 'notPutBack'), [])
+    assert.deepEqual(kinds(w, 'emptied'), [])
 })
 
 for (const stored of [true, false])

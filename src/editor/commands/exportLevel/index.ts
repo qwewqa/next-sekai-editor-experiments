@@ -6,7 +6,6 @@ import { i18n } from '../../../i18n'
 import { displayName, namePartsOf, prefillOf } from '../../../local/names'
 import { showModal } from '../../../modals'
 import { platform } from '../../../platform'
-import type { ReadResult } from '../../save/pickSession'
 import ExportIcon from './ExportIcon.vue'
 import ExportModal from './ExportModal.vue'
 import { validName } from './fileName'
@@ -50,17 +49,11 @@ const openExportDialog = async () => {
     const fromSource = exportName === undefined && sourceName !== undefined
     const shown = shownStem() || (exportMemory.partial ? (session.value.sourceName ?? '') : '')
     const name = exportName ?? sourceName ?? copyName(validName(shown))
-    // The chain's own file is read first when a pick of it could lose what it holds.
-    const read: Promise<ReadResult> = import('../../save/exportPick').then(
-        (pick) => pick.startExportRead(),
-        () => ({ kind: 'noAccess' }) as const,
-    )
     await showModal(ExportModal, {
         target,
         name,
         sourceName: fromSource,
         peeking: isPeeking.value,
-        read,
     })
 }
 

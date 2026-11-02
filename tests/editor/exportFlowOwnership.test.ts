@@ -37,8 +37,7 @@ const body = (n: number) => new Blob([gzip(JSON.stringify({ bgmOffset: 0, entiti
 const ui = (): ExportUi => ({
     conflict: async () => undefined,
     notLevelData: async () => undefined,
-    unsupportedParts: async () => undefined,
-    notPutBack: async () => undefined,
+    emptied: async () => undefined,
     notFound: async () => undefined,
     denied: async () => undefined,
     failed: async () => undefined,
@@ -355,4 +354,22 @@ test('a download whose bookkeeping outlasts a new chart is not recorded in it', 
     assert.equal(await exporting, 'done')
     assert.deepEqual(marked, [])
     assert.equal(exportMemory.exportName, undefined)
+})
+
+test('a picked export remains successful when its bookkeeping cannot be stored', async () => {
+    const { mock } = await setup()
+    setExportPersister(async () => {
+        throw new Error('Storage interrupted')
+    })
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('copy.nsld') })
+    const ctx = context()
+    let failed = false
+    ctx.ui.failed = async () => {
+        failed = true
+        return undefined
+    }
+    assert.equal(await exportByPicker(ctx), 'done')
+    assert.equal(failed, false)
+    assert.equal(exportMemory.target?.name, 'copy.nsld')
+    assert.ok(mock.files.get('copy.nsld')!.size > 0)
 })

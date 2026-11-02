@@ -7,30 +7,11 @@ import { bytesOf, createWorld, startsWith } from './world'
 // Negative controls for the fault matrix: each invariant check must be able to fail, and the
 // baseline cells must really reach the picker and write, or a clean matrix would prove nothing.
 
-const facts: Facts = { inHand: (name) => name === 'own.nxsp' }
+const facts: Facts = {}
 const invariants = async (
     world: Awaited<ReturnType<typeof createWorld>>,
     extra: Partial<Facts> = {},
 ) => (await check(world, { ...facts, ...extra })).map((v) => v.invariant)
-
-test('I1 sees a picked file left holding less, and accepts bytes put back, appended or offered', async () => {
-    const world = await createWorld()
-    world.before.set('own.nxsp', new Blob(['0123456789']))
-    world.mock.writeFile('own.nxsp', new Blob([]))
-    assert.deepEqual(await invariants(world), ['I1'])
-    world.mock.writeFile('own.nxsp', new Blob(['0123456789 and more']))
-    assert.deepEqual(await invariants(world), [])
-    world.mock.writeFile('own.nxsp', new Blob([]))
-    world.mock.downloads.push({
-        kind: 'recovery',
-        name: 'own.nxsp',
-        blob: new Blob(['0123456789']),
-    })
-    assert.deepEqual(await invariants(world), [])
-    // Not in hand: reported as information only.
-    world.mock.downloads.length = 0
-    assert.deepEqual(await invariants(world, { inHand: () => false }), ['info:emptied'])
-})
 
 test('I2 sees a picked file written without nse-bind exclusive', async () => {
     const world = await createWorld()
@@ -50,26 +31,24 @@ test('I3 sees a reservation ended twice, never, or left held', async () => {
     assert.deepEqual(await invariants(world), ['I3'])
 })
 
-test('I4 and I5 see a picker opened without activation, during an import, or while a copy is kept', async () => {
+test('I4 and I5 see a picker opened without activation or during an import', async () => {
     const world = await createWorld()
     const opening = {
         name: 'x',
         activation: true,
         importing: false,
-        copying: false,
         importPending: false,
         dialogOpen: false,
     }
     world.openings.push({ ...opening, activation: false })
     world.openings.push({ ...opening, importing: true })
-    world.openings.push({ ...opening, copying: true })
     world.openings.push({ ...opening, importPending: true })
-    assert.deepEqual(await invariants(world), ['I4', 'I5', 'I5', 'I5'])
+    assert.deepEqual(await invariants(world), ['I4', 'I5', 'I5'])
 })
 
 test('I6 sees a dialog under the lock, a Preparing left open, and a lock left held', async () => {
     const world = await createWorld()
-    world.dialogs.push({ kind: 'refused', args: [], lockHeld: true })
+    world.dialogs.push({ kind: 'emptied', args: [], lockHeld: true })
     world.dialogs.push({ kind: 'saved', args: [], lockHeld: true })
     world.preparing.push({ name: 'x', open: true, controller: new AbortController() })
     const holder = world.otherTab('exclusive')
@@ -139,28 +118,6 @@ test("I9 sees a file bound to two chains, or bound and another chain's Export ta
         file: { ...(own.file as object), name: 'target.nsld' },
     })
     assert.deepEqual(await invariants(world), ['I9'])
-})
-
-test('I9 sees a takeover that was not recorded write new bytes or cost the owner its binding', async () => {
-    const world = await createWorld()
-    const rows = new Map<string, Record<string, unknown>>()
-    for (const row of await world.storedChains()) rows.set(String(row.chainId), row)
-    world.storedChains = async () => [...rows.values()]
-    const refused = { notTakenOver: { chainId: 'chain-other', name: FILES.other } }
-    const held = world.mock.files.get(FILES.other)!
-    world.before.set(FILES.other, held)
-    // Emptied by the picker (I1 notes it), or put back as it was: nothing new.
-    world.mock.writeFile(FILES.other, new Blob([]))
-    assert.deepEqual(await invariants(world, refused), ['info:emptied'])
-    world.mock.writeFile(FILES.other, held)
-    assert.deepEqual(await invariants(world, refused), [])
-    world.mock.writeFile(FILES.other, new Blob(['the picking chain’s file']))
-    assert.deepEqual(await invariants(world, refused), ['I9'])
-    world.mock.writeFile(FILES.other, held)
-    const unbound = { ...rows.get('chain-other')! }
-    delete unbound.file
-    rows.set('chain-other', unbound)
-    assert.deepEqual(await invariants(world, refused), ['I9'])
 })
 
 test('the door hands out a new handle object on every read, and stores nothing for a faulted call', async () => {

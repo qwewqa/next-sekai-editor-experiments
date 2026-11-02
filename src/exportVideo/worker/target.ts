@@ -96,7 +96,7 @@ const target = (backend: Backend, signal?: AbortSignal): PositionTarget => {
 const unchanged = (file: File, pick: VideoPick) =>
     file.size === 0 && file.lastModified === pick.lastModified
 
-/** Only accepted unknown picks reach here. A file found changed or unreadable is never removed. */
+/** A file found changed or unreadable is never removed. */
 export const removeVideoPick = async (pick: VideoPick) => {
     let file: File
     try {

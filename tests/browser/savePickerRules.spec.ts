@@ -369,7 +369,7 @@ for (const dialogOpen of [false, true]) {
     })
 }
 
-test("Export's picker: the chain's own file changed on disk is put back, and the conflict dialog opens", async ({
+test('Export replaces the picked project even when it changed before the picker', async ({
     page,
 }) => {
     await start(page)
@@ -378,35 +378,11 @@ test("Export's picker: the chain's own file changed on disk is put back, and the
     const changed = await readFile(page, 'coconut.nxsp')
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('Shift+P')
-    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
-    // The read before the picker has time to finish.
-    await page.waitForTimeout(500)
+    await expect(saveDialog(page, 'Export Level Data').locator('[data-export-name]')).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” Changed')
-    expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
-})
-
-test("Export's picker: the chain's own file that could not be written again says so", async ({
-    page,
-}) => {
-    await start(page)
-    await savedTo(page, 'coconut.nxsp')
-    // Another Save holds the reservation.
-    await page.evaluate(() => {
-        ;(window as { held?: unknown }).held = window.nseFlushTest!.flusher.reserveSave()
-    })
-    await queuePicks(page, ['coconut.nxsp'])
-    await page.keyboard.press('Shift+P')
-    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
-    await page.keyboard.press('Enter')
-    await expect(saveDialog(page, 'Export Level Data')).toContainText(
-        '“coconut.nxsp” could not be written. The file is now empty.',
-    )
-    await page.keyboard.press('Escape')
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).not.toContainText('is now empty')
-    await expect(dialog).toContainText('“coconut.nxsp” could not be written.')
-    await expect(dialog).not.toContainText('is not level data')
+    await expect(notice(page).filter({ hasText: 'Exported to coconut.nxsp' })).toBeVisible()
+    expect(await readFile(page, 'coconut.nxsp')).not.toEqual(changed)
+    expect((await chainOf(page)).file).toBeUndefined()
 })
 
 test("in safe mode Save writes to another session's file and its stale owner finds a conflict", async ({

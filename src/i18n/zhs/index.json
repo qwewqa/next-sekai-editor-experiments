@@ -2427,8 +2427,7 @@
     "export": "导出",
     "exported": "已导出到 {0}",
     "notLevelData": "“{0}”不是关卡数据。",
-    "fileType": "Next SEKAI 关卡数据",
-    "unsupportedParts": "“{0}”包含此版本编辑器不支持的部分。"
+    "fileType": "Next SEKAI 关卡数据"
   },
   "exportVideo": {
     "title": "导出视频",
@@ -2507,9 +2506,6 @@
     "discard": "放弃视频",
     "unsupported": "此浏览器无法导出视频。",
     "errors": {
-      "ownProject": "已保存到 {0}。请为视频选择其他名称。",
-      "refused": "“{0}”是谱面文件。请选择其他名称。",
-      "refusedOther": "“{0}”已被清空。请打开其所属会话，使用“保存”重新写入文件。请为视频选择其他名称。",
       "config": "此浏览器不支持这些视频设置。请降低分辨率或帧率。",
       "encoder": "无法创建视频。",
       "audio": "无法准备音频。",
@@ -2569,9 +2565,7 @@
     "noSpace": "空间不足，无法写入 {0}。",
     "writeFailed": "无法写入“{0}”。",
     "ownFileEmptied": "“{0}”无法写入。文件已被清空。",
-    "notPutBack": "“{0}”已被清空，且无法还原其内容。",
     "openedContentGone": "“{0}”的内容已更改。",
-    "downloadPreviousContents": "您可以下载一份更改前的内容副本。",
     "title": "保存项目文件",
     "titleAs": "另存为",
     "history": "历史记录",
@@ -2582,7 +2576,6 @@
     "exportHintNames": "关卡数据文件可能没有扩展名，或以 .nsld 或 .json.gz 结尾。",
     "readOnly": "无法写入“{0}”。",
     "notKept": "未保存。无法完整读取“{0}”。",
-    "notKeptSafe": "未保存。安全模式下无法替换文件。",
     "notKeptFull": "未保存。浏览器存储空间已满。请在“设置 › 本地数据”中删除会话，然后重新保存。",
     "saved": "已保存到 {0}",
     "savedWithoutBgmLarge": "已保存到 {0}，未包含背景音乐",

@@ -69,7 +69,6 @@ const CLASSES = {
     writeChainFields: 'write',
     discardRecovered: 'write',
     migrateAutoSave: 'write',
-    keepHandle: 'write',
     takeOver: 'write',
     unlinkChain: 'write',
     recordOwnSave: 'write',

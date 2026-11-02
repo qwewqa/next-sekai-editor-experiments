@@ -2,22 +2,13 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { activation } from '../saveMatrix/env'
 
-// The pick session: the read of the chain's own file awaited, with one retry;
-// the activation checked last; the commit point at the picker's return; the hold on `nse-bind`;
-// what the editor holds of a file put back, or offered at once. The fakes are the in-memory
-// platform with a fake lock manager, a storage worker that answers only what a pick asks, and a
-// flusher that does nothing.
-
 const { createMockPlatform } = await import('../../../src/platform/mock')
 const { FileError, setPlatformForTests } = await import('../../../src/platform')
 const { FakeLockManager } = await import('../../../src/local/testing/locks')
-const { nxspDiskState } = await import('../../../src/platform/fingerprint')
 const { setSaveEnvironment } = await import('../../../src/editor/save/binding')
 const { rememberHandle, forgetHandle } = await import('../../../src/editor/save/env')
 const { withPickSession } = await import('../../../src/editor/save/pickSession')
-const { keepCopy } = await import('../../../src/local/open/kept')
-const { clearExportMemory, exportMemory } =
-    await import('../../../src/editor/commands/exportLevel/memory')
+const { clearExportMemory } = await import('../../../src/editor/commands/exportLevel/memory')
 const { assembleZip, prepareEntry } = await import('../../../src/zip')
 const { resetStates } = await import('../../../src/history/stack')
 const { chartState } = await import('../chartFixture')
@@ -77,11 +68,9 @@ const setup = async () => {
         } as Record<string, unknown>,
     }
     const calls: string[] = []
-    let gate: Promise<void> | undefined
     const worker = {
         call: async (method: string) => {
             calls.push(method)
-            if (method === 'keepHandle') await gate
             if (method === 'openPendingImports' || method === 'listHandleOwners') return []
             if (method === 'saveNeeds') return { carries: false, lacking: [] }
             return undefined
@@ -109,22 +98,7 @@ const setup = async () => {
     forgetHandle('c1')
     rememberHandle('c1', handle)
     const original = await bytesOf(mock.files.get('a.nxsp'))!
-    const disk = await nxspDiskState(await handle.getFile(), 0)
-    const pre = {
-        blob: new Blob([original!]),
-        disk,
-        atBase: false,
-        handle,
-    }
-
-    const offers: {
-        name: string
-        emptied: boolean
-        downloadable: boolean
-        lockHeld: boolean
-    }[] = []
-    const downloads: { name: string; bytes: Uint8Array | undefined }[] = []
-    const answer: { notPutBack: 'download' | undefined } = { notPutBack: undefined }
+    const offers: { name: string; lockHeld: boolean }[] = []
     const ui = {
         preparing: () => ({
             signal: new AbortController().signal,
@@ -137,17 +111,8 @@ const setup = async () => {
             },
             close: () => undefined,
         }),
-        notPutBack: (name: string, emptied: boolean, downloadable: boolean) => {
-            offers.push({
-                name,
-                emptied,
-                downloadable,
-                lockHeld: lockHeld(),
-            })
-            return Promise.resolve(answer.notPutBack)
-        },
-        download: async (name: string, blob: Blob) => {
-            downloads.push({ name, bytes: await bytesOf(blob) })
+        emptied: async (name: string) => {
+            offers.push({ name, lockHeld: lockHeld() })
         },
     }
     const spec = (more: Record<string, unknown> = {}) => ({
@@ -156,7 +121,6 @@ const setup = async () => {
         surface: 'save' as const,
         purpose: 'export' as const,
         commitFirst: false,
-        read: 'start' as const,
         ui,
         ...more,
     })
@@ -173,75 +137,11 @@ const setup = async () => {
         spec,
         picker,
         handle,
-        pre,
         original: original!,
         offers,
-        downloads,
-        answer,
         lockHeld,
-        hold: (open: Promise<void>) => {
-            gate = open
-        },
     }
 }
-
-test('the picker opens only after the read has settled, and a failed read is tried once more', async () => {
-    const t = await setup()
-    t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
-    let seen: unknown
-    let failRead!: () => void
-    const read = new Promise<{ kind: 'failed' }>((resolve) => {
-        failRead = () => resolve({ kind: 'failed' })
-    })
-    const preparing = new Promise<void>((resolve) => {
-        const original = t.ui.preparing
-        t.ui.preparing = () => {
-            resolve()
-            return original()
-        }
-    })
-    const running = withPickSession(t.spec({ read }), (session) =>
-        session.pick(t.picker, 'out.nxsp', (picked) => {
-            seen = picked.pre
-            return Promise.resolve('none')
-        }),
-    )
-    await Promise.race([preparing, running])
-    assert.deepEqual(t.log, [], 'no picker while the read has not settled')
-    failRead()
-    await running
-    assert.deepEqual(t.log, ['picker:active'])
-    assert.deepEqual(await bytesOf((seen as { blob: Blob }).blob), t.original, 'the retry read it')
-})
-
-test('a read with no handle or no grant is not tried again', async () => {
-    const t = await setup()
-    t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
-    forgetHandle('c1')
-    await withPickSession(
-        t.spec({ read: Promise.resolve({ kind: 'noAccess' as const }) }),
-        (session) => session.pick(t.picker, 'out.nxsp', () => Promise.resolve('none')),
-    )
-    assert.equal(t.calls.includes('readHandle'), false)
-})
-
-test('the activation is checked after the last wait, so a press never lapses before the picker', async () => {
-    const t = await setup()
-    t.mock.saveTargets.push('cancel')
-    // A copy of an opened file is still being kept; waiting for it outlasts the press.
-    let release!: () => void
-    t.hold(new Promise<void>((resolve) => (release = resolve)))
-    const copy = keepCopy(t.worker as never, 'c1', new Blob(['opened']), t.handle)
-    await withPickSession(t.spec(), async (session) => {
-        setTimeout(() => {
-            activation.active = false
-            release()
-        }, 20)
-        return session.pick(t.picker, 'out.nxsp', () => Promise.resolve('none'))
-    })
-    await copy
-    assert.deepEqual(t.log, ['ready', 'picker:active'], 'asked for a new press after the wait')
-})
 
 test('once the picker returned a file, a cancel changes nothing and the write lands', async () => {
     const t = await setup()
@@ -259,78 +159,7 @@ test('once the picker returned a file, a cancel changes nothing and the write la
     assert.deepEqual(await bytesOf(t.mock.files.get('a.nxsp')), await bytesOf(next))
 })
 
-test('the file is written and its put-back made inside one hold on nse-bind, and the offer after it', async () => {
-    const t = await setup()
-    t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
-    const heldIn: boolean[] = []
-    await withPickSession(
-        t.spec({ read: Promise.resolve({ kind: 'read' as const, pre: t.pre }) }),
-        (session) =>
-            session.pick(t.picker, 'out.nxsp', () => {
-                heldIn.push(t.lockHeld())
-                // Another program fills the file before the Save puts anything back.
-                t.mock.writeFile('a.nxsp', new Blob(['another program']))
-                return Promise.resolve('none')
-            }),
-    )
-    assert.deepEqual(heldIn, [true])
-    assert.equal(t.lockHeld(), false)
-    assert.deepEqual(t.offers, [
-        { name: 'a.nxsp', emptied: false, downloadable: true, lockHeld: false },
-    ])
-})
-
-test('a pick that is not written gets the bytes read of it back, and offers them when it cannot', async () => {
-    // Put back while the file is still empty.
-    const back = await setup()
-    back.mock.saveTargets.push({ kind: 'handle', handle: back.handle })
-    await withPickSession(
-        back.spec({ read: Promise.resolve({ kind: 'read' as const, pre: back.pre }) }),
-        (session) =>
-            session.pick(back.picker, 'out.nxsp', () => {
-                assert.equal(back.mock.files.get('a.nxsp')?.size, 0, 'the picker emptied it')
-                return Promise.resolve('none')
-            }),
-    )
-    assert.deepEqual(await bytesOf(back.mock.files.get('a.nxsp')), back.original)
-    assert.deepEqual(back.offers, [])
-
-    // Filled meanwhile: offered at once, before the session returns, and downloaded on request.
-    const gone = await setup()
-    gone.mock.saveTargets.push({ kind: 'handle', handle: gone.handle })
-    gone.answer.notPutBack = 'download'
-    const result = await withPickSession(
-        gone.spec({ read: Promise.resolve({ kind: 'read' as const, pre: gone.pre }) }),
-        async (session) => {
-            const outcome = await session.pick(gone.picker, 'out.nxsp', () => {
-                gone.mock.writeFile('a.nxsp', new Blob(['another program']))
-                return Promise.resolve('conflict')
-            })
-            assert.equal(gone.offers.length, 1, 'the offer was made before the flow went on')
-            return outcome
-        },
-    )
-    assert.equal(result, 'conflict')
-    assert.deepEqual(gone.downloads, [{ name: 'a.nxsp', bytes: gone.original }])
-})
-
-test('a refused pick with nothing to give back is told the file was emptied, with OK only', async () => {
-    const t = await setup()
-    t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
-    // The session was opened from this chart file, whose bytes were not kept.
-    exportMemory.opened = { handle: t.handle, levelData: false, project: false } as never
-    const result = await withPickSession(t.spec(), async (session) => {
-        const outcome = await session.pick(t.picker, 'out.nxsp', () => Promise.resolve('refused'))
-        return { outcome, offered: session.offered }
-    })
-    clearExportMemory()
-    assert.deepEqual(result, { outcome: 'refused', offered: { emptied: true } })
-    assert.deepEqual(t.offers, [
-        { name: 'a.nxsp', emptied: true, downloadable: false, lockHeld: false },
-    ])
-})
-
-test('a write that landed but whose read-back failed is not offered the bytes it holds', async () => {
+test('a failed read-back of a nonempty file does not report it as empty', async () => {
     const t = await setup()
     t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
     t.mock.fault = (point) => {
@@ -338,21 +167,19 @@ test('a write that landed but whose read-back failed is not offered the bytes it
             throw new FileError('io', 'The read-back failed', undefined, 'readBack')
     }
     const grown = new Blob([t.original, 'and what this Save added'])
-    const outcome = await withPickSession(
-        t.spec({ read: Promise.resolve({ kind: 'read' as const, pre: t.pre }) }),
-        (session) =>
-            session.pick(t.picker, 'out.nxsp', async (picked) => {
-                try {
-                    await picked.write({ kind: 'nxsp', blob: grown })
-                    return 'written'
-                } catch (error) {
-                    return (error as { step?: string }).step
-                }
-            }),
+    const outcome = await withPickSession(t.spec(), (session) =>
+        session.pick(t.picker, 'out.nxsp', async (picked) => {
+            try {
+                await picked.write({ kind: 'nxsp', blob: grown })
+                return 'written'
+            } catch (error) {
+                return (error as { step?: string }).step
+            }
+        }),
     )
     assert.equal(outcome, 'readBack')
     assert.deepEqual(await bytesOf(t.mock.files.get('a.nxsp')), await bytesOf(grown))
-    assert.deepEqual(t.offers, [], 'the file begins with the bytes that were read')
+    assert.deepEqual(t.offers, [])
 })
 
 test("Recent Sessions' Save writes its prepared project without restoring the old file", async () => {
@@ -362,7 +189,6 @@ test("Recent Sessions' Save writes its prepared project without restoring the ol
     await withPickSession(
         t.spec({
             purpose: 'saveToFile' as const,
-            read: Promise.resolve({ kind: 'read' as const, pre: t.pre }),
         }),
         (session) =>
             session.pick(t.picker, 'out.nxsp', (picked) =>
@@ -372,46 +198,6 @@ test("Recent Sessions' Save writes its prepared project without restoring the ol
     // The selected session replaces the file.
     assert.deepEqual(await bytesOf(t.mock.files.get('a.nxsp')), await bytesOf(other))
     assert.deepEqual(t.offers, [])
-})
-
-test("Export's own pick commits a continuation's first row before it reserves, and reserves nothing when that forks the session", async () => {
-    const t = await setup()
-    t.mock.saveTargets.push(
-        { kind: 'handle', handle: t.handle },
-        { kind: 'handle', handle: t.handle },
-    )
-    const reserved = { session: t.session, seq: 6, wall: 1 }
-    const events: string[] = []
-    ;(t.flusher as { reserveSave: unknown }).reserveSave = () => {
-        events.push('reserve')
-        return reserved
-    }
-    ;(t.flusher as { flush: unknown }).flush = () => {
-        events.push(`flush:${t.session.atOnce ? 'atOnce' : 'stored'}`)
-        return Promise.resolve()
-    }
-    t.session.stored = false
-    await withPickSession(t.spec({ purpose: 'export' as const }), (session) =>
-        session.pick(t.picker, 'out.nxsp', async (picked) => {
-            assert.ok(await picked.reserve(), 'the continuation committed and reserved')
-            return 'none'
-        }),
-    )
-    assert.deepEqual(events, ['flush:atOnce', 'reserve'])
-
-    // The commit forked the session: another one is open now, and nothing is reserved.
-    events.length = 0
-    const fork = { ...t.session, id: 's2' }
-    ;(t.flusher as { flush: unknown }).flush = () => {
-        events.push('flush')
-        setSaveEnvironment(() => ({ ...t.env, session: fork as never }))
-        return Promise.resolve()
-    }
-    const taken = await withPickSession(t.spec({ purpose: 'export' as const }), (session) =>
-        session.pick(t.picker, 'out.nxsp', (picked) => picked.reserve()),
-    )
-    assert.equal(taken, undefined)
-    assert.deepEqual(events, ['flush'])
 })
 
 test('level data is never written over bytes that arrive between the two looks at the empty file', async () => {
@@ -441,7 +227,7 @@ test('Save opens its picker without reading the bound file first', async () => {
     const t = await setup()
     t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
     const next = await nxsp('new-document')
-    await withPickSession(t.spec({ purpose: 'save', read: new Promise(() => {}) }), (session) =>
+    await withPickSession(t.spec({ purpose: 'save' }), (session) =>
         session.pick(t.picker, 'a.nxsp', (picked) => picked.write({ kind: 'nxsp', blob: next })),
     )
     assert.deepEqual(t.log, ['picker:active'])
@@ -459,16 +245,13 @@ for (const state of ['empty', 'filled', 'missing', 'unreadable'] as const)
                 if (state === 'filled') t.mock.writeFile('a.nxsp', new Blob(['changed']))
                 if (state === 'missing') t.mock.files.delete('a.nxsp')
                 if (state === 'unreadable')
-                    t.mock.inspect = () => Promise.reject(new Error('unreadable'))
+                    t.mock.read = () => Promise.reject(new Error('unreadable'))
                 throw new FileError('io', 'failed')
             }),
         ).catch((error) => error)
         assert.equal(t.offers.length, state === 'empty' ? 1 : 0)
         assert.ok(result.error instanceof FileError)
-        if (state === 'empty') {
-            assert.equal(t.offers[0]?.lockHeld, false)
-            assert.equal(t.offers[0]?.downloadable, false)
-        }
+        if (state === 'empty') assert.equal(t.offers[0]?.lockHeld, false)
     })
 
 test('a picked project filled before the write is refused as changed', async () => {
@@ -484,4 +267,16 @@ test('a picked project filled before the write is refused as changed', async () 
     assert.equal(result.error.code, 'conflict')
     assert.equal(await t.mock.files.get('a.nxsp')?.text(), 'changed')
     assert.deepEqual(t.offers, [])
+})
+
+test('preparation can expire activation and the picker then asks for Ready', async () => {
+    const t = await setup()
+    t.mock.saveTargets.push('cancel')
+    await withPickSession(t.spec(), async (session) => {
+        await session.preparing(async () => {
+            activation.active = false
+        })
+        return session.pick(t.picker, 'out.nxsp', () => Promise.resolve('none'))
+    })
+    assert.deepEqual(t.log, ['ready', 'picker:active'])
 })

@@ -264,8 +264,8 @@ Recorded when a **Save**, **Save As…**, **Download Again** or **Save…** acti
 | `size` | The size of the file written | Range |
 | `took` | How long writing took, measured from when the last picker or dialog closed | Milliseconds |
 | `buildMs` | How long building the file took. It can be longer than `took` when the build came before the picker | Milliseconds |
-| `outcome` | How the action ended | `done`, `cancelled`, `noChanges`, `forked`, `unlinked`, `refused`, `conflict`, `failed` or `error` |
-| `reason` | Why saving failed or was refused: a file error or safe mode | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only`, `io` or `safeMode` |
+| `outcome` | How the action ended | `done`, `cancelled`, `noChanges`, `forked`, `unlinked`, `conflict`, `failed` or `error` |
+| `reason` | Why saving failed | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only` or `io` |
 | `step` | The part of saving that failed | `build`, `read`, `readBack`, `download` or `check` |
 | `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 

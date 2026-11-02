@@ -238,7 +238,11 @@ export const createExportJob = (options: {
                 throw new Error('Invalid export settings')
             clipSamples(settings.frames, settings.frameRate)
             signal.throwIfAborted()
-            // The picker must open in the export press, before any await.
+            const prepared = await prepare()
+            const start = { ...prepared, ...(await resolveConfig()) }
+            await abortable(Promise.resolve(lastView), signal)
+            if (!host) throw new Error('Export worker is unavailable')
+            signal.throwIfAborted()
             destination = await options.destination(signal, id)
             signal.throwIfAborted()
             if (destination.worker.kind !== 'staged') {
@@ -259,10 +263,6 @@ export const createExportJob = (options: {
                 resolution: settings.height,
                 renderScale: settings.renderScale,
             })
-            const prepared = await prepare()
-            const start = { ...prepared, ...(await resolveConfig()) }
-            await abortable(Promise.resolve(lastView), signal)
-            if (!host) throw new Error('Export worker is unavailable')
             const audio = mixAudio(soundSource(snapshot), snapshot.bpms, buffers, settings, signal)
             set({ phase: 'exporting', frames: 0, total: settings.frames, progress: 0 })
             signal.throwIfAborted()

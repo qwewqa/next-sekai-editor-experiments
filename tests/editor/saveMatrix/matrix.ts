@@ -1,14 +1,5 @@
 import { check, type Facts, type Violation } from './invariants'
-import {
-    activation,
-    bytesOf,
-    createWorld,
-    flow,
-    settle,
-    startExportRead,
-    type Setup,
-    type World,
-} from './world'
+import { activation, bytesOf, createWorld, flow, settle, type Setup, type World } from './world'
 
 const { exportByPicker } = await import('../../../src/editor/commands/exportLevel/flow')
 const { FileError } = await import('../../../src/platform')
@@ -35,7 +26,7 @@ export const FILES: Record<PickName, string> = {
     dismiss: 'cancel',
 }
 
-/** What the pickers return in turn: `a>b` is a refused pick `a`, Choose Another…, then `b`. */
+/** The files returned by the picker. */
 export type PickPlan = { id: string; picks: PickName[] }
 
 const plan = (id: string): PickPlan => ({ id, picks: id.split('>') as PickName[] })
@@ -48,21 +39,6 @@ const dialogResult = (fileName = 'out.nxsp') => ({
 })
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
-
-/**
- * The Export dialog opens and starts its read of the chain's own file; the user types a name
- * meanwhile: wait until the door has no call in flight over two timer turns (the gaps between a
- * read's calls are microtasks and one setImmediate), not for a time. A `read-slow` cell keeps its
- * read unsettled, which the pick session waits for.
- */
-const typeName = async (w: World) => {
-    if (w.tune.readDelayMs) await sleep(20)
-    else
-        for (let quiet = 0; quiet < 2;) {
-            await sleep(2)
-            quiet = w.doorBusy === 0 ? quiet + 1 : 0
-        }
-}
 
 export type PathDef = {
     id: string
@@ -98,43 +74,21 @@ const savePlans = [
     'partial',
     'dismiss',
 ].map(plan)
-// Export writes over whole level data it was opened from; it refuses a chart and a partial import.
-const exportPlans = [
-    'own',
-    'other',
-    'unknown',
-    'fresh',
-    'target',
-    'opened',
-    'chart',
-    'partial',
-    'dismiss',
-    'chart>own',
-    'chart>other',
-    'partial>dismiss',
-    'chart>chart>own',
-].map(plan)
+const exportPlans = savePlans
 const noOwn = savePlans.filter((p) => !p.picks.includes('own'))
 
-// The pick plan a cell asks for is queued by `prepare`: pickers, Save dialog answers, refusals.
+// The pick plan a cell asks for is queued by `prepare`: pickers and Save dialog answers.
 export const prepare = (w: World, path: PathDef, picks: PickName[]) => {
     if (path.picker) for (const pick of picks) w.pick(FILES[pick])
-    const refusals = picks.slice(0, -1).length
-    for (let i = 0; i < refusals; i++) {
-        w.answers.refused.push('chooseAnother')
-        w.exportAnswers.notLevelData.push('chooseAnother')
-        w.exportAnswers.unsupportedParts.push('chooseAnother')
-    }
     if (path.dialog)
         for (let i = 0; i < picks.length; i++) w.answers.saveDialog.push(dialogResult())
     path.answer?.(w)
 }
 
-const exportContext = (w: World, read: ReturnType<typeof startExportRead>) => {
+const exportContext = (w: World) => {
     const controller = new AbortController()
     w.exportAbort = controller
     return {
-        read,
         ui: w.exportUi,
         build: () => w.exportBuild(),
         suggestedName: 'LevelData.nsld',
@@ -148,12 +102,7 @@ const exportContext = (w: World, read: ReturnType<typeof startExportRead>) => {
     }
 }
 
-/** Opens the dialog (its read starts), lets the user type, and presses Export. */
-const exportFlow = async (w: World) => {
-    const read = startExportRead()
-    await typeName(w)
-    return exportByPicker(exportContext(w, read))
-}
+const exportFlow = (w: World) => exportByPicker(exportContext(w))
 
 export const PATHS: PathDef[] = [
     {
@@ -324,7 +273,7 @@ export const PATHS: PathDef[] = [
         id: 'export/reloaded',
         family: 'export',
         setup: { own: 'bound', storage: 'lacks', held: false },
-        plans: ['own', 'other', 'partial', 'chart>own', 'dismiss'].map(plan),
+        plans: ['own', 'other', 'partial', 'chart', 'dismiss'].map(plan),
         dialog: false,
         picker: true,
         writes: true,
@@ -337,7 +286,7 @@ export const PATHS: PathDef[] = [
         id: 'export/ahead',
         family: 'export',
         setup: { own: 'bound', storage: 'lacks', ownDisk: 'ahead' },
-        plans: ['own', 'chart>own', 'dismiss'].map(plan),
+        plans: ['own', 'chart', 'dismiss'].map(plan),
         dialog: false,
         picker: true,
         writes: true,
@@ -376,8 +325,6 @@ const last = (plan: PickPlan) => plan.picks.at(-1)!
 const single = (plan: PickPlan) => plan.picks.length === 1
 const writesFile = (plan: PickPlan) => ['own', 'other', 'unknown', 'fresh'].includes(last(plan))
 const pickerPath = (path: PathDef) => path.picker
-/** An export picker that reads the chain's own file first. */
-const readsFirst = (path: PathDef) => path.family === 'export' && path.setup.own === 'bound'
 /** A picker whose pick is built again afterwards: Recent Sessions' Save… and Export build once. */
 const rebuilds = (path: PathDef) =>
     pickerPath(path) && path.family === 'save' && path.id !== 'save-to-file'
@@ -426,7 +373,7 @@ const dialogOpen = (w: World) =>
         .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 8000)
         .catch(() => undefined)
 
-/** A fault at a point of the platform's write: once, or on every write (the put-back too). */
+/** A fault at a point of the platform's write: once, or on every write. */
 const failWrite = (
     w: World,
     at: 'checked' | 'built' | 'beforeClose' | 'closed',
@@ -468,67 +415,6 @@ export const FAULTS: FaultDef[] = [
         applies: (path, p) => anyPick(path) && single(p) && last(p) !== 'dismiss',
         arm: (w) => {
             w.behaviour.set('listHandleOwners', () => 'throw')
-        },
-    },
-    {
-        id: 'read-denied',
-        exit: 'read first: access denied',
-        applies: (path, p) => readsFirst(path) && single(p) && last(p) === 'own',
-        setup: { read: 'denied' },
-        arm: (_w, _path) => ({ facts: { inHand: () => false } }),
-    },
-    {
-        id: 'read-fails',
-        exit: 'read first: the read fails',
-        applies: (path, p) => readsFirst(path) && single(p) && last(p) === 'own',
-        arm: (w) => {
-            w.readFails.add('own.nxsp')
-            return { facts: { inHand: () => false } }
-        },
-    },
-    {
-        id: 'read-fails-once',
-        exit: 'read first: the read fails once, and the retry reads',
-        applies: (path, p) => onSession(path) && readsFirst(path) && single(p) && last(p) === 'own',
-        arm: (w) => {
-            w.readFailsOnce.add('own.nxsp')
-            return { effective: () => !w.readFailsOnce.has('own.nxsp') }
-        },
-    },
-    {
-        id: 'read-no-handle-once',
-        exit: "read first: storage fails once reading the file's handle, and the retry reads",
-        applies: (path, p) => onSession(path) && readsFirst(path) && single(p) && last(p) === 'own',
-        // The handle comes from storage, as after a reload.
-        setup: { held: false },
-        arm: (w) => {
-            let failed = false
-            w.behaviour.set('readHandle', (call) => {
-                failed ||= call === 1
-                return call === 1 ? 'throw' : undefined
-            })
-            return { effective: () => failed }
-        },
-    },
-    {
-        id: 'read-slow',
-        exit: 'read first: not settled when the picker opens',
-        applies: (path, p) =>
-            readsFirst(path) &&
-            ((single(p) && last(p) === 'own') || (path.id === 'export' && p.id === 'chart>own')),
-        arm: (w) => {
-            w.tune.readDelayMs = 400
-            w.userDelay(2)
-        },
-    },
-    {
-        id: 'read-stale',
-        exit: 'read first: the file changed after the read',
-        applies: (path, p) => readsFirst(path) && single(p) && last(p) === 'own',
-        arm: (w) => {
-            // Between the read and the pick: the level data's build.
-            w.exportBuildHook = () =>
-                w.mock.writeFile('own.nxsp', new Blob(['newer bytes another program wrote']))
         },
     },
     {
@@ -603,7 +489,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'write-io-sticky',
-        exit: 'write: fails before close, and the put-back too (ambiguous)',
+        exit: 'write: fails before close (ambiguous)',
         applies: (path, p) =>
             path.writes &&
             path.lock !== 'none' &&
@@ -739,21 +625,11 @@ export const FAULTS: FaultDef[] = [
             w.behaviour.set('takeOver', () => 'throw')
             // Which picks the path takes over: another chain's file, or an unknown one it binds.
             const takes = path.id === 'save-to-file' ? ['own', 'other'] : ['other']
-            // An export refuses the takeover; Save writes despite the failed revocation.
-            const owner =
-                last(p) === 'other'
-                    ? { chainId: 'chain-other', name: FILES.other }
-                    : last(p) === 'own' && path.id === 'save-to-file'
-                      ? { chainId: 'chain-own', name: FILES.own }
-                      : undefined
             return {
                 effective: () => calls > 0 || !takes.includes(last(p)),
                 get facts() {
                     // A takeover that was tried and failed leaves the stale record for I9.
-                    return {
-                        ...(owner && path.family === 'export' ? { notTakenOver: owner } : {}),
-                        ...(path.family === 'save' && calls > 0 ? { staleOwnership: true } : {}),
-                    }
+                    return calls > 0 ? { staleOwnership: true } : {}
                 },
             }
         },
@@ -907,23 +783,6 @@ export const FAULTS: FaultDef[] = [
         },
     },
     {
-        id: 'copy-in-flight',
-        exit: 'a copy of an opened file is still being kept (waited for at the pick, then picker)',
-        applies: (path, p) => onSession(path) && single(p) && writesFile(p),
-        arm: (w) => {
-            const copy = w.startCopy()
-            const driver = (async () => {
-                await w
-                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
-                    .catch(() => undefined)
-                await sleep(30)
-                copy.finish()
-                await copy.copy
-            })()
-            return { driver, effective: () => w.preparing.length > 0 }
-        },
-    },
-    {
         id: 'import-pending-never-starts',
         exit: 'import pending that never starts (4 s)',
         applies: (path, p) =>
@@ -1039,17 +898,6 @@ export type CellResult = {
     observed?: boolean
 }
 
-/** Whether an export should hold the file's bytes for this setup. */
-const expectInHand = (path: PathDef, w: World) => (name: string) => {
-    if (path.family !== 'export') return false
-    // Export still restores sources it refuses.
-    if (name === 'opened.nsld') return w.setup.opened !== 'levelData'
-    if (name !== 'own.nxsp') return false
-    const s = w.setup
-    if (s.own !== 'bound' || s.read === 'denied') return false
-    return s.storage === 'lacks' || s.ownDisk === 'ahead'
-}
-
 const HANG_MS = 14000
 
 /** Exits known not to have written: no marker may stay for them (I7). */
@@ -1078,10 +926,7 @@ export const runCell = async (
 ): Promise<CellResult> => {
     const setup: Setup = { ...path.setup, ...fault.setup }
     const kind = planned.picks.find((pick) => ['opened', 'chart', 'partial'].includes(pick))
-    // After a reload (`held: false`) only storage knows a partial open's file: its handle is kept
-    // there, and exportMemory is empty. Elsewhere the open is in memory.
-    if (kind === 'partial' && setup.held === false) setup.kept = 'afterReload'
-    else if (kind)
+    if (kind)
         setup.opened =
             kind === 'chart' ? 'notProject' : kind === 'partial' ? 'partial' : 'levelData'
     const w = await createWorld(setup)
@@ -1104,7 +949,6 @@ export const runCell = async (
     if (armed.driver) await Promise.race([armed.driver.catch(() => undefined), sleep(3000)])
     await settle()
     const facts: Facts = {
-        inHand: expectInHand(path, w),
         unwritten: UNWRITTEN.has(fault.id),
         ...(armed.facts ?? {}),
     }

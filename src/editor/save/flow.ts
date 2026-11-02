@@ -437,7 +437,7 @@ const copyStem = (stem: string, ofFile: boolean) =>
 /** A file time for a name: "Oct 16, 2.41 PM" (no colon in a file name). */
 const nameTime = (time: number) => formatDateTime(settings.locale, time).replaceAll(':', '.')
 
-/** Revokes a matching stored association. Exports still use the failure result. */
+/** Revokes a matching stored association. A failed write to storage does not prevent the file write. */
 export const revoke = async (env: Env, owner: HandleOwner | undefined) => {
     const at = Date.now()
     try {
@@ -452,16 +452,16 @@ export const revoke = async (env: Env, owner: HandleOwner | undefined) => {
     }
 }
 
-/** An export takeover that storage could not record. Nothing is written. */
-export const notTakenOver = (name: string): Outcome =>
-    isSafeMode()
-        ? { kind: 'refused', name, reason: 'safeMode' }
-        : { kind: 'failed', error: new FileError('io', name + ' was not taken over'), name }
-
-/** Revokes every matching association before a picked Save, as far as storage allows. */
-const revokePicked = async (env: Env, handle: FileSystemFileHandle, revokeOwn: boolean) => {
+/** Revokes every matching association before a picked write, as far as storage allows. */
+export const revokePicked = async (
+    env: Env | undefined,
+    handle: FileSystemFileHandle,
+    revokeOwn: boolean,
+) => {
     const matches = async (stored: FileSystemFileHandle | undefined) =>
         !!stored && ((await sameEntry(handle, stored)) || (await sameEntry(stored, handle)))
+    if (await matches(exportMemory.target?.handle)) clearExportTarget()
+    if (!env) return
     const binding = quickBinding(env).file
     const ownHandle = binding && (await bindingHandle(env, binding))
     const pickedOwn = ownHandle?.storedRead === 'value' && (await matches(ownHandle.storedValue))
@@ -472,11 +472,7 @@ const revokePicked = async (env: Env, handle: FileSystemFileHandle, revokeOwn: b
     let revoked = false
     let replaced: Binding['replaced']
     for (const owner of owners) {
-        if (
-            owner.role === 'kept' ||
-            (!revokeOwn && owner.role === 'file' && owner.chainId === env.chainId)
-        )
-            continue
+        if (!revokeOwn && owner.role === 'file' && owner.chainId === env.chainId) continue
         const read = await handleOf(env.worker, owner.chainId, owner.role)
         if (read.storedRead !== 'value' || !(await matches(read.storedValue))) continue
         const done = await revoke(env, owner)
@@ -484,7 +480,6 @@ const revokePicked = async (env: Env, handle: FileSystemFileHandle, revokeOwn: b
         if (done.ok && done.revoked && owner.role === 'file' && owner.chainId === env.chainId)
             replaced = { by: env.chainId, at: done.at, name: owner.name }
     }
-    if (await matches(exportMemory.target?.handle)) clearExportTarget()
     // Only a stored revocation changes the record's preconditions.
     if (revokeOwn && pickedOwn && replaced) {
         applyRevoked(env.session, env.session.chain ?? {}, replaced, replaced.name)
@@ -519,8 +514,6 @@ export type Outcome =
     | { kind: 'forked' }
     /** The chain's own file was damaged and the chain unlinked from it: Save As… follows. */
     | { kind: 'unlinked'; name: string }
-    /** An export takeover that storage could not record. */
-    | { kind: 'refused'; name: string; reason: 'safeMode' }
     | { kind: 'conflict'; handle: FileSystemFileHandle; binding: Binding }
     | {
           kind: 'failed'
@@ -541,9 +534,7 @@ const largeDownload = (estimated: number | undefined): estimated is number =>
 /** What the pick session shows and does for the Save family (it loads in Node: no UI import). */
 export const pickUi = {
     ...preparingUi,
-    notPutBack: (name: string, emptied: boolean, downloadable: boolean, own: boolean) =>
-        saveUi.notPutBack(name, emptied, downloadable, own),
-    download: (name: string, bytes: Blob) => downloadBytes(name, bytes),
+    emptied: (name: string) => saveUi.emptied(name),
 }
 
 /** Keeps a picked failure's outcome after the empty-file warning has reported it. */
@@ -558,13 +549,11 @@ const projectPick = async (
     try {
         outcome = await session.pick(picker, name, inLock, size)
     } catch (error) {
-        if (!session.offered?.emptied) throw error
+        if (!session.emptied) throw error
         const failure = fileError(error)
         outcome = { kind: 'failed', error: failure, name: failure.fileName ?? name }
     }
-    return outcome.kind === 'failed' && session.offered?.emptied
-        ? { ...outcome, reported: true }
-        : outcome
+    return outcome.kind === 'failed' && session.emptied ? { ...outcome, reported: true } : outcome
 }
 
 /** The document identity and destination retained by Try Again. */
@@ -715,74 +704,6 @@ const projectPicked = async (
     await revokePicked(env, handle, false)
     await savePoint('revoked')
     return writePickedProject(session, env, { reservation, state }, built, binding, picked)
-}
-
-/** Rewrites the open project's file when an export picks it. */
-export const rewriteOwnProject = async (
-    session: PickSession,
-    env: Env,
-    { reservation, state }: Reserved,
-    request: PickRequest,
-    binding: Binding,
-    picked: PickedFile,
-): Promise<Outcome> => {
-    const { target, filled, pre } = picked
-    const { handle } = target
-    const name = handle.name
-    startWrite('picker')
-    let built: BuiltSave
-    // This chain's own file keeps the identity, appending to the bytes read first.
-    if (filled) return { kind: 'conflict', handle, binding }
-    // Not at the base: the version read goes back (the session, offered as a download when
-    // it can't), and the conflict dialog shows it.
-    if (pre && !pre.atBase) return { kind: 'conflict', handle, binding }
-    // The export rewrite uses the default options and keeps the file's history.
-    const history = bindingHasHistory(binding.file) || request.history
-    const rebuild = () =>
-        runBuild(
-            env,
-            {
-                target: pre ? { kind: 'append', source: 'pre' } : { kind: 'copy' },
-                history,
-                bgm: request.bgm,
-                fileName: name,
-                save: { time: reservation.wall, operation: saveOperation(name, false) },
-                state,
-            },
-            pre
-                ? [
-                      {
-                          token: 'pre',
-                          role: 'target',
-                          file: pre.blob,
-                          fingerprint: pre.disk.fingerprint,
-                      },
-                  ]
-                : [],
-        )
-    try {
-        built = await rebuild().catch(async (error: unknown) => {
-            // Retry a worker failure once. A build refusal will not change on retry.
-            if (error instanceof BuildRefused) throw error
-            recordError(error)
-            return rebuild()
-        })
-    } catch (error) {
-        if (error instanceof BuildRefused)
-            return { kind: 'error', message: refusalText(error, name) }
-        return { kind: 'failed', error: fileError(error), name }
-    }
-    const outcome = await writePickedProject(
-        session,
-        env,
-        { reservation, state },
-        built,
-        binding,
-        picked,
-    )
-    return outcome.kind === 'failed' && outcome.error.code === 'conflict'
-        ? { kind: 'conflict', handle, binding }
-        : outcome
 }
 
 /** Records one verified project write and its Save entry. */
@@ -1351,11 +1272,6 @@ export const afterOutcome = async (
             }
             await conflictFlow(env, outcome.binding, outcome.handle)
             return
-        case 'refused': {
-            const choice = await saveUi.refused(outcome.name, outcome.reason)
-            if (choice === 'chooseAnother') await again()
-            return
-        }
         case 'failed': {
             const { error, name } = outcome
             recordError(error)
@@ -1400,27 +1316,6 @@ const openExport = async () => {
     const { commands } = await import('../commands')
     const { runCommand } = await import('../commands/runCommand')
     await runCommand(commands.exportLevel, 'button')
-}
-
-/** Downloads held bytes that an export could not restore. */
-const downloadBytes = async (name: string, bytes: Blob) => {
-    try {
-        const result = await platform.saveFile({
-            kind: 'recovery',
-            suggestedName: name,
-            build: () => Promise.resolve(bytes),
-        })
-        if (result.status === 'download-started')
-            saveUi.saved({
-                kind: 'download',
-                name,
-                size: bytes.size,
-                stepsLine: 'none' as const,
-                tooLarge: [],
-            })
-    } catch {
-        saveUi.error(interpolate(() => i18n.value.save.downloadFailed, name))
-    }
 }
 
 /** The not-found dialog's Save As…: keeps the identity and Export target, writes a new file. */

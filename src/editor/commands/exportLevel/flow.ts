@@ -13,7 +13,6 @@ import {
 } from '../../../platform'
 import { ZipReader } from '../../../zip'
 import type { PickedLevelData } from '../../save/exportPick'
-import type { ReadResult } from '../../save/pickSession'
 import { isLevelDataContent, mayBeLevelData } from './content'
 import { fileError } from './errorText'
 import {
@@ -38,18 +37,7 @@ export type ExportUi = {
         opened: boolean,
     ) => Promise<'replace' | 'chooseAnother' | undefined>
     notLevelData: (name: string) => Promise<'chooseAnother' | undefined>
-    /** A pick of level data whose import left parts out. */
-    unsupportedParts: (name: string) => Promise<'chooseAnother' | undefined>
-    /**
-     * What a pick of a file the editor holds bytes of could not put back, shown at once; `emptied`
-     * while it is empty. Without `downloadable` there is nothing to give: [OK] only.
-     */
-    notPutBack: (
-        name: string,
-        emptied: boolean,
-        downloadable: boolean,
-        own?: boolean,
-    ) => Promise<'download' | undefined>
+    emptied: (name: string) => Promise<void>
     notFound: (name: string) => Promise<'chooseAnother' | undefined>
     denied: (name: string) => Promise<'tryAgain' | 'chooseAnother' | undefined>
     failed: (name: string, error: FileError) => Promise<'chooseAnother' | undefined>
@@ -74,11 +62,6 @@ export type ExportContext = {
     ready?: ReadyPrompt
     /** Aborted when the dialog is cancelled: nothing more is written or shown. */
     signal?: AbortSignal
-    /**
-     * The dialog's read of the chain's own file, or `'start'` (the default): one starting
-     * when the picker is asked for, with a grant already held.
-     */
-    read?: Promise<ReadResult> | 'start'
     /** Called when the picker returned a file: its write runs to its end, cancel or not. */
     committed?: () => void
     /**
@@ -196,8 +179,8 @@ const readTarget = async (target: FileTarget): Promise<Found> => {
 }
 
 /**
- * Whether the file now holds a project: a ZIP whose `project.json` reads. Export never writes
- * level data over one, whatever it last found there. Anything else is not told apart here.
+ * Whether the remembered destination contains a project: a ZIP with a readable `project.json`.
+ * Replacing it with level data requires a confirmed pick.
  */
 const holdsProject = async (handle: FileSystemFileHandle) => {
     try {
@@ -222,8 +205,7 @@ const choose = async <T extends string>(
     for (;;) {
         const choice = await ask()
         if (choice !== 'chooseAnother') return choice
-        // Its picker reads the chain's own file anew: the dialog's read was of an earlier time.
-        const outcome = await exportByPicker({ ...ctx, read: 'start' })
+        const outcome = await exportByPicker(ctx)
         if (outcome !== 'back') return outcome
     }
 }
@@ -384,23 +366,11 @@ const afterPick = async (ctx: ExportContext, picked: PickedLevelData): Promise<E
         case 'cancelled':
             return 'cancelled'
         case 'failed':
+            if (picked.reported) {
+                reportExport('picker', undefined, picked.error)
+                return 'cancelled'
+            }
             return failed(ctx, picked.error, ctx.suggestedName)
-        case 'show':
-            // The Save core's own dialog, once Export's has closed.
-            ctx.leave()
-            await picked.show()
-            return 'cancelled'
-        case 'refused':
-        case 'ownProject': {
-            // The file is not level data: it was put back, or the chain's project went into it.
-            ctx.leave()
-            const { name } = picked
-            const ask =
-                picked.kind === 'refused' && picked.reason === 'unsupportedParts'
-                    ? () => ctx.ui.unsupportedParts(name)
-                    : () => ctx.ui.notLevelData(name)
-            return ended(await choose(ctx, ask))
-        }
     }
 }
 

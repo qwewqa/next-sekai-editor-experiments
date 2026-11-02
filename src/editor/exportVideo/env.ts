@@ -7,11 +7,10 @@ import type { ExportFaults } from '../../exportVideo/protocol'
 import { i18n } from '../../i18n'
 import { platform } from '../../platform'
 import { handOver } from '../../platform/handover'
-import { showNotPutBack } from '../commands/exportLevel/ui'
+import { showEmptied } from '../commands/exportLevel/ui'
 import { pickUi } from '../save/flow'
 import { pickVideo } from '../save/videoPick'
 import { pickedDestination, prepareVideoDestination } from './destination'
-import { VideoPickRefused } from './failure'
 
 export type DestinationRequest = {
     signal: AbortSignal
@@ -25,7 +24,7 @@ export type DestinationRequest = {
 
 export type ExportVideoEnv = {
     worker(): Worker
-    /** Called in the Export press, so a picker keeps the user's activation. */
+    /** Called after preparation; the picker asks for a Ready press if activation expired. */
     destination(request: DestinationRequest): Promise<JobDestination>
     /** A save picker names the file, so the button asks first (Export…). */
     picker: boolean
@@ -46,15 +45,7 @@ export const pageDestination = async (request: DestinationRequest): Promise<JobD
             signal: request.signal,
             ui: {
                 preparing: pickUi.preparing,
-                download: pickUi.download,
-                notPutBack: (name, emptied, downloadable, own) =>
-                    showNotPutBack(
-                        () => i18n.value.exportVideo.title,
-                        name,
-                        emptied,
-                        downloadable,
-                        own,
-                    ),
+                emptied: (name) => showEmptied(() => i18n.value.exportVideo.title, name),
             },
         },
         id: request.id,
@@ -106,14 +97,6 @@ export const pageDestination = async (request: DestinationRequest): Promise<JobD
         }
         case 'unavailable':
             throw new VideoOutputUnavailable(destination.reason)
-        case 'refused':
-            throw new VideoPickRefused(destination.name, destination.reason)
-        case 'ownProject':
-            throw new VideoPickRefused(destination.name, 'ownProject')
-        case 'show':
-            await destination.show()
-            request.dismissed()
-            throw new DOMException('Video export cancelled', 'AbortError')
         case 'failed':
             throw destination.error
         case 'cancelled':

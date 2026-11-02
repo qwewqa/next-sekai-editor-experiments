@@ -37,7 +37,7 @@ for (const [name, setup] of [
         assert.equal(w.boundName(), name)
         assert.notEqual(w.session.docId, 'doc-own')
         assert.equal(
-            w.dialogs.some((dialog) => ['refused', 'notPutBack'].includes(dialog.kind)),
+            w.dialogs.some((dialog) => ['emptied'].includes(dialog.kind)),
             false,
         )
     })
@@ -75,4 +75,24 @@ test('a revocation that cannot be stored does not block the picked write', async
         w.dialogs.some((dialog) => dialog.kind === 'saved'),
         true,
     )
+})
+
+test('Export Level Data writes over its project and unbinds the chain', async () => {
+    const w = await createWorld({ own: 'bound' })
+    const { exportByPicker } = await import('../../../src/editor/commands/exportLevel/flow')
+    w.pick('own.nxsp')
+    const blob = w.exportBuild()
+    assert.equal(
+        await exportByPicker({
+            ui: w.exportUi,
+            build: () => blob,
+            suggestedName: 'level.nsld',
+            types: [],
+            leave: () => undefined,
+        }),
+        'done',
+    )
+    assert.deepEqual(await w.fileBytes('own.nxsp'), new Uint8Array(await blob.arrayBuffer()))
+    assert.equal(w.session.chain?.file, undefined)
+    assert.equal(w.boundName(), undefined)
 })

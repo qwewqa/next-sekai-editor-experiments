@@ -10,9 +10,6 @@ import type { DiskState } from '../../../platform'
 // is stored apart and read only when Export needs it. A new chart clears it; a fork drops
 // the target and the name.
 
-/** Bytes kept at an open for a picker that empties the file: in memory up to this. */
-export const KEPT_BYTES_LIMIT = 64 * 1024 * 1024
-
 export type ExportTarget = {
     /** The file's name, as shown: "LevelData". */
     name: string
@@ -23,28 +20,6 @@ export type ExportTarget = {
     exported: boolean
 }
 
-/** The file this session was opened from, as read at the open. */
-export type OpenedSource = {
-    handle: FileSystemFileHandle
-    /** This engine's level data by content; a chart or another engine's level is not. */
-    levelData: boolean
-    /** Level data whose import left parts out; Export refuses to replace it. */
-    partial: boolean
-    /** The bytes read, restored if an export picker refuses the file. */
-    bytes?: ArrayBuffer
-    /** A `.nxsp`: whole, it is the chain's bound file; partial, Export refuses to replace it. */
-    project?: true
-    /**
-     * A partial or unlinked `.nxsp` open's bytes, kept for a picker that empties the file:
-     * resolves once they're kept, whatever their size.
-     */
-    keptCopy?: Promise<Blob | undefined>
-    /**
-     * The bytes read, for export pickers that refuse the opened file.
-     */
-    kept?: ArrayBuffer
-}
-
 export type ExportMemory = {
     target?: ExportTarget
     /** The name used last for this session's level data, as typed, without `.nsld`. */
@@ -53,7 +28,6 @@ export type ExportMemory = {
     sourceName?: string
     /** Imported from level data with parts left out: pickers suggest "<name> (2)". */
     partial?: boolean
-    opened?: OpenedSource
 }
 
 export const exportMemory: ExportMemory = {}
@@ -104,7 +78,6 @@ export const clearExportMemory = () => {
     delete exportMemory.exportName
     delete exportMemory.sourceName
     delete exportMemory.partial
-    delete exportMemory.opened
 }
 
 onResetState(clearExportMemory)

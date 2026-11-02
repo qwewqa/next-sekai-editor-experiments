@@ -256,8 +256,7 @@ test('the project picker lists .nxsp only, and a build that outlasted the press 
     expect(await pickerCalls(page)).toHaveLength(1)
 })
 
-// Export compresses on the browser's stream; a file written at level 9 (an older export, or Firefox
-// before 113) is rebuilt too.
+// Save accepts level data from either gzip implementation.
 for (const [compression, variant] of [
     ["the browser's stream", 0],
     ['level 9', 1],
@@ -267,9 +266,13 @@ for (const [compression, variant] of [
     }) => {
         await start(page)
         const level = await page.evaluate(async (variant) => {
-            const { buildLevelDataVariants } =
-                await import('/src/editor/commands/exportLevel/build.ts')
-            const blob = (await buildLevelDataVariants())[variant]
+            const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
+            const { gunzipBlob, gzipLevel9 } = await import('/src/utils/gzipStream.ts')
+            const built = await buildLevelData()
+            const blob =
+                variant === 0
+                    ? built
+                    : new Blob([gzipLevel9(new TextDecoder().decode(await gunzipBlob(built)))])
             return [...new Uint8Array(await blob!.arrayBuffer())]
         }, variant)
         await writeFile(page, 'LevelData', level)
@@ -334,23 +337,6 @@ test('a fork has no binding, and its first Save suggests "<name> (2)"', async ({
     await edit(a, 4)
     await pressSave(a)
     await expect(saveDialog(a).getByRole('textbox')).toHaveValue('coconut (2)')
-})
-
-test("Export's picker: the chain's own project file is refused and written again, keeping its identity", async ({
-    page,
-}) => {
-    await start(page)
-    await savedTo(page, 'coconut.nxsp')
-    const before = await projectOf(page, 'coconut.nxsp')
-    await queuePicks(page, ['coconut.nxsp'])
-    await page.keyboard.press('Shift+P')
-    const exporting = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
-    await expect(exporting.locator('[data-export-name]')).toBeFocused()
-    await page.keyboard.press('Enter')
-    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” is not level data.')
-    const after = await projectOf(page, 'coconut.nxsp')
-    expect(after.id).toBe(before.id)
-    expect((after.revision as Row).parent).toBe((before.revision as Row).id)
 })
 
 test("with storing paused, Save writes and the owner's stale binding finds a conflict after reload", async ({

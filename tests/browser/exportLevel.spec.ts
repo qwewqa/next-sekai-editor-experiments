@@ -408,7 +408,7 @@ test('level data with an unknown archetype gets no Export target', async ({ page
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
 })
 
-test('Export restores a picked partial level; Save replaces it with a project', async ({
+test('Export writes level data to a picked partial source; Save writes a project', async ({
     page,
 }) => {
     await start(page, opfs)
@@ -417,12 +417,8 @@ test('Export restores a picked partial level; Save replaces it with a project', 
     await openExport(page)
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('Enter')
-    await expect(dialog(page)).toContainText(
-        '“LevelData” has parts that this version of the editor does not support.',
-    )
-    expect(await archetypes(page, 'LevelData')).toContain('Unheard')
-    await page.waitForTimeout(350)
-    await page.keyboard.press('Escape')
+    await expect(notice(page)).toHaveText('Exported to LevelData')
+    expect(await archetypes(page, 'LevelData')).not.toContain('Unheard')
     await expect(dialog(page)).toHaveCount(0)
 
     // Save writes the project even when the original partial level is picked.
@@ -535,30 +531,6 @@ test('Cancel during a write to the target closes at once and leaves the target',
     }
 })
 
-test("Export's failed download of a refused pick's bytes says so in its own words", async ({
-    page,
-}) => {
-    await start(page, opfs)
-    await openPartial(page, 'LevelData')
-    // Putting the bytes back fails, so the file stays as the picker left it.
-    await holdWrites(page, 'fail')
-    await queuePicks(page, ['LevelData'])
-    await openExport(page)
-    await page.keyboard.press('Enter')
-    await expect(
-        page.getByText('“LevelData” was emptied and its contents could not be restored.'),
-    ).toBeVisible()
-    await page.evaluate(() => {
-        URL.createObjectURL = () => {
-            throw new TypeError('Failed to execute createObjectURL')
-        }
-    })
-    await page.waitForTimeout(350)
-    await page.getByRole('button', { name: 'Download' }).click()
-    await expect(page.getByText('“LevelData” could not be downloaded.')).toBeVisible()
-    await expect(page.getByText(/createObjectURL/)).toHaveCount(0)
-})
-
 test('Choose Another… on an opened LevelData suggests its own name, "All files" alone', async ({
     page,
 }) => {
@@ -623,62 +595,29 @@ test('Export shows one name: the field and the picker agree, for the source and 
     expect(JSON.stringify(call?.types)).toContain('.nsld')
 })
 
-test('both gzip paths carry the same level data, and a browser without streams uses level 9', async ({
-    page,
-}) => {
+test('Export builds the same level data with and without compression streams', async ({ page }) => {
     await start(page, opfs)
     const result = await page.evaluate(async () => {
-        const { buildLevelData, buildLevelDataVariants } = await window.editorTest.appImport<
-            typeof import('../../src/editor/commands/exportLevel/build')
-        >('/src/editor/commands/exportLevel/build.ts')
-        const { gunzipBlob } = await window.editorTest.appImport<
-            typeof import('../../src/utils/gzipStream')
-        >('/src/utils/gzipStream.ts')
-        const text = async (blob: Blob) => {
-            const stream = blob.stream().pipeThrough(new DecompressionStream('gzip'))
-            return new Response(stream).text()
-        }
-        const bytes = async (blob: Blob) => Array.from(new Uint8Array(await blob.arrayBuffer()))
-        const variants = await buildLevelDataVariants()
-        const texts = await Promise.all(variants.map(text))
-        const built = await buildLevelData()
-        const type = built.type
-        const same =
-            JSON.stringify(await bytes(built)) === JSON.stringify(await bytes(variants[0]!))
-
-        // Without streams: the script's level 9 bytes, and its own reader.
+        const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
+        const { gunzipBlob } = await import('/src/utils/gzipStream.ts')
+        const first = await buildLevelData()
+        const text = new TextDecoder().decode(await gunzipBlob(first))
         const streams = { c: window.CompressionStream, d: window.DecompressionStream }
         Object.assign(window, { CompressionStream: undefined, DecompressionStream: undefined })
         try {
-            const without = await buildLevelData()
-            const only = await buildLevelDataVariants()
-            const read = new TextDecoder().decode(await gunzipBlob(without))
+            const second = await buildLevelData()
             return {
-                count: variants.length,
-                equal: texts.every((value) => value === texts[0]),
-                type,
-                nativeIsFirst: same,
-                level9:
-                    JSON.stringify(await bytes(without)) ===
-                    JSON.stringify(await bytes(variants[1]!)),
-                onlyOne: only.length,
-                read: read === texts[0],
-                nonEmpty: texts[0]!.includes('"entities"'),
+                text,
+                fallback: new TextDecoder().decode(await gunzipBlob(second)),
+                type: second.type,
             }
         } finally {
             Object.assign(window, { CompressionStream: streams.c, DecompressionStream: streams.d })
         }
     })
-    expect(result).toEqual({
-        count: 2,
-        equal: true,
-        type: 'application/octet-stream',
-        nativeIsFirst: true,
-        level9: true,
-        onlyOne: 1,
-        read: true,
-        nonEmpty: true,
-    })
+    expect(result.fallback).toBe(result.text)
+    expect(result.text).toContain('"entities"')
+    expect(result.type).toBe('application/octet-stream')
 })
 
 test('plain-JSON level data gets no Export target', async ({ page }) => {
@@ -964,4 +903,41 @@ test('the toolbar step adds Save As and History to the old default groups once',
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
     expect((await toolbar())[0]).toEqual(file)
+})
+
+test('a failed picked export reports the confirmed-empty file once', async ({ page }) => {
+    await start(page, opfs)
+    await openPartial(page, 'LevelData')
+    await holdWrites(page, 'fail')
+    await queuePicks(page, ['LevelData'])
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    await expect(dialog(page)).toContainText(
+        '“LevelData” could not be written. The file is now empty.',
+    )
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+})
+
+test('Export Level Data onto the project writes level data and unbinds it', async ({ page }) => {
+    await start(page, opfs)
+    await queuePicks(page, ['own.nxsp'])
+    await page.keyboard.press('p')
+    await saveProjectFile(page)
+    await expect(notice(page)).toContainText('Saved to own.nxsp')
+    await queuePicks(page, ['own.nxsp'])
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to own.nxsp')
+    expect(await archetypes(page, 'own.nxsp')).toBeDefined()
+    const binding = await page.evaluate(async () => {
+        const { session } =
+            await window.editorTest.appImport<typeof import('../../src/history/session')>(
+                '/src/history/session.ts',
+            )
+        return session.value.file
+    })
+    expect(binding).toBeUndefined()
+    await page.keyboard.press('p')
+    await expect(dialog(page)).toContainText('Save Project File')
 })

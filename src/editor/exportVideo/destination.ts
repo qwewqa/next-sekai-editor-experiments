@@ -14,7 +14,7 @@ export type VideoDestination =
     | { kind: 'unavailable'; reason: 'output' | 'memoryLimit' }
     | Exclude<PickedVideo, { kind: 'accepted' }>
 
-/** Invoke in the export press so the pick retains user activation. */
+/** Selects a destination after preparation; the pick session checks activation. */
 export const prepareVideoDestination = async (options: {
     platform: Pick<Platform, 'pickSaveFile' | 'videoOutput'>
     pick: typeof pickVideo
@@ -60,9 +60,8 @@ export const prepareVideoDestination = async (options: {
 }
 
 /**
- * An accepted pick as the job's destination. An export that ends before its worker opens the
- * target, as a cancel while preparing does, leaves the file the picker emptied: it is removed
- * while it is still empty and unchanged.
+ * Cancellation after picking may end the export before the worker opens the target.
+ * Cleanup removes the picked file only while it remains empty and unchanged.
  */
 export const pickedDestination = (pick: VideoPick): JobDestination => ({
     worker: { kind: 'picked', pick },

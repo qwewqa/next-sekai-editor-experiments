@@ -2,7 +2,6 @@ import { HANDLES } from '../handleRows'
 import { writeUnlink } from '../open/importWrite'
 import {
     BIND_STORES,
-    keepHandle,
     listHandleOwners,
     readChainRecord,
     readSessionStarts,
@@ -28,11 +27,7 @@ export const bindHandlers = (context: WorkerContext) => ({
     /** Every binding and Export target with a stored handle. */
     listHandleOwners: () => context.core.read(['chains', 'handles'], listHandleOwners),
 
-    /** The handle of a partial or unlinked open's file, kept while its session is open. */
-    keepHandle: ({ chainId, name, handle }: { chainId: string; name: string; handle: unknown }) =>
-        context.core.write(['chains', HANDLES], (tx) => keepHandle(tx, chainId, name, handle)),
-
-    /** Revokes a picked file's matching association in one transaction. */
+    /** Revokes a matching association in one transaction. */
     takeOver: (request: TakeOver) =>
         context.core.write(BIND_STORES, (tx) => takeOver(tx, request), { durability: 'strict' }),
 

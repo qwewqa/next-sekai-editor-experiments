@@ -9,7 +9,7 @@ import {
     store,
 } from '../../../history/live'
 import { serializeToLevelData } from '../../../levelData/serialize'
-import { gzipLevel9, gzipText, hasGzipStreams } from '../../../utils/gzipStream'
+import { gzipText } from '../../../utils/gzipStream'
 
 const type = 'application/octet-stream'
 
@@ -29,15 +29,3 @@ const levelDataText = () =>
 
 /** The live session as gzipped level data. The state is read before this returns a promise. */
 export const buildLevelData = async () => new Blob([await gzipText(levelDataText())], { type })
-
-/**
- * The same level data once for each way it has been compressed: on the browser's stream, and at
- * level 9, which Firefox before 113 writes and which older exports used. A file
- * written by either is rebuilt byte for byte by the matching one.
- */
-export const buildLevelDataVariants = async () => {
-    const text = levelDataText()
-    return [...(hasGzipStreams() ? [await gzipText(text)] : []), gzipLevel9(text)].map(
-        (blob) => new Blob([blob], { type }),
-    )
-}

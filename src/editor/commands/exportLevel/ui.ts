@@ -18,46 +18,14 @@ const title = () => i18n.value.export.title
 export const fileErrorText = (name: string, error: FileError) =>
     interpolate(() => i18n.value.save[fileErrorKey(error)], inlineName(error.fileName ?? name))()
 
-/**
- * What the pick could not put back, emptied or not: Download keeps the bytes. Without `downloadable`
- * there is nothing to give: [OK] only. Save uses this dialog for a confirmed-empty file.
- */
-export const showNotPutBack = async (
-    dialogTitle: () => string,
-    name: string,
-    emptied: boolean,
-    downloadable: boolean,
-    own = false,
-) => {
-    const message = interpolate(
-        () =>
-            own
-                ? i18n.value.save.ownFileEmptied
-                : emptied
-                  ? i18n.value.save.notPutBack
-                  : i18n.value.save.openedContentGone,
-        inlineName(name),
-    )
-    if (!downloadable) {
-        await showChoice({
-            title: dialogTitle,
-            message,
-            choices: [],
-            cancelIsDefault: true,
-            cancelLabel: () => i18n.value.modals.info.ok,
-        })
-        return undefined
-    }
-    return showChoice({
+/** Reports a failed write only after the file was confirmed empty. */
+export const showEmptied = async (dialogTitle: () => string, name: string) => {
+    await showChoice({
         title: dialogTitle,
-        lines: () => [message(), i18n.value.save.downloadPreviousContents],
-        choices: [
-            {
-                value: 'download' as const,
-                label: () => i18n.value.save.download,
-                default: true,
-            },
-        ],
+        message: interpolate(() => i18n.value.save.ownFileEmptied, inlineName(name)),
+        choices: [],
+        cancelIsDefault: true,
+        cancelLabel: () => i18n.value.modals.info.ok,
     })
 }
 
@@ -97,14 +65,7 @@ export const exportUi: ExportUi = {
             message: interpolate(() => i18n.value.export.notLevelData, inlineName(name)),
             choices: [chooseAnother],
         }),
-    unsupportedParts: (name) =>
-        showChoice({
-            title,
-            message: interpolate(() => i18n.value.export.unsupportedParts, inlineName(name)),
-            choices: [chooseAnother],
-        }),
-    notPutBack: (name, emptied, downloadable, own = false) =>
-        showNotPutBack(title, name, emptied, downloadable, own),
+    emptied: (name) => showEmptied(title, name),
     notFound: (name) =>
         showChoice({
             title,

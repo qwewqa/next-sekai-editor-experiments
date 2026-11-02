@@ -27,7 +27,7 @@ export type WorkerContext = {
     emit: (event: string, data?: unknown) => void
 }
 
-/** A chain's stored handle for its binding, Export target or kept file. */
+/** A chain's stored handle for its binding or Export target. */
 export const readHandle = (
     core: StorageCore,
     { chainId, role }: { chainId: string; role: HandleRole },

@@ -33,7 +33,7 @@ import { notify } from '../../notification'
 import { confirmSwitch, notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { changeBgm } from '../bgm/index.ts'
-import { exportMemory, KEPT_BYTES_LIMIT, rememberExport } from '../exportLevel/memory'
+import { exportMemory, rememberExport } from '../exportLevel/memory'
 import { installDropGuard } from './dropGuard'
 import {
     FileTooLargeError,
@@ -208,7 +208,6 @@ const openData = async (
                 const [type, data] = tryImport(buffer)
                 openFormat(type)
                 const parsed = parseImported(type, data)
-                let partial = false
                 if (parsed.type === 'levelData') {
                     const { levelData, chart, report } = parsed
                     const apply = () =>
@@ -217,11 +216,10 @@ const openData = async (
                         newerValues = apply
                         return
                     }
-                    partial = !report.isEmpty
                     warning = await apply()
                 } else if (!resetImported(request, parsed.chart, parsed.offset, file)) return
 
-                await opened(handle, buffer, type, partial, request)
+                await opened(type, request)
             } catch (error) {
                 if (request.isCurrent()) {
                     if (error instanceof UnsupportedFileError || error instanceof FileTooLargeError)
@@ -242,7 +240,7 @@ const openData = async (
         // Cancel opens nothing and leaves the session as it was.
         if (!choice || !sourceBuffer || !request.isCurrent()) return
         warning = await apply()
-        await opened(handle, sourceBuffer, 'levelData', true, request)
+        await opened('levelData', request)
     }
     if (!warning || !request.isCurrent()) return
     showOpenWarning(warning)
@@ -322,27 +320,9 @@ const applyLevelData = async (
     return complete ? revisionWarning : 'unsupportedParts'
 }
 
-/** After an open: the source's bytes kept, the chain's Export fields stored, the notice. */
-const opened = async (
-    handle: FileSystemFileHandle | undefined,
-    buffer: ArrayBuffer,
-    type: keyof typeof openedMessages,
-    partial: boolean,
-    request: SwitchRequest,
-) => {
+/** After an open: stores the chain's Export fields and shows the notice. */
+const opened = async (type: keyof typeof openedMessages, request: SwitchRequest) => {
     if (!request.isCurrent()) return
-    // The source's bytes, so a save picker that empties it can be undone.
-    if (handle)
-        exportMemory.opened = {
-            handle,
-            levelData: type === 'levelData',
-            partial,
-            // Complete level data may be written over; anything else is kept.
-            bytes: type === 'levelData' && !partial ? undefined : buffer,
-            // The project picker never writes over any of them.
-            ...(buffer.byteLength <= KEPT_BYTES_LIMIT ? { kept: buffer } : {}),
-        }
-
     // The target and the partial flag are the new chain's.
     await rememberExport()
     endOpen('done')

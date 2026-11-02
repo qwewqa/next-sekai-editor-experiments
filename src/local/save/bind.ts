@@ -1,12 +1,5 @@
 import type { JsonValue } from '../../history/operations'
-import {
-    deleteHandleRow,
-    HANDLES,
-    KEPT_ROLE,
-    readKeptRow,
-    splitHandles,
-    withoutHandles,
-} from '../handleRows'
+import { deleteHandleRow, HANDLES, splitHandles, withoutHandles } from '../handleRows'
 import type { KvTx } from '../kv/types'
 import { keptNameOf } from '../names'
 import {
@@ -43,8 +36,7 @@ export const readChainRecord = async (tx: KvTx, chainId: string) => {
 /** A stored binding or Export target: what a pick is compared with. */
 export type HandleOwner = {
     chainId: string
-    /** `kept`: the file a partial open came from. */
-    role: 'file' | 'exportTarget' | typeof KEPT_ROLE
+    role: 'file' | 'exportTarget'
     name: string
     /** The binding's `at`, which a takeover checks is unchanged. */
     at?: number
@@ -79,17 +71,8 @@ export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
                 handle: (await tx.getKey(HANDLES, [chainId, role])) !== undefined,
             })
         }
-        const kept = await readKeptRow(tx, chainId)
-        if (kept) owners.push({ chainId, role: KEPT_ROLE, name: kept.name, handle: true })
     }
     return owners
-}
-
-/** Keeps the handle of the file a partial or unlinked open came from. */
-export const keepHandle = async (tx: KvTx, chainId: string, name: string, handle: unknown) => {
-    if (!isRow(await tx.get('chains', chainId))) return false
-    await tx.put(HANDLES, { chainId, role: KEPT_ROLE, name, handle })
-    return true
 }
 
 /** A binding or Export target to revoke. */

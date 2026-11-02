@@ -2427,8 +2427,7 @@
     "export": "匯出",
     "exported": "已匯出至 {0}",
     "notLevelData": "「{0}」不是關卡資料。",
-    "fileType": "Next SEKAI 關卡資料",
-    "unsupportedParts": "「{0}」包含此版本編輯器不支援的部分。"
+    "fileType": "Next SEKAI 關卡資料"
   },
   "exportVideo": {
     "title": "匯出影片",
@@ -2507,9 +2506,6 @@
     "discard": "捨棄影片",
     "unsupported": "此瀏覽器無法匯出影片。",
     "errors": {
-      "ownProject": "已儲存到 {0}。請為影片選擇其他名稱。",
-      "refused": "「{0}」是譜面檔案。請選擇其他名稱。",
-      "refusedOther": "「{0}」已被清空。請開啟其所屬工作階段，使用「儲存」重新寫入檔案。請為影片選擇其他名稱。",
       "config": "此瀏覽器不支援這些影片設定。請降低解析度或影格率。",
       "encoder": "無法建立影片。",
       "audio": "無法準備音訊。",
@@ -2569,9 +2565,7 @@
     "noSpace": "空間不足，無法寫入 {0}。",
     "writeFailed": "無法寫入「{0}」。",
     "ownFileEmptied": "「{0}」無法寫入。檔案已被清空。",
-    "notPutBack": "「{0}」已被清空，且無法還原其內容。",
     "openedContentGone": "「{0}」的內容已變更。",
-    "downloadPreviousContents": "您可以下載一份變更前的內容副本。",
     "title": "儲存專案檔案",
     "titleAs": "另存新檔",
     "history": "歷史記錄",
@@ -2582,7 +2576,6 @@
     "exportHintNames": "關卡資料檔案可能沒有副檔名，或以 .nsld 或 .json.gz 結尾。",
     "readOnly": "無法寫入「{0}」。",
     "notKept": "未儲存。無法完整讀取「{0}」。",
-    "notKeptSafe": "未儲存。安全模式下無法取代檔案。",
     "notKeptFull": "未儲存。瀏覽器儲存空間已滿。請在「設定 › 本機資料」中刪除工作階段，然後重新儲存。",
     "saved": "已儲存到 {0}",
     "savedWithoutBgmLarge": "已儲存到 {0}，未包含 BGM",

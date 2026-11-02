@@ -1,4 +1,4 @@
-import { bytesOf, sameBytes, startsWith, type World } from './world'
+import { bytesOf, type World } from './world'
 
 // The invariants (I1 to I10), as checks over what
 // a world recorded: the marker only for a write that may have landed
@@ -15,15 +15,12 @@ const MODAL = new Set([
     'denied',
     'readOnly',
     'failed',
-    'refused',
-    'notPutBack',
+    'emptied',
 ])
 
 export type Facts = {
     /** A revocation failed, so another chain's record may still bind the file: I9 is waived. */
     staleOwnership?: boolean
-    /** Files whose bytes this Save had to keep: the bytes they held at their pick. */
-    inHand: (name: string) => boolean
     /** The exit is known not to have written: no marker may stay (I7). */
     unwritten?: boolean
     /** The Save was cancelled before any pick: nothing may be written or held (I8). */
@@ -32,42 +29,16 @@ export type Facts = {
     expectNoPicker?: boolean
     /** The dialog was cancelled once the picker had returned a file: the write must still land (I10). */
     written?: boolean
-    /**
-     * A takeover storage could not record: that file is never written, and the chain bound
-     * to it keeps the binding (I9).
-     */
-    notTakenOver?: { chainId: string; name: string }
-}
-
-const offered = async (world: World, bytes: Uint8Array) => {
-    for (const download of world.mock.downloads)
-        if (sameBytes((await bytesOf(download.blob))!, bytes)) return true
-    return false
 }
 
 export const check = async (world: World, facts: Facts): Promise<Violation[]> => {
     const found: Violation[] = []
     const add = (invariant: string, detail: string) => found.push({ invariant, detail })
 
-    // I1: a picked file never ends holding less than it held at its pick while its bytes are in
-    // hand; the bytes are put back, appended to, or offered.
-    for (const [name, blob] of world.before) {
-        if (!blob || blob.size === 0) continue
-        const before = (await bytesOf(blob))!
-        const now = await bytesOf(world.mock.files.get(name))
-        const kept = now !== undefined && startsWith(now, before)
-        if (kept || (await offered(world, before))) continue
-        if (facts.inHand(name))
-            add(
-                'I1',
-                `${name} held ${before.length} bytes at its pick and ends with ${now?.length ?? 'no file'}; none offered`,
-            )
-        else if (!now?.length)
-            add(
-                'info:emptied',
-                `${name} held ${before.length} bytes at its pick, not in hand; it ends empty`,
-            )
-    }
+    // Empty files after failed writes are recorded for the matrix report.
+    for (const [name, blob] of world.before)
+        if (blob?.size && (await bytesOf(world.mock.files.get(name)))?.length === 0)
+            add('info:emptied', name + ' ends empty')
 
     // I2: a write to a picked file holds `nse-bind` exclusive.
     for (const write of world.writes)
@@ -84,13 +55,10 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     for (const opening of world.openings)
         if (!opening.activation) add('I4', `a picker opened for ${opening.name} without activation`)
 
-    // I5: no picker opens while an import of this tab runs (any session's), nor while a copy of an
-    // opened file is being kept, nor with one pending in storage before the bounded wait
+    // I5: no picker opens while an import of this tab runs or one is pending before the bounded wait
     // (`RESUME_WAIT_MS`, which a pending import that never starts runs out) is over.
     for (const opening of world.openings) {
         if (opening.importing) add('I5', `a picker opened for ${opening.name} during the import`)
-        else if (opening.copying)
-            add('I5', `a picker opened for ${opening.name} while a copy was being kept`)
         else if (opening.importPending)
             add('I5', `a picker opened for ${opening.name} with the import pending`)
     }
@@ -117,7 +85,7 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     if (facts.expectNoPicker && world.openings.length) add('I5', 'a picker opened that must not')
 
     // I10: once the picker returned a file, no Cancel stops the write.
-    // The pick's own write lands (a put-back is a write too, so a failure shown means it did not).
+    // The command's write must land.
     if (
         facts.written &&
         (!world.writes.some((write) => write.picked) ||
@@ -149,22 +117,6 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
                 )
     }
 
-    // I9: a takeover storage could not record writes nothing new to that file (it ends
-    // empty, or holding what it held at its pick, put back), and the chain bound to it keeps its
-    // binding.
-    if (facts.notTakenOver) {
-        const { chainId, name } = facts.notTakenOver
-        const now = await bytesOf(world.mock.files.get(name))
-        const held = world.before.get(name)
-        const before = held ? await bytesOf(held) : undefined
-        if (now?.length && !(before && sameBytes(now, before)))
-            add('I9', `${name} holds new bytes though its takeover was not recorded`)
-        const owner = stored.find((record) => record.chainId === chainId)
-        if ((owner?.file as { name?: string } | undefined)?.name !== name)
-            add('I9', `${chainId} lost its binding of ${name} though the takeover was not recorded`)
-    }
-
-    // A flow that threw is a bug of its own (the Save's `exclusive` logs it).
     for (const error of world.errors)
         add(
             'flow threw',

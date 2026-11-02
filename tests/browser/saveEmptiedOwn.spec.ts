@@ -25,14 +25,6 @@ test('Save As: failed reads after a completed write do not mean the own file is 
     await pressSave(page)
     await submitSave(page, 'coconut')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    expect(
-        await page.evaluate(async () => {
-            const { environment, quickBinding } = await import('/src/editor/save/binding.ts')
-            const { readOwnFile } = await import('/src/editor/save/pickSession.ts')
-            const env = environment()!
-            return (await readOwnFile(env, quickBinding(env))).kind
-        }),
-    ).toBe('notNeeded')
     await queuePicks(page, ['coconut.nxsp'])
     await pauseAt(page, 'readBack')
     await page.evaluate(async () => {
@@ -86,15 +78,6 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
         await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
         const before = await chainOf(page)
         const entries = (await rows(page, ['entries'])).entries!
-        // Even Export has no bytes to restore. The file is at its base and storage holds it.
-        expect(
-            await page.evaluate(async () => {
-                const { environment, quickBinding } = await import('/src/editor/save/binding.ts')
-                const { readOwnFile } = await import('/src/editor/save/pickSession.ts')
-                const env = environment()!
-                return (await readOwnFile(env, quickBinding(env))).kind
-            }),
-        ).toBe('notNeeded')
         await page.evaluate(async () => {
             const module =
                 (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
@@ -104,11 +87,17 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
             module.setPlatformForTests({
                 ...original,
                 saveFile: (request) => {
-                    if (request.kind === 'nxsp') {
+                    if (request.kind === 'nxsp' || request.kind === 'nsld') {
                         seen.ownFileEvents.push('no-space')
                         throw new module.FileError('no-space', 'Disk full')
                     }
                     return original.saveFile(request)
+                },
+                read: async (target) => {
+                    const found = await original.read(target)
+                    if (seen.ownFileEvents.includes('no-space'))
+                        seen.ownFileEvents.push(`read:${found.size}`)
+                    return found
                 },
                 inspect: async (target, kind) => {
                     const found = await original.inspect(target, kind)
@@ -152,19 +141,13 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
             await page.evaluate(
                 () => (window as unknown as { ownFileEvents: string[] }).ownFileEvents,
             ),
-        ).toEqual(['no-space', 'inspected:0'])
+        ).toEqual(['no-space', 'read:0'])
         const locks = await page.evaluate(async () => (await navigator.locks.query()).held)
         expect(locks?.some((lock) => lock.name === 'nse-bind')).toBe(false)
 
         await page.keyboard.press('Escape')
-        if (flow === 'Export Level Data')
-            await expect(saveDialog(page, 'Save')).toContainText(
-                'There is not enough space to write coconut.nxsp.',
-            )
-        else await expect(saveDialog(page, 'Save')).toHaveCount(0)
-        expect((await chainOf(page)).file).toEqual(
-            flow === 'Recent Sessions' ? undefined : before.file,
-        )
+        await expect(saveDialog(page, flow === 'Export Level Data' ? flow : 'Save')).toHaveCount(0)
+        expect((await chainOf(page)).file).toEqual(flow === 'Save As' ? before.file : undefined)
         expect((await rows(page, ['entries'])).entries).toEqual(expect.arrayContaining(entries))
         expect(await readFile(page, 'coconut.nxsp')).toEqual([])
     })

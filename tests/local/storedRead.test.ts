@@ -46,7 +46,8 @@ const failure = () => {
 const handlers: Handlers = {
     init: () => ({ mode: 'stored' }),
     // Covered reads: an answer, an empty answer, a falsy answer and a failure.
-    readHandle: (arg: { role: string }) => {
+    readHandle: (arg: { role: string; chainId: string }) => {
+        if (arg.chainId === 'none') return undefined
         if (arg.role === 'exportTarget') throw failure()
         return arg.role === 'file' ? { testHandle: 'coconut.nxsp' } : undefined
     },
@@ -86,10 +87,13 @@ test('an empty or absent answer stays a value', async () => {
         storedRead: 'value',
         storedValue: [],
     })
-    assert.deepEqual(await storedRead(worker, 'readHandle', { chainId: 'c', role: 'kept' }), {
-        storedRead: 'value',
-        storedValue: undefined,
-    })
+    assert.deepEqual(
+        await storedRead(worker, 'readHandle', { chainId: 'none', role: 'exportTarget' }),
+        {
+            storedRead: 'value',
+            storedValue: undefined,
+        },
+    )
     assert.deepEqual(await storedRead(worker, 'readChainRecord', 'none'), {
         storedRead: 'value',
         storedValue: undefined,

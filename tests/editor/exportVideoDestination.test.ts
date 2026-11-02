@@ -26,24 +26,23 @@ const options = (): Parameters<typeof prepareVideoDestination>[0] => ({
             preparing: () => {
                 throw new Error('Unexpected UI')
             },
-            notPutBack: async () => undefined,
-            download: async () => {},
+            emptied: async () => undefined,
         },
     },
 })
 
-test('destination uses the safe pick result and a dotted extension', async () => {
-    const refused = { kind: 'refused', name: 'known.nxsp', reason: 'known' } as const
+test('destination preserves picker dismissal and a dotted extension', async () => {
+    const cancelled = { kind: 'dismissed' } as const
     const result = await prepareVideoDestination({
         ...options(),
         format: 'webm',
         platform: { pickSaveFile: async () => undefined },
         pick: async (pick) => {
             assert.equal(pick.type.extension, '.webm')
-            return refused
+            return cancelled
         },
     })
-    assert.equal(result, refused)
+    assert.equal(result, cancelled)
 })
 
 test('staged allocation retains ownership and deletes a cancelled allocation', async () => {
@@ -178,7 +177,7 @@ test('a picked destination discards the emptied file, and never a changed one', 
         } as unknown as FileSystemFileHandle
         return { handle, exists: () => file !== undefined }
     }
-    // Cancelled while preparing: the worker never opened the file the picker emptied.
+    // Cancelled after picking: the worker never opened the empty file.
     const emptied = pickedFile(0, 42)
     await pickedDestination({ handle: emptied.handle, lastModified: 42 }).discard()
     assert.equal(emptied.exists(), false)

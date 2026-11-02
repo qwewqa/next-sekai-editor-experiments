@@ -1,97 +1,38 @@
 import { expect, test } from '@playwright/test'
-import {
-    edit,
-    flushed,
-    notice,
-    pressSave,
-    queuePicks,
-    readFile,
-    start,
-    submitSave,
-} from './saveFlows'
+import { edit, notice, pressSave, queuePicks, start, submitSave } from './saveFlows'
 
-test("video picks rewrite the chain's own project and restore the current Export target", async ({
-    page,
-}) => {
+test('Export Video streams into the project file and revokes its binding', async ({ page }) => {
     await start(page)
     await edit(page, 1)
     await pressSave(page)
     await submitSave(page, 'coconut')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    const saved = await page.evaluate(async () => {
-        const { readNxsp } = await import('/src/local/nxsp/read.ts')
-        const root = await navigator.storage.getDirectory()
-        const result = await readNxsp(await (await root.getFileHandle('coconut.nxsp')).getFile())
-        if (result.kind !== 'nxsp' || result.open !== 'full') throw new Error('Unreadable project')
-        return { level: result.level, id: result.project!.id }
-    })
     await queuePicks(page, ['coconut.nxsp'])
-    const own = await page.evaluate(async () => {
+    const result = await page.evaluate(async () => {
         const { pickVideo } = await import('/src/editor/save/videoPick.ts')
         const { pickUi } = await import('/src/editor/save/flow.ts')
         const { environment, quickBinding } = await import('/src/editor/save/binding.ts')
-        const { readOwnFile } = await import('/src/editor/save/pickSession.ts')
-        const env = environment()!
-        const read = await readOwnFile(env, quickBinding(env))
-        const result = await pickVideo({
-            name: 'clip.mp4',
-            type: { description: 'MP4', extension: '.mp4' },
+        const { muxPickedVideo } = await import('/tests/helpers/muxPickedVideo.ts')
+        const picked = await pickVideo({
+            name: 'clip.webm',
+            type: { description: 'WebM', extension: '.webm' },
             ui: pickUi,
         })
+        if (picked.kind !== 'accepted') throw new Error(picked.kind)
+        const binding = quickBinding(environment()!).file
+        const locks = (await navigator.locks.query()).held?.map((lock) => lock.name)
+        const video = await muxPickedVideo('webm', false, picked.pick.handle)
         return {
-            read: read.kind,
-            kind: result.kind,
-            locks: (await navigator.locks.query()).held?.map((lock) => lock.name),
+            binding,
+            locks,
+            size: video?.size,
+            fileSize: (await picked.pick.handle.getFile()).size,
         }
     })
-    expect(own.read).toBe('notNeeded')
-    expect(own.kind).toBe('ownProject')
-    expect(own.locks).not.toContain('nse-bind')
-    expect(
-        await page.evaluate(async () => {
-            const { readNxsp } = await import('/src/local/nxsp/read.ts')
-            const root = await navigator.storage.getDirectory()
-            const result = await readNxsp(
-                await (await root.getFileHandle('coconut.nxsp')).getFile(),
-            )
-            if (result.kind !== 'nxsp' || result.open !== 'full')
-                throw new Error('Unreadable project')
-            return { level: result.level, id: result.project!.id }
-        }),
-    ).toEqual(saved)
-
-    // Export the current chart through its existing flow, then pick that target for video.
-    await queuePicks(page, ['LevelData.nsld'])
-    await page.evaluate(async () => {
-        const { exportByPicker } = await import('/src/editor/commands/exportLevel/flow.ts')
-        const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
-        const { exportUi } = await import('/src/editor/commands/exportLevel/ui.ts')
-        await exportByPicker({
-            suggestedName: 'LevelData.nsld',
-            types: [],
-            build: buildLevelData,
-            ui: exportUi,
-            leave: () => undefined,
-        })
-    })
-    await flushed(page)
-    const exported = await readFile(page, 'LevelData.nsld')
-    expect(exported!.length).toBeGreaterThan(0)
-    await queuePicks(page, ['LevelData.nsld'])
-    expect(
-        await page.evaluate(async () => {
-            const { pickVideo } = await import('/src/editor/save/videoPick.ts')
-            const { pickUi } = await import('/src/editor/save/flow.ts')
-            return (
-                await pickVideo({
-                    name: 'clip.mp4',
-                    type: { description: 'MP4', extension: '.mp4' },
-                    ui: pickUi,
-                })
-            ).kind
-        }),
-    ).toBe('refused')
-    expect(await readFile(page, 'LevelData.nsld')).toEqual(exported)
+    expect(result.binding).toBeUndefined()
+    expect(result.locks).not.toContain('nse-bind')
+    expect(result.size).toBeGreaterThan(0)
+    expect(result.fileSize).toBe(result.size)
 })
 
 test('a streamed pick refuses a changed file at commit and keeps the other bytes', async ({

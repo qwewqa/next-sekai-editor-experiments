@@ -2427,8 +2427,7 @@
     "export": "Dışa Aktar",
     "exported": "{0} dosyasına dışa aktarıldı",
     "notLevelData": "“{0}” seviye verisi değil.",
-    "fileType": "Next SEKAI seviye verisi",
-    "unsupportedParts": "“{0}”, editörün bu sürümünün desteklemediği kısımlar içeriyor."
+    "fileType": "Next SEKAI seviye verisi"
   },
   "exportVideo": {
     "title": "Videoyu Dışa Aktar",
@@ -2507,9 +2506,6 @@
     "discard": "Videoyu Sil",
     "unsupported": "Bu tarayıcı video dışa aktaramıyor.",
     "errors": {
-      "ownProject": "{0} dosyasına kaydedildi. Video için başka bir ad seçin.",
-      "refused": "“{0}” bir nota çizelgesi dosyasıdır. Başka bir ad seçin.",
-      "refusedOther": "“{0}” artık boş. Bu dosyanın oturumunu açın ve dosyayı yeniden yazmak için Kaydet komutunu kullanın. Video için başka bir ad seçin.",
       "config": "Bu video ayarları bu tarayıcıda kullanılamıyor. Daha düşük bir çözünürlük veya kare hızı seçin.",
       "encoder": "Video oluşturulamadı.",
       "audio": "Ses hazırlanamadı.",
@@ -2569,9 +2565,7 @@
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "“{0}” yazılamadı.",
     "ownFileEmptied": "“{0}” yazılamadı. Dosya artık boş.",
-    "notPutBack": "“{0}” boşaltıldı ve içeriği geri yüklenemedi.",
     "openedContentGone": "“{0}” içeriği değişti.",
-    "downloadPreviousContents": "Önceki içeriğin bir kopyasını indirebilirsiniz.",
     "title": "Proje Dosyasını Kaydet",
     "titleAs": "Farklı Kaydet",
     "history": "Geçmiş",
@@ -2582,7 +2576,6 @@
     "exportHintNames": "Seviye verisi dosyaları uzantısız olabilir veya .nsld ya da .json.gz ile bitebilir.",
     "readOnly": "“{0}” dosyasına yazılamıyor.",
     "notKept": "Kaydedilmedi. “{0}” tamamen okunamadı.",
-    "notKeptSafe": "Kaydedilmedi. Güvenli modda dosyalar değiştirilemez.",
     "notKeptFull": "Kaydedilmedi. Tarayıcının depolama alanı dolu. Ayarlar › Yerel Veriler’den oturumları silin, ardından yeniden kaydedin.",
     "saved": "{0} dosyasına kaydedildi",
     "savedWithoutBgmLarge": "{0} dosyasına arka plan müziği olmadan kaydedildi",

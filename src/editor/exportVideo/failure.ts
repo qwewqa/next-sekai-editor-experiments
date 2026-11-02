@@ -8,16 +8,6 @@ import { interpolate } from '../../utils/interpolate'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import type { VideoReportEnd } from './report'
 
-/** A pick the video cannot be written to, with what the pick session did with the file. */
-export class VideoPickRefused extends Error {
-    constructor(
-        readonly fileName: string,
-        readonly reason: 'ownProject' | 'known' | 'other',
-    ) {
-        super(`${fileName} cannot take the video`)
-    }
-}
-
 export type VideoFailure = {
     reason: NonNullable<VideoReportEnd['reason']>
     message: () => string
@@ -28,26 +18,8 @@ export type VideoFailure = {
 const text = (pick: (messages: (typeof i18n)['value']['exportVideo']['errors']) => string) => () =>
     pick(i18n.value.exportVideo.errors)
 
-export const describeVideoFailure = (error: unknown, name: string): VideoFailure => {
+const describeFailure = (error: unknown, name: string): VideoFailure => {
     const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-    if (error instanceof VideoPickRefused) {
-        const file = inlineName(error.fileName)
-        return error.reason === 'ownProject'
-            ? {
-                  reason: 'ownProject',
-                  message: interpolate(() => i18n.value.exportVideo.errors.ownProject, file),
-              }
-            : {
-                  reason: 'refused',
-                  message: interpolate(
-                      () =>
-                          error.reason === 'other'
-                              ? i18n.value.exportVideo.errors.refusedOther
-                              : i18n.value.exportVideo.errors.refused,
-                      file,
-                  ),
-              }
-    }
     if (error instanceof VideoOutputUnavailable)
         return error.reason === 'memoryLimit'
             ? { reason: 'memoryLimit', message: text((m) => m.memoryLimit), detail }
@@ -66,4 +38,20 @@ export const describeVideoFailure = (error: unknown, name: string): VideoFailure
     if (/audio|mix/i.test(failure.message))
         return { reason: 'audio', message: text((m) => m.audio), detail }
     return { reason: 'encoder', message: text((m) => m.encoder), detail }
+}
+
+/** Reads after cleanup, so removed or unreadable targets are never described as empty. */
+export const describeVideoFailure = async (
+    error: unknown,
+    name: string,
+    handle?: FileSystemFileHandle,
+): Promise<VideoFailure> => {
+    const failure = describeFailure(error, name)
+    const file = await handle?.getFile().catch(() => undefined)
+    return handle && file?.size === 0
+        ? {
+              ...failure,
+              message: interpolate(() => i18n.value.save.ownFileEmptied, inlineName(handle.name)),
+          }
+        : failure
 }

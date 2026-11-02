@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import {
     clearExportMemory,
+    clearExportTarget,
     exportMemory,
     loadExportTarget,
     rememberExport,
@@ -109,4 +110,23 @@ test('a failed read of the chain record never authorizes a registered target', a
     )
     restoreExportMemory(stored)
     assert.equal((await loadExportTarget())?.name, 'LevelData')
+})
+
+test('revoking a remembered destination clears it after reload and keeps the suggested name', async () => {
+    restoreExportMemory(stored)
+    setExportHandleReader(() =>
+        Promise.resolve(readValue({ name: 'LevelData' } as FileSystemFileHandle)),
+    )
+    clearExportTarget()
+    assert.equal(await loadExportTarget(), undefined)
+    assert.equal(exportMemory.exportName, 'Coconut')
+    const persisted: Record<string, unknown>[] = []
+    setExportPersister(async (fields) => {
+        persisted.push(fields)
+        return true
+    })
+    await rememberExport()
+    assert.deepEqual(persisted, [
+        { exportTarget: undefined, exportName: 'Coconut', partialImport: true },
+    ])
 })

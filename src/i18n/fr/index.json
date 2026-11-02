@@ -2427,8 +2427,7 @@
     "export": "Exporter",
     "exported": "Exporté vers {0}",
     "notLevelData": "« {0} » ne contient pas de données de niveau.",
-    "fileType": "Données de niveau Next SEKAI",
-    "unsupportedParts": "« {0} » contient des parties que cette version de l’éditeur ne prend pas en charge."
+    "fileType": "Données de niveau Next SEKAI"
   },
   "exportVideo": {
     "title": "Exporter la vidéo",
@@ -2507,9 +2506,6 @@
     "discard": "Abandonner la vidéo",
     "unsupported": "Ce navigateur ne peut pas exporter de vidéo.",
     "errors": {
-      "ownProject": "Sauvegardé dans {0}. Choisissez un autre nom pour la vidéo.",
-      "refused": "« {0} » est un fichier de partition. Choisissez un autre nom.",
-      "refusedOther": "« {0} » est maintenant vide. Ouvrez sa session et utilisez Sauvegarder pour réécrire le fichier. Choisissez un autre nom pour la vidéo.",
       "config": "Ces paramètres vidéo ne sont pas disponibles dans ce navigateur. Choisissez une résolution ou une fréquence d’images plus basse.",
       "encoder": "La vidéo n’a pas pu être créée.",
       "audio": "Le son n’a pas pu être préparé.",
@@ -2569,9 +2565,7 @@
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "« {0} » n’a pas pu être écrit.",
     "ownFileEmptied": "« {0} » n’a pas pu être écrit. Le fichier est maintenant vide.",
-    "notPutBack": "« {0} » a été vidé et son contenu n’a pas pu être restauré.",
     "openedContentGone": "Le contenu de « {0} » a changé.",
-    "downloadPreviousContents": "Vous pouvez télécharger une copie du contenu précédent.",
     "title": "Sauvegarder le fichier de projet",
     "titleAs": "Sauvegarder sous",
     "history": "Historique",
@@ -2582,7 +2576,6 @@
     "exportHintNames": "Les fichiers de données de niveau peuvent être sans extension ou se terminer par .nsld ou .json.gz.",
     "readOnly": "Impossible d’écrire dans « {0} ».",
     "notKept": "Non sauvegardé. « {0} » n’a pas pu être lu entièrement.",
-    "notKeptSafe": "Non sauvegardé. Les fichiers ne peuvent pas être remplacés en mode sans échec.",
     "notKeptFull": "Non sauvegardé. Le stockage du navigateur est plein. Supprimez des sessions dans Paramètres › Données locales, puis sauvegardez à nouveau.",
     "saved": "Sauvegardé dans {0}",
     "savedWithoutBgmLarge": "Sauvegardé dans {0} sans sa musique",

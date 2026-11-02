@@ -1,9 +1,5 @@
 import { recordError } from '../../diagnostics'
-import {
-    exportMemory,
-    KEPT_BYTES_LIMIT,
-    rememberExport,
-} from '../../editor/commands/exportLevel/memory'
+import { exportMemory, rememberExport } from '../../editor/commands/exportLevel/memory'
 import { LOAD_ORDER } from '../../editor/loadOrder'
 import { attachHeld, cachedHeld, cacheHeld, type HeldParts } from '../../editor/media/heldBgm'
 import { notifyWarning } from '../../editor/media/refusalCard'
@@ -31,7 +27,6 @@ import { readValue, storedRead, type StoredRead } from '../storedRead'
 import { flusher, journalWriter } from '../storing'
 import { changedOf, type EarlierChain } from './decide'
 import { resumeImports, startImport, type ImportOutcome } from './importLoop'
-import { keepCopy } from './kept'
 import type { OpenReadReply } from './opened'
 
 // The page's side of opening a `.nxsp`: the new chain and session stored
@@ -39,8 +34,6 @@ import type { OpenReadReply } from './opened'
 // background import started, and the chain's identity updated in this tab when damage unlinks it.
 
 export type NxspReply = OpenReadReply & { kind: 'nxsp' }
-
-export { KEPT_BYTES_LIMIT }
 
 const context = () => {
     const found = sessionContext()
@@ -138,7 +131,7 @@ export type StoreOpen = {
     bind?: { name: string }
     /** Takes the file's identity: a whole open; otherwise a new `docId` and no revision. */
     identity: boolean
-    /** Parts of the file were not read: its bytes are kept, and it is never written over. */
+    /** Parts of the file were not read, so the session stays unbound. */
     partial: boolean
     /** The live state when it isn't the history's head. */
     level?: StateBatch
@@ -219,18 +212,11 @@ export const storeAndShow = async (
     const lock = holdSessionLock(deps.locks, sessionId)
     const ownership = { transferred: false }
     let job: Promise<ImportOutcome> | undefined
-    let kept: Promise<Blob | undefined> | undefined
     let damaged: { record: Record<string, unknown>; first: boolean } | undefined
     // The open's notice would replace a damage card raised before it, so that card waits for it.
     let noticed = false
     let unsaid = false
-    const retainBytes = () => {
-        if (open.handle)
-            kept ??= keepCopy(deps.worker, chainId, open.file, open.handle).catch(() => undefined)
-        return kept
-    }
     const applyDamage = (record: Record<string, unknown>, first: boolean) => {
-        const copy = retainBytes()
         if (first && !noticed) unsaid = true
         unlinkedSession(
             sessionId,
@@ -238,9 +224,6 @@ export const storeAndShow = async (
             record,
             first,
             false,
-            open.handle
-                ? { file: open.file, handle: open.handle, ...(copy ? { copy } : {}) }
-                : undefined,
             () => noticed && ownership.transferred && request.isCurrent(),
         )
     }
@@ -263,7 +246,6 @@ export const storeAndShow = async (
             { timeoutMs: 120_000 },
         )
         if (stored.kind !== 'stored') throw new Error('The opened file is no longer read')
-        if (open.partial) void retainBytes()
         if (stored.batches > 0)
             job = startImport({
                 worker: deps.worker,
@@ -319,14 +301,6 @@ export const storeAndShow = async (
                             currentSession.value = { ...currentSession.value, copyOf: open.copyOf }
                             writeTabRecord({ sessionId, start: 'stored', copyOf: open.copyOf })
                         }
-                        if (open.handle)
-                            exportMemory.opened = {
-                                handle: open.handle,
-                                levelData: false,
-                                partial: open.partial,
-                                project: true,
-                                ...(kept ? { keptCopy: kept } : {}),
-                            }
                         if (damaged) applyDamage(damaged.record, damaged.first)
                     },
                 },
@@ -352,9 +326,8 @@ export const storeAndShow = async (
             },
         }
     } finally {
-        // A lock no session took is kept until the import's batches and the kept copy settle.
+        // A lock no session took is held until the import's batches settle.
         if (lock.state === 'held') await job
-        if (lock.state === 'held') await kept
         if (!job) await deps.worker.call('openDrop', open.read.id).catch(() => undefined)
         else
             void job.finally(() =>
@@ -460,16 +433,10 @@ const unlinkedSession = (
     record: Record<string, unknown>,
     first: boolean,
     resumed: boolean,
-    kept?: { file: Blob; handle: FileSystemFileHandle; copy?: Promise<Blob | undefined> },
     canNotify: () => boolean = () => true,
 ) => {
     const docId = record.docId
     if (typeof docId !== 'string') return
-    const chainId = record.chainId
-    const copy =
-        kept && typeof chainId === 'string'
-            ? (kept.copy ?? keepCopy(context().open.worker, chainId, kept.file, kept.handle))
-            : undefined
     const session = flusher?.session
     if (session?.id === sessionId) {
         session.docId = docId
@@ -490,14 +457,6 @@ const unlinkedSession = (
         writeTabRecord({ sessionId, start: 'stored', copyOf })
         exportMemory.partial = true
         void rememberExport()
-        if (kept)
-            exportMemory.opened = {
-                handle: kept.handle,
-                levelData: false,
-                partial: true,
-                project: true,
-                ...(copy ? { keptCopy: copy } : {}),
-            }
     }
     if (!first || !canNotify() || (!resumed && currentSession.value.sessionId !== sessionId)) return
     // Its notice: a card after an open, a load notice after a resume.
@@ -518,8 +477,8 @@ export const resumeUnfinishedImports = (appVersion: string) => {
         worker: deps.worker,
         locks: deps.locks,
         appVersion,
-        onResumedUnlink: (sessionId, name, record, first, kept) => {
-            unlinkedSession(sessionId, name, record, first, true, kept)
+        onResumedUnlink: (sessionId, name, record, first) => {
+            unlinkedSession(sessionId, name, record, first, true)
         },
     }).catch((error: unknown) => {
         recordError(error)

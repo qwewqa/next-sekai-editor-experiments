@@ -35,13 +35,11 @@ const { fromHex16 } = await import('../../../src/local/hash')
 const { clearExportMemory, exportMemory, setExportPersister, setExportTargetReader } =
     await import('../../../src/editor/commands/exportLevel/memory')
 const exportPick = await import('../../../src/editor/commands/exportLevel/targetLock')
-const { startExportRead } = await import('../../../src/editor/save/exportPick')
 const { startImport, importsRunning } = await import('../../../src/local/open/importLoop')
-const { keepCopy, copiesRunning } = await import('../../../src/local/open/kept')
 const { markFirstSaveDone } = await import('../../../src/editor/file/flags')
 const { useRealDoor } = await import('./door')
 
-export { activation, exportMemory, exportPick, flow, startExportRead }
+export { activation, exportMemory, exportPick, flow }
 
 type Row = Record<string, unknown>
 type FileTarget = { kind: 'handle'; handle: FileSystemFileHandle }
@@ -86,7 +84,7 @@ export type Setup = {
     own?: 'bound' | 'unbound' | 'missing'
     /** The own file's name in place of own.nxsp. */
     ownFile?: string
-    /** Whether storage holds all the own file holds, so Export needs no pre-read. */
+    /** Whether storage holds all the bound file contains. */
     storage?: 'holds' | 'lacks'
     /** `ahead`: the own file changed on disk since the binding. */
     ownDisk?: 'base' | 'ahead'
@@ -104,13 +102,8 @@ export type Setup = {
     target?: boolean
     /** The session was opened from opened.nsld: a chart, level data, or a partial import. */
     opened?: 'notProject' | 'levelData' | 'partial'
-    /** The build reports damage in storage: Export reads the own file again before its picker. */
+    /** The build reports damage in storage: the picker builds only what storage holds. */
     damaged?: boolean
-    /**
-     * `afterReload`: the session was opened from opened.nsld and the page has reloaded since, so
-     * only storage knows the file: its handle is kept and its bytes are the OPFS copy.
-     */
-    kept?: 'afterReload'
 }
 
 export type Dialog = {
@@ -127,42 +120,12 @@ export type PickerOpening = {
     activation: boolean
     /** Any import of this tab runs (the open session's, or another's). */
     importing: boolean
-    /** A copy of an opened file is being kept. */
-    copying: boolean
     /** An import pending in storage that the bounded wait (`RESUME_WAIT_MS`) has not run out on (I5). */
     importPending: boolean
     dialogOpen: boolean
 }
 
 type ReservationLog = { reservation: SaveReservation; ends: { kept: boolean; entry: boolean }[] }
-
-/**
- * The bytes a partial open copied into the origin private file system, by chain (`nse-kept`): a
- * browser API that Node lacks, so the matrix gives `navigator.storage` the one folder the kept
- * copy is read from (`readKeptCopy`).
- */
-const keptCopies = new Map<string, Blob>()
-Object.defineProperty(navigator, 'storage', {
-    configurable: true,
-    value: {
-        getDirectory: () =>
-            Promise.resolve({
-                getDirectoryHandle: (name: string) =>
-                    name === 'nse-kept' && keptCopies.size
-                        ? Promise.resolve({
-                              getFileHandle: (chainId: string) => {
-                                  const blob = keptCopies.get(chainId)
-                                  return blob
-                                      ? Promise.resolve({ getFile: () => Promise.resolve(blob) })
-                                      : Promise.reject(
-                                            new DOMException('Not found', 'NotFoundError'),
-                                        )
-                              },
-                          })
-                        : Promise.reject(new DOMException('Not found', 'NotFoundError')),
-            }),
-    },
-})
 
 // A flow that throws is caught by the Save's `exclusive`, which logs it: the world keeps those.
 let current: { errors: unknown[] } | undefined
@@ -193,7 +156,6 @@ const createWorld = async (setup: Setup = {}) => {
         target: setup.target ?? true,
         opened: setup.opened,
         damaged: setup.damaged ?? false,
-        kept: setup.kept,
     }
     localStorage.clear()
     env.forgetHandle('chain-own')
@@ -308,7 +270,6 @@ const createWorld = async (setup: Setup = {}) => {
             name,
             activation: activation.active,
             importing: importsRunning(),
-            copying: copiesRunning(),
             // Restated I5: pending in storage is allowed once the wait has run its bound. The bound
             // counts per world, from the first listing of the pending import by any caller, and 150 ms
             // is timing tolerance (the wait polls every 250 ms).
@@ -555,7 +516,9 @@ const createWorld = async (setup: Setup = {}) => {
         saveDialog: [] as (Row | undefined)[],
         refused: [] as ('chooseAnother' | undefined)[],
         conflict: [] as ('separate' | 'openOther' | 'replace' | undefined)[],
-        notPutBack: [] as ('download' | undefined)[],
+        emptied: async (name: string) => {
+            await shown('emptied', [name], [], undefined)
+        },
         notFound: [] as ('saveAs' | undefined)[],
         denied: [] as ('saveAs' | 'tryAgain' | undefined)[],
         readOnly: [] as ('saveAs' | undefined)[],
@@ -587,27 +550,19 @@ const createWorld = async (setup: Setup = {}) => {
     }
     const exportAnswers = {
         notLevelData: [] as ('chooseAnother' | undefined)[],
-        unsupportedParts: [] as ('chooseAnother' | undefined)[],
         conflict: [] as ('replace' | 'chooseAnother' | undefined)[],
         notFound: [] as ('chooseAnother' | undefined)[],
         denied: [] as ('tryAgain' | 'chooseAnother' | undefined)[],
         failed: [] as ('chooseAnother' | undefined)[],
-        notPutBack: [] as ('download' | undefined)[],
     }
     const exportUi = {
         conflict: (name: string) =>
             shown('export.conflict', [name], exportAnswers.conflict, undefined),
         notLevelData: (name: string) =>
             shown('export.notLevelData', [name], exportAnswers.notLevelData, undefined),
-        unsupportedParts: (name: string) =>
-            shown('export.unsupportedParts', [name], exportAnswers.unsupportedParts, undefined),
-        notPutBack: (name: string, emptied: boolean, downloadable: boolean) =>
-            shown(
-                'notPutBack',
-                [name, emptied, downloadable],
-                exportAnswers.notPutBack,
-                'download' as const,
-            ),
+        emptied: async (name: string) => {
+            await shown('emptied', [name], [], undefined)
+        },
         notFound: (name: string) =>
             shown('export.notFound', [name], exportAnswers.notFound, undefined),
         denied: (name: string) => shown('export.denied', [name], exportAnswers.denied, undefined),
@@ -651,9 +606,9 @@ const createWorld = async (setup: Setup = {}) => {
         denied: (name) => shown('denied', [name], answers.denied, undefined),
         readOnly: (name) => shown('readOnly', [name], answers.readOnly, undefined),
         failed: (name) => shown('failed', [name], answers.failed, undefined),
-        refused: (name, reason) => shown('refused', [name, reason], answers.refused, undefined),
-        notPutBack: (name, emptied) =>
-            shown('notPutBack', [name, emptied], answers.notPutBack, 'download'),
+        emptied: async (name) => {
+            await shown('emptied', [name], [], undefined)
+        },
         saved: (feedback) => {
             dialogs.push({ kind: 'saved', args: [feedback.name], lockHeld: lockHeld() })
             log.push(`saved:${feedback.name}`)
@@ -761,37 +716,12 @@ const createWorld = async (setup: Setup = {}) => {
     }
     await put('unknown.nxsp', await nxsp('rev-unknown', 'a file nobody knows'))
     await put('fresh.nxsp', new Blob([])) // a new file the picker creates
-    // Kept rows the door stores with `keepHandle`: the file a partial open came from.
-    const kept: { chainId: string; name: string; handle: FileSystemFileHandle }[] = []
-    keptCopies.clear()
-    if (s.kept === 'afterReload') {
-        const openedBlob = levelData('opened level')
-        await put('opened.nsld', openedBlob)
-        kept.push({
-            chainId: ownSession.chainId,
-            name: 'opened.nsld',
-            handle: handle('opened.nsld'),
-        })
-        // A browser API: the OPFS folder the open copied its bytes into (src/local/open/kept.ts).
-        keptCopies.set(ownSession.chainId, openedBlob)
-    }
-    if (s.opened && !s.kept) {
-        const openedBlob =
-            s.opened === 'notProject' ? new Blob(['a chart file']) : levelData('opened level')
-        await put('opened.nsld', openedBlob)
-        exportMemory.opened = {
-            handle: handle('opened.nsld'),
-            levelData: s.opened !== 'notProject',
-            partial: s.opened === 'partial',
-            // Export refuses (and puts back) only what it may not write over.
-            ...(s.opened === 'levelData' ? {} : { bytes: await openedBlob.arrayBuffer() }),
-            kept: await openedBlob.arrayBuffer(),
-        } as never
-    }
-
-    // Reads the own file's bytes the way a user would see them now.
+    if (s.opened)
+        await put(
+            'opened.nsld',
+            s.opened === 'notProject' ? new Blob(['a chart file']) : levelData('opened level'),
+        )
     const fileBytes = async (name: string) => bytesOf(mock.files.get(name))
-
     const world = {
         setup: s,
         tune,
@@ -975,29 +905,12 @@ const createWorld = async (setup: Setup = {}) => {
             } as never)
             return { finish, run }
         },
-        /** A copy of an opened file being kept (the worker's `keepHandle` waits for `finish`). */
-        startCopy: () => {
-            let finish!: () => void
-            const gate = new Promise<void>((resolve) => {
-                finish = resolve
-            })
-            on('worker:keepHandle', async () => {
-                await gate
-            })
-            const copy = keepCopy(
-                worker as never,
-                ownSession.chainId,
-                new Blob(['opened']),
-                handle('opened.nsld'),
-            )
-            return { finish, copy }
-        },
         /** The own binding's name as the record holds it, or undefined. */
         boundName: () => (chains.get(ownSession.chainId)?.file as Row | undefined)?.name,
         setup0: s,
     }
     // The real storage handlers under the record and handle methods; the maps above are the view.
-    const door = await useRealDoor(world, kept)
+    const door = await useRealDoor(world)
     ownSession.chain = chains.get(ownSession.chainId)
     return Object.assign(world, { door })
 }

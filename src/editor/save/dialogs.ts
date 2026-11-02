@@ -12,7 +12,7 @@ import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
-import { showNotPutBack } from '../commands/exportLevel/ui'
+import { showEmptied } from '../commands/exportLevel/ui'
 import { savedOnText } from '../history/rowPresentation'
 import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
@@ -121,9 +121,6 @@ export type ConflictInput = {
 
 export type ConflictChoice = 'separate' | 'openOther' | 'replace'
 
-/** A save picker's pick of a file the editor won't write over, or a takeover in `?safe`. */
-export type RefusedReason = 'notKept' | 'notProject' | 'levelData' | 'safeMode'
-
 /** The feedback after a write. */
 export type SavedFeedback = {
     kind: 'saved' | 'download'
@@ -158,18 +155,8 @@ export type SaveUi = {
     readOnly: (name: string) => Promise<'saveAs' | undefined>
     /** Other errors, with the plain reason; `saveAs` false where there is no other place. */
     failed: (name: string, message: () => string, saveAs: boolean) => Promise<'saveAs' | undefined>
-    /** An export takeover refused in safe mode. */
-    refused: (name: string, reason: 'safeMode') => Promise<'chooseAnother' | undefined>
-    /**
-     * Reports a failed Save whose file is confirmed empty, or bytes an export could not put back.
-     * Download keeps any bytes offered. Without `downloadable`, only OK is shown.
-     */
-    notPutBack: (
-        name: string,
-        emptied: boolean,
-        downloadable: boolean,
-        own?: boolean,
-    ) => Promise<'download' | undefined>
+    /** A failed write left the picked file confirmed empty: `[OK]` only. */
+    emptied: (name: string) => Promise<void>
     saved: (feedback: SavedFeedback) => void
     /** "No changes since … was saved/opened/downloaded", the last with Download Again. */
     noChanges: (
@@ -357,20 +344,7 @@ export const defaultSaveUi: SaveUi = {
         })
         return undefined
     },
-    refused: () =>
-        showChoice({
-            title,
-            message: () => i18n.value.save.notKeptSafe,
-            choices: [
-                {
-                    value: 'chooseAnother' as const,
-                    label: () => i18n.value.save.chooseAnother,
-                    default: true,
-                },
-            ],
-        }),
-    notPutBack: (name, emptied, downloadable, own = false) =>
-        showNotPutBack(title, name, emptied, downloadable, own),
+    emptied: (name) => showEmptied(title, name),
     saved: (feedback) => {
         const text =
             feedback.kind === 'saved' && isPeeking.value && !feedback.ofStored && simple(feedback)

@@ -22,14 +22,6 @@ export type Known = {
 
 export const KNOWN: Known[] = [
     {
-        id: 'R2-stale',
-        kind: 'accepted',
-        title: 'the read first is stale: bytes written between the read and the pick are emptied and lost',
-        paths: ['export', 'export/reloaded', 'export/ahead'],
-        invariant: 'I1',
-        fault: 'read-stale',
-    },
-    {
         id: 'R8-owners',
         kind: 'accepted',
         title: "storage fails when the pick is identified: the owners are unread, so another chain keeps its binding, or its Export target, on a file that now holds this chain's project",
@@ -46,16 +38,6 @@ export const KNOWN: Known[] = [
         fault: 'identify-fails',
         plans: ['other', 'target'],
         detail: /is bound to chain-other and chain-own|is chain-target's Export target/,
-    },
-    {
-        id: 'R8-kept',
-        kind: 'accepted',
-        title: "storage fails when the pick is identified after a reload: the partial open's file is unknown to this tab, and is written over",
-        paths: ['export/reloaded'],
-        invariant: 'I1',
-        fault: 'identify-fails',
-        plans: ['partial'],
-        detail: /^opened.nsld held/,
     },
 ]
 

@@ -328,7 +328,6 @@ export type ResumeDeps = Omit<
         name: string,
         record: Record<string, unknown>,
         first: boolean,
-        kept: { file: Blob; handle: FileSystemFileHandle },
     ) => void
 }
 
@@ -372,13 +371,12 @@ export const resumeImports = async (deps: ResumeDeps) => {
                 file = await handle.getFile().catch(() => undefined)
             if (file && handle && disk) {
                 const name = typeof target.file?.name === 'string' ? target.file.name : file.name
-                const kept = { file, handle }
                 // The worker's id and batches come from reading the file again.
                 const job = runBatches(
                     {
                         ...deps,
                         onUnlink: (record, first) => {
-                            deps.onResumedUnlink?.(sessionId, name, record, first, kept)
+                            deps.onResumedUnlink?.(sessionId, name, record, first)
                         },
                         sessionId,
                         chainId,

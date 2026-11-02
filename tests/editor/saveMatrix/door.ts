@@ -32,7 +32,6 @@ export const REAL_DOOR: ReadonlySet<string> = new Set([
     'readChainRecord',
     'listHandleOwners',
     'readHandle',
-    'keepHandle',
     'takeOver',
     'recordOwnSave',
     'unlinkChain',
@@ -41,18 +40,14 @@ export const REAL_DOOR: ReadonlySet<string> = new Set([
 /** The state every seeded session starts from: the rows are what the cells need, not the chart. */
 const seedState = chartState([[]])
 
-type Kept = { chainId: string; name: string; handle: FileSystemFileHandle }
-
 /**
- * Puts the real door under a matrix world: seeds the store from the world's chains, handle rows and
- * kept rows; routes each REAL_DOOR call through the world's fault table first (its own per-method
+ * Puts the real door under a matrix world: seeds the store from the world's chains and handle rows; routes each REAL_DOOR call through the world's fault table first (its own per-method
  * call counter), then the real handler; syncs the world's maps back after every call. Handles cross
  * as tokens (a mock handle holds functions, which MemoryKv cannot clone) and come back as a new
  * object on every read.
  */
 export const useRealDoor = async (
     world: DoorWorld,
-    kept: readonly Kept[] = [],
 ): Promise<{ core: StorageCore; tab: Tab; flusher: Flusher }> => {
     // `blobTasks: false`: the matrix's timings were tuned without the browser-like Blob latency, and
     // the option keeps the patch off `Blob.prototype` for the whole process.
@@ -110,8 +105,7 @@ export const useRealDoor = async (
     }
 
     // Seeding is real writes. A chain's record and its binding or Export target, with their handle
-    // rows, are what the flusher's first write stores (`setChainFields`); a kept file is what
-    // `keepHandle` stores. The flusher is the page's own, so a session's rows are real too.
+    // rows, are what the flusher's first write stores (`setChainFields`).
     const seeds = [...world.chains.values()] as Row[]
     for (const record of seeds) {
         const { chainId, docId, head, ...fields } = record
@@ -132,13 +126,6 @@ export const useRealDoor = async (
         const stored = await tab.run(() => page.flusher.setChainFields(fields))
         if (!stored) throw new Error(`The door could not store ${String(chainId)}`)
     }
-    for (const row of kept) {
-        const done = await tab.run(() =>
-            real.keepHandle!({ chainId: row.chainId, name: row.name, handle: toToken(row.handle) }),
-        )
-        if (done !== true) throw new Error(`The door could not keep ${row.name}`)
-    }
-
     // The invariants judge this, the store itself; the maps are only the view the fakes read.
     world.storedChains = async () =>
         tab.run(() =>
@@ -167,13 +154,11 @@ export const useRealDoor = async (
     const calls = new Map<string, number>()
     world.worker.call = async (method: string, arg?: unknown) => {
         if (!REAL_DOOR.has(method)) return fake(method, arg)
-        // A copy of an opened file held by a fault is not the dialog's read the harness waits for.
-        const counted = method !== 'keepHandle'
-        if (counted) world.doorBusy++
+        world.doorBusy++
         try {
             return await viaDoor(method, arg)
         } finally {
-            if (counted) world.doorBusy--
+            world.doorBusy--
         }
     }
     const viaDoor = async (method: string, arg?: unknown) => {

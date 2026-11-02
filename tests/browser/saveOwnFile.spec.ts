@@ -12,10 +12,8 @@ import {
     notice,
     pickerCalls,
     pressSave,
-    projectOf,
     prompts,
     queuePicks,
-    readFile,
     releaseImport,
     resumeImport,
     rows,
@@ -23,14 +21,10 @@ import {
     sessionOf,
     start,
     submitSave,
-    thinUndone,
     writeFile,
 } from './saveFlows'
 
-// Export reads the chain's own file before its picker and restores held bytes under the pick's
-// lock. Save waits for an open's import, also after a reload.
-
-type Row = Record<string, unknown>
+// Save waits for an open's import, also after a reload.
 
 const saveAs = (page: Page) =>
     page.evaluate(async () => {
@@ -42,69 +36,20 @@ const saveAs = (page: Page) =>
 /** A dialog ignores presses in its first moments; a read first has time to finish. */
 const settle = (page: Page) => page.waitForTimeout(400)
 
-/** Saved to coconut.nxsp with an undone row, then cleanup took that row: storage is short. */
+/** Saves coconut.nxsp with an undone row. */
 const shortChain = async (page: Page) => {
     await start(page)
     await editPastUndo(page, 1)
     await pressSave(page)
     await submitSave(page, 'coconut')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    const before = await projectOf(page, 'coconut.nxsp')
-    const bytes = await readFile(page, 'coconut.nxsp')
-    return { before, bytes }
 }
-
-test("Export's Choose Another… after its dialog closed reads the chain's own file again before its picker", async ({
-    page,
-}) => {
-    const { before } = await shortChain(page)
-    expect(await thinUndone(page)).toBe(true)
-    await queuePicks(page, ['coconut.nxsp'])
-    await page.keyboard.press('Shift+P')
-    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
-    await settle(page)
-    await page.keyboard.press('Enter')
-    // Written again from the bytes read and refused: not level data.
-    const refused = page.getByRole('dialog').filter({ hasText: 'is not level data' })
-    await expect(refused).toBeVisible()
-    const first = await projectOf(page, 'coconut.nxsp')
-    expect((first.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
-    await settle(page)
-    await queuePicks(page, ['coconut.nxsp'])
-    await refused.getByRole('button', { name: 'Choose Another…' }).click()
-    await expect(refused).toBeVisible()
-    await expect
-        .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).parent)
-        .toBe((first.revision as Row).id)
-    // Read again before the second picker: an append, every step of the file kept.
-    const after = await projectOf(page, 'coconut.nxsp')
-    expect(after.id).toBe(before.id)
-    expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
-})
-
-test("Export's pick of the chain's own file that is not written again gets the bytes read back", async ({
-    page,
-}) => {
-    const { bytes } = await shortChain(page)
-    expect(await thinUndone(page)).toBe(true)
-    // Another Save holds the reservation.
-    await page.evaluate(() => {
-        ;(window as { held?: unknown }).held = window.nseFlushTest!.flusher.reserveSave()
-    })
-    await queuePicks(page, ['coconut.nxsp'])
-    await page.keyboard.press('Shift+P')
-    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
-    await settle(page)
-    await page.keyboard.press('Enter')
-    await expect(page.getByRole('dialog')).toContainText('“coconut.nxsp” could not be written.')
-    expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
-})
 
 test("a stale reservation's release never ends a later Save's reservation of the same seq", async ({
     page,
 }) => {
     await shortChain(page)
-    // When the Save lets its `seq` go, another reserves it at once, as Export's pick could.
+    // When the Save lets its `seq` go, another Save reserves it at once.
     await page.evaluate(() => {
         type Flusher = {
             endSave: (...args: unknown[]) => Promise<unknown>
@@ -277,7 +222,7 @@ test("Export waits for an open's import before its picker, so a pick of the file
     await expect
         .poll(async () => (await pickerCalls(page)).length, { timeout: 15_000 })
         .toBe(calls + 1)
-    await expect(page.getByRole('dialog').filter({ hasText: 'is not level data' })).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'Exported to coconut.nxsp' })).toBeVisible()
     // The import ended whole: no row left unkept, nothing pending.
     const { entries, sessions } = await rows(page, ['entries', 'sessions'])
     expect(entries!.filter((row) => row.value.kept === false)).toEqual([])

@@ -26,8 +26,6 @@ export type VideoReportEnd = {
         | 'graphics'
         | 'memory'
         | 'hidden'
-        | 'refused'
-        | 'ownProject'
         | 'memoryLimit'
     target: 'picker' | 'download' | 'share' | 'none' | 'memory'
     hidden: boolean

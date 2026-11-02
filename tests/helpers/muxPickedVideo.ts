@@ -9,7 +9,11 @@ import {
 import { openMuxOutput } from '../../src/exportVideo/worker/mux'
 
 /** OPFS handles exercise the picked target's writable stream without opening a picker. */
-export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean | 'writing') => {
+export const muxPickedVideo = async (
+    format: 'webm' | 'mp4',
+    cancel: boolean | 'writing',
+    pickedHandle?: FileSystemFileHandle,
+) => {
     const codecs = await createCodecProbes().resolve({
         format,
         width: 320,
@@ -23,7 +27,7 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean | '
     if (!codecs.supported) return undefined
     const root = await navigator.storage.getDirectory()
     const name = `mux-${crypto.randomUUID()}.${format}`
-    const handle = await root.getFileHandle(name, { create: true })
+    const handle = pickedHandle ?? (await root.getFileHandle(name, { create: true }))
     const controller = new AbortController()
     let writes = 0
     let beforeCommit: number | undefined
@@ -284,8 +288,9 @@ export const muxPickedVideo = async (format: 'webm' | 'mp4', cancel: boolean | '
         if (encoder.state !== 'closed') encoder.close()
         await output.sink.abort()
         await output.abort()
-        await root.removeEntry(name).catch((error: unknown) => {
-            if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error
-        })
+        if (!pickedHandle)
+            await root.removeEntry(name).catch((error: unknown) => {
+                if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error
+            })
     }
 }

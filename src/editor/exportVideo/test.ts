@@ -55,6 +55,10 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
     let exported: Uint8Array | undefined
     let capturedSize: number[] | undefined
     let finishingCancel: boolean | undefined
+    let prepared = false
+    let preparedAtDestination = false
+    let configCalls = 0
+    let configCallsAtDestination = 0
     const bgm = new AudioBuffer({
         numberOfChannels: 2,
         sampleRate: 48000,
@@ -76,7 +80,16 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         snapshot: state.value,
         settings,
         buffers: { bgm: { buffer: bgm, offset: -settings.in }, sfx: {} },
-        services,
+        services: {
+            ...services,
+            probes: {
+                ...services.probes,
+                resolve: (...args) => {
+                    configCalls++
+                    return services.probes.resolve(...args)
+                },
+            },
+        },
         platform: {
             onCloseRequested: (handler) => {
                 closeGuard = handler
@@ -168,6 +181,8 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
             return assets
         },
         destination: async (_signal, id) => {
+            preparedAtDestination = prepared
+            configCallsAtDestination = configCalls
             const stage = await webVideoOutput.stage(id, 'webm')
             return {
                 worker: { kind: 'staged', name: stage.handle.name },
@@ -189,6 +204,9 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
                   const worker = new Worker(new URL('./test.worker.ts', import.meta.url), {
                       type: 'module',
                       name: options.incompleteTarget ?? 'nse-export-test',
+                  })
+                  worker.addEventListener('message', (event) => {
+                      if ((event.data as { type: string }).type === 'prepared') prepared = true
                   })
                   if (options.cancelAt === 'view')
                       worker.addEventListener(
@@ -298,6 +316,8 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         mixStarted,
         errorCode,
         viewSize,
+        preparedAtDestination,
+        configCallsAtDestination,
         phase: result.phase,
         phases,
         result: detail,

@@ -218,3 +218,15 @@ for (const target of ['foreground', 'composite'] as const)
             expect(result.retained).toBe(false)
             expect(result.markerLeft).toBe(false)
         })
+
+test('video preparation and configuration finish before destination selection', async ({
+    page,
+}) => {
+    const result = await page.evaluate(() =>
+        window.editorTest.exportVideo({ settings: { frames: 3 } }),
+    )
+    expect(result.error).toBeUndefined()
+    expect(result.phase).toBe('ready')
+    expect(result.preparedAtDestination).toBe(true)
+    expect(result.configCallsAtDestination).toBe(2)
+})
