@@ -19,7 +19,7 @@ import {
 // Second chart's three modes and four figures. The dialog and the share card both draw from
 // here, so the two always agree.
 
-export { CATEGORIES, categoryOf, classifyNote, ROWS, type Category, type Row } from './scoring'
+export { CATEGORIES, ROWS, type Category, type Row } from './scoring'
 
 const CRITICAL_ROWS: readonly Row[] = ['tap', 'flick', 'release', 'trace', 'traceFlick', 'tick']
 
