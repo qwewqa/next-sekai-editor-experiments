@@ -196,7 +196,7 @@ test('release assets, preview, chart editing and FFT audio work in the productio
         )
         await expect
             .poll(() => page.evaluate(() => window.productionSmoke.uploads))
-            .toBe(hasParticles ? 2 : 1)
+            .toBe(hasParticles ? 3 : 2)
         await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', siteUrl)
         await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
             'content',

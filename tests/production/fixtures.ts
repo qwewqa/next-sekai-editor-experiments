@@ -53,6 +53,7 @@ declare global {
             preview: number
             chart: number
             overlay: number
+            // Preview ImageBitmap uploads: the skin, particle and background textures. Update the specs when preview textures change.
             uploads: number
             fftTiles: number
             fftDraws: number
