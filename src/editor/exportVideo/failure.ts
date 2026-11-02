@@ -3,8 +3,6 @@
 import { VideoOutputUnavailable } from '../../exportVideo/error'
 import { i18n } from '../../i18n'
 import { FileError } from '../../platform/types'
-import { inlineName } from '../../utils/inlineName'
-import { interpolate } from '../../utils/interpolate'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import type { VideoReportEnd } from './report'
 
@@ -49,9 +47,6 @@ export const describeVideoFailure = async (
     const failure = describeFailure(error, name)
     const file = await handle?.getFile().catch(() => undefined)
     return handle && file?.size === 0
-        ? {
-              ...failure,
-              message: interpolate(() => i18n.value.save.emptied, inlineName(handle.name)),
-          }
+        ? { ...failure, message: () => `${failure.message()} ${i18n.value.save.fileNowEmpty}` }
         : failure
 }

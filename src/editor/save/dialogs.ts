@@ -12,7 +12,7 @@ import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
-import { showEmptied } from '../commands/exportLevel/ui'
+import { failureMessage } from '../commands/exportLevel/ui'
 import { savedOnText } from '../history/rowPresentation'
 import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
@@ -149,16 +149,20 @@ export type SaveUi = {
     saveDialog: (input: SaveDialogInput) => Promise<SaveDialogResult>
     preparing: (name: string, kind?: PreparingKind) => Preparing
     conflict: (input: ConflictInput) => Promise<ConflictChoice | undefined>
+    // With `emptied`, each failure adds that the picked file is now empty.
     /** `save.notFound`: `[Cancel]` `[Save As…]` (focused). */
-    notFound: (name: string) => Promise<'saveAs' | undefined>
+    notFound: (name: string, emptied?: boolean) => Promise<'saveAs' | undefined>
     /** The permission prompt refused: `[Cancel]` `[Save As…]` `[Try Again]` (focused). */
-    denied: (name: string) => Promise<'saveAs' | 'tryAgain' | undefined>
+    denied: (name: string, emptied?: boolean) => Promise<'saveAs' | 'tryAgain' | undefined>
     /** A read-only folder or file: `[Cancel]` `[Save As…]` (focused). */
-    readOnly: (name: string) => Promise<'saveAs' | undefined>
+    readOnly: (name: string, emptied?: boolean) => Promise<'saveAs' | undefined>
     /** Other errors, with the plain reason; `saveAs` false where there is no other place. */
-    failed: (name: string, message: () => string, saveAs: boolean) => Promise<'saveAs' | undefined>
-    /** A failed write left the picked file confirmed empty: `[OK]` only. */
-    emptied: (name: string) => Promise<void>
+    failed: (
+        name: string,
+        message: () => string,
+        saveAs: boolean,
+        emptied?: boolean,
+    ) => Promise<'saveAs' | undefined>
     saved: (feedback: SavedFeedback) => void
     /** "No changes since … was saved/opened/downloaded", the last with Download Again. */
     noChanges: (
@@ -314,39 +318,48 @@ export const defaultSaveUi: SaveUi = {
                 { value: 'separate', label: () => i18n.value.conflict.separate, default: true },
             ],
         }),
-    notFound: (name) =>
+    notFound: (name, emptied) =>
         showChoice({
             title,
-            message: interpolate(() => i18n.value.save.notFound, inlineName(name)),
+            ...failureMessage(
+                interpolate(() => i18n.value.save.notFound, inlineName(name)),
+                emptied,
+            ),
             choices: [saveAsChoice(true)],
         }),
-    denied: (name) =>
+    denied: (name, emptied) =>
         showChoice<'saveAs' | 'tryAgain'>({
             title,
-            message: interpolate(() => i18n.value.save.denied, inlineName(name)),
+            ...failureMessage(
+                interpolate(() => i18n.value.save.denied, inlineName(name)),
+                emptied,
+            ),
             choices: [
                 saveAsChoice(false),
                 { value: 'tryAgain', label: () => i18n.value.save.tryAgain, default: true },
             ],
         }),
-    readOnly: (name) =>
+    readOnly: (name, emptied) =>
         showChoice({
             title,
-            message: interpolate(() => i18n.value.save.readOnly, inlineName(name)),
+            ...failureMessage(
+                interpolate(() => i18n.value.save.readOnly, inlineName(name)),
+                emptied,
+            ),
             choices: [saveAsChoice(true)],
         }),
-    failed: async (_name, message, saveAs) => {
-        if (saveAs) return showChoice({ title, message, choices: [saveAsChoice(true)] })
+    failed: async (_name, message, saveAs, emptied) => {
+        const text = failureMessage(message, emptied)
+        if (saveAs) return showChoice({ title, ...text, choices: [saveAsChoice(true)] })
         await showChoice({
             title,
-            message,
+            ...text,
             choices: [],
             cancelIsDefault: true,
             cancelLabel: () => i18n.value.modals.info.ok,
         })
         return undefined
     },
-    emptied: (name) => showEmptied(title, name),
     saved: (feedback) => {
         const text =
             feedback.kind === 'saved' && isPeeking.value && !feedback.ofStored && simple(feedback)

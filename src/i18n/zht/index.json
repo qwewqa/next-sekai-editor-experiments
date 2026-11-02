@@ -2565,7 +2565,7 @@
     "notLocal": "「{0}」尚不在此裝置上。",
     "noSpace": "空間不足，無法寫入 {0}。",
     "writeFailed": "無法寫入「{0}」。",
-    "emptied": "「{0}」無法寫入。檔案已被清空。",
+    "fileNowEmpty": "檔案已被清空。",
     "openedContentGone": "「{0}」的內容已變更。",
     "title": "儲存專案檔案",
     "titleAs": "另存新檔",

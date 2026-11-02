@@ -4,19 +4,19 @@ import { verifyBuilt } from '../../platform/handover'
 import { fileError } from '../commands/exportLevel/errorText'
 import { rememberWritten, type ExportContext } from '../commands/exportLevel/flow'
 import { environment } from './binding'
-import { pickUi, revokePicked } from './flow'
-import { withPickSession } from './pickSession'
+import { preparingUi, revokePicked } from './flow'
+import { named, withPickSession, type PickSession } from './pickSession'
 
 export type PickedLevelData =
     | { kind: 'written'; result: SaveResult & { status: 'saved' } }
     | { kind: 'dismissed' }
     | { kind: 'cancelled' }
-    | { kind: 'failed'; error: FileError; reported?: boolean }
+    | { kind: 'failed'; error: FileError; emptied?: boolean }
 
 /** Builds and verifies level data before the picker, then writes it under nse-bind. */
 export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData> => {
     const env = environment()
-    let reported = false
+    let picking: Pick<PickSession, 'emptied'> = { emptied: false }
     const ended = await withPickSession<PickedLevelData>(
         {
             env,
@@ -25,16 +25,11 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
             commitFirst: false,
             ...(ctx.signal ? { signal: ctx.signal } : {}),
             ...(ctx.committed ? { committed: ctx.committed } : {}),
-            ui: {
-                preparing: pickUi.preparing,
-                emptied: async (name) => {
-                    ctx.leave()
-                    await ctx.ui.emptied(name)
-                    reported = true
-                },
-            },
+            checkEmptied: true,
+            ui: preparingUi,
         },
         async (session) => {
+            picking = session
             const blob = await session.preparing(async () => {
                 const made = await ctx.build()
                 await verifyBuilt('nsld', made)
@@ -53,7 +48,10 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
                         await rememberWritten(ctx, result).catch(recordError)
                         return { kind: 'written', result }
                     } catch (error) {
-                        return { kind: 'failed', error: fileError(error) }
+                        return {
+                            kind: 'failed',
+                            error: named(fileError(error), picked.target.handle.name),
+                        }
                     }
                 },
                 blob.size,
@@ -61,6 +59,7 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
         },
     )
     if (ended.kind === 'forked') return { kind: 'cancelled' }
-    if (ended.kind === 'failed') return { kind: 'failed', error: fileError(ended.error), reported }
+    if (ended.kind === 'failed')
+        return { kind: 'failed', error: fileError(ended.error), emptied: picking.emptied }
     return ended
 }

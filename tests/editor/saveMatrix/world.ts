@@ -109,6 +109,8 @@ export type Dialog = {
     args: unknown[]
     /** Whether this session held `nse-bind` while it showed. */
     lockHeld: boolean
+    /** A failure dialog's added line that the picked file is now empty. */
+    emptied?: true
 }
 
 export type Write = { name: string; exclusive: boolean; shared: boolean; picked: boolean }
@@ -508,16 +510,19 @@ const createWorld = async (setup: Setup = {}) => {
     const answers = {
         saveDialog: [] as (Row | undefined)[],
         conflict: [] as ('separate' | 'openOther' | 'replace' | undefined)[],
-        emptied: async (name: string) => {
-            await shown('emptied', [name], [], undefined)
-        },
         notFound: [] as ('saveAs' | undefined)[],
         denied: [] as ('saveAs' | 'tryAgain' | undefined)[],
         readOnly: [] as ('saveAs' | undefined)[],
         failed: [] as ('saveAs' | undefined)[],
     }
-    const shown = <T>(kind: string, args: unknown[], queue: T[], fallback: T) => {
-        dialogs.push({ kind, args, lockHeld: lockHeld() })
+    const shown = <T>(
+        kind: string,
+        args: unknown[],
+        queue: T[],
+        fallback: T,
+        emptied?: boolean,
+    ) => {
+        dialogs.push({ kind, args, lockHeld: lockHeld(), ...(emptied ? { emptied: true } : {}) })
         log.push(`dialog:${kind}`)
         // A person takes a moment to answer: reads started with the dialog settle meanwhile.
         return new Promise<T>((resolve) =>
@@ -552,13 +557,11 @@ const createWorld = async (setup: Setup = {}) => {
             shown('export.conflict', [name], exportAnswers.conflict, undefined),
         notLevelData: (name: string) =>
             shown('export.notLevelData', [name], exportAnswers.notLevelData, undefined),
-        emptied: async (name: string) => {
-            await shown('emptied', [name], [], undefined)
-        },
         notFound: (name: string) =>
             shown('export.notFound', [name], exportAnswers.notFound, undefined),
         denied: (name: string) => shown('export.denied', [name], exportAnswers.denied, undefined),
-        failed: (name: string) => shown('export.failed', [name], exportAnswers.failed, undefined),
+        failed: (name: string, _error: unknown, emptied?: boolean) =>
+            shown('export.failed', [name], exportAnswers.failed, undefined, emptied),
         exported: (name: string) => {
             log.push(`exported:${name}`)
         },
@@ -594,13 +597,13 @@ const createWorld = async (setup: Setup = {}) => {
             conflictInputs.push(input)
             return shown('conflict', [input.name], answers.conflict, undefined)
         },
-        notFound: (name) => shown('notFound', [name], answers.notFound, undefined),
-        denied: (name) => shown('denied', [name], answers.denied, undefined),
-        readOnly: (name) => shown('readOnly', [name], answers.readOnly, undefined),
-        failed: (name) => shown('failed', [name], answers.failed, undefined),
-        emptied: async (name) => {
-            await shown('emptied', [name], [], undefined)
-        },
+        notFound: (name, emptied) =>
+            shown('notFound', [name], answers.notFound, undefined, emptied),
+        denied: (name, emptied) => shown('denied', [name], answers.denied, undefined, emptied),
+        readOnly: (name, emptied) =>
+            shown('readOnly', [name], answers.readOnly, undefined, emptied),
+        failed: (name, _message, _saveAs, emptied) =>
+            shown('failed', [name], answers.failed, undefined, emptied),
         saved: (feedback) => {
             dialogs.push({ kind: 'saved', args: [feedback.name], lockHeld: lockHeld() })
             log.push(`saved:${feedback.name}`)

@@ -21,7 +21,7 @@ test('I1 sees a picked file left empty with no failure shown for it', async () =
     // The missing-file Save As: its notFound dialog is the bound file's, not the pick's.
     world.dialogs.push({ kind: 'notFound', args: ['own.nxsp'], lockHeld: false })
     assert.deepEqual(await invariants(world), ['I1'])
-    world.dialogs.push({ kind: 'emptied', args: ['other.nxsp'], lockHeld: false })
+    world.dialogs.push({ kind: 'failed', args: ['other.nxsp'], lockHeld: false, emptied: true })
     assert.deepEqual(await invariants(world), ['info:emptied'])
 })
 
@@ -60,7 +60,7 @@ test('I4 and I5 see a picker opened without activation or during an import', asy
 
 test('I6 sees a dialog under the lock, a Preparing left open, and a lock left held', async () => {
     const world = await createWorld()
-    world.dialogs.push({ kind: 'emptied', args: [], lockHeld: true })
+    world.dialogs.push({ kind: 'failed', args: [], lockHeld: true })
     world.dialogs.push({ kind: 'saved', args: [], lockHeld: true })
     world.preparing.push({ name: 'x', open: true, controller: new AbortController() })
     const holder = world.otherTab('exclusive')

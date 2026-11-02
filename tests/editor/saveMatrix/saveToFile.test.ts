@@ -38,13 +38,13 @@ const world = async (setup: Setup = {}) => {
 
 const answer = (fileName: string) => ({ action: 'save', fileName, history: true, bgm: true })
 
-/** Fails the write of `name` once, at the platform's check. */
-const failOnce = (w: World, name: string, error: () => Error) => {
+/** Fails the write of `name` once, at the platform's check, leaving it gone or empty. */
+const failOnce = (w: World, name: string, error: () => Error, left: 'gone' | 'empty' = 'gone') => {
     let fired = false
     w.mock.fault = (point, at) => {
         if (point !== 'checked' || at !== name || fired) return
         fired = true
-        w.mock.files.delete(name)
+        if (left === 'gone') w.mock.files.delete(name)
         throw error()
     }
 }
@@ -98,6 +98,30 @@ test("Recent Sessions' Save: a picked file that is not found leaves the open ses
     assert.equal(diskFinding.value, undefined)
 })
 
+for (const [code, dialog] of [
+    ['no-space', 'failed'],
+    ['read-only', 'readOnly'],
+] as const)
+    test(`Recent Sessions' Save: a failed write (${code}) that leaves the picked file empty says so, and Save As saves the session again`, async () => {
+        const r = await world()
+        const { w } = r
+        failOnce(w, 'unknown.nxsp', () => new FileError(code, 'The write failed'), 'empty')
+        w.pick('unknown.nxsp', 'fresh.nxsp')
+        w.answers.saveDialog.push(answer('unknown.nxsp'), answer('fresh.nxsp'))
+        w.answers[dialog].push('saveAs')
+        await flow.saveToFile('session-other')
+        await settle()
+        assert.deepEqual(
+            w.dialogs
+                .filter((shown) => shown.kind === dialog)
+                .map((shown) => [shown.args[0], shown.emptied]),
+            [['unknown.nxsp', true]],
+        )
+        assert.equal((await w.fileBytes('unknown.nxsp'))?.length, 0)
+        await onlyStored(r)
+        assert.deepEqual(kinds(w, 'saved'), [['fresh.nxsp']])
+    })
+
 test("Recent Sessions' Save writes over level data", async () => {
     const r = await world({ opened: 'levelData' })
     const { w } = r
@@ -122,7 +146,7 @@ test("Recent Sessions' Save revokes the open chain's binding", async () => {
     )
     assert.ok(builds.every((build) => build.target.sessionId === 'session-other'))
     assert.deepEqual(kinds(w, 'saved'), [['own.nxsp']])
-    assert.deepEqual(kinds(w, 'emptied'), [])
+    assert.ok(!w.dialogs.some((dialog) => dialog.emptied))
 })
 
 for (const stored of [true, false])

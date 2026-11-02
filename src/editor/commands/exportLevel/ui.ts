@@ -18,16 +18,11 @@ const title = () => i18n.value.export.title
 export const fileErrorText = (name: string, error: FileError) =>
     interpolate(() => i18n.value.save[fileErrorKey(error)], inlineName(error.fileName ?? name))()
 
-/** Reports a failed write only after the file was confirmed empty. */
-export const showEmptied = async (dialogTitle: () => string, name: string) => {
-    await showChoice({
-        title: dialogTitle,
-        message: interpolate(() => i18n.value.save.emptied, inlineName(name)),
-        choices: [],
-        cancelIsDefault: true,
-        cancelLabel: () => i18n.value.modals.info.ok,
-    })
-}
+/**
+ * A failure's message, and "The file is now empty." below it when the write left the file empty.
+ */
+export const failureMessage = (message: () => string, emptied: boolean | undefined) =>
+    emptied ? { lines: () => [message(), i18n.value.save.fileNowEmpty] } : { message }
 
 const chooseAnother = {
     value: 'chooseAnother' as const,
@@ -65,7 +60,6 @@ export const exportUi: ExportUi = {
             message: interpolate(() => i18n.value.export.notLevelData, inlineName(name)),
             choices: [chooseAnother],
         }),
-    emptied: (name) => showEmptied(title, name),
     notFound: (name) =>
         showChoice({
             title,
@@ -86,10 +80,10 @@ export const exportUi: ExportUi = {
                 },
             ],
         }),
-    failed: (name, error) =>
+    failed: (name, error, emptied) =>
         showChoice({
             title,
-            message: () => fileErrorText(name, error),
+            ...failureMessage(() => fileErrorText(name, error), emptied),
             choices: [chooseAnother],
         }),
     exported: (name) => {

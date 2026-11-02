@@ -10,19 +10,10 @@ import { bytesOf, type World } from './world'
 export type Violation = { invariant: string; detail: string }
 
 /** Dialogs that block on the user, as opposed to a toast: none may show under the lock (I6). */
-const MODAL = new Set([
-    'saveDialog',
-    'conflict',
-    'notFound',
-    'denied',
-    'readOnly',
-    'failed',
-    'emptied',
-])
+const MODAL = new Set(['saveDialog', 'conflict', 'notFound', 'denied', 'readOnly', 'failed'])
 
 /** Dialogs that report a failed write: a picked file left empty shows one of them (I1). */
 const FAILURE = new Set([
-    'emptied',
     'failed',
     'notFound',
     'denied',

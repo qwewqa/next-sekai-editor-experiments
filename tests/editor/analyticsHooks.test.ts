@@ -141,7 +141,7 @@ test('a failed Save records its reason in analytics after its warning; a dialog 
         kind: 'failed',
         error: new FileError('no-space', ''),
         name: 'a',
-        reported: true,
+        emptied: true,
     })
     startSave('downloadAgain')
     finishSave()

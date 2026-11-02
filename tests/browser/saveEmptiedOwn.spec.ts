@@ -63,7 +63,9 @@ test('Save As: failed reads after a completed write do not mean the own file is 
 })
 
 for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const) {
-    test(`${flow}: a failed write reports confirmed emptiness`, async ({ page }) => {
+    test(`${flow}: a failed write gives its reason and says the file is now empty`, async ({
+        page,
+    }) => {
         await start(page)
         await edit(page, 1)
         await flushed(page)
@@ -89,7 +91,18 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
                 saveFile: (request) => {
                     if (request.kind === 'nxsp' || request.kind === 'nsld') {
                         seen.ownFileEvents.push('no-space')
-                        throw new module.FileError('no-space', 'Disk full')
+                        // Named as the platform names a failed write.
+                        const name =
+                            request.target?.kind === 'handle'
+                                ? request.target.handle.name
+                                : undefined
+                        throw new module.FileError(
+                            'no-space',
+                            'Disk full',
+                            undefined,
+                            undefined,
+                            name,
+                        )
                     }
                     return original.saveFile(request)
                 },
@@ -130,12 +143,15 @@ for (const flow of ['Save As', 'Export Level Data', 'Recent Sessions'] as const)
         }
 
         const offer = saveDialog(page, flow === 'Export Level Data' ? flow : 'Save')
-        await expect(offer).toContainText(
-            '“coconut.nxsp” could not be written. The file is now empty.',
-        )
-        await expect(offer.getByRole('button', { name: 'OK', exact: true })).toBeVisible()
+        await expect(offer).toContainText('There is not enough space to write coconut.nxsp.')
+        await expect(offer).toContainText('The file is now empty.')
+        await expect(
+            offer.getByRole('button', {
+                name: flow === 'Export Level Data' ? 'Choose Another…' : 'Save As…',
+                exact: true,
+            }),
+        ).toBeVisible()
         await expect(offer.getByRole('button', { name: 'Download', exact: true })).toHaveCount(0)
-        await expect(offer).not.toContainText('There is not enough space')
         expect(await readFile(page, 'coconut.nxsp')).toEqual([])
         expect(
             await page.evaluate(

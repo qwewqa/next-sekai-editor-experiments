@@ -25,7 +25,7 @@ import {
 // The flows own the output; the session owns the picker and hold.
 
 /** A file failure without a file name takes the picked file's, as a write's does. */
-const named = (error: unknown, name: string) =>
+export const named = <E>(error: E, name: string): E | FileError =>
     error instanceof FileError && error.fileName === undefined
         ? new FileError(error.code, error.message, error.disk, error.step, name)
         : error
@@ -40,20 +40,18 @@ export const projectPicker = (startIn: SavePicker['startIn'] = 'documents'): Sav
     startIn,
 })
 
-export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
+export type PickSpec = Omit<AttemptSpec, 'importWait'> & {
     /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */
     readonly importChain?: string
     /** Called at the commit point with the destination. */
     readonly committed?: (target: FileTarget & { kind: 'handle' }) => void
     /** A denied Save retries its picked file without opening another picker. */
     readonly target?: FileTarget & { kind: 'handle' }
-    readonly ui: AttemptSpec['ui'] & {
-        /**
-         * After the hold, reports a failed write that left the picked file confirmed empty. Video
-         * passes none and reports its failure once the stream is cleaned up.
-         */
-        readonly emptied?: (name: string) => Promise<void>
-    }
+    /**
+     * Reads the picked file after a write that did not land, for `emptied`. Video leaves it off. It
+     * writes after the hold and reads the file once its stream is cleaned up.
+     */
+    readonly checkEmptied?: boolean
 }
 
 export type Dismissed = { readonly kind: 'dismissed' }
@@ -77,9 +75,8 @@ export type PickedFile = {
 
 export type PickSession = Omit<SaveAttempt, 'write' | 'commit' | 'closePreparing'> & {
     /**
-     * Uses the retry destination or opens the picker, then runs `inLock` inside the hold. A failed
-     * write reports a confirmed-empty file here. `size` is the built file's, for a lapsed
-     * activation's press.
+     * Uses the retry destination or opens the picker, then runs `inLock` inside the hold. `size` is
+     * the built file's, for a lapsed activation's press.
      */
     pick<T>(
         picker: SavePicker,
@@ -89,7 +86,10 @@ export type PickSession = Omit<SaveAttempt, 'write' | 'commit' | 'closePreparing
     ): Promise<T | Dismissed | Ending>
     /** A download browser's: no picker here. */
     download(request: { suggestedName: string; blob: Blob }): Promise<SaveResult>
-    /** Whether the empty-file warning has already reported the failure. */
+    /**
+     * Whether a write that did not land left the picked file confirmed empty. The failure dialog
+     * then says so.
+     */
     readonly emptied: boolean
 }
 
@@ -125,7 +125,7 @@ export const withPickSession = <T>(
         const lapsed = () =>
             reportsActivation() ? !hasActivation() : performance.now() - startedAt > PREPARING_MS
 
-        /** Runs `inLock` under `nse-bind` exclusive, then reports a confirmed-empty file. */
+        /** Runs `inLock` under `nse-bind` exclusive, then reads a picked file no write filled. */
         const hold = async <R>(
             target: FileTarget & { kind: 'handle' },
             inLock: (picked: PickedFile) => Promise<R>,
@@ -203,11 +203,10 @@ export const withPickSession = <T>(
                         failure = { error }
                     }
                 }
-                if (landed || !spec.ui.emptied) return
+                if (landed || !spec.checkEmptied) return
                 const now = await platform.read(target).catch(() => undefined)
                 emptied = now?.size === 0
             })
-            if (emptied) await spec.ui.emptied?.(name)
             if (failure) throw named(failure.error, name)
             return result as R
         }

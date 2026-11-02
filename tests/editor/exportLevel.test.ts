@@ -41,7 +41,6 @@ const scriptedUi = (answers: unknown[]) => {
     const ui = {
         conflict: ask('conflict'),
         notLevelData: ask('notLevelData'),
-        emptied: ask('emptied'),
         notFound: ask('notFound'),
         denied: ask('denied'),
         failed: ask('failed'),
@@ -363,15 +362,15 @@ test('an AbortError with no cancel, and a failed picker, are shown as failures',
     )
 })
 
-test('a failed picked write names the picked file, not the suggested one', async () => {
+test('a failed picked write names the picked file, not the suggested one, and says it is now empty', async () => {
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Typed.nsld') })
     mock.saveFile = () =>
         Promise.reject(new FileError('io', 'Disk error', undefined, undefined, 'Typed.nsld'))
     const { ui, asked } = scriptedUi([undefined])
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
     assert.deepEqual(
-        asked.map(({ dialog, args }) => [dialog, args[0]]),
-        [['emptied', 'Typed.nsld']],
+        asked.map(({ dialog, args }) => [dialog, args[0], args[2]]),
+        [['failed', 'Typed.nsld', true]],
     )
 })
 

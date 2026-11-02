@@ -4,15 +4,14 @@ import './saveMatrix/env'
 
 const { describeVideoFailure } = await import('../../src/editor/exportVideo/failure')
 
-test('a failed video names an empty picked file when cleanup could not remove it', async () => {
+test('a failed video adds that the picked file is now empty when cleanup could not remove it', async () => {
     const handle = {
         name: 'project.nxsp',
         getFile: () => Promise.resolve(new File([], 'project.nxsp')),
     } as FileSystemFileHandle
     const failure = await describeVideoFailure(new Error('Encoding failed'), 'clip.mp4', handle)
     assert.equal(failure.reason, 'encoder')
-    assert.match(failure.message(), /project.nxsp/)
-    assert.match(failure.message(), /The file is now empty/)
+    assert.equal(failure.message(), 'The video could not be created. The file is now empty.')
 })
 
 test('a removed, unreadable or changed video target keeps the original failure', async () => {

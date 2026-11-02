@@ -10,13 +10,13 @@ test('Export Video streams into the project file and revokes its binding', async
     await queuePicks(page, ['coconut.nxsp'])
     const result = await page.evaluate(async () => {
         const { pickVideo } = await import('/src/editor/save/videoPick.ts')
-        const { pickUi } = await import('/src/editor/save/flow.ts')
+        const { preparingUi } = await import('/src/editor/save/flow.ts')
         const { environment, quickBinding } = await import('/src/editor/save/binding.ts')
         const { muxPickedVideo } = await import('/tests/helpers/muxPickedVideo.ts')
         const picked = await pickVideo({
             name: 'clip.webm',
             type: { description: 'WebM', extension: '.webm' },
-            ui: pickUi,
+            ui: preparingUi,
         })
         if (picked.kind !== 'accepted') throw new Error(picked.kind)
         const binding = quickBinding(environment()!).file
@@ -41,12 +41,12 @@ test('a streamed pick refuses a changed file at commit and keeps the other bytes
     await start(page)
     const result = await page.evaluate(async () => {
         const { pickVideo } = await import('/src/editor/save/videoPick.ts')
-        const { pickUi } = await import('/src/editor/save/flow.ts')
+        const { preparingUi } = await import('/src/editor/save/flow.ts')
         const { openPickedTarget } = await import('/src/exportVideo/worker/target.ts')
         const picked = await pickVideo({
             name: 'clip.mp4',
             type: { description: 'MP4', extension: '.mp4' },
-            ui: pickUi,
+            ui: preparingUi,
         })
         if (picked.kind !== 'accepted') throw new Error(picked.kind)
         const target = await openPickedTarget(picked.pick)
@@ -70,12 +70,12 @@ test('cancelling a streamed pick removes only its unchanged empty file', async (
     expect(
         await page.evaluate(async () => {
             const { pickVideo } = await import('/src/editor/save/videoPick.ts')
-            const { pickUi } = await import('/src/editor/save/flow.ts')
+            const { preparingUi } = await import('/src/editor/save/flow.ts')
             const { openPickedTarget } = await import('/src/exportVideo/worker/target.ts')
             const picked = await pickVideo({
                 name: 'clip.mp4',
                 type: { description: 'MP4', extension: '.mp4' },
-                ui: pickUi,
+                ui: preparingUi,
             })
             if (picked.kind !== 'accepted') throw new Error(picked.kind)
             const target = await openPickedTarget(picked.pick)

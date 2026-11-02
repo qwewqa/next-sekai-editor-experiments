@@ -142,7 +142,7 @@ const saveOperation = (name: string, download: boolean) =>
 // waits for an import.
 
 /** How a Save opens its "Preparing…": the Save UI's, which tests replace. */
-const preparingUi = {
+export const preparingUi = {
     preparing: (name: string, kind?: PreparingKind) => saveUi.preparing(name, kind),
 }
 
@@ -515,7 +515,8 @@ export type Outcome =
           kind: 'failed'
           error: FileError
           name: string
-          reported?: true
+          /** The write left the picked file confirmed empty. */
+          emptied?: true
           retry?: () => Promise<Outcome>
       }
     | { kind: 'error'; message: () => string }
@@ -527,13 +528,7 @@ const largeDownload = (estimated: number | undefined): estimated is number =>
     estimated > LARGE_BUILD_BYTES &&
     isTouchDevice()
 
-/** What the pick session shows and does for the Save family (it loads in Node: no UI import). */
-export const pickUi = {
-    ...preparingUi,
-    emptied: (name: string) => saveUi.emptied(name),
-}
-
-/** Keeps a picked failure's outcome after the empty-file warning has reported it. */
+/** A picked failure's outcome, marked when the write left the picked file empty. */
 const projectPick = async (
     session: PickSession,
     picker: Parameters<PickSession['pick']>[0],
@@ -549,7 +544,7 @@ const projectPick = async (
         const failure = fileError(error)
         outcome = { kind: 'failed', error: failure, name: failure.fileName ?? name }
     }
-    return outcome.kind === 'failed' && session.emptied ? { ...outcome, reported: true } : outcome
+    return outcome.kind === 'failed' && session.emptied ? { ...outcome, emptied: true } : outcome
 }
 
 /** The document identity and destination retained by Try Again. */
@@ -581,7 +576,8 @@ const pickAndWrite = async (
             // A large download on a touch device would outlast the tap: "Preparing…" opens at
             // once, with the estimated size.
             ...(largeDownload(request.estimated) ? { estimated: request.estimated } : {}),
-            ui: pickUi,
+            checkEmptied: true,
+            ui: preparingUi,
         },
         (session) => saveBody(session, env, request, retry.docId),
     )
@@ -1265,10 +1261,9 @@ export const afterOutcome = async (
             await conflictFlow(env, outcome.binding, outcome.handle)
             return
         case 'failed': {
-            const { error, name } = outcome
+            const { error, name, emptied } = outcome
             recordError(error)
             console.warn('A Save failed', error)
-            if (outcome.reported) return
             const writable = !!platform.pickSaveFile
             const saveAs = again ?? (() => dialogSave(env, 'saveAs'))
             let choice: 'saveAs' | 'tryAgain' | undefined
@@ -1277,11 +1272,11 @@ export const afterOutcome = async (
                     // Only the file the session is bound to now is marked, never a pick that the
                     // binding did not move to or a stored session's pick.
                     if (!again && quickBinding(env).file?.name === name) setDiskFinding('missing')
-                    choice = await saveUi.notFound(name)
+                    choice = await saveUi.notFound(name, emptied)
                     if (choice === 'saveAs') await (again ? again() : notFoundSaveAs(env))
                     return
                 case 'denied':
-                    choice = await saveUi.denied(name)
+                    choice = await saveUi.denied(name, emptied)
                     // Try Again asks for permission again, on this press.
                     if (choice === 'tryAgain') {
                         if (outcome.retry) await afterOutcome(env, await outcome.retry(), again)
@@ -1295,8 +1290,14 @@ export const afterOutcome = async (
                 case 'io':
                     break
             }
-            if (error.code === 'read-only') choice = await saveUi.readOnly(name)
-            else choice = await saveUi.failed(name, () => fileErrorText(name, error), writable)
+            if (error.code === 'read-only') choice = await saveUi.readOnly(name, emptied)
+            else
+                choice = await saveUi.failed(
+                    name,
+                    () => fileErrorText(name, error),
+                    writable,
+                    emptied,
+                )
             if (choice === 'saveAs') await saveAs()
             return
         }
@@ -1859,7 +1860,8 @@ const writeSessionFile = async (
                 // this tab runs.
                 importChain: request.chainId,
                 ...(largeDownload(request.estimated) ? { estimated: request.estimated } : {}),
-                ui: pickUi,
+                checkEmptied: true,
+                ui: preparingUi,
             },
             (session) => sessionFileBody(session, env, request, retry.docId),
         ),

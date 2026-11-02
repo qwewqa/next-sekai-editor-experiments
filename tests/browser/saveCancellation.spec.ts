@@ -158,16 +158,15 @@ test('a successful Save writes once and binds the picked file', async ({ page })
     expect(await bound(page)).toBe('coconut.nxsp')
 })
 
-test('a failed first Save aborts, reports the empty file and leaves the session unbound', async ({
+test('a failed first Save aborts, gives its reason with the empty file and leaves the session unbound', async ({
     page,
 }) => {
     await installSave(page, 'writeFailure')
     await firstSave(page)
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText(
-        '“coconut.nxsp” could not be written. The file is now empty.',
-    )
-    await expect(dialog.getByRole('button', { name: 'OK', exact: true })).toBeVisible()
+    await expect(dialog).toContainText('There is not enough space to write coconut.nxsp.')
+    await expect(dialog).toContainText('The file is now empty.')
+    await expect(dialog.getByRole('button', { name: 'Save As…', exact: true })).toBeVisible()
     expect(await page.evaluate(() => window.saveReview.events)).toEqual([
         'picker',
         'create',

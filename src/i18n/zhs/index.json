@@ -2565,7 +2565,7 @@
     "notLocal": "“{0}”尚不在此设备上。",
     "noSpace": "空间不足，无法写入 {0}。",
     "writeFailed": "无法写入“{0}”。",
-    "emptied": "“{0}”无法写入。文件已被清空。",
+    "fileNowEmpty": "文件已被清空。",
     "openedContentGone": "“{0}”的内容已更改。",
     "title": "保存项目文件",
     "titleAs": "另存为",

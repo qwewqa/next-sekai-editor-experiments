@@ -7,7 +7,7 @@ const pick = () =>
     pickVideo({
         name: 'clip.mp4',
         type: { description: 'MP4', extension: '.mp4' },
-        ui: flow.pickUi,
+        ui: flow.preparingUi,
     })
 
 for (const [name, setup] of [
@@ -65,7 +65,7 @@ test('cancelling before a video pick opens leaves files untouched', async () => 
     const result = await pickVideo({
         name: 'clip.mp4',
         type: { description: 'MP4', extension: '.mp4' },
-        ui: flow.pickUi,
+        ui: flow.preparingUi,
         signal: AbortSignal.abort(),
     })
     assert.equal(result.kind, 'cancelled')

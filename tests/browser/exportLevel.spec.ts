@@ -905,16 +905,16 @@ test('the toolbar step adds Save As and History to the old default groups once',
     expect((await toolbar())[0]).toEqual(file)
 })
 
-test('a failed picked export reports the confirmed-empty file once', async ({ page }) => {
+test('a failed picked export says once that the picked file is now empty', async ({ page }) => {
     await start(page, opfs)
     await openPartial(page, 'LevelData')
     await holdWrites(page, 'fail')
     await queuePicks(page, ['LevelData'])
     await openExport(page)
     await page.keyboard.press('Enter')
-    await expect(dialog(page)).toContainText(
-        '“LevelData” could not be written. The file is now empty.',
-    )
+    await expect(dialog(page)).toContainText('“LevelData” could not be written.')
+    await expect(dialog(page)).toContainText('The file is now empty.')
+    await expect(dialog(page).getByRole('button', { name: 'Choose Another…' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
 })

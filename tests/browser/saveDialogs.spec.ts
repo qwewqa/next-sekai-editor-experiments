@@ -584,7 +584,6 @@ type DialogRequest =
       }
     | { kind: 'notFound' | 'denied' | 'readOnly'; name: string }
     | { kind: 'failed'; name: string; message: string; saveAs: boolean }
-    | { kind: 'emptied'; name: string }
 
 const open = (page: Page, input: DialogRequest) =>
     page.evaluate(async (input) => {
@@ -608,8 +607,6 @@ const open = (page: Page, input: DialogRequest) =>
                     return saveUi.readOnly(input.name)
                 case 'failed':
                     return saveUi.failed(input.name, () => input.message, input.saveAs)
-                case 'emptied':
-                    return saveUi.emptied(input.name)
             }
         }
         void run().then((result) => {

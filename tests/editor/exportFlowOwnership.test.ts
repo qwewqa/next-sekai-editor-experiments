@@ -37,7 +37,6 @@ const body = (n: number) => new Blob([gzip(JSON.stringify({ bgmOffset: 0, entiti
 const ui = (): ExportUi => ({
     conflict: async () => undefined,
     notLevelData: async () => undefined,
-    emptied: async () => undefined,
     notFound: async () => undefined,
     denied: async () => undefined,
     failed: async () => undefined,

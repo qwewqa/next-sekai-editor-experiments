@@ -37,7 +37,7 @@ for (const [name, setup] of [
         assert.equal(w.boundName(), name)
         assert.notEqual(w.session.docId, 'doc-own')
         assert.equal(
-            w.dialogs.some((dialog) => ['emptied'].includes(dialog.kind)),
+            w.dialogs.some((dialog) => dialog.emptied),
             false,
         )
     })

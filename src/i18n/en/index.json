@@ -2565,7 +2565,7 @@
         "notLocal": "“{0}” is not available on this device yet.",
         "noSpace": "There is not enough space to write {0}.",
         "writeFailed": "“{0}” could not be written.",
-        "emptied": "“{0}” could not be written. The file is now empty.",
+        "fileNowEmpty": "The file is now empty.",
         "openedContentGone": "The contents of “{0}” have changed.",
         "title": "Save Project File",
         "titleAs": "Save As",
