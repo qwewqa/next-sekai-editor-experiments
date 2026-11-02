@@ -169,7 +169,8 @@ const showPreview = async (page: Page) => {
     await expect.poll(() => page.evaluate(() => window.previewTest.frames)).toBeGreaterThan(frames)
 }
 
-test.afterEach(async ({ page }) => {
+test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status === 'skipped') return
     expect(await page.evaluate(() => window.previewTest.errors)).toEqual([])
 })
 
