@@ -103,8 +103,6 @@ export const runExport = async (
             audio.addEventListener('dequeue', loop.wake)
             audio.configure(start.codecs.audio)
             const feeder = createAudioFeeder(audio, start.samples)
-            await loop.room('audio', 0)
-            feeder.pad()
             for (;;) {
                 const block = await loop.guard(options.block())
                 if (!block) break

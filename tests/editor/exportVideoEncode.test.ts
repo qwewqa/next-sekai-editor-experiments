@@ -73,7 +73,7 @@ test('AAC ES descriptors yield ASC, including variable lengths and optional ES f
     )
 })
 
-test('every encoder receives the silent pad and contiguous units with an exact last sample', () => {
+test('every encoder receives the silent pad with the first samples in one call, then contiguous units with an exact last sample', () => {
     const inputs: AudioDataInit[] = []
     let closed = 0
     let encoded = 0
@@ -93,7 +93,6 @@ test('every encoder receives the silent pad and contiguous units with an exact l
             } as AudioData
         },
     )
-    feeder.pad()
     for (const unit of audioUnits({
         startSample: 0,
         planes: [new Float32Array(5600).fill(0.5), new Float32Array(5600).fill(0.25)],
@@ -103,16 +102,19 @@ test('every encoder receives the silent pad and contiguous units with an exact l
     assert.deepEqual(
         inputs.map((i) => [i.timestamp, i.numberOfFrames]),
         [
-            [-21333, 1024],
-            [0, 4800],
+            [-21333, 1024 + 4800],
             [100000, 800],
         ],
     )
-    assert.ok((inputs[0]!.data as Float32Array).every((x) => x === 0))
-    assert.equal(encoded, 3)
-    assert.equal(closed, 3)
-    assert.equal(feeder.submittedEnd, 5600 / AUDIO_RATE)
-    assert.throws(() => feeder.pad(), /already/)
+    // Each plane of the first call holds the pad, then the first unit.
+    const first = inputs[0]!.data as Float32Array
+    for (const [plane, value] of [0.5, 0.25].entries()) {
+        const samples = first.subarray(plane * 5824, (plane + 1) * 5824)
+        assert.ok(samples.subarray(0, 1024).every((x) => x === 0))
+        assert.ok(samples.subarray(1024).every((x) => x === value))
+    }
+    assert.equal(encoded, 2)
+    assert.equal(closed, 2)
     assert.equal(aacPacketBound(5600, 2112), Math.ceil(8736 / 960))
 })
 

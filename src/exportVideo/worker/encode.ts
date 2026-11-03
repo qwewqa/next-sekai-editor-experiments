@@ -348,38 +348,17 @@ export const createVideoPacketAdapter = (options: {
     }
 }
 
-/** One call submits at most 100 ms. The caller waits for room before every call, including the pad. */
+/**
+ * One call submits at most 100 ms of clip audio. The first also carries the silent lead-in. The
+ * caller waits for room before every call.
+ */
 export const createAudioFeeder = (
     encoder: Pick<AudioEncoder, 'encode'>,
     samples: number,
     makeData = (init: AudioDataInit) => new AudioData(init),
 ) => {
-    let nextSample = -AUDIO_PAD
-    const submit = (start: number, planes: AudioBlock['planes']) => {
-        const length = planes[0].length
-        const data = new Float32Array(length * AUDIO_CHANNELS)
-        data.set(planes[0])
-        data.set(planes[1], length)
-        const audio = makeData({
-            format: 'f32-planar',
-            sampleRate: AUDIO_RATE,
-            numberOfChannels: AUDIO_CHANNELS,
-            numberOfFrames: length,
-            timestamp: sampleTimestamp(start),
-            data,
-        })
-        try {
-            encoder.encode(audio)
-        } finally {
-            audio.close()
-        }
-        nextSample += length
-    }
+    let nextSample = 0
     return {
-        pad() {
-            if (nextSample !== -AUDIO_PAD) throw new Error('Audio lead-in was already submitted')
-            submit(-AUDIO_PAD, [new Float32Array(AUDIO_PAD), new Float32Array(AUDIO_PAD)])
-        },
         feed(unit: AudioBlock) {
             const length = unit.planes[0].length
             if (
@@ -390,13 +369,28 @@ export const createAudioFeeder = (
                 nextSample + length > samples
             )
                 throw new Error('Unexpected audio unit')
-            submit(unit.startSample, unit.planes)
+            const before = nextSample === 0 ? AUDIO_PAD : 0
+            const frames = before + length
+            const data = new Float32Array(frames * AUDIO_CHANNELS)
+            data.set(unit.planes[0], before)
+            data.set(unit.planes[1], frames + before)
+            const audio = makeData({
+                format: 'f32-planar',
+                sampleRate: AUDIO_RATE,
+                numberOfChannels: AUDIO_CHANNELS,
+                numberOfFrames: frames,
+                timestamp: sampleTimestamp(unit.startSample - before),
+                data,
+            })
+            try {
+                encoder.encode(audio)
+            } finally {
+                audio.close()
+            }
+            nextSample += length
         },
         finish() {
             if (nextSample !== samples) throw new Error('Audio input is incomplete')
-        },
-        get submittedEnd() {
-            return Math.max(0, nextSample) / AUDIO_RATE
         },
     }
 }
@@ -466,7 +460,6 @@ export const measureAacDelay = async (
         signal?.throwIfAborted()
         encoder.configure(config)
         const feeder = createAudioFeeder(encoder, AUDIO_UNIT)
-        feeder.pad()
         const impulse = AUDIO_UNIT / 2
         const plane = new Float32Array(AUDIO_UNIT)
         plane[impulse] = 1
