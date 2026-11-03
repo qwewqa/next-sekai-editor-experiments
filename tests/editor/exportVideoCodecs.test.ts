@@ -599,7 +599,7 @@ test('an AAC delay that cannot be measured leaves MP4 with sound available, with
     const working = await probes(() => Promise.resolve(2112)).resolve(settings)
     assert.equal(working.supported && working.format, 'mp4')
     assert.equal(working.supported && working.aacDelay, 2112)
-    // Silent exports and WebM measure nothing; choices without trials use the probes alone.
+    // Silent exports, WebM and choices without trials measure nothing.
     measured.length = 0
     await failing.resolve({ ...settings, bgm: false, sfx: false })
     await failing.resolve({ ...settings, format: 'webm' })
@@ -896,13 +896,15 @@ test(
         })
         try {
             const trial = browserEncoderProbes().trial!
-            // The fake encoder's output never passes a trial. Until the reopen, the trial still
-            // builds its encoder but passes, so that the AAC measurement runs.
-            let passing = true
+            // The fake encoder's output never passes a trial. The trial still builds its encoder
+            // but passes, so that the AAC measurement runs.
             const probes = createCodecProbes({
                 video: async () => ({ supported: true }),
                 audio: async () => ({ supported: true }),
-                trial: async (c, signal) => (await trial(c, signal)) || passing,
+                trial: async (c, signal) => {
+                    await trial(c, signal)
+                    return true
+                },
                 aacDelay: createAacCalibration(),
             })
             const kinds = () => codecs.map((c) => `${c.kind} ${c.state}`)
@@ -928,17 +930,15 @@ test(
                 'video closed',
             ])
             hold = undefined
-            passing = false
             const reopened = createCodecAvailability(probes)
             const state = await reopened.update(settings, {})
             assert.equal(state.pending, false)
-            // The trials ran again with new codecs: three H.264 trials, then VP9. No H.264 trial
-            // passes, so no AAC measurement runs.
+            // The trial and the measurement ran again with new codecs. The measurement's key has
+            // no video size, so the one stopped at 720p was not kept.
             assert.deepEqual(kinds().slice(4), [
                 'video closed',
-                'video closed',
-                'video closed',
-                'video closed',
+                'audioDecoder closed',
+                'audioEncoder closed',
             ])
         } finally {
             for (const [i, name] of names.entries()) globals[name] = saved[i]
