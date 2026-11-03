@@ -1,80 +1,57 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
+import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
-import { interpolateRaw } from '../../utils/interpolate'
+import { choiceLine } from '../../modals/form/fieldDescription'
 import SeverityIcon from '../SeverityIcon.vue'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import type { ExportDialog } from './dialog'
 
-// One line above the footer for a message about the whole dialog. Its status region stays
-// mounted, empty and unpadded while there is no message, so a failure placed in it is read.
-const props = defineProps<{ dialog: ExportDialog; deliverFailed?: 'download' | 'share' }>()
-const d = props.dialog
+// The messages about the whole dialog, above the footer, in one scroller of at most 8 rem. Its
+// status region stays mounted, empty and unpadded while there is no message, so a failure placed
+// in it is read. Each message's text has the id `${ids}-${index}`, for the footer's buttons.
+const props = defineProps<{ dialog: ExportDialog; ids: string }>()
+const messages = props.dialog.messages
 const detailsOpen = ref(false)
-const coarse = matchMedia('(pointer: coarse)').matches
-
-const message = computed(() => {
-    const outcome = d.outcome.value
-    if (d.phase.value === 'preparing' || d.phase.value === 'exporting')
-        return {
-            severity: 'info' as const,
-            // A phone or tablet stops a hidden page's export; a desktop browser goes on.
-            text: coarse ? i18n.value.exportVideo.keepOpenVisible : i18n.value.exportVideo.keepOpen,
-        }
-    if (outcome?.kind === 'failed')
-        return {
-            severity: 'error' as const,
-            text: outcome.failure.message(),
-            detail: outcome.failure.detail,
-        }
-    if (props.deliverFailed)
-        return {
-            severity: 'error' as const,
-            text:
-                props.deliverFailed === 'share'
-                    ? i18n.value.exportVideo.errors.share
-                    : i18n.value.exportVideo.errors.download,
-        }
-    if (d.stoppedLine.value && d.phase.value === 'setup')
-        return {
-            severity: 'warning' as const,
-            text: interpolateRaw(
-                i18n.value.exportVideo.stopped,
-                `${d.stoppedLine.value.resolution}p`,
-                `${d.stoppedLine.value.renderScale}x`,
-            ),
-        }
-    if (d.storageNearlyFull.value && !d.busy.value)
-        return { severity: 'warning' as const, text: i18n.value.load.storageNearlyFull }
-    return undefined
-})
 </script>
 
 <template>
     <div
         role="status"
-        class="shrink-0 text-sm"
-        :class="{ 'border-t border-fg/15 px-4 py-3': message }"
+        class="flex max-h-32 min-h-0 shrink flex-col text-sm"
+        :class="{ 'border-t border-fg/15': messages.length }"
         data-export-slot
     >
-        <div v-if="message" class="flex flex-col gap-1">
-            <p class="flex items-start gap-2">
-                <SeverityIcon :severity="message.severity" class="mt-0.5 size-4" />
-                <span>{{ message.text }}</span>
-            </p>
-            <details
-                v-if="message.detail"
-                class="max-h-32 overflow-auto break-words pl-6"
-                @toggle="detailsOpen = ($event.target as HTMLDetailsElement).open"
-            >
-                <summary
-                    class="focus-ring flex h-8 w-fit cursor-pointer list-none items-center gap-2 rounded-full pr-3 [&::-webkit-details-marker]:hidden"
+        <div
+            v-if="messages.length"
+            v-scroll-edges
+            tabindex="0"
+            class="focus-ring flex min-h-0 flex-col gap-1 overflow-y-auto px-4 py-3"
+        >
+            <template v-for="(message, index) in messages" :key="index">
+                <p class="flex items-start gap-2">
+                    <SeverityIcon :severity="message.severity" class="mt-0.5 size-4" />
+                    <span :id="`${ids}-${index}`"
+                        ><span v-if="message.label" class="font-semibold">{{
+                            choiceLine(message.label)
+                        }}</span
+                        >{{ message.text }}</span
+                    >
+                </p>
+                <details
+                    v-if="message.detail"
+                    class="break-words pl-6"
+                    @toggle="detailsOpen = ($event.target as HTMLDetailsElement).open"
                 >
-                    <ChevronIcon :direction="detailsOpen ? 'down' : 'right'" />
-                    {{ i18n.preview.errorDetails }}
-                </summary>
-                <p class="whitespace-break-spaces">{{ message.detail }}</p>
-            </details>
+                    <summary
+                        class="focus-ring flex h-8 w-fit cursor-pointer list-none items-center gap-2 rounded-full pr-3 [&::-webkit-details-marker]:hidden"
+                    >
+                        <ChevronIcon :direction="detailsOpen ? 'down' : 'right'" />
+                        {{ i18n.preview.errorDetails }}
+                    </summary>
+                    <p class="whitespace-break-spaces">{{ message.detail }}</p>
+                </details>
+            </template>
         </div>
     </div>
 </template>

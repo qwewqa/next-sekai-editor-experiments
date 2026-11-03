@@ -2502,17 +2502,31 @@
     "keepOpen": "Gardez cet onglet ouvert jusqu’à la fin de l’exportation.",
     "keepOpenVisible": "Gardez cet onglet ouvert et visible jusqu’à la fin de l’exportation.",
     "stopped": "La dernière exportation en {0} avec une Échelle de rendu de {1} ne s’est pas terminée.",
+    "suggest": {
+      "choose": "Choisissez {0}.",
+      "antialias": "Avec ces paramètres, l’Anticrénelage est indisponible sur cet appareil. Désactivez-le.",
+      "sound": "Avec ces paramètres, le son est indisponible dans ce navigateur. Désactivez {0}."
+    },
+    "memoryWarning": "L’exportation avec ces paramètres risque d’utiliser trop de mémoire. Choisissez une plage plus courte ou réduisez la qualité.",
+    "warnings": {
+      "pictureStops": "L’image s’arrête avant la fin de la plage.",
+      "picturePauses": "L’image peut se figer ou s’arrêter trop tôt.",
+      "outOfSync": "L’image et le son peuvent être décalés.",
+      "uneven": "Les mouvements peuvent manquer de fluidité.",
+      "incomplete": "Certaines images peuvent être incomplètes.",
+      "resolution": "La résolution de la vidéo est de {0}. La résolution choisie était de {1}.",
+      "soundStops": "Le son s’arrête avant la fin de la plage."
+    },
     "discardTitle": "Abandonner cette vidéo ?",
     "discard": "Abandonner la vidéo",
     "unsupported": "Ce navigateur ne peut pas exporter de vidéo.",
     "errors": {
       "config": "Ces paramètres vidéo ne sont pas disponibles dans ce navigateur. Choisissez une résolution ou une fréquence d’images plus basse.",
       "encoder": "La vidéo n’a pas pu être créée.",
-      "audio": "Le son n’a pas pu être préparé.",
+      "audio": "Le son n’a pas pu être créé. Réessayez ou désactivez {0}.",
       "graphics": "Une erreur graphique a arrêté l’exportation. Réessayez.",
       "memory": "La mémoire était insuffisante. Choisissez une résolution plus basse.",
       "hidden": "L’exportation s’est arrêtée lorsque cet onglet était en arrière-plan. Gardez cet onglet visible et réessayez.",
-      "memoryLimit": "Cette vidéo est trop volumineuse pour ce navigateur. Choisissez une plage plus courte ou réduisez la qualité.",
       "unavailable": "Ce navigateur ne peut pas exporter de vidéo.",
       "download": "La vidéo n’a pas pu être téléchargée.",
       "share": "La vidéo n’a pas pu être partagée."

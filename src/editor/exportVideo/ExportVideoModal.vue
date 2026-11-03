@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    useId,
+    useTemplateRef,
+    watch,
+} from 'vue'
 import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
@@ -45,6 +54,8 @@ const peekLine = computed(() => {
 props.expose?.(d)
 const modal = useModal()
 const phase = d.phase
+// The slot's messages have ids under this prefix, which the footer's buttons refer to.
+const messageIds = useId()
 
 const body = useTemplateRef<HTMLDivElement>('body')
 const stage = useTemplateRef<{
@@ -287,32 +298,22 @@ const startExport = async () => {
     }
     d.start()
 }
-const deliver = async (how: 'download' | 'share') => {
-    deliverFailed.value = undefined
-    try {
-        await d.deliver(how)
-    } catch (error) {
-        console.error(error)
-        deliverFailed.value = how
-    }
-}
-const deliverFailed = ref<'download' | 'share'>()
 watch(phase, (value, previous) => {
-    deliverFailed.value = undefined
     void nextTick(() => {
         if (value === 'preparing' || (value !== previous && value !== 'setup'))
             footer.value?.focusFor(value)
     })
 })
 
-// --- Dialog keys: I and O, the arrows and Space, outside text fields, selects and settings.
+// --- Dialog keys: I and O, the arrows and Space, outside text fields, selects, settings and
+// messages.
 const onKeydown = (event: KeyboardEvent) => {
     if (d.busy.value || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey)
         return
     const target = event.target as HTMLElement
     if (
         target.matches('input:not([type="button"]), textarea, select') ||
-        target.closest('[data-export-settings]')
+        target.closest('[data-export-settings], [data-export-slot]')
     )
         return
     const key = event.key
@@ -378,17 +379,18 @@ const title = computed(() => i18n.value.exportVideo.title)
                     <ExportVideoSlot
                         v-if="form === 'two' || form === 'land'"
                         :dialog="d"
-                        :deliver-failed="deliverFailed"
+                        :ids="messageIds"
                     />
                     <ExportVideoFooter
                         v-if="form === 'land'"
                         ref="footer"
                         :dialog="d"
                         :picker="input.env.picker"
+                        :message-ids="messageIds"
                         @export="startExport"
                         @cancel="d.cancel"
                         @close="close"
-                        @deliver="deliver"
+                        @deliver="d.deliver"
                     />
                 </div>
             </div>
@@ -397,17 +399,18 @@ const title = computed(() => i18n.value.exportVideo.title)
             <ExportVideoSlot
                 v-if="form === 'one' || form === 'short'"
                 :dialog="d"
-                :deliver-failed="deliverFailed"
+                :ids="messageIds"
             />
             <ExportVideoFooter
                 v-if="form !== 'land'"
                 ref="footer"
                 :dialog="d"
                 :picker="input.env.picker"
+                :message-ids="messageIds"
                 @export="startExport"
                 @cancel="d.cancel"
                 @close="close"
-                @deliver="deliver"
+                @deliver="d.deliver"
             />
         </div>
     </BaseModal>

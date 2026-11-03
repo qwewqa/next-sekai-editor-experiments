@@ -63,6 +63,7 @@ import {
 import { memoryRouteTaken } from './destination'
 import type { DestinationRequest, ExportVideoEnv } from './env'
 import { describeVideoFailure, type VideoFailure } from './failure'
+import { exportMessages } from './messages'
 import {
     finishedVideoExport,
     openingVideoChoices,
@@ -103,15 +104,30 @@ export type DialogInput = {
 export type Phase =
     'setup' | 'preparing' | 'exporting' | 'cancelling' | 'finishing' | 'ready' | 'done' | 'failed'
 
-/** An export's end that the footer shows until the next change. */
+/** What an attempt asked for, which its file's warnings compare with. */
+export type Asked = Pick<ExportSettings, 'width' | 'height' | 'bgm' | 'sfx'>
+
+/**
+ * An export's end that the footer shows until the next change. A file keeps its warnings, what
+ * its attempt asked for, and whether the page was hidden during it.
+ */
 export type Outcome =
-    | { kind: 'done'; name: string; size?: number; warnings: ExportWarning[] }
+    | {
+          kind: 'done'
+          name: string
+          size?: number
+          warnings: ExportWarning[]
+          asked: Asked
+          hidden: boolean
+      }
     | {
           kind: 'ready'
           size: number
           delivered: boolean
           shareable: boolean
           warnings: ExportWarning[]
+          asked: Asked
+          hidden: boolean
       }
     | { kind: 'failed'; failure: VideoFailure }
 
@@ -429,8 +445,9 @@ export const createExportDialog = (input: DialogInput) => {
     // --- The job, its frames and its outcome.
     const phase = ref<Phase>('setup')
     const outcome = shallowRef<Outcome>()
+    // What the running attempt asked for, kept with its outcome.
+    let asked: Asked = { width: 0, height: 0, bgm: false, sfx: false }
     const progress = ref<{ fraction: number; eta?: number }>({ fraction: 0 })
-    const stoppedLine = computed(() => settings.exportVideoLastStopped)
     let frameSink: ((bitmap: ImageBitmap) => void) | undefined
     const onFrame = (draw: (bitmap: ImageBitmap) => void) => {
         frameSink = draw
@@ -599,7 +616,7 @@ export const createExportDialog = (input: DialogInput) => {
         const ended = current
         const failure =
             state.phase === 'failed'
-                ? await describeVideoFailure(state.error, fileName(), picked?.handle)
+                ? await describeVideoFailure(state.error, fileName(), asked, picked?.handle)
                 : undefined
         if (current !== ended) return
         // The attempt ended.
@@ -630,6 +647,8 @@ export const createExportDialog = (input: DialogInput) => {
                     kind: 'ready',
                     size: state.file.size,
                     warnings: state.warnings,
+                    asked,
+                    hidden: attempt.hidden,
                     delivered: false,
                     // Share Video is offered for a coarse pointer, as Share Image is.
                     shareable:
@@ -669,7 +688,7 @@ export const createExportDialog = (input: DialogInput) => {
             tookMs: attempt.workMs,
             renderingMs: attempt.renderMs,
         })
-        outcome.value = { kind: 'done', name, size, warnings }
+        outcome.value = { kind: 'done', name, size, warnings, asked, hidden: attempt.hidden }
         phase.value = 'done'
         const ended = current
         current = undefined
@@ -730,7 +749,9 @@ export const createExportDialog = (input: DialogInput) => {
         }
         current = job
         picked = undefined
-        job.configure(exportSettings())
+        const used = exportSettings()
+        asked = { width: used.width, height: used.height, bgm: used.bgm, sfx: used.sfx }
+        job.configure(used)
         phase.value = 'preparing'
         void job.start()
     }
@@ -757,17 +778,29 @@ export const createExportDialog = (input: DialogInput) => {
             console.error(error)
         }
     }
+    /** A failed download or share, shown until the next attempt or change of phase. */
+    const deliverFailed = ref<'download' | 'share'>()
+    watch(phase, () => {
+        deliverFailed.value = undefined
+    })
     const deliver = async (how: 'download' | 'share') => {
         const ending = current
-        if (!ending || outcome.value?.kind !== 'ready') return 'cancelled' as const
-        const result = await ending.deliver(how)
+        if (!ending || outcome.value?.kind !== 'ready') return
+        deliverFailed.value = undefined
+        let result
+        try {
+            result = await ending.deliver(how)
+        } catch (error) {
+            console.error(error)
+            deliverFailed.value = how
+            return
+        }
         const shown = shownOutcome()
         if (result === 'delivered' && shown?.kind === 'ready') {
             if (attempt.target !== 'memory') attempt.target = how
             outcome.value = { ...shown, delivered: true }
             report({ outcome: 'done', sizeBytes: shown.size })
         }
-        return result
     }
 
     // Read again after a wait.
@@ -815,6 +848,25 @@ export const createExportDialog = (input: DialogInput) => {
         stopPlayback = stop
     }
 
+    // --- The messages above the footer.
+    const coarse = matchMedia('(pointer: coarse)').matches
+    const messages = computed(() =>
+        exportMessages({
+            phase: phase.value,
+            outcome: outcome.value,
+            deliverFailed: deliverFailed.value,
+            coarse,
+            form,
+            support: support.value,
+            limits: limits.value,
+            frames: frames.value,
+            bytes: bytes.value,
+            memoryRoute: memoryRoute.value,
+            stopped: settings.exportVideoLastStopped,
+            storageNearlyFull: storageNearlyFull.value,
+        }),
+    )
+
     const dispose = async () => {
         availability.stop()
         limitsWorker.terminate()
@@ -849,7 +901,6 @@ export const createExportDialog = (input: DialogInput) => {
         setBitrate,
         hasAudio,
         fadeLimits,
-        storageNearlyFull,
         support,
         memoryRoute,
         unavailable,
@@ -860,7 +911,7 @@ export const createExportDialog = (input: DialogInput) => {
         busy: busyPhase,
         outcome,
         progress,
-        stoppedLine,
+        messages,
         viewJob,
         playing,
         setRange,

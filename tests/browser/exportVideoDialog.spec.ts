@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import type { ExportDialog } from '../../src/editor/exportVideo/dialog'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import {
     videoExportButton as exportButton,
@@ -1344,4 +1345,152 @@ test('playback pauses when the tab is hidden, so it never plays past Out', async
         document.dispatchEvent(new Event('visibilitychange'))
     })
     await expect(play).toHaveAttribute('aria-label', 'Play')
+})
+
+// --- The message area above the footer.
+
+test('a refused audio bitrate gives one suggestion above the footer, not a list under each field', async ({
+    page,
+}) => {
+    // As some Windows encoders do: 256 kbps is refused, lower bitrates pass.
+    await page.evaluate(() => {
+        const supported = AudioEncoder.isConfigSupported.bind(AudioEncoder)
+        AudioEncoder.isConfigSupported = (config) =>
+            config.bitrate === 256_000
+                ? Promise.resolve({ supported: false, config })
+                : supported(config)
+        window.editorTest.settings.exportVideoAudioBitrate = 256_000
+    })
+    const dialog = await open(page)
+    const slot = dialog.locator('[data-export-slot]')
+    await expect(slot).toHaveText('Audio Bitrate: Choose 192 kbps.', { timeout: 20_000 })
+    await expect(exportButton(page)).toBeDisabled()
+    // Every size is refused at 256 kbps, and the suggestion says why.
+    const resolution = dialog.getByRole('combobox', { name: 'Resolution' })
+    await expect(resolution.locator('option:disabled')).toHaveCount(4)
+    await expect(resolution).not.toHaveAccessibleDescription(/browser/)
+    await dialog.locator('[data-export-advanced]').click()
+    const bitrate = dialog.getByRole('combobox', { name: 'Audio Bitrate' })
+    await expect(bitrate).toHaveAccessibleDescription(/browser.*256 kbps/)
+    await bitrate.selectOption({ label: '192 kbps' })
+    await expect(slot).toBeEmpty()
+    await expect(exportButton(page)).toBeEnabled()
+})
+
+/** Shows a failed export whose Error Details are longer than the message area. */
+const failWithLongDetails = (page: Page) =>
+    page.evaluate(() => {
+        const d = Reflect.get(window, 'exportVideoDialog') as ExportDialog
+        d.outcome.value = {
+            kind: 'failed',
+            failure: {
+                reason: 'encoder',
+                message: () => 'The video could not be created.',
+                detail: Array.from({ length: 20 }, (_, i) => `Error: line ${i + 1}`).join('\n'),
+            },
+        }
+        d.phase.value = 'failed'
+    })
+
+for (const { name, width, height } of [
+    { name: 'desktop', width: 1280, height: 800 },
+    { name: 'phone portrait', width: 390, height: 664 },
+    { name: 'a small phone', width: 360, height: 640 },
+    { name: 'phone landscape', width: 844, height: 390 },
+    { name: 'a short landscape phone', width: 844, height: 340 },
+])
+    test(`on ${name}, the message area sits above the footer and scrolls as one, Space included`, async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width, height })
+        const dialog = await open(page)
+        await failWithLongDetails(page)
+        // The focused Close is described by the failure.
+        const close = dialog.locator('[data-export-close]')
+        await expect(close).toBeFocused()
+        await expect(close).toHaveAccessibleDescription('The video could not be created.')
+        const slot = dialog.locator('[data-export-slot]')
+        await slot.locator('summary').click()
+        await expect(slot.locator('details')).toHaveAttribute('open', '')
+        await layoutFrames(page)
+        const area = (await slot.boundingBox())!
+        const footer = (await dialog.locator('[data-export-footer]').boundingBox())!
+        const whole = (await dialog.boundingBox())!
+        expect(area.height).toBeLessThanOrEqual(128.5)
+        expect(area.y + area.height).toBeLessThanOrEqual(footer.y + 0.5)
+        expect(footer.y + footer.height).toBeLessThanOrEqual(whole.y + whole.height + 0.5)
+        const scroller = slot.locator('[tabindex="0"]')
+        expect(await scroller.evaluate((e) => e.scrollHeight > e.clientHeight)).toBe(true)
+        // Space scrolls the area, and the frame view does not play.
+        await scroller.evaluate((e) => e.scrollTo({ top: 0 }))
+        await scroller.focus()
+        await page.keyboard.press('Space')
+        await expect.poll(() => scroller.evaluate((e) => e.scrollTop)).toBeGreaterThan(0)
+        expect(
+            await page.evaluate(
+                () => (Reflect.get(window, 'exportVideoDialog') as ExportDialog).playing.value,
+            ),
+        ).toBe(false)
+    })
+
+test('Download Video is described by the file warnings, and Export by the memory warning', async ({
+    page,
+}) => {
+    // A longer chart, so that the clip can pass the memory warning's size.
+    await page.evaluate(() =>
+        window.editorTest.show({
+            ...window.editorTest.fixtures.notes,
+            bpms: [{ beat: 0, bpm: 30 }],
+        }),
+    )
+    const dialog = await open(page)
+    await shortClip(page)
+    await exportButton(page).click()
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('ready')
+    await page.evaluate(() => {
+        const d = Reflect.get(window, 'exportVideoDialog') as ExportDialog
+        const shown = d.outcome.value
+        if (shown?.kind === 'ready')
+            d.outcome.value = {
+                ...shown,
+                warnings: [
+                    { code: 'pictureStopped', at: 0.1 },
+                    { code: 'framesIncomplete', count: 1 },
+                ],
+            }
+    })
+    const warnings = [
+        'The picture stops before the end of the range.',
+        'Some frames may be incomplete.',
+    ]
+    const download = dialog.locator('[data-export-download]')
+    await expect(download).toHaveAccessibleDescription(warnings.join(' '))
+    // The whole chart on the memory route passes the line; the file's warnings stay.
+    await page.evaluate(() => {
+        const d = Reflect.get(window, 'exportVideoDialog') as ExportDialog
+        d.memoryRoute.value = true
+        d.setBitrate(40)
+        d.useWhole()
+    })
+    const memory =
+        'Exporting with these settings may use too much memory. Choose a shorter range or lower the quality.'
+    await expect(exportButton(page)).toHaveAccessibleDescription(memory)
+    await expect(download).toHaveAccessibleDescription(warnings.join(' '))
+    await expect(dialog.locator('[data-export-slot] p')).toHaveText([...warnings, memory])
+})
+
+test('Close in Done is described by the file warnings', async ({ page }) => {
+    const dialog = await open(page, { route: 'done' })
+    await shortClip(page)
+    await exportButton(page).click()
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('done')
+    await page.evaluate(() => {
+        const d = Reflect.get(window, 'exportVideoDialog') as ExportDialog
+        const shown = d.outcome.value
+        if (shown?.kind === 'done')
+            d.outcome.value = { ...shown, warnings: [{ code: 'audioSyncEstimated' }] }
+    })
+    const close = dialog.locator('[data-export-close]')
+    await expect(close).toBeFocused()
+    await expect(close).toHaveAccessibleDescription('The picture and sound may be out of sync.')
 })

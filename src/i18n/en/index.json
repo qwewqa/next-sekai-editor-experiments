@@ -2502,17 +2502,31 @@
         "keepOpen": "Keep this tab open until the export finishes.",
         "keepOpenVisible": "Keep this tab open and visible until the export finishes.",
         "stopped": "The last export at {0} with {1} Render Scale did not finish.",
+        "suggest": {
+            "choose": "Choose {0}.",
+            "antialias": "Antialiasing is unavailable on this device with these settings. Turn it off.",
+            "sound": "Sound is unavailable in this browser with these settings. Turn off {0}."
+        },
+        "memoryWarning": "Exporting with these settings may use too much memory. Choose a shorter range or lower the quality.",
+        "warnings": {
+            "pictureStops": "The picture stops before the end of the range.",
+            "picturePauses": "The picture may pause or end early.",
+            "outOfSync": "The picture and sound may be out of sync.",
+            "uneven": "The motion may be uneven.",
+            "incomplete": "Some frames may be incomplete.",
+            "resolution": "The video is {0}. The selected resolution was {1}.",
+            "soundStops": "The sound stops before the end of the range."
+        },
         "discardTitle": "Discard this video?",
         "discard": "Discard Video",
         "unsupported": "This browser cannot export video.",
         "errors": {
             "config": "These video settings are not available in this browser. Choose a lower resolution or frame rate.",
             "encoder": "The video could not be created.",
-            "audio": "The audio could not be prepared.",
+            "audio": "The sound could not be created. Try again, or turn off {0}.",
             "graphics": "A graphics error stopped the export. Try again.",
             "memory": "There was not enough memory. Choose a lower resolution.",
             "hidden": "The export stopped while the tab was in the background. Keep this tab visible and try again.",
-            "memoryLimit": "This video is too large for this browser. Choose a shorter range or lower the quality.",
             "unavailable": "This browser cannot export video.",
             "download": "The video could not be downloaded.",
             "share": "The video could not be shared."

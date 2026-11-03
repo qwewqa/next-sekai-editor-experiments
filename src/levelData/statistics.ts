@@ -641,15 +641,20 @@ export const roundParts = (parts: readonly number[], total: number) => {
 // --- Text.
 
 // Narrow conjunctions: "Tap, Flick, Release" in English and "タップ、フリック" in Japanese. The unit
-// style drops the separators in Chinese, Japanese, Korean and Turkish.
+// style drops the separators in Chinese, Japanese, Korean and Turkish. The long style reads inside
+// a sentence: "BGM and SFX".
 const lists = new Map<string, Intl.ListFormat>()
-/** A list as the dialog joins it, with no "and" in English. */
-export const formatList = (items: string[], locale: string) => {
+/** A list as the dialog joins it, with no "and" in English unless the style is long. */
+export const formatList = (
+    items: string[],
+    locale: string,
+    style: 'narrow' | 'long' = 'narrow',
+) => {
     const tag = languageTag(locale)
-    let format = lists.get(tag)
+    let format = lists.get(`${tag} ${style}`)
     if (!format) {
-        format = new Intl.ListFormat(tag, { type: 'conjunction', style: 'narrow' })
-        lists.set(tag, format)
+        format = new Intl.ListFormat(tag, { type: 'conjunction', style })
+        lists.set(`${tag} ${style}`, format)
     }
     return format.format(items)
 }

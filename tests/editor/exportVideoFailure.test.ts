@@ -4,13 +4,19 @@ import './saveMatrix/env'
 
 const { describeVideoFailure } = await import('../../src/editor/exportVideo/failure')
 const { FileError } = await import('../../src/platform/types')
+const sound = { bgm: true, sfx: true }
 
 test('a failed video adds that the picked file is now empty when cleanup could not remove it', async () => {
     const handle = {
         name: 'project.nxsp',
         getFile: () => Promise.resolve(new File([], 'project.nxsp')),
     } as FileSystemFileHandle
-    const failure = await describeVideoFailure(new Error('Encoding failed'), 'clip.mp4', handle)
+    const failure = await describeVideoFailure(
+        new Error('Encoding failed'),
+        'clip.mp4',
+        sound,
+        handle,
+    )
     assert.equal(failure.reason, 'encoder')
     assert.equal(failure.message(), 'The video could not be created. The file is now empty.')
 })
@@ -22,7 +28,12 @@ test('a removed, unreadable or changed video target keeps the original failure',
         () => Promise.resolve(new File(['other writer'], 'project.nxsp')),
     ]) {
         const handle = { name: 'project.nxsp', getFile } as FileSystemFileHandle
-        const failure = await describeVideoFailure(new Error('Encoding failed'), 'clip.mp4', handle)
+        const failure = await describeVideoFailure(
+            new Error('Encoding failed'),
+            'clip.mp4',
+            sound,
+            handle,
+        )
         assert.equal(failure.reason, 'encoder')
         assert.doesNotMatch(failure.message(), /The file is now empty/)
     }
@@ -36,6 +47,7 @@ test('a file failure without a name names the picked file, not the suggested one
     const failure = await describeVideoFailure(
         new FileError('denied', 'Access was revoked'),
         'clip.mp4',
+        sound,
         handle,
     )
     assert.equal(failure.reason, 'denied')
@@ -50,7 +62,7 @@ test('a failed rerun leads with its own error, and Error Details add the refusal
     const cleanup = new FileError('io', 'clip.webm could not be removed')
     const rerun = withFailureDetails(new Error('Encoding failed'), [refusal, cleanup])
     const restored = restoreExportError(structuredClone(serializeExportError(rerun)))
-    const failure = await describeVideoFailure(restored, 'clip.webm')
+    const failure = await describeVideoFailure(restored, 'clip.webm', sound)
     assert.equal(failure.reason, 'encoder')
     assert.equal(failure.message(), 'The video could not be created.')
     assert.equal(
@@ -77,11 +89,20 @@ test('Error Details list each failure once, without the error they explain', asy
 test('a sound failure keeps its reason across the worker, and only a sound failure has it', async () => {
     const { AudioFailure, serializeExportError, restoreExportError } =
         await import('../../src/exportVideo/error')
-    const sound = new AudioFailure(new DOMException('Encoding failed', 'EncodingError'))
-    const restored = restoreExportError(structuredClone(serializeExportError(sound)))
+    const error = new AudioFailure(new DOMException('Encoding failed', 'EncodingError'))
+    const restored = restoreExportError(structuredClone(serializeExportError(error)))
     assert.ok(restored instanceof AudioFailure)
-    assert.equal((await describeVideoFailure(restored, 'clip.mp4')).reason, 'audio')
+    const failure = await describeVideoFailure(restored, 'clip.mp4', sound)
+    assert.equal(failure.reason, 'audio')
+    assert.equal(
+        failure.message(),
+        'The sound could not be created. Try again, or turn off BGM and SFX.',
+    )
     // Words in a message do not make a failure the sound's.
-    const other = await describeVideoFailure(new Error('Unexpected audio packet'), 'clip.mp4')
+    const other = await describeVideoFailure(
+        new Error('Unexpected audio packet'),
+        'clip.mp4',
+        sound,
+    )
     assert.equal(other.reason, 'encoder')
 })

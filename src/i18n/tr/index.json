@@ -2502,17 +2502,31 @@
     "keepOpen": "Dışa aktarma bitene kadar bu sekmeyi açık tutun.",
     "keepOpenVisible": "Dışa aktarma bitene kadar bu sekmeyi açık ve görünür tutun.",
     "stopped": "{0} çözünürlük ve {1} Çizim Ölçeği ile yapılan son dışa aktarma tamamlanmadı.",
+    "suggest": {
+      "choose": "{0} seçin.",
+      "antialias": "Bu ayarlarla bu cihazda Kenar Yumuşatma kullanılamıyor. Bu ayarı kapatın.",
+      "sound": "Bu ayarlarla bu tarayıcıda ses kullanılamıyor. {0}’ni kapatın."
+    },
+    "memoryWarning": "Bu ayarlarla dışa aktarma çok fazla bellek kullanabilir. Daha kısa bir aralık seçin veya kaliteyi düşürün.",
+    "warnings": {
+      "pictureStops": "Görüntü, aralık bitmeden duruyor.",
+      "picturePauses": "Görüntü duraklayabilir veya erken bitebilir.",
+      "outOfSync": "Görüntü ve ses arasında zaman farkı olabilir.",
+      "uneven": "Hareketler akıcı olmayabilir.",
+      "incomplete": "Bazı kareler kısmen eksik olabilir.",
+      "resolution": "Videonun çözünürlüğü {0}. Seçilen çözünürlük {1} idi.",
+      "soundStops": "Ses, aralık bitmeden duruyor."
+    },
     "discardTitle": "Bu video silinsin mi?",
     "discard": "Videoyu Sil",
     "unsupported": "Bu tarayıcı video dışa aktaramıyor.",
     "errors": {
       "config": "Bu video ayarları bu tarayıcıda kullanılamıyor. Daha düşük bir çözünürlük veya kare hızı seçin.",
       "encoder": "Video oluşturulamadı.",
-      "audio": "Ses hazırlanamadı.",
+      "audio": "Ses oluşturulamadı. Tekrar deneyin veya {0}’ni kapatın.",
       "graphics": "Bir grafik hatası dışa aktarmayı durdurdu. Tekrar deneyin.",
       "memory": "Bellek yetersizdi. Daha düşük bir çözünürlük seçin.",
       "hidden": "Sekme arka plandayken dışa aktarma durdu. Bu sekmeyi görünür tutup tekrar deneyin.",
-      "memoryLimit": "Bu video bu tarayıcı için çok büyük. Daha kısa bir aralık seçin veya kaliteyi düşürün.",
       "unavailable": "Bu tarayıcı video dışa aktaramıyor.",
       "download": "Video indirilemedi.",
       "share": "Video paylaşılamadı."

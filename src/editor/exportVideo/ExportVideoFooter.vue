@@ -8,12 +8,15 @@ import { formatSize } from '../../utils/size'
 import WaitBar from '../workspace/WaitBar.vue'
 import { formatClipTime } from './clipTime'
 import type { ExportDialog } from './dialog'
+import { formatDimensions, type ExportMessage } from './messages'
 
 // The pinned footer: the summary or the export's status, then the buttons for the state.
 const props = defineProps<{
     dialog: ExportDialog
     /** A save picker names the file, so Export asks first. */
     picker: boolean
+    /** The prefix of the slot's message ids. */
+    messageIds: string
 }>()
 const emit = defineEmits<{
     export: []
@@ -37,7 +40,7 @@ const tail = computed(() => [
     about(formatSize(d.bytes.value)),
 ])
 const longSummary = computed(() => [
-    `${d.size.value.width} × ${d.size.value.height}`,
+    formatDimensions(d.size.value),
     interpolateRaw(strings.value.fps, `${d.form.frameRate}`),
     ...tail.value,
 ])
@@ -139,6 +142,15 @@ defineExpose({
     },
 })
 
+// Download Video and Done's Close are described by the file's warnings, Failed's Close by the
+// failure, and Export by the memory warning.
+const describedBy = (kind: ExportMessage['kind']) =>
+    d.messages.value
+        .flatMap((message, index) =>
+            message.kind === kind ? [`${props.messageIds}-${index}`] : [],
+        )
+        .join(' ') || undefined
+
 const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-4'
 </script>
 
@@ -205,6 +217,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                     type="button"
                     :class="[button, 'btn-secondary']"
                     :disabled="!d.ready.value"
+                    :aria-describedby="describedBy('memory')"
                     data-export-start
                     @click="emit('export')"
                 >
@@ -225,6 +238,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                     ref="download"
                     type="button"
                     :class="[button, 'btn-primary']"
+                    :aria-describedby="describedBy('finished')"
                     data-export-download
                     @click="emit('deliver', 'download')"
                 >
@@ -237,6 +251,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 type="button"
                 :class="[button, 'btn-secondary']"
                 :disabled="!d.ready.value"
+                :aria-describedby="describedBy('memory')"
                 data-export-start
                 @click="emit('export')"
             >
@@ -246,6 +261,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 ref="primary"
                 type="button"
                 :class="[button, 'btn-primary']"
+                :aria-describedby="describedBy('finished')"
                 data-export-close
                 @click="emit('close')"
             >
@@ -258,6 +274,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 type="button"
                 :class="[button, 'btn-secondary', { 'opacity-40': cancelOff }]"
                 :aria-disabled="cancelOff || undefined"
+                :aria-describedby="describedBy('failure')"
                 :data-export-cancel="phase === 'failed' ? undefined : ''"
                 :data-export-close="phase === 'failed' ? '' : undefined"
                 @click="onSecondary"
@@ -270,6 +287,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 type="button"
                 :class="[button, 'btn-primary']"
                 :disabled="d.busy.value || !d.ready.value"
+                :aria-describedby="describedBy('memory')"
                 data-export-start
                 @click="emit('export')"
             >
