@@ -300,6 +300,8 @@ export const createExportJob = (options: {
             })
         }
         set({ phase: 'preparing' })
+        // Failures before the one reported, for Error Details.
+        const earlier: unknown[] = []
         try {
             if (
                 !Number.isFinite(settings.in) ||
@@ -334,8 +336,6 @@ export const createExportJob = (options: {
             let target = (destination = await destinationOf(
                 options.destination(signal, id, route()),
             ))
-            // Failures before the one reported, for Error Details.
-            const earlier: unknown[] = []
             let result: unknown
             for (let retried = false; ;) {
                 signal.throwIfAborted()
@@ -371,7 +371,7 @@ export const createExportJob = (options: {
                         target.worker.kind !== 'picked' ||
                         !isWriteRefusal(error)
                     )
-                        throw withFailureDetails(error, earlier)
+                        throw error
                     earlier.push(error)
                 }
                 retried = true
@@ -407,13 +407,13 @@ export const createExportJob = (options: {
             controller.abort(error)
             host?.dispose()
             host = undefined
-            let failure = error
+            let failure = cancelled ? error : withFailureDetails(error, earlier)
             clearMarker?.()
             try {
                 await destination?.discard()
             } catch (cleanupError) {
                 // A canceled export reports only a failed cleanup; a failed one keeps its cause.
-                failure = cancelled ? cleanupError : withFailureDetails(error, [cleanupError])
+                failure = cancelled ? cleanupError : withFailureDetails(failure, [cleanupError])
             }
             set(
                 cancelled && failure === error
