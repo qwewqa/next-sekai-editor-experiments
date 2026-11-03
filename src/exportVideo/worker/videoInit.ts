@@ -1,6 +1,13 @@
 // The essential initialization of encoded video: what decoders need, apart from colour.
 
-import { bitReader, bytesOf, rbspBits, readSpsChroma, readVp9KeyFrame, toBits } from './bitstream'
+import {
+    bytesOf,
+    readAvcSets,
+    readAvcSpsList,
+    readSpsHead,
+    readVp9KeyFrame,
+    toBits,
+} from './bitstream'
 
 type VideoSize = { width: number; height: number }
 
@@ -9,39 +16,7 @@ type VideoSize = { width: number; height: number }
  * its VUI. A syntax error before the VUI throws; the VUI is read only as far as colour.
  */
 const readSps = (nal: Uint8Array) => {
-    const bits = rbspBits(nal)
-    const r = bitReader(bits)
-    if ((r.read(8) & 0x9f) !== 7) throw new Error('Expected an H.264 sequence parameter set')
-    const profile = r.read(8)
-    r.read(16)
-    r.ue()
-    const { chroma, separate } = readSpsChroma(r, profile)
-    r.ue()
-    const order = r.ue()
-    if (order === 0) r.ue()
-    else if (order === 1) {
-        r.read()
-        r.ue()
-        r.ue()
-        const count = r.ue()
-        for (let i = 0; i < count; i++) r.ue()
-    }
-    r.ue()
-    r.read()
-    const widthMbs = r.ue() + 1
-    const heightUnits = r.ue() + 1
-    const frameMbsOnly = r.read()
-    if (!frameMbsOnly) r.read()
-    r.read()
-    const crop = r.read() ? [r.ue(), r.ue(), r.ue(), r.ue()] : [0, 0, 0, 0]
-    const [left = 0, right = 0, top = 0, bottom = 0] = crop
-    const planes = chroma === 0 || separate
-    const unitX = planes ? 1 : chroma === 3 ? 1 : 2
-    const unitY = (2 - frameMbsOnly) * (planes ? 1 : chroma === 1 ? 2 : 1)
-    const size: VideoSize = {
-        width: widthMbs * 16 - unitX * (left + right),
-        height: (2 - frameMbsOnly) * heightUnits * 16 - unitY * (top + bottom),
-    }
+    const { bits, r, profile, size } = readSpsHead(nal)
     let essential = bits
     try {
         if (r.read()) {
@@ -68,27 +43,14 @@ const readSps = (nal: Uint8Array) => {
  */
 export const readAvcRecord = (description: AllowSharedBufferSource) => {
     const bytes = bytesOf(description)
-    let at = 5
-    const sets = (count: number, type: number) => {
-        const found: Uint8Array[] = []
-        for (let i = 0; i < count; i++) {
-            const size = ((bytes[at] ?? 0) << 8) | (bytes[at + 1] ?? 0)
-            const start = at + 2
-            at = start + size
-            // forbidden_zero_bit 0 and the set's nal_unit_type.
-            if (size < 2 || at > bytes.length || ((bytes[start] ?? 0) & 0x9f) !== type)
-                return undefined
-            found.push(bytes.subarray(start, at))
-        }
-        return found
-    }
-    const spsCount = (bytes[at++] ?? 0) & 31
-    if (bytes[0] !== 1 || !spsCount) return undefined
-    const sps = sets(spsCount, 7)
-    const pps = sps && sets(bytes[at++] ?? 0, 8)
-    if (!sps || !pps) return undefined
+    const sps = readAvcSpsList(bytes)
+    const pps = sps && readAvcSets(bytes, sps.end + 1, bytes[sps.end] ?? 0)
+    // More than a NAL header, with forbidden_zero_bit 0 and the set's nal_unit_type.
+    const valid = (sets: Uint8Array[], type: number) =>
+        sets.every((set) => set.length > 1 && ((set[0] ?? 0) & 0x9f) === type)
+    if (!sps || !pps || !valid(sps.sets, 7) || !valid(pps.sets, 8)) return undefined
     try {
-        const parsed = sps.map(readSps)
+        const parsed = sps.sets.map(readSps)
         const first = parsed[0]
         if (!first || first.profile !== bytes[1]) return undefined
         return {
@@ -97,8 +59,8 @@ export const readAvcRecord = (description: AllowSharedBufferSource) => {
             essential: [
                 toBits(bytes.subarray(1, 5)),
                 ...parsed.map((s) => s.essential),
-                ...pps.map(toBits),
-                toBits(bytes.subarray(at)),
+                ...pps.sets.map(toBits),
+                toBits(bytes.subarray(pps.end)),
             ].join('|'),
         }
     } catch {

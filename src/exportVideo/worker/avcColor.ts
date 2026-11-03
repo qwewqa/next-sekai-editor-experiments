@@ -1,4 +1,4 @@
-import { bitReader, bytesOf, rbspBits, readSpsChroma, toBits } from './bitstream'
+import { bytesOf, readAvcSpsList, readSpsHead, toBits } from './bitstream'
 
 /** The measured RGB-to-YUV conversion: matrix and range only. */
 export type MeasuredColor = { matrix: 'bt709' | 'smpte170m'; fullRange: boolean }
@@ -98,11 +98,11 @@ export const withAvcColor = (
     const description = config.description
     if (!description) return passed
     const bytes = bytesOf(description)
-    const records = readAvcC(bytes)
+    const records = readAvcSpsList(bytes)
     if (!records) return passed
     let parsed: ParsedSps[]
     try {
-        parsed = records.sps.map(({ start, end }) => parseSps(bytes.subarray(start, end)))
+        parsed = records.sets.map(parseSps)
     } catch {
         return passed
     }
@@ -139,52 +139,9 @@ export const withAvcColor = (
     return { ...config, description: new Uint8Array(result), colorSpace: mp4Color(target) }
 }
 
-/** The SPS ranges in an AVCDecoderConfigurationRecord, or undefined when it is malformed. */
-const readAvcC = (bytes: Uint8Array) => {
-    const count = (bytes[5] ?? 0) & 31
-    if (bytes[0] !== 1 || !count) return undefined
-    const sps: { start: number; end: number }[] = []
-    let at = 6
-    for (let i = 0; i < count; i++) {
-        const high = bytes[at]
-        const low = bytes[at + 1]
-        if (high === undefined || low === undefined) return undefined
-        const size = (high << 8) | low
-        at += 2
-        if (!size || at + size > bytes.length) return undefined
-        sps.push({ start: at, end: at + size })
-        at += size
-    }
-    return { sps, end: at }
-}
-
 const parseSps = (sps: Uint8Array): ParsedSps => {
-    const bits = rbspBits(sps)
-    const r = bitReader(bits)
-    const { read, ue } = r
-    if ((read(8) & 31) !== 7) throw new Error('Expected AVC sequence parameter set')
-    const profile = read(8)
-    read(16) // constraints and level_idc
-    ue() // seq_parameter_set_id
-    readSpsChroma(r, profile)
-    ue() // log2_max_frame_num_minus4
-    const order = ue()
-    if (order === 0)
-        ue() // log2_max_pic_order_cnt_lsb_minus4
-    else if (order === 1) {
-        read() // delta_pic_order_always_zero_flag
-        ue() // offset_for_non_ref_pic (signed; only skipping)
-        ue() // offset_for_top_to_bottom_field
-        const count = ue()
-        for (let i = 0; i < count; i++) ue()
-    }
-    ue() // max_num_ref_frames
-    read() // gaps_in_frame_num_value_allowed_flag
-    ue() // pic_width_in_mbs_minus1
-    ue() // pic_height_in_map_units_minus1
-    if (!read()) read() // frame_mbs_only_flag, mb_adaptive_frame_field_flag
-    read() // direct_8x8_inference_flag
-    if (read()) for (let i = 0; i < 4; i++) ue() // frame crop offsets
+    const { bits, r } = readSpsHead(sps)
+    const { read } = r
     const unspecified = { primaries: 2, transfer: 2, matrix: 2 }
     let start = r.at
     let parsed: Omit<ParsedSps, 'bits' | 'start' | 'end'>
