@@ -530,11 +530,11 @@ test('the AAC reservation holds 960- and 1,024-sample packets at both delays aro
         // The lead-in and the delay come before zero.
         assert.ok(Math.abs(stamps[0]! + (1024 + delay) / 48000) < 1e-6)
         assert.ok(needed + 3 <= aacPacketBound(samples, delay))
-        // One packet short of the clip is incomplete.
-        await assert.rejects(
-            muxMp4({ order: [0], samples, delay, frame, audioPackets: needed - 1 }),
-            /Invalid encoded audio length/,
-        )
+        // One packet short of the clip is incomplete, unless it ends at most 96 samples short.
+        const short = muxMp4({ order: [0], samples, delay, frame, audioPackets: needed - 1 })
+        if (1024 + delay + samples - (needed - 1) * frame > 96)
+            await assert.rejects(short, /Invalid encoded audio length/)
+        else await short
     }
     // The earlier bound, in 1,024-sample packets, falls short of a minute of 960-sample packets.
     const minute = 60 * 48000
