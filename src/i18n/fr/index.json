@@ -2473,8 +2473,8 @@
     "formatDescription": {
       "choices": {
         "automatic": "Utilise MP4 si les paramètres actuels le permettent, sinon WebM.",
-        "mp4": "Pris en charge par de nombreux lecteurs et logiciels de montage vidéo.",
-        "webm": "Pris en charge par moins de lecteurs et de logiciels de montage vidéo."
+        "mp4": "Pris en charge par le plus grand nombre d’applications et d’appareils.",
+        "webm": "Meilleure qualité d’image et de son à taille de fichier égale. Pris en charge par moins d’applications et d’appareils."
       }
     },
     "videoBitrate": "Débit vidéo (Mbps)",

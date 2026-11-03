@@ -2473,8 +2473,8 @@
     "formatDescription": {
       "choices": {
         "automatic": "Geçerli ayarlarla destekleniyorsa MP4, aksi hâlde WebM kullanır.",
-        "mp4": "Oynatıcılar ve video editörleri tarafından yaygın olarak desteklenir.",
-        "webm": "Daha az oynatıcı ve video editörü tarafından desteklenir."
+        "mp4": "En fazla uygulama ve cihaz tarafından desteklenir.",
+        "webm": "Aynı dosya boyutunda görüntü ve ses kalitesi daha yüksektir. Daha az uygulama ve cihaz tarafından desteklenir."
       }
     },
     "videoBitrate": "Video Bit Hızı (Mbps)",

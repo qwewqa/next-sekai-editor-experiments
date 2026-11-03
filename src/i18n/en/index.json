@@ -2473,8 +2473,8 @@
         "formatDescription": {
             "choices": {
                 "automatic": "Uses MP4 when supported with the current settings, otherwise WebM.",
-                "mp4": "Widely supported by players and video editors.",
-                "webm": "Supported by fewer players and video editors."
+                "mp4": "Supported by the most apps and devices.",
+                "webm": "Better picture and sound at the same file size. Supported by fewer apps and devices."
             }
         },
         "videoBitrate": "Video Bitrate (Mbps)",
