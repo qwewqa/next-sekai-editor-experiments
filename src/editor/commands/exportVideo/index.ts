@@ -18,10 +18,14 @@ export const exportVideo: Command = {
             notify(() => i18n.value.exportVideo.unsupported)
             return
         }
-        const loaded = await loadForAction(async () => ({
-            open: await import('../../exportVideo/open'),
-            env: await import('../../exportVideo/env'),
-        }))
+        const loaded = await loadForAction(async () => {
+            // The dialog's encoder trials need this chunk at once; a failure to load it shows here.
+            await import('../../../exportVideo/worker/trial')
+            return {
+                open: await import('../../exportVideo/open'),
+                env: await import('../../exportVideo/env'),
+            }
+        })
         if (!loaded) return
         await loaded.open.openExportVideo(
             loaded.env.pageEnv(
