@@ -414,9 +414,9 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
                 // The previous update stops publishing at once, but leaves its shared trials
                 // and measurements only after this selection resolves, so work both need
                 // keeps a caller.
-                const current = await probes
-                    .resolve({ ...settings }, { signal })
-                    .finally(() => leave(previous))
+                const current = await probes.resolve({ ...settings }, { signal }).finally(() => {
+                    leave(previous)
+                })
                 publish({ pending: false, current, choices: shownChoices })
                 // Trials encode full-size frames, so choices at another size or frame rate
                 // skip them.
