@@ -119,6 +119,30 @@ test('only unavailable staging selects memory and the estimate limits that route
     })
 })
 
+test('a worker that cannot write a staged file selects the memory route without staging', async () => {
+    const manager = new FakeLockManager()
+    const store = memoryVideoStore()
+    const output = createVideoOutput(store, manager.client(manager.scheduler.main), {
+        deliver: async () => 'delivered',
+        canShare: () => false,
+    })
+    const platform = { videoOutput: output }
+    assert.deepEqual(await prepareVideoDestination({ ...options(), platform, syncAccess: false }), {
+        kind: 'memory',
+        limit: 150000000,
+    })
+    assert.deepEqual(
+        await prepareVideoDestination({
+            ...options(),
+            platform,
+            syncAccess: false,
+            estimatedBytes: 100000001,
+        }),
+        { kind: 'unavailable', reason: 'memoryLimit' },
+    )
+    assert.deepEqual(await store.names(), [])
+})
+
 test('report payload keeps explicit work time and excludes raw names, errors and failed size', () => {
     const settings: VideoReportSettings = {
         format: 'mp4',

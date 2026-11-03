@@ -9,8 +9,8 @@ import type { SoundSource } from '../playerSounds'
 import { createMirrorSender } from '../preview/worker/mirror'
 import type { State } from '../state'
 import { createSlideInfoLookup } from '../state/entities/slides/lookup'
-import { browserEncoderProbes, createCodecProbes } from './codecs'
-import { exportError } from './error'
+import { browserEncoderProbes, createCodecProbes, type VideoFormat } from './codecs'
+import { exportError, VideoOutputUnavailable, withFailureDetails } from './error'
 import { createExportHost } from './host'
 import { mixAudio, type MixBuffers } from './mix'
 import type { ExportFaults, FromExportWorker } from './protocol'
@@ -30,6 +30,12 @@ export type JobState =
     | { phase: 'ready'; result: unknown; file: File; delivered: boolean }
     | { phase: 'done'; result: unknown }
     | { phase: 'failed'; error: unknown }
+
+/**
+ * What a destination is made for: the resolved format, and whether the worker can write a
+ * staged file (false after it could not open one).
+ */
+export type JobRoute = { format: VideoFormat; syncAccess: boolean }
 
 export type JobDestination = {
     worker: ExportTarget
@@ -61,6 +67,12 @@ const abortable = <T>(promise: Promise<T>, signal: AbortSignal, late?: (value: T
         )
     })
 
+const withoutBuffer = (result: unknown) => {
+    if (!result || typeof result !== 'object' || !('buffer' in result)) return result
+    const { buffer: _, ...rest } = result
+    return rest
+}
+
 const soundSource = ({ store }: State): SoundSource => {
     const getInfo = createSlideInfoLookup()
     const hides = new Map<GroupId, HideChange[]>()
@@ -82,10 +94,16 @@ const soundSource = ({ store }: State): SoundSource => {
 }
 
 /** Share these caches between jobs for the life of the page. */
-export const createExportServices = () => ({
-    probes: createCodecProbes(browserEncoderProbes(), detection().engine),
-    calibrate: createAacCalibration(),
-})
+export const createExportServices = () => {
+    const calibrate = createAacCalibration()
+    return {
+        probes: createCodecProbes(
+            { ...browserEncoderProbes(), aacDelay: calibrate },
+            detection().engine,
+        ),
+        calibrate,
+    }
+}
 
 export const createExportJob = (options: {
     snapshot: State
@@ -94,9 +112,9 @@ export const createExportJob = (options: {
     platform: Pick<Platform, 'onCloseRequested'>
     services: ReturnType<typeof createExportServices>
     assets(signal: AbortSignal): Promise<ExportAssets>
-    destination(signal: AbortSignal, id: string): Promise<JobDestination>
+    destination(signal: AbortSignal, id: string, route: JobRoute): Promise<JobDestination>
     /** The route without a picker, for a picked file the platform refuses to write. */
-    fallback?(signal: AbortSignal, id: string): Promise<JobDestination>
+    fallback?(signal: AbortSignal, id: string, route: JobRoute): Promise<JobDestination>
     worker(): Worker
     changed(state: JobState): void
     frame?(bitmap: ImageBitmap): void
@@ -125,6 +143,7 @@ export const createExportJob = (options: {
     let preparation: Promise<void> | undefined
     let lastView: Promise<unknown> | undefined
     let encoding = false
+    let syncAccess = true
     const set = (value: JobState) => {
         state = value
         options.changed(value)
@@ -159,12 +178,16 @@ export const createExportJob = (options: {
     }
     const resolveConfig = async () => {
         const samples = clipSamples(settings.frames, settings.frameRate)
-        const codecs = await abortable(options.services.probes.resolve(settings), signal)
+        const codecs = await abortable(
+            options.services.probes.resolve(settings, { signal }),
+            signal,
+        )
         if (!codecs.supported)
             throw new Error(`Encoder configuration unavailable: ${codecs.reason}`)
         const aacDelay =
             codecs.audio?.codec === 'mp4a.40.2'
-                ? await abortable(options.services.calibrate(codecs.audio), signal)
+                ? (codecs.aacDelay ??
+                  (await abortable(options.services.calibrate(codecs.audio, signal), signal)))
                 : undefined
         return {
             settings: structuredClone(settings),
@@ -300,25 +323,56 @@ export const createExportJob = (options: {
             })
             if (!host) throw new Error('Export worker is unavailable')
             signal.throwIfAborted()
-            let target = (destination = await options.destination(signal, id))
-            // A picked file the platform refuses to write is exported again, once, by the
-            // route without a picker, and offered from Ready.
+            const route = (): JobRoute => ({ format: config.codecs.format, syncAccess })
+            // A destination that arrives after Cancel is discarded.
+            const destinationOf = (made: Promise<JobDestination>) =>
+                abortable(made, signal, (late) => {
+                    void late.discard().catch(() => undefined)
+                })
+            let target = (destination = await destinationOf(
+                options.destination(signal, id, route()),
+            ))
+            // Failures before the one reported, for Error Details.
+            const earlier: unknown[] = []
             let result: unknown
-            for (let retried = false; ; retried = true) {
+            for (let retried = false; ;) {
                 signal.throwIfAborted()
                 try {
                     result = await encode(target, config)
                     break
                 } catch (error) {
+                    if (signal.aborted) throw error
+                    // A worker that cannot open a staged file encoded nothing; it writes to
+                    // memory instead, with the same worker.
+                    if (
+                        error instanceof VideoOutputUnavailable &&
+                        error.reason === 'staging' &&
+                        target.worker.kind === 'staged' &&
+                        syncAccess
+                    ) {
+                        syncAccess = false
+                        encoding = false
+                        clearMarker?.()
+                        clearMarker = undefined
+                        await target.discard().catch((cleanup: unknown) => earlier.push(cleanup))
+                        destination = undefined
+                        target = destination = await destinationOf(
+                            (options.fallback ?? options.destination)(signal, id, route()),
+                        )
+                        continue
+                    }
+                    // A picked file the platform refuses to write is exported again, once, by
+                    // the route without a picker, and offered from Ready.
                     if (
                         retried ||
                         !options.fallback ||
                         target.worker.kind !== 'picked' ||
-                        signal.aborted ||
                         !isWriteRefusal(error)
                     )
-                        throw error
+                        throw withFailureDetails(error, earlier)
+                    earlier.push(error)
                 }
+                retried = true
                 encoding = false
                 clearMarker?.()
                 clearMarker = undefined
@@ -333,19 +387,18 @@ export const createExportJob = (options: {
                 set({ phase: 'preparing' })
                 // The worker cleaned up after the picked file; a picked file it could not read
                 // stays as it is.
-                await target.discard().catch(() => undefined)
+                await target.discard().catch((cleanup: unknown) => earlier.push(cleanup))
                 destination = undefined
                 await prepare()
-                target = destination = await options.fallback(signal, id)
+                target = destination = await destinationOf(options.fallback(signal, id, route()))
             }
-            if (target.ready)
-                set({
-                    phase: 'ready',
-                    result,
-                    file: await target.ready.file(result),
-                    delivered: false,
-                })
-            else set({ phase: 'done', result })
+            // The worker is done. Ready keeps the file, not the in-memory route's buffer.
+            host?.dispose()
+            host = undefined
+            if (target.ready) {
+                const file = await target.ready.file(result)
+                set({ phase: 'ready', result: withoutBuffer(result), file, delivered: false })
+            } else set({ phase: 'done', result })
         } catch (error) {
             const cancelled = signal.aborted
             controller.abort(error)
@@ -356,7 +409,8 @@ export const createExportJob = (options: {
             try {
                 await destination?.discard()
             } catch (cleanupError) {
-                failure = cleanupError
+                // A canceled export reports only a failed cleanup; a failed one keeps its cause.
+                failure = cancelled ? cleanupError : withFailureDetails(error, [cleanupError])
             }
             set(
                 cancelled && failure === error

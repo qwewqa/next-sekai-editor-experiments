@@ -42,3 +42,23 @@ test('a file failure without a name names the picked file, not the suggested one
     assert.match(failure.message(), /Picked\.mp4/)
     assert.doesNotMatch(failure.message(), /clip\.mp4/)
 })
+
+test('a failed rerun leads with its own error, and Error Details add the refusal and the cleanup', async () => {
+    const { withFailureDetails, serializeExportError, restoreExportError } =
+        await import('../../src/exportVideo/error')
+    const refusal = new DOMException('Write refused', 'NotAllowedError')
+    const cleanup = new FileError('io', 'clip.webm could not be removed')
+    const rerun = withFailureDetails(new Error('Encoding failed'), [refusal, cleanup])
+    const restored = restoreExportError(structuredClone(serializeExportError(rerun)))
+    const failure = await describeVideoFailure(restored, 'clip.webm')
+    assert.equal(failure.reason, 'encoder')
+    assert.equal(failure.message(), 'The video could not be created.')
+    assert.equal(
+        failure.detail,
+        [
+            'Error: Encoding failed',
+            'NotAllowedError: Write refused',
+            'FileError: clip.webm could not be removed',
+        ].join('\n'),
+    )
+})

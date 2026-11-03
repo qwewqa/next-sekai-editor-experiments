@@ -1,6 +1,7 @@
 import { isRefusedRead } from '../../platform/fingerprint'
 import { fileErrorOf } from '../../platform/handover'
 import { FileError } from '../../platform/types'
+import { VideoOutputUnavailable } from '../error'
 type VideoPick = { handle: FileSystemFileHandle; lastModified?: number }
 
 export type PositionTarget = {
@@ -223,12 +224,21 @@ export const openStagedTarget = async (
     signal?: AbortSignal,
 ): Promise<PositionTarget> => {
     signal?.throwIfAborted()
+    const syncHandle = handle as FileSystemFileHandle & {
+        createSyncAccessHandle?: () => Promise<SyncAccess>
+    }
     let access: SyncAccess
     try {
-        access = await (
-            handle as FileSystemFileHandle & { createSyncAccessHandle(): Promise<SyncAccess> }
-        ).createSyncAccessHandle()
+        if (typeof syncHandle.createSyncAccessHandle !== 'function')
+            throw new TypeError('createSyncAccessHandle is unavailable')
+        access = await syncHandle.createSyncAccessHandle()
     } catch (error) {
+        // A worker without sync access to staged files uses the in-memory route instead.
+        if (
+            error instanceof TypeError ||
+            (error instanceof DOMException && error.name === 'NotSupportedError')
+        )
+            throw new VideoOutputUnavailable('staging')
         throw fileErrorOf(error)
     }
     let size = 0

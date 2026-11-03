@@ -6,7 +6,12 @@ import {
     serializeExportError,
     VideoOutputUnavailable,
 } from '../../src/exportVideo/error'
-import type { MuxInput } from '../../src/exportVideo/worker/encode'
+import {
+    createAudioPacketAdapter,
+    createVideoColor,
+    createVideoPacketAdapter,
+    type MuxInput,
+} from '../../src/exportVideo/worker/encode'
 import type { WorkerOutput } from '../../src/exportVideo/worker/export.worker'
 import { createMuxSink, muxStreamTarget, openMuxOutput } from '../../src/exportVideo/worker/mux'
 import type { SinkConfig } from '../../src/exportVideo/worker/sink'
@@ -174,6 +179,127 @@ test('an MP4 with AAC puts moov before mdat and starts the audio at the AAC dela
         assert.equal(videoStamps.length, videoFrames)
         assert.equal(audioStamps.length, audioPackets)
         assert.ok(Math.abs(audioStamps[0]! + delay / 48000) < 1e-6)
+    } finally {
+        input.dispose()
+    }
+})
+
+const fake = (
+    type: EncodedVideoChunkType,
+    timestamp: number,
+    data: number[],
+    duration: number | null = null,
+) =>
+    ({
+        type,
+        timestamp,
+        duration,
+        byteLength: data.length,
+        copyTo: (target: Uint8Array) => {
+            new Uint8Array(target.buffer).set(data)
+        },
+    }) as unknown as EncodedVideoChunk & EncodedAudioChunk
+
+test('adapter output muxes into an MP4 with moov first, encoded order and the cropped size', async () => {
+    const avcC = new Uint8Array([
+        1, 100, 0, 30, 255, 225, 0, 23, 103, 100, 0, 30, 172, 43, 64, 160, 207, 207, 128, 136, 0, 0,
+        31, 64, 0, 7, 83, 0, 120, 225, 53, 1, 0, 4, 104, 238, 60, 176, 253, 248, 248, 0,
+    ])
+    const delay = 2112
+    const frames = 3
+    const samples = 4800
+    const mp4: SinkConfig = {
+        codecs: {
+            supported: true,
+            format: 'mp4',
+            video: { codec: 'avc1.4d401e', width: 320, height: 180 },
+            audio: { codec: 'mp4a.40.2', numberOfChannels: 2, sampleRate: 48000 },
+        },
+        frames,
+        frameRate: 30,
+        samples,
+    }
+    const inputs: MuxInput[] = []
+    const video = createVideoPacketAdapter({
+        width: 320,
+        height: 180,
+        frames,
+        frameRate: 30,
+        color: createVideoColor(),
+        emit: (input) => inputs.push(input),
+    })
+    for (let i = 0; i < frames; i++) video.submit()
+    // Decode order 0, 2, 1, without durations.
+    video.output(fake('key', 0, [0, 0, 0, 2, 0x65, 0x88]), {
+        decoderConfig: {
+            codec: 'avc1.4d401e',
+            codedWidth: 320,
+            codedHeight: 192,
+            description: avcC,
+            colorSpace: {
+                primaries: 'bt709',
+                transfer: 'iec61966-2-1',
+                matrix: 'bt709',
+                fullRange: true,
+            },
+        },
+    })
+    video.output(fake('delta', 66667, [0, 0, 0, 2, 0x41, 0x88]))
+    video.output(fake('delta', 33333, [0, 0, 0, 2, 0x01, 0x88]))
+    video.finish()
+    const audio = createAudioPacketAdapter({
+        codec: 'aac',
+        samples,
+        aacDelay: delay,
+        emit: (input) => inputs.push(input),
+    })
+    const count = Math.ceil((1024 + delay + samples) / 1024)
+    for (let i = 0; i < count; i++)
+        audio.output(
+            fake('key', 0, [0x21, 0x10, 0x04, 0x60, 0x8c, 0x1c], 21333),
+            i
+                ? undefined
+                : {
+                      decoderConfig: {
+                          codec: 'mp4a.40.2',
+                          numberOfChannels: 2,
+                          sampleRate: 48000,
+                          description: new Uint8Array([0x11, 0x90]),
+                      },
+                  },
+        )
+    audio.finish()
+    const target = new BufferTarget()
+    const sink = await createMuxSink({ ...mp4, aacDelay: delay }, target)
+    for (const input of inputs) await sink.add(input)
+    await sink.finalize()
+
+    const bytes = new Uint8Array(target.buffer!)
+    const at = (name: string) => Buffer.from(bytes).indexOf(name, 0, 'latin1')
+    assert.ok(at('moov') > 0 && at('moov') < at('mdat'))
+    const input = new Input({ formats: ALL_FORMATS, source: new BufferSource(bytes) })
+    try {
+        const track = await input.getPrimaryVideoTrack()
+        const sound = await input.getPrimaryAudioTrack()
+        assert.ok(track && sound)
+        assert.equal(await track.getCodecParameterString(), 'avc1.64001e')
+        const config = await track.getDecoderConfig()
+        assert.deepEqual(
+            new Uint8Array(config!.description as ArrayBuffer).subarray(0, 4),
+            avcC.subarray(0, 4),
+        )
+        assert.equal(track.displayWidth, 320)
+        assert.equal(track.displayHeight, 180)
+        const stamps: number[] = []
+        for await (const packet of new EncodedPacketSink(track).packets())
+            stamps.push(Math.round(packet.timestamp * 30))
+        assert.deepEqual(stamps, [0, 2, 1])
+        let packets = 0
+        for await (const packet of new EncodedPacketSink(sound).packets()) {
+            void packet
+            packets++
+        }
+        assert.equal(packets, count)
     } finally {
         input.dispose()
     }

@@ -1,6 +1,6 @@
 // What an export's failure says, and the reason its usage event records.
 
-import { VideoOutputUnavailable } from '../../exportVideo/error'
+import { failureDetails, VideoOutputUnavailable } from '../../exportVideo/error'
 import { i18n } from '../../i18n'
 import { FileError } from '../../platform/types'
 import { fileErrorText } from '../commands/exportLevel/ui'
@@ -17,7 +17,11 @@ const text = (pick: (messages: (typeof i18n)['value']['exportVideo']['errors']) 
     pick(i18n.value.exportVideo.errors)
 
 const describeFailure = (error: unknown, name: string): VideoFailure => {
-    const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+    // Earlier failures, such as a refused first attempt or a failed cleanup, follow the cause.
+    const detail = [
+        error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        ...failureDetails(error),
+    ].join('\n')
     if (error instanceof VideoOutputUnavailable)
         return error.reason === 'memoryLimit'
             ? { reason: 'memoryLimit', message: text((m) => m.memoryLimit), detail }

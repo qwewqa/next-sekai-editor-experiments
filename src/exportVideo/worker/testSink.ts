@@ -6,6 +6,7 @@ import type { PacketSink, SinkConfig } from './sink'
 export const createTestSink = (config: SinkConfig) => {
     const inputs: MuxInput[] = []
     let frames = 0
+    const seen = new Set<number>()
     let audioEnd: number | undefined
     let timing: AudioTiming | undefined
     let padding: number | undefined
@@ -18,16 +19,27 @@ export const createTestSink = (config: SinkConfig) => {
         add(input) {
             check(!closed, 'Test sink is closed')
             if (input.track === 'video') {
+                // Packets arrive in encoded order, each at its own frame's timestamp.
+                const index = Math.round((input.packet.timestamp * config.frameRate) / 1e6)
                 check(
-                    input.packet.timestamp === frameTimestamp(frames, config.frameRate),
+                    index >= 0 &&
+                        index < config.frames &&
+                        !seen.has(index) &&
+                        input.packet.timestamp === frameTimestamp(index, config.frameRate),
                     'Missing or misplaced video frame',
                 )
+                seen.add(index)
                 check(
                     input.packet.duration ===
-                        frameTimestamp(frames + 1, config.frameRate) - input.packet.timestamp,
+                        frameTimestamp(index + 1, config.frameRate) - input.packet.timestamp,
                     'Wrong video duration',
                 )
+                check(
+                    frames > 0 || input.packet.type === 'key',
+                    'First video frame is not a key frame',
+                )
                 if (input.decoderConfig) {
+                    check(!videoConfigured && frames === 0, 'Video configuration was given twice')
                     check(
                         input.decoderConfig.codedWidth === config.codecs.video.width &&
                             input.decoderConfig.codedHeight === config.codecs.video.height,

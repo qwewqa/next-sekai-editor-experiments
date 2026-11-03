@@ -22,6 +22,8 @@ export const prepareVideoDestination = async (options: {
     id: string
     format: VideoFormat
     estimatedBytes: number
+    /** False when the export worker cannot write a staged file: memory is the route. */
+    syncAccess?: boolean
 }): Promise<VideoDestination> => {
     const { platform, pickOptions } = options
     pickOptions.signal?.throwIfAborted()
@@ -34,6 +36,13 @@ export const prepareVideoDestination = async (options: {
     }
     const output = platform.videoOutput
     if (!output) return { kind: 'unavailable', reason: 'output' }
+    const memory = (): VideoDestination =>
+        !Number.isFinite(options.estimatedBytes) ||
+        options.estimatedBytes < 0 ||
+        options.estimatedBytes > VIDEO_MEMORY_ESTIMATE_LIMIT
+            ? { kind: 'unavailable', reason: 'memoryLimit' }
+            : { kind: 'memory', limit: VIDEO_MEMORY_LIMIT }
+    if (options.syncAccess === false) return memory()
     try {
         const stage = await output.stage(options.id, options.format)
         if (pickOptions.signal?.aborted) {
@@ -49,13 +58,7 @@ export const prepareVideoDestination = async (options: {
             !['SecurityError', 'NotSupportedError'].includes(error.name)
         )
             throw fileErrorOf(error)
-        if (
-            !Number.isFinite(options.estimatedBytes) ||
-            options.estimatedBytes < 0 ||
-            options.estimatedBytes > VIDEO_MEMORY_ESTIMATE_LIMIT
-        )
-            return { kind: 'unavailable', reason: 'memoryLimit' }
-        return { kind: 'memory', limit: VIDEO_MEMORY_LIMIT }
+        return memory()
     }
 }
 

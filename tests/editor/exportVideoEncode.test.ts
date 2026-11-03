@@ -15,11 +15,13 @@ import {
     createAudioFeeder,
     createAudioPacketAdapter,
     createVideoColor,
+    createVideoPacketAdapter,
     normalizeAacDescription,
     opusPreSkip,
     videoPacket,
     type MuxInput,
 } from '../../src/exportVideo/worker/encode'
+import { readAvcRecord, vp9FrameSize } from '../../src/exportVideo/worker/videoInit'
 import { vp9KeyFrame } from './videoColorFixtures'
 
 const chunk = (timestamp: number, duration: number): EncodedAudioChunk => ({
@@ -111,7 +113,7 @@ test('every encoder receives the silent pad and contiguous units with an exact l
     assert.equal(closed, 3)
     assert.equal(feeder.submittedEnd, 5600 / AUDIO_RATE)
     assert.throws(() => feeder.pad(), /already/)
-    assert.equal(aacPacketBound(5600, 2), 9)
+    assert.equal(aacPacketBound(5600, 2112), Math.ceil(8736 / 960) + 1024)
 })
 
 test('AAC packets put the pad and priming before zero and retain final padding', () => {
@@ -271,4 +273,315 @@ test('AAC delay calibration caches the whole configuration and retries failed me
     assert.equal(await measure({ ...config }), 2112)
     await measure({ ...config, bitrate: 256000 })
     assert.equal(calls, 3)
+})
+
+const aacConfig = {
+    codec: 'mp4a.40.2',
+    sampleRate: 48000,
+    numberOfChannels: 2,
+    description: new Uint8Array([0x11, 0x90]),
+}
+const opusConfig = { ...aacConfig, codec: 'opus', description: opusHead(312) }
+const audioPackets = (emitted: MuxInput[]) =>
+    emitted.flatMap((x) => (x.track === 'audio' ? [x.packet] : []))
+
+test('AAC durations rounded either way give whole samples, and every packet reaches the muxer', () => {
+    for (const delay of [1024, 2112]) {
+        const samples = 4800
+        const count = Math.ceil((AUDIO_PAD + delay + samples) / 1024)
+        const emitted: MuxInput[] = []
+        const adapter = createAudioPacketAdapter({
+            codec: 'aac',
+            samples,
+            aacDelay: delay,
+            emit: (input) => emitted.push(input),
+        })
+        // Two packets more than the clip needs, as an encoder's flush can add.
+        for (let i = 0; i < count + 2; i++)
+            adapter.output(
+                chunk(0, i % 2 ? 21334 : 21333),
+                i ? undefined : { decoderConfig: aacConfig },
+            )
+        const trim = adapter.finish()
+        const packets = audioPackets(emitted)
+        assert.equal(packets.length, count + 2)
+        assert.deepEqual(
+            packets.map((p) => Math.round(((p.timestamp + p.duration) * AUDIO_RATE) / 1e6)),
+            Array.from({ length: count + 2 }, (_, i) => (i + 1) * 1024 - AUDIO_PAD - delay),
+        )
+        assert.equal(trim.paddingSamples, (count + 2) * 1024 - (AUDIO_PAD + delay + samples))
+    }
+})
+
+test('audio short of the clip, or a packet without a duration, fails', () => {
+    const short = createAudioPacketAdapter({
+        codec: 'aac',
+        samples: 4800,
+        aacDelay: 2112,
+        emit: () => undefined,
+    })
+    const count = Math.ceil((AUDIO_PAD + 2112 + 4800) / 1024) - 1
+    for (let i = 0; i < count; i++)
+        short.output(chunk(0, 21333), i ? undefined : { decoderConfig: aacConfig })
+    assert.throws(() => short.finish(), /Invalid encoded audio length/)
+    const missing = createAudioPacketAdapter({ codec: 'opus', samples: 800, emit: () => undefined })
+    assert.throws(
+        () => missing.output({ ...chunk(0, 0), duration: null }, { decoderConfig: opusConfig }),
+        /omitted packet duration/,
+    )
+})
+
+test('audio configuration comes with the first packet, may repeat, and fails when it changes', () => {
+    const late = createAudioPacketAdapter({
+        codec: 'aac',
+        samples: 4800,
+        aacDelay: 1024,
+        emit: () => undefined,
+    })
+    assert.throws(() => late.output(chunk(0, 21333)), /omitted audio configuration/)
+    const emitted: MuxInput[] = []
+    const adapter = createAudioPacketAdapter({
+        codec: 'aac',
+        samples: 4800,
+        aacDelay: 1024,
+        emit: (input) => emitted.push(input),
+    })
+    adapter.output(chunk(0, 21333), { decoderConfig: aacConfig })
+    // The same AudioSpecificConfig inside an ES descriptor is the same configuration.
+    const decoder = [4, 17, ...new Array<number>(13).fill(0), 5, 2, 0x11, 0x90]
+    const wrapped = new Uint8Array([3, 3 + decoder.length, 0, 1, 0, ...decoder])
+    adapter.output(chunk(0, 21333), { decoderConfig: { ...aacConfig, description: wrapped } })
+    const packets = emitted.flatMap((x) => (x.track === 'audio' ? [x] : []))
+    assert.equal(packets.length, 2)
+    assert.ok(packets[0]!.decoderConfig && packets[0]!.timing)
+    assert.ok(!packets[1]!.decoderConfig && !packets[1]!.timing)
+    for (const change of [
+        { sampleRate: 44100 },
+        { numberOfChannels: 1 },
+        { description: new Uint8Array([0x12, 0x10]) },
+    ])
+        assert.throws(
+            () => adapter.output(chunk(0, 21333), { decoderConfig: { ...aacConfig, ...change } }),
+            /Audio configuration changed/,
+        )
+    const opus = createAudioPacketAdapter({ codec: 'opus', samples: 4800, emit: () => undefined })
+    opus.output(chunk(0, 20000), { decoderConfig: opusConfig })
+    opus.output(chunk(0, 20000), { decoderConfig: { ...opusConfig, description: opusHead(312) } })
+    assert.throws(
+        () =>
+            opus.output(chunk(0, 20000), {
+                decoderConfig: { ...opusConfig, description: opusHead(320) },
+            }),
+        /Audio configuration changed/,
+    )
+})
+
+// Chromium's 320 by 180 H.264 record, coded as 320 by 192 with 12 rows cropped, and the same SPS
+// with colour fields added to its VUI.
+const avcC = new Uint8Array([
+    1, 100, 0, 30, 255, 225, 0, 23, 103, 100, 0, 30, 172, 43, 64, 160, 207, 207, 128, 136, 0, 0, 31,
+    64, 0, 7, 83, 0, 120, 225, 53, 1, 0, 4, 104, 238, 60, 176, 253, 248, 248, 0,
+])
+const avcColor = new Uint8Array([
+    1, 100, 0, 30, 255, 225, 0, 27, 103, 100, 0, 30, 172, 43, 64, 160, 207, 207, 128, 183, 1, 13, 1,
+    64, 0, 0, 250, 0, 0, 58, 152, 3, 199, 9, 168, 1, 0, 4, 104, 238, 60, 176, 253, 248, 248, 0,
+])
+const avcConfig: VideoDecoderConfig = {
+    codec: 'avc1.4d401e',
+    codedWidth: 320,
+    codedHeight: 192,
+    description: avcC,
+}
+const frame = (timestamp: number, duration: number | null = 33333) =>
+    ({ ...chunk(timestamp, 0), duration }) as unknown as EncodedVideoChunk
+const videoAdapter = (
+    frames: number,
+    submitted = frames,
+    emit = (_: MuxInput) => undefined,
+    size = { width: 320, height: 180 },
+) => {
+    const adapter = createVideoPacketAdapter({
+        ...size,
+        frames,
+        frameRate: 30,
+        color: createVideoColor(),
+        emit,
+    })
+    for (let i = 0; i < submitted; i++) adapter.submit()
+    return adapter
+}
+
+test('video packets keep encoded order, take their frame timing and the record codec string', () => {
+    const emitted: MuxInput[] = []
+    const adapter = videoAdapter(3, 3, (input) => {
+        emitted.push(input)
+    })
+    adapter.output(frame(0), { decoderConfig: avcConfig })
+    adapter.output(frame(66667, null))
+    // A repeat whose SPS differs only in its colour fields is the same configuration.
+    adapter.output(frame(33333, 33334), { decoderConfig: { ...avcConfig, description: avcColor } })
+    adapter.finish()
+    const packets = emitted.flatMap((x) => (x.track === 'video' ? [x] : []))
+    assert.deepEqual(
+        packets.map((x) => [x.packet.timestamp, x.packet.duration]),
+        [
+            [0, 33333],
+            [66667, 33333],
+            [33333, 33334],
+        ],
+    )
+    const config = packets[0]!.decoderConfig
+    assert.equal(config?.codec, 'avc1.64001e')
+    // The SPS crops the padded coded height to the requested one.
+    assert.equal(config?.codedWidth, 320)
+    assert.equal(config?.codedHeight, 180)
+    assert.ok(packets.slice(1).every((x) => !x.decoderConfig))
+})
+
+test('the displayed size comes from the bitstream and must be the requested one', () => {
+    // A missing coded size is read from the SPS.
+    videoAdapter(1).output(frame(0), {
+        decoderConfig: { ...avcConfig, codedWidth: undefined, codedHeight: undefined },
+    })
+    // A reported size that matches the request does not hide an SPS that crops to less.
+    assert.throws(
+        () =>
+            videoAdapter(1, 1, undefined, { width: 320, height: 192 }).output(frame(0), {
+                decoderConfig: avcConfig,
+            }),
+        /dimensions differ/,
+    )
+    // VP9's key frame header gives the frame size: 16 by 16 here, whatever is reported.
+    const vp9Key = [0x82, 0x49, 0x83, 0x42, 0x00, 0x00, 0xf0, 0x00, 0xf0]
+    const vp9 = (size: { width: number; height: number }, coded?: number) =>
+        videoAdapter(1, 1, undefined, size).output(
+            {
+                ...frame(0),
+                byteLength: vp9Key.length,
+                copyTo: (target: Uint8Array) => target.set(vp9Key),
+            } as unknown as EncodedVideoChunk,
+            { decoderConfig: { codec: 'vp09.00.10.08', codedWidth: coded, codedHeight: coded } },
+        )
+    vp9({ width: 16, height: 16 }, 24)
+    assert.throws(() => vp9({ width: 24, height: 24 }, 24), /dimensions differ/)
+    assert.equal(vp9FrameSize(new Uint8Array(vp9Key))?.width, 16)
+    assert.equal(vp9FrameSize(new Uint8Array([0x82, 0])), undefined)
+})
+
+test('a missing or late configuration, an essential change, a missing picture or an unmatched timestamp fails', () => {
+    const late = videoAdapter(2)
+    assert.throws(() => late.output(frame(0)), /omitted its configuration/)
+    for (const change of [
+        { codedWidth: 640, codedHeight: 360, description: undefined, codec: 'avc1.64001e' },
+        { codec: 'avc1.4d001f', description: undefined },
+        { description: new Uint8Array([...avcC.subarray(0, -4), 0x68, 0xef, 0x3c, 0x80]) },
+    ]) {
+        const changed = videoAdapter(2)
+        changed.output(frame(0), { decoderConfig: avcConfig })
+        assert.throws(
+            () => changed.output(frame(33333), { decoderConfig: { ...avcConfig, ...change } }),
+            /configuration changed/,
+        )
+    }
+    const missing = videoAdapter(3)
+    missing.output(frame(0), { decoderConfig: avcConfig })
+    missing.output(frame(66667))
+    assert.throws(() => missing.finish(), /incomplete/)
+    for (const timestamp of [33334, 33333]) {
+        const adapter = videoAdapter(2, timestamp === 33333 ? 1 : 2)
+        adapter.output(frame(0), { decoderConfig: avcConfig })
+        // One microsecond off, or a frame not yet submitted, matches nothing.
+        assert.throws(() => adapter.output(frame(timestamp)), /misplaced/)
+    }
+    const twice = videoAdapter(2)
+    twice.output(frame(0), { decoderConfig: avcConfig })
+    assert.throws(() => twice.output(frame(0)), /misplaced/)
+})
+
+test('the H.264 record must be readable, with the profile of its SPS, apart from any colour parsing', () => {
+    assert.equal(readAvcRecord(avcC)?.codec, 'avc1.64001e')
+    const record = (sps: number[], pps = [0x68, 0xee, 0x3c, 0x80]) =>
+        new Uint8Array([
+            1,
+            0x64,
+            0,
+            0x1e,
+            0xff,
+            0xe1,
+            0,
+            sps.length,
+            ...sps,
+            1,
+            0,
+            pps.length,
+            ...pps,
+        ])
+    const sps = [...avcC.subarray(8, 31)]
+    assert.equal(readAvcRecord(record(sps))?.codec, 'avc1.64001e')
+    // Firefox repeats the NAL header byte.
+    for (const bad of [
+        record([0x67, ...sps]),
+        record([0x68, ...sps.slice(1)]),
+        record([0x67, 0x4d, ...sps.slice(2)]),
+        record(sps.slice(0, 6)),
+        record(sps).subarray(0, 20),
+        record(sps, [0x67, 0xee, 0x3c, 0x80]),
+        new Uint8Array([1, 0x64, 0, 0x1e, 0xff, 0xe0, 0]),
+    ])
+        assert.equal(readAvcRecord(bad), undefined)
+})
+
+test('Cancel closes both AAC calibration codecs while a flush is pending, and the next call measures again', async () => {
+    const globals = globalThis as Record<string, unknown>
+    const saved = ['AudioEncoder', 'AudioDecoder', 'AudioData'].map((name) => globals[name])
+    const made: { state: string }[] = []
+    let flushing!: () => void
+    const flushed = new Promise<void>((resolve) => (flushing = resolve))
+    class Codec {
+        state = 'unconfigured'
+        closed?: () => void
+        constructor() {
+            made.push(this)
+        }
+        configure() {
+            this.state = 'configured'
+        }
+        encode() {}
+        // As in browsers, closing rejects a pending flush.
+        flush() {
+            flushing()
+            return new Promise<void>((_, reject) => {
+                this.closed = () => {
+                    reject(new DOMException('Closed', 'AbortError'))
+                }
+            })
+        }
+        close() {
+            this.state = 'closed'
+            this.closed?.()
+        }
+    }
+    globals.AudioEncoder = Codec
+    globals.AudioDecoder = Codec
+    globals.AudioData = class {
+        close() {}
+    }
+    try {
+        const calibrate = createAacCalibration()
+        const config = { codec: 'mp4a.40.2', sampleRate: 48000, numberOfChannels: 2 }
+        const controller = new AbortController()
+        const measuring = calibrate(config, controller.signal)
+        await flushed
+        controller.abort()
+        await assert.rejects(measuring, { name: 'AbortError' })
+        assert.deepEqual(
+            made.map((codec) => codec.state),
+            ['closed', 'closed'],
+        )
+        void calibrate(config, new AbortController().signal).catch(() => undefined)
+        assert.equal(made.length, 4)
+    } finally {
+        for (const [i, name] of ['AudioEncoder', 'AudioDecoder', 'AudioData'].entries())
+            globals[name] = saved[i]
+    }
 })

@@ -12,7 +12,7 @@ import {
 import { resource } from './previewResourceFixture'
 import { refusingPicker, refusingPicks } from './saveFlows'
 
-for (const route of ['staged', 'memory'])
+for (const route of ['staged', 'memory', 'memory without worker sync access'])
     test(`the ${route} route downloads a WebM file that can be read and decoded`, async ({
         page,
     }, testInfo) => {
@@ -38,7 +38,9 @@ for (const route of ['staged', 'memory'])
                 platform.videoOutput!.stage = () =>
                     Promise.reject(new DOMException('Staging unavailable', 'NotSupportedError'))
             })
-        const dialog = await openVideoDialog(page, { production: true })
+        // The page can stage the file, but the worker cannot open it: it writes to memory.
+        const faults = route === 'staged' || route === 'memory' ? undefined : { noSyncAccess: true }
+        const dialog = await openVideoDialog(page, { production: true, faults })
         await shortVideoClip(page)
         await dialog.locator('[data-export-advanced]').click()
         await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption('webm')

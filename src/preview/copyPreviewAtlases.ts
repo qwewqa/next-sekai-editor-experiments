@@ -29,7 +29,6 @@ export const copyPreviewAtlases = (
         const finish = (result: PreviewAtlasCopyResult) => {
             if (finished) return
             finished = true
-            clearTimeout(timer)
             stopWatching()
             signal.removeEventListener('abort', cancel)
             discardCopies()
@@ -38,10 +37,6 @@ export const copyPreviewAtlases = (
         const cancel = () => {
             finish({ status: 'cancelled' })
         }
-        // Loading and copying share a deadline, including an unresponsive worker.
-        const timer = setTimeout(() => {
-            finish({ status: 'failed', error: new Error('Preview atlas copies timed out') })
-        }, 30_000)
         signal.addEventListener('abort', cancel, { once: true })
         if (signal.aborted) {
             cancel()

@@ -23,6 +23,7 @@ import {
     createExportJob,
     createExportServices,
     type JobDestination,
+    type JobRoute,
     type JobState,
 } from '../../exportVideo/job'
 import type { FromExportWorker } from '../../exportVideo/protocol'
@@ -434,11 +435,11 @@ export const createExportDialog = (input: DialogInput) => {
             platform,
             services: shared,
             assets: copyExportAssets,
-            destination: (signal, id) => destinationFor(signal, id),
+            destination: (signal, id, route) => destinationFor(signal, id, route),
             ...(input.env.fallback
                 ? {
-                      fallback: (signal: AbortSignal, id: string) =>
-                          destinationFor(signal, id, true),
+                      fallback: (signal: AbortSignal, id: string, route: JobRoute) =>
+                          destinationFor(signal, id, route, true),
                   }
                 : {}),
             worker: () => input.env.worker(),
@@ -464,10 +465,13 @@ export const createExportDialog = (input: DialogInput) => {
     const destinationFor = async (
         signal: AbortSignal,
         id: string,
+        route: JobRoute,
         fallback = false,
     ): Promise<JobDestination> => {
-        // The fallback keeps the name the picker gave the file.
-        const name = (fallback ? picked?.name : undefined) ?? fileName()
+        // The file is named for the format the job resolved; the fallback keeps the name the
+        // picker gave the file.
+        if (attempt.settings) attempt.settings.format = route.format
+        const name = (fallback ? picked?.name : undefined) ?? fileName(route.format)
         const picker = input.env.picker && !fallback
         attempt.stage = picker ? 'pick' : 'prepare'
         const opened = performance.now()
@@ -475,8 +479,9 @@ export const createExportDialog = (input: DialogInput) => {
             signal,
             id,
             name,
-            format: format.value,
+            format: route.format,
             estimatedBytes: bytes.value,
+            syncAccess: route.syncAccess,
             dismissed: () => {
                 attempt.target = 'none'
                 current?.cancel()
@@ -500,7 +505,8 @@ export const createExportDialog = (input: DialogInput) => {
         attempt.stage = 'prepare'
         return destination
     }
-    const fileName = () => videoFileName(input.stem, rangeKind.value, range.value, format.value)
+    const fileName = (as = format.value) =>
+        videoFileName(input.stem, rangeKind.value, range.value, as)
 
     // --- One usage event per attempt, after its delivery is known.
     const attempt: {

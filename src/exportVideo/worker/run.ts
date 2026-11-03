@@ -1,10 +1,10 @@
-import { AUDIO_RATE, audioUnits, frameTimestamp, type AudioBlock } from '../timing'
+import { AUDIO_RATE, audioUnits, type AudioBlock } from '../timing'
 import type { ExportStart } from '../types'
 import {
     createAudioFeeder,
     createAudioPacketAdapter,
     createVideoColor,
-    videoPacket,
+    createVideoPacketAdapter,
 } from './encode'
 import { measureEncoderColor } from './encoderColor'
 import { createFrameLoop } from './loop'
@@ -46,8 +46,6 @@ export const runExport = async (
         queueSize: (track) => (track === 'video' ? video : audio)?.encodeQueueSize ?? 0,
         write: (input) => options.sink.add(input),
     })
-    let emitted = 0
-    const metadataState = { configured: false }
     try {
         // Without a measurement, the file declares the bitstream's colour and the encoder's report.
         const color = createVideoColor(
@@ -60,25 +58,21 @@ export const runExport = async (
                 ),
             ),
         )
+        const frames = createVideoPacketAdapter({
+            width: s.width,
+            height: s.height,
+            frames: s.frames,
+            frameRate: s.frameRate,
+            color,
+            emit: (input) => {
+                loop.emit(input)
+            },
+        })
         video = new VideoEncoder({
             error: loop.fail,
             output: (chunk, metadata) => {
                 try {
-                    if (
-                        chunk.timestamp !== frameTimestamp(emitted, s.frameRate) ||
-                        chunk.duration !==
-                            frameTimestamp(emitted + 1, s.frameRate) - chunk.timestamp
-                    )
-                        throw new Error('Missing or misplaced encoded frame')
-                    if (
-                        metadata?.decoderConfig &&
-                        (metadata.decoderConfig.codedWidth !== s.width ||
-                            metadata.decoderConfig.codedHeight !== s.height)
-                    )
-                        throw new Error('Encoded dimensions changed')
-                    if (metadata?.decoderConfig) metadataState.configured = true
-                    emitted++
-                    loop.emit(videoPacket(chunk, metadata, color))
+                    frames.output(chunk, metadata)
                 } catch (error) {
                     loop.fail(error)
                 }
@@ -138,6 +132,7 @@ export const runExport = async (
             options.beforeCapture?.(renderer, i)
             const frame = renderer.capture(i)
             try {
+                frames.submit()
                 video.encode(frame, { keyFrame: i % (2 * s.frameRate) === 0 })
                 if (options.inspect) await loop.guard(options.inspect(frame, i))
             } finally {
@@ -146,13 +141,14 @@ export const runExport = async (
             loop.submitted('video', (i + 1) / s.frameRate)
             if (performance.now() - lastProgress >= 500 || i === s.frames - 1) {
                 lastProgress = performance.now()
+                // Without the image, progress is shown as a number only.
                 const bitmap = await loop.guard(
                     createImageBitmap(renderer.canvas, {
                         resizeWidth: 320,
                         resizeHeight: Math.max(1, Math.round((320 * s.height) / s.width)),
-                    }),
+                    }).catch(() => undefined),
                     (late) => {
-                        late.close()
+                        late?.close()
                     },
                 )
                 options.progress(i + 1, bitmap)
@@ -166,8 +162,7 @@ export const runExport = async (
         if (audio) await loop.guard(audio.flush())
         adapter?.finish()
         await loop.drained()
-        if (emitted !== s.frames || !metadataState.configured)
-            throw new Error('Encoded video is incomplete')
+        frames.finish()
         const result = await loop.guard(options.sink.finalize())
         await loop.guard(options.finishing())
         return result

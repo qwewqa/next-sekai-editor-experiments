@@ -17,6 +17,8 @@ export type DestinationRequest = {
     name: string
     format: VideoFormat
     estimatedBytes: number
+    /** False when the export worker could not open a staged file. */
+    syncAccess?: boolean
     /** The picker was dismissed: the export ends as a cancel. */
     dismissed(): void
 }
@@ -58,6 +60,7 @@ const routeOf = async (
         id: request.id,
         format: request.format,
         estimatedBytes: request.estimatedBytes,
+        syncAccess: request.syncAccess,
     })
     switch (destination.kind) {
         case 'picked':

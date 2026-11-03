@@ -10,6 +10,8 @@ export type ExportFaults = {
     hold?: 'mix' | 'drain' | 'finalize'
     /** Refuses one operation on a picked file in the worker: reading, opening, writing or closing. */
     refuse?: 'read' | 'open' | 'write' | 'close'
+    /** The worker has no `createSyncAccessHandle`, as in browsers without it. */
+    noSyncAccess?: boolean
 }
 export type ToExportWorker =
     | { type: 'limits' }

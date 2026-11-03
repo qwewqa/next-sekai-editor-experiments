@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+    browserEncoderProbes,
     createCodecAvailability,
     createCodecProbes,
+    createSharedWork,
     h264Level,
     h264Levels,
     outputSize,
-    usableTrial,
     type CodecSettings,
-    type TrialChunk,
 } from '../../src/exportVideo/codecs'
+import { usableTrial, type TrialOutput } from '../../src/exportVideo/worker/trial'
 
 const settings: CodecSettings = {
     format: 'automatic',
@@ -165,58 +166,150 @@ test('WebKit is offered only Constrained Baseline for MP4', async () => {
         assert.deepEqual(await offered(engine), ['avc1.64002a', 'avc1.4d002a', 'avc1.42002a'])
 })
 
-test('a trial encode accepts only output the frame loop can use', () => {
-    const config = { codec: 'avc1.64001f', width: 1280, height: 720, framerate: 30 as const }
+// Chromium's 320 by 180 H.264 configuration record: High profile, coded as 320 by 192 and
+// cropped, with an SPS that has no colour fields.
+const avcC = new Uint8Array([
+    1, 100, 0, 30, 255, 225, 0, 23, 103, 100, 0, 30, 172, 43, 64, 160, 207, 207, 128, 136, 0, 0, 31,
+    64, 0, 7, 83, 0, 120, 225, 53, 1, 0, 4, 104, 238, 60, 176, 253, 248, 248, 0,
+])
+const colorSpace = {
+    primaries: 'bt709',
+    transfer: 'iec61966-2-1',
+    matrix: 'bt709',
+    fullRange: true,
+} as const
+const encoded = (
+    type: EncodedVideoChunkType,
+    timestamp: number,
+    duration: number | null,
+    data: Uint8Array,
+): EncodedVideoChunk => ({
+    type,
+    timestamp,
+    duration,
+    byteLength: data.length,
+    copyTo: (target) => {
+        new Uint8Array((target as Uint8Array).buffer).set(data)
+    },
+})
+
+test('a trial accepts output the export can mux, in encoded order and without durations', async () => {
+    const config = { codec: 'avc1.64001e', width: 320, height: 180, framerate: 30 as const }
+    const vp9 = { ...config, codec: 'vp09.00.31.08' }
     const at = (i: number) => Math.round((i * 1e6) / 30)
-    const record = (sps: number[]) =>
+    const avc = (
+        order = [0, 1, 2],
+        decoder: Partial<VideoDecoderConfig> | undefined = {},
+        on = 0,
+    ): TrialOutput[] =>
+        order.map((frame, i) => ({
+            chunk: encoded(
+                i ? 'delta' : 'key',
+                at(frame),
+                at(frame + 1) - at(frame),
+                new Uint8Array([0, 0, 0, 2, i ? 0x41 : 0x65, 0x88]),
+            ),
+            metadata:
+                i === on && decoder
+                    ? {
+                          decoderConfig: {
+                              codec: config.codec,
+                              // Padded to whole macroblocks; the SPS crops to 180.
+                              codedWidth: 320,
+                              codedHeight: 192,
+                              description: avcC,
+                              colorSpace,
+                              ...decoder,
+                          },
+                      }
+                    : undefined,
+        }))
+    const webm = (decoder: boolean): TrialOutput[] =>
+        [0, 1, 2].map((i) => ({
+            chunk: encoded(
+                i ? 'delta' : 'key',
+                at(i),
+                at(i + 1) - at(i),
+                new Uint8Array([0x82, i]),
+            ),
+            metadata:
+                decoder && !i
+                    ? { decoderConfig: { codec: vp9.codec, codedWidth: 320, codedHeight: 180 } }
+                    : undefined,
+        }))
+    assert.equal(await usableTrial(config, avc(), 3), true)
+    assert.equal(await usableTrial(vp9, webm(true), 3), true)
+    assert.equal(await usableTrial(vp9, webm(false), 3), false)
+    // Presentation order differs from encoded order with B-frames.
+    assert.equal(await usableTrial(config, avc([0, 2, 1]), 3), true)
+    // Firefox's High and Main output is one frame late: the last chunk matches no frame.
+    assert.equal(await usableTrial(config, avc([1, 2, 3]), 3), false)
+    assert.equal(await usableTrial(config, avc([0, 1]), 3), false)
+    assert.equal(await usableTrial(config, avc([0, 1, 1]), 3), false)
+    // The configuration comes with the first chunk.
+    assert.equal(await usableTrial(config, avc(undefined, {}, 1), 3), false)
+    // Durations come from the submitted frames; timestamps must be theirs exactly.
+    const timing = (shift: number) =>
+        avc().map(({ chunk, metadata }, i) => ({
+            chunk: { ...chunk, timestamp: chunk.timestamp + (i ? shift : 0), duration: null },
+            metadata,
+        }))
+    assert.equal(await usableTrial(config, timing(0), 3), true)
+    assert.equal(await usableTrial(config, timing(1), 3), false)
+    // A missing coded size is read from the SPS; the SPS's size must be the requested one.
+    assert.equal(
+        await usableTrial(
+            config,
+            avc(undefined, { codedWidth: undefined, codedHeight: undefined }),
+            3,
+        ),
+        true,
+    )
+    assert.equal(await usableTrial({ ...config, height: 192 }, avc(), 3), false)
+    assert.equal(
+        await usableTrial(
+            config,
+            avc(undefined, { displayAspectWidth: 4, displayAspectHeight: 3 }),
+            3,
+        ),
+        false,
+    )
+    // A different valid profile is kept; the requested one is not required.
+    assert.equal(await usableTrial({ ...config, codec: 'avc1.4d001f' }, avc(), 3), true)
+    // Firefox's SPS repeats its NAL header byte, so its profile disagrees with the record's.
+    const firefox = new Uint8Array([...avcC.subarray(0, 8), 103, ...avcC.subarray(8)])
+    firefox[7] = 24
+    assert.equal(await usableTrial(config, avc(undefined, { description: firefox }), 3), false)
+    // An SPS slot holding a PPS, a truncated SPS and a PPS slot holding an SPS each fail.
+    const sps = [...avcC.subarray(8, 31)]
+    const record = (set: number[], pps = [0x68, 0xee, 0x3c, 0x80]) =>
         new Uint8Array([
             1,
             0x64,
             0,
-            0x1f,
+            0x1e,
             0xff,
             0xe1,
             0,
-            sps.length,
-            ...sps,
+            set.length,
+            ...set,
             1,
             0,
-            4,
-            0x68,
-            0xee,
-            0x3c,
-            0x80,
+            pps.length,
+            ...pps,
         ])
-    const output = (description?: Uint8Array): TrialChunk[] =>
-        [0, 1, 2].map((i) => ({
-            type: i ? 'delta' : 'key',
-            timestamp: at(i),
-            duration: at(i + 1) - at(i),
-            decoderConfig: i
-                ? undefined
-                : { codec: config.codec, codedWidth: 1280, codedHeight: 720, description },
-        }))
-    const good = output(record([0x67, 0x64, 0, 0x1f, 0xac, 0xd9]))
-    assert.equal(usableTrial(config, good, 3), true)
-    const vp9 = { ...config, codec: 'vp09.00.31.08' }
-    assert.equal(usableTrial(vp9, output(), 3), true)
-    // Firefox's High and Main output is one frame late and in decode order. Each fault fails alone.
-    const shifted = good.map((chunk, i) => ({ ...chunk, timestamp: at(i + 1) }))
-    assert.equal(usableTrial(config, shifted, 3), false)
-    const [first, second, third] = good
-    const reordered = [first!, { ...third!, duration: second!.duration }, second!]
-    assert.equal(usableTrial(config, reordered, 3), false)
-    assert.equal(usableTrial(config, good.slice(0, 2), 3), false)
-    assert.equal(usableTrial(config, [{ ...first!, type: 'delta' }, second!, third!], 3), false)
-    assert.equal(
-        usableTrial(vp9, [{ ...first!, decoderConfig: undefined }, second!, third!], 3),
-        false,
-    )
-    assert.equal(usableTrial(config, output(), 3), false)
-    // Firefox's SPS repeats its NAL header byte in every profile.
-    assert.equal(usableTrial(config, output(record([0x67, 0x67, 0x64, 0, 0x1f, 0xac])), 3), false)
-    assert.equal(usableTrial({ ...config, codec: 'avc1.4d001f' }, good, 3), false)
-    assert.equal(usableTrial(config, output(record([0x68, 0x64, 0, 0x1f, 0xac, 0xd9])), 3), false)
+    for (const description of [
+        record([0x68, ...sps.slice(1)]),
+        record(sps.slice(0, 6)),
+        record(sps, [0x67, 0xee, 0x3c, 0x80]),
+    ])
+        assert.equal(await usableTrial(config, avc(undefined, { description }), 3), false)
+    // Without a description, the muxer cannot read length-prefixed H.264.
+    assert.equal(await usableTrial(config, avc(undefined, { description: undefined }), 3), false)
+    // The muxer rejects a first packet that is not a key frame.
+    const dependent = avc()
+    dependent[0] = { ...dependent[0]!, chunk: { ...dependent[0]!.chunk, type: 'delta' } }
+    assert.equal(await usableTrial(config, dependent, 3), false)
 })
 
 test('trials run one at a time, only at the selected video settings, and a rejected one is unsupported', async () => {
@@ -298,7 +391,166 @@ test('Export waits only for its own trials, and a trial that no update wants is 
     const again = await probes.resolve(silent)
     assert.equal(again.supported && again.video.codec.slice(0, 7), 'avc1.4d')
     assert.equal(trials.at(-1), 'avc1.4d 1080')
-    // Bitrate is not part of a trial's key.
+    // The whole configuration, bitrate included, is a trial's key.
     await probes.resolve({ ...silent, videoBitrate: 11e6 })
-    assert.equal(trials.length, 5)
+    const retried = trials.length
+    assert.ok(retried > 5)
+    await probes.resolve({ ...silent, videoBitrate: 11e6 })
+    assert.equal(trials.length, retried)
+})
+
+test('an AAC delay that cannot be measured makes MP4 with sound unavailable, so Automatic picks WebM', async () => {
+    const measured: string[] = []
+    const probes = (delay: () => Promise<number>) =>
+        createCodecProbes({
+            video: async () => ({ supported: true }),
+            audio: async () => ({ supported: true }),
+            trial: async () => true,
+            aacDelay: (config) => {
+                measured.push(config.codec)
+                return delay()
+            },
+        })
+    const failing = probes(() => Promise.reject(new Error('AAC delay could not be measured')))
+    const automatic = await failing.resolve(settings)
+    assert.equal(automatic.supported && automatic.format, 'webm')
+    assert.equal(automatic.supported && automatic.audio?.codec, 'opus')
+    assert.equal(automatic.supported && automatic.aacDelay, undefined)
+    assert.deepEqual(await failing.resolve({ ...settings, format: 'mp4' }), {
+        supported: false,
+        reason: 'audioConfig',
+    })
+    const working = await probes(() => Promise.resolve(2112)).resolve(settings)
+    assert.equal(working.supported && working.format, 'mp4')
+    assert.equal(working.supported && working.aacDelay, 2112)
+    // Silent exports and WebM measure nothing; choices without trials use the probes alone.
+    measured.length = 0
+    await failing.resolve({ ...settings, bgm: false, sfx: false })
+    await failing.resolve({ ...settings, format: 'webm' })
+    const untried = await failing.resolve({ ...settings, format: 'mp4' }, { trial: false })
+    assert.equal(untried.supported && untried.format, 'mp4')
+    assert.deepEqual(measured, [])
+})
+
+test('shared work stops when its last caller leaves, and neither a cancel nor a failure is kept', async () => {
+    const shared = createSharedWork<number>()
+    let runs = 0
+    const stops: AbortSignal[] = []
+    const hold = (stop: AbortSignal) => {
+        runs++
+        stops.push(stop)
+        return new Promise<number>((resolve, reject) => {
+            stop.addEventListener('abort', () => {
+                reject(stop.reason as Error)
+            })
+            setImmediate(() => {
+                if (runs > 1) resolve(7)
+            })
+        })
+    }
+    const first = new AbortController()
+    const second = new AbortController()
+    const a = shared('key', hold, first.signal)
+    const b = shared('key', hold, second.signal)
+    first.abort()
+    await assert.rejects(a, { name: 'AbortError' })
+    assert.equal(stops[0]!.aborted, false)
+    second.abort()
+    await assert.rejects(b, { name: 'AbortError' })
+    assert.equal(stops[0]!.aborted, true)
+    // The cancelled work is forgotten: the next caller runs it again.
+    await assert.rejects(
+        shared('key', () => Promise.reject(new Error('failed')), undefined),
+        /failed/,
+    )
+    assert.equal(await shared('key', hold), 7)
+    assert.equal(await shared('key', hold), 7)
+    assert.equal(runs, 2)
+})
+
+test('Cancel leaves trials and AAC measurement: none is kept as unsupported', async () => {
+    const calls: string[] = []
+    const pending = (name: string) => (signal?: AbortSignal) => {
+        calls.push(name)
+        return new Promise<never>((_, reject) => {
+            signal?.addEventListener('abort', () => {
+                reject(signal.reason as Error)
+            })
+        })
+    }
+    let held = true
+    const probes = createCodecProbes({
+        video: async () => ({ supported: true }),
+        audio: async () => ({ supported: true }),
+        trial: (_, signal) => (held ? pending('trial')(signal) : Promise.resolve(true)),
+        aacDelay: (_, signal) => (held ? pending('aac')(signal) : Promise.resolve(2112)),
+    })
+    for (const s of [settings, { ...settings, bgm: false, sfx: false }]) {
+        const controller = new AbortController()
+        const resolving = probes.resolve(s, { signal: controller.signal })
+        await new Promise((resolve) => setImmediate(resolve))
+        controller.abort()
+        await assert.rejects(resolving, { name: 'AbortError' })
+    }
+    assert.deepEqual(calls, ['aac', 'trial'])
+    held = false
+    const resolved = await probes.resolve(settings)
+    assert.equal(resolved.supported && resolved.format, 'mp4')
+    assert.equal(resolved.supported && resolved.aacDelay, 2112)
+})
+
+test('Cancel closes a trial encoder whose flush never resolves', async () => {
+    const globals = globalThis as Record<string, unknown>
+    const saved = ['VideoEncoder', 'OffscreenCanvas', 'VideoFrame'].map((name) => globals[name])
+    const encoders: { state: string }[] = []
+    let flushing!: () => void
+    const flushed = new Promise<void>((resolve) => (flushing = resolve))
+    globals.VideoEncoder = class {
+        state = 'configured'
+        constructor() {
+            encoders.push(this)
+        }
+        configure() {}
+        encode() {}
+        closed?: () => void
+        // As in browsers, closing rejects a pending flush.
+        flush() {
+            flushing()
+            return new Promise<void>((_, reject) => {
+                this.closed = () => {
+                    reject(new DOMException('Closed', 'AbortError'))
+                }
+            })
+        }
+        close() {
+            this.state = 'closed'
+            this.closed?.()
+        }
+    }
+    globals.OffscreenCanvas = class {
+        getContext() {
+            return { fillRect() {} }
+        }
+    }
+    globals.VideoFrame = class {
+        close() {}
+    }
+    try {
+        const trial = browserEncoderProbes().trial!
+        const controller = new AbortController()
+        const result = trial(
+            { codec: 'vp09.00.10.08', width: 16, height: 16, framerate: 30 },
+            controller.signal,
+        )
+        await flushed
+        controller.abort()
+        await assert.rejects(result, { name: 'AbortError' })
+        assert.deepEqual(
+            encoders.map((encoder) => encoder.state),
+            ['closed'],
+        )
+    } finally {
+        for (const [i, name] of ['VideoEncoder', 'OffscreenCanvas', 'VideoFrame'].entries())
+            globals[name] = saved[i]
+    }
 })

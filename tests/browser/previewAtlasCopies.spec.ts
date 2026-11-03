@@ -353,84 +353,94 @@ test('cancelling closes copies made after cancellation', async ({ page }) => {
     expect(await copyAndClose(page)).toMatchObject({ status: 'copied' })
 })
 
-test('an asset load that never finishes reaches the copy deadline', async ({ page }) => {
+test('an asset load slower than 30 seconds is waited for, and copies once it finishes', async ({
+    page,
+}) => {
     await open(page)
-    await page.route('**/resource/skin.scp*', () => {})
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/resource/skin.scp*', async (route) => {
+        await held
+        await route.fulfill({ body: resource('skins') })
+    })
     await page.clock.install()
     const requested = page.waitForRequest('**/resource/skin.scp*')
-    const result = page.evaluate(async () => {
+    await page.evaluate(async () => {
         const { copyPreviewAtlases } = await window.editorTest.appImport<
             typeof import('../../src/preview/copyPreviewAtlases')
         >('/src/preview/copyPreviewAtlases.ts')
-        return (await copyPreviewAtlases(new AbortController().signal)).status
+        Reflect.set(window, 'slowCopy', 'pending')
+        void copyPreviewAtlases(new AbortController().signal).then((result) => {
+            Reflect.set(window, 'slowCopy', result.status)
+            if (result.status === 'copied') {
+                result.skin.texture.close()
+                result.particle?.texture.close()
+            }
+        })
     })
     await requested
-    await page.clock.fastForward(30_001)
-    expect(await result).toBe('failed')
+    await page.clock.fastForward(60_001)
+    expect(await page.evaluate(() => Reflect.get(window, 'slowCopy'))).toBe('pending')
+    release()
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, 'slowCopy'))).toBe('copied')
 })
 
-for (const complete of [true, false])
-    test(`copies ${complete ? 'wait for held recovery loads after a worker timeout' : 'keep their deadline while recovery loads finish separately'}`, async ({
-        page,
-    }, testInfo) => {
-        await controlWorker(page, testInfo)
-        await open(page)
-        await showPreview(page)
-        await page.evaluate(() => window.nsePreviewTest!.settled())
-        await page.clock.install()
-        let releaseSkin!: () => void
-        let releaseParticle!: () => void
-        const skinHeld = new Promise<void>((resolve) => (releaseSkin = resolve))
-        const particleHeld = new Promise<void>((resolve) => (releaseParticle = resolve))
-        let loads = 0
-        await page.route(/\/resource\/(skin|particle)\.scp/, async (route) => {
-            loads++
-            const skin = route.request().url().includes('/skin.')
-            await (skin ? skinHeld : particleHeld)
-            await route.fulfill({
-                body: resource(skin ? 'skins' : 'particles', { title: 'Recovered' }),
-            })
+test('copies wait for held recovery loads after a worker timeout', async ({ page }, testInfo) => {
+    await controlWorker(page, testInfo)
+    await open(page)
+    await showPreview(page)
+    await page.evaluate(() => window.nsePreviewTest!.settled())
+    await page.clock.install()
+    let releaseSkin!: () => void
+    let releaseParticle!: () => void
+    const skinHeld = new Promise<void>((resolve) => (releaseSkin = resolve))
+    const particleHeld = new Promise<void>((resolve) => (releaseParticle = resolve))
+    let loads = 0
+    await page.route(/\/resource\/(skin|particle)\.scp/, async (route) => {
+        loads++
+        const skin = route.request().url().includes('/skin.')
+        await (skin ? skinHeld : particleHeld)
+        await route.fulfill({
+            body: resource(skin ? 'skins' : 'particles', { title: 'Recovered' }),
         })
-        try {
-            await page.evaluate(() => {
-                window.atlasCopyTest.holdFrames = true
-                window.editorTest.view.cursorTime = 2
-            })
-            await expect.poll(() => page.evaluate(() => window.atlasCopyTest.frameHeld)).toBe(true)
-            await page.clock.fastForward(10_001)
-            await expect.poll(() => loads).toBe(2)
-            await requestDuringTransition(page)
-            expect(
-                await page.evaluate(() =>
-                    [0, 1, 2].map((i) => window.atlasCopyTest.statuses[i] ?? 'pending'),
-                ),
-            ).toEqual(['pending', 'pending', 'cancelled'])
-            if (!complete) await page.clock.fastForward(20_000)
-            releaseSkin()
-            await expect
-                .poll(() =>
-                    page.evaluate(async () => {
-                        const { assetSession } = await window.editorTest.appImport<
-                            typeof import('../../src/preview/assets')
-                        >('/src/preview/assets/index.ts')
-                        return assetSession.slots.skin.value.value?.title
-                    }),
-                )
-                .toBe('Recovered')
-            if (complete) releaseParticle()
-            else await page.clock.fastForward(10_001)
-            expect(await page.evaluate(() => window.atlasCopyTest.results)).toEqual([
-                complete ? 'copied' : 'failed',
-                complete ? 'copied' : 'failed',
-                'cancelled',
-            ])
-            releaseParticle()
-            expect(await copyAndClose(page)).toMatchObject({ status: 'copied' })
-        } finally {
-            releaseSkin()
-            releaseParticle()
-        }
     })
+    try {
+        await page.evaluate(() => {
+            window.atlasCopyTest.holdFrames = true
+            window.editorTest.view.cursorTime = 2
+        })
+        await expect.poll(() => page.evaluate(() => window.atlasCopyTest.frameHeld)).toBe(true)
+        await page.clock.fastForward(10_001)
+        await expect.poll(() => loads).toBe(2)
+        await requestDuringTransition(page)
+        expect(
+            await page.evaluate(() =>
+                [0, 1, 2].map((i) => window.atlasCopyTest.statuses[i] ?? 'pending'),
+            ),
+        ).toEqual(['pending', 'pending', 'cancelled'])
+        releaseSkin()
+        await expect
+            .poll(() =>
+                page.evaluate(async () => {
+                    const { assetSession } = await window.editorTest.appImport<
+                        typeof import('../../src/preview/assets')
+                    >('/src/preview/assets/index.ts')
+                    return assetSession.slots.skin.value.value?.title
+                }),
+            )
+            .toBe('Recovered')
+        releaseParticle()
+        expect(await page.evaluate(() => window.atlasCopyTest.results)).toEqual([
+            'copied',
+            'copied',
+            'cancelled',
+        ])
+        expect(await copyAndClose(page)).toMatchObject({ status: 'copied' })
+    } finally {
+        releaseSkin()
+        releaseParticle()
+    }
+})
 
 test('copies wait while the worker hands its atlases back', async ({ page }, testInfo) => {
     await controlWorker(page, testInfo)

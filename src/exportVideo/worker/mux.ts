@@ -39,7 +39,7 @@ export const createMuxSink = async (
         let maximumPacketCount: number | undefined
         if (mp4) {
             if (config.aacDelay === undefined) throw new Error('AAC delay is unknown')
-            maximumPacketCount = aacPacketBound(config.samples, Math.ceil(config.aacDelay / 1024))
+            maximumPacketCount = aacPacketBound(config.samples, config.aacDelay)
         }
         output.addAudioTrack(audio, { maximumPacketCount })
     }

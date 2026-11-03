@@ -1,6 +1,6 @@
 import { testKeysOpen } from '../../platform/testKeys'
 import { FileError } from '../../platform/types'
-import { exportError, serializeExportError } from '../error'
+import { exportError, serializeExportError, withFailureDetails } from '../error'
 import { readGraphicsLimits } from '../graphics'
 import type { ExportFaults, FromExportWorker, ToExportWorker } from '../protocol'
 import type { AudioBlock } from '../timing'
@@ -114,6 +114,8 @@ export const installExportWorker = (
             })
             const faults = testKeysOpen ? message.faults : undefined
             if (faults?.refuse && message.destination.kind === 'picked') refuse(faults.refuse)
+            if (faults?.noSyncAccess)
+                Reflect.deleteProperty(FileSystemFileHandle.prototype, 'createSyncAccessHandle')
             output = await open(start, message.destination, controller.signal)
             controller.signal.throwIfAborted()
             const sink = output.sink
@@ -180,23 +182,26 @@ export const installExportWorker = (
             committing = false
             post({ type: 'done', result }, transferableBuffer(result))
         } catch (error) {
-            let cleanupError: unknown
+            const cleanup: unknown[] = []
             try {
                 await output?.sink.abort()
             } catch (failure) {
-                cleanupError = failure
+                cleanup.push(failure)
             }
             try {
                 await output?.abort()
             } catch (failure) {
-                cleanupError ??= failure
+                cleanup.push(failure)
             }
-            renderer?.dispose()
-            renderer = undefined
-            if (cancelled && !cleanupError) post({ type: 'cancelled' })
-            else {
-                failed(cleanupError ?? error)
-            }
+            // A target that did not open encoded nothing: the renderer can run another start.
+            if (output || cancelled) {
+                renderer?.dispose()
+                renderer = undefined
+            } else started = false
+            const [first, ...rest] = cleanup
+            if (!cancelled) failed(withFailureDetails(error, cleanup))
+            else if (first) failed(withFailureDetails(first, rest))
+            else post({ type: 'cancelled' })
         }
     }
     scope.onmessage = ({ data }) => {

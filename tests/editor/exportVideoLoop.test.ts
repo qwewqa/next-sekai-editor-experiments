@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { restoreExportError, serializeExportError } from '../../src/exportVideo/error'
+import { clipSamples, frameTimestamp } from '../../src/exportVideo/timing'
+import type { ExportStart } from '../../src/exportVideo/types'
 import type { MuxInput } from '../../src/exportVideo/worker/encode'
 import { createFrameLoop } from '../../src/exportVideo/worker/loop'
+import { runExport } from '../../src/exportVideo/worker/run'
 import { FileError } from '../../src/platform/types'
 
 const deferred = () => {
@@ -209,4 +212,127 @@ test('audio accounting excludes the pad, priming and final padding', async () =>
     assert.equal(loop.stats.written.audio, 0.1)
     assert.equal(loop.stats.inFlight.audio, 0)
     loop.dispose()
+})
+
+/** A VP9 encoder that outputs each frame at once, with a flush that resolves or never does. */
+const fakeEncoders = (flush: 'resolves' | 'hangs') => {
+    const made: { state: string; flushed: boolean }[] = []
+    class FakeVideoEncoder {
+        state = 'unconfigured'
+        flushed = false
+        encodeQueueSize = 0
+        constructor(private readonly init: VideoEncoderInit) {
+            made.push(this)
+        }
+        configure() {
+            this.state = 'configured'
+        }
+        addEventListener() {}
+        encode(frame: { timestamp: number }) {
+            const first = this.encodeCount++ === 0
+            this.init.output(
+                {
+                    type: first ? 'key' : 'delta',
+                    timestamp: frame.timestamp,
+                    duration: null,
+                    byteLength: 2,
+                    copyTo: (target: Uint8Array) => {
+                        new Uint8Array(target.buffer).set([0x82, 0])
+                    },
+                } as unknown as EncodedVideoChunk,
+                first
+                    ? { decoderConfig: { codec: 'vp09.00.10.08', codedWidth: 16, codedHeight: 16 } }
+                    : undefined,
+            )
+        }
+        encodeCount = 0
+        flush() {
+            this.flushed = true
+            return flush === 'hangs' ? new Promise<void>(() => undefined) : Promise.resolve()
+        }
+        close() {
+            this.state = 'closed'
+        }
+    }
+    return { made, VideoEncoder: FakeVideoEncoder }
+}
+
+const runFake = async (
+    flush: 'resolves' | 'hangs',
+    controller: AbortController,
+    whileRunning?: (made: { state: string; flushed: boolean }[]) => Promise<void>,
+) => {
+    const { made, VideoEncoder } = fakeEncoders(flush)
+    const globals = globalThis as Record<string, unknown>
+    const saved = {
+        VideoEncoder: globals.VideoEncoder,
+        createImageBitmap: globals.createImageBitmap,
+    }
+    globals.VideoEncoder = VideoEncoder
+    globals.createImageBitmap = () =>
+        Promise.reject(new DOMException('No bitmap', 'InvalidStateError'))
+    const progress: [number, unknown][] = []
+    const written: MuxInput[] = []
+    try {
+        const frames = 3
+        const start = {
+            settings: { frames, frameRate: 30, width: 16, height: 16 },
+            codecs: {
+                supported: true,
+                format: 'webm',
+                video: { codec: 'vp09.00.10.08', width: 16, height: 16 },
+            },
+            frames,
+            frameRate: 30,
+            samples: clipSamples(frames, 30),
+        } as unknown as ExportStart
+        const running = runExport(start, {
+            signal: controller.signal,
+            renderer: {
+                canvas: {},
+                capture: (i: number) => ({ timestamp: frameTimestamp(i, 30), close() {} }),
+                captureStripes: () => {
+                    throw new Error('No stripes')
+                },
+            } as unknown as Parameters<typeof runExport>[1]['renderer'],
+            sink: {
+                add: (input) => {
+                    written.push(input)
+                    return Promise.resolve()
+                },
+                finalize: () => Promise.resolve({ frames }),
+                abort: () => Promise.resolve(),
+            },
+            block: () => Promise.resolve(undefined),
+            progress: (count, bitmap) => progress.push([count, bitmap]),
+            finishing: () => Promise.resolve(),
+        })
+        await whileRunning?.(made)
+        return { result: await running, made, progress, written }
+    } finally {
+        globals.VideoEncoder = saved.VideoEncoder
+        globals.createImageBitmap = saved.createImageBitmap
+    }
+}
+
+test('an export without its progress image completes with numeric progress', async () => {
+    const { result, made, progress, written } = await runFake('resolves', new AbortController())
+    assert.deepEqual(result, { frames: 3 })
+    assert.deepEqual(progress.at(-1), [3, undefined])
+    assert.equal(written.filter((input) => input.track === 'video').length, 3)
+    assert.ok(made.every((encoder) => encoder.state === 'closed'))
+})
+
+test('Cancel ends an export whose flush never resolves, and closes its encoder', async () => {
+    const controller = new AbortController()
+    let encoders: { state: string; flushed: boolean }[] = []
+    await assert.rejects(
+        runFake('hangs', controller, async (made) => {
+            encoders = made
+            while (!made.at(-1)?.flushed) await new Promise((resolve) => setImmediate(resolve))
+            controller.abort()
+        }),
+        (error: unknown) => error instanceof Error && error.name === 'AbortError',
+    )
+    assert.ok(encoders.length > 0 && encoders.every((encoder) => encoder.state === 'closed'))
 })

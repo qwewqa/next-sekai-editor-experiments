@@ -1,5 +1,7 @@
 import type { Engine } from '../platform/detect'
+import { exportError } from './error'
 import { frameTimestamp } from './timing'
+import type { TrialOutput } from './worker/trial'
 
 export type VideoFormat = 'mp4' | 'webm'
 export type CodecSettings = {
@@ -86,6 +88,8 @@ export type CodecSupport =
           format: VideoFormat
           video: VideoEncoderConfig
           audio?: AudioEncoderConfig
+          /** The measured AAC delay in samples, for MP4 with sound. */
+          aacDelay?: number
       }
     | { supported: false; reason: 'videoEncoder' | 'audioEncoder' | 'videoConfig' | 'audioConfig' }
 
@@ -94,59 +98,85 @@ export type TrialConfig = VideoEncoderConfig & { framerate: 30 | 60 }
 export type EncoderProbes = {
     video?: (config: VideoEncoderConfig) => Promise<{ supported?: boolean }>
     audio?: (config: AudioEncoderConfig) => Promise<{ supported?: boolean }>
-    /** Encodes a few frames and reports whether the frame loop could use the output. */
-    trial?: (config: TrialConfig) => Promise<boolean>
+    /** Encodes a few frames and reports whether the export's adapter and muxer take the output. */
+    trial?: (config: TrialConfig, signal: AbortSignal) => Promise<boolean>
+    /** Measures the AAC delay in samples, for a configuration that passed `audio`. */
+    aacDelay?: (config: AudioEncoderConfig, signal?: AbortSignal) => Promise<number>
 }
 
-export type TrialChunk = {
-    type: EncodedVideoChunkType
-    timestamp: number
-    duration: number | null
-    decoderConfig?: VideoDecoderConfig
-}
-
-/** profile_idc of the first SPS in an AVC configuration record, if its NAL header is valid. */
-const avcProfile = (description: AllowSharedBufferSource | undefined) => {
-    if (!description) return undefined
-    const bytes = ArrayBuffer.isView(description)
-        ? new Uint8Array(description.buffer, description.byteOffset, description.byteLength)
-        : new Uint8Array(description)
-    const size = ((bytes[6] ?? 0) << 8) | (bytes[7] ?? 0)
-    if (bytes[0] !== 1 || !((bytes[5] ?? 0) & 31) || size < 2 || 8 + size > bytes.length)
-        return undefined
-    // forbidden_zero_bit 0 and nal_unit_type 7.
-    return ((bytes[8] ?? 0) & 0x9f) === 7 ? bytes[9] : undefined
-}
-
-/** Whether the frame loop accepts this output for `frames` frames submitted at the frame rate. */
-export const usableTrial = (config: TrialConfig, chunks: readonly TrialChunk[], frames: number) => {
-    const at = (i: number) => frameTimestamp(i, config.framerate)
-    const decoder = chunks[0]?.decoderConfig
-    return (
-        chunks.length === frames &&
-        chunks[0]?.type === 'key' &&
-        decoder?.codedWidth === config.width &&
-        decoder.codedHeight === config.height &&
-        chunks.every((c, i) => c.timestamp === at(i) && c.duration === at(i + 1) - at(i)) &&
-        (!config.codec.startsWith('avc1.') ||
-            avcProfile(decoder.description) === parseInt(config.codec.slice(5, 7), 16))
-    )
+/**
+ * Work shared by callers with the same key. When every caller has left through its signal, the
+ * work is aborted and forgotten; so is a failure, so a later call runs it again.
+ */
+export const createSharedWork = <T>() => {
+    type Entry = { result: Promise<T>; callers: number; settled: boolean; stop: AbortController }
+    const entries = new Map<string, Entry>()
+    return (key: string, run: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal) => {
+        signal?.throwIfAborted()
+        let entry = entries.get(key)
+        if (!entry) {
+            const stop = new AbortController()
+            const created: Entry = { result: run(stop.signal), callers: 0, settled: false, stop }
+            entry = created
+            entries.set(key, created)
+            created.result.then(
+                () => {
+                    created.settled = true
+                },
+                () => {
+                    created.settled = true
+                    if (entries.get(key) === created) entries.delete(key)
+                },
+            )
+        }
+        const joined = entry
+        joined.callers++
+        if (!signal) return joined.result
+        return new Promise<T>((resolve, reject) => {
+            const leave = () => {
+                joined.callers--
+                if (!joined.settled && !joined.callers) {
+                    if (entries.get(key) === joined) entries.delete(key)
+                    joined.stop.abort()
+                }
+                reject(signal.reason as Error)
+            }
+            signal.addEventListener('abort', leave, { once: true })
+            joined.result.then(
+                (value) => {
+                    signal.removeEventListener('abort', leave)
+                    resolve(value)
+                },
+                (error: unknown) => {
+                    signal.removeEventListener('abort', leave)
+                    reject(exportError(error))
+                },
+            )
+        })
+    }
 }
 
 // isConfigSupported can accept a configuration whose output the export cannot use. Firefox's
-// H.264 encoder shifts and reorders timestamps and writes a malformed SPS.
-const trialEncode = async (config: TrialConfig) => {
+// H.264 encoder shifts timestamps and writes a malformed SPS.
+const trialEncode = async (config: TrialConfig, signal: AbortSignal) => {
     const frames = 3
     const at = (i: number) => frameTimestamp(i, config.framerate)
-    const chunks: TrialChunk[] = []
+    const outputs: TrialOutput[] = []
+    const errors: DOMException[] = []
     let encoder: VideoEncoder | undefined
+    const close = () => {
+        if (encoder && encoder.state !== 'closed') encoder.close()
+    }
+    signal.addEventListener('abort', close, { once: true })
     try {
+        signal.throwIfAborted()
         encoder = new VideoEncoder({
             output: (chunk, metadata) => {
-                const { type, timestamp, duration } = chunk
-                chunks.push({ type, timestamp, duration, decoderConfig: metadata?.decoderConfig })
+                outputs.push({ chunk, metadata })
             },
-            error: () => undefined,
+            error: (error) => {
+                errors.push(error)
+            },
         })
         const canvas = new OffscreenCanvas(config.width, config.height)
         const context = canvas.getContext('2d')
@@ -166,12 +196,17 @@ const trialEncode = async (config: TrialConfig) => {
         }
         await encoder.flush()
     } catch {
-        // Any failure counts as unsupported, so the next configuration is tried.
+        signal.throwIfAborted()
+        // Any other failure counts as unsupported, so the next configuration is tried.
         return false
     } finally {
-        if (encoder && encoder.state !== 'closed') encoder.close()
+        signal.removeEventListener('abort', close)
+        close()
     }
-    return usableTrial(config, chunks, frames)
+    signal.throwIfAborted()
+    if (errors.length) return false
+    const { usableTrial } = await import('./worker/trial')
+    return usableTrial(config, outputs, frames)
 }
 
 export const browserEncoderProbes = (): EncoderProbes => ({
@@ -195,14 +230,11 @@ export const h264Profiles = (engine?: Engine) =>
               ['baseline', '4200'],
           ] as const)
 
-/** A queued trial that no update or export still needs is skipped and not cached. */
-class Superseded extends Error {}
-
 export type ResolveOptions = {
     /** When false, only isConfigSupported decides. */
     trial?: boolean
-    /** Whether the caller still wants the result. */
-    wanted?: () => boolean
+    /** The caller no longer wants the result: it leaves shared trials and measurements. */
+    signal?: AbortSignal
 }
 
 /** The page owner keeps this instance for both settings and export jobs. */
@@ -230,41 +262,31 @@ export const createCodecProbes = (
         }
         return result
     }
-    // A trial's outcome depends on the encoder, the codec string, the size and the frame rate.
-    // Bitrate only selects the level in the codec string, so the key leaves it out.
-    // The callers are kept only until the trial starts.
-    type Trial = { callers?: (() => boolean)[]; result: Promise<boolean> }
-    const trials = new Map<string, Trial>()
-    // Trials run one at a time, since each holds an encoder and full-size frames.
+    const trials = createSharedWork<boolean>()
+    // Trials run one at a time, since each holds an encoder and full-size frames. One that no
+    // caller still wants by its turn is skipped.
     let queue: Promise<unknown> = Promise.resolve()
-    const passesTrial = (config: TrialConfig, wanted: () => boolean) => {
+    const passesTrial = async (config: TrialConfig, signal?: AbortSignal) => {
         const run = probes.trial
         if (!run) return true
-        const key = configurationKey({ ...config, bitrate: undefined })
-        const cached = trials.get(key)
-        if (cached) {
-            cached.callers?.push(wanted)
-            return cached.result
-        }
-        const trial: Trial = {
-            callers: [wanted],
-            result: queue.then(() => {
-                const needed = trial.callers?.some((caller) => caller())
-                trial.callers = undefined
-                if (needed) return run(config)
-                trials.delete(key)
-                throw new Superseded()
-            }),
-        }
-        queue = trial.result.catch(() => undefined)
-        trials.set(key, trial)
-        return trial.result
+        return trials(
+            configurationKey(config),
+            (stop) => {
+                const result = queue.then(() => {
+                    stop.throwIfAborted()
+                    return run(config, stop)
+                })
+                queue = result.catch(() => undefined)
+                return result
+            },
+            signal,
+        )
     }
     const resolveFormat = async (
         s: CodecSettings,
         format: VideoFormat,
         trial: boolean,
-        wanted: () => boolean,
+        signal?: AbortSignal,
     ): Promise<CodecSupport> => {
         if (!probes.video) return { supported: false, reason: 'videoEncoder' }
         let audio: AudioEncoderConfig | undefined
@@ -279,6 +301,17 @@ export const createCodecProbes = (
             }
             if (!(await probe('audio', audio, probes.audio)))
                 return { supported: false, reason: 'audioConfig' }
+            signal?.throwIfAborted()
+        }
+        // Without a measured delay, AAC cannot be placed, so MP4 with sound is unavailable.
+        let aacDelay: number | undefined
+        if (audio && format === 'mp4' && trial && probes.aacDelay) {
+            try {
+                aacDelay = await probes.aacDelay(audio, signal)
+            } catch {
+                signal?.throwIfAborted()
+                return { supported: false, reason: 'audioConfig' }
+            }
         }
         const common: Omit<TrialConfig, 'codec'> = {
             width: s.width,
@@ -312,22 +345,27 @@ export const createCodecProbes = (
             if (level !== undefined) configs.push({ ...common, codec: `vp09.00.${level}.08` })
         }
         for (const video of configs) {
-            if (
-                (await probe('video', video, probes.video)) &&
-                (!trial || (await passesTrial(video, wanted)))
-            )
-                return { supported: true, format, video, audio }
+            const probed = await probe('video', video, probes.video)
+            signal?.throwIfAborted()
+            if (probed && (!trial || (await passesTrial(video, signal))))
+                return {
+                    supported: true,
+                    format,
+                    video,
+                    audio,
+                    ...(aacDelay === undefined ? {} : { aacDelay }),
+                }
         }
         return { supported: false, reason: 'videoConfig' }
     }
-    /** Rejects with `Superseded` when a trial it needs is skipped. */
+    /** Rejects with the signal's reason once it aborts. */
     const resolve = async (
         s: CodecSettings,
-        { trial = true, wanted = () => true }: ResolveOptions = {},
+        { trial = true, signal }: ResolveOptions = {},
     ): Promise<CodecSupport> => {
-        if (s.format !== 'automatic') return resolveFormat(s, s.format, trial, wanted)
-        const mp4 = await resolveFormat(s, 'mp4', trial, wanted)
-        return mp4.supported ? mp4 : resolveFormat(s, 'webm', trial, wanted)
+        if (s.format !== 'automatic') return resolveFormat(s, s.format, trial, signal)
+        const mp4 = await resolveFormat(s, 'mp4', trial, signal)
+        return mp4.supported ? mp4 : resolveFormat(s, 'webm', trial, signal)
     }
     return { resolve }
 }
@@ -337,7 +375,7 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
     type State = { pending: boolean; current?: CodecSupport; choices: Record<string, CodecSupport> }
     let state: State = { pending: true, choices: {} }
     let shownChoices: State['choices'] = {}
-    let revision = 0
+    let latest: AbortController | undefined
     return {
         get state() {
             return state
@@ -348,8 +386,11 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
             choices: Record<string, Partial<CodecSettings>>,
             changed: (state: State) => void = () => undefined,
         ) {
-            const currentRevision = ++revision
-            const wanted = () => currentRevision === revision
+            // A newer update leaves this one's shared trials.
+            latest?.abort()
+            const controller = (latest = new AbortController())
+            const { signal } = controller
+            const wanted = () => !signal.aborted
             const publish = (next: State) => {
                 if (!wanted()) return
                 state = next
@@ -358,7 +399,7 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
             state = { pending: true, choices: {} }
             try {
                 // The selection first, so that Export waits only for its own probes and trials.
-                const current = await probes.resolve({ ...settings }, { wanted })
+                const current = await probes.resolve({ ...settings }, { signal })
                 publish({ pending: false, current, choices: shownChoices })
                 // Trials encode full-size frames, so choices at another size or frame rate
                 // skip them.
@@ -370,13 +411,13 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
                     Object.entries(choices).map(async ([key, patch]) => {
                         const choice = { ...settings, ...patch }
                         const trial = sameVideo(choice)
-                        return [key, await probes.resolve(choice, { trial, wanted })] as const
+                        return [key, await probes.resolve(choice, { trial, signal })] as const
                     }),
                 )
                 if (wanted()) shownChoices = Object.fromEntries(resolved)
                 publish({ pending: false, current, choices: shownChoices })
             } catch (error) {
-                if (!(error instanceof Superseded)) throw error
+                if (!signal.aborted) throw error
             }
             return state
         },
