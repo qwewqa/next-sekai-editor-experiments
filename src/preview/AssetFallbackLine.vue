@@ -12,9 +12,10 @@ const strings = computed(() => i18n.value.commands.previewAssets)
 </script>
 
 <template>
+    <!-- At most half the panel, so the preview keeps room; more lines scroll. -->
     <div
         v-if="panelFallbacks.length"
-        class="flex shrink-0 flex-col items-start gap-1 p-2"
+        class="flex max-h-[50%] shrink-0 flex-col items-start gap-1 overflow-y-auto overscroll-contain p-2"
         data-asset-fallbacks
     >
         <div

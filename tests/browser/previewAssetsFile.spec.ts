@@ -1222,4 +1222,22 @@ test.describe('narrow', () => {
         const message = await fits(question.getByText(/^Remove “/))
         expect(message.scrollWidth).toBeLessThanOrEqual(message.clientWidth)
     })
+
+    test('fallback lines take at most half the Preview panel and scroll', async ({ page }) => {
+        await start(page, {
+            previewAssets: {
+                skin: fileChoice,
+                background: nightSky,
+                effect: { ...fileChoice, key: 'ghi' },
+                particle: { ...fileChoice, key: 'jkl' },
+            },
+        })
+        const lines = page.locator('[data-asset-fallbacks]')
+        await expect(lines.locator('[data-asset-fallback]')).toHaveCount(4)
+        const stack = (await lines.boundingBox())!
+        const panel = (await lines.locator('..').boundingBox())!
+        expect(stack.height).toBeLessThanOrEqual(panel.height / 2 + 1)
+        const scrolls = await lines.evaluate((list) => list.scrollHeight > list.clientHeight)
+        expect(scrolls).toBe(true)
+    })
 })
