@@ -499,7 +499,8 @@ test('offline, the batch waits for the next hide', async ({ page, context }) => 
     await boot(page)
     await interact(page)
     await expect.poll(() => clientLoaded(page)).toBe(3)
-    // Offline, a module the client still needs fails to load, and the client never starts.
+    // If the page went offline before every module the client needs had loaded,
+    // the client would never start.
     await clientImported(page)
     await context.setOffline(true)
     expect(await page.evaluate(() => navigator.onLine)).toBe(false)
