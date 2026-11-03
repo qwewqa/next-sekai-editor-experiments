@@ -13,7 +13,7 @@ import { interpolateRaw } from '../../utils/interpolate'
 import { VIDEO_MEMORY_WARNING_BYTES } from './destination'
 import type { Outcome, Phase } from './dialog'
 
-/** The fields an unavailable line names. `sound` is BGM and SFX together. */
+/** The fields the unavailable line names. `sound` is BGM and SFX together. */
 export type UnavailableField =
     'audioBitrate' | 'frameRate' | 'resolution' | 'format' | 'sound' | 'antialias' | 'renderScale'
 
@@ -31,8 +31,8 @@ export type ExportMessage = {
     text: string
     /** English detail, behind Error Details. */
     detail?: string
-    /** The field an unavailable line names. */
-    field?: UnavailableField
+    /** The fields the unavailable line names. */
+    fields?: UnavailableField[]
 }
 
 export type MessageInput = {
@@ -78,23 +78,17 @@ const fits = (input: MessageInput, resolution: number, scale: number, antialias:
     !input.limits ||
     fitsGraphicsLimits(outputSize(resolution, input.form.aspect), scale, antialias, input.limits)
 
-type UnavailableLine = Pick<ExportMessage, 'field' | 'text'>
+type Found = { field: UnavailableField; items: string[] }
 
 /**
- * At most one line for each failed check, the codec check first and then the graphics limits
- * check. Each line names the first setting, in that check's order, that has a working choice.
+ * At most one line, with the items for each failed check, the codec check first and then the
+ * graphics limits check. Each check names the first setting, in its order, that has a working
+ * choice.
  */
-const unavailable = (input: MessageInput): UnavailableLine[] => {
+const unavailable = (input: MessageInput): ExportMessage[] => {
     const { form, support } = input
     const strings = i18n.value.exportVideo
-    const line =
-        (template: string) =>
-        (field: UnavailableField, item: string): UnavailableLine => ({
-            field,
-            text: interpolateRaw(template, item),
-        })
-    const browser = line(strings.notInBrowser)
-    const device = line(strings.tooLarge)
+    const found = (field: UnavailableField, ...items: string[]): Found => ({ field, items })
     const kbps = interpolateRaw(strings.kbps, `${form.audioBitrate / 1000}`)
     const fps = interpolateRaw(strings.fps, `${form.frameRate}`)
     const resolutionItem = `${strings.resolution} ${form.resolution}p`
@@ -103,38 +97,43 @@ const unavailable = (input: MessageInput): UnavailableLine[] => {
     const codecFails = support.current?.supported === false
 
     // The nearest lower value that the same probes accept.
-    const codec = ((): UnavailableLine | undefined => {
+    const codec = ((): Found | undefined => {
         if (!codecFails) return undefined
         const audio = sound
             ? lower(AUDIO_BITRATES, form.audioBitrate).find((value) =>
                   works(`audioBitrate:${value}`),
               )
             : undefined
-        if (audio) return browser('audioBitrate', `${strings.audioBitrate} ${kbps}`)
+        if (audio) return found('audioBitrate', `${strings.audioBitrate} ${kbps}`)
         if (form.frameRate === 60 && works('frameRate:30'))
-            return browser('frameRate', `${strings.frameRate} ${fps}`)
+            return found('frameRate', `${strings.frameRate} ${fps}`)
         const resolution = lower(RESOLUTIONS, form.resolution).find(
             (value) =>
                 works(`resolution:${value}`) &&
                 fits(input, value, form.renderScale, form.antialias),
         )
-        if (resolution) return browser('resolution', resolutionItem)
+        if (resolution) return found('resolution', resolutionItem)
         const other = form.format === 'mp4' ? 'webm' : form.format === 'webm' ? 'mp4' : undefined
         if (other && works(`format:${other}`))
-            return browser('format', `${strings.format} ${form.format === 'webm' ? 'WebM' : 'MP4'}`)
-        if (sound && works('sound:off')) return browser('sound', soundList(form))
+            return found('format', `${strings.format} ${form.format === 'webm' ? 'WebM' : 'MP4'}`)
+        if (sound && works('sound:off'))
+            return found(
+                'sound',
+                ...(form.bgm ? [i18n.value.save.bgm] : []),
+                ...(form.sfx ? [i18n.value.modals.form.sfx.label] : []),
+            )
         return undefined
     })()
 
-    const graphics = ((): UnavailableLine | undefined => {
+    const graphics = ((): Found | undefined => {
         if (fits(input, form.resolution, form.renderScale, form.antialias)) return undefined
         if (form.antialias && fits(input, form.resolution, form.renderScale, false))
-            return device('antialias', i18n.value.settings.preview.antialias)
+            return found('antialias', i18n.value.settings.preview.antialias)
         const scale = lower([1, 1.5, 2], form.renderScale).find((value) =>
             fits(input, form.resolution, value, form.antialias),
         )
         if (scale)
-            return device(
+            return found(
                 'renderScale',
                 `${i18n.value.settings.preview.renderScale} ${form.renderScale}x`,
             )
@@ -145,12 +144,25 @@ const unavailable = (input: MessageInput): UnavailableLine[] => {
                 fits(input, value, form.renderScale, form.antialias) &&
                 (codecFails || support.choices[`resolution:${value}`]?.supported !== false),
         )
-        return resolution ? device('resolution', resolutionItem) : undefined
+        return resolution ? found('resolution', resolutionItem) : undefined
     })()
 
     // The codec's lower resolution already fits the limits.
-    if (codec?.field === 'resolution' && graphics?.field === 'resolution') return [codec]
-    return [codec, graphics].filter((found) => !!found)
+    const named = (
+        codec?.field === 'resolution' && graphics?.field === 'resolution'
+            ? [codec]
+            : [codec, graphics]
+    ).filter((check) => !!check)
+    if (!named.length) return []
+    const items = named.flatMap((check) => check.items).join(strings.unavailableSeparator)
+    return [
+        {
+            kind: 'unavailable',
+            severity: 'warning',
+            text: interpolateRaw(strings.unavailable, items),
+            fields: named.map((check) => check.field),
+        },
+    ]
 }
 
 /** The memory warning, while the settings work and the export would keep its file in memory. */
@@ -171,15 +183,10 @@ const memory = (input: MessageInput): ExportMessage[] => {
         : []
 }
 
-/** Unavailable lines, or the memory warning: one needs a check to fail, the other all to pass. */
-const advice = (input: MessageInput): ExportMessage[] => [
-    ...unavailable(input).map((line): ExportMessage => ({
-        kind: 'unavailable',
-        severity: 'warning',
-        ...line,
-    })),
-    ...memory(input),
-]
+/**
+ * The unavailable line, or the memory warning: one needs a check to fail, the other all to pass.
+ */
+const advice = (input: MessageInput): ExportMessage[] => [...unavailable(input), ...memory(input)]
 
 /** What the finished file lacks, for the settings of its attempt. */
 const finished = (outcome: Extract<Outcome, { kind: 'ready' | 'done' }>): ExportMessage[] => {

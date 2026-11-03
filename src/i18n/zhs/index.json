@@ -2462,6 +2462,8 @@
     "noBgm": "无背景音乐",
     "notInBrowser": "使用当前设置时，此浏览器不支持：{0}",
     "tooLarge": "使用当前设置时，此设备不支持：{0}",
+    "unavailable": "不支持：{0}",
+    "unavailableSeparator": "、",
     "advanced": "高级",
     "video": "视频",
     "picture": "画面",

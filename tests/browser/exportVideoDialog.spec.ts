@@ -1379,10 +1379,7 @@ test("a refused audio bitrate gives one line above the footer and drops Resoluti
     })
     const dialog = await open(page)
     const slot = dialog.locator('[data-export-slot]')
-    await expect(slot).toHaveText(
-        'Unavailable in this browser with these settings: Audio Bitrate 256 kbps',
-        { timeout: 20_000 },
-    )
+    await expect(slot).toHaveText('Unavailable: Audio Bitrate 256 kbps', { timeout: 20_000 })
     await expect(exportButton(page)).toBeDisabled()
     // Every size is refused at 256 kbps, and the line names the cause.
     const resolution = dialog.getByRole('combobox', { name: 'Resolution' })

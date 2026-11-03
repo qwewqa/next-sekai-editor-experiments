@@ -2462,6 +2462,8 @@
         "noBgm": "No BGM",
         "notInBrowser": "Unavailable in this browser with these settings: {0}",
         "tooLarge": "Unavailable on this device with these settings: {0}",
+        "unavailable": "Unavailable: {0}",
+        "unavailableSeparator": ", ",
         "advanced": "Advanced",
         "video": "Video",
         "picture": "Picture",

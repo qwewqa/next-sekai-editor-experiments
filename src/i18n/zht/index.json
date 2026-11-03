@@ -2462,6 +2462,8 @@
     "noBgm": "無 BGM",
     "notInBrowser": "使用目前設定時，此瀏覽器不支援：{0}",
     "tooLarge": "使用目前設定時，此裝置不支援：{0}",
+    "unavailable": "不支援：{0}",
+    "unavailableSeparator": "、",
     "advanced": "進階",
     "video": "影片",
     "picture": "畫面",

@@ -2462,6 +2462,8 @@
     "noBgm": "Aucune musique",
     "notInBrowser": "Indisponible dans ce navigateur avec ces paramètres : {0}",
     "tooLarge": "Indisponible sur cet appareil avec ces paramètres : {0}",
+    "unavailable": "Indisponible : {0}",
+    "unavailableSeparator": ", ",
     "advanced": "Avancé",
     "video": "Vidéo",
     "picture": "Image",

@@ -267,6 +267,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'exportVideo.kbps',
         'exportVideo.pause',
         'exportVideo.qualities.standard',
+        // The same comma as English.
+        'exportVideo.unavailableSeparator',
         // These French labels have the same spelling as English.
         'history.details.counts.note',
         'history.quotedField',
@@ -376,6 +378,8 @@ const identicalToEnglish: Record<string, string[]> = {
         // Units kept in Latin letters, as elsewhere.
         'exportVideo.fps',
         'exportVideo.kbps',
+        // The same comma as English.
+        'exportVideo.unavailableSeparator',
         'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',
@@ -422,6 +426,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'exportVideo.fps',
         'exportVideo.kbps',
         'exportVideo.video',
+        // The same comma as English.
+        'exportVideo.unavailableSeparator',
         'history.quoted',
         'history.quotedField',
         'modals.form.bpm.label',

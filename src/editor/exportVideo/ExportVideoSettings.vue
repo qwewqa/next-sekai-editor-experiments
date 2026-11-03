@@ -54,8 +54,8 @@ const audioOptions = computed(() =>
 )
 
 // --- Choices this browser or device cannot make, and why. A field with no choice left loses its
-// browser list while an unavailable line names another field: listing every choice would not help.
-const named = computed(() => d.messages.value.flatMap((message) => message.field ?? []))
+// browser list while the unavailable line names another field. Listing every choice would not help.
+const named = computed(() => d.messages.value.flatMap((message) => message.fields ?? []))
 const off = <T,>(prefix: string, options: readonly (readonly [string, T])[]) => {
     const reasons = new Map<Unavailable, string[]>()
     const values: T[] = []

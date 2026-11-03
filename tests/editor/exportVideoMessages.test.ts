@@ -75,10 +75,8 @@ test('a refused audio bitrate is named while a lower one works', () => {
         form: form({ audioBitrate: 256_000, frameRate: 60 }),
         support: { current: refused, choices },
     })
-    assert.deepEqual(lines(state), [
-        'Unavailable in this browser with these settings: Audio Bitrate 256 kbps',
-    ])
-    assert.equal(exportMessages(state)[0]?.field, 'audioBitrate')
+    assert.deepEqual(lines(state), ['Unavailable: Audio Bitrate 256 kbps'])
+    assert.deepEqual(exportMessages(state)[0]?.fields, ['audioBitrate'])
     // Audio Bitrate comes before Frame Rate, and Frame Rate before Resolution.
     const lowerWorks = (bitrate: CodecSupport) =>
         input({
@@ -92,12 +90,8 @@ test('a refused audio bitrate is named while a lower one works', () => {
                 },
             },
         })
-    assert.deepEqual(lines(lowerWorks(works)), [
-        'Unavailable in this browser with these settings: Audio Bitrate 256 kbps',
-    ])
-    assert.deepEqual(lines(lowerWorks(refused)), [
-        'Unavailable in this browser with these settings: Frame Rate 60 fps',
-    ])
+    assert.deepEqual(lines(lowerWorks(works)), ['Unavailable: Audio Bitrate 256 kbps'])
+    assert.deepEqual(lines(lowerWorks(refused)), ['Unavailable: Frame Rate 60 fps'])
     // The codec's resolution must also fit the limits: 1440p works, but is too large.
     assert.deepEqual(
         lines(
@@ -110,7 +104,7 @@ test('a refused audio bitrate is named while a lower one works', () => {
                 },
             }),
         ),
-        ['Unavailable in this browser with these settings: Resolution 2160p'],
+        ['Unavailable: Resolution 2160p'],
     )
     // A missing result is not evidence that a choice works; sound off is the last resort.
     assert.deepEqual(
@@ -119,7 +113,7 @@ test('a refused audio bitrate is named while a lower one works', () => {
     )
     assert.deepEqual(
         lines(input({ support: { current: refused, choices: { 'sound:off': works } } })),
-        ['Unavailable in this browser with these settings: BGM and SFX'],
+        ['Unavailable: BGM, SFX'],
     )
     assert.deepEqual(
         lines(
@@ -131,7 +125,7 @@ test('a refused audio bitrate is named while a lower one works', () => {
                 },
             }),
         ),
-        ['Unavailable in this browser with these settings: Format MP4'],
+        ['Unavailable: Format MP4'],
     )
 })
 
@@ -139,15 +133,11 @@ test('the size check names Antialiasing, then Render Scale, then Resolution', ()
     const at2160 = (patch: Partial<MessageInput['form']>, known: GraphicsLimits) =>
         lines(input({ form: form({ resolution: 2160, ...patch }), limits: known }))
     // 7680 px wide at 2x: within the viewport, past the antialiasing renderbuffer.
-    assert.deepEqual(at2160({ renderScale: 2 }, limits(8192, 4096)), [
-        'Unavailable on this device with these settings: Antialiasing',
-    ])
+    assert.deepEqual(at2160({ renderScale: 2 }, limits(8192, 4096)), ['Unavailable: Antialiasing'])
     assert.deepEqual(at2160({ renderScale: 2, antialias: false }, limits(4096)), [
-        'Unavailable on this device with these settings: Render Scale 2x',
+        'Unavailable: Render Scale 2x',
     ])
-    assert.deepEqual(at2160({ antialias: false }, limits(2048)), [
-        'Unavailable on this device with these settings: Resolution 2160p',
-    ])
+    assert.deepEqual(at2160({ antialias: false }, limits(2048)), ['Unavailable: Resolution 2160p'])
     // With the codec check passing, a size its probes refused is passed over.
     assert.deepEqual(
         lines(
@@ -157,12 +147,12 @@ test('the size check names Antialiasing, then Render Scale, then Resolution', ()
                 support: { current: works, choices: { 'resolution:1440': refused } },
             }),
         ),
-        ['Unavailable on this device with these settings: Resolution 2160p'],
+        ['Unavailable: Resolution 2160p'],
     )
 })
 
-test('both checks failing give both lines, codec first, and one when both name Resolution', () => {
-    // Every size is refused at 256 kbps, and 2160p is past the limits. The size line still names
+test('both checks failing give one line with the codec item first, and Resolution once when both name it', () => {
+    // Every size is refused at 256 kbps, and 2160p is past the limits. The size check still names
     // Resolution, because those refusals may come from the bitrate.
     const choices: Record<string, CodecSupport> = {
         'resolution:720': refused,
@@ -178,11 +168,16 @@ test('both checks failing give both lines, codec first, and one when both name R
                 support: { current: refused, choices },
             }),
         ),
-        [
-            'Unavailable in this browser with these settings: Audio Bitrate 256 kbps',
-            'Unavailable on this device with these settings: Resolution 2160p',
-        ],
+        ['Unavailable: Audio Bitrate 256 kbps, Resolution 2160p'],
     )
+    // Each sound source is its own item.
+    const both = input({
+        form: form({ resolution: 2160, renderScale: 2 }),
+        limits: limits(8192, 4096),
+        support: { current: refused, choices: { 'sound:off': works } },
+    })
+    assert.deepEqual(lines(both), ['Unavailable: BGM, SFX, Antialiasing'])
+    assert.deepEqual(exportMessages(both)[0]?.fields, ['sound', 'antialias'])
     // The size check alone would take 1440p, which the codec refused; the codec's 1080p fits both.
     assert.deepEqual(
         lines(
@@ -195,11 +190,11 @@ test('both checks failing give both lines, codec first, and one when both name R
                 },
             }),
         ),
-        ['Unavailable in this browser with these settings: Resolution 2160p'],
+        ['Unavailable: Resolution 2160p'],
     )
 })
 
-test('unknown limits give no size line and do not stop the memory warning', () => {
+test('unknown limits give no size item and do not stop the memory warning', () => {
     const state = input({
         form: form({ resolution: 2160, renderScale: 2 }),
         limits: null,
@@ -219,7 +214,7 @@ test('the memory warning needs the memory route, working settings and more than 
     assert.deepEqual(kinds({ ...state, bytes: 150_000_000 }), [])
     assert.deepEqual(kinds({ ...state, memoryRoute: undefined }), ['storage'])
     assert.deepEqual(kinds({ ...state, frames: 0 }), [])
-    // Unavailable lines take its place while a check fails.
+    // The unavailable line takes its place while a check fails.
     const failing = { current: refused, choices: { 'audioBitrate:128000': works } }
     assert.deepEqual(kinds({ ...state, support: failing }), ['unavailable'])
 })

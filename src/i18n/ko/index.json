@@ -2462,6 +2462,8 @@
     "noBgm": "배경음 없음",
     "notInBrowser": "현재 설정으로 이 브라우저에서 사용할 수 없음: {0}",
     "tooLarge": "현재 설정으로 이 기기에서 사용할 수 없음: {0}",
+    "unavailable": "사용할 수 없음: {0}",
+    "unavailableSeparator": ", ",
     "advanced": "고급",
     "video": "동영상",
     "picture": "화면",

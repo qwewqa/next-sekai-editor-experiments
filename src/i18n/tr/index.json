@@ -2462,6 +2462,8 @@
     "noBgm": "Arka plan müziği yok",
     "notInBrowser": "Bu ayarlarla bu tarayıcıda kullanılamıyor: {0}",
     "tooLarge": "Bu ayarlarla bu cihazda kullanılamıyor: {0}",
+    "unavailable": "Kullanılamıyor: {0}",
+    "unavailableSeparator": ", ",
     "advanced": "Gelişmiş",
     "video": "Video",
     "picture": "Görüntü",

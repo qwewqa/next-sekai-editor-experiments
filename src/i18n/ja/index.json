@@ -2462,6 +2462,8 @@
     "noBgm": "BGMなし",
     "notInBrowser": "現在の設定では、このブラウザーで利用できません：{0}",
     "tooLarge": "現在の設定では、このデバイスで利用できません：{0}",
+    "unavailable": "利用できません：{0}",
+    "unavailableSeparator": "、",
     "advanced": "詳細設定",
     "video": "動画",
     "picture": "映像",
