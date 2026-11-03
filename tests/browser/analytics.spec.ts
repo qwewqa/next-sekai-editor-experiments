@@ -112,7 +112,10 @@ const boot = async (page: Page, { signal, holdStartup }: Boot = {}) => {
     if (!holdStartup) await waitForStartup(page)
 }
 
-/** How many of the client and the modules only it imports have loaded: 3 once it is in. */
+/**
+ * How many of the client and two modules only it imports have loaded. Its other imports may still
+ * be loading.
+ */
 const clientLoaded = (page: Page) =>
     page.evaluate(
         (modules) => {
@@ -125,6 +128,12 @@ const clientLoaded = (page: Page) =>
         },
         [CLIENT, '/src/analytics/catalogue.ts', '/src/analytics/sender.ts'],
     )
+
+/** Waits until the client and every module it imports have loaded. */
+const clientImported = (page: Page) =>
+    page.evaluate(async (client) => {
+        await import(client)
+    }, CLIENT)
 
 /** The page as hidden for one `visibilitychange`, as when the user switches tabs. */
 const hide = (page: Page) =>
@@ -490,6 +499,8 @@ test('offline, the batch waits for the next hide', async ({ page, context }) => 
     await boot(page)
     await interact(page)
     await expect.poll(() => clientLoaded(page)).toBe(3)
+    // Offline, a module the client still needs fails to load, and the client never starts.
+    await clientImported(page)
     await context.setOffline(true)
     expect(await page.evaluate(() => navigator.onLine)).toBe(false)
     for (let i = 0; i < 3; i++) await hide(page)
