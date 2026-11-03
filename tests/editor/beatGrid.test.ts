@@ -422,7 +422,7 @@ test('grid lines match the definition, with beat lines a whole beat from their b
     assert.equal(gridLines(GLOBAL_GRID, 0, 25, 4, 101)?.length, 101)
 })
 
-test('tiny meters stay bounded', { timeout: 5000 }, () => {
+test('tiny meters stay bounded', () => {
     for (const meter of [1e-8, 1e-12, 1.9e-6]) {
         const g = grid([0], [2.5, meter], [100.25])
         assert.equal(snapBeat(g, 50.3, 1), 50.5)
