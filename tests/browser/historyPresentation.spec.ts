@@ -892,6 +892,13 @@ test('treegrid native controls, cell navigation and metadata focus preserve the 
     await open(page)
     const group = row(page, 'Changed Initial Life')
     await group.click()
+    // The request is made at the click; the chart shows it a moment later. Both are the baseline.
+    await expect
+        .poll(async () => {
+            const state = await selected(page)
+            return state.requested !== undefined && state.displayed === state.requested
+        })
+        .toBe(true)
     const before = await selected(page)
     await expect(group).toBeFocused()
     await page.keyboard.press('Tab')
