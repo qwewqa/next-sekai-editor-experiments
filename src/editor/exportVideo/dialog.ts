@@ -306,7 +306,7 @@ export const createExportDialog = (input: DialogInput) => {
         { immediate: true, deep: true },
     )
     // Undefined until the worker replies; null where it has no WebGL2 or fails. Unknown limits
-    // do not stop an export: the export finds out for itself.
+    // do not stop an export; a size that cannot be drawn fails it at the first frame.
     const limits = shallowRef<GraphicsLimits | null>()
     /**
      * Whether exports take the in-memory route, as an earlier export in this page found or the

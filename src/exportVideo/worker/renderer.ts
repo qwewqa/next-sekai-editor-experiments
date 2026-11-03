@@ -69,6 +69,7 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
         const alpha = gl.getUniformLocation(fade, 'u_alpha')
         const build = createPreviewChartBuilder()
         const mirror = applyMirror(undefined, scene.mirror)
+        /** Whether the drawn frame passes the graphics check. Throws when it cannot be drawn. */
         const draw = (time: number, clipTime?: number, settings: ExportSettings = s) => {
             try {
                 const s = settings
@@ -134,8 +135,8 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
                     gl.drawArrays(gl.TRIANGLES, 0, 3)
                 }
                 if (s.renderScale !== 1) composite?.present(s.width, s.height)
-                if (!renderer.checkError())
-                    throw new GraphicsError('Export frame failed its graphics check')
+                if (gl.isContextLost()) throw new GraphicsError('Export graphics context was lost')
+                return renderer.checkError()
             } catch (error) {
                 throw error instanceof GraphicsError ? error : new GraphicsError(String(error))
             }
@@ -145,18 +146,13 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
             dispose,
             draw,
             /**
-             * Draws and captures one frame. A frame whose drawing reported a problem is still
-             * captured, as incomplete. Throws when the context is lost or capture fails.
+             * Draws and captures one frame. A frame that fails the graphics check after drawing
+             * is still captured, as incomplete. Throws when the frame cannot be drawn or captured.
              */
             capture(index: number) {
                 if (wasLost || gl.isContextLost())
                     throw new GraphicsError('Export graphics context was lost')
-                let complete = true
-                try {
-                    draw(s.in + index / s.frameRate, index / s.frameRate)
-                } catch {
-                    complete = false
-                }
+                const complete = draw(s.in + index / s.frameRate, index / s.frameRate)
                 // Capture before yielding; the drawing buffer need not survive another task.
                 const frame = new VideoFrame(canvas, {
                     timestamp: frameTimestamp(index, s.frameRate),

@@ -779,7 +779,7 @@ test('Export waits for the device limits, and limits that cannot be read leave e
     await expect(resolution).not.toHaveAccessibleDescription(/device/)
     await expect(resolution.locator('option:disabled')).toHaveCount(0)
     await expect(exportButton(page)).toBeDisabled()
-    // A worker without WebGL2 sends no limits; the export finds out for itself.
+    // A worker without WebGL2 sends no limits, and Export is enabled.
     await page.evaluate(() => {
         const worker = Reflect.get(window, 'limitsWorker') as Worker
         worker.onmessage?.call(worker, new MessageEvent('message', { data: { type: 'limits' } }))
