@@ -1,7 +1,7 @@
 import { isRefusedRead } from '../../platform/fingerprint'
 import { fileErrorOf } from '../../platform/handover'
 import { FileError } from '../../platform/types'
-import { VideoOutputUnavailable } from '../error'
+import { VideoOutputUnavailable, withFailureDetails } from '../error'
 type VideoPick = { handle: FileSystemFileHandle; lastModified?: number }
 
 export type PositionTarget = {
@@ -53,9 +53,10 @@ const target = (backend: Backend, signal?: AbortSignal): PositionTarget => {
                 if (ended) throw new Error('Video target is closed')
                 await run()
             } catch (error) {
-                if (!ended) await discard()
+                const failures: unknown[] = []
+                if (!ended) await discard().catch((failure: unknown) => failures.push(failure))
                 if (stopped) throw cancelled()
-                throw fileErrorOf(error)
+                throw withFailureDetails(fileErrorOf(error), failures)
             }
         })
     const abort = () => {
@@ -147,9 +148,10 @@ export const openPickedTarget = async (
         signal?.throwIfAborted()
         writable = await pick.handle.createWritable({ keepExistingData: false })
     } catch (error) {
-        await removeVideoPick(pick)
+        const failures: unknown[] = []
+        await removeVideoPick(pick).catch((failure: unknown) => failures.push(failure))
         if (signal?.aborted) throw cancelled()
-        throw named(error)
+        throw withFailureDetails(named(error), failures)
     }
     const output = target(
         {

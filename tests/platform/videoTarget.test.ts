@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { restoreExportError, serializeExportError } from '../../src/exportVideo/error'
+import {
+    failureDetails,
+    restoreExportError,
+    serializeExportError,
+} from '../../src/exportVideo/error'
 import {
     openPickedTarget,
     openStagedFile,
     openStagedTarget,
 } from '../../src/exportVideo/worker/target'
+import { isWriteRefusal } from '../../src/platform/handover'
 import { memoryVideoStore } from '../../src/platform/mockVideoOutput'
+import { FileError } from '../../src/platform/types'
 
 const deferred = () => {
     let resolve!: () => void
@@ -44,7 +50,7 @@ for (const operation of ['open', 'abort'] as const)
     })
 
 /** Models a picked file and a separate swap, with gates around the final read and close. */
-const pickedFile = (fault?: 'write' | 'close' | 'remove' | 'open') => {
+const pickedFile = (...faults: ('write' | 'close' | 'remove' | 'open')[]) => {
     /** getFile() refused, as on a platform that refuses to read the picked file. */
     let refused = false
     let file: File | undefined = new File([], 'clip.mp4', { lastModified: 42 })
@@ -66,15 +72,16 @@ const pickedFile = (fault?: 'write' | 'close' | 'remove' | 'open') => {
         },
         remove: () => {
             removed++
-            if (fault === 'remove') throw new DOMException('Denied', 'NotAllowedError')
+            if (faults.includes('remove')) throw new DOMException('Denied', 'NotAllowedError')
             file = undefined
             return Promise.resolve()
         },
         createWritable: async () => {
-            if (fault === 'open') throw new DOMException('Not allowed', 'NotAllowedError')
+            if (faults.includes('open')) throw new DOMException('Not allowed', 'NotAllowedError')
             return {
                 write: ({ position, data }: { position: number; data: Uint8Array }) => {
-                    if (fault === 'write') throw new DOMException('Full', 'QuotaExceededError')
+                    if (faults.includes('write'))
+                        throw new DOMException('Full', 'QuotaExceededError')
                     const next = new Uint8Array(Math.max(swap.length, position + data.length))
                     next.set(swap)
                     next.set(data, position)
@@ -84,7 +91,8 @@ const pickedFile = (fault?: 'write' | 'close' | 'remove' | 'open') => {
                 close: async () => {
                     closing.resolve()
                     await closeGate?.promise
-                    if (fault === 'close') throw new DOMException('Full', 'QuotaExceededError')
+                    if (faults.includes('close'))
+                        throw new DOMException('Full', 'QuotaExceededError')
                     file = new File([swap], 'clip.mp4', { lastModified: 43 })
                 },
                 abort: () => {
@@ -215,6 +223,23 @@ test('a failed removal names the empty file and stays visible after signal cance
     await assert.rejects(output.abort(), { code: 'denied', fileName: 'clip.mp4' })
     await assert.rejects(output.close(), { code: 'denied', fileName: 'clip.mp4' })
     assert.equal(f.file!.size, 0)
+})
+
+test('a failed write or open keeps its error when removing the empty pick is refused, which Error Details add', async () => {
+    const written = pickedFile('write', 'remove')
+    const output = await openPickedTarget(written.pick)
+    const write = await output.write(new Uint8Array([1]), 0).catch((error: unknown) => error)
+    // A full disk stays a full disk: no refused write, which would export again.
+    assert.ok(write instanceof FileError && write.code === 'no-space' && !isWriteRefusal(write))
+    const restored = restoreExportError(structuredClone(serializeExportError(write)))
+    assert.deepEqual(failureDetails(restored), ['FileError: clip.mp4 was left empty'])
+    assert.equal(written.file!.size, 0)
+    const opened = pickedFile('open', 'remove')
+    await assert.rejects(openPickedTarget(opened.pick), (error: unknown) => {
+        assert.ok(error instanceof FileError && error.message === 'Not allowed')
+        assert.deepEqual(failureDetails(error), ['FileError: clip.mp4 was left empty'])
+        return true
+    })
 })
 
 test('a staged write handles partial writes and releases its access handle after a quota error', async () => {
