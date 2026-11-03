@@ -908,10 +908,14 @@ export const runCell = async (
     const flowRun = path.run(w).catch((error: unknown) => {
         w.errors.push(error)
     })
+    let timer: ReturnType<typeof setTimeout> | undefined
     const result = await Promise.race([
         flowRun,
-        new Promise<symbol>((resolve) => setTimeout(() => resolve(timeout), HANG_MS)),
+        new Promise<symbol>((resolve) => {
+            timer = setTimeout(() => resolve(timeout), HANG_MS)
+        }),
     ])
+    clearTimeout(timer)
     if (result === timeout) {
         hung = true
         w.cancel()
