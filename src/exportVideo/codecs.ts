@@ -376,15 +376,20 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
     let state: State = { pending: true, choices: {} }
     let shownChoices: State['choices'] = {}
     let latest: AbortController | undefined
+    const running = new Set<AbortController>()
+    const leave = (controller?: AbortController) => {
+        controller?.abort()
+        if (controller) running.delete(controller)
+    }
     let stopped = false
     return {
         get state() {
             return state
         },
-        /** Leaves the current update's shared work. Later updates do nothing. */
+        /** Leaves every update's shared work at once. Later updates do nothing. */
         stop() {
             stopped = true
-            latest?.abort()
+            running.forEach(leave)
         },
         /** `changed` receives the selection, then the choices, while the update is the latest. */
         async update(
@@ -393,11 +398,11 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
             changed: (state: State) => void = () => undefined,
         ) {
             if (stopped) return state
-            // A newer update leaves this one's shared trials.
-            latest?.abort()
+            const previous = latest
             const controller = (latest = new AbortController())
+            running.add(controller)
             const { signal } = controller
-            const wanted = () => !signal.aborted
+            const wanted = () => latest === controller && !signal.aborted
             const publish = (next: State) => {
                 if (!wanted()) return
                 state = next
@@ -406,7 +411,12 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
             state = { pending: true, choices: {} }
             try {
                 // The selection first, so that Export waits only for its own probes and trials.
-                const current = await probes.resolve({ ...settings }, { signal })
+                // The previous update stops publishing at once, but leaves its shared trials
+                // and measurements only after this selection resolves, so work both need
+                // keeps a caller.
+                const current = await probes
+                    .resolve({ ...settings }, { signal })
+                    .finally(() => leave(previous))
                 publish({ pending: false, current, choices: shownChoices })
                 // Trials encode full-size frames, so choices at another size or frame rate
                 // skip them.
@@ -424,7 +434,7 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
                 if (wanted()) shownChoices = Object.fromEntries(resolved)
                 publish({ pending: false, current, choices: shownChoices })
             } catch (error) {
-                if (!signal.aborted) throw error
+                if (wanted()) throw error
             }
             return state
         },

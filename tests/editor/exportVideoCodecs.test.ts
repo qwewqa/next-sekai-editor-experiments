@@ -353,7 +353,7 @@ test('trials run one at a time, only at the selected video settings, and a rejec
     assert.deepEqual(trials, ['vp09.00.40.08 720'])
 })
 
-test('Export waits only for its own trials, and a trial that no update wants is skipped, not failed', async () => {
+test('Export waits only for its own trials, and a passed trial is kept for its configuration', async () => {
     const trials: string[] = []
     let release!: () => void
     const held = new Promise<void>((resolve) => {
@@ -382,8 +382,14 @@ test('Export waits only for its own trials, and a trial that no update wants is 
     )
     release()
     await Promise.all([first, second])
-    // The first update's Main trial was queued behind the second update's and skipped.
-    assert.deepEqual(trials, ['avc1.64 1080', 'avc1.64 720', 'avc1.4d 720', 'vp09.00 720'])
+    // The first update keeps its trials until the second update's selection resolves.
+    assert.deepEqual(trials, [
+        'avc1.64 1080',
+        'avc1.64 720',
+        'avc1.4d 1080',
+        'avc1.4d 720',
+        'vp09.00 720',
+    ])
     // The selection is published before the WebM choice's trial.
     assert.deepEqual(shown, [
         { codec: 'avc1.4d', webm: false },
@@ -391,13 +397,64 @@ test('Export waits only for its own trials, and a trial that no update wants is 
     ])
     const again = await probes.resolve(silent)
     assert.equal(again.supported && again.video.codec.slice(0, 7), 'avc1.4d')
-    assert.equal(trials.at(-1), 'avc1.4d 1080')
+    assert.equal(trials.length, 5)
     // The whole configuration, bitrate included, is a trial's key.
     await probes.resolve({ ...silent, videoBitrate: 11e6 })
     const retried = trials.length
     assert.ok(retried > 5)
     await probes.resolve({ ...silent, videoBitrate: 11e6 })
     assert.equal(trials.length, retried)
+})
+
+test('a newer update keeps the trial it shares with the previous one, and closing leaves every trial at once', async () => {
+    const started: string[] = []
+    const stops: AbortSignal[] = []
+    let release = () => undefined as void
+    let held = Promise.resolve()
+    const hold = () => {
+        held = new Promise<void>((resolve) => {
+            release = resolve
+        })
+    }
+    const probes = createCodecProbes({
+        video: async () => ({ supported: true }),
+        audio: async () => ({ supported: true }),
+        trial: async (c, signal) => {
+            started.push(`${c.height} ${c.bitrate}`)
+            stops.push(signal)
+            await held
+            return true
+        },
+    })
+    const tick = () => new Promise((resolve) => setImmediate(resolve))
+    const webm = { ...settings, format: 'webm' } as const
+    hold()
+    const availability = createCodecAvailability(probes)
+    const first = availability.update(webm, {})
+    await tick()
+    // Only the audio changes, so the second update probes it before it joins the same trial.
+    const second = availability.update({ ...webm, audioBitrate: 128000 }, {})
+    await tick()
+    release()
+    const [, state] = await Promise.all([first, second])
+    assert.deepEqual(started, ['1080 12000000'])
+    assert.equal(stops[0]!.aborted, false)
+    assert.equal(state.current?.supported && state.current.audio?.bitrate, 128000)
+    // Closing leaves the running trial at once and skips the one queued behind it.
+    hold()
+    void availability.update({ ...webm, height: 720 }, {})
+    await tick()
+    void availability.update({ ...webm, height: 720, videoBitrate: 11e6 }, {})
+    await tick()
+    availability.stop()
+    assert.equal(stops[1]!.aborted, true)
+    release()
+    await tick()
+    assert.deepEqual(started.slice(1), ['720 12000000'])
+    const reopened = createCodecAvailability(probes)
+    const update = reopened.update({ ...webm, height: 720, videoBitrate: 11e6 }, {})
+    assert.equal((await update).current?.supported, true)
+    assert.deepEqual(started.slice(1), ['720 12000000', '720 11000000'])
 })
 
 test('an AAC delay that cannot be measured makes MP4 with sound unavailable, so Automatic picks WebM', async () => {
