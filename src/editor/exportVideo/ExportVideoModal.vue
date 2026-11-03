@@ -417,8 +417,11 @@ const title = computed(() => i18n.value.exportVideo.title)
 </template>
 
 <style scoped>
-/* Body: a grid of areas whose shape depends on the form. */
+/* Body: a grid of areas whose shape depends on the form. Both scrollers are positioned, so the
+   fields' absolutely positioned screen reader text scrolls with them. Against the dialog, that
+   text would sit below the visible area and make the dialog itself scroll. */
 .export-grid {
+    position: relative;
     flex: 1 1 0;
     min-height: 0;
     display: grid;
@@ -456,6 +459,7 @@ const title = computed(() => i18n.value.exportVideo.title)
 }
 
 .export-settings {
+    position: relative;
     flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;

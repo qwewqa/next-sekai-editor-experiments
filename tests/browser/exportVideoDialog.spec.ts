@@ -1023,7 +1023,9 @@ for (const { name, width, height, form, fit } of [
     { name: 'a narrow landscape phone', width: 740, height: 360, form: 'land', fit: 'icons' },
     { name: 'tablet portrait', width: 768, height: 1024, form: 'one', fit: 'names' },
 ] as const)
-    test(`${name} uses its form, with the time whole and the targets 44 px`, async ({ page }) => {
+    test(`${name} uses its form, with the time whole, the targets 44 px and the dialog itself never scrolling`, async ({
+        page,
+    }) => {
         await page.setViewportSize({ width, height })
         const dialog = await open(page)
         await expect(dialog.locator('[data-export-form]')).toHaveAttribute('data-export-form', form)
@@ -1053,6 +1055,14 @@ for (const { name, width, height, form, fit } of [
             const frame = (await dialog.locator('[data-export-frame]').boundingBox())!
             expect(frame.height).toBeGreaterThanOrEqual(119)
         }
+        // Only the settings, or the short form's single column, scroll. With Advanced open, the
+        // fields' screen reader text lies far below the visible area, so it has to scroll with them.
+        await dialog.locator('[data-export-advanced]').click()
+        await expect(dialog.locator('[data-export-advanced]')).toHaveAttribute(
+            'aria-expanded',
+            'true',
+        )
+        expect(await dialog.evaluate((e) => e.scrollHeight - e.clientHeight)).toBe(0)
     })
 
 test('the landscape chip opens a field that applies on a press outside', async ({ page }) => {

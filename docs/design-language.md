@@ -133,6 +133,7 @@ Colour, elevation, hover, press and focus of every button family come from the r
 
 - One viewport breakpoint, 640 px (`sm`). Below it menus become bottom sheets and large dialogs take the full height.
 - A large dialog with a picture beside its settings, such as Export Video, is `wide`: up to 72 rem wide. It takes the full height until it is wide enough for its two columns (a 53 rem viewport), and is capped at 48 rem from there.
+- A scroller inside a dialog is `relative`, so absolutely positioned content in it, such as a field's screen reader text, scrolls with it. Against the dialog, that content can make the whole dialog scroll.
 - Inside panels and dialogs the layout follows the container, not the viewport. The container queries are at 13.5, 19, 32 and 35 rem. Some surfaces measure instead. The Properties tabs measure against the sections, and the History peek strip and band pick a form from the widest text they can show.
 - Narrow fallbacks keep the main action's label longest: other labels become icon-only with `title` and `aria-label`, then truncate. Touch has no tooltips, so an icon-only control needs a name that is also visible somewhere else.
 - A count, delta or time is never cut: it shows whole or not at all, and free text gives way first. Check it in the longest locale.
