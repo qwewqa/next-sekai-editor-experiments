@@ -74,7 +74,7 @@ test('AAC ES descriptors yield ASC, including variable lengths and optional ES f
     )
 })
 
-test('every encoder receives the silent pad with the first samples in one call, then contiguous units with an exact last sample, and AAC a silent tail with the last', () => {
+test('every encoder receives the silent pad in the call with the first samples, then contiguous units with an exact last sample, and AAC also receives a silent tail in the last call', () => {
     for (const codec of ['aac', 'opus'] as const) {
         const inputs: AudioDataInit[] = []
         let closed = 0
@@ -110,7 +110,7 @@ test('every encoder receives the silent pad with the first samples in one call, 
                 [100000, 800 + tail],
             ],
         )
-        // Each plane holds the pad, the unit and the tail.
+        // In each plane, the samples before and after the unit are zero.
         for (const [input, before, after] of [
             [inputs[0]!, 1024, 0],
             [inputs[1]!, 0, tail],
@@ -347,7 +347,7 @@ test('audio that ends at most 96 samples short is a delay read late, with no pad
     assert.throws(() => audioAccounting(1024, 4800, end - 97), /Invalid encoded audio length/)
 })
 
-/** An AAC encoder with `delay` samples of priming that loses its last packet, as Chromium on Android does. */
+/** An AAC encoder with `delay` samples of priming that loses its last packet, as on Android. */
 const droppingAacEncoder = (
     delay: number,
     output: (chunk: EncodedAudioChunk, metadata?: EncodedAudioChunkMetadata) => void,

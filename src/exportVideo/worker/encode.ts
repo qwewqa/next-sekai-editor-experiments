@@ -225,7 +225,8 @@ export const createAudioPacketAdapter = (options: {
             // Packets are placed end to end by their durations. Firefox's Opus timestamps after
             // the first packet are early by the pre-skip.
             encodedSamples += chunkSamples(chunk)
-            // AAC ends at the clip's end: later packets are left out and the last one is shortened.
+            // AAC ends at the clip's end. Later packets are left out, and the one that crosses it
+            // is shortened.
             const end =
                 options.codec === 'aac'
                     ? Math.min(encodedSamples, AUDIO_PAD + delay + options.samples)
@@ -348,7 +349,10 @@ export const createVideoPacketAdapter = (options: {
     }
 }
 
-/** Silent samples after AAC input, one frame. Chromium on Android drops the last packet, which then holds only silence. */
+/**
+ * Silent samples after AAC input, one frame. Chromium on Android drops the last packet. With the
+ * tail, that packet contains only silence.
+ */
 export const AAC_TAIL = 1024
 
 /**
@@ -482,7 +486,7 @@ export const measureAacDelay = async (
         checkFailure()
         const delay = peakSample - AUDIO_PAD - impulse
         if (peak < 0.01 || delay < 0) throw new Error('AAC delay could not be measured')
-        // Output short of its input, the tail excluded, would fail an export's audio at its end.
+        // Output that ends short of the input, not counting the tail, would fail an export's audio.
         audioAccounting(
             delay,
             AUDIO_UNIT,
