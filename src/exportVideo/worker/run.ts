@@ -1,4 +1,4 @@
-import { AudioFailure } from '../error'
+import { AudioFailure, exportError } from '../error'
 import { AUDIO_RATE, audioUnits, type AudioBlock } from '../timing'
 import type { ExportStart } from '../types'
 import type { ExportWarning } from '../warnings'
@@ -201,6 +201,8 @@ export const runExport = async (
             if ((i + 1) % (10 * s.frameRate) === 0) await loop.guard(yieldTask())
         }
         loop.complete('video')
+        // With no frame submitted, no video can be kept: fail without waiting for the sound.
+        if (stopped && !loop.stats.submitted.video) throw exportError(stopped.cause)
         await loop.audioFed()
         const adapter = await loop.guard(audioFed)
         if (video.state === 'configured') await loop.guard(video.flush().catch(endVideo))

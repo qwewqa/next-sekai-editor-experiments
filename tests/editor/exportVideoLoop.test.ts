@@ -359,6 +359,8 @@ const runFake = async (options: {
     /** Frames whose drawing reports a problem. */
     incomplete?: number[]
     audio?: boolean
+    /** The page never answers the request for sound. */
+    mixHangs?: boolean
     /** The video encoder holds its output until its flush. */
     hold?: boolean
 }) => {
@@ -431,17 +433,19 @@ const runFake = async (options: {
                 abort: () => Promise.resolve(),
             },
             block: () =>
-                Promise.resolve(
-                    blocks-- > 0
-                        ? {
-                              startSample: 0,
-                              planes: [new Float32Array(samples), new Float32Array(samples)] as [
-                                  Float32Array<ArrayBuffer>,
-                                  Float32Array<ArrayBuffer>,
-                              ],
-                          }
-                        : undefined,
-                ),
+                options.mixHangs
+                    ? new Promise<undefined>(() => undefined)
+                    : Promise.resolve(
+                          blocks-- > 0
+                              ? {
+                                    startSample: 0,
+                                    planes: [
+                                        new Float32Array(samples),
+                                        new Float32Array(samples),
+                                    ] as [Float32Array<ArrayBuffer>, Float32Array<ArrayBuffer>],
+                                }
+                              : undefined,
+                      ),
             progress: (count, bitmap) => progress.push([count, bitmap]),
             finishing: () => Promise.resolve(),
         })
@@ -495,6 +499,18 @@ test('a lost context or a failed video encoder ends the picture there, and the s
     await assert.rejects(runFake({ lostAt: 0 }), (error: unknown) => error instanceof GraphicsError)
     await assert.rejects(runFake({ failAt: 0 }), { name: 'EncodingError' })
 })
+
+test(
+    'a picture that ends before its first frame fails without waiting for the sound',
+    { timeout: 120_000 },
+    async () => {
+        // The sound never comes here: an export that waited for it would never end.
+        await assert.rejects(
+            runFake({ lostAt: 0, audio: true, mixHangs: true }),
+            (error: unknown) => error instanceof GraphicsError,
+        )
+    },
+)
 
 test('frames whose drawing reports a problem are kept, with a warning', async () => {
     const { result, written } = await runFake({ incomplete: [0, 2] })
