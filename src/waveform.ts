@@ -26,7 +26,7 @@ export const createWaveform = async (
     const currentGeneration = generation
     const checkCancelled = () => {
         if (signal?.aborted || currentGeneration !== generation) {
-            throw new DOMException('Waveform generation cancelled', 'AbortError')
+            throw new DOMException('Waveform generation canceled', 'AbortError')
         }
     }
     checkCancelled()

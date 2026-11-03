@@ -53,7 +53,7 @@ export const createExportHost = (worker: Worker) => {
             nextView()
         } else if (data.type === 'failed') failView(restoreExportError(data.error))
         else if (data.type === 'cancelled')
-            failView(new DOMException('Video export cancelled', 'AbortError'))
+            failView(new DOMException('Video export canceled', 'AbortError'))
     }
     worker.onmessage = ({ data }: MessageEvent<FromExportWorker>) => {
         viewMessage(data)
@@ -142,7 +142,7 @@ export const createExportHost = (worker: Worker) => {
                         )
                     } else if (data.type === 'done') finish(undefined, data.result)
                     else if (data.type === 'cancelled')
-                        finish(new DOMException('Video export cancelled', 'AbortError'))
+                        finish(new DOMException('Video export canceled', 'AbortError'))
                     else if (data.type === 'failed') finish(restoreExportError(data.error))
                     else {
                         options.event(data)

@@ -65,7 +65,7 @@ async function* load(
     drawn: boolean,
 ): AsyncGenerator<() => string, PickedBgm> {
     const check = () => {
-        if (cancelled()) throw new DOMException('BGM import cancelled', 'AbortError')
+        if (cancelled()) throw new DOMException('BGM import canceled', 'AbortError')
     }
     check()
     yield () => i18n.value.commands.bgm.modal.loading

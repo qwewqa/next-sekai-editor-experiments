@@ -109,7 +109,7 @@ const routeOf = async (
         case 'cancelled':
         case 'dismissed':
             request.dismissed()
-            throw new DOMException('Video export cancelled', 'AbortError')
+            throw new DOMException('Video export canceled', 'AbortError')
     }
 }
 

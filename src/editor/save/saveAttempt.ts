@@ -21,7 +21,7 @@ const notWritten = (failure: FileError) => failure.step === 'check' || failure.c
 export class Cancelled extends Error {
     override name = 'Cancelled'
     constructor() {
-        super('The Save was cancelled')
+        super('The Save was canceled')
     }
 }
 

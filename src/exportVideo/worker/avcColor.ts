@@ -18,7 +18,7 @@ export const withAvcColor = (config: VideoDecoderConfig, replace = false): Video
         !color.matrix ||
         color.fullRange == null
     )
-        throw new Error('H.264 colour configuration is missing')
+        throw new Error('H.264 color configuration is missing')
     const values = [primaries[color.primaries], transfers[color.transfer], matrices[color.matrix]]
     const description = config.description
     const bytes = ArrayBuffer.isView(description)
@@ -131,7 +131,7 @@ const fillColor = (sps: Uint8Array, values: number[], fullRange: boolean, replac
                 (range !== Number(fullRange) ||
                     declared.some((value, i) => value !== 2 && value !== values[i]))
             )
-                throw new Error('Conflicting H.264 colour description')
+                throw new Error('Conflicting H.264 color description')
             replacement = fields
         }
     }

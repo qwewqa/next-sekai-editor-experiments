@@ -271,7 +271,7 @@ Recorded when a **Save**, **Save As…**, **Download Again** or **Save…** acti
 
 ### `export`
 
-Recorded when writing an export succeeds or fails. Cancelling an export is not recorded.
+Recorded when writing an export succeeds or fails. Canceling an export is not recorded.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -286,7 +286,7 @@ Recorded when writing an export succeeds or fails. Cancelling an export is not r
 
 ### `check`
 
-Recorded when **Check File and History** finishes, unless it was cancelled.
+Recorded when **Check File and History** finishes, unless it was canceled.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -298,12 +298,12 @@ Recorded when **Check File and History** finishes, unless it was cancelled.
 
 ### `exportVideo`
 
-Recorded once per export attempt, when the file is written, the export fails or it is cancelled. A video prepared for download or sharing is recorded on its first successful delivery, or when it is discarded. Downloading it again adds no event. Time spent choosing a file or waiting to download or share is excluded from `took`.
+Recorded once per export attempt, when the file is written, the export fails or it is canceled. A video prepared for download or sharing is recorded on its first successful delivery, or when it is discarded. Downloading it again adds no event. Time spent choosing a file or waiting to download or share is excluded from `took`.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
 | `outcome` | The result of the export | `done`, `cancelled` or `failed` |
-| `stage` | Where the export was cancelled or failed. Omitted for a finished video | `prepare`, `pick`, `render` or `finish` |
+| `stage` | Where the export was canceled or failed. Omitted for a finished video | `prepare`, `pick`, `render` or `finish` |
 | `reason` | Why the export failed. Omitted for a finished video | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only`, `io`, `config`, `encoder`, `audio`, `graphics`, `memory`, `hidden` or `memoryLimit` |
 | `format` | The video format | `mp4` or `webm` |
 | `support` | Whether MP4 was available with the chosen settings | `full` or `webmOnly` |

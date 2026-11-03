@@ -422,7 +422,7 @@ const rasterize = (
     source.width = width
     source.height = height
     const context = createFontContext(source)
-    if (!context) throw new Error('Browser text rasterisation is unavailable')
+    if (!context) throw new Error('Browser text rasterization is unavailable')
     applyStyle(context, style)
     context.fillStyle = request.fillStyle
     context.setTransform(a, b, c, d, originX, originY)

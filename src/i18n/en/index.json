@@ -2496,7 +2496,7 @@
         "preparing": "Preparing…",
         "exporting": "Exporting video…",
         "finishing": "Finishing…",
-        "cancelling": "Cancelling…",
+        "cancelling": "Canceling…",
         "exported": "Exported to {0}",
         "ready": "Ready",
         "keepOpen": "Keep this tab open until the export finishes.",

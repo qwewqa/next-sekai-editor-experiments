@@ -18,7 +18,7 @@ export type SyncAccess = {
 
 type Backend = Omit<PositionTarget, 'close'> & { close(commit: () => void): Promise<void> }
 
-const cancelled = () => new DOMException('Video export cancelled', 'AbortError')
+const cancelled = () => new DOMException('Video export canceled', 'AbortError')
 
 /** Serializes writes and cleanup. Cancellation stops further writes and releases the handle. */
 const target = (backend: Backend, signal?: AbortSignal): PositionTarget => {
