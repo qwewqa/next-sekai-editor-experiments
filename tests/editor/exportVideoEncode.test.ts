@@ -950,7 +950,7 @@ test('H.264 waits for a key packet with a usable configuration, and a later esse
     assert.throws(() => failed.finish(), /Encoder failed/)
 })
 
-test('the H.264 record must be complete, with the profile of its SPS; size and colour parsing are optional', () => {
+test('the H.264 record must be complete, with the profile of its SPS; size and color parsing are optional', () => {
     assert.equal(readAvcRecord(avcC)?.codec, 'avc1.64001e')
     const record = (sps: number[], pps = [0x68, 0xee, 0x3c, 0x80]) =>
         new Uint8Array([

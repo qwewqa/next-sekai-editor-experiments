@@ -194,7 +194,7 @@ export const createSharedWork = <T>(oneAtATime = false) => {
 }
 
 // isConfigSupported can accept a configuration whose output the export cannot use. Firefox's
-// H.264 encoder writes a malformed SPS. The frames are raw YUV: grey with a moving square.
+// H.264 encoder writes a malformed SPS. The frames are raw YUV: gray with a moving square.
 const trialEncode = async (config: TrialConfig, signal: AbortSignal) => {
     const frames = 3
     const at = (i: number) => frameTimestamp(i, config.framerate)

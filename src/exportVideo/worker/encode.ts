@@ -324,7 +324,7 @@ type VideoSize = { width: number; height: number }
 type VideoInit = { codec: string; size: VideoSize | undefined; essential?: string }
 
 /**
- * The codec string and displayed size of a configuration, and for H.264 its colour-free
+ * The codec string and displayed size of a configuration, and for H.264 its color-free
  * initialization, from the bitstream where it can be read. Undefined for H.264 without a usable
  * record; see `readAvcRecord`.
  */
@@ -347,7 +347,7 @@ const readInit = (config: VideoDecoderConfig, data: Uint8Array): VideoInit | und
  * that are 1 µs early (https://webkit.org/b/321880). A frame that is out of the clip, taken, or
  * not after the packet's group gets the frame after the latest one instead, with a warning.
  * Video starts at the first key packet with a usable configuration. A later H.264
- * configuration that differs in more than colour, a size change, too many packets or `end()`
+ * configuration that differs in more than color, a size change, too many packets or `end()`
  * ends the track there.
  */
 export const createVideoPacketAdapter = (options: {
