@@ -146,13 +146,13 @@ export const aacPacketBound = (samples: number, delay: number) =>
     Math.ceil((samples + AUDIO_PAD + delay) / 960) + AAC_TRAILING_PACKETS
 
 /** A video packet takes its frame's duration; audio requires one. */
-const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk, shift = 0): EncodedPacket => {
+const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk): EncodedPacket => {
     const data = new Uint8Array(chunk.byteLength)
     chunk.copyTo(data)
     return {
         data,
         type: chunk.type,
-        timestamp: chunk.timestamp - shift,
+        timestamp: chunk.timestamp,
         duration: chunk.duration ?? 0,
     }
 }
