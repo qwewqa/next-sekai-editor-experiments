@@ -126,7 +126,7 @@ Colour, elevation, hover, press and focus of every button family come from the r
 - 16 px for rows, fields, buttons and dialog body; `text-lg` bold for dialog titles; `text-sm` for menus, the rail (`font-medium`), strips, notice cards, History rows and Properties headings (bold); `text-xs` for meta, counts, captions and the status bar (`text-white/80` on the chrome).
 - Bold for titles, band labels, tabs and section headings; `font-semibold` for folder names; buttons normal.
 - Counts, deltas and times are `tabular-nums`, so a changing number does not move the line.
-- A line that joins its parts with " · " and can wrap uses `SeparatedText.vue`. Each separator stays with the part before it, so a wrapped line never starts with one.
+- A line that joins its parts with " · " and can wrap keeps each separator with the part before it, so a wrapped line never starts with one. For plain text, `SeparatedText.vue` does this.
 - **Secondary text floor:** `text-fg/80` on a light modal is 4.69:1, the lowest alpha that passes 4.5:1 there. `fg/75` is 4.16, `fg/70` is 3.70 and a 60 % fade is 2.96, so `fg/70` is for glyphs and disabled states only. On `header` only full `fg` passes (4.97:1; `fg/80` is 3.44), so meta text on a band is full ink (`ManagerRow.vue` forces it). `opacity-75` fails the same way (4.16:1), so use `text-fg/80`. On the status bar, text stays `white/80` (4.82:1 on the light chrome) and is not dimmed further. Dark has more room (`fg/70` is 5.6:1 on its modal), so judge light first.
 - Muted text is not the same as unavailable: an unavailable History row fades its marks and text but keeps the reason at `fg/80` ([section 8](#8-the-history-surfaces)).
 
