@@ -113,10 +113,10 @@ test('every encoder receives the silent pad and contiguous units with an exact l
     assert.equal(closed, 3)
     assert.equal(feeder.submittedEnd, 5600 / AUDIO_RATE)
     assert.throws(() => feeder.pad(), /already/)
-    assert.equal(aacPacketBound(5600, 2112), Math.ceil(8736 / 960) + 1024)
+    assert.equal(aacPacketBound(5600, 2112), Math.ceil(8736 / 960))
 })
 
-test('AAC packets put the pad and priming before zero and retain final padding', () => {
+test('AAC packets put the pad and priming before zero and end at the clip end', () => {
     const emitted: MuxInput[] = []
     const adapter = createAudioPacketAdapter({
         codec: 'aac',
@@ -140,14 +140,25 @@ test('AAC packets put the pad and priming before zero and retain final padding',
     assert.equal(emitted.filter((input) => input.track === 'audio' && input.timing).length, 1)
     const trim = adapter.finish()
     assert.deepEqual(
-        emitted.filter((x) => x.track === 'audio').map((x) => x.packet.timestamp),
-        [0, 1024, 2048].map((sample) => ((sample - 2048) * 1e6) / AUDIO_RATE),
+        emitted.flatMap((x) =>
+            x.track === 'audio' ? [[x.packet.timestamp, x.packet.duration]] : [],
+        ),
+        (
+            [
+                [0, 1024],
+                [1024, 1024],
+                [2048, 800],
+            ] as const
+        ).map(([sample, length]) => [
+            ((sample - 2048) * 1e6) / AUDIO_RATE,
+            (length * 1e6) / AUDIO_RATE,
+        ]),
     )
     assert.equal(trim.startSamples, 2048)
     assert.equal(trim.playableSamples, 800)
     assert.equal(trim.endSample, 2848)
-    assert.equal(trim.paddingSamples, 224)
-    assert.deepEqual(emitted.at(-1), { track: 'audioEnd', paddingSamples: 224 })
+    assert.equal(trim.paddingSamples, 0)
+    assert.deepEqual(emitted.at(-1), { track: 'audioEnd', paddingSamples: 0 })
     assert.throws(() => adapter.finish(), /incomplete/)
 })
 
@@ -240,7 +251,7 @@ const opusConfig = { ...aacConfig, codec: 'opus', description: opusHead(312) }
 const audioPackets = (emitted: MuxInput[]) =>
     emitted.flatMap((x) => (x.track === 'audio' ? [x.packet] : []))
 
-test('AAC durations rounded either way give whole samples, and every packet reaches the muxer', () => {
+test('AAC durations rounded either way give whole samples, and packets after the clip are left out', () => {
     for (const delay of [1024, 2112]) {
         const samples = 4800
         const count = Math.ceil((AUDIO_PAD + delay + samples) / 1024)
@@ -259,12 +270,14 @@ test('AAC durations rounded either way give whole samples, and every packet reac
             )
         const trim = adapter.finish()
         const packets = audioPackets(emitted)
-        assert.equal(packets.length, count + 2)
+        assert.equal(packets.length, count)
         assert.deepEqual(
             packets.map((p) => Math.round(((p.timestamp + p.duration) * AUDIO_RATE) / 1e6)),
-            Array.from({ length: count + 2 }, (_, i) => (i + 1) * 1024 - AUDIO_PAD - delay),
+            Array.from({ length: count }, (_, i) =>
+                Math.min((i + 1) * 1024 - AUDIO_PAD - delay, samples),
+            ),
         )
-        assert.equal(trim.paddingSamples, (count + 2) * 1024 - (AUDIO_PAD + delay + samples))
+        assert.equal(trim.paddingSamples, 0)
     }
 })
 

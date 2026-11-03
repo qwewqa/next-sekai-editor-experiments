@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 
 for (const format of ['webm', 'mp4'] as const)
     for (const start of [0, 83])
-        test(`${format} streams a clip from ${start} s with aligned sound and less than one packet of padding`, async ({
+        test(`${format} streams a clip from ${start} s with aligned sound and ${format === 'mp4' ? 'no' : 'less than one packet of'} padding`, async ({
             page,
         }, testInfo) => {
             const supported = await page.evaluate(async (format) => {
@@ -70,14 +70,24 @@ for (const format of ['webm', 'mp4'] as const)
             ).findIndex((value) => value > 0.1)
             expect(Math.abs(media.firstSound! - onset / 48000)).toBeLessThan(0.001)
             expect(media.earlyPeak).toBeGreaterThan(0.1)
-            const packetSamples = format === 'mp4' ? 1024 : 960
             const padding = (result.result as { paddingSamples: number }).paddingSamples
-            expect(padding).toBeGreaterThanOrEqual(0)
-            expect(padding).toBeLessThan(packetSamples)
-            expect(Math.abs(media.audioEnd - (121600 + padding) / 48000)).toBeLessThan(0.0011)
-            expect(
-                Math.abs(media.duration - Math.max(media.videoEnd, media.audioEnd)),
-            ).toBeLessThan(0.0011)
+            const clipEnd = 121600 / 48000
+            if (format === 'mp4') {
+                // The edit list ends the audio at the clip's end. The reader still decodes the
+                // last packet whole.
+                expect(padding).toBe(0)
+                expect(Math.abs(media.audioPresentedEnd - clipEnd)).toBeLessThan(1 / 48000)
+                expect(media.audioEnd).toBeGreaterThanOrEqual(media.audioPresentedEnd)
+                expect(media.audioEnd).toBeLessThan(clipEnd + 1024 / 48000)
+                expect(Math.abs(media.duration - media.videoEnd)).toBeLessThan(1 / 48000)
+            } else {
+                expect(padding).toBeGreaterThanOrEqual(0)
+                expect(padding).toBeLessThan(960)
+                expect(Math.abs(media.audioEnd - (121600 + padding) / 48000)).toBeLessThan(0.0011)
+                expect(
+                    Math.abs(media.duration - Math.max(media.videoEnd, media.audioEnd)),
+                ).toBeLessThan(0.0011)
+            }
             expect(media.colorSpace).toBeDefined()
         })
 

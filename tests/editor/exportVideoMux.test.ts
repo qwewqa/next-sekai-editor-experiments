@@ -334,6 +334,13 @@ const find = (bytes: Uint8Array, within: Box | undefined, path: string[]): Box |
     }
     return box
 }
+/** The duration field of an mvhd, tkhd or mdhd box, at `at` in version 0 and 8 bytes later in version 1. */
+const headerDuration = (bytes: Uint8Array, box: Box, at: number) => {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    return bytes[box.body]
+        ? Number(view.getBigUint64(box.body + at + 8))
+        : view.getUint32(box.body + at)
+}
 const mp4Layout = (bytes: Uint8Array) => {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
     const top = boxesIn(bytes, 0, bytes.length)
@@ -360,6 +367,16 @@ const mp4Layout = (bytes: Uint8Array) => {
                     ? Number(view.getBigInt64(elst.body + 8 + 8))
                     : view.getInt32(elst.body + 8 + 4)
                 : undefined
+            const segmentDuration = elst
+                ? elstVersion
+                    ? Number(view.getBigUint64(elst.body + 8))
+                    : view.getUint32(elst.body + 8)
+                : undefined
+            const stts = find(bytes, stbl, ['stts'])!
+            const deltas = Array.from({ length: view.getUint32(stts.body + 4) }, (_, i) => [
+                view.getUint32(stts.body + 8 + 8 * i),
+                view.getUint32(stts.body + 12 + 8 * i),
+            ])
             const stsd = find(bytes, stbl, ['stsd'])!
             // The sample entry's fields come before its child boxes: 78 bytes for video.
             const entry = boxesIn(bytes, stsd.body + 8, stsd.end)[0]!
@@ -370,11 +387,15 @@ const mp4Layout = (bytes: Uint8Array) => {
                 offsets,
                 ctts: ctts ? view.getUint32(ctts.body + 4) : 0,
                 mediaTime,
+                segmentDuration,
+                duration: headerDuration(bytes, find(bytes, trak, ['tkhd'])!, 20),
+                mediaDuration: headerDuration(bytes, find(bytes, trak, ['mdia', 'mdhd'])!, 16),
+                deltas,
                 colr: children.some((b) => b.type === 'colr'),
                 avcC: avcC && bytes.subarray(avcC.body, avcC.end),
             }
         })
-    return { top, tracks }
+    return { top, tracks, duration: headerDuration(bytes, find(bytes, moov, ['mvhd'])!, 16) }
 }
 
 const avcRecord = new Uint8Array([
@@ -507,7 +528,7 @@ const audioPacketsIn = async (bytes: Uint8Array) => {
     }
 }
 
-test('the AAC reservation holds 960- and 1,024-sample packets at both delays around packet boundaries, keeping every trailing packet', async () => {
+test('the AAC reservation holds 960- and 1,024-sample packets at both delays around packet boundaries, leaving out trailing packets', async () => {
     const cases: [frame: number, delay: number, samples: number][] = []
     for (const frame of [960, 1024])
         for (const delay of [1024, 2112])
@@ -526,10 +547,10 @@ test('the AAC reservation holds 960- and 1,024-sample packets at both delays aro
             audioPackets: needed + 3,
         })
         const stamps = await audioPacketsIn(bytes)
-        assert.equal(stamps.length, needed + 3)
+        assert.equal(stamps.length, needed)
         // The lead-in and the delay come before zero.
         assert.ok(Math.abs(stamps[0]! + (1024 + delay) / 48000) < 1e-6)
-        assert.ok(needed + 3 <= aacPacketBound(samples, delay))
+        assert.ok(needed <= aacPacketBound(samples, delay))
         // One packet short of the clip is incomplete, unless it ends at most 96 samples short.
         const short = muxMp4({ order: [0], samples, delay, frame, audioPackets: needed - 1 })
         if (1024 + delay + samples - (needed - 1) * frame > 96)
@@ -621,5 +642,49 @@ test('the written MP4 keeps several parameter sets after colour patching, colr o
         assert.equal(readAvcRecord(video.avcC!)?.codec, 'avc1.64001e')
         assert.equal(video.colr, colorSpace !== undefined)
         assert.equal(sound.mediaTime, 1024 + delay)
+    }
+})
+
+test('the MP4 presents exactly the clip after the lead-in and delay, ending the last AAC packet at the clip end', async () => {
+    // Clip ends inside a packet, with no delay and with Chromium's macOS delay, and on a boundary.
+    for (const [frames, delay] of [
+        [3, 0],
+        [3, 2112],
+        [2, 896],
+    ] as const) {
+        const samples = clipSamples(frames, 30)
+        const end = 1024 + delay + samples
+        const needed = Math.ceil(end / 1024)
+        const bytes = await muxMp4({
+            order: Array.from({ length: frames }, (_, i) => i),
+            samples,
+            delay,
+            frame: 1024,
+            audioPackets: needed + 2,
+        })
+        const { tracks, duration } = mp4Layout(bytes)
+        const video = tracks.find((track) => track.handler === 'vide')!
+        const sound = tracks.find((track) => track.handler === 'soun')!
+        // Movie timescale 57,600; the audio media timescale is 48,000.
+        const clip = (samples * 57600) / 48000
+        assert.equal(video.duration, (frames * 57600) / 30)
+        assert.equal(duration, video.duration)
+        assert.equal(sound.duration, clip)
+        assert.equal(sound.segmentDuration, clip)
+        assert.equal(sound.mediaTime, 1024 + delay)
+        assert.equal(sound.mediaDuration, end)
+        const last = end - (needed - 1) * 1024
+        assert.deepEqual(
+            sound.deltas,
+            last === 1024
+                ? [[needed, 1024]]
+                : [
+                      [needed - 1, 1024],
+                      [1, last],
+                  ],
+        )
+        const stamps = await audioPacketsIn(bytes)
+        assert.equal(stamps.length, needed)
+        assert.ok(Math.abs(stamps[0]! + (1024 + delay) / 48000) < 1e-6)
     }
 })

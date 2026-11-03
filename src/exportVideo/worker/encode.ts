@@ -135,15 +135,12 @@ const chunkSamples = (chunk: EncodedAudioChunk) => {
     return samples
 }
 
-/** Packets an encoder may emit at the end beyond the clip, its lead-in and its delay. */
-const AAC_TRAILING_PACKETS = 1024
-
 /**
  * The MP4 reservation for AAC: the lead-in, the measured delay and the clip in the shorter of
- * the AAC-LC frame lengths, 960 and 1,024 samples, and the trailing packets.
+ * the AAC-LC frame lengths, 960 and 1,024 samples. Packets after the clip are left out.
  */
 export const aacPacketBound = (samples: number, delay: number) =>
-    Math.ceil((samples + AUDIO_PAD + delay) / 960) + AAC_TRAILING_PACKETS
+    Math.ceil((samples + AUDIO_PAD + delay) / 960)
 
 /** A video packet takes its frame's duration; audio requires one. */
 const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk): EncodedPacket => {
@@ -223,23 +220,30 @@ export const createAudioPacketAdapter = (options: {
             } else if (reported && !same(reported, first))
                 throw new Error('Audio configuration changed')
             if (delay === undefined) throw new Error('Audio timing is unknown')
-            const timing = encodedSamples === 0 ? audioTiming(delay, options.samples) : undefined
+            const start = encodedSamples
+            const timing = start === 0 ? audioTiming(delay, options.samples) : undefined
             // Packets are placed end to end by their durations. Firefox's Opus timestamps after
             // the first packet are early by the pre-skip.
-            const samples = chunkSamples(chunk)
+            encodedSamples += chunkSamples(chunk)
+            // AAC ends at the clip's end: later packets are left out and the last one is shortened.
+            const end =
+                options.codec === 'aac'
+                    ? Math.min(encodedSamples, AUDIO_PAD + delay + options.samples)
+                    : encodedSamples
+            if (end <= start) return
             const packet = packetOf(chunk)
-            packet.timestamp = ((encodedSamples - AUDIO_PAD - delay) * 1e6) / AUDIO_RATE
-            packet.duration = (samples * 1e6) / AUDIO_RATE
-            encodedSamples += samples
+            packet.timestamp = ((start - AUDIO_PAD - delay) * 1e6) / AUDIO_RATE
+            packet.duration = ((end - start) * 1e6) / AUDIO_RATE
             options.emit({ track: 'audio', packet, decoderConfig: config, timing })
         },
         finish() {
             if (ended || encodedSamples === 0 || delay === undefined)
                 throw new Error('Audio output is incomplete')
             const trim = audioAccounting(delay, options.samples, encodedSamples)
-            options.emit({ track: 'audioEnd', paddingSamples: trim.paddingSamples })
+            const paddingSamples = options.codec === 'aac' ? 0 : trim.paddingSamples
+            options.emit({ track: 'audioEnd', paddingSamples })
             ended = true
-            return trim
+            return { ...trim, paddingSamples }
         },
     }
 }

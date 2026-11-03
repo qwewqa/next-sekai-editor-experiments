@@ -36,6 +36,8 @@ const readAudio = async (track: InputAudioTrack) => {
         channels: await track.getNumberOfChannels(),
         first,
         end,
+        /** The end the container presents, which can be earlier than the decoded end. */
+        presentedEnd: await track.computeDuration(),
         peak,
         firstSound,
         earlyPeak,
@@ -90,6 +92,7 @@ export const readVideo = async (bytes: number[]) => {
         ...video,
         firstAudio: audio.first,
         audioEnd: audio.end,
+        audioPresentedEnd: audio.presentedEnd,
         firstSound: audio.firstSound,
         earlyPeak: audio.earlyPeak,
     }
