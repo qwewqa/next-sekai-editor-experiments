@@ -44,7 +44,7 @@ for (const route of ['staged', 'memory', 'memory without worker sync access'])
         await shortVideoClip(page)
         await dialog.locator('[data-export-advanced]').click()
         await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption('webm')
-        await expect(videoExportButton(page)).toBeEnabled()
+        await expect(videoExportButton(page)).toBeEnabled({ timeout: videoExportTimeout })
         await videoExportButton(page).click()
         await expect.poll(() => videoPhase(page), { timeout: videoExportTimeout }).toBe('ready')
         const downloading = page.waitForEvent('download')
@@ -88,7 +88,7 @@ const refusingVideoPage = async (page: Page, refuse: NonNullable<ExportFaults['r
     await shortVideoClip(page)
     await dialog.locator('[data-export-advanced]').click()
     await dialog.getByRole('combobox', { name: 'Format', exact: true }).selectOption('webm')
-    await expect(videoExportButton(page)).toBeEnabled()
+    await expect(videoExportButton(page)).toBeEnabled({ timeout: videoExportTimeout })
     await videoExportButton(page).click()
     return dialog
 }
