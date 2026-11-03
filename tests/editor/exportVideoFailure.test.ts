@@ -62,3 +62,14 @@ test('a failed rerun leads with its own error, and Error Details add the refusal
         ].join('\n'),
     )
 })
+
+test('Error Details list each failure once, without the error they explain', async () => {
+    const { withFailureDetails, failureDetails } = await import('../../src/exportVideo/error')
+    // A failed write whose cleanup left the pick empty; the worker's own cleanup then fails with
+    // the stream's stored error and the same failed removal.
+    const removal = new FileError('denied', 'clip.mp4 was left empty')
+    const write = withFailureDetails(new FileError('no-space', 'Full'), [removal])
+    const reported = withFailureDetails(write, [write, removal])
+    assert.equal(reported, write)
+    assert.deepEqual(failureDetails(reported), ['FileError: clip.mp4 was left empty'])
+})

@@ -32,11 +32,17 @@ export const withFailureDetails = (error: unknown, earlier: readonly unknown[]):
         const cause = exportError(e)
         return `${cause.name}: ${cause.message}`
     }
+    // A cleanup can fail with the export's own error, or one already listed.
+    const seen = new Set([describe(failure)])
     Object.assign(failure, {
         details: [
             ...failureDetails(failure),
             ...earlier.flatMap((e) => [describe(e), ...failureDetails(e)]),
-        ],
+        ].filter((line) => {
+            if (seen.has(line)) return false
+            seen.add(line)
+            return true
+        }),
     })
     return failure
 }

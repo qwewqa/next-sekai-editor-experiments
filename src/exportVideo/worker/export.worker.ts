@@ -198,9 +198,8 @@ export const installExportWorker = (
                 renderer?.dispose()
                 renderer = undefined
             } else started = false
-            const [first, ...rest] = cleanup
+            // After a Cancel, the job reports only its own cleanup.
             if (!cancelled) failed(withFailureDetails(error, cleanup))
-            else if (first) failed(withFailureDetails(first, rest))
             else post({ type: 'cancelled' })
         }
     }
