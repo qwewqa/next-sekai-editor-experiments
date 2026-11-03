@@ -9,6 +9,7 @@ import {
     type AudioBlock,
 } from '../timing'
 import { withAvcColor, type MeasuredColor } from './avcColor'
+import { bytesOf } from './bitstream'
 import { readAvcRecord, vp9FrameSize } from './videoInit'
 import { createVp9Color } from './vp9Color'
 
@@ -35,11 +36,6 @@ export type MuxInput =
           timing?: AudioTiming
       }
     | { track: 'audioEnd'; paddingSamples: number }
-
-const bytesOf = (buffer: AllowSharedBufferSource) =>
-    ArrayBuffer.isView(buffer)
-        ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
-        : new Uint8Array(buffer)
 
 /** ES_Descriptor and DecoderConfigDescriptor have headers before their nested descriptors. */
 export const normalizeAacDescription = (

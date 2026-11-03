@@ -1,3 +1,5 @@
+import { bitReader, bytesOf, rbspBits, readSpsChroma, toBits } from './bitstream'
+
 /** The measured RGB-to-YUV conversion: matrix and range only. */
 export type MeasuredColor = { matrix: 'bt709' | 'smpte170m'; fullRange: boolean }
 
@@ -62,8 +64,6 @@ export const sameMatrix = (a: number | undefined, b: number | undefined) =>
     a === b ||
     (a !== undefined && b !== undefined && [a, b].every((code) => code === 5 || code === 6))
 
-const byteBits = (value: number) => value.toString(2).padStart(8, '0')
-
 type Declared = { primaries: number; transfer: number; matrix: number; range?: 0 | 1 }
 
 type ParsedSps = {
@@ -97,9 +97,7 @@ export const withAvcColor = (
     const passed = { ...config, colorSpace: undefined }
     const description = config.description
     if (!description) return passed
-    const bytes = ArrayBuffer.isView(description)
-        ? new Uint8Array(description.buffer, description.byteOffset, description.byteLength)
-        : new Uint8Array(description)
+    const bytes = bytesOf(description)
     const records = readAvcC(bytes)
     if (!records) return passed
     let parsed: ParsedSps[]
@@ -161,58 +159,14 @@ const readAvcC = (bytes: Uint8Array) => {
 }
 
 const parseSps = (sps: Uint8Array): ParsedSps => {
-    // Remove emulation prevention before reading H.264 sequence_parameter_set_rbsp.
-    let zeros = 0
-    const unescaped: number[] = []
-    for (const value of sps) {
-        if (zeros >= 2 && value === 3) {
-            zeros = 0
-            continue
-        }
-        unescaped.push(value)
-        zeros = value === 0 ? zeros + 1 : 0
-    }
-    const bits = unescaped.map(byteBits).join('')
-    let position = 0
-    const read = (count = 1): number => {
-        if (position + count > bits.length) throw new Error('Truncated AVC sequence parameter set')
-        const value = count ? parseInt(bits.slice(position, position + count), 2) : 0
-        position += count
-        return value
-    }
-    const ue = (): number => {
-        let zeros = 0
-        while (!read()) {
-            if (++zeros > 31) throw new Error('Invalid AVC Exp-Golomb value')
-        }
-        return 2 ** zeros - 1 + read(zeros)
-    }
+    const bits = rbspBits(sps)
+    const r = bitReader(bits)
+    const { read, ue } = r
     if ((read(8) & 31) !== 7) throw new Error('Expected AVC sequence parameter set')
     const profile = read(8)
     read(16) // constraints and level_idc
     ue() // seq_parameter_set_id
-    if ([100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 135].includes(profile)) {
-        const chroma = ue()
-        if (chroma === 3) read() // separate_colour_plane_flag
-        ue() // bit_depth_luma_minus8
-        ue() // bit_depth_chroma_minus8
-        read() // qpprime_y_zero_transform_bypass_flag
-        if (read()) {
-            for (let i = 0; i < (chroma === 3 ? 12 : 8); i++) {
-                if (!read()) continue
-                let last = 8
-                let next = 8
-                for (let j = 0; j < (i < 6 ? 16 : 64); j++) {
-                    if (next) {
-                        const code = ue()
-                        const delta = code % 2 ? (code + 1) / 2 : -code / 2
-                        next = (last + delta + 256) % 256
-                    }
-                    last = next || last
-                }
-            }
-        }
-    }
+    readSpsChroma(r, profile)
     ue() // log2_max_frame_num_minus4
     const order = ue()
     if (order === 0)
@@ -232,7 +186,7 @@ const parseSps = (sps: Uint8Array): ParsedSps => {
     read() // direct_8x8_inference_flag
     if (read()) for (let i = 0; i < 4; i++) ue() // frame crop offsets
     const unspecified = { primaries: 2, transfer: 2, matrix: 2 }
-    let start = position
+    let start = r.at
     let parsed: Omit<ParsedSps, 'bits' | 'start' | 'end'>
     if (!read()) {
         // New VUI: no aspect ratio, overscan, chroma location, timing, HRD or restrictions.
@@ -240,13 +194,13 @@ const parseSps = (sps: Uint8Array): ParsedSps => {
     } else {
         if (read() && read(8) === 255) read(32) // aspect_ratio_info, Extended_SAR
         if (read()) read() // overscan_info
-        start = position
+        start = r.at
         if (!read()) {
             // New video_signal_type with an unspecified video_format.
             parsed = { lead: '1101', tail: '', declared: unspecified }
         } else {
             read(3) // video_format
-            start = position
+            start = r.at
             const range = read() as 0 | 1
             const declared = read()
                 ? { primaries: read(8), transfer: read(8), matrix: read(8) }
@@ -255,12 +209,12 @@ const parseSps = (sps: Uint8Array): ParsedSps => {
         }
     }
     // The patch keeps everything after the colour fields, which must end in rbsp_stop_one_bit.
-    if (!bits.slice(position).includes('1')) throw new Error('Truncated AVC sequence parameter set')
-    return { bits, start, end: position, ...parsed }
+    if (!bits.slice(r.at).includes('1')) throw new Error('Truncated AVC sequence parameter set')
+    return { bits, start, end: r.at, ...parsed }
 }
 
 const patchSps = (sps: ParsedSps, target: Required<Declared>) => {
-    const fields = `${target.range}1${[target.primaries, target.transfer, target.matrix].map(byteBits).join('')}`
+    const fields = `${target.range}1${toBits([target.primaries, target.transfer, target.matrix])}`
     // Keep rbsp_stop_one_bit and all later VUI fields, then restore byte alignment.
     const patched = (
         sps.bits.slice(0, sps.start) +

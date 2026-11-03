@@ -1,4 +1,5 @@
 import { colorSpaceOf, reportedCodes, sameMatrix, type MeasuredColor } from './avcColor'
+import { readVp9KeyFrame } from './bitstream'
 
 // The H.273 matrix of each VP9 color_space value with one, and back.
 const spaceMatrix: Record<number, number> = { 1: 5, 2: 1, 3: 6 }
@@ -8,28 +9,15 @@ type Header = { spaceAt: number; space: number; range: 0 | 1 }
 
 /** The colour fields of a profile 0 YUV key frame header, or undefined for any other frame. */
 const readHeader = (data: Uint8Array): Header | undefined => {
-    let position = 0
-    const read = (count: number) => {
-        let value = 0
-        for (let i = 0; i < count; i++, position++) {
-            const byte = data[position >> 3]
-            if (byte === undefined) throw new Error('Truncated VP9 frame header')
-            value = (value << 1) | ((byte >> (7 - (position & 7))) & 1)
-        }
-        return value
-    }
     try {
-        if (read(2) !== 2) return undefined // frame_marker
-        if (read(2)) return undefined // profile_low_bit, profile_high_bit: not profile 0
-        if (read(1)) return undefined // show_existing_frame
-        if (read(1)) return undefined // frame_type: not a key frame
-        read(2) // show_frame, error_resilient_mode
-        if (read(24) !== 0x498342) return undefined // frame_sync_code
-        const spaceAt = position
-        const space = read(3)
+        const header = readVp9KeyFrame(data)
+        if (header?.profile !== 0) return undefined
+        const { r } = header
+        const spaceAt = r.at
+        const space = r.read(3)
         // CS_RGB has no range bit and a different layout.
         if (space === 7) return undefined
-        return { spaceAt, space, range: read(1) as 0 | 1 }
+        return { spaceAt, space, range: r.read() as 0 | 1 }
     } catch {
         return undefined
     }

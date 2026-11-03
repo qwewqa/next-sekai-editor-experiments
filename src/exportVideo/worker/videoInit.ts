@@ -1,53 +1,8 @@
 // The essential initialization of encoded video: what decoders need, apart from colour.
 
-const bytesOf = (buffer: AllowSharedBufferSource) =>
-    ArrayBuffer.isView(buffer)
-        ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
-        : new Uint8Array(buffer)
+import { bitReader, bytesOf, rbspBits, readSpsChroma, readVp9KeyFrame, toBits } from './bitstream'
 
 type VideoSize = { width: number; height: number }
-
-const bitReader = (bits: string) => {
-    let at = 0
-    const read = (count = 1): number => {
-        if (at + count > bits.length) throw new Error('Truncated video header')
-        const value = count ? parseInt(bits.slice(at, at + count), 2) : 0
-        at += count
-        return value
-    }
-    const ue = (): number => {
-        let zeros = 0
-        while (!read()) if (++zeros > 31) throw new Error('Invalid Exp-Golomb value')
-        return 2 ** zeros - 1 + read(zeros)
-    }
-    return {
-        read,
-        ue,
-        get at() {
-            return at
-        },
-    }
-}
-
-const toBits = (bytes: Iterable<number>) =>
-    Array.from(bytes, (value) => value.toString(2).padStart(8, '0')).join('')
-
-/** H.264 sequence_parameter_set_rbsp bits, without emulation prevention. */
-const rbspBits = (nal: Uint8Array) => {
-    let zeros = 0
-    const out: number[] = []
-    for (const value of nal) {
-        if (zeros >= 2 && value === 3) {
-            zeros = 0
-            continue
-        }
-        out.push(value)
-        zeros = value === 0 ? zeros + 1 : 0
-    }
-    return toBits(out)
-}
-
-const highProfiles = [100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 135]
 
 /**
  * The displayed size of an SPS, and its bits without `video_signal_type`, the colour part of
@@ -60,28 +15,7 @@ const readSps = (nal: Uint8Array) => {
     const profile = r.read(8)
     r.read(16)
     r.ue()
-    let chroma = 1
-    let separate = false
-    if (highProfiles.includes(profile)) {
-        chroma = r.ue()
-        if (chroma === 3) separate = !!r.read()
-        r.ue()
-        r.ue()
-        r.read()
-        if (r.read())
-            for (let i = 0; i < (chroma === 3 ? 12 : 8); i++) {
-                if (!r.read()) continue
-                let last = 8
-                let next = 8
-                for (let j = 0; j < (i < 6 ? 16 : 64); j++) {
-                    if (next) {
-                        const code = r.ue()
-                        next = (last + (code % 2 ? (code + 1) / 2 : -code / 2) + 256) % 256
-                    }
-                    last = next || last
-                }
-            }
-    }
+    const { chroma, separate } = readSpsChroma(r, profile)
     r.ue()
     const order = r.ue()
     if (order === 0) r.ue()
@@ -175,13 +109,9 @@ export const readAvcRecord = (description: AllowSharedBufferSource) => {
 /** The displayed size in a VP9 key frame's uncompressed header, if it can be read. */
 export const vp9FrameSize = (data: Uint8Array): VideoSize | undefined => {
     try {
-        const r = bitReader(toBits(data.subarray(0, 16)))
-        if (r.read(2) !== 2) return undefined
-        const profile = r.read() | (r.read() << 1)
-        if (profile === 3) r.read()
-        if (r.read() || r.read()) return undefined // show_existing_frame, or not a key frame
-        r.read(2)
-        if (r.read(24) !== 0x498342) return undefined
+        const header = readVp9KeyFrame(data)
+        if (!header) return undefined
+        const { r, profile } = header
         if (profile >= 2) r.read()
         if (r.read(3) !== 7) {
             r.read()
