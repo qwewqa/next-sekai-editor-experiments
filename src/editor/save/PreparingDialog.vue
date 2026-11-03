@@ -4,6 +4,7 @@ import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
 import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
+import SeparatedText from '../SeparatedText.vue'
 import { formatSize } from '../../utils/size'
 import WaitBar from '../workspace/WaitBar.vue'
 import type { PreparingKind, PreparingModel } from './dialogs'
@@ -77,7 +78,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 <template>
     <BaseModal :title="labels.title" @close="emit('close', false)">
         <div class="flex flex-col gap-2">
-            <p :id="`${ids}-text`" data-save-preparing>{{ text }}</p>
+            <p :id="`${ids}-text`" data-save-preparing><SeparatedText :text="text" /></p>
             <WaitBar
                 v-if="!model.ready"
                 :value="progress"

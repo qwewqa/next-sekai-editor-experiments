@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Notice } from './notification'
+import SeparatedText from './SeparatedText.vue'
 
 // Quick feedback, as v0.5.22 drew it: a mint pill that fades to a ghost over a second, with no input.
 defineProps<{ notice: Notice }>()
@@ -7,7 +8,7 @@ defineProps<{ notice: Notice }>()
 
 <template>
     <div class="notification whitespace-break-spaces rounded-full px-6 py-2 text-center">
-        {{ notice.message?.() }}
+        <SeparatedText :text="notice.message?.() ?? ''" />
     </div>
 </template>
 

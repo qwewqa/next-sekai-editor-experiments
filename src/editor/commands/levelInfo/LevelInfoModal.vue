@@ -15,6 +15,7 @@ import { textLimits } from '../../../modals/form/textLimits'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { pickFile } from '../../../utils/file'
 import { inlineName } from '../../../utils/inlineName'
+import SeparatedText from '../../SeparatedText.vue'
 import { runCommand } from '../runCommand'
 import { statusText } from '../../labelText'
 import { peekedSession } from '../../history/selection'
@@ -253,7 +254,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                             class="min-w-0 flex-1 basis-32 select-text whitespace-pre-wrap [overflow-wrap:anywhere]"
                             data-status-summary
                         >
-                            {{ fileLine }}
+                            <SeparatedText :text="fileLine" />
                         </p>
                         <button
                             type="button"

@@ -13,6 +13,7 @@ import { FileError, platform } from '../../platform'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
+import SeparatedText from '../SeparatedText.vue'
 import { commands } from '../commands'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
@@ -324,7 +325,7 @@ const exportRaw = async () => {
             class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
             :data-recovery-row="item.kind"
         >
-            <span class="min-w-0 flex-1 basis-60">{{ label(item) }}</span>
+            <span class="min-w-0 flex-1 basis-60"><SeparatedText :text="label(item)" /></span>
             <span class="flex flex-wrap gap-2">
                 <button
                     v-if="(item.kind === 'journal' || item.kind === 'autoSave') && item.readable"
@@ -361,7 +362,7 @@ const exportRaw = async () => {
             <h3 class="text-sm font-bold text-fg/80">{{ strings.startupNoticesHeading }}</h3>
             <ul class="flex list-disc flex-col gap-1 pl-5">
                 <li v-for="(notice, i) in loadNotices" :key="i">
-                    {{ notice.message() }}
+                    <SeparatedText :text="notice.message()" />
                 </li>
             </ul>
         </div>

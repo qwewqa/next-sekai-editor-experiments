@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import SeparatedText from '../SeparatedText.vue'
+
 // The title, the meta line and the optional summary line that open Step Details and Property
 // Changes, so the two dialogs head their content the same way.
 defineProps<{
@@ -25,10 +27,10 @@ defineProps<{
             class="text-sm tabular-nums text-fg/80"
             v-bind="{ [`data-${scope}-time`]: '' }"
         >
-            {{ meta }}
+            <SeparatedText :text="meta" />
         </p>
         <p v-if="summary" class="whitespace-pre-wrap" v-bind="{ [`data-${scope}-summary`]: '' }">
-            {{ summary }}
+            <SeparatedText :text="summary" />
         </p>
     </div>
 </template>

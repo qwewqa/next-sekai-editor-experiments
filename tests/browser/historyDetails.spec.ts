@@ -372,7 +372,9 @@ test('a step of a group shows its own flag after its label', async ({ page }) =>
     )
     const labels = details(page).locator('[data-operation-step] > span.flex-1')
     await expect(labels).toHaveText(['Added 2 notes', 'Added 2 notes', 'Added 2 notes · not kept'])
-    await expect(labels.last().locator('span', { hasText: '·' })).toHaveClass(/text-fg\/80/)
+    await expect(labels.last().locator(':scope > span', { hasText: '·' })).toHaveClass(
+        /text-fg\/80/,
+    )
 })
 
 test("a step shows its flag only when it differs from the group row's", async ({ page }) => {

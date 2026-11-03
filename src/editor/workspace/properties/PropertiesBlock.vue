@@ -232,7 +232,9 @@ const narrowKind = async (event: MouseEvent) => {
                             formatCount(count)
                         }}</span></span
                     >
-                    <span v-if="slides" class="text-fg/80"> · {{ slidesText }}</span>
+                    <span v-if="slides" class="text-fg/80"
+                        ><span class="whitespace-nowrap">{{ ' ·' }}</span> {{ slidesText }}</span
+                    >
                 </template>
                 <span v-else class="font-bold">{{ kindLabel }}</span>
             </h3>

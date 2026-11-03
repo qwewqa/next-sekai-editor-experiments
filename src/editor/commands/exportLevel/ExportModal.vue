@@ -6,6 +6,7 @@ import BaseModal from '../../../modals/BaseModal.vue'
 import type { ReadyPrompt } from '../../../platform'
 import { inlineName } from '../../../utils/inlineName'
 import { interpolate } from '../../../utils/interpolate'
+import SeparatedText from '../../SeparatedText.vue'
 import { buildLevelData } from './build'
 import { nameProblem, showsAtOnce } from './fileName'
 import { exportByPicker, exportToTarget, type ExportContext, type ExportOutcome } from './flow'
@@ -195,7 +196,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
             @modalcancel="cancel"
         >
             <p v-if="preparing" :id="`${ids}-preparing`" data-export-preparing>
-                {{ readyText }}
+                <SeparatedText :text="readyText" />
             </p>
             <template v-else>
                 <div

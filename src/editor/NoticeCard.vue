@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useTemplateRef } from 'vue'
 import { i18n } from '../i18n'
+import SeparatedText from './SeparatedText.vue'
 import { dismissNoticeCard, holdNotice, type Notice } from './notification'
 import SeverityIcon from './SeverityIcon.vue'
 import CloseIcon from './workspace/CloseIcon.vue'
@@ -254,7 +255,7 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                             :id="headless && i === 0 ? messageId : undefined"
                             :class="[messageClass, 'py-1.5', glyphColumn ? 'pl-2' : 'pl-2.5']"
                         >
-                            {{ line.message() }}
+                            <SeparatedText :text="line.message()" />
                         </p>
                     </div>
                     <!-- With no heading the first row also holds the ×, beside its action. -->
@@ -308,7 +309,7 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                         :id="messageId"
                         :class="[messageClass, 'py-2', notice.severity ? 'pl-2' : 'pl-3']"
                     >
-                        {{ notice.message?.() }}
+                        <SeparatedText :text="notice.message?.() ?? ''" />
                     </p>
                 </div>
                 <div

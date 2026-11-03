@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
 import BaseModal from './BaseModal.vue'
 import { useActivationGuard } from './activationGuard'
+import SeparatedText from '../editor/SeparatedText.vue'
 import type { ChoiceButton } from './choice'
 
 // The shared choice dialog: Cancel, the other choices, then the safe default (with
@@ -82,9 +83,11 @@ const classes = (button: ChoiceButton) =>
 <template>
     <BaseModal :title="title()" @close="emit('close', undefined)">
         <div v-if="lines" class="flex flex-col gap-2">
-            <p v-for="(line, index) in lines()" :key="index">{{ line }}</p>
+            <p v-for="(line, index) in lines()" :key="index"><SeparatedText :text="line" /></p>
         </div>
-        <div v-else-if="message" class="whitespace-pre-line">{{ message() }}</div>
+        <div v-else-if="message" class="whitespace-pre-line">
+            <SeparatedText :text="message()" />
+        </div>
 
         <div
             ref="row"

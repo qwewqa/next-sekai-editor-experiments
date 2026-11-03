@@ -188,9 +188,10 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                             </span>
                             <span class="min-w-0 flex-1 whitespace-pre-wrap"
                                 ><span :lang="entry.lang">{{ entry.label }}</span
-                                ><span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
-                                    ` · ${memberFlagText(entry.member)}`
-                                }}</span></span
+                                ><span v-if="memberFlagText(entry.member)" class="text-fg/80"
+                                    ><span class="whitespace-nowrap">{{ ' ·' }}</span>
+                                    {{ memberFlagText(entry.member) }}</span
+                                ></span
                             >
                             <span
                                 v-if="entry.member.time !== undefined"
@@ -216,9 +217,10 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                             <span class="size-3 shrink-0 self-start" aria-hidden="true"></span>
                             <span class="min-w-0 flex-1 whitespace-pre-wrap"
                                 ><span :lang="entry.lang">{{ entry.label }}</span
-                                ><span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
-                                    ` · ${memberFlagText(entry.member)}`
-                                }}</span></span
+                                ><span v-if="memberFlagText(entry.member)" class="text-fg/80"
+                                    ><span class="whitespace-nowrap">{{ ' ·' }}</span>
+                                    {{ memberFlagText(entry.member) }}</span
+                                ></span
                             >
                             <span
                                 v-if="entry.member.time !== undefined"

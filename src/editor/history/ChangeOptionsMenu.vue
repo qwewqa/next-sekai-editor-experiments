@@ -11,6 +11,7 @@ import {
 } from 'vue'
 import { i18n } from '../../i18n'
 import { menuKeyIndex } from '../../utils/menuKeys'
+import SeparatedText from '../SeparatedText.vue'
 import { holdsChord, holdsCharacter } from '../controls/heldKeys'
 import { swallowPress } from '../../utils/swallowPress'
 import CheckIcon from './CheckIcon.vue'
@@ -136,7 +137,7 @@ onBeforeUnmount(() => {
                     class="whitespace-pre-wrap px-3 py-2 text-sm text-fg/80 [overflow-wrap:anywhere]"
                     data-change-options-summary
                 >
-                    {{ summary }}
+                    <SeparatedText :text="summary" />
                 </p>
                 <div role="separator" class="popup-separator" />
                 <button
