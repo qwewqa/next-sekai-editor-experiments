@@ -21,6 +21,7 @@ import {
     opusPreSkip,
     type MuxInput,
 } from '../../src/exportVideo/worker/encode'
+import { createTestSink } from '../../src/exportVideo/worker/testSink'
 import { readAvcRecord, vp9FrameSize } from '../../src/exportVideo/worker/videoInit'
 
 const chunk = (timestamp: number, duration: number): EncodedAudioChunk => ({
@@ -289,11 +290,24 @@ test('audio that ends at most 96 samples short is a delay read late, with no pad
     // The fewest whole packets for a clip whose lead-in, delay and length end on a packet
     // boundary, as 1 clip length in 32 does at 60 fps, with the delay measured one sample late.
     const samples = clipSamples(32, 60)
+    // The browser tests' sink accepts what the export accepts.
+    const sink = createTestSink({
+        codecs: {
+            supported: true,
+            format: 'mp4',
+            video: { codec: 'avc1.42001f', width: 320, height: 180 },
+            audio: { codec: 'mp4a.40.2', sampleRate: AUDIO_RATE, numberOfChannels: 2 },
+            aacDelay: 1025,
+        },
+        frames: 32,
+        frameRate: 60,
+        samples,
+    })
     const adapter = createAudioPacketAdapter({
         codec: 'aac',
         samples,
         aacDelay: 1025,
-        emit: () => undefined,
+        emit: (input) => void sink.add(input),
     })
     for (let i = 0; i < (AUDIO_PAD + 1024 + samples) / 1024; i++)
         adapter.output(

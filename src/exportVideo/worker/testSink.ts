@@ -1,5 +1,5 @@
 import { AUDIO_PAD, AUDIO_RATE, frameTimestamp } from '../timing'
-import { opusPreSkip, type AudioTiming, type MuxInput } from './encode'
+import { AUDIO_SHORTFALL, opusPreSkip, type AudioTiming, type MuxInput } from './encode'
 import type { PacketSink, SinkConfig } from './sink'
 
 /** Records real encoder output. It writes no container and makes no claim about playback. */
@@ -78,12 +78,17 @@ export const createTestSink = (config: SinkConfig) => {
             } else {
                 check(padding === undefined && !!timing, 'Unexpected audio end')
                 padding = input.paddingSamples
+                // Without padding, the audio may end short by the tolerance the export accepts.
+                const short =
+                    audioEnd === undefined || !timing
+                        ? -1
+                        : timing.playableSamples -
+                          (Math.round((audioEnd * AUDIO_RATE) / 1e6) - padding)
                 check(
                     Number.isSafeInteger(padding) &&
                         padding >= 0 &&
-                        audioEnd !== undefined &&
-                        Math.round((audioEnd * AUDIO_RATE) / 1e6) - padding ===
-                            timing?.playableSamples,
+                        short >= 0 &&
+                        short <= (padding === 0 ? AUDIO_SHORTFALL : 0),
                     'Wrong audio padding',
                 )
             }
