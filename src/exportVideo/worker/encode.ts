@@ -140,7 +140,7 @@ const chunkSamples = (chunk: EncodedAudioChunk) => {
 }
 
 /** Packets an encoder may emit at the end beyond the clip, its lead-in and its delay. */
-export const AAC_TRAILING_PACKETS = 1024
+const AAC_TRAILING_PACKETS = 1024
 
 /**
  * The MP4 reservation for AAC: the lead-in, the measured delay and the clip in the shorter of
@@ -402,7 +402,6 @@ export const createAudioFeeder = (
 }
 
 /** Cache belongs to the page's job owner, as do the encoder probes. */
-/** A failed or abandoned measurement is not kept, so a later call measures again. */
 export const createAacCalibration = (measure = measureAacDelay) => {
     const shared = createSharedWork<number>()
     return (config: AudioEncoderConfig, signal?: AbortSignal) =>

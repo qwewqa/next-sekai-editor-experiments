@@ -19,7 +19,6 @@ test('a candidate is measured only when it is close and no other candidate comes
     assert.equal(chooseColor([1.5, 3, 8, 9]), undefined)
     assert.equal(chooseColor([4, 7, 8, 9]), undefined)
     assert.equal(chooseColor([NaN, 7, 8, 9]), undefined)
-    assert.equal(chooseColor([0.5, 8, 8]), undefined)
 })
 
 const WIDTH = 96

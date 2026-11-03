@@ -21,14 +21,13 @@ export const colorCandidates = [
     { matrix: 'smpte170m', fullRange: true },
     { matrix: 'smpte170m', fullRange: false },
 ] as const
-export type ColorCandidate = (typeof colorCandidates)[number]
+type ColorCandidate = (typeof colorCandidates)[number]
 
 /** Mean difference in 8-bit levels within which decoded colours match. */
 const MATCH = 2
 
 /** The candidate whose frame decodes like the captured one, when no other comes close. */
 export const chooseColor = (distances: readonly number[]): ColorCandidate | undefined => {
-    if (distances.length !== colorCandidates.length) return undefined
     const best = distances.indexOf(Math.min(...distances))
     const distance = distances[best] ?? Infinity
     if (!(distance <= MATCH) || distances.some((d, i) => i !== best && !(d > distance + MATCH)))

@@ -30,7 +30,7 @@ const codeOf = (codes: Record<string, number>, name: unknown) =>
     typeof name === 'string' && Object.hasOwn(codes, name) ? codes[name] : undefined
 
 /** Colour as H.273 codes; an absent field is unknown. */
-export type ColorCodes = { primaries?: number; transfer?: number; matrix?: number; range?: 0 | 1 }
+type ColorCodes = { primaries?: number; transfer?: number; matrix?: number; range?: 0 | 1 }
 
 /** Reads an encoder's report, dropping null, unknown and malformed fields. */
 export const reportedCodes = (color: unknown): ColorCodes => {

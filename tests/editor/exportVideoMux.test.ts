@@ -309,7 +309,7 @@ test('adapter output muxes into an MP4 with moov first, encoded order and the cr
 })
 
 // Box layout of a finished MP4, read by size fields rather than by searching the bytes.
-type Box = { type: string; start: number; end: number; body: number }
+type Box = { type: string; end: number; body: number }
 const boxesIn = (bytes: Uint8Array, start: number, end: number): Box[] => {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
     const found: Box[] = []
@@ -321,7 +321,7 @@ const boxesIn = (bytes: Uint8Array, start: number, end: number): Box[] => {
             body = at + 16
         } else if (size === 0) size = end - at
         const type = String.fromCharCode(...bytes.subarray(at + 4, at + 8))
-        found.push({ type, start: at, end: at + size, body })
+        found.push({ type, end: at + size, body })
         at += size
     }
     return found

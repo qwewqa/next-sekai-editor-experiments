@@ -29,8 +29,8 @@ export const muxVideo = async (format: 'mp4' | 'webm', inputs: MuxInput[]) => {
     return new Uint8Array(target.buffer!)
 }
 
-const find = (bytes: Uint8Array, pattern: number[], from = 0) => {
-    for (let i = from; i + pattern.length <= bytes.length; i++)
+const find = (bytes: Uint8Array, pattern: number[]) => {
+    for (let i = 0; i + pattern.length <= bytes.length; i++)
         if (pattern.every((value, k) => bytes[i + k] === value)) return i
     return -1
 }

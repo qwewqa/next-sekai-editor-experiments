@@ -5,7 +5,7 @@ const bytesOf = (buffer: AllowSharedBufferSource) =>
         ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
         : new Uint8Array(buffer)
 
-export type VideoSize = { width: number; height: number }
+type VideoSize = { width: number; height: number }
 
 const bitReader = (bits: string) => {
     let at = 0
@@ -53,7 +53,7 @@ const highProfiles = [100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 1
  * The displayed size of an SPS, and its bits without `video_signal_type`, the colour part of
  * its VUI. A syntax error before the VUI throws; the VUI is read only as far as colour.
  */
-export const readSps = (nal: Uint8Array) => {
+const readSps = (nal: Uint8Array) => {
     const bits = rbspBits(nal)
     const r = bitReader(bits)
     if ((r.read(8) & 0x9f) !== 7) throw new Error('Expected an H.264 sequence parameter set')
