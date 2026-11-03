@@ -353,7 +353,7 @@ test('trials run one at a time, only at the selected video settings, and a rejec
     assert.deepEqual(trials, ['vp09.00.40.08 720'])
 })
 
-test('Export waits only for its own trials, and a passed trial is kept for its configuration', async () => {
+test('a superseded update leaves its trials at once, and a trial already started finishes and is kept', async () => {
     const trials: string[] = []
     let release!: () => void
     const held = new Promise<void>((resolve) => {
@@ -382,14 +382,8 @@ test('Export waits only for its own trials, and a passed trial is kept for its c
     )
     release()
     await Promise.all([first, second])
-    // The first update keeps its trials until the second update's selection resolves.
-    assert.deepEqual(trials, [
-        'avc1.64 1080',
-        'avc1.64 720',
-        'avc1.4d 1080',
-        'avc1.4d 720',
-        'vp09.00 720',
-    ])
+    // The first update's Main trial was queued behind the second update's and skipped.
+    assert.deepEqual(trials, ['avc1.64 1080', 'avc1.64 720', 'avc1.4d 720', 'vp09.00 720'])
     // The selection is published before the WebM choice's trial.
     assert.deepEqual(shown, [
         { codec: 'avc1.4d', webm: false },
@@ -397,7 +391,7 @@ test('Export waits only for its own trials, and a passed trial is kept for its c
     ])
     const again = await probes.resolve(silent)
     assert.equal(again.supported && again.video.codec.slice(0, 7), 'avc1.4d')
-    assert.equal(trials.length, 5)
+    assert.deepEqual(trials.slice(4), ['avc1.4d 1080'])
     // The whole configuration, bitrate included, is a trial's key.
     await probes.resolve({ ...silent, videoBitrate: 11e6 })
     const retried = trials.length
@@ -406,7 +400,37 @@ test('Export waits only for its own trials, and a passed trial is kept for its c
     assert.equal(trials.length, retried)
 })
 
-test('a newer update keeps the trial it shares with the previous one, and closing leaves every trial at once', async () => {
+test('quick resolution changes run only the trial already started and the last one', async () => {
+    const started: number[] = []
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+        release = resolve
+    })
+    const probes = createCodecProbes({
+        video: async () => ({ supported: true }),
+        trial: async (c) => {
+            started.push(c.height)
+            await held
+            return true
+        },
+    })
+    const availability = createCodecAvailability(probes)
+    const silent = { ...settings, format: 'webm', bgm: false, sfx: false } as const
+    const updates: ReturnType<typeof availability.update>[] = []
+    for (const height of [540, 720, 1080, 1440]) {
+        updates.push(availability.update({ ...silent, ...outputSize(height, 16 / 9) }, {}))
+        await new Promise((resolve) => setImmediate(resolve))
+    }
+    release()
+    const states = await Promise.all(updates)
+    assert.deepEqual(started, [540, 1440])
+    assert.equal(states.at(-1)?.current?.supported, true)
+    // The 540 trial ran to its end and is kept.
+    await probes.resolve({ ...silent, ...outputSize(540, 16 / 9) })
+    assert.deepEqual(started, [540, 1440])
+})
+
+test('updates that differ only in audio share one trial, and closing stops every trial at once', async () => {
     const started: string[] = []
     const stops: AbortSignal[] = []
     let release = () => undefined as void
@@ -440,7 +464,9 @@ test('a newer update keeps the trial it shares with the previous one, and closin
     assert.deepEqual(started, ['1080 12000000'])
     assert.equal(stops[0]!.aborted, false)
     assert.equal(state.current?.supported && state.current.audio?.bitrate, 128000)
-    // Closing leaves the running trial at once and skips the one queued behind it.
+    await probes.resolve(webm)
+    assert.equal(started.length, 1)
+    // Closing stops the running trial of a superseded update and skips the one queued behind it.
     hold()
     void availability.update({ ...webm, height: 720 }, {})
     await tick()

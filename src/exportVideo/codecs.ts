@@ -104,21 +104,51 @@ export type EncoderProbes = {
     aacDelay?: (config: AudioEncoderConfig, signal?: AbortSignal) => Promise<number>
 }
 
+/** The reason a newer availability update gives the one it replaces. `closed` aborts on stop. */
+class Superseded extends Error {
+    constructor(readonly closed: AbortSignal) {
+        super('A newer update replaced this one')
+    }
+}
+
 /**
- * Work shared by callers with the same key. When every caller has left through its signal, the
- * work is aborted and forgotten; so is a failure, so a later call runs it again.
+ * Work shared by callers with the same key. With `oneAtATime`, each run waits for the previous
+ * one to end. A caller leaves when its signal aborts. When the last caller leaves, the work stops
+ * and is forgotten, and a queued run is skipped. Started work whose last caller was superseded
+ * runs on until it ends or `Superseded.closed` aborts. A result is kept. A failure is forgotten,
+ * so a later call runs the work again.
  */
-export const createSharedWork = <T>() => {
-    type Entry = { result: Promise<T>; callers: number; settled: boolean; stop: AbortController }
+export const createSharedWork = <T>(oneAtATime = false) => {
+    type Entry = {
+        result: Promise<T>
+        callers: number
+        started: boolean
+        settled: boolean
+        stop: AbortController
+    }
     const entries = new Map<string, Entry>()
+    let queue: Promise<unknown> = Promise.resolve()
     return (key: string, run: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal) => {
         signal?.throwIfAborted()
         let entry = entries.get(key)
         if (!entry) {
             const stop = new AbortController()
-            const created: Entry = { result: run(stop.signal), callers: 0, settled: false, stop }
+            const created: Entry = {
+                result: oneAtATime
+                    ? queue.then(() => {
+                          stop.signal.throwIfAborted()
+                          created.started = true
+                          return run(stop.signal)
+                      })
+                    : run(stop.signal),
+                callers: 0,
+                started: !oneAtATime,
+                settled: false,
+                stop,
+            }
             entry = created
             entries.set(key, created)
+            if (oneAtATime) queue = created.result.catch(() => undefined)
             created.result.then(
                 () => {
                     created.settled = true
@@ -132,14 +162,19 @@ export const createSharedWork = <T>() => {
         const joined = entry
         joined.callers++
         if (!signal) return joined.result
+        const cancel = () => {
+            if (joined.settled || joined.callers) return
+            if (entries.get(key) === joined) entries.delete(key)
+            joined.stop.abort()
+        }
         return new Promise<T>((resolve, reject) => {
             const leave = () => {
                 joined.callers--
-                if (!joined.settled && !joined.callers) {
-                    if (entries.get(key) === joined) entries.delete(key)
-                    joined.stop.abort()
-                }
-                reject(signal.reason as Error)
+                const reason = signal.reason as Error
+                if (joined.started && reason instanceof Superseded && !reason.closed.aborted)
+                    reason.closed.addEventListener('abort', cancel, { once: true })
+                else cancel()
+                reject(reason)
             }
             signal.addEventListener('abort', leave, { once: true })
             joined.result.then(
@@ -262,25 +297,12 @@ export const createCodecProbes = (
         }
         return result
     }
-    const trials = createSharedWork<boolean>()
-    // Trials run one at a time, since each holds an encoder and full-size frames. One that no
-    // caller still wants by its turn is skipped.
-    let queue: Promise<unknown> = Promise.resolve()
+    // Trials run one at a time, since each holds an encoder and full-size frames.
+    const trials = createSharedWork<boolean>(true)
     const passesTrial = async (config: TrialConfig, signal?: AbortSignal) => {
         const run = probes.trial
         if (!run) return true
-        return trials(
-            configurationKey(config),
-            (stop) => {
-                const result = queue.then(() => {
-                    stop.throwIfAborted()
-                    return run(config, stop)
-                })
-                queue = result.catch(() => undefined)
-                return result
-            },
-            signal,
-        )
+        return trials(configurationKey(config), (stop) => run(config, stop), signal)
     }
     const resolveFormat = async (
         s: CodecSettings,
@@ -376,20 +398,15 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
     let state: State = { pending: true, choices: {} }
     let shownChoices: State['choices'] = {}
     let latest: AbortController | undefined
-    const running = new Set<AbortController>()
-    const leave = (controller?: AbortController) => {
-        controller?.abort()
-        if (controller) running.delete(controller)
-    }
-    let stopped = false
+    const closed = new AbortController()
     return {
         get state() {
             return state
         },
-        /** Leaves every update's shared work at once. Later updates do nothing. */
+        /** Stops every update's shared work at once. Later updates do nothing. */
         stop() {
-            stopped = true
-            running.forEach(leave)
+            closed.abort()
+            latest?.abort()
         },
         /** `changed` receives the selection, then the choices, while the update is the latest. */
         async update(
@@ -397,12 +414,12 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
             choices: Record<string, Partial<CodecSettings>>,
             changed: (state: State) => void = () => undefined,
         ) {
-            if (stopped) return state
-            const previous = latest
+            if (closed.signal.aborted) return state
+            // A newer update leaves this one's shared work at once.
+            latest?.abort(new Superseded(closed.signal))
             const controller = (latest = new AbortController())
-            running.add(controller)
             const { signal } = controller
-            const wanted = () => latest === controller && !signal.aborted
+            const wanted = () => !signal.aborted
             const publish = (next: State) => {
                 if (!wanted()) return
                 state = next
@@ -410,13 +427,8 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
             }
             state = { pending: true, choices: {} }
             try {
-                // The selection first, so that Export waits only for its own probes and trials.
-                // The previous update stops publishing at once, but leaves its shared trials
-                // and measurements only after this selection resolves, so work both need
-                // keeps a caller.
-                const current = await probes.resolve({ ...settings }, { signal }).finally(() => {
-                    leave(previous)
-                })
+                // The selection first, so that Export does not wait for the choices.
+                const current = await probes.resolve({ ...settings }, { signal })
                 publish({ pending: false, current, choices: shownChoices })
                 // Trials encode full-size frames, so choices at another size or frame rate
                 // skip them.
