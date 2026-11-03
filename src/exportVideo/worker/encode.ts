@@ -404,7 +404,6 @@ export const createAudioFeeder = (
     }
 }
 
-/** Cache belongs to the page's job owner, as do the encoder probes. */
 export const createAacCalibration = (measure = measureAacDelay) => {
     const shared = createSharedWork<number>()
     return (config: AudioEncoderConfig, signal?: AbortSignal) =>
