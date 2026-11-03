@@ -94,16 +94,12 @@ const soundSource = ({ store }: State): SoundSource => {
 }
 
 /** Share these caches between jobs for the life of the page. */
-export const createExportServices = () => {
-    const calibrate = createAacCalibration()
-    return {
-        probes: createCodecProbes(
-            { ...browserEncoderProbes(), aacDelay: calibrate },
-            detection().engine,
-        ),
-        calibrate,
-    }
-}
+export const createExportServices = () => ({
+    probes: createCodecProbes(
+        { ...browserEncoderProbes(), aacDelay: createAacCalibration() },
+        detection().engine,
+    ),
+})
 
 export const createExportJob = (options: {
     snapshot: State
@@ -186,15 +182,10 @@ export const createExportJob = (options: {
         )
         if (!codecs.supported)
             throw new Error(`Encoder configuration unavailable: ${codecs.reason}`)
-        const aacDelay =
-            codecs.audio?.codec === 'mp4a.40.2'
-                ? (codecs.aacDelay ??
-                  (await abortable(options.services.calibrate(codecs.audio, signal), signal)))
-                : undefined
         return {
             settings: structuredClone(settings),
             codecs,
-            aacDelay,
+            aacDelay: codecs.aacDelay,
             samples,
             frames: settings.frames,
             frameRate: settings.frameRate,

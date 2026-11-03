@@ -115,7 +115,6 @@ const refusedThenRerun = async (then: {
                     video: { codec: 'vp09.00.10.08', width: 320, height: 180 },
                 }),
             },
-            calibrate: () => Promise.reject(new Error('No AAC')),
         },
         assets: async () => ({ skin: { texture: { close() {} } } }) as never,
         destination: async () => destination('picked'),
