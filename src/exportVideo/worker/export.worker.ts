@@ -130,6 +130,7 @@ export const installExportWorker = (
                         await sink.add(input)
                     },
                     finalize: async () => {
+                        if (faults?.loseContextAt === start.settings.frames) renderer?.loseContext()
                         if (faults?.hold === 'finalize') await hold('finalize')
                         return sink.finalize()
                     },

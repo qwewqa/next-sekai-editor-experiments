@@ -5,6 +5,7 @@ import type { ExportConfig, ExportScene, ExportSettings, ExportTarget } from './
 
 export type ExportFaults = {
     failWrite?: boolean
+    /** Loses the context before this frame's capture; at the frame count, after the last. */
     loseContextAt?: number
     pixelsAt?: number
     hold?: 'mix' | 'drain' | 'finalize'

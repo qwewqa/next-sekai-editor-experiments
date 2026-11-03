@@ -76,6 +76,14 @@ test('context loss fails without retaining output', async ({ page }) => {
     expect(result.markerLeft).toBe(false)
 })
 
+test('context loss after the last frame is captured still delivers the video', async ({ page }) => {
+    const result = await page.evaluate(() =>
+        window.editorTest.exportVideo({ loseContextAt: 3, settings: { frames: 3 } }),
+    )
+    expect(result.error).toBeUndefined()
+    expect(result.phase).toBe('ready')
+})
+
 test('the same worker draws queued views and then exports at the selected size', async ({
     page,
 }) => {

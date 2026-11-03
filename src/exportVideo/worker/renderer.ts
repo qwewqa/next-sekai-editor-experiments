@@ -37,9 +37,12 @@ export const createExportRenderer = (scene: ExportScene, fail: (error: unknown) 
     }
     canvas.addEventListener('webglcontextlost', lost)
     canvas.addEventListener('webglcontextrestored', restored)
-    const dispose = () => {
+    const endCapture = () => {
         canvas.removeEventListener('webglcontextlost', lost)
         canvas.removeEventListener('webglcontextrestored', restored)
+    }
+    const dispose = () => {
+        endCapture()
         composite?.dispose()
         if (fade) gl.deleteProgram(fade)
         renderer.dispose()
@@ -166,6 +169,8 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
                 gl.disable(gl.SCISSOR_TEST)
                 return new VideoFrame(canvas, { timestamp: 0, alpha: 'discard' })
             },
+            /** After the last capture, a lost context no longer affects the video. */
+            endCapture,
             loseContext() {
                 gl.getExtension('WEBGL_lose_context')?.loseContext()
             },

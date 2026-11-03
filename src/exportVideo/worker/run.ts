@@ -131,6 +131,7 @@ export const runExport = async (
             await loop.room('video', (i + 1) / s.frameRate)
             options.beforeCapture?.(renderer, i)
             const frame = renderer.capture(i)
+            if (i === s.frames - 1) renderer.endCapture()
             try {
                 frames.submit()
                 video.encode(frame, { keyFrame: i % (2 * s.frameRate) === 0 })
