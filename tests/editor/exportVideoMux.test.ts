@@ -121,13 +121,14 @@ test('an MP4 with AAC puts moov before mdat and starts the audio at the AAC dela
             format: 'mp4',
             video: { codec: 'avc1.64001e', width: 16, height: 16 },
             audio: { codec: 'mp4a.40.2', numberOfChannels: 2, sampleRate: 48000 },
+            aacDelay: delay,
         },
         frames: videoFrames,
         frameRate: 30,
         samples,
     }
     const target = new BufferTarget()
-    const sink = await createMuxSink({ ...mp4, aacDelay: delay }, target)
+    const sink = await createMuxSink(mp4, target)
     for (let i = 0; i < videoFrames; i++)
         await sink.add({
             track: 'video',
@@ -217,6 +218,7 @@ test('adapter output muxes into an MP4 with moov first, encoded order and the cr
             format: 'mp4',
             video: { codec: 'avc1.4d401e', width: 320, height: 180 },
             audio: { codec: 'mp4a.40.2', numberOfChannels: 2, sampleRate: 48000 },
+            aacDelay: delay,
         },
         frames,
         frameRate: 30,
@@ -273,7 +275,7 @@ test('adapter output muxes into an MP4 with moov first, encoded order and the cr
         )
     audio.finish()
     const target = new BufferTarget()
-    const sink = await createMuxSink({ ...mp4, aacDelay: delay }, target)
+    const sink = await createMuxSink(mp4, target)
     for (const input of inputs) await sink.add(input)
     await sink.finalize()
 
@@ -446,11 +448,11 @@ const muxMp4 = async (options: {
                 format: 'mp4',
                 video: { codec: 'avc1.64001e', width: 320, height: 180 },
                 audio: { codec: 'mp4a.40.2', numberOfChannels: 2, sampleRate: 48000 },
+                aacDelay: options.delay,
             },
             frames,
             frameRate: fps,
             samples: options.samples,
-            aacDelay: options.delay,
         },
         target,
     )
@@ -557,12 +559,6 @@ test('the AAC reservation holds 960- and 1,024-sample packets at both delays aro
             await assert.rejects(short, /Invalid encoded audio length/)
         else await short
     }
-    // The earlier bound, in 1,024-sample packets, falls short of a minute of 960-sample packets.
-    const minute = 60 * 48000
-    assert.ok(
-        Math.ceil((minute + 1024) / 1024) + Math.ceil(2112 / 1024) <
-            Math.ceil((1024 + 2112 + minute) / 960),
-    )
 })
 
 for (const fps of [30, 60] as const)

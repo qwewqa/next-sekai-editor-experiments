@@ -18,10 +18,7 @@ import { openPickedTarget, openStagedFile, type PositionTarget } from './target'
 
 export type MuxResult = { frames: number; paddingSamples?: number; buffer?: ArrayBuffer }
 
-export const createMuxSink = async (
-    config: SinkConfig & { aacDelay?: number },
-    target: Target,
-): Promise<PacketSink> => {
+export const createMuxSink = async (config: SinkConfig, target: Target): Promise<PacketSink> => {
     const mp4 = config.codecs.format === 'mp4'
     const output = new Output({
         format: mp4 ? new Mp4OutputFormat({ fastStart: 'reserve' }) : new WebMOutputFormat(),
@@ -38,8 +35,8 @@ export const createMuxSink = async (
     if (audio) {
         let maximumPacketCount: number | undefined
         if (mp4) {
-            if (config.aacDelay === undefined) throw new Error('AAC delay is unknown')
-            maximumPacketCount = aacPacketBound(config.samples, config.aacDelay)
+            if (config.codecs.aacDelay === undefined) throw new Error('AAC delay is unknown')
+            maximumPacketCount = aacPacketBound(config.samples, config.codecs.aacDelay)
         }
         output.addAudioTrack(audio, { maximumPacketCount })
     }
@@ -87,7 +84,7 @@ export const muxStreamTarget = (target: PositionTarget) =>
     )
 
 export const openMuxOutput = async (
-    config: SinkConfig & { aacDelay?: number },
+    config: SinkConfig,
     destination: ExportTarget,
     signal: AbortSignal,
 ): Promise<WorkerOutput> => {

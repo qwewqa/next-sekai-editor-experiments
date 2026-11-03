@@ -185,7 +185,6 @@ export const createExportJob = (options: {
         return {
             settings: structuredClone(settings),
             codecs,
-            aacDelay: codecs.aacDelay,
             samples,
             frames: settings.frames,
             frameRate: settings.frameRate,

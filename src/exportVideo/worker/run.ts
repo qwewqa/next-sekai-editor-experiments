@@ -86,7 +86,7 @@ export const runExport = async (
             const adapter = createAudioPacketAdapter({
                 codec,
                 samples: start.samples,
-                aacDelay: start.aacDelay,
+                aacDelay: start.codecs.aacDelay,
                 emit: (input) => {
                     loop.emit(input)
                 },
