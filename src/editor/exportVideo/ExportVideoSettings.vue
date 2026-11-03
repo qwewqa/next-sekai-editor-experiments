@@ -54,8 +54,8 @@ const audioOptions = computed(() =>
 )
 
 // --- Choices this browser or device cannot make, and why. A field with no choice left loses its
-// browser list while a suggestion names another field: listing every choice would not help.
-const suggested = computed(() => d.messages.value.flatMap((message) => message.field ?? []))
+// browser list while an unavailable line names another field: listing every choice would not help.
+const named = computed(() => d.messages.value.flatMap((message) => message.field ?? []))
 const off = <T,>(prefix: string, options: readonly (readonly [string, T])[]) => {
     const reasons = new Map<Unavailable, string[]>()
     const values: T[] = []
@@ -65,7 +65,7 @@ const off = <T,>(prefix: string, options: readonly (readonly [string, T])[]) => 
         values.push(value)
         reasons.set(reason, [...(reasons.get(reason) ?? []), name])
     }
-    if (values.length === options.length && suggested.value.some((field) => field !== prefix))
+    if (values.length === options.length && named.value.some((field) => field !== prefix))
         reasons.delete('browser')
     const notes = [...reasons].map(([reason, names]) =>
         interpolateRaw(

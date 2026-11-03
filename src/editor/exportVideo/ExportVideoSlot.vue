@@ -3,7 +3,6 @@ import { ref, watch } from 'vue'
 import { vFocusRescue } from '../../directives/focusRescue'
 import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
-import { choiceLine } from '../../modals/form/fieldDescription'
 import SeverityIcon from '../SeverityIcon.vue'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import type { ExportDialog } from './dialog'
@@ -42,12 +41,9 @@ const footerButton = () =>
             <template v-for="(message, index) in messages" :key="index">
                 <p class="flex items-start gap-2">
                     <SeverityIcon :severity="message.severity" class="mt-0.5 size-4" />
-                    <span :id="`${ids}-${index}`" class="[overflow-wrap:anywhere]"
-                        ><span v-if="message.label" class="font-semibold">{{
-                            choiceLine(message.label)
-                        }}</span
-                        >{{ message.text }}</span
-                    >
+                    <span :id="`${ids}-${index}`" class="[overflow-wrap:anywhere]">{{
+                        message.text
+                    }}</span>
                 </p>
                 <details
                     v-if="message.detail"

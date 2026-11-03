@@ -2502,11 +2502,6 @@
         "keepOpen": "Keep this tab open until the export finishes.",
         "keepOpenVisible": "Keep this tab open and visible until the export finishes.",
         "stopped": "The last export at {0} with {1} Render Scale did not finish.",
-        "suggest": {
-            "choose": "Choose {0}.",
-            "antialias": "Antialiasing is unavailable on this device with these settings. Turn it off.",
-            "sound": "Sound is unavailable in this browser with these settings. Turn off {0}."
-        },
         "memoryWarning": "Exporting with these settings may use too much memory. Choose a shorter range or lower the quality.",
         "warnings": {
             "pictureStops": "The picture stops before the end of the range.",

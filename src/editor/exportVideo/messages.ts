@@ -13,8 +13,8 @@ import { interpolateRaw } from '../../utils/interpolate'
 import { VIDEO_MEMORY_WARNING_BYTES } from './destination'
 import type { Outcome, Phase } from './dialog'
 
-/** The fields a suggestion changes. `sound` is BGM and SFX together. */
-export type SuggestedField =
+/** The fields an unavailable line names. `sound` is BGM and SFX together. */
+export type UnavailableField =
     'audioBitrate' | 'frameRate' | 'resolution' | 'format' | 'sound' | 'antialias' | 'renderScale'
 
 export type ExportMessage = {
@@ -23,18 +23,16 @@ export type ExportMessage = {
         | 'failure'
         | 'delivery'
         | 'finished'
-        | 'suggestion'
+        | 'unavailable'
         | 'memory'
         | 'stopped'
         | 'storage'
     severity: 'info' | 'warning' | 'error'
-    /** A field's name, shown before the text with the locale's colon. */
-    label?: string
     text: string
     /** English detail, behind Error Details. */
     detail?: string
-    /** The field a suggestion changes. */
-    field?: SuggestedField
+    /** The field an unavailable line names. */
+    field?: UnavailableField
 }
 
 export type MessageInput = {
@@ -80,73 +78,79 @@ const fits = (input: MessageInput, resolution: number, scale: number, antialias:
     !input.limits ||
     fitsGraphicsLimits(outputSize(resolution, input.form.aspect), scale, antialias, input.limits)
 
-type Suggestion = Pick<ExportMessage, 'field' | 'label' | 'text'>
+type UnavailableLine = Pick<ExportMessage, 'field' | 'text'>
 
-/** At most one suggestion for each failed check: the codec's, then the graphics limits'. */
-const suggestions = (input: MessageInput): Suggestion[] => {
+/**
+ * At most one line for each failed check, the codec check first and then the graphics limits
+ * check. Each line names the first setting, in that check's order, that has a working choice.
+ */
+const unavailable = (input: MessageInput): UnavailableLine[] => {
     const { form, support } = input
     const strings = i18n.value.exportVideo
-    const choose = (field: SuggestedField, label: string, name: string): Suggestion => ({
-        field,
-        label,
-        text: interpolateRaw(strings.suggest.choose, name),
-    })
+    const line =
+        (template: string) =>
+        (field: UnavailableField, item: string): UnavailableLine => ({
+            field,
+            text: interpolateRaw(template, item),
+        })
+    const browser = line(strings.notInBrowser)
+    const device = line(strings.tooLarge)
+    const kbps = interpolateRaw(strings.kbps, `${form.audioBitrate / 1000}`)
+    const fps = interpolateRaw(strings.fps, `${form.frameRate}`)
+    const resolutionItem = `${strings.resolution} ${form.resolution}p`
     const sound = form.bgm || form.sfx
     const works = (key: string) => support.choices[key]?.supported === true
     const codecFails = support.current?.supported === false
 
     // The nearest lower value that the same probes accept.
-    const codec = ((): Suggestion | undefined => {
+    const codec = ((): UnavailableLine | undefined => {
         if (!codecFails) return undefined
         const audio = sound
             ? lower(AUDIO_BITRATES, form.audioBitrate).find((value) =>
                   works(`audioBitrate:${value}`),
               )
             : undefined
-        if (audio)
-            return choose(
-                'audioBitrate',
-                strings.audioBitrate,
-                interpolateRaw(strings.kbps, `${audio / 1000}`),
-            )
+        if (audio) return browser('audioBitrate', `${strings.audioBitrate} ${kbps}`)
         if (form.frameRate === 60 && works('frameRate:30'))
-            return choose('frameRate', strings.frameRate, interpolateRaw(strings.fps, '30'))
+            return browser('frameRate', `${strings.frameRate} ${fps}`)
         const resolution = lower(RESOLUTIONS, form.resolution).find(
             (value) =>
                 works(`resolution:${value}`) &&
                 fits(input, value, form.renderScale, form.antialias),
         )
-        if (resolution) return choose('resolution', strings.resolution, `${resolution}p`)
+        if (resolution) return browser('resolution', resolutionItem)
         const other = form.format === 'mp4' ? 'webm' : form.format === 'webm' ? 'mp4' : undefined
         if (other && works(`format:${other}`))
-            return choose('format', strings.format, other === 'webm' ? 'WebM' : 'MP4')
-        if (sound && works('sound:off'))
-            return { field: 'sound', text: interpolateRaw(strings.suggest.sound, soundList(form)) }
+            return browser('format', `${strings.format} ${form.format === 'webm' ? 'WebM' : 'MP4'}`)
+        if (sound && works('sound:off')) return browser('sound', soundList(form))
         return undefined
     })()
 
-    const graphics = ((): Suggestion | undefined => {
+    const graphics = ((): UnavailableLine | undefined => {
         if (fits(input, form.resolution, form.renderScale, form.antialias)) return undefined
         if (form.antialias && fits(input, form.resolution, form.renderScale, false))
-            return { field: 'antialias', text: strings.suggest.antialias }
+            return device('antialias', i18n.value.settings.preview.antialias)
         const scale = lower([1, 1.5, 2], form.renderScale).find((value) =>
             fits(input, form.resolution, value, form.antialias),
         )
         if (scale)
-            return choose('renderScale', i18n.value.settings.preview.renderScale, `${scale}x`)
-        // A size the codec probes refused is disabled. It is offered only while the codec check
-        // fails too, beside that check's own suggestion.
+            return device(
+                'renderScale',
+                `${i18n.value.settings.preview.renderScale} ${form.renderScale}x`,
+            )
+        // A lower size that the codec probes refused counts only while the codec check fails too.
+        // Every choice is then probed with the failing settings.
         const resolution = lower(RESOLUTIONS, form.resolution).find(
             (value) =>
                 fits(input, value, form.renderScale, form.antialias) &&
                 (codecFails || support.choices[`resolution:${value}`]?.supported !== false),
         )
-        return resolution ? choose('resolution', strings.resolution, `${resolution}p`) : undefined
+        return resolution ? device('resolution', resolutionItem) : undefined
     })()
 
-    // The codec's resolution already fits the limits.
+    // The codec's lower resolution already fits the limits.
     if (codec?.field === 'resolution' && graphics?.field === 'resolution') return [codec]
-    return [codec, graphics].filter((suggestion) => !!suggestion)
+    return [codec, graphics].filter((found) => !!found)
 }
 
 /** The memory warning, while the settings work and the export would keep its file in memory. */
@@ -167,12 +171,12 @@ const memory = (input: MessageInput): ExportMessage[] => {
         : []
 }
 
-/** Suggestions, or the memory warning: one needs a check to fail, the other all to pass. */
+/** Unavailable lines, or the memory warning: one needs a check to fail, the other all to pass. */
 const advice = (input: MessageInput): ExportMessage[] => [
-    ...suggestions(input).map((suggestion): ExportMessage => ({
-        kind: 'suggestion',
+    ...unavailable(input).map((line): ExportMessage => ({
+        kind: 'unavailable',
         severity: 'warning',
-        ...suggestion,
+        ...line,
     })),
     ...memory(input),
 ]

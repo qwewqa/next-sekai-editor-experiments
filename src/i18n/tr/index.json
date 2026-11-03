@@ -2502,11 +2502,6 @@
     "keepOpen": "Dışa aktarma bitene kadar bu sekmeyi açık tutun.",
     "keepOpenVisible": "Dışa aktarma bitene kadar bu sekmeyi açık ve görünür tutun.",
     "stopped": "{0} çözünürlük ve {1} Çizim Ölçeği ile yapılan son dışa aktarma tamamlanmadı.",
-    "suggest": {
-      "choose": "{0} seçin.",
-      "antialias": "Bu ayarlarla bu cihazda Kenar Yumuşatma kullanılamıyor. Bu ayarı kapatın.",
-      "sound": "Bu ayarlarla bu tarayıcıda ses kullanılamıyor. {0}’ni kapatın."
-    },
     "memoryWarning": "Bu ayarlarla dışa aktarma çok fazla bellek kullanabilir. Daha kısa bir aralık seçin veya kaliteyi düşürün.",
     "warnings": {
       "pictureStops": "Görüntü, aralık bitmeden duruyor.",

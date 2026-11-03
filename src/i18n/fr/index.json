@@ -2502,11 +2502,6 @@
     "keepOpen": "Gardez cet onglet ouvert jusqu’à la fin de l’exportation.",
     "keepOpenVisible": "Gardez cet onglet ouvert et visible jusqu’à la fin de l’exportation.",
     "stopped": "La dernière exportation en {0} avec une Échelle de rendu de {1} ne s’est pas terminée.",
-    "suggest": {
-      "choose": "Choisissez {0}.",
-      "antialias": "Avec ces paramètres, l’Anticrénelage est indisponible sur cet appareil. Désactivez-le.",
-      "sound": "Avec ces paramètres, le son est indisponible dans ce navigateur. Désactivez {0}."
-    },
     "memoryWarning": "L’exportation avec ces paramètres risque d’utiliser trop de mémoire. Choisissez une plage plus courte ou réduisez la qualité.",
     "warnings": {
       "pictureStops": "L’image s’arrête avant la fin de la plage.",

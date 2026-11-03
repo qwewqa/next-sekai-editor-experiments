@@ -1365,7 +1365,7 @@ test('playback pauses when the tab is hidden, so it never plays past Out', async
 
 // --- The message area above the footer.
 
-test("a refused audio bitrate gives one suggestion above the footer and drops Resolution's browser list", async ({
+test("a refused audio bitrate gives one line above the footer and drops Resolution's browser list", async ({
     page,
 }) => {
     // As some Windows encoders do: 256 kbps is refused, lower bitrates pass.
@@ -1379,9 +1379,12 @@ test("a refused audio bitrate gives one suggestion above the footer and drops Re
     })
     const dialog = await open(page)
     const slot = dialog.locator('[data-export-slot]')
-    await expect(slot).toHaveText('Audio Bitrate: Choose 192 kbps.', { timeout: 20_000 })
+    await expect(slot).toHaveText(
+        'Unavailable in this browser with these settings: Audio Bitrate 256 kbps',
+        { timeout: 20_000 },
+    )
     await expect(exportButton(page)).toBeDisabled()
-    // Every size is refused at 256 kbps, and the suggestion says why.
+    // Every size is refused at 256 kbps, and the line names the cause.
     const resolution = dialog.getByRole('combobox', { name: 'Resolution' })
     await expect(resolution.locator('option:disabled')).toHaveCount(4)
     await expect(resolution).not.toHaveAccessibleDescription(/browser/)
