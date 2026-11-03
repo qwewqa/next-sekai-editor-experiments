@@ -94,7 +94,7 @@ test('an export to memory is remembered for the page', async () => {
     assert.equal(memoryRouteTaken(), true)
 })
 
-test('the route check finds the memory route without creating a file', async () => {
+test('the route check finds the memory route from the origin private file system', async () => {
     const { readMemoryRoute } = await import('../../src/exportVideo/route')
     const globals = globalThis as Record<string, unknown>
     const saved = { navigator: globals.navigator, handle: globals.FileSystemFileHandle }

@@ -321,13 +321,14 @@ export const createAudioPacketAdapter = (options: {
 
 type VideoColorStep = ReturnType<typeof createVideoColor>
 type VideoSize = { width: number; height: number }
+type VideoInit = { codec: string; size: VideoSize | undefined; essential?: string }
 
 /**
- * The codec string, displayed size and colour-free initialization of a configuration, from the
- * bitstream where it can be read. Undefined for H.264 without a usable record; see
- * `readAvcRecord`.
+ * The codec string and displayed size of a configuration, and for H.264 its colour-free
+ * initialization, from the bitstream where it can be read. Undefined for H.264 without a usable
+ * record; see `readAvcRecord`.
  */
-const readInit = (config: VideoDecoderConfig, data: Uint8Array) => {
+const readInit = (config: VideoDecoderConfig, data: Uint8Array): VideoInit | undefined => {
     if (/^avc[13]\./.test(config.codec))
         return config.description ? readAvcRecord(config.description) : undefined
     const reported: VideoSize | undefined =
@@ -337,7 +338,6 @@ const readInit = (config: VideoDecoderConfig, data: Uint8Array) => {
     return {
         codec: config.codec,
         size: (config.codec.startsWith('vp09') ? vp9FrameSize(data) : undefined) ?? reported,
-        essential: config.description ? Array.from(bytesOf(config.description)).join() : '',
     }
 }
 
@@ -369,7 +369,7 @@ export const createVideoPacketAdapter = (options: {
     let placed = 0
     let retimed = 0
     let skipped = false
-    let first: { codec: string; size: VideoSize; essential: string } | undefined
+    let first: (VideoInit & { size: VideoSize }) | undefined
     let waiting: VideoDecoderConfig | undefined
     let stopped = false
     let failure: unknown

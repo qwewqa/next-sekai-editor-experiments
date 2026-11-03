@@ -214,36 +214,44 @@ test('the warnings of a finished export stay with Ready and Done', async () => {
 
 test('mixing that fails ends the export with the sound failure', async () => {
     const { AudioFailure } = await import('../../src/exportVideo/error')
-    let worker: { onmessage?: (event: { data: FromWorker }) => void } | undefined
-    const job = createExportJob({
-        ...jobOptions(),
-        settings: { ...jobOptions().settings, sfx: true },
-        destination: async () => staged(),
-        worker: () => {
-            const made = {
-                onmessage: undefined as ((event: { data: FromWorker }) => void) | undefined,
-                postMessage(message: ToWorker) {
-                    const answer: FromWorker | undefined =
-                        message.type === 'prepare'
-                            ? { type: 'prepared' }
-                            : message.type === 'start'
-                              ? { type: 'block' }
-                              : message.type === 'cancel'
-                                ? { type: 'cancelled' }
-                                : undefined
-                    if (answer) setImmediate(() => made.onmessage?.({ data: answer }))
-                },
-                terminate() {},
-            }
-            worker = made
-            return made as unknown as Worker
+    const mixing = new Error('Mixing failed')
+    Object.defineProperty(globalThis, 'OfflineAudioContext', {
+        configurable: true,
+        value: function () {
+            throw mixing
         },
     })
-    // Node has no OfflineAudioContext, so rendering the first block fails.
-    const state = await job.start()
-    assert.ok(worker)
-    assert.equal(state.phase, 'failed')
-    assert.ok(state.phase === 'failed' && state.error instanceof AudioFailure)
+    try {
+        const job = createExportJob({
+            ...jobOptions(),
+            settings: { ...jobOptions().settings, sfx: true },
+            destination: async () => staged(),
+            worker: () => {
+                const made = {
+                    onmessage: undefined as ((event: { data: FromWorker }) => void) | undefined,
+                    postMessage(message: ToWorker) {
+                        const answer: FromWorker | undefined =
+                            message.type === 'prepare'
+                                ? { type: 'prepared' }
+                                : message.type === 'start'
+                                  ? { type: 'block' }
+                                  : message.type === 'cancel'
+                                    ? { type: 'cancelled' }
+                                    : undefined
+                        if (answer) setImmediate(() => made.onmessage?.({ data: answer }))
+                    },
+                    terminate() {},
+                }
+                return made as unknown as Worker
+            },
+        })
+        const state = await job.start()
+        assert.equal(state.phase, 'failed')
+        assert.ok(state.phase === 'failed' && state.error instanceof AudioFailure)
+        assert.equal(state.error.cause, mixing)
+    } finally {
+        Reflect.deleteProperty(globalThis, 'OfflineAudioContext')
+    }
 })
 
 test('a failed preparation is tried again by the export', async () => {
