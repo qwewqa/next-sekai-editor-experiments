@@ -79,18 +79,22 @@ type ParsedSps = {
     declared: Declared
 }
 
+/** The MP4 colour for an SPS. mediabunny writes limited range when range is unknown. */
+const mp4Color = (codes: ColorCodes) =>
+    codes.range === undefined ? undefined : colorSpaceOf(codes)
+
 /**
  * Resolves the colour of an H.264 track and writes it into every SPS. Per field: the measured
  * matrix and range, then what the first SPS declares, then the encoder's report. The returned
- * `colorSpace` describes the SPS as written. A description that cannot be read or rewritten
- * passes unchanged, never partly rewritten.
+ * `colorSpace` describes the SPS as written. A description that cannot be read passes unchanged,
+ * never partly rewritten, and declares no colour.
  */
 export const withAvcColor = (
     config: VideoDecoderConfig,
     measured?: MeasuredColor,
 ): VideoDecoderConfig => {
     const reported = reportedCodes(config.colorSpace)
-    const passed = { ...config, colorSpace: colorSpaceOf(reported) }
+    const passed = { ...config, colorSpace: undefined }
     const description = config.description
     if (!description) return passed
     const bytes = ArrayBuffer.isView(description)
@@ -125,16 +129,16 @@ export const withAvcColor = (
             (key) => declared[key] === target[key],
         )
     })
-    if (unchanged) return { ...config, colorSpace: colorSpaceOf(first) }
+    if (unchanged) return { ...config, colorSpace: mp4Color(first) }
     const result = Array.from(bytes.subarray(0, 6))
     for (const sps of parsed) {
         const patched = patchSps(sps, target)
         // The patched SPS must still fit the 16-bit length field.
-        if (patched.length > 65535) return { ...config, colorSpace: colorSpaceOf(first) }
+        if (patched.length > 65535) return { ...config, colorSpace: mp4Color(first) }
         result.push(patched.length >> 8, patched.length & 255, ...patched)
     }
     result.push(...bytes.subarray(records.end))
-    return { ...config, description: new Uint8Array(result), colorSpace: colorSpaceOf(target) }
+    return { ...config, description: new Uint8Array(result), colorSpace: mp4Color(target) }
 }
 
 /** The SPS ranges in an AVCDecoderConfigurationRecord, or undefined when it is malformed. */

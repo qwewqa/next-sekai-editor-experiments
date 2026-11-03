@@ -103,6 +103,25 @@ export const muxPickedVideo = async (
         let directPixels: Uint8ClampedArray<ArrayBufferLike> | undefined
         let directColor: VideoColorSpaceInit | undefined
         let bitstreamColor: VideoColorSpaceInit | undefined
+        // What the file declares. A VP9 header alone declares the matrix; WebM leaves it out.
+        let declared = first.decoderConfig.colorSpace
+        if (format === 'webm') {
+            // VP9 profile 0 key frame: marker/profile/flags, sync code, then colour and range.
+            const data = first.packet.data
+            if (
+                (data[0]! & 252) !== 128 ||
+                data[1] !== 0x49 ||
+                data[2] !== 0x83 ||
+                data[3] !== 0x42
+            )
+                throw new Error('Expected a VP9 profile 0 key frame')
+            const space = (data[4]! >> 5) & 7
+            bitstreamColor = {
+                matrix: ({ 1: 'bt470bg', 2: 'bt709', 3: 'smpte170m' } as const)[space as 1 | 2 | 3],
+                fullRange: !!(data[4]! & 16),
+            }
+            declared = { ...declared, matrix: bitstreamColor.matrix }
+        }
         let rawModelError = 0
         let rawPatches: number[][] = []
         let decoded: VideoFrame | undefined
@@ -118,7 +137,7 @@ export const muxPickedVideo = async (
             for (const metadata of format === 'mp4' ? [true, false] : [true]) {
                 decoder.configure({
                     ...first.decoderConfig,
-                    colorSpace: metadata ? first.decoderConfig.colorSpace : undefined,
+                    colorSpace: metadata ? declared : undefined,
                 })
                 for (const packet of packets) {
                     if (packet.track !== 'video') continue
@@ -151,7 +170,7 @@ export const muxPickedVideo = async (
                             raw[v.offset + 45 * v.stride + x / 2]!,
                         ]
                     })
-                    const color = first.decoderConfig.colorSpace!
+                    const color = declared!
                     if (!['bt709', 'bt470bg', 'smpte170m'].includes(color.matrix ?? ''))
                         throw new Error(`Unexpected YUV matrix: ${color.matrix}`)
                     const [kr, kb] =
@@ -181,23 +200,6 @@ export const muxPickedVideo = async (
         } finally {
             decoded?.close()
             decoder.close()
-        }
-        if (format === 'webm') {
-            // VP9 profile 0 key frame: marker/profile/flags, sync code, then colour and range.
-            // Chromium uses codec-string defaults when decoderConfig.colorSpace is absent.
-            const data = first.packet.data
-            if (
-                (data[0]! & 252) !== 128 ||
-                data[1] !== 0x49 ||
-                data[2] !== 0x83 ||
-                data[3] !== 0x42
-            )
-                throw new Error('Expected a VP9 profile 0 key frame')
-            const space = (data[4]! >> 5) & 7
-            bitstreamColor = {
-                matrix: ({ 1: 'bt470bg', 2: 'bt709', 3: 'smpte170m' } as const)[space as 1 | 2 | 3],
-                fullRange: !!(data[4]! & 16),
-            }
         }
         for (const packet of packets) await output.sink.add(packet)
         let cancelledDuringWrite = false
@@ -256,7 +258,6 @@ export const muxPickedVideo = async (
                     )
                     muxError = Math.max(muxError, Math.abs(pixels[i]! - directPixels![i]!))
                 }
-            const first = packets[0]!
             return {
                 beforeCommit,
                 maxError,
@@ -266,8 +267,7 @@ export const muxPickedVideo = async (
                 rawModelError,
                 rawPatches,
                 muxError,
-                expectedColor:
-                    first.track === 'video' ? first.decoderConfig?.colorSpace : undefined,
+                expectedColor: declared,
                 actualColor: config?.colorSpace,
                 size: bytes.length,
                 indexBeforeMedia:

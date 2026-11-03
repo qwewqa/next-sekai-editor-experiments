@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { withAvcColor } from '../../src/exportVideo/worker/avcColor'
-import { mp4AvcC, mp4Colr, muxOne, spsColors } from './videoColorFixtures'
+import { mp4AvcC, mp4Colr, muxVideo, spsColors } from './videoColorFixtures'
 
 // Chromium's H.264 encoder includes timing and restrictions but no video_signal_type.
 const original = new Uint8Array([
@@ -34,16 +34,18 @@ const config = (
 })
 const bytesOf = (config: VideoDecoderConfig) => config.description as Uint8Array
 const mp4 = (decoderConfig: VideoDecoderConfig) =>
-    muxOne('mp4', {
-        track: 'video',
-        packet: {
-            type: 'key',
-            timestamp: 0,
-            duration: 33333,
-            data: new Uint8Array([0, 0, 0, 1, 101]),
+    muxVideo('mp4', [
+        {
+            track: 'video',
+            packet: {
+                type: 'key',
+                timestamp: 0,
+                duration: 33333,
+                data: new Uint8Array([0, 0, 0, 1, 101]),
+            },
+            decoderConfig,
         },
-        decoderConfig,
-    })
+    ])
 
 test('adding colour fields preserves SPS timing, restrictions, PPS and profile extensions', () => {
     const bytes = new Uint8Array(original.length + 4)
@@ -163,12 +165,13 @@ test('absent, null, partial and unknown colour never fails', async () => {
         matrix: 1,
         range: 0,
     })
+    // Without a description there is no SPS to describe.
     const reported = withAvcColor(config(undefined, { ...unknown, matrix: 'bt709' }))
     assert.equal(reported.description, undefined)
-    assert.deepEqual(reported.colorSpace, { matrix: 'bt709' })
+    assert.equal(reported.colorSpace, undefined)
 })
 
-test('a description that cannot be read or rewritten passes unchanged', () => {
+test('a description that cannot be read or rewritten passes unchanged and declares no colour', async () => {
     const sps = (bytes: number[]) =>
         new Uint8Array([1, 100, 0, 30, 255, 225, 0, bytes.length, ...bytes, 0])
     const fitted = new Uint8Array(6 + 2 + 65535 + 1)
@@ -208,13 +211,11 @@ test('a description that cannot be read or rewritten passes unchanged', () => {
         })
         assert.equal(result.description, description)
         assert.deepEqual(description, copy)
-        // The report passes, normalized, when the SPS cannot be read.
-        assert.deepEqual(result.colorSpace, { ...colorSpace, matrix: 'smpte170m' })
+        assert.equal(result.colorSpace, undefined)
+        const file = await mp4(result)
+        assert.equal(mp4Colr(file), undefined)
+        assert.deepEqual(mp4AvcC(file), copy)
     }
-    assert.deepEqual(
-        withAvcColor(config(sps([104]), { ...colorSpace, matrix: 'ycgco' })).colorSpace,
-        { primaries: 'bt709', transfer: 'iec61966-2-1', fullRange: true },
-    )
     // An SPS that can be read but not rewritten states its own colour, here none.
     const copy = new Uint8Array(fitted)
     const unfitted = withAvcColor(config(fitted, report), { matrix: 'bt709', fullRange: true })

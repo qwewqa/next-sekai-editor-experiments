@@ -1,11 +1,11 @@
-import { BufferTarget } from 'mediabunny'
+import { ALL_FORMATS, BufferSource, BufferTarget, EncodedPacketSink, Input } from 'mediabunny'
 // mediabunny's own SPS reader, independent of the export's.
 import { parseAvcSps } from '../../node_modules/mediabunny/dist/modules/src/codec-data.js'
 import type { MuxInput } from '../../src/exportVideo/worker/encode'
 import { createMuxSink } from '../../src/exportVideo/worker/mux'
 
-/** Muxes one video packet and returns the file. */
-export const muxOne = async (format: 'mp4' | 'webm', input: MuxInput) => {
+/** Muxes video packets and returns the file. */
+export const muxVideo = async (format: 'mp4' | 'webm', inputs: MuxInput[]) => {
     const target = new BufferTarget()
     const sink = await createMuxSink(
         {
@@ -18,13 +18,13 @@ export const muxOne = async (format: 'mp4' | 'webm', input: MuxInput) => {
                     height: 16,
                 },
             },
-            frames: 1,
+            frames: inputs.length,
             frameRate: 30,
             samples: 1600,
         },
         target,
     )
-    await sink.add(input)
+    for (const input of inputs) await sink.add(input)
     await sink.finalize()
     return new Uint8Array(target.buffer!)
 }
@@ -106,8 +106,20 @@ export const webmColour = (file: Uint8Array) => {
     }
 }
 
-/** The muxed bytes of the only VP9 frame. */
-export const webmFrame = (file: Uint8Array) => file.subarray(find(file, [0x82, 0x49, 0x83, 0x42]))
+/** The muxed bytes of each video packet. */
+export const muxedPackets = async (file: Uint8Array) => {
+    const input = new Input({ formats: ALL_FORMATS, source: new BufferSource(file) })
+    try {
+        const track = await input.getPrimaryVideoTrack()
+        if (!track) throw new Error('No video track')
+        const packets: Uint8Array[] = []
+        for await (const packet of new EncodedPacketSink(track).packets())
+            packets.push(new Uint8Array(packet.data))
+        return packets
+    } finally {
+        input.dispose()
+    }
+}
 
 /** The colour fields of a VP9 profile 0 key frame: color_space and color_range. */
 export const vp9Fields = (frame: Uint8Array) => ({
