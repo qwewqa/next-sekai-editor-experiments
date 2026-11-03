@@ -291,6 +291,7 @@ const runFake = async (
             renderer: {
                 canvas: {},
                 capture: (i: number) => ({ timestamp: frameTimestamp(i, 30), close() {} }),
+                endCapture: () => undefined,
                 captureStripes: () => {
                     throw new Error('No stripes')
                 },
@@ -329,7 +330,9 @@ test('Cancel ends an export whose flush never resolves, and closes its encoder',
     await assert.rejects(
         runFake('hangs', controller, async (made) => {
             encoders = made
-            while (!made.at(-1)?.flushed) await new Promise((resolve) => setImmediate(resolve))
+            // Bounded, so that an export that fails before its flush cannot hold the run open.
+            for (let i = 0; i < 10000 && !made.at(-1)?.flushed; i++)
+                await new Promise((resolve) => setImmediate(resolve))
             controller.abort()
         }),
         (error: unknown) => error instanceof Error && error.name === 'AbortError',
