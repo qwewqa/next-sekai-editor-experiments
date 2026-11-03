@@ -443,7 +443,9 @@ test('failed cleanup releases the page-close warning and closes the dialog', asy
     expect(errors.some((message) => message.includes('Cleanup failed'))).toBe(true)
 })
 
-test('Escape mid-export cancels, and a second Escape closes', async ({ page }) => {
+test('Escape mid-export cancels and leaves focus on Cancel, and a second Escape closes', async ({
+    page,
+}) => {
     const dialog = await open(page, { faults: { hold: 'drain' } })
     await shortClip(page)
     await exportButton(page).click()
@@ -453,8 +455,12 @@ test('Escape mid-export cancels, and a second Escape closes', async ({ page }) =
     const before = await out.getAttribute('aria-valuetext')
     await page.keyboard.press('o')
     await expect(out).toHaveAttribute('aria-valuetext', before!)
+    // Escape from the message area: as the area empties, focus goes to Cancel.
+    await page.keyboard.press('Shift+Tab')
+    await expect(dialog.locator('[data-export-slot] [tabindex="0"]')).toBeFocused()
     await page.keyboard.press('Escape')
     await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('setup')
+    await expect(dialog.locator('[data-export-cancel]')).toBeFocused()
     expect(await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished)).toBeNull()
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('[data-export-summary]')).toBeVisible()

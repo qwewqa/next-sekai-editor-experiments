@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { vFocusRescue } from '../../directives/focusRescue'
 import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import { choiceLine } from '../../modals/form/fieldDescription'
@@ -12,7 +13,16 @@ import type { ExportDialog } from './dialog'
 // in it is read. Each message's text has the id `${ids}-${index}`, for the footer's buttons.
 const props = defineProps<{ dialog: ExportDialog; ids: string }>()
 const messages = props.dialog.messages
+// Each failure's Error Details start closed.
 const detailsOpen = ref(false)
+watch(props.dialog.outcome, () => {
+    detailsOpen.value = false
+})
+// The scroller goes with the last message, and focus in it goes to the footer's Cancel or Close.
+const footerButton = () =>
+    document.querySelector<HTMLElement>(
+        '[data-export-footer] [data-export-cancel], [data-export-footer] [data-export-close]',
+    )
 </script>
 
 <template>
@@ -25,6 +35,7 @@ const detailsOpen = ref(false)
         <div
             v-if="messages.length"
             v-scroll-edges
+            v-focus-rescue="footerButton"
             tabindex="0"
             class="focus-ring flex min-h-0 flex-col gap-1 overflow-y-auto px-4 py-3"
         >
