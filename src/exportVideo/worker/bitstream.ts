@@ -32,7 +32,7 @@ export const bitReader = (bits: string) => {
     }
 }
 
-export type BitReader = ReturnType<typeof bitReader>
+type BitReader = ReturnType<typeof bitReader>
 
 /** The bits of an H.264 NAL unit without emulation prevention. */
 export const rbspBits = (nal: Uint8Array) => {
