@@ -250,7 +250,7 @@ test('the memory warning needs the memory route, working settings and more than 
     assert.deepEqual(kinds({ ...state, memoryRoute: undefined }), ['storage'])
     assert.deepEqual(kinds({ ...state, frames: 0 }), [])
     // The unavailable line takes its place while a check fails.
-    const failing = { current: refused, choices: { 'audioBitrate:128000': works } }
+    const failing = { pending: false, current: refused, choices: { 'audioBitrate:128000': works } }
     assert.deepEqual(kinds({ ...state, support: failing }), ['unavailable'])
 })
 
