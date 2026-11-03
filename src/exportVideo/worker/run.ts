@@ -1,6 +1,11 @@
 import { AUDIO_RATE, audioUnits, frameTimestamp, type AudioBlock } from '../timing'
 import type { ExportStart } from '../types'
-import { createAudioFeeder, createAudioPacketAdapter, videoPacket } from './encode'
+import {
+    createAudioFeeder,
+    createAudioPacketAdapter,
+    createVideoColor,
+    videoPacket,
+} from './encode'
 import { measureEncoderColor } from './encoderColor'
 import { createFrameLoop } from './loop'
 import type { createExportRenderer } from './renderer'
@@ -44,11 +49,15 @@ export const runExport = async (
     let emitted = 0
     const metadataState = { configured: false }
     try {
-        // The measurement only corrects the colour label. If it fails, the file keeps the
-        // encoder's own label.
-        const color = await loop.guard(
-            measureEncoderColor(start.codecs.video, s.frameRate, renderer.captureStripes).catch(
-                () => undefined,
+        // Without a measurement, the file declares the bitstream's colour and the encoder's report.
+        const color = createVideoColor(
+            await loop.guard(
+                measureEncoderColor(
+                    start.codecs.video,
+                    s.frameRate,
+                    renderer.captureStripes,
+                    options.signal,
+                ),
             ),
         )
         video = new VideoEncoder({

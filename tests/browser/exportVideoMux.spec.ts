@@ -119,10 +119,8 @@ for (const format of ['webm', 'mp4'] as const)
                 expect(result!.actualColor).toEqual(result!.expectedColor)
                 expect(result!.muxError).toBe(0)
                 expect(result!.directColor).toEqual(result!.expectedColor)
-                // The VP9 key frames are read before muxing, so they carry the encoder's report.
-                const tagged = format === 'mp4' ? result!.expectedColor : result!.reportedColor
-                expect(result!.bitstreamColor?.matrix).toBe(tagged?.matrix)
-                expect(result!.bitstreamColor?.fullRange).toBe(tagged?.fullRange)
+                expect(result!.bitstreamColor?.matrix).toBe(result!.expectedColor?.matrix)
+                expect(result!.bitstreamColor?.fullRange).toBe(result!.expectedColor?.fullRange)
                 if (format === 'mp4') expect(result!.bitstreamColor).toEqual(result!.expectedColor)
                 expect(result!.rawModelError).toBeLessThanOrEqual(2)
                 expect(

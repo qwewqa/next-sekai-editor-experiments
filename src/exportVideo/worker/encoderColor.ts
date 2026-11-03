@@ -26,22 +26,12 @@ export type ColorCandidate = (typeof colorCandidates)[number]
 /** Mean difference in 8-bit levels within which decoded colours match. */
 const MATCH = 2
 
-/** The candidate to declare instead of the report, when it clearly decodes closer. */
-export const chooseColor = (
-    distances: readonly number[],
-    reported: VideoColorSpaceInit | undefined,
-): ColorCandidate | undefined => {
-    const matrix = reported?.matrix === 'bt470bg' ? 'smpte170m' : reported?.matrix
-    const current = colorCandidates.findIndex(
-        (c) => c.matrix === matrix && c.fullRange === reported?.fullRange,
-    )
+/** The candidate whose frame decodes like the captured one, when no other comes close. */
+export const chooseColor = (distances: readonly number[]): ColorCandidate | undefined => {
+    if (distances.length !== colorCandidates.length) return undefined
     const best = distances.indexOf(Math.min(...distances))
     const distance = distances[best] ?? Infinity
-    if (
-        best === current ||
-        distance > MATCH ||
-        distance + MATCH >= (distances[current] ?? Infinity)
-    )
+    if (!(distance <= MATCH) || distances.some((d, i) => i !== best && !(d > distance + MATCH)))
         return undefined
     return colorCandidates[best]
 }
@@ -67,46 +57,75 @@ const toYuv = ([r, g, b]: readonly [number, number, number], candidate: ColorCan
 /**
  * Encodes the stripes as the export captures them, then as raw YUV frames made with each
  * candidate, and decodes all of them with one decoder. The candidate whose frame decodes like the
- * captured one is the encoder's conversion.
+ * captured one is the encoder's conversion. A failure or cancellation means no measurement.
  */
 export const measureEncoderColor = async (
     config: VideoEncoderConfig,
     frameRate: 30 | 60,
     capture: (edges: readonly number[]) => VideoFrame,
+    signal?: AbortSignal,
 ): Promise<ColorCandidate | undefined> => {
     const { width, height } = config
     const edges = stripeEdges(width)
     const chunks: EncodedVideoChunk[] = []
     let decoderConfig: VideoDecoderConfig | undefined
     let failure: Error | undefined
-    const check = () => {
-        if (failure) throw failure
-    }
+    let stop: ((error: Error) => void) | undefined
     const fail = (error: unknown) => {
         failure ??= exportError(error)
+        stop?.(failure)
     }
-    const encoder = new VideoEncoder({
-        output: (chunk, metadata) => {
-            chunks.push(chunk)
-            decoderConfig ??= metadata?.decoderConfig
-        },
-        error: fail,
-    })
+    const aborted = () => {
+        fail(signal?.reason)
+    }
+    signal?.addEventListener('abort', aborted, { once: true })
+    if (signal?.aborted) aborted()
+    /** Waits for `operation` until a codec fails or the export is canceled. */
+    const wait = <T>(operation: Promise<T>) =>
+        new Promise<T>((resolve, reject) => {
+            stop = reject
+            operation.then(
+                (value) => {
+                    stop = undefined
+                    if (failure) reject(failure)
+                    else resolve(value)
+                },
+                (error: unknown) => {
+                    stop = undefined
+                    reject(failure ?? exportError(error))
+                },
+            )
+            if (failure) reject(failure)
+        })
+    let encoder: VideoEncoder | undefined
     let decoder: VideoDecoder | undefined
-    const encode = (frame: VideoFrame) => {
-        try {
-            encoder.encode(frame, { keyFrame: true })
-        } finally {
-            frame.close()
-        }
-    }
-    const decoded: number[][] = []
+    /** Each input timestamp and its frame: 0 is the captured one, then the candidates. */
+    const inputs = new Map<number, number>()
+    const decoded = new Map<number, number[]>()
     const spaces = new Set<string>()
     try {
-        encoder.configure(config)
-        encode(capture(edges))
-        await encoder.flush()
-        if (!decoderConfig) throw new Error('Encoder omitted its configuration')
+        if (failure) return undefined
+        const created = new VideoEncoder({
+            output: (chunk, metadata) => {
+                chunks.push(chunk)
+                decoderConfig ??= metadata?.decoderConfig
+            },
+            error: fail,
+        })
+        encoder = created
+        const encode = (frame: VideoFrame, index: number) => {
+            try {
+                if (inputs.has(frame.timestamp)) throw new Error('Calibration timestamps repeat')
+                inputs.set(frame.timestamp, index)
+                created.encode(frame, { keyFrame: true })
+            } finally {
+                frame.close()
+            }
+        }
+        created.configure(config)
+        encode(capture(edges), 0)
+        await wait(created.flush())
+        if (!decoderConfig) return undefined
         const chromaWidth = Math.ceil(width / 2)
         const lumaSize = width * height
         const chromaSize = chromaWidth * Math.ceil(height / 2)
@@ -136,20 +155,23 @@ export const measureEncoderColor = async (
                     codedHeight: height,
                     timestamp,
                     duration: frameTimestamp(i + 2, frameRate) - timestamp,
-                    colorSpace: decoderConfig.colorSpace,
+                    colorSpace: decoderConfig.colorSpace ?? undefined,
                 }),
+                i + 1,
             )
         }
-        await encoder.flush()
-        check()
-        if (!(await VideoDecoder.isConfigSupported(decoderConfig)).supported) return undefined
+        await wait(created.flush())
+        if (!(await wait(VideoDecoder.isConfigSupported(decoderConfig))).supported) return undefined
         const reader = new OffscreenCanvas(8, 8).getContext('2d', {
             willReadFrequently: true,
         })
-        if (!reader) throw new Error('2D canvas is unavailable')
+        if (!reader) return undefined
         decoder = new VideoDecoder({
             output: (frame) => {
                 try {
+                    const index = inputs.get(frame.timestamp)
+                    if (index === undefined || decoded.has(index))
+                        throw new Error('Unexpected decoded calibration frame')
                     spaces.add(JSON.stringify(frame.colorSpace.toJSON()))
                     // The mean of an 8 by 8 block from the middle of each stripe.
                     const means = STRIPES.flatMap((_, i) => {
@@ -161,7 +183,7 @@ export const measureEncoderColor = async (
                                 block.reduce((sum, v, k) => (k % 4 === c ? sum + v : sum), 0) / 64,
                         )
                     })
-                    decoded.push(means)
+                    decoded.set(index, means)
                 } catch (error) {
                     fail(error)
                 } finally {
@@ -172,22 +194,23 @@ export const measureEncoderColor = async (
         })
         decoder.configure(decoderConfig)
         for (const chunk of chunks) decoder.decode(chunk)
-        await decoder.flush()
-        check()
-    } catch (error) {
-        throw failure ?? exportError(error)
+        await wait(decoder.flush())
+    } catch {
+        return undefined
     } finally {
-        if (encoder.state !== 'closed') encoder.close()
+        signal?.removeEventListener('abort', aborted)
+        if (encoder && encoder.state !== 'closed') encoder.close()
         if (decoder && decoder.state !== 'closed') decoder.close()
     }
-    const [captured, ...candidates] = decoded
+    const captured = decoded.get(0)
     // The comparison holds only if the decoder converted every frame the same way.
-    if (!captured || candidates.length !== colorCandidates.length || spaces.size !== 1)
-        return undefined
-    const distances = candidates.map(
-        (means) =>
-            means.reduce((sum, value, i) => sum + Math.abs(value - (captured[i] ?? 0)), 0) /
-            means.length,
-    )
-    return chooseColor(distances, decoderConfig.colorSpace)
+    if (!captured || decoded.size !== inputs.size || spaces.size !== 1) return undefined
+    const distances = colorCandidates.map((_, i) => {
+        const means = decoded.get(i + 1) ?? []
+        return (
+            means.reduce((sum, value, k) => sum + Math.abs(value - (captured[k] ?? 0)), 0) /
+            means.length
+        )
+    })
+    return chooseColor(distances)
 }

@@ -7,7 +7,8 @@ import {
     sampleTimestamp,
     type AudioBlock,
 } from '../timing'
-import { withAvcColor } from './avcColor'
+import { withAvcColor, type MeasuredColor } from './avcColor'
+import { createVp9Color } from './vp9Color'
 
 export type EncodedPacket = {
     type: EncodedAudioChunkType
@@ -132,23 +133,24 @@ const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk, shift = 0): Enco
     return { data, type: chunk.type, timestamp: chunk.timestamp - shift, duration: chunk.duration }
 }
 
-/** `color` replaces the matrix and range that the encoder reports. */
+/** Colour for one video track, from the measured conversion when there is one. */
+export const createVideoColor = (measured?: MeasuredColor) => {
+    const vp9 = createVp9Color(measured)
+    let avc = false
+    return (packet: EncodedPacket, config?: VideoDecoderConfig) => {
+        if (config) avc = /^avc[13]\./.test(config.codec)
+        if (!avc) return vp9(packet.data, packet.type, config)
+        return config && withAvcColor(config, measured)
+    }
+}
+
 export const videoPacket = (
     chunk: EncodedVideoChunk,
-    metadata?: EncodedVideoChunkMetadata,
-    color?: Pick<VideoColorSpaceInit, 'matrix' | 'fullRange'>,
+    metadata: EncodedVideoChunkMetadata | undefined,
+    color: ReturnType<typeof createVideoColor>,
 ): MuxInput => {
-    const config = metadata?.decoderConfig
-    return {
-        track: 'video',
-        packet: packetOf(chunk),
-        decoderConfig:
-            config &&
-            withAvcColor(
-                color ? { ...config, colorSpace: { ...config.colorSpace, ...color } } : config,
-                !!color,
-            ),
-    }
+    const packet = packetOf(chunk)
+    return { track: 'video', packet, decoderConfig: color(packet, metadata?.decoderConfig) }
 }
 
 export const createAudioPacketAdapter = (options: {

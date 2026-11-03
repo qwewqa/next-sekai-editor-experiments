@@ -14,6 +14,7 @@ import {
     createAacCalibration,
     createAudioFeeder,
     createAudioPacketAdapter,
+    createVideoColor,
     normalizeAacDescription,
     opusPreSkip,
     videoPacket,
@@ -211,7 +212,7 @@ test('Opus packets are placed end to end at every clip length, also when stamped
             }
 })
 
-test('video packets retain the encoder color metadata without a replacement tag', () => {
+test('video packets take the track colour for their codec', () => {
     const colorSpace = {
         primaries: 'bt709',
         transfer: 'iec61966-2-1',
@@ -219,20 +220,36 @@ test('video packets retain the encoder color metadata without a replacement tag'
         fullRange: true,
     } as const
     const config = { codec: 'vp09.00.41.08', codedWidth: 1920, codedHeight: 1080, colorSpace }
-    const result = videoPacket(chunk(0, 16667), { decoderConfig: config })
+    // This chunk is no VP9 key frame, so the normalized report describes it.
+    const result = videoPacket(chunk(0, 16667), { decoderConfig: config }, createVideoColor())
     assert.ok(result.track === 'video')
-    assert.equal(result.decoderConfig?.colorSpace, colorSpace)
+    assert.deepEqual(result.decoderConfig?.colorSpace, colorSpace)
+    assert.deepEqual(result.packet.data, new Uint8Array([7]))
     const measured = videoPacket(
         chunk(0, 16667),
-        { decoderConfig: config },
-        { matrix: 'smpte170m', fullRange: false },
+        {
+            decoderConfig: {
+                ...config,
+                colorSpace: { ...colorSpace, matrix: 'ycgco' as VideoMatrixCoefficients },
+            },
+        },
+        createVideoColor({ matrix: 'smpte170m', fullRange: false }),
     )
     assert.ok(measured.track === 'video')
+    // The measurement cannot be written into an unread frame, so the container keeps the report.
     assert.deepEqual(measured.decoderConfig?.colorSpace, {
-        ...colorSpace,
-        matrix: 'smpte170m',
-        fullRange: false,
+        primaries: 'bt709',
+        transfer: 'iec61966-2-1',
+        fullRange: true,
     })
+    const avc = videoPacket(
+        chunk(0, 16667),
+        { decoderConfig: { ...config, codec: 'avc1.64001e', description: new Uint8Array([1]) } },
+        createVideoColor({ matrix: 'smpte170m', fullRange: false }),
+    )
+    assert.ok(avc.track === 'video')
+    assert.deepEqual(avc.decoderConfig?.description, new Uint8Array([1]))
+    assert.deepEqual(avc.decoderConfig?.colorSpace, colorSpace)
 })
 
 test('AAC delay calibration caches the whole configuration and retries failed measurements', async () => {
