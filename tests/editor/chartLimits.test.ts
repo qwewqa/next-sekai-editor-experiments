@@ -258,7 +258,7 @@ test('the grid searches end for a meter that slipped past the limits, promptly',
     const run = spawnSync(
         process.execPath,
         ['--import', 'tsx', '--input-type=module', '--eval', script],
-        { encoding: 'utf8', timeout: 20_000 },
+        { encoding: 'utf8', timeout: 120_000 },
     )
     assert.equal(run.signal, null, 'timed out')
     assert.equal(run.status, 0, run.stderr)

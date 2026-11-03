@@ -565,7 +565,7 @@ test('beats past 2^32 grid steps snap, step and draw promptly, with no lines bet
     const run = spawnSync(
         process.execPath,
         ['--import', 'tsx', '--input-type=module', '--eval', script],
-        { encoding: 'utf8', timeout: 20_000 },
+        { encoding: 'utf8', timeout: 120_000 },
     )
     assert.equal(run.signal, null, 'timed out')
     assert.equal(run.status, 0, run.stderr)

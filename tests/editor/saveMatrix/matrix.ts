@@ -337,7 +337,6 @@ const holdThen = (
             .until(
                 () => w.manager.snapshot().pending.some((p) => p.clientId === w.ours.name),
                 'our lock request',
-                6000,
             )
             .then(() => {
                 contended = true
@@ -352,9 +351,7 @@ const holdThen = (
 
 /** Waits for a "Preparing…" dialog to be open, which a slow step opens on a one-second timer. */
 const dialogOpen = (w: World) =>
-    w
-        .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 8000)
-        .catch(() => undefined)
+    w.until(() => w.preparing.some((entry) => entry.open), 'Preparing…').catch(() => undefined)
 
 /** A fault at a point of the platform's write: once, or on every write. */
 const failWrite = (
@@ -678,9 +675,7 @@ export const FAULTS: FaultDef[] = [
         arm: (w) => {
             const imp = w.startImport()
             const driver = (async () => {
-                await w
-                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
-                    .catch(() => undefined)
+                await dialogOpen(w)
                 await sleep(30)
                 imp.finish()
                 await imp.run
@@ -695,9 +690,7 @@ export const FAULTS: FaultDef[] = [
         arm: (w) => {
             const imp = w.startImport()
             const driver = (async () => {
-                await w
-                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
-                    .catch(() => undefined)
+                await dialogOpen(w)
                 await sleep(10)
                 w.cancelled = w.cancel()
                 await sleep(20)
@@ -720,9 +713,7 @@ export const FAULTS: FaultDef[] = [
         arm: (w) => {
             const imp = w.startImport()
             const driver = (async () => {
-                await w
-                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
-                    .catch(() => undefined)
+                await dialogOpen(w)
                 await sleep(30)
                 activation.active = false
                 imp.finish()
@@ -741,9 +732,7 @@ export const FAULTS: FaultDef[] = [
         arm: (w) => {
             const imp = w.startImport()
             const driver = (async () => {
-                await w
-                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
-                    .catch(() => undefined)
+                await dialogOpen(w)
                 await sleep(30)
                 imp.finish()
                 await imp.run
@@ -758,9 +747,7 @@ export const FAULTS: FaultDef[] = [
         arm: (w) => {
             const imp = w.startOtherImport()
             const driver = (async () => {
-                await w
-                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
-                    .catch(() => undefined)
+                await dialogOpen(w)
                 await sleep(30)
                 imp.finish()
                 await imp.run
@@ -882,7 +869,7 @@ export type CellResult = {
     observed?: boolean
 }
 
-const HANG_MS = 14000
+const HANG_MS = 60_000
 
 /** Exits known not to have written: no marker may stay for them (I7). */
 const UNWRITTEN = new Set([

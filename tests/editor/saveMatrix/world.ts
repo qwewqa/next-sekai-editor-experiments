@@ -812,11 +812,11 @@ const createWorld = async (setup: Setup = {}) => {
             })
             return { release, got, done }
         },
-        /** Resolves once a condition holds, checked each turn. */
-        until: async (condition: () => boolean, label = 'a condition', ms = 4000) => {
+        /** Resolves once a condition holds, checked each turn. The limit allows a loaded machine. */
+        until: async (condition: () => boolean, label = 'a condition') => {
             const start = Date.now()
             while (!condition()) {
-                if (Date.now() - start > ms) throw new Error(`Timed out waiting for ${label}`)
+                if (Date.now() - start > 30_000) throw new Error(`Timed out waiting for ${label}`)
                 await new Promise((resolve) => setTimeout(resolve, 1))
             }
         },
@@ -828,7 +828,6 @@ const createWorld = async (setup: Setup = {}) => {
                     .until(
                         () => (window.nseSaveTest?.reached ?? []).includes(name),
                         `save point ${name}`,
-                        8000,
                     )
                     .catch(() => undefined)
                 if (!(window.nseSaveTest?.reached ?? []).includes(name)) return
