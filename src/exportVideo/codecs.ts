@@ -88,7 +88,7 @@ export type CodecSupport =
           format: VideoFormat
           video: VideoEncoderConfig
           audio?: AudioEncoderConfig
-          /** The measured AAC delay in samples, for MP4 with sound. */
+          /** The measured AAC delay in samples, for MP4 with sound. Absent when not measured. */
           aacDelay?: number
       }
     | { supported: false; reason: 'videoEncoder' | 'audioEncoder' | 'videoConfig' | 'audioConfig' }
@@ -194,7 +194,7 @@ export const createSharedWork = <T>(oneAtATime = false) => {
 }
 
 // isConfigSupported can accept a configuration whose output the export cannot use. Firefox's
-// H.264 encoder shifts timestamps and writes a malformed SPS.
+// H.264 encoder writes a malformed SPS. The frames are raw YUV: grey with a moving square.
 const trialEncode = async (config: TrialConfig, signal: AbortSignal) => {
     const frames = 3
     const at = (i: number) => frameTimestamp(i, config.framerate)
@@ -215,16 +215,25 @@ const trialEncode = async (config: TrialConfig, signal: AbortSignal) => {
                 errors.push(error)
             },
         })
-        const canvas = new OffscreenCanvas(config.width, config.height)
-        const context = canvas.getContext('2d')
-        if (!context) throw new Error('2D canvas is unavailable')
         encoder.configure(config)
+        const { width, height } = config
+        const luma = width * height
+        const chroma = Math.ceil(width / 2) * Math.ceil(height / 2)
         for (let i = 0; i < frames; i++) {
-            context.fillStyle = '#808080'
-            context.fillRect(0, 0, config.width, config.height)
-            context.fillStyle = '#ffffff'
-            context.fillRect(16 * i, 16, 16, 16)
-            const frame = new VideoFrame(canvas, { timestamp: at(i), duration: at(i + 1) - at(i) })
+            const data = new Uint8Array(luma + 2 * chroma).fill(128)
+            for (let y = 16; y < Math.min(32, height); y++)
+                data.fill(
+                    235,
+                    y * width + 16 * i,
+                    Math.min((y + 1) * width, y * width + 16 * i + 16),
+                )
+            const frame = new VideoFrame(data, {
+                format: 'I420',
+                codedWidth: width,
+                codedHeight: height,
+                timestamp: at(i),
+                duration: at(i + 1) - at(i),
+            })
             try {
                 encoder.encode(frame, { keyFrame: i === 0 })
             } finally {
@@ -285,17 +294,16 @@ export const createCodecProbes = (
         const key = kind + configurationKey(config)
         let result = cache.get(key)
         if (!result) {
-            result = run(config)
-                .then((r) => !!r.supported)
-                .catch((error: unknown) => {
-                    if (
-                        error instanceof TypeError ||
-                        (error instanceof DOMException && error.name === 'NotSupportedError')
-                    )
-                        return false
+            // A query that throws counts as unsupported. Only a refused configuration is kept;
+            // after any other error, the next call asks again.
+            result = (async () => !!(await run(config)).supported)().catch((error: unknown) => {
+                if (
+                    !(error instanceof TypeError) &&
+                    !(error instanceof DOMException && error.name === 'NotSupportedError')
+                )
                     cache.delete(key)
-                    throw error
-                })
+                return false
+            })
             cache.set(key, result)
         }
         return result
@@ -328,14 +336,13 @@ export const createCodecProbes = (
                 return { supported: false, reason: 'audioConfig' }
             signal?.throwIfAborted()
         }
-        // Without a measured delay, AAC cannot be placed, so MP4 with sound is unavailable.
+        // Without a measured delay, the export places AAC with an estimate and warns.
         let aacDelay: number | undefined
         if (audio && format === 'mp4' && trial && probes.aacDelay) {
             try {
                 aacDelay = await probes.aacDelay(audio, signal)
             } catch {
                 signal?.throwIfAborted()
-                return { supported: false, reason: 'audioConfig' }
             }
         }
         const common: Omit<TrialConfig, 'codec'> = {

@@ -16,7 +16,7 @@ type VideoSize = { width: number; height: number }
  * its VUI. A syntax error before the VUI throws; the VUI is read only as far as colour.
  */
 const readSps = (nal: Uint8Array) => {
-    const { bits, r, profile, size } = readSpsHead(nal)
+    const { bits, r, size } = readSpsHead(nal)
     let essential = bits
     try {
         if (r.read()) {
@@ -33,13 +33,15 @@ const readSps = (nal: Uint8Array) => {
         // A VUI that ends before its colour part leaves the whole SPS essential.
     }
     // The stop bit and its zero padding move with the colour bits.
-    return { profile, size, essential: essential.replace(/0*$/, '') }
+    return { size, essential: essential.replace(/0*$/, '') }
 }
 
 /**
- * Reads an AVC configuration record: each SPS and PPS complete with its own NAL header, the
- * first SPS of the record's profile and readable up to its VUI. Firefox's encoder repeats the
- * NAL header byte, and no decoder reads such a record. Undefined when any of that fails.
+ * Reads an AVC configuration record: each SPS and PPS complete with its own NAL header, and the
+ * first SPS of the record's profile. Firefox's encoder repeats the NAL header byte, so its SPS
+ * starts with the header again, and no decoder reads such a record. Undefined when any of that
+ * fails. The size is read from the first SPS where it can be; an SPS that cannot be read is
+ * essential as a whole.
  */
 export const readAvcRecord = (description: AllowSharedBufferSource) => {
     const bytes = bytesOf(description)
@@ -49,22 +51,23 @@ export const readAvcRecord = (description: AllowSharedBufferSource) => {
     const valid = (sets: Uint8Array[], type: number) =>
         sets.every((set) => set.length > 1 && ((set[0] ?? 0) & 0x9f) === type)
     if (!sps || !pps || !valid(sps.sets, 7) || !valid(pps.sets, 8)) return undefined
-    try {
-        const parsed = sps.sets.map(readSps)
-        const first = parsed[0]
-        if (!first || first.profile !== bytes[1]) return undefined
-        return {
-            codec: `avc1.${[...bytes.subarray(1, 4)].map((b) => b.toString(16).padStart(2, '0')).join('')}`,
-            size: first.size,
-            essential: [
-                toBits(bytes.subarray(1, 5)),
-                ...parsed.map((s) => s.essential),
-                ...pps.sets.map(toBits),
-                toBits(bytes.subarray(pps.end)),
-            ].join('|'),
+    if (sps.sets[0]?.[1] !== bytes[1]) return undefined
+    const parsed = sps.sets.map((set) => {
+        try {
+            return readSps(set)
+        } catch {
+            return { size: undefined, essential: toBits(set) }
         }
-    } catch {
-        return undefined
+    })
+    return {
+        codec: `avc1.${[...bytes.subarray(1, 4)].map((b) => b.toString(16).padStart(2, '0')).join('')}`,
+        size: parsed[0]?.size,
+        essential: [
+            toBits(bytes.subarray(1, 5)),
+            ...parsed.map((s) => s.essential),
+            ...pps.sets.map(toBits),
+            toBits(bytes.subarray(pps.end)),
+        ].join('|'),
     }
 }
 

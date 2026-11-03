@@ -168,63 +168,6 @@ const startOf = (items: Item[]) => names(items).slice(0, START.length)
 const dataOf = (items: Item[], name: string) =>
     items.find((item) => item.payload.name === name)?.payload.data
 
-test('exceeding the memory limit shows advice and records memoryLimit', async ({
-    page,
-    context,
-}) => {
-    test.slow()
-    const { batches, stray } = await mock(context)
-    await page.addInitScript(() => Reflect.deleteProperty(window, 'showSaveFilePicker'))
-    await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
-    await page.route('**/resource/particle.scp*', (route) =>
-        route.fulfill({ body: resource('particles') }),
-    )
-    await boot(page)
-    await page.evaluate(installEditorFixture)
-    await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.notes))
-    await expect.poll(() => clientLoaded(page)).toBe(3)
-    await page.evaluate(async () => {
-        const { platform } =
-            await window.editorTest.appImport<typeof import('../../src/platform')>(
-                '/src/platform/index.ts',
-            )
-        platform.videoOutput!.stage = () =>
-            Promise.reject(new DOMException('Staging unavailable', 'NotSupportedError'))
-        const Native = window.Worker
-        window.Worker = class extends Native {
-            override postMessage(
-                message: unknown,
-                transfer: Transferable[] | StructuredSerializeOptions = [],
-            ) {
-                const request = message as import('../../src/exportVideo/protocol').ToExportWorker
-                if (request.type === 'start' && request.destination.kind === 'memory')
-                    request.destination.limit = 1
-                if (Array.isArray(transfer)) super.postMessage(message, transfer)
-                else super.postMessage(message, transfer)
-            }
-        }
-    })
-    const dialog = await openVideoDialog(page, { production: true })
-    await shortVideoClip(page)
-    await expect(videoExportButton(page)).toBeEnabled({ timeout: 20_000 })
-    await videoExportButton(page).click()
-    await expect.poll(() => videoPhase(page), { timeout: videoExportTimeout }).toBe('failed')
-    await expect
-        .soft(dialog.locator('[data-export-slot]'))
-        .toContainText(
-            'This video is too large for this browser. Choose a shorter range or lower the quality.',
-        )
-    await firstSend(page, batches)
-    const events = batches.flat().filter((item) => item.payload.name === 'exportVideo')
-    expect(events).toHaveLength(1)
-    expect(events[0]!.payload.data).toMatchObject({
-        outcome: 'failed',
-        reason: 'memoryLimit',
-        target: 'memory',
-    })
-    expect(stray).toEqual([])
-})
-
 for (const outcome of ['done', 'cancelled', 'failed'] as const)
     test(`Export Video records ${outcome} once with its settings and device`, async ({
         page,

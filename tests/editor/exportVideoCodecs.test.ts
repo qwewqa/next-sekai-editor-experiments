@@ -194,7 +194,7 @@ const encoded = (
     },
 })
 
-test('a trial accepts output the export can mux, in encoded order and without durations', async () => {
+test('a trial accepts output the export can mux or repair, and refuses output it cannot use', async () => {
     const config = { codec: 'avc1.64001e', width: 320, height: 180, framerate: 30 as const }
     const vp9 = { ...config, codec: 'vp09.00.31.08' }
     const at = (i: number) => Math.round((i * 1e6) / 30)
@@ -240,24 +240,25 @@ test('a trial accepts output the export can mux, in encoded order and without du
         }))
     assert.equal(await usableTrial(config, avc(), 3), true)
     assert.equal(await usableTrial(vp9, webm(true), 3), true)
-    assert.equal(await usableTrial(vp9, webm(false), 3), false)
+    // VP9 without metadata takes the requested codec and size.
+    assert.equal(await usableTrial(vp9, webm(false), 3), true)
     // Presentation order differs from encoded order with B-frames.
     assert.equal(await usableTrial(config, avc([0, 2, 1]), 3), true)
-    // Firefox's High and Main output is one frame late, so the last chunk matches no frame.
-    assert.equal(await usableTrial(config, avc([1, 2, 3]), 3), false)
-    assert.equal(await usableTrial(config, avc([0, 1]), 3), false)
-    assert.equal(await usableTrial(config, avc([0, 1, 1]), 3), false)
-    // The configuration comes with the first chunk.
+    // Output a frame late, a missing frame and a repeated time are placed on whole frames.
+    assert.equal(await usableTrial(config, avc([1, 2, 3]), 3), true)
+    assert.equal(await usableTrial(config, avc([0, 1]), 3), true)
+    assert.equal(await usableTrial(config, avc([0, 1, 1]), 3), true)
+    // A configuration that comes after the key frame leaves no usable video.
     assert.equal(await usableTrial(config, avc(undefined, {}, 1), 3), false)
-    // Durations come from the submitted frames; timestamps must be theirs exactly.
+    // Durations come from the frames; timestamps round to the nearest frame.
     const timing = (shift: number) =>
         avc().map(({ chunk, metadata }, i) => ({
             chunk: { ...chunk, timestamp: chunk.timestamp + (i ? shift : 0), duration: null },
             metadata,
         }))
     assert.equal(await usableTrial(config, timing(0), 3), true)
-    assert.equal(await usableTrial(config, timing(1), 3), false)
-    // A missing coded size is read from the SPS; the SPS's size must be the requested one.
+    assert.equal(await usableTrial(config, timing(-1), 3), true)
+    // A missing coded size is read from the SPS; another size or aspect is muxed as it is.
     assert.equal(
         await usableTrial(
             config,
@@ -266,14 +267,14 @@ test('a trial accepts output the export can mux, in encoded order and without du
         ),
         true,
     )
-    assert.equal(await usableTrial({ ...config, height: 192 }, avc(), 3), false)
+    assert.equal(await usableTrial({ ...config, height: 192 }, avc(), 3), true)
     assert.equal(
         await usableTrial(
             config,
             avc(undefined, { displayAspectWidth: 4, displayAspectHeight: 3 }),
             3,
         ),
-        false,
+        true,
     )
     // A different valid profile is kept; the requested one is not required.
     assert.equal(await usableTrial({ ...config, codec: 'avc1.4d001f' }, avc(), 3), true)
@@ -281,7 +282,8 @@ test('a trial accepts output the export can mux, in encoded order and without du
     const firefox = new Uint8Array([...avcC.subarray(0, 8), 103, ...avcC.subarray(8)])
     firefox[7] = 24
     assert.equal(await usableTrial(config, avc(undefined, { description: firefox }), 3), false)
-    // An SPS slot holding a PPS, a truncated SPS and a PPS slot holding an SPS each fail.
+    // An SPS slot holding a PPS and a PPS slot holding an SPS each fail. An SPS whose size
+    // cannot be read is still usable.
     const sps = [...avcC.subarray(8, 31)]
     const record = (set: number[], pps = [0x68, 0xee, 0x3c, 0x80]) =>
         new Uint8Array([
@@ -301,15 +303,20 @@ test('a trial accepts output the export can mux, in encoded order and without du
         ])
     for (const description of [
         record([0x68, ...sps.slice(1)]),
-        record(sps.slice(0, 6)),
         record(sps, [0x67, 0xee, 0x3c, 0x80]),
     ])
         assert.equal(await usableTrial(config, avc(undefined, { description }), 3), false)
+    assert.equal(
+        await usableTrial(config, avc(undefined, { description: record(sps.slice(0, 6)) }), 3),
+        true,
+    )
     // Without a description, the muxer cannot read length-prefixed H.264.
     assert.equal(await usableTrial(config, avc(undefined, { description: undefined }), 3), false)
-    // The muxer rejects a first packet that is not a key frame.
-    const dependent = avc()
-    dependent[0] = { ...dependent[0]!, chunk: { ...dependent[0]!.chunk, type: 'delta' } }
+    // Video starts at a key frame, so output without one is unusable.
+    const dependent = avc().map((output) => ({
+        ...output,
+        chunk: { ...output.chunk, type: 'delta' as const },
+    }))
     assert.equal(await usableTrial(config, dependent, 3), false)
 })
 
@@ -483,7 +490,7 @@ test('updates that differ only in audio share one trial, and closing stops every
     assert.deepEqual(started.slice(1), ['720 12000000', '720 11000000'])
 })
 
-test('an AAC delay that cannot be measured makes MP4 with sound unavailable, so Automatic picks WebM', async () => {
+test('an AAC delay that cannot be measured leaves MP4 with sound available, without a measurement', async () => {
     const measured: string[] = []
     const probes = (delay: () => Promise<number>) =>
         createCodecProbes({
@@ -495,15 +502,15 @@ test('an AAC delay that cannot be measured makes MP4 with sound unavailable, so 
                 return delay()
             },
         })
-    const failing = probes(() => Promise.reject(new Error('AAC delay could not be measured')))
-    const automatic = await failing.resolve(settings)
-    assert.equal(automatic.supported && automatic.format, 'webm')
-    assert.equal(automatic.supported && automatic.audio?.codec, 'opus')
-    assert.equal(automatic.supported && automatic.aacDelay, undefined)
-    assert.deepEqual(await failing.resolve({ ...settings, format: 'mp4' }), {
-        supported: false,
-        reason: 'audioConfig',
+    let failures = 0
+    const failing = probes(() => {
+        failures++
+        return Promise.reject(new Error('AAC delay could not be measured'))
     })
+    const automatic = await failing.resolve(settings)
+    assert.equal(automatic.supported && automatic.format, 'mp4')
+    assert.equal(automatic.supported && automatic.audio?.codec, 'mp4a.40.2')
+    assert.equal(automatic.supported && automatic.aacDelay, undefined)
     const working = await probes(() => Promise.resolve(2112)).resolve(settings)
     assert.equal(working.supported && working.format, 'mp4')
     assert.equal(working.supported && working.aacDelay, 2112)
@@ -514,6 +521,73 @@ test('an AAC delay that cannot be measured makes MP4 with sound unavailable, so 
     const untried = await failing.resolve({ ...settings, format: 'mp4' }, { trial: false })
     assert.equal(untried.supported && untried.format, 'mp4')
     assert.deepEqual(measured, [])
+    // A failed measurement is not kept: the next export measures again.
+    await failing.resolve(settings)
+    assert.equal(failures, 2)
+})
+
+test('a support query that throws counts as unsupported, the next candidate is tried, and the query is asked again later', async () => {
+    let throwing = true
+    const asked: string[] = []
+    const probes = createCodecProbes({
+        video: (config) => {
+            asked.push(config.codec)
+            if (config.codec.startsWith('avc1.6400')) {
+                if (throwing) throw new Error('Query failed')
+                return Promise.reject(new DOMException('Query failed', 'OperationError'))
+            }
+            return Promise.resolve({ supported: true })
+        },
+        audio: async () => ({ supported: true }),
+    })
+    const silent = { ...settings, bgm: false, sfx: false, format: 'mp4' as const }
+    const first = await probes.resolve(silent, { trial: false })
+    assert.equal(first.supported && first.video.codec.slice(0, 9), 'avc1.4d00')
+    throwing = false
+    await probes.resolve(silent, { trial: false })
+    // High was asked both times; Main's answer was kept.
+    assert.deepEqual(
+        asked.map((codec) => codec.slice(0, 9)),
+        ['avc1.6400', 'avc1.4d00', 'avc1.6400'],
+    )
+    // A refused configuration is kept.
+    let refused = 0
+    const refusing = createCodecProbes({
+        video: () => {
+            refused++
+            return Promise.reject(new TypeError('Invalid configuration'))
+        },
+    })
+    assert.deepEqual(await refusing.resolve(silent, { trial: false }), {
+        supported: false,
+        reason: 'videoConfig',
+    })
+    const before = refused
+    await refusing.resolve(silent, { trial: false })
+    assert.equal(refused, before)
+})
+
+test('a Windows AAC encoder refuses 256 kbps, and the choices show 192 kbps and silent video pass', async () => {
+    // Chromium on Windows: AAC up to 192 kbps.
+    const probes = createCodecProbes({
+        video: async () => ({ supported: true }),
+        audio: async (config) => ({
+            supported: config.codec !== 'mp4a.40.2' || (config.bitrate ?? 0) <= 192000,
+        }),
+        trial: async () => true,
+    })
+    const availability = createCodecAvailability(probes)
+    const mp4 = { ...settings, format: 'mp4' as const, audioBitrate: 256000 }
+    const state = await availability.update(mp4, {
+        'audioBitrate:192000': { audioBitrate: 192000 },
+        'format:webm': { format: 'webm' },
+        'sound:off': { bgm: false, sfx: false },
+    })
+    assert.deepEqual(state.current, { supported: false, reason: 'audioConfig' })
+    assert.ok(Object.values(state.choices).every((choice) => choice.supported))
+    // Automatic still exports, with WebM.
+    const automatic = await availability.update({ ...mp4, format: 'automatic' }, {})
+    assert.equal(automatic.current?.supported && automatic.current.format, 'webm')
 })
 
 test('shared work stops when its last caller leaves, and neither a cancel nor a failure is kept', async () => {
@@ -729,10 +803,14 @@ test(
             const reopened = createCodecAvailability(probes)
             const state = await reopened.update(settings, {})
             assert.equal(state.pending, false)
-            // The measurement and the trial ran again with new codecs.
+            // The measurement and the trials ran again with new codecs. The fake measures no
+            // delay, so MP4 is tried with the estimate: three H.264 trials, then VP9.
             assert.deepEqual(kinds().slice(3), [
                 'audioDecoder closed',
                 'audioEncoder closed',
+                'video closed',
+                'video closed',
+                'video closed',
                 'video closed',
             ])
         } finally {

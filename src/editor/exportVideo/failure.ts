@@ -1,6 +1,6 @@
 // What an export's failure says, and the reason its usage event records.
 
-import { failureDetails, VideoOutputUnavailable } from '../../exportVideo/error'
+import { AudioFailure, failureDetails, VideoOutputUnavailable } from '../../exportVideo/error'
 import { i18n } from '../../i18n'
 import { FileError } from '../../platform/types'
 import { fileErrorText } from '../commands/exportLevel/ui'
@@ -23,9 +23,9 @@ const describeFailure = (error: unknown, name: string): VideoFailure => {
         ...failureDetails(error),
     ].join('\n')
     if (error instanceof VideoOutputUnavailable)
-        return error.reason === 'memoryLimit'
-            ? { reason: 'memoryLimit', message: text((m) => m.memoryLimit), detail }
-            : { reason: 'io', message: text((m) => m.unavailable), detail }
+        return { reason: 'io', message: text((m) => m.unavailable), detail }
+    if (error instanceof AudioFailure)
+        return { reason: 'audio', message: text((m) => m.audio), detail }
     if (error instanceof FileError)
         return { reason: error.code, message: () => fileErrorText(name, error), detail }
     const failure = error instanceof Error ? error : new Error(String(error))
@@ -37,8 +37,6 @@ const describeFailure = (error: unknown, name: string): VideoFailure => {
         return { reason: 'memory', message: text((m) => m.memory), detail }
     if (failure.message.startsWith('Encoder configuration unavailable'))
         return { reason: 'config', message: text((m) => m.config), detail }
-    if (/audio|mix/i.test(failure.message))
-        return { reason: 'audio', message: text((m) => m.audio), detail }
     return { reason: 'encoder', message: text((m) => m.encoder), detail }
 }
 

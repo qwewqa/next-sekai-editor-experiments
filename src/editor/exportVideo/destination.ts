@@ -1,18 +1,23 @@
 import type { VideoFormat } from '../../exportVideo/codecs'
 import type { JobDestination } from '../../exportVideo/job'
+import { stagingRefused } from '../../exportVideo/route'
 import { removeVideoPick } from '../../exportVideo/worker/target'
 import { fileErrorOf } from '../../platform/handover'
 import type { Platform, StagedVideo, VideoOutput } from '../../platform/types'
 import type { PickedVideo, VideoPick, pickVideo } from '../save/videoPick'
 
-export const VIDEO_MEMORY_ESTIMATE_LIMIT = 100_000_000
-export const VIDEO_MEMORY_LIMIT = 150_000_000
+/** Above this estimate of the file's size, the dialog warns before an export to memory. */
+export const VIDEO_MEMORY_WARNING_BYTES = 150_000_000
 export type VideoDestination =
     | { kind: 'picked'; pick: VideoPick }
     | { kind: 'staged'; id: string; stage: StagedVideo; output: VideoOutput }
-    | { kind: 'memory'; limit: number }
-    | { kind: 'unavailable'; reason: 'output' | 'memoryLimit' }
+    | { kind: 'memory' }
+    | { kind: 'unavailable'; reason: 'output' }
     | Exclude<PickedVideo, { kind: 'accepted' }>
+
+let memoryRouteFound = false
+/** Whether an export in this page took the in-memory route. */
+export const memoryRouteTaken = () => memoryRouteFound
 
 /** Selects a destination after preparation; the pick session checks activation. */
 export const prepareVideoDestination = async (options: {
@@ -21,7 +26,6 @@ export const prepareVideoDestination = async (options: {
     pickOptions: Parameters<typeof pickVideo>[0]
     id: string
     format: VideoFormat
-    estimatedBytes: number
     /** False when the export worker cannot write a staged file, so the route is memory. */
     syncAccess?: boolean
 }): Promise<VideoDestination> => {
@@ -36,12 +40,10 @@ export const prepareVideoDestination = async (options: {
     }
     const output = platform.videoOutput
     if (!output) return { kind: 'unavailable', reason: 'output' }
-    const memory = (): VideoDestination =>
-        !Number.isFinite(options.estimatedBytes) ||
-        options.estimatedBytes < 0 ||
-        options.estimatedBytes > VIDEO_MEMORY_ESTIMATE_LIMIT
-            ? { kind: 'unavailable', reason: 'memoryLimit' }
-            : { kind: 'memory', limit: VIDEO_MEMORY_LIMIT }
+    const memory = (): VideoDestination => {
+        memoryRouteFound = true
+        return { kind: 'memory' }
+    }
     if (options.syncAccess === false) return memory()
     try {
         const stage = await output.stage(options.id, options.format)
@@ -52,12 +54,8 @@ export const prepareVideoDestination = async (options: {
         return { kind: 'staged', id: options.id, stage, output }
     } catch (error) {
         pickOptions.signal?.throwIfAborted()
-        // A full disk or an I/O failure must retain its own error, not choose memory.
-        if (
-            !(error instanceof DOMException) ||
-            !['SecurityError', 'NotSupportedError'].includes(error.name)
-        )
-            throw fileErrorOf(error)
+        // A full disk or another I/O failure must retain its own error, not choose memory.
+        if (!stagingRefused(error)) throw fileErrorOf(error)
         return memory()
     }
 }

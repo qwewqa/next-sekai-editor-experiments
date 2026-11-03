@@ -8,13 +8,18 @@ import {
 export const exportError = (error: unknown): Error =>
     error instanceof Error ? error : new Error(String(error))
 
-/**
- * No route to a file in this browser, too large for the in-memory route, or a staged file that
- * the export worker cannot open for writing.
- */
+/** No route to a file in this browser, or a staged file the export worker cannot open for writing. */
 export class VideoOutputUnavailable extends Error {
-    constructor(readonly reason: 'output' | 'memoryLimit' | 'staging') {
+    constructor(readonly reason: 'output' | 'staging') {
         super(`Video output unavailable: ${reason}`)
+    }
+}
+
+/** The sound could not be encoded or mixed: preparing, feeding or ending the audio failed. */
+export class AudioFailure extends Error {
+    constructor(cause: unknown) {
+        super(exportError(cause).message, { cause })
+        this.name = 'AudioFailure'
     }
 }
 
@@ -83,9 +88,11 @@ const restoreFailure = (failure: ExportFailure): Error =>
           )
         : failure.output
           ? new VideoOutputUnavailable(failure.output)
-          : failure.name === 'RangeError'
-            ? new RangeError(failure.message)
-            : Object.assign(new Error(failure.message), { name: failure.name })
+          : failure.name === 'AudioFailure'
+            ? new AudioFailure(failure.message)
+            : failure.name === 'RangeError'
+              ? new RangeError(failure.message)
+              : Object.assign(new Error(failure.message), { name: failure.name })
 export const restoreExportError = (failure: ExportFailure): Error => {
     const error = restoreFailure(failure)
     if (failure.details?.length) Object.assign(error, { details: failure.details })

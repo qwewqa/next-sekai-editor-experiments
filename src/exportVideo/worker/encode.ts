@@ -1,4 +1,5 @@
 import { configurationKey, createSharedWork } from '../codecs'
+import { exportError } from '../error'
 import {
     AUDIO_CHANNELS,
     AUDIO_PAD,
@@ -8,8 +9,9 @@ import {
     sampleTimestamp,
     type AudioBlock,
 } from '../timing'
+import type { ExportWarning } from '../warnings'
 import { withAvcColor, type MeasuredColor } from './avcColor'
-import { bytesOf } from './bitstream'
+import { bitReader, bytesOf, toBits } from './bitstream'
 import { readAvcRecord, vp9FrameSize } from './videoInit'
 import { createVp9Color } from './vp9Color'
 
@@ -25,7 +27,6 @@ export type AudioTiming = {
     playableSamples: number
     endSample: number
 }
-export type AudioAccounting = AudioTiming & { paddingSamples: number }
 /** Packet callbacks are synchronous. The frame loop owns their queue and drains it to the muxer. */
 export type MuxInput =
     | { track: 'video'; packet: EncodedPacket; decoderConfig?: VideoDecoderConfig }
@@ -37,17 +38,18 @@ export type MuxInput =
       }
     | { track: 'audioEnd'; paddingSamples: number }
 
-/** ES_Descriptor and DecoderConfigDescriptor have headers before their nested descriptors. */
-export const normalizeAacDescription = (
-    description: AllowSharedBufferSource,
-): Uint8Array<ArrayBuffer> => {
-    const bytes = bytesOf(description)
+/** AAC-LC at 48 kHz in stereo with 1,024-sample frames: the configuration the export requests. */
+const AAC_REQUESTED = [0x11, 0x90]
+
+/** The AudioSpecificConfig of a description: the bytes, or the one inside an ES_Descriptor. */
+const readAacDescriptor = (bytes: Uint8Array): Uint8Array<ArrayBuffer> | undefined => {
     if (bytes[0] !== 3) return new Uint8Array(bytes)
     const byteAt = (at: number) => {
         const value = bytes[at]
         if (value === undefined) throw new Error('Invalid AAC descriptor')
         return value
     }
+    // ES_Descriptor and DecoderConfigDescriptor have headers before their nested descriptors.
     const read = (start: number, limit: number): Uint8Array<ArrayBuffer> | undefined => {
         let at = start
         while (at < limit) {
@@ -85,9 +87,56 @@ export const normalizeAacDescription = (
             at = end
         }
     }
-    const asc = read(0, bytes.length)
-    if (!asc?.length) throw new Error('AAC configuration is missing')
-    return asc
+    return read(0, bytes.length)
+}
+
+/**
+ * The AudioSpecificConfig the muxer receives. A missing, truncated or malformed description, or
+ * one with object type 0, is replaced by the requested configuration.
+ */
+export const normalizeAacDescription = (
+    description?: AllowSharedBufferSource,
+): Uint8Array<ArrayBuffer> => {
+    try {
+        const asc = description && readAacDescriptor(bytesOf(description))
+        if (asc && asc.length >= 2 && (asc[0] ?? 0) >> 3) return asc
+    } catch {
+        // A malformed description gets the requested configuration below.
+    }
+    return new Uint8Array(AAC_REQUESTED)
+}
+
+/** Object types whose AudioSpecificConfig has a GASpecificConfig, with its frame length flag. */
+const GA_TYPES = [1, 2, 3, 4, 6, 7, 17, 19, 20, 21, 22, 23]
+
+/** Samples per AAC frame in an AudioSpecificConfig: 960 or 1,024. Undefined when unknown. */
+export const aacFrameLength = (asc: Uint8Array): number | undefined => {
+    try {
+        const r = bitReader(toBits(asc))
+        let type = r.read(5)
+        if (type === 31) type = 32 + r.read(6)
+        if (r.read(4) === 15) r.read(24)
+        r.read(4) // channelConfiguration
+        return GA_TYPES.includes(type) ? (r.read() ? 960 : 1024) : undefined
+    } catch {
+        return undefined
+    }
+}
+
+/** Samples at 48 kHz in an Opus packet, from its TOC byte and frame count (RFC 6716, 3.1). */
+export const opusPacketSamples = (data: Uint8Array): number | undefined => {
+    const toc = data[0]
+    if (toc === undefined) return undefined
+    const config = toc >> 3
+    const frame =
+        config < 12
+            ? [480, 960, 1920, 2880][config % 4]
+            : config < 16
+              ? [480, 960][config % 2]
+              : [120, 240, 480, 960][config % 4]
+    const code = toc & 3
+    const count = code === 0 ? 1 : code < 3 ? 2 : (data[1] ?? 0) & 63
+    return frame && count ? frame * count : undefined
 }
 
 export const opusPreSkip = (description: AllowSharedBufferSource) => {
@@ -110,37 +159,24 @@ const audioTiming = (delay: number, samples: number): AudioTiming => {
     }
 }
 
-/** Samples, 2 ms, that encoded audio may end short by: an error in the measured delay. */
+/** Samples, 2 ms, that the sound may end short by without a warning: an error in the delay. */
 export const AUDIO_SHORTFALL = 96
 
-export const audioAccounting = (
-    delay: number,
-    samples: number,
-    encodedSamples: number,
-): AudioAccounting => {
-    const timing = audioTiming(delay, samples)
-    if (
-        !Number.isSafeInteger(encodedSamples) ||
-        encodedSamples < timing.endSample - AUDIO_SHORTFALL
-    )
-        throw new Error('Invalid encoded audio length')
-    return { ...timing, paddingSamples: Math.max(0, encodedSamples - timing.endSample) }
-}
-
-/** An encoded audio chunk's duration in whole samples. */
-const chunkSamples = (chunk: EncodedAudioChunk) => {
-    if (chunk.duration === null) throw new Error('Encoder omitted packet duration')
-    const samples = Math.round((chunk.duration * AUDIO_RATE) / 1e6)
-    if (samples <= 0) throw new Error('Invalid audio packet duration')
-    return samples
-}
+/**
+ * The AAC delay in samples when it cannot be measured: one frame, as common encoders have.
+ * Sound placed with it has the `audioSyncEstimated` warning.
+ */
+export const AAC_DELAY_ESTIMATE = 1024
 
 /**
- * The MP4 reservation for AAC: the lead-in, the measured delay and the clip in the shorter of
- * the AAC-LC frame lengths, 960 and 1,024 samples. Packets after the clip are left out.
+ * The MP4 reservation for AAC: the lead-in, the delay, the clip and the tail in 512-sample
+ * packets, half the shorter frame, and 64 more. Packets after the clip are left out.
  */
 export const aacPacketBound = (samples: number, delay: number) =>
-    Math.ceil((samples + AUDIO_PAD + delay) / 960)
+    Math.ceil((samples + AUDIO_PAD + delay + AAC_TAIL) / 512) + 64
+
+/** The MP4 reservation for video: the frames, and room for extra encoder output. */
+export const videoPacketBound = (frames: number) => frames + Math.max(120, Math.ceil(frames / 10))
 
 /** A copy of a chunk's bytes, with its type. */
 const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk) => {
@@ -149,8 +185,7 @@ const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk) => {
     return { data, type: chunk.type }
 }
 
-const sameBytes = (a?: AllowSharedBufferSource, b?: AllowSharedBufferSource) => {
-    if (!a || !b) return a === b
+const sameBytes = (a: AllowSharedBufferSource, b: AllowSharedBufferSource) => {
     const x = bytesOf(a)
     const y = bytesOf(b)
     return x.length === y.length && x.every((value, i) => value === y[i])
@@ -167,22 +202,42 @@ export const createVideoColor = (measured?: MeasuredColor) => {
     }
 }
 
+/**
+ * Places encoded audio end to end by packet durations; a missing duration is read from the
+ * codec. Any failure throws, and the caller ends the export with an `AudioFailure`.
+ */
 export const createAudioPacketAdapter = (options: {
     codec: 'aac' | 'opus'
     samples: number
+    /** The measured AAC delay. Without it, `AAC_DELAY_ESTIMATE` places the sound. */
     aacDelay?: number
     emit: (input: MuxInput) => void
 }) => {
-    let delay = options.codec === 'aac' ? options.aacDelay : undefined
+    const aac = options.codec === 'aac'
+    let delay = aac ? (options.aacDelay ?? AAC_DELAY_ESTIMATE) : undefined
+    const bound = delay === undefined ? Infinity : aacPacketBound(options.samples, delay)
+    /** The ends of the encoded output and of the output the muxer received, in samples. */
     let encodedSamples = 0
-    let first: AudioDecoderConfig | undefined
+    let written = 0
+    let packets = 0
+    let reportedFirst: AudioDecoderConfig | undefined
+    let pending: AudioDecoderConfig | undefined
+    let frameLength: number | undefined
     let ended = false
     /** The first configuration, as the muxer receives it. */
-    const configure = (reported: AudioDecoderConfig): AudioDecoderConfig => {
-        if (!reported.description) throw new Error('Encoder omitted audio configuration')
-        if (options.codec === 'aac') {
-            return { ...reported, description: normalizeAacDescription(reported.description) }
+    const configure = (reported?: AudioDecoderConfig): AudioDecoderConfig => {
+        if (aac) {
+            const description = normalizeAacDescription(reported?.description)
+            frameLength = aacFrameLength(description)
+            return {
+                codec: 'mp4a.40.2',
+                sampleRate: AUDIO_RATE,
+                numberOfChannels: AUDIO_CHANNELS,
+                ...reported,
+                description,
+            }
         }
+        if (!reported?.description) throw new Error('Encoder omitted the Opus header')
         delay = opusPreSkip(reported.description)
         const description = new Uint8Array(bytesOf(reported.description))
         const trim = delay + AUDIO_PAD
@@ -191,89 +246,113 @@ export const createAudioPacketAdapter = (options: {
         description[11] = trim >> 8
         return { ...reported, description }
     }
+    /** A repeated configuration may differ in its wrapper or leave out its description. */
     const same = (reported: AudioDecoderConfig, known: AudioDecoderConfig) =>
-        reported.codec === known.codec &&
         reported.sampleRate === known.sampleRate &&
         reported.numberOfChannels === known.numberOfChannels &&
-        (options.codec === 'aac'
-            ? !!reported.description &&
-              !!known.description &&
-              sameBytes(
-                  normalizeAacDescription(reported.description),
-                  normalizeAacDescription(known.description),
-              )
-            : sameBytes(reported.description, known.description))
+        (!reported.description ||
+            !known.description ||
+            (aac
+                ? sameBytes(
+                      normalizeAacDescription(reported.description),
+                      normalizeAacDescription(known.description),
+                  )
+                : sameBytes(reported.description, known.description)))
+    const durationOf = (chunk: EncodedAudioChunk, data: Uint8Array) => {
+        const reported = Math.round(((chunk.duration ?? 0) * AUDIO_RATE) / 1e6)
+        if (reported > 0) return reported
+        const recovered = aac ? frameLength : opusPacketSamples(data)
+        if (!recovered) throw new Error('Audio packet duration is unknown')
+        return recovered
+    }
     return {
         output(chunk: EncodedAudioChunk, metadata?: EncodedAudioChunkMetadata) {
             if (ended) throw new Error('Audio adapter is closed')
             const reported = metadata?.decoderConfig
-            let config: AudioDecoderConfig | undefined
-            if (!first) {
-                if (!reported) throw new Error('Encoder omitted audio configuration')
-                config = configure(reported)
-                first = reported
-            } else if (reported && !same(reported, first))
+            if (!reportedFirst) {
+                if (!reported && !aac) throw new Error('Encoder omitted audio configuration')
+                pending = configure(reported)
+                reportedFirst = reported ?? pending
+            } else if (reported && !same(reported, reportedFirst))
                 throw new Error('Audio configuration changed')
             if (delay === undefined) throw new Error('Audio timing is unknown')
+            const { data, type } = packetOf(chunk)
             const start = encodedSamples
-            const timing = start === 0 ? audioTiming(delay, options.samples) : undefined
             // Packets are placed end to end by their durations. Firefox's Opus timestamps after
             // the first packet are early by the pre-skip.
-            encodedSamples += chunkSamples(chunk)
+            encodedSamples += durationOf(chunk, data)
             // AAC ends at the clip's end. Later packets are left out, and the one that crosses it
             // is shortened.
-            const end =
-                options.codec === 'aac'
-                    ? Math.min(encodedSamples, AUDIO_PAD + delay + options.samples)
-                    : encodedSamples
-            if (end <= start) return
+            const end = aac
+                ? Math.min(encodedSamples, AUDIO_PAD + delay + options.samples)
+                : encodedSamples
+            // A packet past the MP4 reservation ends the sound before it.
+            if (end <= start || packets >= bound) return
             const packet: EncodedPacket = {
-                ...packetOf(chunk),
+                type,
+                data,
                 timestamp: ((start - AUDIO_PAD - delay) * 1e6) / AUDIO_RATE,
                 duration: ((end - start) * 1e6) / AUDIO_RATE,
             }
-            options.emit({ track: 'audio', packet, decoderConfig: config, timing })
+            const timing = packets === 0 ? audioTiming(delay, options.samples) : undefined
+            options.emit({ track: 'audio', packet, decoderConfig: pending, timing })
+            pending = undefined
+            packets++
+            written = end
         },
         finish() {
-            if (ended || encodedSamples === 0 || delay === undefined)
-                throw new Error('Audio output is incomplete')
-            const trim = audioAccounting(delay, options.samples, encodedSamples)
-            const paddingSamples = options.codec === 'aac' ? 0 : trim.paddingSamples
-            options.emit({ track: 'audioEnd', paddingSamples })
+            if (ended) throw new Error('Audio adapter is closed')
+            if (!packets || delay === undefined) throw new Error('No audio was encoded')
             ended = true
-            return { ...trim, paddingSamples }
+            const timing = audioTiming(delay, options.samples)
+            const paddingSamples = aac ? 0 : Math.max(0, written - timing.endSample)
+            options.emit({ track: 'audioEnd', paddingSamples })
+            const warnings: ExportWarning[] = []
+            if (written < timing.endSample - AUDIO_SHORTFALL)
+                warnings.push({
+                    code: 'soundStopped',
+                    at: Math.max(0, written - timing.startSamples) / AUDIO_RATE,
+                })
+            if (aac && options.aacDelay === undefined) warnings.push({ code: 'audioSyncEstimated' })
+            return { ...timing, paddingSamples, warnings }
         },
     }
 }
 
 type VideoColorStep = ReturnType<typeof createVideoColor>
+type VideoSize = { width: number; height: number }
 
 /**
  * The codec string, displayed size and colour-free initialization of a configuration, from the
- * bitstream where it can be read. An H.264 record must be readable; see `readAvcRecord`.
+ * bitstream where it can be read. Undefined for H.264 without a usable record; see
+ * `readAvcRecord`.
  */
-const essentialVideo = (config: VideoDecoderConfig, packet: EncodedPacket) => {
-    const reported =
+const readInit = (config: VideoDecoderConfig, data: Uint8Array) => {
+    if (/^avc[13]\./.test(config.codec))
+        return config.description ? readAvcRecord(config.description) : undefined
+    const reported: VideoSize | undefined =
         config.codedWidth !== undefined && config.codedHeight !== undefined
             ? { width: config.codedWidth, height: config.codedHeight }
             : undefined
-    if (/^avc[13]\./.test(config.codec) && config.description) {
-        const record = readAvcRecord(config.description)
-        if (!record) throw new Error('Invalid H.264 parameter sets')
-        return record
+    return {
+        codec: config.codec,
+        size: (config.codec.startsWith('vp09') ? vp9FrameSize(data) : undefined) ?? reported,
+        essential: config.description ? Array.from(bytesOf(config.description)).join() : '',
     }
-    const size =
-        (config.codec.startsWith('vp09') ? vp9FrameSize(packet.data) : undefined) ?? reported
-    const description = config.description ? Array.from(bytesOf(config.description)).join() : ''
-    return { codec: config.codec, size, essential: description }
 }
 
 /**
- * Matches each chunk to its submitted frame by presentation timestamp and takes the frame's
- * timing. Packets keep their encoded order. The first chunk carries the configuration; a later
- * one may repeat it with other colour.
+ * Places each packet on a whole frame and gives it that frame's timing; packets keep their
+ * encoded order. A timestamp rounds to its nearest frame, which absorbs WebKit's timestamps
+ * that are 1 µs early (https://webkit.org/b/321880). A frame that is out of the clip, taken, or
+ * not after the packet's group gets the frame after the latest one instead, with a warning.
+ * Video starts at the first key packet with a usable configuration. A later H.264
+ * configuration that differs in more than colour, a size change, too many packets or `end()`
+ * ends the track there.
  */
 export const createVideoPacketAdapter = (options: {
+    /** The requested codec, for VP9 output without a configuration. */
+    codec: string
     width: number
     height: number
     frames: number
@@ -282,69 +361,121 @@ export const createVideoPacketAdapter = (options: {
     color: VideoColorStep
     emit: (input: MuxInput) => void
 }) => {
-    const { frameRate, color } = options
-    const seen = new Uint8Array(options.frames)
-    let submitted = 0
-    let emitted = 0
-    let first: ReturnType<typeof essentialVideo> | undefined
+    const { frameRate, color, frames } = options
+    const bound = videoPacketBound(frames)
+    const used = new Uint8Array(frames)
+    let maxIndex = -1
+    let groupFloor = -1
+    let placed = 0
+    let retimed = 0
+    let skipped = false
+    let first: { codec: string; size: VideoSize; essential: string } | undefined
+    let waiting: VideoDecoderConfig | undefined
+    let stopped = false
+    let failure: unknown
+    const end = (error?: unknown) => {
+        stopped = true
+        failure ??= error
+    }
     return {
-        submit() {
-            submitted++
+        get ended() {
+            return stopped
         },
+        /** Ends the track before the next packet. `error` is the failure if no video was kept. */
+        end,
         output(chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) {
-            const index = Math.round((chunk.timestamp * frameRate) / 1e6)
+            if (stopped) return
+            const reported = metadata?.decoderConfig
+            const { data, type } = packetOf(chunk)
+            let config: VideoDecoderConfig | undefined
+            if (!first) {
+                if (reported) waiting = reported
+                const known = waiting ?? {
+                    codec: options.codec,
+                    codedWidth: options.width,
+                    codedHeight: options.height,
+                }
+                const init = type === 'key' ? readInit(known, data) : undefined
+                if (!init) {
+                    skipped = true
+                    return
+                }
+                const size = init.size ?? { width: options.width, height: options.height }
+                first = { ...init, size }
+                config = {
+                    ...known,
+                    codec: init.codec,
+                    codedWidth: size.width,
+                    codedHeight: size.height,
+                    displayAspectWidth: undefined,
+                    displayAspectHeight: undefined,
+                }
+            } else if (reported) {
+                const found = readInit(reported, data)
+                const size = found?.size
+                if (
+                    !found ||
+                    (first.codec.startsWith('avc') &&
+                        (found.codec !== first.codec || found.essential !== first.essential)) ||
+                    (size && (size.width !== first.size.width || size.height !== first.size.height))
+                ) {
+                    end(new Error('Video configuration changed'))
+                    return
+                }
+                config = reported
+            }
+            if (placed >= bound) {
+                end(new Error('Too many video packets'))
+                return
+            }
+            const key = type === 'key'
+            const proposed = Number.isSafeInteger(chunk.timestamp)
+                ? Math.round((chunk.timestamp * frameRate) / 1e6)
+                : -1
+            let index: number
+            if (maxIndex < 0) {
+                index = 0
+                if (proposed !== 0 || skipped) retimed++
+            } else {
+                const floor = key ? maxIndex : groupFloor
+                if (proposed > floor && proposed < frames && !used[proposed]) index = proposed
+                else {
+                    index = maxIndex + 1
+                    retimed++
+                }
+            }
+            if (key) groupFloor = maxIndex
+            if (index < frames) used[index] = 1
+            maxIndex = Math.max(maxIndex, index)
             const at = frameTimestamp(index, frameRate)
-            if (index < 0 || index >= submitted || seen[index] || chunk.timestamp !== at)
-                throw new Error('Missing or misplaced encoded frame')
-            seen[index] = 1
             const packet: EncodedPacket = {
-                ...packetOf(chunk),
+                type,
+                data,
                 timestamp: at,
                 duration: frameTimestamp(index + 1, frameRate) - at,
             }
-            const reported = metadata?.decoderConfig
-            let decoderConfig: VideoDecoderConfig | undefined
-            if (!first) {
-                if (!reported) throw new Error('Encoder omitted its configuration')
-                const found = essentialVideo(reported, packet)
-                const { displayAspectWidth: aw, displayAspectHeight: ah } = reported
-                if (
-                    found.size?.width !== options.width ||
-                    found.size.height !== options.height ||
-                    (aw !== undefined &&
-                        ah !== undefined &&
-                        aw * options.height !== ah * options.width)
-                )
-                    throw new Error('Encoded dimensions differ from the requested size')
-                first = found
-                // The displayed size is established, so a padded coded size is recorded as it.
-                decoderConfig = color(packet, {
-                    ...reported,
-                    codec: found.codec,
-                    codedWidth: options.width,
-                    codedHeight: options.height,
-                    displayAspectWidth: undefined,
-                    displayAspectHeight: undefined,
-                })
-            } else {
-                if (reported) {
-                    const found = essentialVideo(reported, packet)
-                    if (
-                        found.codec !== first.codec ||
-                        found.essential !== first.essential ||
-                        (found.size &&
-                            (found.size.width !== options.width ||
-                                found.size.height !== options.height))
-                    )
-                        throw new Error('Video configuration changed')
-                }
-                color(packet, reported)
-            }
-            emitted++
-            options.emit({ track: 'video', packet, decoderConfig })
+            const colored = color(packet, config)
+            options.emit({ track: 'video', packet, decoderConfig: placed ? undefined : colored })
+            placed++
         },
-        finish() {
-            if (emitted !== options.frames) throw new Error('Encoded video is incomplete')
+        /** The warnings about the video. Throws when no video was kept. */
+        finish(): ExportWarning[] {
+            if (!placed || !first) throw exportError(failure ?? 'No usable video was encoded')
+            const warnings: ExportWarning[] = []
+            const { width, height } = first.size
+            if (width !== options.width || height !== options.height)
+                warnings.push({ code: 'resolutionDiffers', width, height })
+            const until = stopped ? Math.min(frames, maxIndex + 1) : frames
+            let missing = 0
+            for (let i = 0; i < until; i++) if (!used[i]) missing++
+            if (missing) warnings.push({ code: 'framesMissing', count: missing })
+            if (retimed) warnings.push({ code: 'timingReassigned', count: retimed })
+            if (until < frames)
+                warnings.push({
+                    code: 'pictureStopped',
+                    at: frameTimestamp(until, frameRate) / 1e6,
+                })
+            return warnings
         },
     }
 }
@@ -475,22 +606,18 @@ export const measureAacDelay = async (
         feeder.finish()
         await encoder.flush()
         checkFailure()
-        if (!decoderConfig?.description) throw new Error('AAC calibration configuration is missing')
         decoder.configure({
+            codec: 'mp4a.40.2',
+            sampleRate: AUDIO_RATE,
+            numberOfChannels: AUDIO_CHANNELS,
             ...decoderConfig,
-            description: normalizeAacDescription(decoderConfig.description),
+            description: normalizeAacDescription(decoderConfig?.description),
         })
         for (const chunk of chunks) decoder.decode(chunk)
         await decoder.flush()
         checkFailure()
         const delay = peakSample - AUDIO_PAD - impulse
         if (peak < 0.01 || delay < 0) throw new Error('AAC delay could not be measured')
-        // Output that ends short of the input, not counting the tail, would fail an export's audio.
-        audioAccounting(
-            delay,
-            AUDIO_UNIT,
-            chunks.reduce((sum, chunk) => sum + chunkSamples(chunk), 0),
-        )
         return delay
     } catch (error) {
         signal?.throwIfAborted()

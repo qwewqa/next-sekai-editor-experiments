@@ -83,6 +83,7 @@ export const muxPickedVideo = async (
             }),
         )
         adapter = createVideoPacketAdapter({
+            codec: codecs.video.codec,
             width: 320,
             height: 180,
             frames: 1,
@@ -108,7 +109,6 @@ export const muxPickedVideo = async (
         encoder.configure(codecs.video)
         const frame = new VideoFrame(canvas, { timestamp: 0, duration: 33333 })
         try {
-            adapter.submit()
             encoder.encode(frame, { keyFrame: true })
         } finally {
             frame.close()

@@ -289,16 +289,7 @@ export const catalogue = {
     exportVideo: {
         outcome: oneOf('done', 'cancelled', 'failed'),
         stage: oneOf('prepare', 'pick', 'render', 'finish'),
-        reason: oneOf(
-            ...fileError,
-            'config',
-            'encoder',
-            'audio',
-            'graphics',
-            'memory',
-            'hidden',
-            'memoryLimit',
-        ),
+        reason: oneOf(...fileError, 'config', 'encoder', 'audio', 'graphics', 'memory', 'hidden'),
         format: oneOf('mp4', 'webm'),
         support: oneOf('full', 'webmOnly'),
         target: oneOf('picker', 'download', 'share', 'none', 'memory'),

@@ -18,15 +18,7 @@ export type VideoReportSettings = {
 export type VideoReportEnd = {
     outcome: 'done' | 'cancelled' | 'failed'
     stage?: 'prepare' | 'pick' | 'render' | 'finish'
-    reason?:
-        | FileErrorCode
-        | 'config'
-        | 'encoder'
-        | 'audio'
-        | 'graphics'
-        | 'memory'
-        | 'hidden'
-        | 'memoryLimit'
+    reason?: FileErrorCode | 'config' | 'encoder' | 'audio' | 'graphics' | 'memory' | 'hidden'
     target: 'picker' | 'download' | 'share' | 'none' | 'memory'
     hidden: boolean
     lengthSeconds: number

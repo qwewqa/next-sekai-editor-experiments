@@ -1,8 +1,11 @@
 import { AUDIO_PAD, AUDIO_RATE, frameTimestamp } from '../timing'
-import { AUDIO_SHORTFALL, opusPreSkip, type AudioTiming, type MuxInput } from './encode'
+import { opusPreSkip, type AudioTiming, type MuxInput } from './encode'
 import type { PacketSink, SinkConfig } from './sink'
 
-/** Records real encoder output. It writes no container and makes no claim about playback. */
+/**
+ * Records real encoder output. It writes no container and makes no claim about playback. It
+ * checks the adapters' output; the export's warnings say what was missing.
+ */
 export const createTestSink = (config: SinkConfig) => {
     const inputs: MuxInput[] = []
     let frames = 0
@@ -23,10 +26,9 @@ export const createTestSink = (config: SinkConfig) => {
                 const index = Math.round((input.packet.timestamp * config.frameRate) / 1e6)
                 check(
                     index >= 0 &&
-                        index < config.frames &&
                         !seen.has(index) &&
                         input.packet.timestamp === frameTimestamp(index, config.frameRate),
-                    'Missing or misplaced video frame',
+                    'Misplaced video frame',
                 )
                 seen.add(index)
                 check(
@@ -78,7 +80,7 @@ export const createTestSink = (config: SinkConfig) => {
             } else {
                 check(padding === undefined && !!timing, 'Unexpected audio end')
                 padding = input.paddingSamples
-                // Without padding, the audio may end short by the tolerance the export accepts.
+                // Padding follows the whole clip. Short sound has none, and a warning.
                 const short =
                     audioEnd === undefined || !timing
                         ? -1
@@ -88,7 +90,7 @@ export const createTestSink = (config: SinkConfig) => {
                     Number.isSafeInteger(padding) &&
                         padding >= 0 &&
                         short >= 0 &&
-                        short <= (padding === 0 ? AUDIO_SHORTFALL : 0),
+                        (padding === 0 || short === 0),
                     'Wrong audio padding',
                 )
             }
@@ -96,10 +98,7 @@ export const createTestSink = (config: SinkConfig) => {
             return Promise.resolve()
         },
         finalize() {
-            check(
-                !closed && videoConfigured && frames === config.frames,
-                'Video output is incomplete',
-            )
+            check(!closed && videoConfigured && frames > 0, 'Video output is incomplete')
             check(
                 !config.codecs.audio || (!!timing && padding !== undefined),
                 'Audio output is incomplete',

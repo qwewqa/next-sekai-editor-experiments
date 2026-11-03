@@ -743,7 +743,9 @@ test('4K at 2x is offered within the GPU limits', async ({ page }) => {
     await expect(resolution.locator('option:disabled')).toHaveCount(0)
 })
 
-test('sizes show as too large for the device only once its limits are read', async ({ page }) => {
+test('Export waits for the device limits, and limits that cannot be read leave every size available', async ({
+    page,
+}) => {
     // The request for the limits is held, so the test can answer it.
     await page.evaluate(() => {
         const post = Worker.prototype.postMessage
@@ -776,15 +778,14 @@ test('sizes show as too large for the device only once its limits are read', asy
     await expect(resolution).not.toHaveAccessibleDescription(/device/)
     await expect(resolution.locator('option:disabled')).toHaveCount(0)
     await expect(exportButton(page)).toBeDisabled()
-    // A worker without WebGL2 sends no limits.
+    // A worker without WebGL2 sends no limits; the export finds out for itself.
     await page.evaluate(() => {
         const worker = Reflect.get(window, 'limitsWorker') as Worker
         worker.onmessage?.call(worker, new MessageEvent('message', { data: { type: 'limits' } }))
     })
-    await expect(resolution).toHaveAccessibleDescription(
-        /on this device with these settings: 720p, 1080p, 1440p, 2160p/,
-    )
-    await expect(exportButton(page)).toBeDisabled()
+    await expect(exportButton(page)).toBeEnabled()
+    await expect(resolution).not.toHaveAccessibleDescription(/device/)
+    await expect(resolution.locator('option:disabled')).toHaveCount(0)
 })
 
 for (const finished of [true, false])

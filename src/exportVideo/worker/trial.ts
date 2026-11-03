@@ -6,7 +6,10 @@ import type { PacketSink } from './sink'
 
 export type TrialOutput = { chunk: EncodedVideoChunk; metadata?: EncodedVideoChunkMetadata }
 
-/** Whether the export's video adapter and muxer take this output for `frames` submitted frames. */
+/**
+ * Whether the export's video adapter and muxer take this output for `frames` submitted frames.
+ * Output the adapter repairs passes; only output it cannot use at all fails.
+ */
 export const usableTrial = async (
     config: TrialConfig,
     outputs: readonly TrialOutput[],
@@ -16,6 +19,7 @@ export const usableTrial = async (
     try {
         const inputs: MuxInput[] = []
         const adapter = createVideoPacketAdapter({
+            codec: config.codec,
             width: config.width,
             height: config.height,
             frames,
@@ -24,7 +28,6 @@ export const usableTrial = async (
             color: createVideoColor(),
             emit: (input) => inputs.push(input),
         })
-        for (let i = 0; i < frames; i++) adapter.submit()
         for (const { chunk, metadata } of outputs) adapter.output(chunk, metadata)
         adapter.finish()
         sink = await createMuxSink(

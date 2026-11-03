@@ -29,7 +29,10 @@ export const createExportRenderer = (scene: ExportScene, fail: (error: unknown) 
     }
     let composite: ReturnType<typeof createRenderTarget> | undefined
     let fade: WebGLProgram | undefined
+    // A restored context has lost its resources, so the renderer stays unusable.
+    let wasLost = false
     const lost = () => {
+        wasLost = true
         fail(new GraphicsError('Export graphics context was lost'))
     }
     const restored = () => {
@@ -37,12 +40,9 @@ export const createExportRenderer = (scene: ExportScene, fail: (error: unknown) 
     }
     canvas.addEventListener('webglcontextlost', lost)
     canvas.addEventListener('webglcontextrestored', restored)
-    const endCapture = () => {
+    const dispose = () => {
         canvas.removeEventListener('webglcontextlost', lost)
         canvas.removeEventListener('webglcontextrestored', restored)
-    }
-    const dispose = () => {
-        endCapture()
         composite?.dispose()
         if (fade) gl.deleteProgram(fade)
         renderer.dispose()
@@ -144,15 +144,27 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
             canvas,
             dispose,
             draw,
+            /**
+             * Draws and captures one frame. A frame whose drawing reported a problem is still
+             * captured, as incomplete. Throws when the context is lost or capture fails.
+             */
             capture(index: number) {
-                draw(s.in + index / s.frameRate, index / s.frameRate)
+                if (wasLost || gl.isContextLost())
+                    throw new GraphicsError('Export graphics context was lost')
+                let complete = true
+                try {
+                    draw(s.in + index / s.frameRate, index / s.frameRate)
+                } catch {
+                    complete = false
+                }
                 // Capture before yielding; the drawing buffer need not survive another task.
-                return new VideoFrame(canvas, {
+                const frame = new VideoFrame(canvas, {
                     timestamp: frameTimestamp(index, s.frameRate),
                     duration:
                         frameTimestamp(index + 1, s.frameRate) - frameTimestamp(index, s.frameRate),
                     alpha: 'discard',
                 })
+                return { frame, complete }
             },
             /** Draws STRIPES between `edges` and captures them as `capture` does. */
             captureStripes: (edges: readonly number[]) => {
@@ -169,8 +181,6 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
                 gl.disable(gl.SCISSOR_TEST)
                 return new VideoFrame(canvas, { timestamp: 0, alpha: 'discard' })
             },
-            /** After the last capture, a lost context no longer affects the video. */
-            endCapture,
             loseContext() {
                 gl.getExtension('WEBGL_lose_context')?.loseContext()
             },

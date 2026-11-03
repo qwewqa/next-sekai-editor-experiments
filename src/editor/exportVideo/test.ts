@@ -287,6 +287,8 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
             maxError = Math.max(maxError, Math.abs((reference[i] ?? 0) - (exported[i] ?? 0)))
     }
     const detail = result.phase === 'ready' || result.phase === 'done' ? result.result : undefined
+    const warnings =
+        result.phase === 'ready' || result.phase === 'done' ? result.warnings : undefined
     const error = result.phase === 'failed' ? String(result.error) : undefined
     const errorCode =
         result.phase === 'failed' && result.error instanceof FileError
@@ -324,6 +326,7 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         phase: result.phase,
         phases,
         result: detail,
+        warnings,
         error,
         guarded,
         retained,

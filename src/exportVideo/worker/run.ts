@@ -1,5 +1,7 @@
+import { AudioFailure } from '../error'
 import { AUDIO_RATE, audioUnits, type AudioBlock } from '../timing'
 import type { ExportStart } from '../types'
+import type { ExportWarning } from '../warnings'
 import {
     createAudioFeeder,
     createAudioPacketAdapter,
@@ -35,7 +37,7 @@ export const runExport = async (
         beforeCapture?: (renderer: ReturnType<typeof createExportRenderer>, index: number) => void
         inspect?: (frame: VideoFrame, index: number) => Promise<void>
     },
-) => {
+): Promise<{ result: unknown; warnings: ExportWarning[] }> => {
     const { settings: s } = start
     const { renderer } = options
     let video: VideoEncoder | undefined
@@ -46,6 +48,17 @@ export const runExport = async (
         queueSize: (track) => (track === 'video' ? video : audio)?.encodeQueueSize ?? 0,
         write: (input) => options.sink.add(input),
     })
+    /** Runs one step of the sound; its failure ends the export as an `AudioFailure`. */
+    const forAudio = <T>(step: () => T): T => {
+        try {
+            return step()
+        } catch (error) {
+            throw new AudioFailure(error)
+        }
+    }
+    const audioFailed = (error: unknown) => {
+        loop.fail(new AudioFailure(error))
+    }
     try {
         // Without a measurement, the file declares the bitstream's colour and the encoder's report.
         const color = createVideoColor(
@@ -59,6 +72,7 @@ export const runExport = async (
             ),
         )
         const frames = createVideoPacketAdapter({
+            codec: start.codecs.video.codec,
             width: s.width,
             height: s.height,
             frames: s.frames,
@@ -68,20 +82,26 @@ export const runExport = async (
                 loop.emit(input)
             },
         })
+        /** Ends the picture at the video already encoded; the sound goes on. */
+        const endVideo = (error: unknown) => {
+            frames.end(error)
+            loop.wake()
+        }
         video = new VideoEncoder({
-            error: loop.fail,
+            error: endVideo,
             output: (chunk, metadata) => {
                 try {
                     frames.output(chunk, metadata)
                 } catch (error) {
-                    loop.fail(error)
+                    endVideo(error)
                 }
             },
         })
         video.addEventListener('dequeue', loop.wake)
         video.configure(start.codecs.video)
         const feedAudio = async () => {
-            if (!start.codecs.audio) return
+            const config = start.codecs.audio
+            if (!config) return
             const codec = start.codecs.format === 'mp4' ? 'aac' : 'opus'
             const adapter = createAudioPacketAdapter({
                 codec,
@@ -91,31 +111,41 @@ export const runExport = async (
                     loop.emit(input)
                 },
             })
-            audio = new AudioEncoder({
-                error: loop.fail,
-                output: (chunk, metadata) => {
-                    try {
-                        adapter.output(chunk, metadata)
-                    } catch (error) {
-                        loop.fail(error)
-                    }
-                },
+            const encoder = forAudio(
+                () =>
+                    new AudioEncoder({
+                        error: audioFailed,
+                        output: (chunk, metadata) => {
+                            try {
+                                adapter.output(chunk, metadata)
+                            } catch (error) {
+                                audioFailed(error)
+                            }
+                        },
+                    }),
+            )
+            audio = encoder
+            encoder.addEventListener('dequeue', loop.wake)
+            forAudio(() => {
+                encoder.configure(config)
             })
-            audio.addEventListener('dequeue', loop.wake)
-            audio.configure(start.codecs.audio)
-            const feeder = createAudioFeeder(audio, start.samples, codec)
+            const feeder = createAudioFeeder(encoder, start.samples, codec)
             for (;;) {
                 const block = await loop.guard(options.block())
                 if (!block) break
-                for (const unit of audioUnits(block)) {
+                for (const unit of forAudio(() => [...audioUnits(block)])) {
                     const length = unit.planes[0].length
                     const end = (unit.startSample + length) / AUDIO_RATE
                     await loop.room('audio', end)
-                    feeder.feed(unit)
+                    forAudio(() => {
+                        feeder.feed(unit)
+                    })
                     loop.submitted('audio', end)
                 }
             }
-            feeder.finish()
+            forAudio(() => {
+                feeder.finish()
+            })
             loop.complete('audio')
             return adapter
         }
@@ -125,15 +155,30 @@ export const runExport = async (
         })
         // Observe a rejection even if drawing fails before the audio feeder is awaited.
         void audioFed.catch(() => undefined)
+        let incomplete = 0
+        /** Why capture stopped early. The frames already submitted are still flushed. */
+        let stopped: { cause: unknown } | undefined
         let lastProgress = -Infinity
         for (let i = 0; i < s.frames; i++) {
             await loop.room('video', (i + 1) / s.frameRate)
+            if (frames.ended) break
             options.beforeCapture?.(renderer, i)
-            const frame = renderer.capture(i)
-            if (i === s.frames - 1) renderer.endCapture()
+            let captured: ReturnType<typeof renderer.capture>
             try {
-                frames.submit()
-                video.encode(frame, { keyFrame: i % (2 * s.frameRate) === 0 })
+                captured = renderer.capture(i)
+            } catch (error) {
+                stopped = { cause: error }
+                break
+            }
+            const { frame, complete } = captured
+            if (!complete) incomplete++
+            try {
+                try {
+                    video.encode(frame, { keyFrame: i % (2 * s.frameRate) === 0 })
+                } catch (error) {
+                    stopped = { cause: error }
+                    break
+                }
                 if (options.inspect) await loop.guard(options.inspect(frame, i))
             } finally {
                 frame.close()
@@ -158,14 +203,22 @@ export const runExport = async (
         loop.complete('video')
         await loop.audioFed()
         const adapter = await loop.guard(audioFed)
-        await loop.guard(video.flush())
-        if (audio) await loop.guard(audio.flush())
-        adapter?.finish()
+        if (video.state === 'configured') await loop.guard(video.flush().catch(endVideo))
+        if (stopped) frames.end(stopped.cause)
+        const encoder = audio
+        if (encoder)
+            await loop.guard(
+                encoder.flush().catch((error: unknown) => {
+                    throw new AudioFailure(error)
+                }),
+            )
+        const audioWarnings = adapter ? forAudio(() => adapter.finish()).warnings : []
         await loop.drained()
-        frames.finish()
+        const warnings = frames.finish()
+        if (incomplete) warnings.push({ code: 'framesIncomplete', count: incomplete })
         const result = await loop.guard(options.sink.finalize())
         await loop.guard(options.finishing())
-        return result
+        return { result, warnings: [...warnings, ...audioWarnings] }
     } finally {
         if (video?.state !== 'closed') video?.close()
         if (audio?.state !== 'closed') audio?.close()

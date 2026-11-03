@@ -12,6 +12,8 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** A plausible value reads as a fact, and a stored one is never questioned again.
 
+**Exception.** A derivative output, such as an Export Video file, may use an identified estimate for an unknown value when it warns the user. The value stays unknown everywhere else: the AAC delay that cannot be measured is placed with an estimate of 1,024 samples and the `audioSyncEstimated` warning, and is never cached as a measurement.
+
 **Example.** A History entry whose count could not be read was stored with `noteCount: 0`, and its neighbours showed false deltas such as +1,200. The count is now optional and stays unknown in the row and in the file, and a row with an unknown count shows no delta (`src/editor/history/rows.ts`). The same rule for the file on disk in the Save conflict dialog: `DiskVersion.notes` is absent when the file has no summary (`src/editor/save/dialogs.ts`), and a Save total over a part of unknown size is unknown, not final (`src/editor/save/total.ts`).
 
 ## 2. One fact, one place

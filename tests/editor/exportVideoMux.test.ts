@@ -1,11 +1,6 @@
 import { ALL_FORMATS, BufferSource, BufferTarget, EncodedPacketSink, Input } from 'mediabunny'
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import {
-    restoreExportError,
-    serializeExportError,
-    VideoOutputUnavailable,
-} from '../../src/exportVideo/error'
 import { clipSamples, frameTimestamp } from '../../src/exportVideo/timing'
 import {
     aacPacketBound,
@@ -14,7 +9,6 @@ import {
     createVideoPacketAdapter,
     type MuxInput,
 } from '../../src/exportVideo/worker/encode'
-import type { WorkerOutput } from '../../src/exportVideo/worker/export.worker'
 import { createMuxSink, muxStreamTarget, openMuxOutput } from '../../src/exportVideo/worker/mux'
 import type { SinkConfig } from '../../src/exportVideo/worker/sink'
 import { readAvcRecord } from '../../src/exportVideo/worker/videoInit'
@@ -35,30 +29,16 @@ const packet: MuxInput = {
     decoderConfig: { codec: 'vp09.00.10.08', codedWidth: 16, codedHeight: 16 },
 }
 
-test('a memory export fails when container bytes exceed the limit', async () => {
-    let output: WorkerOutput | undefined
+test('a memory export keeps its whole file, with no size limit', async () => {
+    const output = await openMuxOutput(config, { kind: 'memory' }, new AbortController().signal)
     try {
-        await assert.rejects(
-            async () => {
-                output = await openMuxOutput(
-                    config,
-                    { kind: 'memory', limit: 1 },
-                    new AbortController().signal,
-                )
-                await output.sink.add(packet)
-                await output.sink.finalize()
-                await output.commit()
-            },
-            (error: unknown) => {
-                const restored = restoreExportError(structuredClone(serializeExportError(error)))
-                assert.ok(restored instanceof VideoOutputUnavailable)
-                assert.equal(restored.reason, 'memoryLimit')
-                return true
-            },
-        )
+        await output.sink.add(packet)
+        const result = (await output.sink.finalize()) as { buffer?: ArrayBuffer }
+        await output.commit()
+        assert.ok(result.buffer && result.buffer.byteLength > 0)
     } finally {
-        await output?.sink.abort()
-        await output?.abort()
+        await output.sink.abort()
+        await output.abort()
     }
 })
 
@@ -226,6 +206,7 @@ test('adapter output muxes into an MP4 with moov first, encoded order and the cr
     }
     const inputs: MuxInput[] = []
     const video = createVideoPacketAdapter({
+        codec: 'avc1.64001e',
         width: 320,
         height: 180,
         frames,
@@ -233,7 +214,6 @@ test('adapter output muxes into an MP4 with moov first, encoded order and the cr
         color: createVideoColor(),
         emit: (input) => inputs.push(input),
     })
-    for (let i = 0; i < frames; i++) video.submit()
     // Decode order 0, 2, 1, without durations.
     video.output(fake('key', 0, [0, 0, 0, 2, 0x65, 0x88]), {
         decoderConfig: {
@@ -427,6 +407,7 @@ const muxMp4 = async (options: {
     const frames = options.order.length
     const inputs: MuxInput[] = []
     const video = createVideoPacketAdapter({
+        codec: 'avc1.64001e',
         width: 320,
         height: 180,
         frames,
@@ -464,10 +445,7 @@ const muxMp4 = async (options: {
         Math.round(((i + 1) * options.frame * 1e6) / 48000) -
         Math.round((i * options.frame * 1e6) / 48000)
     let sent = 0
-    let submitted = 0
     for (const [i, index] of options.order.entries()) {
-        // A frame is submitted before its output, which may come after later frames'.
-        for (; submitted <= index; submitted++) video.submit()
         video.output(
             fake(index % keyEvery ? 'delta' : 'key', frameTimestamp(index, fps), [
                 0,
@@ -553,11 +531,9 @@ test('the AAC reservation holds 960- and 1,024-sample packets at both delays aro
         // The lead-in and the delay come before zero.
         assert.ok(Math.abs(stamps[0]! + (1024 + delay) / 48000) < 1e-6)
         assert.ok(needed <= aacPacketBound(samples, delay))
-        // One packet short of the clip is incomplete, unless it ends at most 96 samples short.
-        const short = muxMp4({ order: [0], samples, delay, frame, audioPackets: needed - 1 })
-        if (1024 + delay + samples - (needed - 1) * frame > 96)
-            await assert.rejects(short, /Invalid encoded audio length/)
-        else await short
+        // Sound one packet short of the clip still makes a file.
+        const short = await muxMp4({ order: [0], samples, delay, frame, audioPackets: needed - 1 })
+        assert.equal((await audioPacketsIn(short)).length, needed - 1)
     }
 })
 

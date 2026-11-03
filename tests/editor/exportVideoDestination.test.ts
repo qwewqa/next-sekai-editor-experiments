@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+    memoryRouteTaken,
     pickedDestination,
     prepareVideoDestination,
 } from '../../src/editor/exportVideo/destination'
@@ -18,7 +19,6 @@ const options = (): Parameters<typeof prepareVideoDestination>[0] => ({
     pick: async () => ({ kind: 'cancelled' }),
     id: 'video',
     format: 'mp4',
-    estimatedBytes: 10e6,
     pickOptions: {
         name: 'video.mp4',
         type: { description: 'MP4', extension: '.mp4' },
@@ -79,13 +79,70 @@ test('staged allocation retains ownership and deletes a cancelled allocation', a
     assert.deepEqual(await store.names(), [])
 })
 
-test('only unavailable staging selects memory and the estimate limits that route', async () => {
+test('an export to memory is remembered for the page', async () => {
     const manager = new FakeLockManager()
     const output = createVideoOutput(memoryVideoStore(), manager.client(manager.scheduler.main), {
         deliver: async () => 'delivered',
         canShare: () => false,
     })
-    for (const name of ['SecurityError', 'NotSupportedError', 'QuotaExceededError']) {
+    assert.equal(memoryRouteTaken(), false)
+    await prepareVideoDestination({
+        ...options(),
+        platform: { videoOutput: output },
+        syncAccess: false,
+    })
+    assert.equal(memoryRouteTaken(), true)
+})
+
+test('the route check finds the memory route without creating a file', async () => {
+    const { readMemoryRoute } = await import('../../src/exportVideo/route')
+    const globals = globalThis as Record<string, unknown>
+    const saved = { navigator: globals.navigator, handle: globals.FileSystemFileHandle }
+    const world = (getDirectory: () => Promise<unknown>, sync: boolean) => {
+        Object.defineProperty(globalThis, 'navigator', {
+            configurable: true,
+            value: { storage: { getDirectory } },
+        })
+        globals.FileSystemFileHandle = class {}
+        if (sync)
+            Object.assign((globals.FileSystemFileHandle as { prototype: object }).prototype, {
+                createSyncAccessHandle() {},
+            })
+    }
+    const refused = (name: string) => () => Promise.reject(new DOMException('Refused', name))
+    try {
+        world(async () => ({}), true)
+        assert.equal(await readMemoryRoute(), false)
+        world(async () => ({}), false)
+        assert.equal(await readMemoryRoute(), true)
+        // Firefox private windows and Safari Private Browsing.
+        for (const name of ['SecurityError', 'UnknownError']) {
+            world(refused(name), true)
+            assert.equal(await readMemoryRoute(), true)
+        }
+        world(refused('QuotaExceededError'), true)
+        assert.equal(await readMemoryRoute(), undefined)
+    } finally {
+        Object.defineProperty(globalThis, 'navigator', {
+            configurable: true,
+            value: saved.navigator,
+        })
+        globals.FileSystemFileHandle = saved.handle
+    }
+})
+
+test('only unavailable staging selects memory, whatever the size', async () => {
+    const manager = new FakeLockManager()
+    const output = createVideoOutput(memoryVideoStore(), manager.client(manager.scheduler.main), {
+        deliver: async () => 'delivered',
+        canShare: () => false,
+    })
+    for (const name of [
+        'SecurityError',
+        'NotSupportedError',
+        'UnknownError',
+        'QuotaExceededError',
+    ]) {
         const platform = {
             videoOutput: {
                 ...output,
@@ -101,16 +158,7 @@ test('only unavailable staging selects memory and the estimate limits that route
         else {
             assert.deepEqual(await prepareVideoDestination({ ...options(), platform }), {
                 kind: 'memory',
-                limit: 150000000,
             })
-            assert.deepEqual(
-                await prepareVideoDestination({
-                    ...options(),
-                    platform,
-                    estimatedBytes: 100000001,
-                }),
-                { kind: 'unavailable', reason: 'memoryLimit' },
-            )
         }
     }
     assert.deepEqual(await prepareVideoDestination(options()), {
@@ -129,17 +177,7 @@ test('a worker that cannot write a staged file selects the memory route without 
     const platform = { videoOutput: output }
     assert.deepEqual(await prepareVideoDestination({ ...options(), platform, syncAccess: false }), {
         kind: 'memory',
-        limit: 150000000,
     })
-    assert.deepEqual(
-        await prepareVideoDestination({
-            ...options(),
-            platform,
-            syncAccess: false,
-            estimatedBytes: 100000001,
-        }),
-        { kind: 'unavailable', reason: 'memoryLimit' },
-    )
     assert.deepEqual(await store.names(), [])
 })
 

@@ -16,7 +16,6 @@ export type DestinationRequest = {
     id: string
     name: string
     format: VideoFormat
-    estimatedBytes: number
     /** False when the export worker could not open a staged file. */
     syncAccess?: boolean
     /** The picker was dismissed: the export ends as a cancel. */
@@ -34,10 +33,10 @@ export type ExportVideoEnv = {
     faults?: ExportFaults
 }
 
-/** The page's route: the save picker, else a staged file, else memory for a small video. */
+/** The page's route: the save picker, else a staged file, else memory. */
 export const pageDestination = (request: DestinationRequest) => routeOf(request, platform)
 
-/** The page's route without the save picker: a staged file, else memory for a small video. */
+/** The page's route without the save picker: a staged file, else memory. */
 export const pageFallback = (request: DestinationRequest) =>
     routeOf(request, { videoOutput: platform.videoOutput })
 
@@ -59,7 +58,6 @@ const routeOf = async (
         },
         id: request.id,
         format: request.format,
-        estimatedBytes: request.estimatedBytes,
         syncAccess: request.syncAccess,
     })
     switch (destination.kind) {
@@ -79,7 +77,7 @@ const routeOf = async (
         }
         case 'memory': {
             return {
-                worker: { kind: 'memory', limit: destination.limit },
+                worker: { kind: 'memory' },
                 ready: {
                     file: (result) => {
                         if (

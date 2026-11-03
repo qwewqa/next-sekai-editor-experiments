@@ -36,7 +36,15 @@ export const openExportVideo = async (
     const origin = session.value.sessionId
     try {
         stopPlayer()
-        const [loaded] = await Promise.all([waitForCurrentBgm(bgmWaitMs), takeStoppedExports()])
+        const [loaded] = await Promise.all([
+            waitForCurrentBgm(bgmWaitMs),
+            // The markers only choose the opening settings, so the dialog opens without them.
+            Promise.resolve()
+                .then(takeStoppedExports)
+                .catch((error: unknown) => {
+                    console.error(error)
+                }),
+        ])
         if (session.value.sessionId !== origin) return
         const snapshot = state.value
         const bgm = loaded

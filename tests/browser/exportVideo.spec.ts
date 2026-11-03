@@ -23,6 +23,7 @@ for (const start of [0, 83])
         )
         expect(result.error).toBeUndefined()
         expect(result.phase).toBe('ready')
+        expect(result.warnings).toEqual([])
         expect(result.guarded).toBe(true)
         expect(result.retained).toBe(false)
         expect(result.markerLeft).toBe(false)
@@ -68,8 +69,16 @@ test('cancel is refused once the commit starts', async ({ page }) => {
     expect(result.phase).toBe('ready')
 })
 
-test('context loss fails without retaining output', async ({ page }) => {
+test('context loss ends the picture at the frames already captured', async ({ page }) => {
     const result = await page.evaluate(() => window.editorTest.exportVideo({ loseContextAt: 4 }))
+    expect(result.error).toBeUndefined()
+    expect(result.phase).toBe('ready')
+    expect(result.warnings).toEqual([{ code: 'pictureStopped', at: 0.133333 }])
+    expect((result.result as { frames: number }).frames).toBe(4)
+})
+
+test('context loss before the first frame fails without retaining output', async ({ page }) => {
+    const result = await page.evaluate(() => window.editorTest.exportVideo({ loseContextAt: 0 }))
     expect(result.phase).toBe('failed')
     expect(result.error).toContain('graphics')
     expect(result.retained).toBe(false)
@@ -202,30 +211,21 @@ test('pagehide clears the running marker without cancelling the export', async (
 })
 
 for (const target of ['foreground', 'composite'] as const)
-    for (const hidden of [false, true])
-        test(`an incomplete ${target} target reports a ${hidden ? 'background' : 'graphics'} error`, async ({
-            page,
-        }) => {
-            const result = await page.evaluate(
-                async ({ target, hidden }) => {
-                    Object.defineProperty(document, 'hidden', { configurable: true, value: hidden })
-                    try {
-                        return await window.editorTest.exportVideo({
-                            incompleteTarget: target,
-                            settings: { frames: 3, renderScale: 1.5 },
-                        })
-                    } finally {
-                        Reflect.deleteProperty(document, 'hidden')
-                    }
-                },
-                { target, hidden },
-            )
-            expect(result.phase).toBe('failed')
-            expect(result.error).toContain(`${hidden ? 'background' : 'graphics'}:`)
-            expect(result.error).toContain('Incomplete preview render target')
-            expect(result.retained).toBe(false)
-            expect(result.markerLeft).toBe(false)
-        })
+    test(`an incomplete ${target} target leaves incomplete frames, with a warning`, async ({
+        page,
+    }) => {
+        const result = await page.evaluate(
+            (target) =>
+                window.editorTest.exportVideo({
+                    incompleteTarget: target,
+                    settings: { frames: 3, renderScale: 1.5 },
+                }),
+            target,
+        )
+        expect(result.error).toBeUndefined()
+        expect(result.phase).toBe('ready')
+        expect(result.warnings).toEqual([expect.objectContaining({ code: 'framesIncomplete' })])
+    })
 
 test('video preparation and configuration finish before destination selection', async ({
     page,

@@ -73,3 +73,15 @@ test('Error Details list each failure once, without the error they explain', asy
     assert.equal(reported, write)
     assert.deepEqual(failureDetails(reported), ['FileError: clip.mp4 was left empty'])
 })
+
+test('a sound failure keeps its reason across the worker, and only a sound failure has it', async () => {
+    const { AudioFailure, serializeExportError, restoreExportError } =
+        await import('../../src/exportVideo/error')
+    const sound = new AudioFailure(new DOMException('Encoding failed', 'EncodingError'))
+    const restored = restoreExportError(structuredClone(serializeExportError(sound)))
+    assert.ok(restored instanceof AudioFailure)
+    assert.equal((await describeVideoFailure(restored, 'clip.mp4')).reason, 'audio')
+    // Words in a message do not make a failure the sound's.
+    const other = await describeVideoFailure(new Error('Unexpected audio packet'), 'clip.mp4')
+    assert.equal(other.reason, 'encoder')
+})

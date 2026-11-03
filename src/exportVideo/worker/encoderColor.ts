@@ -55,8 +55,10 @@ const toYuv = ([r, g, b]: readonly [number, number, number], candidate: ColorCan
 
 /**
  * Encodes the stripes as the export captures them, then as raw YUV frames made with each
- * candidate, and decodes all of them with one decoder. The candidate whose frame decodes like the
- * captured one is the encoder's conversion. A failure or cancellation means no measurement.
+ * candidate, and decodes all of them with one decoder. Each decoded frame belongs to the input
+ * nearest its timestamp, within half a frame. The candidate whose frame decodes like the
+ * captured one is the encoder's conversion. A failure, an ambiguous or repeated frame or a
+ * cancellation means no measurement.
  */
 export const measureEncoderColor = async (
     config: VideoEncoderConfig,
@@ -161,26 +163,44 @@ export const measureEncoderColor = async (
         }
         await wait(created.flush())
         if (!(await wait(VideoDecoder.isConfigSupported(decoderConfig))).supported) return undefined
-        const reader = new OffscreenCanvas(8, 8).getContext('2d', {
+        const reader = new OffscreenCanvas(width, 8).getContext('2d', {
             willReadFrequently: true,
         })
         if (!reader) return undefined
+        const spacing = frameTimestamp(1, frameRate)
+        /** The input nearest a timestamp, within half a frame; undefined when two are as near. */
+        const inputAt = (timestamp: number) => {
+            let found: number | undefined
+            let nearest = spacing / 2
+            for (const [at, index] of inputs) {
+                const distance = Math.abs(timestamp - at)
+                if (distance < nearest) {
+                    nearest = distance
+                    found = index
+                } else if (distance === nearest) found = undefined
+            }
+            return found
+        }
         decoder = new VideoDecoder({
             output: (frame) => {
                 try {
-                    const index = inputs.get(frame.timestamp)
+                    const index = inputAt(frame.timestamp)
                     if (index === undefined || decoded.has(index))
                         throw new Error('Unexpected decoded calibration frame')
                     spaces.add(JSON.stringify(frame.colorSpace.toJSON()))
-                    // The mean of an 8 by 8 block from the middle of each stripe.
+                    // One draw of the middle rows, read before the frame closes, then the mean
+                    // of an 8 by 8 block from the middle of each stripe.
+                    reader.drawImage(frame, 0, (height >> 1) - 4, width, 8, 0, 0, width, 8)
+                    const rows = reader.getImageData(0, 0, width, 8).data
                     const means = STRIPES.flatMap((_, i) => {
                         const x = Math.round(((i + 0.5) * width) / STRIPES.length) - 4
-                        reader.drawImage(frame, x, (height >> 1) - 4, 8, 8, 0, 0, 8, 8)
-                        const block = reader.getImageData(0, 0, 8, 8).data
-                        return [0, 1, 2].map(
-                            (c) =>
-                                block.reduce((sum, v, k) => (k % 4 === c ? sum + v : sum), 0) / 64,
-                        )
+                        return [0, 1, 2].map((c) => {
+                            let sum = 0
+                            for (let y = 0; y < 8; y++)
+                                for (let dx = 0; dx < 8; dx++)
+                                    sum += rows[(y * width + x + dx) * 4 + c] ?? 0
+                            return sum / 64
+                        })
                     })
                     decoded.set(index, means)
                 } catch (error) {

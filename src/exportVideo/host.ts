@@ -8,6 +8,7 @@ import {
     type ExportSettings,
     type ExportTarget,
 } from './types'
+import type { ExportWarning } from './warnings'
 
 export const createExportHost = (worker: Worker) => {
     let running = false
@@ -91,7 +92,7 @@ export const createExportHost = (worker: Worker) => {
                 event(message: FromExportWorker): void
                 faults?: ExportFaults
             },
-        ): Promise<unknown> {
+        ): Promise<{ result: unknown; warnings: ExportWarning[] }> {
             if (running) throw new Error('Export worker is already running')
             if (view || pendingView) throw new Error('An export view is still being drawn')
             running = true
@@ -100,7 +101,10 @@ export const createExportHost = (worker: Worker) => {
                 const cancel = () => {
                     post({ type: 'cancel' })
                 }
-                const finish = (error?: unknown, result?: unknown) => {
+                const finish = (
+                    error?: unknown,
+                    done?: { result: unknown; warnings: ExportWarning[] },
+                ) => {
                     options.signal.removeEventListener('abort', cancel)
                     rejectRun = undefined
                     running = false
@@ -113,8 +117,8 @@ export const createExportHost = (worker: Worker) => {
                     worker.onmessage = ({ data }: MessageEvent<FromExportWorker>) => {
                         viewMessage(data)
                     }
-                    if (blockError || error) reject(exportError(blockError ?? error))
-                    else resolve(result)
+                    if (blockError || error || !done) reject(exportError(blockError ?? error))
+                    else resolve(done)
                 }
                 rejectRun = (error) => {
                     finish(error)
@@ -140,7 +144,8 @@ export const createExportHost = (worker: Worker) => {
                                 cancel()
                             },
                         )
-                    } else if (data.type === 'done') finish(undefined, data.result)
+                    } else if (data.type === 'done')
+                        finish(undefined, { result: data.result, warnings: data.warnings })
                     else if (data.type === 'cancelled')
                         finish(new DOMException('Video export canceled', 'AbortError'))
                     else if (data.type === 'failed') finish(restoreExportError(data.error))

@@ -9,7 +9,7 @@ export const toBits = (bytes: Iterable<number>) =>
     Array.from(bytes, (value) => value.toString(2).padStart(8, '0')).join('')
 
 /** Reads a string of bits. Reading past its end throws. */
-const bitReader = (bits: string) => {
+export const bitReader = (bits: string) => {
     let at = 0
     const read = (count = 1): number => {
         if (at + count > bits.length) throw new Error('Truncated video header')

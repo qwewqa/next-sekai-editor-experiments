@@ -34,7 +34,14 @@ type World = {
     unsupported?: boolean
     stall?: 'encoder' | 'decoder'
     capturedTimestamp?: number
+    /** Added to each decoded frame's timestamp. */
+    shift?: number
+    /** Decodes the first frame twice. */
+    repeat?: boolean
 }
+
+/** Draws of decoded frames, and draws of frames already closed. */
+const draws = { count: 0, closed: 0 }
 
 /** WebCodecs and canvas fakes: a frame decodes to the levels of the candidate it was made as. */
 const withFakes = async <T>(world: World, run: (codecs: { state: string }[]) => Promise<T>) => {
@@ -109,28 +116,48 @@ const withFakes = async <T>(world: World, run: (codecs: { state: string }[]) => 
             }
             const frames = this.pending.splice(0)
             if (world.reverse) frames.reverse()
-            for (const [i, frame] of frames.entries())
-                this.init.output({
-                    ...frame,
+            if (world.repeat) frames.push(frames[0]!)
+            for (const [i, frame] of frames.entries()) {
+                // A decoded frame is valid only until the callback closes it.
+                const decoded = {
+                    levels: frame.levels,
+                    timestamp: frame.timestamp + (world.shift ?? 0),
+                    closed: false,
                     colorSpace: {
                         toJSON: () => ({ matrix: world.mixedSpaces && i === 2 ? 'rgb' : 'bt709' }),
                     },
-                    close() {},
-                })
+                    close() {
+                        decoded.closed = true
+                    },
+                }
+                this.init.output(decoded)
+            }
         }
         close() {
             this.state = 'closed'
         }
     }
     class FakeCanvas {
+        constructor(
+            readonly width: number,
+            readonly height: number,
+        ) {}
         getContext() {
-            let current = [0, 0, 0]
+            let current: number[][] = []
+            const { width, height } = this
             return {
-                drawImage(frame: FakeFrame, x: number) {
-                    current = frame.levels[Math.floor(((x + 4) * STRIPES.length) / WIDTH)]!
+                drawImage(frame: FakeFrame & { closed?: boolean }) {
+                    draws.count++
+                    if (frame.closed) draws.closed++
+                    current = frame.levels
                 },
+                // Each pixel has the levels of its stripe.
                 getImageData: () => ({
-                    data: Uint8ClampedArray.from({ length: 256 }, (_, k) => current[k % 4] ?? 255),
+                    data: Uint8ClampedArray.from({ length: width * height * 4 }, (_, k) => {
+                        const x = Math.floor(k / 4) % width
+                        const stripe = current[Math.floor((x * STRIPES.length) / WIDTH)]
+                        return stripe?.[k % 4] ?? 255
+                    }),
                 }),
             }
         }
@@ -164,15 +191,26 @@ const measure = (world: World, signal?: AbortSignal) =>
         signal,
     )
 
-test('decoded calibration frames are matched to their inputs by timestamp', async () => {
-    for (const reverse of [false, true])
-        await withFakes({ truth: 1, reverse }, async (codecs) => {
-            assert.deepEqual(await measure({ truth: 1, reverse }), colorCandidates[1])
+test('decoded calibration frames are matched to the nearest input timestamp, each drawn once before it closes', async () => {
+    // WebKit returns some timestamps 1 µs early.
+    for (const world of [
+        { truth: 1 },
+        { truth: 1, reverse: true },
+        { truth: 1, shift: -1 },
+        { truth: 1, shift: 16666 },
+    ]) {
+        draws.count = 0
+        draws.closed = 0
+        await withFakes(world, async (codecs) => {
+            assert.deepEqual(await measure(world), colorCandidates[1])
             assert.deepEqual(
                 codecs.map((codec) => codec.state),
                 ['closed', 'closed'],
             )
         })
+        assert.equal(draws.count, 5)
+        assert.equal(draws.closed, 0)
+    }
 })
 
 test('a measurement that cannot be trusted or completed is not a measurement', async () => {
@@ -181,6 +219,9 @@ test('a measurement that cannot be trusted or completed is not a measurement', a
         { truth: 1, decoderError: true },
         { truth: 1, unsupported: true },
         { truth: 1, capturedTimestamp: 33333 },
+        // Half a frame from two inputs, or a frame decoded twice.
+        { truth: 1, shift: 16667 },
+        { truth: 1, repeat: true },
     ])
         await withFakes(world, async (codecs) => {
             assert.equal(await measure(world), undefined)

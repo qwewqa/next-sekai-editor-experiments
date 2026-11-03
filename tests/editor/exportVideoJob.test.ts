@@ -43,29 +43,9 @@ const fakeWorker = (prepare: FromWorker, reply?: (to: ToWorker) => FromWorker | 
     return worker as unknown as Worker
 }
 
-/** Runs a job whose picked file the worker refuses to write; `then` shapes the rerun. */
-const refusedThenRerun = async (then: {
-    prepare?: FromWorker
-    reply?: FromWorker
-    fallback?: (signal: AbortSignal, job: Job) => Promise<JobDestination>
-    file?: () => Promise<File>
-}) => {
-    const starts: ToWorker[] = []
-    const discarded: string[] = []
-    const destination = (kind: 'picked' | 'memory'): JobDestination => ({
-        worker:
-            kind === 'picked'
-                ? { kind, pick: { handle: {} as FileSystemFileHandle } }
-                : { kind, limit: 1e9 },
-        ready: {
-            file: then.file ?? (async () => new File([], 'clip.webm')),
-            deliver: async () => 'delivered',
-            end: async () => undefined,
-        },
-        discard: async () => void discarded.push(kind),
-    })
-    let workers = 0
-    const job: Job = createExportJob({
+/** A three-frame job on an empty chart, with sound off and no destination or worker yet. */
+const jobOptions = () =>
+    ({
         snapshot: createState(
             {
                 initialLife: 1000,
@@ -117,6 +97,41 @@ const refusedThenRerun = async (then: {
             },
         },
         assets: async () => ({ skin: { texture: { close() {} } } }) as never,
+        changed: () => undefined,
+    }) satisfies Partial<Options>
+
+const staged = (): JobDestination => ({
+    worker: { kind: 'staged', name: 'clip.webm' },
+    ready: {
+        file: async () => new File([], 'clip.webm'),
+        deliver: async () => 'delivered',
+        end: async () => undefined,
+    },
+    discard: async () => undefined,
+})
+
+/** Runs a job whose picked file the worker refuses to write; `then` shapes the rerun. */
+const refusedThenRerun = async (then: {
+    prepare?: FromWorker
+    reply?: FromWorker
+    fallback?: (signal: AbortSignal, job: Job) => Promise<JobDestination>
+    file?: () => Promise<File>
+}) => {
+    const starts: ToWorker[] = []
+    const discarded: string[] = []
+    const destination = (kind: 'picked' | 'memory'): JobDestination => ({
+        worker:
+            kind === 'picked' ? { kind, pick: { handle: {} as FileSystemFileHandle } } : { kind },
+        ready: {
+            file: then.file ?? (async () => new File([], 'clip.webm')),
+            deliver: async () => 'delivered',
+            end: async () => undefined,
+        },
+        discard: async () => void discarded.push(kind),
+    })
+    let workers = 0
+    const job: Job = createExportJob({
+        ...jobOptions(),
         destination: async () => destination('picked'),
         fallback: (signal) =>
             then.fallback ? then.fallback(signal, job) : Promise.resolve(destination('memory')),
@@ -128,7 +143,6 @@ const refusedThenRerun = async (then: {
                     return starts.length === 1 ? failed(refusal()) : then.reply
                 },
             ),
-        changed: () => undefined,
     })
     const state = await job.start()
     return { job, state, starts, discarded }
@@ -144,7 +158,7 @@ test('a rerun that fails to prepare, to get its destination or to read its file 
         { prepare: failed(new Error('Graphics failed')) },
         { fallback: () => Promise.reject(new FileError('no-space', 'Storage is full')) },
         {
-            reply: { type: 'done', result: {} } as const,
+            reply: { type: 'done', result: {}, warnings: [] } satisfies FromWorker,
             file: () => Promise.reject(new FileError('io', 'Unreadable')),
         },
     ]
@@ -174,9 +188,77 @@ test('Cancel while the rerun waits for its destination starts no second encode a
     assert.equal(starts.length, 1)
     assert.deepEqual(discarded, ['picked'])
     late({
-        worker: { kind: 'memory', limit: 1e9 },
+        worker: { kind: 'memory' },
         discard: async () => void (discardedLate = true),
     })
     await new Promise((resolve) => setImmediate(resolve))
     assert.equal(discardedLate, true)
+})
+
+test('the warnings of a finished export stay with Ready and Done', async () => {
+    const warnings = [{ code: 'framesMissing', count: 2 } as const]
+    const job = createExportJob({
+        ...jobOptions(),
+        destination: async () => staged(),
+        worker: () =>
+            fakeWorker({ type: 'prepared' }, () => ({ type: 'done', result: {}, warnings })),
+    })
+    const ready = await job.start()
+    assert.equal(ready.phase, 'ready')
+    assert.deepEqual(ready.phase === 'ready' && ready.warnings, warnings)
+    await job.deliver('download')
+    assert.deepEqual(job.state.phase === 'ready' && job.state.warnings, warnings)
+    await job.endReady()
+    assert.deepEqual(job.state.phase === 'done' && job.state.warnings, warnings)
+})
+
+test('mixing that fails ends the export with the sound failure', async () => {
+    const { AudioFailure } = await import('../../src/exportVideo/error')
+    let worker: { onmessage?: (event: { data: FromWorker }) => void } | undefined
+    const job = createExportJob({
+        ...jobOptions(),
+        settings: { ...jobOptions().settings, sfx: true },
+        destination: async () => staged(),
+        worker: () => {
+            const made = {
+                onmessage: undefined as ((event: { data: FromWorker }) => void) | undefined,
+                postMessage(message: ToWorker) {
+                    const answer: FromWorker | undefined =
+                        message.type === 'prepare'
+                            ? { type: 'prepared' }
+                            : message.type === 'start'
+                              ? { type: 'block' }
+                              : message.type === 'cancel'
+                                ? { type: 'cancelled' }
+                                : undefined
+                    if (answer) setImmediate(() => made.onmessage?.({ data: answer }))
+                },
+                terminate() {},
+            }
+            worker = made
+            return made as unknown as Worker
+        },
+    })
+    // Node has no OfflineAudioContext, so rendering the first block fails.
+    const state = await job.start()
+    assert.ok(worker)
+    assert.equal(state.phase, 'failed')
+    assert.ok(state.phase === 'failed' && state.error instanceof AudioFailure)
+})
+
+test('a failed preparation is tried again by the export', async () => {
+    let workers = 0
+    const job = createExportJob({
+        ...jobOptions(),
+        destination: async () => staged(),
+        worker: () =>
+            fakeWorker(
+                workers++ ? { type: 'prepared' } : failed(new Error('Graphics failed')),
+                () => ({ type: 'done', result: {}, warnings: [] }),
+            ),
+    })
+    await assert.rejects(job.preview(0), /Graphics failed/)
+    const state = await job.start()
+    assert.equal(state.phase, 'ready', state.phase === 'failed' ? String(state.error) : '')
+    assert.equal(workers, 2)
 })

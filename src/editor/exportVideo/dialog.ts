@@ -28,6 +28,7 @@ import {
 } from '../../exportVideo/job'
 import type { FromExportWorker } from '../../exportVideo/protocol'
 import type { ExportSettings } from '../../exportVideo/types'
+import type { ExportWarning } from '../../exportVideo/warnings'
 import { bgmEndOf } from '../../levelData/statistics'
 import { isNearlyFull } from '../../local/nearlyFull'
 import { platform } from '../../platform'
@@ -59,6 +60,7 @@ import {
     type ClipRange,
     type RangeKind,
 } from './clipRange'
+import { memoryRouteTaken } from './destination'
 import type { DestinationRequest, ExportVideoEnv } from './env'
 import { describeVideoFailure, type VideoFailure } from './failure'
 import {
@@ -103,8 +105,14 @@ export type Phase =
 
 /** An export's end that the footer shows until the next change. */
 export type Outcome =
-    | { kind: 'done'; name: string; size?: number }
-    | { kind: 'ready'; size: number; delivered: boolean; shareable: boolean }
+    | { kind: 'done'; name: string; size?: number; warnings: ExportWarning[] }
+    | {
+          kind: 'ready'
+          size: number
+          delivered: boolean
+          shareable: boolean
+          warnings: ExportWarning[]
+      }
     | { kind: 'failed'; failure: VideoFailure }
 
 export type Unavailable = 'browser' | 'device'
@@ -272,6 +280,8 @@ export const createExportDialog = (input: DialogInput) => {
                 choices[`format:${format}`] = { format }
             for (const audioBitrate of AUDIO_BITRATES)
                 choices[`audioBitrate:${audioBitrate}`] = { audioBitrate }
+            // Whether the video works without the selected sound.
+            if (value.bgm || value.sfx) choices['sound:off'] = { bgm: false, sfx: false }
             support.value = { ...support.value, pending: true }
             await availability.update(value, choices, (state) => {
                 support.value = state
@@ -279,12 +289,19 @@ export const createExportDialog = (input: DialogInput) => {
         },
         { immediate: true, deep: true },
     )
-    // Undefined until the worker replies; null where it has no WebGL2 or fails.
+    // Undefined until the worker replies; null where it has no WebGL2 or fails. Unknown limits
+    // do not stop an export: the export finds out for itself.
     const limits = shallowRef<GraphicsLimits | null>()
+    /**
+     * Whether exports take the in-memory route, as an earlier export in this page found or the
+     * limits worker reports; undefined while unknown.
+     */
+    const memoryRoute = ref(input.env.picker ? false : memoryRouteTaken() || undefined)
     const limitsWorker = input.env.worker()
     limitsWorker.onmessage = ({ data }: MessageEvent<FromExportWorker>) => {
         if (data.type !== 'limits') return
         limits.value = data.limits ?? null
+        memoryRoute.value ??= data.memoryRoute
         limitsWorker.terminate()
     }
     limitsWorker.onerror = () => {
@@ -292,12 +309,15 @@ export const createExportDialog = (input: DialogInput) => {
         limitsWorker.terminate()
     }
     limitsWorker.postMessage({ type: 'limits' })
-    const fits = (resolution: Resolution, scale: number) =>
-        !!limits.value &&
-        fitsGraphicsLimits(outputSize(resolution, form.aspect), scale, form.antialias, limits.value)
     /** Known not to fit; Export still waits for the limits. */
     const tooLarge = (resolution: Resolution, scale: number) =>
-        limits.value !== undefined && !fits(resolution, scale)
+        !!limits.value &&
+        !fitsGraphicsLimits(
+            outputSize(resolution, form.aspect),
+            scale,
+            form.antialias,
+            limits.value,
+        )
     const browserOk = (key: string) => {
         const choice = support.value.choices[key]
         return !choice || choice.supported
@@ -335,7 +355,8 @@ export const createExportDialog = (input: DialogInput) => {
         () =>
             !support.value.pending &&
             !!resolved.value &&
-            fits(form.resolution, form.renderScale) &&
+            limits.value !== undefined &&
+            !tooLarge(form.resolution, form.renderScale) &&
             frames.value > 0 &&
             // The sound effects an export mixes are taken as it starts.
             (!form.sfx || sfxSettled.value),
@@ -480,7 +501,6 @@ export const createExportDialog = (input: DialogInput) => {
             id,
             name,
             format: route.format,
-            estimatedBytes: bytes.value,
             syncAccess: route.syncAccess,
             dismissed: () => {
                 attempt.target = 'none'
@@ -502,6 +522,7 @@ export const createExportDialog = (input: DialogInput) => {
                 : { name, staged: worker.kind === 'staged' }
         attempt.target =
             worker.kind === 'picked' ? 'picker' : worker.kind === 'memory' ? 'memory' : 'none'
+        if (worker.kind === 'memory') memoryRoute.value = true
         attempt.stage = 'prepare'
         return destination
     }
@@ -608,6 +629,7 @@ export const createExportDialog = (input: DialogInput) => {
                 outcome.value = {
                     kind: 'ready',
                     size: state.file.size,
+                    warnings: state.warnings,
                     delivered: false,
                     // Share Video is offered for a coarse pointer, as Share Image is.
                     shareable:
@@ -616,9 +638,7 @@ export const createExportDialog = (input: DialogInput) => {
                         (platform.videoOutput?.canShare(state.file) ?? false),
                 }
                 phase.value = 'ready'
-            } else {
-                void finishDone('result' in state ? state.result : undefined)
-            }
+            } else if (state.phase === 'done') void finishDone(state.result, state.warnings)
         }
         // Views need a job that is still in setup.
         job = newJob()
@@ -631,7 +651,7 @@ export const createExportDialog = (input: DialogInput) => {
     const succeeded = () => {
         if (attempt.remembered) finishedVideoExport(attempt.remembered)
     }
-    const finishDone = async (result: unknown) => {
+    const finishDone = async (result: unknown, warnings: ExportWarning[]) => {
         const name = picked?.name ?? fileName()
         let size =
             typeof result === 'object' && result && 'size' in result
@@ -649,7 +669,7 @@ export const createExportDialog = (input: DialogInput) => {
             tookMs: attempt.workMs,
             renderingMs: attempt.renderMs,
         })
-        outcome.value = { kind: 'done', name, size }
+        outcome.value = { kind: 'done', name, size, warnings }
         phase.value = 'done'
         const ended = current
         current = undefined
@@ -831,6 +851,7 @@ export const createExportDialog = (input: DialogInput) => {
         fadeLimits,
         storageNearlyFull,
         support,
+        memoryRoute,
         unavailable,
         format,
         ready,

@@ -47,6 +47,17 @@ for (const route of ['staged', 'memory', 'memory without worker sync access'])
         await expect(videoExportButton(page)).toBeEnabled({ timeout: videoExportTimeout })
         await videoExportButton(page).click()
         await expect.poll(() => videoPhase(page), { timeout: videoExportTimeout }).toBe('ready')
+        // The dialog knows the route for the next export.
+        expect(
+            await page.evaluate(
+                () =>
+                    (
+                        Reflect.get(window, 'exportVideoDialog') as {
+                            memoryRoute: { value?: boolean }
+                        }
+                    ).memoryRoute.value,
+            ),
+        ).toBe(route !== 'staged')
         const downloading = page.waitForEvent('download')
         await dialog.locator('[data-export-download]').click()
         const download = await downloading

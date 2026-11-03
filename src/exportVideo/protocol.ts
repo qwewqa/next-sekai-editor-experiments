@@ -2,6 +2,7 @@ import type { ExportFailure } from './error'
 import type { GraphicsLimits } from './graphics'
 import type { AudioBlock } from './timing'
 import type { ExportConfig, ExportScene, ExportSettings, ExportTarget } from './types'
+import type { ExportWarning } from './warnings'
 
 export type ExportFaults = {
     failWrite?: boolean
@@ -29,14 +30,14 @@ export type ToExportWorker =
     | { type: 'cancel' }
     | { type: 'commit' }
 export type FromExportWorker =
-    | { type: 'limits'; limits?: GraphicsLimits }
+    | { type: 'limits'; limits?: GraphicsLimits; memoryRoute?: boolean }
     | { type: 'prepared' }
     | { type: 'view'; bitmap: ImageBitmap }
     | { type: 'block' }
     | { type: 'progress'; frames: number; bitmap?: ImageBitmap }
     | { type: 'pixels'; pixels: Uint8Array; width: number; height: number }
     | { type: 'finishing' }
-    | { type: 'done'; result: unknown }
+    | { type: 'done'; result: unknown; warnings: ExportWarning[] }
     | { type: 'failed'; error: ExportFailure }
     | { type: 'cancelled' }
     | { type: 'held'; stage: NonNullable<ExportFaults['hold']> }

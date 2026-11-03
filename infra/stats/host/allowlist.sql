@@ -1376,7 +1376,6 @@ INSERT INTO nse_allowed (event, property, kind, value, max) VALUES
     ('exportVideo', 'reason', 'text', 'graphics', NULL),
     ('exportVideo', 'reason', 'text', 'memory', NULL),
     ('exportVideo', 'reason', 'text', 'hidden', NULL),
-    ('exportVideo', 'reason', 'text', 'memoryLimit', NULL),
     ('exportVideo', 'format', 'text', 'mp4', NULL),
     ('exportVideo', 'format', 'text', 'webm', NULL),
     ('exportVideo', 'support', 'text', 'full', NULL),

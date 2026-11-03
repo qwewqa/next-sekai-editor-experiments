@@ -9,9 +9,8 @@ import {
     WebMOutputFormat,
     type Target,
 } from 'mediabunny'
-import { VideoOutputUnavailable } from '../error'
 import type { ExportTarget } from '../types'
-import { aacPacketBound } from './encode'
+import { AAC_DELAY_ESTIMATE, aacPacketBound, videoPacketBound } from './encode'
 import type { WorkerOutput } from './export.worker'
 import type { PacketSink, SinkConfig } from './sink'
 import { openPickedTarget, openStagedFile, type PositionTarget } from './target'
@@ -28,18 +27,17 @@ export const createMuxSink = async (config: SinkConfig, target: Target): Promise
     const audio = config.codecs.audio
         ? new EncodedAudioPacketSource(mp4 ? 'aac' : 'opus')
         : undefined
+    // The adapters end a track before it passes these bounds.
     output.addVideoTrack(video, {
         frameRate: config.frameRate,
-        maximumPacketCount: config.frames,
+        maximumPacketCount: videoPacketBound(config.frames),
     })
-    if (audio) {
-        let maximumPacketCount: number | undefined
-        if (mp4) {
-            if (config.codecs.aacDelay === undefined) throw new Error('AAC delay is unknown')
-            maximumPacketCount = aacPacketBound(config.samples, config.codecs.aacDelay)
-        }
-        output.addAudioTrack(audio, { maximumPacketCount })
-    }
+    if (audio)
+        output.addAudioTrack(audio, {
+            maximumPacketCount: mp4
+                ? aacPacketBound(config.samples, config.codecs.aacDelay ?? AAC_DELAY_ESTIMATE)
+                : undefined,
+        })
     let frames = 0
     let paddingSamples: number | undefined
     await output.start()
@@ -61,7 +59,7 @@ export const createMuxSink = async (config: SinkConfig, target: Target): Promise
             }
         },
         async finalize(): Promise<MuxResult> {
-            if (frames !== config.frames || (audio && paddingSamples === undefined))
+            if (!frames || (audio && paddingSamples === undefined))
                 throw new Error('Muxed output is incomplete')
             await output.finalize()
             return {
@@ -90,11 +88,6 @@ export const openMuxOutput = async (
 ): Promise<WorkerOutput> => {
     let file: PositionTarget | undefined
     let sink: PacketSink | undefined
-    let failure: Error | undefined
-    const check = () => {
-        signal.throwIfAborted()
-        if (failure) throw failure
-    }
     try {
         const target =
             destination.kind === 'memory'
@@ -105,30 +98,26 @@ export const openMuxOutput = async (
                               ? await openPickedTarget(destination.pick, signal)
                               : await openStagedFile(destination.name, signal)),
                   )
-        target.on('write', ({ end }) => {
-            if (destination.kind === 'memory' && end > destination.limit)
-                failure ??= new VideoOutputUnavailable('memoryLimit')
-        })
         const packets = await createMuxSink(config, target)
         sink = packets
-        check()
+        signal.throwIfAborted()
         return {
             sink: {
                 async add(input) {
-                    check()
+                    signal.throwIfAborted()
                     await packets.add(input)
-                    check()
+                    signal.throwIfAborted()
                 },
                 async finalize() {
-                    check()
+                    signal.throwIfAborted()
                     const result = await packets.finalize()
-                    check()
+                    signal.throwIfAborted()
                     return result
                 },
                 abort: () => packets.abort(),
             },
             commit: async () => {
-                check()
+                signal.throwIfAborted()
                 await file?.close()
             },
             abort: async () => {

@@ -1,8 +1,9 @@
 import { testKeysOpen } from '../../platform/testKeys'
 import { FileError } from '../../platform/types'
-import { exportError, serializeExportError, withFailureDetails } from '../error'
+import { AudioFailure, exportError, serializeExportError, withFailureDetails } from '../error'
 import { readGraphicsLimits } from '../graphics'
 import type { ExportFaults, FromExportWorker, ToExportWorker } from '../protocol'
+import { readMemoryRoute } from '../route'
 import type { AudioBlock } from '../timing'
 import type { ExportScene, ExportStart, ExportTarget } from '../types'
 import { GraphicsError, createExportRenderer } from './renderer'
@@ -61,12 +62,14 @@ export const installExportWorker = (
     let block: ((value: AudioBlock | undefined) => void) | undefined
     let commit: (() => void) | undefined
     const failed = (failure: unknown) => {
+        // A browser may stop graphics and codecs in a background tab.
+        const cause = failure instanceof AudioFailure ? failure.cause : failure
         const background =
             hidden &&
-            (failure instanceof GraphicsError ||
-                (failure instanceof DOMException &&
+            (cause instanceof GraphicsError ||
+                (cause instanceof DOMException &&
                     ['EncodingError', 'InvalidStateError', 'QuotaExceededError'].includes(
-                        failure.name,
+                        cause.name,
                     )))
         post({
             type: 'failed',
@@ -84,9 +87,11 @@ export const installExportWorker = (
     }
     const prepare = (scene: ExportScene) => {
         prepared = scene
+        // During an export, a lost context ends the picture at the next capture.
         renderer = createExportRenderer(scene, (error) => {
+            if (started) return
             controller.abort(error)
-            if (!started) failed(error)
+            failed(error)
         })
     }
     const hold = async (stage: 'mix' | 'drain' | 'finalize') => {
@@ -119,7 +124,7 @@ export const installExportWorker = (
             output = await open(start, message.destination, controller.signal)
             controller.signal.throwIfAborted()
             const sink = output.sink
-            const result = await runExport(start, {
+            const { result, warnings } = await runExport(start, {
                 signal: controller.signal,
                 renderer,
                 sink: {
@@ -181,7 +186,7 @@ export const installExportWorker = (
             await output.commit()
             started = false
             committing = false
-            post({ type: 'done', result }, transferableBuffer(result))
+            post({ type: 'done', result, warnings }, transferableBuffer(result))
         } catch (error) {
             const cleanup: unknown[] = []
             try {
@@ -207,7 +212,10 @@ export const installExportWorker = (
     }
     scope.onmessage = ({ data }) => {
         if (data.type === 'limits') {
-            post({ type: 'limits', limits: readGraphicsLimits() })
+            const limits = readGraphicsLimits()
+            void readMemoryRoute().then((memoryRoute) => {
+                post({ type: 'limits', limits, memoryRoute })
+            })
         } else if (data.type === 'visibility') hidden = data.hidden
         else if (data.type === 'prepare') {
             try {

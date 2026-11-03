@@ -10,7 +10,7 @@ import { createMirrorSender } from '../preview/worker/mirror'
 import type { State } from '../state'
 import { createSlideInfoLookup } from '../state/entities/slides/lookup'
 import { browserEncoderProbes, createCodecProbes, type VideoFormat } from './codecs'
-import { exportError, VideoOutputUnavailable, withFailureDetails } from './error'
+import { AudioFailure, exportError, VideoOutputUnavailable, withFailureDetails } from './error'
 import { createExportHost } from './host'
 import { mixAudio, type MixBuffers } from './mix'
 import type { ExportFaults, FromExportWorker } from './protocol'
@@ -22,13 +22,20 @@ import {
     type ExportSettings,
     type ExportTarget,
 } from './types'
+import type { ExportWarning } from './warnings'
 import { createAacCalibration } from './worker/encode'
 
 export type JobState =
     | { phase: 'setup' | 'preparing' | 'cancelling' | 'finishing' | 'cancelled' }
     | { phase: 'exporting'; frames: number; total: number; progress: number; eta?: number }
-    | { phase: 'ready'; result: unknown; file: File; delivered: boolean }
-    | { phase: 'done'; result: unknown }
+    | {
+          phase: 'ready'
+          result: unknown
+          warnings: ExportWarning[]
+          file: File
+          delivered: boolean
+      }
+    | { phase: 'done'; result: unknown; warnings: ExportWarning[] }
     | { phase: 'failed'; error: unknown }
 
 /**
@@ -207,6 +214,8 @@ export const createExportJob = (options: {
                 if (assets) closeExportAssets(assets)
                 host?.dispose()
                 host = undefined
+                // A failed preparation, for a view or an export, is tried again by the next call.
+                preparation = undefined
                 throw error
             }
         })())
@@ -254,7 +263,12 @@ export const createExportJob = (options: {
             return await runner.run(config, target.worker, {
                 signal,
                 block: async () => {
-                    const next = await audio.next()
+                    let next
+                    try {
+                        next = await audio.next()
+                    } catch (error) {
+                        throw signal.aborted ? error : new AudioFailure(error)
+                    }
                     return next.done ? undefined : next.value
                 },
                 faults: options.test?.faults,
@@ -309,7 +323,12 @@ export const createExportJob = (options: {
                 try {
                     await prepare()
                     const config = await resolveConfig()
-                    await abortable(Promise.resolve(lastView), signal)
+                    // The export waits for the last view to be drawn; a view that failed does
+                    // not stop it.
+                    await abortable(
+                        Promise.resolve(lastView).catch(() => undefined),
+                        signal,
+                    )
                     return config
                 } finally {
                     clear()
@@ -326,7 +345,7 @@ export const createExportJob = (options: {
             let target = (destination = await destinationOf(
                 options.destination(signal, id, route()),
             ))
-            let result: unknown
+            let result: Awaited<ReturnType<typeof encode>>
             for (let retried = false; ;) {
                 signal.throwIfAborted()
                 try {
@@ -388,10 +407,17 @@ export const createExportJob = (options: {
             released = true
             host?.dispose()
             host = undefined
+            const { warnings } = result
             if (target.ready) {
-                const file = await target.ready.file(result)
-                set({ phase: 'ready', result: withoutBuffer(result), file, delivered: false })
-            } else set({ phase: 'done', result })
+                const file = await target.ready.file(result.result)
+                set({
+                    phase: 'ready',
+                    result: withoutBuffer(result.result),
+                    warnings,
+                    file,
+                    delivered: false,
+                })
+            } else set({ phase: 'done', result: result.result, warnings })
         } catch (error) {
             const cancelled = signal.aborted
             controller.abort(error)
@@ -478,13 +504,13 @@ export const createExportJob = (options: {
         /** The dialog confirms discarding an undelivered file before calling this. */
         async endReady() {
             if (state.phase !== 'ready') return
-            const result = state.result
+            const { result, warnings } = state
             try {
                 await destination?.ready?.end()
             } finally {
                 stopClose?.()
                 stopClose = undefined
-                set({ phase: 'done', result })
+                set({ phase: 'done', result, warnings })
             }
         },
         async dispose() {
