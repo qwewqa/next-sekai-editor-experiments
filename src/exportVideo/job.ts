@@ -143,6 +143,8 @@ export const createExportJob = (options: {
     let preparation: Promise<void> | undefined
     let lastView: Promise<unknown> | undefined
     let encoding = false
+    /** The export finished and its worker was released: no more views. */
+    let released = false
     let syncAccess = true
     const set = (value: JobState) => {
         state = value
@@ -393,6 +395,7 @@ export const createExportJob = (options: {
                 target = destination = await destinationOf(options.fallback(signal, id, route()))
             }
             // The worker is done. Ready keeps the file, not the in-memory route's buffer.
+            released = true
             host?.dispose()
             host = undefined
             if (target.ready) {
@@ -441,7 +444,7 @@ export const createExportJob = (options: {
             time: number,
             viewSettings: Partial<Pick<ExportSettings, 'width' | 'height'>> = {},
         ) {
-            if (active || signal.aborted)
+            if (active || released || signal.aborted)
                 return Promise.reject(new Error('Export view is unavailable'))
             const pending = (async () => {
                 await prepare()

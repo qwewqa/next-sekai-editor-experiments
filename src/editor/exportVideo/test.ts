@@ -279,10 +279,6 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
         OfflineAudioContext.prototype.startRendering = render
     }
     await pendingView
-    if (options.previewFirst && result.phase === 'ready') {
-        const bitmap = await job.preview(settings.in)
-        bitmap?.close()
-    }
     const guarded = closeGuard ? !(await closeGuard()) : false
     let maxError: number | undefined
     if (reference && exported) {
