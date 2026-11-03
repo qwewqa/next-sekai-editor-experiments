@@ -9,6 +9,7 @@ import {
     sampleTimestamp,
 } from '../../src/exportVideo/timing'
 import {
+    AAC_TAIL,
     aacPacketBound,
     audioAccounting,
     createAacCalibration,
@@ -73,48 +74,59 @@ test('AAC ES descriptors yield ASC, including variable lengths and optional ES f
     )
 })
 
-test('every encoder receives the silent pad with the first samples in one call, then contiguous units with an exact last sample', () => {
-    const inputs: AudioDataInit[] = []
-    let closed = 0
-    let encoded = 0
-    const feeder = createAudioFeeder(
-        {
-            encode: () => {
-                encoded++
-            },
-        },
-        5600,
-        (init) => {
-            inputs.push(init)
-            return {
-                close: () => {
-                    closed++
+test('every encoder receives the silent pad with the first samples in one call, then contiguous units with an exact last sample, and AAC a silent tail with the last', () => {
+    for (const codec of ['aac', 'opus'] as const) {
+        const inputs: AudioDataInit[] = []
+        let closed = 0
+        let encoded = 0
+        const feeder = createAudioFeeder(
+            {
+                encode: () => {
+                    encoded++
                 },
-            } as AudioData
-        },
-    )
-    for (const unit of audioUnits({
-        startSample: 0,
-        planes: [new Float32Array(5600).fill(0.5), new Float32Array(5600).fill(0.25)],
-    }))
-        feeder.feed(unit)
-    feeder.finish()
-    assert.deepEqual(
-        inputs.map((i) => [i.timestamp, i.numberOfFrames]),
-        [
-            [-21333, 1024 + 4800],
-            [100000, 800],
-        ],
-    )
-    // Each plane of the first call holds the pad, then the first unit.
-    const first = inputs[0]!.data as Float32Array
-    for (const [plane, value] of [0.5, 0.25].entries()) {
-        const samples = first.subarray(plane * 5824, (plane + 1) * 5824)
-        assert.ok(samples.subarray(0, 1024).every((x) => x === 0))
-        assert.ok(samples.subarray(1024).every((x) => x === value))
+            },
+            5600,
+            codec,
+            (init) => {
+                inputs.push(init)
+                return {
+                    close: () => {
+                        closed++
+                    },
+                } as AudioData
+            },
+        )
+        for (const unit of audioUnits({
+            startSample: 0,
+            planes: [new Float32Array(5600).fill(0.5), new Float32Array(5600).fill(0.25)],
+        }))
+            feeder.feed(unit)
+        feeder.finish()
+        const tail = codec === 'aac' ? AAC_TAIL : 0
+        assert.deepEqual(
+            inputs.map((i) => [i.timestamp, i.numberOfFrames]),
+            [
+                [-21333, 1024 + 4800],
+                [100000, 800 + tail],
+            ],
+        )
+        // Each plane holds the pad, the unit and the tail.
+        for (const [input, before, after] of [
+            [inputs[0]!, 1024, 0],
+            [inputs[1]!, 0, tail],
+        ] as const) {
+            const data = input.data as Float32Array
+            const frames = input.numberOfFrames
+            for (const [plane, value] of [0.5, 0.25].entries()) {
+                const samples = data.subarray(plane * frames, (plane + 1) * frames)
+                assert.ok(samples.subarray(0, before).every((x) => x === 0))
+                assert.ok(samples.subarray(before, frames - after).every((x) => x === value))
+                assert.ok(samples.subarray(frames - after).every((x) => x === 0))
+            }
+        }
+        assert.equal(encoded, 2)
+        assert.equal(closed, 2)
     }
-    assert.equal(encoded, 2)
-    assert.equal(closed, 2)
     assert.equal(aacPacketBound(5600, 2112), Math.ceil(8736 / 960))
 })
 
@@ -335,20 +347,89 @@ test('audio that ends at most 96 samples short is a delay read late, with no pad
     assert.throws(() => audioAccounting(1024, 4800, end - 97), /Invalid encoded audio length/)
 })
 
-test('AAC delay measurement fails when the encoded audio does not cover its input', async () => {
+/** An AAC encoder with `delay` samples of priming that loses its last packet, as Chromium on Android does. */
+const droppingAacEncoder = (
+    delay: number,
+    output: (chunk: EncodedAudioChunk, metadata?: EncodedAudioChunkMetadata) => void,
+) => {
+    let input = 0
+    return {
+        encode: (audio: AudioData) => {
+            input += audio.numberOfFrames
+        },
+        flush: () => {
+            const count = Math.ceil((input + delay) / 1024) - 1
+            for (let i = 0; i < count; i++)
+                output(
+                    chunk(0, i % 2 ? 21334 : 21333),
+                    i ? undefined : { decoderConfig: aacConfig },
+                )
+        },
+    }
+}
+
+test('an AAC encoder that loses its last packet loses only the tail, and the clip is presented whole', () => {
+    for (const fps of [30, 60] as const)
+        for (let frames = 1; frames <= 6; frames++)
+            for (const delay of [0, 1024, 2048, 2112]) {
+                const samples = clipSamples(frames, fps)
+                const emitted: MuxInput[] = []
+                const adapter = createAudioPacketAdapter({
+                    codec: 'aac',
+                    samples,
+                    aacDelay: delay,
+                    emit: (input) => emitted.push(input),
+                })
+                const encoder = droppingAacEncoder(delay, adapter.output)
+                const feeder = createAudioFeeder(
+                    encoder,
+                    samples,
+                    'aac',
+                    (init) => ({ numberOfFrames: init.numberOfFrames, close() {} }) as AudioData,
+                )
+                for (const unit of audioUnits({
+                    startSample: 0,
+                    planes: [new Float32Array(samples), new Float32Array(samples)],
+                }))
+                    feeder.feed(unit)
+                feeder.finish()
+                encoder.flush()
+                const trim = adapter.finish()
+                assert.equal(trim.paddingSamples, 0)
+                const packets = audioPackets(emitted)
+                const ends = packets.map((p) =>
+                    Math.round(((p.timestamp + p.duration) * AUDIO_RATE) / 1e6),
+                )
+                assert.equal(
+                    Math.round((packets[0]!.timestamp * AUDIO_RATE) / 1e6),
+                    -AUDIO_PAD - delay,
+                )
+                assert.equal(ends.at(-1), samples)
+                for (const [i, packet] of packets.entries())
+                    if (i)
+                        assert.equal(Math.round((packet.timestamp * AUDIO_RATE) / 1e6), ends[i - 1])
+            }
+})
+
+test('AAC delay measurement passes when the encoder loses its last packet, and fails when the encoded audio does not cover its input', async () => {
     const globals = globalThis as Record<string, unknown>
     const names = ['AudioEncoder', 'AudioDecoder', 'AudioData']
     const saved = names.map((name) => globals[name])
     const delay = 1024
-    let packets = 0
+    let lost = 0
     type Callbacks = { output(...values: unknown[]): void }
-    // Each encoded packet is 1,024 samples; the decoder puts the impulse after the delay.
+    // Each encoded packet is 1,024 samples, and the last `lost` are dropped. The decoder puts the
+    // impulse after the delay.
     globals.AudioEncoder = class {
         state = 'configured'
+        input = 0
         constructor(readonly callbacks: Callbacks) {}
         configure() {}
-        encode() {}
+        encode(audio: AudioData) {
+            this.input += audio.numberOfFrames
+        }
         flush() {
+            const packets = Math.ceil((this.input + delay) / 1024) - lost
             for (let i = 0; i < packets; i++)
                 this.callbacks.output(
                     chunk(0, i % 2 ? 21334 : 21333),
@@ -386,14 +467,17 @@ test('AAC delay measurement fails when the encoded audio does not cover its inpu
         }
     }
     globals.AudioData = class {
+        numberOfFrames: number
+        constructor(init: AudioDataInit) {
+            this.numberOfFrames = init.numberOfFrames
+        }
         close() {}
     }
     try {
         const config = { codec: 'mp4a.40.2', sampleRate: 48000, numberOfChannels: 2 }
-        // The lead-in, the delay and 4,800 input samples take 7 packets.
-        packets = 7
-        assert.equal(await measureAacDelay(config), delay)
-        packets = 6
+        // The lead-in, 4,800 input samples, the tail and the delay take 8 packets. The first 7
+        // cover the input.
+        for (lost = 0; lost < 2; lost++) assert.equal(await measureAacDelay(config), delay)
         await assert.rejects(measureAacDelay(config), /Invalid encoded audio length/)
     } finally {
         for (const [i, name] of names.entries()) globals[name] = saved[i]

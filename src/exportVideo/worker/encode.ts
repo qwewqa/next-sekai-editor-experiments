@@ -348,13 +348,17 @@ export const createVideoPacketAdapter = (options: {
     }
 }
 
+/** Silent samples after AAC input, one frame. Chromium on Android drops the last packet, which then holds only silence. */
+export const AAC_TAIL = 1024
+
 /**
- * One call submits at most 100 ms of clip audio. The first also carries the silent lead-in. The
- * caller waits for room before every call.
+ * One call submits at most 100 ms of clip audio. The first also carries the silent lead-in and,
+ * for AAC, the last carries the silent tail. The caller waits for room before every call.
  */
 export const createAudioFeeder = (
     encoder: Pick<AudioEncoder, 'encode'>,
     samples: number,
+    codec: 'aac' | 'opus',
     makeData = (init: AudioDataInit) => new AudioData(init),
 ) => {
     let nextSample = 0
@@ -370,7 +374,8 @@ export const createAudioFeeder = (
             )
                 throw new Error('Unexpected audio unit')
             const before = nextSample === 0 ? AUDIO_PAD : 0
-            const frames = before + length
+            const after = codec === 'aac' && nextSample + length === samples ? AAC_TAIL : 0
+            const frames = before + length + after
             const data = new Float32Array(frames * AUDIO_CHANNELS)
             data.set(unit.planes[0], before)
             data.set(unit.planes[1], frames + before)
@@ -459,7 +464,7 @@ export const measureAacDelay = async (
     try {
         signal?.throwIfAborted()
         encoder.configure(config)
-        const feeder = createAudioFeeder(encoder, AUDIO_UNIT)
+        const feeder = createAudioFeeder(encoder, AUDIO_UNIT, 'aac')
         const impulse = AUDIO_UNIT / 2
         const plane = new Float32Array(AUDIO_UNIT)
         plane[impulse] = 1
@@ -477,7 +482,7 @@ export const measureAacDelay = async (
         checkFailure()
         const delay = peakSample - AUDIO_PAD - impulse
         if (peak < 0.01 || delay < 0) throw new Error('AAC delay could not be measured')
-        // Output short of its own input would fail an export's audio at its end.
+        // Output short of its input, the tail excluded, would fail an export's audio at its end.
         audioAccounting(
             delay,
             AUDIO_UNIT,

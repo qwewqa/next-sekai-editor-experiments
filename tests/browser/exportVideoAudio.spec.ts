@@ -204,7 +204,7 @@ test('the real Opus encoder puts priming before zero and retains less than one p
         })
         try {
             encoder.configure(config)
-            const feeder = createAudioFeeder(encoder, 800)
+            const feeder = createAudioFeeder(encoder, 800, 'opus')
             feeder.feed({ startSample: 0, planes: [new Float32Array(800), new Float32Array(800)] })
             feeder.finish()
             await encoder.flush()
@@ -272,7 +272,7 @@ test('AAC calibration and the pad preserve sound within the first 1024 clip samp
         })
         try {
             encoder.configure(config)
-            const feeder = createAudioFeeder(encoder, 4800)
+            const feeder = createAudioFeeder(encoder, 4800, 'aac')
             const plane = new Float32Array(4800)
             plane[120] = 1
             feeder.feed({ startSample: 0, planes: [plane, plane] })

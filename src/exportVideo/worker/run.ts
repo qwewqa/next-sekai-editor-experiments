@@ -82,8 +82,9 @@ export const runExport = async (
         video.configure(start.codecs.video)
         const feedAudio = async () => {
             if (!start.codecs.audio) return
+            const codec = start.codecs.format === 'mp4' ? 'aac' : 'opus'
             const adapter = createAudioPacketAdapter({
-                codec: start.codecs.format === 'mp4' ? 'aac' : 'opus',
+                codec,
                 samples: start.samples,
                 aacDelay: start.aacDelay,
                 emit: (input) => {
@@ -102,7 +103,7 @@ export const runExport = async (
             })
             audio.addEventListener('dequeue', loop.wake)
             audio.configure(start.codecs.audio)
-            const feeder = createAudioFeeder(audio, start.samples)
+            const feeder = createAudioFeeder(audio, start.samples, codec)
             for (;;) {
                 const block = await loop.guard(options.block())
                 if (!block) break
