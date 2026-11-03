@@ -140,7 +140,7 @@ watch(root, (element, _, onCleanup) => {
         :inert="isPersistentModalOpen"
         :class="
             isSafeMode() &&
-            'mt-[var(--safe-bar-height,2.5rem)] !h-[calc(100vh_-_var(--safe-bar-height,2.5rem))]'
+            'mt-[var(--safe-bar-height,2.5rem)] !h-[calc(var(--viewport-height)_-_var(--safe-bar-height,2.5rem))]'
         "
     >
         <WorkspaceDock side="left" />
