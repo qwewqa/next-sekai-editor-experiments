@@ -381,6 +381,9 @@ export const createVideoPacketAdapter = (options: {
         get ended() {
             return stopped
         },
+        get kept() {
+            return placed > 0
+        },
         /** Ends the track before the next packet. `error` is the failure if no video was kept. */
         end,
         output(chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) {

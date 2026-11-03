@@ -509,6 +509,9 @@ test(
             runFake({ lostAt: 0, audio: true, mixHangs: true }),
             (error: unknown) => error instanceof GraphicsError,
         )
+        await assert.rejects(runFake({ failAt: 0, audio: true, mixHangs: true }), {
+            name: 'EncodingError',
+        })
     },
 )
 

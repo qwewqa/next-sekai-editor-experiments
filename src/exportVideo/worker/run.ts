@@ -85,6 +85,8 @@ export const runExport = async (
         /** Ends the picture at the video already encoded; the sound goes on. */
         const endVideo = (error: unknown) => {
             frames.end(error)
+            // No packet kept means no video, so fail without waiting for the sound.
+            if (!frames.kept) loop.fail(error)
             loop.wake()
         }
         video = new VideoEncoder({
