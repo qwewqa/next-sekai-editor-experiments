@@ -255,9 +255,9 @@ export const browserEncoderProbes = (): EncoderProbes => ({
 })
 
 /**
- * On macOS 27 the GPU sandbox makes VideoToolbox use its software H.264 encoder. That encoder
- * holds more frames than WebCodecs queues, so High and Main give no output
- * (https://webkit.org/b/324827).
+ * On macOS 27 the GPU sandbox makes VideoToolbox use its software H.264 encoder. In High and
+ * Main that encoder buffers more frames than the WebCodecs encode queue allows, so encoding
+ * stalls (https://webkit.org/b/324827).
  */
 export const h264Profiles = (engine?: Engine) =>
     engine === 'webkit'

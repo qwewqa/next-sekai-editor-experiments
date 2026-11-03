@@ -142,16 +142,11 @@ const chunkSamples = (chunk: EncodedAudioChunk) => {
 export const aacPacketBound = (samples: number, delay: number) =>
     Math.ceil((samples + AUDIO_PAD + delay) / 960)
 
-/** A video packet takes its frame's duration; audio requires one. */
-const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk): EncodedPacket => {
+/** A copy of a chunk's bytes, with its type. */
+const packetOf = (chunk: EncodedAudioChunk | EncodedVideoChunk) => {
     const data = new Uint8Array(chunk.byteLength)
     chunk.copyTo(data)
-    return {
-        data,
-        type: chunk.type,
-        timestamp: chunk.timestamp,
-        duration: chunk.duration ?? 0,
-    }
+    return { data, type: chunk.type }
 }
 
 const sameBytes = (a?: AllowSharedBufferSource, b?: AllowSharedBufferSource) => {
@@ -232,9 +227,11 @@ export const createAudioPacketAdapter = (options: {
                     ? Math.min(encodedSamples, AUDIO_PAD + delay + options.samples)
                     : encodedSamples
             if (end <= start) return
-            const packet = packetOf(chunk)
-            packet.timestamp = ((start - AUDIO_PAD - delay) * 1e6) / AUDIO_RATE
-            packet.duration = ((end - start) * 1e6) / AUDIO_RATE
+            const packet: EncodedPacket = {
+                ...packetOf(chunk),
+                timestamp: ((start - AUDIO_PAD - delay) * 1e6) / AUDIO_RATE,
+                duration: ((end - start) * 1e6) / AUDIO_RATE,
+            }
             options.emit({ track: 'audio', packet, decoderConfig: config, timing })
         },
         finish() {
@@ -300,8 +297,11 @@ export const createVideoPacketAdapter = (options: {
             if (index < 0 || index >= submitted || seen[index] || chunk.timestamp !== at)
                 throw new Error('Missing or misplaced encoded frame')
             seen[index] = 1
-            const packet = { ...packetOf(chunk), timestamp: at }
-            packet.duration = frameTimestamp(index + 1, frameRate) - at
+            const packet: EncodedPacket = {
+                ...packetOf(chunk),
+                timestamp: at,
+                duration: frameTimestamp(index + 1, frameRate) - at,
+            }
             const reported = metadata?.decoderConfig
             let decoderConfig: VideoDecoderConfig | undefined
             if (!first) {
