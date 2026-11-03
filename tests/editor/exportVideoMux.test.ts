@@ -6,7 +6,9 @@ import {
     serializeExportError,
     VideoOutputUnavailable,
 } from '../../src/exportVideo/error'
+import { clipSamples, frameTimestamp } from '../../src/exportVideo/timing'
 import {
+    aacPacketBound,
     createAudioPacketAdapter,
     createVideoColor,
     createVideoPacketAdapter,
@@ -15,6 +17,7 @@ import {
 import type { WorkerOutput } from '../../src/exportVideo/worker/export.worker'
 import { createMuxSink, muxStreamTarget, openMuxOutput } from '../../src/exportVideo/worker/mux'
 import type { SinkConfig } from '../../src/exportVideo/worker/sink'
+import { readAvcRecord } from '../../src/exportVideo/worker/videoInit'
 
 const config: SinkConfig = {
     codecs: {
@@ -302,5 +305,321 @@ test('adapter output muxes into an MP4 with moov first, encoded order and the cr
         assert.equal(packets, count)
     } finally {
         input.dispose()
+    }
+})
+
+// Box layout of a finished MP4, read by size fields rather than by searching the bytes.
+type Box = { type: string; start: number; end: number; body: number }
+const boxesIn = (bytes: Uint8Array, start: number, end: number): Box[] => {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    const found: Box[] = []
+    for (let at = start; at + 8 <= end;) {
+        let size = view.getUint32(at)
+        let body = at + 8
+        if (size === 1) {
+            size = Number(view.getBigUint64(at + 8))
+            body = at + 16
+        } else if (size === 0) size = end - at
+        const type = String.fromCharCode(...bytes.subarray(at + 4, at + 8))
+        found.push({ type, start: at, end: at + size, body })
+        at += size
+    }
+    return found
+}
+const find = (bytes: Uint8Array, within: Box | undefined, path: string[]): Box | undefined => {
+    let box = within
+    for (const type of path) {
+        if (!box) return undefined
+        box = boxesIn(bytes, box.body, box.end).find((b) => b.type === type)
+    }
+    return box
+}
+const mp4Layout = (bytes: Uint8Array) => {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    const top = boxesIn(bytes, 0, bytes.length)
+    const moov = top.find((b) => b.type === 'moov')!
+    const tracks = boxesIn(bytes, moov.body, moov.end)
+        .filter((b) => b.type === 'trak')
+        .map((trak) => {
+            const hdlr = find(bytes, trak, ['mdia', 'hdlr'])!
+            const handler = String.fromCharCode(...bytes.subarray(hdlr.body + 8, hdlr.body + 12))
+            const stbl = find(bytes, trak, ['mdia', 'minf', 'stbl'])!
+            const co64 = find(bytes, stbl, ['co64'])
+            const stco = co64 ?? find(bytes, stbl, ['stco'])!
+            const count = view.getUint32(stco.body + 4)
+            const offsets = Array.from({ length: count }, (_, i) =>
+                co64
+                    ? Number(view.getBigUint64(stco.body + 8 + 8 * i))
+                    : view.getUint32(stco.body + 8 + 4 * i),
+            )
+            const ctts = find(bytes, stbl, ['ctts'])
+            const elst = find(bytes, trak, ['edts', 'elst'])
+            const elstVersion = elst ? bytes[elst.body]! : 0
+            const mediaTime = elst
+                ? elstVersion
+                    ? Number(view.getBigInt64(elst.body + 8 + 8))
+                    : view.getInt32(elst.body + 8 + 4)
+                : undefined
+            const stsd = find(bytes, stbl, ['stsd'])!
+            // The sample entry's fields come before its child boxes: 78 bytes for video.
+            const entry = boxesIn(bytes, stsd.body + 8, stsd.end)[0]!
+            const children = handler === 'vide' ? boxesIn(bytes, entry.body + 78, entry.end) : []
+            const avcC = children.find((b) => b.type === 'avcC')
+            return {
+                handler,
+                offsets,
+                ctts: ctts ? view.getUint32(ctts.body + 4) : 0,
+                mediaTime,
+                colr: children.some((b) => b.type === 'colr'),
+                avcC: avcC && bytes.subarray(avcC.body, avcC.end),
+            }
+        })
+    return { top, tracks }
+}
+
+const avcRecord = new Uint8Array([
+    1, 100, 0, 30, 255, 225, 0, 23, 103, 100, 0, 30, 172, 43, 64, 160, 207, 207, 128, 136, 0, 0, 31,
+    64, 0, 7, 83, 0, 120, 225, 53, 1, 0, 4, 104, 238, 60, 176, 253, 248, 248, 0,
+])
+const fullColor = {
+    primaries: 'bt709',
+    transfer: 'iec61966-2-1',
+    matrix: 'bt709',
+    fullRange: true,
+} as const
+
+/** One MP4 from the real adapters and muxer: video frames in `order`, audio in `frame`-sample packets. */
+const muxMp4 = async (options: {
+    order: number[]
+    fps?: 30 | 60
+    keyEvery?: number
+    samples: number
+    delay: number
+    frame: number
+    audioPackets: number
+    description?: Uint8Array
+    colorSpace?: VideoColorSpaceInit
+}) => {
+    const fps = options.fps ?? 30
+    const frames = options.order.length
+    const inputs: MuxInput[] = []
+    const video = createVideoPacketAdapter({
+        width: 320,
+        height: 180,
+        frames,
+        frameRate: fps,
+        color: createVideoColor(),
+        emit: (input) => inputs.push(input),
+    })
+    const audio = createAudioPacketAdapter({
+        codec: 'aac',
+        samples: options.samples,
+        aacDelay: options.delay,
+        emit: (input) => inputs.push(input),
+    })
+    const target = new BufferTarget()
+    const sink = await createMuxSink(
+        {
+            codecs: {
+                supported: true,
+                format: 'mp4',
+                video: { codec: 'avc1.64001e', width: 320, height: 180 },
+                audio: { codec: 'mp4a.40.2', numberOfChannels: 2, sampleRate: 48000 },
+            },
+            frames,
+            frameRate: fps,
+            samples: options.samples,
+            aacDelay: options.delay,
+        },
+        target,
+    )
+    const flush = async () => {
+        for (const input of inputs.splice(0)) await sink.add(input)
+    }
+    const keyEvery = options.keyEvery ?? frames
+    const audioDuration = (i: number) =>
+        Math.round(((i + 1) * options.frame * 1e6) / 48000) -
+        Math.round((i * options.frame * 1e6) / 48000)
+    let sent = 0
+    let submitted = 0
+    for (const [i, index] of options.order.entries()) {
+        // A frame is submitted before its output, which may come after later frames'.
+        for (; submitted <= index; submitted++) video.submit()
+        video.output(
+            fake(index % keyEvery ? 'delta' : 'key', frameTimestamp(index, fps), [
+                0,
+                0,
+                0,
+                2,
+                index % keyEvery ? 0x41 : 0x65,
+                0x88,
+            ]),
+            i
+                ? undefined
+                : {
+                      decoderConfig: {
+                          codec: 'avc1.64001e',
+                          codedWidth: 320,
+                          codedHeight: 192,
+                          description: options.description ?? avcRecord,
+                          colorSpace: options.colorSpace,
+                      },
+                  },
+        )
+        // Audio keeps pace with the video, as the frame loop's gates keep it.
+        const due = Math.min(
+            options.audioPackets,
+            Math.ceil(((i + 1) / frames) * options.audioPackets),
+        )
+        for (; sent < due; sent++)
+            audio.output(
+                fake('key', 0, [0x21, 0x10, 0x04, 0x60, 0x8c, 0x1c], audioDuration(sent)),
+                sent
+                    ? undefined
+                    : {
+                          decoderConfig: {
+                              codec: 'mp4a.40.2',
+                              numberOfChannels: 2,
+                              sampleRate: 48000,
+                              description: new Uint8Array([0x11, 0x90]),
+                          },
+                      },
+            )
+        await flush()
+    }
+    video.finish()
+    audio.finish()
+    await flush()
+    await sink.finalize()
+    return new Uint8Array(target.buffer!)
+}
+
+const audioPacketsIn = async (bytes: Uint8Array) => {
+    const input = new Input({ formats: ALL_FORMATS, source: new BufferSource(bytes) })
+    try {
+        const sound = await input.getPrimaryAudioTrack()
+        const stamps: number[] = []
+        for await (const packet of new EncodedPacketSink(sound!).packets())
+            stamps.push(packet.timestamp)
+        return stamps
+    } finally {
+        input.dispose()
+    }
+}
+
+test('the AAC reservation holds 960- and 1,024-sample packets at both delays around packet boundaries, keeping every trailing packet', async () => {
+    const cases: [frame: number, delay: number, samples: number][] = []
+    for (const frame of [960, 1024])
+        for (const delay of [1024, 2112])
+            for (const off of [-1, 0, 1])
+                cases.push([frame, delay, 50 * frame + off - 1024 - delay])
+    // A minute of 960-sample packets after a 2,112-sample delay.
+    cases.push([960, 2112, 60 * 48000])
+    for (const [frame, delay, samples] of cases) {
+        const needed = Math.ceil((1024 + delay + samples) / frame)
+        // Three packets past the clip, as an encoder's flush can add.
+        const bytes = await muxMp4({
+            order: [0],
+            samples,
+            delay,
+            frame,
+            audioPackets: needed + 3,
+        })
+        const stamps = await audioPacketsIn(bytes)
+        assert.equal(stamps.length, needed + 3)
+        // The lead-in and the delay come before zero.
+        assert.ok(Math.abs(stamps[0]! + (1024 + delay) / 48000) < 1e-6)
+        assert.ok(needed + 3 <= aacPacketBound(samples, delay))
+        // One packet short of the clip is incomplete.
+        await assert.rejects(
+            muxMp4({ order: [0], samples, delay, frame, audioPackets: needed - 1 }),
+            /Invalid encoded audio length/,
+        )
+    }
+    // The earlier bound, in 1,024-sample packets, falls short of a minute of 960-sample packets.
+    const minute = 60 * 48000
+    assert.ok(
+        Math.ceil((minute + 1024) / 1024) + Math.ceil(2112 / 1024) <
+            Math.ceil((1024 + 2112 + minute) / 960),
+    )
+})
+
+for (const fps of [30, 60] as const)
+    test(`ten minutes at ${fps} fps with reordered frames fit the reservation, with moov, free and mdat in order and the tracks interleaved`, async () => {
+        const frames = 600 * fps
+        const gop = 2 * fps
+        // Within each two-second group: the key frame, then pairs in swapped order.
+        const order: number[] = []
+        for (let g = 0; g < frames; g += gop) {
+            order.push(g)
+            for (let i = g + 1; i < g + gop; i += 2)
+                order.push(...(i + 1 < g + gop ? [i + 1, i] : [i]))
+        }
+        const samples = clipSamples(frames, fps)
+        const bytes = await muxMp4({
+            order,
+            fps,
+            keyEvery: gop,
+            samples,
+            delay: 2112,
+            frame: 960,
+            audioPackets: Math.ceil((1024 + 2112 + samples) / 960) + 3,
+        })
+        const { top, tracks } = mp4Layout(bytes)
+        const types = top.map((box) => box.type)
+        assert.deepEqual(types.slice(0, 4), ['ftyp', 'moov', 'free', 'mdat'])
+        const mdat = top[3]!
+        const video = tracks.find((track) => track.handler === 'vide')!
+        const sound = tracks.find((track) => track.handler === 'soun')!
+        // Each swapped pair changes the composition offset, so nearly every frame has its own entry.
+        assert.ok(video.ctts > frames * 0.9)
+        const chunks = [
+            ...video.offsets.map((at) => [at, 0] as const),
+            ...sound.offsets.map((at) => [at, 1] as const),
+        ].sort((a, b) => a[0] - b[0])
+        assert.ok(chunks.every(([at]) => at >= mdat.body && at < mdat.end))
+        const switches = chunks.filter(([, track], i) => i && track !== chunks[i - 1]![1]).length
+        assert.ok(switches >= 600)
+    })
+
+test('the written MP4 keeps several parameter sets after colour patching, colr only with known colour, and the AAC delay in its edit list', async () => {
+    const sps = avcRecord.subarray(8, 31)
+    const pps = avcRecord.subarray(34, 38)
+    const several = new Uint8Array([
+        ...avcRecord.subarray(0, 5),
+        0xe2,
+        0,
+        sps.length,
+        ...sps,
+        0,
+        sps.length,
+        ...sps,
+        2,
+        0,
+        pps.length,
+        ...pps,
+        0,
+        pps.length,
+        ...pps,
+        ...avcRecord.subarray(38),
+    ])
+    const delay = 2112
+    for (const colorSpace of [fullColor, undefined]) {
+        const bytes = await muxMp4({
+            order: [0, 1, 2],
+            samples: 4800,
+            delay,
+            frame: 1024,
+            audioPackets: Math.ceil((1024 + delay + 4800) / 1024),
+            description: several,
+            colorSpace,
+        })
+        const { tracks } = mp4Layout(bytes)
+        const video = tracks.find((track) => track.handler === 'vide')!
+        const sound = tracks.find((track) => track.handler === 'soun')!
+        assert.equal(video.avcC![5]! & 31, 2)
+        assert.equal(readAvcRecord(video.avcC!)?.codec, 'avc1.64001e')
+        assert.equal(video.colr, colorSpace !== undefined)
+        assert.equal(sound.mediaTime, 1024 + delay)
     }
 })
