@@ -10,6 +10,7 @@ import {
     outputSize,
     type CodecSettings,
 } from '../../src/exportVideo/codecs'
+import { createAacCalibration } from '../../src/exportVideo/worker/encode'
 import { usableTrial, type TrialOutput } from '../../src/exportVideo/worker/trial'
 
 const settings: CodecSettings = {
@@ -554,3 +555,105 @@ test('Cancel closes a trial encoder whose flush never resolves', async () => {
             globals[name] = saved[i]
     }
 })
+
+test(
+    'closing the dialog stops its pending trial and AAC measurement, and a reopened one starts afresh',
+    { timeout: 10000 },
+    async () => {
+        const globals = globalThis as Record<string, unknown>
+        const names = [
+            'VideoEncoder',
+            'AudioEncoder',
+            'AudioDecoder',
+            'OffscreenCanvas',
+            'VideoFrame',
+            'AudioData',
+        ]
+        const saved = names.map((name) => globals[name])
+        const codecs: { kind: string; state: string }[] = []
+        let hold = true
+        let flushed = () => undefined as void
+        const flushing = () =>
+            new Promise<void>((resolve) => {
+                flushed = resolve
+            })
+        // As in browsers, closing rejects a pending flush.
+        const codec = (name: string) =>
+            class {
+                kind = name
+                state = 'configured'
+                closed?: () => void
+                constructor() {
+                    codecs.push(this)
+                }
+                configure() {}
+                encode() {}
+                decode() {}
+                flush() {
+                    if (!hold) return Promise.resolve()
+                    flushed()
+                    return new Promise<void>((_, reject) => {
+                        this.closed = () => {
+                            reject(new DOMException('Closed', 'AbortError'))
+                        }
+                    })
+                }
+                close() {
+                    this.state = 'closed'
+                    this.closed?.()
+                }
+            }
+        Object.assign(globals, {
+            VideoEncoder: codec('video'),
+            AudioEncoder: codec('audioEncoder'),
+            AudioDecoder: codec('audioDecoder'),
+            OffscreenCanvas: class {
+                getContext() {
+                    return { fillRect() {} }
+                }
+            },
+            VideoFrame: class {
+                close() {}
+            },
+            AudioData: class {
+                close() {}
+            },
+        })
+        try {
+            const probes = createCodecProbes({
+                video: async () => ({ supported: true }),
+                audio: async () => ({ supported: true }),
+                trial: browserEncoderProbes().trial,
+                aacDelay: createAacCalibration(),
+            })
+            const kinds = () => codecs.map((c) => `${c.kind} ${c.state}`)
+            // A dialog with sound closes during its AAC measurement, another without during its trial.
+            for (const s of [settings, { ...settings, bgm: false, sfx: false }]) {
+                const dialog = createCodecAvailability(probes)
+                const started = flushing()
+                const update = dialog.update(s, {})
+                await started
+                dialog.stop()
+                await update
+                assert.ok(codecs.every((c) => c.state === 'closed'))
+            }
+            assert.deepEqual(kinds(), [
+                'audioDecoder closed',
+                'audioEncoder closed',
+                'video closed',
+            ])
+            hold = false
+            const reopened = createCodecAvailability(probes)
+            const state = await reopened.update(settings, {})
+            assert.equal(state.pending, false)
+            // The measurement and the trial ran again with new codecs.
+            assert.deepEqual(kinds().slice(3), [
+                'audioDecoder closed',
+                'audioEncoder closed',
+                'video closed',
+            ])
+        } finally {
+            for (const [i, name] of names.entries()) globals[name] = saved[i]
+        }
+    },
+)

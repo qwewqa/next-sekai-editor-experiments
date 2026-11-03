@@ -376,9 +376,15 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
     let state: State = { pending: true, choices: {} }
     let shownChoices: State['choices'] = {}
     let latest: AbortController | undefined
+    let stopped = false
     return {
         get state() {
             return state
+        },
+        /** Leaves the current update's shared work. Later updates do nothing. */
+        stop() {
+            stopped = true
+            latest?.abort()
         },
         /** `changed` receives the selection, then the choices, while the update is the latest. */
         async update(
@@ -386,6 +392,7 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
             choices: Record<string, Partial<CodecSettings>>,
             changed: (state: State) => void = () => undefined,
         ) {
+            if (stopped) return state
             // A newer update leaves this one's shared trials.
             latest?.abort()
             const controller = (latest = new AbortController())

@@ -796,6 +796,7 @@ export const createExportDialog = (input: DialogInput) => {
     }
 
     const dispose = async () => {
+        availability.stop()
         limitsWorker.terminate()
         stopPlayback()
         document.removeEventListener('visibilitychange', onHidden)
