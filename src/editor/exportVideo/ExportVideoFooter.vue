@@ -31,7 +31,8 @@ const strings = computed(() => i18n.value.exportVideo)
 const phase = d.phase
 const exportLabel = computed(() => (props.picker ? strings.value.export : strings.value.exportNow))
 
-// --- The summary: each item whole, its separator leading it, so a line breaks between items.
+// --- The summary: each item whole with the separator after it, so a line breaks between items
+// and never starts with a separator.
 const about = (text: string) => interpolateRaw(strings.value.about, text)
 const formatName = computed(() => (d.format.value === 'webm' ? 'WebM' : 'MP4'))
 const tail = computed(() => [
@@ -197,7 +198,8 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                 <template v-for="(item, index) in summary" :key="index"
                     >{{ index ? ' ' : ''
                     }}<span class="whitespace-nowrap"
-                        >{{ index ? '· ' : '' }}{{ item }}</span
+                        >{{ item
+                        }}<template v-if="index < summary.length - 1">{{ ' ·' }}</template></span
                     ></template
                 >
             </p>
