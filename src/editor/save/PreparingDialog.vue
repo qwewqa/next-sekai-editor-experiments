@@ -78,7 +78,9 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 <template>
     <BaseModal :title="labels.title" @close="emit('close', false)">
         <div class="flex flex-col gap-2">
-            <p :id="`${ids}-text`" data-save-preparing><SeparatedText :text="text" /></p>
+            <p :id="`${ids}-text`" class="[overflow-wrap:anywhere]" data-save-preparing>
+                <SeparatedText :text="text" />
+            </p>
             <WaitBar
                 v-if="!model.ready"
                 :value="progress"

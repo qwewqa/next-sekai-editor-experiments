@@ -16,10 +16,10 @@ defineEmits<{
 
 <template>
     <BaseModal :title="title()" @close="$emit('close')">
-        <div v-if="lines" class="flex flex-col gap-2">
+        <div v-if="lines" class="flex flex-col gap-2 [overflow-wrap:anywhere]">
             <p v-for="(line, index) in lines" :key="index">{{ line() }}</p>
         </div>
-        <div v-else class="whitespace-pre-line">{{ message() }}</div>
+        <div v-else class="whitespace-pre-line [overflow-wrap:anywhere]">{{ message() }}</div>
 
         <div class="flex justify-end">
             <button

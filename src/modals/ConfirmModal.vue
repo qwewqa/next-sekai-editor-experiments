@@ -51,7 +51,7 @@ const buttons = computed(() => {
 
 <template>
     <BaseModal :title="title()" @close="emit('close', false)">
-        <div>{{ message() }}</div>
+        <div class="[overflow-wrap:anywhere]">{{ message() }}</div>
 
         <div class="flex justify-end gap-2" @keydown.capture="onKeydown">
             <button

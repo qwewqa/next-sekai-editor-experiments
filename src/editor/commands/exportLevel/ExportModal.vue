@@ -195,7 +195,12 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
             @submit.prevent="submit"
             @modalcancel="cancel"
         >
-            <p v-if="preparing" :id="`${ids}-preparing`" data-export-preparing>
+            <p
+                v-if="preparing"
+                :id="`${ids}-preparing`"
+                class="[overflow-wrap:anywhere]"
+                data-export-preparing
+            >
                 <SeparatedText :text="readyText" />
             </p>
             <template v-else>

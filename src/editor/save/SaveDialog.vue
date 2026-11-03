@@ -235,7 +235,10 @@ const boxClass =
                                 historyDetail
                             }}</span>
                         </span>
-                        <span :id="`${ids}-history`" class="flex flex-col text-sm text-fg/80">
+                        <span
+                            :id="`${ids}-history`"
+                            class="flex flex-col text-sm text-fg/80 [overflow-wrap:anywhere]"
+                        >
                             <span v-if="historyRow.kind === 'insecure'">{{
                                 i18n.save.noHistoryHere
                             }}</span>

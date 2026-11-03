@@ -7,7 +7,9 @@ defineProps<{ notice: Notice }>()
 </script>
 
 <template>
-    <div class="notification whitespace-break-spaces rounded-full px-6 py-2 text-center">
+    <div
+        class="notification min-w-0 max-w-full whitespace-break-spaces rounded-full px-6 py-2 text-center [overflow-wrap:anywhere]"
+    >
         <SeparatedText :text="notice.message?.() ?? ''" />
     </div>
 </template>

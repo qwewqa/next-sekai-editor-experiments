@@ -93,7 +93,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
             <p
                 :id="textId"
                 :role="startupGate.phase === 'error' ? 'alert' : 'status'"
-                class="whitespace-break-spaces"
+                class="whitespace-break-spaces [overflow-wrap:anywhere]"
             >
                 {{ text }}
             </p>

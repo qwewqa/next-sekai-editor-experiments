@@ -1196,7 +1196,7 @@ test.describe('narrow', () => {
             await variants('skin', [
                 {
                     name: 'neon',
-                    title: 'A skin with a very long title that has to be cut somewhere',
+                    title: 'A_skin_with_a_very_long_title_and_no_spaces_that_has_to_be_cut_somewhere',
                     author: 'An author with a long name',
                 },
             ]),
@@ -1215,5 +1215,11 @@ test.describe('narrow', () => {
         expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth)
         const box = await dialog(page).boundingBox()
         expect(box!.x + box!.width).toBeLessThanOrEqual(360)
+
+        // The question before a removal wraps the name.
+        await dialog(page).locator('[data-stored-remove]').click()
+        const question = page.locator('dialog[open]').nth(1)
+        const message = await fits(question.getByText(/^Remove “/))
+        expect(message.scrollWidth).toBeLessThanOrEqual(message.clientWidth)
     })
 })
