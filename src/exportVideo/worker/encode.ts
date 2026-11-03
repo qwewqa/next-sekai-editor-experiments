@@ -114,15 +114,29 @@ const audioTiming = (delay: number, samples: number): AudioTiming => {
     }
 }
 
+/** Samples, 2 ms, that encoded audio may end short by: an error in the measured delay. */
+export const AUDIO_SHORTFALL = 96
+
 export const audioAccounting = (
     delay: number,
     samples: number,
     encodedSamples: number,
 ): AudioAccounting => {
     const timing = audioTiming(delay, samples)
-    if (!Number.isSafeInteger(encodedSamples) || encodedSamples < timing.endSample)
+    if (
+        !Number.isSafeInteger(encodedSamples) ||
+        encodedSamples < timing.endSample - AUDIO_SHORTFALL
+    )
         throw new Error('Invalid encoded audio length')
-    return { ...timing, paddingSamples: encodedSamples - timing.endSample }
+    return { ...timing, paddingSamples: Math.max(0, encodedSamples - timing.endSample) }
+}
+
+/** An encoded audio chunk's duration in whole samples. */
+const chunkSamples = (chunk: EncodedAudioChunk) => {
+    if (chunk.duration === null) throw new Error('Encoder omitted packet duration')
+    const samples = Math.round((chunk.duration * AUDIO_RATE) / 1e6)
+    if (samples <= 0) throw new Error('Invalid audio packet duration')
+    return samples
 }
 
 /** Packets an encoder may emit at the end beyond the clip, its lead-in and its delay. */
@@ -225,10 +239,8 @@ export const createAudioPacketAdapter = (options: {
             const timing = encodedSamples === 0 ? audioTiming(delay, options.samples) : undefined
             // Packets are placed end to end by their durations. Firefox's Opus timestamps after
             // the first packet are early by the pre-skip.
-            if (chunk.duration === null) throw new Error('Encoder omitted packet duration')
+            const samples = chunkSamples(chunk)
             const packet = packetOf(chunk)
-            const samples = Math.round((chunk.duration * AUDIO_RATE) / 1e6)
-            if (samples <= 0) throw new Error('Invalid audio packet duration')
             packet.timestamp = ((encodedSamples - AUDIO_PAD - delay) * 1e6) / AUDIO_RATE
             packet.duration = (samples * 1e6) / AUDIO_RATE
             encodedSamples += samples
@@ -482,6 +494,12 @@ export const measureAacDelay = async (
         checkFailure()
         const delay = peakSample - AUDIO_PAD - impulse
         if (peak < 0.01 || delay < 0) throw new Error('AAC delay could not be measured')
+        // Output short of its own input would fail an export's audio at its end.
+        audioAccounting(
+            delay,
+            AUDIO_UNIT,
+            chunks.reduce((sum, chunk) => sum + chunkSamples(chunk), 0),
+        )
         return delay
     } catch (error) {
         signal?.throwIfAborted()

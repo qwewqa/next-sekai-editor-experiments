@@ -16,6 +16,7 @@ import {
     createAudioPacketAdapter,
     createVideoColor,
     createVideoPacketAdapter,
+    measureAacDelay,
     normalizeAacDescription,
     opusPreSkip,
     videoPacket,
@@ -329,6 +330,92 @@ test('audio short of the clip, or a packet without a duration, fails', () => {
         () => missing.output({ ...chunk(0, 0), duration: null }, { decoderConfig: opusConfig }),
         /omitted packet duration/,
     )
+})
+
+test('audio that ends at most 96 samples short is a delay read late, with no padding; more fails', () => {
+    // The fewest whole packets for a clip whose lead-in, delay and length end on a packet
+    // boundary, as 1 clip length in 32 does at 60 fps, with the delay measured one sample late.
+    const samples = clipSamples(32, 60)
+    const adapter = createAudioPacketAdapter({
+        codec: 'aac',
+        samples,
+        aacDelay: 1025,
+        emit: () => undefined,
+    })
+    for (let i = 0; i < (AUDIO_PAD + 1024 + samples) / 1024; i++)
+        adapter.output(
+            chunk(0, i % 2 ? 21334 : 21333),
+            i ? undefined : { decoderConfig: aacConfig },
+        )
+    assert.equal(adapter.finish().paddingSamples, 0)
+    const end = AUDIO_PAD + 1024 + 4800
+    assert.equal(audioAccounting(1024, 4800, end - 96).paddingSamples, 0)
+    assert.throws(() => audioAccounting(1024, 4800, end - 97), /Invalid encoded audio length/)
+})
+
+test('AAC delay measurement fails when the encoded audio does not cover its input', async () => {
+    const globals = globalThis as Record<string, unknown>
+    const names = ['AudioEncoder', 'AudioDecoder', 'AudioData']
+    const saved = names.map((name) => globals[name])
+    const delay = 1024
+    let packets = 0
+    type Callbacks = { output(...values: unknown[]): void }
+    // Each encoded packet is 1,024 samples; the decoder puts the impulse after the delay.
+    globals.AudioEncoder = class {
+        state = 'configured'
+        constructor(readonly callbacks: Callbacks) {}
+        configure() {}
+        encode() {}
+        flush() {
+            for (let i = 0; i < packets; i++)
+                this.callbacks.output(
+                    chunk(0, i % 2 ? 21334 : 21333),
+                    i ? undefined : { decoderConfig: aacConfig },
+                )
+            return Promise.resolve()
+        }
+        close() {
+            this.state = 'closed'
+        }
+    }
+    globals.AudioDecoder = class {
+        state = 'configured'
+        decoded = 0
+        constructor(readonly callbacks: Callbacks) {}
+        configure() {}
+        decode() {
+            this.decoded++
+        }
+        flush() {
+            const peak = AUDIO_PAD + 2400 + delay
+            for (let i = 0; i < this.decoded; i++)
+                this.callbacks.output({
+                    numberOfFrames: 1024,
+                    copyTo: (plane: Float32Array) => {
+                        plane.fill(0)
+                        if (peak >= i * 1024 && peak < (i + 1) * 1024) plane[peak - i * 1024] = 1
+                    },
+                    close: () => undefined,
+                })
+            return Promise.resolve()
+        }
+        close() {
+            this.state = 'closed'
+        }
+    }
+    globals.AudioData = class {
+        close() {}
+    }
+    try {
+        const config = { codec: 'mp4a.40.2', sampleRate: 48000, numberOfChannels: 2 }
+        // The lead-in, the delay and 4,800 input samples take 7 packets.
+        packets = 7
+        assert.equal(await measureAacDelay(config), delay)
+        packets = 6
+        await assert.rejects(measureAacDelay(config), /Invalid encoded audio length/)
+    } finally {
+        for (const [i, name] of names.entries()) globals[name] = saved[i]
+    }
 })
 
 test('audio configuration comes with the first packet, may repeat, and fails when it changes', () => {
