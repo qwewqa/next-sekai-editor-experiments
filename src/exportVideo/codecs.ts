@@ -218,8 +218,8 @@ export const browserEncoderProbes = (): EncoderProbes => ({
 })
 
 /**
- * In other profiles, WebKit's H.264 encoder stops producing output after a few frames, later
- * than a trial encode runs.
+ * On macOS 27 the GPU sandbox makes VideoToolbox use its software H.264 encoder, which holds
+ * more frames than WebCodecs queues, so High and Main give no output: https://webkit.org/b/324827
  */
 export const h264Profiles = (engine?: Engine) =>
     engine === 'webkit'
