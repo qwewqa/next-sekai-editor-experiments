@@ -33,7 +33,7 @@ const input = (patch: Partial<MessageInput> = {}): MessageInput => ({
         antialias: true,
         renderScale: 1,
     },
-    support: { current: works, choices: {} },
+    support: { pending: false, current: works, choices: {} },
     limits: limits(16384),
     frames: 300,
     bytes: 1_000_000,
@@ -73,7 +73,7 @@ test('a refused audio bitrate is named while a lower one works', () => {
     }
     const state = input({
         form: form({ audioBitrate: 256_000, frameRate: 60 }),
-        support: { current: refused, choices },
+        support: { pending: false, current: refused, choices },
     })
     assert.deepEqual(lines(state), ['Unavailable: Audio Bitrate 256 kbps'])
     assert.deepEqual(exportMessages(state)[0]?.fields, ['audioBitrate'])
@@ -82,6 +82,7 @@ test('a refused audio bitrate is named while a lower one works', () => {
         input({
             form: form({ audioBitrate: 256_000, frameRate: 60, resolution: 2160 }),
             support: {
+                pending: false,
                 current: refused,
                 choices: {
                     'audioBitrate:192000': bitrate,
@@ -99,6 +100,7 @@ test('a refused audio bitrate is named while a lower one works', () => {
                 form: form({ resolution: 2160, antialias: false }),
                 limits: limits(2048),
                 support: {
+                    pending: false,
                     current: refused,
                     choices: { 'resolution:1440': works, 'resolution:1080': works },
                 },
@@ -108,11 +110,20 @@ test('a refused audio bitrate is named while a lower one works', () => {
     )
     // A missing result is not evidence that a choice works; sound off is the last resort.
     assert.deepEqual(
-        lines(input({ form: form({ format: 'mp4' }), support: { current: refused, choices: {} } })),
+        lines(
+            input({
+                form: form({ format: 'mp4' }),
+                support: { pending: false, current: refused, choices: {} },
+            }),
+        ),
         [],
     )
     assert.deepEqual(
-        lines(input({ support: { current: refused, choices: { 'sound:off': works } } })),
+        lines(
+            input({
+                support: { pending: false, current: refused, choices: { 'sound:off': works } },
+            }),
+        ),
         ['Unavailable: BGM, SFX'],
     )
     assert.deepEqual(
@@ -120,6 +131,7 @@ test('a refused audio bitrate is named while a lower one works', () => {
             input({
                 form: form({ sfx: false, format: 'mp4' }),
                 support: {
+                    pending: false,
                     current: refused,
                     choices: { 'format:webm': works, 'sound:off': works },
                 },
@@ -127,6 +139,24 @@ test('a refused audio bitrate is named while a lower one works', () => {
         ),
         ['Unavailable: Format MP4'],
     )
+})
+
+test('after a failed trial, the other format comes first, and a pending update names no codec item', () => {
+    const trial: CodecSupport = { supported: false, reason: 'videoTrial' }
+    const mp4At60 = (current: CodecSupport, pending = false) =>
+        input({
+            form: form({ format: 'mp4', frameRate: 60 }),
+            support: {
+                pending,
+                current,
+                choices: { 'frameRate:30': works, 'format:webm': works, 'resolution:720': works },
+            },
+        })
+    assert.deepEqual(lines(mp4At60(trial)), ['Unavailable: Format MP4'])
+    // A refused query keeps the usual order.
+    assert.deepEqual(lines(mp4At60(refused)), ['Unavailable: Frame Rate 60 fps'])
+    // While the new settings are checked, the last results belong to the previous settings.
+    assert.deepEqual(lines(mp4At60(trial, true)), [])
 })
 
 test('the size check names Antialiasing, then Render Scale, then Resolution', () => {
@@ -144,7 +174,11 @@ test('the size check names Antialiasing, then Render Scale, then Resolution', ()
             input({
                 form: form({ resolution: 2160, antialias: false }),
                 limits: limits(3000),
-                support: { current: works, choices: { 'resolution:1440': refused } },
+                support: {
+                    pending: false,
+                    current: works,
+                    choices: { 'resolution:1440': refused },
+                },
             }),
         ),
         ['Unavailable: Resolution 2160p'],
@@ -165,7 +199,7 @@ test('both checks failing give one line with the codec item first, and Resolutio
             input({
                 form: form({ resolution: 2160, antialias: false, audioBitrate: 256_000 }),
                 limits: limits(2048),
-                support: { current: refused, choices },
+                support: { pending: false, current: refused, choices },
             }),
         ),
         ['Unavailable: Audio Bitrate 256 kbps, Resolution 2160p'],
@@ -174,7 +208,7 @@ test('both checks failing give one line with the codec item first, and Resolutio
     const both = input({
         form: form({ resolution: 2160, renderScale: 2 }),
         limits: limits(8192, 4096),
-        support: { current: refused, choices: { 'sound:off': works } },
+        support: { pending: false, current: refused, choices: { 'sound:off': works } },
     })
     assert.deepEqual(lines(both), ['Unavailable: BGM, SFX, Antialiasing'])
     assert.deepEqual(exportMessages(both)[0]?.fields, ['sound', 'antialias'])
@@ -185,6 +219,7 @@ test('both checks failing give one line with the codec item first, and Resolutio
                 form: form({ resolution: 2160, antialias: false }),
                 limits: limits(3000),
                 support: {
+                    pending: false,
                     current: refused,
                     choices: { 'resolution:1440': refused, 'resolution:1080': works },
                 },
@@ -228,7 +263,10 @@ test('Setup shows advice, then the stopped line, then the storage warning off th
     assert.deepEqual(lines(input({ storageNearlyFull: true })), ['Browser storage is almost full.'])
     assert.deepEqual(kinds(input({ storageNearlyFull: true, memoryRoute: true })), [])
     // While busy, only the line about the tab; Finishing and Canceling show nothing.
-    const busy = { support: { current: refused, choices: { 'sound:off': works } }, stopped }
+    const busy = {
+        support: { pending: false, current: refused, choices: { 'sound:off': works } },
+        stopped,
+    }
     assert.deepEqual(lines(input({ ...busy, phase: 'exporting', coarse: true })), [
         'Keep this tab open and visible until the export finishes.',
     ])

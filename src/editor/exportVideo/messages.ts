@@ -47,7 +47,7 @@ export type MessageInput = {
     > &
         Pick<ExportSettings, 'bgm' | 'sfx'> & { aspect: number }
     /** The last settled codec results: an update in progress keeps them. */
-    support: { current?: CodecSupport; choices: Record<string, CodecSupport> }
+    support: { pending: boolean; current?: CodecSupport; choices: Record<string, CodecSupport> }
     /** Undefined until read, null when they could not be read. */
     limits: GraphicsLimits | null | undefined
     frames: number
@@ -96,9 +96,18 @@ const unavailable = (input: MessageInput): ExportMessage[] => {
     const works = (key: string) => support.choices[key]?.supported === true
     const codecFails = support.current?.supported === false
 
-    // The nearest lower value that the same probes accept.
+    // The nearest lower value that the same probes accept. While an update is in progress, the
+    // results are for the previous settings.
     const codec = ((): Found | undefined => {
-        if (!codecFails) return undefined
+        if (support.pending || !codecFails) return undefined
+        const other = form.format === 'mp4' ? 'webm' : form.format === 'webm' ? 'mp4' : undefined
+        const otherWorks = !!other && works(`format:${other}`)
+        const formatItem = `${strings.format} ${form.format === 'webm' ? 'WebM' : 'MP4'}`
+        // After a failed trial, a lower value may have passed only the query. The query also
+        // accepted the failed selection.
+        const trialFailed =
+            support.current?.supported === false && support.current.reason === 'videoTrial'
+        if (trialFailed && otherWorks) return found('format', formatItem)
         const audio = sound
             ? lower(AUDIO_BITRATES, form.audioBitrate).find((value) =>
                   works(`audioBitrate:${value}`),
@@ -113,9 +122,7 @@ const unavailable = (input: MessageInput): ExportMessage[] => {
                 fits(input, value, form.renderScale, form.antialias),
         )
         if (resolution) return found('resolution', resolutionItem)
-        const other = form.format === 'mp4' ? 'webm' : form.format === 'webm' ? 'mp4' : undefined
-        if (other && works(`format:${other}`))
-            return found('format', `${strings.format} ${form.format === 'webm' ? 'WebM' : 'MP4'}`)
+        if (otherWorks) return found('format', formatItem)
         if (sound && works('sound:off'))
             return found(
                 'sound',

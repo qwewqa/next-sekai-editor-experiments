@@ -1,10 +1,11 @@
 import type { RawData } from '../../analytics/catalogue'
+import type { VideoFormat } from '../../exportVideo/codecs'
 import type { FileErrorCode } from '../../platform/types'
 import type { RangeKind } from './clipRange'
 
 export type VideoReportSettings = {
     format: 'mp4' | 'webm'
-    support: 'full' | 'webmOnly'
+    support?: 'full' | 'webmOnly'
     resolution: 720 | 1080 | 1440 | 2160
     frameRate: 30 | 60
     aspect: '16:9' | '21:9' | '4:3'
@@ -54,10 +55,20 @@ export const videoSpeed = (
                   : '8+'
 }
 
+/**
+ * Whether MP4 was available: known when the export resolved MP4, or when Automatic tried MP4 and
+ * resolved WebM. Unknown for an explicit WebM.
+ */
+export const videoSupport = (
+    selected: 'automatic' | VideoFormat,
+    resolved: VideoFormat,
+): VideoReportSettings['support'] =>
+    resolved === 'mp4' ? 'full' : selected === 'automatic' ? 'webmOnly' : undefined
+
 /** Call once at the attempt's end, with work time captured before the wait for delivery. */
 export const videoReport = (settings: VideoReportSettings, end: VideoReportEnd) => ({
     format: settings.format,
-    support: settings.support,
+    ...(settings.support && { support: settings.support }),
     resolution: `${settings.resolution}` as const,
     frameRate: `${settings.frameRate}` as const,
     aspect: settings.aspect,

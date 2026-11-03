@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { fromRaw, isValidEvent } from '../../src/analytics/catalogue'
 import {
     memoryRouteTaken,
     pickedDestination,
@@ -8,6 +9,7 @@ import {
 import {
     videoReport,
     videoSpeed,
+    videoSupport,
     type VideoReportSettings,
 } from '../../src/editor/exportVideo/report'
 import { FakeLockManager } from '../../src/local/testing/locks'
@@ -220,6 +222,31 @@ test('report payload keeps explicit work time and excludes raw names, errors and
     assert.equal(failed.reason, 'encoder')
     assert.equal(videoSpeed(10, undefined), undefined)
     assert.equal(videoSpeed(10, 0), undefined)
+})
+
+test('report support is known for a resolved MP4 and for Automatic, and otherwise left out', () => {
+    assert.equal(videoSupport('mp4', 'mp4'), 'full')
+    assert.equal(videoSupport('automatic', 'mp4'), 'full')
+    assert.equal(videoSupport('automatic', 'webm'), 'webmOnly')
+    assert.equal(videoSupport('webm', 'webm'), undefined)
+    const report = videoReport(
+        {
+            format: 'webm',
+            support: videoSupport('webm', 'webm'),
+            resolution: 1080,
+            frameRate: 60,
+            aspect: '16:9',
+            quality: 'standard',
+            renderScale: 1,
+            antialias: true,
+            audio: 'both',
+            range: 'whole',
+            source: 'live',
+        },
+        { outcome: 'done', target: 'download', hidden: false, lengthSeconds: 10, tookMs: 5000 },
+    )
+    assert.equal('support' in report, false)
+    assert.equal(isValidEvent('exportVideo', fromRaw('exportVideo', report)), true)
 })
 
 test('a picked destination discards the emptied file, and never a changed one', async () => {

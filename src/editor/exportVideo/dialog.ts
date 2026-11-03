@@ -70,7 +70,7 @@ import {
     rememberedVideoChoices,
     resetVideoChoices,
 } from './recovery'
-import { videoReport, type VideoReportEnd, type VideoReportSettings } from './report'
+import { videoReport, videoSupport, type VideoReportEnd, type VideoReportSettings } from './report'
 import { videoFileName } from './videoName'
 
 /** One per page: the probe and AAC calibration caches outlive each dialog. */
@@ -700,7 +700,7 @@ export const createExportDialog = (input: DialogInput) => {
 
     const reportSettings = (): VideoReportSettings => ({
         format: format.value,
-        support: support.value.choices['format:mp4']?.supported ? 'full' : 'webmOnly',
+        support: videoSupport(form.format, format.value),
         resolution: form.resolution,
         frameRate: form.frameRate,
         aspect: (previewAspectRatios.find(([, value]) => value === form.aspect)?.[0] ??

@@ -91,7 +91,10 @@ export type CodecSupport =
           /** The measured AAC delay in samples, for MP4 with sound. Absent when not measured. */
           aacDelay?: number
       }
-    | { supported: false; reason: 'videoEncoder' | 'audioEncoder' | 'videoConfig' | 'audioConfig' }
+    | {
+          supported: false
+          reason: 'videoEncoder' | 'audioEncoder' | 'videoConfig' | 'videoTrial' | 'audioConfig'
+      }
 
 export type TrialConfig = VideoEncoderConfig & { framerate: 30 | 60 }
 
@@ -118,7 +121,7 @@ class Superseded extends Error {
  * one to end. A caller leaves when its signal aborts. When the last caller leaves, the work stops
  * and is forgotten, and a queued run is skipped. Started work whose last caller was superseded
  * runs on until it ends or `Superseded.closed` aborts. A result is kept. A failure is forgotten,
- * so a later call runs the work again.
+ * so a later call runs the work again. `kept` gives a kept result without running the work.
  */
 export const createSharedWork = <T>(oneAtATime = false) => {
     type Entry = {
@@ -126,11 +129,12 @@ export const createSharedWork = <T>(oneAtATime = false) => {
         callers: number
         started: boolean
         settled: boolean
+        value?: T
         stop: AbortController
     }
     const entries = new Map<string, Entry>()
     let queue: Promise<unknown> = Promise.resolve()
-    return (key: string, run: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal) => {
+    const call = (key: string, run: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal) => {
         signal?.throwIfAborted()
         let entry = entries.get(key)
         if (!entry) {
@@ -152,8 +156,9 @@ export const createSharedWork = <T>(oneAtATime = false) => {
             entries.set(key, created)
             if (oneAtATime) queue = created.result.catch(() => undefined)
             created.result.then(
-                () => {
+                (value) => {
                     created.settled = true
+                    created.value = value
                 },
                 () => {
                     created.settled = true
@@ -191,6 +196,7 @@ export const createSharedWork = <T>(oneAtATime = false) => {
             )
         })
     }
+    return Object.assign(call, { kept: (key: string) => entries.get(key)?.value })
 }
 
 // isConfigSupported can accept a configuration whose output the export cannot use. Firefox's
@@ -278,7 +284,10 @@ export const h264Profiles = (engine?: Engine) =>
           ] as const)
 
 export type ResolveOptions = {
-    /** When false, only isConfigSupported decides. */
+    /**
+     * When false, no trial or AAC measurement runs. isConfigSupported decides, and a
+     * configuration whose trial already failed in this page stays refused.
+     */
     trial?: boolean
     /** When it aborts, the caller leaves shared trials and measurements. */
     signal?: AbortSignal
@@ -315,6 +324,8 @@ export const createCodecProbes = (
         if (!run) return true
         return trials(configurationKey(config), (stop) => run(config, stop), signal)
     }
+    const kept = (config: TrialConfig) =>
+        probes.trial ? trials.kept(configurationKey(config)) : undefined
     const resolveFormat = async (
         s: CodecSettings,
         format: VideoFormat,
@@ -335,15 +346,6 @@ export const createCodecProbes = (
             if (!(await probe('audio', audio, probes.audio)))
                 return { supported: false, reason: 'audioConfig' }
             signal?.throwIfAborted()
-        }
-        // Without a measured delay, the export places AAC with an estimate and warns.
-        let aacDelay: number | undefined
-        if (audio && format === 'mp4' && trial && probes.aacDelay) {
-            try {
-                aacDelay = await probes.aacDelay(audio, signal)
-            } catch {
-                signal?.throwIfAborted()
-            }
         }
         const common: Omit<TrialConfig, 'codec'> = {
             width: s.width,
@@ -376,19 +378,31 @@ export const createCodecProbes = (
             )?.[0]
             if (level !== undefined) configs.push({ ...common, codec: `vp09.00.${level}.08` })
         }
+        let accepted = false
         for (const video of configs) {
             const probed = await probe('video', video, probes.video)
             signal?.throwIfAborted()
-            if (probed && (!trial || (await passesTrial(video, signal))))
-                return {
-                    supported: true,
-                    format,
-                    video,
-                    audio,
-                    ...(aacDelay === undefined ? {} : { aacDelay }),
+            if (!probed) continue
+            accepted = true
+            if (!(trial ? await passesTrial(video, signal) : (kept(video) ?? true))) continue
+            // Without a measured delay, the export places AAC with an estimate and warns.
+            let aacDelay: number | undefined
+            if (audio && format === 'mp4' && trial && probes.aacDelay) {
+                try {
+                    aacDelay = await probes.aacDelay(audio, signal)
+                } catch {
+                    signal?.throwIfAborted()
                 }
+            }
+            return {
+                supported: true,
+                format,
+                video,
+                audio,
+                ...(aacDelay === undefined ? {} : { aacDelay }),
+            }
         }
-        return { supported: false, reason: 'videoConfig' }
+        return { supported: false, reason: accepted ? 'videoTrial' : 'videoConfig' }
     }
     /** Rejects with the signal's reason once it aborts. */
     const resolve = async (
@@ -402,7 +416,10 @@ export const createCodecProbes = (
     return { resolve }
 }
 
-/** Each update resolves the selection, then all offered choices. A late result changes nothing. */
+/**
+ * Each update resolves the selection with trials, then every offered choice without them. A late
+ * result changes nothing.
+ */
 export const createCodecAvailability = (probes: ReturnType<typeof createCodecProbes>) => {
     type State = { pending: boolean; current?: CodecSupport; choices: Record<string, CodecSupport> }
     let state: State = { pending: true, choices: {} }
@@ -439,19 +456,28 @@ export const createCodecAvailability = (probes: ReturnType<typeof createCodecPro
             try {
                 // The selection first, so that Export does not wait for the choices.
                 const current = await probes.resolve({ ...settings }, { signal })
-                publish({ pending: false, current, choices: shownChoices })
-                // Trials encode full-size frames, so choices at another size or frame rate
-                // skip them.
-                const sameVideo = (choice: CodecSettings) =>
-                    (['width', 'height', 'frameRate'] as const).every(
-                        (key) => choice[key] === settings[key],
-                    )
+                const selected = configurationKey(settings)
+                const equal = (patch: Partial<CodecSettings>) =>
+                    configurationKey({ ...settings, ...patch }) === selected
+                const own = Object.fromEntries(
+                    Object.entries(choices)
+                        .filter(([, patch]) => equal(patch))
+                        .map(([key]) => [key, current]),
+                )
+                publish({ pending: false, current, choices: { ...shownChoices, ...own } })
                 const resolved = await Promise.all(
-                    Object.entries(choices).map(async ([key, patch]) => {
-                        const choice = { ...settings, ...patch }
-                        const trial = sameVideo(choice)
-                        return [key, await probes.resolve(choice, { trial, signal })] as const
-                    }),
+                    Object.entries(choices).map(
+                        async ([key, patch]) =>
+                            [
+                                key,
+                                equal(patch)
+                                    ? current
+                                    : await probes.resolve(
+                                          { ...settings, ...patch },
+                                          { trial: false, signal },
+                                      ),
+                            ] as const,
+                    ),
                 )
                 if (wanted()) shownChoices = Object.fromEntries(resolved)
                 publish({ pending: false, current, choices: shownChoices })

@@ -10,6 +10,7 @@ import {
     outputSize,
     type CodecSettings,
 } from '../../src/exportVideo/codecs'
+import { AUDIO_BITRATES, RESOLUTIONS } from '../../src/exportVideo/estimate'
 import { createAacCalibration } from '../../src/exportVideo/worker/encode'
 import { usableTrial, type TrialOutput } from '../../src/exportVideo/worker/trial'
 
@@ -320,7 +321,7 @@ test('a trial accepts output the export can mux or repair, and refuses output it
     assert.equal(await usableTrial(config, dependent, 3), false)
 })
 
-test('trials run one at a time, only at the selected video settings, and a rejected one is unsupported', async () => {
+test('trials run one at a time and only for the selection, and choices use queries and kept results', async () => {
     const trials: string[] = []
     let running = 0
     let overlapped = false
@@ -344,7 +345,8 @@ test('trials run one at a time, only at the selected video settings, and a rejec
         small: { width: 1280, height: 720 },
     })
     assert.equal(state.current?.supported && state.current.format, 'webm')
-    assert.deepEqual(state.choices.mp4, { supported: false, reason: 'videoConfig' })
+    // The MP4 choice reuses the H.264 trials that failed in Automatic's search.
+    assert.deepEqual(state.choices.mp4, { supported: false, reason: 'videoTrial' })
     assert.equal(state.choices.webm?.supported, true)
     assert.equal(state.choices.small?.supported && state.choices.small.format, 'mp4')
     assert.deepEqual(trials.sort(), [
@@ -358,6 +360,89 @@ test('trials run one at a time, only at the selected video settings, and a rejec
     trials.length = 0
     await probes.resolve({ ...settings, width: 1280, height: 720 })
     assert.deepEqual(trials, ['vp09.00.40.08 720'])
+    // An explicit WebM runs no H.264 trial. With no kept result, the query decides the MP4 choice.
+    trials.length = 0
+    const webm = await availability.update(
+        { ...silent, ...outputSize(1440, 16 / 9), format: 'webm' },
+        { mp4: { format: 'mp4' } },
+    )
+    assert.deepEqual(trials, ['vp09.00.50.08 1440'])
+    assert.equal(webm.choices.mp4?.supported, true)
+})
+
+test("no choice runs a trial or an AAC measurement, and a choice equal to the selection gets the selection's result", async () => {
+    const trials: string[] = []
+    const measured: number[] = []
+    const probes = createCodecProbes({
+        video: async () => ({ supported: true }),
+        audio: async () => ({ supported: true }),
+        trial: async (c) => {
+            trials.push(`${c.codec.slice(0, 7)} ${c.height}`)
+            return c.codec.startsWith('vp09')
+        },
+        aacDelay: async (c) => {
+            measured.push(c.bitrate ?? 0)
+            return 2112
+        },
+    })
+    // The choices the dialog offers. Format, Audio Bitrate and sound off keep the selected size.
+    const choices: Record<string, Partial<CodecSettings>> = {
+        ...Object.fromEntries(
+            RESOLUTIONS.map((height) => [`resolution:${height}`, outputSize(height, 16 / 9)]),
+        ),
+        'frameRate:30': { frameRate: 30 },
+        'frameRate:60': { frameRate: 60 },
+        'format:automatic': { format: 'automatic' },
+        'format:mp4': { format: 'mp4' },
+        'format:webm': { format: 'webm' },
+        ...Object.fromEntries(
+            AUDIO_BITRATES.map((audioBitrate) => [
+                `audioBitrate:${audioBitrate}`,
+                { audioBitrate },
+            ]),
+        ),
+        'sound:off': { bgm: false, sfx: false },
+    }
+    const availability = createCodecAvailability(probes)
+    let published: { current?: object; choices: Record<string, object> }[] = []
+    const update = (s: CodecSettings) => {
+        published = []
+        return availability.update(s, choices, (next) => {
+            published.push(next)
+        })
+    }
+    // In both publishes, the choices equal to the selection have the selection's result.
+    const equalChoices = (s: CodecSettings) => {
+        assert.equal(published.length, 2)
+        for (const shown of published)
+            for (const key of [
+                `format:${s.format}`,
+                `audioBitrate:${s.audioBitrate}`,
+                'frameRate:60',
+                'resolution:1080',
+            ])
+                assert.equal(shown.choices[key], shown.current)
+    }
+    const webm = await update({ ...settings, format: 'webm' })
+    assert.equal(webm.current?.supported && webm.current.format, 'webm')
+    assert.deepEqual(trials, ['vp09.00 1080'])
+    assert.deepEqual(measured, [])
+    equalChoices({ ...settings, format: 'webm' })
+    assert.equal(webm.choices['format:mp4']?.supported, true)
+    // MP4 runs its H.264 trials once it is selected. They fail, so no AAC measurement runs.
+    const mp4 = await update({ ...settings, format: 'mp4' })
+    assert.deepEqual(mp4.current, { supported: false, reason: 'videoTrial' })
+    assert.deepEqual(trials, ['vp09.00 1080', 'avc1.64 1080', 'avc1.4d 1080', 'avc1.42 1080'])
+    assert.deepEqual(measured, [])
+    equalChoices({ ...settings, format: 'mp4' })
+    // The kept failures and the kept VP9 pass decide the choices at the same size.
+    assert.deepEqual(mp4.choices['audioBitrate:128000'], { supported: false, reason: 'videoTrial' })
+    assert.deepEqual(mp4.choices['sound:off'], { supported: false, reason: 'videoTrial' })
+    assert.equal(mp4.choices['format:webm']?.supported, true)
+    const automatic = mp4.choices['format:automatic']
+    assert.equal(automatic?.supported && automatic.format, 'webm')
+    // Another frame rate has no kept result, so its query decides.
+    assert.equal(mp4.choices['frameRate:30']?.supported, true)
 })
 
 test('a superseded update leaves its trials at once, and a trial already started finishes and is kept', async () => {
@@ -390,15 +475,15 @@ test('a superseded update leaves its trials at once, and a trial already started
     release()
     await Promise.all([first, second])
     // The first update's Main trial was queued behind the second update's and skipped.
-    assert.deepEqual(trials, ['avc1.64 1080', 'avc1.64 720', 'avc1.4d 720', 'vp09.00 720'])
-    // The selection is published before the WebM choice's trial.
+    assert.deepEqual(trials, ['avc1.64 1080', 'avc1.64 720', 'avc1.4d 720'])
+    // The selection is published before the WebM choice.
     assert.deepEqual(shown, [
         { codec: 'avc1.4d', webm: false },
         { codec: 'avc1.4d', webm: true },
     ])
     const again = await probes.resolve(silent)
     assert.equal(again.supported && again.video.codec.slice(0, 7), 'avc1.4d')
-    assert.deepEqual(trials.slice(4), ['avc1.4d 1080'])
+    assert.deepEqual(trials.slice(3), ['avc1.4d 1080'])
     // The whole configuration, bitrate included, is a trial's key.
     await probes.resolve({ ...silent, videoBitrate: 11e6 })
     const retried = trials.length
@@ -524,6 +609,28 @@ test('an AAC delay that cannot be measured leaves MP4 with sound available, with
     // A failed measurement is not kept: the next export measures again.
     await failing.resolve(settings)
     assert.equal(failures, 2)
+    // AAC is measured once an H.264 trial passes, and not at all when every one fails.
+    const order: string[] = []
+    const trying = (passes: boolean) =>
+        createCodecProbes({
+            video: async () => ({ supported: true }),
+            audio: async () => ({ supported: true }),
+            trial: async (c) => {
+                order.push(c.codec.slice(0, 4))
+                return passes || c.codec.startsWith('vp09')
+            },
+            aacDelay: async () => {
+                order.push('aac')
+                return 2112
+            },
+        })
+    const webm = await trying(false).resolve(settings)
+    assert.equal(webm.supported && webm.format, 'webm')
+    assert.deepEqual(order, ['avc1', 'avc1', 'avc1', 'vp09'])
+    order.length = 0
+    const mp4 = await trying(true).resolve(settings)
+    assert.equal(mp4.supported && mp4.aacDelay, 2112)
+    assert.deepEqual(order, ['avc1', 'aac'])
 })
 
 test('a support query that throws counts as unsupported, the next candidate is tried, and the query is asked again later', async () => {
@@ -610,18 +717,22 @@ test('shared work stops when its last caller leaves, and neither a cancel nor a 
     const second = new AbortController()
     const a = shared('key', hold, first.signal)
     const b = shared('key', hold, second.signal)
+    assert.equal(shared.kept('key'), undefined)
     first.abort()
     await assert.rejects(a, { name: 'AbortError' })
     assert.equal(stops[0]!.aborted, false)
     second.abort()
     await assert.rejects(b, { name: 'AbortError' })
     assert.equal(stops[0]!.aborted, true)
+    assert.equal(shared.kept('key'), undefined)
     // The next caller runs the canceled work again.
     await assert.rejects(
         shared('key', () => Promise.reject(new Error('failed')), undefined),
         /failed/,
     )
+    assert.equal(shared.kept('key'), undefined)
     assert.equal(await shared('key', hold), 7)
+    assert.equal(shared.kept('key'), 7)
     assert.equal(await shared('key', hold), 7)
     assert.equal(runs, 2)
 })
@@ -637,13 +748,17 @@ test('Cancel leaves trials and AAC measurement, and neither is kept as unsupport
         })
     }
     let held = true
+    // The trial is held only in the silent pass. That pass has its own size, so it does not
+    // reuse the trial kept from the pass with sound.
+    const silent = { ...settings, ...outputSize(720, 16 / 9), bgm: false, sfx: false }
     const probes = createCodecProbes({
         video: async () => ({ supported: true }),
         audio: async () => ({ supported: true }),
-        trial: (_, signal) => (held ? pending('trial')(signal) : Promise.resolve(true)),
+        trial: (c, signal) =>
+            held && c.height === silent.height ? pending('trial')(signal) : Promise.resolve(true),
         aacDelay: (_, signal) => (held ? pending('aac')(signal) : Promise.resolve(2112)),
     })
-    for (const s of [settings, { ...settings, bgm: false, sfx: false }]) {
+    for (const s of [settings, silent]) {
         const controller = new AbortController()
         const resolving = probes.resolve(s, { signal: controller.signal })
         await new Promise((resolve) => setImmediate(resolve))
@@ -655,6 +770,8 @@ test('Cancel leaves trials and AAC measurement, and neither is kept as unsupport
     const resolved = await probes.resolve(settings)
     assert.equal(resolved.supported && resolved.format, 'mp4')
     assert.equal(resolved.supported && resolved.aacDelay, 2112)
+    const video = await probes.resolve(silent)
+    assert.equal(video.supported && video.format, 'mp4')
 })
 
 test('Cancel closes a trial encoder whose flush never resolves', async () => {
@@ -728,7 +845,8 @@ test(
         ]
         const saved = names.map((name) => globals[name])
         const codecs: { kind: string; state: string }[] = []
-        let hold = true
+        // Codecs whose kind starts with this hold their flushes.
+        let hold: string | undefined
         let flushed = () => undefined as void
         const flushing = () =>
             new Promise<void>((resolve) => {
@@ -747,7 +865,7 @@ test(
                 encode() {}
                 decode() {}
                 flush() {
-                    if (!hold) return Promise.resolve()
+                    if (!hold || !this.kind.startsWith(hold)) return Promise.resolve()
                     flushed()
                     return new Promise<void>((_, reject) => {
                         this.closed = () => {
@@ -777,15 +895,24 @@ test(
             },
         })
         try {
+            const trial = browserEncoderProbes().trial!
+            // The fake encoder's output never passes a trial. Until the reopen, the trial still
+            // builds its encoder but passes, so that the AAC measurement runs.
+            let passing = true
             const probes = createCodecProbes({
                 video: async () => ({ supported: true }),
                 audio: async () => ({ supported: true }),
-                trial: browserEncoderProbes().trial,
+                trial: async (c, signal) => (await trial(c, signal)) || passing,
                 aacDelay: createAacCalibration(),
             })
             const kinds = () => codecs.map((c) => `${c.kind} ${c.state}`)
-            // A dialog with sound closes during its AAC measurement, another without during its trial.
-            for (const s of [settings, { ...settings, bgm: false, sfx: false }]) {
+            // A dialog with sound closes during its AAC measurement, another without during its
+            // trial. The dialog with sound has its own size, so its kept trial is not reused.
+            for (const [s, held] of [
+                [{ ...settings, ...outputSize(720, 16 / 9) }, 'audio'],
+                [{ ...settings, bgm: false, sfx: false }, 'video'],
+            ] as const) {
+                hold = held
                 const dialog = createCodecAvailability(probes)
                 const started = flushing()
                 const update = dialog.update(s, {})
@@ -795,19 +922,19 @@ test(
                 assert.ok(codecs.every((c) => c.state === 'closed'))
             }
             assert.deepEqual(kinds(), [
+                'video closed',
                 'audioDecoder closed',
                 'audioEncoder closed',
                 'video closed',
             ])
-            hold = false
+            hold = undefined
+            passing = false
             const reopened = createCodecAvailability(probes)
             const state = await reopened.update(settings, {})
             assert.equal(state.pending, false)
-            // The measurement and the trials ran again with new codecs. The fake measures no
-            // delay, so MP4 is tried with the estimate: three H.264 trials, then VP9.
-            assert.deepEqual(kinds().slice(3), [
-                'audioDecoder closed',
-                'audioEncoder closed',
+            // The trials ran again with new codecs: three H.264 trials, then VP9. No H.264 trial
+            // passes, so no AAC measurement runs.
+            assert.deepEqual(kinds().slice(4), [
                 'video closed',
                 'video closed',
                 'video closed',

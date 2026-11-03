@@ -306,7 +306,7 @@ Recorded once per export attempt, when the file is written, the export fails or 
 | `stage` | Where the export was canceled or failed. Omitted for a finished video | `prepare`, `pick`, `render` or `finish` |
 | `reason` | Why the export failed. Omitted for a finished video | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only`, `io`, `config`, `encoder`, `audio`, `graphics`, `memory` or `hidden` |
 | `format` | The video format | `mp4` or `webm` |
-| `support` | Whether MP4 was available with the chosen settings | `full` or `webmOnly` |
+| `support` | Whether MP4 was available with the chosen settings. Omitted when WebM was chosen as the format | `full` or `webmOnly` |
 | `target` | `picker` means a file was chosen, even if the export failed. For a temporary file, `download` or `share` records its first successful delivery. `none` covers attempts with no delivery or chosen file. `memory` means the export used memory because a temporary file could not be written. It remains `memory` after a download | `picker`, `download`, `share`, `none` or `memory` |
 | `resolution` | The video height, in pixels | `720`, `1080`, `1440` or `2160` |
 | `frameRate` | The frames per second | `30` or `60` |
