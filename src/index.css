@@ -2,9 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Sizes assume a 16px rem for now, whatever the browser's default font size. */
+/* Sizes assume a 16px rem for now, whatever the browser's default font size.
+   The page never scrolls. A drag that reaches it from a dialog must not reload the editor
+   with pull to refresh. */
 html {
     font-size: 16px;
+    overscroll-behavior-y: none;
 }
 
 :root {
