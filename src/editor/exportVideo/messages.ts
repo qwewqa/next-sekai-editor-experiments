@@ -157,9 +157,12 @@ const memory = (input: MessageInput): ExportMessage[] => {
         input.limits !== undefined &&
         fits(input, form.resolution, form.renderScale, form.antialias) &&
         input.frames > 0
-    // A memory failure gives its own advice.
+    const large = works && input.memoryRoute && input.bytes > VIDEO_MEMORY_WARNING_BYTES
+    // A memory failure gives its own advice. In Ready, an estimate no larger than the file's own
+    // has just worked.
     const memoryFailed = outcome?.kind === 'failed' && outcome.failure.reason === 'memory'
-    return works && input.memoryRoute && input.bytes > VIDEO_MEMORY_WARNING_BYTES && !memoryFailed
+    const worked = outcome?.kind === 'ready' && input.bytes <= outcome.asked.bytes
+    return large && !memoryFailed && !worked
         ? [{ kind: 'memory', severity: 'warning', text: i18n.value.exportVideo.memoryWarning }]
         : []
 }

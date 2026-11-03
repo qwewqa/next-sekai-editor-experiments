@@ -104,8 +104,11 @@ export type DialogInput = {
 export type Phase =
     'setup' | 'preparing' | 'exporting' | 'cancelling' | 'finishing' | 'ready' | 'done' | 'failed'
 
-/** What an attempt asked for, which its file's warnings compare with. */
-export type Asked = Pick<ExportSettings, 'width' | 'height' | 'bgm' | 'sfx'>
+/**
+ * What an attempt asked for, which its file's warnings compare with, and its estimated size, which
+ * Ready's memory warning compares with.
+ */
+export type Asked = Pick<ExportSettings, 'width' | 'height' | 'bgm' | 'sfx'> & { bytes: number }
 
 /**
  * An export's end that the footer shows until the next change. A file keeps its warnings, what
@@ -446,7 +449,7 @@ export const createExportDialog = (input: DialogInput) => {
     const phase = ref<Phase>('setup')
     const outcome = shallowRef<Outcome>()
     // What the running attempt asked for, kept with its outcome.
-    let asked: Asked = { width: 0, height: 0, bgm: false, sfx: false }
+    let asked: Asked = { width: 0, height: 0, bgm: false, sfx: false, bytes: 0 }
     const progress = ref<{ fraction: number; eta?: number }>({ fraction: 0 })
     let frameSink: ((bitmap: ImageBitmap) => void) | undefined
     const onFrame = (draw: (bitmap: ImageBitmap) => void) => {
@@ -750,7 +753,13 @@ export const createExportDialog = (input: DialogInput) => {
         current = job
         picked = undefined
         const used = exportSettings()
-        asked = { width: used.width, height: used.height, bgm: used.bgm, sfx: used.sfx }
+        asked = {
+            width: used.width,
+            height: used.height,
+            bgm: used.bgm,
+            sfx: used.sfx,
+            bytes: bytes.value,
+        }
         job.configure(used)
         phase.value = 'preparing'
         void job.start()

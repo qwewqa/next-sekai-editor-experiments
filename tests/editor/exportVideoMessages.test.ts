@@ -49,7 +49,7 @@ const lines = (state: MessageInput) =>
     exportMessages(state).map(({ label, text }) => (label ? `${label}: ${text}` : text))
 const kinds = (state: MessageInput) => exportMessages(state).map(({ kind }) => kind)
 
-const asked = { width: 1920, height: 1080, bgm: true, sfx: true }
+const asked = { width: 1920, height: 1080, bgm: true, sfx: true, bytes: 1_000_000 }
 const ready = (
     warnings: ExportWarning[],
     patch: Partial<Extract<Outcome, { kind: 'ready' }>> = {},
@@ -305,6 +305,15 @@ test('Ready keeps the warnings through a failed delivery and adds the memory war
         kinds(input({ phase: 'ready', outcome: ready([]), storageNearlyFull: true })),
         ['storage'],
     )
+})
+
+test('Ready warns about memory only for an estimate above that of its own file', () => {
+    const outcome = ready([], { asked: { ...asked, bytes: 2e8 } })
+    const state = input({ phase: 'ready', outcome, memoryRoute: true, bytes: 2e8 })
+    assert.deepEqual(kinds(state), [])
+    assert.deepEqual(kinds({ ...state, bytes: 2e8 + 1 }), ['memory'])
+    // Setup has no file, so the line alone decides.
+    assert.deepEqual(kinds({ ...state, phase: 'setup', outcome: undefined }), ['memory'])
 })
 
 test('a failure is followed by the memory warning, except a memory failure', async () => {
