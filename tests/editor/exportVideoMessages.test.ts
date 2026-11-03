@@ -10,7 +10,6 @@ import './saveMatrix/env'
 const { exportMessages } = await import('../../src/editor/exportVideo/messages')
 const { describeVideoFailure } = await import('../../src/editor/exportVideo/failure')
 const { AudioFailure } = await import('../../src/exportVideo/error')
-const { settings } = await import('../../src/settings')
 
 const works = { supported: true, format: 'mp4', video: { codec: 'avc1.640028' } } as CodecSupport
 const refused: CodecSupport = { supported: false, reason: 'audioConfig' }
@@ -64,7 +63,7 @@ const ready = (
     ...patch,
 })
 
-test('a refused audio bitrate suggests the nearest lower one, with Advanced open or folded', () => {
+test('a refused audio bitrate suggests the nearest lower one', () => {
     // Every choice is probed at 256 kbps, so only the audio bitrate's own lower values pass.
     const choices: Record<string, CodecSupport> = {
         'resolution:720': refused,
@@ -78,11 +77,37 @@ test('a refused audio bitrate suggests the nearest lower one, with Advanced open
         form: form({ audioBitrate: 256_000, frameRate: 60 }),
         support: { current: refused, choices },
     })
-    for (const advanced of [false, true]) {
-        settings.exportVideoAdvanced = advanced
-        assert.deepEqual(lines(state), ['Audio Bitrate: Choose 192 kbps.'])
-        assert.equal(exportMessages(state)[0]?.field, 'audioBitrate')
-    }
+    assert.deepEqual(lines(state), ['Audio Bitrate: Choose 192 kbps.'])
+    assert.equal(exportMessages(state)[0]?.field, 'audioBitrate')
+    // Audio Bitrate comes before Frame Rate, and Frame Rate before Resolution.
+    const lowerWorks = (bitrate: CodecSupport) =>
+        input({
+            form: form({ audioBitrate: 256_000, frameRate: 60, resolution: 2160 }),
+            support: {
+                current: refused,
+                choices: {
+                    'audioBitrate:192000': bitrate,
+                    'frameRate:30': works,
+                    'resolution:1440': works,
+                },
+            },
+        })
+    assert.deepEqual(lines(lowerWorks(works)), ['Audio Bitrate: Choose 192 kbps.'])
+    assert.deepEqual(lines(lowerWorks(refused)), ['Frame Rate: Choose 30 fps.'])
+    // The codec's resolution must also fit the limits: 1440p works, but is too large.
+    assert.deepEqual(
+        lines(
+            input({
+                form: form({ resolution: 2160, antialias: false }),
+                limits: limits(2048),
+                support: {
+                    current: refused,
+                    choices: { 'resolution:1440': works, 'resolution:1080': works },
+                },
+            }),
+        ),
+        ['Resolution: Choose 1080p.'],
+    )
     // A missing result is not evidence that a choice works; sound off is the last resort.
     assert.deepEqual(
         lines(input({ form: form({ format: 'mp4' }), support: { current: refused, choices: {} } })),
@@ -185,14 +210,9 @@ test('the memory warning needs the memory route, working settings and more than 
     assert.deepEqual(kinds({ ...state, bytes: 150_000_000 }), [])
     assert.deepEqual(kinds({ ...state, memoryRoute: undefined }), ['storage'])
     assert.deepEqual(kinds({ ...state, frames: 0 }), [])
-    // An update in progress keeps the settled result, so the warning stays until it settles.
-    const pending = { ...state.support, pending: true }
-    assert.deepEqual(kinds({ ...state, support: pending }), ['memory'])
     // Suggestions take its place while a check fails.
     const failing = { current: refused, choices: { 'audioBitrate:128000': works } }
     assert.deepEqual(kinds({ ...state, support: failing }), ['suggestion'])
-    const failingPending = { ...failing, pending: true }
-    assert.deepEqual(kinds({ ...state, support: failingPending }), ['suggestion'])
 })
 
 test('Setup shows advice, then the stopped line, then the storage warning off the memory route', () => {

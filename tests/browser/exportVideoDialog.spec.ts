@@ -1365,7 +1365,7 @@ test('playback pauses when the tab is hidden, so it never plays past Out', async
 
 // --- The message area above the footer.
 
-test('a refused audio bitrate gives one suggestion above the footer, not a list under each field', async ({
+test("a refused audio bitrate gives one suggestion above the footer and drops Resolution's browser list", async ({
     page,
 }) => {
     // As some Windows encoders do: 256 kbps is refused, lower bitrates pass.
