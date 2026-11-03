@@ -208,7 +208,7 @@ const parseSps = (sps: Uint8Array): ParsedSps => {
             parsed = { lead: '', tail: '', declared: { ...declared, range } }
         }
     }
-    // The patch keeps everything after the colour fields, which must end in rbsp_stop_one_bit.
+    // The patch keeps everything after the colour fields. That part must end in rbsp_stop_one_bit.
     if (!bits.slice(r.at).includes('1')) throw new Error('Truncated AVC sequence parameter set')
     return { bits, start, end: r.at, ...parsed }
 }

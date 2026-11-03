@@ -64,7 +64,7 @@ const readSps = (nal: Uint8Array) => {
 /**
  * Reads an AVC configuration record: each SPS and PPS complete with its own NAL header, the
  * first SPS of the record's profile and readable up to its VUI. Firefox's encoder repeats the
- * NAL header byte, which no decoder reads. Undefined when any of that fails.
+ * NAL header byte, and no decoder reads such a record. Undefined when any of that fails.
  */
 export const readAvcRecord = (description: AllowSharedBufferSource) => {
     const bytes = bytesOf(description)

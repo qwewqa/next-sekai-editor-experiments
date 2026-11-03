@@ -104,7 +104,9 @@ export type EncoderProbes = {
     aacDelay?: (config: AudioEncoderConfig, signal?: AbortSignal) => Promise<number>
 }
 
-/** The reason a newer availability update gives the one it replaces. `closed` aborts on stop. */
+/**
+ * The abort reason of an availability update that a newer one replaced. `closed` aborts on stop.
+ */
 class Superseded extends Error {
     constructor(readonly closed: AbortSignal) {
         super('A newer update replaced this one')
@@ -253,8 +255,9 @@ export const browserEncoderProbes = (): EncoderProbes => ({
 })
 
 /**
- * On macOS 27 the GPU sandbox makes VideoToolbox use its software H.264 encoder, which holds
- * more frames than WebCodecs queues, so High and Main give no output: https://webkit.org/b/324827
+ * On macOS 27 the GPU sandbox makes VideoToolbox use its software H.264 encoder. That encoder
+ * holds more frames than WebCodecs queues, so High and Main give no output
+ * (https://webkit.org/b/324827).
  */
 export const h264Profiles = (engine?: Engine) =>
     engine === 'webkit'
@@ -268,7 +271,7 @@ export const h264Profiles = (engine?: Engine) =>
 export type ResolveOptions = {
     /** When false, only isConfigSupported decides. */
     trial?: boolean
-    /** The caller no longer wants the result: it leaves shared trials and measurements. */
+    /** When it aborts, the caller leaves shared trials and measurements. */
     signal?: AbortSignal
 }
 

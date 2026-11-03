@@ -22,7 +22,7 @@ export const prepareVideoDestination = async (options: {
     id: string
     format: VideoFormat
     estimatedBytes: number
-    /** False when the export worker cannot write a staged file: memory is the route. */
+    /** False when the export worker cannot write a staged file, so the route is memory. */
     syncAccess?: boolean
 }): Promise<VideoDestination> => {
     const { platform, pickOptions } = options

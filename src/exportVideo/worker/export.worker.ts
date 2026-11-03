@@ -194,7 +194,8 @@ export const installExportWorker = (
             } catch (failure) {
                 cleanup.push(failure)
             }
-            // A target that did not open encoded nothing: the renderer can run another start.
+            // When the target did not open, nothing was encoded, so the renderer can run another
+            // start.
             if (output || cancelled) {
                 renderer?.dispose()
                 renderer = undefined

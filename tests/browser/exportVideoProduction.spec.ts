@@ -38,7 +38,7 @@ for (const route of ['staged', 'memory', 'memory without worker sync access'])
                 platform.videoOutput!.stage = () =>
                     Promise.reject(new DOMException('Staging unavailable', 'NotSupportedError'))
             })
-        // The page can stage the file, but the worker cannot open it: it writes to memory.
+        // The page can stage the file, but the worker cannot open it, so it writes to memory.
         const faults = route === 'staged' || route === 'memory' ? undefined : { noSyncAccess: true }
         const dialog = await openVideoDialog(page, { production: true, faults })
         await shortVideoClip(page)

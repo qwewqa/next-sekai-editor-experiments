@@ -139,7 +139,7 @@ export const createExportJob = (options: {
     let preparation: Promise<void> | undefined
     let lastView: Promise<unknown> | undefined
     let encoding = false
-    /** The export finished and its worker was released: no more views. */
+    /** The export finished and its worker was released, so views are unavailable. */
     let released = false
     let syncAccess = true
     const set = (value: JobState) => {

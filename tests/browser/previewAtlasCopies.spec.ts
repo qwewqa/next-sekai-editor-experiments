@@ -353,9 +353,7 @@ test('cancelling closes copies made after cancellation', async ({ page }) => {
     expect(await copyAndClose(page)).toMatchObject({ status: 'copied' })
 })
 
-test('an asset load slower than 30 seconds is waited for, and copies once it finishes', async ({
-    page,
-}) => {
+test('atlases are copied after an asset load takes longer than 30 seconds', async ({ page }) => {
     await open(page)
     let release!: () => void
     const held = new Promise<void>((resolve) => (release = resolve))

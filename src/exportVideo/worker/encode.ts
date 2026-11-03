@@ -276,7 +276,7 @@ export const createVideoPacketAdapter = (options: {
     height: number
     frames: number
     frameRate: 30 | 60
-    /** One track's colour step, which every packet passes through in encoded order. */
+    /** One track's colour step. Every packet passes through it in encoded order. */
     color: VideoColorStep
     emit: (input: MuxInput) => void
 }) => {

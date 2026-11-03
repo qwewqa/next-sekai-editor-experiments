@@ -243,7 +243,7 @@ test('a trial accepts output the export can mux, in encoded order and without du
     assert.equal(await usableTrial(vp9, webm(false), 3), false)
     // Presentation order differs from encoded order with B-frames.
     assert.equal(await usableTrial(config, avc([0, 2, 1]), 3), true)
-    // Firefox's High and Main output is one frame late: the last chunk matches no frame.
+    // Firefox's High and Main output is one frame late, so the last chunk matches no frame.
     assert.equal(await usableTrial(config, avc([1, 2, 3]), 3), false)
     assert.equal(await usableTrial(config, avc([0, 1]), 3), false)
     assert.equal(await usableTrial(config, avc([0, 1, 1]), 3), false)
@@ -542,7 +542,7 @@ test('shared work stops when its last caller leaves, and neither a cancel nor a 
     second.abort()
     await assert.rejects(b, { name: 'AbortError' })
     assert.equal(stops[0]!.aborted, true)
-    // The cancelled work is forgotten: the next caller runs it again.
+    // The next caller runs the canceled work again.
     await assert.rejects(
         shared('key', () => Promise.reject(new Error('failed')), undefined),
         /failed/,
@@ -552,7 +552,7 @@ test('shared work stops when its last caller leaves, and neither a cancel nor a 
     assert.equal(runs, 2)
 })
 
-test('Cancel leaves trials and AAC measurement: none is kept as unsupported', async () => {
+test('Cancel leaves trials and AAC measurement, and neither is kept as unsupported', async () => {
     const calls: string[] = []
     const pending = (name: string) => (signal?: AbortSignal) => {
         calls.push(name)

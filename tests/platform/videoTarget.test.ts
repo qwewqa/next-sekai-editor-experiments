@@ -225,7 +225,7 @@ test('a failed removal names the empty file and stays visible after signal cance
     assert.equal(f.file!.size, 0)
 })
 
-test('a failed write or open keeps its error when removing the empty pick is refused, which Error Details add', async () => {
+test('a failed write or open keeps its error and includes a failed removal in Error Details', async () => {
     const written = pickedFile('write', 'remove')
     const output = await openPickedTarget(written.pick)
     const write = await output.write(new Uint8Array([1]), 0).catch((error: unknown) => error)
