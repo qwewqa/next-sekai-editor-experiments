@@ -13,6 +13,7 @@ import { interpolateRaw } from '../../../utils/interpolate'
 import { pickFile } from '../../../utils/file'
 import WaitBar from '../../workspace/WaitBar.vue'
 import SeverityIcon from '../../SeverityIcon.vue'
+import AlsoOptions from './AlsoOptions.vue'
 import AssetRow from './AssetRow.vue'
 import ChooserModeSwitch from './ChooserModeSwitch.vue'
 import ServerBody from './ServerBody.vue'
@@ -222,31 +223,13 @@ const primaryClass = `${baseClass} btn-primary`
                 {{ interpolateRaw(strings.noneInFile, typeNoun(type)) }}
             </p>
 
-            <div v-if="also.length" class="flex flex-col" data-chooser-also>
-                <label
-                    v-for="option in also"
-                    :key="option.type"
-                    class="row-select relative flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-3 py-1"
-                >
-                    <input
-                        type="checkbox"
-                        class="peer absolute inset-0 size-full cursor-pointer opacity-0"
-                        :checked="option.ticked"
-                        :disabled="phase === 'working'"
-                        :data-chooser-also-type="option.type"
-                        @change="
-                            chooser.toggle(option.type, ($event.target as HTMLInputElement).checked)
-                        "
-                    />
-                    <span
-                        class="pointer-events-none relative size-4 shrink-0 rounded border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-[1px] after:bg-fg after:transition-transform peer-checked:after:scale-100"
-                        aria-hidden="true"
-                    />
-                    <span class="pointer-events-none min-w-0 flex-1 [overflow-wrap:anywhere]">{{
-                        alsoText(option)
-                    }}</span>
-                </label>
-            </div>
+            <AlsoOptions
+                v-if="also.length"
+                :options="also"
+                :text="alsoText"
+                :disabled="phase === 'working'"
+                @toggle="chooser.toggle"
+            />
         </template>
 
         <div

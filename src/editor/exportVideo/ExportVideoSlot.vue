@@ -42,7 +42,7 @@ const footerButton = () =>
             <template v-for="(message, index) in messages" :key="index">
                 <p class="flex items-start gap-2">
                     <SeverityIcon :severity="message.severity" class="mt-0.5 size-4" />
-                    <span :id="`${ids}-${index}`"
+                    <span :id="`${ids}-${index}`" class="[overflow-wrap:anywhere]"
                         ><span v-if="message.label" class="font-semibold">{{
                             choiceLine(message.label)
                         }}</span

@@ -33,7 +33,9 @@ defineEmits<{
                 class="pointer-events-none relative size-4 shrink-0 rounded border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-[1px] after:bg-fg after:transition-transform peer-checked:after:scale-100"
                 aria-hidden="true"
             />
-            <span class="pointer-events-none min-w-0 flex-1">{{ text(option) }}</span>
+            <span class="pointer-events-none min-w-0 flex-1 [overflow-wrap:anywhere]">{{
+                text(option)
+            }}</span>
         </label>
     </div>
 </template>
