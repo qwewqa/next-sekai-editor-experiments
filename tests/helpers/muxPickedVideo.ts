@@ -1,6 +1,10 @@
 import { ALL_FORMATS, BufferSource, Input, VideoSampleSink } from 'mediabunny'
 import { createCodecProbes } from '../../src/exportVideo/codecs'
-import { createVideoColor, videoPacket, type MuxInput } from '../../src/exportVideo/worker/encode'
+import {
+    createVideoColor,
+    createVideoPacketAdapter,
+    type MuxInput,
+} from '../../src/exportVideo/worker/encode'
 import { measureEncoderColor, STRIPES } from '../../src/exportVideo/worker/encoderColor'
 import { openMuxOutput } from '../../src/exportVideo/worker/mux'
 
@@ -51,10 +55,15 @@ export const muxPickedVideo = async (
     )
     const packets: MuxInput[] = []
     let failure: unknown
-    let color = createVideoColor()
+    let adapter: ReturnType<typeof createVideoPacketAdapter> | undefined
     const encoder = new VideoEncoder({
         output: (chunk, metadata) => {
-            packets.push(videoPacket(chunk, metadata, color))
+            try {
+                if (!adapter) throw new Error('Unexpected video output')
+                adapter.output(chunk, metadata)
+            } catch (error) {
+                failure ??= error
+            }
         },
         error: (error) => {
             failure = error
@@ -64,7 +73,7 @@ export const muxPickedVideo = async (
         const canvas = new OffscreenCanvas(320, 180)
         const context = canvas.getContext('2d')!
         // The file declares the measured conversion, as an export does, so colours round-trip.
-        color = createVideoColor(
+        const color = createVideoColor(
             await measureEncoderColor(codecs.video, 30, (edges) => {
                 STRIPES.forEach(([r, g, b], i) => {
                     context.fillStyle = `rgb(${r} ${g} ${b})`
@@ -73,6 +82,14 @@ export const muxPickedVideo = async (
                 return new VideoFrame(canvas, { timestamp: 0, duration: 33333 })
             }),
         )
+        adapter = createVideoPacketAdapter({
+            width: 320,
+            height: 180,
+            frames: 1,
+            frameRate: 30,
+            color,
+            emit: (input) => packets.push(input),
+        })
         const colors = [
             '#000000',
             '#404040',
@@ -91,12 +108,14 @@ export const muxPickedVideo = async (
         encoder.configure(codecs.video)
         const frame = new VideoFrame(canvas, { timestamp: 0, duration: 33333 })
         try {
+            adapter.submit()
             encoder.encode(frame, { keyFrame: true })
         } finally {
             frame.close()
         }
         await encoder.flush()
         if (failure) throw failure
+        adapter.finish()
         const first = packets[0]!
         if (first.track !== 'video' || !first.decoderConfig)
             throw new Error('Missing video configuration')

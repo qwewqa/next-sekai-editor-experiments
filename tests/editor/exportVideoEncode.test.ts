@@ -19,11 +19,9 @@ import {
     measureAacDelay,
     normalizeAacDescription,
     opusPreSkip,
-    videoPacket,
     type MuxInput,
 } from '../../src/exportVideo/worker/encode'
 import { readAvcRecord, vp9FrameSize } from '../../src/exportVideo/worker/videoInit'
-import { vp9KeyFrame } from './videoColorFixtures'
 
 const chunk = (timestamp: number, duration: number): EncodedAudioChunk => ({
     timestamp,
@@ -214,51 +212,6 @@ test('Opus packets are placed end to end at every clip length, also when stamped
                 assert.equal(trim.endSample, AUDIO_PAD + 312 + samples)
                 assert.ok(trim.paddingSamples >= 0 && trim.paddingSamples < 960)
             }
-})
-
-test('every video packet passes through its track colour', () => {
-    const videoChunk = (data: Uint8Array): EncodedVideoChunk =>
-        ({
-            timestamp: 0,
-            duration: 16667,
-            type: 'key',
-            byteLength: data.length,
-            copyTo: (target: Uint8Array) => target.set(data),
-        }) as unknown as EncodedVideoChunk
-    const colorSpace = {
-        primaries: 'bt709',
-        transfer: 'iec61966-2-1',
-        matrix: 'bt709',
-        fullRange: true,
-    } as const
-    const config = { codec: 'vp09.00.41.08', codedWidth: 1920, codedHeight: 1080, colorSpace }
-    const measured = { matrix: 'smpte170m', fullRange: false } as const
-    const vp9 = createVideoColor(measured)
-    const first = videoPacket(videoChunk(vp9KeyFrame(2, 1)), { decoderConfig: config }, vp9)
-    const later = videoPacket(videoChunk(vp9KeyFrame(2, 1)), undefined, vp9)
-    assert.ok(first.track === 'video' && later.track === 'video')
-    assert.deepEqual(first.packet.data, vp9KeyFrame(3, 0))
-    assert.deepEqual(later.packet.data, vp9KeyFrame(3, 0))
-    assert.deepEqual(first.decoderConfig?.colorSpace, {
-        primaries: 'bt709',
-        transfer: 'iec61966-2-1',
-        fullRange: false,
-    })
-    assert.equal(later.decoderConfig, undefined)
-    // H.264 packets never go through the VP9 header rewrite.
-    const avc = createVideoColor(measured)
-    const description = new Uint8Array([1])
-    const avcFirst = videoPacket(
-        videoChunk(vp9KeyFrame(2, 1)),
-        { decoderConfig: { ...config, codec: 'avc1.64001e', description } },
-        avc,
-    )
-    const avcLater = videoPacket(videoChunk(vp9KeyFrame(2, 1)), undefined, avc)
-    assert.ok(avcFirst.track === 'video' && avcLater.track === 'video')
-    assert.equal(avcFirst.decoderConfig?.description, description)
-    assert.equal(avcFirst.decoderConfig.colorSpace, undefined)
-    assert.deepEqual(avcFirst.packet.data, vp9KeyFrame(2, 1))
-    assert.deepEqual(avcLater.packet.data, vp9KeyFrame(2, 1))
 })
 
 test('AAC delay calibration caches the whole configuration and retries failed measurements', async () => {
@@ -523,6 +476,64 @@ test('video packets keep encoded order, take their frame timing and the record c
     assert.equal(config?.codedWidth, 320)
     assert.equal(config?.codedHeight, 180)
     assert.ok(packets.slice(1).every((x) => !x.decoderConfig))
+})
+
+test('every video packet passes through its track colour, later key frames without a configuration included', () => {
+    // A 16 by 16 VP9 profile 0 key frame with the given color_space and color_range.
+    const keyFrame = (space: number, range: 0 | 1) =>
+        new Uint8Array([0x82, 0x49, 0x83, 0x42, (space << 5) | (range << 4), 0, 0xf0, 0, 0xf0])
+    const packets = (size: { width: number; height: number }, config: VideoDecoderConfig) => {
+        const emitted: MuxInput[] = []
+        const adapter = createVideoPacketAdapter({
+            ...size,
+            frames: 2,
+            frameRate: 30,
+            color: createVideoColor({ matrix: 'smpte170m', fullRange: false }),
+            emit: (input) => emitted.push(input),
+        })
+        const key = (index: number) => {
+            const data = keyFrame(2, 1)
+            return {
+                ...frame(frameTimestamp(index, 30)),
+                byteLength: data.length,
+                copyTo: (target: Uint8Array) => target.set(data),
+            } as unknown as EncodedVideoChunk
+        }
+        adapter.submit()
+        adapter.submit()
+        adapter.output(key(0), { decoderConfig: config })
+        adapter.output(key(1))
+        adapter.finish()
+        return emitted.flatMap((x) => (x.track === 'video' ? [x] : []))
+    }
+    const vp9 = packets(
+        { width: 16, height: 16 },
+        {
+            codec: 'vp09.00.41.08',
+            colorSpace: {
+                primaries: 'bt709',
+                transfer: 'iec61966-2-1',
+                matrix: 'bt709',
+                fullRange: true,
+            },
+        },
+    )
+    assert.deepEqual(
+        vp9.map((x) => x.packet.data),
+        [keyFrame(3, 0), keyFrame(3, 0)],
+    )
+    assert.deepEqual(vp9[0]!.decoderConfig?.colorSpace, {
+        primaries: 'bt709',
+        transfer: 'iec61966-2-1',
+        fullRange: false,
+    })
+    assert.equal(vp9[1]!.decoderConfig, undefined)
+    // H.264 packets never go through the VP9 header rewrite.
+    const avc = packets({ width: 320, height: 180 }, avcConfig)
+    assert.deepEqual(
+        avc.map((x) => x.packet.data),
+        [keyFrame(2, 1), keyFrame(2, 1)],
+    )
 })
 
 test('the displayed size comes from the bitstream and must be the requested one', () => {

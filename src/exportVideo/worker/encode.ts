@@ -179,15 +179,6 @@ export const createVideoColor = (measured?: MeasuredColor) => {
     }
 }
 
-export const videoPacket = (
-    chunk: EncodedVideoChunk,
-    metadata: EncodedVideoChunkMetadata | undefined,
-    color: ReturnType<typeof createVideoColor>,
-): MuxInput => {
-    const packet = packetOf(chunk)
-    return { track: 'video', packet, decoderConfig: color(packet, metadata?.decoderConfig) }
-}
-
 export const createAudioPacketAdapter = (options: {
     codec: 'aac' | 'opus'
     samples: number
