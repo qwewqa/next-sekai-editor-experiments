@@ -18,6 +18,7 @@ import { readMediaBlob } from '../../local/mediaBlob'
 import BaseModal from '../../modals/BaseModal.vue'
 import NoteShapeIcon from '../../modals/form/NoteShapeIcon.vue'
 import { FileError, platform } from '../../platform'
+import { parseColor } from '../../rendering/paint'
 import { PRODUCT_NAME } from '../../product'
 import type { LevelInfo } from '../../state/levelInfo'
 import { fileErrorText } from '../commands/exportLevel/ui'
@@ -126,8 +127,8 @@ const loadCover = async () => {
 const themeOf = (): CardTheme => {
     const style = getComputedStyle(document.documentElement)
     const color = (name: string): Rgb => {
-        const [r = 0, g = 0, b = 0] = style.getPropertyValue(name).trim().split(/\s+/).map(Number)
-        return [r, g, b]
+        const [r, g, b] = parseColor(style.getPropertyValue(name).trim())
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
     }
     const modal = color('--color-modal')
     return {
@@ -304,7 +305,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
             v-if="previewUrl"
             :src="previewUrl"
             :alt="summary"
-            class="shadow-[0_0_0_1px_color-mix(in srgb, var(--color-fg) 15%, transparent)] block aspect-video h-auto w-full rounded-xl"
+            class="block aspect-video h-auto w-full rounded-xl ring-1 ring-fg/15"
             data-share-preview
         />
         <div v-else class="aspect-video w-full rounded-xl bg-fg/5" />

@@ -1,7 +1,17 @@
 /* What the editor's and the landing pages' stylesheets share, after each imports Tailwind with its
-   own sources: the theme, the control recipes and the hover variant. */
+   own sources: the theme, the control recipes, the breakpoints and the hover variant. */
 @import './themes.css';
 @import './controls.css';
+
+/* Breakpoints in pixels, as the stylesheets' own media queries are written (640px for phone sheets).
+   A rem breakpoint would follow the browser's default font size, and the two would part. */
+@theme {
+    --breakpoint-sm: 640px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1280px;
+    --breakpoint-2xl: 1536px;
+}
 
 /* Hover applies only to a fine pointer that can hover, the query the recipes use, so a tap on a
    touch screen never leaves a hover look behind. */
