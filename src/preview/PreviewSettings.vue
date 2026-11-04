@@ -456,7 +456,7 @@ const onPlacementChange = () => {
                         i18n.settings.preview.aspectRatio
                     }}</span>
                     <span
-                        class="preview-setting-control flex rounded-full bg-recess p-0.5 shadow-track outline-none"
+                        class="preview-setting-control flex rounded-full bg-recess p-0.5 shadow-track outline-hidden"
                         role="radiogroup"
                         :aria-labelledby="`${id}-aspect`"
                     >
@@ -636,6 +636,8 @@ const onPlacementChange = () => {
 </template>
 
 <style scoped>
+@reference '../index.css';
+
 .preview-controls {
     container-type: inline-size;
     width: min(22rem, calc(100vw - 0.5rem));
@@ -707,7 +709,7 @@ const onPlacementChange = () => {
 }
 
 .peer:active + .preview-toggle {
-    --tw-shadow: var(--shadow-pressed), var(--glow);
+    --tw-shadow: var(--pressed-shadow), var(--glow);
     @apply bg-press text-fg-strong;
 }
 
@@ -752,7 +754,7 @@ const onPlacementChange = () => {
 }
 
 .preview-range::-webkit-slider-thumb {
-    @apply -mt-[0.3125rem] size-4 rounded-full bg-knob shadow-md transition-colors;
+    @apply -mt-1.25 size-4 rounded-full bg-knob shadow-md transition-colors;
     appearance: none;
 }
 

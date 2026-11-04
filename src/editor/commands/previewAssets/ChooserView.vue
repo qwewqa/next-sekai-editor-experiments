@@ -187,7 +187,7 @@ const primaryClass = `${baseClass} btn-primary`
             aria-live="polite"
             data-chooser-error
         >
-            <SeverityIcon severity="error" class="absolute left-2 top-[0.125rem] size-4" />{{
+            <SeverityIcon severity="error" class="absolute left-2 top-0.5 size-4" />{{
                 error
             }}
         </p>
@@ -252,7 +252,7 @@ const primaryClass = `${baseClass} btn-primary`
                 aria-live="polite"
                 data-chooser-error
             >
-                <SeverityIcon severity="error" class="absolute left-0 top-[0.125rem] size-4" />{{
+                <SeverityIcon severity="error" class="absolute left-0 top-0.5 size-4" />{{
                     failure
                 }}
             </p>

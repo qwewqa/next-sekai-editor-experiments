@@ -126,7 +126,7 @@ const isErrorDetailOpen = ref(false)
                             </p>
                             <details
                                 v-if="errorDetail"
-                                class="max-h-32 max-w-full overflow-auto break-words"
+                                class="max-h-32 max-w-full overflow-auto wrap-break-word"
                                 @toggle="
                                     isErrorDetailOpen = ($event.target as HTMLDetailsElement).open
                                 "

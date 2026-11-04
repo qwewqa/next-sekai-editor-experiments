@@ -614,7 +614,7 @@ watchEffect(
     margin-top: 0.375rem;
     font-size: 0.75rem;
     line-height: 1rem;
-    color: theme('colors.fg-strong');
+    color: var(--color-fg-strong);
 }
 
 /* Coverage alone sits in the label's column, leaving the control where it is. */
@@ -671,7 +671,7 @@ watchEffect(
     margin-top: 0.25rem;
     font-size: 0.75rem;
     line-height: 1rem;
-    color: theme('colors.fg / 80%');
+    color: color-mix(in srgb, var(--color-fg) 80%, transparent);
 }
 
 /* Under a label with an icon, notes start with the label's text. */
@@ -687,7 +687,7 @@ watchEffect(
     border-radius: 9999px;
     outline: 2px solid transparent;
     padding: 0.125rem 0.5rem;
-    background-color: theme('colors.fg / 8%');
+    background-color: color-mix(in srgb, var(--color-fg) 8%, transparent);
     transition-property: color, background-color;
     transition-duration: 150ms;
 }
@@ -707,25 +707,25 @@ watchEffect(
 /* Tabular digits keep its width as counts change, which the fit relies on. */
 .form-field-coverage-chip {
     background-color: transparent;
-    color: theme('colors.fg / 80%');
+    color: color-mix(in srgb, var(--color-fg) 80%, transparent);
     font-variant-numeric: tabular-nums;
 }
 
 /* Under 32px there is no room inside: the ring sits 1px outside, in the surface's ink. */
 .form-field-mixed-value:focus-visible {
-    outline-color: theme('colors.fg');
+    outline-color: var(--color-fg);
     outline-offset: 1px;
 }
 
 @media (hover: hover) and (pointer: fine) {
     .form-field-mixed-value:enabled:hover {
-        background-color: theme('colors.header-hover');
+        background-color: var(--color-header-hover);
     }
 }
 
 .form-field-mixed-value:enabled:active {
-    background-color: theme('colors.ghost-press');
-    color: theme('colors.fg-strong');
+    background-color: var(--color-ghost-press);
+    color: var(--color-fg-strong);
 }
 
 /* Labels wrap in full; a word too long for its line still breaks. */

@@ -2354,6 +2354,8 @@ const folderEyeLabel = (item: FolderItem) =>
 </template>
 
 <style scoped>
+@reference '../../../index.css';
+
 /* While the list scrolls, its rows and the band over them end clear of the
    overlay scrollbar's 10px strip and any dock inset beside it, so their buttons
    never sit under the thumb. Only widths change, so overflow never toggles. */
@@ -2389,7 +2391,7 @@ const folderEyeLabel = (item: FolderItem) =>
  * they lie.
  */
 .manager-folder-head {
-    @apply sticky -top-1.5 z-[1] bg-modal;
+    @apply sticky -top-1.5 z-1 bg-modal;
 }
 
 .manager-entries-dragging .manager-folder-head,

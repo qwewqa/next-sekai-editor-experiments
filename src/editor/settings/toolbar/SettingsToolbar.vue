@@ -57,7 +57,7 @@ const onAddGroup = async () => {
                     <LevelEditorToolbarTool
                         v-if="isCommandName(name)"
                         v-focus-rescue="() => groupAddButton(i)"
-                        class="justify-center before:absolute before:h-8 before:w-9 last:before:mt-0.5 last:before:h-[2.125rem]"
+                        class="justify-center before:absolute before:h-8 before:w-9 last:before:mt-0.5 last:before:h-8.5"
                         :name
                         :title="removeLabel(name)"
                         :aria-label="removeLabel(name)"

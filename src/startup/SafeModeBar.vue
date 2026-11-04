@@ -32,7 +32,7 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="bar"
-        class="fixed inset-x-0 top-0 z-[60] flex min-h-10 flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-header px-3 py-1 text-center text-sm font-bold shadow-band"
+        class="fixed inset-x-0 top-0 z-60 flex min-h-10 flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-header px-3 py-1 text-center text-sm font-bold shadow-band"
         data-safe-bar
     >
         <span class="min-w-0">{{ i18n.safe.bar }}</span>

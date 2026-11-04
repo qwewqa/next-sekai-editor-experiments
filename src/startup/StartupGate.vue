@@ -80,7 +80,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
         ref="dialog"
         tabindex="-1"
         :aria-labelledby="textId"
-        class="m-auto w-[calc(100%-1rem)] max-w-sm flex-col items-center gap-4 rounded-xl bg-modal p-5 text-center text-fg shadow-xl outline-none open:flex"
+        class="m-auto w-[calc(100%-1rem)] max-w-sm flex-col items-center gap-4 rounded-xl bg-modal p-5 text-center text-fg shadow-xl outline-hidden open:flex"
         :class="shown ? 'backdrop:bg-scrim/75' : 'opacity-0 backdrop:bg-transparent'"
         data-startup-gate
         @cancel.prevent
@@ -93,13 +93,13 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
             <p
                 :id="textId"
                 :role="startupGate.phase === 'error' ? 'alert' : 'status'"
-                class="whitespace-break-spaces [overflow-wrap:anywhere]"
+                class="whitespace-break-spaces wrap-anywhere"
             >
                 {{ text }}
             </p>
             <p
                 v-if="startupGate.phase === 'error'"
-                class="max-h-40 w-full select-text overflow-y-auto break-words rounded-md bg-header p-2 text-start text-sm"
+                class="max-h-40 w-full select-text overflow-y-auto wrap-break-word rounded-md bg-header p-2 text-start text-sm"
                 data-startup-error
             >
                 {{ startupGate.error }}

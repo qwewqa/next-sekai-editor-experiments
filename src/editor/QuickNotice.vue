@@ -28,7 +28,7 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="pill"
-        class="notification min-w-0 max-w-full whitespace-break-spaces rounded-full px-6 py-2 text-center [overflow-wrap:anywhere]"
+        class="notification min-w-0 max-w-full whitespace-break-spaces rounded-full px-6 py-2 text-center wrap-anywhere"
     >
         <SeparatedText :text="notice.message?.() ?? ''" />
     </div>
@@ -45,8 +45,8 @@ onBeforeUnmount(() => {
     0% {
         z-index: 100;
         /* Dark text on mint, as on every accent fill (8.9:1). */
-        color: theme('colors.on-accent');
-        background-color: theme('colors.accent');
+        color: var(--color-on-accent);
+        background-color: var(--color-accent);
     }
 
     99% {
@@ -55,7 +55,7 @@ onBeforeUnmount(() => {
 
     100% {
         color: rgb(255 255 255 / 0.25);
-        background-color: theme('colors.accent / 0%');
+        background-color: color-mix(in srgb, var(--color-accent) 0%, transparent);
     }
 }
 </style>

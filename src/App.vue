@@ -136,11 +136,11 @@ watch(root, (element, _, onCleanup) => {
     <SafeModeBar v-if="isSafeMode()" :inert="isPersistentModalOpen" />
     <div
         ref="root"
-        class="flex h-screen w-screen overflow-hidden"
+        class="flex h-dvh w-dvw overflow-hidden"
         :inert="isPersistentModalOpen"
         :class="
             isSafeMode() &&
-            'mt-[var(--safe-bar-height,2.5rem)] !h-[calc(var(--viewport-height)_-_var(--safe-bar-height,2.5rem))]'
+            'mt-(--safe-bar-height,2.5rem) h-[calc(var(--viewport-height)-var(--safe-bar-height,2.5rem))]!'
         "
     >
         <WorkspaceDock side="left" />
@@ -150,7 +150,7 @@ watch(root, (element, _, onCleanup) => {
             <!-- While a drawer covers the editor, a tap beside it only closes it. -->
             <div
                 v-if="drawerSide"
-                class="absolute inset-0 z-[35] touch-none bg-black/30"
+                class="absolute inset-0 z-35 touch-none bg-black/30"
                 aria-hidden="true"
                 @pointerdown.prevent.stop="drawerSide && setDockCollapsed(drawerSide, true)"
             />

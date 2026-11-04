@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import test from 'node:test'
 
 // The web's /terms/ page: its source, before the build fills the placeholders.
 const html = readFileSync(new URL('../../terms/index.html', import.meta.url), 'utf8')
-const require = createRequire(import.meta.url)
 const text = html
     .replace(/<script\b[\s\S]*?<\/script>/g, '')
     .replace(/<[^>]*>/g, ' ')
@@ -129,7 +127,7 @@ test('the placeholders are the ones the build fills', () => {
     assert.deepEqual([...names].sort(), ['%GITHUB_REPOSITORY%', '%PRODUCT_NAME%'])
 })
 
-test('the landing config reads the page', () => {
-    const landing = require('../../tailwind.landing.config.js')
-    assert.ok(landing.content.files.includes('./terms/index.html'))
+test('the landing stylesheet reads the page', () => {
+    const landing = readFileSync(new URL('../../src/landing/landing.css', import.meta.url), 'utf8')
+    assert.match(landing, /@source '\.\.\/\.\.\/terms\/index\.html';/)
 })

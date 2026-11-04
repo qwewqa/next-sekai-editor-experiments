@@ -2562,8 +2562,7 @@ for (const scheme of ['light', 'dark'] as const) {
                     const { outlineStyle, outlineWidth, outlineColor } = getComputedStyle(element)
                     const fg = getComputedStyle(document.documentElement)
                         .getPropertyValue('--color-fg')
-                        .trim()
-                        .split(/\s+/)
+                        .match(/[\d.]+/g)!
                         .join(', ')
                     return {
                         visible: outlineStyle !== 'none' && parseFloat(outlineWidth) > 0,

@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
                 ref="scroller"
                 v-scroll-edges
                 tabindex="-1"
-                class="min-h-0 select-text overflow-y-auto overscroll-contain px-3 py-2 outline-none [touch-action:pan-y]"
+                class="min-h-0 select-text overflow-y-auto overscroll-contain px-3 py-2 outline-hidden [touch-action:pan-y]"
             >
                 <template v-if="typeof description === 'string'">{{ description }}</template>
                 <template v-else>

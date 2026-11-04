@@ -147,7 +147,7 @@ const rowActionClass = 'btn btn-secondary ml-auto h-8 min-w-0 max-w-full truncat
 const rowCloseClass = 'ghost ml-1 flex size-8 shrink-0 items-center justify-center rounded-full'
 // The text wraps at any length, and at the end of a sentence in browsers that balance it.
 const messageClass =
-    'min-w-0 flex-auto whitespace-break-spaces pr-3 [overflow-wrap:anywhere] [text-wrap:pretty]'
+    'min-w-0 flex-auto whitespace-break-spaces pr-3 wrap-anywhere text-pretty'
 
 // Every row has the glyph column once any row has a severity, so the text edges agree.
 const glyphColumn = computed(() => rows.value.some((line) => line.severity))
@@ -158,10 +158,10 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
         <div
             ref="card"
             data-notice-card
-            class="notification-pill pointer-events-auto rounded-[1.375rem] p-1 text-sm text-fg shadow-xl outline outline-1 ring-1"
+            class="notification-pill pointer-events-auto rounded-[1.375rem] p-1 text-sm text-fg shadow-xl outline-1 ring-1"
             :class="[
                 over
-                    ? 'bg-popup outline-[--popup-outline] ring-[--popup-ring]'
+                    ? 'bg-popup outline-(--popup-outline) ring-(--popup-ring)'
                     : 'bg-modal outline-transparent ring-fg/10',
                 // The start-up card scrolls when its rows are taller than the room, with its × kept.
                 notice.lines
@@ -204,12 +204,12 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                         <span class="block overflow-hidden"
                             ><span class="-ml-2.5 flex flex-wrap"
                                 ><span
-                                    class="min-w-[2.625rem] max-w-max grow basis-0 truncate pl-2.5"
+                                    class="min-w-10.5 max-w-max grow basis-0 truncate pl-2.5"
                                     >{{ heading[0] }}</span
                                 ><span
                                     v-for="(part, i) in heading.slice(1)"
                                     :key="i"
-                                    class="relative min-w-0 pl-2.5 [overflow-wrap:anywhere]"
+                                    class="relative min-w-0 pl-2.5 wrap-anywhere"
                                     ><span
                                         class="absolute inset-y-0 left-0 w-2.5 whitespace-pre text-center"
                                         >{{ ' · ' }}</span
@@ -243,7 +243,7 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                     <div class="flex min-w-0 flex-auto items-start">
                         <span
                             v-if="glyphColumn"
-                            class="flex h-8 w-[1.625rem] shrink-0 items-center pl-2.5"
+                            class="flex h-8 w-6.5 shrink-0 items-center pl-2.5"
                         >
                             <SeverityIcon
                                 v-if="line.severity"

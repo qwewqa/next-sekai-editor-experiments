@@ -49,8 +49,7 @@ const fillOf = (locator: Locator) =>
         const token = (name: string) =>
             `rgb(${getComputedStyle(document.documentElement)
                 .getPropertyValue(`--color-${name}`)
-                .trim()
-                .split(/\s+/)
+                .match(/[\d.]+/g)!
                 .join(', ')})`
         const { backgroundColor } = getComputedStyle(element)
         return (

@@ -160,7 +160,7 @@ onBeforeUnmount(() => {
 const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 const rowClass = 'row-select relative flex min-h-10 items-start gap-3 rounded-xl px-3 py-2'
 const boxClass =
-    'pointer-events-none relative mt-0.5 size-4 shrink-0 rounded border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-[1px] after:bg-fg after:transition-transform peer-checked:after:scale-100 peer-disabled:opacity-50'
+    'pointer-events-none relative mt-0.5 size-4 shrink-0 rounded-sm border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-[1px] after:bg-fg after:transition-transform peer-checked:after:scale-100 peer-disabled:opacity-50'
 </script>
 
 <template>
@@ -237,7 +237,7 @@ const boxClass =
                         </span>
                         <span
                             :id="`${ids}-history`"
-                            class="flex flex-col text-sm text-fg/80 [overflow-wrap:anywhere]"
+                            class="flex flex-col text-sm text-fg/80 wrap-anywhere"
                         >
                             <span v-if="historyRow.kind === 'insecure'">{{
                                 i18n.save.noHistoryHere

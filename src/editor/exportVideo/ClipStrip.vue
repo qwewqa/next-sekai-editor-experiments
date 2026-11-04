@@ -327,11 +327,11 @@ onBeforeUnmount(() => {
         </div>
         <!-- The playhead: a line from the knob through the track. -->
         <div
-            class="pointer-events-none absolute bottom-0 z-[2] w-0.5 bg-fg-strong"
+            class="pointer-events-none absolute bottom-0 z-2 w-0.5 bg-fg-strong"
             :style="{ left: `${xPlayhead - 1}px`, top: hideRuler ? '0px' : '8px' }"
         />
         <div
-            class="clip-knob focus-ring focus-out absolute z-[2] size-2 rounded-full bg-fg-strong ring-2"
+            class="clip-knob focus-ring focus-out absolute z-2 size-2 rounded-full bg-fg-strong ring-2"
             :class="hideRuler ? 'ring-button' : 'ring-modal'"
             :style="{ left: `${xPlayhead - 4}px`, top: '4px' }"
             role="slider"
@@ -348,7 +348,7 @@ onBeforeUnmount(() => {
         <div
             v-for="end in ['in', 'out'] as const"
             :key="end"
-            class="clip-handle btn focus-ring focus-out btn-secondary absolute z-[3] flex w-2.5 items-center justify-center rounded-full ring-1 ring-inset ring-fg/80"
+            class="clip-handle btn focus-ring focus-out btn-secondary absolute z-3 flex w-2.5 items-center justify-center rounded-full ring-1 ring-inset ring-fg/80"
             :class="{
                 'opacity-40': d.busy.value,
                 'is-pressed': drag?.kind === end,

@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss' source(none);
+@import './tailwind.css';
+
+@source '../index.html';
+@source './**/*.{vue,ts}';
 
 /* Sizes assume a 16px rem for now, whatever the browser's default font size.
    The page never scrolls. A drag that reaches it from a dialog must not reload the editor
@@ -136,18 +138,9 @@ html[data-app-inactive] *::after {
         content: '';
         position: absolute;
         inset: 0;
-        background-color: theme('colors.bg');
+        background-color: var(--color-bg);
         forced-color-adjust: none;
     }
-}
-
-/* The manager's raised pills, as other buttons: high contrast paints the transparent
-   outline as their edge, and Highlight on focus; inset, as they sit close together. */
-.manager-selection-done,
-.manager-new-folder,
-.manager-round {
-    outline: 2px solid transparent;
-    outline-offset: -2px;
 }
 
 /* High contrast: keyboard focus thickens a control's 2px resting edge to 4px, inward from
@@ -156,7 +149,7 @@ html[data-app-inactive] *::after {
     /* Most edges rest 2px outside the box; dialogs are not controls. */
     html
         :is(
-            .outline-none:where(:not(dialog, [role='dialog'])),
+            .outline-hidden:where(:not(dialog, [role='dialog'])),
             .preview-field,
             .preview-number,
             .transport-button,
@@ -190,7 +183,7 @@ html[data-app-inactive] *::after {
 /* Menus' shared surface; edges and focus are outlines, which high contrast keeps. */
 @layer components {
     .popup-surface {
-        @apply flex w-max min-w-[min(12rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl outline outline-1 outline-[--popup-outline] ring-1 ring-[--popup-ring];
+        @apply flex w-max min-w-[min(12rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl outline-1 outline-(--popup-outline) ring-1 ring-(--popup-ring);
     }
 
     .popup-scroller {
@@ -198,7 +191,7 @@ html[data-app-inactive] *::after {
     }
 
     .popup-item {
-        @apply flex min-h-9 w-full shrink-0 items-center gap-3 rounded px-3 py-2 text-left transition-colors enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-ghost-press enabled:active:text-fg-strong disabled:opacity-40;
+        @apply flex min-h-9 w-full shrink-0 items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-ghost-press enabled:active:text-fg-strong disabled:opacity-40;
     }
 
     /* A destructive row is red, and pressing it shows what it does. */

@@ -289,7 +289,7 @@ const stageCount = computed(() =>
     <!-- A move waiting about 150 ms for its undo slot shows the busy cursor. -->
     <div ref="host" class="isolate flex flex-col" :class="{ 'slot-busy': slotLoading }">
         <NotStoredBar v-if="showNotStoredBar" />
-        <div class="relative flex min-h-0 flex-grow select-none overflow-hidden">
+        <div class="relative flex min-h-0 grow select-none overflow-hidden">
             <MinimapColumn v-if="!isElevationEditorOpen || isElevationSideBySide" side="left" />
             <div
                 v-if="!isElevationEditorOpen || isElevationSideBySide"
@@ -351,7 +351,7 @@ const stageCount = computed(() =>
                 <FileChip v-else-if="item === 'warning'" :compact="compactStatus" />
                 <span
                     v-else-if="item === 'tool' && !compactStatus"
-                    class="min-w-12 flex-grow self-center truncate"
+                    class="min-w-12 grow self-center truncate"
                     data-status-tool
                     >{{ tool.title() }}</span
                 >
@@ -367,7 +367,7 @@ const stageCount = computed(() =>
                         compactStatus
                             ? iconStatus
                                 ? 'w-8 flex-none'
-                                : 'min-w-[5.5rem] flex-1 basis-[5.5rem]'
+                                : 'min-w-22 flex-1 basis-22'
                             : 'min-w-0 max-w-[40%]'
                     "
                     :title="

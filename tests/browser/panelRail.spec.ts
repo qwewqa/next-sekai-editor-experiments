@@ -303,14 +303,14 @@ test('a vertical rail opens its tab menus beside the rail, toward the panel', as
     }
 })
 
-/** A role token as the colour the browser computes for it (tokens are a bare triplet or a full colour). */
+/** A role token as the colour the browser computes for it. */
 const tokenColor = (page: Page, token: string) =>
     page.evaluate((name) => {
         const value = getComputedStyle(document.documentElement)
             .getPropertyValue(`--color-${name}`)
             .trim()
         const probe = document.createElement('i')
-        probe.style.backgroundColor = value.startsWith('rgb') ? value : `rgb(${value})`
+        probe.style.backgroundColor = value
         document.body.append(probe)
         const colour = getComputedStyle(probe).backgroundColor
         probe.remove()

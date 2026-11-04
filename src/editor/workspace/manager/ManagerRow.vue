@@ -542,6 +542,8 @@ const onRenameBlur = (event: FocusEvent) => {
 </template>
 
 <style scoped>
+@reference '../../../index.css';
+
 /*
  * Rows are pills; every control inside is a pill or circle inset evenly by
  * 2px, so shapes stay concentric. Hover styles apply only where hovering
@@ -665,7 +667,7 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 .manager-rename {
-    @apply h-9 min-w-0 flex-1 rounded-full bg-button px-2 shadow-md outline-none ring-2 ring-fg;
+    @apply h-9 min-w-0 flex-1 rounded-full bg-button px-2 shadow-md outline-hidden ring-2 ring-fg;
 }
 
 /* The folder chevron leads the name, inside its target. */

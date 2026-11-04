@@ -1,9 +1,8 @@
+import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
-import autoprefixer from 'autoprefixer'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import tailwind from 'tailwindcss'
 import { defaultClientConditions, defineConfig } from 'vite'
 import { analyticsFromEnv, gateTag } from './scripts/analytics.mjs'
 import { devPolicy, injectPolicy, nativePolicy, webPolicy } from './scripts/csp.mjs'
@@ -81,13 +80,8 @@ export default defineConfig(({ mode }) => ({
     worker: {
         format: 'iife',
     },
-    css: {
-        postcss: {
-            // A Tailwind per CSS file and Vue <style> block, or landing.css's @config carries over
-            plugins: [tailwind, autoprefixer()],
-        },
-    },
     plugins: [
+        tailwindcss(),
         vue(),
         // Dev only: the nse-next samples for `?seedSample=` (scripts/samples.mjs).
         samplesPlugin(root),

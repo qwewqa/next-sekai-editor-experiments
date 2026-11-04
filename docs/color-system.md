@@ -1,6 +1,6 @@
 # Colour system
 
-The roles, tokens and control recipes behind the editor's UI colour, and the rules that keep them consistent. The values and recipes live in `src/themes.css`, `tailwind.colors.js` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 9) enforces the rules.
+The roles, tokens and control recipes behind the editor's UI colour, and the rules that keep them consistent. The values and recipes live in `src/themes.css` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 9) enforces the rules.
 
 - **Scope.** UI colour roles. Chart content keeps its own colours (section 10).
 - **Related.** [design-language.md](design-language.md) covers surfaces, shape, size, the History surfaces, and waits and feedback; [ui-review-checklist.md](ui-review-checklist.md) is the review questions.
@@ -145,7 +145,7 @@ These have not been retuned (principle 16):
 
 **Deliberate exception: the shown toolbar tool.** `LevelEditorToolbar.vue` puts `surface-chrome` on each shown tool, a white raised face over the chart. The toolbar row is listed as chrome, but its root is a transparent container that also holds the flyout, so the class cannot go there. The tool is the only element that carries it, and the class stays off the flyout (the flyout is a sibling, not a descendant). Nothing inside a tool face uses `danger`, `warning`, `info`, `accent-strong` or `focus-out`, so the class changes no colour there. If a tool face ever needs one of those roles, drop the class from the tool and set the role's chrome value on the face that needs it.
 
-**Shadows** (`tailwind.colors.js` `boxShadow`, themes.css):
+**Shadows** (themes.css):
 
 - `shadow-pressed`, the sink: light `inset 0 1px 3px rgb(48 51 77 / .35)`, dark `… rgb(0 0 0 / .5)`.
 - The glow is the `shadow-md` geometry in mint, set by the recipes as `--glow`, and red (`danger-fill`) on destructive buttons.
@@ -336,15 +336,12 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 
 ### 6.1 Mechanism
 
-The recipes are CSS in `src/controls.css`, wrapped in `@layer components`, and registered by a small Tailwind plugin. That way every build context can use them: templates (`class="btn btn-secondary"`), global CSS, the landing pages, and **Vue `<style>` blocks** (`@apply ghost`).
+The recipes are CSS in `src/controls.css`, in `@layer components`. `src/tailwind.css` imports it for both stylesheets, the editor's and the landing pages', so templates (`class="btn btn-secondary"`), global CSS and the landing pages use the same rules.
 
-The plugin is required. In Tailwind 3 a `<style>` block cannot `@apply` a class defined in another CSS file, and ManagerRow, PreviewTransport, PanelRail and TimelineList all style their controls in scoped CSS. The plugin, `tailwind.controls.js`, parses `controls.css` with PostCSS and adds the rules of its `@layer` as components. A `<style>` block can then `@apply btn btn-secondary` and get the whole recipe, `:active` and `:focus-visible` rules included. A two-recipe merge (`@apply ghost btn-toggle`) has the limit below.
-
-- Both `tailwind.config.js` and `tailwind.landing.config.js` add `plugins: [require('./tailwind.controls')]`.
-- A running dev server picks up `controls.css` edits. Tailwind finds a config's dependencies by scanning its files for `require('...')` text. The plugin reads `controls.css` with `readFileSync`, so a comment in the plugin names `require('./src/controls.css')` for Tailwind to see. An edit then rebuilds the global CSS and every Vue `<style>` block that uses `@apply`, with no restart. Keep that line when changing the plugin. A dev server that serves a different checkout still needs a restart.
-- Recipes set colour, elevation, state and focus only. Size and shape stay at the call site.
-- **Compound recipe selectors do not carry through a merged `@apply`.** `.row-checked.row-current` becomes `.x.row-current` and `.row-checked.x`, and neither matches. Combine such classes at the call site. A rule that must hold in scoped CSS is written with one recipe class: the on-toggle hover glow is `.btn-toggle[aria-pressed='true']:hover:not(:active)`, not `.ghost.btn-toggle…`.
-- **Hover sits under `(hover: hover) and (pointer: fine)`.** This is the query Tailwind's `hover:` emits under `hoverOnlyWhenSupported`. A device that reports hover with a coarse pointer therefore keeps no glow after a tap.
+- **Recipes go on the element as classes.** A Vue `<style>` block cannot `@apply` a recipe: Tailwind applies only utilities. A component that styles a control in scoped CSS puts the recipe classes in its template and keeps the layout in its block.
+- **A recipe owns its appearance in every state.** Utilities sit in a later layer than the recipes, so a utility always wins over a recipe, whatever the selectors. A utility for a property the recipe sets, such as `bg-header` on a `ghost`, would also hold through hover and press. A control that needs its own resting face or ink takes a modifier class instead (`ghost-header`, `popup-item-danger`, 6.2). Templates add only size, shape and layout.
+- **Order inside the file still matters** between recipes, as below.
+- **Hover sits under `(hover: hover) and (pointer: fine)`.** `src/tailwind.css` gives Tailwind's `hover:` variant the same query. A device that reports hover with a coarse pointer therefore keeps no glow after a tap.
 
 ### 6.2 The recipes
 
@@ -479,18 +476,18 @@ None of these can be undone. Remove deletes a stored preview asset whether or no
 
 - Every `src/**/*.{vue,ts,css}`, as text.
 - Template and TS class strings and `@apply` lines are tokenised with their variant prefixes.
-- CSS rules (in `.css` and `<style>` blocks) are parsed, so a rule's selector supplies the state for the `@apply`, `theme('colors.*')` and `var(--color-*)` uses in its body.
+- CSS rules (in `.css` and `<style>` blocks) are parsed, so a rule's selector supplies the state for the `@apply` and `var(--color-*)` uses in its body.
 - Comments are stripped.
 
 ### 9.2 What it forbids outside `src/themes.css` and `src/controls.css`
 
 | Rule | Catches | Reason |
 |---|---|---|
-| `press-is-mint` | Mint, or any `bg-`, `text-`, `fill-`, `ring-`, `border-` (and the other colour prefixes) `on-accent`, with or without an opacity, under any press variant (`active:`, `group-active:`, `peer-active:`, `has-[:active]:`, `enabled:active:`, `[.popup-item:enabled:active_&]:`), and any CSS rule whose selector is `:active`, `.is-held`, `.is-pressed` or `-pressed` (ignoring `:not(:active)`) with mint in its body | Press is never on |
-| `mint-outside-recipes` | `bg-` / `text-` / `ring-` / `fill-` / `border-` / `outline-` / `shadow-` with `accent`, `accent-press`, `accent-strong` or `selected`; `theme('colors.accent' / 'on-accent' / 'selected')`; `var(--color-accent / on-accent / selected)` | On-states come from recipes; **bare `bg-accent` included** |
+| `press-is-mint` | Mint, or any `bg-`, `text-`, `fill-`, `ring-`, `border-` (and the other colour prefixes) `on-accent`, with or without an opacity, under any press variant (`active:`, `group-active:`, `peer-active:`, `has-[:active]:`, `has-active:`, `enabled:active:`, `[.popup-item:enabled:active_&]:`), and any CSS rule whose selector is `:active`, `.is-held`, `.is-pressed` or `-pressed` (ignoring `:not(:active)`) with mint in its body | Press is never on |
+| `mint-outside-recipes` | `bg-` / `text-` / `ring-` / `fill-` / `border-` / `outline-` / `shadow-` with `accent`, `accent-press`, `accent-strong` or `selected`; `var(--color-accent / on-accent / selected)` | On-states come from recipes; **bare `bg-accent` included** |
 | `hover-glow-outside-recipes` | `shadow-accent` with any variant | The glow lives in `.btn` |
-| `focus-colour` | A focus variant (`focus:`, `focus-visible:`, `focus-within:`, `group-focus-visible:` or `peer-focus-visible:`) with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`. It carries no colour prefix, so it passes; `.popup-item` in `index.css` uses it |
-| `focus-outline-none` | `outline-none` under any of those focus variants, such as `focus:outline-none` or `focus-visible:outline-none` (in a class string or `@apply`), in a non-exempt file | The recipe ring sits in the components layer, and a leftover `outline-none` of equal specificity in the later utilities layer removes it without any visible error |
+| `focus-colour` | A focus variant (`focus:`, `focus-visible:`, `focus-within:`, `group-focus-visible:` or `peer-focus-visible:`) with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`. It carries no colour prefix, so it passes; `.popup-item` shares its rules |
+| `focus-outline-none` | `outline-none` or `outline-hidden` under any of those focus variants, such as `focus:outline-none` or `focus-visible:outline-hidden` (in a class string or `@apply`), in a non-exempt file | The recipe ring sits in the components layer, and any utility beats it from the utilities layer, so it would remove the ring without any visible error |
 | `danger-fill-outside-recipes` | `bg-danger` | `danger-fill` |
 | `raw-palette` | Tailwind palette colours (`amber-300`, `sky-300`, …) | Tokens |
 | `colour-literal` | `bg-[#…]`, `text-[rgb(…)]` | Tokens |
@@ -522,7 +519,7 @@ A migration can exempt files it has not reached yet in lists named `tests/editor
 
 ### 9.4 Fixtures
 
-A unit test feeds one synthetic line per inventoried form through the detector and expects a hit. Each is a bare line, not a CSS rule: `bg-accent text-on-accent` in a class string, `active:`, `group-active:`, `peer-active:` and `has-[:active]:` with mint, `!bg-accent`, `@apply bg-accent text-on-accent`, `color: theme('colors.accent')`, `hover:shadow-accent`, `focus-visible:ring-white`, `focus-visible:outline-fg`, `focus-visible:outline-none`, `focus:outline-none`, `@apply focus-visible:outline-none`, `group-active:bg-on-accent/30`, `active:border-on-accent`, `active:ring-on-accent`, `text-amber-300` and `bg-[#fff]`. A second list must pass: the recipes (`btn btn-secondary`, `btn btn-primary focus-out`, `ghost ghost-band btn-toggle`, `row-checked row-current focus-edge`, `row-select`), `text-danger bg-danger-fill text-on-danger`, `bg-ghost-press text-fg-strong`, `active:bg-ghost-press`, `focus-visible:outline-offset-2`, `@apply bg-press text-fg-strong`, `text-warning text-info`, a plain `outline-none` and `bg-on-accent`. The test requires every snippet of the first list to hit and every snippet of the second to pass, so the check keeps working when no file in `src` violates a rule.
+A unit test feeds one synthetic line per inventoried form through the detector and expects a hit. Each is a bare line, not a CSS rule: `bg-accent text-on-accent` in a class string, `active:`, `group-active:`, `peer-active:`, `has-[:active]:` and `has-active:` with mint, `!bg-accent`, `@apply bg-accent text-on-accent`, `color: var(--color-accent)`, `hover:shadow-accent`, `focus-visible:ring-white`, `focus-visible:outline-fg`, `focus-visible:outline-none`, `focus:outline-none`, `focus-visible:outline-hidden`, `@apply focus-visible:outline-none`, `group-active:bg-on-accent/30`, `active:border-on-accent`, `active:ring-on-accent`, `text-amber-300` and `bg-[#fff]`. A second list must pass: the recipes (`btn btn-secondary`, `btn btn-primary focus-out`, `ghost ghost-band btn-toggle`, `row-checked row-current focus-edge`, `row-select`), `text-danger bg-danger-fill text-on-danger`, `bg-ghost-press text-fg-strong`, `active:bg-ghost-press`, `focus-visible:outline-offset-2`, `@apply bg-press text-fg-strong`, `text-warning text-info`, a plain `outline-hidden` and `bg-on-accent`. The test requires every snippet of the first list to hit and every snippet of the second to pass, so the check keeps working when no file in `src` violates a rule.
 
 ---
 
@@ -547,7 +544,6 @@ Light warning (h 68) and the change orange (h 59) are 9° apart, not 20°. They 
 
 ## 11. Risks and limits
 
-- **`controls.css` reaches Tailwind through a plugin that reads it with `readFileSync`.** Tailwind rebuilds only for dependencies it can see, so the plugin names the file in a `require('./src/controls.css')` comment (6.1) and edits reach a running dev server. Check a long-lived server before you take screenshots all the same: probe a recently added recipe in the served `/src/index.css`.
 - **Light theme, on against secondary,** differs mainly in hue (ΔE 17, protan 8). Form carries the state, as in v0.5.22.
 - **Dark switch track off against the pill** is 1.92:1; the knob carries the state.
 - **Light warning against danger** is deutan-confusable; the glyphs carry it.

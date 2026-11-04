@@ -181,7 +181,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                     <WaitBar :value="barValue" :labelledby="`${ids}-stage`" />
                 </div>
                 <p v-else-if="doneText" class="text-sm" data-export-done>
-                    <span class="[overflow-wrap:anywhere]">{{ doneText.name }}</span
+                    <span class="wrap-anywhere">{{ doneText.name }}</span
                     ><span v-if="doneText.sizeText" class="whitespace-nowrap">
                         · {{ doneText.sizeText }}</span
                     >

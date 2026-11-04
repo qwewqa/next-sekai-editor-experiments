@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
     <BaseModal :title="i18n.historyChanges.title" @close="emit('close')">
         <DetailsHeader
             scope="property"
-            class="select-text [overflow-wrap:anywhere]"
+            class="select-text wrap-anywhere"
             :title="title"
             :meta="
                 historyFormat(calendar, settings.locale).dateTimeSeconds(comparison.request.time)
@@ -92,7 +92,7 @@ onBeforeUnmount(() => {
                     class="min-w-0"
                 >
                     <h3
-                        class="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-bold [overflow-wrap:anywhere]"
+                        class="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-bold wrap-anywhere"
                     >
                         <span>{{ propertySectionLabel(section.kind) }}</span>
                         <span v-if="section.beforeName" class="min-w-0 whitespace-pre-wrap">{{
@@ -120,7 +120,7 @@ onBeforeUnmount(() => {
                         >
                         <span
                             v-if="section.status"
-                            class="rounded-full bg-fg/[.08] px-2 py-0.5 text-xs font-normal"
+                            class="rounded-full bg-fg/8 px-2 py-0.5 text-xs font-normal"
                             data-property-badge
                             >{{ i18n.historyChanges[section.status] }}</span
                         >

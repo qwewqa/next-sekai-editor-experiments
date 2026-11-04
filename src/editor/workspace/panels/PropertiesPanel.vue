@@ -407,6 +407,8 @@ const onTabKeydown = (event: KeyboardEvent) => {
 </template>
 
 <style scoped>
+@reference '../../../index.css';
+
 /* The pill carries focus. Scoped rather than the utility, whose transparent outline forced colours
    paint as a resting edge and a second focus outline. */
 .properties-tab {

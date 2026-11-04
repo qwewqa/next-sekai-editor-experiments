@@ -134,7 +134,7 @@ onBeforeUnmount(() => {
             <div class="popup-scroller">
                 <p
                     :id="summaryId"
-                    class="whitespace-pre-wrap px-3 py-2 text-sm text-fg/80 [overflow-wrap:anywhere]"
+                    class="whitespace-pre-wrap px-3 py-2 text-sm text-fg/80 wrap-anywhere"
                     data-change-options-summary
                 >
                     <SeparatedText :text="summary" />

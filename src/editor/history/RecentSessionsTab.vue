@@ -687,7 +687,7 @@ const notePointer = (event: PointerEvent) => {
             data-history-focus="list"
             data-sessions-list
             tabindex="-1"
-            class="sessions-list overlay-scroller h-full overflow-y-auto overscroll-contain px-1.5 pb-2 outline-none"
+            class="sessions-list overlay-scroller h-full overflow-y-auto overscroll-contain px-1.5 pb-2 outline-hidden"
             @scroll.passive="onScroll"
             @keydown="onKeydown"
             @keyup="onKeyup"
@@ -715,7 +715,7 @@ const notePointer = (event: PointerEvent) => {
             </div>
             <div
                 v-else-if="status === 'failed'"
-                class="flex h-[8.25rem] flex-col items-center justify-center gap-3 px-3 text-center text-sm text-fg/80"
+                class="flex h-33 flex-col items-center justify-center gap-3 px-3 text-center text-sm text-fg/80"
                 data-sessions-failed
             >
                 <span>{{ i18n.history.sessions.loadFailed }}</span>
@@ -887,6 +887,8 @@ const notePointer = (event: PointerEvent) => {
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 /*
  * The Timeline's row (list x): the row pill 6..W-6 with its 2 px inset; the text face starts at the
  * tab labels' 18 px; a 36 px slot at the end holds the ⋯ button, or keeps its place. The 44 px slot
@@ -927,7 +929,7 @@ const notePointer = (event: PointerEvent) => {
 }
 
 .sessions-row:focus-visible::before {
-    outline-color: rgb(var(--color-fg));
+    outline-color: var(--color-fg);
 }
 
 .sessions-text {
@@ -952,7 +954,7 @@ const notePointer = (event: PointerEvent) => {
 }
 
 .sessions-more:focus-visible {
-    outline: 2px solid rgb(var(--color-fg));
+    outline: 2px solid var(--color-fg);
     outline-offset: -2px;
 }
 

@@ -208,12 +208,12 @@ const vOpen = {
         :key="modal.id"
         v-open
         tabindex="-1"
-        class="flex w-[calc(100%-1rem)] flex-col rounded-xl bg-modal text-fg shadow-xl outline-none backdrop:bg-scrim/75"
+        class="m-auto flex w-[calc(100%-1rem)] flex-col rounded-xl bg-modal text-fg shadow-xl outline-hidden backdrop:bg-scrim/75"
         :class="
             modal.size === 'large'
                 ? [
                       'modal-large max-h-none',
-                      modal.wide ? 'max-w-[72rem]' : modal.tall ? 'max-w-2xl' : 'max-w-[40rem]',
+                      modal.wide ? 'max-w-6xl' : modal.tall ? 'max-w-2xl' : 'max-w-160',
                   ]
                 : 'max-h-[calc(100%-1rem)] max-w-2xl'
         "

@@ -6,8 +6,7 @@ const isOnFill = (locator: Locator) =>
     locator.evaluate((element) => {
         const [r, g, b] = getComputedStyle(document.documentElement)
             .getPropertyValue('--color-accent')
-            .trim()
-            .split(/\s+/)
+            .match(/[\d.]+/g)!
         return getComputedStyle(element).backgroundColor === `rgb(${r}, ${g}, ${b})`
     })
 

@@ -1409,7 +1409,7 @@ defineExpose({
             data-history-focus="list"
             role="treegrid"
             tabindex="-1"
-            class="timeline-list overlay-scroller h-full overflow-y-auto overscroll-contain outline-none"
+            class="timeline-list overlay-scroller h-full overflow-y-auto overscroll-contain outline-hidden"
             :class="oneLine ? 'timeline-one-line' : 'timeline-two-line'"
             :aria-label="i18n.history.timeline"
             aria-colcount="2"
@@ -1557,7 +1557,7 @@ defineExpose({
                             <span v-if="expandable(row)" role="gridcell" class="shrink-0">
                                 <button
                                     type="button"
-                                    class="timeline-disclosure ghost relative z-[1] flex size-9 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-y-1 before:inset-x-0"
+                                    class="timeline-disclosure ghost relative z-1 flex size-9 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-y-1 before:inset-x-0"
                                     :aria-label="labelOf(row)"
                                     :aria-expanded="expandedGroups.has(row.id)"
                                     data-history-disclosure
@@ -1765,7 +1765,7 @@ defineExpose({
             data-history-pinned
         >
             <div
-                class="flex items-end truncate pb-1 pl-[3.25rem] pr-3 text-xs"
+                class="flex items-end truncate pb-1 pl-13 pr-3 text-xs"
                 :class="headerClass(pinned)"
                 :style="{ height: `${HEADER}px` }"
             >
@@ -1787,6 +1787,8 @@ defineExpose({
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 /*
  * One grid for every row kind (list x): the row pill 6..W-6; one leading slot 8..44, centre 26, with
  * one mark per row (the Now dot, a kind glyph, a group's disclosure, a member's rail); the text pill
@@ -1836,7 +1838,7 @@ defineExpose({
 
 /* Row focus rings the pill at its edge in fg (focus-edge, drawn on the pill). */
 .timeline-row:focus-visible::before {
-    outline-color: rgb(var(--color-fg));
+    outline-color: var(--color-fg);
 }
 
 .timeline-entry-header,
@@ -1892,7 +1894,7 @@ defineExpose({
 
 [data-history-part='main']:focus-visible .timeline-entry-text,
 .timeline-entry-text[data-history-part='main']:focus-visible {
-    outline-color: rgb(var(--color-fg));
+    outline-color: var(--color-fg);
     outline-offset: -2px;
 }
 
@@ -1931,7 +1933,7 @@ defineExpose({
    the pills, so a hover shows it faintly; the current member shows a short stretch on its pill. */
 .timeline-row-child::after {
     content: '';
-    @apply pointer-events-none absolute inset-y-0 left-[1.1875rem] -z-20 w-0.5 bg-fg/30;
+    @apply pointer-events-none absolute inset-y-0 left-4.75 -z-20 w-0.5 bg-fg/30;
 }
 
 .timeline-row-first::after {
@@ -1967,7 +1969,7 @@ defineExpose({
 
 /* 14 px lines, so a reason that wraps to two lines clears the row's ring at the 80 px row's foot. */
 .timeline-entry-reason.timeline-flag {
-    @apply h-8 items-start pl-[2.875rem] pr-3 leading-[0.875rem];
+    @apply h-8 items-start pl-11.5 pr-3 leading-[0.875rem];
 }
 
 .timeline-flag {

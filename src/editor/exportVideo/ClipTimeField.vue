@@ -160,7 +160,7 @@ const container = computed(() => chipButton.value?.closest('dialog') ?? 'body')
                         ref="input"
                         v-model="text"
                         class="field h-9 rounded-full px-3 tabular-nums"
-                        :class="hours ? 'w-32' : 'w-[6.5rem]'"
+                        :class="hours ? 'w-32' : 'w-26'"
                         type="text"
                         inputmode="decimal"
                         spellcheck="false"
@@ -194,7 +194,7 @@ const container = computed(() => chipButton.value?.closest('dialog') ?? 'body')
             ref="input"
             v-model="text"
             class="clip-field field relative h-9 shrink-0 rounded-full px-3 tabular-nums"
-            :class="[hours ? 'w-32' : 'w-[6.5rem]', { 'clip-field-busy': busy }]"
+            :class="[hours ? 'w-32' : 'w-26', { 'clip-field-busy': busy }]"
             type="text"
             inputmode="decimal"
             spellcheck="false"
@@ -214,7 +214,7 @@ const container = computed(() => chipButton.value?.closest('dialog') ?? 'body')
 /* While an export runs: read-only, the face flat and faded, the value in ink. */
 .clip-field-busy {
     box-shadow: none;
-    background-color: rgb(var(--color-button) / 0.4);
+    background-color: color-mix(in srgb, var(--color-button) 40%, transparent);
 }
 
 /* 44 px targets for the 32 px chips. */

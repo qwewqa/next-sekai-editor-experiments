@@ -1,0 +1,14 @@
+/* What the editor's and the landing pages' stylesheets share, after each imports Tailwind with its
+   own sources: the theme, the control recipes and the hover variant. */
+@import './themes.css';
+@import './controls.css';
+
+/* Hover applies only to a fine pointer that can hover, the query the recipes use, so a tap on a
+   touch screen never leaves a hover look behind. */
+@custom-variant hover {
+    @media (hover: hover) and (pointer: fine) {
+        &:hover {
+            @slot;
+        }
+    }
+}

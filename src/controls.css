@@ -14,16 +14,14 @@
  *
  * Order matters: rules of equal specificity are arranged so press beats hover and on beats hover.
  *
- * Hover rules sit under (hover: hover) and (pointer: fine), the query Tailwind's hover: variant
- * emits (hoverOnlyWhenSupported), so a tap on a touch screen never leaves a hover look behind.
+ * Hover rules sit under (hover: hover) and (pointer: fine), the query src/tailwind.css gives
+ * Tailwind's hover: variant, so a tap on a touch screen never leaves a hover look behind.
  *
- * A compound selector of two recipe classes (.row-checked.row-current) does not carry through a
- * merged @apply: the plugin rewrites each class into the new rule, so the compound no longer
- * matches. Write rules that must hold in scoped CSS with one recipe class (as .btn-toggle does
- * below), and combine compounds at the call site.
+ * A recipe owns its appearance in every state: utilities sit in a later layer and would win, so a
+ * control with a face or ink of its own takes a modifier class here, not a utility.
  *
- * tailwind.controls.js registers this file as a plugin, so templates, global CSS, the landing pages
- * and Vue <style> blocks (@apply ghost) can all use it. A running dev server picks up edits.
+ * src/tailwind.css imports this file for the editor's and the landing pages' stylesheets. Vue
+ * <style> blocks cannot @apply recipes; recipes go on the element as classes.
  */
 @layer components {
     /* --- Focus: a 2px ring 2px inside the face, in the face's own ink. Face shows on both sides
@@ -55,7 +53,7 @@
 
     .focus-edge:focus-visible,
     .popup-item:focus-visible {
-        outline-color: rgb(var(--color-fg));
+        outline-color: var(--color-fg);
     }
 
     /* Faces under 32px have no room inside: the ring sits 1px outside, in the surface's ink. */
@@ -64,7 +62,7 @@
     }
 
     .focus-out:focus-visible {
-        outline-color: rgb(var(--color-fg));
+        outline-color: var(--color-fg);
         outline-offset: 1px;
     }
 
@@ -78,7 +76,7 @@
     .btn,
     .ghost,
     .field {
-        --glow-color: rgb(var(--color-accent));
+        --glow-color: var(--color-accent);
         --glow: 0 4px 6px -1px var(--glow-color), 0 2px 4px -2px var(--glow-color);
     }
 
@@ -97,7 +95,7 @@
 
     /* A destructive choice offered beside a safe default: quiet until pressed. */
     .btn-danger-quiet {
-        --glow-color: rgb(var(--color-danger-fill));
+        --glow-color: var(--color-danger-fill);
         @apply bg-button text-danger;
     }
 
@@ -154,8 +152,7 @@
             --tw-shadow: var(--glow);
         }
 
-        /* A toggle that is on has a face, so it glows like a raised one. Written without a second
-           recipe class, so it survives a merged @apply (see the note in the header). */
+        /* A toggle that is on has a face, so it glows like a raised one. */
         .btn-toggle[aria-pressed='true']:hover:not(:active) {
             --tw-shadow: var(--glow);
         }
@@ -184,7 +181,7 @@
        Filled faces step their own fill, in the direction that keeps their label at 4.5:1. */
     .btn:active,
     .btn.is-pressed {
-        --tw-shadow: var(--shadow-pressed), var(--glow);
+        --tw-shadow: var(--pressed-shadow), var(--glow);
         @apply bg-press text-fg-strong;
     }
 
@@ -300,14 +297,14 @@
     }
 
     .row-select:has(:focus-visible) {
-        outline-color: rgb(var(--color-fg));
+        outline-color: var(--color-fg);
     }
 
     /* Firefox before 121 has no :has(): the row rings whenever its input has focus, a click
        included. */
     @supports not selector(:has(*)) {
         .row-select:focus-within {
-            outline-color: rgb(var(--color-fg));
+            outline-color: var(--color-fg);
         }
     }
 
@@ -380,10 +377,10 @@
        offscreen badges. It is mid-tone in light and dark in dark, so its status colours are set to
        pass on both. */
     .surface-chrome {
-        --color-danger: 255 205 199;
-        --color-warning: 255 218 124;
-        --color-info: 190 227 255;
-        --color-accent-strong: 119 239 220;
+        --color-danger: rgb(255 205 199);
+        --color-warning: rgb(255 218 124);
+        --color-info: rgb(190 227 255);
+        --color-accent-strong: rgb(119 239 220);
     }
 
     /* High contrast: focus thickens the edge to 4px, inward, as elsewhere in index.css. */

@@ -58,7 +58,7 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **A merge by overlap must survive a larger update than one overlap window.** A burst of entries replaced the loaded run and the reader's place. Read until the runs join instead of replacing, and bound it.
 - **A new state flag needs its consumer in the same change,** and a test of the user-visible effect, such as the computed cursor, not the flag.
 - **Apply a safety rule to every component that shares the risk.** (`ConfirmModal` lacked `ChoiceModal`'s 300 ms guard.) A light dismiss should check where the press began and where it ended, so a drag that ends on the backdrop does not discard input.
-- **Check that a mechanism works in every build context the code uses:** template, global CSS, scoped style block, landing build. (Tailwind 3 cannot `@apply` global classes inside Vue `<style>` blocks, so the recipes are a plugin.)
+- **Check that a mechanism works in every build context the code uses:** template, global CSS, scoped style block, landing build. (A Vue `<style>` block can `@apply` utilities only, with `@reference` to `src/index.css`; recipes go on the element.)
 
 ## Rules, precedents and records
 - **Borrow a precedent's relations, not its numbers,** and check its premise first. (A press style copied from rows whose leading icon was a separate button; the dock's coordinates onto a row whose title selects instead of toggling.)

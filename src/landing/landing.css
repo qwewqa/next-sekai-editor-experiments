@@ -1,14 +1,14 @@
-@import '../themes.css';
-@config '../../tailwind.landing.config.js';
+@import 'tailwindcss' source(none);
+@import '../tailwind.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@source '../../privacy/index.html';
+@source '../../terms/index.html';
+@source '.';
 
 @layer components {
     /* Links are underlined ink, never accent: mint fails contrast on the light surface. */
     .link {
-        @apply rounded-sm text-fg-strong underline underline-offset-2 transition-colors hover:decoration-2;
+        @apply rounded-xs text-fg-strong underline underline-offset-2 transition-colors hover:decoration-2;
     }
 
     /* A button on a header band, as in the editor's dialogs. */

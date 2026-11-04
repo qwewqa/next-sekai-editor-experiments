@@ -41,13 +41,13 @@ const footerButton = () =>
             <template v-for="(message, index) in messages" :key="index">
                 <p class="flex items-start gap-2">
                     <SeverityIcon :severity="message.severity" class="mt-0.5 size-4" />
-                    <span :id="`${ids}-${index}`" class="[overflow-wrap:anywhere]">{{
+                    <span :id="`${ids}-${index}`" class="wrap-anywhere">{{
                         message.text
                     }}</span>
                 </p>
                 <details
                     v-if="message.detail"
-                    class="break-words pl-6"
+                    class="wrap-break-word pl-6"
                     @toggle="detailsOpen = ($event.target as HTMLDetailsElement).open"
                 >
                     <summary

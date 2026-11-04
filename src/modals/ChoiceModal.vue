@@ -82,10 +82,10 @@ const classes = (button: ChoiceButton) =>
 
 <template>
     <BaseModal :title="title()" @close="emit('close', undefined)">
-        <div v-if="lines" class="flex flex-col gap-2 [overflow-wrap:anywhere]">
+        <div v-if="lines" class="flex flex-col gap-2 wrap-anywhere">
             <p v-for="(line, index) in lines()" :key="index"><SeparatedText :text="line" /></p>
         </div>
-        <div v-else-if="message" class="whitespace-pre-line [overflow-wrap:anywhere]">
+        <div v-else-if="message" class="whitespace-pre-line wrap-anywhere">
             <SeparatedText :text="message()" />
         </div>
 

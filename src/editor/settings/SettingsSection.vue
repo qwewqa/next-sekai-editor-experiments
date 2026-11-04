@@ -15,7 +15,7 @@ provide(stackLongValuesKey, true)
 
 <template>
     <section :id="id && `settings-${id}`" :data-settings-section="id" class="scroll-mt-2">
-        <h2 tabindex="-1" data-settings-heading class="focus-out mb-2 rounded font-bold">
+        <h2 tabindex="-1" data-settings-heading class="focus-out mb-2 rounded-sm font-bold">
             {{ title }}
         </h2>
 

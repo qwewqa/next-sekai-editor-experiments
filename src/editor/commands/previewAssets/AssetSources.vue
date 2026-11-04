@@ -237,17 +237,17 @@ onBeforeUnmount(() => {
             <template v-if="row.id === selectedId && noteText">
                 <p
                     :id="noteId"
-                    class="relative pl-[5.75rem] pr-3 pt-1 text-sm"
+                    class="relative pl-23 pr-3 pt-1 text-sm"
                     :class="canChooseAgain ? 'pb-1' : 'pb-2'"
                     data-asset-note
                 >
                     <SeverityIcon
                         v-if="hasWarning"
                         severity="warning"
-                        class="absolute left-[4.25rem] top-[0.375rem] size-4"
+                        class="absolute left-17 top-1.5 size-4"
                     />{{ noteText }}
                 </p>
-                <div v-if="canChooseAgain" class="pb-2 pl-[5.75rem] pr-3">
+                <div v-if="canChooseAgain" class="pb-2 pl-23 pr-3">
                     <button
                         type="button"
                         class="btn focus-out btn-secondary relative inline-flex h-7 items-center rounded-full px-3 text-sm before:absolute before:-inset-0.5"
@@ -260,7 +260,7 @@ onBeforeUnmount(() => {
             </template>
             <p
                 v-else-if="row.id === selectedId && loadingShown"
-                class="asset-loading pb-2 pl-[5.75rem] pr-3 pt-1 text-sm text-fg/80"
+                class="asset-loading pb-2 pl-23 pr-3 pt-1 text-sm text-fg/80"
                 role="status"
                 data-asset-loading
             >

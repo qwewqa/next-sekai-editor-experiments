@@ -278,6 +278,8 @@ const stripStyle = computed(() => ({
 </template>
 
 <style scoped>
+@reference '../index.css';
+
 /* Colour, hover, press and focus come from the btn recipes in the template. */
 .transport-button {
     @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs;

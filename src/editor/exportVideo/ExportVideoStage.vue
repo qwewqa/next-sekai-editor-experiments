@@ -332,7 +332,7 @@ defineExpose({ play, pause, stepBy, setIn, setOut, frameBox })
                 <canvas ref="canvas" class="block size-full" />
                 <div
                     v-if="d.input.source === 'peek'"
-                    class="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_0_0_2px_rgb(var(--color-accent))]"
+                    class="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0_0_0_2px_var(--color-accent)]"
                 />
                 <p
                     v-if="loading && !hasFrame && !viewError"

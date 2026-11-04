@@ -103,7 +103,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
 <template>
     <!-- Opened from the keyboard, focus lands here, so the dialog opens at its top. -->
     <div
-        class="details-root min-w-0 select-text flex-col gap-4 outline-none [overflow-wrap:anywhere]"
+        class="details-root min-w-0 select-text flex-col gap-4 outline-hidden wrap-anywhere"
         :class="summaryProvided ? 'block' : 'flex'"
         :tabindex="summaryProvided ? undefined : -1"
         :data-autofocus="summaryProvided ? undefined : ''"
@@ -280,6 +280,8 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 /* The record table: a label column as wide as the labels (at most 40 %), the values beside it, and a
    hairline above every row, so each rule runs unbroken across both columns. */
 .details-root {

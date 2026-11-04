@@ -28,7 +28,7 @@ const isDetailOpen = ref(false)
             <p>{{ i18n.preview.graphicsHelp }}</p>
             <details
                 v-if="message"
-                class="max-h-32 max-w-full overflow-auto break-words"
+                class="max-h-32 max-w-full overflow-auto wrap-break-word"
                 @toggle="isDetailOpen = ($event.target as HTMLDetailsElement).open"
             >
                 <!-- The shared chevron in place of the native marker. -->

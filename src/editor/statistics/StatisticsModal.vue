@@ -212,7 +212,7 @@ const share = () => {
             v-scroll-edges.end
             class="stats-body relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4"
         >
-            <dl class="stats-rows stats-one-col first outline-none" tabindex="-1" data-autofocus>
+            <dl class="stats-rows stats-one-col first outline-hidden" tabindex="-1" data-autofocus>
                 <div class="stats-row stats-combo">
                     <dt>{{ strings.combo }}</dt>
                     <dd data-statistics-combo>{{ formatCount(stats.combo, locale) }}</dd>
@@ -375,6 +375,8 @@ const share = () => {
 </template>
 
 <style>
+@reference '../../index.css';
+
 /* The Statistics dialog: Step Details' rows with a 14 px glyph column, in two columns of rows
    from a 32 rem content width, the chart full width. */
 .stats-body {
@@ -431,9 +433,9 @@ const share = () => {
 
 /* A row with a breakdown: its value is a button whose ::before covers the row. */
 .stats-split {
-    @apply cursor-pointer select-none tabular-nums outline-none;
+    @apply cursor-pointer select-none tabular-nums outline-hidden;
     -webkit-tap-highlight-color: transparent;
-    text-decoration: underline dotted rgb(var(--color-fg) / 0.6);
+    text-decoration: underline dotted color-mix(in srgb, var(--color-fg) 60%, transparent);
     text-decoration-thickness: 1px;
     text-underline-offset: 0.3em;
 }
@@ -445,17 +447,17 @@ const share = () => {
 }
 @media (hover: hover) and (pointer: fine) {
     .stats-split:hover::before {
-        background: rgb(var(--color-fg) / 0.08);
+        background: color-mix(in srgb, var(--color-fg) 8%, transparent);
     }
 }
 .stats-split[aria-expanded='true']::before {
-    background: rgb(var(--color-fg) / 0.08);
+    background: color-mix(in srgb, var(--color-fg) 8%, transparent);
 }
 .stats-split:active::before {
-    background: rgb(var(--color-fg) / 0.15);
+    background: color-mix(in srgb, var(--color-fg) 15%, transparent);
 }
 .stats-split:focus-visible::before {
-    outline: 2px solid rgb(var(--color-fg));
+    outline: 2px solid var(--color-fg);
     outline-offset: -2px;
 }
 /* Its display and minimum width are utilities on the element, which beat .popup-surface whatever
@@ -537,14 +539,14 @@ const share = () => {
     height: calc(var(--lines, 1) * 1.25rem);
     padding: 0 0 0.5rem 2rem;
     box-sizing: content-box;
-    background: linear-gradient(rgb(var(--color-modal)), rgb(var(--color-modal))) top / 100%
+    background: linear-gradient(var(--color-modal), var(--color-modal)) top / 100%
         calc(100% - 0.5rem) no-repeat;
     @apply text-sm;
 }
 .stats-label-line.stuck {
     /* Stuck over the plot, it is opaque to its edge. */
     background-size: 100% 100%;
-    box-shadow: var(--shadow-band);
+    box-shadow: var(--band-shadow);
 }
 .stats-readout {
     position: absolute;
@@ -638,19 +640,19 @@ const share = () => {
     overflow: visible;
 }
 .stats-grid {
-    stroke: rgb(var(--color-fg) / 0.15);
+    stroke: color-mix(in srgb, var(--color-fg) 15%, transparent);
 }
 .stats-wash-top {
-    stop-color: rgb(var(--color-fg));
+    stop-color: var(--color-fg);
     stop-opacity: 0.22;
 }
 .stats-wash-bottom {
-    stop-color: rgb(var(--color-fg));
+    stop-color: var(--color-fg);
     stop-opacity: 0.03;
 }
 .stats-line {
     fill: none;
-    stroke: rgb(var(--color-fg));
+    stroke: var(--color-fg);
     stroke-width: 1;
     stroke-linejoin: round;
     stroke-linecap: round;
@@ -663,18 +665,18 @@ const share = () => {
 }
 /* The distribution's All: a flat area behind Tap and Flick's line, with an edge along its top. */
 .stats-all-fill {
-    fill: rgb(var(--color-fg) / 0.16);
+    fill: color-mix(in srgb, var(--color-fg) 16%, transparent);
 }
 :root[data-theme='dark'] .stats-all-fill {
-    fill: rgb(var(--color-fg) / 0.24);
+    fill: color-mix(in srgb, var(--color-fg) 24%, transparent);
 }
 .stats-all-edge {
     fill: none;
-    stroke: rgb(var(--color-fg) / 0.6);
+    stroke: color-mix(in srgb, var(--color-fg) 60%, transparent);
     stroke-width: 1px;
 }
 :root[data-theme='dark'] .stats-all-edge {
-    stroke: rgb(var(--color-fg) / 0.5);
+    stroke: color-mix(in srgb, var(--color-fg) 50%, transparent);
 }
 /* The key ends at the label line's right edge, and wraps above the readout when they do not fit. */
 .stats-series-key {
@@ -723,8 +725,8 @@ const share = () => {
     height: 0.625rem;
     margin: -0.3125rem 0 0 -0.3125rem;
     border-radius: 9999px;
-    background: rgb(var(--color-fg));
-    box-shadow: 0 0 0 2px rgb(var(--color-modal));
+    background: var(--color-fg);
+    box-shadow: 0 0 0 2px var(--color-modal);
     pointer-events: none;
 }
 .stats-cross {
@@ -732,7 +734,7 @@ const share = () => {
     top: 0;
     bottom: 0;
     width: 1px;
-    background: rgb(var(--color-fg) / 0.8);
+    background: color-mix(in srgb, var(--color-fg) 80%, transparent);
     pointer-events: none;
 }
 /* Over the label line, except while that is stuck over the plot. */
@@ -741,7 +743,7 @@ const share = () => {
     position: absolute;
     inset: calc(-1rem - var(--lines, 1) * 1.25rem) -0.375rem -1.75rem -2.25rem;
     border-radius: 0.75rem;
-    outline: 2px solid rgb(var(--color-fg));
+    outline: 2px solid var(--color-fg);
     pointer-events: none;
 }
 .stats-label-line.stuck ~ .stats-plot-row .stats-plot-focus {
@@ -812,14 +814,14 @@ const share = () => {
 }
 @media (hover: hover) and (pointer: fine) {
     .stats-entry:hover .stats-entry-face {
-        background: rgb(var(--color-fg) / 0.08);
+        background: color-mix(in srgb, var(--color-fg) 8%, transparent);
     }
 }
 .stats-entry:active .stats-entry-face {
-    background: rgb(var(--color-fg) / 0.15);
+    background: color-mix(in srgb, var(--color-fg) 15%, transparent);
 }
 .stats-entry input:focus-visible + .stats-entry-face {
-    outline: 2px solid rgb(var(--color-fg));
+    outline: 2px solid var(--color-fg);
     outline-offset: -2px;
 }
 /* The mark: the layer's swatch, filled when on with a 1 px edge, a 2 px ring when off; ink in
@@ -836,10 +838,10 @@ const share = () => {
     box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.3);
 }
 .stats-mark.ink {
-    --c: rgb(var(--color-fg) / 0.8);
+    --c: color-mix(in srgb, var(--color-fg) 80%, transparent);
 }
 .stats-entry.on .stats-mark.ink {
-    background: rgb(var(--color-fg));
+    background: var(--color-fg);
     box-shadow: none;
 }
 

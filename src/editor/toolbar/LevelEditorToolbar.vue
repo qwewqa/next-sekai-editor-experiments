@@ -623,7 +623,7 @@ onBeforeUnmount(() => {
                 <!-- A square pseudo-element, centred in place, takes input in the corners; the face stays unpositioned.
                      The chrome tier is on the shown tool, not the row, so the flyout's faces keep the surface values. -->
                 <LevelEditorToolbarTool
-                    class="surface-chrome size-[--tool-size] justify-center before:absolute before:size-[--tool-size]"
+                    class="surface-chrome size-(--tool-size) justify-center before:absolute before:size-(--tool-size)"
                     :class="{
                         'toolbar-quick-switch': settings.toolbarQuickSwitch,
                         'is-pressed': quickFace === i,

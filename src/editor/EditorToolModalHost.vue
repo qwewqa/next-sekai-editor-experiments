@@ -39,7 +39,7 @@ const frame = computed(() =>
         ? 'inset-x-0 bottom-2 mx-auto max-h-[70%] w-[calc(100%-1rem)] max-w-md'
         : sheetSide.value === 'right'
           ? 'bottom-2 right-2 w-[min(22rem,62%)]'
-          : 'inset-x-2 bottom-2 mx-auto h-[min(55%,30rem)] min-h-60 max-w-[40rem]',
+          : 'inset-x-2 bottom-2 mx-auto h-[min(55%,30rem)] min-h-60 max-w-160',
 )
 const sheetStyle = computed(() => {
     if (!sheet.value) return undefined
@@ -177,7 +177,7 @@ onUnmounted(() => {
         :aria-label="label"
         tabindex="-1"
         data-tool-dialog
-        class="editor-tool-modal absolute z-30 flex flex-col overflow-hidden rounded-xl bg-modal text-fg shadow-xl outline-none ring-1 ring-fg/10"
+        class="editor-tool-modal absolute z-30 flex flex-col overflow-hidden rounded-xl bg-modal text-fg shadow-xl outline-hidden ring-1 ring-fg/10"
         :class="frame"
         :data-sheet="sheet ? sheetSide : undefined"
         @keydown="onKeydown"

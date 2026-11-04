@@ -593,9 +593,9 @@ test('the pressed 1:1 glows on hover, as the toolbar tool in use does', async ({
     const accent = await page.evaluate(() =>
         getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim(),
     )
-    await expect.poll(shadow).toContain(`rgb(${accent.split(/\s+/).join(', ')})`)
+    await expect.poll(shadow).toContain(`rgb(${accent.match(/[\d.]+/g)!.join(', ')})`)
     await page.mouse.move(0, 0)
-    await expect.poll(shadow).not.toContain(`rgb(${accent.split(/\s+/).join(', ')})`)
+    await expect.poll(shadow).not.toContain(`rgb(${accent.match(/[\d.]+/g)!.join(', ')})`)
 })
 
 for (const coarse of [false, true])

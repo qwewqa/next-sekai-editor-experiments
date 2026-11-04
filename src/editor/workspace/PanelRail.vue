@@ -360,11 +360,11 @@ const chevronDirection = computed(() => {
                 :key="id"
                 type="button"
                 role="tab"
-                class="panel-tab ghost ghost-chrome relative flex shrink-0 items-center justify-center whitespace-nowrap rounded"
+                class="panel-tab ghost ghost-chrome relative flex shrink-0 items-center justify-center whitespace-nowrap rounded-sm"
                 :class="[
                     vertical
-                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-[0.0625rem] before:inset-x-0 last:before:bottom-0`
-                        : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-[0.0625rem] before:inset-y-0 last:before:right-0`,
+                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-0.25 before:inset-x-0 last:before:bottom-0`
+                        : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-0.25 before:inset-y-0 last:before:right-0`,
                     state(id) === 'visible' || menu?.id === id ? 'ghost-chrome-on' : '',
                 ]"
                 :data-panel-tab="id"
@@ -437,6 +437,8 @@ const chevronDirection = computed(() => {
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 /* Borders would shrink the rail's content box below its tabs, so separate the
    rail from its dock body with an inset line instead. */
 .panel-rail-left {

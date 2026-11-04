@@ -57,9 +57,9 @@ const shortcut = computed(() =>
             // High contrast: icons take ButtonText, and the tool in use keeps its edge in the
             // selected text colour (it is unforced, so the transparent edge would stay clear).
             selected
-                ? 'forced-colors:outline-[color:HighlightText]'
+                ? 'forced-colors:outline-[HighlightText]'
                 : 'forced-colors:fill-[ButtonText]',
-            { '[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3': showLabel },
+            { 'pointer-coarse:min-h-11 pointer-coarse:px-3': showLabel },
             // A refused tool dims only its content: the face, shadow and on-state stay opaque
             // over the chart.
             { '*:opacity-40': refused },
@@ -99,7 +99,7 @@ const shortcut = computed(() =>
             v-bind="iconProps"
         />
         <template v-if="showLabel">
-            <span class="ml-2 flex-grow text-left text-sm">{{ title }}</span>
+            <span class="ml-2 grow text-left text-sm">{{ title }}</span>
             <span
                 v-if="shortcut"
                 aria-hidden="true"

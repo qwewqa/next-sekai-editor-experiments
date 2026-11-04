@@ -2186,7 +2186,7 @@ onUnmounted(() => {
                                             ? `1/${settings.elevationSnap}`
                                             : i18n.elevation.off
                                     "
-                                    class="z-[2] px-3 text-base tabular-nums text-fg group-active:text-fg-strong" /><span
+                                    class="z-2 px-3 text-base tabular-nums text-fg group-active:text-fg-strong" /><span
                                     class="elevation-select-icon group-active:text-fg-strong"
                                     aria-hidden="true"
                                     ><ChevronIcon direction="down" /></span></span
@@ -2375,7 +2375,7 @@ onUnmounted(() => {
     z-index: 2;
     display: flex;
     align-items: center;
-    color: theme('colors.fg');
+    color: var(--color-fg);
 }
 
 @container (max-width: 19rem) {

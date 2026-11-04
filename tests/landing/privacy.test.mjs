@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import test from 'node:test'
 
 // The web's /privacy/ page: its source, before the build fills the placeholders.
 const html = readFileSync(new URL('../../privacy/index.html', import.meta.url), 'utf8')
-const require = createRequire(import.meta.url)
 const text = html
     .replace(/<script\b[\s\S]*?<\/script>/g, '')
     .replace(/<[^>]*>/g, ' ')
@@ -130,16 +128,16 @@ test('the placeholders are the ones the build fills', () => {
     assert.deepEqual([...names].sort(), ['%GITHUB_REPOSITORY%', '%PRODUCT_NAME%'])
 })
 
-test("the landing config shares the editor's colours and shadows, and reads the page", () => {
-    const shared = require('../../tailwind.colors.js')
-    const editor = require('../../tailwind.config.js')
-    const landing = require('../../tailwind.landing.config.js')
-    assert.deepEqual(editor.theme.extend.colors, shared.colors)
-    assert.deepEqual(landing.theme.extend.colors, shared.colors)
-    assert.deepEqual(editor.theme.extend.boxShadow, shared.boxShadow)
-    assert.deepEqual(landing.theme.extend.boxShadow, shared.boxShadow)
-    assert.ok(landing.content.files.includes('./privacy/index.html'))
-    assert.ok(
-        !editor.content.files.some((glob) => glob.includes('privacy') || glob.includes('landing')),
-    )
+// Both stylesheets take the shared theme and recipes, and each reads only its own sources.
+const stylesheet = (path) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8')
+const sources = (css) => [...css.matchAll(/@source '([^']+)'/g)].map((match) => match[1])
+
+test("the landing stylesheet shares the editor's theme and recipes, and reads the page", () => {
+    const editor = stylesheet('index.css')
+    const landing = stylesheet('landing/landing.css')
+    for (const css of [editor, landing]) assert.match(css, /@import 'tailwindcss' source\(none\);/)
+    assert.match(editor, /@import '\.\/tailwind\.css';/)
+    assert.match(landing, /@import '\.\.\/tailwind\.css';/)
+    assert.ok(sources(landing).includes('../../privacy/index.html'))
+    assert.ok(!sources(editor).some((glob) => glob.includes('privacy') || glob.includes('landing')))
 })

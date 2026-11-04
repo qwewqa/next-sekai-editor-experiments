@@ -38,7 +38,7 @@ const chart: [RegExp, string][] = [
 const allowed: [string, RegExp, string][] = [
     [
         'src/editor/QuickNotice.vue',
-        /colors\.(on-)?accent/,
+        /--color-(on-)?accent/,
         'the quick notice: mint for every quick notice',
     ],
     [
@@ -73,7 +73,7 @@ const mint = new RegExp(
 /** Ink on mint, on any property: under a press it is a leftover of the mint press. */
 const onAccent = new RegExp(`^${colourProperty}-on-accent(?:/\\d+)?$`)
 const pressVariant =
-    /(?:^|:)(?:active|group-active|peer-active|has-\[:active\]|enabled:active)(?=:|$)|\[\.popup-item:enabled:active_&\]/
+    /(?:^|:)(?:active|group-active|peer-active|has-\[:active\]|has-active|enabled:active)(?=:|$)|\[\.popup-item:enabled:active_&\]/
 const focusVariant =
     /(?:^|:)(?:focus|focus-visible|focus-within|group-focus-visible|peer-focus-visible)(?=:|$)/
 const palette = new RegExp(
@@ -98,9 +98,9 @@ const detect = (content: string): Rule[] => {
         const variants = match[1] ?? ''
         const utility = match[3] ?? ''
         if (utility === 'shadow-accent') out.push('hover-glow-outside-recipes')
-        // The recipe ring sits in the components layer. A leftover outline-none (same specificity,
-        // later layer) silently removes it, and visible focus is the function that must not be lost.
-        else if (focusVariant.test(variants) && utility === 'outline-none')
+        // The recipe ring sits in the components layer. A focus utility that hides the outline sits
+        // in the utilities layer, which wins, and visible focus is the function that must not be lost.
+        else if (focusVariant.test(variants) && /^outline-(?:none|hidden)$/.test(utility))
             out.push('focus-outline-none')
         else if (mint.test(utility))
             out.push(
@@ -121,7 +121,7 @@ const detect = (content: string): Rule[] => {
         else if (literal.test(utility)) out.push('colour-literal')
     }
     if (
-        /theme\(\s*['"]?colors\.(?:(?:on-)?accent|selected)\b|var\(--color-(?:(?:on-)?accent|selected)\b/.test(
+        /var\(--color-(?:(?:on-)?accent|selected)\b/.test(
             content,
         )
     )
@@ -227,14 +227,16 @@ test('the detector catches every form the recipes replace', () => {
         ['class="group-active:bg-accent"', 'press-is-mint'],
         ['class="peer-active:text-on-accent"', 'press-is-mint'],
         ['class="has-[:active]:bg-accent"', 'press-is-mint'],
+        ['class="has-active:bg-accent"', 'press-is-mint'],
         ['class="!bg-accent"', 'mint-outside-recipes'],
         ['@apply bg-accent text-on-accent', 'mint-outside-recipes'],
-        ["color: theme('colors.accent')", 'mint-outside-recipes'],
+        ['color: var(--color-accent)', 'mint-outside-recipes'],
         ['class="hover:shadow-accent"', 'hover-glow-outside-recipes'],
         ['class="focus-visible:ring-white"', 'focus-colour'],
         ['class="focus-visible:outline-fg"', 'focus-colour'],
         ['class="focus-visible:outline-none"', 'focus-outline-none'],
         ['class="focus:outline-none"', 'focus-outline-none'],
+        ['class="focus-visible:outline-hidden"', 'focus-outline-none'],
         ['@apply focus-visible:outline-none', 'focus-outline-none'],
         ['class="group-active:bg-on-accent/30"', 'press-is-mint'],
         ['class="active:border-on-accent"', 'press-is-mint'],
@@ -252,14 +254,14 @@ test('the detector passes the recipes and the role tokens', () => {
         'class="btn btn-primary focus-out"',
         'class="ghost ghost-band btn-toggle"',
         'class="row-checked row-current focus-edge"',
-        'class="row-select relative flex has-[:disabled]:opacity-40"',
+        'class="row-select relative flex has-disabled:opacity-40"',
         'class="text-danger bg-danger-fill text-on-danger"',
         'class="bg-ghost-press text-fg-strong"',
         'class="active:bg-ghost-press"',
         'class="focus-visible:outline-offset-2"',
         '@apply bg-press text-fg-strong',
         'class="text-warning text-info"',
-        'class="outline-none"',
+        'class="outline-hidden"',
         'class="bg-on-accent"',
     ]
     for (const snippet of pass) assert.deepEqual(detect(snippet), [], snippet)

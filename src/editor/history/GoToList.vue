@@ -238,7 +238,7 @@ const labelOf = (item: Item) =>
         ref="list"
         role="listbox"
         tabindex="0"
-        class="goto-list outline-none"
+        class="goto-list outline-hidden"
         :aria-labelledby="`${listId}-heading`"
         :aria-activedescendant="activeId ? optionId(activeId) : undefined"
         :aria-busy="!pieces && !failed"
@@ -309,8 +309,10 @@ const labelOf = (item: Item) =>
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 .goto-item {
-    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded px-3 py-2 transition-colors;
+    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded-sm px-3 py-2 transition-colors;
 }
 
 .goto-item-session {
@@ -319,7 +321,7 @@ const labelOf = (item: Item) =>
 
 /* The listbox holds focus; its active option rings at its edge (focus-edge, on the option). */
 .goto-list:focus-visible .goto-item-active {
-    outline: 2px solid rgb(var(--color-fg));
+    outline: 2px solid var(--color-fg);
     outline-offset: -2px;
 }
 

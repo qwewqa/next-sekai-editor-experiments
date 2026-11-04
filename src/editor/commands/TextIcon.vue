@@ -14,10 +14,10 @@ defineProps<{
         <!-- High contrast keeps the colour that names its object. -->
         <span
             v-if="chip"
-            class="flex rounded-sm leading-4 text-on-accent forced-color-adjust-none"
+            class="flex rounded-xs leading-4 text-on-accent forced-color-adjust-none"
             :class="chip"
             ><FitText
-                class="px-0.5 [[data-icon-column]_&]:px-0"
+                class="px-0.5 in-data-icon-column:px-0"
                 :text="title"
                 :natural="12"
                 :room="20"

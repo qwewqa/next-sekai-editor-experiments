@@ -126,31 +126,31 @@ const { active: hasSelection } = useMinimapLayer(selectionCanvas, mapping, drawn
         <canvas
             v-if="hasChanges"
             ref="change"
-            class="pointer-events-none absolute inset-0 z-[1] size-full"
+            class="pointer-events-none absolute inset-0 z-1 size-full"
             data-minimap-layer="change"
         />
         <canvas
             v-if="hasSelection"
             ref="selection"
-            class="pointer-events-none absolute inset-0 z-[2] size-full"
+            class="pointer-events-none absolute inset-0 z-2 size-full"
             data-minimap-layer="selection"
         />
         <div
             ref="box"
-            class="absolute left-[6px] right-[6px] top-0 z-[3] border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
+            class="absolute left-[6px] right-[6px] top-0 z-3 border-2 border-white/85 bg-white/16 shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
             :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
             data-minimap-box
             style="visibility: hidden"
         />
         <div
             ref="cursor"
-            class="pointer-events-none absolute inset-x-0 top-0 z-[3] h-px bg-white"
+            class="pointer-events-none absolute inset-x-0 top-0 z-3 h-px bg-white"
             data-minimap-cursor
             style="visibility: hidden"
         />
         <svg
             ref="edge"
-            class="pointer-events-none absolute top-1 z-[3] text-white forced-colors:text-[CanvasText]"
+            class="pointer-events-none absolute top-1 z-3 text-white forced-colors:text-[CanvasText]"
             width="11"
             height="6"
             viewBox="0 0 11 6"

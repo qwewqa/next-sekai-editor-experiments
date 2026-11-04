@@ -67,7 +67,7 @@ const hasAction = computed(() =>
             <span
                 v-if="row.detail"
                 class="block text-sm text-fg/80"
-                :class="hasAction ? 'truncate' : '[overflow-wrap:anywhere]'"
+                :class="hasAction ? 'truncate' : 'wrap-anywhere'"
                 data-package-row-detail
                 >{{ row.detail }}</span
             >
@@ -120,8 +120,8 @@ const hasAction = computed(() =>
             </button>
         </span>
     </div>
-    <p v-if="error" :id="errorId" class="relative pb-2 pl-[5.5rem] pr-3 text-sm" data-package-error>
-        <SeverityIcon severity="error" class="absolute left-[4rem] top-[0.125rem] size-4" />{{
+    <p v-if="error" :id="errorId" class="relative pb-2 pl-22 pr-3 text-sm" data-package-error>
+        <SeverityIcon severity="error" class="absolute left-16 top-0.5 size-4" />{{
             error
         }}
     </p>

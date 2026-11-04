@@ -307,6 +307,8 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
 </template>
 
 <style scoped>
+@reference '../../../index.css';
+
 .preview-assets-tabs {
     scrollbar-width: none;
 }

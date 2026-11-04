@@ -455,7 +455,7 @@ const title = computed(() => i18n.value.exportVideo.title)
 }
 
 .export-side-edge {
-    box-shadow: inset 1px 0 0 rgb(var(--color-fg) / 0.15);
+    box-shadow: inset 1px 0 0 color-mix(in srgb, var(--color-fg) 15%, transparent);
 }
 
 .export-settings {

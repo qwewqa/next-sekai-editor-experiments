@@ -330,9 +330,9 @@ const goToButtonTitle = computed(() =>
                     :key="tab"
                     type="button"
                     role="tab"
-                    class="history-tab group flex h-full items-center font-bold text-fg outline-none"
+                    class="history-tab group flex h-full items-center font-bold text-fg outline-hidden"
                     :class="[
-                        tab === 'sessions' ? 'min-w-12 shrink-[10000]' : 'shrink-0',
+                        tab === 'sessions' ? 'min-w-12 shrink-10000' : 'shrink-0',
                         { 'history-tab-small': mode === 'small', 'history-tab-tight': tight },
                     ]"
                     :aria-selected="historyTab === tab"
@@ -415,7 +415,7 @@ const goToButtonTitle = computed(() =>
         <div
             v-if="onTimeline && filtered"
             ref="filterBanner"
-            class="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-fg/15 pl-[1.125rem] pr-1.5 text-xs"
+            class="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-fg/15 pl-4.5 pr-1.5 text-xs"
             data-history-filter-banner
         >
             <span v-if="filterRange" class="flex min-w-0 flex-col" :title="filterText">
@@ -468,6 +468,8 @@ const goToButtonTitle = computed(() =>
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 /* The tab's pill is its face (the inner-face pattern on the band). */
 @media (hover: hover) and (pointer: fine) {
     .history-tab:not([aria-selected='true']):not(:active):hover .history-tab-pill {

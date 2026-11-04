@@ -40,9 +40,9 @@
             overscroll-behavior: contain;
             border: none;
             border-radius: 0.5rem;
-            outline: 1px solid theme('colors.popup-edge');
-            background-color: theme('colors.popup');
-            color: theme('colors.fg');
+            outline: 1px solid var(--color-popup-edge);
+            background-color: var(--color-popup);
+            color: var(--color-fg);
             font-size: 0.875rem;
             line-height: 1.25rem;
             box-shadow:
@@ -67,7 +67,7 @@
             min-block-size: 2.25rem;
             padding: 0.5rem 0.75rem;
             border-radius: 0.25rem;
-            color: theme('colors.fg');
+            color: var(--color-fg);
             font-size: 0.875rem;
             font-weight: 400;
             line-height: 1.25rem;
@@ -104,18 +104,18 @@
 
         @media (hover: hover) {
             html:not([data-native-lists]) select option:enabled:hover {
-                background-color: theme('colors.popup-hover');
+                background-color: var(--color-popup-hover);
             }
         }
 
         html:not([data-native-lists]) select option:focus-visible {
-            outline: 2px solid theme('colors.fg');
-            background-color: theme('colors.popup-hover');
+            outline: 2px solid var(--color-fg);
+            background-color: var(--color-popup-hover);
         }
 
         html:not([data-native-lists]) select option:enabled:active {
-            background-color: theme('colors.ghost-press');
-            color: theme('colors.fg-strong');
+            background-color: var(--color-ghost-press);
+            color: var(--color-fg-strong);
         }
 
         html:not([data-native-lists]) select option:disabled {
@@ -127,7 +127,7 @@
             display: block;
             margin-inline: 0.5rem;
             padding: 0.5rem 0.25rem 0;
-            color: theme('colors.fg / 80%');
+            color: color-mix(in srgb, var(--color-fg) 80%, transparent);
             font-size: 0.75rem;
             font-weight: 700;
             line-height: 1rem;
@@ -144,13 +144,13 @@
         html:not([data-native-lists]) select :is(option:not([hidden]), optgroup) + optgroup {
             margin-top: 0.25rem;
             padding-top: 0.75rem;
-            border-top: 1px solid theme('colors.fg / 15%');
+            border-top: 1px solid color-mix(in srgb, var(--color-fg) 15%, transparent);
         }
 
         html:not([data-native-lists]) select optgroup:has(+ option) {
             margin-bottom: 0.25rem;
             padding-bottom: 0.25rem;
-            border-bottom: 1px solid theme('colors.fg / 15%');
+            border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 15%, transparent);
         }
 
         /* The list's own value can't truncate, so the field draws it in its place. */
@@ -160,7 +160,7 @@
 
         /* The text is transparent, so a ring in currentColor would be too: it takes the surface ink. */
         html:not([data-native-lists]) select:has(~ .select-value):focus-visible {
-            outline-color: rgb(var(--color-fg));
+            outline-color: var(--color-fg);
         }
 
         /* Dimmed as a disabled system select is, value and all. */

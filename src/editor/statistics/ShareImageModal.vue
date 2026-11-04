@@ -304,7 +304,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
             v-if="previewUrl"
             :src="previewUrl"
             :alt="summary"
-            class="block aspect-video h-auto w-full rounded-xl shadow-[0_0_0_1px_rgb(var(--color-fg)/0.15)]"
+            class="block aspect-video h-auto w-full rounded-xl shadow-[0_0_0_1px_color-mix(in srgb, var(--color-fg) 15%, transparent)]"
             data-share-preview
         />
         <div v-else class="aspect-video w-full rounded-xl bg-fg/5" />

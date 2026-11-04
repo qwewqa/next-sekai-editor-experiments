@@ -45,9 +45,9 @@ const onClick = (event: MouseEvent) => {
 <template>
     <button
         type="button"
-        class="status-label ghost focus-out ghost-chrome relative flex shrink-[1000] items-center px-1"
+        class="status-label ghost focus-out ghost-chrome relative flex shrink-1000 items-center px-1"
         :class="[
-            compact ? 'min-w-0' : 'min-w-[4.5rem] max-w-[60%]',
+            compact ? 'min-w-0' : 'min-w-18 max-w-[60%]',
             { 'ghost-chrome-warning': raised.notStored.value },
         ]"
         :aria-label="statusName"
@@ -63,7 +63,7 @@ const onClick = (event: MouseEvent) => {
                 <span
                     v-if="statusLabel.name && !(compact && statusLabel.file)"
                     class="min-w-0 truncate"
-                    :class="statusLabel.file || keepState ? 'shrink-[1000]' : ''"
+                    :class="statusLabel.file || keepState ? 'shrink-1000' : ''"
                     data-status-name
                     >{{ statusLabel.name }}</span
                 >
@@ -79,7 +79,7 @@ const onClick = (event: MouseEvent) => {
                     v-if="statusLabel.state"
                     class="ml-1 min-w-0 truncate"
                     :class="[
-                        keepState && !statusLabel.file ? '' : 'shrink-[10]',
+                        keepState && !statusLabel.file ? '' : 'shrink-10',
                         compact && !(keepState && !statusLabel.file) ? 'hidden' : '',
                     ]"
                     data-status-state

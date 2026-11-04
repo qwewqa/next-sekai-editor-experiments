@@ -244,7 +244,7 @@ const labelOf = (direction: 'up' | 'down') => {
                 v-for="direction in directions"
                 :key="direction"
                 type="button"
-                class="change-arrow change-control relative flex h-6 shrink-0 items-center tabular-nums outline-none before:absolute before:-inset-1"
+                class="change-arrow change-control relative flex h-6 shrink-0 items-center tabular-nums outline-hidden before:absolute before:-inset-1"
                 :class="narrowArrows ? 'w-11 before:-inset-x-0.5' : 'w-12'"
                 :aria-disabled="!enabled(direction)"
                 :aria-label="labelOf(direction)"
@@ -283,6 +283,8 @@ const labelOf = (direction: 'up' | 'down') => {
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 /* The arrows' face is the chevron's circle (the inner-face pattern, with ghost tokens): hover,
    press and focus are drawn on it, centred on the chevron. A face under 32 px rings outside. */
 @media (hover: hover) and (pointer: fine) {
@@ -301,7 +303,7 @@ const labelOf = (direction: 'up' | 'down') => {
 }
 
 .change-arrow:focus-visible .change-face {
-    outline-color: rgb(var(--color-fg));
+    outline-color: var(--color-fg);
 }
 
 /* Disabled dims the chevron and the count, not the face, so a focus ring stays strong. */

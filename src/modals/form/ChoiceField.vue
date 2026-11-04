@@ -186,7 +186,7 @@ watch(
         :notes
     >
         <div
-            class="form-field-segmented flex min-w-0 rounded-full bg-recess p-0.5 shadow-track outline-none"
+            class="form-field-segmented flex min-w-0 rounded-full bg-recess p-0.5 shadow-track outline-hidden"
             :class="{ 'text-fg/80': isMixed, 'opacity-40': disabled }"
             role="radiogroup"
             :aria-labelledby="isMixed ? `${id}-label ${id}-mixed` : `${id}-label`"

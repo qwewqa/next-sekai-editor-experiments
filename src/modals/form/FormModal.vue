@@ -31,7 +31,7 @@ defineEmits<{
                 class="mt-4 flex flex-wrap justify-end gap-2"
                 :class="
                     slots.actions
-                        ? 'max-[480px]:flex-col-reverse max-[480px]:[&>*]:w-full'
+                        ? 'max-[480px]:flex-col-reverse max-[480px]:*:w-full'
                         : undefined
                 "
             >

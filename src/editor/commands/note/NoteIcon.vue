@@ -39,7 +39,7 @@ const type = computed(() => {
         <text
             v-if="index !== undefined"
             class="forced-colors:fill-on-accent"
-            :class="{ 'fill-[--preset-ink]': !['anchor', 'damage', 'tick'].includes(type) }"
+            :class="{ 'fill-(--preset-ink)': !['anchor', 'damage', 'tick'].includes(type) }"
             x="0"
             y="0"
             font-size="0.5"

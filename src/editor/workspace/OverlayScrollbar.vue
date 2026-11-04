@@ -284,6 +284,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 /* A dock can ask for room at the edge, as a left dock does for its resize handle. */
 .overlay-scrollbar {
     position: absolute;

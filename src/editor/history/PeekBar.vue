@@ -238,7 +238,7 @@ const onKeydown = (event: KeyboardEvent) => {
             @keydown="onKeydown"
         >
             <div
-                class="pointer-events-auto flex w-[--peek-w] max-w-full items-center gap-2 bg-modal p-1 text-sm text-fg shadow-xl ring-1 ring-fg/10"
+                class="pointer-events-auto flex w-(--peek-w) max-w-full items-center gap-2 bg-modal p-1 text-sm text-fg shadow-xl ring-1 ring-fg/10"
                 :class="stacked ? 'flex-wrap justify-end rounded-[1.375rem]' : 'rounded-full'"
                 data-peek-main
             >
@@ -251,7 +251,7 @@ const onKeydown = (event: KeyboardEvent) => {
                     data-peek-text
                     data-peek-session
                 >
-                    <span class="block truncate text-sm leading-[1.125rem]">{{
+                    <span class="block truncate text-sm leading-4.5">{{
                         sessionText.name
                     }}</span>
                     <span class="block truncate text-xs tabular-nums leading-4 text-fg/80">{{
@@ -313,6 +313,8 @@ const onKeydown = (event: KeyboardEvent) => {
 </template>
 
 <style scoped>
+@reference '../../index.css';
+
 /* Hits reach 4 px past each face: 44 px tall, meeting their neighbours in the 8 px gaps. */
 .peek-hit {
     position: relative;

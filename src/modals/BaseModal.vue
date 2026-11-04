@@ -56,7 +56,7 @@ const titleId = useId()
         <span
             :id="titleId"
             :class="
-                slots.header ? 'sr-only' : 'min-w-0 py-1.5 leading-tight [overflow-wrap:anywhere]'
+                slots.header ? 'sr-only' : 'min-w-0 py-1.5 leading-tight wrap-anywhere'
             "
             data-modal-title
             >{{ title }}</span

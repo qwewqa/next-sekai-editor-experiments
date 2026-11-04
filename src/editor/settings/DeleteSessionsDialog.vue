@@ -35,7 +35,7 @@ const rowClass = 'row-select relative flex min-h-10 items-center gap-3 rounded-x
 const radioClass =
     'pointer-events-none relative size-4 shrink-0 rounded-full border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-full after:bg-fg after:transition-transform peer-checked:after:scale-100'
 const boxClass =
-    'pointer-events-none relative size-4 shrink-0 rounded border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-[1px] after:bg-fg after:transition-transform peer-checked:after:scale-100'
+    'pointer-events-none relative size-4 shrink-0 rounded-sm border-2 border-fg after:absolute after:inset-0.5 after:scale-0 after:rounded-[1px] after:bg-fg after:transition-transform peer-checked:after:scale-100'
 </script>
 
 <template>

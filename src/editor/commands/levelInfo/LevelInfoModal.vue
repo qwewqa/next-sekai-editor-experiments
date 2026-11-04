@@ -251,7 +251,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                 >
                     <div class="flex min-w-0 flex-wrap items-center gap-2">
                         <p
-                            class="min-w-0 flex-1 basis-32 select-text whitespace-pre-wrap [overflow-wrap:anywhere]"
+                            class="min-w-0 flex-1 basis-32 select-text whitespace-pre-wrap wrap-anywhere"
                             data-status-summary
                         >
                             <SeparatedText :text="fileLine" />
@@ -323,7 +323,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                                 i18n.levelInfo.notLoaded
                             }}</span>
                             <span
-                                class="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-[--cover-edge]"
+                                class="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-(--cover-edge)"
                                 aria-hidden="true"
                             ></span>
                         </div>
