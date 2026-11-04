@@ -1,4 +1,4 @@
-import { record } from '../../../analytics/tally'
+import { bump, record } from '../../../analytics/tally'
 import { isZipHead } from '../../../files/detect'
 import { LEVEL_FILE_MAX_BYTES } from '../../../levelData/fileLimit'
 import {
@@ -97,6 +97,7 @@ const reportExport = (
     target: 'picker' | 'download',
     body?: ReturnType<typeof built>,
     error?: FileError,
+    emptied?: boolean,
 ) => {
     const buildMs = body?.buildMs()
     record(
@@ -108,6 +109,8 @@ const reportExport = (
             ...(buildMs !== undefined && { buildMs }),
             outcome: error ? 'failed' : 'done',
             ...(error && { reason: error.code }),
+            ...(error?.step && { step: error.step }),
+            ...(emptied && { emptied: true }),
         },
         writeStarted || undefined,
     )
@@ -354,6 +357,7 @@ export const exportToTarget = async (
  */
 const alwaysDownload = (ctx: ExportContext) => {
     disableFilePicker()
+    bump('features.alwaysDownload')
     return exportByDownload({ ...ctx, ready: ctx.ui.downloadReady })
 }
 
@@ -364,7 +368,7 @@ const failed = async (
     fallback: string,
     { emptied, pickerUsed }: { emptied?: boolean; pickerUsed?: boolean } = {},
 ) => {
-    reportExport(platform.pickSaveFile ? 'picker' : 'download', undefined, error)
+    reportExport(platform.pickSaveFile ? 'picker' : 'download', undefined, error, emptied)
     ctx.leave()
     const name = error.fileName ?? fallback
     const choice = await choose(ctx, () =>

@@ -140,7 +140,7 @@ const readDisk = async (
     }
 }
 
-/** A read the platform refused (`denied` at `read`); a write's own refusal has no step. */
+/** A read the platform refused (`denied` at `read`). */
 const isRefusedRead = (error: unknown) =>
     error instanceof FileError && error.code === 'denied' && error.step === 'read'
 
@@ -248,8 +248,11 @@ const writeTo = async (
     signal?.throwIfAborted()
 
     let writable: FileSystemWritableFileStream | undefined
+    // Which call failed, for the usage statistics: `createWritable()` or `close()`.
+    let at: 'create' | 'close' | undefined = 'create'
     try {
         writable = await handle.createWritable()
+        at = undefined
         signal?.throwIfAborted()
         await writable.write(blob)
         signal?.throwIfAborted()
@@ -277,6 +280,7 @@ const writeTo = async (
                     )
             }
         }
+        at = 'close'
         await writable.close()
         writable = undefined
     } catch (error) {
@@ -284,7 +288,9 @@ const writeTo = async (
         await writable?.abort().catch(() => undefined)
         signal?.throwIfAborted()
         // An AbortError with no cancel, as a browser's block on close(), is a failure.
-        throw fileErrorOf(error)
+        const failure = fileErrorOf(error)
+        if (!at || failure.step !== undefined) throw failure
+        throw new FileError(failure.code, failure.message, failure.disk, at, failure.fileName)
     }
 
     // The read-back: `saved` with `disk` means the file holds exactly the bytes built. A platform

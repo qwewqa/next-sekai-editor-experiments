@@ -1,3 +1,4 @@
+import { bump } from '../../analytics/tally'
 import { recordError } from '../../diagnostics'
 import { createHistoryOperation } from '../../history/createHistoryOperation'
 import { captureName, entryOperation as operationOfEntry } from '../../history/operations'
@@ -1317,6 +1318,7 @@ export const afterOutcome = async (
             // Always Download: the setting becomes Disabled, and the same action runs again.
             const alwaysDownload = async () => {
                 disableFilePicker()
+                bump('features.alwaysDownload')
                 if (outcome.download) await afterOutcome(env, await outcome.download(), again)
             }
             let choice: 'saveAs' | 'tryAgain' | 'alwaysDownload' | undefined

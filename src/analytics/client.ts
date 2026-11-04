@@ -7,6 +7,7 @@ import { STACK_CAP } from '../history/cap'
 import { liveState, stackLength } from '../history/stack'
 import { launch } from '../launch'
 import { detection, isStandalone } from '../platform/detect'
+import { filePickerRoute } from '../platform/filePicker'
 import { isPlaying } from '../player'
 import { previewHost } from '../preview/worker/host'
 import { hasDefaultValue, settings } from '../settings'
@@ -63,6 +64,7 @@ const visit = (): EventData<'visit'> => {
         browserLanguage: /^[a-z]{2,3}$/.test(language) ? language : 'other',
         returning: launch.isExistingUser,
         updated: launch.updated,
+        filePicker: filePickerRoute(),
     }
 }
 

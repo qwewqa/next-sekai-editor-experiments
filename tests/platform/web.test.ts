@@ -363,7 +363,7 @@ test('a picked write refused while its file reads is a failure, never a download
             picked: true,
             build: levelData(events, 1),
         }),
-        { code: 'denied', step: undefined },
+        { code: 'denied', step: 'create' },
     )
     assert.equal(browser.downloads.length, 0)
 })
@@ -793,3 +793,20 @@ test('fetchServer fetches nothing on the web', async () => {
         globalThis.fetch = original
     }
 })
+
+for (const at of ['create', 'close'] as const)
+    test(`a write that fails at ${at === 'create' ? 'createWritable()' : 'close()'} says so in its step, for the usage statistics`, async () => {
+        const events: string[] = []
+        const handle = recordingHandle(events, { initial: new Blob([]), refuse: at })
+        await assert.rejects(
+            platform.saveFile({
+                kind: 'nsld',
+                suggestedName: 'chart',
+                target: { kind: 'handle', handle },
+                expected: await emptyDisk(),
+                picked: true,
+                build: levelData(events, 1),
+            }),
+            { code: 'denied', step: at },
+        )
+    })

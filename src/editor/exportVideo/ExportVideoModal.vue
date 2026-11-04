@@ -15,6 +15,7 @@ import BaseModal from '../../modals/BaseModal.vue'
 import { showChoice } from '../../modals/choice'
 import { useModal } from '../../modals'
 import { createFontContext } from '../../rendering/textRaster'
+import { bump } from '../../analytics/tally'
 import { disableFilePicker } from '../../platform/filePicker'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
@@ -303,6 +304,7 @@ const startExport = async () => {
 // starts again at once.
 const alwaysDownload = () => {
     disableFilePicker()
+    bump('features.alwaysDownload')
     d.start()
 }
 watch(phase, (value, previous) => {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
     disableFilePicker,
+    filePickerRoute,
     setFilePickerChoice,
     type FilePickerChoice,
     type UaData,
@@ -75,4 +76,18 @@ test('without the save picker nothing uses it, whatever the setting', () => {
         choice = each
         assert.equal(uses(), false)
     }
+})
+
+test('the visit records which way saves go', () => {
+    browser.window.showSaveFilePicker = () => Promise.reject(new Error('Not used'))
+    uaData = { platform: 'Windows', brands: [{ brand: 'Google Chrome', version: '156' }] }
+    choice = 'auto'
+    assert.equal(filePickerRoute(), 'picker')
+    choice = 'disabled'
+    assert.equal(filePickerRoute(), 'download')
+    choice = 'auto'
+    uaData = { platform: 'Android', brands: [{ brand: 'Google Chrome', version: '150' }] }
+    assert.equal(filePickerRoute(), 'autoDownload')
+    delete browser.window.showSaveFilePicker
+    assert.equal(filePickerRoute(), 'unsupported')
 })

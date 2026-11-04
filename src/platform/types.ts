@@ -159,8 +159,12 @@ export type FileErrorCode =
     | 'read-only'
     | 'io'
 
-/** Which step failed, where the code alone does not tell the user. */
-export type FileErrorStep = 'build' | 'read' | 'readBack' | 'download' | 'check'
+/**
+ * Which step failed: where the code alone does not tell the user, and `create` and `close` (the
+ * write's `createWritable()` or `close()`) for the usage statistics.
+ */
+export type FileErrorStep =
+    'build' | 'read' | 'readBack' | 'download' | 'check' | 'create' | 'close'
 
 /** How a file operation fails. */
 export class FileError extends Error {

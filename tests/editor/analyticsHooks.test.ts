@@ -146,12 +146,13 @@ test('a failed Save records its reason in analytics after its warning; a dialog 
     startSave('downloadAgain')
     finishSave()
     assert.deepEqual(
-        recorded().map(({ action, outcome, reason, step, target }) => ({
+        recorded().map(({ action, outcome, reason, step, target, emptied }) => ({
             action,
             outcome,
             reason,
             step,
             target,
+            emptied,
         })),
         [
             {
@@ -160,6 +161,7 @@ test('a failed Save records its reason in analytics after its warning; a dialog 
                 reason: 'denied',
                 step: 'read',
                 target: 'writeBack',
+                emptied: undefined,
             },
             {
                 action: 'saveToFile',
@@ -167,12 +169,14 @@ test('a failed Save records its reason in analytics after its warning; a dialog 
                 reason: 'no-space',
                 step: undefined,
                 target: undefined,
+                emptied: true,
             },
             {
                 action: 'downloadAgain',
                 outcome: 'cancelled',
                 reason: undefined,
                 step: undefined,
+                emptied: undefined,
                 target: undefined,
             },
         ],

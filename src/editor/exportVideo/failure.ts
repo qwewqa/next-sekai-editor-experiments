@@ -16,6 +16,8 @@ export type VideoFailure = {
     detail?: string
     /** A file failure of the save picker or its file: Always Download is offered. */
     picker?: boolean
+    /** A read after cleanup found the picked file empty. */
+    emptied?: boolean
 }
 
 const text = (pick: (messages: (typeof i18n)['value']['exportVideo']['errors']) => string) => () =>
@@ -62,6 +64,10 @@ export const describeVideoFailure = async (
     const failure = describeFailure(error, handle?.name ?? name, sound)
     const file = await handle?.getFile().catch(() => undefined)
     return handle && file?.size === 0
-        ? { ...failure, message: () => `${failure.message()} ${i18n.value.save.fileNowEmpty}` }
+        ? {
+              ...failure,
+              message: () => `${failure.message()} ${i18n.value.save.fileNowEmpty}`,
+              emptied: true,
+          }
         : failure
 }

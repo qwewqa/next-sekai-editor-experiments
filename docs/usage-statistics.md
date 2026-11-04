@@ -120,6 +120,7 @@ Recorded once when statistics collection starts.
 | `browserLanguage` | The browser’s language without its region or script, such as `en` or `ja`. The editor’s own language is in `language` | Two or three letters, or `other` |
 | `returning` | Whether the editor had stored anything in this browser before this visit | Yes or no |
 | `updated` | Whether the editor’s version changed since the last visit | Yes or no |
+| `filePicker` | Whether this visit writes saves and exports to chosen files: `picker` when it does, `autoDownload` when Write to Chosen Files is Auto and this browser downloads, `download` when it is Disabled, `unsupported` when the browser cannot write to chosen files | `picker`, `autoDownload`, `download` or `unsupported` |
 
 ### `settings`
 
@@ -155,6 +156,7 @@ Recorded once when statistics collection starts. Only the settings below are inc
 | `touchResizeHandles` | Whether the resize handles on panel edges are shown. Sent only when the primary pointing device has limited precision | Yes or no |
 | `confirmCloseUnsavedFile` | Whether the Ask Before Closing with Unsaved Changes setting is on | Yes or no |
 | `groupsStagesSideBySide` | The Groups and Stages Side by Side setting | `auto`, `enabled` or `disabled` |
+| `filePicker` | The Write to Chosen Files setting | `auto`, `enabled` or `disabled` |
 
 ### `startup`
 
@@ -267,7 +269,8 @@ Recorded when a **Save**, **Save As…**, **Download Again** or **Save…** acti
 | `buildMs` | How long building the file took. It can be longer than `took` when the build came before the picker | Milliseconds |
 | `outcome` | How the action ended | `done`, `cancelled`, `noChanges`, `forked`, `unlinked`, `conflict`, `failed` or `error` |
 | `reason` | Why saving failed | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only` or `io` |
-| `step` | The part of saving that failed | `build`, `read`, `readBack`, `download` or `check` |
+| `step` | The part of saving that failed. `create` and `close` are the start and the end of writing to a file | `build`, `read`, `readBack`, `download`, `check`, `create` or `close` |
+| `emptied` | Whether a failed save left the chosen file empty. Sent only when it did | Yes or no |
 | `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `export`
@@ -283,6 +286,8 @@ Recorded when writing an export succeeds or fails. Canceling an export is not re
 | `buildMs` | How long building the file took | Milliseconds |
 | `outcome` | How the export ended | `done` or `failed` |
 | `reason` | The file error that caused the export to fail | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only` or `io` |
+| `step` | The part of exporting that failed, as for `save` | `build`, `read`, `readBack`, `download`, `check`, `create` or `close` |
+| `emptied` | Whether a failed export left the chosen file empty. Sent only when it did | Yes or no |
 | `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` | The device details above | As above |
 
 ### `check`
@@ -306,6 +311,7 @@ Recorded once per export attempt, when the file is written, the export fails or 
 | `outcome` | The result of the export | `done`, `cancelled` or `failed` |
 | `stage` | Where the export was canceled or failed. Omitted for a finished video | `prepare`, `pick`, `render` or `finish` |
 | `reason` | Why the export failed. Omitted for a finished video | `conflict`, `not-found`, `denied`, `not-local`, `no-space`, `read-only`, `io`, `config`, `encoder`, `audio`, `graphics`, `memory` or `hidden` |
+| `emptied` | Whether a failed export left the chosen file empty. Sent only when it did | Yes or no |
 | `format` | The video format | `mp4` or `webm` |
 | `support` | Whether MP4 was available with the chosen settings. Omitted when WebM was chosen as the format | `full` or `webmOnly` |
 | `target` | `picker` means a file was chosen, even if the export failed. For a temporary file, `download` or `share` records its first successful delivery. `none` covers attempts with no delivery or chosen file. `memory` means the export used memory because a temporary file could not be written. It remains `memory` after a download | `picker`, `download`, `share`, `none` or `memory` |
@@ -376,6 +382,7 @@ Counts by edit type, including Timeline restores and uses of Undo and Redo.
 | `minimapDrag`, `minimapJump` | Drags and jumps using the minimap | Count |
 | `autoscroll`, `quickSwitch` | Times Autoscroll started and tools chosen through Quick Switch | Count |
 | `videoPlayback`, `videoAdvanced` | Uses of Play and openings of Advanced in Export Video. Each is counted once per dialog | Count |
+| `alwaysDownload` | Uses of **Always Download** after a file could not be written | Count |
 
 #### `notices`
 

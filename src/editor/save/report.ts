@@ -73,6 +73,7 @@ export const finishSave = (outcome?: Outcome | { kind: 'noChanges' }) => {
             outcome: outcome?.kind ?? 'cancelled',
             ...(failed && { reason: failed.code }),
             ...(failed?.step && { step: failed.step }),
+            ...(outcome?.kind === 'failed' && outcome.emptied && { emptied: true }),
         },
         since,
     )

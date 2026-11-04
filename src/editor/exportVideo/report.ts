@@ -20,6 +20,8 @@ export type VideoReportEnd = {
     outcome: 'done' | 'cancelled' | 'failed'
     stage?: 'prepare' | 'pick' | 'render' | 'finish'
     reason?: FileErrorCode | 'config' | 'encoder' | 'audio' | 'graphics' | 'memory' | 'hidden'
+    /** A failure left the picked file empty, as a read confirmed. */
+    emptied?: boolean
     target: 'picker' | 'download' | 'share' | 'none' | 'memory'
     hidden: boolean
     lengthSeconds: number
@@ -81,6 +83,7 @@ export const videoReport = (settings: VideoReportSettings, end: VideoReportEnd) 
     outcome: end.outcome,
     ...(end.outcome !== 'done' && end.stage !== undefined && { stage: end.stage }),
     ...(end.outcome !== 'done' && end.reason !== undefined && { reason: end.reason }),
+    ...(end.outcome === 'failed' && end.emptied && { emptied: true }),
     target: end.target,
     hidden: end.hidden,
     length: end.lengthSeconds * 1000,

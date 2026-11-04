@@ -59,6 +59,7 @@ export const settingsSnapshot = (touch: boolean, toolbarCustomized: boolean): Se
         playFollow: settings.playFollow,
         confirmCloseUnsavedFile: settings.confirmCloseUnsavedFile,
         groupsStagesSideBySide: settings.groupsStagesSideBySide,
+        filePicker: settings.filePicker,
         ...(touch && {
             touchQuickScrollShow: settings.touchQuickScrollShow,
             touchQuickScrollSide: settings.touchQuickScrollSide,

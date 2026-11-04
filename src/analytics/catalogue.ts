@@ -2,6 +2,7 @@ import type { DockSide, PanelId } from '../editor/workspace/layout'
 import { STACK_CAP } from '../history/cap'
 import { operationCodecs, type OperationId } from '../history/operations/registry'
 import type { LoadEvent } from '../local/startup/events'
+import type { FileErrorStep } from '../platform/types'
 import { measured, scales, type Bucket, type Scale } from './scales'
 
 // Every event the usage statistics may send, and every value each property may take. The client
@@ -106,6 +107,19 @@ const fileError = [
     'io',
 ] as const
 
+/** The part of a file operation that failed, where the code alone does not tell. */
+const fileErrorSteps = [
+    'build',
+    'read',
+    'readBack',
+    'download',
+    'check',
+    'create',
+    'close',
+] as const satisfies readonly FileErrorStep[]
+// Every step is listed: a new step fails the type check until it is added.
+const _everyStep: FileErrorStep extends (typeof fileErrorSteps)[number] ? true : never = true
+
 /** The load events a startup may find, as `found.<kind>`. */
 const loadKinds = [
     'continued',
@@ -163,6 +177,7 @@ export const catalogue = {
         browserLanguage: { pattern: /^(?:[a-z]{2,3}|other)$/ },
         returning: 'boolean',
         updated: 'boolean',
+        filePicker: oneOf('picker', 'autoDownload', 'download', 'unsupported'),
     },
     settings: {
         theme: oneOf('system', 'light', 'dark'),
@@ -204,6 +219,7 @@ export const catalogue = {
         touchResizeHandles: 'boolean',
         confirmCloseUnsavedFile: 'boolean',
         groupsStagesSideBySide: oneOf('auto', 'enabled', 'disabled'),
+        filePicker: oneOf('auto', 'enabled', 'disabled'),
     },
     startup: {
         start: oneOf('continued', 'reload', 'recovered', 'launchFile', 'blank', 'safeMode'),
@@ -274,7 +290,8 @@ export const catalogue = {
             'error',
         ),
         reason: oneOf(...fileError),
-        step: oneOf('build', 'read', 'readBack', 'download', 'check'),
+        step: oneOf(...fileErrorSteps),
+        emptied: 'boolean',
         ...device,
     },
     export: {
@@ -285,12 +302,15 @@ export const catalogue = {
         buildMs: 'ms',
         outcome: oneOf('done', 'cancelled', 'failed'),
         reason: oneOf(...fileError),
+        step: oneOf(...fileErrorSteps),
+        emptied: 'boolean',
         ...device,
     },
     exportVideo: {
         outcome: oneOf('done', 'cancelled', 'failed'),
         stage: oneOf('prepare', 'pick', 'render', 'finish'),
         reason: oneOf(...fileError, 'config', 'encoder', 'audio', 'graphics', 'memory', 'hidden'),
+        emptied: 'boolean',
         format: oneOf('mp4', 'webm'),
         support: oneOf('full', 'webmOnly'),
         target: oneOf('picker', 'download', 'share', 'none', 'memory'),
@@ -343,6 +363,7 @@ export const catalogue = {
         'quickSwitch',
         'videoPlayback',
         'videoAdvanced',
+        'alwaysDownload',
     ]),
     notices: counts(['info', 'warning', 'error']),
     peek: {

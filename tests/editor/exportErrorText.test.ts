@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { fileErrorKey } from '../../src/editor/commands/exportLevel/errorText'
+import { downloadHelps, fileErrorKey } from '../../src/editor/commands/exportLevel/errorText'
 import { FileError, type FileErrorCode, type FileErrorStep } from '../../src/platform/types'
 
 const save = (
@@ -11,7 +11,7 @@ const save = (
 ).save
 
 test('a failed step names the step, whatever its code', () => {
-    const steps: Record<FileErrorStep, string> = {
+    const steps: Record<Exclude<FileErrorStep, 'create' | 'close'>, string> = {
         build: 'buildFailed',
         read: 'readFailed',
         readBack: 'changedWhileWriting',
@@ -23,6 +23,15 @@ test('a failed step names the step, whatever its code', () => {
             assert.equal(
                 fileErrorKey(new FileError(code, 'x', undefined, step as FileErrorStep)),
                 key,
+            )
+})
+
+test('a failure at createWritable() or close() is told by its code, as without a step', () => {
+    for (const step of ['create', 'close'] as const)
+        for (const code of ['io', 'denied', 'no-space', 'read-only'] as const)
+            assert.equal(
+                fileErrorKey(new FileError(code, 'x', undefined, step)),
+                fileErrorKey(new FileError(code, 'x')),
             )
 })
 
@@ -53,4 +62,50 @@ test('every message is a save message naming its file', () => {
         ] as const)
             keys.add(fileErrorKey(new FileError(code, 'x', undefined, step)))
     for (const key of keys) assert.match(save[key] ?? '', /\{0\}/, key)
+})
+
+// Always Download follows a failure of the picked file's write: refused, read-only or failed, at
+// any step of the write (Chrome for Android fails at `createWritable()`, step `create`), or a file
+// that read back wrong. The others are not the chosen file's to blame.
+test('Always Download is offered for each failure of the write to the chosen file, and no other', () => {
+    const codes: FileErrorCode[] = [
+        'conflict',
+        'not-found',
+        'denied',
+        'not-local',
+        'no-space',
+        'read-only',
+        'io',
+    ]
+    const steps: (FileErrorStep | undefined)[] = [
+        undefined,
+        'create',
+        'close',
+        'readBack',
+        'build',
+        'read',
+        'download',
+        'check',
+    ]
+    const offered = new Set([
+        'io at the write',
+        'io at create',
+        'io at close',
+        'read-only at the write',
+        'read-only at create',
+        'read-only at close',
+        'denied at the write',
+        'denied at create',
+        'denied at close',
+        ...codes.map((code) => `${code} at readBack`),
+    ])
+    for (const code of codes)
+        for (const step of steps) {
+            const name = `${code} at ${step ?? 'the write'}`
+            assert.equal(
+                downloadHelps(new FileError(code, 'x', undefined, step)),
+                offered.has(name),
+                name,
+            )
+        }
 })

@@ -26,7 +26,8 @@ export const fileError = (error: unknown) =>
  */
 export const downloadHelps = (error: FileError) =>
     error.step === 'readBack' ||
-    (error.step === undefined && ['io', 'read-only', 'denied'].includes(error.code))
+    ((error.step === undefined || error.step === 'create' || error.step === 'close') &&
+        ['io', 'read-only', 'denied'].includes(error.code))
 
 export const fileErrorKey = (error: FileError): FileErrorKey => {
     switch (error.step) {
@@ -40,6 +41,9 @@ export const fileErrorKey = (error: FileError): FileErrorKey => {
             return 'openedContentGone'
         case 'download':
             return 'downloadFailed'
+        // Steps the usage statistics tell apart; the user reads the failure's own words.
+        case 'create':
+        case 'close':
         case undefined:
             break
     }

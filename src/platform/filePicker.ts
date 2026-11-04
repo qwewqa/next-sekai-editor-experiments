@@ -67,6 +67,16 @@ const uaData = (): UaData | undefined =>
         ? undefined
         : (navigator as Navigator & { userAgentData?: UaData }).userAgentData
 
+/** What this visit gets, for the usage statistics. */
+export const filePickerRoute = () =>
+    !savePickerExists()
+        ? 'unsupported'
+        : usesSavePicker()
+          ? 'picker'
+          : choice() === 'disabled'
+            ? 'download'
+            : 'autoDownload'
+
 /** Whether saves and exports use the picker now: the API exists and the setting allows it. */
 export const usesSavePicker = () => {
     if (!savePickerExists()) return false

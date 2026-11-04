@@ -631,11 +631,13 @@ test('a scripted visit counts each press once by name and source, and sends the 
         'scrollDown.key': 1,
         'zoomYIn.wheel': 1,
     })
-    // The desktop snapshot: the 33 settings, 35 keys, and no touch options.
+    // The desktop snapshot: the 34 settings, 36 keys, and no touch options.
     const settings = dataOf(first, 'settings') ?? {}
-    expect(Object.keys(settings)).toHaveLength(35)
+    expect(Object.keys(settings)).toHaveLength(36)
     expect(settings).toHaveProperty('previewShowCombo', false)
     expect(settings).toHaveProperty('groupsStagesSideBySide', 'auto')
+    expect(settings).toHaveProperty('filePicker', 'auto')
+    expect(dataOf(first, 'visit')).toHaveProperty('filePicker', 'picker')
     expect(settings).not.toHaveProperty('touchQuickScrollShow')
     expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
     expect(dataOf(first, 'storage')).toMatchObject({ mode: 'stored' })
@@ -700,7 +702,7 @@ test('the touch settings snapshot adds the touch options', async ({ page }) => {
         settings.previewShowCombo = true
         return settingsSnapshot(true, false)
     })
-    expect(Object.keys(snapshot)).toHaveLength(39)
+    expect(Object.keys(snapshot)).toHaveLength(40)
     expect(snapshot).toMatchObject({
         previewShowCombo: true,
         touchQuickScrollShow: 'touch',

@@ -683,3 +683,22 @@ test('an export that is written, and one that fails, are recorded for the usage 
         tally.disable()
     }
 })
+
+test('a picked export whose write fails records its step, and that the file is now empty', async () => {
+    tally.enable()
+    try {
+        mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
+        mock.fault = (point) => {
+            if (point === 'checked')
+                throw new FileError('io', 'Error creating swap file', undefined, 'create')
+        }
+        assert.equal(await exportByPicker(context(scriptedUi([undefined]).ui, 5)), 'cancelled')
+        const [event] = tally.collect().recorded
+        assert.deepEqual(
+            { reason: event?.data.reason, step: event?.data.step, emptied: event?.data.emptied },
+            { reason: 'io', step: 'create', emptied: true },
+        )
+    } finally {
+        tally.disable()
+    }
+})

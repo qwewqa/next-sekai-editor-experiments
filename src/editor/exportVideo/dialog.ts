@@ -656,7 +656,12 @@ export const createExportDialog = (input: DialogInput) => {
             current = undefined
             retire(ended)
         } else if (failure) {
-            report({ outcome: 'failed', stage: attempt.stage, reason: failure.reason })
+            report({
+                outcome: 'failed',
+                stage: attempt.stage,
+                reason: failure.reason,
+                ...(failure.emptied && { emptied: true }),
+            })
             outcome.value = { kind: 'failed', failure }
             phase.value = 'failed'
             current = undefined
