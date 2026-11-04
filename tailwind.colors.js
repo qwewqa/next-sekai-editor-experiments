@@ -46,7 +46,6 @@ const colors = {
     danger: color('danger'),
     'danger-fill': color('danger-fill'),
     'on-danger': color('on-danger'),
-    'danger-press': color('danger-press'),
     // Status text and glyphs, always with their glyph.
     warning: color('warning'),
     info: color('info'),

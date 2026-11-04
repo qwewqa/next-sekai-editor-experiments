@@ -38,7 +38,6 @@
     --color-danger: 185 28 28;
     --color-danger-fill: 185 28 28;
     --color-on-danger: 255 255 255;
-    --color-danger-press: 205 72 64;
     --color-warning: 146 91 12;
     --color-info: 22 102 170;
     /* A History entry's changes on the chart: the one hue the chart's objects don't use. */
@@ -93,7 +92,6 @@
     /* A coral fill with dark ink, darker than pale text so it reads as a fill. */
     --color-danger-fill: 237 117 110;
     --color-on-danger: 35 37 57;
-    --color-danger-press: 247 149 141;
     --color-warning: 255 218 124;
     --color-info: 190 227 255;
     --color-toggle-off: 117 120 151;

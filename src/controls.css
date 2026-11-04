@@ -89,12 +89,6 @@
         @apply bg-primary text-on-primary;
     }
 
-    /* The action a destructive dialog exists for. */
-    .btn-danger {
-        --glow-color: rgb(var(--color-danger-fill));
-        @apply bg-danger-fill text-on-danger;
-    }
-
     /* A destructive choice offered beside a safe default: quiet until pressed. */
     .btn-danger-quiet {
         --glow-color: rgb(var(--color-danger-fill));
@@ -172,11 +166,6 @@
     .btn-primary:active,
     .btn-primary.is-pressed {
         @apply bg-primary-press text-on-primary;
-    }
-
-    .btn-danger:active,
-    .btn-danger.is-pressed {
-        @apply bg-danger-press text-on-danger;
     }
 
     /* Pressing shows what it does. */

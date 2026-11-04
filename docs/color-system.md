@@ -124,9 +124,8 @@ These have not been retuned (principle 16):
 | Band pressed | `band-press` (alpha) | white / 0.8 | white / 0.2 | A ghost on a header band while pressed (`band-hover` is white/0.4 and /0.1) |
 | Chrome pressed | `chrome-press` (alpha) | black / 0.18 | white / 0.2 | A ghost on the dark chrome while pressed |
 | Destructive and error text | `danger` | 185 28 28 `#b91c1c` | 255 184 184 `#ffb8b8` | Quiet destructive labels, destructive menu rows, error lines |
-| Destructive fill | `danger-fill` | 185 28 28 | 237 117 110 `#ed756e` (.700 .150 25) coral | The destructive confirm; a pressed quiet destructive; a pressed destructive menu row |
+| Destructive fill | `danger-fill` | 185 28 28 | 237 117 110 `#ed756e` (.700 .150 25) coral | A pressed quiet destructive; a pressed destructive menu row |
 | Ink on destructive fill | `on-danger` | 255 255 255 | 35 37 57 | |
-| Destructive pressed | `danger-press` | 205 72 64 `#cd4840` | 247 149 141 `#f7958d` | |
 | Warning | `warning` | 146 91 12 `#925b0c` (.521 .110 68) | 255 218 124 `#ffda7c` (.900 .121 88) | Warning text and glyphs, always with the triangle |
 | Info | `info` | 22 102 170 `#1666aa` (.501 .130 250) | 190 227 255 `#bee3ff` (.898 .055 241) | Info glyphs and text, always with the circle |
 | Switch off track | `toggle-off` | 143 143 163 `#8f8fa3` | 117 120 151 `#757897` | ToggleSwitch when off |
@@ -170,7 +169,6 @@ WCAG 2 relative luminance. ΔE is OKLab ×100, where about 2 is the threshold of
 | `fg` on `button` (secondary label, its ring) | 9.27 | 6.19 |
 | `fg-strong` on `press` | 6.98 | 4.69 |
 | `on-danger` on `danger-fill` (and ring) | 6.47 | 5.28 |
-| `on-danger` on `danger-press` | 4.57 | 6.91 |
 | `danger` on `button` (quiet label, its ring) | 6.47 | 5.02 |
 | `danger` on `popup` / `popup-hover` (menu row) | 6.47 / 5.42 | 6.37 / 5.34 |
 | `danger` on `modal` (error line) | 5.42 | 7.84 |
@@ -245,8 +243,7 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 | Drop target | `selected` + `accent-strong` ring | A ring on the row |
 | Quick notice | `accent` pill | Fades; takes no input |
 | Primary | `primary` fill | The one filled button |
-| Destructive confirm | `danger-fill` | Label; red |
-| Destructive choice | `danger` label on a neutral pill | Quiet until pressed |
+| Destructive confirm or choice | `danger` label on a neutral pill | Quiet until pressed |
 | Field problem | `danger` text under the field | Red, under the field; `role="alert"`, `aria-invalid` |
 | Outcome in a dialog (a file that could not be read) | `fg` text with a severity glyph | The glyph; a live region (polite; the failed Remove is an alert) |
 | Warning / info | `warning` / `info` | Triangle / circle |
@@ -265,7 +262,7 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
   - InfoModal: OK;
   - form dialogs: Apply or Save.
 - When Cancel is the safe default (`cancelIsDefault`), Cancel is the primary.
-- **Destructive confirm** (ConfirmModal `destructive`): `btn-danger`, filled red, focused. The user already asked to delete, the delete is undoable, and the filled button stays the Enter target.
+- **Destructive confirm** (ConfirmModal `destructive`): `btn-danger-quiet` beside `btn-primary` Cancel, which is focused and the Enter target, as for a destructive choice.
 - **Destructive choice beside a safe default** (every ChoiceModal `danger` choice): `btn-danger-quiet`.
 - **Others:** `btn-secondary`.
 
@@ -356,7 +353,6 @@ The plugin is required. In Tailwind 3 a `<style>` block cannot `@apply` a class 
 |---|---|---|---|---|---|
 | `btn btn-secondary` | `button`, raised | Mint glow | `press`, `fg-strong`, sink and glow | Ring inside, `fg` | 40 % |
 | `btn btn-primary` | `primary`, raised | Mint glow | `primary-press`, sink and glow | Ring inside, `on-primary` | 40 % |
-| `btn btn-danger` | `danger-fill`, raised | Red glow | `danger-press`, sink and red glow | Ring inside, `on-danger` | 40 % |
 | `btn btn-danger-quiet` | `button` with a `danger` label | Red glow | `danger-fill` with `on-danger`, sink and red glow | Ring inside, `danger` | 40 % |
 | `btn-toggle[aria-pressed='true']` (on a `btn` or `ghost`) | `accent`, flat | Glow (`.btn-toggle[aria-pressed='true']:hover:not(:active)`) | `accent-press`, sink and glow (`btn`) | Ring inside, `on-accent` | 40 % |
 | `ghost` | No face | `fg/10` | `ghost-press`, `fg-strong` | Ring inside, its ink | 40 % |
@@ -492,7 +488,7 @@ None of these can be undone. Remove deletes a stored preview asset whether or no
 | `hover-glow-outside-recipes` | `shadow-accent` with any variant | The glow lives in `.btn` |
 | `focus-colour` | A focus variant (`focus:`, `focus-visible:`, `focus-within:`, `group-focus-visible:` or `peer-focus-visible:`) with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`. It carries no colour prefix, so it passes; `.popup-item` in `index.css` uses it |
 | `focus-outline-none` | `outline-none` under any of those focus variants, such as `focus:outline-none` or `focus-visible:outline-none` (in a class string or `@apply`), in a non-exempt file | The recipe ring sits in the components layer, and a leftover `outline-none` of equal specificity in the later utilities layer removes it without any visible error |
-| `danger-fill-outside-recipes` | `bg-danger` | `.btn-danger` / `danger-fill` |
+| `danger-fill-outside-recipes` | `bg-danger` | `danger-fill` |
 | `raw-palette` | Tailwind palette colours (`amber-300`, `sky-300`, …) | Tokens |
 | `colour-literal` | `bg-[#…]`, `text-[rgb(…)]` | Tokens |
 

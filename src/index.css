@@ -173,7 +173,6 @@ html[data-app-inactive] *::after {
     /* Edges inset 2px. */
     html
         :is(
-            .-outline-offset-2,
             .transport-button,
             .manager-selection-done,
             .manager-new-folder,
