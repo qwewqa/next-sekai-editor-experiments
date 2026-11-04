@@ -246,11 +246,35 @@ test('the modes and the legend persist, and Reset Settings restores them', async
     await dialog(page).locator('[data-statistics-mode-option="bars"]').check({ force: true })
     await expect(chart(page).locator('rect[data-statistics-layer="damage"]')).toHaveCount(1)
     expect(await chart(page).boundingBox()).toEqual(plot)
+    // Distribution: the zoom buttons stay hidden in their place, and the mode control keeps its
+    // place in the dialog.
+    const modes = dialog(page).getByRole('radiogroup')
+    const inDialog = async () => {
+        const [box, frame] = [await modes.boundingBox(), await dialog(page).boundingBox()]
+        return box && frame && { ...box, y: box.y - frame.y }
+    }
+    const control = await inDialog()
+    await dialog(page)
+        .locator('[data-statistics-mode-option="distribution"]')
+        .check({ force: true })
+    await expect(chart(page).locator('[data-statistics-distribution]')).toBeVisible()
+    await expect(zoomIn(page)).toBeHidden()
+    await expect(dialog(page).locator('.stats-zoom')).toHaveAttribute('inert', '')
+    expect(await inDialog()).toEqual(control)
+    // End reads the largest count, and the slider spells out both series' seconds.
+    await chart(page).focus()
+    await page.keyboard.press('End')
+    const max = await chart(page).getAttribute('aria-valuemax')
+    await expect(chart(page)).toHaveAttribute('aria-valuenow', max ?? '')
+    await expect(chart(page)).toHaveAttribute(
+        'aria-valuetext',
+        new RegExp(`^${max}, Primary: [\\d.]+ seconds, All: [\\d.]+ seconds$`),
+    )
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
     await open(page)
     await expect(entry(page, 'damage').locator('input')).toBeChecked()
-    await expect(dialog(page).locator('[data-statistics-mode-option="bars"]')).toBeChecked()
+    await expect(dialog(page).locator('[data-statistics-mode-option="distribution"]')).toBeChecked()
     await page.keyboard.press('Escape')
     await page.evaluate(async () => {
         const { resetSettings } = await import('/src/settings.ts')
@@ -585,6 +609,22 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
     await page.keyboard.press('Enter')
     await expect(zoomOut(page)).toBeFocused()
     await expect(announced(page)).toHaveText(last ?? '')
+
+    // Bars, zoomed at the chart's end, comes back from Distribution as it was.
+    await dialog(page).locator('[data-statistics-mode-option="bars"]').check({ force: true })
+    await chart(page).focus()
+    await page.keyboard.press('+')
+    await page.keyboard.press('+')
+    await page.keyboard.press('End')
+    const labels = () => chart(page).locator('.stats-tick-x:visible').allTextContents()
+    const shown = await labels()
+    await dialog(page)
+        .locator('[data-statistics-mode-option="distribution"]')
+        .check({ force: true })
+    await expect(zoomIn(page)).toBeHidden()
+    await dialog(page).locator('[data-statistics-mode-option="bars"]').check({ force: true })
+    await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'false')
+    expect(await labels()).toEqual(shown)
 })
 
 test('a tap pins the readout, Zoom In zooms on it, and two touches pinch', async ({ page }) => {

@@ -134,7 +134,12 @@ const settingsProperties = {
 
     // Statistics: the chart's mode and the categories it counts.
     statisticsChartMode: Type.Union(
-        [Type.Literal('smooth'), Type.Literal('bars'), Type.Literal('rolling')],
+        [
+            Type.Literal('smooth'),
+            Type.Literal('bars'),
+            Type.Literal('rolling'),
+            Type.Literal('distribution'),
+        ],
         { default: 'smooth' },
     ),
     statisticsCategories: Type.Codec(

@@ -2656,6 +2656,7 @@
     "smooth": "平滑",
     "bars": "長條圖",
     "rolling": "滾動計數",
+    "distribution": "分布",
     "zoomIn": "放大",
     "zoomOut": "縮小",
     "span": "{0}–{1}",

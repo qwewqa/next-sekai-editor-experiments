@@ -21,10 +21,14 @@ import {
     formatList,
     gridOf,
     oneSecondMax,
+    PRIMARY_CATEGORIES,
+    rollingDurations,
     timeTicks,
     type Category,
     type ChartMode,
+    type Durations,
     type NpsFigures,
+    type StatisticsView,
     type View,
 } from '../../levelData/statistics'
 import { segmentsLayout, type SegmentsLayout } from '../../modals/form/segmented'
@@ -33,14 +37,23 @@ import type { BpmIntegral } from '../../state/integrals/bpms'
 import { timeToBeat } from '../../state/integrals/bpms'
 import { formatIntegerTime, formatTime } from '../../utils/format'
 import { fill } from '../../utils/interpolate'
-import { formatCount, formatTenths } from '../../utils/size'
+import { formatCount, formatSeconds, formatTenths, formatWholeSeconds } from '../../utils/size'
 import { formatBeatPosition } from '../beatDisplay'
 import ZoomXInIcon from '../commands/zooms/ZoomXInIcon.vue'
 import ZoomXOutIcon from '../commands/zooms/ZoomXOutIcon.vue'
 import { resizeEscapes } from '../controls/escapes'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
-import { drawChart, readAt, timeLabelAlign, yLabel, type Reading } from './drawing'
+import {
+    drawChart,
+    drawHistogram,
+    readAt,
+    timeLabelAlign,
+    valueAt,
+    yLabel,
+    type Reading,
+} from './drawing'
 import { chartCategoryColors } from './marks'
+import SeriesKey from './SeriesKey.vue'
 import { statisticsStrings } from './text'
 import {
     clampView,
@@ -61,7 +74,8 @@ import {
 } from './zoom'
 
 // Notes per Second: the zoom buttons and the mode control, the plot with its readout on the label
-// line above it, and the legend that chooses the categories.
+// line above it, and the legend that chooses the categories. The plot is the timeline in one of
+// three modes, or the distribution of the seconds spent at each count.
 
 const props = defineProps<{
     /** Each category's sorted times. */
@@ -71,6 +85,8 @@ const props = defineProps<{
     bpms: BpmIntegral[]
     /** The figures, for the line a legend toggle announces. */
     figures: NpsFigures | undefined
+    /** The distribution's series: Primary then All when both have notes, else the chosen notes. */
+    series: Durations[] | undefined
     /** False at absurd BPMs: the plot stays empty. */
     drawable: boolean
     /** The dialog's scrolling body, for the sticky label line. */
@@ -84,7 +100,13 @@ const modeName = useId()
 
 const mode = computed({
     get: () => settings.statisticsChartMode,
-    set: (value: ChartMode) => (settings.statisticsChartMode = value),
+    set: (value: StatisticsView) => (settings.statisticsChartMode = value),
+})
+const distribution = computed(() => mode.value === 'distribution')
+/** The last timeline mode: the view, its extent and the zoom keep to it while in Distribution. */
+const timelineMode = ref<ChartMode>(mode.value === 'distribution' ? 'smooth' : mode.value)
+watch(mode, (value) => {
+    if (value !== 'distribution') timelineMode.value = value
 })
 const chosen = computed(() => settings.statisticsCategories)
 const isOn = (category: Category) => chosen.value.includes(category)
@@ -101,7 +123,7 @@ const toggle = (category: Category, on: boolean) => {
     if (on) set.add(category)
     else set.delete(category)
     settings.statisticsCategories = CATEGORIES.filter((each) => set.has(each))
-    if (!owner) settle()
+    if (!owner && !distribution.value) settle()
     // After a toggle, one polite line says the new Average.
     void nextTick(() => {
         const [average] = figureRows(props.figures, strings.value, locale.value)
@@ -144,7 +166,7 @@ const source = computed(
 let lastExtent: View | undefined
 /** The mode's whole timeline; the same object while its ends stay. */
 const extent = computed(() => {
-    const current = source.value && chartExtent(mode.value, source.value)
+    const current = source.value && chartExtent(timelineMode.value, source.value)
     if (current?.x0 !== lastExtent?.x0 || current?.x1 !== lastExtent?.x1) lastExtent = current
     return lastExtent
 })
@@ -168,12 +190,13 @@ const held = ref(0)
 const model = computed(() => {
     const current = source.value
     const full = extent.value
-    if (!current || !full || !hasNotes.value || !size.value.width) return undefined
+    if (!current || !full || !hasNotes.value || !size.value.width || distribution.value)
+        return undefined
     const shown = view.value
     return chartView(
-        mode.value,
+        timelineMode.value,
         current,
-        mode.value === 'smooth' ? columns.value : 2,
+        timelineMode.value === 'smooth' ? columns.value : 2,
         shown,
         shown && (settledSpan.value ?? full.x1 - full.x0),
     )
@@ -185,7 +208,7 @@ const drawing = computed(() => {
     return drawChart(current, size.value.width, size.value.height, dpr.value, 4, held.value)
 })
 
-const ink = computed(() => mode.value === 'rolling')
+const ink = computed(() => mode.value === 'rolling' || distribution.value)
 
 const xTicks = computed(() => {
     const current = model.value
@@ -270,6 +293,7 @@ const show = (time: number, bounds: View | undefined = model.value) => {
 const hide = () => {
     if (pinned) return
     cursor.value = undefined
+    count.value = undefined
 }
 // The last time, kept for aria-valuenow after the pointer leaves.
 const lastTime = ref(0)
@@ -299,6 +323,105 @@ const timeAtX = (clientX: number, from: View | undefined = model.value) => {
     if (!from || !element) return 0
     const box = element.getBoundingClientRect()
     return from.x0 + ((clientX - box.left) / box.width) * (from.x1 - from.x0)
+}
+
+// --- The distribution: a count from 1 to the largest drawn, read on its own cursor, apart from
+// the timeline's.
+const histogram = computed(() => {
+    const { width, height } = size.value
+    if (!distribution.value || !props.series || !hasNotes.value || !width || !height)
+        return undefined
+    return drawHistogram(props.series, width, height, dpr.value)
+})
+const count = ref<number>()
+const lastCount = ref(1)
+watch(count, (value) => {
+    if (value !== undefined) lastCount.value = value
+})
+// A legend toggle or an edit keeps the count within the new range; with no plot the readout clears.
+watch(
+    () => histogram.value?.max,
+    (max) => {
+        if (max === undefined) count.value = undefined
+        else if (count.value !== undefined) count.value = Math.min(count.value, max)
+        lastCount.value = Math.min(lastCount.value, max ?? lastCount.value)
+    },
+)
+const countNow = computed(() => Math.min(lastCount.value, histogram.value?.max ?? 1))
+const showCount = (clientX: number) => {
+    const element = chart.value
+    const drawn = histogram.value
+    if (!element || !drawn) return
+    const box = element.getBoundingClientRect()
+    count.value = valueAt((clientX - box.left) / box.width, drawn.max)
+}
+/** The seconds of each series at a count, as shown and as spoken. */
+const describeCount = (value: number) => {
+    const drawn = histogram.value
+    if (!drawn) return undefined
+    const seconds = drawn.lines.map((_, i) => drawn.secondsAt(i, value))
+    const shown = seconds.map((each) => formatSeconds(each, locale.value))
+    const spoken = seconds.map((each) => formatSeconds(each, locale.value, true))
+    const number = formatCount(value, locale.value)
+    const line = (label: string, text: string) =>
+        fill(strings.value.textLine, [label, text], locale.value)
+    const [primary = '', all = ''] = spoken
+    return {
+        value: number,
+        seconds: shown.length > 1 ? fill(strings.value.withAll, shown, locale.value) : shown[0],
+        valueText:
+            spoken.length > 1
+                ? formatList(
+                      [number, line(strings.value.primary, primary), line(strings.value.all, all)],
+                      locale.value,
+                  )
+                : line(number, primary),
+    }
+}
+const countReadout = computed(() =>
+    count.value === undefined ? undefined : describeCount(count.value),
+)
+const countText = computed(() => describeCount(countNow.value)?.valueText)
+const countTicks = computed(() => {
+    const drawn = histogram.value
+    if (!drawn) return []
+    const wide = new Set(drawn.xTicks(6))
+    const narrow = new Set(drawn.xTicks(4))
+    return [...new Set([...wide, ...narrow])]
+        .sort((a, b) => a - b)
+        .map((value) => ({
+            value,
+            left: (drawn.px(value) / drawn.width) * 100,
+            align: timeLabelAlign(drawn.px(value), drawn.width),
+            wide: wide.has(value),
+            narrow: narrow.has(value),
+        }))
+})
+const countWidth = computed(() => formatCount(histogram.value?.max ?? 0, locale.value).length)
+const onCountKey = (event: KeyboardEvent) => {
+    const drawn = histogram.value
+    if (!drawn) return
+    const step = {
+        ArrowLeft: -1,
+        ArrowDown: -1,
+        ArrowRight: 1,
+        ArrowUp: 1,
+        PageDown: -10,
+        PageUp: 10,
+    }[event.key]
+    const next =
+        step !== undefined
+            ? (count.value ?? countNow.value) + step
+            : event.key === 'Home'
+              ? 1
+              : event.key === 'End'
+                ? drawn.max
+                : undefined
+    if (next === undefined) return
+    event.preventDefault()
+    pinned = true
+    focusRing.value = true
+    count.value = Math.min(Math.max(next, 1), drawn.max)
 }
 
 // --- Zoom and pan. One source drives the view at a time. Its handlers queue a view, and one
@@ -459,7 +582,7 @@ let lastPointerType = ''
 const onPointerDown = (event: PointerEvent) => {
     lastPointerType = event.pointerType
     if (event.pointerType === 'mouse') {
-        if (event.button !== 0) return
+        if (event.button !== 0 || distribution.value) return
         press = { id: event.pointerId, x: event.clientX, moved: false, view: view.value }
         if (view.value && mayDrive(owner, 'drag', touches.size)) {
             owner = 'drag'
@@ -474,14 +597,24 @@ const onPointerDown = (event: PointerEvent) => {
             // Two fingers never move the readout between them.
             pinned = false
             cursor.value = undefined
+            count.value = undefined
             if (!touchInert) startPinch()
         }
         if (touches.size > 1 || touchInert) return
     }
     // A finger or a pen press pins the readout; a sideways drag moves it.
     pinned = true
+    if (distribution.value) {
+        showCount(event.clientX)
+        return
+    }
     show(timeAtX(event.clientX))
     pinTime = cursor.value
+}
+/** The readout under a client x, in either view. */
+const point = (clientX: number) => {
+    if (distribution.value) showCount(clientX)
+    else show(timeAtX(clientX))
 }
 const startPinch = () => {
     const full = extent.value
@@ -532,7 +665,7 @@ const onPointerMove = (event: PointerEvent) => {
             if ((event.buttons & 1) === 0) complete()
             else drag(event)
         }
-        show(timeAtX(event.clientX))
+        point(event.clientX)
         return
     }
     if (event.pointerType === 'touch') {
@@ -544,7 +677,7 @@ const onPointerMove = (event: PointerEvent) => {
         }
         if (touches.size > 1 || touchInert) return
     }
-    if (pinned || (event.pointerType === 'pen' && !event.buttons)) show(timeAtX(event.clientX))
+    if (pinned || (event.pointerType === 'pen' && !event.buttons)) point(event.clientX)
 }
 /** A pointer lifts, or is cancelled when `click` is false. */
 const release = (event: PointerEvent, click: boolean) => {
@@ -573,7 +706,9 @@ const onDoubleClick = () => {
 
 // Safari's trackpad pinch on macOS and iPadOS; a pinch on the screen is the fingers' own.
 type SafariGestureEvent = UIEvent & { scale: number; clientX: number }
+// The distribution has no zoom of its own, so a pinch there zooms the page as elsewhere.
 const onGestureStart = (event: Event) => {
+    if (distribution.value) return
     event.preventDefault()
     const full = extent.value
     if (!full || !zoomShown.value || !mayDrive(owner, 'gesture', touches.size)) return
@@ -583,6 +718,7 @@ const onGestureStart = (event: Event) => {
     safari = { view: from, anchor: timeAtX((event as SafariGestureEvent).clientX, from ?? full) }
 }
 const onGestureChange = (event: Event) => {
+    if (distribution.value) return
     event.preventDefault()
     const full = extent.value
     const scale = (event as SafariGestureEvent).scale
@@ -590,12 +726,13 @@ const onGestureChange = (event: Event) => {
         queue(zoomAt(safari.view, full, safari.anchor, scale))
 }
 const onGestureEnd = (event: Event) => {
+    if (distribution.value) return
     event.preventDefault()
     if (owner === 'gesture') complete()
 }
 // A drift of two fingers must not start scrolling the dialog in the middle of a pinch.
 const onTouchMove = (event: TouchEvent) => {
-    if (event.touches.length >= 2 && event.cancelable) event.preventDefault()
+    if (event.touches.length >= 2 && event.cancelable && !distribution.value) event.preventDefault()
 }
 
 const onFocus = () => {
@@ -604,6 +741,10 @@ const onFocus = () => {
     if (!chart.value?.matches(':focus-visible')) return
     pinned = true
     focusRing.value = true
+    if (distribution.value) {
+        if (histogram.value) count.value = countNow.value
+        return
+    }
     const shown = view.value ?? extent.value
     const last = lastTime.value
     show(shown && (last < shown.x0 || last > shown.x1) ? shown.x0 : last, extent.value)
@@ -624,6 +765,10 @@ const zoomKey = (event: KeyboardEvent) => {
     return undefined
 }
 const onKeydown = (event: KeyboardEvent) => {
+    if (distribution.value) {
+        onCountKey(event)
+        return
+    }
     const current = model.value
     const full = extent.value
     if (!current || !full) return
@@ -675,6 +820,7 @@ const onKeydown = (event: KeyboardEvent) => {
 }
 watch(mode, () => {
     cursor.value = undefined
+    count.value = undefined
     complete()
 })
 // Leaving the app ends a drag; the view stays.
@@ -682,9 +828,10 @@ watch(isAppActive, (active) => {
     if (!active && owner) complete()
 })
 
-// --- The label line: its height is the widest readout's, measured on open and when the width
-// or the shown chart changes, never during interaction.
+// --- The label line: its height is the widest readout's of either view, measured on open and
+// when the width or the shown chart changes, never during interaction or on a legend toggle.
 const probe = useTemplateRef<HTMLSpanElement>('probe')
+const countProbe = useTemplateRef<HTMLSpanElement>('countProbe')
 const lines = ref(1)
 const top = computed(() => oneSecondMax(props.every))
 const slotWidth = computed(() => formatTenths(top.value, locale.value).length)
@@ -698,15 +845,39 @@ const probeText = computed(() => {
         beat: position(end),
     }
 })
+// The distribution's widest: every category's active time bounds any one count's, and 0.09 s is
+// the widest short form; the pair and the key whenever the chart has both kinds of notes.
+const everyActive = computed(() =>
+    props.drawable ? (rollingDurations(props.every)?.active ?? 0) / 1000 : 0,
+)
+const countProbeText = computed(() => {
+    const has = (primary: boolean) =>
+        CATEGORIES.some(
+            (category) =>
+                PRIMARY_CATEGORIES.includes(category) === primary &&
+                props.times[category].length > 0,
+        )
+    const [seconds = ''] = [
+        formatSeconds(everyActive.value, locale.value),
+        formatSeconds(0.09, locale.value),
+    ].sort((a, b) => b.length - a.length)
+    const both = has(true) && has(false)
+    return {
+        value: formatCount(top.value, locale.value),
+        seconds: both ? fill(strings.value.withAll, [seconds, seconds], locale.value) : seconds,
+        key: both,
+    }
+})
 const fitLabelLine = async () => {
     await nextTick()
-    const element = probe.value
-    if (!element) return
-    const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
-    if (!(lineHeight > 0)) return
-    lines.value = Math.max(1, Math.round(element.getBoundingClientRect().height / lineHeight))
+    const heights = [probe.value, countProbe.value].flatMap((element) => {
+        if (!element) return []
+        const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
+        return lineHeight > 0 ? [element.getBoundingClientRect().height / lineHeight] : []
+    })
+    if (heights.length) lines.value = Math.max(1, Math.round(Math.max(...heights)))
 }
-watch([probeText, () => size.value.width], fitLabelLine)
+watch([probeText, countProbeText, () => size.value.width], fitLabelLine)
 
 // --- Sticky: the label line is raised while it is stuck over the plot.
 const labelLine = useTemplateRef<HTMLDivElement>('labelLine')
@@ -730,6 +901,7 @@ const modes = computed(() => [
     { value: 'smooth' as const, label: i18n.value.statistics.smooth },
     { value: 'bars' as const, label: i18n.value.statistics.bars },
     { value: 'rolling' as const, label: i18n.value.statistics.rolling },
+    { value: 'distribution' as const, label: i18n.value.statistics.distribution },
 ])
 const head = useTemplateRef<HTMLDivElement>('head')
 const modeProbe = useTemplateRef<HTMLSpanElement>('modeProbe')
@@ -907,6 +1079,17 @@ const color = (category: Category) => chartCategoryColors[category]
                     <span>{{ readout.time }}</span>
                     <span class="text-fg/80">{{ readout.beat }}</span>
                 </span>
+                <span v-else-if="countReadout" class="stats-facts">
+                    <b class="stats-total" :style="{ minWidth: `${countWidth}ch` }">{{
+                        countReadout.value
+                    }}</b>
+                    <span>{{ countReadout.seconds }}</span>
+                </span>
+                <SeriesKey
+                    v-if="histogram && histogram.lines.length > 1"
+                    :primary="strings.primary"
+                    :all="strings.all"
+                />
             </span>
             <span ref="probe" class="stats-readout stats-probe" aria-hidden="true">
                 <span class="stats-facts">
@@ -915,19 +1098,43 @@ const color = (category: Category) => chartCategoryColors[category]
                     <span>{{ probeText.beat }}</span>
                 </span>
             </span>
+            <span ref="countProbe" class="stats-readout stats-probe" aria-hidden="true">
+                <span class="stats-facts">
+                    <b class="stats-total">{{ countProbeText.value }}</b>
+                    <span>{{ countProbeText.seconds }}</span>
+                </span>
+                <SeriesKey
+                    v-if="countProbeText.key"
+                    :primary="strings.primary"
+                    :all="strings.all"
+                />
+            </span>
         </div>
         <div class="stats-plot-row" :class="{ side }">
             <div
                 ref="chart"
                 class="stats-chart"
-                :class="{ zoomed: !!view && !!model, dragging }"
-                :tabindex="model ? 0 : -1"
-                :role="model ? 'slider' : undefined"
-                :aria-labelledby="model ? headingId : undefined"
-                :aria-valuemin="model ? 0 : undefined"
-                :aria-valuemax="model && extent ? Math.round(extent.x1 * 1000) / 1000 : undefined"
-                :aria-valuenow="model ? Math.round(valueNow * 1000) / 1000 : undefined"
-                :aria-valuetext="model ? valueText : undefined"
+                :class="{
+                    zoomed: !!view && !!model,
+                    dragging,
+                    distribution,
+                    'stats-dist-titled': distribution,
+                }"
+                :tabindex="model || histogram ? 0 : -1"
+                :role="model || histogram ? 'slider' : undefined"
+                :aria-labelledby="model || histogram ? headingId : undefined"
+                :aria-valuemin="model ? 0 : histogram ? 1 : undefined"
+                :aria-valuemax="
+                    model && extent
+                        ? Math.round(extent.x1 * 1000) / 1000
+                        : histogram
+                          ? histogram.max
+                          : undefined
+                "
+                :aria-valuenow="
+                    model ? Math.round(valueNow * 1000) / 1000 : histogram ? countNow : undefined
+                "
+                :aria-valuetext="model ? valueText : histogram ? countText : undefined"
                 data-statistics-chart
                 @pointermove="onPointerMove"
                 @pointerdown="onPointerDown"
@@ -1038,6 +1245,76 @@ const color = (category: Category) => chartCategoryColors[category]
                             :style="{
                                 left: `${((reading.time - model.x0) / (model.x1 - model.x0)) * 100}%`,
                                 top: `${(reading.y / drawing.height) * 100}%`,
+                            }"
+                        />
+                    </template>
+                </template>
+                <template v-else-if="histogram">
+                    <svg
+                        :viewBox="`0 0 ${histogram.width} ${histogram.height}`"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                        data-statistics-distribution
+                    >
+                        <defs>
+                            <linearGradient :id="`${headingId}-wash`" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0" class="stats-wash-top" />
+                                <stop offset="1" class="stats-wash-bottom" />
+                            </linearGradient>
+                        </defs>
+                        <line
+                            v-for="line in histogram.grid"
+                            :key="line.value"
+                            class="stats-grid"
+                            x1="0"
+                            :x2="histogram.width"
+                            :y1="line.y"
+                            :y2="line.y"
+                            :style="{ strokeWidth: `${histogram.gridWidth}px` }"
+                            shape-rendering="crispEdges"
+                        />
+                        <path
+                            v-if="histogram.wash"
+                            class="stats-dist-wash"
+                            :d="histogram.wash"
+                            :fill="`url(#${headingId}-wash)`"
+                        />
+                        <template v-else>
+                            <path class="stats-all-fill" :d="histogram.fill" />
+                            <path class="stats-all-edge" :d="histogram.lines[1]" />
+                        </template>
+                        <path class="stats-line thick" :d="histogram.lines[0]" />
+                    </svg>
+                    <span
+                        v-for="line in histogram.grid"
+                        :key="line.value"
+                        class="stats-tick stats-tick-y"
+                        :style="{ top: `${(histogram.py(line.value) / histogram.height) * 100}%` }"
+                        >{{ formatWholeSeconds(line.value, locale) }}</span
+                    >
+                    <span
+                        v-for="tick in countTicks"
+                        :key="tick.value"
+                        class="stats-tick stats-tick-x"
+                        :class="[tick.align, { wide: tick.wide, narrow: tick.narrow }]"
+                        :style="{ left: `${tick.left}%` }"
+                        >{{ formatCount(tick.value, locale) }}</span
+                    >
+                    <span class="stats-axis-title" aria-hidden="true">{{
+                        strings.notesPerSecond
+                    }}</span>
+                    <template v-if="count !== undefined">
+                        <span
+                            class="stats-cross"
+                            :style="{ left: `${(histogram.px(count) / histogram.width) * 100}%` }"
+                        />
+                        <span
+                            v-for="(_, i) in histogram.lines"
+                            :key="i"
+                            class="stats-dot"
+                            :style="{
+                                left: `${(histogram.px(count) / histogram.width) * 100}%`,
+                                top: `${(histogram.topAt(i, count) / histogram.height) * 100}%`,
                             }"
                         />
                     </template>

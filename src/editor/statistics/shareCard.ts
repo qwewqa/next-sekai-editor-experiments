@@ -2,24 +2,27 @@ import {
     CATEGORIES,
     chartModel,
     figureRows,
+    npsDurations,
+    npsSets,
+    PRIMARY_CATEGORIES,
     ROWS,
     timeTicks,
     type Category,
-    type ChartMode,
     type ChartStatistics,
     type NpsFigures,
     type Row,
     type StatisticsStrings,
+    type StatisticsView,
 } from '../../levelData/statistics'
 import { formatIntegerTime } from '../../utils/format'
-import { formatCount } from '../../utils/size'
-import { drawChart, timeLabelAlign, yLabel } from './drawing'
+import { formatCount, formatWholeSeconds } from '../../utils/size'
+import { drawChart, drawHistogram, timeLabelAlign, yLabel } from './drawing'
 import { chartCategoryColors } from './marks'
 
 // The share card: 800 x 450 units drawn at 1600 x 900 px, built like a dialog: a band with the
 // cover, the title, the artists, the author and the rating; Combo and the list's rows; the
-// dialog's chart in its mode and selection with its key, and Average and Median on its heading's
-// line; the link and the product's name.
+// dialog's chart in its mode or the distribution, in its selection with its key, and Average and
+// Median on its heading's line; the link and the product's name.
 
 const WIDTH = 800
 const HEIGHT = 450
@@ -39,7 +42,7 @@ export type CardInput = {
     figures: NpsFigures | undefined
     drawable: boolean
     chosen: readonly Category[]
-    mode: ChartMode
+    mode: StatisticsView
     glyphs: Partial<Record<Row, CanvasImageSource>>
     theme: CardTheme
     fontFamily: string
@@ -136,6 +139,26 @@ const roundRect = (
     g.arcTo(x, y + height, x, y, r)
     g.arcTo(x, y, x + width, y, r)
     g.closePath()
+}
+
+/**
+ * Whether the card lists the chosen categories: not where the chart draws them in one ink and
+ * the list adds nothing. That is Rolling with every category that has notes chosen, and the
+ * distribution with every one chosen or exactly the primary ones, which its series name.
+ */
+export const listsCategories = (
+    mode: StatisticsView,
+    times: Record<Category, Float64Array>,
+    chosen: readonly Category[],
+) => {
+    if (mode !== 'rolling' && mode !== 'distribution') return true
+    const present = CATEGORIES.filter((category) => times[category].length > 0)
+    const shown = present.filter((category) => chosen.includes(category))
+    if (!shown.length) return true
+    const primary = present.filter((category) => PRIMARY_CATEGORIES.includes(category))
+    const exactly = (list: Category[]) =>
+        list.length === shown.length && shown.every((category) => list.includes(category))
+    return !(exactly(present) || (mode === 'distribution' && exactly(primary)))
 }
 
 /** Draws the card on a canvas, which it sizes to 1600 x 900. */
@@ -348,27 +371,94 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
         g.fillText(figure.text, figure.x, top + 15)
     }
     g.textAlign = 'left'
-    // The plot's edges on whole pixels of the 2x canvas, so its tiles and gridlines are crisp.
+    const distribution = input.mode === 'distribution'
+    const chosen = CATEGORIES.filter((category) => input.chosen.includes(category))
+    const times = chosen.map((category) => input.stats.times[category])
+    const hasNotes = times.some((list) => list.length > 0)
+    // The distribution's series: Primary and All when both have notes, as the figures pair them.
+    const sets = input.drawable ? npsSets(input.stats.times, input.chosen) : undefined
+    const durations = sets && npsDurations(sets)
+    const series =
+        sets && durations
+            ? sets.hasPrimary && sets.hasSecondary && durations.primary
+                ? [durations.primary, durations.all]
+                : [durations.all]
+            : undefined
+    // The plot's edges on whole pixels of the 2x canvas, so its tiles and gridlines are crisp. The
+    // distribution gives the x axis's title 18 units of it.
     const snap = (units: number) => Math.round(units * SCALE) / SCALE
     const plotTop = snap(top + 15 + 14)
-    const plotHeight = snap(HEIGHT - top - 29 - 22 - footerHeight - PAD - 8)
-    const plotBottom = plotTop + plotHeight
-    const ink = input.mode === 'rolling'
-    // The key: one line per chosen category that has notes, in stacking order from the baseline.
-    const key = CATEGORIES.filter(
-        (category) => input.chosen.includes(category) && input.stats.times[category].length,
+    const plotHeight = snap(
+        HEIGHT - top - 29 - 22 - footerHeight - PAD - 8 - (distribution ? 18 : 0),
     )
+    const plotBottom = plotTop + plotHeight
+    const ink = input.mode === 'rolling' || distribution
+    // The key: one line per chosen category that has notes, in stacking order from the baseline,
+    // left out where it says nothing the chart does not. In the distribution the categories are
+    // muted under its series' names: Primary and All, or the one drawn.
+    const key = listsCategories(input.mode, input.stats.times, input.chosen)
+        ? CATEGORIES.filter(
+              (category) => input.chosen.includes(category) && input.stats.times[category].length,
+          )
+        : []
+    const seriesKey =
+        distribution && series && hasNotes
+            ? series.length > 1
+                ? [
+                      { line: false, name: strings.all },
+                      { line: true, name: strings.primary },
+                  ]
+                : [{ line: true, name: sets?.hasSecondary ? strings.all : strings.primary }]
+            : []
     const markWidth = ink ? 0 : 11
     const markGap = markWidth ? 6 : 0
     g.font = font(13.5)
-    const keyWidth =
-        markWidth +
-        markGap +
-        Math.max(...CATEGORIES.map((category) => g.measureText(strings.categories[category]).width))
+    const keyWidth = Math.max(
+        key.length || !hasNotes
+            ? markWidth +
+                  markGap +
+                  Math.max(
+                      ...CATEGORIES.map(
+                          (category) => g.measureText(strings.categories[category]).width,
+                      ),
+                  )
+            : 0,
+        ...seriesKey.map(({ name }) => 22 + g.measureText(name).width),
+    )
     const keyX = chartX + chartWidth - keyWidth
+    // The series sit a gap of 10 above the categories; the pitch narrows to keep the top entry 8
+    // below the plot's top.
+    const gap = key.length && seriesKey.length ? 10 : 0
+    const entries = key.length + seriesKey.length
+    const keyPitch = Math.max(
+        16,
+        Math.min(20, (plotBottom - 5 - plotTop - 8 - gap) / Math.max(1, entries - 1)),
+    )
     g.textBaseline = 'middle'
+    seriesKey.forEach(({ line, name }, i) => {
+        const y = plotBottom - 5 - (key.length + i) * keyPitch - gap
+        if (line) {
+            g.strokeStyle = rgba(theme.fg)
+            g.lineWidth = 2
+            g.beginPath()
+            g.moveTo(keyX, y)
+            g.lineTo(keyX + 16, y)
+            g.stroke()
+        } else {
+            g.fillStyle = rgba(theme.fg, theme.dark ? 0.24 : 0.16)
+            g.fillRect(keyX, y - 4, 16, 8)
+            g.strokeStyle = rgba(theme.fg, theme.dark ? 0.5 : 0.6)
+            g.lineWidth = 1
+            g.beginPath()
+            g.moveTo(keyX, y - 3.5)
+            g.lineTo(keyX + 16, y - 3.5)
+            g.stroke()
+        }
+        g.fillStyle = rgba(theme.fg)
+        g.fillText(name, keyX + 22, y)
+    })
     key.forEach((category, i) => {
-        const y = plotBottom - i * 20 - 5
+        const y = plotBottom - i * keyPitch - 5
         if (markWidth) {
             roundRect(g, keyX, y - 5.5, 11, 11, 2.5)
             g.fillStyle = chartCategoryColors[category]
@@ -378,15 +468,13 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
             roundRect(g, keyX + 0.5, y - 5, 10, 10, 2)
             g.stroke()
         }
-        g.fillStyle = rgba(theme.fg)
+        g.fillStyle = rgba(theme.fg, distribution ? 0.8 : 1)
         g.fillText(strings.categories[category], keyX + markWidth + markGap, y)
     })
     g.textBaseline = 'alphabetic'
+    // With no key, the plot takes its column.
     const left = chartX + 28
-    const right = keyX - 14
-    const chosen = CATEGORIES.filter((category) => input.chosen.includes(category))
-    const times = chosen.map((category) => input.stats.times[category])
-    const hasNotes = times.some((list) => list.length > 0)
+    const right = keyWidth ? keyX - 14 : chartX + chartWidth
     if (input.drawable && !hasNotes) {
         g.fillStyle = rgba(theme.fg, 0.8)
         g.font = font(14)
@@ -396,9 +484,16 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
         g.textBaseline = 'alphabetic'
         g.textAlign = 'left'
     }
+    const timelineMode = input.mode === 'distribution' ? undefined : input.mode
     const model =
-        input.drawable && hasNotes
-            ? chartModel(input.mode, input.every, times, undefined, Math.round((right - left) * 2))
+        input.drawable && hasNotes && timelineMode
+            ? chartModel(
+                  timelineMode,
+                  input.every,
+                  times,
+                  undefined,
+                  Math.round((right - left) * 2),
+              )
             : undefined
     if (model) {
         // The plot's origin on a whole pixel of the 2x canvas, as the dialog's on the screen.
@@ -446,6 +541,51 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
             g.textAlign = timeLabelAlign(x, drawing.width)
             g.fillText(formatIntegerTime(time), x, plotHeight + 5)
         }
+        g.restore()
+    }
+    if (distribution && series && hasNotes) {
+        const originX = snap(left)
+        const drawn = drawHistogram(series, right - originX, plotHeight, SCALE, 3)
+        g.save()
+        g.translate(originX, plotTop)
+        g.font = font(13)
+        g.textBaseline = 'middle'
+        g.textAlign = 'right'
+        for (const line of drawn.grid) {
+            g.strokeStyle = rgba(theme.fg, 0.15)
+            g.lineWidth = drawn.gridWidth
+            g.beginPath()
+            g.moveTo(0, line.y)
+            g.lineTo(drawn.width, line.y)
+            g.stroke()
+            g.fillStyle = rgba(theme.fg, 0.8)
+            g.fillText(formatWholeSeconds(line.value, locale), -6, drawn.py(line.value))
+        }
+        // One series is a line over a wash; two are All's area and edge behind Primary's line.
+        if (drawn.wash) {
+            g.fillStyle = rgba(theme.fg, 0.12)
+            g.fill(new Path2D(drawn.wash))
+        } else {
+            g.fillStyle = rgba(theme.fg, theme.dark ? 0.24 : 0.16)
+            g.fill(new Path2D(drawn.fill))
+            g.strokeStyle = rgba(theme.fg, theme.dark ? 0.5 : 0.6)
+            g.lineWidth = 1
+            g.stroke(new Path2D(drawn.lines[1]))
+        }
+        g.strokeStyle = rgba(theme.fg)
+        g.lineWidth = 2
+        g.lineJoin = 'round'
+        g.stroke(new Path2D(drawn.lines[0]))
+        // The counts, then the axis's title under them.
+        g.fillStyle = rgba(theme.fg, 0.8)
+        g.textBaseline = 'top'
+        for (const value of drawn.xTicks(5)) {
+            const x = drawn.px(value)
+            g.textAlign = timeLabelAlign(x, drawn.width)
+            g.fillText(formatCount(value, locale), x, plotHeight + 5)
+        }
+        g.textAlign = 'center'
+        g.fillText(strings.notesPerSecond, drawn.width / 2, plotHeight + 5 + 18)
         g.restore()
     }
     g.textBaseline = 'alphabetic'

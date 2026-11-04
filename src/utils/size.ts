@@ -55,3 +55,29 @@ export const formatDecimal = (value: number, locale: string = currentLocale()) =
 /** A figure with exactly one decimal in the UI locale: "4.5", "4,5". */
 export const formatTenths = (value: number, locale: string = currentLocale()) =>
     numberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)
+
+// Seconds as "9.7s", or "9,7 s" and "9.7 秒" where the narrow unit reads poorly; spelled out for
+// screen readers.
+const seconds = (locale: string, long: boolean, digits: number) =>
+    numberFormat(locale, {
+        style: 'unit',
+        unit: 'second',
+        unitDisplay: long ? 'long' : locale === 'fr' || locale === 'ja' ? 'short' : 'narrow',
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+    })
+
+/** Whole seconds: "10s", "10 s", "10 秒". */
+export const formatWholeSeconds = (value: number, locale: string = currentLocale()) =>
+    seconds(locale, false, 0).format(value)
+
+/**
+ * A duration in seconds with one decimal; under 0.1 s with two, rounded up, so a time that is
+ * there never reads as none. Exactly none is "0s".
+ */
+export const formatSeconds = (value: number, locale: string = currentLocale(), long = false) => {
+    if (value <= 0) return seconds(locale, long, 0).format(0)
+    if (value >= 0.1) return seconds(locale, long, 1).format(value)
+    const hundredths = Math.max(1, Math.ceil(value * 100 - 1e-9))
+    return seconds(locale, long, 2).format(hundredths / 100)
+}

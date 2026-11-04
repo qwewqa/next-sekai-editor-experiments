@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { drawChart, readAt } from '../../src/editor/statistics/drawing'
+import { drawChart, drawHistogram, readAt, valueAt } from '../../src/editor/statistics/drawing'
 import {
     chartModel,
     chartSource,
     chartView,
     mergeTimes,
+    rollingDurations,
+    yScale,
+    type Durations,
     type Span,
 } from '../../src/levelData/statistics'
 
@@ -210,4 +213,107 @@ test('Rolling reads the step under a time when the steps start before the view',
         assert.ok(step)
         assert.equal(reading.value, step.count, `${time}`)
     }
+})
+
+// --- The distribution.
+
+/** The ys of an outline's vertical moves, one per count from 1. */
+const stepTops = (path: string) =>
+    [...path.matchAll(/ V(-?[\d.e-]+) H/g)].map((match) => Number(match[1]))
+
+// Taps of a sparse and a dense passage, off any one-second grid, and a few traces among them.
+const tapTimes = Float64Array.from(
+    [
+        ...Array.from({ length: 30 }, (_, i) => 1.013 + i * 0.71),
+        ...Array.from({ length: 60 }, (_, i) => 30.017 + i * 0.083),
+    ].sort((a, b) => a - b),
+)
+const traceTimes = Float64Array.from([2.31, 2.37, 31.05, 31.11, 31.17, 31.23])
+const durations = (times: Float64Array) => {
+    const result = rollingDurations(times)
+    assert.ok(result)
+    return result
+}
+
+test('each count’s step stands at its seconds, at least 2 px where there is any, and the steps add up to the active time', () => {
+    const all = mergeTimes([tapTimes, traceTimes]).times
+    const series = [durations(tapTimes), durations(all)]
+    for (const dpr of RATIOS) {
+        const drawn = drawHistogram(series, 412.3, 136, dpr)
+        const baseline = drawn.py(0)
+        series.forEach((each, i) => {
+            const last = each.values[each.values.length - 1] ?? 0
+            const tops = stepTops(drawn.lines[i] ?? '')
+            assert.equal(tops.length, last)
+            let total = 0
+            for (let value = 1; value <= last; value++) {
+                const seconds = drawn.secondsAt(i, value)
+                total += seconds
+                const top = drawn.topAt(i, value)
+                assert.equal(tops[value - 1], top)
+                if (seconds > 0) {
+                    assert.ok(top <= baseline - 2, `${i} ${value}`)
+                    assert.ok(near(Math.min(drawn.py(seconds), baseline - 2), top))
+                } else assert.equal(top, baseline)
+            }
+            assert.ok(near(total, each.active / 1000, 1e-9))
+        })
+        // The axis ends half a step past the largest count of either series.
+        assert.equal(drawn.max, Math.max(...series.map((each) => each.values.at(-1) ?? 0)))
+        assert.ok(near(drawn.px(drawn.max + 0.5), 412.3))
+        let tallest = 0
+        series.forEach((_, i) => {
+            for (let value = 1; value <= drawn.max; value++)
+                tallest = Math.max(tallest, drawn.secondsAt(i, value))
+        })
+        assert.equal(drawn.yTop, yScale(tallest).top)
+    }
+})
+
+test('one series has a wash and no fill; two have All’s fill behind and no wash', () => {
+    const one = drawHistogram([durations(tapTimes)], 300, 136, 1)
+    assert.ok(one.wash.endsWith(' Z'))
+    assert.equal(one.fill, '')
+    const two = drawHistogram(
+        [durations(tapTimes), durations(mergeTimes([tapTimes, traceTimes]).times)],
+        300,
+        136,
+        1,
+    )
+    assert.equal(two.wash, '')
+    assert.equal(two.fill, `${two.lines[1]} Z`)
+})
+
+const synthetic = (seconds: Record<number, number>): Durations => {
+    const values = Int32Array.from(Object.keys(seconds).map(Number))
+    const ms = Float64Array.from(values, (value) => (seconds[value] ?? 0) * 1000)
+    return { values, ms, active: ms.reduce((a, b) => a + b, 0) }
+}
+
+test('the counts are labelled at 0 and multiples of 1, 2 or 5 x 10^k, within the budget', () => {
+    const ticks = (max: number, budget: number) =>
+        drawHistogram([synthetic({ 1: 10, [max]: 0.03 })], 300, 136, 1).xTicks(budget)
+    assert.deepEqual(ticks(19, 6), [0, 5, 10, 15])
+    assert.deepEqual(ticks(74, 6), [0, 20, 40, 60])
+    assert.deepEqual(ticks(5, 6), [0, 1, 2, 3, 4, 5])
+    assert.deepEqual(ticks(5, 4), [0, 2, 4])
+    assert.deepEqual(ticks(108, 4), [0, 50, 100])
+})
+
+test('a sliver under a microsecond is not drawn and does not reach the axis', () => {
+    const drawn = drawHistogram([synthetic({ 1: 5, 2: 2, 3: 1e-9 })], 300, 136, 1)
+    assert.equal(drawn.max, 2)
+    assert.equal(drawn.secondsAt(0, 3), 0)
+    assert.equal(stepTops(drawn.lines[0] ?? '').length, 2)
+})
+
+test('the plot’s fraction reads the nearest whole count, from 1 to the largest', () => {
+    assert.equal(valueAt(0, 10), 1)
+    assert.equal(valueAt(-0.2, 10), 1)
+    assert.equal(valueAt(1, 10), 10)
+    assert.equal(valueAt(1.3, 10), 10)
+    // Count v is centred at v / (max + 0.5) of the width.
+    for (let value = 1; value <= 10; value++) assert.equal(valueAt(value / 10.5, 10), value)
+    assert.equal(valueAt(5.49 / 10.5, 10), 5)
+    assert.equal(valueAt(5.51 / 10.5, 10), 6)
 })

@@ -22,6 +22,7 @@ import {
     figureRows,
     formatList,
     mergeTimes,
+    npsDurations,
     npsFigures,
     npsSets,
     representable,
@@ -62,7 +63,18 @@ const every = computed(
 )
 const drawable = computed(() => representable(stats.value))
 const sets = computed(() => npsSets(stats.value.times, settings.statisticsCategories))
-const figures = computed(() => (drawable.value && sets.value ? npsFigures(sets.value) : undefined))
+const durations = computed(() => sets.value && npsDurations(sets.value))
+const figures = computed(() =>
+    drawable.value && sets.value ? npsFigures(sets.value, durations.value) : undefined,
+)
+// The distribution's series: Primary and All when both have notes, as the figures pair them.
+const series = computed(() => {
+    const each = durations.value
+    if (!drawable.value || !sets.value || !each) return undefined
+    return sets.value.hasPrimary && sets.value.hasSecondary && each.primary
+        ? [each.primary, each.all]
+        : [each.all]
+})
 
 // --- The list and the figures. A breakdown's lines, read as the button's description.
 const describe = (lines: { label: string; value: string }[]) =>
@@ -252,6 +264,7 @@ const share = () => {
                 :every
                 :bpms="state.bpms"
                 :figures
+                :series
                 :drawable
                 :scroller="bodyElement"
             />
@@ -583,6 +596,26 @@ const share = () => {
 .stats-chart.dragging {
     cursor: grabbing;
 }
+/* The distribution has no pinch of its own, so the page's works on it. */
+.stats-chart.distribution {
+    touch-action: pan-y pinch-zoom;
+}
+/* Room for the x axis's title. */
+.stats-chart.stats-dist-titled {
+    margin-bottom: 2.5rem;
+}
+/* The focus ring takes in the title. */
+.stats-dist-titled .stats-plot-focus {
+    bottom: -2.875rem;
+}
+.stats-axis-title {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% + 1.375rem);
+    text-align: center;
+    line-height: 1rem;
+    @apply whitespace-nowrap text-xs text-fg/80;
+}
 .stats-plot-row.side .stats-chart {
     flex: 1;
     min-width: 0;
@@ -624,8 +657,38 @@ const share = () => {
     stroke-linejoin: round;
     stroke-linecap: round;
 }
+.stats-line.thick {
+    stroke-width: 2;
+}
 .stats-fc-only {
     display: none;
+}
+/* The distribution's All: a flat area behind Primary's line, with an edge along its top. */
+.stats-all-fill {
+    fill: rgb(var(--color-fg) / 0.16);
+}
+:root[data-theme='dark'] .stats-all-fill {
+    fill: rgb(var(--color-fg) / 0.24);
+}
+.stats-all-edge {
+    fill: none;
+    stroke: rgb(var(--color-fg) / 0.6);
+    stroke-width: 1px;
+}
+:root[data-theme='dark'] .stats-all-edge {
+    stroke: rgb(var(--color-fg) / 0.5);
+}
+/* The key ends at the label line's right edge, and wraps above the readout when they do not fit. */
+.stats-series-key {
+    display: flex;
+    gap: 0.75rem;
+    margin-inline-start: auto;
+    @apply text-fg/80;
+}
+.stats-series-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
 }
 .stats-tick {
     position: absolute;
@@ -784,8 +847,18 @@ const share = () => {
     .stats-grid {
         stroke: GrayText;
     }
-    .stats-layer {
+    .stats-layer,
+    .stats-dist-wash {
         display: none;
+    }
+    .stats-all-fill {
+        fill: none;
+    }
+    .stats-all-edge,
+    .stats-key-all {
+        stroke: CanvasText;
+        stroke-width: 1.5px;
+        stroke-dasharray: 4 3;
     }
     .stats-fc-only {
         display: inline;

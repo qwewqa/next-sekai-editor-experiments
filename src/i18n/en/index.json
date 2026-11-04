@@ -2656,6 +2656,7 @@
         "smooth": "Smooth",
         "bars": "Bars",
         "rolling": "Rolling",
+        "distribution": "Distribution",
         "zoomIn": "Zoom In",
         "zoomOut": "Zoom Out",
         "span": "{0}–{1}",

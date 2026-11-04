@@ -570,6 +570,9 @@ export const binAt = (bins: Span[], width: number, time: number) =>
 
 export type ChartMode = 'smooth' | 'bars' | 'rolling'
 
+/** The timeline's three modes, and the distribution: the seconds spent at each Rolling count. */
+export type StatisticsView = ChartMode | 'distribution'
+
 /** A stretch of the timeline in seconds. */
 export type View = { x0: number; x1: number }
 

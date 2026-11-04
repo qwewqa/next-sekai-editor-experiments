@@ -1,4 +1,10 @@
-import { binAt, roundParts, yScale, type ChartModel } from '../../levelData/statistics'
+import {
+    binAt,
+    roundParts,
+    yScale,
+    type ChartModel,
+    type Durations,
+} from '../../levelData/statistics'
 import { formatCount } from '../../utils/size'
 
 // The chart at a plot's size: the coordinates of its layers, Bars' tiles and the gridlines, and
@@ -37,6 +43,21 @@ export const yLabel = (value: number, locale: string) => formatCount(value, loca
  */
 export const timeLabelAlign = (x: number, width: number) =>
     x > width - 20 ? 'right' : x < 20 ? 'left' : 'center'
+
+/** Gridlines at each step up to `top`, on whole device rows, the nearest to 1 CSS px thick. */
+export const gridLines = (top: number, step: number, height: number, dpr: number) => {
+    const snap = (value: number) => Math.round(value * dpr) / dpr
+    const gridWidth = Math.max(1, Math.round(dpr)) / dpr
+    const grid: { y: number; value: number }[] = []
+    for (let k = 0; k * step <= top * (1 + 1e-9); k++)
+        grid.push({
+            y:
+                Math.min(snap((1 - (k * step) / top) * height), snap(height) - gridWidth) +
+                gridWidth / 2,
+            value: k * step,
+        })
+    return { grid, gridWidth }
+}
 
 /**
  * Draws a model in a plot of `width` x `height` CSS px at `dpr` device pixels per CSS px, edges
@@ -96,14 +117,7 @@ export const drawChart = (
         }
     }
 
-    // Gridlines take whole device rows, the nearest to 1 CSS px.
-    const gridWidth = Math.max(1, Math.round(dpr)) / dpr
-    const grid: Drawing['grid'] = []
-    for (let k = 0; k * yStep <= yTop * (1 + 1e-9); k++)
-        grid.push({
-            y: Math.min(snap(py(k * yStep)), snap(height) - gridWidth) + gridWidth / 2,
-            value: k * yStep,
-        })
+    const { grid, gridWidth } = gridLines(yTop, yStep, height, dpr)
 
     return {
         width,
@@ -196,3 +210,102 @@ export const readAt = (model: ChartModel, drawing: Drawing, time: number): Readi
         y: ys[ys.length - 1] ?? drawing.py(0),
     }
 }
+
+// --- The distribution: one step per whole count, x the count, y the seconds at it.
+
+// The sweep's margin can leave slivers of a nanosecond beside notes exactly 1 s apart.
+const SLIVER_MS = 1e-3
+const UNITS = [1, 2, 5]
+
+export type Histogram = {
+    width: number
+    height: number
+    /** The largest count with time in any series: the x axis runs to max + 0.5. */
+    max: number
+    yTop: number
+    px: (value: number) => number
+    py: (seconds: number) => number
+    grid: { y: number; value: number }[]
+    gridWidth: number
+    /** Each series' outline: up and along every count from 1 to its own largest, then down. */
+    lines: string[]
+    /** The first outline closed, for the wash, with one series. */
+    wash: string
+    /** The last outline closed, the fill behind, with two. */
+    fill: string
+    /** 0 and multiples of the step of 1, 2 or 5 x 10^k that keeps at most `budget` labels. */
+    xTicks: (budget: number) => number[]
+    /** Series i's seconds at a count. */
+    secondsAt: (i: number, value: number) => number
+    /** The y of series i's step at a count, as drawn. */
+    topAt: (i: number, value: number) => number
+}
+
+/**
+ * Draws each series' seconds at each count in a plot of `width` x `height` CSS px. A count with
+ * any time stands at least 2 px, so the reach of a short burst shows.
+ */
+export const drawHistogram = (
+    series: readonly Durations[],
+    width: number,
+    height: number,
+    dpr: number,
+    yTicks = 4,
+): Histogram => {
+    const seconds = series.map(({ values, ms }) => {
+        const out = new Float64Array((values[values.length - 1] ?? 0) + 1)
+        values.forEach((value, i) => {
+            const each = ms[i] ?? 0
+            if (each >= SLIVER_MS) out[value] = each / 1000
+        })
+        return out
+    })
+    const tops = seconds.map((out) => {
+        for (let value = out.length - 1; value > 0; value--) if (out[value]) return value
+        return 0
+    })
+    const max = Math.max(1, ...tops)
+    let tallest = 0
+    for (const out of seconds) for (const value of out) tallest = Math.max(tallest, value)
+    const { step, top: yTop } = yScale(tallest || 1, yTicks)
+    const px = (value: number) => (value / (max + 0.5)) * width
+    const py = (value: number) => (1 - value / yTop) * height
+    const baseline = py(0)
+    const secondsAt = (i: number, value: number) => seconds[i]?.[value] ?? 0
+    const topAt = (i: number, value: number) => {
+        const time = secondsAt(i, value)
+        return time > 0 ? Math.min(py(time), baseline - 2) : baseline
+    }
+    const lines = tops.map((last, i) => {
+        let d = `M${px(0.5)} ${baseline}`
+        for (let value = 1; value <= last; value++) d += ` V${topAt(i, value)} H${px(value + 0.5)}`
+        return `${d} V${baseline}`
+    })
+    const xTicks = (budget: number) => {
+        let tick = 1
+        for (let k = 1; Math.floor(max / tick) + 1 > budget; k++)
+            tick = (UNITS[k % 3] ?? 1) * 10 ** Math.floor(k / 3)
+        const out: number[] = []
+        for (let value = 0; value <= max; value += tick) out.push(value)
+        return out
+    }
+    return {
+        width,
+        height,
+        max,
+        yTop,
+        px,
+        py,
+        ...gridLines(yTop, step, height, dpr),
+        lines,
+        wash: series.length === 1 ? `${lines[0] ?? ''} Z` : '',
+        fill: series.length > 1 ? `${lines[lines.length - 1] ?? ''} Z` : '',
+        xTicks,
+        secondsAt,
+        topAt,
+    }
+}
+
+/** The whole count from 1 to `max` nearest a fraction of the plot's width. */
+export const valueAt = (fraction: number, max: number) =>
+    Math.min(max, Math.max(1, Math.round(fraction * (max + 0.5))))

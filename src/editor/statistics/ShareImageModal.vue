@@ -9,10 +9,10 @@ import { i18n } from '../../i18n'
 import {
     ROWS,
     type Category,
-    type ChartMode,
     type ChartStatistics,
     type NpsFigures,
     type Row,
+    type StatisticsView,
 } from '../../levelData/statistics'
 import { readMediaBlob } from '../../local/mediaBlob'
 import BaseModal from '../../modals/BaseModal.vue'
@@ -39,7 +39,7 @@ const props = defineProps<{
     figures: NpsFigures | undefined
     drawable: boolean
     chosen: readonly Category[]
-    mode: ChartMode
+    mode: StatisticsView
     /** Level Info when the dialog opened, read with the statistics. */
     levelInfo: LevelInfo
     /** The preview's alt text: the Copy Text summary. */

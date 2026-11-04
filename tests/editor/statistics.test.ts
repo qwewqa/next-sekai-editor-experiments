@@ -48,6 +48,7 @@ import {
 import { buildPreviewChart } from '../../src/preview/engine/chart'
 import { getComboTimes } from '../../src/preview/engine/combo'
 import { createState, type State } from '../../src/state'
+import { formatSeconds } from '../../src/utils/size'
 import { chart, handBuilt, note } from '../helpers/scoring'
 
 // A 32-bit generator: seeded, uniform, with no short cycle.
@@ -818,6 +819,20 @@ test('Primary can spend its time at a higher count than All: ten seconds of stre
     const figures = npsFigures(sets)
     assert.equal(figures.primary.median, 10)
     assert.equal(figures.all.median, 1)
+})
+
+test('seconds read with one decimal, a short time rounded up in hundredths, and none as 0', () => {
+    assert.equal(formatSeconds(16, 'en'), '16.0s')
+    assert.equal(formatSeconds(9.74, 'en'), '9.7s')
+    assert.equal(formatSeconds(0, 'en'), '0s')
+    assert.equal(formatSeconds(0.04, 'en'), '0.04s')
+    assert.equal(formatSeconds(0.07, 'en'), '0.07s')
+    assert.equal(formatSeconds(0.003, 'en'), '0.01s')
+    assert.equal(formatSeconds(9.7, 'fr'), '9,7\u202fs')
+    assert.equal(formatSeconds(9.7, 'ja'), '9.7 秒')
+    assert.equal(formatSeconds(9.7, 'tr'), '9,7sn')
+    assert.equal(formatSeconds(9.7, 'en', true), '9.7 seconds')
+    assert.equal(formatSeconds(0, 'en', true), '0 seconds')
 })
 
 // --- Rolling's window at the chart's start, over a view.
