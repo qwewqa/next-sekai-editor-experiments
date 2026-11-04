@@ -8,6 +8,7 @@ import { MemoryStorage } from '../../../src/local/journal/store'
 import type { KvTx } from '../../../src/local/kv/types'
 import { webLockService } from '../../../src/local/locks'
 import { sessionCopyOf } from '../../../src/local/names'
+import { setMarkerStoreForTests } from '../../../src/local/pickMarker'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { holdParentLock, holdSessionLock } from '../../../src/local/sessions'
@@ -163,6 +164,66 @@ test('a reload whose own journal a newer build wrote continues its session in a 
     // Never appended to: its `seq`s stay the journal's, and the key stays.
     assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 2)
     assert.equal(storage.getItem(key), newer)
+})
+
+for (const own of [true, false])
+    test(`a reload after a pick that never finished ${own ? 'says so once' : 'says nothing for another chain'}`, async () => {
+        const world = createWorld({ seed: 3 })
+        const storage = new MemoryStorage()
+        const { tab, session } = await journalledOnly(world, storage)
+        const marker = {
+            chainId: own ? session.chainId : 'another',
+            surface: 'video',
+            at: Date.now(),
+        }
+        const kept = new Map<string, unknown>([[marker.chainId, marker]])
+        setMarkerStoreForTests({
+            prepare: () => undefined,
+            put: (value) => {
+                kept.set(value.chainId, value)
+            },
+            remove: (chainId) => {
+                kept.delete(chainId)
+            },
+            get: (chainId) => Promise.resolve(kept.get(chainId)),
+            sweep: () => undefined,
+        })
+        try {
+            const reload = await load(world, 'reload', storage, { tab })
+            assert.deepEqual(
+                reload.events.filter((event) => event.kind === 'pickUnfinished'),
+                own ? [{ kind: 'pickUnfinished', surface: 'export' }] : [],
+            )
+            // Said once; another chain's marker waits for its own start.
+            assert.deepEqual(kept.get(marker.chainId), own ? undefined : marker)
+        } finally {
+            setMarkerStoreForTests(undefined)
+        }
+    })
+
+test('a reload in a browser without the save picker reads no pick marker', async () => {
+    const world = createWorld({ seed: 3 })
+    const storage = new MemoryStorage()
+    const { tab } = await journalledOnly(world, storage)
+    const touched: string[] = []
+    setMarkerStoreForTests({
+        prepare: () => touched.push('prepare'),
+        put: () => touched.push('put'),
+        remove: () => touched.push('remove'),
+        get: () => {
+            touched.push('get')
+            return Promise.resolve(undefined)
+        },
+        sweep: () => touched.push('sweep'),
+    })
+    try {
+        const reload = await load(world, 'reload', storage, { tab, pickMarkers: false })
+        assert.ok(reload.opened)
+        // A start without the save picker opens no marker store.
+        assert.deepEqual(touched, [])
+    } finally {
+        setMarkerStoreForTests(undefined)
+    }
 })
 
 test('a reload whose own journal applied takes its session up again', async () => {

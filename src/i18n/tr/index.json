@@ -1468,6 +1468,8 @@
     "newestLater": "En son oturumunuz için editörün daha yeni bir sürümü gerekiyor.",
     "newestDamaged": "En son oturumunuz açılamadı.",
     "bgmNotLoaded": "Arka plan müziği yüklenmedi.",
+    "saveUnfinished": "Bir kaydetme işlemi tamamlanmadı. Seçtiğiniz dosya boş olabilir.",
+    "exportUnfinished": "Bir dışa aktarma işlemi tamamlanmadı. Seçtiğiniz dosya boş olabilir.",
     "more": "ve {0} tane daha Yerel Veriler’de",
     "localData": "Yerel Veriler",
     "openHistory": "Geçmişi Aç",

@@ -1468,6 +1468,8 @@
     "newestLater": "最近的会话需要更新版本的编辑器。",
     "newestDamaged": "无法打开最近的会话。",
     "bgmNotLoaded": "背景音乐未加载。",
+    "saveUnfinished": "保存未能完成。您选择的文件可能是空的。",
+    "exportUnfinished": "导出未能完成。您选择的文件可能是空的。",
     "more": "另有 {0} 条在本地数据中",
     "localData": "本地数据",
     "openHistory": "打开历史记录",

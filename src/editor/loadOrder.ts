@@ -6,6 +6,8 @@ export const LOAD_ORDER = {
     inAppBrowser: 25,
     // The handshake's: other tabs hold an upgrade, or the database is newer than this build.
     handshake: 30,
+    // A save to a chosen file did not finish: the file may be empty.
+    pickUnfinished: 40,
     journalKept: 50,
     unsavedRecovered: 60,
     unsavedInLocalData: 70,

@@ -67,6 +67,8 @@ export type LoadEvent =
     | { kind: 'separateCopy'; of: CopyOf; elsewhere?: true }
     /** The session continued or recovered at load has a head whose BGM isn't held. */
     | { kind: 'bgmNotLoaded' }
+    /** The continued chain's last save or export to a chosen file did not finish (`pickMarker.ts`). */
+    | { kind: 'pickUnfinished'; surface: 'save' | 'export' }
 
 /** This load's events, in the order found; the UI orders them by the table. */
 export const loadEvents = shallowRef<readonly LoadEvent[]>([])

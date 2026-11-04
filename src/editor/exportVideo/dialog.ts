@@ -31,6 +31,7 @@ import type { ExportSettings } from '../../exportVideo/types'
 import type { ExportWarning } from '../../exportVideo/warnings'
 import { bgmEndOf } from '../../levelData/statistics'
 import { isNearlyFull } from '../../local/nearlyFull'
+import { endPick } from '../../local/pickMarker'
 import { FileError, platform } from '../../platform'
 import { loadedSfx, sfxSettled } from '../../player'
 import { previewAspectRatios } from '../../preview/options'
@@ -41,6 +42,7 @@ import type { Bgm } from '../../state/bgm'
 import type { Entity } from '../../state/entities'
 import { beatToTime } from '../../state/integrals/bpms'
 import { downloadHelps } from '../commands/exportLevel/errorText'
+import { environment } from '../save/binding'
 import { copyExportAssets } from './assets'
 import {
     clampRange,
@@ -505,6 +507,8 @@ export const createExportDialog = (input: DialogInput) => {
     let current: ReturnType<typeof newJob> | undefined
     const viewJob = shallowRef(job)
 
+    /** The chain of a pick made for the running export, whose marker ends with it. */
+    let pickChain: string | undefined
     // The press's destination, kept for the file's name and size at the end.
     let picked: { name: string; handle?: FileSystemFileHandle; staged?: boolean } | undefined
     const destinationFor = async (
@@ -516,6 +520,8 @@ export const createExportDialog = (input: DialogInput) => {
         if (attempt.settings) attempt.settings.format = route.format
         const name = fileName(route.format)
         const picker = input.env.picker
+        // The chain whose marker the pick session keeps until this export ends.
+        if (picker) pickChain = environment()?.chainId
         attempt.stage = picker ? 'pick' : 'prepare'
         const opened = performance.now()
         const request: DestinationRequest = {
@@ -632,8 +638,10 @@ export const createExportDialog = (input: DialogInput) => {
                 ? { ...described, picker: true }
                 : described
         if (current !== ended) return
-        // The attempt ended.
+        // The attempt ended, and with it any write to a picked file.
         busy(false)
+        if (pickChain) endPick(pickChain)
+        pickChain = undefined
         document.removeEventListener('visibilitychange', onHidden)
         attempt.workMs =
             attempt.pressed === undefined

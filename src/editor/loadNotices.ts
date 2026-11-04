@@ -181,6 +181,11 @@ export const loadNoticeOf: Handlers = {
             () => copySourceName(event.of),
         ),
     }),
+    pickUnfinished: ({ surface }) => ({
+        order: LOAD_ORDER.pickUnfinished,
+        severity: 'warning',
+        message: () => (surface === 'save' ? load().saveUnfinished : load().exportUnfinished),
+    }),
     bgmNotLoaded: () => ({
         order: LOAD_ORDER.bgmNotLoaded,
         severity: 'info',

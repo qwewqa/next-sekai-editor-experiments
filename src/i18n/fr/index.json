@@ -1468,6 +1468,8 @@
     "newestLater": "Votre session la plus récente nécessite une version plus récente de l’éditeur.",
     "newestDamaged": "Votre session la plus récente n’a pas pu être ouverte.",
     "bgmNotLoaded": "La musique n’est pas chargée.",
+    "saveUnfinished": "Une sauvegarde ne s’est pas terminée. Le fichier choisi est peut-être vide.",
+    "exportUnfinished": "Une exportation ne s’est pas terminée. Le fichier choisi est peut-être vide.",
     "more": "et {0} autres dans Données locales",
     "localData": "Données locales",
     "openHistory": "Ouvrir l’historique",

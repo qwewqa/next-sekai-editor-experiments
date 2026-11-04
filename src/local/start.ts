@@ -12,6 +12,7 @@ import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
+import { savePickerExists } from '../platform/filePicker'
 import { testKeysOpen } from '../platform/testKeys'
 import { PRODUCT_NAME } from '../product'
 import { isSafeMode } from '../safe'
@@ -371,6 +372,7 @@ export const startStorage = async () => {
                 locks: platform.locks,
                 client: tabClient,
                 safe,
+                pickMarkers: savePickerExists(),
                 journal: platform.journal,
                 ...(recovery.migrated ? { migrated: recovery.migrated } : {}),
                 ...(recovery.ownJournal ? { ownJournal: recovery.ownJournal } : {}),

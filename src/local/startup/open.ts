@@ -20,6 +20,7 @@ import { toHex } from '../hash'
 import { hasWebLocks, sessionLock } from '../locks'
 import { displayName, forkNameOf, namePartsOf, sessionCopyOf, type CopyOf } from '../names'
 import type { BoundElsewhere } from '../open/project'
+import { takeUnfinishedPick } from '../pickMarker'
 import { stateFromRecords } from '../records/records'
 import { decodeSnapshot } from '../records/snapshot'
 import { holdLock, noLease, tryLease, type LockLease, type TabClient } from '../sessions'
@@ -93,6 +94,8 @@ export type OpenDeps = {
     locks: LockService
     client: Pick<TabClient, 'id' | 'heldElsewhere'>
     safe: boolean
+    /** Whether a pick marker can exist: only where the browser has the save picker. */
+    pickMarkers: boolean
     /** The page's journal store: a journal the reload loads becomes the page's to write. */
     journal?: Pick<JournalStore, 'adopt' | 'remove'>
     /** The session the migration made at this load, if any, and its name. */
@@ -862,6 +865,12 @@ export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
     } finally {
         if (claim.kind === 'reload') claim.lock.release()
     }
+    // A save or export to a chosen file that this chain started and that never finished: the
+    // browser was likely closed while its picker was open.
+    const chainId = opened && deps.pickMarkers ? deps.flusher()?.session?.chainId : undefined
+    const unfinished = chainId ? await takeUnfinishedPick(chainId) : undefined
+    if (unfinished)
+        deps.events({ kind: 'pickUnfinished', surface: unfinished === 'save' ? 'save' : 'export' })
     if (deps.migrated)
         deps.events({
             kind: 'migrated',

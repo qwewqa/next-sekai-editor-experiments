@@ -51,6 +51,7 @@ const SEVERITY: Record<string, string | undefined> = {
     deletedElsewhere: 'warning',
     separateCopy: 'info',
     bgmNotLoaded: 'info',
+    pickUnfinished: 'warning',
 }
 
 test('every load notice kind has its severity', () => {

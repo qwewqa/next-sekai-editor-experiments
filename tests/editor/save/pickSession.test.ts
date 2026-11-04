@@ -8,6 +8,7 @@ const { FakeLockManager } = await import('../../../src/local/testing/locks')
 const { setSaveEnvironment } = await import('../../../src/editor/save/binding')
 const { rememberHandle, forgetHandle } = await import('../../../src/editor/save/env')
 const { withPickSession } = await import('../../../src/editor/save/pickSession')
+const { setMarkerStoreForTests } = await import('../../../src/local/pickMarker')
 const { clearExportMemory } = await import('../../../src/editor/commands/exportLevel/memory')
 const { assembleZip, prepareEntry } = await import('../../../src/zip')
 const { resetStates } = await import('../../../src/history/stack')
@@ -277,3 +278,38 @@ test('preparation can expire activation and the picker then asks for Ready', asy
     })
     assert.deepEqual(t.log, ['ready', 'picker:active'])
 })
+
+/** Records what a pick does to the chain's marker. */
+const markerLog = () => {
+    const log: string[] = []
+    setMarkerStoreForTests({
+        prepare: () => undefined,
+        put: (marker) => log.push(`put:${marker.chainId}`),
+        remove: (chainId) => log.push(`remove:${chainId}`),
+        get: () => Promise.resolve(undefined),
+        sweep: () => undefined,
+    })
+    return log
+}
+
+for (const how of ['dismissed', 'throws'] as const)
+    test(`a picker that is ${how === 'throws' ? 'refused' : 'dismissed'} ends the marker it started`, async () => {
+        const t = await setup()
+        const log = markerLog()
+        try {
+            if (how === 'dismissed') t.mock.saveTargets.push('cancel')
+            else
+                (t.mock as { pickSaveFile?: unknown }).pickSaveFile = () =>
+                    Promise.reject(new FileError('denied', 'Refused'))
+            const ended = await t
+                .run(t.spec(), (session) =>
+                    session.pick(t.picker, 'a.nxsp', () => Promise.resolve('written')),
+                )
+                .catch(() => 'threw')
+            assert.ok(ended === 'threw' || (ended as { kind?: string }).kind !== undefined)
+            // Marked before the picker opened, and ended with it: the next start says nothing.
+            assert.deepEqual(log, ['put:c1', 'remove:c1'])
+        } finally {
+            setMarkerStoreForTests(undefined)
+        }
+    })

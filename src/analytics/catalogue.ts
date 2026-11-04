@@ -126,6 +126,7 @@ const loadKinds = [
     'deletedElsewhere',
     'separateCopy',
     'bgmNotLoaded',
+    'pickUnfinished',
 ] as const satisfies readonly LoadEvent['kind'][]
 // Every kind is listed: a new kind fails the type check until it is added.
 const _everyKind: LoadEvent['kind'] extends (typeof loadKinds)[number] ? true : never = true

@@ -1468,6 +1468,8 @@
         "newestLater": "Your most recent session requires a newer version of the editor.",
         "newestDamaged": "Your most recent session could not be opened.",
         "bgmNotLoaded": "The BGM is not loaded.",
+        "saveUnfinished": "A save did not finish. The file you chose may be empty.",
+        "exportUnfinished": "An export did not finish. The file you chose may be empty.",
         "more": "and {0} more in Local Data",
         "localData": "Local Data",
         "openHistory": "Open History",

@@ -1,5 +1,6 @@
 import { i18n } from '../../i18n'
 import { importsRunning } from '../../local/open/importLoop'
+import { endPick, markPick, preparePick } from '../../local/pickMarker'
 import {
     FileError,
     platform,
@@ -9,6 +10,7 @@ import {
     type SaveResult,
 } from '../../platform'
 import { hasActivation, reportsActivation } from '../../platform/detect'
+import { savePickerExists } from '../../platform/filePicker'
 import { savePoint } from '../../platform/testPause'
 import { withBind, type SaveMarker } from './env'
 import { pause, PREPARING_MS } from './imports'
@@ -123,6 +125,9 @@ export const withPickSession = <T>(
 ): Promise<T | Dismissed | Ending> => {
     const { env } = spec
     let startedAt = performance.now()
+    // The marker's store opens while the file builds, so marking needs no await at the picker.
+    // Without the save picker there is never a marker, and no store is made.
+    if (savePickerExists()) preparePick()
     const attemptSpec: AttemptSpec = {
         env,
         name: spec.name,
@@ -278,14 +283,30 @@ export const withPickSession = <T>(
                 // The activation check was the last step: only microtasks until the picker opens.
                 attempt.closePreparing()
                 pickerUsed = true
-                const target = spec.target ?? (await open({ suggestedName, picker }))
-                if (target?.kind !== 'handle') return { kind: 'dismissed' }
+                // Kept until the write ends, so a browser closed meanwhile is told at the next
+                // start. A video's write ends with its export (`exportVideo/dialog.ts`).
+                const chainId = env?.chainId
+                if (chainId) markPick(chainId, spec.surface)
+                let target: FileTarget | undefined
+                try {
+                    target = spec.target ?? (await open({ suggestedName, picker }))
+                } catch (error) {
+                    if (chainId) endPick(chainId)
+                    throw error
+                }
+                if (target?.kind !== 'handle') {
+                    if (chainId) endPick(chainId)
+                    return { kind: 'dismissed' }
+                }
                 // The commit point: no Cancel has any effect from here.
                 attempt.commit()
                 spec.committed?.(target)
                 await savePoint('picked')
-                const result = await hold(target, inLock)
-                return result
+                try {
+                    return await hold(target, inLock)
+                } finally {
+                    if (chainId && spec.surface !== 'video') endPick(chainId)
+                }
             },
         }
 

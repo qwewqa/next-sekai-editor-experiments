@@ -193,6 +193,7 @@ Each of the following fields is included and set to yes when its condition appli
 | `found.deletedElsewhere` | The session this tab reloaded was deleted in another tab |
 | `found.separateCopy` | This tab opened a separate copy of a session |
 | `found.bgmNotLoaded` | The music of the continued session could not be loaded |
+| `found.pickUnfinished` | A save or export to a chosen file did not finish before the page closed, so the file may be empty |
 
 ### `storage`
 

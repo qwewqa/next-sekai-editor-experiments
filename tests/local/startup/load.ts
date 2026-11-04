@@ -78,6 +78,8 @@ export type LoadOptions = {
     show?: (shown: Shown) => void
     /** Replaces the tab client's check of who holds a lock (one that rejects, say). */
     heldElsewhere?: TabClient['heldElsewhere']
+    /** False for a browser without the save picker, where no pick marker can exist. */
+    pickMarkers?: boolean
 }
 
 export type Load = Awaited<ReturnType<typeof load>>
@@ -210,6 +212,7 @@ export const load = async (
                 ),
         },
         events: (event) => events.push(event),
+        pickMarkers: options.pickMarkers ?? true,
     }
     // The page reads the media store for a BGM the state names without audio.
     watchMedia(context, (work) => page.tab.run(work), options.media)

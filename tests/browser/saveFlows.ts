@@ -456,3 +456,24 @@ export const refusingPicker = (page: Page, refusal: Refusal) =>
 /** The names `refusingPicker`'s picker returned, in order. */
 export const refusingPicks = (page: Page) =>
     page.evaluate(() => Reflect.get(window, 'refusingPicks') as string[])
+
+/** A chain's pick marker in the `nse-pick` database, read without removing it; null when none. */
+export const pickMarkerOf = (page: Page, chainId: string) =>
+    page.evaluate(
+        (chainId) =>
+            new Promise<{ chainId: string; surface: string; at: number } | null>((resolve) => {
+                const request = indexedDB.open('nse-pick', 1)
+                request.onupgradeneeded = () => request.result.createObjectStore('pick')
+                request.onsuccess = () => {
+                    const read = request.result.transaction('pick').objectStore('pick').get(chainId)
+                    read.onsuccess = () => {
+                        resolve(
+                            (read.result as { chainId: string; surface: string; at: number }) ??
+                                null,
+                        )
+                        request.result.close()
+                    }
+                }
+            }),
+        chainId,
+    )

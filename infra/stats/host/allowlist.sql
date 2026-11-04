@@ -404,6 +404,7 @@ INSERT INTO nse_allowed (event, property, kind, value, max) VALUES
     ('startup', 'found.deletedElsewhere', 'boolean', '', NULL),
     ('startup', 'found.separateCopy', 'boolean', '', NULL),
     ('startup', 'found.bgmNotLoaded', 'boolean', '', NULL),
+    ('startup', 'found.pickUnfinished', 'boolean', '', NULL),
     ('storage', 'mode', 'text', 'stored', NULL),
     ('storage', 'mode', 'text', 'readOnly', NULL),
     ('storage', 'mode', 'text', 'memory', NULL),

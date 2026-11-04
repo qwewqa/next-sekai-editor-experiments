@@ -1468,6 +1468,8 @@
     "newestLater": "最近的工作階段需要較新版本的編輯器。",
     "newestDamaged": "無法開啟最近的工作階段。",
     "bgmNotLoaded": "BGM 未載入。",
+    "saveUnfinished": "儲存未能完成。您選擇的檔案可能是空的。",
+    "exportUnfinished": "匯出未能完成。您選擇的檔案可能是空的。",
     "more": "另有 {0} 則在本機資料中",
     "localData": "本機資料",
     "openHistory": "開啟歷史記錄",

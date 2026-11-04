@@ -1,14 +1,21 @@
 import { expect, test, type Download, type Page } from '@playwright/test'
 import { readFile as readFileBytes } from 'node:fs/promises'
 import { readNxsp } from '../../src/local/nxsp'
+import { waitForStartup } from './editorFixture'
 import {
     chainOf,
     edit,
+    flushed,
     notice,
+    pauseAt,
     pickerCalls,
+    pickMarkerOf,
     pressSave,
     projectOf,
+    reached,
+    release,
     saveDialog,
+    sessionOf,
     start,
     submitSave,
     writeFile,
@@ -112,6 +119,97 @@ test('under Disabled, a file saved through the picker shows no download until a 
     await expect.poll(() => downloads.length).toBe(1)
     expect((await downloadedProject(downloads[0]!)).history).toBeDefined()
     await expect(page.locator('[data-status-state]')).toContainText('downloaded')
+})
+
+/** A save picker that never returns, as when the browser is closed while it is open. */
+const hangingPicker = (page: Page) =>
+    page.addInitScript(() => {
+        if (sessionStorage.getItem('picked')) return
+        Object.defineProperty(window, 'showSaveFilePicker', {
+            configurable: true,
+            value: () => {
+                sessionStorage.setItem('picked', 'yes')
+                return new Promise(() => undefined)
+            },
+        })
+    })
+
+/** Another chain's marker, as a tab closed during its pick leaves it. */
+const otherMarker = (page: Page) =>
+    page.evaluate(
+        () =>
+            new Promise<void>((resolve) => {
+                const request = indexedDB.open('nse-pick', 1)
+                request.onupgradeneeded = () => request.result.createObjectStore('pick')
+                request.onsuccess = () => {
+                    const transaction = request.result.transaction('pick', 'readwrite')
+                    transaction
+                        .objectStore('pick')
+                        .put({ chainId: 'other', surface: 'save', at: Date.now() }, 'other')
+                    transaction.oncomplete = () => {
+                        request.result.close()
+                        resolve()
+                    }
+                }
+            }),
+    )
+
+test('a page closed while its picker is open says at the next start that the save did not finish', async ({
+    page,
+}) => {
+    await hangingPicker(page)
+    await start(page, { fileSystemAccess: true })
+    await edit(page, 1)
+    await flushed(page)
+    const chainId = String((await chainOf(page)).chainId)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await expect
+        .poll(() => pickMarkerOf(page, chainId))
+        .toEqual(expect.objectContaining({ chainId, surface: 'save' }))
+    await page.reload()
+    await waitForStartup(page)
+    await expect(
+        page.getByText('A save did not finish. The file you chose may be empty.', { exact: true }),
+    ).toBeVisible()
+    await expect.poll(() => pickMarkerOf(page, chainId)).toBeNull()
+})
+
+test("Recent Sessions' Save… marks the open session's chain; a finished pick leaves no marker", async ({
+    page,
+}) => {
+    await start(page)
+    await edit(page, 1)
+    await flushed(page)
+    const earlier = await sessionOf(page)
+    await page.evaluate(async () => {
+        const { resetState } =
+            (await import('/src/history/index.ts')) as typeof import('../../src/history')
+        resetState(false)
+    })
+    await edit(page, 2)
+    await flushed(page)
+    const openChain = String((await chainOf(page)).chainId)
+    await pauseAt(page, 'picked')
+    await page.evaluate((sessionId) => {
+        void import('/src/editor/save/flow.ts').then((flow) => flow.saveToFile(sessionId))
+    }, earlier.sessionId)
+    await submitSave(page, 'restored')
+    await reached(page, 'picked')
+    expect(await pickMarkerOf(page, openChain)).toEqual(
+        expect.objectContaining({ chainId: openChain }),
+    )
+    await release(page)
+    await expect(notice(page).filter({ hasText: 'Saved to restored.nxsp' })).toBeVisible()
+    await expect.poll(() => pickMarkerOf(page, openChain)).toBeNull()
+})
+
+test("a pick in this tab leaves another chain's marker", async ({ page }) => {
+    await start(page)
+    await otherMarker(page)
+    await saveOnce(page)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    expect(await pickMarkerOf(page, 'other')).toEqual(expect.objectContaining({ chainId: 'other' }))
 })
 
 const openLocalData = (page: Page) =>

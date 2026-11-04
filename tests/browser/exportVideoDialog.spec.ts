@@ -14,6 +14,7 @@ import {
     videoExportTimeout,
 } from './exportVideoDialog'
 import { resource } from './previewResourceFixture'
+import { pickMarkerOf } from './saveFlows'
 
 const boot = async (page: Page) => {
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
@@ -473,10 +474,23 @@ test('a finished picked file says where it went, and a change returns to the sum
 }) => {
     test.slow()
     const dialog = await open(page, { route: 'done', picker: true })
+    // The pick's marker, as a pick session leaves it for the export to end.
+    const chainId = await page.evaluate(async () => {
+        const { environment } =
+            (await import('/src/editor/save/binding.ts')) as typeof import('../../src/editor/save/binding')
+        const { markPick } =
+            (await import('/src/local/pickMarker.ts')) as typeof import('../../src/local/pickMarker')
+        const chainId = environment()!.chainId
+        markPick(chainId, 'video')
+        return chainId
+    })
+    await expect.poll(() => pickMarkerOf(page, chainId)).not.toBeNull()
     await shortClip(page)
     await expect(exportButton(page)).toHaveText('Export…')
     await exportButton(page).click()
     await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('done')
+    // The finished export ends the marker, so the next start says nothing.
+    await expect.poll(() => pickMarkerOf(page, chainId)).toBeNull()
     expect(
         await page.evaluate(() => window.editorTest.settings.exportVideoLastFinished?.resolution),
     ).toBe(720)
