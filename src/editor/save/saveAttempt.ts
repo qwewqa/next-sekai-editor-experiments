@@ -234,8 +234,8 @@ export const withSaveAttempt = async <T>(
                     ...request,
                     // From the commit point on a cancel cannot stop the write.
                     ...(committed ? {} : { signal }),
-                    // A picked write the platform refuses downloads instead, with the same press.
-                    ...((download || request.picked) && !request.ready
+                    // A download that outlasted the press asks for another.
+                    ...(download && !request.ready
                         ? { ready: (file) => attempt.ready('download', file.size) }
                         : {}),
                     build: async (sources) => {
@@ -253,9 +253,6 @@ export const withSaveAttempt = async <T>(
                 })
                 closeDialog()
                 if (result.status === 'saved' || result.status === 'download-started') {
-                    // A file write that became a download wrote nothing to the file.
-                    if (!download && result.status === 'download-started' && reached.marker)
-                        removeMarker(reached.marker.chainId, reached.marker.entry.revisionId)
                     progress.landed = true
                     return result
                 }

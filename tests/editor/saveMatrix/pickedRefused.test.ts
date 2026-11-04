@@ -5,10 +5,10 @@ import { createWorld, flow, settle } from './world'
 const { FileError } = await import('../../../src/platform')
 
 // A platform that refuses to read the picked file, or to read and write it: the pick still
-// receives the output, or the output is downloaded once instead.
+// receives the output, or the Save fails with the denied dialog and nothing is downloaded.
 for (const command of ['saveAs', 'first', 'separate', 'missing', 'stored'] as const)
     for (const point of ['read', 'write'] as const)
-        test(`${command}: a refused ${point === 'read' ? 'read of the picked file still writes it' : 'read and write of the picked file downloads the output once'}`, async () => {
+        test(`${command}: a refused ${point === 'read' ? 'read of the picked file still writes it' : 'read and write of the picked file fails, downloading nothing'}`, async () => {
             const w = await createWorld({
                 own: command === 'first' ? 'unbound' : command === 'missing' ? 'missing' : 'bound',
                 ownDisk: command === 'separate' ? 'ahead' : 'base',
@@ -40,21 +40,26 @@ for (const command of ['saveAs', 'first', 'separate', 'missing', 'stored'] as co
             })
             w.answers.conflict.push('separate')
             w.answers.notFound.push('saveAs')
+            const ownFile = async () =>
+                (await w.storedChains()).find((chain) => chain.chainId === 'chain-own')?.file
+            const bound = await ownFile()
             if (command === 'saveAs') await flow.saveAs()
             else if (command === 'stored') await flow.saveToFile('session-other')
             else await flow.save()
             await settle()
             assert.deepEqual(await w.fileBytes('own.nxsp'), original)
             assert.equal(w.openings.length, 1)
+            const before =
+                command === 'separate' ? ['conflict'] : command === 'missing' ? ['notFound'] : []
             assert.deepEqual(
                 w.dialogs
                     .map((dialog) => dialog.kind)
                     .filter((kind) => kind !== 'saved' && kind !== 'saveDialog'),
-                command === 'separate' ? ['conflict'] : command === 'missing' ? ['notFound'] : [],
+                point === 'read' ? before : [...before, 'denied'],
             )
             assert.deepEqual(
                 w.dialogs.filter((dialog) => dialog.kind === 'saved').map((dialog) => dialog.args),
-                [[handle.name]],
+                point === 'read' ? [[handle.name]] : [],
             )
             if (point === 'read') {
                 assert.deepEqual(
@@ -64,19 +69,19 @@ for (const command of ['saveAs', 'first', 'separate', 'missing', 'stored'] as co
                 assert.equal(w.mock.downloads.length, 0)
             } else {
                 assert.equal(w.writes.length, 0)
-                assert.deepEqual(
-                    w.mock.downloads.map((download) => [download.kind, download.name]),
-                    [['nxsp', handle.name]],
-                )
+                assert.equal(w.mock.downloads.length, 0)
                 assert.equal((await w.mock.files.get(handle.name)?.size) ?? 0, 0)
             }
             if (command === 'stored') return
-            const own = (await w.storedChains()).find((chain) => chain.chainId === 'chain-own')
-            const file = own?.file as { name?: string; event?: string } | undefined
-            assert.equal(file?.name, handle.name)
-            assert.equal(file?.event, point === 'read' ? 'saved' : 'downloaded')
-            // A download never binds the handle it could not write.
-            assert.equal(w.handleRows.has('chain-own:file'), point === 'read')
+            const file = (await ownFile()) as { name?: string; event?: string } | undefined
+            if (point === 'read') {
+                assert.equal(file?.name, handle.name)
+                assert.equal(file?.event, 'saved')
+                assert.equal(w.handleRows.has('chain-own:file'), true)
+            } else {
+                // Nothing was written: the chain keeps the binding it had.
+                assert.deepEqual(file, bound)
+            }
         })
 
 // A write that closed but could not be read back: saved, with no disk state to check the file by.

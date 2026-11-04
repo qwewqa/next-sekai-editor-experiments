@@ -1,7 +1,5 @@
 import { expect, test, type Download, type Page } from '@playwright/test'
-import { readFile as readFileBytes } from 'node:fs/promises'
 import { gunzipSync, gzipSync } from 'node:zlib'
-import { readNxsp } from '../../src/local/nxsp'
 import { crafted } from '../local/nxsp/craft'
 import { closePage, waitForStartup } from './editorFixture'
 import {
@@ -594,45 +592,30 @@ test('a bound file whose reads are refused later is picked again at Save, never 
 })
 
 for (const write of ['create', 'write', 'close'] as const)
-    test(`a picked file refusing reads and ${write} gets nothing; the project downloads once, bound by name`, async ({
+    test(`a picked file refusing reads and ${write} gets nothing; the Save fails and nothing downloads`, async ({
         page,
     }) => {
         await refusingStart(page, { read: 'always', write })
         const downloads: Download[] = []
         page.on('download', (download) => downloads.push(download))
         await edit(page, 1)
+        await flushed(page)
+        const before = await chainOf(page)
         await pressSave(page)
         await submitSave(page, 'coconut')
-        await expect(
-            notice(page).filter({ hasText: 'Download started: coconut.nxsp' }),
-        ).toBeVisible()
+        const failed = page.getByRole('dialog').filter({ hasText: 'did not allow writing' })
+        await expect(failed).toContainText('The browser did not allow writing to coconut.nxsp.')
+        // The file cannot be read, so it is not said to be empty.
+        await expect(failed).not.toContainText('The file is now empty.')
+        await page.keyboard.press('Escape')
         await expect(page.getByRole('dialog')).toHaveCount(0)
-        await expect.poll(() => downloads.length).toBe(1)
-        expect(downloads[0]!.suggestedFilename()).toBe('coconut.nxsp')
-        const bytes = await readFileBytes(await downloads[0]!.path())
-        // A whole ZIP: its end record closes the file.
-        expect([...bytes.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04])
-        expect([...bytes.subarray(-22, -18)]).toEqual([0x50, 0x4b, 0x05, 0x06])
         expect(await readFile(page, 'coconut.nxsp')).toEqual([])
-        await expect
-            .poll(async () => (await chainOf(page)).file)
-            .toMatchObject({
-                name: 'coconut.nxsp',
-                event: 'downloaded',
-            })
-        const chain = await chainOf(page)
-        const { handles } = await rows(page, ['handles'])
-        expect(handles!.filter((row) => row.value.chainId === chain.chainId)).toEqual([])
-        // The Timeline's save entry and the one in the downloaded file both say it downloaded.
-        const read = await readNxsp(new Blob([bytes]))
-        if (read.kind !== 'nxsp' || !read.history) throw new Error('The download has no history')
-        const inFile = read.history.entries.filter((entry) => entry.kind === 'save')
-        expect(JSON.stringify(inFile.at(-1)?.operation)).toContain('"delivery":"download"')
+        expect(downloads).toHaveLength(0)
+        await expect(notice(page).filter({ hasText: 'Download started' })).toHaveCount(0)
         await flushed(page)
+        expect((await chainOf(page)).file).toEqual(before.file)
         const { entries } = await rows(page, ['entries'])
-        const stored = entries!.filter((row) => row.value.kind === 'save')
-        expect(stored).toHaveLength(1)
-        expect(JSON.stringify(stored[0]!.value.operation)).toContain('"delivery":"download"')
+        expect(entries!.filter((row) => row.value.kind === 'save')).toHaveLength(0)
     })
 
 test("Recent Sessions' Save… to a picked file refusing reads writes it and binds nothing", async ({

@@ -305,23 +305,9 @@ export const exportToTarget = async (
         if (cancelled(ctx)) return 'cancelled'
         if (caught === revoked) return exportByPicker(ctx)
         error = fileError(caught)
-        // A destination the platform refuses to read cannot be checked: the export is
-        // downloaded instead. An earlier export's destination no longer holds the last export, so
-        // it is forgotten, unless a write after a failed download remembered another. The opened
-        // file stays, as it names the source.
-        if (error.code === 'denied' && error.step === 'read') {
-            const outcome = await exportByDownload(ctx)
-            if (
-                outcome === 'done' &&
-                sameSession(ctx) &&
-                target.exported &&
-                exportMemory.target === target
-            ) {
-                clearExportTarget()
-                await rememberExport()
-            }
-            return outcome
-        }
+        // A destination the platform refuses to read cannot be checked: the picker opens, as
+        // Save's does at its bound file.
+        if (error.code === 'denied' && error.step === 'read') return exportByPicker(ctx)
         reportExport('picker', undefined, error)
     }
 
@@ -380,20 +366,13 @@ export const exportByPicker = async (context: ExportContext): Promise<ExportOutc
         }
         if (picked.kind === 'failed' && cancelled(ctx) && !pick.committed) return 'cancelled'
         if (picked.kind === 'written') reportExport('picker', sized)
-        if (picked.kind === 'downloaded') {
-            reportExport('download', sized)
-            return downloaded(ctx, picked.name, sized.size())
-        }
         return afterPick(ctx, picked)
     }
     return exportByDownload(ctx)
 }
 
 /** What follows a pick: the feedback, or the dialog that says why nothing was exported. */
-const afterPick = async (
-    ctx: ExportContext,
-    picked: Exclude<PickedLevelData, { kind: 'downloaded' }>,
-): Promise<ExportOutcome> => {
+const afterPick = async (ctx: ExportContext, picked: PickedLevelData): Promise<ExportOutcome> => {
     switch (picked.kind) {
         case 'written': {
             const { result } = picked

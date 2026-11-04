@@ -1,6 +1,4 @@
 import { expect, test, type Download, type Page } from '@playwright/test'
-import { readFile as readFileBytes } from 'node:fs/promises'
-import { gunzipSync } from 'node:zlib'
 import type { PlatformOverride } from '../../src/platform/detect'
 import { installCanvasCounters, installEditorFixture, installTestPlatform } from './editorFixture'
 import { projectOf, refusingPicker } from './saveFlows'
@@ -938,7 +936,7 @@ for (const read of ['always', 'afterClose'] as const)
     })
 
 for (const write of ['create', 'write', 'close'] as const)
-    test(`a picked file refusing reads and ${write} gets nothing; the level data downloads once`, async ({
+    test(`a picked file refusing reads and ${write} gets nothing; the export fails and nothing downloads`, async ({
         page,
     }) => {
         await refusingPicker(page, { read: 'always', write })
@@ -947,16 +945,47 @@ for (const write of ['create', 'write', 'close'] as const)
         page.on('download', (download) => downloads.push(download))
         await openExport(page)
         await page.keyboard.press('Enter')
-        await expect(notice(page)).toContainText('Download started: LevelData.nsld')
+        await expect(dialog(page)).toContainText(
+            'The browser did not allow writing to LevelData.nsld.',
+        )
+        await expect(dialog(page)).not.toContainText('The file is now empty.')
+        await page.keyboard.press('Escape')
         await expect(dialog(page)).toHaveCount(0)
-        await expect.poll(() => downloads.length).toBe(1)
-        expect(downloads[0]!.suggestedFilename()).toBe('LevelData.nsld')
-        const json = JSON.parse(
-            gunzipSync(await readFileBytes(await downloads[0]!.path())).toString(),
-        ) as { entities: unknown[] }
-        expect(Array.isArray(json.entities)).toBe(true)
+        expect(downloads).toHaveLength(0)
         expect(await opfsSize(page, 'LevelData.nsld')).toBe(0)
     })
+
+test('a remembered destination the browser later refuses to read opens the picker; nothing downloads', async ({
+    page,
+}) => {
+    // Reads are refused on the prototype, so the handles stay plain: a handle with properties of
+    // its own cannot be stored, and Chromium ends when one is cloned for storage.
+    await page.addInitScript(() => {
+        const getFile = FileSystemFileHandle.prototype.getFile
+        FileSystemFileHandle.prototype.getFile = function (this: FileSystemFileHandle) {
+            return Reflect.get(window, 'refuseReads') === true
+                ? Promise.reject(new DOMException('Refused', 'NotAllowedError'))
+                : getFile.call(this)
+        }
+    })
+    await start(page, { ...opfs, activation: true })
+    const downloads: Download[] = []
+    page.on('download', (download) => downloads.push(download))
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to LevelData.nsld')
+    await expect(dialog(page)).toHaveCount(0)
+    await page.evaluate(() => Reflect.set(window, 'refuseReads', true))
+    await openExport(page)
+    await expect(dialog(page).locator('[data-export-target-name]')).toContainText('LevelData.nsld')
+    await queuePicks(page, ['Other.nsld'])
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to Other.nsld')
+    expect((await pickerCalls(page)).length).toBe(2)
+    expect(downloads).toHaveLength(0)
+    await page.evaluate(() => Reflect.set(window, 'refuseReads', false))
+    expect(await readFile(page, 'Other.nsld')).toBe(0)
+})
 
 /** An OPFS file's size, read through a handle of its own. */
 const opfsSize = (page: Page, name: string) =>

@@ -126,8 +126,7 @@ export type SaveRequest = {
     expected?: DiskState | 'absent'
     /**
      * A file the user just picked. The pick authorizes replacing it, so a check the platform
-     * refuses to read is skipped (a change it reads still stops the write). A refused write to a
-     * file the platform also refuses to read downloads the file instead.
+     * refuses to read is skipped (a change it reads still stops the write).
      */
     picked?: boolean
     /** A `.nxsp` write-back: a target found empty holds nothing to keep, and is written. */
@@ -135,8 +134,6 @@ export type SaveRequest = {
     replaced?: 'keep' | 'discard'
     replaces?: string
     build: (sources: PinnedSource[]) => Promise<FileBody>
-    /** What a fallback download takes in place of `build`'s file: one that records the download. */
-    buildDownload?: () => Promise<FileBody>
     /** Cancels a pending write before it commits. */
     signal?: AbortSignal
     /** Held around the write to `target` (`nse-bind`). */

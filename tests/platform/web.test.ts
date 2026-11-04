@@ -326,7 +326,7 @@ test('a picked file seen filled is still a conflict, never a download', async ()
 })
 
 for (const refuse of ['permission', 'create', 'write', 'close'] as const)
-    test(`a picked write refused at ${refuse}, its file unreadable, downloads the built file once`, async () => {
+    test(`a picked write refused at ${refuse}, its file unreadable, is a failure and downloads nothing`, async () => {
         browser.downloads.length = 0
         const events: string[] = []
         const handle = recordingHandle(events, {
@@ -334,18 +334,18 @@ for (const refuse of ['permission', 'create', 'write', 'close'] as const)
             refuseRead: 'always',
             ...(refuse === 'permission' ? { permission: 'denied' as const } : { refuse }),
         })
-        const result = await platform.saveFile({
-            kind: 'nsld',
-            suggestedName: 'chart.nsld',
-            target: { kind: 'handle', handle },
-            expected: await emptyDisk(),
-            picked: true,
-            build: levelData(events, 2),
-        })
-        assert.deepEqual(result, { status: 'download-started', name: 'chart.nsld' })
-        assert.equal(browser.downloads.length, 1)
-        assert.equal(browser.downloads[0]!.name, 'chart.nsld')
-        assert.deepEqual(await parsed(browser.downloads[0]!.blob!), levelJson(2))
+        await assert.rejects(
+            platform.saveFile({
+                kind: 'nsld',
+                suggestedName: 'chart.nsld',
+                target: { kind: 'handle', handle },
+                expected: await emptyDisk(),
+                picked: true,
+                build: levelData(events, 2),
+            }),
+            { code: 'denied' },
+        )
+        assert.equal(browser.downloads.length, 0)
         assert.ok(!events.includes('close') || refuse === 'close')
         if (refuse !== 'permission' && refuse !== 'create') assert.ok(events.includes('abort'))
     })
@@ -560,25 +560,26 @@ test('without anchor downloads, a new context opens, then a data: URL below 1 MB
     }
 })
 
-test('a failed write without a precondition aborts the stream and downloads instead', async () => {
+test('a failed write without a precondition aborts the stream and is a failure, never a download', async () => {
     browser.downloads.length = 0
     const events: string[] = []
-    const result = await platform.saveFile({
-        kind: 'nsld',
-        suggestedName: 'LevelData',
-        target: { kind: 'handle', handle: recordingHandle(events, { failWrite: true }) },
-        build: levelData(events),
-    })
-    assert.deepEqual(result, { status: 'download-started', name: 'LevelData' })
+    await assert.rejects(
+        platform.saveFile({
+            kind: 'nsld',
+            suggestedName: 'LevelData',
+            target: { kind: 'handle', handle: recordingHandle(events, { failWrite: true }) },
+            build: levelData(events),
+        }),
+        { code: 'no-space' },
+    )
     assert.deepEqual(events, [
         'requestPermission',
         'build',
         'create',
         `write:${levelBlob().size}`,
         'abort',
-        'build',
     ])
-    assert.equal(browser.downloads.length, 1)
+    assert.equal(browser.downloads.length, 0)
 })
 
 test('cancelling during a write aborts it without a download', async () => {
