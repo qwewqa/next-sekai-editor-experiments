@@ -44,7 +44,7 @@ onUnmounted(() => {
 <template>
     <div
         ref="root"
-        class="offscreen-note-indicator absolute flex h-6 items-center gap-0.5 rounded-full border bg-preview px-1 text-xs tabular-nums text-white shadow-xs"
+        class="offscreen-note-indicator absolute flex h-6 items-center gap-0.5 rounded-full border bg-preview px-1 text-xs text-white tabular-nums shadow-xs"
         :class="[
             indicator.side === 'left'
                 ? 'left-1'

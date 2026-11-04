@@ -85,7 +85,7 @@ const classes = (button: ChoiceButton) =>
         <div v-if="lines" class="flex flex-col gap-2 wrap-anywhere">
             <p v-for="(line, index) in lines()" :key="index"><SeparatedText :text="line" /></p>
         </div>
-        <div v-else-if="message" class="whitespace-pre-line wrap-anywhere">
+        <div v-else-if="message" class="wrap-anywhere whitespace-pre-line">
             <SeparatedText :text="message()" />
         </div>
 
@@ -100,7 +100,7 @@ const classes = (button: ChoiceButton) =>
                 <div class="flex shrink-0 flex-col gap-1" :class="{ 'items-stretch': stacked }">
                     <button
                         type="button"
-                        class="btn min-h-9 min-w-24 max-w-full rounded-full px-4"
+                        class="btn min-h-9 max-w-full min-w-24 rounded-full px-4"
                         :class="[
                             classes(button),
                             stacked

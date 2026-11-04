@@ -77,8 +77,8 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
 </script>
 
 <template>
-    <p v-if="storedUnavailable" class="relative py-2 pl-10 pr-3" data-stored-unavailable>
-        <SeverityIcon severity="warning" class="absolute left-3 top-3 size-4" />{{
+    <p v-if="storedUnavailable" class="relative py-2 pr-3 pl-10" data-stored-unavailable>
+        <SeverityIcon severity="warning" class="absolute top-3 left-3 size-4" />{{
             strings.storedUnavailable
         }}
     </p>
@@ -112,9 +112,7 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                     [label(row.meta.type), displayOrigin(row.meta.origin)].join(' · ')
                 }}</span>
             </span>
-            <span
-                class="flex shrink-0 items-center gap-3 max-[440px]:w-full max-[440px]:pl-13"
-            >
+            <span class="flex shrink-0 items-center gap-3 max-[440px]:w-full max-[440px]:pl-13">
                 <span class="text-sm text-fg/80" data-stored-size>{{
                     formatSize(row.meta.size)
                 }}</span>
@@ -142,10 +140,9 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                 role="alert"
                 data-stored-remove-failed
             >
-                <SeverityIcon
-                    severity="error"
-                    class="absolute left-7 top-0.5 size-4"
-                />{{ strings.removeFailed }}
+                <SeverityIcon severity="error" class="absolute top-0.5 left-7 size-4" />{{
+                    strings.removeFailed
+                }}
             </p>
         </li>
     </ul>

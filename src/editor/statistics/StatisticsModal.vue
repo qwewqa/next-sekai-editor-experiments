@@ -337,7 +337,7 @@ const share = () => {
             <div class="flex flex-wrap justify-end gap-2">
                 <button
                     type="button"
-                    class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                     data-statistics-copy
                     @click="copy"
                 >
@@ -345,7 +345,7 @@ const share = () => {
                 </button>
                 <button
                     type="button"
-                    class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                     data-statistics-share
                     @click="share"
                 >
@@ -433,7 +433,7 @@ const share = () => {
 
 /* A row with a breakdown: its value is a button whose ::before covers the row. */
 .stats-split {
-    @apply cursor-pointer select-none tabular-nums outline-hidden;
+    @apply cursor-pointer tabular-nums outline-hidden select-none;
     -webkit-tap-highlight-color: transparent;
     text-decoration: underline dotted color-mix(in srgb, var(--color-fg) 60%, transparent);
     text-decoration-thickness: 1px;
@@ -490,7 +490,7 @@ const share = () => {
 }
 .stats-mode-probe > span {
     display: inline-block;
-    @apply whitespace-nowrap text-sm;
+    @apply text-sm whitespace-nowrap;
 }
 .stats-zoom {
     display: flex;
@@ -500,7 +500,7 @@ const share = () => {
     @apply relative grid size-8 place-items-center rounded-full before:absolute before:-inset-y-1;
 }
 .stats-zoom-out {
-    @apply before:-left-1 before:right-0;
+    @apply before:right-0 before:-left-1;
 }
 .stats-zoom-in {
     @apply before:-right-1 before:left-0;
@@ -614,7 +614,7 @@ const share = () => {
     top: calc(100% + 1.375rem);
     text-align: center;
     line-height: 1rem;
-    @apply whitespace-nowrap text-xs text-fg/80;
+    @apply text-xs whitespace-nowrap text-fg/80;
 }
 .stats-plot-row.side .stats-chart {
     flex: 1;
@@ -692,7 +692,7 @@ const share = () => {
 }
 .stats-tick {
     position: absolute;
-    @apply whitespace-nowrap text-xs tabular-nums text-fg/80;
+    @apply text-xs whitespace-nowrap text-fg/80 tabular-nums;
 }
 .stats-tick-y {
     right: calc(100% + 0.375rem);

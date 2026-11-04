@@ -125,7 +125,7 @@ onBeforeUnmount(() => {
         <div v-if="presentation.compact" class="flex shrink-0 justify-end p-4 pt-2">
             <button
                 type="button"
-                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                 :disabled="!canViewChart"
                 data-history-view-chart
                 data-history-focus="view-chart"

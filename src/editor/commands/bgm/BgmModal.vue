@@ -145,7 +145,7 @@ const onSubmit = () => {
         <!-- Only for the live BGM's bytes: not once another file is picked here, and not without any. -->
         <template v-if="heldSource && !picked" #actions>
             <button
-                class="btn btn-secondary h-9 min-w-24 max-w-full rounded-full px-4"
+                class="btn btn-secondary h-9 max-w-full min-w-24 rounded-full px-4"
                 type="button"
                 @click="downloadBgm(liveState.bgm)"
             >

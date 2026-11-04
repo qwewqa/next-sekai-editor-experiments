@@ -285,7 +285,7 @@ const labelOf = (item: Item) =>
             />
             <span
                 v-if="item.kind !== 'now'"
-                class="shrink-0 text-right text-xs tabular-nums text-fg/80"
+                class="shrink-0 text-right text-xs text-fg/80 tabular-nums"
                 >{{ stepsText(item.count) }}</span
             >
         </div>
@@ -302,7 +302,7 @@ const labelOf = (item: Item) =>
                 <span class="ml-auto h-3 w-12 shrink-0 rounded-full bg-fg/10" />
             </div>
         </template>
-        <div v-else-if="failed" class="py-2 pl-10 pr-3 text-fg/80" data-goto-failed>
+        <div v-else-if="failed" class="py-2 pr-3 pl-10 text-fg/80" data-goto-failed>
             {{ i18n.history.loadFailed }}
         </div>
     </div>
@@ -312,7 +312,7 @@ const labelOf = (item: Item) =>
 @reference '../../index.css';
 
 .goto-item {
-    @apply flex min-h-9 shrink-0 cursor-default select-none items-center gap-3 rounded-sm px-3 py-2 transition-colors;
+    @apply flex min-h-9 shrink-0 cursor-default items-center gap-3 rounded-sm px-3 py-2 transition-colors select-none;
 }
 
 .goto-item-session {

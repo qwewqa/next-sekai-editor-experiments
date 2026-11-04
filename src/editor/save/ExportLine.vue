@@ -24,7 +24,7 @@ const hintParts = computed(() => linkParts(hint.value, [i18n.value.commands.expo
         :class="emphasis ? 'relative flex flex-col gap-1 pl-6' : undefined"
         data-save-export
     >
-        <SeverityIcon v-if="emphasis" severity="info" class="absolute left-0 top-1 size-4" />
+        <SeverityIcon v-if="emphasis" severity="info" class="absolute top-1 left-0 size-4" />
         <p>
             <template v-if="hintParts"
                 ><template v-for="(part, i) in hintParts" :key="i"
@@ -33,7 +33,7 @@ const hintParts = computed(() => linkParts(hint.value, [i18n.value.commands.expo
                         >{{ part.lead
                         }}<button
                             type="button"
-                            class="focus-out whitespace-normal rounded-xs underline"
+                            class="focus-out rounded-xs whitespace-normal underline"
                             @click="emit('export')"
                         >
                             {{ part.name }}</button

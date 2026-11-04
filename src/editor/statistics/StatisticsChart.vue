@@ -1066,7 +1066,7 @@ const color = (category: Category) => chartCategoryColors[category]
                     :value="item.value"
                     :data-statistics-mode-option="item.value"
                 />
-                <span class="segment-face h-7 whitespace-nowrap px-3 text-sm">{{
+                <span class="segment-face h-7 px-3 text-sm whitespace-nowrap">{{
                     item.label
                 }}</span>
             </label>

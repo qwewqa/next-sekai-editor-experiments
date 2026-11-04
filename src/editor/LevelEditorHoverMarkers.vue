@@ -60,7 +60,7 @@ onBeforeUnmount(() => {
 
 <template>
     <div
-        class="editor-hover-labels pointer-events-none absolute flex w-full -translate-y-1/2 justify-between tabular-nums text-white/70 forced-color-adjust-none"
+        class="editor-hover-labels pointer-events-none absolute flex w-full -translate-y-1/2 justify-between text-white/70 tabular-nums forced-color-adjust-none"
         :class="{ invisible: shownMarkerTime === undefined }"
         :style="{ top: `${hoverLabelCenter - hoverFigureOffset}px` }"
     >

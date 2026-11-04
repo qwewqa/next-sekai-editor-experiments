@@ -570,7 +570,7 @@ const onPlacementChange = () => {
                                     previewTransportOptions,
                                 )
                             "
-                            class="pl-4 pr-9 group-active:text-fg-strong"
+                            class="pr-9 pl-4 group-active:text-fg-strong"
                         />
                         <span
                             class="pointer-events-none absolute inset-y-0 right-4 flex items-center group-active:text-fg-strong"
@@ -605,7 +605,7 @@ const onPlacementChange = () => {
                         </select>
                         <SelectValue
                             :value="optionName(settings.previewPosition, panelPositionOptions)"
-                            class="pl-4 pr-9 group-active:text-fg-strong"
+                            class="pr-9 pl-4 group-active:text-fg-strong"
                         />
                         <span
                             class="pointer-events-none absolute inset-y-0 right-4 flex items-center group-active:text-fg-strong"
@@ -621,7 +621,7 @@ const onPlacementChange = () => {
                     <span class="preview-setting-control flex">
                         <button
                             type="button"
-                            class="preview-assets btn btn-secondary h-8 min-w-0 max-w-full truncate rounded-full px-4"
+                            class="preview-assets btn btn-secondary h-8 max-w-full min-w-0 truncate rounded-full px-4"
                             data-preview-settings-assets
                             @click="openAssets"
                         >

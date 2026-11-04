@@ -133,7 +133,7 @@ const generate = () => {
 
         <div v-if="image" class="flex justify-end">
             <button
-                class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                class="btn btn-primary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                 @click="generate"
             >
                 {{ i18n.utilities.coverEditor.generate }}

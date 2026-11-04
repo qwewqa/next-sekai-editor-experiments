@@ -157,7 +157,7 @@ const stripStyle = computed(() => ({
         <span
             v-if="timeInCorner"
             ref="cornerTime"
-            class="transport-corner-time pointer-events-none absolute z-10 -translate-y-1/2 rounded-full bg-modal px-1.5 py-0.5 text-xs tabular-nums text-fg shadow-md"
+            class="transport-corner-time pointer-events-none absolute z-10 -translate-y-1/2 rounded-full bg-modal px-1.5 py-0.5 text-xs text-fg tabular-nums shadow-md"
             :style="{
                 left: `${layout.canvas.left + 4}px`,
                 top: `${layout.canvas.top + 4 + settingsButtonSize / 2}px`,
@@ -207,7 +207,7 @@ const stripStyle = computed(() => ({
                     v-for="step in steps"
                     :key="step"
                     type="button"
-                    class="transport-button transport-step btn btn-secondary touch-none select-none tabular-nums"
+                    class="transport-button transport-step btn btn-secondary touch-none tabular-nums select-none"
                     :class="{ 'is-pressed': activeStep === step }"
                     :aria-label="stepLabel(step)"
                     :title="stepTitle(step)"
@@ -287,7 +287,7 @@ const stripStyle = computed(() => ({
 
 /* The time follows Play; it is Meta text and keeps its width as it changes. */
 .transport-time {
-    @apply min-w-16 shrink-0 px-1 text-xs tabular-nums text-fg;
+    @apply min-w-16 shrink-0 px-1 text-xs text-fg tabular-nums;
 }
 
 /* Steppers share a recessed track, like a segmented control, filling the rest

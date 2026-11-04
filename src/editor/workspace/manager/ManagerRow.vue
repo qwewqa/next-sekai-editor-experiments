@@ -550,7 +550,7 @@ const onRenameBlur = (event: FocusEvent) => {
  * exists, so they never stick after a tap.
  */
 .manager-row {
-    @apply relative flex select-none items-center rounded-full p-0.5 transition-[background-color,box-shadow];
+    @apply relative flex items-center rounded-full p-0.5 transition-[background-color,box-shadow] select-none;
     touch-action: manipulation;
 }
 
@@ -596,7 +596,7 @@ const onRenameBlur = (event: FocusEvent) => {
 .manager-row-heading.manager-row-current .manager-label-box::after {
     content: '';
     /* The 40px row and 4px padding put the band edge 14px below its centered 24px label. */
-    @apply pointer-events-none absolute -bottom-3.5 -left-2 -right-2 h-1 rounded-t-full bg-fg;
+    @apply pointer-events-none absolute -right-2 -bottom-3.5 -left-2 h-1 rounded-t-full bg-fg;
 }
 
 /* High contrast drops the pill and the bar: the target gets an inset edge, the bar the text colour. */
@@ -667,7 +667,7 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 .manager-rename {
-    @apply h-9 min-w-0 flex-1 rounded-full bg-button px-2 shadow-md outline-hidden ring-2 ring-fg;
+    @apply h-9 min-w-0 flex-1 rounded-full bg-button px-2 shadow-md ring-2 ring-fg outline-hidden;
 }
 
 /* The folder chevron leads the name, inside its target. */
@@ -697,7 +697,7 @@ const onRenameBlur = (event: FocusEvent) => {
 
 /* Inset so a count clears a filled button beside it, e.g. the pressed Select. */
 .manager-meta {
-    @apply pr-1.5 text-right text-xs tabular-nums text-fg/80;
+    @apply pr-1.5 text-right text-xs text-fg/80 tabular-nums;
 }
 
 .manager-inline {

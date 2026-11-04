@@ -289,7 +289,7 @@ const stageCount = computed(() =>
     <!-- A move waiting about 150 ms for its undo slot shows the busy cursor. -->
     <div ref="host" class="isolate flex flex-col" :class="{ 'slot-busy': slotLoading }">
         <NotStoredBar v-if="showNotStoredBar" />
-        <div class="relative flex min-h-0 grow select-none overflow-hidden">
+        <div class="relative flex min-h-0 grow overflow-hidden select-none">
             <MinimapColumn v-if="!isElevationEditorOpen || isElevationSideBySide" side="left" />
             <div
                 v-if="!isElevationEditorOpen || isElevationSideBySide"
@@ -342,7 +342,7 @@ const stageCount = computed(() =>
         </div>
         <!-- Status height stays fixed when warnings arrive. -->
         <div
-            class="status-bar surface-chrome z-10 flex shrink-0 flex-nowrap whitespace-nowrap bg-preview text-xs text-white/80"
+            class="status-bar surface-chrome z-10 flex shrink-0 flex-nowrap bg-preview text-xs whitespace-nowrap text-white/80"
             :class="[compactStatus ? 'status-bar-compact gap-x-1 px-1' : 'gap-x-4 px-2']"
             data-status-bar
         >
@@ -368,7 +368,7 @@ const stageCount = computed(() =>
                             ? iconStatus
                                 ? 'w-8 flex-none'
                                 : 'min-w-22 flex-1 basis-22'
-                            : 'min-w-0 max-w-[40%]'
+                            : 'max-w-[40%] min-w-0'
                     "
                     :title="
                         item === 'group'

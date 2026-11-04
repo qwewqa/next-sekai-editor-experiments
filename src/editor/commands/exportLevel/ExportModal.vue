@@ -210,9 +210,11 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                     data-export-target
                 >
                     <span class="shrink-0 text-fg/80">{{ i18n.export.to }}</span>
-                    <span class="min-w-40 flex-1 wrap-break-word font-medium" data-export-target-name>{{
-                        targetLabel
-                    }}</span>
+                    <span
+                        class="min-w-40 flex-1 font-medium wrap-break-word"
+                        data-export-target-name
+                        >{{ targetLabel }}</span
+                    >
                     <!-- Wrapped below a long name, it keeps to the right. -->
                     <button
                         v-focus-rescue:return

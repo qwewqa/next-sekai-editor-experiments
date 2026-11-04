@@ -104,7 +104,7 @@ const { active: hasSelection } = useMinimapLayer(selectionCanvas, mapping, drawn
 
 <template>
     <div
-        class="relative flex-none touch-none select-none overflow-hidden bg-bg"
+        class="relative flex-none touch-none overflow-hidden bg-bg select-none"
         :class="isGrabbing ? 'cursor-grabbing' : 'cursor-pointer'"
         :style="{ width: `${minimapWidth}px` }"
         aria-hidden="true"
@@ -137,7 +137,7 @@ const { active: hasSelection } = useMinimapLayer(selectionCanvas, mapping, drawn
         />
         <div
             ref="box"
-            class="absolute left-[6px] right-[6px] top-0 z-3 border-2 border-white/85 bg-white/16 shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
+            class="absolute top-0 right-[6px] left-[6px] z-3 border-2 border-white/85 bg-white/16 shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
             :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
             data-minimap-box
             style="visibility: hidden"

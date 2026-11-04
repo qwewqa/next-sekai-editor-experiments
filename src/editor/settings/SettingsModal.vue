@@ -185,20 +185,20 @@ onBeforeUnmount(() => {
         <SectionIndex v-if="!short" v-bind="index" class="px-4 py-2" @go="jumpTo($event)" />
         <div
             v-scroll-edges
-            class="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-2 scrollbar-gutter-stable"
+            class="relative flex min-h-0 flex-1 scrollbar-gutter-stable flex-col gap-4 overflow-y-auto p-4 pt-2"
         >
             <SectionIndex v-if="short" v-bind="index" class="py-1" @go="jumpTo($event)" />
             <div class="flex flex-wrap gap-2">
                 <button
                     type="button"
-                    class="btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    class="btn btn-danger-quiet h-9 max-w-full min-w-24 truncate rounded-full px-4"
                     @click="askResetSettings"
                 >
                     {{ i18n.settings.resetSettings }}
                 </button>
                 <button
                     type="button"
-                    class="btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    class="btn btn-danger-quiet h-9 max-w-full min-w-24 truncate rounded-full px-4"
                     @click="askResetKeybinds"
                 >
                     {{ i18n.settings.resetKeybinds }}

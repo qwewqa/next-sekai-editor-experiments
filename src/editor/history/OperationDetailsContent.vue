@@ -103,7 +103,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
 <template>
     <!-- Opened from the keyboard, focus lands here, so the dialog opens at its top. -->
     <div
-        class="details-root min-w-0 select-text flex-col gap-4 outline-hidden wrap-anywhere"
+        class="details-root min-w-0 flex-col gap-4 wrap-anywhere outline-hidden select-text"
         :class="summaryProvided ? 'block' : 'flex'"
         :tabindex="summaryProvided ? undefined : -1"
         :data-autofocus="summaryProvided ? undefined : ''"
@@ -195,7 +195,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                             >
                             <span
                                 v-if="entry.member.time !== undefined"
-                                class="shrink-0 text-xs tabular-nums text-fg/80"
+                                class="shrink-0 text-xs text-fg/80 tabular-nums"
                                 >{{ childTime(entry.member.time) }}</span
                             >
                         </summary>
@@ -204,7 +204,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                             :recipe="childRecipe(entry.member)"
                             :time="entry.member.time"
                             summary-provided
-                            class="pb-4 pl-7 pr-2"
+                            class="pr-2 pb-4 pl-7"
                         />
                     </details>
                     <!-- The rule is the outer box's and the radius the inner one's, as on a row that opens. -->
@@ -224,7 +224,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                             >
                             <span
                                 v-if="entry.member.time !== undefined"
-                                class="shrink-0 text-xs tabular-nums text-fg/80"
+                                class="shrink-0 text-xs text-fg/80 tabular-nums"
                                 >{{ childTime(entry.member.time) }}</span
                             >
                         </div>
@@ -234,7 +234,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
             <button
                 v-if="members.length < (details.steps?.members.length ?? 0)"
                 type="button"
-                class="btn btn-secondary mt-2 h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                class="btn btn-secondary mt-2 h-9 max-w-full min-w-24 truncate rounded-full px-4"
                 data-operation-more
                 @click="showMore"
             >
@@ -246,7 +246,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
             <!-- Ruled as the steps list is: a rule over each row, which is 8 px in from its rule. -->
             <ol ref="recoveryList">
                 <li v-for="(step, index) in recovery" :key="index" class="border-t border-fg/15">
-                    <div class="focus-edge whitespace-pre-wrap rounded-lg px-2 py-2" tabindex="-1">
+                    <div class="focus-edge rounded-lg px-2 py-2 whitespace-pre-wrap" tabindex="-1">
                         <p
                             v-if="index === details.recovery.headIndex"
                             class="text-xs font-bold"
@@ -261,7 +261,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
             <button
                 v-if="(recovery?.length ?? 0) < details.recovery.descriptions.length"
                 type="button"
-                class="btn btn-secondary mt-2 h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                class="btn btn-secondary mt-2 h-9 max-w-full min-w-24 truncate rounded-full px-4"
                 @click="showMoreRecovery"
             >
                 {{ i18n.historyChanges.showMore }}
@@ -295,16 +295,16 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
     display: contents;
 }
 .record dt {
-    @apply border-t border-fg/15 pb-2 pr-4 pt-2.5 text-sm text-fg/80;
+    @apply border-t border-fg/15 pt-2.5 pr-4 pb-2 text-sm text-fg/80;
 }
 .record dd {
-    @apply min-w-0 whitespace-pre-wrap border-t border-fg/15 py-2;
+    @apply min-w-0 border-t border-fg/15 py-2 whitespace-pre-wrap;
 }
 .record ul {
     list-style: none;
 }
 .record .lines li {
-    @apply whitespace-pre-wrap border-t border-fg/15 py-2;
+    @apply border-t border-fg/15 py-2 whitespace-pre-wrap;
 }
 /* A nested record sits under its step's own rule. */
 [data-nested] .record > :first-child > div:first-child > *,
@@ -316,7 +316,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
         grid-template-columns: minmax(0, 1fr);
     }
     .record dt {
-        @apply pb-0 pr-0;
+        @apply pr-0 pb-0;
     }
     .record dd {
         @apply border-t-0 pt-0.5;

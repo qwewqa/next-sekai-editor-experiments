@@ -34,7 +34,7 @@ const page = computed(() =>
 
 <template>
     <div
-        class="property-value min-w-0 select-text whitespace-pre-wrap"
+        class="property-value min-w-0 whitespace-pre-wrap select-text"
         :class="value.kind === 'notSet' || value.kind === 'notPresent' ? 'text-fg/80' : undefined"
         data-property-value
     >
@@ -70,7 +70,7 @@ const page = computed(() =>
                 }}</span>
                 <button
                     type="button"
-                    class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                     data-property-items-more
                     @click="showMore"
                 >

@@ -168,7 +168,7 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
         >
             <span
                 ref="measure"
-                class="pointer-events-none invisible absolute whitespace-nowrap text-sm tabular-nums"
+                class="pointer-events-none invisible absolute text-sm whitespace-nowrap tabular-nums"
                 aria-hidden="true"
                 >{{ longSummary.join(' · ') }}</span
             >

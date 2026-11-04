@@ -17,7 +17,7 @@ const utilities = {
             <button
                 v-for="(modal, name) in utilities"
                 :key="name"
-                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                 @click="showModal(modal, {})"
             >
                 {{ i18n.utilities[name].title }}

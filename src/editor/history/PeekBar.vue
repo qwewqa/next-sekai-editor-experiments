@@ -226,7 +226,7 @@ const onKeydown = (event: KeyboardEvent) => {
     <div class="sr-only" aria-live="polite" data-history-announcement>{{ announcement }}</div>
     <template v-if="isPeeking">
         <div
-            class="pointer-events-none absolute inset-0 z-10 ring-2 ring-inset ring-accent forced-colors:ring-[Highlight]"
+            class="pointer-events-none absolute inset-0 z-10 ring-2 ring-accent ring-inset forced-colors:ring-[Highlight]"
             aria-hidden="true"
         />
         <!-- Two strips of one width, the change capsule inset 6 px so their end caps are concentric. -->
@@ -251,10 +251,8 @@ const onKeydown = (event: KeyboardEvent) => {
                     data-peek-text
                     data-peek-session
                 >
-                    <span class="block truncate text-sm leading-4.5">{{
-                        sessionText.name
-                    }}</span>
-                    <span class="block truncate text-xs tabular-nums leading-4 text-fg/80">{{
+                    <span class="block truncate text-sm leading-4.5">{{ sessionText.name }}</span>
+                    <span class="block truncate text-xs leading-4 text-fg/80 tabular-nums">{{
                         sessionText.time
                     }}</span>
                 </div>

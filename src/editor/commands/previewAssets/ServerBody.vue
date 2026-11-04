@@ -104,8 +104,8 @@ const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placehol
     <!-- Mounted while empty, so what appears in it is announced; empty, it takes no gap. -->
     <div class="flex flex-col gap-3 empty:-mt-3" role="status" data-server-status>
         <ChooserProgress v-if="phase === 'connecting'" :text="strings.progress.connecting" />
-        <div v-if="errorText" :id="errorId" class="relative pl-8 pr-2 text-sm" data-server-error>
-            <SeverityIcon severity="error" class="absolute left-2 top-0.5 size-4" />
+        <div v-if="errorText" :id="errorId" class="relative pr-2 pl-8 text-sm" data-server-error>
+            <SeverityIcon severity="error" class="absolute top-0.5 left-2 size-4" />
             <p data-server-error-text>{{ errorText }}</p>
         </div>
     </div>

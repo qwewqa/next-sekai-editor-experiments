@@ -120,7 +120,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
 /* The shown tab's bar sits on the header's lower edge, as in Properties. */
 .manager-modal-tab-active .manager-modal-tab-label::after {
     content: '';
-    @apply pointer-events-none absolute -bottom-3 -left-2 -right-2 h-1 rounded-t-full bg-fg;
+    @apply pointer-events-none absolute -right-2 -bottom-3 -left-2 h-1 rounded-t-full bg-fg;
 }
 
 @media (forced-colors: active) {

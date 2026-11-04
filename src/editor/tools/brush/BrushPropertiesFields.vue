@@ -176,7 +176,7 @@ const clear = () => {
                 ref="addButton"
                 v-focus-rescue="pickButton"
                 type="button"
-                class="brush-add btn btn-secondary flex min-w-0 basis-full items-center gap-2.5 rounded-full py-1 pl-3 pr-4"
+                class="brush-add btn btn-secondary flex min-w-0 basis-full items-center gap-2.5 rounded-full py-1 pr-4 pl-3"
                 :title="i18n.tools.brush.add"
                 aria-haspopup="menu"
                 :aria-expanded="addMenu ? 'true' : 'false'"

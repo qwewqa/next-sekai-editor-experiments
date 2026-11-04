@@ -183,7 +183,7 @@ html[data-app-inactive] *::after {
 /* Menus' shared surface; edges and focus are outlines, which high contrast keeps. */
 @layer components {
     .popup-surface {
-        @apply flex w-max min-w-[min(12rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl outline-1 outline-(--popup-outline) ring-1 ring-(--popup-ring);
+        @apply flex w-max max-w-[calc(100vw-1rem)] min-w-[min(12rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl ring-1 ring-(--popup-ring) outline-1 outline-(--popup-outline);
     }
 
     .popup-scroller {
@@ -204,7 +204,7 @@ html[data-app-inactive] *::after {
     }
 
     .popup-heading {
-        @apply shrink-0 px-3 pb-1 pt-2 text-xs font-bold text-fg/80;
+        @apply shrink-0 px-3 pt-2 pb-1 text-xs font-bold text-fg/80;
     }
 
     .popup-separator {

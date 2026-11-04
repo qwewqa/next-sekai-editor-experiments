@@ -338,7 +338,7 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
 /* The shown tab's bar sits on the header's lower edge, as in the manager. */
 .preview-assets-tab-active .preview-assets-tab-label::after {
     content: '';
-    @apply pointer-events-none absolute -bottom-3 -left-2 -right-2 h-1 rounded-t-full bg-fg;
+    @apply pointer-events-none absolute -right-2 -bottom-3 -left-2 h-1 rounded-t-full bg-fg;
 }
 
 @media (forced-colors: active) {

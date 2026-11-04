@@ -13,7 +13,7 @@ defineProps<{
     <div class="relative flex justify-center">
         <component :is class="h-full w-auto min-w-full" v-bind="props" />
         <svg
-            class="absolute bottom-0 right-0 size-1/2"
+            class="absolute right-0 bottom-0 size-1/2"
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 576 512"
         >

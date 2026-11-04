@@ -30,14 +30,12 @@ defineEmits<{
             <div
                 class="mt-4 flex flex-wrap justify-end gap-2"
                 :class="
-                    slots.actions
-                        ? 'max-[480px]:flex-col-reverse max-[480px]:*:w-full'
-                        : undefined
+                    slots.actions ? 'max-[480px]:flex-col-reverse max-[480px]:*:w-full' : undefined
                 "
             >
                 <slot name="actions" />
                 <input
-                    class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    class="btn btn-primary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                     type="submit"
                     :value="i18n.modals.form.confirm"
                 />

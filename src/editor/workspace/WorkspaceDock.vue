@@ -286,7 +286,7 @@ const isDrawerOpen = computed(() => drawerSide.value === props.side)
     <div
         v-if="dock"
         :[workspaceDockAttribute]="side"
-        class="workspace-dock relative flex shrink-0 select-none bg-preview"
+        class="workspace-dock relative flex shrink-0 bg-preview select-none"
         :class="{
             'z-30': !isDrawerOpen,
             'z-40': isDrawerOpen,

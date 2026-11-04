@@ -70,7 +70,7 @@ const onClose = () => {
         </div>
         <details
             v-if="detail"
-            class="mt-2 max-h-32 max-w-full overflow-auto wrap-break-word text-sm"
+            class="mt-2 max-h-32 max-w-full overflow-auto text-sm wrap-break-word"
             @toggle="isDetailOpen = ($event.target as HTMLDetailsElement).open"
         >
             <!-- The shared chevron in place of the native marker. -->

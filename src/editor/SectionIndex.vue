@@ -23,7 +23,7 @@ const pill = 'btn btn-secondary h-8 shrink-0 rounded-full px-3 text-sm'
     <nav
         v-scroll-edges:x
         :aria-label="label"
-        class="flex shrink-0 gap-2 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden pointer-fine:flex-wrap pointer-fine:overflow-x-visible"
+        class="flex shrink-0 scrollbar-none gap-2 overflow-x-auto pointer-fine:flex-wrap pointer-fine:overflow-x-visible [&::-webkit-scrollbar]:hidden"
         v-bind="{ [indexAttribute]: '' }"
     >
         <button

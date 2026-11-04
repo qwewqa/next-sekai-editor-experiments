@@ -244,7 +244,7 @@
     }
 
     .field[aria-invalid='true'] {
-        @apply ring-2 ring-inset ring-danger;
+        @apply ring-2 ring-danger ring-inset;
     }
 
     /* --- Rows and lists. The current row is the raised pill; checked rows take the tint. */
@@ -257,11 +257,11 @@
     }
 
     .row-checked.row-current {
-        @apply bg-button ring-2 ring-inset ring-accent-strong;
+        @apply bg-button ring-2 ring-accent-strong ring-inset;
     }
 
     .row-drop {
-        @apply bg-selected ring-2 ring-inset ring-accent-strong;
+        @apply bg-selected ring-2 ring-accent-strong ring-inset;
     }
 
     /* A selectable row: a label holding a hidden input.peer, radio or checkbox. A checked radio row

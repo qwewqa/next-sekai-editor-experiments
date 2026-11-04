@@ -93,7 +93,7 @@ onBeforeUnmount(() => {
         <SectionIndex v-if="!short" v-bind="index" class="px-4 py-2" @go="goToSection" />
         <div
             v-scroll-edges
-            class="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pt-2 scrollbar-gutter-stable"
+            class="relative flex min-h-0 flex-1 scrollbar-gutter-stable flex-col gap-4 overflow-y-auto p-4 pt-2"
         >
             <SectionIndex v-if="short" v-bind="index" class="py-1" @go="goToSection" />
             <section

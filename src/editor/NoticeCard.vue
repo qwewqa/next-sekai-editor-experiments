@@ -146,8 +146,7 @@ const closeClass = 'ghost flex size-9 shrink-0 items-center justify-center round
 const rowActionClass = 'btn btn-secondary ml-auto h-8 min-w-0 max-w-full truncate rounded-full px-4'
 const rowCloseClass = 'ghost ml-1 flex size-8 shrink-0 items-center justify-center rounded-full'
 // The text wraps at any length, and at the end of a sentence in browsers that balance it.
-const messageClass =
-    'min-w-0 flex-auto whitespace-break-spaces pr-3 wrap-anywhere text-pretty'
+const messageClass = 'min-w-0 flex-auto whitespace-break-spaces pr-3 wrap-anywhere text-pretty'
 
 // Every row has the glyph column once any row has a severity, so the text edges agree.
 const glyphColumn = computed(() => rows.value.some((line) => line.severity))
@@ -158,11 +157,11 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
         <div
             ref="card"
             data-notice-card
-            class="notification-pill pointer-events-auto rounded-[1.375rem] p-1 text-sm text-fg shadow-xl outline-1 ring-1"
+            class="notification-pill pointer-events-auto rounded-[1.375rem] p-1 text-sm text-fg shadow-xl ring-1 outline-1"
             :class="[
                 over
-                    ? 'bg-popup outline-(--popup-outline) ring-(--popup-ring)'
-                    : 'bg-modal outline-transparent ring-fg/10',
+                    ? 'bg-popup ring-(--popup-ring) outline-(--popup-outline)'
+                    : 'bg-modal ring-fg/10 outline-transparent',
                 // The start-up card scrolls when its rows are taller than the room, with its × kept.
                 notice.lines
                     ? [
@@ -194,7 +193,7 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                 >
                     <p
                         :id="messageId"
-                        class="min-w-0 flex-1 pl-2.5 pr-2 text-xs font-bold text-fg/80"
+                        class="min-w-0 flex-1 pr-2 pl-2.5 text-xs font-bold text-fg/80"
                     >
                         <!-- The name truncates down to 32 px; then the version takes a line of
                              its own, wrapping at its space (or, narrower still, anywhere) rather
@@ -203,15 +202,15 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                              part begins a line. -->
                         <span class="block overflow-hidden"
                             ><span class="-ml-2.5 flex flex-wrap"
-                                ><span
-                                    class="min-w-10.5 max-w-max grow basis-0 truncate pl-2.5"
-                                    >{{ heading[0] }}</span
+                                ><span class="max-w-max min-w-10.5 grow basis-0 truncate pl-2.5">{{
+                                    heading[0]
+                                }}</span
                                 ><span
                                     v-for="(part, i) in heading.slice(1)"
                                     :key="i"
                                     class="relative min-w-0 pl-2.5 wrap-anywhere"
                                     ><span
-                                        class="absolute inset-y-0 left-0 w-2.5 whitespace-pre text-center"
+                                        class="absolute inset-y-0 left-0 w-2.5 text-center whitespace-pre"
                                         >{{ ' · ' }}</span
                                     >{{ part }}</span
                                 ></span

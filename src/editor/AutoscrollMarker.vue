@@ -6,7 +6,7 @@ import { autoscrollMarker } from './controls/autoscroll'
     <Teleport to="body">
         <div
             v-if="autoscrollMarker"
-            class="autoscroll-marker pointer-events-none fixed z-50 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-popup text-fg shadow-md outline-1 outline-(--popup-outline) ring-1 ring-(--popup-ring)"
+            class="autoscroll-marker pointer-events-none fixed z-50 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-popup text-fg shadow-md ring-1 ring-(--popup-ring) outline-1 outline-(--popup-outline)"
             :style="{ left: `${autoscrollMarker.x}px`, top: `${autoscrollMarker.y}px` }"
             aria-hidden="true"
         >

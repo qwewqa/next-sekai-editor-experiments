@@ -228,7 +228,7 @@ const narrowKind = async (event: MouseEvent) => {
                     <span class="font-bold">{{ kindHead }}</span
                     ><span class="whitespace-nowrap"
                         ><span class="font-bold">{{ kindTail }}</span
-                        >&nbsp;<span class="tabular-nums text-fg/80">{{
+                        >&nbsp;<span class="text-fg/80 tabular-nums">{{
                             formatCount(count)
                         }}</span></span
                     >

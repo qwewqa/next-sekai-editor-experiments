@@ -56,9 +56,7 @@ const shortcut = computed(() =>
             { 'btn-toggle': state?.kind !== 'value' },
             // High contrast: icons take ButtonText, and the tool in use keeps its edge in the
             // selected text colour (it is unforced, so the transparent edge would stay clear).
-            selected
-                ? 'forced-colors:outline-[HighlightText]'
-                : 'forced-colors:fill-[ButtonText]',
+            selected ? 'forced-colors:outline-[HighlightText]' : 'forced-colors:fill-[ButtonText]',
             { 'pointer-coarse:min-h-11 pointer-coarse:px-3': showLabel },
             // A refused tool dims only its content: the face, shadow and on-state stay opaque
             // over the chart.
@@ -106,7 +104,7 @@ const shortcut = computed(() =>
                 class="ml-4"
                 :class="[
                     isPunctuationShortcut(shortcut)
-                        ? 'text-sm font-bold leading-4'
+                        ? 'text-sm leading-4 font-bold'
                         : 'text-xs opacity-80',
                     { 'forced-colors:text-[HighlightText]': selected },
                 ]"

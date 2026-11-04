@@ -397,7 +397,7 @@ const onSelect = (event: MouseEvent, item: ManagerMenuItem) => {
                             <p
                                 v-if="item.description !== undefined"
                                 :id="`${headingId}-d-${item.key}`"
-                                class="manager-menu-description -mt-1.5 shrink-0 pb-2 pr-3 text-xs text-fg/80"
+                                class="manager-menu-description -mt-1.5 shrink-0 pr-3 pb-2 text-xs text-fg/80"
                                 :class="glyphless ? 'pl-3' : 'pl-10'"
                             >
                                 {{ item.description }}

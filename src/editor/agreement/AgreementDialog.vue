@@ -61,7 +61,7 @@ provide(stackLongValuesKey, true)
                 />
                 <button
                     type="button"
-                    class="btn btn-primary h-9 min-w-24 max-w-full shrink-0 truncate rounded-full px-4"
+                    class="btn btn-primary h-9 max-w-full min-w-24 shrink-0 truncate rounded-full px-4"
                     data-autofocus
                     @click="emit('close', 'agree')"
                 >

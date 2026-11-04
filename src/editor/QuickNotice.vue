@@ -28,7 +28,7 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="pill"
-        class="notification min-w-0 max-w-full whitespace-break-spaces rounded-full px-6 py-2 text-center wrap-anywhere"
+        class="notification max-w-full min-w-0 rounded-full px-6 py-2 text-center wrap-anywhere whitespace-break-spaces"
     >
         <SeparatedText :text="notice.message?.() ?? ''" />
     </div>

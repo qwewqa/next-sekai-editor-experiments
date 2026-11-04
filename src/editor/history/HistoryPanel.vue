@@ -344,7 +344,7 @@ const goToButtonTitle = computed(() =>
                     @keydown="onTabKeydown"
                 >
                     <span
-                        class="history-tab-pill flex h-9 min-w-0 max-w-full items-center rounded-full transition-colors"
+                        class="history-tab-pill flex h-9 max-w-full min-w-0 items-center rounded-full transition-colors"
                         :class="
                             mode === 'small' ? (tight ? 'px-1.5 text-sm' : 'px-2 text-sm') : 'px-3'
                         "
@@ -415,7 +415,7 @@ const goToButtonTitle = computed(() =>
         <div
             v-if="onTimeline && filtered"
             ref="filterBanner"
-            class="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-fg/15 pl-4.5 pr-1.5 text-xs"
+            class="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-fg/15 pr-1.5 pl-4.5 text-xs"
             data-history-filter-banner
         >
             <span v-if="filterRange" class="flex min-w-0 flex-col" :title="filterText">
@@ -495,7 +495,7 @@ const goToButtonTitle = computed(() =>
    24 px label, 14 px below a 20 px one. */
 .history-tab[aria-selected='true'] .history-tab-label::after {
     content: '';
-    @apply pointer-events-none absolute -bottom-3 -left-2 -right-2 h-1 rounded-t-full bg-fg;
+    @apply pointer-events-none absolute -right-2 -bottom-3 -left-2 h-1 rounded-t-full bg-fg;
 }
 
 .history-tab-small[aria-selected='true'] .history-tab-label::after {
@@ -504,7 +504,7 @@ const goToButtonTitle = computed(() =>
 
 /* The bar spans the pill: 6 px past the label in the dialog's small band. */
 .history-tab-tight[aria-selected='true'] .history-tab-label::after {
-    @apply -left-1.5 -right-1.5;
+    @apply -right-1.5 -left-1.5;
 }
 
 @media (forced-colors: active) {

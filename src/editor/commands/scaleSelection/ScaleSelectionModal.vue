@@ -108,14 +108,14 @@ onUnmounted(() => {
                 <div class="mt-4 flex justify-end gap-2">
                     <button
                         type="button"
-                        class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                        class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                         @click="cancel"
                     >
                         {{ i18n.modals.confirm.cancel }}
                     </button>
                     <button
                         type="submit"
-                        class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                        class="btn btn-primary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                         :disabled="!session?.valid"
                     >
                         {{ i18n.commands.scaleSelection.apply }}

@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
     <BaseModal :title="i18n.historyChanges.title" @close="emit('close')">
         <DetailsHeader
             scope="property"
-            class="select-text wrap-anywhere"
+            class="wrap-anywhere select-text"
             :title="title"
             :meta="
                 historyFormat(calendar, settings.locale).dateTimeSeconds(comparison.request.time)
@@ -179,7 +179,7 @@ onBeforeUnmount(() => {
                     }}</span>
                     <button
                         type="button"
-                        class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                        class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                         data-property-more
                         @click="showMore"
                     >

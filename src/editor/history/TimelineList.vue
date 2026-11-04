@@ -1557,7 +1557,7 @@ defineExpose({
                             <span v-if="expandable(row)" role="gridcell" class="shrink-0">
                                 <button
                                     type="button"
-                                    class="timeline-disclosure ghost relative z-1 flex size-9 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-y-1 before:inset-x-0"
+                                    class="timeline-disclosure ghost relative z-1 flex size-9 shrink-0 items-center justify-center rounded-full before:absolute before:inset-x-0 before:-inset-y-1"
                                     :aria-label="labelOf(row)"
                                     :aria-expanded="expandedGroups.has(row.id)"
                                     data-history-disclosure
@@ -1667,7 +1667,7 @@ defineExpose({
                                 class="ml-2 h-3 max-w-[calc(100%-8rem)] rounded-full bg-fg/10"
                                 :style="{ width: `${72 - n * 9}%` }"
                             />
-                            <span class="ml-auto mr-3 h-3 w-16 shrink-0 rounded-full bg-fg/10" />
+                            <span class="mr-3 ml-auto h-3 w-16 shrink-0 rounded-full bg-fg/10" />
                         </template>
                         <span v-else class="ml-2 flex min-w-0 flex-1 flex-col gap-1.5 pr-3">
                             <span
@@ -1727,7 +1727,7 @@ defineExpose({
                     <button
                         v-if="historyFilter !== 'here' || here.canRetry"
                         type="button"
-                        class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                        class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                         @click="
                             tail.kind === 'moreFailed'
                                 ? loadMore()
@@ -1765,7 +1765,7 @@ defineExpose({
             data-history-pinned
         >
             <div
-                class="flex items-end truncate pb-1 pl-13 pr-3 text-xs"
+                class="flex items-end truncate pr-3 pb-1 pl-13 text-xs"
                 :class="headerClass(pinned)"
                 :style="{ height: `${HEADER}px` }"
             >
@@ -1797,7 +1797,7 @@ defineExpose({
  * in top and bottom, so neighbouring pills sit 4 px apart, as manager rows do.
  */
 .timeline-row {
-    @apply absolute inset-x-1.5 select-none text-sm;
+    @apply absolute inset-x-1.5 text-sm select-none;
     isolation: isolate;
     /* Focus shows on the pill, below, not on the slot. */
     outline: none;
@@ -1814,7 +1814,7 @@ defineExpose({
    inset edge, so it reads by its outline as well as its fill: a hovered pill is only 1.05:1 from
    it in light, and the shadow barely shows in dark. */
 .timeline-row-selected::before {
-    @apply bg-button shadow-md ring-1 ring-inset ring-fg/25;
+    @apply bg-button shadow-md ring-1 ring-fg/25 ring-inset;
 }
 
 /* Not while pressed, so the press shows as on every other control. */
@@ -1899,7 +1899,7 @@ defineExpose({
 }
 
 .timeline-entry-caption {
-    @apply flex gap-2 whitespace-nowrap text-xs leading-4 text-fg/80;
+    @apply flex gap-2 text-xs leading-4 whitespace-nowrap text-fg/80;
 }
 
 .timeline-group-count {
@@ -1969,7 +1969,7 @@ defineExpose({
 
 /* 14 px lines, so a reason that wraps to two lines clears the row's ring at the 80 px row's foot. */
 .timeline-entry-reason.timeline-flag {
-    @apply h-8 items-start pl-11.5 pr-3 leading-[0.875rem];
+    @apply h-8 items-start pr-3 pl-11.5 leading-[0.875rem];
 }
 
 .timeline-flag {
@@ -1983,7 +1983,7 @@ defineExpose({
 
 /* Headers and dividers: labels on the text edge (52), rules from the glyph ink (18) to the time edge (W-20). */
 .timeline-divider {
-    @apply absolute inset-x-1.5 flex select-none px-3 text-xs;
+    @apply absolute inset-x-1.5 flex px-3 text-xs select-none;
 }
 
 .timeline-header {

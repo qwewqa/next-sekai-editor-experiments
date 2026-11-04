@@ -704,7 +704,7 @@ const notePointer = (event: PointerEvent) => {
                     :key="n"
                     class="flex h-11 items-center px-0.5 motion-safe:animate-pulse"
                 >
-                    <span class="flex min-w-0 flex-1 flex-col gap-1.5 pl-2.5 pr-3">
+                    <span class="flex min-w-0 flex-1 flex-col gap-1.5 pr-3 pl-2.5">
                         <span
                             class="h-3 rounded-full bg-fg/10"
                             :style="{ width: `${72 - n * 9}%` }"
@@ -721,7 +721,7 @@ const notePointer = (event: PointerEvent) => {
                 <span>{{ i18n.history.sessions.loadFailed }}</span>
                 <button
                     type="button"
-                    class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    class="btn btn-secondary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                     data-history-focus="try-again"
                     @click="tryAgain"
                 >
@@ -748,7 +748,7 @@ const notePointer = (event: PointerEvent) => {
                             v-if="row.type === 'header'"
                             role="presentation"
                             aria-hidden="true"
-                            class="sessions-header sticky top-0 z-10 flex h-7 select-none items-end bg-modal pb-1 pl-3 pr-3 text-xs font-bold text-fg"
+                            class="sessions-header sticky top-0 z-10 flex h-7 items-end bg-modal pr-3 pb-1 pl-3 text-xs font-bold text-fg select-none"
                         >
                             <span class="min-w-0 truncate">{{ headerText(row, calendar) }}</span>
                         </div>
@@ -787,7 +787,7 @@ const notePointer = (event: PointerEvent) => {
                                 v-if="row.status !== 'lost'"
                                 type="button"
                                 tabindex="-1"
-                                class="btn btn-secondary mr-0.5 h-8 min-w-0 max-w-[40%] shrink-0 truncate rounded-full px-4"
+                                class="btn btn-secondary mr-0.5 h-8 max-w-[40%] min-w-0 shrink-0 truncate rounded-full px-4"
                                 data-sessions-undo
                                 @click.stop="undoRow(row)"
                             >
@@ -842,7 +842,7 @@ const notePointer = (event: PointerEvent) => {
                                 tabindex="-1"
                                 aria-haspopup="menu"
                                 :aria-expanded="menu?.row.id === row.id"
-                                class="sessions-more ghost relative flex size-9 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-y-1 before:inset-x-0"
+                                class="sessions-more ghost relative flex size-9 shrink-0 items-center justify-center rounded-full before:absolute before:inset-x-0 before:-inset-y-1"
                                 :aria-label="
                                     interpolateRaw(i18n.history.sessions.actions, nameOf(row))
                                 "
@@ -861,7 +861,7 @@ const notePointer = (event: PointerEvent) => {
                 </div>
                 <p
                     v-if="footer && allDrawn"
-                    class="px-3 pb-1 pt-3 text-xs text-fg/80"
+                    class="px-3 pt-3 pb-1 text-xs text-fg/80"
                     data-sessions-footer
                 >
                     {{ footer }}
@@ -895,7 +895,7 @@ const notePointer = (event: PointerEvent) => {
  * holds two lines, 18 and 16 px, in the 40 px pill.
  */
 .sessions-row {
-    @apply relative flex h-11 select-none items-center px-0.5 text-sm;
+    @apply relative flex h-11 items-center px-0.5 text-sm select-none;
     isolation: isolate;
     outline: none;
 }
@@ -909,7 +909,7 @@ const notePointer = (event: PointerEvent) => {
 
 /* The current row is the raised pill with a 1 px inset edge, as the Timeline's. */
 .sessions-row-selected::before {
-    @apply bg-button shadow-md ring-1 ring-inset ring-fg/25;
+    @apply bg-button shadow-md ring-1 ring-fg/25 ring-inset;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -933,7 +933,7 @@ const notePointer = (event: PointerEvent) => {
 }
 
 .sessions-text {
-    @apply flex h-10 min-w-0 flex-1 flex-col justify-center rounded-[1.125rem] pb-0.5 pl-2.5 pr-3 text-left;
+    @apply flex h-10 min-w-0 flex-1 flex-col justify-center rounded-[1.125rem] pr-3 pb-0.5 pl-2.5 text-left;
 }
 
 .sessions-title {
@@ -941,11 +941,11 @@ const notePointer = (event: PointerEvent) => {
 }
 
 .sessions-badge {
-    @apply max-w-[60%] shrink-0 truncate rounded-full px-2 text-xs leading-4 ring-1 ring-inset ring-fg/25;
+    @apply max-w-[60%] shrink-0 truncate rounded-full px-2 text-xs leading-4 ring-1 ring-fg/25 ring-inset;
 }
 
 .sessions-caption {
-    @apply block truncate whitespace-nowrap text-xs leading-4 text-fg/80;
+    @apply block truncate text-xs leading-4 whitespace-nowrap text-fg/80;
 }
 
 /* Unavailable: the text fades; the reason, in the caption, stays strong. */

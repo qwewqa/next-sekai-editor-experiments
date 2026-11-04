@@ -58,7 +58,7 @@ const buttons = computed(() => {
                 v-for="button in buttons"
                 :key="String(button.result)"
                 type="button"
-                class="btn h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                class="btn h-9 max-w-full min-w-24 truncate rounded-full px-4"
                 :class="button.class"
                 :data-autofocus="button.focus || undefined"
                 @click="pick(button.result)"

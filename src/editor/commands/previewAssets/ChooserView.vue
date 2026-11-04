@@ -183,13 +183,11 @@ const primaryClass = `${baseClass} btn-primary`
 
         <p
             v-if="isFile && error"
-            class="relative pl-8 pr-2 text-sm"
+            class="relative pr-2 pl-8 text-sm"
             aria-live="polite"
             data-chooser-error
         >
-            <SeverityIcon severity="error" class="absolute left-2 top-0.5 size-4" />{{
-                error
-            }}
+            <SeverityIcon severity="error" class="absolute top-0.5 left-2 size-4" />{{ error }}
         </p>
 
         <div v-if="!isFile" ref="serverBody" class="contents">
@@ -252,7 +250,7 @@ const primaryClass = `${baseClass} btn-primary`
                 aria-live="polite"
                 data-chooser-error
             >
-                <SeverityIcon severity="error" class="absolute left-0 top-0.5 size-4" />{{
+                <SeverityIcon severity="error" class="absolute top-0.5 left-0 size-4" />{{
                     failure
                 }}
             </p>

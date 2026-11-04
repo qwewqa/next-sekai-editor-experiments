@@ -337,7 +337,7 @@ onUnmounted(() => {
                                 class="text-fg [.popup-item:enabled:active_&]:text-inherit"
                                 :class="
                                     isPunctuationShortcut(shortcut)
-                                        ? 'text-sm font-bold leading-4'
+                                        ? 'text-sm leading-4 font-bold'
                                         : 'text-xs opacity-80'
                                 "
                                 aria-hidden="true"

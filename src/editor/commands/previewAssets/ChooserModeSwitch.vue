@@ -22,7 +22,7 @@ const choice = 'segment-choice relative min-w-0 flex-1'
 
 <template>
     <div
-        class="flex min-w-0 max-w-md rounded-full bg-recess p-0.5 shadow-track"
+        class="flex max-w-md min-w-0 rounded-full bg-recess p-0.5 shadow-track"
         :class="{ 'pointer-events-none opacity-40': disabled }"
         role="radiogroup"
         :aria-label="label"

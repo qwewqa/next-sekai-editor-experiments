@@ -406,7 +406,7 @@ defineExpose({ play, pause, stepBy, setIn, setOut, frameBox })
                 </button>
             </div>
             <p
-                class="shrink-0 whitespace-nowrap text-sm tabular-nums"
+                class="shrink-0 text-sm whitespace-nowrap tabular-nums"
                 :aria-label="i18n.exportVideo.playhead"
                 data-export-readout
             >
@@ -416,7 +416,7 @@ defineExpose({ play, pause, stepBy, setIn, setOut, frameBox })
                 <template v-if="layout.transportFit === 1">
                     <button
                         type="button"
-                        class="export-hit btn btn-secondary relative h-9 whitespace-nowrap rounded-full px-4"
+                        class="export-hit btn btn-secondary relative h-9 rounded-full px-4 whitespace-nowrap"
                         :disabled="busy"
                         data-export-set-in
                         @click="setIn"
@@ -425,7 +425,7 @@ defineExpose({ play, pause, stepBy, setIn, setOut, frameBox })
                     </button>
                     <button
                         type="button"
-                        class="export-hit btn btn-secondary relative h-9 whitespace-nowrap rounded-full px-4"
+                        class="export-hit btn btn-secondary relative h-9 rounded-full px-4 whitespace-nowrap"
                         :disabled="busy"
                         data-export-set-out
                         @click="setOut"
@@ -434,7 +434,7 @@ defineExpose({ play, pause, stepBy, setIn, setOut, frameBox })
                     </button>
                     <button
                         type="button"
-                        class="export-hit btn btn-secondary relative flex h-9 items-center gap-2 whitespace-nowrap rounded-full pl-4 pr-3"
+                        class="export-hit btn btn-secondary relative flex h-9 items-center gap-2 rounded-full pr-3 pl-4 whitespace-nowrap"
                         :class="{ 'is-pressed': menuAnchor }"
                         aria-haspopup="menu"
                         :aria-expanded="!!menuAnchor"
@@ -558,7 +558,7 @@ defineExpose({ play, pause, stepBy, setIn, setOut, frameBox })
         </div>
         <p
             v-if="layout.length === 'line'"
-            class="-mt-2 flex h-5 shrink-0 items-center gap-2 whitespace-nowrap text-sm"
+            class="-mt-2 flex h-5 shrink-0 items-center gap-2 text-sm whitespace-nowrap"
             data-export-length
         >
             <span>{{ lengthLabel }}</span

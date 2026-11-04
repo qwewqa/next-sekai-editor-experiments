@@ -200,7 +200,7 @@ const labelOf = (direction: 'up' | 'down') => {
                 v-if="inspectable"
                 ref="summary"
                 type="button"
-                class="change-control ghost focus-out relative mr-auto flex h-6 min-w-0 items-center gap-1 rounded-full pl-2 pr-1.5 text-left before:absolute before:-inset-1"
+                class="change-control ghost focus-out relative mr-auto flex h-6 min-w-0 items-center gap-1 rounded-full pr-1.5 pl-2 text-left before:absolute before:-inset-1"
                 :title="line"
                 :aria-label="i18n.historyChanges.view"
                 :aria-describedby="summaryId"

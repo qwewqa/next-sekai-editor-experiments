@@ -92,7 +92,7 @@ const firstAsset = computed(() => rows.value.find((row) => row.kind === 'asset')
             <template v-for="row in rows" :key="row.id">
                 <p
                     v-if="row.id === firstAsset && list.safeModeLine.value"
-                    class="px-3 pb-1 pt-2 text-sm text-fg/80"
+                    class="px-3 pt-2 pb-1 text-sm text-fg/80"
                 >
                     {{ list.safeModeLine.value }}
                 </p>

@@ -69,7 +69,7 @@ const boxClass =
                             label(item.range)
                         }}</span>
                         <span
-                            class="pointer-events-none shrink-0 tabular-nums text-fg/80"
+                            class="pointer-events-none shrink-0 text-fg/80 tabular-nums"
                             data-delete-count
                             >{{ formatCount(item.count) }}</span
                         >

@@ -325,7 +325,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                         <!-- The whole band height is the hit area; the pill carries
                         hover, press and focus. Only the label truncates. -->
                         <span
-                            class="properties-tab-pill flex h-9 min-w-0 max-w-full items-center justify-center rounded-full px-3 transition-colors"
+                            class="properties-tab-pill flex h-9 max-w-full min-w-0 items-center justify-center rounded-full px-3 transition-colors"
                         >
                             <span class="properties-tab-label relative min-w-0">
                                 <span class="block truncate">{{ title(section) }}</span>
@@ -444,7 +444,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
 /* The 48px band ends 12px below the label; its 4px bar matches the All row. */
 .properties-tab-active .properties-tab-label::after {
     content: '';
-    @apply pointer-events-none absolute -bottom-3 -left-2 -right-2 h-1 rounded-t-full bg-fg;
+    @apply pointer-events-none absolute -right-2 -bottom-3 -left-2 h-1 rounded-t-full bg-fg;
 }
 
 /* High contrast keeps system colours, so the bar still shows. */

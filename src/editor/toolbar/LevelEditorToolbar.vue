@@ -662,7 +662,7 @@ onBeforeUnmount(() => {
                     <LevelEditorToolbarTool
                         v-for="(name, j) in toolbar[i]"
                         :key="j"
-                        class="relative mb-1 w-full before:absolute before:-inset-y-0.5 before:inset-x-0 last:before:-bottom-1"
+                        class="relative mb-1 w-full before:absolute before:inset-x-0 before:-inset-y-0.5 last:before:-bottom-1"
                         :class="{ 'is-pressed': quickOver === j }"
                         :name
                         :state="stateOf(name, i)"

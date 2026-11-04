@@ -28,7 +28,7 @@ const partClass = ({ text, role }: NamePart) =>
 <template>
     <button
         type="button"
-        class="status-chip ghost focus-out ghost-chrome relative flex items-center whitespace-nowrap px-1"
+        class="status-chip ghost focus-out ghost-chrome relative flex items-center px-1 whitespace-nowrap"
         :class="compact ? (iconsOnly ? 'justify-center' : 'gap-1') : ''"
         :aria-label="accessibleName"
         @click="$emit('click', $event)"

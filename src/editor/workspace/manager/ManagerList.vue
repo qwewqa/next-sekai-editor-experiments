@@ -2209,7 +2209,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 <!-- In a short panel Add follows the rows. -->
                 <li
                     v-if="!stickyAdd && !selecting"
-                    class="manager-footer pointer-events-none -mx-1.5 flex items-center gap-1.5 px-1.5 pb-2 pt-3"
+                    class="manager-footer pointer-events-none -mx-1.5 flex items-center gap-1.5 px-1.5 pt-3 pb-2"
                     :style="{ marginRight: gutterPadding && `-${gutterPadding}` }"
                 >
                     <ManagerAddButton
@@ -2239,7 +2239,7 @@ const folderEyeLabel = (item: FolderItem) =>
             <div
                 v-if="selecting"
                 ref="bar"
-                class="manager-footer manager-footer-floating manager-selection-bar pointer-events-none absolute bottom-0 left-0 right-0 z-10 flex items-center gap-1.5 px-1.5 pb-2"
+                class="manager-footer manager-footer-floating manager-selection-bar pointer-events-none absolute right-0 bottom-0 left-0 z-10 flex items-center gap-1.5 px-1.5 pb-2"
             >
                 <button
                     type="button"

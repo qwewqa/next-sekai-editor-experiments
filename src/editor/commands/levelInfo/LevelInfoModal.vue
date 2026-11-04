@@ -251,7 +251,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                 >
                     <div class="flex min-w-0 flex-wrap items-center gap-2">
                         <p
-                            class="min-w-0 flex-1 basis-32 select-text whitespace-pre-wrap wrap-anywhere"
+                            class="min-w-0 flex-1 basis-32 wrap-anywhere whitespace-pre-wrap select-text"
                             data-status-summary
                         >
                             <SeparatedText :text="fileLine" />
@@ -323,7 +323,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                                 i18n.levelInfo.notLoaded
                             }}</span>
                             <span
-                                class="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-(--cover-edge)"
+                                class="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-(--cover-edge) ring-inset"
                                 aria-hidden="true"
                             ></span>
                         </div>
@@ -414,7 +414,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
 
             <div class="mt-4 flex justify-end">
                 <input
-                    class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    class="btn btn-primary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                     type="submit"
                     :value="readOnly ? i18n.modals.info.ok : i18n.modals.form.confirm"
                 />

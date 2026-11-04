@@ -224,7 +224,7 @@ const onGenerate = () => {
         <div v-if="buffer" class="flex justify-end">
             <!-- Pressing keeps the field focused, so its commit can't move Generate mid-click. -->
             <button
-                class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                class="btn btn-primary h-9 max-w-full min-w-24 truncate rounded-full px-4"
                 @mousedown.prevent
                 @click="onGenerate"
             >

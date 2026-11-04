@@ -120,12 +120,7 @@ const detect = (content: string): Rule[] => {
         else if (palette.test(utility)) out.push('raw-palette')
         else if (literal.test(utility)) out.push('colour-literal')
     }
-    if (
-        /var\(--color-(?:(?:on-)?accent|selected)\b/.test(
-            content,
-        )
-    )
-        out.push('mint-outside-recipes')
+    if (/var\(--color-(?:(?:on-)?accent|selected)\b/.test(content)) out.push('mint-outside-recipes')
     return out
 }
 

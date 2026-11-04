@@ -161,7 +161,7 @@ const onBlur = () => {
                 <span
                     :id="valueId"
                     :class="{
-                        'text-lg font-bold leading-none':
+                        'text-lg leading-none font-bold':
                             !isActive && isPunctuationShortcut(formatShortcut(modelValue) ?? ''),
                     }"
                     >{{

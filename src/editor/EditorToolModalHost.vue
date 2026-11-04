@@ -177,7 +177,7 @@ onUnmounted(() => {
         :aria-label="label"
         tabindex="-1"
         data-tool-dialog
-        class="editor-tool-modal absolute z-30 flex flex-col overflow-hidden rounded-xl bg-modal text-fg shadow-xl outline-hidden ring-1 ring-fg/10"
+        class="editor-tool-modal absolute z-30 flex flex-col overflow-hidden rounded-xl bg-modal text-fg shadow-xl ring-1 ring-fg/10 outline-hidden"
         :class="frame"
         :data-sheet="sheet ? sheetSide : undefined"
         @keydown="onKeydown"

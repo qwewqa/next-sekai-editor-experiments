@@ -18,7 +18,7 @@ const id = useId()
     <BaseField :label :label-id="id" class="level-info-media">
         <div role="group" :aria-labelledby="id" class="flex min-w-0 flex-wrap items-center gap-2">
             <slot name="lead" />
-            <span class="min-w-0 flex-1 basis-32 select-text wrap-anywhere"
+            <span class="min-w-0 flex-1 basis-32 wrap-anywhere select-text"
                 ><SeparatedText :text="summary"
             /></span>
             <div v-if="$slots.default" class="flex max-w-full flex-wrap gap-2">

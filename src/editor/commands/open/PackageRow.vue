@@ -120,9 +120,7 @@ const hasAction = computed(() =>
             </button>
         </span>
     </div>
-    <p v-if="error" :id="errorId" class="relative pb-2 pl-22 pr-3 text-sm" data-package-error>
-        <SeverityIcon severity="error" class="absolute left-16 top-0.5 size-4" />{{
-            error
-        }}
+    <p v-if="error" :id="errorId" class="relative pr-3 pb-2 pl-22 text-sm" data-package-error>
+        <SeverityIcon severity="error" class="absolute top-0.5 left-16 size-4" />{{ error }}
     </p>
 </template>

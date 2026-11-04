@@ -16,7 +16,7 @@ defineProps<{
 <template>
     <div class="flex min-w-0 flex-col gap-0.5">
         <p
-            class="whitespace-pre-wrap font-bold"
+            class="font-bold whitespace-pre-wrap"
             :lang="titleLang"
             v-bind="{ [`data-${scope}-description`]: '' }"
         >
@@ -24,7 +24,7 @@ defineProps<{
         </p>
         <p
             v-if="meta"
-            class="text-sm tabular-nums text-fg/80"
+            class="text-sm text-fg/80 tabular-nums"
             v-bind="{ [`data-${scope}-time`]: '' }"
         >
             <SeparatedText :text="meta" />

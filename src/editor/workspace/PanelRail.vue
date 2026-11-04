@@ -332,7 +332,7 @@ const chevronDirection = computed(() => {
 
 <template>
     <div
-        class="panel-rail surface-chrome relative z-20 flex shrink-0 select-none bg-preview text-sm font-medium"
+        class="panel-rail surface-chrome relative z-20 flex shrink-0 bg-preview text-sm font-medium select-none"
         :class="[
             vertical ? 'flex-col' : 'flex-row',
             vertical ? 'w-9' : 'h-9',
@@ -344,7 +344,7 @@ const chevronDirection = computed(() => {
             class="panel-rail-tabs flex min-h-0 min-w-0 flex-1 gap-0.5 overscroll-contain"
             :class="[
                 vertical
-                    ? 'flex-col overflow-y-auto overflow-x-hidden'
+                    ? 'flex-col overflow-x-hidden overflow-y-auto'
                     : 'overflow-x-auto overflow-y-hidden',
                 { 'fade-start': overflow.start, 'fade-end': overflow.end },
             ]"
@@ -360,10 +360,10 @@ const chevronDirection = computed(() => {
                 :key="id"
                 type="button"
                 role="tab"
-                class="panel-tab ghost ghost-chrome relative flex shrink-0 items-center justify-center whitespace-nowrap rounded-sm"
+                class="panel-tab ghost ghost-chrome relative flex shrink-0 items-center justify-center rounded-sm whitespace-nowrap"
                 :class="[
                     vertical
-                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-0.25 before:inset-x-0 last:before:bottom-0`
+                        ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:inset-x-0 before:-inset-y-0.25 last:before:bottom-0`
                         : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-0.25 before:inset-y-0 last:before:right-0`,
                     state(id) === 'visible' || menu?.id === id ? 'ghost-chrome-on' : '',
                 ]"

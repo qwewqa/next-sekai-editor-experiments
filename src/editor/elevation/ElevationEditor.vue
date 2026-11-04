@@ -2186,7 +2186,7 @@ onUnmounted(() => {
                                             ? `1/${settings.elevationSnap}`
                                             : i18n.elevation.off
                                     "
-                                    class="z-2 px-3 text-base tabular-nums text-fg group-active:text-fg-strong" /><span
+                                    class="z-2 px-3 text-base text-fg tabular-nums group-active:text-fg-strong" /><span
                                     class="elevation-select-icon group-active:text-fg-strong"
                                     aria-hidden="true"
                                     ><ChevronIcon direction="down" /></span></span

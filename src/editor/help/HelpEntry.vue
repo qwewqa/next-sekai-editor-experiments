@@ -86,7 +86,7 @@ const label = computed(() =>
                     :class="[
                         members.length === 1 && 'ml-auto',
                         isPunctuationShortcut(member.shortcut)
-                            ? 'text-sm font-bold leading-4'
+                            ? 'text-sm leading-4 font-bold'
                             : 'text-xs font-normal opacity-80',
                     ]"
                     >{{ member.shortcut }}</kbd

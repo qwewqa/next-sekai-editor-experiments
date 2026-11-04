@@ -273,14 +273,14 @@ onBeforeUnmount(() => {
     >
         <div
             v-if="!hideRuler"
-            class="relative h-4 text-xs tabular-nums text-fg/80"
+            class="relative h-4 text-xs text-fg/80 tabular-nums"
             aria-hidden="true"
             data-clip-ruler
         >
             <span
                 v-for="label in ruler"
                 :key="label.time"
-                class="absolute top-0 whitespace-nowrap leading-4"
+                class="absolute top-0 leading-4 whitespace-nowrap"
                 :class="{ '-translate-x-1/2': !label.flush, invisible: label.hidden }"
                 :style="{ left: `${label.left}px` }"
                 >{{ label.text }}</span
@@ -348,7 +348,7 @@ onBeforeUnmount(() => {
         <div
             v-for="end in ['in', 'out'] as const"
             :key="end"
-            class="clip-handle btn focus-ring focus-out btn-secondary absolute z-3 flex w-2.5 items-center justify-center rounded-full ring-1 ring-inset ring-fg/80"
+            class="clip-handle btn focus-ring focus-out btn-secondary absolute z-3 flex w-2.5 items-center justify-center rounded-full ring-1 ring-fg/80 ring-inset"
             :class="{
                 'opacity-40': d.busy.value,
                 'is-pressed': drag?.kind === end,
