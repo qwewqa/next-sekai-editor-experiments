@@ -147,8 +147,7 @@ const onBlur = () => {
                 class="key-field-button btn btn-secondary w-full rounded-2xl px-4 py-1 text-left"
                 :class="{
                     'animate-pulse': isActive,
-                    'key-field-unassigned text-fg/80 active:text-fg-strong':
-                        !isActive && !formatShortcut(modelValue),
+                    'key-field-unassigned btn-unset': !isActive && !formatShortcut(modelValue),
                 }"
                 type="button"
                 :aria-labelledby="`${textId} ${valueId}`"

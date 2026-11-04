@@ -112,7 +112,7 @@ const described = computed(() =>
                 v-model.lazy="modelValue"
                 :disabled="disabled || readOnly"
                 :title="shown"
-                :class="{ 'text-fg/80 active:text-fg-strong': modelValue === undefined }"
+                :class="{ 'btn-unset': modelValue === undefined }"
                 class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-70"
                 @change="resyncSelect($event, () => modelValue)"
             >

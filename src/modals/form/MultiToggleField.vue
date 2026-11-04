@@ -37,7 +37,7 @@ const shown = computed(() =>
                     :role="mixable ? 'checkbox' : 'switch'"
                     :aria-checked="modelValue ?? 'mixed'"
                     :aria-labelledby="textId"
-                    :class="{ 'text-fg/80 active:text-fg-strong': modelValue === undefined }"
+                    :class="{ 'btn-unset': modelValue === undefined }"
                     :value="shown"
                     :disabled="readOnly"
                     :title="shown"

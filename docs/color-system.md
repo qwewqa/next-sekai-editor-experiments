@@ -348,6 +348,7 @@ The recipes are CSS in `src/controls.css`, in `@layer components`. `src/tailwind
 | Recipe | Rest | Hover (pointer) | Press (`:active`, `.is-pressed`) | Focus | Disabled |
 |---|---|---|---|---|---|
 | `btn btn-secondary` | `button`, raised | Mint glow | `press`, `fg-strong`, sink and glow | Ring inside, `fg` | 40 % |
+| `btn btn-secondary btn-unset` | `button` with `fg/80` ink: no value of its own (unset, mixed or unassigned) | As the button | As the button, `fg-strong` | | |
 | `btn btn-primary` | `primary`, raised | Mint glow | `primary-press`, sink and glow | Ring inside, `on-primary` | 40 % |
 | `btn btn-danger-quiet` | `button` with a `danger` label | Red glow | `danger-fill` with `on-danger`, sink and red glow | Ring inside, `danger` | 40 % |
 | `btn-toggle[aria-pressed='true']` (on a `btn` or `ghost`) | `accent`, flat | Glow (`.btn-toggle[aria-pressed='true']:hover:not(:active)`) | `accent-press`, sink and glow (`btn`) | Ring inside, `on-accent` | 40 % |
@@ -355,12 +356,13 @@ The recipes are CSS in `src/controls.css`, in `@layer components`. `src/tailwind
 | `ghost ghost-band` | No face | `band-hover` | `band-press`, `fg-strong` | Ring inside | 40 % |
 | `ghost ghost-chrome` | white/80 ink | white/10, white ink | `chrome-press`, white | Ring inside, white | 40 % |
 | `ghost-tinted`, `ghost-header` (on a `ghost`) | A resting face: `fg/8`, or the band's `header` | As the ghost | As the ghost | | |
-| `ghost-chrome-on`, `ghost-chrome-warning` (on a `ghost-chrome`) | The tab of a showing panel (white/10, white ink), or `warning` ink | As the ghost | As the ghost | | |
+| `ghost-chrome-on` (on a `ghost-chrome`) | The tab of a showing panel: white/10, white ink | Its selected tab: white/20 (dark white/15) | As the ghost (dark selected white/30) | | |
+| `ghost-chrome-warning` (on a `ghost-chrome`) | `warning` ink | As the ghost | As the ghost | | |
 | `ghost-dim` (on a `ghost`) | `fg/70` ink | `fg` ink, which holds through a press | | | |
 | `field` | `button`, raised | Mint glow | — | Ring inside on `:focus` | 40 % |
 | `field[aria-invalid='true']` | Adds a 2 px `danger` edge ring | | | Both rings | |
 | `row-current` / `row-checked` / `row-drop` | See 5.4 | | | | |
-| `switch-track` (+ `[data-on]`), `switch-knob` | See 5.5 | | | | |
+| `switch-track` (+ `[data-on]`), `switch-knob` | See 5.5; the knob is `ButtonText` in high contrast | | | | |
 | `focus-ring` | Only the focus rule, for elements that are not buttons | | | | |
 | `focus-edge` | For rows and menu rows: a transparent 2 px edge outline that takes `fg` on `:focus-visible` (principle 10) | | | Ring at the edge, `fg` | |
 | `segment-choice` + `segment-face` | A segmented control: labels in a recessed track (`bg-recess shadow-track`), each holding a hidden `input.peer` radio and the `span.segment-face` that is its face. The checked face is the raised current pill (`button`, `shadow-md`); the label draws a transparent 1 px edge that high contrast paints. Size and padding are the call site's. Sibling selectors only, so it works without `:has()` (the label's edge rule is its own) | `button/50`; a checked face keeps `button` | `ghost-press` with `fg-strong`; a checked face `press` | Ring inside, 2 px in the face's ink, while the input has `:focus-visible` (`Highlight` in high contrast) | Set at the call site (40 %) |

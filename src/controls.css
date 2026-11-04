@@ -88,6 +88,12 @@
         @apply bg-button text-fg;
     }
 
+    /* A secondary face with no value of its own (unset, mixed or unassigned): muted ink, which a
+       press strengthens as on any face. */
+    .btn-unset {
+        @apply text-fg/80;
+    }
+
     /* The one action offered first: the default Enter presses, or the commit of a mode. */
     .btn-primary {
         @apply bg-primary text-on-primary;
@@ -226,6 +232,23 @@
         @apply text-fg;
     }
 
+    /* A showing panel's tab rests at white/10, so its hover is white/20 in light. In dark, where
+       the chrome's press is white/20, its hover stays white/15 and its press is white/30, so press
+       is still a step beyond hover. */
+    @media (hover: hover) and (pointer: fine) {
+        .ghost-chrome-on[aria-selected='true']:hover:not(:active) {
+            @apply bg-white/20;
+        }
+
+        :root[data-theme='dark'] .ghost-chrome-on[aria-selected='true']:hover:not(:active) {
+            @apply bg-white/15;
+        }
+    }
+
+    :root[data-theme='dark'] .ghost-chrome-on[aria-selected='true']:active {
+        @apply bg-white/30;
+    }
+
     .btn-toggle[aria-pressed='true']:active,
     .btn-toggle[aria-pressed='true'].is-pressed {
         @apply bg-accent-press fill-on-accent text-on-accent;
@@ -360,9 +383,14 @@
         }
     }
 
-    /* --- Switches (ToggleSwitch): mint track and ink knob when on. */
+    /* --- Switches (ToggleSwitch): a white knob on a grey track, and mint track and ink knob when
+       on. High contrast draws the knob in the button text colour. */
     .switch-track {
         @apply bg-toggle-off;
+    }
+
+    .switch-knob {
+        @apply bg-knob shadow-xs;
     }
 
     .switch-track[data-on] {
@@ -371,6 +399,13 @@
 
     .switch-track[data-on] > .switch-knob {
         @apply bg-on-accent shadow-none;
+    }
+
+    @media (forced-colors: active) {
+        .switch-knob,
+        .switch-track[data-on] > .switch-knob {
+            background-color: ButtonText;
+        }
     }
 
     /* --- The dark chrome over the chart: the status bar, rail, toolbar row, elevation header and
