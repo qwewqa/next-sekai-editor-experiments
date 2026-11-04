@@ -5,9 +5,9 @@ import type { Durability, KvDatabase, KvUpgrade } from '../../../src/local/kv/ty
 import { createWorld, type Tab } from '../../../src/local/testing/world'
 
 // The memory store's test hooks: the durability each transaction asked
-// for, the commit hook, and the two power losses. `loseRelaxed(k)` models Chromium and Firefox 126
-// and later, which honour `strict`; `loseCommits(n)` Firefox before 126, which does not. Both keep
-// commit order: a lost commit loses every later one.
+// for, the commit hook, and the two power losses. `loseRelaxed(k)` models an IndexedDB that
+// honours `strict`; `loseCommits(n)` one that does not. Both keep commit order: a lost commit
+// loses every later one.
 
 const schema = (upgrade: KvUpgrade) => {
     if (upgrade.oldVersion < 1) upgrade.createStore('rows', { keyPath: 'id' })

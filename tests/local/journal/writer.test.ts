@@ -321,7 +321,7 @@ test("the budget counts the old auto save, and leaves it room to grow to the jou
 })
 
 test('each commit covering a key clears it, one per session, and a later load finds none', async () => {
-    // The same where IndexedDB has no `durability` option (Firefox before 126).
+    // The same where IndexedDB has no `durability` option.
     const world = createWorld({ seed: 12 })
     const page = await openJournalPage(world, 'a')
     let state = stateOf(goldenChart())

@@ -534,7 +534,7 @@ test("a failed worker read in the canary or the migration's dedupe never stops t
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
 })
 
-test('without `durability` (Firefox before 126) the key stays after the commit, and the next load only deletes it', async () => {
+test('without `durability` the key stays after the commit, and the next load only deletes it', async () => {
     const world = createWorld({ seed: 20 })
     const storage = new MemoryStorage()
     const text = autoSaveOf(stateOf(goldenChart()))

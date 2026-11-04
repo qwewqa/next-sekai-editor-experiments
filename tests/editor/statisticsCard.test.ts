@@ -234,30 +234,6 @@ test('a long title takes two lines and an ellipsis; empty fields leave their lin
     assert.ok(texts(untitled).includes('Untitled'))
 })
 
-test('without Intl.Segmenter the card still wraps and cuts', () => {
-    const segmenter = Intl.Segmenter
-    // @ts-expect-error: the browsers before it
-    delete Intl.Segmenter
-    try {
-        const calls = draw({
-            info: { title: '例のとても長いタイトル'.repeat(12), artists: 'A', author: '' },
-        })
-        const lines = calls.filter(
-            (call) => call.name === 'fillText' && call.font.startsWith('700 26px'),
-        )
-        assert.equal(lines.length, 2)
-        assert.ok(String(lines[1]!.args[0]).endsWith('…'))
-        // Latin text breaks between words.
-        const latin = draw({ info: { title: 'Alpha Beta '.repeat(20), artists: '', author: '' } })
-        const [first] = latin.filter(
-            (call) => call.name === 'fillText' && call.font.startsWith('700 26px'),
-        )
-        assert.match(String(first!.args[0]), /^(Alpha|Beta)( (Alpha|Beta))*$/)
-    } finally {
-        Object.assign(Intl, { Segmenter: segmenter })
-    }
-})
-
 test('a cover that is not square is fitted and centred in its tile', () => {
     for (const [width, height, expected] of [
         [1920, 1080, [16, 16 + (88 - 49.5) / 2, 88, 49.5]],

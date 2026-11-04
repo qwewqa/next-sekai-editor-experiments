@@ -18,7 +18,7 @@ import type { KvFactory } from './kv/types'
 // `local/startup` (a unit test pins that). The way out when a storage bug ships.
 
 /**
- * The ZIP's first entry, DEFLATE (STORE in a browser without `CompressionStream`): the dump
+ * The ZIP's first entry, DEFLATE (STORE when the stream fails): the dump
  * format, each Blob a `$blobEntry` naming a STORE entry after it, `blobs/<n>`, which holds its
  * bytes as stored, or a `$blobUnreadable` when it could not be read.
  */
@@ -80,11 +80,10 @@ const openExisting = async (factory: KvFactory | undefined) => {
 }
 
 /**
- * Raw DEFLATE through `CompressionStream`, a chunk at a time. Undefined where the browser has no
- * `deflate-raw` stream (Firefox before 113): `dump.json` is then stored uncompressed.
+ * Raw DEFLATE through `CompressionStream`, a chunk at a time. Undefined when the stream fails:
+ * `dump.json` is then stored uncompressed, so the export still completes.
  */
 const deflateStream = async (blob: Blob): Promise<Blob | undefined> => {
-    if (typeof CompressionStream === 'undefined') return
     try {
         const stream = blob.stream().pipeThrough(new CompressionStream('deflate-raw'))
         return await new Response(stream).blob()

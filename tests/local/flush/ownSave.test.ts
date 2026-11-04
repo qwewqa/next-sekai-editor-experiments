@@ -361,10 +361,9 @@ test("a journal-only reload's recovered entry is no hole: if it is lost, the che
 })
 
 // ---------------------------------------------------------------------------------------------
-// The two power losses: `loseRelaxed(k)` models Chromium and Firefox 126 and later,
-// which honour `strict`; `loseCommits(n)` Firefox before 126, which does not. A commit clears the
-// journal it covers, so a loss that undoes that commit loses its edits with it: the
-// stated residual. The store stays whole, and the session opens at what is left.
+// The two power losses: `loseRelaxed(k)` models an IndexedDB that honours `strict`;
+// `loseCommits(n)` one that does not. A commit clears the journal it covers, so a loss that
+// undoes that commit loses its edits with it: the stated residual. The store stays whole, and the session opens at what is left.
 
 const lostEdit = async (seed: number, strict: boolean, lose: (world: World) => number) => {
     const world = createWorld({ seed, commitLog: true })
@@ -391,7 +390,7 @@ test('loseRelaxed after a relaxed commit cleared the journal: the edit is lost, 
     await lostEdit(3403, false, (world) => world.memory.loseRelaxed(1))
 })
 
-test('loseCommits (Firefox before 126) after a strict commit cleared the journal: the edit is lost, the store whole', async () => {
+test('loseCommits (durability ignored) after a strict commit cleared the journal: the edit is lost, the store whole', async () => {
     await lostEdit(3402, true, (world) => world.memory.loseCommits(1))
 })
 

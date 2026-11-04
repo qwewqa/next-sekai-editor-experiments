@@ -264,7 +264,7 @@ test('the project picker lists .nxsp only, and a build that outlasted the press 
     expect(await pickerCalls(page)).toHaveLength(1)
 })
 
-// Save accepts level data from either gzip implementation.
+// Save accepts level data gzipped by the browser or by pako at level 9.
 for (const [compression, variant] of [
     ["the browser's stream", 0],
     ['level 9', 1],
@@ -275,12 +275,19 @@ for (const [compression, variant] of [
         await start(page)
         const level = await page.evaluate(async (variant) => {
             const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
-            const { gunzipBlob, gzipLevel9 } = await import('/src/utils/gzipStream.ts')
+            const { gunzipBlob } = await import('/src/utils/gzipStream.ts')
+            const pakoUrl = performance
+                .getEntriesByType('resource')
+                .map((entry) => entry.name)
+                .find((url) => new URL(url).pathname.endsWith('/pako.js'))!
+            const { gzip } = (await import(pakoUrl)) as typeof import('pako')
             const built = await buildLevelData()
             const blob =
                 variant === 0
                     ? built
-                    : new Blob([gzipLevel9(new TextDecoder().decode(await gunzipBlob(built)))])
+                    : new Blob([
+                          gzip(new TextDecoder().decode(await gunzipBlob(built)), { level: 9 }),
+                      ])
             return [...new Uint8Array(await blob!.arrayBuffer())]
         }, variant)
         await writeFile(page, 'LevelData', level)

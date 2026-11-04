@@ -733,8 +733,8 @@ export class Run {
     /**
      * What a page that dies must still have afterwards: the rows a strict commit holds, or
      * that an earlier strict commit made durable. A kill keeps them and so does a power loss; where
-     * commits are not durable when they resolve (Firefox before 126) the commits a loss undoes
-     * take their pledges with them.
+     * commits are not durable when they resolve, the commits a loss undoes take their pledges
+     * with them.
      */
     private pledge() {
         for (const row of rows(this.world, 'entries').values()) {
@@ -1598,9 +1598,8 @@ const scriptRun = async (seed: number, fx: boolean, script: string) => {
 }
 
 /**
- * Defines the model tests of one power-loss model. `loseRelaxed` and Firefox before 126's
- * `loseCommits` are two files so that the runner runs them side by side, and each has seeds of
- * its own.
+ * Defines the model tests of one power-loss model. `loseRelaxed` and `loseCommits` are
+ * two files so that the runner runs them side by side, and each has seeds of its own.
  */
 export const defineModelTests = (fx: boolean) => {
     const gate = process.env.NSE_MODEL_GATE === '1'
@@ -1611,7 +1610,7 @@ export const defineModelTests = (fx: boolean) => {
           ? Array.from({ length: 16 }, (_, i) => 101 * (i + 1))
           : [101, 202, 303, 404, 505, 606]
     const runs = Number(process.env.NSE_MODEL_RUNS ?? (gate ? 25 : 5))
-    const label = fx ? ', Firefox before 126' : ''
+    const label = fx ? ', durability ignored' : ''
 
     const script = process.env.NSE_MODEL_SCRIPT
     if (script) {

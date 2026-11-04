@@ -47,7 +47,7 @@ export type RecoveryContext = {
     appVersion: string
     /** Safe mode writes nothing in localStorage but settings. */
     safe: boolean
-    /** IndexedDB has no `durability` (Firefox before 126): no commit is synced. */
+    /** This IndexedDB has no `durability` option, so no commit is known to be synced. */
     noDurability?: boolean
     /** The label of a `recovered` entry, and of the migrated session's `init` entry. */
     operations: { recovered: (dropped: number) => JsonValue; migrated: JsonValue }

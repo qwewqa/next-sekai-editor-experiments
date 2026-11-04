@@ -602,10 +602,10 @@ export class MemoryKv {
     }
 
     /**
-     * A power loss on Chromium or Firefox 126 and later, which honour `strict`: undoes the last
-     * `count` relaxed commits since the last strict one (a `'default'` commit is relaxed), and
-     * with them every later one is already gone, so commit order is kept. Returns how many it
-     * undid, and throws when fewer are relaxed. Kill every tab first: nothing may be in flight.
+     * A power loss where IndexedDB honours `strict`: undoes the last `count` relaxed commits
+     * since the last strict one (a `'default'` commit is relaxed), and with them every later one
+     * is already gone, so commit order is kept. Returns how many it undid, and throws when fewer
+     * are relaxed. Kill every tab first: nothing may be in flight.
      */
     loseRelaxed(count: number) {
         if (count > this.relaxedCommits)
@@ -614,8 +614,8 @@ export class MemoryKv {
     }
 
     /**
-     * A power loss on Firefox before 126, which ignores durability: undoes the last `count`
-     * commits whatever their durability, in commit order. Kill every tab first.
+     * A power loss where IndexedDB ignores durability: undoes the last `count` commits whatever
+     * their durability, in commit order. Kill every tab first.
      */
     loseCommits(count: number) {
         if (count > this.loggedCommits)

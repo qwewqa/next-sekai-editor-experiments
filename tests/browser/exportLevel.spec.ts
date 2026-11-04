@@ -597,31 +597,6 @@ test('Export shows one name: the field and the picker agree, for the source and 
     expect(JSON.stringify(call?.types)).toContain('.nsld')
 })
 
-test('Export builds the same level data with and without compression streams', async ({ page }) => {
-    await start(page, opfs)
-    const result = await page.evaluate(async () => {
-        const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
-        const { gunzipBlob } = await import('/src/utils/gzipStream.ts')
-        const first = await buildLevelData()
-        const text = new TextDecoder().decode(await gunzipBlob(first))
-        const streams = { c: window.CompressionStream, d: window.DecompressionStream }
-        Object.assign(window, { CompressionStream: undefined, DecompressionStream: undefined })
-        try {
-            const second = await buildLevelData()
-            return {
-                text,
-                fallback: new TextDecoder().decode(await gunzipBlob(second)),
-                type: second.type,
-            }
-        } finally {
-            Object.assign(window, { CompressionStream: streams.c, DecompressionStream: streams.d })
-        }
-    })
-    expect(result.fallback).toBe(result.text)
-    expect(result.text).toContain('"entities"')
-    expect(result.type).toBe('application/octet-stream')
-})
-
 test('plain-JSON level data gets no Export target', async ({ page }) => {
     await start(page, opfs)
     const json = await page.evaluate(async () => {

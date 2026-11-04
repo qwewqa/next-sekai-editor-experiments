@@ -418,10 +418,13 @@ test('exporting says whether the database was left out, and still throws when th
     )
 })
 
-test('without a deflate-raw stream (Firefox before 113) dump.json is stored, and seeds back the same', async (t) => {
+test('when the deflate stream fails dump.json is stored, and seeds back the same', async (t) => {
     const original = globalThis.CompressionStream
-    // @ts-expect-error: removed, as in a browser without it.
-    delete globalThis.CompressionStream
+    globalThis.CompressionStream = class {
+        constructor() {
+            throw new Error('No stream')
+        }
+    } as unknown as typeof CompressionStream
     t.after(() => {
         globalThis.CompressionStream = original
     })

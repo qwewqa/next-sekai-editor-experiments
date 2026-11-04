@@ -59,24 +59,12 @@ export type CardInput = {
 
 const rgba = ([r, g, b]: Rgb, alpha = 1) => `rgb(${r} ${g} ${b} / ${alpha})`
 
-// --- Text: Intl.Segmenter where the browser has it; otherwise code points, and words at spaces
-// with each CJK character a word of its own.
-const segmenter = (granularity: 'grapheme' | 'word') =>
-    typeof Intl.Segmenter === 'function'
-        ? new Intl.Segmenter(undefined, { granularity })
-        : undefined
-const graphemes = (text: string) => {
-    const each = segmenter('grapheme')
-    return each ? Array.from(each.segment(text), (part) => part.segment) : Array.from(text)
-}
-const fallbackWords =
-    /[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]|[^\s\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]+|\s+/gu
-const words = (text: string) => {
-    const each = segmenter('word')
-    return each
-        ? Array.from(each.segment(text), (part) => part.segment)
-        : (text.match(fallbackWords) ?? [])
-}
+// --- Text
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+const wordSegmenter = new Intl.Segmenter(undefined, { granularity: 'word' })
+const graphemes = (text: string) =>
+    Array.from(graphemeSegmenter.segment(text), (part) => part.segment)
+const words = (text: string) => Array.from(wordSegmenter.segment(text), (part) => part.segment)
 
 /** Lines that fit `width`, at most `max`, the last cut with an ellipsis. */
 const wrap = (
