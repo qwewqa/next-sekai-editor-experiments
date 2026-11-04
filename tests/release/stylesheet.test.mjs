@@ -77,7 +77,7 @@ test("the build step changes the editor's page only", () => {
     assert.equal(handler(built, { path: '/index.html' }), built)
 })
 
-test('the release check wants exactly one stylesheet named after the module script', () => {
+test('the release check requires exactly one stylesheet named after the module script', () => {
     const entry =
         '<link rel="stylesheet" crossorigin media="all" href="/assets/index-BhLTRPPx.css">'
     assert.equal(

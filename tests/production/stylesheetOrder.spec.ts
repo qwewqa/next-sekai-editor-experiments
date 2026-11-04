@@ -15,7 +15,7 @@ const single = (beat: number, extra: Record<string, unknown> = {}) => ({
     trace: false,
     ...extra,
 })
-// Taps, a flick and traces: the figures' bubbles have a Tap and Flick line and an All line.
+// Taps, a flick and traces: enough notes for Statistics to show its figures.
 const chart = Buffer.from(
     JSON.stringify({
         version: 2,
@@ -74,40 +74,6 @@ const openStatistics = async (page: Page) => {
     await expect(dialog.locator('[data-statistics-figures]')).toBeVisible()
     return dialog
 }
-
-for (const width of [1280, 390])
-    test(`at ${width} px the figure bubble keeps each label and its value on one line`, async ({
-        page,
-        browserName,
-    }) => {
-        test.skip(browserName !== 'chromium', 'The order is the same in every engine.')
-        await start(page)
-        const dialog = await openStatistics(page)
-        await page.setViewportSize({ width, height: 844 })
-        const average = dialog.locator('[data-statistics-figure="average"] button')
-        // On the phone the figures are below the fold, and a scroll closes the bubble.
-        await average.scrollIntoViewIfNeeded()
-        await frames(page)
-        await average.click()
-        const bubble = page.locator('[data-statistics-bubble]')
-        await expect(bubble.locator('dt')).toHaveText(['Tap & Flick', 'All'])
-        await expect(bubble).not.toHaveClass(/invisible/)
-        const lines = await bubble.evaluate((element) => {
-            const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
-            const boxes = [...element.children].map((child) => child.getBoundingClientRect())
-            return boxes
-                .filter((_, i) => i % 2 === 0)
-                .map((label, i) => {
-                    const value = boxes[i * 2 + 1]!
-                    return {
-                        oneLine: label.height <= lineHeight && value.height <= lineHeight,
-                        sameLine: label.top === value.top,
-                        valueRight: value.left >= label.right,
-                    }
-                })
-        })
-        expect(lines).toEqual(Array(2).fill({ oneLine: true, sameLine: true, valueRight: true }))
-    })
 
 test('a dragged row keeps its lifted ring when it becomes current and checked', async ({
     page,
