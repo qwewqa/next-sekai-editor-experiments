@@ -2,7 +2,6 @@
 
 ## Unreleased
 
-- When a failed save or export leaves the chosen file empty, its error message says so.
 - Added Show Combo to Preview Settings and Settings › Preview.
 - Preview Settings now opens in the Preview panel when most of it fits, and scrolls the rest.
 - In Brush Properties, a value now goes below its label when the label would wrap onto more than two lines.
@@ -16,7 +15,10 @@
 - Some chart properties now have an info button that shows what the property does. To hide these buttons, turn off Settings › Editor › Show Property Descriptions.
 - Save (P or Ctrl/Cmd+S) now saves a project file (.nxsp) instead of level data. The file contains the chart and Level Info, and can include the history and BGM. Open (O) opens project files.
 - Export Level Data (Shift+P) exports level data for Sonolus.
-- (Web) In desktop Chrome and Edge, saving again updates the project file and exporting again updates the exported file. In other browsers, the file picker opens again or a new file downloads.
+- (Web) Added Settings › Local Data › Write to Chosen Files in browsers that support it. On Auto, saves and exports are written to the files you choose or downloaded, depending on the browser. Disabled always downloads them.
+- (Web) When saves and exports are written to the files you choose, saving again updates the project file and exporting level data again updates the exported file.
+- (Web) When a save or export cannot be written to the file you chose, an error message now says so. It also says if the file was left empty.
+- (Web) Some save and export errors now offer Always Download. It sets Write to Chosen Files to Disabled and retries the save or export.
 - (Web) The editor stores your work in your browser as sessions and resumes your last session when you return. On the first launch after this update, it opens your old auto save. Save a project file to keep your work.
 - Reset is now New (N). New shows a confirmation when the chart has unsaved changes. The previous session stays in Recent Sessions. The notice shown after New has a Reopen button to return to it.
 - Added History (Shift+H), with Timeline and Recent Sessions tabs. Timeline lists each change. You can view the chart at any Timeline step and choose Restore to return to that version.
