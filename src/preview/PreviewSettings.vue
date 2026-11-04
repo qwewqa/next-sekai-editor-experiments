@@ -21,6 +21,8 @@ import { previewAspectRatios, previewNoteSpeed, previewRenderScale } from './opt
 import { panelPositionOptions, previewTransportOptions } from './settingsOptions'
 import SelectValue from '../modals/form/SelectValue.vue'
 import { handOffPreviewSettings, type ControlsMetrics } from './usePreviewViewport'
+import { previewAssets } from '../editor/commands/previewAssets'
+import { runCommand } from '../editor/commands/runCommand'
 
 const props = defineProps<{
     /** Hides the toggle where it would sit on the playback bar. */
@@ -69,6 +71,9 @@ watch(
             const target = event.target
             if (!(target instanceof Node)) return
             if (controls.value?.contains(target) || toggle.value?.contains(target)) return
+            // A press in a modal dialog, such as Preview Assets opened from the form, is not a
+            // press on the editor.
+            if (target instanceof Element && target.closest('dialog')) return
             expanded.value = false
         }
         document.addEventListener('pointerdown', onPointerDown, true)
@@ -201,7 +206,9 @@ const fitRows = () => {
     for (const row of rows) row.classList.toggle('preview-setting-stacked', labelStacked.has(row))
     const valueStacked = rows.filter((row) => {
         if (labelStacked.has(row)) return false
-        const control = row.querySelector<HTMLElement>('.preview-toggle, select.preview-field')
+        const control = row.querySelector<HTMLElement>(
+            '.preview-toggle, select.preview-field, .preview-assets',
+        )
         const others = control instanceof HTMLSelectElement ? [] : [enabled, disabled]
         return !!control && valueOverflows(control, others)
     })
@@ -240,7 +247,7 @@ if (props.focusPlacement) {
             await nextTick()
             const field = placement.value
             field?.focus({ preventScroll: true })
-            // A form taller than its space scrolls; the field is its last row.
+            // A form taller than its space scrolls; the field is near its end.
             const body = controlsBody.value
             if (!field || !body) return
             const below = field.getBoundingClientRect().bottom - body.getBoundingClientRect().bottom
@@ -320,6 +327,10 @@ const onChange = (event: Event) => {
     ) {
         target.blur()
     }
+}
+
+const openAssets = () => {
+    void runCommand(previewAssets, 'panel')
 }
 
 const onPlacementChange = () => {
@@ -604,6 +615,20 @@ const onPlacementChange = () => {
                         </span>
                     </span>
                 </label>
+
+                <div class="preview-setting">
+                    <span class="preview-setting-label">{{ i18n.settings.preview.assets }}</span>
+                    <span class="preview-setting-control flex">
+                        <button
+                            type="button"
+                            class="preview-assets btn btn-secondary h-8 min-w-0 max-w-full truncate rounded-full px-4"
+                            data-preview-settings-assets
+                            @click="openAssets"
+                        >
+                            {{ i18n.commands.previewAssets.title }}
+                        </button>
+                    </span>
+                </div>
             </div>
             <OverlayScrollbar :target="controlsBody" />
         </div>

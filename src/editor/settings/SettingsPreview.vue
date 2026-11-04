@@ -13,7 +13,8 @@ import { showPreviewAssets } from '../commands/previewAssets/modal'
 import { closeSettingsKey } from './closeSettings'
 import SettingsSection from './SettingsSection.vue'
 
-// Same order and labels as the preview's own settings form. Placement is under Panels.
+// Same order and labels as the preview's own settings form, which puts Assets last. Placement is
+// under Panels.
 const closeSettings = inject(closeSettingsKey, undefined)
 const openAssets = () => {
     closeSettings?.()

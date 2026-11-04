@@ -231,6 +231,23 @@ test.describe('ways in', () => {
         await expect(page.getByRole('menuitem', { name: 'Preview Assets' })).toHaveCount(0)
     })
 
+    test('the last row of Preview Settings opens it, and focus returns there', async ({ page }) => {
+        await start(page)
+        await page.evaluate(() => (window.editorTest.settings.previewControls = 'expanded'))
+        const form = page.locator('.preview-controls')
+        await expect(form).toBeVisible()
+        const button = form.locator('.preview-setting').last().getByRole('button')
+        await expect(button).toHaveText('Preview Assets')
+        await button.focus()
+        await page.keyboard.press('Enter')
+        await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
+        await expect(selectedTab(page)).toHaveText('Skin')
+        await page.keyboard.press('Escape')
+        await expect(dialog(page)).toHaveCount(0)
+        await expect(button).toBeFocused()
+        await expect(form).toBeVisible()
+    })
+
     test("the panel's fallback line opens it on that type's tab", async ({ page }) => {
         await start(page, { fail: ['default-particle'] })
         const line = fallbackLine(page, 'particle')
@@ -244,6 +261,69 @@ test.describe('ways in', () => {
         await page.keyboard.press('Escape')
         await open(page)
         await expect(selectedTab(page)).toContainText('Particle')
+    })
+})
+
+test.describe('from Preview Settings on a phone', () => {
+    test.use({ isMobile: true, hasTouch: true })
+
+    const showForm = async (page: Page, locale = 'en') => {
+        await start(page)
+        await page.evaluate((locale) => {
+            const settings = window.editorTest.settings
+            settings.locale = locale as typeof settings.locale
+            settings.previewPosition = 'top'
+            settings.previewControls = 'expanded'
+        }, locale)
+        const form = page.locator('.preview-controls')
+        await expect(form).toBeVisible()
+        return form
+    }
+    const controlsSetting = (page: Page) =>
+        page.evaluate(() => window.editorTest.settings.previewControls)
+
+    test('presses in the dialog leave the form open, and a later press outside closes it', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        const form = await showForm(page)
+        await form.getByRole('button', { name: 'Preview Assets' }).tap()
+        await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
+        await dialog(page).getByRole('tab', { name: 'Particle' }).tap()
+        await expect(selectedTab(page)).toHaveText('Particle')
+        await dialog(page).getByRole('button', { name: 'Close', exact: true }).tap()
+        await expect(dialog(page)).toHaveCount(0)
+        await expect(form).toBeVisible()
+        expect(await controlsSetting(page)).toBe('expanded')
+
+        const box = (await form.boundingBox())!
+        await page.touchscreen.tap(4, box.y + box.height + 8)
+        await expect(form).toBeHidden()
+        expect(await controlsSetting(page)).toBe('collapsed')
+    })
+
+    test('in French at 320 px the button goes under its label, whole, and scrolls into view', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 320, height: 568 })
+        const form = await showForm(page, 'fr')
+        const body = form.locator('.preview-controls-body')
+        const row = form.locator('.preview-setting').last()
+        const button = row.getByRole('button', { name: 'Ressources d’aperçu' })
+        await expect(row).toHaveClass(/preview-setting-stacked/)
+        expect(await button.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+            true,
+        )
+        // The form scrolls here; at its end the button shows whole, with no fade over it.
+        expect(await body.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
+            true,
+        )
+        await body.evaluate((element) => (element.scrollTop = element.scrollHeight))
+        await expect(body).not.toHaveAttribute('data-scroll-after')
+        const inner = (await body.boundingBox())!
+        const face = (await button.boundingBox())!
+        expect(face.y).toBeGreaterThanOrEqual(inner.y)
+        expect(face.y + face.height).toBeLessThanOrEqual(inner.y + inner.height)
     })
 })
 

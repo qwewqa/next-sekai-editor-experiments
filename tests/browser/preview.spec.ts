@@ -1984,7 +1984,7 @@ test.describe('preview aspect ratios', () => {
             window.editorTest.settings.topDockHeight = 140
             window.editorTest.settings.previewControls = 'expanded'
         })
-        await page.setViewportSize({ width: 1069, height: 900 })
+        await page.setViewportSize({ width: 1069, height: 944 })
         await settle(page)
         const controls = page.locator('.preview-controls')
         const body = controls.locator('.preview-controls-body')
@@ -2265,8 +2265,9 @@ test('preview options share persisted settings with the main options menu', asyn
     await expect(preview.getByRole('combobox', { name: 'Position', exact: true })).toHaveValue(
         'auto',
     )
-    // Both entry points list the shared options in the same order; Settings adds the Assets row,
-    // and Parallel Rendering, a setting for a device whose preview looks wrong.
+    // Both entry points list the shared options in the same order. The form ends with Position and
+    // Assets; Settings starts with Assets and adds Parallel Rendering, a setting for a device whose
+    // preview looks wrong.
     const order = [
         'Note Speed',
         'Highlight Selection',
@@ -2283,7 +2284,7 @@ test('preview options share persisted settings with the main options menu', asyn
         (await preview.locator('.preview-setting-label').allTextContents()).map((text) =>
             text.trim(),
         ),
-    ).toEqual([...order, 'Position'])
+    ).toEqual([...order, 'Position', 'Assets'])
     const speed = preview.getByRole('spinbutton', { name: 'Note Speed', exact: true })
     const scale = preview.getByRole('spinbutton', { name: 'Render Scale', exact: true })
     await speed.fill('9.25')
@@ -2710,7 +2711,10 @@ test.describe('preview panel lifecycle', () => {
         await page.keyboard.press('Shift+Tab')
         await expect(toggle).toBeFocused()
         // Leaving the end of the form continues after the toggle, not at the page end.
-        await page.locator('.preview-controls select').last().focus()
+        await page
+            .locator('.preview-controls')
+            .getByRole('button', { name: 'Preview Assets', exact: true })
+            .focus()
         await page.keyboard.press('Tab')
         expect(
             await page.evaluate(() => {

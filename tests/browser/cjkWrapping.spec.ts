@@ -87,9 +87,13 @@ test('Preview Settings labels make room for a phrase rather than break inside it
     await expect.poll(() => label('アンチエイリアス')).toEqual(['アンチエイリアス'])
     await expect.poll(() => label('再生コントロール')).toEqual(['再生コントロール'])
     await expect.poll(() => label('選択対象を強調表示')).toEqual(['選択対象を', '強調表示'])
-    // Controls share one column, and no value truncates.
+    // Controls beside their labels share one column, and no value truncates. The Assets button
+    // is too wide for that column, so it goes under its label.
+    await expect(form.locator('.preview-setting.preview-setting-stacked')).toHaveText(
+        /^\s*アセット\s*プレビューアセット\s*$/,
+    )
     const edges = await form
-        .locator('.preview-setting-control')
+        .locator('.preview-setting:not(.preview-setting-stacked) .preview-setting-control')
         .evaluateAll((elements) =>
             elements.map((element) => Math.round(element.getBoundingClientRect().left)),
         )

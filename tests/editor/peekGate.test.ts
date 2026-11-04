@@ -266,6 +266,7 @@ const entryPoints = [
     'src/editor/switch.ts',
     'src/editor/toolbar/LevelEditorToolbar.vue',
     'src/editor/workspace/properties/ViewProperties.vue',
+    'src/preview/PreviewSettings.vue',
 ]
 
 test('every command entry point runs commands through runCommand', () => {
