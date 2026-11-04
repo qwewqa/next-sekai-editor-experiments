@@ -80,7 +80,7 @@ const onClick = (event: MouseEvent) => {
     blurPointerClick(event, 'dialog, [data-tool-dialog]')
 }
 
-const input = 'peer absolute inset-0 size-full cursor-pointer opacity-0'
+const input = 'peer absolute inset-0 size-full opacity-0'
 
 // Both names show side by side when they fit in full; otherwise a select.
 const layout = ref<ChoiceLayout>('select')

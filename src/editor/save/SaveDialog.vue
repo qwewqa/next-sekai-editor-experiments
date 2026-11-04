@@ -222,7 +222,7 @@ const boxClass =
                     <input
                         v-model="history"
                         type="checkbox"
-                        class="peer absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-default"
+                        class="peer absolute inset-0 size-full opacity-0"
                         :disabled="historyDisabled"
                         :aria-labelledby="`${ids}-history-label`"
                         :aria-describedby="`${ids}-history`"
@@ -255,7 +255,7 @@ const boxClass =
                     <input
                         v-model="bgm"
                         type="checkbox"
-                        class="peer absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-default"
+                        class="peer absolute inset-0 size-full opacity-0"
                         :disabled="bgmDisabled"
                         :aria-labelledby="`${ids}-bgm-label`"
                         :aria-describedby="`${ids}-bgm`"

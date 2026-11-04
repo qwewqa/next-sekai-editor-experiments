@@ -1060,7 +1060,7 @@ const color = (category: Category) => chartCategoryColors[category]
             <label v-for="item in modes" :key="item.value" class="segment-choice relative">
                 <input
                     v-model="mode"
-                    class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                    class="peer absolute inset-0 size-full opacity-0"
                     type="radio"
                     :name="modeName"
                     :value="item.value"

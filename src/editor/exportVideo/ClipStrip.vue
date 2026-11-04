@@ -262,7 +262,7 @@ onBeforeUnmount(() => {
     <div
         ref="root"
         class="clip-strip relative min-w-0 flex-1 select-none"
-        :class="drag ? 'cursor-ew-resize' : 'cursor-pointer'"
+        :class="drag && 'cursor-ew-resize'"
         :style="{ height: `${rulerHeight + trackHeight}px` }"
         data-clip-strip
         @pointerdown="onPointerDown"

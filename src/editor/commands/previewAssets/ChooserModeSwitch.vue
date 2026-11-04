@@ -31,7 +31,7 @@ const choice = 'segment-choice relative min-w-0 flex-1'
         <label v-for="item in ['file', 'server'] as const" :key="item" :class="choice">
             <input
                 v-model="mode"
-                class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                class="peer absolute inset-0 size-full opacity-0"
                 type="radio"
                 :name
                 :value="item"

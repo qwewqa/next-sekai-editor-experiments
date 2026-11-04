@@ -59,7 +59,7 @@ const boxClass =
                         <input
                             v-model="range"
                             type="radio"
-                            class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                            class="peer absolute inset-0 size-full opacity-0"
                             :name="`${ids}-range`"
                             :value="item.range"
                             :data-autofocus="item.range === DEFAULT_RANGE || undefined"
@@ -79,7 +79,7 @@ const boxClass =
                     <input
                         v-model="includeNotSaved"
                         type="checkbox"
-                        class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                        class="peer absolute inset-0 size-full opacity-0"
                     />
                     <span :class="boxClass" aria-hidden="true" />
                     <span class="pointer-events-none min-w-0 flex-1">{{

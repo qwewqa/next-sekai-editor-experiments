@@ -178,7 +178,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                         @toggle="toggle(index, $event)"
                     >
                         <summary
-                            class="ghost flex cursor-pointer list-none items-baseline gap-2 rounded-lg px-2 py-2 [&::-webkit-details-marker]:hidden"
+                            class="ghost flex list-none items-baseline gap-2 rounded-lg px-2 py-2 [&::-webkit-details-marker]:hidden"
                         >
                             <span class="flex h-6 shrink-0 items-center self-start">
                                 <ChevronIcon

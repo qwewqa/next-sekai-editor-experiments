@@ -2169,7 +2169,6 @@ onUnmounted(() => {
                                             : i18n.elevation.off
                                     "
                                     :class="headerSelect"
-                                    class="cursor-pointer"
                                     :aria-label="i18n.elevation.snapping"
                                 >
                                     <option :value="0">{{ i18n.elevation.off }}</option>

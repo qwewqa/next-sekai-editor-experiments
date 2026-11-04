@@ -32,11 +32,11 @@ watch(
 
 <template>
     <label
-        class="asset-row row-select relative flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-3 py-1 has-disabled:pointer-events-none has-disabled:opacity-40"
+        class="asset-row row-select relative flex min-h-12 items-center gap-3 rounded-xl px-3 py-1 has-disabled:pointer-events-none has-disabled:opacity-40"
     >
         <input
             type="radio"
-            class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+            class="peer absolute inset-0 size-full opacity-0"
             :name="group"
             :checked="checked"
             :disabled="disabled"

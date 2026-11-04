@@ -33,7 +33,7 @@ const isDetailOpen = ref(false)
             >
                 <!-- The shared chevron in place of the native marker. -->
                 <summary
-                    class="focus-ring flex h-8 cursor-pointer list-none items-center justify-center gap-2 rounded-full px-3 [&::-webkit-details-marker]:hidden"
+                    class="focus-ring flex h-8 list-none items-center justify-center gap-2 rounded-full px-3 [&::-webkit-details-marker]:hidden"
                 >
                     <ChevronIcon :direction="isDetailOpen ? 'down' : 'right'" />
                     {{ i18n.preview.errorDetails }}

@@ -425,12 +425,12 @@ const onPlacementChange = () => {
                     </span>
                 </div>
 
-                <label v-for="[key, label] in toggles" :key class="preview-setting cursor-pointer">
+                <label v-for="[key, label] in toggles" :key class="preview-setting">
                     <span class="preview-setting-label">{{ label }}</span>
                     <span class="preview-setting-control group relative">
                         <input
                             v-model="settings[key]"
-                            class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                            class="peer absolute inset-0 size-full opacity-0"
                             type="checkbox"
                             role="switch"
                             :aria-label="label"
@@ -468,7 +468,7 @@ const onPlacementChange = () => {
                             <!-- A pointer click on the checked segment changes nothing, so it returns shortcuts here. -->
                             <input
                                 v-model="settings.previewAspectRatio"
-                                class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                                class="peer absolute inset-0 size-full opacity-0"
                                 type="radio"
                                 :name="`${id}-aspect`"
                                 :value
@@ -513,12 +513,12 @@ const onPlacementChange = () => {
                     </span>
                 </div>
 
-                <label class="preview-setting cursor-pointer">
+                <label class="preview-setting">
                     <span class="preview-setting-label">{{ i18n.settings.preview.antialias }}</span>
                     <span class="preview-setting-control group relative">
                         <input
                             v-model="settings.previewAntialias"
-                            class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                            class="peer absolute inset-0 size-full opacity-0"
                             type="checkbox"
                             role="switch"
                             :aria-label="i18n.settings.preview.antialias"
@@ -553,7 +553,7 @@ const onPlacementChange = () => {
                                     previewTransportOptions,
                                 )
                             "
-                            class="preview-field btn btn-secondary cursor-pointer appearance-none pr-9"
+                            class="preview-field btn btn-secondary appearance-none pr-9"
                         >
                             <option
                                 v-for="[label, value] in previewTransportOptions"
@@ -592,7 +592,7 @@ const onPlacementChange = () => {
                             v-model="positionField"
                             :aria-labelledby="`${id}-placement`"
                             :title="optionName(settings.previewPosition, panelPositionOptions)"
-                            class="preview-field btn btn-secondary cursor-pointer appearance-none pr-9"
+                            class="preview-field btn btn-secondary appearance-none pr-9"
                             @change="onPlacementChange"
                         >
                             <option
@@ -740,7 +740,6 @@ const onPlacementChange = () => {
 .preview-range {
     appearance: none;
     background: transparent;
-    cursor: pointer;
     height: 2rem;
     @apply rounded-full;
 }

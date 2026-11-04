@@ -75,7 +75,7 @@ const onClose = () => {
         >
             <!-- The shared chevron in place of the native marker. -->
             <summary
-                class="focus-ring flex h-8 w-fit cursor-pointer list-none items-center gap-2 rounded-full pr-3 [&::-webkit-details-marker]:hidden"
+                class="focus-ring flex h-8 w-fit list-none items-center gap-2 rounded-full pr-3 [&::-webkit-details-marker]:hidden"
             >
                 <ChevronIcon :direction="isDetailOpen ? 'down' : 'right'" />
                 {{ i18n.preview.errorDetails }}

@@ -19,11 +19,11 @@ defineEmits<{
         <label
             v-for="option in options"
             :key="option.type"
-            class="row-select relative flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-3 py-1"
+            class="row-select relative flex min-h-10 items-center gap-3 rounded-xl px-3 py-1"
         >
             <input
                 type="checkbox"
-                class="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                class="peer absolute inset-0 size-full opacity-0"
                 :checked="option.ticked"
                 :disabled
                 :data-chooser-also-type="option.type"

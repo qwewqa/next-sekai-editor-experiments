@@ -433,7 +433,7 @@ const share = () => {
 
 /* A row with a breakdown: its value is a button whose ::before covers the row. */
 .stats-split {
-    @apply cursor-pointer tabular-nums outline-hidden select-none;
+    @apply tabular-nums outline-hidden select-none;
     -webkit-tap-highlight-color: transparent;
     text-decoration: underline dotted color-mix(in srgb, var(--color-fg) 60%, transparent);
     text-decoration-thickness: 1px;
@@ -778,7 +778,6 @@ const share = () => {
     position: relative;
     display: block;
     border-radius: 0.5rem;
-    cursor: pointer;
 }
 .stats-entry input {
     position: absolute;
