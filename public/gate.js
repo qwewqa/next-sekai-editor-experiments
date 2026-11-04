@@ -169,7 +169,6 @@
             button.style.background = 'transparent'
             button.style.border = '1px solid currentColor'
             button.style.borderRadius = '0.5rem'
-            button.style.cursor = 'pointer'
             button.addEventListener('click', function () {
                 download(win, file)
             })
