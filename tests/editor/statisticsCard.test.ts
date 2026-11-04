@@ -321,7 +321,7 @@ const figureCalls = (calls: Call[]) => {
     )
 }
 
-test('Average and Median end at the right edge of the footer, on the heading line', () => {
+test("Average and Median end at the right edge of the footer, on the heading's line, which is Combo's", () => {
     const figures = figuresOf(mixed)
     assert.ok(figures?.hasPrimary && figures.hasSecondary)
     const calls = draw({ chosen: mixed, figures })
@@ -330,11 +330,13 @@ test('Average and Median end at the right edge of the footer, on the heading lin
     const average = `${figures.primary.average.toFixed(1)} (${figures.all.average.toFixed(1)})`
     const median = `${figures.primary.median} (${figures.all.median})`
     const [medianValue, medianLabel, averageValue, averageLabel] = figureCalls(calls)
+    const comboLabel = textCall(calls, en.statistics.combo)
+    assert.ok(comboLabel)
     assert.deepEqual(
         [medianValue, medianLabel, averageValue, averageLabel].map((call) => call?.args[0]),
         [median, 'Median', average, 'Average'],
     )
-    for (const call of [medianValue, medianLabel, averageValue, averageLabel])
+    for (const call of [medianValue, medianLabel, averageValue, averageLabel, comboLabel])
         assert.equal(call?.args[2], heading.args[2])
     assert.equal(xOf(medianValue), 784)
     assert.equal(xOf(medianLabel), 784 - widthOf(median, 15) - 6)

@@ -294,17 +294,19 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     const linkLines = input.link ? wrap(g, input.link, WIDTH - 2 * PAD - productWidth, 2, true) : []
     const footerHeight = linkLines.length ? linkLines.length * 18 + 4 : 20
 
-    // --- Combo and the rows: every non-zero Combo row, none cut.
+    // --- Combo and the rows: every non-zero Combo row, none cut. Combo's label and the chart's
+    // heading share a baseline.
     const top = bandHeight + PAD
+    const headingY = top + 14
     const listWidth = 236
     g.fillStyle = rgba(theme.fg, 0.8)
     g.font = font(14, 700)
-    g.fillText(strings.combo, PAD, top + 14)
+    g.fillText(strings.combo, PAD, headingY)
     g.fillStyle = rgba(theme.fg)
     g.font = font(44, 700)
     g.fillText(formatCount(input.stats.combo, locale), PAD, top + 18 + 44 * 0.95)
     const rowsTop = top + 18 + 44 * 1.1 + 6
-    const rowsBottom = HEIGHT - PAD - footerHeight - 8
+    const rowsBottom = HEIGHT - PAD - footerHeight
     const rows = ROWS.filter((row) => row !== 'fakeNote' && input.stats.counts[row])
     const pitch = Math.max(17, Math.min(27, (rowsBottom - rowsTop) / Math.max(1, rows.length)))
     const small = pitch < 19
@@ -363,12 +365,12 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     g.fillStyle = rgba(theme.fg)
     g.font = font(15, 700)
     const [heading = ''] = wrap(g, strings.notesPerSecond, headingWidth, 1)
-    if (g.measureText(heading).width <= headingWidth) g.fillText(heading, chartX, top + 15)
+    if (g.measureText(heading).width <= headingWidth) g.fillText(heading, chartX, headingY)
     g.textAlign = 'right'
     for (const figure of figures) {
         g.font = font(figure.size)
         g.fillStyle = rgba(theme.fg, figure.alpha)
-        g.fillText(figure.text, figure.x, top + 15)
+        g.fillText(figure.text, figure.x, headingY)
     }
     g.textAlign = 'left'
     const distribution = input.mode === 'distribution'
@@ -384,13 +386,11 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
                 ? [durations.primary, durations.all]
                 : [durations.all]
             : undefined
-    // The plot's edges on whole pixels of the 2x canvas, so its tiles and gridlines are crisp. The
-    // distribution gives the x axis's title 18 units of it.
+    // The plot's edges on whole pixels of the 2x canvas, so its tiles and gridlines are crisp. Its
+    // labels end where the rows do; the distribution gives the x axis's title 18 units of it.
     const snap = (units: number) => Math.round(units * SCALE) / SCALE
-    const plotTop = snap(top + 15 + 14)
-    const plotHeight = snap(
-        HEIGHT - top - 29 - 22 - footerHeight - PAD - 8 - (distribution ? 18 : 0),
-    )
+    const plotTop = snap(headingY + 20)
+    const plotHeight = snap(rowsBottom - 22 - (distribution ? 18 : 0) - plotTop)
     const plotBottom = plotTop + plotHeight
     const ink = input.mode === 'rolling' || distribution
     // The key: one line per chosen category that has notes, in stacking order from the baseline,
