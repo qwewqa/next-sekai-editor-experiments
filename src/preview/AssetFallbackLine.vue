@@ -21,7 +21,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
         <div
             v-for="fallback in panelFallbacks"
             :key="fallback.key"
-            class="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl bg-modal/95 py-1 pr-1 pl-3 text-sm text-fg shadow-md"
+            class="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-[1.125rem] bg-modal/95 py-1 pr-1 pl-3 text-sm text-fg shadow-md"
             :data-asset-fallback="fallback.type"
         >
             <p class="min-w-40 flex-1 py-0.5" data-asset-fallback-text>

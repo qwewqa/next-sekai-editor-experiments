@@ -58,12 +58,14 @@ Shape says what a thing is, and corners that nest should share a centre.
 
 - **`rounded-full`** is the default for anything you press or type into: buttons, fields, list rows, tab pills, segments, chips and strips.
 - **`rounded-xl`** (12 px) is for dialogs, floating cards and multi-line selectable rows in dialogs (`.row-select` in `SaveDialog.vue` and the Preview Assets rows), where a pill would over-round a tall row.
-- **`rounded-lg`** (8 px) is for menus, small thumbnails and the Properties subsection toggle. **`rounded`** (4 px) is for menu items and rail tabs, the rows inside a rectangular container.
+- **`rounded-lg`** (8 px) is for menus, small thumbnails and the Properties subsection toggle. **`rounded-sm`** (4 px) is for menu items and rail tabs, the rows inside a rectangular container.
 - **Concentric.** `ManagerRow.vue` states it: "Rows are pills; every control inside is a pill or circle inset evenly by 2px, so shapes stay concentric." A container pads evenly (`p-0.5` or `p-1`) and the controls fill the rest, so the outer radius is the inner radius plus the inset.
   - The peek strip is a pill, 18 px control radius plus 4 px inset.
   - A notice card keeps that corner at any height, `rounded-[1.375rem]` (22 px), so it is a pill at one line and its corners still wrap the 36 px controls at two. The start-up card's 32 px rows fit the same corner (16 + 2 + 4).
   - A timeline row pill is 20 px and its text pill 18 px, inset 2 px.
-- Still present: `rounded-2xl` on the key-binding field button and the asset fallback line, `rounded-md` on one start-up diagnostics block. They predate the rules; do not copy them.
+  - The asset fallback line wraps 28 px controls inset 4 px, `rounded-[1.125rem]` (18 px), so it is a pill at one line.
+- **A field that grows to more lines keeps its one-line corner,** `rounded-2xl` (16 px, half the 32 px line): the key-binding button and the text area. A pill would over-round the taller box.
+- **Raw text blocks,** such as the start-up and Diagnostics details, are `rounded-lg`.
 
 ## 3. Size and spacing
 

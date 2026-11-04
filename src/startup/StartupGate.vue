@@ -99,7 +99,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
             </p>
             <p
                 v-if="startupGate.phase === 'error'"
-                class="max-h-40 w-full overflow-y-auto rounded-md bg-header p-2 text-start text-sm wrap-break-word select-text"
+                class="max-h-40 w-full overflow-y-auto rounded-lg bg-header p-2 text-start text-sm wrap-break-word select-text"
                 data-startup-error
             >
                 {{ startupGate.error }}
