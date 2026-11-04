@@ -463,11 +463,12 @@ test('unassigned shortcuts are muted like other placeholder text', async ({ page
         .locator('button', { hasText: /^Unassigned$/ })
         .first()
     await unassigned.scrollIntoViewIfNeeded()
+    // The ink's alpha as painted: the computed value may be in any colour space.
     const alpha = await unassigned.evaluate((button) => {
-        const match = /rgba?\((?:[\d.]+[ ,]+){3}([\d.]+)/.exec(
-            getComputedStyle(button).color.replace(/\s*\/\s*/, ' '),
-        )
-        return match ? Number(match[1]) : 1
+        const context = document.createElement('canvas').getContext('2d')!
+        context.fillStyle = getComputedStyle(button).color
+        context.fillRect(0, 0, 1, 1)
+        return context.getImageData(0, 0, 1, 1).data[3]! / 255
     })
     // /50 fell to about 2.5:1 contrast.
     expect(alpha).toBeCloseTo(0.8, 2)

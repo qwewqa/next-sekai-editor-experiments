@@ -188,6 +188,8 @@ test('Properties and Settings fields keep their edge, as Preview Settings fields
     await expectEdges(panel(page).locator(pills))
     await page.keyboard.press(',')
     await expect(page.getByRole('dialog')).toBeVisible()
+    // The dialog focuses its first field once open; the edges are read after that, at rest.
+    await expect(page.getByRole('dialog').locator(':focus')).toHaveCount(1)
     await expectEdges(page.getByRole('dialog').locator(pills))
 })
 
@@ -494,7 +496,7 @@ test('the BPM and Time Scale tools keep their chip colours', async ({ page }) =>
     const chip = (title: string) =>
         toolbar
             .getByTitle(title, { exact: true })
-            .locator('.rounded-sm')
+            .locator('.rounded-xs')
             .evaluate((element) => {
                 const { backgroundColor, color } = getComputedStyle(element)
                 return { backgroundColor, color }
@@ -528,9 +530,15 @@ for (const colorScheme of ['light', 'dark'] as const)
         // The time and beat labels on it stay light.
         const label = page.locator('.editor-range-labels span').first()
         await expect(label).toBeVisible()
-        expect(await label.evaluate((element) => getComputedStyle(element).color)).toBe(
-            'rgba(255, 255, 255, 0.7)',
-        )
+        // As painted, in RGBA bytes: the computed value may be in any colour space.
+        expect(
+            await label.evaluate((element) => {
+                const context = document.createElement('canvas').getContext('2d')!
+                context.fillStyle = getComputedStyle(element).color
+                context.fillRect(0, 0, 1, 1)
+                return [...context.getImageData(0, 0, 1, 1).data]
+            }),
+        ).toEqual([255, 255, 255, 179])
         await page.evaluate(async () => {
             const { commands } = await import('/src/editor/commands/index.ts')
             await commands.elevation.execute()

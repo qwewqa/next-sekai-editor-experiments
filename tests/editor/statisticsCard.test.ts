@@ -27,10 +27,7 @@ globalThis.Path2D ??= class {} as unknown as typeof Path2D
  * A 2D context that records its calls; text is 0.55 of its size wide per character, and
  * `bearing` gives the right edge of its ink from the end of its advance where a test needs one.
  */
-const recorder = ({
-    roundRect = true,
-    bearing,
-}: { roundRect?: boolean; bearing?: (text: string) => number } = {}) => {
+const recorder = ({ bearing }: { bearing?: (text: string) => number } = {}) => {
     const calls: Call[] = []
     const state = { fillStyle: '' as unknown, font: '10px sans', textAlign: 'start' }
     const record =
@@ -72,7 +69,7 @@ const recorder = ({
         'beginPath',
         'moveTo',
         'lineTo',
-        'arcTo',
+        'roundRect',
         'closePath',
         'fill',
         'stroke',
@@ -83,7 +80,6 @@ const recorder = ({
         'translate',
     ])
         context[name] = record(name)
-    if (roundRect) context.roundRect = record('roundRect')
     const canvas = { width: 0, height: 0, getContext: () => context }
     return { canvas: canvas as unknown as HTMLCanvasElement, calls }
 }
@@ -156,7 +152,7 @@ const input = (overrides: Partial<CardInput> = {}): CardInput => ({
 
 const draw = (
     overrides: Partial<CardInput> = {},
-    options?: { roundRect?: boolean; bearing?: (text: string) => number },
+    options?: { bearing?: (text: string) => number },
 ) => {
     const { canvas, calls } = recorder(options)
     drawCard(canvas, input(overrides))
@@ -260,13 +256,6 @@ test('without Intl.Segmenter the card still wraps and cuts', () => {
     } finally {
         Object.assign(Intl, { Segmenter: segmenter })
     }
-})
-
-test('without roundRect the cover and swatches take arcs', () => {
-    const image = { width: 400, height: 400 } as unknown as CardInput['cover']
-    const calls = draw({ cover: image }, { roundRect: false })
-    assert.ok(calls.some((call) => call.name === 'arcTo'))
-    assert.ok(!calls.some((call) => call.name === 'roundRect'))
 })
 
 test('a cover that is not square is fitted and centred in its tile', () => {
