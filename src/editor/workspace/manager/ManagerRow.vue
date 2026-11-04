@@ -729,7 +729,7 @@ const onRenameBlur = (event: FocusEvent) => {
     @apply min-w-10;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     /* Hover previews the current pill: most of the way to white on the panel,
        a lighter band on lavender. */
     .manager-row:not(.manager-row-current):not(.manager-row-dragging):not(

@@ -170,7 +170,7 @@ onUnmounted(() => {
 /* The line takes the dark chrome's ink: a step when hovered, full when dragged or focused. A drag
    is a press, and mint means on, so there is no mint here. The dragged or focused look comes last
    so it wins over hover while the pointer is still on the line. */
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     .resize-handle:hover .resize-line {
         @apply bg-white/60;
     }

@@ -761,7 +761,7 @@ const onPlacementChange = () => {
     @apply size-4 rounded-full border-0 bg-knob shadow-md transition-ink;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     .preview-range:hover::-webkit-slider-thumb {
         @apply shadow-accent;
     }
