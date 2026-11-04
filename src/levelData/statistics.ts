@@ -287,7 +287,7 @@ const TAPS = (() => {
 })()
 
 /** The occupied stretches of the grid, [first, last] sample indices, merged where they touch. */
-type Grid = { g0: number; n: number; segments: [number, number][] }
+export type Grid = { g0: number; n: number; segments: [number, number][] }
 
 /** The grid over every time given: each note occupies its 61 taps, its split and a zero each side. */
 export const gridOf = (gridTimes: Times): Grid | undefined => {
@@ -498,18 +498,28 @@ export const binWidth = (end: number) => {
     return width
 }
 
-/** Each bin's count and split; a bar's height is its count over the width. */
-export const bars = (tagged: Tagged, end: number) => {
-    const timelineEnd = Math.max(0, end)
-    const width = binWidth(timelineEnd)
-    const bins: Span[] = Array.from({ length: binOf(timelineEnd, width) + 1 }, (_, k) => ({
-        a: k * width,
-        b: (k + 1) * width,
+/**
+ * Each bin's count and split; a bar's height is its count over the width. With a view, only the
+ * bins that overlap it, still on multiples of the width from 00:00.000.
+ */
+export const bars = (
+    tagged: Tagged,
+    end: number,
+    width = binWidth(Math.max(0, end)),
+    view?: View,
+) => {
+    const first = view ? Math.max(0, Math.floor(view.x0 / width)) : 0
+    const last = view
+        ? Math.max(first, Math.ceil(view.x1 / width) - 1)
+        : binOf(Math.max(0, end), width)
+    const bins: Span[] = Array.from({ length: last - first + 1 }, (_, k) => ({
+        a: (first + k) * width,
+        b: (first + k + 1) * width,
         count: 0,
         parts: new Array<number>(tagged.layerCount).fill(0),
     }))
     for (let i = 0; i < tagged.times.length; i++) {
-        const bin = bins[Math.max(0, binOf(tagged.times[i] ?? 0, width))]
+        const bin = bins[Math.max(0, binOf(tagged.times[i] ?? 0, width)) - first]
         if (!bin) continue
         const layer = tagged.layers[i] ?? 0
         bin.count++
@@ -520,11 +530,19 @@ export const bars = (tagged: Tagged, end: number) => {
 
 /** The bin under a time: the plot runs over whole bins, so every place has one. */
 export const binAt = (bins: Span[], width: number, time: number) =>
-    bins[Math.min(bins.length - 1, Math.max(0, binOf(time, width)))]
+    bins[
+        Math.min(
+            bins.length - 1,
+            Math.max(0, binOf(time, width) - Math.round((bins[0]?.a ?? 0) / width)),
+        )
+    ]
 
 // --- The chart in one mode, as drawn: the times of its points and each layer's boundary there.
 
 export type ChartMode = 'smooth' | 'bars' | 'rolling'
+
+/** A stretch of the timeline in seconds. */
+export type View = { x0: number; x1: number }
 
 export type ChartModel = {
     x0: number
@@ -568,43 +586,87 @@ const flat = (spans: Span[], layerCount: number, per: number) => ({
     ),
 })
 
+/** What every view of the chosen categories draws from; the costly parts are made once, when needed. */
+export type ChartSource = {
+    grid: Grid
+    /** Bars' end: the latest time, or BGM End when later. */
+    end: number
+    bgmEnd: number | undefined
+    tagged: () => Tagged
+    samples: () => Samples
+}
+
 /**
- * The chart for the chosen categories in one mode. `every` is every category's times (the
- * grid and the timeline follow the chart, never the selection); `columns` is the plot's
- * width times two, for Smooth.
+ * `every` is every category's times (the grid and the timeline follow the chart, never the
+ * selection); `chosen` is the chosen categories' times.
  */
-export const chartModel = (
-    mode: ChartMode,
+export const chartSource = (
     every: Times,
     chosen: readonly Float64Array[],
-    bgmEnd: number | undefined,
-    columns: number,
-): ChartModel | undefined => {
-    if (!every.length) return undefined
-    if (mode === 'bars') {
-        let end = bgmEnd ?? 0
-        for (const time of every) end = Math.max(end, time)
-        const result = bars(mergeTimes(chosen), end)
-        return {
-            x0: 0,
-            x1: result.bins.length * result.width,
-            ...flat(result.bins, chosen.length, result.width),
-            bins: result,
-        }
-    }
-    const grid = gridOf(every)
+    bgmEnd?: number,
+    grid = gridOf(every),
+): ChartSource | undefined => {
     if (!grid) return undefined
-    const { x0, x1 } = timelineOf(grid, bgmEnd)
-    if (mode === 'rolling') {
-        const steps = skyline(mergeTimes(chosen), x0, x1)
-        return { x0, x1, ...flat(steps, chosen.length, 1), steps }
+    let end = bgmEnd ?? 0
+    for (const time of every) end = Math.max(end, time)
+    let tagged: Tagged | undefined
+    let samples: Samples | undefined
+    return {
+        grid,
+        end,
+        bgmEnd,
+        tagged: () => (tagged ??= mergeTimes(chosen)),
+        samples: () => (samples ??= curveSamples(chosen, grid)),
     }
-    const { centres, values } = curveColumns(
-        curveSamples(chosen, grid),
-        x0,
-        x1,
-        Math.max(2, columns),
-    )
+}
+
+/** The whole timeline of a mode: Bars' whole bins from 00:00.000, else the grid's. */
+export const chartExtent = (mode: ChartMode, source: ChartSource): View => {
+    if (mode !== 'bars') return timelineOf(source.grid, source.bgmEnd)
+    const width = binWidth(Math.max(0, source.end))
+    return { x0: 0, x1: (binOf(Math.max(0, source.end), width) + 1) * width }
+}
+
+// While a gesture zooms far out before its resolution settles, Rolling draws at most this many
+// steps, coarsened by powers of two so a pan keeps the same steps.
+const MAX_STEPS = 1200
+
+/**
+ * The chart in one mode over `view`, or the whole timeline without one. `columns` is the plot's
+ * width times two, for Smooth. Rolling's steps and Bars' bins take their width from
+ * `resolutionSpan`, anchored at multiples of it from 00:00.000, and those overlapping the view are
+ * drawn whole.
+ */
+export const chartView = (
+    mode: ChartMode,
+    source: ChartSource,
+    columns: number,
+    view?: View,
+    resolutionSpan?: number,
+): ChartModel => {
+    const extent = chartExtent(mode, source)
+    const { x0, x1 } = view ?? extent
+    const span = resolutionSpan ?? extent.x1 - extent.x0
+    if (mode === 'bars') {
+        const tagged = source.tagged()
+        const result = view
+            ? bars(tagged, source.end, binWidth(span), view)
+            : bars(tagged, source.end)
+        return { x0, x1, ...flat(result.bins, tagged.layerCount, result.width), bins: result }
+    }
+    if (mode === 'rolling') {
+        const tagged = source.tagged()
+        let steps: Span[]
+        if (view) {
+            let width = span / 300
+            while ((x1 - x0) / width > MAX_STEPS) width *= 2
+            const first = Math.floor(x0 / width)
+            const last = Math.max(first + 1, Math.ceil(x1 / width))
+            steps = skyline(tagged, first * width, last * width, last - first)
+        } else steps = skyline(tagged, x0, x1)
+        return { x0, x1, ...flat(steps, tagged.layerCount, 1), steps }
+    }
+    const { centres, values } = curveColumns(source.samples(), x0, x1, Math.max(2, columns))
     // A flat half-column at each end, so the drawn area is the number of notes.
     const parts = values.map((layer) => {
         const out = new Float64Array(layer.length + 2)
@@ -619,6 +681,19 @@ export const chartModel = (
         xs: Float64Array.from([x0, ...centres, x1]),
         boundaries: cumulate(parts, centres.length + 2),
     }
+}
+
+/** The whole chart for the chosen categories in one mode, as `chartSource` and `chartView` make it. */
+export const chartModel = (
+    mode: ChartMode,
+    every: Times,
+    chosen: readonly Float64Array[],
+    bgmEnd: number | undefined,
+    columns: number,
+): ChartModel | undefined => {
+    if (!every.length) return undefined
+    const source = chartSource(every, chosen, bgmEnd)
+    return source && chartView(mode, source, columns)
 }
 
 // --- The axes.
@@ -661,16 +736,20 @@ function* timeSteps() {
     for (const hours of niceSteps([1, 2, 5], 0)) yield hours * 3600
 }
 
-/** The x labels from 00:00 at the first step that keeps at most `budget` of them. */
-export const timeTicks = (x1: number, budget: number) => {
+/**
+ * The x labels over [x0, x1]: multiples of the first step that keeps at most `budget` of them,
+ * from the first at or after 00:00.
+ */
+export const timeTicks = (x1: number, budget: number, x0 = 0) => {
+    const from = Math.max(0, x0)
     let step = 1
     for (const value of timeSteps())
-        if (Math.floor(x1 / value) + 1 <= budget) {
+        if (Math.floor(x1 / value) - Math.ceil(from / value) + 1 <= budget) {
             step = value
             break
         }
     const out: number[] = []
-    for (let k = 0; k * step <= x1; k++) out.push(k * step)
+    for (let k = Math.ceil(from / step); k * step <= x1; k++) out.push(k * step)
     return out
 }
 

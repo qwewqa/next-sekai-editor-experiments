@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { drawChart, readAt } from '../../src/editor/statistics/drawing'
-import { chartModel, mergeTimes, type Span } from '../../src/levelData/statistics'
+import {
+    chartModel,
+    chartSource,
+    chartView,
+    mergeTimes,
+    type Span,
+} from '../../src/levelData/statistics'
 
 // The chart at a plot's size: Bars' tiles on device pixels, the emitted paths, and the readout
 // read from the same coordinates as the drawing.
@@ -153,5 +159,55 @@ test('gridlines take whole device rows, at least one, at any ratio', () => {
             const top = line.y - drawing.gridWidth / 2
             assert.ok(near(top * dpr, Math.round(top * dpr)), `${dpr}: ${line.y}`)
         }
+    }
+})
+
+// --- Over a view.
+
+const longLayers = [
+    Float64Array.from({ length: 120 }, (_, i) => i * 0.5 + (i % 3) * 0.05),
+    Float64Array.from({ length: 30 }, (_, i) => 20 + i * 0.1),
+]
+const longSource = chartSource(mergeTimes(longLayers).times, longLayers)
+
+test('the y axis reaches at least the floor it is given, and fits the view without one', () => {
+    assert.ok(longSource)
+    const model = chartView('rolling', longSource, 2, { x0: 40, x1: 55 }, 15)
+    const fitted = drawChart(model, 300, 136, 1)
+    const held = drawChart(model, 300, 136, 1, 4, 25)
+    assert.ok(fitted.yTop < 25)
+    assert.equal(held.yTop, 25)
+    assert.equal(drawChart(model, 300, 136, 1, 4, 1).yTop, fitted.yTop)
+})
+
+test('Bars tiles are cut at the plot’s edges', () => {
+    assert.ok(longSource)
+    const view = { x0: 20.4, x1: 30.6 }
+    const model = chartView('bars', longSource, 2, view, 10)
+    for (const dpr of RATIOS) {
+        const drawing = drawChart(model, 301.3, 136, dpr)
+        assert.ok(drawing.tiles.length > 0)
+        for (const tile of drawing.tiles) {
+            assert.ok(tile.x >= 0 && tile.x + tile.width <= drawing.snap(301.3) + 1e-9, `${dpr}`)
+            assert.ok(tile.width > 0)
+        }
+        // The cut first bin starts at the plot's left edge.
+        assert.ok(drawing.tiles.some((tile) => tile.x === 0))
+    }
+})
+
+test('Rolling reads the step under a time when the steps start before the view', () => {
+    assert.ok(longSource)
+    const model = chartView('rolling', longSource, 2, { x0: 20.37, x1: 26.37 }, 6)
+    const steps = model.steps
+    assert.ok(steps)
+    const first = steps[0]!
+    assert.ok(first.a < 20.37)
+    const drawing = drawChart(model, 300, 136, 1)
+    for (const time of [20.37, 21, 23.333, 26.3]) {
+        const reading = readAt(model, drawing, time)
+        const step: Span | undefined = steps.find((each) => each.a <= time && time < each.b)
+        assert.ok(step)
+        assert.equal(reading.value, step.count, `${time}`)
     }
 })

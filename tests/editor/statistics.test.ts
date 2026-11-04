@@ -14,8 +14,11 @@ import {
     bgmEndOf,
     binWidth,
     CATEGORIES,
+    chartExtent,
     chartModel,
+    chartSource,
     chartStatistics,
+    chartView,
     copyTextLines,
     curveColumns,
     curveSamples,
@@ -708,4 +711,117 @@ test('Primary can be above All: ten seconds of streams among ninety of lone seco
     const trace = Array.from({ length: 45 }, (_, i) => 12 + i * 2)
     const [, median] = rowsOf({ tap, trace }, ['tap', 'trace'])
     assert.equal(median?.value, '10 (1)')
+})
+
+// --- The chart over a view.
+
+const near = (value: number, target: number, tolerance: number) =>
+    Math.abs(value - target) <= tolerance
+
+/** A seeded chart of three layers over two minutes, with a dense passage and chords. */
+const viewLayers = (() => {
+    let seed = 7
+    const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    const layer = (count: number, from: number, to: number) =>
+        Float64Array.from({ length: count }, () => from + random() * (to - from)).sort()
+    return [layer(200, 0, 120), layer(150, 40, 60), layer(40, 10, 110)]
+})()
+const viewEvery = mergeTimes(viewLayers).times
+
+test('without a view, the chart is the whole chart as before', () => {
+    const source = chartSource(viewEvery, viewLayers, 130)
+    assert.ok(source)
+    for (const mode of ['smooth', 'bars', 'rolling'] as const) {
+        const whole = chartModel(mode, viewEvery, viewLayers, 130, 800)
+        assert.deepEqual(chartView(mode, source, 800), whole)
+        assert.deepEqual(chartExtent(mode, source), { x0: whole?.x0, x1: whole?.x1 })
+    }
+})
+
+test('Smooth over a view draws the same curve, only finer', () => {
+    const source = chartSource(viewEvery, viewLayers)
+    assert.ok(source)
+    const whole = chartView('smooth', source, 2400)
+    const width = (whole.x1 - whole.x0) / 2400
+    // A view on 200 of the whole chart's columns, drawn with 200 columns, draws the same ones.
+    const view = { x0: whole.x0 + 800 * width, x1: whole.x0 + 1000 * width }
+    const part = chartView('smooth', source, 200, view)
+    assert.equal(part.x0, view.x0)
+    assert.equal(part.x1, view.x1)
+    const total = (model: typeof whole) => model.boundaries[model.boundaries.length - 1]!
+    for (let i = 1; i <= 200; i++) {
+        const expected = total(whole)[800 + i]!
+        assert.ok(near(total(part)[i]!, expected, 1e-9 * Math.max(1, expected)), `${i}`)
+    }
+    // Finer: the same view at 2400 columns keeps the area under the curve.
+    const fine = chartView('smooth', source, 2400, view)
+    const area = (model: typeof whole) => {
+        const values = total(model)
+        let sum = 0
+        for (let i = 1; i < values.length - 1; i++) sum += values[i]!
+        return (sum * (view.x1 - view.x0)) / (values.length - 2)
+    }
+    assert.ok(near(area(fine), area(part), 1e-6 * area(part)))
+})
+
+test('Rolling’s steps over a view lie on multiples of their width, and a pan keeps them', () => {
+    const source = chartSource(viewEvery, viewLayers)
+    assert.ok(source)
+    const width = 30 / 300
+    const steps = (x0: number) => chartView('rolling', source, 2, { x0, x1: x0 + 20 }, 30).steps
+    const first = steps(40.03)
+    const moved = steps(40.03 + width)
+    assert.ok(first && moved)
+    for (const step of first) {
+        assert.ok(near(step.a / width, Math.round(step.a / width), 1e-6), `${step.a}`)
+        assert.ok(near(step.b - step.a, width, 1e-9))
+    }
+    // The steps overlap the view, partial edge ones included.
+    assert.ok((first[0]?.a ?? 0) <= 40.03 && (first[1]?.a ?? 0) > 40.03)
+    assert.ok((first[first.length - 1]?.b ?? 0) >= 60.03)
+    // One step later, the same steps with the same counts, one along.
+    for (let k = 1; k < first.length; k++) {
+        assert.ok(near(first[k]!.a, moved[k - 1]!.a, 1e-6))
+        assert.equal(first[k]!.count, moved[k - 1]!.count)
+    }
+})
+
+test('Bars over a view follow the resolution’s width from 00:00, and the y top counts edge bins', () => {
+    const source = chartSource(viewEvery, viewLayers)
+    assert.ok(source)
+    const view = { x0: 41.5, x1: 58.5 }
+    const model = chartView('bars', source, 2, view, 20)
+    assert.ok(model.bins)
+    assert.equal(model.bins.width, 1)
+    assert.equal(model.bins.bins[0]?.a, 41)
+    assert.equal(model.bins.bins[model.bins.bins.length - 1]?.b, 59)
+    const coarse = chartView('bars', source, 2, view, 300)
+    assert.equal(coarse.bins?.width, 5)
+    assert.deepEqual(
+        coarse.bins?.bins.map((bin) => bin.a),
+        [40, 45, 50, 55],
+    )
+    // Each bin's count is the whole chart's at 1 s.
+    const whole = bars(mergeTimes(viewLayers), 120, 1)
+    for (const bin of model.bins.bins) assert.equal(bin.count, whole.bins[bin.a]?.count)
+    // A busy bin cut by the view's edge still sets the top.
+    const edge = whole.bins.reduce((best, bin) => (bin.count > best.count ? bin : best))
+    const cut = chartView('bars', source, 2, { x0: edge.a + 0.9, x1: edge.a + 10.9 }, 10)
+    const total = cut.boundaries[cut.boundaries.length - 1] ?? new Float64Array()
+    assert.equal(Math.max(...total), edge.count)
+})
+
+test('the x labels start at the first step at or after the view’s start, 1 s apart at 5 s', () => {
+    assert.deepEqual(timeTicks(76, 6, 71), [71, 72, 73, 74, 75, 76])
+    assert.deepEqual(timeTicks(76.5, 6, 71.5), [72, 73, 74, 75, 76])
+    assert.deepEqual(timeTicks(60, 6, -1.6), timeTicks(60, 6))
+    for (const [x0, x1] of [
+        [12.3, 47.9],
+        [100, 700],
+        [3000, 3005],
+    ] as const) {
+        const ticks = timeTicks(x1, 6, x0)
+        assert.ok(ticks.length <= 6 && ticks.length >= 1)
+        assert.ok(ticks.every((tick) => tick >= x0 && tick <= x1))
+    }
 })

@@ -40,7 +40,7 @@ export const timeLabelAlign = (x: number, width: number) =>
 
 /**
  * Draws a model in a plot of `width` x `height` CSS px at `dpr` device pixels per CSS px, edges
- * snapped to whole device pixels from the plot's origin.
+ * snapped to whole device pixels from the plot's origin. The y axis reaches at least `floor`.
  */
 export const drawChart = (
     model: ChartModel,
@@ -48,9 +48,10 @@ export const drawChart = (
     height: number,
     dpr: number,
     yTicks = 4,
+    floor = 0,
 ): Drawing => {
     const total = model.boundaries[model.boundaries.length - 1] ?? new Float64Array()
-    let top = 0
+    let top = floor
     for (const value of total) top = Math.max(top, value)
     const { step: yStep, top: yTop } = yScale(top || 1, yTicks)
     const span = model.x1 - model.x0
@@ -67,10 +68,11 @@ export const drawChart = (
         const back = xs.map((x, i) => `${x} ${lower ? (lower[i] ?? baseline) : baseline}`).reverse()
         return `${line(upper)} L${back.join(' L')} Z`
     })
-    const wash = `M${px(model.x0)} ${baseline} L${lines[lines.length - 1]?.slice(1) ?? ''} L${px(model.x1)} ${baseline} Z`
+    const wash = `M${xs[0] ?? 0} ${baseline} L${lines[lines.length - 1]?.slice(1) ?? ''} L${xs[xs.length - 1] ?? 0} ${baseline} Z`
 
-    // Bars: tiles on device pixels; a one-device-pixel gap between bars from a pitch of 5 device
-    // pixels; a nonzero part that would round to nothing takes one device pixel.
+    // Bars: tiles on device pixels, cut at the plot's edges; a one-device-pixel gap between bars
+    // from a pitch of 5 device pixels; a nonzero part that would round to nothing takes one device
+    // pixel.
     const tiles: Tile[] = []
     const bins = model.bins
     if (bins) {
@@ -78,8 +80,9 @@ export const drawChart = (
         const gap = pitch >= 5 ? 1 / dpr : 0
         for (const bin of bins.bins) {
             if (!bin.count) continue
-            const left = snap(px(bin.a))
-            const right = snap(px(bin.b)) - gap
+            const left = Math.max(0, snap(px(bin.a)))
+            const right = Math.min(snap(width), snap(px(bin.b)) - gap)
+            if (right <= left) continue
             let below = 0
             let base = snap(py(0))
             bin.parts.forEach((count, layer) => {
@@ -149,7 +152,8 @@ export const readAt = (model: ChartModel, drawing: Drawing, time: number): Readi
     }
     if (model.steps) {
         const { steps } = model
-        const index = Math.floor(((time - model.x0) / (model.x1 - model.x0)) * steps.length)
+        const first = steps[0]
+        const index = first ? Math.floor((time - first.a) / (first.b - first.a)) : 0
         const step = steps[Math.min(steps.length - 1, Math.max(0, index))]
         const value = step?.count ?? 0
         return { value, parts: step?.parts ?? [], exact: true, y: drawing.py(value) }
