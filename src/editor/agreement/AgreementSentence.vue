@@ -18,7 +18,7 @@ const parts = computed(() =>
     ),
 )
 
-const linkClass = 'focus-out rounded-sm underline outline outline-2 outline-transparent'
+const linkClass = 'focus-out rounded-sm underline'
 
 const open = (href: string) => {
     platform.openExternal(new URL(href, location.href).href)

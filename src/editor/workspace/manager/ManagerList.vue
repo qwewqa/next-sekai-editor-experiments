@@ -2262,7 +2262,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 <button
                     v-if="barVisibility"
                     type="button"
-                    class="manager-round btn btn-secondary manager-bulk-visibility"
+                    class="manager-round manager-bulk-visibility btn btn-secondary"
                     :disabled="!canSetVisibility || !selectedIds.length"
                     :aria-label="
                         bulkHidden
@@ -2284,7 +2284,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 </button>
                 <button
                     type="button"
-                    class="manager-round btn btn-secondary manager-bulk-move"
+                    class="manager-round manager-bulk-move btn btn-secondary"
                     :disabled="!selectedIds.length"
                     :aria-label="i18n.workspace.folders.moveTo"
                     :title="i18n.workspace.folders.moveTo"
@@ -2296,7 +2296,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 </button>
                 <button
                     type="button"
-                    class="manager-round btn btn-secondary manager-bulk-delete"
+                    class="manager-round manager-bulk-delete btn btn-secondary"
                     :disabled="!selectionSize"
                     :aria-label="i18n.workspace.manager.deleteSelected"
                     :title="i18n.workspace.manager.deleteSelected"
@@ -2306,7 +2306,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 </button>
                 <button
                     type="button"
-                    class="manager-round btn btn-secondary manager-bulk-more"
+                    class="manager-round manager-bulk-more btn btn-secondary"
                     :aria-label="i18n.workspace.manager.selectionActions"
                     :title="i18n.workspace.manager.selectionActions"
                     aria-haspopup="menu"

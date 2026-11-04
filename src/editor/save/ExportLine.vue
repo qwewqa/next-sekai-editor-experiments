@@ -33,7 +33,7 @@ const hintParts = computed(() => linkParts(hint.value, [i18n.value.commands.expo
                         >{{ part.lead
                         }}<button
                             type="button"
-                            class="focus-out whitespace-normal rounded-sm underline outline outline-2 outline-transparent"
+                            class="focus-out whitespace-normal rounded-sm underline"
                             @click="emit('export')"
                         >
                             {{ part.name }}</button
@@ -44,7 +44,7 @@ const hintParts = computed(() => linkParts(hint.value, [i18n.value.commands.expo
             <button
                 v-else
                 type="button"
-                class="focus-out rounded-sm text-left underline outline outline-2 outline-transparent"
+                class="focus-out rounded-sm text-left underline"
                 @click="emit('export')"
             >
                 {{ hint }}

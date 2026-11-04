@@ -201,8 +201,12 @@ html[data-app-inactive] *::after {
         @apply flex min-h-9 w-full shrink-0 items-center gap-3 rounded px-3 py-2 text-left transition-colors enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-ghost-press enabled:active:text-fg-strong disabled:opacity-40;
     }
 
-    /* Pressing a destructive row shows what it does. */
-    .popup-item.text-danger:enabled:active {
+    /* A destructive row is red, and pressing it shows what it does. */
+    .popup-item-danger {
+        @apply text-danger;
+    }
+
+    .popup-item-danger:enabled:active {
         @apply bg-danger-fill text-on-danger;
     }
 

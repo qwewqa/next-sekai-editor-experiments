@@ -365,7 +365,7 @@ const chevronDirection = computed(() => {
                     vertical
                         ? `w-full px-0 ${compact ? 'py-2' : 'py-3'} before:absolute before:-inset-y-[0.0625rem] before:inset-x-0 last:before:bottom-0`
                         : `h-full ${compact ? 'px-2' : 'px-3'} before:absolute before:-inset-x-[0.0625rem] before:inset-y-0 last:before:right-0`,
-                    state(id) === 'visible' || menu?.id === id ? 'bg-white/10 text-white' : '',
+                    state(id) === 'visible' || menu?.id === id ? 'ghost-chrome-on' : '',
                 ]"
                 :data-panel-tab="id"
                 :aria-selected="state(id) === 'visible'"

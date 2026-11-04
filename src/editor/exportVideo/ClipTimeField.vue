@@ -134,7 +134,7 @@ const container = computed(() => chipButton.value?.closest('dialog') ?? 'body')
         <button
             ref="chipButton"
             type="button"
-            class="clip-chip ghost relative flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-fg/[0.08] px-3"
+            class="clip-chip ghost ghost-tinted relative flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3"
             :aria-disabled="busy || undefined"
             :aria-expanded="open"
             :aria-controls="open ? `${ids}-popover` : undefined"

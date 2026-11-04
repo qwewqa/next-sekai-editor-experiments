@@ -354,7 +354,7 @@ const onSelect = (event: MouseEvent, item: ManagerMenuItem) => {
                                 :aria-checked="item.checked"
                                 tabindex="-1"
                                 class="manager-menu-item popup-item"
-                                :class="{ 'text-danger': item.destructive }"
+                                :class="{ 'popup-item-danger': item.destructive }"
                                 :disabled="item.disabled"
                                 :data-menu-key="item.key"
                                 :title="item.title"

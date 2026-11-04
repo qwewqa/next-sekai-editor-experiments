@@ -59,6 +59,10 @@
     }
 
     /* Faces under 32px have no room inside: the ring sits 1px outside, in the surface's ink. */
+    .focus-out {
+        outline: 2px solid transparent;
+    }
+
     .focus-out:focus-visible {
         outline-color: rgb(var(--color-fg));
         outline-offset: 1px;
@@ -104,6 +108,25 @@
 
     .ghost-chrome {
         @apply text-white/80;
+    }
+
+    /* Ghosts with a resting face or ink of their own: a tinted chip, a button that is its band's
+       header, the tab of a panel that is showing, and a status on the chrome that needs attention.
+       Hover and press still take over. */
+    .ghost-tinted {
+        @apply bg-fg/[0.08];
+    }
+
+    .ghost-header {
+        @apply bg-header;
+    }
+
+    .ghost-chrome-on {
+        @apply bg-white/10 text-white;
+    }
+
+    .ghost-chrome-warning {
+        @apply text-warning;
     }
 
     @media (hover: hover) and (pointer: fine) {
@@ -189,6 +212,21 @@
     .ghost-chrome:active,
     .ghost-chrome.is-pressed {
         @apply bg-chrome-press text-white;
+    }
+
+    /* Dimmed ink, full on hover and while its popover is open, a press included. */
+    .ghost-dim {
+        @apply text-fg/70;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .ghost-dim:hover {
+            @apply text-fg;
+        }
+    }
+
+    .ghost-dim[aria-expanded='true'] {
+        @apply text-fg;
     }
 
     .btn-toggle[aria-pressed='true']:active,

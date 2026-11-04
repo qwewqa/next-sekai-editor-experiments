@@ -48,7 +48,7 @@ const onClick = (event: MouseEvent) => {
         class="status-label ghost focus-out ghost-chrome relative flex shrink-[1000] items-center px-1"
         :class="[
             compact ? 'min-w-0' : 'min-w-[4.5rem] max-w-[60%]',
-            { 'text-warning': raised.notStored.value },
+            { 'ghost-chrome-warning': raised.notStored.value },
         ]"
         :aria-label="statusName"
         :aria-describedby="describedBy"

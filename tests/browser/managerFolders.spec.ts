@@ -1051,7 +1051,7 @@ test('ungrouping keeps members; deleting a folder confirms and removes them', as
 
     await folderRow(page, 'Verse').getByRole('button', { name: 'More Actions for Verse' }).click()
     const remove = menu.getByRole('menuitem', { name: 'Delete Folder and Groups…' })
-    await expect(remove).toHaveClass(/text-danger/)
+    await expect(remove).toHaveClass(/popup-item-danger/)
     await remove.click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('Delete folder Verse, its groups (2)')

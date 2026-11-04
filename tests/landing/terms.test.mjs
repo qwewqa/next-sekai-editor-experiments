@@ -42,9 +42,9 @@ test('the sections come in order, each with a heading of its own', () => {
 
 test('the page links to the Privacy Notice, in its text and its footer', () => {
     const footer = /<footer\b[\s\S]*<\/footer>/.exec(html)?.[0] ?? ''
-    assert.match(footer, /<a href="\/privacy\/" class="link">Privacy Notice<\/a>/)
+    assert.match(footer, /<a href="\/privacy\/" class="link focus-out">Privacy Notice<\/a>/)
     const main = /<main\b[\s\S]*<\/main>/.exec(html)?.[0] ?? ''
-    assert.match(main, /<a href="\/privacy\/" class="link">Privacy Notice<\/a>/)
+    assert.match(main, /<a href="\/privacy\/" class="link focus-out">Privacy Notice<\/a>/)
 })
 
 test('the contact address is nse@qwewqa.dev, the only one', () => {

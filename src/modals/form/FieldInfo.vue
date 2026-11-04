@@ -266,7 +266,7 @@ onBeforeUnmount(() => {
         :id="buttonId"
         ref="button"
         type="button"
-        class="ghost focus-out holds-open ml-1 grid size-6 shrink-0 place-items-center rounded-full text-fg/70 before:-m-2.5 before:place-self-stretch before:[grid-area:1/1] hover:text-fg aria-expanded:text-fg"
+        class="ghost focus-out holds-open ghost-dim ml-1 grid size-6 shrink-0 place-items-center rounded-full before:-m-2.5 before:place-self-stretch before:[grid-area:1/1]"
         data-field-info
         :[dockKeysAttribute]="inToolDialog ? '' : undefined"
         :aria-label="interpolateRaw(i18n.modals.form.about, label)"

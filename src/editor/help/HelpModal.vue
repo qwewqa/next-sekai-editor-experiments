@@ -107,7 +107,7 @@ onBeforeUnmount(() => {
                 <h2
                     tabindex="-1"
                     data-help-section-heading
-                    class="focus-out rounded text-lg font-bold outline outline-2 outline-transparent"
+                    class="focus-out rounded text-lg font-bold"
                 >
                     {{ section.title }}
                 </h2>

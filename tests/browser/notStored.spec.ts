@@ -107,7 +107,7 @@ test.describe('a full browser', () => {
             .toEqual(pausedFull)
         // The 3 s delay itself is covered by the unit test, which has a clock to move.
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored', { timeout: 8000 })
-        await expect(label(page)).toHaveClass(/text-warning/)
+        await expect(label(page)).toHaveClass(/ghost-chrome-warning/)
         // Not the iOS bar: it belongs to iOS and iPadOS.
         await expect(bar(page)).toHaveCount(0)
 
@@ -143,7 +143,7 @@ test.describe('a full browser', () => {
         await press(page, 'Try Again')
         await setStatus(page, { mode: 'stored' })
         await expect(chip(page)).toHaveCount(0)
-        await expect(label(page)).not.toHaveClass(/text-warning/)
+        await expect(label(page)).not.toHaveClass(/ghost-chrome-warning/)
     })
 })
 

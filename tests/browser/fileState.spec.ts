@@ -695,7 +695,7 @@ test.describe('the chip', () => {
             'Changes are not being stored in this browser.',
         )
         // The label takes the warning colour too.
-        await expect(button(page)).toHaveClass(/text-warning/)
+        await expect(button(page)).toHaveClass(/ghost-chrome-warning/)
         const rest = await page.evaluate(async () => {
             const { chip } =
                 (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')

@@ -377,7 +377,7 @@ const onPlacementChange = () => {
             <button
                 ref="header"
                 type="button"
-                class="ghost ghost-band flex h-12 w-full shrink-0 items-center gap-2 bg-header px-4 font-bold"
+                class="ghost ghost-header ghost-band flex h-12 w-full shrink-0 items-center gap-2 px-4 font-bold"
                 :aria-expanded="true"
                 :aria-controls="`${id}-body`"
                 :aria-label="i18n.preview.minimizeSettings"

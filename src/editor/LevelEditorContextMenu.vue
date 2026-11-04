@@ -321,7 +321,7 @@ onUnmounted(() => {
                             role="menuitem"
                             tabindex="-1"
                             class="popup-item"
-                            :class="{ 'text-danger': name === 'deleteSelection' }"
+                            :class="{ 'popup-item-danger': name === 'deleteSelection' }"
                             @click="execute(name, $event.detail === 0, isTouch($event))"
                         >
                             <component

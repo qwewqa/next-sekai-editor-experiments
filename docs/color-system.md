@@ -357,6 +357,9 @@ The plugin is required. In Tailwind 3 a `<style>` block cannot `@apply` a class 
 | `ghost` | No face | `fg/10` | `ghost-press`, `fg-strong` | Ring inside, its ink | 40 % |
 | `ghost ghost-band` | No face | `band-hover` | `band-press`, `fg-strong` | Ring inside | 40 % |
 | `ghost ghost-chrome` | white/80 ink | white/10, white ink | `chrome-press`, white | Ring inside, white | 40 % |
+| `ghost-tinted`, `ghost-header` (on a `ghost`) | A resting face: `fg/8`, or the band's `header` | As the ghost | As the ghost | | |
+| `ghost-chrome-on`, `ghost-chrome-warning` (on a `ghost-chrome`) | The tab of a showing panel (white/10, white ink), or `warning` ink | As the ghost | As the ghost | | |
+| `ghost-dim` (on a `ghost`) | `fg/70` ink | `fg` ink, which holds through a press | | | |
 | `field` | `button`, raised | Mint glow | — | Ring inside on `:focus` | 40 % |
 | `field[aria-invalid='true']` | Adds a 2 px `danger` edge ring | | | Both rings | |
 | `row-current` / `row-checked` / `row-drop` | See 5.4 | | | | |
@@ -365,7 +368,8 @@ The plugin is required. In Tailwind 3 a `<style>` block cannot `@apply` a class 
 | `focus-edge` | For rows and menu rows: a transparent 2 px edge outline that takes `fg` on `:focus-visible` (principle 10) | | | Ring at the edge, `fg` | |
 | `segment-choice` + `segment-face` | A segmented control: labels in a recessed track (`bg-recess shadow-track`), each holding a hidden `input.peer` radio and the `span.segment-face` that is its face. The checked face is the raised current pill (`button`, `shadow-md`); the label draws a transparent 1 px edge that high contrast paints. Size and padding are the call site's. Sibling selectors only, so it works without `:has()` (the label's edge rule is its own) | `button/50`; a checked face keeps `button` | `ghost-press` with `fg-strong`; a checked face `press` | Ring inside, 2 px in the face's ink, while the input has `:focus-visible` (`Highlight` in high contrast) | Set at the call site (40 %) |
 | `row-select` | A selectable row: a label holding a hidden `input.peer`, radio or checkbox. A checked radio row is the raised current row (`button`, `shadow-md`); a checkbox row keeps only its mark. A transparent 2 px edge outline | `band-hover`; a checked radio row keeps `button` | `ghost-press` with `fg-strong`; a checked radio row `press` | Ring at the edge, `fg`, while the input has `:focus-visible` (`:focus-within` where `:has()` is missing) | Set at the call site (40 %) |
-| `focus-out` | For faces under 32 px: the ring 1 px outside in `fg` (white inside `.surface-chrome`) | | | | |
+| `focus-out` | For faces under 32 px: a transparent 2 px outline at rest, and the ring 1 px outside in `fg` (white inside `.surface-chrome`) | | | | |
+| `popup-item-danger` (on a `popup-item`) | A destructive menu row: `danger` ink | As the row | `danger-fill` with `on-danger` | | |
 | `holds-open` | Opt-in: hold the hover look while `aria-expanded='true'` | | | | |
 | `surface-chrome` | The chrome tier (3.1) | | | | |
 

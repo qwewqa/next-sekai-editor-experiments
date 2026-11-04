@@ -40,7 +40,7 @@ test('the sections come in order, each with a heading of its own', () => {
 
 test('the footer links to the Terms of Service', () => {
     const footer = /<footer\b[\s\S]*<\/footer>/.exec(html)?.[0] ?? ''
-    assert.match(footer, /<a href="\/terms\/" class="link">Terms of Service<\/a>/)
+    assert.match(footer, /<a href="\/terms\/" class="link focus-out">Terms of Service<\/a>/)
 })
 
 test('the contact address is nse@qwewqa.dev, the only one', () => {

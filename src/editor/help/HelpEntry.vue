@@ -56,7 +56,7 @@ const label = computed(() =>
             tabindex="-1"
             data-help-heading
             :aria-label="label"
-            class="focus-out flex items-center rounded font-bold outline outline-2 outline-transparent"
+            class="focus-out flex items-center rounded font-bold"
             :class="members.length > 1 ? 'flex-wrap gap-x-4 gap-y-1' : 'gap-2'"
         >
             <span
