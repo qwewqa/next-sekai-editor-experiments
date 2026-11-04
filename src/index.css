@@ -12,16 +12,6 @@ html {
     overscroll-behavior-y: none;
 }
 
-:root {
-    --viewport-height: 100vh;
-}
-
-@supports (height: 100dvh) {
-    :root {
-        --viewport-height: 100dvh;
-    }
-}
-
 /* Wrapped Korean and Japanese break between words or phrases, not inside them; one
    too long for its line still breaks, so nothing gets wider than before. */
 :lang(ko) {
@@ -183,7 +173,7 @@ html[data-app-inactive] *::after {
 /* Menus' shared surface; edges and focus are outlines, which high contrast keeps. */
 @layer components {
     .popup-surface {
-        @apply flex w-max max-w-[calc(100vw-1rem)] min-w-[min(12rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl ring-1 ring-(--popup-ring) outline-1 outline-(--popup-outline);
+        @apply flex w-max max-w-[calc(100vw-1rem)] min-w-[min(12rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl outline-1 outline-popup-edge;
     }
 
     .popup-scroller {
@@ -219,10 +209,7 @@ html[data-app-inactive] *::after {
             top: auto !important;
             bottom: 8px;
             width: auto;
-            max-height: min(
-                calc(var(--viewport-height) * 0.7),
-                calc(var(--viewport-height) - 16px)
-            ) !important;
+            max-height: min(calc(100dvh * 0.7), calc(100dvh - 16px)) !important;
         }
     }
 }

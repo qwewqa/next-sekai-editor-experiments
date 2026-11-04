@@ -72,7 +72,7 @@ export default defineConfig(({ mode }) => ({
                   : undefined,
     },
     build: {
-        target: ['chrome106', 'edge106', 'firefox105', 'safari16', 'ios16'],
+        target: ['chrome111', 'edge111', 'firefox128', 'safari16', 'ios16'],
         rolldownOptions: { input: pages(mode) },
     },
     // The storage worker is written as a module worker and emitted as a classic one: Firefox 105

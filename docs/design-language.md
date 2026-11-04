@@ -22,7 +22,7 @@ Colours are Tailwind theme colours (`src/themes.css`), so every role has its uti
 | `popup` | 255 255 255 | 58 61 94 | menus |
 | `fg` / `fg-strong` | 68 68 102 / 48 51 77 | 222 222 238 / 240 240 250 | ink, and the stronger ink of a pressed control |
 
-Surfaces step up from the chart: chrome, then panels, then bands, then controls. That order is why a control reads as sitting on whatever it is on. Dark adds 1 px light edges where shadows do not show (`--dock-edge`, `--popup-ring`). The other tokens (accent, primary, press, danger, status, recess) and their values are in [color-system.md](color-system.md) section 3.
+Surfaces step up from the chart: chrome, then panels, then bands, then controls. That order is why a control reads as sitting on whatever it is on. Dark adds 1 px light edges where shadows do not show (`--dock-edge`, `popup-edge`). The other tokens (accent, primary, press, danger, status, recess) and their values are in [color-system.md](color-system.md) section 3.
 
 **Elevation and edges.** Each tier has a reason to exist, so reuse one before inventing another.
 - *Raised control:* `shadow-md` through the `btn` recipe. Hover is a mint glow, never a fill change (`src/controls.css`).

@@ -19,6 +19,17 @@
         if (!nav.locks) missing.push('navigator.locks')
         if (typeof win.OffscreenCanvas === 'undefined') missing.push('OffscreenCanvas')
         if (typeof win.structuredClone !== 'function') missing.push('structuredClone')
+        // The stylesheet mixes colours for every translucent token (Chrome 111, Firefox 113) and
+        // registers its custom properties (Firefox 128).
+        var css = win.CSS
+        if (!css || typeof css.supports !== 'function') missing.push('CSS.supports')
+        else if (
+            !css.supports('color', 'color-mix(in oklab, red 50%, transparent)') ||
+            !css.supports('color', 'color-mix(in srgb, red 50%, transparent)') ||
+            !css.supports('color', 'color-mix(in lab, red, red)')
+        )
+            missing.push('color-mix')
+        if (!css || typeof css.registerProperty !== 'function') missing.push('CSS.registerProperty')
         return missing
     }
 
@@ -132,8 +143,11 @@
         style.colorScheme = 'light dark'
         var body = doc.body
         // The stylesheet's reset (when it has loaded) leaves buttons bare, and the page can't scroll.
+        // The body's own classes paint the chart's colours; the page takes the system's instead.
         body.style.touchAction = 'auto'
         body.style.margin = '0'
+        body.style.backgroundColor = 'Canvas'
+        body.style.color = 'CanvasText'
         body.style.fontFamily = 'system-ui, -apple-system, sans-serif'
         var main = doc.createElement('main')
         main.style.maxWidth = '36rem'

@@ -62,21 +62,21 @@ Neither command requires Rust.
 
 ## Browser Compatibility
 
-The minimum supported versions are Chrome 106, Edge 106, Firefox 105, Safari 17 and
+The minimum supported versions are Chrome 111, Edge 111, Firefox 128, Safari 17 and
 iOS 17.
 
 The editor requires IndexedDB, `navigator.storage.estimate`, Web Locks,
-OffscreenCanvas and `structuredClone`. At startup, `public/gate.js` displays an
-unsupported-browser page if any of these APIs are unavailable.
+OffscreenCanvas and `structuredClone`, and its stylesheet requires `color-mix()` and
+`CSS.registerProperty`. At startup, `public/gate.js` displays an unsupported-browser
+page if any of these are unavailable.
 
-For syntax, the production build targets Chrome 106, Edge 106, Firefox 105,
+For syntax, the production build targets Chrome 111, Edge 111, Firefox 128,
 Safari 16 and iOS 16. When updating Vite, keep these targets set explicitly in the
 Vite configuration. Vite’s [default build targets](https://v8.vite.dev/config/build-options)
 can change between major releases.
 
 For other browser APIs, the editor uses feature detection or fallbacks. Notes are drawn
-without `roundRect` when it is unavailable, and viewport sizing uses `vh` when dynamic
-viewport units are unavailable.
+without `roundRect` when it is unavailable.
 
 ```sh
 npx playwright install firefox webkit
@@ -93,11 +93,11 @@ mobile WebKit. They cover:
 - internal copy and paste when clipboard permission is denied;
 - audio scheduling and waveform rendering.
 
-Playwright 1.27.1 provides archived Chromium 107.0.5304.18 and Firefox 105.0.1 binaries.
-These versions are close to the minimum supported versions and can run the production
-UI checks. The WebKit 16.0 build included with that version is below the minimum,
-so the editor displays the unsupported-browser page there. Use these older binaries
-only in a separate local test setup.
+Older Playwright releases provide archived binaries at the minimum versions:
+Chromium 111 (Playwright 1.31.2), Firefox 128 (1.46.1) and WebKit 17.0 (1.37.1). They can
+run the production UI checks. Below the minimum, Playwright 1.27.1's Chromium 107 and
+Firefox 105 display the unsupported-browser page. Use these older binaries only in a
+separate local test setup, with its own `PLAYWRIGHT_BROWSERS_PATH`.
 
 [Playwright WebKit](https://playwright.dev/docs/browsers#webkit) is a build of the browser
 engine used by Safari. Test Safari itself separately, including iOS Safari on a physical

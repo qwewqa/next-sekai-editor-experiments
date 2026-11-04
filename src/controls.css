@@ -297,9 +297,7 @@
        each; a checked radio row keeps its raised face on hover and sinks on press. The ring is the
        edge ring of .focus-edge, drawn while the input has keyboard focus.
        Specificity does the ordering, so none of it needs !important: the checked rule outranks
-       hover, press follows hover, and the checked press outranks the checked rule.
-       Every :has() rule stands alone, since a selector list holding one is dropped whole on
-       Firefox 105. */
+       hover, press follows hover, and the checked press outranks the checked rule. */
     .row-select {
         outline: 2px solid transparent;
         outline-offset: -2px;
@@ -328,21 +326,13 @@
         outline-color: var(--color-fg);
     }
 
-    /* Firefox before 121 has no :has(): the row rings whenever its input has focus, a click
-       included. */
-    @supports not selector(:has(*)) {
-        .row-select:focus-within {
-            outline-color: var(--color-fg);
-        }
-    }
-
     /* --- Segmented controls: a recessed track (bg-recess shadow-track, set at the call site) of
        labels, each holding a hidden input.peer, radio, and the span.segment-face that is its face.
        The checked face is the raised current pill; an unchecked one hovers half a pill and presses
        one step; a checked one keeps its pill on hover and sinks on press. The ring is the inner
        focus ring in the face's ink, drawn while the input has keyboard focus. Size and padding
-       are the call site's. Sibling selectors, no :has(), so the faces work on Firefox 105; the
-       label's own :has() rule only draws the checked edge that high contrast paints. */
+       are the call site's. The label's own :has() rule draws the checked edge that high contrast
+       paints. */
     .segment-choice {
         @apply rounded-full;
     }

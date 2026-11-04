@@ -259,7 +259,7 @@ const vOpen = {
 <style scoped>
 /* A fixed height, so changing content never resizes it; full height on phones. */
 .modal-large {
-    --modal-height: calc(var(--modal-room, var(--viewport-height)) - 1rem);
+    --modal-height: calc(var(--modal-room, 100dvh) - 1rem);
     top: var(--modal-top, 0px);
     bottom: var(--modal-bottom, 0px);
     height: var(--modal-height);

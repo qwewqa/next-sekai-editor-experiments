@@ -42,6 +42,10 @@ const modern = () => ({
     navigator: { storage: { estimate: () => undefined }, locks: {}, userAgent: '' },
     OffscreenCanvas: class {},
     structuredClone: () => undefined,
+    CSS: {
+        supports: (_property: string, _value: string) => true,
+        registerProperty: () => undefined,
+    },
 })
 
 test('a missing feature is found', () => {
@@ -75,12 +79,35 @@ test('a missing feature is found', () => {
         without((win) => delete (win as Partial<typeof win>).structuredClone),
         ['structuredClone'],
     )
+    assert.deepEqual(
+        without((win) => delete (win as Partial<typeof win>).CSS),
+        ['CSS.supports', 'CSS.registerProperty'],
+    )
+    assert.deepEqual(
+        without((win) => delete (win.CSS as Partial<typeof win.CSS>).supports),
+        ['CSS.supports'],
+    )
+    for (const space of ['oklab', 'srgb', 'lab'])
+        assert.deepEqual(
+            without(
+                (win) =>
+                    (win.CSS.supports = (_property, value) =>
+                        !value.startsWith(`color-mix(in ${space},`)),
+            ),
+            ['color-mix'],
+        )
+    assert.deepEqual(
+        without((win) => delete (win.CSS as Partial<typeof win.CSS>).registerProperty),
+        ['CSS.registerProperty'],
+    )
     assert.deepEqual(gate.missingFeatures({}), [
         'indexedDB',
         'navigator.storage.estimate',
         'navigator.locks',
         'OffscreenCanvas',
         'structuredClone',
+        'CSS.supports',
+        'CSS.registerProperty',
     ])
 })
 

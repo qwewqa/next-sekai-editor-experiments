@@ -304,7 +304,7 @@ onUnmounted(() => {
             role="menu"
             tabindex="-1"
             :aria-label="i18n.contextMenu.title"
-            class="context-menu popup-surface popup-sheet fixed z-50 max-h-[calc(var(--viewport-height)-1rem)]"
+            class="context-menu popup-surface popup-sheet fixed z-50 max-h-[calc(100dvh-1rem)]"
             :style="{ left: `${position.left}px`, top: `${position.top}px` }"
             @keydown.stop="onKeydown"
             @contextmenu.prevent

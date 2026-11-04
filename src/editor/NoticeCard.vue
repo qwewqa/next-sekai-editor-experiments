@@ -157,11 +157,11 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
         <div
             ref="card"
             data-notice-card
-            class="notification-pill pointer-events-auto rounded-[1.375rem] p-1 text-sm text-fg shadow-xl ring-1 outline-1"
+            class="notification-pill pointer-events-auto rounded-[1.375rem] p-1 text-sm text-fg shadow-xl outline-1"
             :class="[
                 over
-                    ? 'bg-popup ring-(--popup-ring) outline-(--popup-outline)'
-                    : 'bg-modal ring-fg/10 outline-transparent',
+                    ? 'bg-popup outline-popup-edge'
+                    : 'bg-modal ring-1 ring-fg/10 outline-transparent',
                 // The start-up card scrolls when its rows are taller than the room, with its × kept.
                 notice.lines
                     ? [

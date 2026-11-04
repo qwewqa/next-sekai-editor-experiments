@@ -83,7 +83,7 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **Experiment in a worktree,** not on a checkout that a live server is serving.
 
 ## Browser floor
-- **Check selectors against the build target** (set in the Vite configuration: Chrome 106, Edge 106, Firefox 105, Safari 16 and iOS 16). An unsupported selector, such as `:has()` before Firefox 121, invalidates the whole rule it sits in, including its selector list.
+- **Check selectors against the build target** (set in the Vite configuration: Chrome 111, Edge 111, Firefox 128, Safari 16 and iOS 16). An unsupported selector invalidates the whole rule it sits in, including its selector list.
 
 ## Scope
 - **Follow standard best practice** where it is natural and cheap: contrast in both themes, semantic colour roles and visible keyboard focus.
