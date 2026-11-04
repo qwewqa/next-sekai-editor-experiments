@@ -642,3 +642,20 @@ test('the release must hold the locked Built-in packages and exactly their serve
     await writeReleaseManifest(directory, metadata, assets)
     await checkRelease(directory, metadata)
 })
+
+test("a release links the editor's own stylesheet before the shared chunks' ones", async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    const shared = '<link rel="stylesheet" crossorigin href="/assets/shared-12345678.css">'
+    const entry = '<link rel="stylesheet" crossorigin href="/assets/index-12345678.css">'
+    await write(directory, 'assets/shared-12345678.css', '.shared{color:red}')
+    const release = async (html) => {
+        await write(directory, 'index.html', withPolicy(html))
+        await writeReleaseManifest(directory, metadata, assets)
+        return checkRelease(directory)
+    }
+    await release(indexPage.replace('</head>', `${shared}</head>`))
+    await assert.rejects(
+        release(indexPage.replace(entry, `${shared}${entry}`)),
+        /does not link its own stylesheet first: \/assets\/shared-12345678\.css comes before/,
+    )
+})

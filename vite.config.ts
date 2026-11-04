@@ -13,6 +13,7 @@ import { previewAssetsMode } from './scripts/preview-assets.mjs'
 import { sourceRepository } from './scripts/repository.mjs'
 import { probePlugin, samplesPlugin } from './scripts/samples.mjs'
 import { applyTestSite, siteFromEnv } from './scripts/site.mjs'
+import { entryStylesheetPlugin } from './scripts/stylesheets.mjs'
 import { appVersion } from './scripts/version.mjs'
 import { PRODUCT_NAME } from './src/product'
 import { storageKey } from './src/storage'
@@ -181,6 +182,8 @@ export default defineConfig(({ mode }) => ({
                     : html
             },
         },
+        // The editor's own stylesheet first, as the dev server orders it.
+        entryStylesheetPlugin(),
         {
             // NSE_SITE=test: the test site is not indexed and its title says so.
             name: 'test-site',
