@@ -458,8 +458,8 @@ const share = () => {
     outline: 2px solid rgb(var(--color-fg));
     outline-offset: -2px;
 }
-/* Its display and minimum width are utilities on the element: the release build can load this
-   sheet before index.css, and .popup-surface would win a tie. */
+/* Its display and minimum width are utilities on the element, which beat .popup-surface whatever
+   order the chunks' stylesheets load in. */
 .stats-bubble {
     grid-template-columns: auto auto;
     column-gap: 1.5rem;

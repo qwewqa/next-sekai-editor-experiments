@@ -396,7 +396,7 @@ for (const viewport of [
     { width: 1280, height: 800 },
     { width: 390, height: 844 },
 ])
-    test(`at ${viewport.width} px the figure bubble keeps each label and its value on one line, with index.css loaded last`, async ({
+    test(`at ${viewport.width} px the figure bubble keeps each label and its value on one line, whatever order the stylesheets load in`, async ({
         page,
     }) => {
         await start(page, viewport)
@@ -413,7 +413,7 @@ for (const viewport of [
         await average.click()
         await expect(bubble(page).locator('dt')).toHaveText(['Tap & Flick', 'All'])
         await expect(bubble(page)).not.toHaveClass(/invisible/)
-        // The release build can link a component's sheet before index.css; the order must not matter.
+        // index.css moved after the components' sheets: the layout must not depend on their order.
         const lines = await page.evaluate(() => {
             const sheet = document.querySelector('style[data-vite-dev-id$="/src/index.css"]')
             if (!sheet) throw new Error('No index.css')
