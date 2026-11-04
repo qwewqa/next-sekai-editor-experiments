@@ -23,6 +23,7 @@ const emit = defineEmits<{
     cancel: []
     close: []
     deliver: [how: 'download' | 'share']
+    alwaysDownload: []
 }>()
 
 const d = props.dialog
@@ -123,6 +124,10 @@ const doneText = computed(() => {
     }
 })
 const ready = computed(() => (d.outcome.value?.kind === 'ready' ? d.outcome.value : undefined))
+// Always Download, after a failure of the save picker or its file.
+const offersDownload = computed(
+    () => d.outcome.value?.kind === 'failed' && !!d.outcome.value.failure.picker,
+)
 
 // Buttons: the secondary reads Cancel, then Close once an export failed; it keeps focus across.
 const cancelOff = computed(() => phase.value === 'cancelling' || phase.value === 'finishing')
@@ -285,16 +290,29 @@ const button = 'export-hit btn relative h-9 min-w-24 max-w-full rounded-full px-
                     phase === 'failed' ? i18n.modals.close : i18n.modals.confirm.cancel
                 }}</span>
             </button>
-            <button
-                type="button"
-                :class="[button, 'btn-primary']"
-                :disabled="d.busy.value || !d.ready.value"
-                :aria-describedby="describedBy('memory')"
-                data-export-start
-                @click="emit('export')"
-            >
-                <span class="block truncate">{{ exportLabel }}</span>
-            </button>
+            <!-- Always Download pairs with Export, as Ready pairs Share with Download Video. -->
+            <div class="flex max-w-full flex-wrap justify-end gap-2">
+                <button
+                    v-if="phase === 'failed' && offersDownload"
+                    type="button"
+                    :class="[button, 'btn-secondary']"
+                    :disabled="!d.ready.value"
+                    data-export-always-download
+                    @click="emit('alwaysDownload')"
+                >
+                    <span class="block truncate">{{ i18n.save.alwaysDownload }}</span>
+                </button>
+                <button
+                    type="button"
+                    :class="[button, 'btn-primary']"
+                    :disabled="d.busy.value || !d.ready.value"
+                    :aria-describedby="describedBy('memory')"
+                    data-export-start
+                    @click="emit('export')"
+                >
+                    <span class="block truncate">{{ exportLabel }}</span>
+                </button>
+            </div>
         </template>
     </footer>
 </template>

@@ -10,7 +10,6 @@ import {
     openStagedFile,
     openStagedTarget,
 } from '../../src/exportVideo/worker/target'
-import { isWriteRefusal } from '../../src/platform/handover'
 import { memoryVideoStore } from '../../src/platform/mockVideoOutput'
 import { FileError } from '../../src/platform/types'
 
@@ -229,8 +228,7 @@ test('a failed write or open keeps its error and includes a failed removal in Er
     const written = pickedFile('write', 'remove')
     const output = await openPickedTarget(written.pick)
     const write = await output.write(new Uint8Array([1]), 0).catch((error: unknown) => error)
-    // A full disk stays a full disk: no refused write, which would export again.
-    assert.ok(write instanceof FileError && write.code === 'no-space' && !isWriteRefusal(write))
+    assert.ok(write instanceof FileError && write.code === 'no-space')
     const restored = restoreExportError(structuredClone(serializeExportError(write)))
     assert.deepEqual(failureDetails(restored), ['FileError: clip.mp4 was left empty'])
     assert.equal(written.file!.size, 0)

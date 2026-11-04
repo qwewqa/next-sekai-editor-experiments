@@ -31,7 +31,7 @@ import type { ExportSettings } from '../../exportVideo/types'
 import type { ExportWarning } from '../../exportVideo/warnings'
 import { bgmEndOf } from '../../levelData/statistics'
 import { isNearlyFull } from '../../local/nearlyFull'
-import { platform } from '../../platform'
+import { FileError, platform } from '../../platform'
 import { loadedSfx, sfxSettled } from '../../player'
 import { previewAspectRatios } from '../../preview/options'
 import { settings } from '../../settings'
@@ -40,6 +40,7 @@ import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
 import type { Entity } from '../../state/entities'
 import { beatToTime } from '../../state/integrals/bpms'
+import { downloadHelps } from '../commands/exportLevel/errorText'
 import { copyExportAssets } from './assets'
 import {
     clampRange,
@@ -312,15 +313,22 @@ export const createExportDialog = (input: DialogInput) => {
     // do not stop an export; a size that cannot be drawn fails it at the first frame.
     const limits = shallowRef<GraphicsLimits | null>()
     /**
-     * Whether exports take the in-memory route, as an earlier export in this page found or the
-     * limits worker reports; undefined while unknown.
+     * Whether exports without the picker take the in-memory route, as an earlier export in this
+     * page found or the limits worker reports; undefined while unknown.
      */
-    const memoryRoute = ref(input.env.picker ? false : memoryRouteTaken() || undefined)
+    const memoryRouteFound = ref<boolean | undefined>(memoryRouteTaken() || undefined)
+    /** The same while the page's route has no picker; it can change in the dialog (Always Download). */
+    const memoryRoute = computed({
+        get: () => (input.env.picker ? false : memoryRouteFound.value),
+        set: (found) => {
+            memoryRouteFound.value = found
+        },
+    })
     const limitsWorker = input.env.worker()
     limitsWorker.onmessage = ({ data }: MessageEvent<FromExportWorker>) => {
         if (data.type !== 'limits') return
         limits.value = data.limits ?? null
-        memoryRoute.value ??= data.memoryRoute
+        memoryRouteFound.value ??= data.memoryRoute
         limitsWorker.terminate()
     }
     limitsWorker.onerror = () => {
@@ -400,20 +408,22 @@ export const createExportDialog = (input: DialogInput) => {
 
     // --- A staged file counts toward browser storage: past the line where cleanup starts, the
     // dialog warns before the export, and still allows it.
-    const storageNearlyFull = ref(false)
+    const nearlyFull = ref(false)
     // Insecure origins have no storage manager.
-    if (!input.env.picker && 'storage' in navigator)
+    if ('storage' in navigator)
         watch(
             bytes,
             async (estimated) => {
                 const { usage, quota } = await navigator.storage
                     .estimate()
                     .catch((): StorageEstimate => ({}))
-                storageNearlyFull.value =
+                nearlyFull.value =
                     usage !== undefined && isNearlyFull({ usage: usage + estimated, quota })
             },
             { immediate: true },
         )
+    // Read live, as the route can change in the dialog (Always Download).
+    const storageNearlyFull = computed(() => !input.env.picker && nearlyFull.value)
 
     // --- Settings the export uses.
     const exportSettings = (): ExportSettings => ({
@@ -477,12 +487,6 @@ export const createExportDialog = (input: DialogInput) => {
             services: shared,
             assets: copyExportAssets,
             destination: (signal, id, route) => destinationFor(signal, id, route),
-            ...(input.env.fallback
-                ? {
-                      fallback: (signal: AbortSignal, id: string, route: JobRoute) =>
-                          destinationFor(signal, id, route, true),
-                  }
-                : {}),
             worker: () => input.env.worker(),
             changed: (state) => {
                 if (created === current) void onState(state)
@@ -507,13 +511,11 @@ export const createExportDialog = (input: DialogInput) => {
         signal: AbortSignal,
         id: string,
         route: JobRoute,
-        fallback = false,
     ): Promise<JobDestination> => {
-        // The file is named for the format the job resolved; the fallback keeps the name the
-        // picker gave the file.
+        // The file is named for the format the job resolved.
         if (attempt.settings) attempt.settings.format = route.format
-        const name = (fallback ? picked?.name : undefined) ?? fileName(route.format)
-        const picker = input.env.picker && !fallback
+        const name = fileName(route.format)
+        const picker = input.env.picker
         attempt.stage = picker ? 'pick' : 'prepare'
         const opened = performance.now()
         const request: DestinationRequest = {
@@ -529,9 +531,7 @@ export const createExportDialog = (input: DialogInput) => {
         }
         let destination: JobDestination
         try {
-            destination = await (fallback && input.env.fallback
-                ? input.env.fallback(request)
-                : input.env.destination(request))
+            destination = await input.env.destination(request)
         } finally {
             if (picker) attempt.pickMs = performance.now() - opened
         }
@@ -542,7 +542,7 @@ export const createExportDialog = (input: DialogInput) => {
                 : { name, staged: worker.kind === 'staged' }
         attempt.target =
             worker.kind === 'picked' ? 'picker' : worker.kind === 'memory' ? 'memory' : 'none'
-        if (worker.kind === 'memory') memoryRoute.value = true
+        if (worker.kind === 'memory') memoryRouteFound.value = true
         attempt.stage = 'prepare'
         return destination
     }
@@ -617,10 +617,20 @@ export const createExportDialog = (input: DialogInput) => {
         // An attempt ends once. A delivery reports Ready again, and `deliver` handles it.
         if (!busyPhase.value) return
         const ended = current
-        const failure =
+        const described =
             state.phase === 'failed'
                 ? await describeVideoFailure(state.error, fileName(), asked, picked?.handle)
                 : undefined
+        // The picker, or the write to its file, failed as Save's Always Download rule counts:
+        // never an encoder failure, a full disk, a file not on this device or a missing file.
+        const failure =
+            described &&
+            state.phase === 'failed' &&
+            state.error instanceof FileError &&
+            downloadHelps(state.error) &&
+            (attempt.target === 'picker' || attempt.stage === 'pick')
+                ? { ...described, picker: true }
+                : described
         if (current !== ended) return
         // The attempt ended.
         busy(false)

@@ -11,6 +11,7 @@ import {
 } from '../../src/editor/commands/exportLevel/flow'
 import { clearExportMemory, exportMemory } from '../../src/editor/commands/exportLevel/memory'
 import { setPlatformForTests } from '../../src/platform'
+import { setFilePickerChoice, type FilePickerChoice } from '../../src/platform/filePicker'
 import { levelDataDiskState } from '../../src/platform/fingerprint'
 import { createMockPlatform, type MockPlatform } from '../../src/platform/mock'
 import { FileError } from '../../src/platform/types'
@@ -46,6 +47,10 @@ const scriptedUi = (answers: unknown[]) => {
         failed: ask('failed'),
         exported: (name: string) => feedback.push(`exported:${name}`),
         downloadStarted: (name: string, size: number) => feedback.push(`download:${name}:${size}`),
+        downloadReady: ({ name }: { name: string }) => {
+            feedback.push(`ready:${name}`)
+            return Promise.resolve(true)
+        },
     } as ExportUi
     return { ui, asked, feedback }
 }
@@ -58,7 +63,26 @@ let saveFeedback: string[] = []
 // Read through a call, so an assertion does not narrow it for later reads.
 const remembered = () => exportMemory.target
 
+/** Write to Chosen Files, as the editor hands it to the platform. */
+let filePicker: FilePickerChoice = 'auto'
+setFilePickerChoice(
+    () => filePicker,
+    () => {
+        filePicker = 'disabled'
+    },
+)
+
+/** A download's level data, gunzipped and parsed. */
+const downloaded = (blob: Blob) =>
+    blob.arrayBuffer().then(
+        (buffer) =>
+            JSON.parse(new TextDecoder().decode(ungzip(new Uint8Array(buffer)))) as {
+                entities: { n: number }[]
+            },
+    )
+
 beforeEach(() => {
+    filePicker = 'auto'
     mock = createMockPlatform()
     setPlatformForTests(mock)
     clearExportMemory()
@@ -446,6 +470,72 @@ test('a picked file the platform refuses to read and to write fails, and nothing
     assert.deepEqual(mock.downloads, [])
     assert.equal(mock.files.get('Coconut.nsld')?.size, 0)
     assert.equal(remembered(), undefined)
+})
+
+test('Always Download after a failed picked write turns the picker off and downloads the export', async () => {
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
+    mock.fault = (point) => {
+        if (point === 'checked') throw new FileError('io', 'Error creating swap file')
+    }
+    const { ui, asked, feedback } = scriptedUi(['alwaysDownload'])
+    assert.equal(await exportByPicker(context(ui, 5, { exportName: 'Coconut' })), 'done')
+    // Offered after a failure of the picked file, which is now empty.
+    assert.deepEqual(
+        asked.map(({ dialog, args }) => [dialog, args[0], args[2], args[3]]),
+        [['failed', 'Coconut.nsld', true, true]],
+    )
+    assert.equal(filePicker, 'disabled')
+    assert.deepEqual(feedback, [`download:Coconut.nsld:${level(5).size}`])
+    assert.deepEqual(
+        mock.downloads.map((download) => [download.kind, download.name]),
+        [['nsld', 'Coconut.nsld']],
+    )
+    assert.deepEqual((await downloaded(mock.downloads[0]!.blob)).entities, [{ n: 5 }])
+    assert.equal(remembered(), undefined)
+})
+
+test('Always Download after a remembered target refused writing downloads the export', async () => {
+    const target = await openedTarget()
+    const saveFile = mock.saveFile
+    mock.saveFile = (req) =>
+        req.target ? Promise.reject(new FileError('denied', 'Refused')) : saveFile(req)
+    const { ui, asked } = scriptedUi(['alwaysDownload'])
+    assert.equal(await exportToTarget(context(ui, 8, { exportName: 'Coconut' }), target), 'done')
+    assert.deepEqual(asked, [{ dialog: 'denied', args: ['LevelData', true] }])
+    assert.equal(filePicker, 'disabled')
+    assert.deepEqual((await downloaded(mock.downloads[0]!.blob)).entities, [{ n: 8 }])
+    assert.deepEqual((await read(mock, 'LevelData')).entities, [{ n: 0 }])
+})
+
+test('Always Download whose build outlasts the press asks for it in a dialog of its own', async () => {
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
+    mock.fault = (point) => {
+        if (point === 'checked') throw new FileError('io', 'Error creating swap file')
+    }
+    // The press has lapsed by the time the download starts, so the download asks for one.
+    const saveFile = mock.saveFile
+    mock.saveFile = async (req) => {
+        if (!req.target && req.ready && !(await req.ready({ name: req.suggestedName, size: 1 })))
+            return { status: 'cancelled' }
+        return saveFile(req)
+    }
+    const { ui, feedback } = scriptedUi(['alwaysDownload'])
+    // The Export dialog's own Ready line is gone once a follow-up dialog shows: it never answers.
+    const closed = () => new Promise<boolean>(() => undefined)
+    assert.equal(await exportByPicker(context(ui, 5, { ready: closed })), 'done')
+    assert.deepEqual(feedback, ['ready:Coconut.nsld', `download:Coconut.nsld:${level(5).size}`])
+    assert.deepEqual((await downloaded(mock.downloads[0]!.blob)).entities, [{ n: 5 }])
+})
+
+test('a full disk at the picked file does not offer Always Download', async () => {
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
+    mock.fault = (point) => {
+        if (point === 'checked') throw new FileError('no-space', 'Disk full')
+    }
+    const { ui, asked } = scriptedUi([undefined])
+    assert.equal(await exportByPicker(context(ui, 5)), 'cancelled')
+    assert.equal(asked[0]?.args[3], false)
+    assert.equal(filePicker, 'auto')
 })
 
 test('a picked write the platform refuses to read back remembers only the name', async () => {

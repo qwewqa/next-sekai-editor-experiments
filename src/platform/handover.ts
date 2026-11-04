@@ -144,10 +144,6 @@ const readDisk = async (
 const isRefusedRead = (error: unknown) =>
     error instanceof FileError && error.code === 'denied' && error.step === 'read'
 
-/** A refusal of the write itself: requesting access, `createWritable`, `write` or `close`. */
-export const isWriteRefusal = (error: unknown) =>
-    error instanceof FileError && error.code === 'denied' && error.step === undefined
-
 /**
  * The check of a write: undefined when it was not observed, as for a picked file the platform
  * refuses to read. The pick authorizes the write, so the check is skipped, never taken as passed.

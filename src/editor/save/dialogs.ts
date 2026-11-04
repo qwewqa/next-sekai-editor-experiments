@@ -12,7 +12,7 @@ import { inlineName } from '../../utils/inlineName'
 import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
-import { failureMessage } from '../commands/exportLevel/ui'
+import { alwaysDownloadChoice, failureMessage } from '../commands/exportLevel/ui'
 import { savedOnText } from '../history/rowPresentation'
 import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
@@ -152,17 +152,27 @@ export type SaveUi = {
     // With `emptied`, each failure adds that the picked file is now empty.
     /** `save.notFound`: `[Cancel]` `[Save As…]` (focused). */
     notFound: (name: string, emptied?: boolean) => Promise<'saveAs' | undefined>
+    // With `download`, each offers Always Download after Cancel.
     /** The permission prompt refused: `[Cancel]` `[Save As…]` `[Try Again]` (focused). */
-    denied: (name: string, emptied?: boolean) => Promise<'saveAs' | 'tryAgain' | undefined>
+    denied: (
+        name: string,
+        emptied?: boolean,
+        download?: boolean,
+    ) => Promise<'saveAs' | 'tryAgain' | 'alwaysDownload' | undefined>
     /** A read-only folder or file: `[Cancel]` `[Save As…]` (focused). */
-    readOnly: (name: string, emptied?: boolean) => Promise<'saveAs' | undefined>
+    readOnly: (
+        name: string,
+        emptied?: boolean,
+        download?: boolean,
+    ) => Promise<'saveAs' | 'alwaysDownload' | undefined>
     /** Other errors, with the plain reason; `saveAs` false where there is no other place. */
     failed: (
         name: string,
         message: () => string,
         saveAs: boolean,
         emptied?: boolean,
-    ) => Promise<'saveAs' | undefined>
+        download?: boolean,
+    ) => Promise<'saveAs' | 'alwaysDownload' | undefined>
     saved: (feedback: SavedFeedback) => void
     /** "No changes since … was saved/opened/downloaded", the last with Download Again. */
     noChanges: (
@@ -327,30 +337,36 @@ export const defaultSaveUi: SaveUi = {
             ),
             choices: [saveAsChoice(true)],
         }),
-    denied: (name, emptied) =>
-        showChoice<'saveAs' | 'tryAgain'>({
+    denied: (name, emptied, download) =>
+        showChoice<'saveAs' | 'tryAgain' | 'alwaysDownload'>({
             title,
             ...failureMessage(
                 interpolate(() => i18n.value.save.denied, inlineName(name)),
                 emptied,
             ),
             choices: [
+                ...alwaysDownloadChoice(download),
                 saveAsChoice(false),
                 { value: 'tryAgain', label: () => i18n.value.save.tryAgain, default: true },
             ],
         }),
-    readOnly: (name, emptied) =>
-        showChoice({
+    readOnly: (name, emptied, download) =>
+        showChoice<'saveAs' | 'alwaysDownload'>({
             title,
             ...failureMessage(
                 interpolate(() => i18n.value.save.readOnly, inlineName(name)),
                 emptied,
             ),
-            choices: [saveAsChoice(true)],
+            choices: [...alwaysDownloadChoice(download), saveAsChoice(true)],
         }),
-    failed: async (_name, message, saveAs, emptied) => {
+    failed: async (_name, message, saveAs, emptied, download) => {
         const text = failureMessage(message, emptied)
-        if (saveAs) return showChoice({ title, ...text, choices: [saveAsChoice(true)] })
+        if (saveAs)
+            return showChoice<'saveAs' | 'alwaysDownload'>({
+                title,
+                ...text,
+                choices: [...alwaysDownloadChoice(download), saveAsChoice(true)],
+            })
         await showChoice({
             title,
             ...text,

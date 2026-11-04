@@ -11,12 +11,13 @@ export type PickedLevelData =
     | { kind: 'written'; result: SaveResult & { status: 'saved' } }
     | { kind: 'dismissed' }
     | { kind: 'cancelled' }
-    | { kind: 'failed'; error: FileError; emptied?: boolean }
+    /** `pickerUsed`: the failure was the picker's or its file's, so Always Download may follow. */
+    | { kind: 'failed'; error: FileError; emptied?: boolean; pickerUsed?: boolean }
 
 /** Builds and verifies level data before the picker, then writes it under nse-bind. */
 export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData> => {
     const env = environment()
-    let picking: Pick<PickSession, 'emptied'> = { emptied: false }
+    let picking: Pick<PickSession, 'emptied' | 'pickerUsed'> = { emptied: false, pickerUsed: false }
     const ended = await withPickSession<PickedLevelData>(
         {
             env,
@@ -60,6 +61,11 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
     )
     if (ended.kind === 'forked') return { kind: 'cancelled' }
     if (ended.kind === 'failed')
-        return { kind: 'failed', error: fileError(ended.error), emptied: picking.emptied }
+        return {
+            kind: 'failed',
+            error: fileError(ended.error),
+            emptied: picking.emptied,
+            pickerUsed: picking.pickerUsed,
+        }
     return ended
 }

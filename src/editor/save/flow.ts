@@ -29,6 +29,7 @@ import { bindingHasHistory } from '../../local/save/model'
 import { storageStatus } from '../../local/startup/events'
 import { readValue, storedRead } from '../../local/storedRead'
 import { appVersion, FileError, platform, type DiskState, type SaveResult } from '../../platform'
+import { disableFilePicker } from '../../platform/filePicker'
 import { sameContent } from '../../platform/fingerprint'
 import { requestWrite } from '../../platform/handover'
 import { savePoint } from '../../platform/testPause'
@@ -38,7 +39,7 @@ import { settings } from '../../settings'
 import type { State } from '../../state'
 import { inlineName } from '../../utils/inlineName'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
-import { fileError } from '../commands/exportLevel/errorText'
+import { downloadHelps, fileError } from '../commands/exportLevel/errorText'
 import { nameKey, validName } from '../commands/exportLevel/fileName'
 import {
     clearExportDestination,
@@ -108,7 +109,16 @@ import {
     storageNote,
 } from './preview'
 import { exclusive } from './queue'
-import { builtIn, finishSave, savedSize, startSave, startWrite, tracked } from './report'
+import {
+    builtIn,
+    carrySave,
+    finishSave,
+    savedSize,
+    startSave,
+    startWrite,
+    tracked,
+    type SaveFacts,
+} from './report'
 import {
     Cancelled,
     commitFirst,
@@ -518,6 +528,11 @@ export type Outcome =
           /** The write left the picked file confirmed empty. */
           emptied?: true
           retry?: () => Promise<Outcome>
+          /**
+           * Always Download's action: the same request, downloaded. Only for a failure of the save
+           * picker or of a write through it.
+           */
+          download?: () => Promise<Outcome>
       }
     | { kind: 'error'; message: () => string }
 
@@ -547,8 +562,8 @@ const projectPick = async (
     return outcome.kind === 'failed' && session.emptied ? { ...outcome, emptied: true } : outcome
 }
 
-/** The document identity and destination retained by Try Again. */
-type PickRetry = { docId: string; target?: PickedFile['target'] }
+/** What a rerun keeps: the document id, the picked file, and the action for the usage statistics. */
+type PickRetry = { docId: string; target?: PickedFile['target']; facts?: SaveFacts }
 
 /**
  * Saves through the picker, or downloads where there's none: one pick session for every picker
@@ -561,6 +576,8 @@ const pickAndWrite = async (
     request: PickRequest,
     retry: PickRetry = { docId: crypto.randomUUID() },
 ): Promise<Outcome> => {
+    retry.facts = carrySave(retry.facts)
+    let picking: Pick<PickSession, 'pickerUsed'> = { pickerUsed: false }
     const ended = await withPickSession(
         {
             env,
@@ -579,9 +596,24 @@ const pickAndWrite = async (
             checkEmptied: true,
             ui: preparingUi,
         },
-        (session) => saveBody(session, env, request, retry.docId),
+        (session) => {
+            picking = session
+            return saveBody(session, env, request, retry.docId)
+        },
     )
-    if (ended.kind === 'failed') return { ...ended, retry: () => pickAndWrite(env, request, retry) }
+    if (ended.kind === 'failed') {
+        const { facts } = retry
+        return {
+            ...ended,
+            retry: () => pickAndWrite(env, request, retry),
+            // The same request without the picked file: under Disabled it downloads. Try Again's
+            // write to the picked file can fail before the session's body runs, as when its
+            // permission is refused: the file was picked all the same.
+            ...(picking.pickerUsed || retry.target
+                ? { download: () => pickAndWrite(env, request, { docId: retry.docId, facts }) }
+                : {}),
+        }
+    }
     return ended.kind === 'dismissed' ? { kind: 'cancelled' } : ended
 }
 
@@ -1213,7 +1245,8 @@ const replace = async (
             })
         },
     )
-    await afterOutcome(env, outcome)
+    // The failure of Replace's own write, as a write-back's, offers Always Download.
+    await afterOutcome(env, withDownloadByName(env, outcome))
 }
 
 /** Save as a Separate File…: keeps the `docId`, in the original's folder. */
@@ -1221,6 +1254,8 @@ const separateFile = async (env: Env, binding: Binding, handle: FileSystemFileHa
     const stem = stemOf(handle.name)
     const engine = deviceLabel().replace(/^Web \((.*)\)$/, '$1')
     const name = await suggestion(env, `${stem} (${engine}, ${nameTime(Date.now())})`)
+    // The conflict ended the Save's record; this write is a Save of its own.
+    startSave('save', DEFAULT_OPTIONS)
     await afterOutcome(
         env,
         await pickAndWrite(env, {
@@ -1278,7 +1313,13 @@ export const afterOutcome = async (
             console.warn('A Save failed', error)
             const writable = !!platform.pickSaveFile
             const saveAs = again ?? (() => dialogSave(env, 'saveAs'))
-            let choice: 'saveAs' | 'tryAgain' | undefined
+            const offersDownload = !!outcome.download && downloadHelps(error)
+            // Always Download: the setting becomes Disabled, and the same action runs again.
+            const alwaysDownload = async () => {
+                disableFilePicker()
+                if (outcome.download) await afterOutcome(env, await outcome.download(), again)
+            }
+            let choice: 'saveAs' | 'tryAgain' | 'alwaysDownload' | undefined
             switch (error.code) {
                 case 'not-found':
                     // Only the file the session is bound to now is marked, never a pick that the
@@ -1288,11 +1329,17 @@ export const afterOutcome = async (
                     if (choice === 'saveAs') await (again ? again() : notFoundSaveAs(env))
                     return
                 case 'denied':
-                    choice = await saveUi.denied(name, emptied)
+                    choice = await saveUi.denied(name, emptied, offersDownload)
                     // Try Again asks for permission again, on this press.
-                    if (choice === 'tryAgain') {
+                    if (choice === 'alwaysDownload') await alwaysDownload()
+                    else if (choice === 'tryAgain') {
                         if (outcome.retry) await afterOutcome(env, await outcome.retry(), again)
-                        else await (again ? again() : saveNow(env))
+                        else if (again) await again()
+                        else {
+                            // The write-back's Try Again is a Save of its own: the last one ended.
+                            startSave('save')
+                            await saveNow(env)
+                        }
                     } else if (choice === 'saveAs') await saveAs()
                     return
                 case 'no-space':
@@ -1302,15 +1349,18 @@ export const afterOutcome = async (
                 case 'io':
                     break
             }
-            if (error.code === 'read-only') choice = await saveUi.readOnly(name, emptied)
+            if (error.code === 'read-only')
+                choice = await saveUi.readOnly(name, emptied, offersDownload)
             else
                 choice = await saveUi.failed(
                     name,
                     () => fileErrorText(name, error),
                     writable,
                     emptied,
+                    offersDownload,
                 )
             if (choice === 'saveAs') await saveAs()
+            else if (choice === 'alwaysDownload') await alwaysDownload()
             return
         }
     }
@@ -1336,6 +1386,8 @@ const notFoundSaveAs = async (env: Env) => {
         return
     }
     if (result?.action !== 'save') return
+    // The not-found dialog ended the earlier record; this write is a Save As… of its own.
+    startSave('saveAs', answered(input, result))
     await afterOutcome(
         env,
         await pickAndWrite(env, {
@@ -1712,8 +1764,23 @@ const saveNow = async (env: Env) => {
         await pickAt(env, file, handle)
         return
     }
-    await afterOutcome(env, outcome)
+    await afterOutcome(env, withDownloadByName(env, outcome))
 }
+
+/**
+ * A failed write to the bound file (a write-back, or Replace's write) with Always Download's
+ * action: Save again, which then downloads by name. It ends its own action.
+ */
+const withDownloadByName = <O extends Outcome | CheckOutcome>(env: Env, outcome: O): O =>
+    outcome.kind === 'failed'
+        ? {
+              ...outcome,
+              download: async (): Promise<Outcome> => {
+                  await saveNow(env)
+                  return { kind: 'done' }
+              },
+          }
+        : outcome
 
 /**
  * Save through the picker at the bound file, with its identity and the default options: the
@@ -1889,8 +1956,10 @@ const writeSessionFile = async (
     request: SessionFileRequest,
     retry: PickRetry = { docId: crypto.randomUUID() },
 ): Promise<Outcome> => {
+    retry.facts = carrySave(retry.facts)
     const permission = retry.target ? requestWrite(retry.target.handle) : undefined
     permission?.catch(() => undefined)
+    let picking: Pick<PickSession, 'pickerUsed'> = { pickerUsed: false }
     const ended = await withSessionHold(request.sessionId, () =>
         withPickSession(
             {
@@ -1910,11 +1979,26 @@ const writeSessionFile = async (
                 checkEmptied: true,
                 ui: preparingUi,
             },
-            (session) => sessionFileBody(session, env, request, retry.docId),
+            (session) => {
+                picking = session
+                return sessionFileBody(session, env, request, retry.docId)
+            },
         ),
     )
-    if (ended.kind === 'failed')
-        return { ...ended, retry: () => writeSessionFile(env, request, retry) }
+    if (ended.kind === 'failed') {
+        const { facts } = retry
+        return {
+            ...ended,
+            retry: () => writeSessionFile(env, request, retry),
+            // Its own path again: binds nothing, and leaves the open session as it is. A Try Again
+            // refused before its body runs still wrote to a picked file.
+            ...(picking.pickerUsed || retry.target
+                ? {
+                      download: () => writeSessionFile(env, request, { docId: retry.docId, facts }),
+                  }
+                : {}),
+        }
+    }
     return ended.kind === 'dismissed' ? { kind: 'cancelled' } : ended
 }
 

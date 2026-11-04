@@ -15,6 +15,9 @@ export const setFilePickerChoice = (read: () => FilePickerChoice, off: () => voi
     disable = off
 }
 
+/** The setting's value now. */
+export const filePickerChoice = () => choice()
+
 /** Always Download: the setting becomes Disabled. */
 export const disableFilePicker = () => {
     disable()

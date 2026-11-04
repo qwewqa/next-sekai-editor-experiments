@@ -1,6 +1,6 @@
 import { markExported } from '../../../history'
 import { i18n } from '../../../i18n'
-import { showChoice } from '../../../modals/choice'
+import { showChoice, type Choice } from '../../../modals/choice'
 import type { FileError } from '../../../platform'
 import { inlineName } from '../../../utils/inlineName'
 import { interpolate } from '../../../utils/interpolate'
@@ -23,6 +23,10 @@ export const fileErrorText = (name: string, error: FileError) =>
  */
 export const failureMessage = (message: () => string, emptied: boolean | undefined) =>
     emptied ? { lines: () => [message(), i18n.value.save.fileNowEmpty] } : { message }
+
+/** Always Download: the setting becomes Disabled and the same action downloads. */
+export const alwaysDownloadChoice = (offered: boolean | undefined): Choice<'alwaysDownload'>[] =>
+    offered ? [{ value: 'alwaysDownload', label: () => i18n.value.save.alwaysDownload }] : []
 
 const chooseAnother = {
     value: 'chooseAnother' as const,
@@ -67,11 +71,12 @@ export const exportUi: ExportUi = {
             message: interpolate(() => i18n.value.save.notFound, inlineName(name)),
             choices: [chooseAnother],
         }),
-    denied: (name) =>
-        showChoice({
+    denied: (name, download) =>
+        showChoice<'chooseAnother' | 'tryAgain' | 'alwaysDownload'>({
             title,
             message: interpolate(() => i18n.value.save.denied, inlineName(name)),
             choices: [
+                ...alwaysDownloadChoice(download),
                 { ...chooseAnother, default: undefined },
                 {
                     value: 'tryAgain' as const,
@@ -80,11 +85,11 @@ export const exportUi: ExportUi = {
                 },
             ],
         }),
-    failed: (name, error, emptied) =>
-        showChoice({
+    failed: (name, error, emptied, download) =>
+        showChoice<'chooseAnother' | 'alwaysDownload'>({
             title,
             ...failureMessage(() => fileErrorText(name, error), emptied),
-            choices: [chooseAnother],
+            choices: [...alwaysDownloadChoice(download), chooseAnother],
         }),
     exported: (name) => {
         notify(interpolate(() => i18n.value.export.exported, inlineName(name)))
@@ -93,6 +98,16 @@ export const exportUi: ExportUi = {
     markExported: (name, delivery) => {
         markExportUsed()
         markExported(name, delivery)
+    },
+    downloadReady: async ({ name, size }) => {
+        // Loaded on use: the Save dialogs import this module.
+        const { saveUi } = await import('../../save/dialogs')
+        const dialog = saveUi.preparing(name, 'export')
+        try {
+            return await dialog.ready('download', size)
+        } finally {
+            dialog.close()
+        }
     },
     downloadStarted: (name, size) => {
         notify(

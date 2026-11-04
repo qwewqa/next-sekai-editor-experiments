@@ -25,6 +25,19 @@ export const startSave = (action: Action, options = { history: true, bgm: true }
     current = { action, ...options }
 }
 
+export type SaveFacts = Pick<Facts, 'action' | 'history' | 'bgm'>
+
+/**
+ * A rerun's record (Try Again, Always Download): the action and options it carries, or the
+ * running action's. Once the earlier record has ended, the rerun starts its own.
+ */
+export const carrySave = (facts?: SaveFacts): SaveFacts | undefined => {
+    const carried =
+        facts ?? (current && { action: current.action, history: current.history, bgm: current.bgm })
+    if (carried && !current) startSave(carried.action, carried)
+    return carried
+}
+
 /** The write begins, after the last picker or dialog has closed. */
 export const startWrite = (target: NonNullable<Facts['target']>) => {
     if (current) Object.assign(current, { target, since: performance.now() })

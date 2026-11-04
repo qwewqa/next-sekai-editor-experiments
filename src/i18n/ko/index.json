@@ -2618,6 +2618,7 @@
     "noChangesSaved": "{0} 저장 이후 변경 사항 없음",
     "noChangesOpened": "{0}을(를) 연 이후 변경 사항 없음",
     "downloadAgain": "다시 다운로드",
+    "alwaysDownload": "항상 다운로드",
     "unreadable": "“{0}”을(를) 완전히 읽지 못했습니다.",
     "tooLarge": "파일이 너무 큽니다.",
     "restoredName": "{0} ({1} 복원)",

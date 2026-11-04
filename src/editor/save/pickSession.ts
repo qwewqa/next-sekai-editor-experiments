@@ -94,6 +94,11 @@ export type PickSession = Omit<SaveAttempt, 'write' | 'commit' | 'closePreparing
      * then says so.
      */
     readonly emptied: boolean
+    /**
+     * Whether the save picker was opened, or a picked file given: a failure from then on is the
+     * picker's or its file's, and Always Download may follow it.
+     */
+    readonly pickerUsed: boolean
 }
 
 /**
@@ -132,6 +137,7 @@ export const withPickSession = <T>(
     }
     return withSaveAttempt(attemptSpec, async (attempt) => {
         let emptied = false
+        let pickerUsed = false
 
         const quiet = () =>
             attempt.preparing(async (signal) => {
@@ -229,6 +235,9 @@ export const withPickSession = <T>(
             get emptied() {
                 return emptied
             },
+            get pickerUsed() {
+                return pickerUsed
+            },
             checkpoint: () => {
                 attempt.checkpoint()
             },
@@ -268,6 +277,7 @@ export const withPickSession = <T>(
                 }
                 // The activation check was the last step: only microtasks until the picker opens.
                 attempt.closePreparing()
+                pickerUsed = true
                 const target = spec.target ?? (await open({ suggestedName, picker }))
                 if (target?.kind !== 'handle') return { kind: 'dismissed' }
                 // The commit point: no Cancel has any effect from here.

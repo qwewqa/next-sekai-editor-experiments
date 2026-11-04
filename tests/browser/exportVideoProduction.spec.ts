@@ -126,19 +126,15 @@ test('a picked file refusing reads receives the whole video', async ({ page }) =
     expect(await framesOf(page, new Uint8Array(bytes))).toBe(6)
 })
 
-for (const refuse of ['open', 'write', 'close'] as const)
-    test(`a picked file refusing ${refuse} is exported again, staged, and downloads whole from Ready`, async ({
-        page,
-    }, testInfo) => {
-        test.slow()
-        const dialog = await refusingVideoPage(page, refuse)
-        await expect.poll(() => videoPhase(page), { timeout: videoExportTimeout }).toBe('ready')
-        const downloading = page.waitForEvent('download')
-        await dialog.locator('[data-export-download]').click()
-        const download = await downloading
-        // The name given in the picker.
-        expect(download.suggestedFilename()).toBe('renamed.webm')
-        const path = testInfo.outputPath('export.webm')
-        await download.saveAs(path)
-        expect(await framesOf(page, await readFile(path))).toBe(6)
-    })
+test('a picked file refusing to open fails the export, with Always Download and no second export', async ({
+    page,
+}) => {
+    test.slow()
+    const dialog = await refusingVideoPage(page, 'open')
+    await expect.poll(() => videoPhase(page), { timeout: videoExportTimeout }).toBe('failed')
+    await expect(dialog.locator('[data-export-download]')).toHaveCount(0)
+    // The name given in the picker. The page cannot read the file, so nothing says it is empty.
+    await expect(dialog).toContainText('The browser did not allow writing to renamed.webm.')
+    await expect(dialog).not.toContainText('The file is now empty.')
+    await expect(dialog.locator('[data-export-always-download]')).toBeVisible()
+})

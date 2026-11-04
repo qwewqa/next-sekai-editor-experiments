@@ -2618,6 +2618,7 @@
     "noChangesSaved": "Aucune modification depuis la sauvegarde de {0}",
     "noChangesOpened": "Aucune modification depuis l’ouverture de {0}",
     "downloadAgain": "Télécharger à nouveau",
+    "alwaysDownload": "Toujours télécharger",
     "unreadable": "« {0} » n’a pas pu être lu entièrement.",
     "tooLarge": "Le fichier est trop volumineux.",
     "restoredName": "{0} (restauré le {1})",

@@ -11,10 +11,11 @@ import {
     type SavePickerType,
     type SaveResult,
 } from '../../../platform'
+import { disableFilePicker } from '../../../platform/filePicker'
 import { ZipReader } from '../../../zip'
 import type { PickedLevelData } from '../../save/exportPick'
 import { isLevelDataContent, mayBeLevelData } from './content'
-import { fileError } from './errorText'
+import { downloadHelps, fileError } from './errorText'
 import {
     clearExportTarget,
     exportGeneration,
@@ -39,15 +40,25 @@ export type ExportUi = {
     ) => Promise<'replace' | 'chooseAnother' | undefined>
     notLevelData: (name: string) => Promise<'chooseAnother' | undefined>
     notFound: (name: string) => Promise<'chooseAnother' | undefined>
-    denied: (name: string) => Promise<'tryAgain' | 'chooseAnother' | undefined>
+    /** With `download`, Always Download follows Cancel. */
+    denied: (
+        name: string,
+        download?: boolean,
+    ) => Promise<'tryAgain' | 'chooseAnother' | 'alwaysDownload' | undefined>
     /** With `emptied`, it adds that the picked file is now empty. */
     failed: (
         name: string,
         error: FileError,
         emptied?: boolean,
-    ) => Promise<'chooseAnother' | undefined>
+        download?: boolean,
+    ) => Promise<'chooseAnother' | 'alwaysDownload' | undefined>
     exported: (name: string) => void
     downloadStarted: (name: string, size: number) => void
+    /**
+     * The press a download needs once the Export dialog has closed, when the build outlasted the
+     * last press: Save's Preparing dialog with its Download button.
+     */
+    downloadReady: ReadyPrompt
     /** Records the export in the session's timeline. */
     markExported?: (name: string, delivery: 'file' | 'download') => void
 }
@@ -319,8 +330,9 @@ export const exportToTarget = async (
         case 'not-found':
             return ended(await choose(ctx, () => ctx.ui.notFound(name)))
         case 'denied': {
-            const choice = await choose(ctx, () => ctx.ui.denied(name))
+            const choice = await choose(ctx, () => ctx.ui.denied(name, downloadHelps(error)))
             if (choice === 'tryAgain') return exportToTarget(ctx, target, expected)
+            if (choice === 'alwaysDownload') return alwaysDownload(ctx)
             return ended(choice)
         }
         case 'not-local':
@@ -329,15 +341,37 @@ export const exportToTarget = async (
         case 'io':
             break
     }
-    return ended(await choose(ctx, () => ctx.ui.failed(name, error)))
+    const choice = await choose(ctx, () =>
+        ctx.ui.failed(name, error, undefined, downloadHelps(error)),
+    )
+    if (choice === 'alwaysDownload') return alwaysDownload(ctx)
+    return ended(choice)
+}
+
+/**
+ * Always Download: the setting becomes Disabled, and the export runs again as a download. The
+ * Export dialog has closed, so a download that outlasts the press asks in a dialog of its own.
+ */
+const alwaysDownload = (ctx: ExportContext) => {
+    disableFilePicker()
+    return exportByDownload({ ...ctx, ready: ctx.ui.downloadReady })
 }
 
 /** A failure no dialog has shown yet: the failed dialog, which offers Choose Another…. */
-const failed = (ctx: ExportContext, error: FileError, fallback: string, emptied?: boolean) => {
+const failed = async (
+    ctx: ExportContext,
+    error: FileError,
+    fallback: string,
+    { emptied, pickerUsed }: { emptied?: boolean; pickerUsed?: boolean } = {},
+) => {
     reportExport(platform.pickSaveFile ? 'picker' : 'download', undefined, error)
     ctx.leave()
     const name = error.fileName ?? fallback
-    return choose(ctx, () => ctx.ui.failed(name, error, emptied)).then(ended)
+    const choice = await choose(ctx, () =>
+        ctx.ui.failed(name, error, emptied, !!pickerUsed && downloadHelps(error)),
+    )
+    if (choice === 'alwaysDownload') return alwaysDownload(ctx)
+    return ended(choice)
 }
 
 /** Exports through the save picker, or downloads where there is none. */
@@ -385,7 +419,7 @@ const afterPick = async (ctx: ExportContext, picked: PickedLevelData): Promise<E
         case 'cancelled':
             return 'cancelled'
         case 'failed':
-            return failed(ctx, picked.error, ctx.suggestedName, picked.emptied)
+            return failed(ctx, picked.error, ctx.suggestedName, picked)
     }
 }
 

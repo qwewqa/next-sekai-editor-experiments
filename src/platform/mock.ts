@@ -1,5 +1,6 @@
 import { MemoryStorage, storageJournalStore, type JournalStorage } from '../local/journal/store'
 import { FakeLockManager } from '../local/testing/locks'
+import { filePickerChoice } from './filePicker'
 import { levelDataDiskState, nxspDiskState, sameContent } from './fingerprint'
 import { toBlob } from './handover'
 import { memoryVideoStore } from './mockVideoOutput'
@@ -358,6 +359,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
         writeFile(name, new Blob([]))
         return target
     }
+    let picker: typeof pickSaveFile | undefined = capabilities.writeBack ? pickSaveFile : undefined
 
     const inspect = async (target: FileTarget, kind?: SaveKind): Promise<DiskState | 'missing'> =>
         (await diskOf(targetKey(target), kind)) ?? 'missing'
@@ -392,7 +394,13 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
 
         pickFiles: () => Promise.resolve(picks.shift() ?? []),
         saveFile,
-        ...(capabilities.writeBack ? { pickSaveFile } : {}),
+        // Disabled turns the picker off, as Write to Chosen Files does on the web.
+        get pickSaveFile() {
+            return filePickerChoice() === 'disabled' ? undefined : picker
+        },
+        set pickSaveFile(value) {
+            picker = value
+        },
         inspect,
         read,
         onOpenFiles: () => undefined,

@@ -15,6 +15,7 @@ import BaseModal from '../../modals/BaseModal.vue'
 import { showChoice } from '../../modals/choice'
 import { useModal } from '../../modals'
 import { createFontContext } from '../../rendering/textRaster'
+import { disableFilePicker } from '../../platform/filePicker'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import { useHistoryCalendar } from '../history/calendarClock'
@@ -298,6 +299,12 @@ const startExport = async () => {
     }
     d.start()
 }
+// Always Download: the setting becomes Disabled, which the env's picker reads, and the export
+// starts again at once.
+const alwaysDownload = () => {
+    disableFilePicker()
+    d.start()
+}
 watch(phase, (value, previous) => {
     void nextTick(() => {
         if (value === 'preparing' || (value !== previous && value !== 'setup'))
@@ -391,6 +398,7 @@ const title = computed(() => i18n.value.exportVideo.title)
                         @cancel="d.cancel"
                         @close="close"
                         @deliver="d.deliver"
+                        @always-download="alwaysDownload"
                     />
                 </div>
             </div>
@@ -411,6 +419,7 @@ const title = computed(() => i18n.value.exportVideo.title)
                 @cancel="d.cancel"
                 @close="close"
                 @deliver="d.deliver"
+                @always-download="alwaysDownload"
             />
         </div>
     </BaseModal>

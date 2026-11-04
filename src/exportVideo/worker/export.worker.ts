@@ -28,13 +28,11 @@ const transferableBuffer = (result: unknown): Transferable[] =>
 /** A test's refusal of one file operation in this worker, as a platform that refuses it. */
 const refuse = (operation: NonNullable<ExportFaults['refuse']>) => {
     const refused = () => Promise.reject(new DOMException('Refused by the test', 'NotAllowedError'))
-    const [prototype, method] =
-        operation === 'read'
-            ? [FileSystemFileHandle.prototype, 'getFile']
-            : operation === 'open'
-              ? [FileSystemFileHandle.prototype, 'createWritable']
-              : [FileSystemWritableFileStream.prototype, operation]
-    Object.defineProperty(prototype, method, { configurable: true, value: refused })
+    const method = operation === 'read' ? 'getFile' : 'createWritable'
+    Object.defineProperty(FileSystemFileHandle.prototype, method, {
+        configurable: true,
+        value: refused,
+    })
 }
 
 /** The muxer supplies the sink and the target's commit and abort methods. */

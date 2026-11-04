@@ -14,6 +14,8 @@ import { activation } from './env'
 
 const { createMockPlatform } = await import('../../../src/platform/mock')
 const { setPlatformForTests } = await import('../../../src/platform')
+const { setFilePickerChoice } = await import('../../../src/platform/filePicker')
+type FilePickerChoice = import('../../../src/platform/filePicker').FilePickerChoice
 const { FakeLockManager } = await import('../../../src/local/testing/locks')
 const { setStorageWorkerForMatrix } = await import('./stubs/start')
 const { setFlusherForMatrix } = await import('./stubs/storing')
@@ -111,6 +113,8 @@ export type Dialog = {
     lockHeld: boolean
     /** A failure dialog's added line that the picked file is now empty. */
     emptied?: true
+    /** The dialog offered Always Download. */
+    download?: true
 }
 
 export type Write = { name: string; exclusive: boolean; shared: boolean; picked: boolean }
@@ -169,6 +173,14 @@ const createWorld = async (setup: Setup = {}) => {
         ...(s.platform === 'download' ? { capabilities: { writeBack: false } } : {}),
     })
     setPlatformForTests(mock)
+    // Write to Chosen Files, as the editor hands it to the platform: Auto until Always Download.
+    const filePicker = { choice: 'auto' as FilePickerChoice }
+    setFilePickerChoice(
+        () => filePicker.choice,
+        () => {
+            filePicker.choice = 'disabled'
+        },
+    )
 
     /** Knobs a fault turns: the own handle's read delay and the answer to a write permission. */
     const tune = {
@@ -511,9 +523,9 @@ const createWorld = async (setup: Setup = {}) => {
         saveDialog: [] as (Row | undefined)[],
         conflict: [] as ('separate' | 'openOther' | 'replace' | undefined)[],
         notFound: [] as ('saveAs' | undefined)[],
-        denied: [] as ('saveAs' | 'tryAgain' | undefined)[],
-        readOnly: [] as ('saveAs' | undefined)[],
-        failed: [] as ('saveAs' | undefined)[],
+        denied: [] as ('saveAs' | 'tryAgain' | 'alwaysDownload' | undefined)[],
+        readOnly: [] as ('saveAs' | 'alwaysDownload' | undefined)[],
+        failed: [] as ('saveAs' | 'alwaysDownload' | undefined)[],
     }
     const shown = <T>(
         kind: string,
@@ -521,8 +533,15 @@ const createWorld = async (setup: Setup = {}) => {
         queue: T[],
         fallback: T,
         emptied?: boolean,
+        download?: boolean,
     ) => {
-        dialogs.push({ kind, args, lockHeld: lockHeld(), ...(emptied ? { emptied: true } : {}) })
+        dialogs.push({
+            kind,
+            args,
+            lockHeld: lockHeld(),
+            ...(emptied ? { emptied: true } : {}),
+            ...(download ? { download: true } : {}),
+        })
         log.push(`dialog:${kind}`)
         // A person takes a moment to answer: reads started with the dialog settle meanwhile.
         return new Promise<T>((resolve) =>
@@ -549,8 +568,8 @@ const createWorld = async (setup: Setup = {}) => {
         notLevelData: [] as ('chooseAnother' | undefined)[],
         conflict: [] as ('replace' | 'chooseAnother' | undefined)[],
         notFound: [] as ('chooseAnother' | undefined)[],
-        denied: [] as ('tryAgain' | 'chooseAnother' | undefined)[],
-        failed: [] as ('chooseAnother' | undefined)[],
+        denied: [] as ('tryAgain' | 'chooseAnother' | 'alwaysDownload' | undefined)[],
+        failed: [] as ('chooseAnother' | 'alwaysDownload' | undefined)[],
     }
     const exportUi = {
         conflict: (name: string) =>
@@ -559,12 +578,14 @@ const createWorld = async (setup: Setup = {}) => {
             shown('export.notLevelData', [name], exportAnswers.notLevelData, undefined),
         notFound: (name: string) =>
             shown('export.notFound', [name], exportAnswers.notFound, undefined),
-        denied: (name: string) => shown('export.denied', [name], exportAnswers.denied, undefined),
-        failed: (name: string, _error: unknown, emptied?: boolean) =>
-            shown('export.failed', [name], exportAnswers.failed, undefined, emptied),
+        denied: (name: string, download?: boolean) =>
+            shown('export.denied', [name], exportAnswers.denied, undefined, false, download),
+        failed: (name: string, _error: unknown, emptied?: boolean, download?: boolean) =>
+            shown('export.failed', [name], exportAnswers.failed, undefined, emptied, download),
         exported: (name: string) => {
             log.push(`exported:${name}`)
         },
+        downloadReady: () => Promise.resolve(true),
         downloadStarted: (name: string) => {
             log.push(`exportDownload:${name}`)
         },
@@ -599,11 +620,12 @@ const createWorld = async (setup: Setup = {}) => {
         },
         notFound: (name, emptied) =>
             shown('notFound', [name], answers.notFound, undefined, emptied),
-        denied: (name, emptied) => shown('denied', [name], answers.denied, undefined, emptied),
-        readOnly: (name, emptied) =>
-            shown('readOnly', [name], answers.readOnly, undefined, emptied),
-        failed: (name, _message, _saveAs, emptied) =>
-            shown('failed', [name], answers.failed, undefined, emptied),
+        denied: (name, emptied, download) =>
+            shown('denied', [name], answers.denied, undefined, emptied, download),
+        readOnly: (name, emptied, download) =>
+            shown('readOnly', [name], answers.readOnly, undefined, emptied, download),
+        failed: (name, _message, _saveAs, emptied, download) =>
+            shown('failed', [name], answers.failed, undefined, emptied, download),
         saved: (feedback) => {
             dialogs.push({ kind: 'saved', args: [feedback.name], lockHeld: lockHeld() })
             log.push(`saved:${feedback.name}`)
@@ -746,6 +768,7 @@ const createWorld = async (setup: Setup = {}) => {
         before,
         log,
         dialogs,
+        filePicker,
         writes,
         openings,
         reservations,

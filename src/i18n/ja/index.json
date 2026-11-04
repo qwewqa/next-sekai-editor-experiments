@@ -2618,6 +2618,7 @@
     "noChangesSaved": "{0} の保存以降、変更はありません",
     "noChangesOpened": "{0} を開いて以降、変更はありません",
     "downloadAgain": "もう一度ダウンロード",
+    "alwaysDownload": "常にダウンロード",
     "unreadable": "「{0}」を完全には読み込めませんでした。",
     "tooLarge": "ファイルが大きすぎます。",
     "restoredName": "{0}（{1} に復元）",

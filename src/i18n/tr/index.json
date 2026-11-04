@@ -2618,6 +2618,7 @@
     "noChangesSaved": "{0} kaydedildiğinden beri değişiklik yok",
     "noChangesOpened": "{0} açıldığından beri değişiklik yok",
     "downloadAgain": "Tekrar İndir",
+    "alwaysDownload": "Her Zaman İndir",
     "unreadable": "“{0}” tamamen okunamadı.",
     "tooLarge": "Dosya çok büyük.",
     "restoredName": "{0} ({1} geri yüklendi)",

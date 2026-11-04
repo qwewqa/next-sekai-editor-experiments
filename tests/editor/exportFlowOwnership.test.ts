@@ -42,6 +42,7 @@ const ui = (): ExportUi => ({
     failed: async () => undefined,
     exported: () => undefined,
     downloadStarted: () => undefined,
+    downloadReady: () => Promise.resolve(true),
 })
 const context = (): ExportContext => ({
     ui: ui(),

@@ -3,10 +3,9 @@ import test from 'node:test'
 import './saveMatrix/env'
 
 const { createExportJob } = await import('../../src/exportVideo/job')
-const { failureDetails, serializeExportError } = await import('../../src/exportVideo/error')
+const { serializeExportError } = await import('../../src/exportVideo/error')
 const { createState } = await import('../../src/state')
 const { FileError } = await import('../../src/platform/types')
-type Job = ReturnType<typeof createExportJob>
 type Options = Parameters<typeof createExportJob>[0]
 type JobDestination = Awaited<ReturnType<Options['destination']>>
 type FromWorker = import('../../src/exportVideo/protocol').FromExportWorker
@@ -110,89 +109,27 @@ const staged = (): JobDestination => ({
     discard: async () => undefined,
 })
 
-/** Runs a job whose picked file the worker refuses to write; `then` shapes the rerun. */
-const refusedThenRerun = async (then: {
-    prepare?: FromWorker
-    reply?: FromWorker
-    fallback?: (signal: AbortSignal, job: Job) => Promise<JobDestination>
-    file?: () => Promise<File>
-}) => {
+test('a picked file the platform refuses to write ends the export: one encode, the pick discarded', async () => {
     const starts: ToWorker[] = []
     const discarded: string[] = []
-    const destination = (kind: 'picked' | 'memory'): JobDestination => ({
-        worker:
-            kind === 'picked' ? { kind, pick: { handle: {} as FileSystemFileHandle } } : { kind },
-        ready: {
-            file: then.file ?? (async () => new File([], 'clip.webm')),
-            deliver: async () => 'delivered',
-            end: async () => undefined,
-        },
-        discard: async () => void discarded.push(kind),
-    })
-    let workers = 0
-    const job: Job = createExportJob({
+    const job = createExportJob({
         ...jobOptions(),
-        destination: async () => destination('picked'),
-        fallback: (signal) =>
-            then.fallback ? then.fallback(signal, job) : Promise.resolve(destination('memory')),
+        destination: async () => ({
+            worker: { kind: 'picked', pick: { handle: {} as FileSystemFileHandle } },
+            discard: async () => void discarded.push('picked'),
+        }),
         worker: () =>
-            fakeWorker(
-                workers++ ? (then.prepare ?? { type: 'prepared' }) : { type: 'prepared' },
-                (to) => {
-                    starts.push(to)
-                    return starts.length === 1 ? failed(refusal()) : then.reply
-                },
-            ),
+            fakeWorker({ type: 'prepared' }, (to) => {
+                starts.push(to)
+                return failed(refusal())
+            }),
     })
     const state = await job.start()
-    return { job, state, starts, discarded }
-}
-
-const detailsOf = (state: Awaited<ReturnType<Job['start']>>) => {
     assert.equal(state.phase, 'failed')
-    return state.phase === 'failed' ? failureDetails(state.error) : []
-}
-
-test('a rerun that fails to prepare, to get its destination or to read its file keeps the refusal in Error Details', async () => {
-    const reasons = [
-        { prepare: failed(new Error('Graphics failed')) },
-        { fallback: () => Promise.reject(new FileError('no-space', 'Storage is full')) },
-        {
-            reply: { type: 'done', result: {}, warnings: [] } satisfies FromWorker,
-            file: () => Promise.reject(new FileError('io', 'Unreadable')),
-        },
-    ]
-    for (const reason of reasons) {
-        const { state } = await refusedThenRerun(reason)
-        assert.deepEqual(detailsOf(state), ['FileError: Write refused'])
-    }
-})
-
-test('a refused rerun ends the export: no third encode', async () => {
-    const { state, starts } = await refusedThenRerun({ reply: failed(refusal()) })
-    assert.equal(starts.length, 2)
-    assert.equal(state.phase === 'failed' && (state.error as Error).message, 'Write refused')
-    assert.deepEqual(detailsOf(state), ['FileError: Write refused'])
-})
-
-test('Cancel while the rerun waits for its destination starts no second encode and discards the late destination', async () => {
-    let late!: (destination: JobDestination) => void
-    let discardedLate = false
-    const { state, starts, discarded } = await refusedThenRerun({
-        fallback: (_, job) => {
-            job.cancel()
-            return new Promise((resolve) => (late = resolve))
-        },
-    })
-    assert.equal(state.phase, 'cancelled')
+    const error = state.phase === 'failed' ? state.error : undefined
+    assert.ok(error instanceof FileError && error.code === 'denied')
     assert.equal(starts.length, 1)
     assert.deepEqual(discarded, ['picked'])
-    late({
-        worker: { kind: 'memory' },
-        discard: async () => void (discardedLate = true),
-    })
-    await new Promise((resolve) => setImmediate(resolve))
-    assert.equal(discardedLate, true)
 })
 
 test('the warnings of a finished export stay with Ready and Done', async () => {

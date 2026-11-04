@@ -10,8 +10,8 @@ export type ExportFaults = {
     loseContextAt?: number
     pixelsAt?: number
     hold?: 'mix' | 'drain' | 'finalize'
-    /** Refuses one operation on a picked file in the worker: reading, opening, writing or closing. */
-    refuse?: 'read' | 'open' | 'write' | 'close'
+    /** Refuses one operation on a picked file in the worker: reading or opening. */
+    refuse?: 'read' | 'open'
     /** The worker has no `createSyncAccessHandle`, as in browsers without it. */
     noSyncAccess?: boolean
 }

@@ -14,6 +14,8 @@ export type VideoFailure = {
     message: () => string
     /** English detail, behind Error Details. */
     detail?: string
+    /** A file failure of the save picker or its file: Always Download is offered. */
+    picker?: boolean
 }
 
 const text = (pick: (messages: (typeof i18n)['value']['exportVideo']['errors']) => string) => () =>
@@ -23,7 +25,7 @@ const text = (pick: (messages: (typeof i18n)['value']['exportVideo']['errors']) 
 type Sound = Pick<ExportSettings, 'bgm' | 'sfx'>
 
 const describeFailure = (error: unknown, name: string, sound: Sound): VideoFailure => {
-    // Earlier failures, such as a refused first attempt or a failed cleanup, follow the cause.
+    // Earlier failures, such as a failed cleanup, follow the cause.
     const detail = [
         error instanceof Error ? `${error.name}: ${error.message}` : String(error),
         ...failureDetails(error),

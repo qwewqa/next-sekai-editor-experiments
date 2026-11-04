@@ -19,6 +19,15 @@ export const fileError = (error: unknown) =>
         ? error
         : new FileError('io', error instanceof Error ? error.message : String(error))
 
+/**
+ * Whether Always Download is offered for a failure of the save picker or of a write through it:
+ * the write was refused or failed, or read back wrong. A full disk, a file not on this device, a
+ * missing file, a failed build and a changed file are not the picker's to blame.
+ */
+export const downloadHelps = (error: FileError) =>
+    error.step === 'readBack' ||
+    (error.step === undefined && ['io', 'read-only', 'denied'].includes(error.code))
+
 export const fileErrorKey = (error: FileError): FileErrorKey => {
     switch (error.step) {
         case 'build':

@@ -23,7 +23,7 @@ export class AudioFailure extends Error {
     }
 }
 
-/** Earlier failures behind an export's error, such as a refused first attempt or a cleanup. */
+/** Earlier failures behind an export's error, such as a failed cleanup. */
 export const failureDetails = (error: unknown): string[] => {
     const details = error instanceof Error && (error as { details?: unknown }).details
     return Array.isArray(details) ? details.filter((d): d is string => typeof d === 'string') : []

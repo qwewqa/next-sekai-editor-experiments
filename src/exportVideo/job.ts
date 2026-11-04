@@ -1,6 +1,5 @@
 import type { GroupId } from '../chart/groups'
 import { detection } from '../platform/detect'
-import { isWriteRefusal } from '../platform/handover'
 import type { Platform } from '../platform/types'
 import { videoLock } from '../platform/videoOutput'
 import { markVideoRunning } from '../platform/videoRunning'
@@ -116,8 +115,6 @@ export const createExportJob = (options: {
     services: ReturnType<typeof createExportServices>
     assets(signal: AbortSignal): Promise<ExportAssets>
     destination(signal: AbortSignal, id: string, route: JobRoute): Promise<JobDestination>
-    /** The route without a picker, for a picked file the platform refuses to write. */
-    fallback?(signal: AbortSignal, id: string, route: JobRoute): Promise<JobDestination>
     worker(): Worker
     changed(state: JobState): void
     frame?(bitmap: ImageBitmap): void
@@ -221,8 +218,6 @@ export const createExportJob = (options: {
         })())
     const run = async (): Promise<JobState> => {
         let release: (() => void) | undefined
-        /** Settles once the job lock taken for a picked file is released. */
-        let unlocked: Promise<unknown> | undefined
         let clearMarker: (() => void) | undefined
         const mark = () =>
             markVideoRunning(id, {
@@ -252,7 +247,6 @@ export const createExportJob = (options: {
                     acquired()
                     await held
                 })
-                unlocked = lock.catch(() => undefined)
                 await abortable(Promise.race([ready, lock]), signal)
             }
             clearMarker = mark()
@@ -346,7 +340,7 @@ export const createExportJob = (options: {
                 options.destination(signal, id, route()),
             ))
             let result: Awaited<ReturnType<typeof encode>>
-            for (let retried = false; ;) {
+            for (;;) {
                 signal.throwIfAborted()
                 try {
                     result = await encode(target, config)
@@ -368,44 +362,16 @@ export const createExportJob = (options: {
                         await target.discard().catch((cleanup: unknown) => earlier.push(cleanup))
                         destination = undefined
                         target = destination = await destinationOf(
-                            (options.fallback ?? options.destination)(signal, id, route()),
+                            options.destination(signal, id, route()),
                         )
                         continue
                     }
-                    // A picked file the platform refuses to write is exported again, once, by
-                    // the route without a picker, and offered from Ready.
-                    if (
-                        retried ||
-                        !options.fallback ||
-                        target.worker.kind !== 'picked' ||
-                        !isWriteRefusal(error)
-                    )
-                        throw error
-                    earlier.push(error)
+                    throw error
                 }
-                retried = true
-                encoding = false
-                clearMarker?.()
-                clearMarker = undefined
-                release?.()
-                release = undefined
-                // Staging takes the job lock only when it is free.
-                await unlocked
-                host?.dispose()
-                host = undefined
-                preparation = undefined
-                firstProgress = undefined
-                set({ phase: 'preparing' })
-                // The worker cleaned up after the picked file; a picked file it could not read
-                // stays as it is.
-                await target.discard().catch((cleanup: unknown) => earlier.push(cleanup))
-                destination = undefined
-                await prepare()
-                target = destination = await destinationOf(options.fallback(signal, id, route()))
             }
             // The worker is done. Ready keeps the file, not the in-memory route's buffer.
             released = true
-            host?.dispose()
+            host.dispose()
             host = undefined
             const { warnings } = result
             if (target.ready) {

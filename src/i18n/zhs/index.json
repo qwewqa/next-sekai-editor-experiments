@@ -2618,6 +2618,7 @@
     "noChangesSaved": "自保存 {0} 以来没有更改",
     "noChangesOpened": "自打开 {0} 以来没有更改",
     "downloadAgain": "再次下载",
+    "alwaysDownload": "始终下载",
     "unreadable": "无法完整读取“{0}”。",
     "tooLarge": "文件过大。",
     "restoredName": "{0}（{1} 还原）",

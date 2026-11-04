@@ -26,26 +26,15 @@ export type ExportVideoEnv = {
     worker(): Worker
     /** Called after preparation; the picker asks for a Ready press if activation expired. */
     destination(request: DestinationRequest): Promise<JobDestination>
-    /** The route without a picker, for a picked file the platform refuses to write. */
-    fallback?(request: DestinationRequest): Promise<JobDestination>
     /** A save picker names the file, so the button asks first (Export…). */
     picker: boolean
     faults?: ExportFaults
 }
 
 /** The page's route: the save picker, else a staged file, else memory. */
-export const pageDestination = (request: DestinationRequest) => routeOf(request, platform)
-
-/** The page's route without the save picker: a staged file, else memory. */
-export const pageFallback = (request: DestinationRequest) =>
-    routeOf(request, { videoOutput: platform.videoOutput })
-
-const routeOf = async (
-    request: DestinationRequest,
-    from: Parameters<typeof prepareVideoDestination>[0]['platform'],
-): Promise<JobDestination> => {
+export const pageDestination = async (request: DestinationRequest): Promise<JobDestination> => {
     const destination = await prepareVideoDestination({
-        platform: from,
+        platform,
         pick: pickVideo,
         pickOptions: {
             name: request.name,
@@ -117,7 +106,6 @@ const routeOf = async (
 export const pageEnv = (worker: () => Worker): ExportVideoEnv => ({
     worker,
     destination: pageDestination,
-    fallback: pageFallback,
     // Read at each use: Write to Chosen Files can change between exports.
     get picker() {
         return !!platform.pickSaveFile
