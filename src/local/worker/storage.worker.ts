@@ -16,8 +16,8 @@ import { timelineHandlers } from './timelineHandlers'
 import { userAssetHandlers } from './userAssets'
 
 // The storage worker's entry: one dedicated worker per tab, written as a module
-// worker and built as iife, so the build emits a classic worker (Firefox 105 has no module
-// workers). No dynamic imports in here: an iife build can't split.
+// worker and built as iife, so the build emits a classic worker that a restart can run from a
+// blob: copy (src/local/worker/client.ts). No dynamic imports in here: an iife build can't split.
 
 const scope = self as unknown as Endpoint
 

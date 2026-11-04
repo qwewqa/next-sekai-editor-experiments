@@ -182,7 +182,7 @@ test('the storage worker runs as a classic worker and restarts from its Blob cop
     await expect.poll(status).toEqual({ mode: 'stored' })
     const [script] = await started()
     expect(script).toMatch(/\/assets\/storage\.worker-[\w-]+\.js$/)
-    // Emitted as iife, so Firefox 105 can run it: no module syntax at its top level.
+    // Emitted as iife, one file a blob: copy can run: no module syntax at its top level.
     const source = await (await page.request.get(script!)).text()
     expect(source.startsWith('(function(){')).toBe(true)
     expect(source).not.toMatch(/^\s*(import|export)\s/m)

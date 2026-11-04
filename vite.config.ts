@@ -74,8 +74,9 @@ export default defineConfig(({ mode }) => ({
         target: ['chrome111', 'edge111', 'firefox128', 'safari16', 'ios16'],
         rolldownOptions: { input: pages(mode) },
     },
-    // The storage worker is written as a module worker and emitted as a classic one: Firefox 105
-    // has no module workers, and an iife build can't split.
+    // The storage worker is written as a module worker and emitted as a classic one, one file with
+    // no imports, so a restart can run the copy kept at startup from a blob: URL after a later deploy
+    // removed the script (src/local/worker/client.ts). An iife build can't split.
     worker: {
         format: 'iife',
     },
