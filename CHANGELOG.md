@@ -31,7 +31,7 @@
 - Level Properties is now Level Info, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file. The text fields in Level Info and the names of groups, stages and folders now have a maximum length.
 - The BGM dialog now has a Download BGM button. When the BGM is not loaded, a notice offers Choose Audio to load an audio file.
 - Level Info now has a Check button for the project file and the history stored in your browser. It uses the file to repair damaged history where possible and reports any remaining damage. In Settings › Toolbar and Settings › Keyboard Shortcuts, the command is named Check File and History.
-- Added Preview Assets to the toolbar and the Preview panel’s menu for choosing the skin, particle effects, background and sound effects.
+- Added Preview Assets to the toolbar, the Preview panel’s menu and Preview Settings for choosing the skin, particle effects, background and sound effects.
 - Open (O) now opens Sonolus packages (.scp). A package with one level and nothing else opens that level. Otherwise, a list shows each level with Open, and each skin, particle effect, background and set of sound effects with Import. Import adds the item to Preview Assets and uses it.
 - (Web) The editor now also includes the Next SEKAI 02 skin and sound effects.
 - Added a Minimap beside the chart. It shows the whole chart and the selection, and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its edge next to the chart to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap, and choose its side in Settings › Editor › Minimap Side.
