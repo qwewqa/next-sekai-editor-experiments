@@ -56,8 +56,14 @@ export function awsStore({ bucket, prefix, run = runAws }) {
                     out,
                 ])
                 if (result.code !== 0 && /\bNoSuchKey\b/.test(result.stderr)) return null
+                // A role that may list only assets/ is denied, not told NoSuchKey, when the index is missing.
                 if (result.code !== 0)
-                    throw new Error(`aws s3api get-object failed: ${result.stderr.trim()}`)
+                    throw new Error(
+                        `aws s3api get-object failed for ${indexKey}: ${result.stderr.trim()}` +
+                            (/\bAccessDenied\b/.test(result.stderr)
+                                ? ' (AccessDenied can also mean that the index is missing; see infra/assets/README.md, Recovery)'
+                                : ''),
+                    )
                 return { bytes: await readFile(out), etag: JSON.parse(result.stdout).ETag }
             }),
 

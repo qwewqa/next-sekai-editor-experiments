@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import test from 'node:test'
@@ -19,8 +20,9 @@ const shared = [
     'assets/lyon-12345678.wasm',
 ]
 
-// The bucket under one prefix, in memory. `faults` makes single operations fail.
-function memoryStore() {
+// The bucket under one prefix, in memory, with an empty index unless `seeded` is false. `faults` makes single
+// operations fail.
+function memoryStore({ seeded = true } = {}) {
     const objects = new Map()
     const downloads = []
     const faults = { corrupt: new Set(), deleteFails: new Set(), failIndexWrites: 0 }
@@ -74,7 +76,7 @@ function memoryStore() {
             return failed
         },
     }
-    store.setIndexBytes(emptyIndex)
+    if (seeded) store.setIndexBytes(emptyIndex)
     return store
 }
 
@@ -240,14 +242,34 @@ test('a file deleted by a record whose index write failed is stored again when i
 test('the index must exist, be valid, not change while in use, and stage the deployed commit', async (t) => {
     const dist = await build(t, a, commitOf('a'))
     const run = (store) => prepare({ dist, store, now: new Date(0), commit: commitOf('a'), days })
-    const missing = memoryStore()
-    missing.readIndex = async () => null
+    const missing = memoryStore({ seeded: false })
     await assert.rejects(run(missing), /no index\. Seed it first/)
     const broken = memoryStore()
     broken.setIndexBytes('{"version":1,')
     await assert.rejects(run(broken), /not valid JSON/)
     broken.setIndexBytes('{"version":1,"live":["assets/x-XXXXXXXX.js"],"next":null,"assets":{}}')
     await assert.rejects(run(broken), /Invalid asset store index: live/)
+    const entry = { sha256: 'a'.repeat(64), bytes: 1 }
+    for (const lastLive of [
+        '1',
+        '2026-11-04',
+        '2026-11-04T10:00:00Z',
+        '2026-02-30T10:00:00.000Z',
+    ]) {
+        broken.setIndexBytes(
+            JSON.stringify({
+                version: 1,
+                live: [],
+                next: null,
+                assets: { 'assets/a-AAAAAAAA.js': { ...entry, lastLive } },
+            }),
+        )
+        await assert.rejects(
+            run(broken),
+            /Invalid asset store index: assets\/a-AAAAAAAA\.js/,
+            lastLive,
+        )
+    }
 
     const raced = memoryStore()
     const read = raced.readIndex
@@ -297,25 +319,18 @@ test('seed builds the index from the live release, so the first deploy keeps it'
     const origin = 'https://test.example'
     const options = { origin, site: 'test', now: new Date(0) }
 
-    const store = memoryStore()
-    store.readIndex = async () => null
-    store.headIndex = async () => null
-    let written
-    store.writeIndex = async (bytes, condition) => {
-        assert.deepEqual(condition, { ifNoneMatch: true })
-        written = parseIndex(bytes)
-    }
+    const store = memoryStore({ seeded: false })
     await seed({ ...options, store, fetch: liveSite(t, manifest, files) })
+    const written = store.index
     assert.deepEqual(written.live, ['assets/a-AAAAAAAA.js'])
     assert.deepEqual(Object.keys(written.assets), ['assets/a-AAAAAAAA.js', 'assets/b-BBBBBBBB.js'])
     assert.equal(written.assets['assets/b-BBBBBBBB.js'].lastLive, time(0))
+    assert.deepEqual([...store.objects.keys()].sort(), Object.keys(written.assets))
+    for (const [file, content] of Object.entries({ ...a, ...b }))
+        assert.equal(store.objects.get(file).toString(), content)
 
     // The first deploy after the seed keeps the release that was live before it.
-    const seeded = memoryStore()
-    for (const [file, content] of Object.entries({ ...a, ...b }))
-        seeded.objects.set(file, Buffer.from(content))
-    seeded.setIndexBytes(JSON.stringify(written))
-    const first = await deploy(t, seeded, { at: day, letter: 'c', extra: c })
+    const first = await deploy(t, store, { at: day, letter: 'c', extra: c })
     assert.deepEqual(first.retained, ['assets/a-AAAAAAAA.js', 'assets/b-BBBBBBBB.js'])
 })
 
@@ -327,12 +342,7 @@ test('seed fails on a file that does not verify, the wrong site, or the wrong in
         files: { 'assets/a-AAAAAAAA.js': sha256(Buffer.from('a')) },
     }
     const options = { origin: 'https://test.example', site: 'test', now: new Date(0) }
-    const fresh = () => {
-        const store = memoryStore()
-        store.readIndex = async () => null
-        store.headIndex = async () => null
-        return store
-    }
+    const fresh = () => memoryStore({ seeded: false })
     for (const [broken, error] of [
         [{ 'assets/a-AAAAAAAA.js': 'changed' }, /does not match its manifest/],
         [{ 'assets/a-AAAAAAAA.js': 404 }, /returned 404/],
@@ -362,13 +372,23 @@ test('seed fails on a file that does not verify, the wrong site, or the wrong in
     assert.deepEqual(existing.index.live, ['assets/a-AAAAAAAA.js'])
 })
 
-// The AWS CLI adapter, with a fake `aws` that records each call.
+// The AWS CLI adapter, with a fake `aws` that records each call and its body, and, as S3 does, rejects a put whose
+// body does not match its SHA-256.
 function fakeAws(respond = () => ({})) {
     const calls = []
     const run = async (args) => {
         const file = args.find((arg) => arg.startsWith('file://'))
         const request = file && JSON.parse(await readFile(file.slice('file://'.length), 'utf8'))
-        calls.push({ args, request })
+        const body = args.includes('--body') && (await readFile(args[args.indexOf('--body') + 1]))
+        calls.push({ args, request, body })
+        const checksum =
+            args.includes('--checksum-sha256') && args[args.indexOf('--checksum-sha256') + 1]
+        if (checksum && createHash('sha256').update(body).digest('base64') !== checksum)
+            return {
+                code: 254,
+                stdout: '',
+                stderr: 'An error occurred (BadDigest) when calling PutObject',
+            }
         return { code: 0, stdout: '', stderr: '', ...respond(args, request, calls.length) }
     }
     return { calls, run }
@@ -441,17 +461,36 @@ test('the AWS store writes conditionally and reads a missing index as missing', 
     const store = awsStore({ bucket: 'nse-assets-1', prefix: 'test', run: aws.run })
     assert.equal(await store.readIndex(), null)
     assert.equal(await store.headIndex(), null)
-    const hash = sha256(Buffer.from('a'))
-    assert.equal(await store.putNew('assets/a-AAAAAAAA.js', Buffer.from('a'), hash), 'exists')
-    assert.equal(await store.putNew('assets/b-BBBBBBBB.js', Buffer.from('b'), hash), 'created')
-    const put = aws.calls.at(-1).args
-    assert.equal(put[put.indexOf('--if-none-match') + 1], '*')
+    const hash = sha256(Buffer.from('b'))
     assert.equal(
-        put[put.indexOf('--checksum-sha256') + 1],
+        await store.putNew('assets/a-AAAAAAAA.js', Buffer.from('a'), sha256(Buffer.from('a'))),
+        'exists',
+    )
+    await assert.rejects(store.putNew('assets/b-BBBBBBBB.js', Buffer.from('x'), hash), /BadDigest/)
+    assert.equal(await store.putNew('assets/b-BBBBBBBB.js', Buffer.from('b'), hash), 'created')
+    const put = aws.calls.at(-1)
+    assert.equal(put.body.toString(), 'b')
+    assert.equal(put.args[put.args.indexOf('--key') + 1], 'test/assets/b-BBBBBBBB.js')
+    assert.equal(put.args[put.args.indexOf('--if-none-match') + 1], '*')
+    assert.equal(
+        put.args[put.args.indexOf('--checksum-sha256') + 1],
         Buffer.from(hash, 'hex').toString('base64'),
     )
     await store.writeIndex(emptyIndex, { ifMatch: '"7"' })
     const write = aws.calls.at(-1).args
     assert.equal(write[write.indexOf('--key') + 1], 'test/index.json')
     assert.equal(write[write.indexOf('--if-match') + 1], '"7"')
+})
+
+test('a denied index read says that the index may be missing, and other failures do not', async () => {
+    for (const [stderr, hint] of [
+        ['An error occurred (AccessDenied) when calling the GetObject operation', true],
+        ['An error occurred (InternalError) when calling the GetObject operation', false],
+    ]) {
+        const aws = fakeAws(() => ({ code: 254, stderr }))
+        const store = awsStore({ bucket: 'nse-assets-1', prefix: 'test', run: aws.run })
+        const error = await store.readIndex().catch((caught) => caught)
+        assert.match(error.message, /get-object failed for test\/index\.json/)
+        assert.equal(/can also mean that the index is missing/.test(error.message), hint)
+    }
 })

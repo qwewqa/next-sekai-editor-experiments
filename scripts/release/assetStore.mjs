@@ -16,6 +16,12 @@ import { join } from 'node:path'
 import { containedPath, hashedAsset, sha256 } from '../release-utils.mjs'
 
 const day = 24 * 60 * 60 * 1000
+// The form Date.prototype.toISOString writes, which is the only one the index holds.
+const isoTime = (value) =>
+    typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) &&
+    !Number.isNaN(Date.parse(value)) &&
+    new Date(value).toISOString() === value
 const sorted = (names) => [...new Set(names)].sort()
 
 /** Reads the index strictly: anything unexpected fails the deploy. */
@@ -38,8 +44,7 @@ export function parseIndex(bytes) {
             !/^[a-f0-9]{64}$/.test(entry?.sha256) ||
             !Number.isSafeInteger(entry.bytes) ||
             entry.bytes < 0 ||
-            typeof entry.lastLive !== 'string' ||
-            Number.isNaN(Date.parse(entry.lastLive))
+            !isoTime(entry.lastLive)
         )
             fail(name)
     }
