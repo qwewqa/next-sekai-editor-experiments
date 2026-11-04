@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { editorReady } from './fixtures'
 
-// The release build links the editor's own stylesheet before the shared chunks' sheets, as the dev
-// server orders them, so a component's rule that ties with index.css wins in both. Each case is a
-// tie that went the other way in the release build.
+// Component styles win over Tailwind's base and the recipes whatever order the release links its
+// stylesheets in: Tailwind's rules sit in cascade layers, and the components' do not. Each case
+// went the wrong way in a release build before the move to layers.
 
 const single = (beat: number, extra: Record<string, unknown> = {}) => ({
     type: 'single',

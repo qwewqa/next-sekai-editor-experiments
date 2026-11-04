@@ -118,7 +118,7 @@ export default defineConfig({
         {
             name: 'firefox-production',
             testDir: './tests/production',
-            testMatch: ['browserCompatibility.spec.ts', 'stylesheetOrder.spec.ts'],
+            testMatch: ['browserCompatibility.spec.ts', 'componentStyles.spec.ts'],
             use: { browserName: 'firefox', baseURL: previewUrl },
         },
         {

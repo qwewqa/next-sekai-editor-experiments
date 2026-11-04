@@ -8,7 +8,6 @@ import { readZip } from '../builtin-assets/zip.mjs'
 import { gateTag } from './analytics.mjs'
 import { inlineScripts, metaIsFirst, pageMetaPolicy, webPolicy } from './csp.mjs'
 import { isTestSitePage } from './site.mjs'
-import { entryStylesheetProblem } from './stylesheets.mjs'
 
 const execFileAsync = promisify(execFile)
 
@@ -408,8 +407,6 @@ async function checkPages(directory, files, manifest) {
         throw new Error('index.html does not load gate.js before the bundle')
     if (isTestSitePage(index) !== (manifest.site === 'test'))
         throw new Error(`index.html does not match the site: ${manifest.site}`)
-    const order = entryStylesheetProblem(index)
-    if (order) throw new Error(`index.html does not link its own stylesheet first: ${order}`)
 }
 
 // Without these the chart canvas grows without limit and the editor's page hangs.
