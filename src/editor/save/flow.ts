@@ -1705,7 +1705,9 @@ const saveNow = async (env: Env) => {
         }
         if (rootOf(savedState()) === toHex(file.hash)) {
             const token = ++noticeToken
-            saveUi.noChanges(file.name, 'downloaded', () => {
+            // A file saved through the picker before Write to Chosen Files was turned off is
+            // still "saved"; Download Again downloads it.
+            saveUi.noChanges(file.name, file.event === 'saved' ? 'saved' : 'downloaded', () => {
                 void exclusive(`downloadAgain:${token}`, async () => {
                     // Pressed later: only for the session it was shown for, as it is now.
                     const now = environment()

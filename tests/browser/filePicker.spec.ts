@@ -87,6 +87,33 @@ test('Disabled downloads on desktop, and the picker returns with Auto', async ({
     expect((await projectOf(page, 'kiwi.nxsp')).format).toBe('nxsp')
 })
 
+test('under Disabled, a file saved through the picker shows no download until a Save downloads it', async ({
+    page,
+}) => {
+    await start(page)
+    const downloads: Download[] = []
+    page.on('download', (download) => downloads.push(download))
+    await saveOnce(page)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await page.evaluate(async () => {
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
+        settings.filePicker = 'disabled'
+    })
+    await expect(page.locator('[data-status-file]')).toHaveText('coconut.nxsp')
+    await expect(page.locator('[data-status-state]')).toHaveCount(0)
+    // Unchanged: No Changes says it was saved, and offers Download Again.
+    await pressSave(page)
+    await expect(
+        notice(page).filter({ hasText: 'No changes since coconut.nxsp was saved' }),
+    ).toBeVisible()
+    await edit(page, 2)
+    await pressSave(page)
+    await expect.poll(() => downloads.length).toBe(1)
+    expect((await downloadedProject(downloads[0]!)).history).toBeDefined()
+    await expect(page.locator('[data-status-state]')).toContainText('downloaded')
+})
+
 const openLocalData = (page: Page) =>
     page.evaluate(async () => {
         const { openSettings } =

@@ -74,12 +74,16 @@ export const labelOf = ({
         // The file Save writes to is always on screen: the bare name when it is the stem.
         const stem = inlineName(stemOf(file.name)) === inlineName(name)
         const { file: strings } = i18n.value
-        // A download browser adds the state: Save there downloads a new copy, it writes no file.
+        // Where Save downloads, the state: Save there downloads a new copy, it writes no file. A
+        // file written to a chosen place (before Write to Chosen Files was turned off) shows none,
+        // as where Save writes in place: it was never downloaded.
         const event = !showEvent
             ? undefined
             : file.event === 'opened'
               ? eventFragment(strings.opened, file.at)
-              : eventFragment(strings.downloaded, file.at)
+              : file.event === 'saved'
+                ? undefined
+                : eventFragment(strings.downloaded, file.at)
         const state = [event, diskFragment(diskFinding)].filter(Boolean).join(' · ')
         return {
             name: stem ? '' : inlineName(name),

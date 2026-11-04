@@ -78,7 +78,8 @@ test('a download browser adds the event, an unknown event reads as a download', 
     assert.match(when('downloaded') ?? '', /^downloaded /)
     assert.match(when('opened') ?? '', /^opened /)
     assert.match(when('future') ?? '', /^downloaded /)
-    assert.equal(when('saved'), when('downloaded'))
+    // Written to a chosen file before Write to Chosen Files was turned off: never downloaded.
+    assert.equal(when('saved'), undefined)
     // Without a time there is nothing to say.
     assert.equal(
         labelOf(input({ showEvent: true, file: { name: 'a.nxsp', event: 'opened' } })).state,
