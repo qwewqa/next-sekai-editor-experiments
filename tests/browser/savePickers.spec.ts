@@ -1,5 +1,6 @@
 import { expect, test, type Download, type Page } from '@playwright/test'
 import { readFile as readFileBytes } from 'node:fs/promises'
+import { gunzipSync, gzipSync } from 'node:zlib'
 import { readNxsp } from '../../src/local/nxsp'
 import { crafted } from '../local/nxsp/craft'
 import { closePage, waitForStartup } from './editorFixture'
@@ -264,7 +265,7 @@ test('the project picker lists .nxsp only, and a build that outlasted the press 
     expect(await pickerCalls(page)).toHaveLength(1)
 })
 
-// Save accepts level data gzipped by the browser or by pako at level 9.
+// Save accepts level data gzipped by the browser or by zlib at level 9.
 for (const [compression, variant] of [
     ["the browser's stream", 0],
     ['level 9', 1],
@@ -273,23 +274,12 @@ for (const [compression, variant] of [
         page,
     }) => {
         await start(page)
-        const level = await page.evaluate(async (variant) => {
+        const built = await page.evaluate(async () => {
             const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
-            const { gunzipBlob } = await import('/src/utils/gzipStream.ts')
-            const pakoUrl = performance
-                .getEntriesByType('resource')
-                .map((entry) => entry.name)
-                .find((url) => new URL(url).pathname.endsWith('/pako.js'))!
-            const { gzip } = (await import(pakoUrl)) as typeof import('pako')
-            const built = await buildLevelData()
-            const blob =
-                variant === 0
-                    ? built
-                    : new Blob([
-                          gzip(new TextDecoder().decode(await gunzipBlob(built)), { level: 9 }),
-                      ])
-            return [...new Uint8Array(await blob!.arrayBuffer())]
-        }, variant)
+            return [...new Uint8Array(await (await buildLevelData()).arrayBuffer())]
+        })
+        const level =
+            variant === 0 ? built : [...gzipSync(gunzipSync(Buffer.from(built)), { level: 9 })]
         await writeFile(page, 'LevelData', level)
         await queuePicks(page, ['LevelData'])
         await page.keyboard.press('o')
