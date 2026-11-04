@@ -3,6 +3,7 @@ import { confirmWhenReady } from './confirmWhenReady'
 import {
     installCanvasCounters,
     installEditorFixture,
+    seedLongRpcTimeout,
     touchInput,
     useTool,
     type TouchInput,
@@ -16,6 +17,7 @@ let touch: TouchInput
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
+    await page.addInitScript(seedLongRpcTimeout)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)

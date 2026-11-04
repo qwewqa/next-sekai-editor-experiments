@@ -1,7 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import en from '../../src/i18n/en/index.json' with { type: 'json' }
 import { confirmNew, confirmWhenReady, newDialog } from './confirmWhenReady'
-import { closePage } from './editorFixture'
+import { closePage, seedLongRpcTimeout } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
 // The load notices in the start-up pill with their actions, the status bar label and the page
@@ -678,6 +678,7 @@ test.describe('load notices in the start-up pill', () => {
                 localStorage.setItem(`${prefix}showPreview`, 'true')
                 localStorage.setItem(`${prefix}showSidebar`, 'true')
             }, prefix)
+            await page.addInitScript(seedLongRpcTimeout)
             await visit(page)
             await page.clock.install()
             await addEvent(page, { kind: 'storageCleared' })

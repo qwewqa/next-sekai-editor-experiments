@@ -9,7 +9,12 @@ import {
 import { isValidEvent } from '../../src/analytics/catalogue'
 import type { Item } from '../../src/analytics/sender'
 import { confirmWhenReady } from './confirmWhenReady'
-import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
+import {
+    installCanvasCounters,
+    installEditorFixture,
+    seedLongRpcTimeout,
+    waitForStartup,
+} from './editorFixture'
 import {
     openVideoDialog,
     shortVideoClip,
@@ -874,6 +879,7 @@ const holdLayoutClock = async (
     viewport: { width: number; height: number },
     values: Record<string, unknown>,
 ) => {
+    await page.addInitScript(seedLongRpcTimeout)
     await page.clock.install()
     await start(page)
     await page.setViewportSize(viewport)
@@ -1104,6 +1110,7 @@ test.describe('with the agreement dialog', () => {
     }) => {
         const { batches, stray } = await mock(context)
         await startupFlags(page, { hold: true, slowMs: 50 })
+        await page.addInitScript(seedLongRpcTimeout)
         await page.clock.install()
         await page.goto('/')
         const gate = page.locator('dialog[data-startup-gate]')

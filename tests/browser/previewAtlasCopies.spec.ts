@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, seedLongRpcTimeout } from './editorFixture'
 import { resource } from './previewResourceFixture'
 
 declare global {
@@ -75,6 +75,7 @@ const open = async (page: Page) => {
         route.fulfill({ body: resource('particles') }),
     )
     await page.addInitScript(installCanvasCounters)
+    await page.addInitScript(seedLongRpcTimeout)
     await page.addInitScript(() => {
         localStorage.setItem('sonolus-next-sekai-editor.showPreview', 'false')
         Object.defineProperty(document, 'hasFocus', { configurable: true, value: () => true })

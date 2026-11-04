@@ -3,7 +3,7 @@ import en from '../../src/i18n/en/index.json' with { type: 'json' }
 import fr from '../../src/i18n/fr/index.json' with { type: 'json' }
 import ja from '../../src/i18n/ja/index.json' with { type: 'json' }
 import tr from '../../src/i18n/tr/index.json' with { type: 'json' }
-import { waitForStartup } from './editorFixture'
+import { seedLongRpcTimeout, waitForStartup } from './editorFixture'
 
 // The agreement dialog in the dev build, which has both legal pages at revision 1: due at a load
 // without a record that covers them, closed only by Agree, with every load notice waiting under it.
@@ -446,6 +446,7 @@ test.describe('load notices wait under it', () => {
     test("a recovered session's Restore waits 20 s under it, then shows for its full time and works", async ({
         page,
     }) => {
+        await page.addInitScript(seedLongRpcTimeout)
         await page.clock.install()
         await visit(page)
         await agree(page)
@@ -477,6 +478,7 @@ test.describe('load notices wait under it', () => {
     test('a late notice joins the card 15 s into it, and the card shows it after Agree', async ({
         page,
     }) => {
+        await page.addInitScript(seedLongRpcTimeout)
         await page.clock.install()
         await heldEstimate(page)
         await visit(page)
@@ -494,6 +496,7 @@ test.describe('load notices wait under it', () => {
     })
 
     test('16 s after Agree, a late notice is only kept in Local Data', async ({ page }) => {
+        await page.addInitScript(seedLongRpcTimeout)
         await page.clock.install()
         await heldEstimate(page)
         await visit(page)
@@ -519,6 +522,7 @@ test.describe('load notices wait under it', () => {
                 )
             }
         })
+        await page.addInitScript(seedLongRpcTimeout)
         await page.clock.install()
         await visit(page)
         await expect(dialog(page)).toBeVisible()

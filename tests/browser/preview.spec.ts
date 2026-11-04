@@ -1,5 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
+import {
+    installCanvasCounters,
+    installEditorFixture,
+    seedLongRpcTimeout,
+    touchInput,
+} from './editorFixture'
 
 import { resource } from './previewResourceFixture'
 
@@ -48,7 +53,10 @@ test.beforeEach(async ({ page }, testInfo) => {
         await page.addInitScript(() => {
             sessionStorage.setItem('nse.test.storage', '{}')
         })
-    if (transport) await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') })
+    if (transport) {
+        await page.addInitScript(seedLongRpcTimeout)
+        await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') })
+    }
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
     await page.route('**/resource/particle.scp*', (route) =>
         route.fulfill({ body: resource('particles') }),

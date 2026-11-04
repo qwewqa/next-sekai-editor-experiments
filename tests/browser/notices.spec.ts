@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, seedLongRpcTimeout } from './editorFixture'
 import { REPOSITORY } from './sourceRepository'
 
 // Notice cards, quick feedback, the live region and Alt+N.
@@ -111,7 +111,7 @@ for (const sideBySide of ['allow', 'disallow'] as const)
     })
 
 test('a notice with an action stays about 6 s and pauses while hovered', async ({ page }) => {
-    await boot(page)
+    await boot(page, seedLongRpcTimeout)
     await page.clock.install()
     await notifyWithAction(page, 'Nothing to undo')
     await expect(pill(page)).toBeVisible()
@@ -134,7 +134,7 @@ test('a notice with an action stays about 6 s and pauses while hovered', async (
 test('Alt+N focuses the action, which does not time out while focused, and Escape returns focus', async ({
     page,
 }) => {
-    await boot(page)
+    await boot(page, seedLongRpcTimeout)
     await page.clock.install()
     await page.locator('.chart-pane').focus()
     await notifyWithAction(page, 'Nothing to undo')
@@ -371,7 +371,7 @@ test('the update line survives a no-op tool tap', async ({ page }) => {
 })
 
 test('a new notice under a stationary pointer is held from the start', async ({ page }) => {
-    await boot(page)
+    await boot(page, seedLongRpcTimeout)
     await page.clock.install()
     await notifyWithAction(page, 'First')
     await pill(page).hover()
@@ -783,7 +783,7 @@ test.describe('dismissing a card', () => {
 
 test.describe('timing', () => {
     test('a long message stays longer, up to 12 s', async ({ page }) => {
-        await boot(page)
+        await boot(page, seedLongRpcTimeout)
         await page.clock.install()
         await notifyCard(page, 'x'.repeat(150))
         await expect(pill(page)).toBeVisible()
@@ -802,7 +802,7 @@ test.describe('timing', () => {
     test('the timer waits while the page is hidden, then leaves at least 1.5 s', async ({
         page,
     }) => {
-        await boot(page)
+        await boot(page, seedLongRpcTimeout)
         await page.clock.install()
         const visibility = (state: 'hidden' | 'visible') =>
             page.evaluate((state) => {
@@ -835,7 +835,7 @@ test.describe('timing', () => {
     })
 
     test('the timer waits while a blocking dialog covers the card', async ({ page }) => {
-        await boot(page)
+        await boot(page, seedLongRpcTimeout)
         await page.clock.install()
         await notifyWithAction(page, 'Nothing to undo')
         await page.clock.runFor(2_000)
@@ -1117,7 +1117,7 @@ test.describe('over a blocking dialog', () => {
     })
 
     test('a card hovered in a dialog that closes still times out', async ({ page }) => {
-        await boot(page)
+        await boot(page, seedLongRpcTimeout)
         await page.clock.install()
         await openBlocking(page)
         await expect(page.getByRole('dialog')).toBeVisible()
