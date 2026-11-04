@@ -29,6 +29,7 @@ import {
     npsSets,
     oneSecondMax,
     representable,
+    rollingDurations,
     rollingFigures,
     roundParts,
     ROWS,
@@ -42,6 +43,7 @@ import {
     type ChartStatistics,
     type Row,
     type Samples,
+    type Span,
 } from '../../src/levelData/statistics'
 import { buildPreviewChart } from '../../src/preview/engine/chart'
 import { getComboTimes } from '../../src/preview/engine/combo'
@@ -437,8 +439,7 @@ const bruteSkyline = (times: number[], x0: number, x1: number, count: number) =>
     return Array.from({ length: count }, (_, k) => {
         const a = x0 + k * width
         const b = a + width
-        if (b <= 0) return 0
-        const from = Math.max(0, (a - 0.5) * 1000)
+        const from = (a - 0.5) * 1000
         const to = Math.max((b - 0.5) * 1000, from + 1e-6)
         const starts = [from, ...ms.filter((m) => m >= from && m < to)]
         for (const m of ms) {
@@ -472,12 +473,13 @@ test('each Rolling step is the busiest window centred in it, and the top is the 
     }
 })
 
-test('Rolling counts from 00:00.000 and splits a step by its earliest busiest window', () => {
+test('Rolling’s window at the chart’s start is centred as anywhere else, and a step splits by its earliest busiest window', () => {
     const list = Float64Array.from([0, 0.75])
     const steps = skyline(mergeTimes([list]), -1.55, 2.3, 300)
     const at = (time: number) => steps.find((step) => step.a <= time && time < step.b)
     assert.equal(at(-1)?.count, 0)
-    assert.equal(at(0)?.count, 2)
+    // [-0.5 s, 0.5 s) holds only the note at 0.
+    assert.equal(at(0)?.count, 1)
     assert.equal(at(0.5)?.count, 2)
     // Two layers, two equally busy windows: the earliest is kept.
     const split = skyline(
@@ -713,6 +715,173 @@ test('Primary can be above All: ten seconds of streams among ninety of lone seco
     assert.equal(median?.value, '10 (1)')
 })
 
+// --- The durations at each count, which the figures and the distribution share.
+
+const EPSILON = 1e-9
+const durationsOf = (times: number[]) => {
+    const durations = rollingDurations(Float64Array.from(times))
+    assert.ok(durations)
+    return durations
+}
+/** Seconds at each count, from a durations list. */
+const secondsByValue = ({ values, ms }: { values: Int32Array; ms: Float64Array }) =>
+    Object.fromEntries(Array.from(values, (value, i) => [value, (ms[i] ?? 0) / 1000]))
+
+test('the durations of taps at 0, 0.25, 0.5 and 2 s are worked out by hand, a nanosecond margin included', () => {
+    const durations = durationsOf([0, 0.25, 0.5, 2])
+    const seconds = secondsByValue(durations)
+    assert.deepEqual(Object.keys(seconds).map(Number), [1, 2, 3])
+    assert.ok(near(seconds[1] ?? 0, 1.5 - EPSILON, 1e-12))
+    assert.ok(near(seconds[2] ?? 0, 0.5, 1e-12))
+    assert.ok(near(seconds[3] ?? 0, 0.5 - EPSILON, 1e-12))
+    assert.ok(near(durations.active / 1000, 2.5 - 2 * EPSILON, 1e-12))
+    const figures = rollingFigures(Float64Array.from([0, 0.25, 0.5, 2]))
+    assert.ok(figures)
+    assert.deepEqual([figures.median, figures.p90, figures.p99], [1, 3, 3])
+    assert.ok(Math.abs(figures.average / 1.60000000128 - 1) < 1e-6)
+})
+
+test('a time exactly at half the active time takes the lower count as the Median', () => {
+    // One note, then a five-note chord: a second at 1 and a second at 5.
+    assert.equal(rollingFigures(Float64Array.from([0, 5, 5, 5, 5, 5]))?.median, 1)
+})
+
+test('the durations add up to the active time, and give the four figures by an independent count', () => {
+    const random = mulberry32(2024)
+    for (let round = 0; round < 200; round++) {
+        const times: number[] = []
+        let time = 0
+        while (times.length < 3 + Math.floor(random() * 60)) {
+            const kind = random()
+            if (kind < 0.15) times.push(time, time, time)
+            else if (kind < 0.3) times.push(time, time + 1)
+            else if (kind < 0.4) times.push(time, time + 1e-9)
+            else times.push(time)
+            time += Math.floor(random() * 300) / 100
+        }
+        const sorted = Float64Array.from(times).sort()
+        const durations = durationsOf([...sorted])
+        const { values, ms, active } = durations
+        const sum = ms.reduce((a, b) => a + b, 0)
+        assert.ok(near(sum, active, 1e-9 * active), `${round}: sum`)
+        const figures = rollingFigures(sorted)
+        assert.ok(figures)
+        let weighted = 0
+        values.forEach((value, i) => (weighted += value * (ms[i] ?? 0)))
+        assert.ok(Math.abs(weighted / active / figures.average - 1) < 1e-6, `${round}: average`)
+        // Each percentile is the first count whose running total reaches its share of the time.
+        const share = (p: number) => {
+            const order = [...values.keys()].sort((a, b) => (values[a] ?? 0) - (values[b] ?? 0))
+            let running = 0
+            for (const i of order) {
+                running += ms[i] ?? 0
+                if (running >= p * active - 1e-9) return values[i]
+            }
+            return undefined
+        }
+        assert.deepEqual(
+            [figures.median, figures.p90, figures.p99],
+            [share(0.5), share(0.9), share(0.99)],
+            `${round}`,
+        )
+    }
+})
+
+test('the largest count with time is the one-second maximum away from the window’s edge', () => {
+    const random = mulberry32(31)
+    for (let round = 0; round < 50; round++) {
+        // Times on a 0.01 s grid offset by a third, so no two notes are exactly 1 s apart.
+        const times = Array.from(
+            { length: 5 + Math.floor(random() * 50) },
+            () => Math.floor(random() * 2000) / 100 + 1 / 300,
+        ).sort((a, b) => a - b)
+        const { values } = durationsOf(times)
+        assert.equal(values[values.length - 1], oneSecondMax(times), `${round}`)
+    }
+    // At the window's edge the two round differently: the sweep finds a vanishing time at 2.
+    const edge = [3.8380210753530264, 4.838021074353026]
+    const { values, ms } = durationsOf(edge)
+    assert.equal(oneSecondMax(edge), 1)
+    assert.equal(values[values.length - 1], 2)
+    assert.ok((ms[values.length - 1] ?? 0) < 1e-9)
+})
+
+test('Primary can spend its time at a higher count than All: ten seconds of streams among ninety of lone secondary notes', () => {
+    const sets = npsSets(
+        timesOf({
+            tap: Array.from({ length: 100 }, (_, i) => i / 10),
+            trace: Array.from({ length: 45 }, (_, i) => 12 + i * 2),
+        }),
+        ['tap', 'trace'],
+    )
+    assert.ok(sets)
+    const figures = npsFigures(sets)
+    assert.equal(figures.primary.median, 10)
+    assert.equal(figures.all.median, 1)
+})
+
+// --- Rolling's window at the chart's start, over a view.
+
+test('Rolling over a view across 00:00 counts every step by the centred window, at fine and coarse widths', () => {
+    const layers = [Float64Array.from([0]), Float64Array.from([0.75])]
+    const every = mergeTimes(layers).times
+    const source = chartSource(every, layers)
+    assert.ok(source)
+    const tagged = mergeTimes(layers)
+    // The busiest window starting in the step's range, the earliest of equals, by brute force.
+    const brute = (a: number, b: number) => {
+        let best = { count: -1, parts: [0, 0] }
+        for (let k = 0; k <= 2000; k++) {
+            const start = a - 0.5 + ((b - a) * k) / 2000
+            if (start >= b - 0.5) break
+            const parts = [0, 0]
+            tagged.times.forEach((time, i) => {
+                if (time * 1000 >= start * 1000 && time * 1000 < start * 1000 + 1000 - 1e-6)
+                    parts[tagged.layers[i] ?? 0]!++
+            })
+            const count = (parts[0] ?? 0) + (parts[1] ?? 0)
+            if (count > best.count) best = { count, parts }
+        }
+        return best
+    }
+    for (const span of [10, 600]) {
+        const view = { x0: -2, x1: 8 }
+        const steps: Span[] | undefined = chartView('rolling', source, 2, view, span).steps
+        assert.ok(steps)
+        for (const step of steps) {
+            const expected = brute(step.a, step.b)
+            assert.equal(step.count, expected.count, `${span}: ${step.a}`)
+            assert.deepEqual(step.parts, expected.parts, `${span}: ${step.a}`)
+        }
+        // One step later: the same steps with the same counts, one along.
+        const width: number = (steps[0]?.b ?? 0) - (steps[0]?.a ?? 0)
+        const moved: Span[] | undefined = chartView(
+            'rolling',
+            source,
+            2,
+            { x0: view.x0 + width, x1: view.x1 + width },
+            span,
+        ).steps
+        assert.ok(moved)
+        for (let k = 1; k < steps.length; k++) {
+            assert.equal(steps[k]?.a, moved[k - 1]?.a)
+            assert.equal(steps[k]?.count, moved[k - 1]?.count)
+        }
+    }
+    // At 2 s steps, the step before 00:00 reads the note at 0, not nothing.
+    const coarse = chartView('rolling', source, 2, { x0: -2, x1: 8 }, 600).steps
+    assert.deepEqual(
+        coarse?.map((step) => [step.a, step.count]),
+        [
+            [-2, 1],
+            [0, 2],
+            [2, 0],
+            [4, 0],
+            [6, 0],
+        ],
+    )
+})
+
 // --- The chart over a view.
 
 const near = (value: number, target: number, tolerance: number) =>
@@ -729,7 +898,8 @@ const viewLayers = (() => {
 const viewEvery = mergeTimes(viewLayers).times
 
 // The whole chart for each mode, with and without a BGM End past the last note, and as Export
-// Video draws it: figures pinned from the code before views.
+// Video draws it: figures pinned from the code before views, Rolling's since its window at the
+// chart's start is centred as elsewhere.
 const pinnedLayers = [
     Float64Array.from({ length: 160 }, (_, i) => 0.2 + i * 0.37),
     Float64Array.from([10, 10, 10, 25.5, 25.5, 40, 40.125, 40.25, 40.375, 41]),
@@ -807,7 +977,7 @@ const pinned: Record<string, Pinned> = {
         x1: 60.7,
         points: 600,
         layers: 2,
-        sum: 1838,
+        sum: 1834,
         max: 7,
         xs: [
             -1.4000000000000001, -1.193, 14.125000000000002, 29.650000000000006, 45.175000000000004,
@@ -821,7 +991,7 @@ const pinned: Record<string, Pinned> = {
         x1: 90,
         points: 600,
         layers: 2,
-        sum: 1254,
+        sum: 1252,
         max: 7,
         xs: [
             -1.4000000000000001, -1.0953333333333335, 21.450000000000003, 44.300000000000004, 67.15,
@@ -845,7 +1015,7 @@ const pinned: Record<string, Pinned> = {
     },
 }
 
-test('without a view, every mode draws the whole chart as it did before views', () => {
+test('without a view, every mode draws the whole chart to its pinned figures', () => {
     const check = (name: string, model: ChartModel | undefined) => {
         const expected = pinned[name]
         assert.ok(model && expected, name)

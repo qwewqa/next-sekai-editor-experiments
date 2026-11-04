@@ -165,11 +165,11 @@ export const oneSecondMax = (times: Times) => {
 
 export type Figures = { average: number; median: number; p90: number; p99: number }
 
-/**
- * The four figures, of the Rolling count r(s) over the time it is above 0: Average is the
- * notes over that time; the percentiles are time-weighted, whole numbers.
- */
-export const rollingFigures = (times: Times): Figures | undefined => {
+/** The time the Rolling count spends at each value above 0: ascending values, the ms at each, their total. */
+export type Durations = { values: Int32Array; ms: Float64Array; active: number }
+
+/** The Rolling count r(s) as a list of durations, from one sweep of its breakpoints. */
+export const rollingDurations = (times: Times): Durations | undefined => {
     const n = times.length
     if (!n) return undefined
     // r is constant between breakpoints: each note enters at n - 1 s + 1e-6 ms and leaves at n.
@@ -197,21 +197,34 @@ export const rollingFigures = (times: Times): Figures | undefined => {
         r += isEnter ? 1 : -1
         previous = time
     }
-    const values = [...at.keys()].sort((a, b) => a - b)
+    const values = Int32Array.from([...at.keys()].sort((a, b) => a - b))
+    return { values, ms: Float64Array.from(values, (value) => at.get(value) ?? 0), active }
+}
+
+const figuresOf = ({ values, ms, active }: Durations, count: number): Figures => {
     const percentile = (p: number) => {
         let sum = 0
-        for (const value of values) {
-            sum += at.get(value) ?? 0
-            if (sum >= p * active - 1e-9) return value
+        for (let i = 0; i < values.length; i++) {
+            sum += ms[i] ?? 0
+            if (sum >= p * active - 1e-9) return values[i] ?? 0
         }
         return values[values.length - 1] ?? 0
     }
     return {
-        average: n / (active / 1000),
+        average: count / (active / 1000),
         median: percentile(0.5),
         p90: percentile(0.9),
         p99: percentile(0.99),
     }
+}
+
+/**
+ * The four figures, of the Rolling count r(s) over the time it is above 0: Average is the
+ * notes over that time; the percentiles are time-weighted, whole numbers.
+ */
+export const rollingFigures = (times: Times): Figures | undefined => {
+    const durations = rollingDurations(times)
+    return durations && figuresOf(durations, times.length)
 }
 
 /** Tap, Flick and Release. The other categories are secondary. */
@@ -246,6 +259,18 @@ export const npsSets = (
     return { all, primary, hasPrimary, hasSecondary }
 }
 
+/** The durations of All and of Primary; Primary's are undefined when it has no notes. */
+export type NpsDurations = { all: Durations; primary: Durations | undefined }
+
+export const npsDurations = ({ all, primary }: NpsSets): NpsDurations | undefined => {
+    const allDurations = rollingDurations(all)
+    if (!allDurations) return undefined
+    return {
+        all: allDurations,
+        primary: primary === all ? allDurations : rollingDurations(primary),
+    }
+}
+
 /** The four figures over All and over Primary; Primary's are zeros when it has no notes. */
 export type NpsFigures = {
     all: Figures
@@ -256,11 +281,17 @@ export type NpsFigures = {
 
 const NO_FIGURES: Figures = { average: 0, median: 0, p90: 0, p99: 0 }
 
-export const npsFigures = ({ all, primary, hasPrimary, hasSecondary }: NpsSets): NpsFigures => {
-    const allFigures = rollingFigures(all) ?? NO_FIGURES
+export const npsFigures = (sets: NpsSets, durations = npsDurations(sets)): NpsFigures => {
+    const { all, primary, hasPrimary, hasSecondary } = sets
+    const allFigures = durations ? figuresOf(durations.all, all.length) : NO_FIGURES
     return {
         all: allFigures,
-        primary: primary === all ? allFigures : (rollingFigures(primary) ?? NO_FIGURES),
+        primary:
+            primary === all
+                ? allFigures
+                : durations?.primary
+                  ? figuresOf(durations.primary, primary.length)
+                  : NO_FIGURES,
         hasPrimary,
         hasSecondary,
     }
@@ -421,14 +452,8 @@ const sweep = (tagged: Tagged, count: number, edges: (k: number) => [number, num
     const n = ms.length
     let lo = 0
     let hi = 0
-    let last = -Infinity
+    // Candidates only rise, so the pointers only move forward.
     const countAt = (start: number): [number, number, number] => {
-        // Candidates rise within a step; the pointers restart for steps clamped to 00:00.000.
-        if (start < last) {
-            lo = 0
-            hi = 0
-        }
-        last = start
         while (lo < n && (ms[lo] ?? 0) < start) lo++
         if (hi < lo) hi = lo
         while (hi < n && (ms[hi] ?? 0) < start + 1000 - MARGIN_MS) hi++
@@ -438,21 +463,11 @@ const sweep = (tagged: Tagged, count: number, edges: (k: number) => [number, num
     const steps: Span[] = []
     let iNote = 0
     let iEntry = 0
-    let previousA = -Infinity
     for (let k = 0; k < count; k++) {
         const [a, b] = edges(k)
         const parts = new Array<number>(tagged.layerCount).fill(0)
-        if (b <= 0) {
-            steps.push({ a, b, count: 0, parts })
-            continue
-        }
-        const from = Math.max(0, (a - 0.5) * 1000)
+        const from = (a - 0.5) * 1000
         const to = Math.max((b - 0.5) * 1000, from + MARGIN_MS)
-        if (from <= previousA) {
-            iNote = 0
-            iEntry = 0
-        }
-        previousA = from
         while (iNote < n && (ms[iNote] ?? 0) < from) iNote++
         while (iEntry < n && entry(ms[iEntry] ?? 0) <= from) iEntry++
         let best = countAt(from)
@@ -476,8 +491,8 @@ const sweep = (tagged: Tagged, count: number, edges: (k: number) => [number, num
 }
 
 /**
- * Each step [a, b) takes the most notes in a window starting in [a - 0.5 s, b - 0.5 s), from
- * 00:00.000, under the window rule; its split is that window's, the earliest of equally busy ones.
+ * Each step [a, b) takes the most notes in a window starting in [a - 0.5 s, b - 0.5 s), under
+ * the window rule; its split is that window's, the earliest of equally busy ones.
  * The count rises only when a note enters, so the candidates are the range's first start, every
  * note start in it and the start just after each note enters. O(n + steps).
  */
