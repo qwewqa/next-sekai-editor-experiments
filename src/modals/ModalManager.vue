@@ -147,7 +147,7 @@ const vOpen = {
                     .map((element) => (element.id ||= `modal-description-${describedId++}`))
                     .join(' '),
             )
-        // The primary action always takes focus, as a confirm button must, in the body or a footer.
+        // The designated default button (`data-autofocus`) always takes focus, in the body or a footer.
         const content = [...el.children].filter((child) => !child.hasAttribute('data-notice-layer'))
         const body = content.filter((child) => !child.hasAttribute('data-modal-footer')).pop()
         const primary = content
