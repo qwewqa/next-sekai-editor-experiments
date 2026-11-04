@@ -47,12 +47,14 @@
 
     /* Rows and menu rows ring at their edge, in the surface's ink, which contrasts with both the
        row and the surface (principle 10). */
-    .focus-edge {
+    .focus-edge,
+    .popup-item {
         outline: 2px solid transparent;
         outline-offset: -2px;
     }
 
-    .focus-edge:focus-visible {
+    .focus-edge:focus-visible,
+    .popup-item:focus-visible {
         outline-color: rgb(var(--color-fg));
     }
 
@@ -352,6 +354,7 @@
         .ghost:focus-visible,
         .focus-ring:focus-visible,
         .focus-edge:focus-visible,
+        .popup-item:focus-visible,
         .field:focus {
             outline-width: 4px;
             outline-offset: -4px;
@@ -373,7 +376,8 @@
             outline-offset: -4px;
         }
 
-        .focus-edge:has(:focus-visible) {
+        .focus-edge:has(:focus-visible),
+        .popup-item:has(:focus-visible) {
             outline-width: 4px;
             outline-offset: -4px;
         }

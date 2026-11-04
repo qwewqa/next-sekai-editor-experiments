@@ -2220,7 +2220,7 @@ const folderEyeLabel = (item: FolderItem) =>
                     />
                     <button
                         type="button"
-                        class="manager-new-folder"
+                        class="manager-new-folder btn btn-secondary"
                         :aria-label="i18n.workspace.folders.new"
                         :title="i18n.workspace.folders.new"
                         :class="{ 'opacity-40': isPeeking }"
@@ -2262,7 +2262,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 <button
                     v-if="barVisibility"
                     type="button"
-                    class="manager-round manager-bulk-visibility"
+                    class="manager-round btn btn-secondary manager-bulk-visibility"
                     :disabled="!canSetVisibility || !selectedIds.length"
                     :aria-label="
                         bulkHidden
@@ -2284,7 +2284,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 </button>
                 <button
                     type="button"
-                    class="manager-round manager-bulk-move"
+                    class="manager-round btn btn-secondary manager-bulk-move"
                     :disabled="!selectedIds.length"
                     :aria-label="i18n.workspace.folders.moveTo"
                     :title="i18n.workspace.folders.moveTo"
@@ -2296,7 +2296,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 </button>
                 <button
                     type="button"
-                    class="manager-round manager-bulk-delete"
+                    class="manager-round btn btn-secondary manager-bulk-delete"
                     :disabled="!selectionSize"
                     :aria-label="i18n.workspace.manager.deleteSelected"
                     :title="i18n.workspace.manager.deleteSelected"
@@ -2306,7 +2306,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 </button>
                 <button
                     type="button"
-                    class="manager-round manager-bulk-more"
+                    class="manager-round btn btn-secondary manager-bulk-more"
                     :aria-label="i18n.workspace.manager.selectionActions"
                     :title="i18n.workspace.manager.selectionActions"
                     aria-haspopup="menu"
@@ -2329,7 +2329,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 />
                 <button
                     type="button"
-                    class="manager-new-folder"
+                    class="manager-new-folder btn btn-secondary"
                     :aria-label="i18n.workspace.folders.new"
                     :title="i18n.workspace.folders.new"
                     :class="{ 'opacity-40': isPeeking }"
@@ -2371,7 +2371,7 @@ const folderEyeLabel = (item: FolderItem) =>
 /* A round companion to the Add pill, raised the same way. */
 .manager-new-folder,
 .manager-round {
-    @apply btn btn-secondary pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full;
+    @apply pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full;
 }
 
 .manager-round {
