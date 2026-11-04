@@ -445,7 +445,7 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
 }) => {
     await startLong(page)
     await open(page)
-    // The page's timers and frames advance only when the test says, so a wheel run ends on cue.
+    // runFor advances the page's timers and frames, so each wheel run has ended before the next step.
     await page.clock.install()
     const settle = () => page.clock.runFor(250)
     await page.evaluate(() => {
@@ -500,6 +500,12 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
     expect(now).toBeGreaterThan(10)
     const said = `${String(Math.floor(now / 60)).padStart(2, '0')}:${(now % 60).toFixed(3).padStart(6, '0')}`
     await expect(chart(page)).toHaveAttribute('aria-valuetext', new RegExp(` at ${said}, `))
+    // The next key moves on from there, and the view stays.
+    await page.keyboard.press('ArrowRight')
+    await expect
+        .poll(async () => Number(await chart(page).getAttribute('aria-valuenow')))
+        .toBeCloseTo(now + 1, 3)
+    expect(await timeAt(page, 0)).toBeCloseTo(now, 0)
 
     // A click chooses where Zoom In zooms: the clicked time keeps its place.
     const span = await width(page)

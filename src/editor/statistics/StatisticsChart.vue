@@ -284,13 +284,13 @@ const valueNow = computed(() => {
     return current ? Math.min(Math.max(time, Math.max(0, current.x0)), current.x1) : 0
 })
 const valueText = computed(() => describe(readingAt(valueNow.value))?.valueText)
-// With no plot the readout clears; the view and the place the buttons zoom on stay.
-watch(
-    () => !!model.value,
-    (drawn) => {
-        if (!drawn) cursor.value = undefined
-    },
-)
+// With no plot the readout clears; the view and the place the buttons zoom on stay. A pan that
+// moves past a pinned readout takes it along at the view's edge, where the slider says it is.
+watch(model, (current) => {
+    if (!current) cursor.value = undefined
+    else if (cursor.value !== undefined && cursor.value !== valueNow.value)
+        cursor.value = valueNow.value
+})
 
 /** The time under a client x, in the drawn view or in `from`. */
 const timeAtX = (clientX: number, from: View | undefined = model.value) => {
@@ -646,7 +646,7 @@ const onKeydown = (event: KeyboardEvent) => {
     }[event.key]
     const time =
         step !== undefined
-            ? (cursor.value ?? 0) + step * unit
+            ? valueNow.value + step * unit
             : event.key === 'Home'
               ? 0
               : event.key === 'End'
