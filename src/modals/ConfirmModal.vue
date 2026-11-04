@@ -9,7 +9,7 @@ const props = defineProps<{
     message: () => string
     /** The confirm button's label, e.g. naming the action; "Confirm" by default. */
     confirm?: () => string
-    /** Confirming deletes something: the button is red, and Cancel is the default, right of it. */
+    /** Confirming deletes something: the button is quiet red, and Cancel is the default, right of it. */
     destructive?: boolean
 }>()
 

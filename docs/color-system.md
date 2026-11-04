@@ -9,7 +9,7 @@ The roles, tokens and control recipes behind the editor's UI colour, and the rul
 
 ## 1. In one paragraph
 
-Mint keeps one meaning: **something is on** (a switch, the tool in use, a mode in force, rows checked for an action, and the current marker on the dark chrome). **The primary action is ink:** indigo in light and periwinkle in dark, so action and on differ in lightness as well as hue. **Destructive is red in both themes:** a filled red for the action a destructive dialog exists for, and a quiet red label when it is offered beside a safe default. **Three elevations tell the state:** raised is pressable, flat is on, and sunk is being pressed. **A press is one step beyond hover:** the face takes one tone, the ink strengthens, it sinks, and a raised control keeps its mint glow, so a tap always shows and never looks like on or like disabled. **Focus is one rule:** a 2 px ring drawn 2 px inside the face, in the face's own ink. Warning and info are tokens with their glyphs. The neutrals, the surfaces, the white raised pills, the hover glow and the quick toast have not been retuned since v0.5.22.
+Mint keeps one meaning: **something is on** (a switch, the tool in use, a mode in force, rows checked for an action, and the current marker on the dark chrome). **The primary action is ink:** indigo in light and periwinkle in dark, so action and on differ in lightness as well as hue. **Destructive is red in both themes:** a quiet red label beside a safe default, filled red only while pressed. **Three elevations tell the state:** raised is pressable, flat is on, and sunk is being pressed. **A press is one step beyond hover:** the face takes one tone, the ink strengthens, it sinks, and a raised control keeps its mint glow, so a tap always shows and never looks like on or like disabled. **Focus is one rule:** a 2 px ring drawn 2 px inside the face, in the face's own ink. Warning and info are tokens with their glyphs. The neutrals, the surfaces, the white raised pills, the hover glow and the quick toast have not been retuned since v0.5.22.
 
 ---
 
@@ -28,7 +28,6 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 3. **Ink is the primary action.** A button is primary when it is the default that Enter presses, or the commit of a mode or form (Restore commits peek mode). A footer has at most one filled button, and it is the one Enter presses.
    - *Reason:* the safe path is the strongest, in line with the data-loss rule. The Enter target is obvious, and the primary cannot be mistaken for an on-state.
-   - *Exception:* a destructive ConfirmModal fills its own action red, because that action is the one Enter presses (see 8.2).
 
 4. **Red means destructive or failed. It is told apart by form.**
    - Destructive: a button or menu row naming the action, with a trash icon in menus.
@@ -42,7 +41,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 6. **Roles that must differ, differ in lightness, not hue alone.** Check fill against fill, under colour-vision deficiency too, not only text against fill. Section 4.3 is the check.
    - *Reason:* about 1 man in 12 has a red-green deficiency, and a hue-only difference vanishes for him. That is why a pale lavender dark primary was rejected (deutan ΔE 2.0 from mint), and why the light press face is darker than the mint (deutan ΔE 1.6 at a lighter grey).
-   - *Exceptions:* pairs that never meet, or that something other than colour separates, are listed with the reason (danger fill against primary fill: one footer never shows both).
+   - *Exceptions:* pairs that never meet, or that something other than colour separates, are listed with the reason (danger fill against primary fill: the danger fill shows only while a quiet button is pressed).
 
 7. **Three elevations tell the state.**
    - **Raised** (shadow): pressable at rest.
@@ -202,7 +201,7 @@ WCAG 2 relative luminance. ΔE is OKLab ×100, where about 2 is the threshold of
 | Pair | Light: ratio; ΔE normal, p, d, t | Dark | Verdict |
 |---|---|---|---|
 | primary vs on (mint) | 6.70; 50, 52, 48, 49 | 1.81; 22, 21, 17, 20 | Distinct in both themes, also for CVD. A pale lavender dark primary was deutan 2.0 |
-| primary vs danger-fill | 1.43; 24, 12, 20, 27 | 1.13; 18, 15, 15, 22 | Hue and form; they never share a footer (one filled button) |
+| primary vs danger-fill | 1.43; 24, 12, 20, 27 | 1.13; 18, 15, 15, 22 | Hue and form; the danger fill shows only while a quiet button is pressed |
 | primary vs secondary | 9.27; 60 | 3.28; 29 | Distinct |
 | on vs secondary | 1.38; 17, 8, 13, 19 | 5.94; 47 | Light: the mint fill differs from white mainly in hue. The knob, the eye swap or flatness carries the state (principle 11) |
 | press vs on | 1.27; 14, 11, **6**, 14 | 3.83; 37 | Distinct. The light press is darker than mint for this; at a lighter grey it was deutan 1.6 |
@@ -258,7 +257,7 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 
 - **At most one filled button, the one Enter presses:**
   - ChoiceModal: the safe default;
-  - ConfirmModal: its confirm;
+  - ConfirmModal: its confirm, or Cancel when it is destructive;
   - InfoModal: OK;
   - form dialogs: Apply or Save.
 - When Cancel is the safe default (`cancelIsDefault`), Cancel is the primary.
@@ -418,7 +417,7 @@ Prefer making the face the element.
 |---|---|---|
 | Give an action `bg-accent` | Mint means on | — |
 | Press anything to a mint fill | A mint fill would read as on | Pressing something already on deepens its own mint (`accent-press`); the press glow is mint, because a shadow is never a fill |
-| Fill a destructive choice that sits beside a safe default | It competes with the Enter target | The destructive confirm fills, because it is the Enter target |
+| Fill a destructive choice that sits beside a safe default | It competes with the Enter target | — |
 | Use mint for thin marks on light surfaces | 1.35–1.85:1 | `accent-strong` |
 | Key a style on a bare `aria-*` attribute | One attribute has several meanings (6.3) | — |
 | Show disabled with a hue | Opacity says unavailable in every role | — |
@@ -448,12 +447,12 @@ Three treatments were compared side by side, on a specimen of every control and 
 
 ### 8.2 ConfirmModal: the accidental-activation guard
 
-A held or doubled Enter must not confirm a destructive delete. Enter on a menu's Delete row opens the confirm on keydown with focus on Delete, so a held or repeated key reaches that button.
+A held or doubled Enter must not confirm a destructive delete. Enter on a menu's Delete row opens the confirm on keydown, so a held or repeated key reaches the focused button (Cancel, for a destructive confirm).
 
 - ConfirmModal and ChoiceModal ignore activations within `GUARD_MS` (300 ms) of opening, and swallow key repeat on Enter and Space. Both call `useActivationGuard()` in `src/modals/activationGuard.ts`, the only place that defines `GUARD_MS`. Their buttons return early when `accidental()`, and their button rows take `@keydown.capture="onKeydown"`.
-- ConfirmModal's focus on open stays on its action.
+- ConfirmModal's focus on open is its confirm, or Cancel when it is destructive.
 - The ×, Esc and outside presses stay unguarded, because closing is safe.
-- `tests/browser/confirmDialog.spec.ts` checks that a held Enter and a doubled Enter (80 ms) do not confirm, that a fresh press after 300 ms does, and that focus on open is Delete.
+- `tests/browser/confirmDialog.spec.ts` checks that a held Enter and a doubled Enter (80 ms) do not confirm, that a fresh press after 300 ms does, and that focus on open is Cancel for a destructive confirm and the confirm button otherwise.
 - Other specs that confirm a Confirm or Choice dialog press through the guard with `confirmWhenReady` or `confirmKeyWhenReady` (`tests/browser/confirmWhenReady.ts`). A press inside the guard does nothing by design, so the helper presses again until the dialog has closed. It never waits a fixed time. A spec that tests the guard itself holds time with `page.clock`, as `confirmDialog.spec.ts` does.
 
 ### 8.3 Reset Settings…, Reset Shortcuts… and Remove…: confirm with Cancel as the default
@@ -462,7 +461,7 @@ None of these can be undone. Remove deletes a stored preview asset whether or no
 
 - Each opens ChoiceModal with its own label as the title and as the destructive button, and `cancelIsDefault: true`. Cancel is therefore primary, focused and rightmost, or on top when stacked on a phone, and a stray Enter cancels.
 - ChoiceModal's guard (8.2) applies.
-- ConfirmModal's focus on its action is for deletes that can be undone (5.2).
+- A destructive ConfirmModal, for deletes that can be undone, also defaults to Cancel (5.2).
 - No notice follows a reset.
 - The Reset Settings… message, "Restore default settings, keeping keyboard shortcuts?", says that shortcuts are kept.
 

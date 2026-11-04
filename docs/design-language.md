@@ -276,7 +276,7 @@ Section 8 describes the notice card and the quick toast. This part says which on
 
 ### Confirmations
 
-- An undoable delete confirms with `ConfirmModal`. The red button is the default and has focus: the user already asked, and Undo can take it back. A delete or reset that cannot be undone uses `ChoiceModal` with `cancelIsDefault`, so a stray Enter cancels. Both ignore presses in their first 300 ms. See color-system.md 5.2, 8.2 and 8.3.
+- An undoable delete confirms with `ConfirmModal` `destructive`: the Delete button is quiet red, and Cancel is primary, focused and the Enter target, so a stray Enter cancels. A delete or reset that cannot be undone uses `ChoiceModal` with `cancelIsDefault`, which behaves the same. Both ignore presses in their first 300 ms. See color-system.md 5.2, 8.2 and 8.3.
 - A dialog's title drops its command's ellipsis. The command "Export Level Data…" opens a dialog titled "Export Level Data".
 
 ## 10. Principles for new UI
