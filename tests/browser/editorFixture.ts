@@ -117,7 +117,8 @@ export const installCanvasCounters = (legacyCanvas = false) => {
 /**
  * An init script for specs that install the fake clock and jump it 10 s or more: the storage
  * client's watchdog runs on the page's timers, so a jump while the worker is busy would restart it.
- * The flag joins any `nse.test.storage` flags already seeded, in the store the page reads first.
+ * The flag joins any `nse.test.storage` flags already seeded, in the store the page reads first. A
+ * context script that seeds `{}` does so only when nothing is stored, so either runs first.
  */
 export const seedLongRpcTimeout = () => {
     const key = 'nse.test.storage'

@@ -1047,7 +1047,8 @@ test.describe('with the agreement dialog', () => {
         context.addInitScript(() => {
             // The client's modules are found in the resource timing entries.
             performance.setResourceTimingBufferSize(5000)
-            localStorage.setItem('nse.test.storage', '{}')
+            if (localStorage.getItem('nse.test.storage') === null)
+                localStorage.setItem('nse.test.storage', '{}')
             localStorage.setItem(
                 'nse.test.version',
                 JSON.stringify({ appVersion: '0.6.0', atTag: true }),

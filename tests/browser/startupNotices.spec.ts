@@ -15,7 +15,8 @@ const seed = (context: BrowserContext, extra: Record<string, string> = {}) =>
     context.addInitScript((extra) => {
         if (location.href === 'about:blank') return
         performance.setResourceTimingBufferSize(5000)
-        localStorage.setItem('nse.test.storage', '{}')
+        if (localStorage.getItem('nse.test.storage') === null)
+            localStorage.setItem('nse.test.storage', '{}')
         localStorage.setItem(
             'nse.test.version',
             JSON.stringify({ appVersion: '0.6.0', atTag: true }),
