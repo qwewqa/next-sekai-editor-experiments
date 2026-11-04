@@ -1,124 +1,31 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import test from 'node:test'
-import { fileURLToPath } from 'node:url'
 import { gateTag } from '../../scripts/analytics.mjs'
 import { injectPolicy, webPolicy } from '../../scripts/csp.mjs'
 import {
     builtinFiles,
-    builtinServerFiles,
     builtinTypes,
     checkRelease,
     lyonNoticeFiles,
-    noticeFiles,
     sha256,
     stageReleasePublic,
     staticFiles,
     writeReleaseManifest,
 } from '../../scripts/release-utils.mjs'
 import { applyTestSite } from '../../scripts/site.mjs'
-
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const metadata = {
-    version: '1.0.0-test',
-    commit: 'a'.repeat(40),
-    base: '/',
-    appVersion: '1.0.0-test+aaaaaaaa',
-    atTag: false,
-    site: 'production',
-    sourceDirty: false,
-    analytics: null,
-}
-const page = `<!doctype html>
-<html>
-    <head>
-        <title>Editor</title>
-        <script>
-            document.documentElement.dataset.theme = 'dark'
-        </script>
-    </head>
-    <body><script type="module" src="/assets/index-12345678.js"></script></body>
-</html>
-`
-// The editor's page loads gate.js, a classic script, before the bundle, and links its stylesheet.
-const indexPage = page
-    .replace('<title>', '<script src="/gate.js"></script><title>')
-    .replace(
-        '</head>',
-        '<link rel="stylesheet" crossorigin href="/assets/index-12345678.css"></head>',
-    )
-const withPolicy = (html) => injectPolicy(html, webPolicy)
-
-async function temporary(t) {
-    const directory = await mkdtemp(join(tmpdir(), 'sekai-release-test-'))
-    t.after(async () => {
-        assert.equal(dirname(directory), resolve(tmpdir()))
-        assert.ok(directory.startsWith(join(tmpdir(), 'sekai-release-test-')))
-        await rm(directory, { recursive: true, force: true })
-    })
-    return directory
-}
-
-async function write(directory, file, content) {
-    const target = join(directory, file)
-    await mkdir(dirname(target), { recursive: true })
-    await writeFile(target, content)
-}
-
-// The Built-in packages and the server folder the release makes from them.
-async function builtinRelease() {
-    const packages = new Map()
-    const files = new Map()
-    for (const [index, file] of builtinFiles.entries()) {
-        const bytes = await readFile(join(root, 'public', file))
-        packages.set(builtinTypes[index], bytes)
-        files.set(file, bytes)
-    }
-    for (const [file, bytes] of builtinServerFiles(packages)) files.set(file, bytes)
-    return files
-}
-
-async function releaseFixture(t) {
-    const directory = await temporary(t)
-    const assets = ['skin', 'skin2', 'particle', 'effect', 'effect2'].map((name) => {
-        const bytes = Buffer.from(`test ${name} package`)
-        return {
-            file: `resource/${name}.scp`,
-            source: `https://example.com/sonolus/${name.startsWith('skin') ? 'skins' : name.startsWith('effect') ? 'effects' : 'particles'}/fixture`,
-            bytes: bytes.length,
-            sha256: sha256(bytes),
-        }
-    })
-    for (const asset of assets)
-        await write(
-            directory,
-            asset.file,
-            `test ${asset.file.slice('resource/'.length, -'.scp'.length)} package`,
-        )
-    for (const file of [...staticFiles, ...noticeFiles])
-        await write(directory, file, `test ${file}`)
-    await write(directory, 'index.html', withPolicy(indexPage))
-    await write(directory, 'privacy/index.html', withPolicy(page))
-    await write(directory, 'terms/index.html', withPolicy(page))
-    for (const file of lyonNoticeFiles)
-        await write(directory, file, await readFile(join(root, 'public', file)))
-    for (const [file, bytes] of await builtinRelease()) await write(directory, file, bytes)
-    await write(
-        directory,
-        'assets/lyon-12345678.wasm',
-        await readFile(join(root, 'src/rendering/vendor/lyon.wasm')),
-    )
-    await write(directory, 'assets/index-12345678.js', 'console.log("release")')
-    await write(
-        directory,
-        'assets/index-12345678.css',
-        '.absolute{position:absolute}.size-full{width:100%;height:100%}',
-    )
-    await writeReleaseManifest(directory, metadata, assets)
-    return { directory, assets }
-}
+import {
+    builtinRelease,
+    indexPage,
+    metadata,
+    page,
+    releaseFixture,
+    root,
+    temporary,
+    withPolicy,
+    write,
+} from './releaseFixture.mjs'
 
 test('staging includes site notices without reading local preview packages', async (t) => {
     const directory = await temporary(t)
@@ -657,5 +564,72 @@ test("a release links the editor's own stylesheet before the shared chunks' ones
     await assert.rejects(
         release(indexPage.replace(entry, `${shared}${entry}`)),
         /does not link its own stylesheet first: \/assets\/shared-12345678\.css comes before/,
+    )
+})
+
+// Adds a file kept from an earlier build: on disk, and listed in the manifest's retained files.
+async function retain(directory, file, content, hash = sha256(Buffer.from(content))) {
+    await write(directory, file, content)
+    const path = join(directory, 'release-manifest.json')
+    const manifest = JSON.parse(await readFile(path, 'utf8'))
+    manifest.retained = { ...manifest.retained, [file]: hash }
+    await writeFile(path, JSON.stringify(manifest, null, 2) + '\n')
+}
+
+test('files kept from earlier builds are checked with the release, apart from its current files', async (t) => {
+    const { directory } = await releaseFixture(t)
+    await retain(directory, 'assets/HistoryPanel-Ab12Cd34.js', 'console.log("old")')
+    // An older Lyon kernel and an older usage statistics client are not the current build's.
+    await retain(directory, 'assets/lyon-87654321.wasm', 'old kernel')
+    await retain(directory, 'assets/client-Ef56Gh78.js', 'fetch("/api/batch")')
+    await checkRelease(directory, metadata)
+})
+
+test('a kept file must be on disk, unchanged, a hashed asset, and not current', async (t) => {
+    const cases = [
+        [
+            'a kept file missing from disk',
+            async (directory) => {
+                await retain(directory, 'assets/gone-Ab12Cd34.js', 'x')
+                await rm(join(directory, 'assets/gone-Ab12Cd34.js'))
+            },
+            /inventory differs/,
+        ],
+        [
+            'a kept file with other bytes',
+            (directory) =>
+                retain(directory, 'assets/old-Ab12Cd34.js', 'x', sha256(Buffer.from('y'))),
+            /integrity failed: assets\/old-Ab12Cd34\.js/,
+        ],
+        [
+            'a kept file that is not a hashed asset',
+            (directory) => retain(directory, 'resource/old.scp', 'x'),
+            /Invalid retained file: resource\/old\.scp/,
+        ],
+        [
+            'a kept file that is also current',
+            (directory) => retain(directory, 'assets/index-12345678.js', 'console.log("release")'),
+            /also current/,
+        ],
+        [
+            'a second current Lyon kernel',
+            (directory) => write(directory, 'assets/lyon-87654321.wasm', 'old kernel'),
+            /exactly one Lyon kernel/,
+        ],
+    ]
+    for (const [name, change, error] of cases) {
+        const { directory } = await releaseFixture(t)
+        await change(directory)
+        await assert.rejects(checkRelease(directory), error, name)
+    }
+})
+
+test('a release over the Pages size limit fails and says how much is kept', async (t) => {
+    const { directory } = await releaseFixture(t)
+    await retain(directory, 'assets/big-Ab12Cd34.js', 'x'.repeat(3_000_000))
+    await checkRelease(directory, {}, 10_000_000)
+    await assert.rejects(
+        checkRelease(directory, {}, 4_000_000),
+        /The site is \d+ MB, over the 4 MB Pages limit: \d+ MB current, 3 MB kept from earlier builds/,
     )
 })

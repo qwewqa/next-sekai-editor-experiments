@@ -263,6 +263,13 @@ async function listFiles(directory, prefix = '') {
     return files.sort()
 }
 
+// A file under assets/ that the bundler names by its content: the only kind an earlier build may leave behind.
+export const hashedAsset =
+    /^assets\/(?:lyon-[\w-]{8,}\.wasm|[\w.-]+-[\w-]{8,}\.(?:js|css|png|mp3|svg|woff2?))$/
+
+// GitHub Pages refuses a site over 1 GB.
+export const pagesSizeLimit = 1_000_000_000
+
 function validateFileNames(files, assets) {
     const remaining = new Set([
         'resource/skin.scp',
@@ -295,12 +302,7 @@ function validateFileNames(files, assets) {
         ...assets.map((asset) => asset.file),
     ])
     for (const file of files) {
-        if (
-            !exact.has(file) &&
-            !builtinServerFile.test(file) &&
-            !/^assets\/lyon-[\w-]{8,}\.wasm$/.test(file) &&
-            !/^assets\/[\w.-]+-[\w-]{8,}\.(?:js|css|png|mp3|svg|woff2?)$/.test(file)
-        ) {
+        if (!exact.has(file) && !builtinServerFile.test(file) && !hashedAsset.test(file)) {
             throw new Error(`Unexpected release file: ${file}`)
         }
     }
@@ -475,7 +477,18 @@ async function checkBundles(directory, files, site) {
     }
 }
 
-export async function checkRelease(directory, expected = {}) {
+// The files kept from earlier builds (scripts/release/assetStore.mjs): hashed assets only, none of them current.
+function validRetained(retained, files) {
+    if (typeof retained !== 'object' || retained === null || Array.isArray(retained))
+        throw new Error('Invalid retained files')
+    for (const [file, hash] of Object.entries(retained)) {
+        if (!hashedAsset.test(file) || !/^[a-f0-9]{64}$/.test(hash))
+            throw new Error(`Invalid retained file: ${file}`)
+        if (Object.hasOwn(files, file)) throw new Error(`Retained file is also current: ${file}`)
+    }
+}
+
+export async function checkRelease(directory, expected = {}, sizeLimit = pagesSizeLimit) {
     const manifest = JSON.parse(await regularFile(join(directory, 'release-manifest.json')))
     const assets = manifest.previewAssets
     if (
@@ -495,7 +508,11 @@ export async function checkRelease(directory, expected = {}) {
         if (JSON.stringify(manifest[key]) !== JSON.stringify(value))
             throw new Error(`Release metadata mismatch: ${key}`)
     }
-    const files = await listFiles(directory)
+    const retained = manifest.retained ?? {}
+    validRetained(retained, manifest.files)
+    const all = await listFiles(directory)
+    // The current build's rules apply to its own files; retained files were checked by their own builds.
+    const files = all.filter((file) => !Object.hasOwn(retained, file))
     validateFileNames(files, assets)
     await checkLyonRelease(directory, files)
     await checkBuiltinRelease(directory, files)
@@ -503,17 +520,28 @@ export async function checkRelease(directory, expected = {}) {
     await checkStylesheet(directory, files)
     await checkBundles(directory, files, manifest.site)
     await checkAnalytics(directory, files, manifest.analytics, manifest.site)
-    const recorded = Object.keys(manifest.files).sort()
+    const recorded = { ...manifest.files, ...retained }
     if (
-        JSON.stringify(recorded) !==
-        JSON.stringify(files.filter((file) => file !== 'release-manifest.json'))
+        JSON.stringify(Object.keys(recorded).sort()) !==
+        JSON.stringify(all.filter((file) => file !== 'release-manifest.json'))
     ) {
         throw new Error('Release file inventory differs from its manifest')
     }
-    for (const file of recorded) {
-        if (sha256(await regularFile(join(directory, file))) !== manifest.files[file]) {
+    let current = 0
+    let kept = 0
+    for (const file of all) {
+        const bytes = await regularFile(join(directory, file))
+        if (Object.hasOwn(retained, file)) kept += bytes.length
+        else current += bytes.length
+        if (file !== 'release-manifest.json' && sha256(bytes) !== recorded[file]) {
             throw new Error(`Release file integrity failed: ${file}`)
         }
+    }
+    if (current + kept > sizeLimit) {
+        const mb = (bytes) => Math.ceil(bytes / 1e6)
+        throw new Error(
+            `The site is ${mb(current + kept)} MB, over the ${mb(sizeLimit)} MB Pages limit: ${mb(current)} MB current, ${mb(kept)} MB kept from earlier builds`,
+        )
     }
     for (const asset of assets) {
         const bytes = await regularFile(join(directory, asset.file))
