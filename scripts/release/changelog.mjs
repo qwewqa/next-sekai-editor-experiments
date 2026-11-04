@@ -8,9 +8,6 @@ const released = /^## (0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*) \((\d{4})-(\d{2})
 const contraction =
     /\b\w+n[’']t\b|\b(?:it|that|there|here|what|who|how|where|let)[’']s\b|\b\w+[’'](?:re|ve|ll|d|m)\b/i
 
-/** Whether a line is a changelog or tag-message bullet: `- `, then an optional `(Web)` or `(Apps)`. */
-export const isBullet = (line) => bullet.test(line)
-
 const validDate = (year, month, day) => {
     const date = new Date(Date.UTC(year, month - 1, day))
     return (

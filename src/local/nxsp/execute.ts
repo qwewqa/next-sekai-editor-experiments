@@ -310,6 +310,3 @@ const executeEntry = async (
         data: data.length === 1 && data[0] ? data[0] : new Blob(data),
     }
 }
-
-/** `buildNxsp`: a plan's bytes (the executor under the name the open and Save code use). */
-export const buildNxsp = executePlan

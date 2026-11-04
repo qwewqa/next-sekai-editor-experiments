@@ -649,7 +649,7 @@ test('the first set is the chosen Tap and Flick; a chosen category with no notes
     const zeros = npsFigures(secondaryOnly)
     assert.deepEqual(zeros.primary, { average: 0, median: 0, p90: 0, p99: 0 })
     assert.deepEqual(zeros.all, rollingFigures(Float64Array.from([0, 10])))
-    assert.deepEqual([zeros.hasPrimary, zeros.hasSecondary], [false, true])
+    assert.deepEqual([secondaryOnly.hasPrimary, secondaryOnly.hasSecondary], [false, true])
     // Both.
     const both = npsSets(timesOf({ tap: [0, 0.25], damage: [5] }), ['tap', 'damage'])
     assert.ok(both)

@@ -27,7 +27,7 @@ import type {
 import type { NoteStyle } from '../../chart/noteStyle'
 import type { GenerateSimLines, StageObject } from '../../chart/stages'
 import type { TimeScaleObject, TimeScaleTransition } from '../../chart/timeScale'
-import type { Ease, TimeScaleEase } from '../../ease'
+import type { Ease } from '../../ease'
 import type { BgmMeta } from '../../state/bgm'
 import type { LevelInfo, LevelInfoTag, MediaRef } from '../../state/levelInfo'
 import { isHash16Hex } from '../hash'
@@ -145,9 +145,6 @@ export const enumsMatchModel: [
     Same<ChoiceOf<'rotationCenter'>, RotationCenter>,
     Same<ChoiceOf<'generateSimLines'>, GenerateSimLines>,
 ] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
-
-/** Eases are built above, so a test checks them against `ease.ts` and `TimeScaleEase`. */
-export type EaseSets = { ease: Ease; timeScaleEase: TimeScaleEase }
 
 export type FieldType =
     | 'id'

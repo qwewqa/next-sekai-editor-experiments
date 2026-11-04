@@ -60,13 +60,6 @@ export const deleteHandleRow = async (tx: KvTx, chainId: string, role: HandleRol
     await tx.delete(HANDLES, [chainId, role])
 }
 
-/** Removes every handle of a chain: in the transaction that deletes its record. */
-export const deleteChainHandles = async (tx: KvTx, chainId: string) => {
-    for (const role of HANDLE_ROLES) await deleteHandleRow(tx, chainId, role)
-    // Earlier builds stored a partial open's source handle under this role.
-    await tx.delete(HANDLES, [chainId, 'kept'])
-}
-
 /**
  * Chain fields as a write sets them (`null` removing one), with the handles taken out: a binding
  * or Export target set with a `handle` stores it in `handles`, one set without loses its row, and

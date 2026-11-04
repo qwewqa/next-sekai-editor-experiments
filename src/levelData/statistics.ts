@@ -275,14 +275,13 @@ export const npsDurations = ({ all, primary }: NpsSets): NpsDurations | undefine
 export type NpsFigures = {
     all: Figures
     primary: Figures
-    hasPrimary: boolean
     hasSecondary: boolean
 }
 
 const NO_FIGURES: Figures = { average: 0, median: 0, p90: 0, p99: 0 }
 
 export const npsFigures = (sets: NpsSets, durations = npsDurations(sets)): NpsFigures => {
-    const { all, primary, hasPrimary, hasSecondary } = sets
+    const { all, primary, hasSecondary } = sets
     const allFigures = durations ? figuresOf(durations.all, all.length) : NO_FIGURES
     return {
         all: allFigures,
@@ -292,7 +291,6 @@ export const npsFigures = (sets: NpsSets, durations = npsDurations(sets)): NpsFi
                 : durations?.primary
                   ? figuresOf(durations.primary, primary.length)
                   : NO_FIGURES,
-        hasPrimary,
         hasSecondary,
     }
 }

@@ -82,9 +82,3 @@ export const stateOrderDifferences = (state: State) => {
         differences.push('bpm: grid and integrals differ')
     return differences
 }
-
-/** A track's joints at one beat, in chain order. */
-export const chainAt = (state: State, track: string, beat: number) =>
-    stateTracks(state)
-        .get(track)
-        ?.chain.filter((joint) => joint.beat === beat) ?? []

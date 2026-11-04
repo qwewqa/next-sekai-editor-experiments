@@ -1040,7 +1040,6 @@ const color = (category: Category) => chartCategoryColors[category]
                 v-model="mode"
                 class="btn btn-secondary h-8 appearance-none rounded-full pl-4 text-sm"
                 :aria-labelledby="headingId"
-                data-statistics-mode-select
             >
                 <option v-for="item in modes" :key="item.value" :value="item.value">
                     {{ item.label }}

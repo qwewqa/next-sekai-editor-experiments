@@ -9,12 +9,6 @@ export const pathName = (path: DrawPath): string => {
     return children.length ? children.map(pathName).join('+') : JSON.stringify(path.commands)
 }
 
-export const svgPathSource = (path: unknown) => {
-    const command = (path as DrawPath).commands[0]
-    assert.equal(command?.[0], 'svg')
-    return command[1] as string
-}
-
 export type RecordedPath = { commands: [string, ...number[]][] }
 
 /** Keep the historical geometry assertions while exercising the real retained path. */

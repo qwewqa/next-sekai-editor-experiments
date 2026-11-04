@@ -325,7 +325,7 @@ const figureCalls = (calls: Call[]) => {
 
 test("Average and Median end at the right edge of the footer, on the heading's line, which is Combo's", () => {
     const figures = figuresOf(mixed)
-    assert.ok(figures?.hasPrimary && figures.hasSecondary)
+    assert.ok(figures?.hasSecondary && figures.primary.average > 0)
     const calls = draw({ chosen: mixed, figures })
     const heading = textCall(calls, 'Notes per Second')
     assert.ok(heading)
@@ -351,7 +351,7 @@ test("Average and Median end at the right edge of the footer, on the heading's l
 test('with no Tap or Flick notes chosen, Average and Median pair a zero with All', () => {
     const chosen: Category[] = ['trace', 'tick']
     const figures = figuresOf(chosen)
-    assert.ok(figures && !figures.hasPrimary)
+    assert.ok(figures && figures.primary.average === 0)
     const [medianValue, , averageValue] = figureCalls(draw({ chosen, figures }))
     assert.equal(averageValue?.args[0], `0.0 (${figures.all.average.toFixed(1)})`)
     assert.equal(medianValue?.args[0], `0 (${figures.all.median})`)
@@ -390,7 +390,7 @@ test('no figures are drawn without notes or when the chart is not drawable', () 
 
 test('the heading is cut to the width the figures leave, and the figures never are', () => {
     const many = { average: 10000, median: 10000, p90: 10000, p99: 10000 }
-    const huge: NpsFigures = { all: many, primary: many, hasPrimary: true, hasSecondary: true }
+    const huge: NpsFigures = { all: many, primary: many, hasSecondary: true }
     for (const [notesPerSecond, figures] of [
         ['Notes per Second in a Very Long Language', figuresOf(mixed)],
         ['Notes per Second', huge],

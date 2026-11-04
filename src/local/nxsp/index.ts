@@ -14,7 +14,6 @@ export {
 } from './build'
 export {
     ExecutionError,
-    buildNxsp,
     executePlan,
     type ExecutionErrorCode,
     type ExecutionSource,

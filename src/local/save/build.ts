@@ -255,9 +255,6 @@ const refuse = (refused: SaveRefusalReason, message?: string, limit?: PlanLimit)
     ...(limit === undefined ? {} : { limit }),
 })
 
-export const isRefusal = (value: unknown): value is SaveRefusal =>
-    isObject(value) && typeof value.refused === 'string'
-
 const slotOf = (slot: { snapshot: string; step: UndoableStep }): ReplaySlot => ({
     snapshot: fromHex16(slot.snapshot),
     step: captureStep(slot.step),
