@@ -1,11 +1,12 @@
 <script lang="ts">
-// When the shown notice's fade started. Moving it to another place, such as from a closing dialog
-// to the pane or into the elevation editor, draws it again, and the fade carries on from there.
-let drawn: { id: number; start?: CSSNumberish | null } | undefined
+// How far the notice last taken away had faded. Moving a notice to another place, such as from a
+// closing dialog to the pane or into the elevation editor, draws it again, and the fade carries on
+// from there, paused as the page pauses it.
+let left: { id: number; time: CSSNumberish } | undefined
 </script>
 
 <script setup lang="ts">
-import { onMounted, useTemplateRef } from 'vue'
+import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 import type { Notice } from './notification'
 import SeparatedText from './SeparatedText.vue'
 
@@ -13,22 +14,14 @@ import SeparatedText from './SeparatedText.vue'
 const props = defineProps<{ notice: Notice }>()
 
 const pill = useTemplateRef<HTMLElement>('pill')
+const fade = () => pill.value?.getAnimations()[0]
 onMounted(() => {
-    const [fade] = pill.value?.getAnimations() ?? []
-    if (!fade) return
-    const { id } = props.notice
-    if (drawn?.id === id) {
-        if (drawn.start != null) fade.startTime = drawn.start
-        return
-    }
-    const record: NonNullable<typeof drawn> = { id }
-    drawn = record
-    void fade.ready
-        .then(() => {
-            record.start = fade.startTime
-        })
-        // Removed before it was drawn: the next place starts the fade.
-        .catch(() => undefined)
+    const animation = fade()
+    if (animation && left?.id === props.notice.id) animation.currentTime = left.time
+})
+onBeforeUnmount(() => {
+    const time = fade()?.currentTime
+    left = time == null ? undefined : { id: props.notice.id, time }
 })
 </script>
 

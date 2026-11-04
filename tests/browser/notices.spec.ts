@@ -1163,11 +1163,18 @@ test.describe('over a blocking dialog', () => {
 // A quick notice drawn again in another place carries on its fade. Each read is made in the task
 // that draws it, before the fade could have moved on by itself.
 test.describe('a quick notice drawn again', () => {
-    test('moving from a closing dialog to the pane, it is as faded as it was', async ({ page }) => {
+    const elevationPath = '/src/editor/elevation/state.ts'
+    type Elevation = typeof import('../../src/editor/elevation/state')
+
+    test('moving from a closing dialog to the pane, it is as faded as it was and fades on', async ({
+        page,
+    }) => {
         await boot(page)
         await openBlocking(page)
         await expect(page.getByRole('dialog')).toBeVisible()
-        const alpha = await page.evaluate(async (path) => {
+        // One run of tasks with no wait for a frame or a timer, so the move comes well within the
+        // second after the notice, and its fade is held where it is set.
+        const result = await page.evaluate(async (path) => {
             const { notify } = await window.editorTest.appImport<Notification>(path)
             const { closeModal, modals } =
                 await window.editorTest.appImport<typeof import('../../src/modals')>(
@@ -1175,19 +1182,107 @@ test.describe('a quick notice drawn again', () => {
                 )
             notify(() => 'Copied')
             await window.editorTest.nextTick()
-            const [fade] = document.querySelector('dialog .notification')?.getAnimations() ?? []
-            if (!fade) throw new Error('Not in the dialog')
-            // A third of its fade, well within the second in which it moves to the pane.
-            while (Number(fade.currentTime ?? 0) < 300)
-                await new Promise((resolve) => requestAnimationFrame(resolve))
+            const before = document.querySelector('dialog .notification')
+            const [held] = before?.getAnimations() ?? []
+            if (!before || !held) throw new Error('Not in the dialog')
+            held.pause()
+            held.currentTime = 400
+            const fill = getComputedStyle(before).backgroundColor
             closeModal(modals.at(-1)!)
             await window.editorTest.nextTick()
             const shown = document.querySelector('.notification')
             if (!shown || shown.closest('dialog')) throw new Error('Not in the pane')
-            const fill = getComputedStyle(shown).backgroundColor
-            return Number(/rgba\([^)]*,\s*([\d.]+)\)/.exec(fill)?.[1] ?? 1)
+            const [fade] = shown.getAnimations()
+            if (!fade) throw new Error('No fade')
+            const moved = {
+                fill: getComputedStyle(shown).backgroundColor,
+                time: Number(fade.currentTime),
+                state: fade.playState,
+            }
+            await fade.finished
+            return { fill, moved, end: getComputedStyle(shown).backgroundColor }
         }, notificationPath)
-        expect(alpha).toBeLessThan(0.9)
+        expect(result.fill).not.toBe('rgb(119, 239, 220)')
+        expect(result.moved.fill).toBe(result.fill)
+        expect(result.moved.time).toBeCloseTo(400, 0)
+        expect(result.moved.state).toBe('running')
+        expect(result.end).toBe('rgba(0, 0, 0, 0)')
+    })
+
+    test('while the app is inactive its fade stays where it was, and goes on when it is back', async ({
+        page,
+    }) => {
+        await boot(page)
+        await page.evaluate(() => {
+            window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+        })
+        const result = await page.evaluate(
+            async ({ notificationPath, elevationPath }) => {
+                const { notify } = await window.editorTest.appImport<Notification>(notificationPath)
+                const { isElevationEditorOpen } =
+                    await window.editorTest.appImport<Elevation>(elevationPath)
+                const shown = (inElevation: boolean) => {
+                    const notices = [...document.querySelectorAll('.notification')]
+                    if (notices.length !== 1) throw new Error(`${notices.length} notices`)
+                    const [notice] = notices
+                    if (!!notice!.closest('.elevation-editor') !== inElevation)
+                        throw new Error('Not in the expected pane')
+                    const [fade] = notice!.getAnimations()
+                    if (!fade) throw new Error('No fade')
+                    return { notice: notice!, fade }
+                }
+                const read = (inElevation: boolean) => {
+                    const { notice, fade } = shown(inElevation)
+                    return {
+                        fill: getComputedStyle(notice).backgroundColor,
+                        time: Math.round(Number(fade.currentTime)),
+                        state: fade.playState,
+                    }
+                }
+                const toggle = async (open: boolean) => {
+                    isElevationEditorOpen.value = open
+                    await window.editorTest.nextTick()
+                }
+                const setActive = async (active: boolean) => {
+                    window.dispatchEvent(new Event(active ? 'focus' : 'blur'))
+                    await window.editorTest.nextTick()
+                }
+
+                // Raised while the app is inactive, the notice waits at the start of its fade.
+                await setActive(false)
+                notify(() => 'Copied')
+                await window.editorTest.nextTick()
+                const raised = read(false)
+                await toggle(true)
+                const raisedMoved = read(true)
+
+                // Back, it fades; inactive again partway, it holds there wherever it is drawn.
+                await setActive(true)
+                const { fade } = shown(true)
+                while (Number(fade.currentTime) < 300)
+                    await new Promise((resolve) => requestAnimationFrame(resolve))
+                await setActive(false)
+                const paused = read(true)
+                await toggle(false)
+                const pausedMoved = read(false)
+
+                // Back again, it ends faint, and stays faint when drawn again.
+                await setActive(true)
+                await shown(false).fade.finished
+                const ended = read(false)
+                await toggle(true)
+                return { raised, raisedMoved, paused, pausedMoved, ended, endedMoved: read(true) }
+            },
+            { notificationPath, elevationPath },
+        )
+        expect(result.raised).toEqual({ fill: 'rgb(119, 239, 220)', time: 0, state: 'paused' })
+        expect(result.raisedMoved).toEqual(result.raised)
+        expect(result.paused.state).toBe('paused')
+        expect(result.paused.time).toBeGreaterThanOrEqual(300)
+        expect(result.paused.time).toBeLessThan(1000)
+        expect(result.pausedMoved).toEqual(result.paused)
+        expect(result.ended.fill).toBe('rgba(0, 0, 0, 0)')
+        expect(result.endedMoved.fill).toBe('rgba(0, 0, 0, 0)')
     })
 
     for (const device of ['desktop', 'phone'] as const)
@@ -1208,10 +1303,9 @@ test.describe('a quick notice drawn again', () => {
                     .evaluate((shown) =>
                         Promise.all(shown.getAnimations().map((animation) => animation.finished)),
                     )
-                const fills = await page.evaluate(async () => {
-                    const { isElevationEditorOpen } = await window.editorTest.appImport<
-                        typeof import('../../src/editor/elevation/state')
-                    >('/src/editor/elevation/state.ts')
+                const fills = await page.evaluate(async (path) => {
+                    const { isElevationEditorOpen } =
+                        await window.editorTest.appImport<Elevation>(path)
                     const read = (inElevation: boolean) => {
                         const shown = [...document.querySelectorAll('.notification')]
                         if (shown.length !== 1) throw new Error(`${shown.length} notices`)
@@ -1226,7 +1320,7 @@ test.describe('a quick notice drawn again', () => {
                     isElevationEditorOpen.value = false
                     await window.editorTest.nextTick()
                     return [opened, read(false)]
-                })
+                }, elevationPath)
                 expect(fills).toEqual(['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'])
             })
         })
