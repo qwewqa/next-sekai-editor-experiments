@@ -325,6 +325,21 @@
         outline-color: var(--color-fg);
     }
 
+    /* --- Menu rows (.popup-item) on a popup surface: hover and keyboard focus take the popup's
+       hover tone, and press sinks one step. */
+    .popup-item {
+        @apply flex min-h-9 w-full shrink-0 items-center gap-3 rounded-sm px-3 py-2 text-left transition-ink enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-ghost-press enabled:active:text-fg-strong disabled:opacity-40;
+    }
+
+    /* A destructive row is red, and pressing it shows what it does. */
+    .popup-item-danger {
+        @apply text-danger;
+    }
+
+    .popup-item-danger:enabled:active {
+        @apply bg-danger-fill text-on-danger;
+    }
+
     /* --- Segmented controls: a recessed track (bg-recess shadow-track, set at the call site) of
        labels, each holding a hidden input.peer, radio, and the span.segment-face that is its face.
        The checked face is the raised current pill; an unchecked one hovers half a pill and presses

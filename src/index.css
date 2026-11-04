@@ -142,26 +142,11 @@ html[data-app-inactive] *::after {
             .outline-hidden:where(:not(dialog, [role='dialog'])),
             .preview-field,
             .preview-number,
-            .transport-button,
-            .manager-selection-done,
-            .manager-new-folder,
-            .manager-round,
             .form-field-mixed-value
         ):focus-visible,
     html .peer:focus-visible + .preview-field {
         outline-width: 4px;
         outline-offset: 0;
-    }
-
-    /* Edges inset 2px. */
-    html
-        :is(
-            .transport-button,
-            .manager-selection-done,
-            .manager-new-folder,
-            .manager-round
-        ):focus-visible {
-        outline-offset: -4px;
     }
 
     /* Edges flush with the box. */
@@ -170,7 +155,7 @@ html[data-app-inactive] *::after {
     }
 }
 
-/* Menus' shared surface; edges and focus are outlines, which high contrast keeps. */
+/* Menus' shared surface; its edge is an outline, which high contrast keeps. */
 @layer components {
     .popup-surface {
         @apply flex w-max max-w-[calc(100vw-1rem)] min-w-[min(12rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-lg bg-popup text-sm text-fg shadow-xl outline-1 outline-popup-edge;
@@ -178,19 +163,6 @@ html[data-app-inactive] *::after {
 
     .popup-scroller {
         @apply flex min-h-0 flex-col overflow-y-auto overscroll-contain p-1;
-    }
-
-    .popup-item {
-        @apply flex min-h-9 w-full shrink-0 items-center gap-3 rounded-sm px-3 py-2 text-left transition-ink enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-ghost-press enabled:active:text-fg-strong disabled:opacity-40;
-    }
-
-    /* A destructive row is red, and pressing it shows what it does. */
-    .popup-item-danger {
-        @apply text-danger;
-    }
-
-    .popup-item-danger:enabled:active {
-        @apply bg-danger-fill text-on-danger;
     }
 
     .popup-heading {
