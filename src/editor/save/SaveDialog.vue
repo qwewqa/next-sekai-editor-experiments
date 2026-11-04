@@ -190,7 +190,7 @@ const boxClass =
                         <input
                             ref="field"
                             v-model="value"
-                            class="field w-full min-w-0 appearance-none rounded-full px-4 py-1 placeholder:text-fg/50"
+                            class="field w-full min-w-0 appearance-none rounded-full px-4 py-1"
                             type="text"
                             spellcheck="false"
                             autocomplete="off"

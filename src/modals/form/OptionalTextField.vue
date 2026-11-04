@@ -32,7 +32,7 @@ const onFocus = (event: FocusEvent) => {
         <input
             ref="input"
             v-model.lazy="modelValue"
-            class="field w-full appearance-none rounded-full px-4 py-1 placeholder:text-fg/80"
+            class="field w-full appearance-none rounded-full px-4 py-1"
             :placeholder="placeholder ?? emptyLabel?.() ?? i18n.modals.form.notSet"
             type="text"
             :maxlength="lengthLimit(maxlength, modelValue)"

@@ -359,7 +359,7 @@ The recipes are CSS in `src/controls.css`, in `@layer components`. `src/tailwind
 | `ghost-chrome-on` (on a `ghost-chrome`) | The tab of a showing panel: white/10, white ink | Its selected tab: white/20 (dark white/15) | As the ghost (dark selected white/30) | | |
 | `ghost-chrome-warning` (on a `ghost-chrome`) | `warning` ink | As the ghost | As the ghost | | |
 | `ghost-dim` (on a `ghost`) | `fg/70` ink | `fg` ink, which holds through a press | | | |
-| `field` | `button`, raised | Mint glow | — | Ring inside on `:focus` | 40 % |
+| `field` | `button`, raised; placeholder in `fg/80` | Mint glow | — | Ring inside on `:focus` | 40 % |
 | `field[aria-invalid='true']` | Adds a 2 px `danger` edge ring | | | Both rings | |
 | `row-current` / `row-checked` / `row-drop` | See 5.4 | | | | |
 | `switch-track` (+ `[data-on]`), `switch-knob` | See 5.5; the knob is `ButtonText` in high contrast | | | | |

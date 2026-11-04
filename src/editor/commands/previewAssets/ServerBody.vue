@@ -64,7 +64,7 @@ const alsoText = (option: (typeof also.value)[number]) =>
     interpolateRaw(strings.value.alsoServerItem, typeNoun(option.type), inlineName(option.title))
 
 const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'
-const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placeholder:opacity-60'
+const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4'
 </script>
 
 <template>

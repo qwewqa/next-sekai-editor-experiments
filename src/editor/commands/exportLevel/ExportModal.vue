@@ -235,7 +235,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                             <input
                                 ref="field"
                                 v-model="value"
-                                class="field w-full min-w-0 appearance-none rounded-full px-4 py-1 placeholder:text-fg/50"
+                                class="field w-full min-w-0 appearance-none rounded-full px-4 py-1"
                                 type="text"
                                 spellcheck="false"
                                 autocomplete="off"
