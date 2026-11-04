@@ -344,7 +344,7 @@ const goToButtonTitle = computed(() =>
                     @keydown="onTabKeydown"
                 >
                     <span
-                        class="history-tab-pill flex h-9 max-w-full min-w-0 items-center rounded-full transition-colors"
+                        class="history-tab-pill flex h-9 max-w-full min-w-0 items-center rounded-full transition-ink"
                         :class="
                             mode === 'small' ? (tight ? 'px-1.5 text-sm' : 'px-2 text-sm') : 'px-3'
                         "

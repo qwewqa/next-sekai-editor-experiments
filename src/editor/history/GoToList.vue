@@ -312,7 +312,7 @@ const labelOf = (item: Item) =>
 @reference '../../index.css';
 
 .goto-item {
-    @apply flex min-h-9 shrink-0 items-center gap-3 rounded-sm px-3 py-2 transition-colors select-none;
+    @apply flex min-h-9 shrink-0 items-center gap-3 rounded-sm px-3 py-2 transition-ink select-none;
 }
 
 .goto-item-session {

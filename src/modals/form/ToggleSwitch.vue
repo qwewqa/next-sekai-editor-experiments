@@ -12,7 +12,7 @@ defineProps<{
     contrast draws its edge and knob in the button text colour. -->
     <span class="form-field-toggle-icon" aria-hidden="true">
         <span
-            class="switch-track relative h-3.5 w-6 rounded-full outline-1 outline-transparent transition-colors forced-colors:outline-[ButtonText]"
+            class="switch-track relative h-3.5 w-6 rounded-full outline-1 outline-transparent transition-ink forced-colors:outline-[ButtonText]"
             :data-on="value ? '' : undefined"
         >
             <span

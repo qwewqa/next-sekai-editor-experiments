@@ -69,7 +69,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                 >
                     <!-- The band's height is the hit area; the pill carries hover, press and focus. -->
                     <span
-                        class="manager-modal-tab-pill flex h-9 min-w-0 items-center rounded-full px-3 transition-colors"
+                        class="manager-modal-tab-pill flex h-9 min-w-0 items-center rounded-full px-3 transition-ink"
                     >
                         <span class="manager-modal-tab-label relative min-w-0">
                             <span class="block truncate">{{ panelTitle(item) }}</span>

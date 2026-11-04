@@ -325,7 +325,7 @@ const onTabKeydown = (event: KeyboardEvent) => {
                         <!-- The whole band height is the hit area; the pill carries
                         hover, press and focus. Only the label truncates. -->
                         <span
-                            class="properties-tab-pill flex h-9 max-w-full min-w-0 items-center justify-center rounded-full px-3 transition-colors"
+                            class="properties-tab-pill flex h-9 max-w-full min-w-0 items-center justify-center rounded-full px-3 transition-ink"
                         >
                             <span class="properties-tab-label relative min-w-0">
                                 <span class="block truncate">{{ title(section) }}</span>

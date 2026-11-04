@@ -235,7 +235,7 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                 >
                     <!-- The band's height is the hit area; the pill carries hover, press and focus. -->
                     <span
-                        class="preview-assets-tab-pill flex h-9 items-center rounded-full px-3 transition-colors"
+                        class="preview-assets-tab-pill flex h-9 items-center rounded-full px-3 transition-ink"
                     >
                         <span class="preview-assets-tab-label relative whitespace-nowrap">
                             <SeverityIcon

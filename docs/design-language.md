@@ -105,7 +105,7 @@ Colour, elevation, hover, press and focus of every button family come from the r
   - Property descriptions show only on the surfaces that ask for them (`providePropertyDescriptions`): Selection, the tools' settings, Group Properties, Stage Properties and Level Info. Show Property Descriptions turns them off.
 - **Disabled:** `opacity-40` with no pointer events (the recipes do this), or `aria-disabled` with the same opacity when the control should stay focusable.
 - **Hover is pointer-only.** Tailwind's `hover:` and the recipes both sit under `(hover: hover) and (pointer: fine)`, so a tap leaves no hover look behind.
-- **Focus** is one rule: a 2 px ring drawn 2 px inside the face in the face's own ink, so the face shows on both sides of it. Faces under 32 px use `focus-out`; rows and menu rows use `focus-edge`. Outlines rest transparent so forced colours can paint them; `controls.css` and `index.css` thicken them to 4 px there. Do not suppress an outline without replacing it.
+- **Focus** is one rule: a 2 px ring drawn 2 px inside the face in the face's own ink, so the face shows on both sides of it. Faces under 32 px use `focus-out`; rows and menu rows use `focus-edge`. Outlines rest transparent so forced colours can paint them; `controls.css` and `index.css` thicken them to 4 px there. Do not suppress an outline without replacing it. A ring appears at once: colour transitions use `transition-ink`, which leaves the outline out (Tailwind's `transition-colors` would fade it in), and reduced motion keeps colour transitions but not the outline's.
 
 ## 5. Bands, rows and lists
 

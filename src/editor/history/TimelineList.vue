@@ -1858,7 +1858,7 @@ defineExpose({
 /* The text pill reaches 4 px under the slot, so its faces are balanced 12 / 12 around the text. Its
    18 px radius is the row pill's 20 less its 2 px inset, so the two stay concentric. */
 .timeline-entry-text {
-    @apply -ml-1 flex h-9 min-w-0 flex-1 flex-col justify-center rounded-[1.125rem] px-3 text-left transition-colors;
+    @apply -ml-1 flex h-9 min-w-0 flex-1 flex-col justify-center rounded-[1.125rem] px-3 text-left transition-ink;
     outline: 2px solid transparent;
     outline-offset: -2px;
 }

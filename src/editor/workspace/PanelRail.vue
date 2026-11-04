@@ -405,7 +405,7 @@ const chevronDirection = computed(() => {
         <button
             v-if="dock.open.length"
             type="button"
-            class="panel-rail-toggle flex shrink-0 items-center justify-center text-white/80 transition-colors hover:text-white"
+            class="panel-rail-toggle flex shrink-0 items-center justify-center text-white/80 transition-ink hover:text-white"
             :class="[vertical ? 'w-full' : 'h-full', 'size-9']"
             :aria-label="
                 dock.collapsed ? i18n.workspace.expand[side] : i18n.workspace.collapse[side]
@@ -415,7 +415,7 @@ const chevronDirection = computed(() => {
             @click="onToggle"
         >
             <span
-                class="flex size-7 items-center justify-center rounded-full transition-colors"
+                class="flex size-7 items-center justify-center rounded-full transition-ink"
                 :class="dock.collapsed ? 'bg-white/10' : ''"
             >
                 <ChevronIcon :direction="chevronDirection" />

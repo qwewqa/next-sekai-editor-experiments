@@ -1,5 +1,6 @@
 /* What the editor's and the landing pages' stylesheets share, after each imports Tailwind with its
-   own sources: the theme, the control recipes, the breakpoints and the hover variant. */
+   own sources: the theme, the control recipes, the breakpoints, the colour transition and the hover
+   variant. */
 @import './themes.css';
 @import './controls.css';
 
@@ -11,6 +12,14 @@
     --breakpoint-lg: 1024px;
     --breakpoint-xl: 1280px;
     --breakpoint-2xl: 1536px;
+}
+
+/* Colour transitions without the outline's: a focus ring appears at once, as focus arrives.
+   Tailwind's transition-ink fades it in. */
+@utility transition-ink {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
 }
 
 /* Hover applies only to a fine pointer that can hover, the query the recipes use, so a tap on a

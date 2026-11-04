@@ -131,7 +131,7 @@ onUnmounted(() => {
         @dblclick="emit('reset')"
     >
         <div
-            class="resize-line pointer-events-none absolute transition-colors"
+            class="resize-line pointer-events-none absolute transition-ink"
             :class="
                 axis === 'x'
                     ? 'inset-y-0 left-1/2 w-[3px] -translate-x-1/2'

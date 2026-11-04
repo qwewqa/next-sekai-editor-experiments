@@ -107,7 +107,7 @@
 
     /* --- Ghost buttons: no face until hovered; on a band or the dark chrome, that surface's step. */
     .ghost {
-        @apply transition-colors disabled:pointer-events-none disabled:opacity-40;
+        @apply transition-ink disabled:pointer-events-none disabled:opacity-40;
     }
 
     .ghost-chrome {
@@ -303,7 +303,7 @@
     .row-select {
         outline: 2px solid transparent;
         outline-offset: -2px;
-        @apply transition-colors;
+        @apply transition-ink;
     }
 
     .row-select:has(input[type='radio']:checked) {
@@ -352,7 +352,7 @@
     }
 
     .segment-face {
-        @apply flex items-center justify-center rounded-full transition-colors;
+        @apply flex items-center justify-center rounded-full transition-ink;
     }
 
     .peer:checked + .segment-face {

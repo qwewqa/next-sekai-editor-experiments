@@ -254,7 +254,7 @@ const labelOf = (direction: 'up' | 'down') => {
                 @click="press(direction)"
             >
                 <span
-                    class="change-face flex size-6 shrink-0 items-center justify-center rounded-full transition-colors"
+                    class="change-face flex size-6 shrink-0 items-center justify-center rounded-full transition-ink"
                     ><ChevronIcon :direction="direction" centered
                 /></span>
                 <!-- 6 px after the circle, clear of its focus ring; three digits take 4 px, to fit the slot. -->

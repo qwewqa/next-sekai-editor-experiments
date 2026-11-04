@@ -8,7 +8,7 @@
 @layer components {
     /* Links are underlined ink, never accent: mint fails contrast on the light surface. */
     .link {
-        @apply rounded-xs text-fg-strong underline underline-offset-2 transition-colors hover:decoration-2;
+        @apply rounded-xs text-fg-strong underline underline-offset-2 transition-ink hover:decoration-2;
     }
 
     /* A button on a header band, as in the editor's dialogs. */

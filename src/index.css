@@ -41,7 +41,7 @@ html {
     *::before,
     *::after {
         transition-property:
-            color, background-color, border-color, outline-color, fill, stroke, opacity, box-shadow !important;
+            color, background-color, border-color, fill, stroke, opacity, box-shadow !important;
     }
 }
 
@@ -191,7 +191,7 @@ html[data-app-inactive] *::after {
     }
 
     .popup-item {
-        @apply flex min-h-9 w-full shrink-0 items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-ghost-press enabled:active:text-fg-strong disabled:opacity-40;
+        @apply flex min-h-9 w-full shrink-0 items-center gap-3 rounded-sm px-3 py-2 text-left transition-ink enabled:hover:bg-popup-hover enabled:focus-visible:bg-popup-hover enabled:active:bg-ghost-press enabled:active:text-fg-strong disabled:opacity-40;
     }
 
     /* A destructive row is red, and pressing it shows what it does. */
