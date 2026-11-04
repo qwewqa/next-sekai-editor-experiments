@@ -6,6 +6,8 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "moduleDetection": "auto",
+    // ES2022 as the Vue base sets it, plus the string built-ins every supported browser has.
+    "lib": ["ES2022", "ES2024.String", "DOM", "DOM.Iterable"],
     "types": [
       "vite/client",
       "@types/wicg-file-system-access",

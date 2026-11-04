@@ -61,19 +61,8 @@ export const jsonStringBytes = (text: string): number | undefined => {
 
 export const jsonBytes = (value: JsonValue) => utf8Length(JSON.stringify(value))
 
-const wellFormed = (text: string) => {
-    for (let i = 0; i < text.length; i++) {
-        const code = text.charCodeAt(i)
-        if (code >= 0xd800 && code <= 0xdbff) {
-            const next = text.charCodeAt(++i)
-            if (!(next >= 0xdc00 && next <= 0xdfff)) return false
-        } else if (code >= 0xdc00 && code <= 0xdfff) return false
-    }
-    return true
-}
-
 export const isJsonText = (value: unknown): value is string =>
-    typeof value === 'string' && wellFormed(value)
+    typeof value === 'string' && value.isWellFormed()
 
 // Capture data without invoking getters, toJSON, or prototype setters.
 export type ExtensionTrail = readonly (string | number)[]
