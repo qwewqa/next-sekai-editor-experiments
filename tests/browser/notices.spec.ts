@@ -1160,6 +1160,78 @@ test.describe('over a blocking dialog', () => {
     })
 })
 
+// A quick notice drawn again in another place carries on its fade. Each read is made in the task
+// that draws it, before the fade could have moved on by itself.
+test.describe('a quick notice drawn again', () => {
+    test('moving from a closing dialog to the pane, it is as faded as it was', async ({ page }) => {
+        await boot(page)
+        await openBlocking(page)
+        await expect(page.getByRole('dialog')).toBeVisible()
+        const alpha = await page.evaluate(async (path) => {
+            const { notify } = await window.editorTest.appImport<Notification>(path)
+            const { closeModal, modals } =
+                await window.editorTest.appImport<typeof import('../../src/modals')>(
+                    '/src/modals/index.ts',
+                )
+            notify(() => 'Copied')
+            await window.editorTest.nextTick()
+            const [fade] = document.querySelector('dialog .notification')?.getAnimations() ?? []
+            if (!fade) throw new Error('Not in the dialog')
+            // A third of its fade, well within the second in which it moves to the pane.
+            while (Number(fade.currentTime ?? 0) < 300)
+                await new Promise((resolve) => requestAnimationFrame(resolve))
+            closeModal(modals.at(-1)!)
+            await window.editorTest.nextTick()
+            const shown = document.querySelector('.notification')
+            if (!shown || shown.closest('dialog')) throw new Error('Not in the pane')
+            const fill = getComputedStyle(shown).backgroundColor
+            return Number(/rgba\([^)]*,\s*([\d.]+)\)/.exec(fill)?.[1] ?? 1)
+        }, notificationPath)
+        expect(alpha).toBeLessThan(0.9)
+    })
+
+    for (const device of ['desktop', 'phone'] as const)
+        test.describe(device, () => {
+            if (device === 'phone')
+                test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+            test('the faint text left behind stays faint as the elevation editor opens and closes', async ({
+                page,
+            }) => {
+                await boot(page)
+                await page.evaluate(() => {
+                    window.editorTest.settings.elevationEditorSideBySide = 'disallow'
+                })
+                await expect(page.locator('.notification')).toHaveCount(1)
+                await page
+                    .locator('.notification')
+                    .evaluate((shown) =>
+                        Promise.all(shown.getAnimations().map((animation) => animation.finished)),
+                    )
+                const fills = await page.evaluate(async () => {
+                    const { isElevationEditorOpen } = await window.editorTest.appImport<
+                        typeof import('../../src/editor/elevation/state')
+                    >('/src/editor/elevation/state.ts')
+                    const read = (inElevation: boolean) => {
+                        const shown = [...document.querySelectorAll('.notification')]
+                        if (shown.length !== 1) throw new Error(`${shown.length} notices`)
+                        const [notice] = shown
+                        if (!!notice!.closest('.elevation-editor') !== inElevation)
+                            throw new Error('Not in the expected pane')
+                        return getComputedStyle(notice!).backgroundColor
+                    }
+                    isElevationEditorOpen.value = true
+                    await window.editorTest.nextTick()
+                    const opened = read(true)
+                    isElevationEditorOpen.value = false
+                    await window.editorTest.nextTick()
+                    return [opened, read(false)]
+                })
+                expect(fills).toEqual(['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'])
+            })
+        })
+})
+
 test('Escape on a later card does not return focus to the target of an Alt+N whose card went', async ({
     page,
 }) => {

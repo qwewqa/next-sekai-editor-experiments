@@ -1,13 +1,40 @@
+<script lang="ts">
+// When the shown notice's fade started. Moving it to another place, such as from a closing dialog
+// to the pane or into the elevation editor, draws it again, and the fade carries on from there.
+let drawn: { id: number; start?: CSSNumberish | null } | undefined
+</script>
+
 <script setup lang="ts">
+import { onMounted, useTemplateRef } from 'vue'
 import type { Notice } from './notification'
 import SeparatedText from './SeparatedText.vue'
 
 // Quick feedback, as v0.5.22 drew it: a mint pill that fades to a ghost over a second, with no input.
-defineProps<{ notice: Notice }>()
+const props = defineProps<{ notice: Notice }>()
+
+const pill = useTemplateRef<HTMLElement>('pill')
+onMounted(() => {
+    const [fade] = pill.value?.getAnimations() ?? []
+    if (!fade) return
+    const { id } = props.notice
+    if (drawn?.id === id) {
+        if (drawn.start != null) fade.startTime = drawn.start
+        return
+    }
+    const record: NonNullable<typeof drawn> = { id }
+    drawn = record
+    void fade.ready
+        .then(() => {
+            record.start = fade.startTime
+        })
+        // Removed before it was drawn: the next place starts the fade.
+        .catch(() => undefined)
+})
 </script>
 
 <template>
     <div
+        ref="pill"
         class="notification min-w-0 max-w-full whitespace-break-spaces rounded-full px-6 py-2 text-center [overflow-wrap:anywhere]"
     >
         <SeparatedText :text="notice.message?.() ?? ''" />
