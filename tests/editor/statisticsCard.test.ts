@@ -2,30 +2,41 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { chartCategoryColors } from '../../src/editor/statistics/marks'
 import { drawCard, type CardInput } from '../../src/editor/statistics/shareCard'
+import { statisticsStringsOf } from '../../src/editor/statistics/strings'
+import en from '../../src/i18n/en/index.json'
 import {
     CATEGORIES,
     mergeTimes,
+    npsFigures,
+    npsSets,
     ROWS,
     type Category,
     type ChartStatistics,
+    type NpsFigures,
 } from '../../src/levelData/statistics'
 
 // The share card's layout, drawn on a recording 2D context: what it writes and where, for the
 // branches a card can take.
 
-type Call = { name: string; args: unknown[]; fillStyle: unknown; font: string }
+type Call = { name: string; args: unknown[]; fillStyle: unknown; font: string; textAlign: string }
 
 // Node has no Path2D; the card's paths are drawing.ts's, tested there.
 globalThis.Path2D ??= class {} as unknown as typeof Path2D
 
-/** A 2D context that records its calls; text is 0.55 of its size wide per character. */
-const recorder = ({ roundRect = true } = {}) => {
+/**
+ * A 2D context that records its calls; text is 0.55 of its size wide per character, and
+ * `bearing` gives the right edge of its ink from the end of its advance where a test needs one.
+ */
+const recorder = ({
+    roundRect = true,
+    bearing,
+}: { roundRect?: boolean; bearing?: (text: string) => number } = {}) => {
     const calls: Call[] = []
-    const state = { fillStyle: '' as unknown, font: '10px sans' }
+    const state = { fillStyle: '' as unknown, font: '10px sans', textAlign: 'start' }
     const record =
         (name: string) =>
         (...args: unknown[]) => {
-            calls.push({ name, args, fillStyle: state.fillStyle, font: state.font })
+            calls.push({ name, args, ...state })
         }
     const context: Record<string, unknown> = {
         get fillStyle() {
@@ -40,9 +51,18 @@ const recorder = ({ roundRect = true } = {}) => {
         set font(value: string) {
             state.font = value
         },
+        get textAlign() {
+            return state.textAlign
+        },
+        set textAlign(value: string) {
+            state.textAlign = value
+        },
         measureText: (text: string) => {
             const size = Number(/(\d+(\.\d+)?)px/.exec(state.font)?.[1] ?? 10)
-            return { width: [...text].length * size * 0.55 }
+            const width = [...text].length * size * 0.55
+            // Measured from the alignment point, as a browser does.
+            const right = bearing && bearing(text) + (state.textAlign === 'right' ? 0 : width)
+            return { width, actualBoundingBoxRight: right }
         },
     }
     for (const name of [
@@ -102,7 +122,7 @@ const input = (overrides: Partial<CardInput> = {}): CardInput => ({
     link: '',
     stats,
     every: mergeTimes(CATEGORIES.map((category) => stats.times[category])).times,
-    bgmEnd: undefined,
+    figures: undefined,
     drawable: true,
     chosen: ['tap', 'flick', 'release'],
     mode: 'smooth',
@@ -117,15 +137,13 @@ const input = (overrides: Partial<CardInput> = {}): CardInput => ({
     fontFamily: 'sans-serif',
     locale: 'en',
     strings: {
+        ...statisticsStringsOf(en),
         rows: Object.fromEntries(
             ROWS.map((row) => [row, `Row ${row}`]),
         ) as CardInput['strings']['rows'],
         categories: Object.fromEntries(
             CATEGORIES.map((category) => [category, `Key ${category}`]),
         ) as CardInput['strings']['categories'],
-        combo: 'Combo',
-        notesPerSecond: 'Notes per Second',
-        noNotes: 'No notes to count',
         untitled: 'Untitled',
         author: 'Author',
         rating: 'Rating',
@@ -134,7 +152,10 @@ const input = (overrides: Partial<CardInput> = {}): CardInput => ({
     ...overrides,
 })
 
-const draw = (overrides: Partial<CardInput> = {}, options?: { roundRect?: boolean }) => {
+const draw = (
+    overrides: Partial<CardInput> = {},
+    options?: { roundRect?: boolean; bearing?: (text: string) => number },
+) => {
     const { canvas, calls } = recorder(options)
     drawCard(canvas, input(overrides))
     assert.equal(canvas.width, 1600)
@@ -279,4 +300,111 @@ test('the plot lies on whole pixels of the 2x canvas in every band layout', () =
         for (const value of origin.args as number[])
             assert.equal(Math.round(value * 2), value * 2, `${info.title}: ${value}`)
     }
+})
+
+// --- Average and Median on the heading's line.
+
+const figuresOf = (chosen: readonly Category[]) => {
+    const sets = npsSets(stats.times, chosen)
+    return sets && npsFigures(sets)
+}
+const mixed: Category[] = ['tap', 'flick', 'release', 'trace']
+const textCall = (calls: Call[], text: string) =>
+    calls.find((call) => call.name === 'fillText' && call.args[0] === text)
+const xOf = (call: Call | undefined) => call?.args[1] as number
+const widthOf = (text: string, size: number) => [...text].length * size * 0.55
+/** The four figure texts, right to left: Median's value and label, then Average's. */
+const figureCalls = (calls: Call[]) => {
+    const y = textCall(calls, 'Notes per Second')?.args[2]
+    return calls.filter(
+        (call) => call.name === 'fillText' && call.textAlign === 'right' && call.args[2] === y,
+    )
+}
+
+test('Average and Median end at the right edge of the footer, on the heading line', () => {
+    const figures = figuresOf(mixed)
+    assert.ok(figures?.hasPrimary && figures.hasSecondary)
+    const calls = draw({ chosen: mixed, figures })
+    const heading = textCall(calls, 'Notes per Second')
+    assert.ok(heading)
+    const average = `${figures.primary.average.toFixed(1)} (${figures.all.average.toFixed(1)})`
+    const median = `${figures.primary.median} (${figures.all.median})`
+    const [medianValue, medianLabel, averageValue, averageLabel] = figureCalls(calls)
+    assert.deepEqual(
+        [medianValue, medianLabel, averageValue, averageLabel].map((call) => call?.args[0]),
+        [median, 'Median', average, 'Average'],
+    )
+    for (const call of [medianValue, medianLabel, averageValue, averageLabel])
+        assert.equal(call?.args[2], heading.args[2])
+    assert.equal(xOf(medianValue), 784)
+    assert.equal(xOf(medianLabel), 784 - widthOf(median, 15) - 6)
+    assert.equal(xOf(averageValue), xOf(medianLabel) - widthOf('Median', 13.5) - 20)
+    assert.equal(xOf(averageLabel), xOf(averageValue) - widthOf(average, 15) - 6)
+    assert.equal(averageValue?.font, '400 15px sans-serif')
+    assert.equal(averageLabel?.font, '400 13.5px sans-serif')
+})
+
+test('each figure value has its trailing bearing trimmed, so the group and its gap run by ink', () => {
+    const figures = figuresOf(mixed)
+    const xs = (calls: Call[]) => figureCalls(calls).map(xOf)
+    const plain = xs(draw({ chosen: mixed, figures }))
+    const trimmed = xs(
+        draw({ chosen: mixed, figures }, { bearing: (text) => (/\d/.test(text) ? -4 : 0) }),
+    )
+    // The group moves 4 right, and the gap between the figures narrows by 4.
+    assert.deepEqual(trimmed, [plain[0]! + 4, plain[1]! + 4, plain[2]! + 8, plain[3]! + 8])
+})
+
+test('no figures are drawn without notes or when the chart is not drawable', () => {
+    for (const overrides of [
+        { chosen: [], figures: undefined },
+        { chosen: mixed, figures: figuresOf(mixed), drawable: false },
+    ]) {
+        const calls = draw(overrides)
+        assert.ok(textCall(calls, 'Notes per Second'))
+        assert.ok(!texts(calls).includes('Average'))
+        assert.ok(!texts(calls).includes('Median'))
+    }
+})
+
+test('the heading is cut to the width the figures leave, and the figures never are', () => {
+    const many = { average: 10000, median: 10000, p90: 10000, p99: 10000 }
+    const huge: NpsFigures = { all: many, primary: many, hasPrimary: true, hasSecondary: true }
+    for (const [notesPerSecond, figures] of [
+        ['Notes per Second in a Very Long Language', figuresOf(mixed)],
+        ['Notes per Second', huge],
+    ] as const) {
+        const calls = draw({
+            chosen: mixed,
+            figures,
+            strings: { ...input().strings, notesPerSecond },
+        })
+        // The heading is the last bold 15 text, after the author's label.
+        const heading = calls
+            .filter((call) => call.name === 'fillText' && call.font === '700 15px sans-serif')
+            .at(-1)
+        assert.ok(heading)
+        const text = String(heading.args[0])
+        assert.ok(text.endsWith('…'), text)
+        const left = xOf(textCall(calls, 'Average')) - widthOf('Average', 13.5)
+        assert.ok(xOf(heading) + widthOf(text, 15) <= left - 16)
+    }
+    const calls = draw({ chosen: mixed, figures: huge })
+    assert.ok(texts(calls).includes('10,000.0 (10,000.0)'))
+    assert.ok(texts(calls).includes('10,000 (10,000)'))
+})
+
+test('the figures take no plot height', () => {
+    const plot = (figures: NpsFigures | undefined) => {
+        const calls = draw({ chosen: mixed, figures })
+        return [
+            calls.find((call) => call.name === 'translate')?.args,
+            calls
+                .filter(
+                    (call) => call.name === 'fillText' && String(call.args[0]).startsWith('Key '),
+                )
+                .map((call) => call.args[2]),
+        ]
+    }
+    assert.deepEqual(plot(figuresOf(mixed)), plot(undefined))
 })

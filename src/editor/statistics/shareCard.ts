@@ -1,11 +1,13 @@
 import {
     CATEGORIES,
     chartModel,
+    figureRows,
     ROWS,
     timeTicks,
     type Category,
     type ChartMode,
     type ChartStatistics,
+    type NpsFigures,
     type Row,
     type StatisticsStrings,
 } from '../../levelData/statistics'
@@ -16,7 +18,8 @@ import { chartCategoryColors } from './marks'
 
 // The share card: 800 x 450 units drawn at 1600 x 900 px, built like a dialog: a band with the
 // cover, the title, the artists, the author and the rating; Combo and the list's rows; the
-// dialog's chart in its mode and selection with its key; the link and the product's name.
+// dialog's chart in its mode and selection with its key, and Average and Median on its heading's
+// line; the link and the product's name.
 
 const WIDTH = 800
 const HEIGHT = 450
@@ -33,7 +36,7 @@ export type CardInput = {
     link: string
     stats: ChartStatistics
     every: Float64Array
-    bgmEnd: number | undefined
+    figures: NpsFigures | undefined
     drawable: boolean
     chosen: readonly Category[]
     mode: ChartMode
@@ -41,10 +44,7 @@ export type CardInput = {
     theme: CardTheme
     fontFamily: string
     locale: string
-    strings: Pick<
-        StatisticsStrings,
-        'rows' | 'categories' | 'combo' | 'notesPerSecond' | 'noNotes'
-    > & {
+    strings: StatisticsStrings & {
         untitled: string
         author: string
         rating: string
@@ -313,9 +313,41 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     // --- Notes per Second: the dialog's chart in its mode, with its key at the right.
     const chartX = PAD + listWidth + 32
     const chartWidth = WIDTH - PAD - chartX
+    // Average and Median end at the footer's right edge, laid out from the right by their ink: a
+    // value's trailing bearing (a full-width parenthesis has one) is trimmed. They are never cut;
+    // the heading is cut to the width they leave.
+    const figures: { text: string; x: number; size: number; alpha: number }[] = []
+    let figuresLeft = chartX + chartWidth + 16
+    if (input.drawable && input.figures) {
+        const [average, median] = figureRows(input.figures, strings, locale)
+        let x = chartX + chartWidth
+        g.textAlign = 'right'
+        for (const row of [median, average]) {
+            if (!row) continue
+            g.font = font(15)
+            const bearing = g.measureText(row.value).actualBoundingBoxRight
+            if (bearing < 0) x -= bearing
+            figures.push({ text: row.value, x, size: 15, alpha: 1 })
+            x -= g.measureText(row.value).width + 6
+            g.font = font(13.5)
+            figures.push({ text: row.label, x, size: 13.5, alpha: 0.8 })
+            figuresLeft = x - g.measureText(row.label).width
+            x = figuresLeft - 20
+        }
+        g.textAlign = 'left'
+    }
+    const headingWidth = figuresLeft - 16 - chartX
     g.fillStyle = rgba(theme.fg)
     g.font = font(15, 700)
-    g.fillText(strings.notesPerSecond, chartX, top + 15)
+    const [heading = ''] = wrap(g, strings.notesPerSecond, headingWidth, 1)
+    if (g.measureText(heading).width <= headingWidth) g.fillText(heading, chartX, top + 15)
+    g.textAlign = 'right'
+    for (const figure of figures) {
+        g.font = font(figure.size)
+        g.fillStyle = rgba(theme.fg, figure.alpha)
+        g.fillText(figure.text, figure.x, top + 15)
+    }
+    g.textAlign = 'left'
     // The plot's edges on whole pixels of the 2x canvas, so its tiles and gridlines are crisp.
     const snap = (units: number) => Math.round(units * SCALE) / SCALE
     const plotTop = snap(top + 15 + 14)
@@ -366,13 +398,7 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     }
     const model =
         input.drawable && hasNotes
-            ? chartModel(
-                  input.mode,
-                  input.every,
-                  times,
-                  input.bgmEnd,
-                  Math.round((right - left) * 2),
-              )
+            ? chartModel(input.mode, input.every, times, undefined, Math.round((right - left) * 2))
             : undefined
     if (model) {
         // The plot's origin on a whole pixel of the 2x canvas, as the dialog's on the screen.

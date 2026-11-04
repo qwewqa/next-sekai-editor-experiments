@@ -11,6 +11,7 @@ import {
     type Category,
     type ChartMode,
     type ChartStatistics,
+    type NpsFigures,
     type Row,
 } from '../../levelData/statistics'
 import { readMediaBlob } from '../../local/mediaBlob'
@@ -35,7 +36,7 @@ import { statisticsStrings } from './text'
 const props = defineProps<{
     stats: ChartStatistics
     every: Float64Array
-    bgmEnd: number | undefined
+    figures: NpsFigures | undefined
     drawable: boolean
     chosen: readonly Category[]
     mode: ChartMode
@@ -164,7 +165,7 @@ const render = (value: string) =>
                     link: value,
                     stats: props.stats,
                     every: props.every,
-                    bgmEnd: props.bgmEnd,
+                    figures: props.figures,
                     drawable: props.drawable,
                     chosen: props.chosen,
                     mode: props.mode,

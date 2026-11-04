@@ -275,6 +275,45 @@ test('every entry off leaves the frame, blank figures and the plot out of the Ta
     await expect(dialog(page).locator('[data-statistics-figures]')).toContainText('1.0')
 })
 
+test('Average shows <primary> (<all>), its bubble is shared with the critical rows, and the status line spells it out', async ({
+    page,
+}) => {
+    await start(page)
+    await open(page)
+    const figure = (name: string) => dialog(page).locator(`[data-statistics-figure="${name}"]`)
+    const average = figure('average').locator('button')
+    // Only primary notes: one value, and a one-line bubble.
+    await expect(average).toHaveText(/^\d+\.\d$/)
+    const primary = (await average.textContent()) ?? ''
+    await expect(average).toHaveAccessibleDescription(`Primary: ${primary}`)
+
+    // Trace adds a secondary note: the pair, spelled out on the status line.
+    await entry(page, 'trace').click()
+    await expect(average).toHaveText(
+        new RegExp(`^${primary.replace('.', '\\.')} \\(\\d+\\.\\d\\)$`),
+    )
+    const all = /\((.*)\)/.exec((await average.textContent()) ?? '')?.[1] ?? ''
+    await expect(
+        dialog(page)
+            .getByRole('status')
+            .filter({ hasText: `Average: Primary: ${primary}, All: ${all}` }),
+    ).toHaveCount(1)
+
+    // One bubble across the count rows and the figures: hover hands it over, Escape closes it.
+    await row(page, 'tap').hover()
+    await expect(bubble(page)).toContainText('Critical')
+    await figure('average').hover()
+    await expect(average).toHaveAttribute('aria-expanded', 'true')
+    await expect(row(page, 'tap').locator('button')).toHaveAttribute('aria-expanded', 'false')
+    await expect(bubble(page)).toHaveCount(1)
+    await expect(bubble(page).locator('dt')).toHaveText(['Primary', 'All'])
+    await expect(bubble(page).locator('dd')).toHaveText([primary, all])
+    await average.click()
+    await page.keyboard.press('Escape')
+    await expect(bubble(page)).toHaveCount(0)
+    await expect(dialog(page)).toBeVisible()
+})
+
 test('the readout follows the mouse on the label line, and the plot stays in place', async ({
     page,
 }) => {
@@ -294,36 +333,18 @@ test('the readout follows the mouse on the label line, and the plot stays in pla
     await expect(readout).toHaveText('')
 })
 
-test('a click on the plot does not pin the readout: leaving clears it and BGM End shows again', async ({
-    page,
-}) => {
+test('a click on the plot does not pin the readout: leaving clears it', async ({ page }) => {
     await start(page)
-    await page.evaluate(() => {
-        const { history } = window.editorTest
-        const current = history.state.value
-        const meta = {
-            hash: '0'.repeat(32),
-            filename: 'bgm.mp3',
-            size: 1,
-            type: 'audio/mpeg',
-            durationMs: 3000,
-        }
-        history.replaceState({ ...current, bgm: { ...current.bgm, meta } })
-    })
     await open(page)
-    const label = dialog(page).locator('[data-statistics-bgm-label]')
-    await expect(label).toBeVisible()
     const plot = await chart(page).boundingBox()
     if (!plot) throw new Error('No plot')
     await page.mouse.click(plot.x + plot.width / 3, plot.y + plot.height / 2)
     const readout = dialog(page).locator('[data-statistics-readout]')
     await expect(readout).not.toHaveText('')
-    await expect(label).toHaveCount(0)
     await page.mouse.move(5, 5)
     await expect(readout).toHaveText('')
     await expect(dialog(page).locator('.stats-dot, .stats-cross')).toHaveCount(0)
     await expect(entry(page, 'tap').locator('.stats-entry-value')).toHaveText('')
-    await expect(label).toBeVisible()
 })
 
 test('a key after a click pins the readout to the keyboard: leaving keeps it, the next key moves on', async ({

@@ -6,6 +6,7 @@ import { parseLevelDataChart } from '../../src/chart/parse/levelData'
 import { statisticsStringsOf } from '../../src/editor/statistics/strings'
 import en from '../../src/i18n/en/index.json'
 import fr from '../../src/i18n/fr/index.json'
+import ja from '../../src/i18n/ja/index.json'
 import { parseLevelData } from '../../src/levelData/parse'
 import { serializeToLevelData } from '../../src/levelData/serialize'
 import {
@@ -18,9 +19,12 @@ import {
     copyTextLines,
     curveColumns,
     curveSamples,
+    figureRows,
     gridOf,
     kernel,
     mergeTimes,
+    npsFigures,
+    npsSets,
     oneSecondMax,
     representable,
     rollingFigures,
@@ -257,7 +261,7 @@ test('at absurd BPMs the counts and the finite times show, and the chart is not 
         assert.equal(stats.combo, 2)
         const shown = [stats.firstComboNote, stats.lastNote].filter((time) => time !== undefined)
         assert.deepEqual(shown, times)
-        assert.equal(representable(stats, undefined), false)
+        assert.equal(representable(stats), false)
     }
 })
 
@@ -539,15 +543,18 @@ test('the parts of the readout add up to its total as shown', () => {
 
 // --- Copy Text.
 
+const npsOf = (stats: ChartStatistics, chosen: readonly Category[]) => {
+    const sets = npsSets(stats.times, chosen)
+    return sets && npsFigures(sets)
+}
+
 const copyText = (stats: ChartStatistics, chosen: Category[], locale: 'en' | 'fr', title = '') =>
     copyTextLines(
         {
             title,
             stats,
             chosen,
-            figures: rollingFigures(
-                mergeTimes(chosen.map((category) => stats.times[category])).times,
-            ),
+            figures: npsOf(stats, chosen),
             bgmEnd: 10.25,
         },
         statisticsStringsOf(locale === 'en' ? en : (fr as typeof en)),
@@ -587,8 +594,118 @@ test('Copy Text gives the title, then each figure in the order of the dialog', (
 
 test('Copy Text in French spaces its colons and agrees with the critical count', () => {
     const lines = copyText(statsOf(handBuilt()), ['tap', 'flick', 'release', 'tick'], 'fr')
-    assert.ok(lines.includes('Tap\u00a0: 11 (2 critiques)'))
-    assert.ok(lines.includes('Relâchement\u00a0: 7 (0 critique)'))
-    assert.ok(lines.some((line) => /^Moyenne\u00a0: \d+,\d$/.test(line)))
-    assert.ok(lines.includes('Notes par seconde\u00a0: Tap, Flick, Relâchement, Tick'))
+    assert.ok(lines.includes('Tap : 11 (2 critiques)'))
+    assert.ok(lines.includes('Relâchement : 7 (0 critique)'))
+    assert.ok(lines.includes('Moyenne : Principales : 2,9, Toutes : 6,0'))
+    assert.ok(lines.includes('Notes par seconde : Tap, Flick, Relâchement, Tick'))
+})
+
+test('Copy Text spells out Primary and All when both have notes', () => {
+    const lines = copyText(statsOf(handBuilt()), ['tap', 'flick', 'release', 'tick'], 'en')
+    const at = lines.indexOf('Notes per Second: Tap, Flick, Release, Tick')
+    assert.deepEqual(lines.slice(at + 1, at + 5), [
+        'Average: Primary: 2.9, All: 6.0',
+        'Median: Primary: 2, All: 3',
+        '90th Percentile: Primary: 7, All: 20',
+        '99th Percentile: Primary: 7, All: 25',
+    ])
+    // Only secondary notes: one value, as before.
+    const trace = copyText(statsOf(handBuilt()), ['trace'], 'en')
+    assert.ok(trace.some((line) => /^Average: \d+\.\d$/.test(line)))
+})
+
+// --- Primary and All.
+
+const timesOf = (byCategory: Partial<Record<Category, number[]>>) =>
+    Object.fromEntries(
+        CATEGORIES.map((category) => [category, Float64Array.from(byCategory[category] ?? [])]),
+    ) as Record<Category, Float64Array>
+
+test('Primary is the chosen Tap, Flick and Release; a chosen category with no notes is not present', () => {
+    // Only primary: one set, the same array.
+    const primaryOnly = npsSets(timesOf({ tap: [0, 0.25], trace: [3] }), ['tap', 'tick'])
+    assert.ok(primaryOnly)
+    assert.equal(primaryOnly.primary, primaryOnly.all)
+    assert.deepEqual([primaryOnly.hasPrimary, primaryOnly.hasSecondary], [true, false])
+    assert.deepEqual(npsFigures(primaryOnly).primary, npsFigures(primaryOnly).all)
+    // Only secondary: Primary's figures are zeros.
+    const secondaryOnly = npsSets(timesOf({ trace: [0, 10] }), ['tap', 'trace'])
+    assert.ok(secondaryOnly)
+    const zeros = npsFigures(secondaryOnly)
+    assert.deepEqual(zeros.primary, { average: 0, median: 0, p90: 0, p99: 0 })
+    assert.deepEqual(zeros.all, rollingFigures(Float64Array.from([0, 10])))
+    assert.deepEqual([zeros.hasPrimary, zeros.hasSecondary], [false, true])
+    // Both.
+    const both = npsSets(timesOf({ tap: [0, 0.25], damage: [5] }), ['tap', 'damage'])
+    assert.ok(both)
+    assert.deepEqual([...both.primary], [0, 0.25])
+    assert.deepEqual([...both.all], [0, 0.25, 5])
+    const figures = npsFigures(both)
+    assert.deepEqual(figures.primary, rollingFigures(Float64Array.from([0, 0.25])))
+    assert.deepEqual(figures.all, rollingFigures(Float64Array.from([0, 0.25, 5])))
+    // None.
+    assert.equal(npsSets(timesOf({ tap: [1] }), []), undefined)
+    assert.equal(npsSets(timesOf({ tap: [1] }), ['flick', 'trace']), undefined)
+})
+
+const enStrings = statisticsStringsOf(en)
+const rowsOf = (byCategory: Partial<Record<Category, number[]>>, chosen: Category[]) => {
+    const sets = npsSets(timesOf(byCategory), chosen)
+    return figureRows(sets && npsFigures(sets), enStrings, 'en')
+}
+
+test('a figure shows <primary> (<all>) with both, else one value; its bubble has Primary, and All with secondary notes', () => {
+    const [average, median] = rowsOf({ tap: [0, 0.25], trace: [5] }, ['tap', 'trace'])
+    assert.equal(average?.value, '1.6 (1.3)')
+    assert.deepEqual(average?.lines, [
+        { label: 'Primary', value: '1.6' },
+        { label: 'All', value: '1.3' },
+    ])
+    assert.equal(average?.text, 'Average: Primary: 1.6, All: 1.3')
+    assert.equal(median?.value, '2 (1)')
+
+    const [primaryAverage] = rowsOf({ tap: [0, 0.25], trace: [5] }, ['tap'])
+    assert.equal(primaryAverage?.value, '1.6')
+    assert.deepEqual(primaryAverage?.lines, [{ label: 'Primary', value: '1.6' }])
+    assert.equal(primaryAverage?.text, 'Average: 1.6')
+
+    // Only secondary: the value is All's, and the bubble shows where it comes from.
+    const [secondaryAverage, secondaryMedian] = rowsOf({ trace: [0, 10] }, ['tap', 'trace'])
+    assert.equal(secondaryAverage?.value, '1.0')
+    assert.deepEqual(secondaryAverage?.lines, [
+        { label: 'Primary', value: '0.0' },
+        { label: 'All', value: '1.0' },
+    ])
+    assert.equal(secondaryAverage?.text, 'Average: 1.0')
+    assert.deepEqual(secondaryMedian?.lines, [
+        { label: 'Primary', value: '0' },
+        { label: 'All', value: '1' },
+    ])
+
+    // No chosen notes: the labels stay, with no value, bubble or text.
+    assert.deepEqual(
+        rowsOf({ tap: [1] }, []).map((row) => [row.label, row.value, row.lines, row.text]),
+        ['Average', 'Median', '90th Percentile', '99th Percentile'].map((label) => [
+            label,
+            '',
+            undefined,
+            undefined,
+        ]),
+    )
+
+    // Japanese pairs them in full-width parentheses.
+    const sets = npsSets(timesOf({ tap: [0, 0.25], trace: [5] }), ['tap', 'trace'])
+    const [jaAverage] = figureRows(
+        sets && npsFigures(sets),
+        statisticsStringsOf(ja as typeof en),
+        'ja',
+    )
+    assert.equal(jaAverage?.value, '1.6（1.3）')
+})
+
+test('Primary can be above All: ten seconds of streams among ninety of lone secondary notes', () => {
+    const tap = Array.from({ length: 100 }, (_, i) => i / 10)
+    const trace = Array.from({ length: 45 }, (_, i) => 12 + i * 2)
+    const [, median] = rowsOf({ tap, trace }, ['tap', 'trace'])
+    assert.equal(median?.value, '10 (1)')
 })

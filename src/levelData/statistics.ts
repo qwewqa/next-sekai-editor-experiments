@@ -140,11 +140,10 @@ export const mergeTimes = (lists: readonly Float64Array[]): Tagged => {
 const LIMIT = 2 ** 53 * 0.05
 
 /** Whether the chart's times can be drawn: all finite and within the grid's precision. */
-export const representable = (stats: ChartStatistics, bgmEnd: number | undefined) =>
+export const representable = (stats: ChartStatistics) =>
     CATEGORIES.every((category) =>
         stats.times[category].every((time) => Number.isFinite(time) && Math.abs(time) < LIMIT),
-    ) &&
-    (bgmEnd === undefined || Math.abs(bgmEnd) < LIMIT)
+    )
 
 /** Chart times in seconds, sorted where a function says so. */
 export type Times = Float64Array | readonly number[]
@@ -212,6 +211,58 @@ export const rollingFigures = (times: Times): Figures | undefined => {
         median: percentile(0.5),
         p90: percentile(0.9),
         p99: percentile(0.99),
+    }
+}
+
+/** Tap, Flick and Release. The other categories are secondary. */
+export const PRIMARY_CATEGORIES: readonly Category[] = ['tap', 'flick', 'release']
+
+/** The chosen notes merged (All), and the chosen primary ones (Primary). */
+export type NpsSets = {
+    all: Float64Array
+    /** The same array as `all` when no chosen secondary category has notes. */
+    primary: Float64Array
+    hasPrimary: boolean
+    hasSecondary: boolean
+}
+
+/** Undefined when no chosen category has notes. */
+export const npsSets = (
+    times: Record<Category, Float64Array>,
+    chosen: readonly Category[],
+): NpsSets | undefined => {
+    const kinds = CATEGORIES.filter((category) => chosen.includes(category))
+    const isPrimary = (category: Category) => PRIMARY_CATEGORIES.includes(category)
+    const all = mergeTimes(kinds.map((category) => times[category])).times
+    if (!all.length) return undefined
+    const primaryKinds = kinds.filter(isPrimary)
+    const hasPrimary = primaryKinds.some((category) => times[category].length > 0)
+    const hasSecondary = kinds.some(
+        (category) => !isPrimary(category) && times[category].length > 0,
+    )
+    const primary = hasSecondary
+        ? mergeTimes(primaryKinds.map((category) => times[category])).times
+        : all
+    return { all, primary, hasPrimary, hasSecondary }
+}
+
+/** The four figures over All and over Primary; Primary's are zeros when it has no notes. */
+export type NpsFigures = {
+    all: Figures
+    primary: Figures
+    hasPrimary: boolean
+    hasSecondary: boolean
+}
+
+const NO_FIGURES: Figures = { average: 0, median: 0, p90: 0, p99: 0 }
+
+export const npsFigures = ({ all, primary, hasPrimary, hasSecondary }: NpsSets): NpsFigures => {
+    const allFigures = rollingFigures(all) ?? NO_FIGURES
+    return {
+        all: allFigures,
+        primary: primary === all ? allFigures : (rollingFigures(primary) ?? NO_FIGURES),
+        hasPrimary,
+        hasSecondary,
     }
 }
 
@@ -671,6 +722,10 @@ export type StatisticsStrings = {
     median: string
     p90: string
     p99: string
+    primary: string
+    all: string
+    /** "{0} ({1})": Primary's figure, then All's. */
+    withAll: string
     firstComboNote: string
     lastComboNote: string
     lastNote: string
@@ -687,21 +742,42 @@ export const breakdownOf = (stats: ChartStatistics, row: Row) => {
 
 export type TextRow = { label: string; value: string }
 
-/** The four figures' rows; with no figures, their values are empty and the labels stay. */
+export type FigureRow = TextRow & {
+    key: keyof Figures
+    /** The bubble's lines: Primary, then All when chosen secondary notes exist. */
+    lines?: TextRow[]
+    /** The row as Copy Text and the status line give it, the pair spelled out. */
+    text?: string
+}
+
+/**
+ * The four figures' rows: "<primary> (<all>)" when both have notes, else All alone. With no
+ * figures, their values are empty and the labels stay.
+ */
 export const figureRows = (
-    figures: Figures | undefined,
+    figures: NpsFigures | undefined,
     strings: StatisticsStrings,
     locale: string,
-): TextRow[] => {
-    const count = (value: number | undefined) =>
-        value === undefined ? '' : formatCount(value, locale)
-    return [
-        { label: strings.average, value: figures ? formatTenths(figures.average, locale) : '' },
-        { label: strings.median, value: count(figures?.median) },
-        { label: strings.p90, value: count(figures?.p90) },
-        { label: strings.p99, value: count(figures?.p99) },
-    ]
-}
+): FigureRow[] =>
+    (['average', 'median', 'p90', 'p99'] as const).map((key) => {
+        const label = strings[key]
+        if (!figures) return { key, label, value: '' }
+        const format = (set: Figures) =>
+            key === 'average' ? formatTenths(set.average, locale) : formatCount(set[key], locale)
+        const primary = format(figures.primary)
+        const all = format(figures.all)
+        const line = (row: TextRow) => fill(strings.textLine, [row.label, row.value], locale)
+        const lines = [{ label: strings.primary, value: primary }]
+        if (figures.hasSecondary) lines.push({ label: strings.all, value: all })
+        const pair = figures.hasPrimary && figures.hasSecondary
+        return {
+            key,
+            label,
+            value: pair ? fill(strings.withAll, [primary, all], locale) : all,
+            lines,
+            text: line({ label, value: pair ? formatList(lines.map(line), locale) : all }),
+        }
+    })
 
 /** The times' rows: each shown only when its time is known. */
 export const timeRows = (
@@ -724,7 +800,7 @@ export const copyTextLines = (
         title: string
         stats: ChartStatistics
         chosen: readonly Category[]
-        figures: Figures | undefined
+        figures: NpsFigures | undefined
         bgmEnd: number | undefined
     },
     strings: StatisticsStrings,
@@ -753,7 +829,7 @@ export const copyTextLines = (
             value: figures ? formatList(names, locale) : strings.noNotes,
         }),
     )
-    if (figures) out.push(...figureRows(figures, strings, locale).map(line))
+    if (figures) out.push(...figureRows(figures, strings, locale).map((row) => row.text ?? ''))
     out.push(...timeRows(stats, input.bgmEnd, strings).map(line))
     return out
 }

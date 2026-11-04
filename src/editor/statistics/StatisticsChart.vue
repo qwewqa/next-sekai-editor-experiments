@@ -20,7 +20,7 @@ import {
     timeTicks,
     type Category,
     type ChartMode,
-    type Figures,
+    type NpsFigures,
 } from '../../levelData/statistics'
 import { settings } from '../../settings'
 import type { BpmIntegral } from '../../state/integrals/bpms'
@@ -34,17 +34,17 @@ import { chartCategoryColors } from './marks'
 import { statisticsStrings } from './text'
 
 // Notes per Second: the mode control, the plot with its readout on the label line above it,
-// the legend that chooses the categories, and the four figures.
+// and the legend that chooses the categories.
 
 const props = defineProps<{
     /** Each category's sorted times. */
     times: Record<Category, Float64Array>
     /** Every category's times, merged: the grid and the timeline follow the chart. */
     every: Float64Array
-    bgmEnd: number | undefined
     bpms: BpmIntegral[]
-    figures: Figures | undefined
-    /** False at absurd BPMs: the plot stays empty and the figures are left out. */
+    /** The figures, for the line a legend toggle announces. */
+    figures: NpsFigures | undefined
+    /** False at absurd BPMs: the plot stays empty. */
     drawable: boolean
     /** The dialog's scrolling body, for the sticky label line. */
     scroller: HTMLElement | undefined
@@ -70,14 +70,8 @@ const toggle = (category: Category, on: boolean) => {
     settings.statisticsCategories = CATEGORIES.filter((each) => set.has(each))
     // After a toggle, one polite line says the new Average.
     void nextTick(() => {
-        const figures = props.figures
-        status.value = figures
-            ? fill(
-                  strings.value.textLine,
-                  [strings.value.average, formatTenths(figures.average, locale.value)],
-                  locale.value,
-              )
-            : strings.value.noNotes
+        const [average] = figureRows(props.figures, strings.value, locale.value)
+        status.value = average?.text ?? strings.value.noNotes
     })
 }
 
@@ -93,7 +87,6 @@ const chart = useTemplateRef<HTMLDivElement>('chart')
 const plotBlock = useTemplateRef<HTMLDivElement>('plotBlock')
 const size = shallowRef({ width: 0, height: 0 })
 const dpr = ref(window.devicePixelRatio || 1)
-const chartLeft = ref(0)
 
 const measurePlot = () => {
     const element = chart.value
@@ -102,8 +95,6 @@ const measurePlot = () => {
     dpr.value = window.devicePixelRatio || 1
     if (box.width !== size.value.width || box.height !== size.value.height)
         size.value = { width: box.width, height: box.height }
-    const block = plotBlock.value
-    if (block) chartLeft.value = box.left - block.getBoundingClientRect().left
 }
 
 // --- The model and its drawing.
@@ -118,7 +109,7 @@ const model = computed(() => {
         mode.value,
         props.every,
         chosenTimes.value,
-        props.bgmEnd,
+        undefined,
         mode.value === 'smooth' ? columns.value : 2,
     )
 })
@@ -146,12 +137,6 @@ const xTicks = computed(() => {
             wide: wide.has(time),
             narrow: narrow.has(time),
         }))
-})
-
-const bgmLine = computed(() => {
-    const current = drawing.value
-    if (!current || props.bgmEnd === undefined) return undefined
-    return current.snap(current.px(props.bgmEnd)) + current.gridWidth / 2
 })
 
 // --- The readout.
@@ -301,7 +286,7 @@ const lines = ref(1)
 const top = computed(() => oneSecondMax(props.every))
 const slotWidth = computed(() => formatTenths(top.value, locale.value).length)
 const probeText = computed(() => {
-    let end = props.bgmEnd ?? 0
+    let end = 0
     for (const time of props.every) if (Number.isFinite(time)) end = Math.max(end, time)
     end += 10
     return {
@@ -382,7 +367,6 @@ const modes = computed(() => [
     { value: 'bars' as const, label: i18n.value.statistics.bars },
     { value: 'rolling' as const, label: i18n.value.statistics.rolling },
 ])
-const figureLines = computed(() => figureRows(props.figures, strings.value, locale.value))
 </script>
 
 <template>
@@ -425,13 +409,6 @@ const figureLines = computed(() => figureRows(props.figures, strings.value, loca
                     <span>{{ probeText.beat }}</span>
                 </span>
             </span>
-            <span
-                v-if="bgmLine !== undefined && !readout"
-                class="stats-bgm-label"
-                :style="{ left: `${chartLeft + bgmLine}px` }"
-                data-statistics-bgm-label
-                >{{ strings.bgmEnd }}</span
-            >
         </div>
         <div class="stats-plot-row" :class="{ side }">
             <div
@@ -509,16 +486,6 @@ const figureLines = computed(() => figureRows(props.figures, strings.value, loca
                         class="stats-line stats-fc-only"
                         :d="drawing.lines[drawing.lines.length - 1]"
                     />
-                    <line
-                        v-if="bgmLine !== undefined"
-                        class="stats-marker"
-                        :x1="bgmLine"
-                        :x2="bgmLine"
-                        y1="0"
-                        :y2="drawing.height"
-                        :style="{ strokeWidth: `${drawing.gridWidth}px` }"
-                        shape-rendering="crispEdges"
-                    />
                 </svg>
                 <template v-if="drawing && model">
                     <span
@@ -586,22 +553,5 @@ const figureLines = computed(() => figureRows(props.figures, strings.value, loca
             </div>
         </div>
     </div>
-
-    <dl
-        v-if="drawable"
-        class="stats-rows stats-two"
-        :class="{ blank: !figures }"
-        data-statistics-figures
-    >
-        <div
-            v-for="(row, i) in figureLines"
-            :key="i"
-            class="stats-row"
-            :class="{ 'col-top': i === 2 }"
-        >
-            <dt>{{ row.label }}</dt>
-            <dd>{{ row.value }}</dd>
-        </div>
-    </dl>
     <span class="sr-only" role="status" aria-live="polite">{{ status }}</span>
 </template>

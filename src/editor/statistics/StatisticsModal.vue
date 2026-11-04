@@ -19,12 +19,15 @@ import {
     CATEGORIES,
     chartStatistics,
     copyTextLines,
+    figureRows,
     formatList,
     mergeTimes,
+    npsFigures,
+    npsSets,
     representable,
-    rollingFigures,
     ROWS,
     timeRows,
+    type Figures,
     type Row,
 } from '../../levelData/statistics'
 import { showModal } from '../../modals'
@@ -42,8 +45,8 @@ import ShareImageModal from './ShareImageModal.vue'
 import StatisticsChart from './StatisticsChart.vue'
 import { statisticsStrings } from './text'
 
-// Statistics: the displayed chart's counts by what the player does, Notes per Second and its
-// times. Read-only; it follows the displayed chart, peeks included.
+// Statistics: the displayed chart's counts by what the player does, Notes per Second with its
+// figures, and its times. Read-only; it follows the displayed chart, peeks included.
 
 const emit = defineEmits<{
     close: []
@@ -57,18 +60,16 @@ const bgmEnd = computed(() => bgmEndOf(state.value.bgm))
 const every = computed(
     () => mergeTimes(CATEGORIES.map((category) => stats.value.times[category])).times,
 )
-const drawable = computed(() => representable(stats.value, bgmEnd.value))
-const chosenTimes = computed(
-    () =>
-        mergeTimes(
-            CATEGORIES.filter((category) => settings.statisticsCategories.includes(category)).map(
-                (category) => stats.value.times[category],
-            ),
-        ).times,
-)
-const figures = computed(() => (drawable.value ? rollingFigures(chosenTimes.value) : undefined))
+const drawable = computed(() => representable(stats.value))
+const sets = computed(() => npsSets(stats.value.times, settings.statisticsCategories))
+const figures = computed(() => (drawable.value && sets.value ? npsFigures(sets.value) : undefined))
 
-// --- The list.
+// --- The list and the figures. A breakdown's lines, read as the button's description.
+const describe = (lines: { label: string; value: string }[]) =>
+    formatList(
+        lines.map((line) => fill(strings.value.textLine, [line.label, line.value], locale.value)),
+        locale.value,
+    )
 const rows = computed(() =>
     ROWS.map((row) => {
         const split = breakdownOf(stats.value, row)
@@ -84,32 +85,41 @@ const rows = computed(() =>
             name: strings.value.rows[row],
             value: formatCount(stats.value.counts[row], locale.value),
             lines,
-            description:
-                lines &&
-                formatList(
-                    lines.map((line) =>
-                        fill(strings.value.textLine, [line.label, line.value], locale.value),
-                    ),
-                    locale.value,
-                ),
+            description: lines && describe(lines),
         }
     }),
 )
 
+const figureItems = computed(() =>
+    figureRows(figures.value, strings.value, locale.value).map((item) => ({
+        ...item,
+        description: item.lines && describe(item.lines),
+    })),
+)
+
 const times = computed(() => timeRows(stats.value, bgmEnd.value, strings.value))
 
-// --- The breakdown bubble.
+// --- The bubble: one for the count rows' breakdowns and the figures' Primary and All.
 const bubbleId = useId()
 const idBase = useId()
-const listElement = useTemplateRef<HTMLElement>('list')
 const bubble = useTemplateRef<HTMLElement>('bubble')
-const breakdown = useBreakdown<Row>({
-    inRow: (row, target) => !!target.closest(`[data-statistics-row="${row}"]`),
+type Key = Row | keyof Figures
+const rowSelector = (key: Key) =>
+    `[data-statistics-row="${key}"], [data-statistics-figure="${key}"]`
+const breakdown = useBreakdown<Key>({
+    inRow: (key, target) => !!target.closest(rowSelector(key)),
     inBubble: (target) => !!bubble.value?.contains(target),
 })
 const openRow = computed(() => {
     const open = breakdown.open.value
-    return open && rows.value.find((each) => each.row === open.key && each.lines)
+    if (!open) return undefined
+    return (
+        rows.value.find((each) => each.row === open.key && each.lines) ??
+        figureItems.value.find((each) => each.key === open.key && each.lines)
+    )
+})
+watch(figures, (value) => {
+    if (!value) breakdown.close(true)
 })
 const placement = shallowRef<{ left: number; top: number }>()
 watch(
@@ -119,7 +129,7 @@ watch(
         if (key === undefined) return
         await nextTick()
         const element = bubble.value
-        const row = listElement.value?.querySelector(`[data-statistics-row="${key}"]`)
+        const row = body.value?.querySelector(rowSelector(key))
         const value = row?.querySelector('dd')
         if (!element || !row || !value) return
         // Under the row, its right edge 12 px past the value; above when there is no room below.
@@ -173,7 +183,7 @@ const share = () => {
     void showModal(ShareImageModal, {
         stats: stats.value,
         every: every.value,
-        bgmEnd: bgmEnd.value,
+        figures: figures.value,
         drawable: drawable.value,
         chosen: settings.statisticsCategories,
         mode: settings.statisticsChartMode,
@@ -197,7 +207,7 @@ const share = () => {
                 </div>
             </dl>
 
-            <dl ref="list" class="stats-rows stats-two">
+            <dl class="stats-rows stats-two">
                 <div
                     v-for="(item, i) in rows"
                     :key="item.row"
@@ -240,12 +250,52 @@ const share = () => {
                 v-if="stats.combo"
                 :times="stats.times"
                 :every
-                :bgm-end
                 :bpms="state.bpms"
                 :figures
                 :drawable
                 :scroller="bodyElement"
             />
+
+            <dl
+                v-if="stats.combo && drawable"
+                class="stats-rows stats-two"
+                :class="{ blank: !figures }"
+                data-statistics-figures
+            >
+                <div
+                    v-for="(item, i) in figureItems"
+                    :key="item.key"
+                    class="stats-row"
+                    :class="{ 'col-top': i === 2 }"
+                    :data-statistics-figure="item.key"
+                    @pointerenter="item.lines && breakdown.rowEnter(item.key, $event)"
+                    @pointerleave="item.lines && breakdown.rowLeave(item.key, $event)"
+                >
+                    <dt :id="`${idBase}-${item.key}`">{{ item.label }}</dt>
+                    <dd>
+                        <template v-if="item.lines">
+                            <button
+                                type="button"
+                                class="stats-split"
+                                :aria-expanded="breakdown.open.value?.key === item.key"
+                                :aria-controls="bubbleId"
+                                :aria-labelledby="`${idBase}-${item.key} ${idBase}-${item.key}-value`"
+                                :aria-describedby="`${idBase}-${item.key}-split`"
+                                data-statistics-split
+                                @focus="breakdown.rowFocus(item.key, $event.target as Element)"
+                                @blur="breakdown.rowBlur(item.key, $event)"
+                                @click="breakdown.rowClick(item.key)"
+                            >
+                                <span :id="`${idBase}-${item.key}-value`">{{ item.value }}</span>
+                            </button>
+                            <span :id="`${idBase}-${item.key}-split`" hidden>{{
+                                item.description
+                            }}</span>
+                        </template>
+                        <template v-else>{{ item.value }}</template>
+                    </dd>
+                </div>
+            </dl>
 
             <dl
                 v-if="times.length"
@@ -455,13 +505,6 @@ const share = () => {
 .stats-total {
     min-width: var(--v, 3ch);
 }
-.stats-bgm-label {
-    position: absolute;
-    bottom: 0;
-    transform: translateX(-100%);
-    padding-right: 0.25rem;
-    @apply whitespace-nowrap text-xs;
-}
 .stats-plot-row {
     display: flex;
     flex-direction: column;
@@ -523,9 +566,6 @@ const share = () => {
 }
 .stats-fc-only {
     display: none;
-}
-.stats-marker {
-    stroke: rgb(var(--color-fg) / 0.8);
 }
 .stats-tick {
     position: absolute;
@@ -678,8 +718,7 @@ const share = () => {
 }
 
 @media (forced-colors: active) {
-    .stats-line,
-    .stats-marker {
+    .stats-line {
         stroke: CanvasText;
     }
     .stats-grid {
