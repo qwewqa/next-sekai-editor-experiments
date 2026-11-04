@@ -392,6 +392,49 @@ test('Average shows <tap and flick> (<all>), its bubble is shared with the criti
     await expect(average).toHaveAccessibleDescription('Tap & Flick: 0.0, All: 1.0')
 })
 
+for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 390, height: 844 },
+])
+    test(`at ${viewport.width} px the figure bubble keeps each label and its value on one line, with index.css loaded last`, async ({
+        page,
+    }) => {
+        await start(page, viewport)
+        await open(page)
+        const average = dialog(page).locator('[data-statistics-figure="average"] button')
+        // On the phone the figures are below the fold, and a scroll closes the bubble.
+        await average.scrollIntoViewIfNeeded()
+        await page.evaluate(
+            () =>
+                new Promise((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                ),
+        )
+        await average.click()
+        await expect(bubble(page).locator('dt')).toHaveText(['Tap & Flick', 'All'])
+        await expect(bubble(page)).not.toHaveClass(/invisible/)
+        // The release build can link a component's sheet before index.css; the order must not matter.
+        const lines = await page.evaluate(() => {
+            const sheet = document.querySelector('style[data-vite-dev-id$="/src/index.css"]')
+            if (!sheet) throw new Error('No index.css')
+            document.head.append(sheet)
+            const element = document.querySelector('[data-statistics-bubble]')!
+            const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
+            const boxes = [...element.children].map((child) => child.getBoundingClientRect())
+            return boxes
+                .filter((_, i) => i % 2 === 0)
+                .map((label, i) => {
+                    const value = boxes[i * 2 + 1]!
+                    return {
+                        oneLine: label.height <= lineHeight && value.height <= lineHeight,
+                        sameLine: label.top === value.top,
+                        valueRight: value.left >= label.right,
+                    }
+                })
+        })
+        expect(lines).toEqual(Array(2).fill({ oneLine: true, sameLine: true, valueRight: true }))
+    })
+
 test('the readout follows the mouse on the label line, and the plot stays in place', async ({
     page,
 }) => {

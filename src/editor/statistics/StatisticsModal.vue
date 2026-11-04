@@ -357,7 +357,7 @@ const share = () => {
             <dl
                 :id="bubbleId"
                 ref="bubble"
-                class="stats-bubble popup-surface fixed z-50"
+                class="stats-bubble popup-surface fixed z-50 grid min-w-0"
                 :class="{ invisible: !placement }"
                 :style="{ left: `${placement?.left ?? 0}px`, top: `${placement?.top ?? 0}px` }"
                 data-statistics-bubble
@@ -458,12 +458,12 @@ const share = () => {
     outline: 2px solid rgb(var(--color-fg));
     outline-offset: -2px;
 }
+/* Its display and minimum width are utilities on the element: the release build can load this
+   sheet before index.css, and .popup-surface would win a tie. */
 .stats-bubble {
-    display: grid;
     grid-template-columns: auto auto;
     column-gap: 1.5rem;
     row-gap: 0.25rem;
-    min-width: 0;
     @apply px-3 py-2 text-sm;
 }
 .stats-bubble dd {
