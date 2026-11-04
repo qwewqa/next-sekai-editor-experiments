@@ -8,6 +8,7 @@ import {
     builtinFiles,
     builtinTypes,
     checkRelease,
+    landingCssLimit,
     lyonNoticeFiles,
     sha256,
     stageReleasePublic,
@@ -384,6 +385,24 @@ test("a release fails when the editor's stylesheet lacks the layout utilities", 
     await write(directory, 'assets/index-12345678.css', '.flex{display:flex}.fixed{position:fixed}')
     await writeReleaseManifest(directory, metadata, assets)
     await assert.rejects(checkRelease(directory), /stylesheet lacks \.absolute and \.size-full$/)
+})
+
+test("a release fails when a landing page's stylesheet is over its budget", async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    const linked = page.replace(
+        '</head>',
+        '<link rel="stylesheet" crossorigin href="/assets/landing-12345678.css"></head>',
+    )
+    await write(directory, 'privacy/index.html', withPolicy(linked))
+    await write(directory, 'assets/landing-12345678.css', 'a'.repeat(landingCssLimit))
+    await writeReleaseManifest(directory, metadata, assets)
+    await checkRelease(directory)
+    await write(directory, 'assets/landing-12345678.css', 'a'.repeat(landingCssLimit + 1))
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(
+        checkRelease(directory),
+        /privacy\/index\.html links 28001 bytes of CSS, over the 28000 byte budget/,
+    )
 })
 
 test('the test site build must be the one that is marked as such', async (t) => {

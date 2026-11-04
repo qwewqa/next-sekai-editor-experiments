@@ -412,17 +412,38 @@ async function checkPages(directory, files, manifest) {
 // Without these the chart canvas grows without limit and the editor's page hangs.
 const layoutUtilities = ['absolute', 'size-full']
 
-async function checkStylesheet(directory, files) {
-    const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
-    const linked = [...index.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="\/([^"]+)"/g)]
+const linkedStylesheets = (html, files) =>
+    [...html.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="\/([^"]+)"/g)]
         .map((match) => match[1])
         .filter((file) => files.includes(file))
+
+async function checkStylesheet(directory, files) {
+    const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
     let css = ''
-    for (const file of linked) css += (await regularFile(join(directory, file))).toString('utf8')
+    for (const file of linkedStylesheets(index, files))
+        css += (await regularFile(join(directory, file))).toString('utf8')
     const missing = layoutUtilities.filter(
         (name) => !new RegExp(String.raw`\.${name}(?![\w-])`).test(css),
     )
     if (missing.length) throw new Error(`The editor's stylesheet lacks .${missing.join(' and .')}`)
+}
+
+// The landing pages' CSS is the shared theme and recipes plus their own utilities; the editor's
+// classes would take it far past this.
+export const landingCssLimit = 28_000
+
+async function checkLandingStylesheets(directory, files) {
+    for (const page of ['privacy/index.html', 'terms/index.html']) {
+        if (!files.includes(page)) continue
+        const html = (await regularFile(join(directory, page))).toString('utf8')
+        let size = 0
+        for (const file of linkedStylesheets(html, files))
+            size += (await regularFile(join(directory, file))).length
+        if (size > landingCssLimit)
+            throw new Error(
+                `${page} links ${size} bytes of CSS, over the ${landingCssLimit} byte budget`,
+            )
+    }
 }
 
 // The apps' bridge and the dev-only sample seeder (src/local/seed.ts) must not reach the web build.
@@ -515,6 +536,7 @@ export async function checkRelease(directory, expected = {}, sizeLimit = pagesSi
     await checkBuiltinRelease(directory, files)
     await checkPages(directory, files, manifest)
     await checkStylesheet(directory, files)
+    await checkLandingStylesheets(directory, files)
     await checkBundles(directory, files, manifest.site)
     await checkAnalytics(directory, files, manifest.analytics, manifest.site)
     const recorded = { ...manifest.files, ...retained }
