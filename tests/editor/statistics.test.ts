@@ -474,7 +474,7 @@ test('each Rolling step is the busiest window centred in it, and the top is the 
     }
 })
 
-test('Rolling’s window at the chart’s start is centred as anywhere else, and a step splits by its earliest busiest window', () => {
+test("Rolling's window at the chart's start is centred as anywhere else, and a step splits by its earliest busiest window", () => {
     const list = Float64Array.from([0, 0.75])
     const steps = skyline(mergeTimes([list]), -1.55, 2.3, 300)
     const at = (time: number) => steps.find((step) => step.a <= time && time < step.b)
@@ -788,7 +788,7 @@ test('the durations add up to the active time, and give the four figures by an i
     }
 })
 
-test('the largest count with time is the one-second maximum away from the window’s edge', () => {
+test("the largest count with time is the one-second maximum away from the window's edge", () => {
     const random = mulberry32(31)
     for (let round = 0; round < 50; round++) {
         // Times on a 0.01 s grid offset by a third, so no two notes are exactly 1 s apart.
@@ -1070,7 +1070,7 @@ test('without a view, every mode draws the whole chart to its pinned figures', (
     check('export video', chartModel('smooth', pinnedEvery, [pinnedEvery], 90, 400))
 })
 
-test('Rolling’s steps keep their counts as a view pans, with chords on exact times', () => {
+test("Rolling's steps keep their counts as a view pans, with chords on exact times", () => {
     const chords = Float64Array.from([...Array<number>(10).fill(20), ...Array<number>(4).fill(21)])
     const source = chartSource(chords, [chords])
     assert.ok(source)
@@ -1116,7 +1116,7 @@ test('Smooth over a view draws the same curve, only finer', () => {
     assert.ok(near(area(fine), area(part), 1e-6 * area(part)))
 })
 
-test('Rolling’s steps over a view lie on multiples of their width, and a pan keeps them', () => {
+test("Rolling's steps over a view lie on multiples of their width, and a pan keeps them", () => {
     const source = chartSource(viewEvery, viewLayers)
     assert.ok(source)
     const width = 30 / 300
@@ -1138,7 +1138,7 @@ test('Rolling’s steps over a view lie on multiples of their width, and a pan k
     }
 })
 
-test('Bars over a view follow the resolution’s width from 00:00, and the y top counts edge bins', () => {
+test("Bars over a view follow the resolution's width from 00:00, and the y top counts edge bins", () => {
     const source = chartSource(viewEvery, viewLayers)
     assert.ok(source)
     const view = { x0: 41.5, x1: 58.5 }
@@ -1163,7 +1163,7 @@ test('Bars over a view follow the resolution’s width from 00:00, and the y top
     assert.equal(Math.max(...total), edge.count)
 })
 
-test('the x labels start at the first step at or after the view’s start, 1 s apart at 5 s', () => {
+test("the x labels start at the first step at or after the view's start, 1 s apart at 5 s", () => {
     assert.deepEqual(timeTicks(76, 6, 71), [71, 72, 73, 74, 75, 76])
     assert.deepEqual(timeTicks(76.5, 6, 71.5), [72, 73, 74, 75, 76])
     assert.deepEqual(timeTicks(60, 6, -1.6), timeTicks(60, 6))

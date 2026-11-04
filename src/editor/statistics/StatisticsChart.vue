@@ -894,8 +894,8 @@ const checkStuck = () => {
         lineBox.top <= edge + 0.5 && blockBox.top < edge - 0.5 && blockBox.bottom > lineBox.bottom
 }
 
-// --- The mode control: segments at today's padding where they fit the heading row's width, then
-// at less, then a select. The labels are measured from hidden copies, so the result does not
+// --- The mode control: wide segments where they fit the heading row's width, then compact
+// segments, then a select. The labels are measured from hidden copies, so the result does not
 // depend on the control shown.
 const modes = computed(() => [
     { value: 'smooth' as const, label: i18n.value.statistics.smooth },
@@ -1118,7 +1118,6 @@ const color = (category: Category) => chartCategoryColors[category]
                     zoomed: !!view && !!model,
                     dragging,
                     distribution,
-                    'stats-dist-titled': distribution,
                 }"
                 :tabindex="model || histogram ? 0 : -1"
                 :role="model || histogram ? 'slider' : undefined"

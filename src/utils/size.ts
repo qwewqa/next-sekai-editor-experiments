@@ -72,8 +72,8 @@ export const formatWholeSeconds = (value: number, locale: string = currentLocale
     seconds(locale, false, 0).format(value)
 
 /**
- * A duration in seconds with one decimal; under 0.1 s with two, rounded up, so a time that is
- * there never reads as none. Exactly none is "0s".
+ * Seconds with one decimal. A time under 0.1 s has two decimals, rounded up, so it never shows
+ * as 0; exactly 0 is "0s".
  */
 export const formatSeconds = (value: number, locale: string = currentLocale(), long = false) => {
     if (value <= 0) return seconds(locale, long, 0).format(0)

@@ -142,9 +142,9 @@ const roundRect = (
 }
 
 /**
- * Whether the card lists the chosen categories: not where the chart draws them in one ink and
- * the list adds nothing. That is Rolling with every category that has notes chosen, and the
- * distribution with every one chosen or exactly the primary ones, which its series name.
+ * Whether the card lists the chosen categories. Rolling leaves the list out when all categories
+ * with notes are chosen. The distribution leaves it out when the chosen categories with notes are
+ * all of them or exactly the primary ones, since its series key names them.
  */
 export const listsCategories = (
     mode: StatisticsView,

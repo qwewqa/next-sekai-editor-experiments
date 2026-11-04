@@ -246,21 +246,18 @@ test('the modes and the legend persist, and Reset Settings restores them', async
     await dialog(page).locator('[data-statistics-mode-option="bars"]').check({ force: true })
     await expect(chart(page).locator('rect[data-statistics-layer="damage"]')).toHaveCount(1)
     expect(await chart(page).boundingBox()).toEqual(plot)
-    // Distribution: the zoom buttons stay hidden in their place, and the mode control keeps its
-    // place in the dialog.
+    // Distribution: the zoom buttons stay hidden in their place, and neither the mode control nor
+    // the plot moves.
     const modes = dialog(page).getByRole('radiogroup')
-    const inDialog = async () => {
-        const [box, frame] = [await modes.boundingBox(), await dialog(page).boundingBox()]
-        return box && frame && { ...box, y: box.y - frame.y }
-    }
-    const control = await inDialog()
+    const control = await modes.boundingBox()
     await dialog(page)
         .locator('[data-statistics-mode-option="distribution"]')
         .check({ force: true })
     await expect(chart(page).locator('[data-statistics-distribution]')).toBeVisible()
     await expect(zoomIn(page)).toBeHidden()
     await expect(dialog(page).locator('.stats-zoom')).toHaveAttribute('inert', '')
-    expect(await inDialog()).toEqual(control)
+    expect(await modes.boundingBox()).toEqual(control)
+    expect(await chart(page).boundingBox()).toEqual(plot)
     // End reads the largest count, and the slider spells out both series' seconds.
     await chart(page).focus()
     await page.keyboard.press('End')

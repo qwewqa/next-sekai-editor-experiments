@@ -108,7 +108,7 @@ test('a wheel event zooms in proportion to its distance, up to a clamp, the same
     assert.ok(Math.abs(wheelZoomFactor(-100) ** 2 - 2) < 0.02)
 })
 
-test('a pan run moves by the sideways distance, and by the wheel’s turn only with Shift', () => {
+test("a pan run moves by the sideways distance, and by the wheel's turn only with Shift", () => {
     assert.equal(wheelPanPixels({ x: 10, y: 0 }, false), 10)
     // A trackpad's vertical drift during a sideways run does not move the view back.
     assert.equal(wheelPanPixels({ x: 1, y: -10 }, false), 1)
@@ -138,7 +138,7 @@ test('Ctrl and Cmd always zoom; a sideways run pans only a zoomed view and keeps
     assert.equal(wheelIntent(event({ deltaX: 10 }), true, 'pass'), 'pass')
 })
 
-test('two fingers outrank every source, Safari’s gesture outranks the wheel and a drag, and those two go to the first', () => {
+test("two fingers outrank every source, Safari's gesture outranks the wheel and a drag, and those two go to the first", () => {
     for (const owner of [undefined, 'gesture', 'wheel', 'drag'] as const)
         assert.equal(mayDrive(owner, 'pinch', 2), true, owner)
     assert.equal(mayDrive('pinch', 'gesture', 2), false)
@@ -152,7 +152,7 @@ test('two fingers outrank every source, Safari’s gesture outranks the wheel an
     assert.equal(mayDrive('wheel', 'wheel', 0), true)
 })
 
-test('the mode control takes today’s padding, then less, then a select, by the heading row’s width', () => {
+test('the mode control uses wide segments, compact segments or a select, by the width it has', () => {
     // Labels of 50, 40 and 60 px at 16 px a rem: 150 + 3 x 16 + 4 = 202 px with px-2, 226 with px-3.
     const labels = [50, 40, 60]
     assert.equal(segmentsLayout(210, labels, 16), 'compact')

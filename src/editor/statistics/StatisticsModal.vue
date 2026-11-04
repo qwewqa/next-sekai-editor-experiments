@@ -583,7 +583,9 @@ const share = () => {
 .stats-chart {
     position: relative;
     height: 10rem;
-    margin: 0 0 1.25rem 2rem;
+    /* Below the labels, room for the distribution's axis title in every view, so a switch moves
+       nothing. */
+    margin: 0 0 2.5rem 2rem;
     touch-action: pan-y;
     outline: none;
     width: calc(100% - 2rem);
@@ -600,12 +602,8 @@ const share = () => {
 .stats-chart.distribution {
     touch-action: pan-y pinch-zoom;
 }
-/* Room for the x axis's title. */
-.stats-chart.stats-dist-titled {
-    margin-bottom: 2.5rem;
-}
 /* The focus ring takes in the title. */
-.stats-dist-titled .stats-plot-focus {
+.stats-chart.distribution .stats-plot-focus {
     bottom: -2.875rem;
 }
 .stats-axis-title {

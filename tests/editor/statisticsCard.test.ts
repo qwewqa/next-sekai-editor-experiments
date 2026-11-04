@@ -445,7 +445,7 @@ test('the series key names Primary and All with two series, just above the categ
     assert.equal(xOf(top), xOf(all) - 22)
 })
 
-test('eight entries narrow the key’s pitch so the top one stays 8 below the plot’s top', () => {
+test("eight entries narrow the key's pitch so the top one stays 8 below the plot's top", () => {
     const every = statsOf({
         tap: [0.5, 1, 1.5],
         flick: [2],

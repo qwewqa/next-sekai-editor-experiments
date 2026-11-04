@@ -183,7 +183,7 @@ test('the y axis reaches at least the floor it is given, and fits the view witho
     assert.equal(drawChart(model, 300, 136, 1, 4, 1).yTop, fitted.yTop)
 })
 
-test('Bars tiles are cut at the plot’s edges', () => {
+test("Bars tiles are cut at the plot's edges", () => {
     assert.ok(longSource)
     const view = { x0: 20.4, x1: 30.6 }
     const model = chartView('bars', longSource, 2, view, 10)
@@ -235,42 +235,47 @@ const durations = (times: Float64Array) => {
     return result
 }
 
-test('each count’s step stands at its seconds, at least 2 px where there is any, and the steps add up to the active time', () => {
+test("each count's step stands at the input's seconds, at least 2 px where there are any, and the input adds up to the active time", () => {
     const all = mergeTimes([tapTimes, traceTimes]).times
     const series = [durations(tapTimes), durations(all)]
+    // The seconds at each count, read from the input alone.
+    const expected = series.map(({ values, ms }) => {
+        const out = new Map<number, number>()
+        values.forEach((value, k) => out.set(value, (ms[k] ?? 0) / 1000))
+        return out
+    })
+    series.forEach((each, i) => {
+        const sum = [...(expected[i]?.values() ?? [])].reduce((a, b) => a + b, 0)
+        assert.ok(near(sum, each.active / 1000, 1e-9))
+    })
+    const largest = Math.max(...series.map((each) => each.values.at(-1) ?? 0))
+    let tallest = 0
+    for (const each of expected)
+        for (const value of each.values()) tallest = Math.max(tallest, value)
     for (const dpr of RATIOS) {
         const drawn = drawHistogram(series, 412.3, 136, dpr)
-        const baseline = drawn.py(0)
+        assert.equal(drawn.yTop, yScale(tallest).top)
+        const py = (value: number) => (1 - value / drawn.yTop) * 136
+        const baseline = py(0)
         series.forEach((each, i) => {
-            const last = each.values[each.values.length - 1] ?? 0
+            const last = each.values.at(-1) ?? 0
             const tops = stepTops(drawn.lines[i] ?? '')
             assert.equal(tops.length, last)
-            let total = 0
             for (let value = 1; value <= last; value++) {
-                const seconds = drawn.secondsAt(i, value)
-                total += seconds
-                const top = drawn.topAt(i, value)
-                assert.equal(tops[value - 1], top)
-                if (seconds > 0) {
-                    assert.ok(top <= baseline - 2, `${i} ${value}`)
-                    assert.ok(near(Math.min(drawn.py(seconds), baseline - 2), top))
-                } else assert.equal(top, baseline)
+                const seconds = expected[i]?.get(value) ?? 0
+                assert.ok(near(drawn.secondsAt(i, value), seconds, 1e-12), `${i} ${value}`)
+                const top = seconds > 0 ? Math.min(py(seconds), baseline - 2) : baseline
+                assert.ok(near(tops[value - 1] ?? NaN, top), `${i} ${value}`)
+                assert.ok(near(drawn.topAt(i, value), top), `${i} ${value}`)
             }
-            assert.ok(near(total, each.active / 1000, 1e-9))
         })
         // The axis ends half a step past the largest count of either series.
-        assert.equal(drawn.max, Math.max(...series.map((each) => each.values.at(-1) ?? 0)))
-        assert.ok(near(drawn.px(drawn.max + 0.5), 412.3))
-        let tallest = 0
-        series.forEach((_, i) => {
-            for (let value = 1; value <= drawn.max; value++)
-                tallest = Math.max(tallest, drawn.secondsAt(i, value))
-        })
-        assert.equal(drawn.yTop, yScale(tallest).top)
+        assert.equal(drawn.max, largest)
+        assert.ok(near(drawn.px(largest + 0.5), 412.3))
     }
 })
 
-test('one series has a wash and no fill; two have All’s fill behind and no wash', () => {
+test("one series has a wash and no fill; two have All's fill behind and no wash", () => {
     const one = drawHistogram([durations(tapTimes)], 300, 136, 1)
     assert.ok(one.wash.endsWith(' Z'))
     assert.equal(one.fill, '')
@@ -307,7 +312,7 @@ test('a sliver under a microsecond is not drawn and does not reach the axis', ()
     assert.equal(stepTops(drawn.lines[0] ?? '').length, 2)
 })
 
-test('the plot’s fraction reads the nearest whole count, from 1 to the largest', () => {
+test("the plot's fraction reads the nearest whole count, from 1 to the largest", () => {
     assert.equal(valueAt(0, 10), 1)
     assert.equal(valueAt(-0.2, 10), 1)
     assert.equal(valueAt(1, 10), 10)
