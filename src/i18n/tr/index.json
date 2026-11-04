@@ -2655,6 +2655,7 @@
     "normal": "Normal",
     "withCritical": "{1} ({0} kritik)",
     "notesPerSecond": "Saniye Başına Nota",
+    "noteDensity": "Nota Yoğunluğu",
     "smooth": "Pürüzsüz",
     "bars": "Çubuklar",
     "rolling": "Kayan",

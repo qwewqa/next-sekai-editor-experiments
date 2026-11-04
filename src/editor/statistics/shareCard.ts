@@ -22,7 +22,8 @@ import { chartCategoryColors } from './marks'
 // The share card: 800 x 450 units drawn at 1600 x 900 px, built like a dialog: a band with the
 // cover, the title, the artists, the author and the rating; Combo and the list's rows; the
 // dialog's chart in its mode or the distribution, in its selection with its key, and Average and
-// Median on its heading's line; the link and the product's name.
+// Median on its heading's line; the link and the product's name. The distribution's heading is
+// Note Density, as its axis's title is Notes per Second.
 
 const WIDTH = 800
 const HEIGHT = 450
@@ -52,6 +53,7 @@ export type CardInput = {
         author: string
         rating: string
         product: string
+        noteDensity: string
     }
 }
 
@@ -335,7 +337,8 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
         g.textBaseline = 'alphabetic'
     })
 
-    // --- Notes per Second: the dialog's chart in its mode, with its key at the right.
+    // --- The dialog's chart in its mode, with its key at the right.
+    const distribution = input.mode === 'distribution'
     const chartX = PAD + listWidth + 32
     const chartWidth = WIDTH - PAD - chartX
     // Average and Median end at the footer's right edge, laid out from the right by their ink: a
@@ -364,7 +367,12 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     const headingWidth = figuresLeft - 16 - chartX
     g.fillStyle = rgba(theme.fg)
     g.font = font(15, 700)
-    const [heading = ''] = wrap(g, strings.notesPerSecond, headingWidth, 1)
+    const [heading = ''] = wrap(
+        g,
+        distribution ? strings.noteDensity : strings.notesPerSecond,
+        headingWidth,
+        1,
+    )
     if (g.measureText(heading).width <= headingWidth) g.fillText(heading, chartX, headingY)
     g.textAlign = 'right'
     for (const figure of figures) {
@@ -373,7 +381,6 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
         g.fillText(figure.text, figure.x, headingY)
     }
     g.textAlign = 'left'
-    const distribution = input.mode === 'distribution'
     const chosen = CATEGORIES.filter((category) => input.chosen.includes(category))
     const times = chosen.map((category) => input.stats.times[category])
     const hasNotes = times.some((list) => list.length > 0)

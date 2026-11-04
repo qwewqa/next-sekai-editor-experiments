@@ -179,6 +179,7 @@ const render = (value: string) =>
                         author: i18n.value.historyChanges.fields.author,
                         rating: i18n.value.historyChanges.fields.rating,
                         product: PRODUCT_NAME,
+                        noteDensity: i18n.value.statistics.noteDensity,
                     },
                 })
                 canvas.toBlob((blob) => {

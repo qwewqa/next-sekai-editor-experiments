@@ -2655,6 +2655,7 @@
         "normal": "Normal",
         "withCritical": "{1} ({0} critical)",
         "notesPerSecond": "Notes per Second",
+        "noteDensity": "Note Density",
         "smooth": "Smooth",
         "bars": "Bars",
         "rolling": "Rolling",

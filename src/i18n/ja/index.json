@@ -2655,6 +2655,7 @@
     "normal": "ノーマル",
     "withCritical": "{1}（クリティカル {0}）",
     "notesPerSecond": "秒間ノーツ数",
+    "noteDensity": "ノーツ密度",
     "smooth": "スムーズ",
     "bars": "棒グラフ",
     "rolling": "ローリング",

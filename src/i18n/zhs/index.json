@@ -2655,6 +2655,7 @@
     "normal": "普通",
     "withCritical": "{1}（关键 {0}）",
     "notesPerSecond": "每秒音符数",
+    "noteDensity": "音符密度",
     "smooth": "平滑",
     "bars": "柱状图",
     "rolling": "滚动计数",

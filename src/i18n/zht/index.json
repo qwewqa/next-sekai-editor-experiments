@@ -2655,6 +2655,7 @@
     "normal": "普通",
     "withCritical": "{1}（金色音符 {0}）",
     "notesPerSecond": "每秒音符數",
+    "noteDensity": "音符密度",
     "smooth": "平滑",
     "bars": "長條圖",
     "rolling": "滾動計數",

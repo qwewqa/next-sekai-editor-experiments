@@ -149,6 +149,7 @@ const input = (overrides: Partial<CardInput> = {}): CardInput => ({
         author: 'Author',
         rating: 'Rating',
         product: 'Next SEKAI Editor',
+        noteDensity: en.statistics.noteDensity,
     },
     ...overrides,
 })
@@ -434,21 +435,30 @@ test('the figures take no plot height', () => {
 /** The y of the first label under the plot: 5 units below its bottom. */
 const labelY = (calls: Call[], text: string) => textCall(calls, text)?.args[2] as number
 
-test('the distribution titles its counts, and the title takes 18 units from the plot', () => {
+test('the distribution is headed Note Density and titles its counts, and the title takes 18 units from the plot', () => {
     const timeline = draw({ mode: 'rolling', chosen: ['tap', 'release'] })
     const distribution = draw({ mode: 'distribution', chosen: ['tap', 'release'] })
     const titles = distribution.filter(
         (call) => call.name === 'fillText' && call.args[0] === 'Notes per Second',
     )
-    // The heading, then the axis's title, centred 18 below the labels.
-    assert.equal(titles.length, 2)
-    assert.equal(titles[1]?.textAlign, 'center')
-    assert.equal(titles[1]?.args[2], labelY(distribution, '0') + 18)
+    // The heading, and the axis's title centred 18 below the labels.
+    assert.equal(textCall(distribution, 'Note Density')?.font, '700 15px sans-serif')
+    assert.equal(titles.length, 1)
+    assert.equal(titles[0]?.textAlign, 'center')
+    assert.equal(titles[0]?.args[2], labelY(distribution, '0') + 18)
     assert.equal(labelY(timeline, '00:00') - labelY(distribution, '0'), 18)
     // The categories are muted names, with no swatches.
     for (const category of ['tap', 'release'])
         assert.equal(textCall(distribution, `Key ${category}`)?.fillStyle, 'rgb(68 68 102 / 0.8)')
     assert.equal(fills(distribution, chartCategoryColors.tap).length, 0)
+})
+
+test('the timeline modes keep the heading Notes per Second', () => {
+    for (const mode of ['smooth', 'bars', 'rolling'] as const) {
+        const calls = draw({ mode, chosen: ['tap', 'release'] })
+        assert.equal(textCall(calls, 'Notes per Second')?.font, '700 15px sans-serif', mode)
+        assert.ok(!texts(calls).includes('Note Density'), mode)
+    }
 })
 
 test('the series key names Tap & Flick and All with two series, just above the categories, and fits its names', () => {

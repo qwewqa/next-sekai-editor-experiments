@@ -2655,6 +2655,7 @@
     "normal": "일반",
     "withCritical": "{1} (크리티컬 {0})",
     "notesPerSecond": "초당 노트 수",
+    "noteDensity": "노트 밀도",
     "smooth": "곡선",
     "bars": "막대",
     "rolling": "롤링",
