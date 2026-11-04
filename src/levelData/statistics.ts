@@ -415,13 +415,8 @@ export const curveColumns = (samples: Samples, x0: number, x1: number, count: nu
 /** A stretch [a, b) of the timeline: its count of notes and their split by layer. */
 export type Span = { a: number; b: number; count: number; parts: number[] }
 
-/**
- * Each step [a, b) takes the most notes in a window starting in [a - 0.5 s, b - 0.5 s), from
- * 00:00.000, under the window rule; its split is that window's, the earliest of equally busy ones.
- * The count rises only when a note enters, so the candidates are the range's first start, every
- * note start in it and the start just after each note enters. O(n + steps).
- */
-export const skyline = (tagged: Tagged, x0: number, x1: number, count = 300): Span[] => {
+/** Rolling's steps, each from `edges`; see `skyline`. */
+const sweep = (tagged: Tagged, count: number, edges: (k: number) => [number, number]): Span[] => {
     const ms = Float64Array.from(tagged.times, (time) => time * 1000)
     const n = ms.length
     let lo = 0
@@ -440,14 +435,12 @@ export const skyline = (tagged: Tagged, x0: number, x1: number, count = 300): Sp
         return [hi - lo, lo, hi]
     }
     const entry = (time: number) => time - 1000 + 2 * MARGIN_MS
-    const width = (x1 - x0) / count
     const steps: Span[] = []
     let iNote = 0
     let iEntry = 0
     let previousA = -Infinity
     for (let k = 0; k < count; k++) {
-        const a = x0 + k * width
-        const b = a + width
+        const [a, b] = edges(k)
         const parts = new Array<number>(tagged.layerCount).fill(0)
         if (b <= 0) {
             steps.push({ a, b, count: 0, parts })
@@ -481,6 +474,27 @@ export const skyline = (tagged: Tagged, x0: number, x1: number, count = 300): Sp
     }
     return steps
 }
+
+/**
+ * Each step [a, b) takes the most notes in a window starting in [a - 0.5 s, b - 0.5 s), from
+ * 00:00.000, under the window rule; its split is that window's, the earliest of equally busy ones.
+ * The count rises only when a note enters, so the candidates are the range's first start, every
+ * note start in it and the start just after each note enters. O(n + steps).
+ */
+export const skyline = (tagged: Tagged, x0: number, x1: number, count = 300): Span[] => {
+    const width = (x1 - x0) / count
+    return sweep(tagged, count, (k) => {
+        const a = x0 + k * width
+        return [a, a + width]
+    })
+}
+
+/**
+ * Rolling's steps `first` to `first + count - 1` of `width` from 00:00.000. Each edge comes from
+ * its own index, so a step is the same window whichever steps are around it.
+ */
+export const anchoredSkyline = (tagged: Tagged, first: number, count: number, width: number) =>
+    sweep(tagged, count, (k) => [(first + k) * width, (first + k + 1) * width])
 
 // --- Bars: bins anchored at 00:00.000, a time within 1e-6 ms before a boundary in the later bin.
 
@@ -662,7 +676,7 @@ export const chartView = (
             while ((x1 - x0) / width > MAX_STEPS) width *= 2
             const first = Math.floor(x0 / width)
             const last = Math.max(first + 1, Math.ceil(x1 / width))
-            steps = skyline(tagged, first * width, last * width, last - first)
+            steps = anchoredSkyline(tagged, first, last - first, width)
         } else steps = skyline(tagged, x0, x1)
         return { x0, x1, ...flat(steps, tagged.layerCount, 1), steps }
     }

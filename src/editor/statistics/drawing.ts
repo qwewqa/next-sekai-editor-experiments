@@ -153,8 +153,12 @@ export const readAt = (model: ChartModel, drawing: Drawing, time: number): Readi
     if (model.steps) {
         const { steps } = model
         const first = steps[0]
-        const index = first ? Math.floor((time - first.a) / (first.b - first.a)) : 0
-        const step = steps[Math.min(steps.length - 1, Math.max(0, index))]
+        let index = first ? Math.floor((time - first.a) / (first.b - first.a)) : 0
+        index = Math.min(steps.length - 1, Math.max(0, index))
+        // Steps from their own indices can differ from the first's width in the last bit.
+        while (index > 0 && time < (steps[index]?.a ?? 0)) index--
+        while (index < steps.length - 1 && time >= (steps[index]?.b ?? 0)) index++
+        const step = steps[index]
         const value = step?.count ?? 0
         return { value, parts: step?.parts ?? [], exact: true, y: drawing.py(value) }
     }

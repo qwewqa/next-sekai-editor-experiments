@@ -14,7 +14,6 @@ import {
     bgmEndOf,
     binWidth,
     CATEGORIES,
-    chartExtent,
     chartModel,
     chartSource,
     chartStatistics,
@@ -39,6 +38,7 @@ import {
     timeTicks,
     yScale,
     type Category,
+    type ChartModel,
     type ChartStatistics,
     type Row,
     type Samples,
@@ -728,14 +728,181 @@ const viewLayers = (() => {
 })()
 const viewEvery = mergeTimes(viewLayers).times
 
-test('without a view, the chart is the whole chart as before', () => {
-    const source = chartSource(viewEvery, viewLayers, 130)
-    assert.ok(source)
-    for (const mode of ['smooth', 'bars', 'rolling'] as const) {
-        const whole = chartModel(mode, viewEvery, viewLayers, 130, 800)
-        assert.deepEqual(chartView(mode, source, 800), whole)
-        assert.deepEqual(chartExtent(mode, source), { x0: whole?.x0, x1: whole?.x1 })
+// The whole chart for each mode, with and without a BGM End past the last note, and as Export
+// Video draws it: figures pinned from the code before views.
+const pinnedLayers = [
+    Float64Array.from({ length: 160 }, (_, i) => 0.2 + i * 0.37),
+    Float64Array.from([10, 10, 10, 25.5, 25.5, 40, 40.125, 40.25, 40.375, 41]),
+]
+const pinnedEvery = Float64Array.from([...pinnedLayers[0]!, ...pinnedLayers[1]!]).sort()
+type Pinned = {
+    x0: number
+    x1: number
+    points: number
+    layers: number
+    sum: number
+    max: number
+    xs: number[]
+    total: number[]
+    width?: number
+    steps?: number
+}
+const pinned: Record<string, Pinned> = {
+    'smooth notes': {
+        x0: -1.4000000000000001,
+        x1: 60.7,
+        points: 602,
+        layers: 2,
+        sum: 1642.5120774727454,
+        max: 6.015133846664966,
+        xs: [
+            -1.4000000000000001, -1.3482500000000002, 14.073250000000002, 29.701750000000004,
+            45.22675, 60.7,
+        ],
+        total: [
+            1.780679159119116e-7, 1.780679159119116e-7, 2.7012431094651106, 2.702949264125386,
+            2.7019775416633456, 0,
+        ],
+    },
+    'smooth 90': {
+        x0: -1.4000000000000001,
+        x1: 90,
+        points: 602,
+        layers: 2,
+        sum: 1115.9737691497146,
+        max: 6.010659460552496,
+        xs: [
+            -1.4000000000000001, -1.3238333333333334, 21.373833333333337, 44.37616666666667,
+            67.22616666666667, 90,
+        ],
+        total: [
+            2.7355411338679828e-5, 2.7355411338679828e-5, 2.702553432225344, 2.702221560772743, 0,
+            0,
+        ],
+    },
+    'bars notes': {
+        x0: 0,
+        x1: 60,
+        points: 120,
+        layers: 2,
+        sum: 340,
+        max: 7,
+        xs: [0, 1, 15, 30, 45, 60],
+        total: [3, 3, 3, 3, 2, 1],
+        width: 1,
+    },
+    'bars 90': {
+        x0: 0,
+        x1: 91,
+        points: 182,
+        layers: 2,
+        sum: 340,
+        max: 7,
+        xs: [0, 1, 23, 46, 68, 91],
+        total: [3, 3, 3, 2, 0, 0],
+        width: 1,
+    },
+    'rolling notes': {
+        x0: -1.4000000000000001,
+        x1: 60.7,
+        points: 600,
+        layers: 2,
+        sum: 1838,
+        max: 7,
+        xs: [
+            -1.4000000000000001, -1.193, 14.125000000000002, 29.650000000000006, 45.175000000000004,
+            60.70000000000001,
+        ],
+        total: [0, 0, 3, 3, 3, 0],
+        steps: 300,
+    },
+    'rolling 90': {
+        x0: -1.4000000000000001,
+        x1: 90,
+        points: 600,
+        layers: 2,
+        sum: 1254,
+        max: 7,
+        xs: [
+            -1.4000000000000001, -1.0953333333333335, 21.450000000000003, 44.300000000000004, 67.15,
+            90,
+        ],
+        total: [0, 0, 3, 3, 0, 0],
+        steps: 300,
+    },
+    'export video': {
+        x0: -1.4000000000000001,
+        x1: 90,
+        points: 402,
+        layers: 1,
+        sum: 743.9828910403061,
+        max: 5.99536654004515,
+        xs: [-1.4000000000000001, -1.2857500000000002, 21.33575, 44.41425, 67.26424999999999, 90],
+        total: [
+            0.00039651076932614916, 0.00039651076932614916, 2.7028749501604477, 2.702379297464851,
+            0, 0,
+        ],
+    },
+}
+
+test('without a view, every mode draws the whole chart as it did before views', () => {
+    const check = (name: string, model: ChartModel | undefined) => {
+        const expected = pinned[name]
+        assert.ok(model && expected, name)
+        const total = model.boundaries[model.boundaries.length - 1] ?? new Float64Array()
+        const n = model.xs.length
+        const at = [0, 1, Math.floor(n / 4), Math.floor(n / 2), Math.floor((3 * n) / 4), n - 1]
+        const close = (actual: number | undefined, value: number, what: string) =>
+            assert.ok(
+                Math.abs((actual ?? NaN) - value) <= 1e-9 * Math.max(1, Math.abs(value)),
+                `${name} ${what}: ${actual} vs ${value}`,
+            )
+        close(model.x0, expected.x0, 'x0')
+        close(model.x1, expected.x1, 'x1')
+        assert.equal(n, expected.points, name)
+        assert.equal(model.boundaries.length, expected.layers, name)
+        close(
+            total.reduce((a, b) => a + b, 0),
+            expected.sum,
+            'sum',
+        )
+        close(Math.max(...total), expected.max, 'max')
+        at.forEach((i, j) => {
+            close(model.xs[i], expected.xs[j] ?? NaN, `x ${i}`)
+            close(total[i], expected.total[j] ?? NaN, `total ${i}`)
+        })
+        assert.equal(model.bins?.width, expected.width, name)
+        assert.equal(model.steps?.length, expected.steps, name)
     }
+    for (const mode of ['smooth', 'bars', 'rolling'] as const)
+        for (const bgmEnd of [undefined, 90]) {
+            const name = `${mode} ${bgmEnd ?? 'notes'}`
+            check(name, chartModel(mode, pinnedEvery, pinnedLayers, bgmEnd, 600))
+            const source = chartSource(pinnedEvery, pinnedLayers, bgmEnd)
+            assert.ok(source)
+            check(name, chartView(mode, source, 600))
+        }
+    check('export video', chartModel('smooth', pinnedEvery, [pinnedEvery], 90, 400))
+})
+
+test('Rolling’s steps keep their counts as a view pans, with chords on exact times', () => {
+    const chords = Float64Array.from([...Array<number>(10).fill(20), ...Array<number>(4).fill(21)])
+    const source = chartSource(chords, [chords])
+    assert.ok(source)
+    const countAt = (x0: number, time: number) =>
+        chartView('rolling', source, 2, { x0, x1: x0 + 30 }, 30).steps?.find(
+            (step) => step.a <= time && time < step.b,
+        )?.count
+    for (const [time, count] of [
+        [19.45, 0],
+        [19.55, 10],
+        [20.45, 10],
+        [20.55, 10],
+        [21.45, 4],
+        [21.55, 4],
+    ] as const)
+        for (let k = 0; k <= 100; k++)
+            assert.equal(countAt(k * 0.01, time), count, `${time} from ${k * 0.01}`)
 })
 
 test('Smooth over a view draws the same curve, only finer', () => {
