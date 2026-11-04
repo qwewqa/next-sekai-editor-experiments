@@ -285,10 +285,11 @@ const valueNow = computed(() => {
 })
 const valueText = computed(() => describe(readingAt(valueNow.value))?.valueText)
 // With no plot the readout clears; the view and the place the buttons zoom on stay. A pan that
-// moves past a pinned readout takes it along at the view's edge, where the slider says it is.
+// moves past a pinned readout takes it along at the view's edge, where the slider says it is; a
+// hover readout left outside the view hides until the pointer moves.
 watch(model, (current) => {
     if (!current) cursor.value = undefined
-    else if (cursor.value !== undefined && cursor.value !== valueNow.value)
+    else if (pinned && cursor.value !== undefined && cursor.value !== valueNow.value)
         cursor.value = valueNow.value
 })
 
@@ -550,7 +551,7 @@ const release = (event: PointerEvent, click: boolean) => {
     if (event.pointerType === 'mouse') {
         if (press?.id !== event.pointerId) return
         // A click chooses the place the buttons zoom on, and leaves the readout unpinned.
-        if (click && !press.moved) pinTime = cursor.value ?? timeAtX(event.clientX)
+        if (click && !press.moved) pinTime = timeAtX(event.clientX)
         if (owner === 'drag') complete()
         else press = undefined
         return

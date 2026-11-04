@@ -507,6 +507,22 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
         .toBeCloseTo(now + 1, 3)
     expect(await timeAt(page, 0)).toBeCloseTo(now, 0)
 
+    // A hover readout that a pan leaves outside the view hides, and a click where the pointer
+    // stands chooses the time under it.
+    await zoomIn(page).focus()
+    const hover = await timeAt(page, 0.9)
+    const readout = dialog(page).locator('[data-statistics-readout]')
+    await expect(readout).not.toHaveText('')
+    await chart(page).dispatchEvent('wheel', { deltaX: -600, deltaY: 0, cancelable: true })
+    await settle()
+    await expect(readout).toHaveText('')
+    await page.mouse.down()
+    await page.mouse.up()
+    const under = await timeAt(page, 0.9)
+    expect(under).toBeLessThan(hover - 5)
+    await zoomIn(page).dispatchEvent('click')
+    await expect.poll(() => timeAt(page, 0.9)).toBeCloseTo(under, 1)
+
     // A click chooses where Zoom In zooms: the clicked time keeps its place.
     const span = await width(page)
     await page.mouse.click(plot.x + plot.width * 0.3, y)
