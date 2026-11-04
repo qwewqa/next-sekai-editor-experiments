@@ -138,6 +138,14 @@ const skinTitle = (page: Page) =>
         >('/src/preview/assets/index.ts')
         return assetSession.slots.skin.value.value?.title
     })
+/** The background slot's state; it loads beside the skin, not after it. */
+const backgroundState = (page: Page) =>
+    page.evaluate(async () => {
+        const { assetSession } = await window.editorTest.appImport<
+            typeof import('../../src/preview/assets')
+        >('/src/preview/assets/index.ts')
+        return assetSession.slots.background.value.state
+    })
 const effectTitle = (page: Page) =>
     page.evaluate(async () => {
         const { assetSession } = await window.editorTest.appImport<
@@ -803,6 +811,8 @@ test('the toolbar migration adds the command to an unchanged playback group, onc
 test("a background's colour, blur, mask, aspect ratio and fit are drawn", async ({ page }) => {
     await start(page)
     await expect.poll(() => skinTitle(page)).toBe('Fixture')
+    // A background load still in flight would replace the one set below.
+    await expect.poll(() => backgroundState(page)).toMatch(/^(ready|failed)$/)
     const viewport = page.locator('.preview-viewport').first()
     const png =
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg=='
