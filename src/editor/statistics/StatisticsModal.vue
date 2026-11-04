@@ -735,12 +735,17 @@ const share = () => {
     background: rgb(var(--color-fg) / 0.8);
     pointer-events: none;
 }
+/* Over the label line, except while that is stuck over the plot. */
 .stats-plot-focus {
+    z-index: 3;
     position: absolute;
     inset: calc(-1rem - var(--lines, 1) * 1.25rem) -0.375rem -1.75rem -2.25rem;
     border-radius: 0.75rem;
     outline: 2px solid rgb(var(--color-fg));
     pointer-events: none;
+}
+.stats-label-line.stuck ~ .stats-plot-row .stats-plot-focus {
+    z-index: auto;
 }
 .stats-empty {
     position: absolute;
@@ -846,14 +851,12 @@ const share = () => {
         stroke: GrayText;
     }
     .stats-layer,
-    .stats-dist-wash {
+    .stats-wash,
+    .stats-all-fill {
         display: none;
     }
-    .stats-all-fill {
-        fill: none;
-    }
-    .stats-all-edge,
-    .stats-key-all {
+    /* As specific as the dark theme's rule, so it wins in both themes. */
+    :is(:root, :root[data-theme='dark']) .stats-all-edge {
         stroke: CanvasText;
         stroke-width: 1.5px;
         stroke-dasharray: 4 3;

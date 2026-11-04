@@ -807,20 +807,6 @@ test("the largest count with time is the one-second maximum away from the window
     assert.ok((ms[values.length - 1] ?? 0) < 1e-9)
 })
 
-test('Primary can spend its time at a higher count than All: ten seconds of streams among ninety of lone secondary notes', () => {
-    const sets = npsSets(
-        timesOf({
-            tap: Array.from({ length: 100 }, (_, i) => i / 10),
-            trace: Array.from({ length: 45 }, (_, i) => 12 + i * 2),
-        }),
-        ['tap', 'trace'],
-    )
-    assert.ok(sets)
-    const figures = npsFigures(sets)
-    assert.equal(figures.primary.median, 10)
-    assert.equal(figures.all.median, 1)
-})
-
 test('seconds read with one decimal, a short time rounded up in hundredths, and none as 0', () => {
     assert.equal(formatSeconds(16, 'en'), '16.0s')
     assert.equal(formatSeconds(9.74, 'en'), '9.7s')

@@ -1206,7 +1206,11 @@ const color = (category: Category) => chartCategoryColors[category]
                             />
                         </template>
                         <template v-else>
-                            <path :d="drawing.wash" :fill="`url(#${headingId}-wash)`" />
+                            <path
+                                class="stats-wash"
+                                :d="drawing.wash"
+                                :fill="`url(#${headingId}-wash)`"
+                            />
                             <path class="stats-line" :d="drawing.lines[drawing.lines.length - 1]" />
                         </template>
                         <path
@@ -1274,7 +1278,7 @@ const color = (category: Category) => chartCategoryColors[category]
                         />
                         <path
                             v-if="histogram.wash"
-                            class="stats-dist-wash"
+                            class="stats-wash"
                             :d="histogram.wash"
                             :fill="`url(#${headingId}-wash)`"
                         />

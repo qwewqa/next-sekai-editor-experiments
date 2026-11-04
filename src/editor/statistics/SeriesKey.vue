@@ -15,7 +15,7 @@ defineProps<{ primary: string; all: string }>()
         <span class="stats-series-item">
             <svg width="18" height="8" viewBox="0 0 18 8" aria-hidden="true">
                 <rect class="stats-all-fill" width="18" height="8" />
-                <line class="stats-all-edge stats-key-all" x1="0" x2="18" y1="0.5" y2="0.5" />
+                <line class="stats-all-edge" x1="0" x2="18" y1="0.5" y2="0.5" />
             </svg>
             {{ all }}
         </span>
