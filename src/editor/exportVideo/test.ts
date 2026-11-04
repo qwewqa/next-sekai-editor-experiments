@@ -352,15 +352,16 @@ export const openExportVideoTest = async (options: DialogTestOptions = {}) => {
     let exposed: ReturnType<typeof import('./dialog').createExportDialog> | undefined
     void openExportVideo(
         options.production
-            ? {
-                  ...pageEnv(
+            ? // Assigned, not spread, so the env's `picker` getter stays live.
+              Object.assign(
+                  pageEnv(
                       () =>
                           new Worker(new URL('./export.worker.ts', import.meta.url), {
                               type: 'module',
                           }),
                   ),
-                  ...(options.faults ? { faults: options.faults } : {}),
-              }
+                  options.faults ? { faults: options.faults } : {},
+              )
             : {
                   picker: options.picker ?? false,
                   faults: options.faults,

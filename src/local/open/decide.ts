@@ -55,9 +55,10 @@ export const partialLine = (
 const SUFFIX = /^(.*?) ?\(\d+\)(\.[^.]*)?$/u
 
 /**
- * The name a binding takes: on a browser without a handle, the name the file's
- * revision recorded when the opened file's is that name with a browser's suffix, so repeated
- * Saves don't drift to "coconut (3) (1).nxsp". With a handle, the handle's name.
+ * The name a binding takes: without a handle, the name the file's revision recorded when the
+ * opened file's is that name with a browser's suffix, so repeated Saves don't drift to
+ * "coconut (3) (1).nxsp". With a handle, the handle's name; the open then keeps the recorded name
+ * for a Save that downloads (`downloadName`).
  */
 export const bindingName = (opened: string, recorded: string | undefined, handle: boolean) => {
     if (handle || !recorded || opened === recorded) return opened
@@ -142,12 +143,15 @@ export type EarlierNotice =
 
 /**
  * Earlier sessions on this file, recognised by revision: unsaved
- * changes on this revision, or on an earlier one (Restore only with a handle, whose Save meets
- * the conflict dialog), or a newer version in Recent Sessions. The most recent such chain.
+ * changes on this revision, or on an earlier one (Restore only with a handle while Save writes back,
+ * so its Save meets the conflict dialog), or a newer version in Recent Sessions. The most recent
+ * such chain.
  */
 export const earlierNotice = (
     file: { id: string; ancestors: readonly string[] } | undefined,
     chains: readonly EarlierChain[],
+    /** Save writes back through a handle now (`platform.pickSaveFile`, as Save's dispatch reads). */
+    writeBack: boolean,
 ): EarlierNotice | undefined => {
     if (!file) return
     const newest = [...chains]
@@ -164,7 +168,8 @@ export const earlierNotice = (
             chain.revision !== undefined &&
             file.ancestors.includes(chain.revision.id),
     )
-    if (earlier?.bound?.handle) return { kind: 'unsavedChanges', chain: earlier, restore: true }
+    if (earlier?.bound?.handle && writeBack)
+        return { kind: 'unsavedChanges', chain: earlier, restore: true }
     if (earlier) return { kind: 'unsavedEarlier', chain: earlier }
     const newer = newest.find((chain) => chain.revision?.ancestors.includes(file.id))
     if (newer) return { kind: 'olderVersion', chain: newer }

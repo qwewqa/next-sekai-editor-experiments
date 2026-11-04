@@ -25,6 +25,11 @@ export type StoredFile = {
     }
     completeFrom?: string
     disk?: DiskState
+    /**
+     * An open's name for a Save that downloads, when the handle keeps a browser's suffix the file's
+     * recorded name has not: "coconut.nxsp" for "coconut (3).nxsp". A Save replaces the field.
+     */
+    downloadName?: string
 }
 
 /** The chain's identity fields as a Save reads them: stored, or kept in memory. */

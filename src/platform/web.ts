@@ -9,6 +9,7 @@ import {
     isStandalone,
     usesOpfsPickers,
 } from './detect'
+import { usesSavePicker } from './filePicker'
 import { isRefusedRead } from './fingerprint'
 import {
     diskStateOf,
@@ -119,16 +120,13 @@ const savePickerOptions = (picker: SavePicker, suggestedName: string): SaveFileP
     ...(picker.startIn ? { startIn: picker.startIn } : {}),
 })
 
-const hasSavePicker = () =>
-    usesOpfsPickers() || (allowsFileSystemAccess() && !!window.showSaveFilePicker)
-
 /**
  * The save picker; undefined where there is none, which downloads. Dismissing it throws
  * AbortError; any other failure is a FileError, never a download.
  */
 const pickSaveHandle = async (picker: SavePicker, suggestedName: string) => {
     const options = savePickerOptions(picker, suggestedName)
-    if (!hasSavePicker()) return
+    if (!usesSavePicker()) return
     try {
         return usesOpfsPickers()
             ? await opfsSavePicker(options)
@@ -266,11 +264,10 @@ let capabilities: PlatformCapabilities | undefined
 
 const webCapabilities = (): PlatformCapabilities =>
     (capabilities ??= Object.freeze({
-        writeBack:
-            usesOpfsPickers() ||
-            (allowsFileSystemAccess() &&
-                typeof window !== 'undefined' &&
-                'showSaveFilePicker' in window),
+        // Read on every use: Write to Chosen Files can change it.
+        get writeBack() {
+            return usesSavePicker()
+        },
         closePrompt: detection().os !== 'ios',
         library: false,
         fileJournal: false,
@@ -299,7 +296,7 @@ export const platform: Platform = {
     saveFile,
     videoOutput: webVideoOutput,
     get pickSaveFile() {
-        return hasSavePicker() ? pickSaveFile : undefined
+        return usesSavePicker() ? pickSaveFile : undefined
     },
     inspect,
     read,

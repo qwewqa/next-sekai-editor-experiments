@@ -1551,7 +1551,12 @@ const dialogSave = async (
         !!binding.replaced ||
         currentSession.value.copyOf !== undefined ||
         exportMemory.partial === true
-    const stem = shownStem(env, state) || (binding.replaced ? stemOf(binding.replaced.name) : '')
+    // A first Save that downloads takes the file's recorded name, not a browser's suffix.
+    const downloadName =
+        kind === 'save' && !platform.pickSaveFile ? binding.file?.downloadName : undefined
+    const stem = downloadName
+        ? stemOf(downloadName)
+        : shownStem(env, state) || (binding.replaced ? stemOf(binding.replaced.name) : '')
     const names = await fieldNames(env, copy ? copyStem(stem, !!binding.file) : stem)
     const replaced = binding.replaced
     const replacedLine = replaced

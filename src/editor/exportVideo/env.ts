@@ -118,5 +118,8 @@ export const pageEnv = (worker: () => Worker): ExportVideoEnv => ({
     worker,
     destination: pageDestination,
     fallback: pageFallback,
-    picker: !!platform.pickSaveFile,
+    // Read at each use: Write to Chosen Files can change between exports.
+    get picker() {
+        return !!platform.pickSaveFile
+    },
 })

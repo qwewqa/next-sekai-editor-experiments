@@ -259,7 +259,7 @@ export type Platform = {
     /**
      * A save picker alone: the picked file, which the picker emptied when
      * it existed, or undefined when dismissed. Any other failure is a `FileError`, never a
-     * download. Absent where there's no save picker.
+     * download. Absent where saves download.
      */
     pickSaveFile?: (req: PickSaveRequest) => Promise<FileTarget | undefined>
     readonly videoOutput?: VideoOutput

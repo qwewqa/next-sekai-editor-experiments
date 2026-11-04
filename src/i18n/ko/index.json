@@ -1128,6 +1128,14 @@
         }
       },
       "confirmCloseUnsavedFile": "프로젝트 파일에 저장하지 않은 변경 사항이 있을 때 페이지를 닫기 전에 확인할지 여부.",
+      "filePicker": {
+        "intro": "저장하거나 내보낼 때 선택한 파일에 쓸지, 다운로드할지 여부.",
+        "choices": {
+          "auto": "선택한 파일에 씁니다. 일부 브라우저에서는 파일을 다운로드합니다.",
+          "enabled": "선택한 파일에 씁니다.",
+          "disabled": "파일을 다운로드합니다."
+        }
+      },
       "previewNoteSpeed": "미리보기에서 노트가 다가오는 속도, 1부터 12까지.",
       "previewShowHitboxes": "노트와 슬라이드의 판정에 쓰이는 영역을 표시할지 여부.",
       "previewShowEffects": "미리보기에서 노트를 칠 때와 슬라이드를 누르고 있는 동안 입자와 빛 효과를 표시할지 여부.",
@@ -1187,6 +1195,12 @@
       },
       "openHistory": "기록 열기",
       "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
+      "filePicker": {
+        "title": "선택한 파일에 쓰기",
+        "auto": "자동",
+        "enabled": "사용함",
+        "disabled": "사용 안 함"
+      },
       "exportRaw": "원시 데이터 내보내기",
       "open": "열기",
       "exportRawName": "{0} 원시 데이터 {1}.zip",

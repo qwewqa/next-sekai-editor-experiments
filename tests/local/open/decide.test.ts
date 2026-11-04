@@ -190,41 +190,53 @@ const chain = (fields: Partial<EarlierChain>): EarlierChain => ({
 test('earlier sessions on the file are recognised by revision', () => {
     const file = { id: 'r3', ancestors: ['r2', 'r1'] }
     const same = chain({ revision: { id: 'r3', ancestors: ['r2'] }, bound: { handle: false } })
-    assert.deepEqual(earlierNotice(file, [same]), {
+    assert.deepEqual(earlierNotice(file, [same], true), {
         kind: 'unsavedChanges',
         chain: same,
         restore: true,
     })
     // Unchanged, or unbound: nothing to say.
-    assert.equal(earlierNotice(file, [{ ...same, changed: false }]), undefined)
-    assert.equal(earlierNotice(file, [{ ...same, bound: undefined }]), undefined)
+    assert.equal(earlierNotice(file, [{ ...same, changed: false }], true), undefined)
+    assert.equal(earlierNotice(file, [{ ...same, bound: undefined }], true), undefined)
     // Open in another tab: never named.
-    assert.equal(earlierNotice(file, [{ ...same, openElsewhere: true }]), undefined)
+    assert.equal(earlierNotice(file, [{ ...same, openElsewhere: true }], true), undefined)
 
     // An earlier revision: Restore only with a handle, whose Save meets the conflict dialog.
     const earlierDownload = chain({
         revision: { id: 'r1', ancestors: [] },
         bound: { handle: false },
     })
-    assert.deepEqual(earlierNotice(file, [earlierDownload]), {
+    assert.deepEqual(earlierNotice(file, [earlierDownload], true), {
         kind: 'unsavedEarlier',
         chain: earlierDownload,
     })
     const earlierHandle = { ...earlierDownload, bound: { handle: true } }
-    assert.deepEqual(earlierNotice(file, [earlierHandle]), {
+    assert.deepEqual(earlierNotice(file, [earlierHandle], true), {
         kind: 'unsavedChanges',
         chain: earlierHandle,
+        restore: true,
+    })
+    // A handle while Save downloads: the Save would not check the file, so no Restore.
+    assert.deepEqual(earlierNotice(file, [earlierHandle], false), {
+        kind: 'unsavedEarlier',
+        chain: earlierHandle,
+    })
+    // The same revision keeps its Restore on either route.
+    const sameHandle = { ...same, bound: { handle: true } }
+    assert.deepEqual(earlierNotice(file, [sameHandle], false), {
+        kind: 'unsavedChanges',
+        chain: sameHandle,
         restore: true,
     })
 
     // A newer version in Recent Sessions.
     const newer = chain({ revision: { id: 'r4', ancestors: ['r3'] }, changed: false })
-    assert.deepEqual(earlierNotice(file, [newer]), { kind: 'olderVersion', chain: newer })
+    assert.deepEqual(earlierNotice(file, [newer], true), { kind: 'olderVersion', chain: newer })
 
     // The most recent of several.
     const older = { ...same, chainId: 'old', updatedAt: 0 }
-    assert.equal(earlierNotice(file, [older, same])?.chain, same)
-    assert.equal(earlierNotice(undefined, [same]), undefined)
+    assert.equal(earlierNotice(file, [older, same], true)?.chain, same)
+    assert.equal(earlierNotice(undefined, [same], true), undefined)
 })
 
 test("a bound chain's pending journal counts as a change", () => {

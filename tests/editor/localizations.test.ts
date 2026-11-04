@@ -305,6 +305,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'settings.about.version',
         'settings.editor.waveformVisualization.fft',
         'settings.editor.waveformVisualization.volume',
+        'settings.localData.filePicker.auto',
         'settings.panels.groupsStagesSideBySide.auto',
         'settings.preview.controls.auto',
         'settings.preview.position.auto',

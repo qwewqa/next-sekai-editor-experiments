@@ -1128,6 +1128,14 @@
         }
       },
       "confirmCloseUnsavedFile": "Bir proje dosyasına kaydedilmemiş değişiklikler varsa sayfa kapanmadan önce onay istenmesi.",
+      "filePicker": {
+        "intro": "Kaydedilen ve dışa aktarılan dosyaların seçtiğiniz dosyalara yazılması ya da indirilmesi.",
+        "choices": {
+          "auto": "Seçilen dosyalara yazar. Bazı tarayıcılarda dosyaları indirir.",
+          "enabled": "Seçilen dosyalara yazar.",
+          "disabled": "Dosyaları indirir."
+        }
+      },
       "previewNoteSpeed": "Önizlemede notaların yaklaşma hızı, 1 ile 12 arasında.",
       "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanların gösterilmesi.",
       "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkların ve parlamaların gösterilmesi.",
@@ -1187,6 +1195,12 @@
       },
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
+      "filePicker": {
+        "title": "Seçilen Dosyalara Yaz",
+        "auto": "Otomatik",
+        "enabled": "Etkin",
+        "disabled": "Devre Dışı"
+      },
       "exportRaw": "Ham Verileri Dışa Aktar",
       "open": "Aç",
       "exportRawName": "{0} ham veriler {1}.zip",

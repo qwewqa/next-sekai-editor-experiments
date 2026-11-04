@@ -1128,6 +1128,14 @@
         }
       },
       "confirmCloseUnsavedFile": "有尚未保存到项目文件的更改时，是否在关闭页面前询问。",
+      "filePicker": {
+        "intro": "保存和导出时，是写入您选择的文件还是下载。",
+        "choices": {
+          "auto": "写入所选文件。在部分浏览器中下载文件。",
+          "enabled": "写入所选文件。",
+          "disabled": "下载文件。"
+        }
+      },
       "previewNoteSpeed": "预览中音符接近的速度，范围为 1 到 12。",
       "previewShowHitboxes": "是否显示用于判定音符和长按音符的区域。",
       "previewShowEffects": "音符被击中时以及长按音符被按住期间，是否在预览中显示粒子和发光效果。",
@@ -1187,6 +1195,12 @@
       },
       "openHistory": "打开历史记录",
       "confirmClose": "关闭前询问未保存的更改",
+      "filePicker": {
+        "title": "写入所选文件",
+        "auto": "自动",
+        "enabled": "启用",
+        "disabled": "禁用"
+      },
       "exportRaw": "导出原始数据",
       "open": "打开",
       "exportRawName": "{0} 原始数据 {1}.zip",

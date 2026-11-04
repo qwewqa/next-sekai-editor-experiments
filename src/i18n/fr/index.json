@@ -1128,6 +1128,14 @@
         }
       },
       "confirmCloseUnsavedFile": "Demande de confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet.",
+      "filePicker": {
+        "intro": "Écriture des sauvegardes et des exports dans des fichiers que vous choisissez, ou leur téléchargement.",
+        "choices": {
+          "auto": "Écrit dans les fichiers choisis. Télécharge les fichiers dans certains navigateurs.",
+          "enabled": "Écrit dans les fichiers choisis.",
+          "disabled": "Télécharge les fichiers."
+        }
+      },
       "previewNoteSpeed": "Vitesse à laquelle les notes approchent dans l’aperçu, de 1 à 12.",
       "previewShowHitboxes": "Affichage des zones utilisées pour juger les notes et les slides.",
       "previewShowEffects": "Affichage de particules et de lueurs dans l’aperçu lorsque les notes sont touchées et pendant que les slides sont maintenus.",
@@ -1187,6 +1195,12 @@
       },
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
+      "filePicker": {
+        "title": "Écrire dans les fichiers choisis",
+        "auto": "Auto",
+        "enabled": "Activé",
+        "disabled": "Désactivé"
+      },
       "exportRaw": "Exporter les données brutes",
       "open": "Ouvrir",
       "exportRawName": "{0} données brutes {1}.zip",

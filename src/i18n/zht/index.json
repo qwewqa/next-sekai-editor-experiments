@@ -1128,6 +1128,14 @@
         }
       },
       "confirmCloseUnsavedFile": "有尚未儲存到專案檔案的變更時，是否在關閉頁面前詢問。",
+      "filePicker": {
+        "intro": "儲存和匯出時，是寫入您選擇的檔案還是下載。",
+        "choices": {
+          "auto": "寫入所選檔案。在部分瀏覽器中下載檔案。",
+          "enabled": "寫入所選檔案。",
+          "disabled": "下載檔案。"
+        }
+      },
       "previewNoteSpeed": "預覽中音符接近的速度，範圍為 1 到 12。",
       "previewShowHitboxes": "是否顯示用於判定音符和滑條的範圍。",
       "previewShowEffects": "音符被擊中時及按住滑條期間，是否在預覽中顯示粒子與發光效果。",
@@ -1187,6 +1195,12 @@
       },
       "openHistory": "開啟歷史記錄",
       "confirmClose": "關閉前詢問未儲存的變更",
+      "filePicker": {
+        "title": "寫入所選檔案",
+        "auto": "自動",
+        "enabled": "啟用",
+        "disabled": "停用"
+      },
       "exportRaw": "匯出原始資料",
       "open": "開啟",
       "exportRawName": "{0} 原始資料 {1}.zip",

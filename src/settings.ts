@@ -10,6 +10,7 @@ import { defaultGroupsShare, isPanelId, panelIds, type PanelId } from './editor/
 import { defaultLocale } from './i18n/locale'
 import { localizations } from './i18n/localizations'
 import { CATEGORIES, DEFAULT_CATEGORIES } from './levelData/statistics'
+import { setFilePickerChoice } from './platform/filePicker'
 import { takeStoppedVideoMarkers } from './platform/videoRunning'
 import {
     DISMISSED_NOTICE_LIMIT,
@@ -280,6 +281,12 @@ const settingsProperties = {
 
     // The browser's prompt on closing with changes not in a file.
     confirmCloseUnsavedFile: Type.Boolean({ default: true }),
+
+    // Write to Chosen Files: the save picker and write-back, or downloads (src/platform/filePicker.ts).
+    filePicker: Type.Union(
+        [Type.Literal('auto'), Type.Literal('enabled'), Type.Literal('disabled')],
+        { default: 'auto' },
+    ),
 
     // Send Usage Statistics (src/analytics/): null until the user chooses, then the choice.
     usageStatistics: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
@@ -751,6 +758,13 @@ export const settings = Object.defineProperties(
 ) as {
     [K in keyof typeof settingsProperties]: Type.StaticDecode<(typeof settingsProperties)[K]>
 }
+
+setFilePickerChoice(
+    () => settings.filePicker,
+    () => {
+        settings.filePicker = 'disabled'
+    },
+)
 
 // The former zone width, a percentage of the pane; and the auto save settings, retired with the
 // auto save: a new visit continues the most recent session instead.

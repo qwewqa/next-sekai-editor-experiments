@@ -410,7 +410,7 @@ const afterPick = async (
     }
 }
 
-/** A browser without a save picker: the level data is downloaded. */
+/** Where saves download: the level data is downloaded. */
 const exportByDownload = async (context: ExportContext): Promise<ExportOutcome> => {
     const ctx = started(context)
     const body = built(ctx)

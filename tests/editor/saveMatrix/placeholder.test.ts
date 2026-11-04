@@ -79,3 +79,29 @@ for (const { label, setup, run, name, placeholder } of cases)
         assert.deepEqual(shown, [{ name, placeholder }])
         assert.deepEqual(w.writes, [])
     })
+
+// An opened "coconut (3).nxsp" whose revision recorded "coconut.nxsp" keeps the handle's name as
+// its binding, for reading and identifying the file. A first Save that downloads suggests the
+// recorded name, as it does where no handle was kept, so repeated downloads don't drift.
+for (const [label, downloadName, name] of [
+    ['with the recorded name', 'coconut.nxsp', 'coconut'],
+    ['without one (control)', undefined, 'coconut (3)'],
+] as const)
+    test(`a first Save that downloads an opened file kept with a handle, ${label}: File Name is "${name}"`, async () => {
+        const w = await createWorld({ ownFile: 'coconut (3).nxsp' })
+        w.filePicker.choice = 'disabled'
+        const chain = w.chains.get('chain-own')!
+        chain.file = {
+            ...(chain.file as object),
+            event: 'opened',
+            ...(downloadName ? { downloadName } : {}),
+        }
+        const shown: string[] = []
+        w.on('ui:saveDialog', (_n, input) => {
+            shown.push((input as SaveDialogInput).name)
+        })
+        await flow.save()
+        await settle()
+        assert.deepEqual(shown, [name])
+        assert.deepEqual(w.writes, [])
+    })

@@ -7,7 +7,9 @@ import { showModal } from '../../modals'
 import { storageStatus } from '../../local/startup/events'
 import type { RecoveryItem } from '../../local/startup/api'
 import { showChoice } from '../../modals/choice'
+import SelectField from '../../modals/form/SelectField.vue'
 import ToggleField from '../../modals/form/ToggleField.vue'
+import { savePickerExists } from '../../platform/filePicker'
 import LoadingModal from '../../modals/LoadingModal.vue'
 import { FileError, platform } from '../../platform'
 import { isSafeMode } from '../../safe'
@@ -206,6 +208,9 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
     }
 }
 
+// Write to Chosen Files: only where the browser has the save picker.
+const showsFilePicker = savePickerExists()
+const filePickerChoices = ['auto', 'enabled', 'disabled'] as const
 // The setting is the web's: not offered where there is no close prompt (iPhone and iPad), and
 // not in the apps, which close on their own terms.
 const showsClosePrompt = platform.capabilities.browserStorage && platform.capabilities.closePrompt
@@ -269,6 +274,15 @@ const exportRaw = async () => {
             :label="strings.confirmClose"
             :description="i18n.settings.descriptions.confirmCloseUnsavedFile"
             data-confirm-close
+        />
+
+        <SelectField
+            v-if="showsFilePicker"
+            v-model="settings.filePicker"
+            :label="strings.filePicker.title"
+            :description="i18n.settings.descriptions.filePicker"
+            :options="filePickerChoices.map((choice) => [strings.filePicker[choice], choice])"
+            data-file-picker
         />
 
         <p v-if="storageLine" class="text-sm text-fg/80" data-storage-line>{{ storageLine }}</p>

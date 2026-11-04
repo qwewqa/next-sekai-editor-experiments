@@ -1128,6 +1128,14 @@
                 }
             },
             "confirmCloseUnsavedFile": "Whether to ask before the page closes while changes are not saved to a project file.",
+            "filePicker": {
+                "intro": "Whether saves and exports are written to files you choose or downloaded.",
+                "choices": {
+                    "auto": "Writes to chosen files. Downloads files in some browsers.",
+                    "enabled": "Writes to chosen files.",
+                    "disabled": "Downloads files."
+                }
+            },
             "previewNoteSpeed": "How fast notes approach in the preview, from 1 to 12.",
             "previewShowHitboxes": "Whether to show the areas used to judge notes and slides.",
             "previewShowEffects": "Whether to show particles and glows in the preview when notes are hit and while slides are held.",
@@ -1187,6 +1195,12 @@
             },
             "openHistory": "Open History",
             "confirmClose": "Ask Before Closing with Unsaved Changes",
+            "filePicker": {
+                "title": "Write to Chosen Files",
+                "auto": "Auto",
+                "enabled": "Enabled",
+                "disabled": "Disabled"
+            },
             "exportRaw": "Export Raw Data",
             "open": "Open",
             "exportRawName": "{0} raw data {1}.zip",

@@ -35,7 +35,7 @@ import { storedRead } from '../../../local/storedRead'
 import { showModal } from '../../../modals'
 import { showChoice } from '../../../modals/choice'
 import LoadingModal from '../../../modals/LoadingModal.vue'
-import { appVersion } from '../../../platform'
+import { appVersion, platform } from '../../../platform'
 import { loadBgm } from '../../../player'
 import { PRODUCT_NAME } from '../../../product'
 import { settings } from '../../../settings'
@@ -462,7 +462,10 @@ const openWithNotices = async (
         return
     }
     const identity = whole && !elsewhere
-    const name = bindingName(file.name, opened.project?.revision?.fileName, !!handle)
+    const recorded = opened.project?.revision?.fileName
+    const name = bindingName(file.name, recorded, !!handle)
+    // A Save that downloads suggests the recorded name, with or without a handle.
+    const downloadName = bindingName(file.name, recorded, false)
     const copyOf = identity ? undefined : { name, bound: true as const }
 
     // Earlier sessions on this file, recognised by revision.
@@ -484,6 +487,7 @@ const openWithNotices = async (
                 earlier = earlierNotice(
                     { id: revision.id, ancestors: revision.ancestors },
                     chains.storedValue,
+                    !!platform.pickSaveFile,
                 )
         }
         if (!request.isCurrent()) return
@@ -531,7 +535,10 @@ const openWithNotices = async (
                         ...(handle ? { handle } : {}),
                         ...(identity && opened.project
                             ? {
-                                  bind: { name },
+                                  bind: {
+                                      name,
+                                      ...(downloadName === name ? {} : { downloadName }),
+                                  },
                               }
                             : {}),
                         identity,
@@ -616,6 +623,7 @@ const openWithNotices = async (
             earlier = earlierNotice(
                 { id: revision.id, ancestors: revision.ancestors },
                 chains.storedValue,
+                !!platform.pickSaveFile,
             )
     }
     if (!request.isCurrent()) return

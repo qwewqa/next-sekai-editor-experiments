@@ -128,7 +128,7 @@ export type StoreOpen = {
     file: File
     handle?: FileSystemFileHandle
     /** Bound to the file: a whole open, not open in another tab. */
-    bind?: { name: string }
+    bind?: { name: string; downloadName?: string }
     /** Takes the file's identity: a whole open; otherwise a new `docId` and no revision. */
     identity: boolean
     /** Parts of the file were not read, so the session stays unbound. */
@@ -175,6 +175,7 @@ const chainFields = async (open: StoreOpen) => {
         const completeFrom = placedCompleteFrom(revision)
         fields.file = {
             name: open.bind.name,
+            ...(open.bind.downloadName ? { downloadName: open.bind.downloadName } : {}),
             ...(handle ? { handle } : {}),
             event: 'opened',
             ...(completeFrom === undefined ? {} : { completeFrom }),
@@ -185,6 +186,7 @@ const chainFields = async (open: StoreOpen) => {
         const handle = await storableHandle(open.handle)
         fields.file = {
             name: open.bind.name,
+            ...(open.bind.downloadName ? { downloadName: open.bind.downloadName } : {}),
             ...(handle ? { handle } : {}),
             event: 'opened',
             ...(disk ? { disk } : {}),

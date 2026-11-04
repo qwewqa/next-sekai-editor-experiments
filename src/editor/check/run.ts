@@ -8,6 +8,7 @@ import type { MediaKind } from '../../local/nxsp/read'
 import type { ModelRefusal } from '../../local/save/model'
 import { readValue, storedRead } from '../../local/storedRead'
 import { platform, type DiskState } from '../../platform'
+import { savePickerExists } from '../../platform/filePicker'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
 import { savePoint } from '../../platform/testPause'
 import { isSafeMode } from '../../safe'
@@ -114,7 +115,11 @@ export const planCheck = async (env: Env, shownName: string): Promise<Plan | und
     const file = binding.file
     if (!file || binding.replaced) return { env, name: shownName }
     const name = inlineName(file.name)
-    const read = platform.pickSaveFile ? await bindingHandle(env, file) : readValue(undefined)
+    // A bound file's handle is read wherever handles exist, whatever Write to Chosen Files says.
+    const read =
+        platform.pickSaveFile || savePickerExists()
+            ? await bindingHandle(env, file)
+            : readValue(undefined)
     if (read.storedRead === 'failed') return undefined
     const handle = read.storedValue
     if (!handle || !file.disk) return { env, name }

@@ -18,8 +18,8 @@ import { storageGet, storageKey, storageRemove, storageSet } from '../../storage
 export const BIND_LOCK = 'nse-bind'
 
 /**
- * Runs `fn` holding `nse-bind`. Download browsers never request it (they have no handles), nor do
- * pages without Web Locks, where no other tab can be told apart.
+ * Runs `fn` holding `nse-bind`. Where saves download it is never requested, since nothing is written
+ * through a handle, nor on pages without Web Locks, where no other tab can be told apart.
  */
 export const withBind = <T>(mode: LockMode, fn: () => Promise<T>): Promise<T> =>
     platform.capabilities.writeBack && hasWebLocks()
