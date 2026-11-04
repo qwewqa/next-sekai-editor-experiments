@@ -115,6 +115,8 @@ test('a dragged row keeps its lifted ring when it becomes current and checked', 
 }) => {
     test.skip(browserName !== 'chromium', 'The order is the same in every engine.')
     await start(page)
+    // Rows ease their box-shadow; without transitions a read gives the final ring.
+    await page.addStyleTag({ content: '*, ::before, ::after { transition: none !important; }' })
     const panel = page.getByRole('region', { name: 'Groups' })
     await panel.getByRole('button', { name: 'Add Group' }).click()
     await panel.locator('.manager-name', { hasText: 'Default' }).click()
@@ -155,8 +157,17 @@ test('in Firefox a value in Statistics shows its own focus ring, not the native 
         )
     }
     expect(found).toBe(true)
-    const outline = await page.evaluate(
-        () => getComputedStyle(document.activeElement as Element).outlineStyle,
-    )
-    expect(outline).not.toBe('auto')
+    // The button draws no outline of its own; its ::before draws the 2 px ring.
+    const rings = await page.evaluate(() => {
+        const button = document.activeElement as Element
+        const ring = getComputedStyle(button, '::before')
+        return {
+            button: getComputedStyle(button).outlineStyle,
+            ring: `${ring.outlineStyle} ${ring.outlineWidth}`,
+            ringColor: ring.outlineColor,
+        }
+    })
+    expect(rings.button).not.toBe('auto')
+    expect(rings.ring).toBe('solid 2px')
+    expect(rings.ringColor).toMatch(/^rgb\(/)
 })
