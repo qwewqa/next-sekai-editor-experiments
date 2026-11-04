@@ -2664,7 +2664,7 @@
     "median": "Medyan",
     "p90": "90. Yüzdelik",
     "p99": "99. Yüzdelik",
-    "primary": "Birincil",
+    "tapAndFlick": "{0} ve {1}",
     "all": "Tümü",
     "withAll": "{0} ({1})",
     "at": "{1} anında {0}",

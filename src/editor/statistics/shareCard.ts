@@ -144,7 +144,7 @@ const roundRect = (
 /**
  * Whether the card lists the chosen categories. Rolling leaves the list out when all categories
  * with notes are chosen. The distribution leaves it out when the chosen categories with notes are
- * all of them or exactly the primary ones, since its series key names them.
+ * all of them or only Tap and Flick, since its series key names them.
  */
 export const listsCategories = (
     mode: StatisticsView,
@@ -155,10 +155,10 @@ export const listsCategories = (
     const present = CATEGORIES.filter((category) => times[category].length > 0)
     const shown = present.filter((category) => chosen.includes(category))
     if (!shown.length) return true
-    const primary = present.filter((category) => PRIMARY_CATEGORIES.includes(category))
-    const exactly = (list: Category[]) =>
-        list.length === shown.length && shown.every((category) => list.includes(category))
-    return !(exactly(present) || (mode === 'distribution' && exactly(primary)))
+    if (shown.length === present.length) return false
+    return (
+        mode !== 'distribution' || !shown.every((category) => PRIMARY_CATEGORIES.includes(category))
+    )
 }
 
 /** Draws the card on a canvas, which it sizes to 1600 x 900. */
@@ -377,7 +377,7 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     const chosen = CATEGORIES.filter((category) => input.chosen.includes(category))
     const times = chosen.map((category) => input.stats.times[category])
     const hasNotes = times.some((list) => list.length > 0)
-    // The distribution's series: Primary and All when both have notes, as the figures pair them.
+    // The distribution's series: Tap and Flick, and All, when both have notes; else one.
     const sets = input.drawable ? npsSets(input.stats.times, input.chosen) : undefined
     const durations = sets && npsDurations(sets)
     const series =
@@ -395,7 +395,7 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
     const ink = input.mode === 'rolling' || distribution
     // The key: one line per chosen category that has notes, in stacking order from the baseline,
     // left out where it says nothing the chart does not. In the distribution the categories are
-    // muted under its series' names: Primary and All, or the one drawn.
+    // muted under its series' names: Tap and Flick, and All, or the one drawn.
     const key = listsCategories(input.mode, input.stats.times, input.chosen)
         ? CATEGORIES.filter(
               (category) => input.chosen.includes(category) && input.stats.times[category].length,
@@ -561,7 +561,7 @@ export const drawCard = (canvas: HTMLCanvasElement, input: CardInput) => {
             g.fillStyle = rgba(theme.fg, 0.8)
             g.fillText(formatWholeSeconds(line.value, locale), -6, drawn.py(line.value))
         }
-        // One series is a line over a wash; two are All's area and edge behind Primary's line.
+        // One series is a line over a wash; two are All's area and edge behind the other's line.
         if (drawn.wash) {
             g.fillStyle = rgba(theme.fg, 0.12)
             g.fill(new Path2D(drawn.wash))

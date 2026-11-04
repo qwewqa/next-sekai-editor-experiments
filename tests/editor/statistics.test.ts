@@ -563,13 +563,13 @@ const copyText = (stats: ChartStatistics, chosen: Category[], locale: 'en' | 'fr
             figures: npsOf(stats, chosen),
             bgmEnd: 10.25,
         },
-        statisticsStringsOf(locale === 'en' ? en : (fr as typeof en)),
+        statisticsStringsOf(locale === 'en' ? en : (fr as typeof en), chosen),
         locale,
     )
 
 test('Copy Text gives the title, then each figure in the order of the dialog', () => {
     const stats = statsOf(handBuilt())
-    assert.deepEqual(copyText(stats, ['tap', 'flick', 'release'], 'en', ' Hand Built '), [
+    assert.deepEqual(copyText(stats, [...CATEGORIES], 'en', ' Hand Built '), [
         'Hand Built',
         'Combo: 50',
         'Tap: 11 (2 critical)',
@@ -582,11 +582,11 @@ test('Copy Text gives the title, then each figure in the order of the dialog', (
         'Damage Note: 1',
         'Damage Tick: 5',
         'Fake Note: 1',
-        'Notes per Second: Tap, Flick, Release',
-        'Average: 2.9',
-        'Median: 2',
-        '90th Percentile: 7',
-        '99th Percentile: 7',
+        'Notes per Second: Tap, Flick, Release, Trace, Trace Flick, Tick, Damage',
+        'Average: Tap & Flick: 2.2, All: 7.1',
+        'Median: Tap & Flick: 1, All: 3',
+        '90th Percentile: Tap & Flick: 6, All: 23',
+        '99th Percentile: Tap & Flick: 6, All: 30',
         'First Combo Note: 00:00.000',
         'Last Combo Note: 00:06.000',
         'Last Note: 00:08.500',
@@ -602,39 +602,48 @@ test('Copy Text in French spaces its colons and agrees with the critical count',
     const lines = copyText(statsOf(handBuilt()), ['tap', 'flick', 'release', 'tick'], 'fr')
     assert.ok(lines.includes('Tap : 11 (2 critiques)'))
     assert.ok(lines.includes('Relâchement : 7 (0 critique)'))
-    assert.ok(lines.includes('Moyenne : Principales : 2,9, Toutes : 6,0'))
+    assert.ok(lines.includes('Moyenne : Tap & Flick : 2,2, Toutes : 6,0'))
     assert.ok(lines.includes('Notes par seconde : Tap, Flick, Relâchement, Tick'))
 })
 
-test('Copy Text spells out Primary and All when both have notes', () => {
+test('Copy Text spells out Tap and Flick, and All, when both have notes', () => {
     const lines = copyText(statsOf(handBuilt()), ['tap', 'flick', 'release', 'tick'], 'en')
     const at = lines.indexOf('Notes per Second: Tap, Flick, Release, Tick')
     assert.deepEqual(lines.slice(at + 1, at + 5), [
-        'Average: Primary: 2.9, All: 6.0',
-        'Median: Primary: 2, All: 3',
-        '90th Percentile: Primary: 7, All: 20',
-        '99th Percentile: Primary: 7, All: 25',
+        'Average: Tap & Flick: 2.2, All: 6.0',
+        'Median: Tap & Flick: 1, All: 3',
+        '90th Percentile: Tap & Flick: 6, All: 20',
+        '99th Percentile: Tap & Flick: 6, All: 25',
     ])
-    // Only secondary notes: one value, as before.
+    // Tap and Release: Tap's eleven notes over 6 s, all eighteen over 7 s.
+    const tapRelease = copyText(statsOf(handBuilt()), ['tap', 'release'], 'en')
+    assert.ok(tapRelease.includes('Average: Tap: 1.8, All: 2.6'))
+    // Only Tap and Flick: one value, which both share.
+    const tapFlick = copyText(statsOf(handBuilt()), ['tap', 'flick'], 'en')
+    assert.ok(tapFlick.includes('Average: 2.2'))
+    // Tap and Flick not chosen, other notes are: the pair, Tap and Flick's at zero.
+    const release = copyText(statsOf(handBuilt()), ['release'], 'en')
+    assert.ok(release.includes('Average: Tap & Flick: 0.0, All: 2.3'))
+    assert.ok(release.includes('90th Percentile: Tap & Flick: 0, All: 5'))
     const trace = copyText(statsOf(handBuilt()), ['trace'], 'en')
-    assert.ok(trace.some((line) => /^Average: \d+\.\d$/.test(line)))
+    assert.ok(trace.includes('Average: Tap & Flick: 0.0, All: 1.0'))
 })
 
-// --- Primary and All.
+// --- Tap and Flick, and All.
 
 const timesOf = (byCategory: Partial<Record<Category, number[]>>) =>
     Object.fromEntries(
         CATEGORIES.map((category) => [category, Float64Array.from(byCategory[category] ?? [])]),
     ) as Record<Category, Float64Array>
 
-test('Primary is the chosen Tap, Flick and Release; a chosen category with no notes is not present', () => {
-    // Only primary: one set, the same array.
+test('the first set is the chosen Tap and Flick; a chosen category with no notes is not present', () => {
+    // Only Tap and Flick: one set, the same array.
     const primaryOnly = npsSets(timesOf({ tap: [0, 0.25], trace: [3] }), ['tap', 'tick'])
     assert.ok(primaryOnly)
     assert.equal(primaryOnly.primary, primaryOnly.all)
     assert.deepEqual([primaryOnly.hasPrimary, primaryOnly.hasSecondary], [true, false])
     assert.deepEqual(npsFigures(primaryOnly).primary, npsFigures(primaryOnly).all)
-    // Only secondary: Primary's figures are zeros.
+    // No Tap or Flick notes: their figures are zeros.
     const secondaryOnly = npsSets(timesOf({ trace: [0, 10] }), ['tap', 'trace'])
     assert.ok(secondaryOnly)
     const zeros = npsFigures(secondaryOnly)
@@ -649,44 +658,86 @@ test('Primary is the chosen Tap, Flick and Release; a chosen category with no no
     const figures = npsFigures(both)
     assert.deepEqual(figures.primary, rollingFigures(Float64Array.from([0, 0.25])))
     assert.deepEqual(figures.all, rollingFigures(Float64Array.from([0, 0.25, 5])))
+    // Release counts only in All.
+    const release = npsSets(timesOf({ tap: [0, 0.25], release: [5] }), ['tap', 'release'])
+    assert.ok(release)
+    assert.deepEqual([...release.primary], [0, 0.25])
+    assert.deepEqual([release.hasPrimary, release.hasSecondary], [true, true])
+    const releaseOnly = npsSets(timesOf({ release: [0, 10] }), ['tap', 'flick', 'release'])
+    assert.ok(releaseOnly)
+    assert.deepEqual([releaseOnly.hasPrimary, releaseOnly.hasSecondary], [false, true])
     // None.
     assert.equal(npsSets(timesOf({ tap: [1] }), []), undefined)
     assert.equal(npsSets(timesOf({ tap: [1] }), ['flick', 'trace']), undefined)
 })
 
-const enStrings = statisticsStringsOf(en)
+test('Tap and Flick are named by which of them are chosen, and by both when neither is', () => {
+    for (const [chosen, name] of [
+        [['tap', 'flick'], 'Tap & Flick'],
+        [['tap'], 'Tap'],
+        [['flick', 'release'], 'Flick'],
+        [['release', 'trace'], 'Tap & Flick'],
+        [[], 'Tap & Flick'],
+        [[...CATEGORIES], 'Tap & Flick'],
+    ] as const)
+        assert.equal(statisticsStringsOf(en, chosen).primary, name, `${chosen}`)
+    assert.equal(statisticsStringsOf(ja as typeof en, CATEGORIES).primary, 'タップ・フリック')
+    assert.equal(statisticsStringsOf(ja as typeof en, ['flick']).primary, 'フリック')
+})
+
 const rowsOf = (byCategory: Partial<Record<Category, number[]>>, chosen: Category[]) => {
     const sets = npsSets(timesOf(byCategory), chosen)
-    return figureRows(sets && npsFigures(sets), enStrings, 'en')
+    return figureRows(sets && npsFigures(sets), statisticsStringsOf(en, chosen), 'en')
 }
 
-test('a figure shows <primary> (<all>) with both, else one value; its bubble has Primary, and All with secondary notes', () => {
+test('a figure shows <tap and flick> (<all>) with other notes, else one value; its bubble has Tap and Flick, and All with other notes', () => {
     const [average, median] = rowsOf({ tap: [0, 0.25], trace: [5] }, ['tap', 'trace'])
     assert.equal(average?.value, '1.6 (1.3)')
     assert.deepEqual(average?.lines, [
-        { label: 'Primary', value: '1.6' },
+        { label: 'Tap', value: '1.6' },
         { label: 'All', value: '1.3' },
     ])
-    assert.equal(average?.text, 'Average: Primary: 1.6, All: 1.3')
+    assert.equal(average?.text, 'Average: Tap: 1.6, All: 1.3')
     assert.equal(median?.value, '2 (1)')
 
     const [primaryAverage] = rowsOf({ tap: [0, 0.25], trace: [5] }, ['tap'])
     assert.equal(primaryAverage?.value, '1.6')
-    assert.deepEqual(primaryAverage?.lines, [{ label: 'Primary', value: '1.6' }])
+    assert.deepEqual(primaryAverage?.lines, [{ label: 'Tap', value: '1.6' }])
     assert.equal(primaryAverage?.text, 'Average: 1.6')
 
-    // Only secondary: the value is All's, and the bubble shows where it comes from.
+    // Both chosen, only Tap present: the label still names both.
+    const [tapPresent] = rowsOf({ tap: [0, 0.25] }, ['tap', 'flick'])
+    assert.deepEqual(tapPresent?.lines, [{ label: 'Tap & Flick', value: '1.6' }])
+
+    // Tap chosen with no Tap notes, other notes present: the pair, Tap's at zero.
     const [secondaryAverage, secondaryMedian] = rowsOf({ trace: [0, 10] }, ['tap', 'trace'])
-    assert.equal(secondaryAverage?.value, '1.0')
+    assert.equal(secondaryAverage?.value, '0.0 (1.0)')
     assert.deepEqual(secondaryAverage?.lines, [
-        { label: 'Primary', value: '0.0' },
+        { label: 'Tap', value: '0.0' },
         { label: 'All', value: '1.0' },
     ])
-    assert.equal(secondaryAverage?.text, 'Average: 1.0')
+    assert.equal(secondaryAverage?.text, 'Average: Tap: 0.0, All: 1.0')
+    assert.equal(secondaryMedian?.value, '0 (1)')
     assert.deepEqual(secondaryMedian?.lines, [
-        { label: 'Primary', value: '0' },
+        { label: 'Tap', value: '0' },
         { label: 'All', value: '1' },
     ])
+    // Both chosen with neither present: the same, named for both.
+    const [absentAverage] = rowsOf({ trace: [0, 10] }, [...CATEGORIES])
+    assert.equal(absentAverage?.value, '0.0 (1.0)')
+    assert.equal(absentAverage?.text, 'Average: Tap & Flick: 0.0, All: 1.0')
+    // Tap and Flick not chosen, with Tap notes in the chart: the first line names both, at zero.
+    const [releaseAverage] = rowsOf({ tap: [3], release: [0, 10] }, ['release'])
+    assert.equal(releaseAverage?.value, '0.0 (1.0)')
+    assert.deepEqual(releaseAverage?.lines, [
+        { label: 'Tap & Flick', value: '0.0' },
+        { label: 'All', value: '1.0' },
+    ])
+    // Only Tap and Flick notes, everything chosen: one value and one line.
+    const [onlyAverage] = rowsOf({ tap: [0, 0.25], flick: [5] }, [...CATEGORIES])
+    assert.equal(onlyAverage?.value, '1.3')
+    assert.deepEqual(onlyAverage?.lines, [{ label: 'Tap & Flick', value: '1.3' }])
+    assert.equal(onlyAverage?.text, 'Average: 1.3')
 
     // No chosen notes: the labels stay, with no value, bubble or text.
     assert.deepEqual(
@@ -703,13 +754,13 @@ test('a figure shows <primary> (<all>) with both, else one value; its bubble has
     const sets = npsSets(timesOf({ tap: [0, 0.25], trace: [5] }), ['tap', 'trace'])
     const [jaAverage] = figureRows(
         sets && npsFigures(sets),
-        statisticsStringsOf(ja as typeof en),
+        statisticsStringsOf(ja as typeof en, ['tap', 'trace']),
         'ja',
     )
     assert.equal(jaAverage?.value, '1.6（1.3）')
 })
 
-test('Primary can be above All: ten seconds of streams among ninety of lone secondary notes', () => {
+test('Tap and Flick can be above All: ten seconds of streams among ninety of lone other notes', () => {
     const tap = Array.from({ length: 100 }, (_, i) => i / 10)
     const trace = Array.from({ length: 45 }, (_, i) => 12 + i * 2)
     const [, median] = rowsOf({ tap, trace }, ['tap', 'trace'])

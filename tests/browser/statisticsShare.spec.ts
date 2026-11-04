@@ -195,34 +195,56 @@ test('Copy Image is hidden without ClipboardItem; Download Image then fills its 
     await expect(primary(page)).toHaveText(en.statistics.downloadImage)
 })
 
+/** The preview's PNG, once it shows the card for this link. */
+const cardFor = async (page: Page, value: string) => {
+    const before = await preview(page).getAttribute('src')
+    await shareDialog(page).locator('[data-share-link]').fill(value)
+    await expect(preview(page)).not.toHaveAttribute('src', before ?? '')
+    return preview(page).evaluate(async (image) => {
+        const bytes = new Uint8Array(
+            await (await fetch((image as HTMLImageElement).src)).arrayBuffer(),
+        )
+        return Array.from(bytes).join(',')
+    })
+}
+
 test('the card keeps the level as it was when the dialog opened', async ({ page }) => {
     await start(page)
     await openShare(page)
-    const link = shareDialog(page).locator('[data-share-link]')
-    /** The preview's PNG, once it shows the card for this link. */
-    const cardFor = async (value: string) => {
-        const before = await preview(page).getAttribute('src')
-        await link.fill(value)
-        await expect(preview(page)).not.toHaveAttribute('src', before ?? '')
-        return preview(page).evaluate(async (image) => {
-            const bytes = new Uint8Array(
-                await (await fetch((image as HTMLImageElement).src)).arrayBuffer(),
-            )
-            return Array.from(bytes).join(',')
-        })
-    }
-    const first = await cardFor('https://example.com/a')
+    const first = await cardFor(page, 'https://example.com/a')
     // Another state arrives (a peek, a step from a notice) while the dialog is open.
     await page.evaluate(() => {
         const { history } = window.editorTest
         const current = history.state.value
         history.replaceState({ ...current, levelInfo: { ...current.levelInfo, title: 'Other' } })
     })
-    await cardFor('https://example.com/b')
-    expect(await cardFor('https://example.com/a')).toBe(first)
+    await cardFor(page, 'https://example.com/b')
+    expect(await cardFor(page, 'https://example.com/a')).toBe(first)
     const download = page.waitForEvent('download')
     await shareDialog(page).locator('[data-share-download]').click()
     expect((await download).suggestedFilename()).toBe('Brain Rot.png')
+})
+
+test('the card and its text name Tap and Flick as chosen when the dialog opened', async ({
+    page,
+}) => {
+    await start(page)
+    await page.evaluate(() => {
+        window.editorTest.settings.statisticsChartMode = 'distribution'
+    })
+    await openShare(page)
+    // Every category is chosen at first, so the pair names both.
+    await expect(preview(page)).toHaveAttribute(
+        'alt',
+        /\nAverage: Tap & Flick: [\d.]+, All: [\d.]+\n/,
+    )
+    const first = await cardFor(page, 'https://example.com/a')
+    // A choice made while the dialog is open, which would name Flick alone, leaves the card as it was.
+    await page.evaluate(() => {
+        window.editorTest.settings.statisticsCategories = ['flick', 'trace']
+    })
+    await cardFor(page, 'https://example.com/b')
+    expect(await cardFor(page, 'https://example.com/a')).toBe(first)
 })
 
 test('an untitled level downloads as Untitled.png', async ({ page }) => {

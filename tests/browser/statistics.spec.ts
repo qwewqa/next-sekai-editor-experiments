@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 import en from '../../src/i18n/en/index.json' with { type: 'json' }
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
+const CATEGORIES = ['tap', 'flick', 'release', 'trace', 'traceFlick', 'tick', 'damage']
+
 // Statistics: opening it from the toolbar, the list and its normal and critical breakdown, the
 // chart's modes, legend and readout, and Copy Text.
 
@@ -236,15 +238,17 @@ test('on a phone a tap pins the breakdown, a tap on it keeps it, and a tap elsew
 test('the modes and the legend persist, and Reset Settings restores them', async ({ page }) => {
     await start(page)
     await open(page)
-    await expect(entry(page, 'tap').locator('input')).toBeChecked()
-    await expect(entry(page, 'damage').locator('input')).not.toBeChecked()
+    // Every category is chosen at first.
+    for (const category of CATEGORIES)
+        await expect(entry(page, category).locator('input')).toBeChecked()
     const plot = await chart(page).boundingBox()
     // A chart under 10 s has nothing to zoom: the buttons keep their place, hidden.
     await expect(zoomIn(page)).toBeHidden()
     await expect(zoomOut(page)).toBeHidden()
     await entry(page, 'damage').click()
     await dialog(page).locator('[data-statistics-mode-option="bars"]').check({ force: true })
-    await expect(chart(page).locator('rect[data-statistics-layer="damage"]')).toHaveCount(1)
+    await expect(chart(page).locator('rect[data-statistics-layer="trace"]')).toHaveCount(1)
+    await expect(chart(page).locator('rect[data-statistics-layer="damage"]')).toHaveCount(0)
     expect(await chart(page).boundingBox()).toEqual(plot)
     // Distribution: the zoom buttons stay hidden in their place, and neither the mode control nor
     // the plot moves.
@@ -265,12 +269,13 @@ test('the modes and the legend persist, and Reset Settings restores them', async
     await expect(chart(page)).toHaveAttribute('aria-valuenow', max ?? '')
     await expect(chart(page)).toHaveAttribute(
         'aria-valuetext',
-        new RegExp(`^${max}, Primary: [\\d.]+ seconds, All: [\\d.]+ seconds$`),
+        new RegExp(`^${max}, Tap & Flick: [\\d.]+ seconds, All: [\\d.]+ seconds$`),
     )
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toHaveCount(0)
     await open(page)
-    await expect(entry(page, 'damage').locator('input')).toBeChecked()
+    await expect(entry(page, 'damage').locator('input')).not.toBeChecked()
+    await expect(entry(page, 'trace').locator('input')).toBeChecked()
     await expect(dialog(page).locator('[data-statistics-mode-option="distribution"]')).toBeChecked()
     await page.keyboard.press('Escape')
     await page.evaluate(async () => {
@@ -282,7 +287,39 @@ test('the modes and the legend persist, and Reset Settings restores them', async
             window.editorTest.settings.statisticsChartMode,
             window.editorTest.settings.statisticsCategories,
         ]),
-    ).toEqual(['smooth', ['tap', 'flick', 'release']])
+    ).toEqual(['smooth', CATEGORIES])
+})
+
+/** Starts with a selection stored from an earlier visit. */
+const storeCategories = (page: Page, stored: string[]) =>
+    page.addInitScript((stored) => {
+        localStorage.setItem(
+            'sonolus-next-sekai-editor.statisticsCategories',
+            JSON.stringify(stored),
+        )
+    }, stored)
+
+test('a stored selection is kept', async ({ page }) => {
+    await storeCategories(page, ['tap', 'release'])
+    await start(page)
+    await open(page)
+    for (const category of CATEGORIES)
+        await expect(entry(page, category).locator('input')).toBeChecked({
+            checked: category === 'tap' || category === 'release',
+        })
+    // Tap and Release: Tap is named alone, beside All.
+    const average = dialog(page).locator('[data-statistics-figure="average"] button')
+    await expect(average).toHaveText('1.0 (1.0)')
+    await expect(average).toHaveAccessibleDescription('Tap: 1.0, All: 1.0')
+})
+
+test('a stored empty selection stays empty', async ({ page }) => {
+    await storeCategories(page, [])
+    await start(page)
+    await open(page)
+    for (const category of CATEGORIES)
+        await expect(entry(page, category).locator('input')).not.toBeChecked()
+    await expect(dialog(page).locator('[data-statistics-empty]')).toHaveText(en.statistics.noNotes)
 })
 
 test('every entry off leaves the frame, blank figures and the plot out of the Tab order', async ({
@@ -290,7 +327,7 @@ test('every entry off leaves the frame, blank figures and the plot out of the Ta
 }) => {
     await start(page)
     await open(page)
-    for (const category of ['tap', 'flick', 'release']) await entry(page, category).click()
+    for (const category of CATEGORIES) await entry(page, category).click()
     await expect(dialog(page).locator('[data-statistics-empty]')).toHaveText(en.statistics.noNotes)
     await expect(chart(page)).toHaveAttribute('tabindex', '-1')
     await expect(dialog(page).locator('[data-statistics-figures] dd').first()).toBeHidden()
@@ -301,19 +338,21 @@ test('every entry off leaves the frame, blank figures and the plot out of the Ta
     await expect(dialog(page).locator('[data-statistics-figures]')).toContainText('1.0')
 })
 
-test('Average shows <primary> (<all>), its bubble is shared with the critical rows, and the status line spells it out', async ({
+test('Average shows <tap and flick> (<all>), its bubble is shared with the critical rows, and the status line spells it out', async ({
     page,
 }) => {
     await start(page)
     await open(page)
     const figure = (name: string) => dialog(page).locator(`[data-statistics-figure="${name}"]`)
     const average = figure('average').locator('button')
-    // Only primary notes: one value, and a one-line bubble.
-    await expect(average).toHaveText(/^\d+\.\d$/)
-    const primary = (await average.textContent()) ?? ''
-    await expect(average).toHaveAccessibleDescription(`Primary: ${primary}`)
+    // Only Tap and Flick, with Trace Flick chosen but absent: one value, and a one-line bubble.
+    for (const category of ['release', 'trace', 'tick', 'damage'])
+        await entry(page, category).click()
+    await expect(average).toHaveText('1.3')
+    const primary = '1.3'
+    await expect(average).toHaveAccessibleDescription(`Tap & Flick: ${primary}`)
 
-    // Trace adds a secondary note: the pair, spelled out on the status line.
+    // Trace adds another note: the pair, spelled out on the status line.
     await entry(page, 'trace').click()
     await expect(average).toHaveText(
         new RegExp(`^${primary.replace('.', '\\.')} \\(\\d+\\.\\d\\)$`),
@@ -322,7 +361,7 @@ test('Average shows <primary> (<all>), its bubble is shared with the critical ro
     await expect(
         dialog(page)
             .getByRole('status')
-            .filter({ hasText: `Average: Primary: ${primary}, All: ${all}` }),
+            .filter({ hasText: `Average: Tap & Flick: ${primary}, All: ${all}` }),
     ).toHaveCount(1)
 
     // One bubble across the count rows and the figures: hover hands it over, Escape closes it.
@@ -332,12 +371,25 @@ test('Average shows <primary> (<all>), its bubble is shared with the critical ro
     await expect(average).toHaveAttribute('aria-expanded', 'true')
     await expect(row(page, 'tap').locator('button')).toHaveAttribute('aria-expanded', 'false')
     await expect(bubble(page)).toHaveCount(1)
-    await expect(bubble(page).locator('dt')).toHaveText(['Primary', 'All'])
+    await expect(bubble(page).locator('dt')).toHaveText(['Tap & Flick', 'All'])
     await expect(bubble(page).locator('dd')).toHaveText([primary, all])
     await average.click()
     await page.keyboard.press('Escape')
     await expect(bubble(page)).toHaveCount(0)
     await expect(dialog(page)).toBeVisible()
+
+    // The name follows the choice: Tap alone, then Flick alone.
+    await entry(page, 'flick').click()
+    await expect(
+        dialog(page).getByRole('status').filter({ hasText: 'Average: Tap: 1.0, All: 1.1' }),
+    ).toHaveCount(1)
+    await entry(page, 'tap').click()
+    await entry(page, 'flick').click()
+    await expect(average).toHaveAccessibleDescription('Flick: 1.0, All: 1.6')
+    // Release alone: the pair, Tap and Flick named together at zero.
+    for (const category of ['flick', 'trace', 'release']) await entry(page, category).click()
+    await expect(average).toHaveText('0.0 (1.0)')
+    await expect(average).toHaveAccessibleDescription('Tap & Flick: 0.0, All: 1.0')
 })
 
 test('the readout follows the mouse on the label line, and the plot stays in place', async ({
@@ -412,7 +464,7 @@ test('keyboard focus starts the readout at the start, the arrows move it, and Ta
     // Beside the plot the legend reads from the top of the stack.
     await expect(entry(page, 'damage').locator('input')).toBeFocused()
     await page.keyboard.press('Space')
-    await expect(entry(page, 'damage').locator('input')).toBeChecked()
+    await expect(entry(page, 'damage').locator('input')).not.toBeChecked()
     await expect(entry(page, 'damage').locator('input')).toBeFocused()
 })
 
@@ -693,11 +745,11 @@ const copyLines = [
     'Damage Note: 1',
     'Damage Tick: 0',
     'Fake Note: 1',
-    'Notes per Second: Tap, Flick, Release',
-    'Average: 1.5',
-    'Median: 1',
-    '90th Percentile: 2',
-    '99th Percentile: 2',
+    'Notes per Second: Tap, Flick, Release, Trace, Trace Flick, Tick, Damage',
+    'Average: Tap & Flick: 1.3, All: 3.2',
+    'Median: Tap & Flick: 1, All: 2',
+    '90th Percentile: Tap & Flick: 2, All: 6',
+    '99th Percentile: Tap & Flick: 2, All: 6',
     'First Combo Note: 00:00.000',
     'Last Combo Note: 00:01.500',
     'Last Note: 00:02.000',

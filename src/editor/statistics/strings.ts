@@ -1,8 +1,24 @@
 import type en from '../../i18n/en/index.json'
 import type { Category, Row, StatisticsStrings } from '../../levelData/statistics'
+import { fill } from '../../utils/interpolate'
 
-/** The names and messages the dialog, Copy Text and the share card share, from a locale's messages. */
-export const statisticsStringsOf = (t: typeof en): StatisticsStrings => {
+/** Tap and Flick's name: the chosen one of the two, else both joined. */
+export const tapAndFlickName = (t: typeof en, chosen: readonly Category[]) => {
+    const { normalTap, normalFlick } = t.modals.form.sfx
+    const tap = chosen.includes('tap')
+    const flick = chosen.includes('flick')
+    if (tap !== flick) return tap ? normalTap : normalFlick
+    return fill(t.statistics.tapAndFlick, [normalTap, normalFlick])
+}
+
+/**
+ * The names and messages the dialog, Copy Text and the share card share, from a locale's messages
+ * and the chosen categories.
+ */
+export const statisticsStringsOf = (
+    t: typeof en,
+    chosen: readonly Category[],
+): StatisticsStrings => {
     const { statistics, modals } = t
     const sfx = modals.form.sfx
     const names = {
@@ -32,7 +48,7 @@ export const statisticsStringsOf = (t: typeof en): StatisticsStrings => {
         median: statistics.median,
         p90: statistics.p90,
         p99: statistics.p99,
-        primary: statistics.primary,
+        primary: tapAndFlickName(t, chosen),
         all: statistics.all,
         withAll: statistics.withAll,
         firstComboNote: statistics.firstComboNote,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The distribution's key: Primary's line and All's area, as the plot draws them.
+// The distribution's key: Tap and Flick's line and All's area, as the plot draws them.
 
 defineProps<{ primary: string; all: string }>()
 </script>

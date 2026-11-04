@@ -27,7 +27,7 @@ import { isCoarsePointer } from '../workspace'
 import { rowShapes } from './marks'
 import { drawCard, type CardTheme, type Rgb } from './shareCard'
 import { settings } from '../../settings'
-import { statisticsStrings } from './text'
+import { statisticsStringsOf } from './strings'
 
 // Share Image: the card as a PNG for a Link value, previewed as the PNG itself, then copied,
 // shared or downloaded. A press takes the card for Link as it is at that moment. The card is drawn
@@ -174,7 +174,7 @@ const render = (value: string) =>
                     fontFamily: getComputedStyle(document.body).fontFamily,
                     locale: settings.locale,
                     strings: {
-                        ...statisticsStrings.value,
+                        ...statisticsStringsOf(i18n.value, props.chosen),
                         untitled: i18n.value.save.placeholder,
                         author: i18n.value.historyChanges.fields.author,
                         rating: i18n.value.historyChanges.fields.rating,

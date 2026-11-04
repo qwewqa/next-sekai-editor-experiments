@@ -117,6 +117,7 @@ const stats = statsOf({
     damage: [6],
 })
 
+// The card names Tap and Flick from its own chosen categories, as the share dialog passes them.
 const input = (overrides: Partial<CardInput> = {}): CardInput => ({
     info: { title: 'Level', artists: 'Artist', author: 'Author Name', rating: 29 },
     link: '',
@@ -137,7 +138,7 @@ const input = (overrides: Partial<CardInput> = {}): CardInput => ({
     fontFamily: 'sans-serif',
     locale: 'en',
     strings: {
-        ...statisticsStringsOf(en),
+        ...statisticsStringsOf(en, overrides.chosen ?? ['tap', 'flick', 'release']),
         rows: Object.fromEntries(
             ROWS.map((row) => [row, `Row ${row}`]),
         ) as CardInput['strings']['rows'],
@@ -346,6 +347,23 @@ test("Average and Median end at the right edge of the footer, on the heading's l
     assert.equal(averageLabel?.font, '400 13.5px sans-serif')
 })
 
+test('with no Tap or Flick notes chosen, Average and Median pair a zero with All', () => {
+    const chosen: Category[] = ['trace', 'tick']
+    const figures = figuresOf(chosen)
+    assert.ok(figures && !figures.hasPrimary)
+    const [medianValue, , averageValue] = figureCalls(draw({ chosen, figures }))
+    assert.equal(averageValue?.args[0], `0.0 (${figures.all.average.toFixed(1)})`)
+    assert.equal(medianValue?.args[0], `0 (${figures.all.median})`)
+    // Only Tap and Flick: one value each.
+    const only = figuresOf(['tap', 'flick'])
+    assert.ok(only)
+    const [onlyMedian, , onlyAverage] = figureCalls(
+        draw({ chosen: ['tap', 'flick'], figures: only }),
+    )
+    assert.equal(onlyAverage?.args[0], only.all.average.toFixed(1))
+    assert.equal(onlyMedian?.args[0], String(only.all.median))
+})
+
 test('each figure value has its trailing bearing trimmed, so the group and its gap run by ink', () => {
     const figures = figuresOf(mixed)
     const xs = (calls: Call[]) => figureCalls(calls).map(xOf)
@@ -417,8 +435,8 @@ test('the figures take no plot height', () => {
 const labelY = (calls: Call[], text: string) => textCall(calls, text)?.args[2] as number
 
 test('the distribution titles its counts, and the title takes 18 units from the plot', () => {
-    const timeline = draw({ mode: 'rolling', chosen: ['tap', 'flick'] })
-    const distribution = draw({ mode: 'distribution', chosen: ['tap', 'flick'] })
+    const timeline = draw({ mode: 'rolling', chosen: ['tap', 'release'] })
+    const distribution = draw({ mode: 'distribution', chosen: ['tap', 'release'] })
     const titles = distribution.filter(
         (call) => call.name === 'fillText' && call.args[0] === 'Notes per Second',
     )
@@ -428,16 +446,16 @@ test('the distribution titles its counts, and the title takes 18 units from the 
     assert.equal(titles[1]?.args[2], labelY(distribution, '0') + 18)
     assert.equal(labelY(timeline, '00:00') - labelY(distribution, '0'), 18)
     // The categories are muted names, with no swatches.
-    for (const category of ['tap', 'flick'])
+    for (const category of ['tap', 'release'])
         assert.equal(textCall(distribution, `Key ${category}`)?.fillStyle, 'rgb(68 68 102 / 0.8)')
     assert.equal(fills(distribution, chartCategoryColors.tap).length, 0)
 })
 
-test('the series key names Primary and All with two series, just above the categories, and fits its names', () => {
-    const strings = { ...input().strings, all: 'Every Single Note Chosen' }
+test('the series key names Tap & Flick and All with two series, just above the categories, and fits its names', () => {
+    const strings = { ...input({ chosen: mixed }).strings, all: 'Every Single Note Chosen' }
     const two = draw({ mode: 'distribution', chosen: mixed, strings })
     const all = textCall(two, 'Every Single Note Chosen')
-    const primary = textCall(two, 'Primary')
+    const primary = textCall(two, 'Tap & Flick')
     const top = textCall(two, 'Key trace')
     assert.ok(all && primary && top)
     assert.equal(top.args[2] as number, (all.args[2] as number) + 30)
@@ -468,11 +486,11 @@ test("eight entries narrow the key's pitch so the top one stays 8 below the plot
         link: 'https://example.com/'.repeat(8),
     })
     const plotTop = calls.find((call) => call.name === 'translate')?.args[1] as number
-    const primary = textCall(calls, 'Primary')
+    const primary = textCall(calls, 'Tap & Flick')
     assert.ok(primary)
     assert.ok((primary.args[2] as number) >= plotTop + 8 - 1e-9)
     const listed = CATEGORIES.filter((category) => category !== 'release')
-    const ys = [...listed.map((category) => `Key ${category}`), 'All', 'Primary'].map(
+    const ys = [...listed.map((category) => `Key ${category}`), 'All', 'Tap & Flick'].map(
         (text) => textCall(calls, text)?.args[2] as number,
     )
     for (let i = 1; i < ys.length; i++) assert.ok(ys[i - 1]! - ys[i]! >= 16 - 1e-9, `${i}`)
@@ -485,12 +503,19 @@ test('the card lists the categories unless an ink chart already says which are c
         // Chosen, then whether Rolling and the distribution list them.
         [[...CATEGORIES], false, false],
         [['tap', 'flick', 'release', 'trace', 'tick'], false, false],
-        [['tap', 'flick', 'release', 'traceFlick', 'damage'], true, false],
-        [['tap', 'flick', 'release'], true, false],
-        [['tap', 'flick'], true, true],
+        [['tap', 'flick', 'release', 'traceFlick', 'damage'], true, true],
+        [['tap', 'flick', 'release'], true, true],
+        [['tap', 'release'], true, true],
+        [['release'], true, true],
+        // Only Tap and Flick: the series key names them.
+        [['tap', 'flick'], true, false],
+        [['tap', 'flick', 'traceFlick', 'damage'], true, false],
+        [['tap'], true, false],
+        [['flick'], true, false],
         [['trace', 'tick'], true, true],
         [['tap', 'trace', 'tick'], true, true],
         [[], true, true],
+        [['traceFlick', 'damage'], true, true],
     ]
     for (const [chosen, rolling, distribution] of cases) {
         assert.equal(listsCategories('rolling', present, chosen), rolling, `rolling ${chosen}`)
@@ -502,23 +527,28 @@ test('the card lists the categories unless an ink chart already says which are c
         for (const mode of ['smooth', 'bars'] as const)
             assert.ok(listsCategories(mode, present, chosen), `${mode} ${chosen}`)
     }
-    // A chart of primary notes alone: every one chosen is also exactly the primary ones.
-    const primaryOnly = statsOf({ tap: [1], flick: [2] }).times
-    assert.equal(listsCategories('distribution', primaryOnly, ['tap', 'flick']), false)
-    assert.equal(listsCategories('rolling', primaryOnly, ['tap']), true)
+    // A chart of Tap and Flick alone.
+    const tapFlick = statsOf({ tap: [1], flick: [2] }).times
+    assert.equal(listsCategories('distribution', tapFlick, ['tap', 'flick']), false)
+    assert.equal(listsCategories('distribution', tapFlick, ['flick']), false)
+    assert.equal(listsCategories('rolling', tapFlick, ['tap']), true)
 })
 
-test('one series is named by itself: Primary for primary notes alone, else All', () => {
+test('one series is named by itself: by the chosen of Tap and Flick for their notes alone, else All', () => {
     for (const [chosen, name, listed] of [
-        [['tap', 'flick'], 'Primary', true],
-        // Exactly the primary categories with notes: the key says it, with no list.
-        [['tap', 'flick', 'release'], 'Primary', false],
+        // Only Tap and Flick: the key says it, with no list.
+        [['tap', 'flick'], 'Tap & Flick', false],
+        [['tap'], 'Tap', false],
+        [['flick'], 'Flick', false],
+        // Trace Flick has no notes: the series is still Tap and Flick's.
+        [['tap', 'flick', 'traceFlick'], 'Tap & Flick', false],
         [['trace', 'tick'], 'All', true],
+        [['release'], 'All', true],
     ] as const) {
         const calls = draw({ mode: 'distribution', chosen: [...chosen] })
-        const other = name === 'Primary' ? 'All' : 'Primary'
         assert.ok(textCall(calls, name), `${chosen}`)
-        assert.ok(!textCall(calls, other), `${chosen}`)
+        for (const other of ['All', 'Tap & Flick', 'Tap', 'Flick'].filter((each) => each !== name))
+            assert.ok(!textCall(calls, other), `${chosen} ${other}`)
         assert.equal(
             texts(calls).some((text) => text.startsWith('Key ')),
             listed,
@@ -528,7 +558,7 @@ test('one series is named by itself: Primary for primary notes alone, else All',
         const y = textCall(calls, name)?.args[2] as number
         assert.ok(calls.some((call) => call.name === 'lineTo' && call.args[1] === y))
     }
-    // With no primary notes in the chart, every category chosen is still All.
+    // With no Tap or Flick notes in the chart, every category chosen is still All.
     const secondary = statsOf({ trace: [1, 1.5], tick: [2] })
     const calls = draw({
         mode: 'distribution',
@@ -536,7 +566,7 @@ test('one series is named by itself: Primary for primary notes alone, else All',
         every: mergeTimes(CATEGORIES.map((category) => secondary.times[category])).times,
         chosen: [...CATEGORIES],
     })
-    assert.ok(textCall(calls, 'All') && !textCall(calls, 'Primary'))
+    assert.ok(textCall(calls, 'All') && !textCall(calls, 'Tap & Flick'))
 })
 
 test('without the list the plot takes its column, and a lone series key sits at the baseline', () => {
@@ -557,9 +587,9 @@ test('without the list the plot takes its column, and a lone series key sits at 
     assert.ok(!texts(two).some((text) => text.startsWith('Key ')))
     const plotTop = two.find((call) => call.name === 'translate')?.args[1] as number
     const all = textCall(two, 'All')
-    const primary = textCall(two, 'Primary')
+    const primary = textCall(two, 'Tap & Flick')
     assert.ok(all && primary)
-    assert.equal(xOf(all) + widthOf('Primary', 13.5), 784)
+    assert.equal(xOf(all) + widthOf('Tap & Flick', 13.5), 784)
     assert.equal(primary.args[2] as number, (all.args[2] as number) - 20)
     assert.ok((all.args[2] as number) > plotTop)
 })

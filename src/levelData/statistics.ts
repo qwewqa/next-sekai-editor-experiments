@@ -23,7 +23,7 @@ export { CATEGORIES, ROWS, type Category, type Row } from './scoring'
 
 const CRITICAL_ROWS: readonly Row[] = ['tap', 'flick', 'release', 'trace', 'traceFlick', 'tick']
 
-export const DEFAULT_CATEGORIES: readonly Category[] = ['tap', 'flick', 'release']
+export const DEFAULT_CATEGORIES: readonly Category[] = CATEGORIES
 
 export type ChartStatistics = {
     counts: Record<Row, number>
@@ -227,13 +227,13 @@ export const rollingFigures = (times: Times): Figures | undefined => {
     return durations && figuresOf(durations, times.length)
 }
 
-/** Tap, Flick and Release. The other categories are secondary. */
-export const PRIMARY_CATEGORIES: readonly Category[] = ['tap', 'flick', 'release']
+/** Tap and Flick. The other categories count only in All. */
+export const PRIMARY_CATEGORIES: readonly Category[] = ['tap', 'flick']
 
-/** The chosen notes merged (All), and the chosen primary ones (Primary). */
+/** The chosen notes merged (All), and the chosen Tap and Flick notes. */
 export type NpsSets = {
     all: Float64Array
-    /** The same array as `all` when no chosen secondary category has notes. */
+    /** The same array as `all` when no chosen category besides Tap and Flick has notes. */
     primary: Float64Array
     hasPrimary: boolean
     hasSecondary: boolean
@@ -259,7 +259,7 @@ export const npsSets = (
     return { all, primary, hasPrimary, hasSecondary }
 }
 
-/** The durations of All and of Primary; Primary's are undefined when it has no notes. */
+/** The durations of All and of Tap and Flick; the latter are undefined with no such notes. */
 export type NpsDurations = { all: Durations; primary: Durations | undefined }
 
 export const npsDurations = ({ all, primary }: NpsSets): NpsDurations | undefined => {
@@ -271,7 +271,7 @@ export const npsDurations = ({ all, primary }: NpsSets): NpsDurations | undefine
     }
 }
 
-/** The four figures over All and over Primary; Primary's are zeros when it has no notes. */
+/** The four figures over All and over Tap and Flick; the latter are zeros with no such notes. */
 export type NpsFigures = {
     all: Figures
     primary: Figures
@@ -833,9 +833,10 @@ export type StatisticsStrings = {
     median: string
     p90: string
     p99: string
+    /** The chosen ones of Tap and Flick, joined: "Tap & Flick" when both or neither are chosen. */
     primary: string
     all: string
-    /** "{0} ({1})": Primary's figure, then All's. */
+    /** "{0} ({1})": Tap and Flick's figure, then All's. */
     withAll: string
     firstComboNote: string
     lastComboNote: string
@@ -855,15 +856,16 @@ export type TextRow = { label: string; value: string }
 
 export type FigureRow = TextRow & {
     key: keyof Figures
-    /** The bubble's lines: Primary, then All when chosen secondary notes exist. */
+    /** The bubble's lines: Tap and Flick, then All when chosen notes of another category exist. */
     lines?: TextRow[]
     /** The row as Copy Text and the status line give it, the pair spelled out. */
     text?: string
 }
 
 /**
- * The four figures' rows: "<primary> (<all>)" when both have notes, else All alone. With no
- * figures, their values are empty and the labels stay.
+ * The four figures' rows: "<tap and flick> (<all>)" when chosen notes of other categories exist,
+ * Tap and Flick's at zero when they have none; else one value, which both share. With no figures,
+ * their values are empty and the labels stay.
  */
 export const figureRows = (
     figures: NpsFigures | undefined,
@@ -878,9 +880,9 @@ export const figureRows = (
         const primary = format(figures.primary)
         const all = format(figures.all)
         const line = (row: TextRow) => fill(strings.textLine, [row.label, row.value], locale)
+        const pair = figures.hasSecondary
         const lines = [{ label: strings.primary, value: primary }]
-        if (figures.hasSecondary) lines.push({ label: strings.all, value: all })
-        const pair = figures.hasPrimary && figures.hasSecondary
+        if (pair) lines.push({ label: strings.all, value: all })
         return {
             key,
             label,

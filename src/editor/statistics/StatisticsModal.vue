@@ -67,7 +67,7 @@ const durations = computed(() => sets.value && npsDurations(sets.value))
 const figures = computed(() =>
     drawable.value && sets.value ? npsFigures(sets.value, durations.value) : undefined,
 )
-// The distribution's series: Primary and All when both have notes, as the figures pair them.
+// The distribution's series: Tap and Flick, and All, when both have notes; else one.
 const series = computed(() => {
     const each = durations.value
     if (!drawable.value || !sets.value || !each) return undefined
@@ -111,7 +111,7 @@ const figureItems = computed(() =>
 
 const times = computed(() => timeRows(stats.value, bgmEnd.value, strings.value))
 
-// --- The bubble: one for the count rows' breakdowns and the figures' Primary and All.
+// --- The bubble: one for the count rows' breakdowns and the figures' Tap and Flick, and All.
 const bubbleId = useId()
 const idBase = useId()
 const bubble = useTemplateRef<HTMLElement>('bubble')
@@ -661,7 +661,7 @@ const share = () => {
 .stats-fc-only {
     display: none;
 }
-/* The distribution's All: a flat area behind Primary's line, with an edge along its top. */
+/* The distribution's All: a flat area behind Tap and Flick's line, with an edge along its top. */
 .stats-all-fill {
     fill: rgb(var(--color-fg) / 0.16);
 }

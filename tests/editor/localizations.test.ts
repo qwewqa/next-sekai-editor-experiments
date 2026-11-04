@@ -311,11 +311,12 @@ const identicalToEnglish: Record<string, string[]> = {
         'settings.preview.position.title',
         'settings.preview.transport.auto',
         'sidebars.view.division',
-        // French spells Combo and Normal the same; the span and the Primary (All) pair are bare
-        // patterns.
+        // French spells Combo and Normal the same; the span, the figure pair and the Tap & Flick
+        // join are bare patterns.
         'statistics.combo',
         'statistics.normal',
         'statistics.span',
+        'statistics.tapAndFlick',
         'statistics.withAll',
         'tools.bpm.title',
         'tools.brush.kinds.note',
@@ -406,7 +407,7 @@ const identicalToEnglish: Record<string, string[]> = {
         // "BGM" as in its other BGM strings.
         // "BGM", as in its other strings.
         'settings.editor.waveformVisualization.fft',
-        // The Primary (All) pair is a bare pattern, with ASCII parentheses as in withCritical.
+        // The figure pair is a bare pattern, with ASCII parentheses as in withCritical.
         'statistics.withAll',
         'tools.bpm.title',
         'workspace.folders.path',
@@ -455,7 +456,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.sentenceJoin',
         // "BGM", as in its other strings.
         'settings.editor.waveformVisualization.fft',
-        // Turkish spells Normal the same; the span and the Primary (All) pair are bare patterns.
+        // Turkish spells Normal the same; the span and the figure pair are bare patterns.
         'statistics.normal',
         'statistics.span',
         'statistics.withAll',

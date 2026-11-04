@@ -54,6 +54,7 @@ import {
 } from './drawing'
 import { chartCategoryColors } from './marks'
 import SeriesKey from './SeriesKey.vue'
+import { tapAndFlickName } from './strings'
 import { statisticsStrings } from './text'
 import {
     clampView,
@@ -85,7 +86,7 @@ const props = defineProps<{
     bpms: BpmIntegral[]
     /** The figures, for the line a legend toggle announces. */
     figures: NpsFigures | undefined
-    /** The distribution's series: Primary then All when both have notes, else the chosen notes. */
+    /** The distribution's series: Tap and Flick then All when both have notes, else the chosen. */
     series: Durations[] | undefined
     /** False at absurd BPMs: the plot stays empty. */
     drawable: boolean
@@ -846,7 +847,8 @@ const probeText = computed(() => {
     }
 })
 // The distribution's widest: every category's active time bounds any one count's, and 0.09 s is
-// the widest short form; the pair and the key whenever the chart has both kinds of notes.
+// the widest short form; the pair and the key whenever the chart has both kinds of notes, the key
+// with both names, which is longer than either alone.
 const everyActive = computed(() =>
     props.drawable ? (rollingDurations(props.every)?.active ?? 0) / 1000 : 0,
 )
@@ -866,6 +868,7 @@ const countProbeText = computed(() => {
         value: formatCount(top.value, locale.value),
         seconds: both ? fill(strings.value.withAll, [seconds, seconds], locale.value) : seconds,
         key: both,
+        primary: tapAndFlickName(i18n.value, PRIMARY_CATEGORIES),
     }
 })
 const fitLabelLine = async () => {
@@ -1105,7 +1108,7 @@ const color = (category: Category) => chartCategoryColors[category]
                 </span>
                 <SeriesKey
                     v-if="countProbeText.key"
-                    :primary="strings.primary"
+                    :primary="countProbeText.primary"
                     :all="strings.all"
                 />
             </span>

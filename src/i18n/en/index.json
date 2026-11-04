@@ -2664,7 +2664,7 @@
         "median": "Median",
         "p90": "90th Percentile",
         "p99": "99th Percentile",
-        "primary": "Primary",
+        "tapAndFlick": "{0} & {1}",
         "all": "All",
         "withAll": "{0} ({1})",
         "at": "{0} at {1}",
