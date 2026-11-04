@@ -97,7 +97,7 @@ A service’s template can create roles with any permissions: `nse-<service>-cfn
 | Budget                             | `AWS::Budgets::Budget`                      | $0                         | “You can monitor and receive notifications on your budgets free of charge” (https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/) |
 | Access Analyzer                    | `AWS::AccessAnalyzer::Analyzer`             | $0                         | External access analysis is free; only unused and internal access analysis is charged (https://aws.amazon.com/iam/access-analyzer/pricing/)  |
 
-Each environment’s zone costs $0.50 a month. For `nse-dev` that is the whole cost while stats is down. The baseline adds nothing to a service’s own cost table. The budgets are $30 for prod and $1 for dev. Each sends an email at 80% of actual cost and at 100% of forecast cost.
+Each environment’s zone costs $0.50 a month. For `nse-dev` that is $0.50 plus about $0.11 for the asset store (see Cost in `assets/README.md`) while stats is down. The baseline adds nothing to a service’s own cost table. The budgets are $30 for prod and $1 for dev. Each sends an email at 80% of actual cost and at 100% of forecast cost.
 
 **Cost per service** is in Cost Explorer, grouped by the `nse:service` tag, once the tags are activated (Set-up, step 6).
 

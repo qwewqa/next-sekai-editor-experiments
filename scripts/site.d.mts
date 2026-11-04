@@ -6,4 +6,4 @@ export function applyTestSite(html: string): string
 
 export function isTestSitePage(html: string): boolean
 
-export const storeSites: Record<'production' | 'test', { prefix: string; days: number }>
+export const storeSites: Record<'test', { prefix: string; days: number }>

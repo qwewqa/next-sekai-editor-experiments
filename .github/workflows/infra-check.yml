@@ -39,7 +39,7 @@ jobs:
               with:
                   enable-cache: false
             - run: uv run --with cfn-lint==1.58.0 cfn-lint infra/account/account.yaml infra/stats/stats.yaml infra/assets/assets.yaml
-            # Our rules: tags, ports, the reviewed resource types and their cost notes, the pinned cost settings, the deploy roles' trust and delete rules, and no stack deletion outside dev-down.
+            # Our rules: tags, ports, the reviewed resource types and their cost notes, the pinned cost settings, the deploy roles' trust and delete rules, the asset store’s bucket (no public access, encrypted, TLS only, no overwrite of a stored file) and its deploy role (trust limited to the GitHub provider, repository and ref; list, get, put and delete only, within the site’s prefix), and no stack deletion outside dev-down.
             - run: uv run infra/check_templates.py
             - run: shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.sh
 
