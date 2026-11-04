@@ -498,7 +498,8 @@ for (const scheme of schemes) {
 }
 
 /** The 1 px inset edge in a computed `box-shadow`: its colour, or undefined when there is none. */
-const insetEdge = (shadow: string) => /(rgba?\([^)]*\)) 0px 0px 0px 1px inset/.exec(shadow)?.[1]
+const insetEdge = (shadow: string) =>
+    /((?:rgba?|oklab|oklch|lab|lch|color)\([^)]*\)) 0px 0px 0px 1px inset/.exec(shadow)?.[1]
 
 for (const scheme of schemes) {
     test(`the current row (${scheme}): it carries a 1 px inset edge, under the focus outline, and moves nothing`, async ({

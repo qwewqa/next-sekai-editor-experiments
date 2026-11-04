@@ -125,15 +125,19 @@ test('dialog backdrops get theme colours without inheriting them, as older brows
         >('/src/editor/commands/settings/index.ts')
         settings.execute()
     })
+    // The backdrop's colour as painted, in RGBA bytes (the computed value may be in any colour space).
     const backdrop = () =>
         page.locator('dialog').evaluate((dialog) => {
             // What a browser that doesn't pass custom properties into ::backdrop would see.
             dialog.style.setProperty('--color-scrim', 'initial')
-            return getComputedStyle(dialog, '::backdrop').backgroundColor
+            const context = document.createElement('canvas').getContext('2d')!
+            context.fillStyle = getComputedStyle(dialog, '::backdrop').backgroundColor
+            context.fillRect(0, 0, 1, 1)
+            return [...context.getImageData(0, 0, 1, 1).data]
         })
-    expect(await backdrop()).toBe('rgba(64, 68, 100, 0.75)')
+    expect(await backdrop()).toEqual([64, 68, 100, 191])
     await page.evaluate(() => (window.editorTest.settings.theme = 'dark'))
-    expect(await backdrop()).toBe('rgba(16, 17, 32, 0.75)')
+    expect(await backdrop()).toEqual([16, 17, 32, 191])
 })
 
 for (const forcedColors of ['none', 'active'] as const) {

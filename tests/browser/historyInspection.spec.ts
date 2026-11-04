@@ -849,7 +849,8 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
                 element.getBoundingClientRect().y + 16,
             )
             return {
-                radius: style.borderRadius,
+                // rounded-full is a radius far larger than the box.
+                radius: parseFloat(style.borderRadius) >= 9999 ? 'full' : style.borderRadius,
                 padding: style.paddingLeft,
                 font: style.fontSize,
                 background: style.backgroundColor,
@@ -872,7 +873,7 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
         })
         expect(styles).toMatchObject({
             // rounded-full: a pill, the 16 px half-height of the 32 px capsule.
-            radius: '9999px',
+            radius: 'full',
             padding: '4px',
             font: '12px',
             glyph: 12,

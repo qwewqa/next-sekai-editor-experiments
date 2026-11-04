@@ -55,7 +55,7 @@ onBeforeUnmount(() => {
 
     100% {
         color: rgb(255 255 255 / 0.25);
-        background-color: color-mix(in srgb, var(--color-accent) 0%, transparent);
+        background-color: transparent;
     }
 }
 </style>
