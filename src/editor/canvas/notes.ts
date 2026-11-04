@@ -63,20 +63,7 @@ const roundedRect = (ctx: WebGLDrawContext, x: number, y: number, w: number, h: 
     if (w <= 0) return
     const rx = Math.min(0.1, w / 2)
     const ry = Math.min(0.1, h / 2)
-    if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(x, y, w, h, { x: rx, y: ry })
-        return
-    }
-    ctx.moveTo(x + rx, y)
-    ctx.lineTo(x + w - rx, y)
-    ctx.ellipse(x + w - rx, y + ry, rx, ry, 0, -Math.PI / 2, 0)
-    ctx.lineTo(x + w, y + h - ry)
-    ctx.ellipse(x + w - rx, y + h - ry, rx, ry, 0, 0, Math.PI / 2)
-    ctx.lineTo(x + rx, y + h)
-    ctx.ellipse(x + rx, y + h - ry, rx, ry, 0, Math.PI / 2, Math.PI)
-    ctx.lineTo(x, y + ry)
-    ctx.ellipse(x + rx, y + ry, rx, ry, 0, Math.PI, Math.PI * 1.5)
-    ctx.closePath()
+    ctx.roundRect(x, y, w, h, { x: rx, y: ry })
 }
 
 const artworkColors = (entity: NoteEntity, type: NoteVisualType) => {

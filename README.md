@@ -75,8 +75,7 @@ Safari 16 and iOS 16. When updating Vite, keep these targets set explicitly in t
 Vite configuration. Vite’s [default build targets](https://v8.vite.dev/config/build-options)
 can change between major releases.
 
-For other browser APIs, the editor uses feature detection or fallbacks. Notes are drawn
-without `roundRect` when it is unavailable.
+For other browser APIs, the editor uses feature detection or fallbacks.
 
 ```sh
 npx playwright install firefox webkit

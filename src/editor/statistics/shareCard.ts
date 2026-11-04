@@ -120,7 +120,7 @@ const wrap = (
     return kept
 }
 
-/** A rounded rectangle path: `roundRect` where it exists, else four arcs (Firefox before 112). */
+/** A new path of one rounded rectangle. */
 const roundRect = (
     g: CanvasRenderingContext2D,
     x: number,
@@ -130,17 +130,7 @@ const roundRect = (
     radius: number,
 ) => {
     g.beginPath()
-    if (typeof g.roundRect === 'function') {
-        g.roundRect(x, y, width, height, radius)
-        return
-    }
-    const r = Math.max(0, Math.min(radius, width / 2, height / 2))
-    g.moveTo(x + r, y)
-    g.arcTo(x + width, y, x + width, y + height, r)
-    g.arcTo(x + width, y + height, x, y + height, r)
-    g.arcTo(x, y + height, x, y, r)
-    g.arcTo(x, y, x + width, y, r)
-    g.closePath()
+    g.roundRect(x, y, width, height, radius)
 }
 
 /**
