@@ -15,7 +15,7 @@
 }
 
 /* Colour transitions without the outline's: a focus ring appears at once, as focus arrives.
-   Tailwind's transition-ink fades it in. */
+   Tailwind's transition-colors would fade it in. */
 @utility transition-ink {
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));

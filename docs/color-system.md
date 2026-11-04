@@ -98,7 +98,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 ## 3. Tokens
 
-Values are RGB channel triples, as in `src/themes.css`. OKLCH is given as L C h.
+Values are given as RGB channels and hex; `src/themes.css` writes them as `rgb()` colours. OKLCH is given as L C h.
 
 These have not been retuned (principle 16):
 
@@ -302,7 +302,7 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 
 - **Quick notice:** the mint pill for every quick notice, as in v0.5.22.
   - A failure of something the user asked for is a card with the error glyph, not a quick notice. design-language.md, section 9, says which notice fits and gives the one exception.
-- **Notice cards** stay neutral surfaces: `bg-modal` with `ring-fg/10` in the pane, `bg-popup` with the popup outline and ring over a dialog. The card is the peek strip's surface, so there is no tint and no coloured edge.
+- **Notice cards** stay neutral surfaces: `bg-modal` with `ring-fg/10` in the pane, `bg-popup` with the `popup-edge` outline over a dialog. The card is the peek strip's surface, so there is no tint and no coloured edge.
   - Severity is a leading 16 px glyph (`SeverityIcon`) in `text-warning` (triangle), `text-danger` (circle with an exclamation mark) or `text-info` (circle with an i). It is the optional `severity` field on `Notice`, `NoticeLine` and `LoadNotice`, set where the notice is raised, and it has no text of its own. Contrast is the `warning`, `info` and `danger` pairs of 4.1 on `modal` (in the pane) and `popup` (over a dialog); a glyph needs 3.
   - The mapping rule:
     - error: what the user asked for did not happen;
@@ -365,7 +365,7 @@ The recipes are CSS in `src/controls.css`, in `@layer components`. `src/tailwind
 | `switch-track` (+ `[data-on]`), `switch-knob` | See 5.5; the knob is `ButtonText` in high contrast | | | | |
 | `focus-ring` | Only the focus rule, for elements that are not buttons | | | | |
 | `focus-edge` | For rows and menu rows: a transparent 2 px edge outline that takes `fg` on `:focus-visible` (principle 10) | | | Ring at the edge, `fg` | |
-| `segment-choice` + `segment-face` | A segmented control: labels in a recessed track (`bg-recess shadow-track`), each holding a hidden `input.peer` radio and the `span.segment-face` that is its face. The checked face is the raised current pill (`button`, `shadow-md`); the label draws a transparent 1 px edge that high contrast paints. Size and padding are the call site's. Sibling selectors only, so it works without `:has()` (the label's edge rule is its own) | `button/50`; a checked face keeps `button` | `ghost-press` with `fg-strong`; a checked face `press` | Ring inside, 2 px in the face's ink, while the input has `:focus-visible` (`Highlight` in high contrast) | Set at the call site (40 %) |
+| `segment-choice` + `segment-face` | A segmented control: labels in a recessed track (`bg-recess shadow-track`), each holding a hidden `input.peer` radio and the `span.segment-face` that is its face. The checked face is the raised current pill (`button`, `shadow-md`); the checked label draws a transparent 1 px edge that high contrast paints. Size and padding are the call site's | `button/50`; a checked face keeps `button` | `ghost-press` with `fg-strong`; a checked face `press` | Ring inside, 2 px in the face's ink, while the input has `:focus-visible` (`Highlight` in high contrast) | Set at the call site (40 %) |
 | `row-select` | A selectable row: a label holding a hidden `input.peer`, radio or checkbox. A checked radio row is the raised current row (`button`, `shadow-md`); a checkbox row keeps only its mark. A transparent 2 px edge outline | `band-hover`; a checked radio row keeps `button` | `ghost-press` with `fg-strong`; a checked radio row `press` | Ring at the edge, `fg`, while the input has `:focus-visible` | Set at the call site (40 %) |
 | `focus-out` | For faces under 32 px: a transparent 2 px outline at rest, and the ring 1 px outside in `fg` (white inside `.surface-chrome`) | | | | |
 | `popup-item-danger` (on a `popup-item`) | A destructive menu row: `danger` ink | As the row | `danger-fill` with `on-danger` | | |
@@ -550,5 +550,4 @@ Light warning (h 68) and the change orange (h 59) are 9° apart, not 20°. They 
 - **Dark switch track off against the pill** is 1.92:1; the knob carries the state.
 - **Light warning against danger** is deutan-confusable; the glyphs carry it.
 - **The press glow is mint.** It is a shadow, it lasts only while held, and the pressed face is sunk and non-mint, so it does not read as on.
-- **Scoped styles cannot merge two recipe classes into one compound selector** (6.1). The on-toggle hover glow is written with one class for that reason; `.row-checked.row-current` is combined at the call site.
 - **`.surface-chrome` cascades** (3.1). A face inside the toolbar flyout that used `accent-strong`, `danger` or `focus-out` would take the chrome values.

@@ -260,7 +260,6 @@
         @apply bg-button text-fg shadow-md transition-[box-shadow] disabled:pointer-events-none disabled:opacity-40;
     }
 
-    /* A placeholder is the value an empty field produces, in the secondary ink. */
     .field::placeholder {
         @apply text-fg/80;
     }

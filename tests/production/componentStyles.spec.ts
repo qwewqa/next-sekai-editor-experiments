@@ -1,9 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { editorReady } from './fixtures'
 
-// Component styles win over Tailwind's base and the recipes whatever order the release links its
-// stylesheets in: Tailwind's rules sit in cascade layers, and the components' do not. Each case
-// went the wrong way in a release build before the move to layers.
+// In the release build, a component's own styles win over Tailwind's base and the recipes:
+// Tailwind's rules sit in cascade layers, and the components' do not.
 
 const single = (beat: number, extra: Record<string, unknown> = {}) => ({
     type: 'single',
@@ -79,7 +78,7 @@ test('a dragged row keeps its lifted ring when it becomes current and checked', 
     page,
     browserName,
 }) => {
-    test.skip(browserName !== 'chromium', 'The order is the same in every engine.')
+    test.skip(browserName !== 'chromium', 'Layer order is the same in every engine.')
     await start(page)
     // Rows ease their box-shadow; without transitions a read gives the final ring.
     await page.addStyleTag({ content: '*, ::before, ::after { transition: none !important; }' })
