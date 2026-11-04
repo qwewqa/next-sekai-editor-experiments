@@ -1172,8 +1172,9 @@ test.describe('a quick notice drawn again', () => {
         await boot(page)
         await openBlocking(page)
         await expect(page.getByRole('dialog')).toBeVisible()
-        // One run of tasks with no wait for a frame or a timer, so the move comes well within the
-        // second after the notice, and its fade is held where it is set.
+        // The fixed time keeps the move within the second after the notice, and the fade is held
+        // where it is set.
+        await page.clock.setFixedTime(new Date())
         const result = await page.evaluate(async (path) => {
             const { notify } = await window.editorTest.appImport<Notification>(path)
             const { closeModal, modals } =
@@ -1258,9 +1259,8 @@ test.describe('a quick notice drawn again', () => {
 
                 // Back, it fades; inactive again partway, it holds there wherever it is drawn.
                 await setActive(true)
-                const { fade } = shown(true)
-                while (Number(fade.currentTime) < 300)
-                    await new Promise((resolve) => requestAnimationFrame(resolve))
+                const resumed = read(true).state
+                shown(true).fade.currentTime = 400
                 await setActive(false)
                 const paused = read(true)
                 await toggle(false)
@@ -1271,15 +1271,26 @@ test.describe('a quick notice drawn again', () => {
                 await shown(false).fade.finished
                 const ended = read(false)
                 await toggle(true)
-                return { raised, raisedMoved, paused, pausedMoved, ended, endedMoved: read(true) }
+                return {
+                    raised,
+                    raisedMoved,
+                    resumed,
+                    paused,
+                    pausedMoved,
+                    ended,
+                    endedMoved: read(true),
+                }
             },
             { notificationPath, elevationPath },
         )
         expect(result.raised).toEqual({ fill: 'rgb(119, 239, 220)', time: 0, state: 'paused' })
         expect(result.raisedMoved).toEqual(result.raised)
-        expect(result.paused.state).toBe('paused')
-        expect(result.paused.time).toBeGreaterThanOrEqual(300)
-        expect(result.paused.time).toBeLessThan(1000)
+        expect(result.resumed).toBe('running')
+        expect(result.paused).toEqual({
+            fill: expect.stringMatching(/^rgba\(119, 239, 220, 0\.\d+\)$/),
+            time: 400,
+            state: 'paused',
+        })
         expect(result.pausedMoved).toEqual(result.paused)
         expect(result.ended.fill).toBe('rgba(0, 0, 0, 0)')
         expect(result.endedMoved.fill).toBe('rgba(0, 0, 0, 0)')
