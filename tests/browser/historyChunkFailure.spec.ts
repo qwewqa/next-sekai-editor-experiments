@@ -60,7 +60,11 @@ test('a History dialog that fails to load leaves the Elevation Editor open and s
     expect(result).toEqual({ open: true, beat: 3 })
     await expect(page.locator('.elevation-canvas')).toBeVisible()
     await expect(
-        page.getByText('The Timeline could not be loaded.', { exact: true }).first(),
+        page
+            .getByText('The Timeline could not be loaded. Reload the page to try again.', {
+                exact: true,
+            })
+            .first(),
     ).toBeVisible()
 })
 
@@ -88,5 +92,9 @@ test('a Step Details chunk that fails to load says so and rejects nothing', asyn
             1000,
         )
     })
-    await expect(page.getByText('Could not view this step', { exact: true }).first()).toBeVisible()
+    await expect(
+        page
+            .getByText('Could not view this step. Reload the page to try again.', { exact: true })
+            .first(),
+    ).toBeVisible()
 })

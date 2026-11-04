@@ -10,6 +10,7 @@ import NumberField from '../../../modals/form/NumberField.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { platform } from '../../../platform'
 import { loadBgm } from '../../../player'
+import { importForTask } from '../../../utils/error'
 import { formatTime } from '../../../utils/format'
 import { remap, unlerp } from '../../../utils/math'
 import { timeout } from '../../../utils/promise'
@@ -125,7 +126,7 @@ const onGenerate = () => {
 
             const buffers: Uint8Array<ArrayBuffer>[] = []
 
-            const { Mp3Encoder } = await import('@breezystack/lamejs')
+            const { Mp3Encoder } = await importForTask(() => import('@breezystack/lamejs'))
             signal.throwIfAborted()
 
             const encoder = new Mp3Encoder(

@@ -1579,6 +1579,7 @@
         "empty": "No changes yet",
         "noSaves": "No saves or exports",
         "loadFailed": "The Timeline could not be loaded.",
+        "codeFailed": "The Timeline could not be loaded. Reload the page to try again.",
         "tryAgain": "Try Again",
         "steps": "{0} step|{0} steps",
         "newerSteps": "{0} newer step|{0} newer steps",
@@ -2246,6 +2247,7 @@
             "audioTooLong": "This audio file is longer than {0} minutes and could not be loaded.",
             "imageUnreadable": "This image could not be read.",
             "coverFailed": "The cover could not be generated.",
+            "codeFailed": "This could not be loaded. Reload the page to try again.",
             "failed": "This could not be completed."
         }
     },
@@ -2734,6 +2736,7 @@
         "alreadyMatches": "Already matches the current chart",
         "restoreFailed": "Could not restore",
         "peekFailed": "Could not view this step",
+        "peekCodeFailed": "Could not view this step. Reload the page to try again.",
         "peekSessionFailed": "Could not view this session",
         "openHistory": "Open History",
         "earlierInHistory": "Earlier Timeline steps are in History",

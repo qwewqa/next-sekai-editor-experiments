@@ -12,6 +12,7 @@ import LoadingModal from '../../modals/LoadingModal.vue'
 import { FileError, platform } from '../../platform'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
+import { importForTask } from '../../utils/error'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import SeparatedText from '../SeparatedText.vue'
 import { commands } from '../commands'
@@ -236,7 +237,7 @@ const exportRaw = async () => {
         title: () => strings.value.exportRaw,
         async *task(signal: AbortSignal) {
             yield () => i18n.value.modals.loading.loading
-            const action = await import('../../startup/rawExportAction')
+            const action = await importForTask(() => import('../../startup/rawExportAction'))
             const run = (outcome.run = await action.runRawExportAction(signal))
             // The modal says what failed, and stays for the user to close.
             if (run.kind === 'failed')

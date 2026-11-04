@@ -50,7 +50,7 @@ const HistoryFailed = defineComponent(
                 class: 'flex h-full items-center justify-center px-3 text-center text-sm text-fg/80',
                 'data-history-failed': '',
             },
-            i18n.value.history.loadFailed,
+            i18n.value.history.codeFailed,
         ),
 )
 

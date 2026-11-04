@@ -8,7 +8,7 @@ import { notify } from './notification'
 /** Records a failed load and shows the error card. */
 export const loadFailed = (error: unknown) => {
     recordError(error)
-    notify(() => i18n.value.modals.loading.failed, { card: true, severity: 'error' })
+    notify(() => i18n.value.modals.loading.codeFailed, { card: true, severity: 'error' })
 }
 
 /** Runs a dynamic import for a user action; undefined, after the error card, when it fails. */

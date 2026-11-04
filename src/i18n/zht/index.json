@@ -1579,6 +1579,7 @@
     "empty": "尚無變更",
     "noSaves": "沒有儲存或匯出",
     "loadFailed": "無法載入時間軸。",
+    "codeFailed": "無法載入時間軸。請重新載入頁面以重試。",
     "tryAgain": "重試",
     "steps": "{0} 步",
     "newerSteps": "{0} 個較新的步驟",
@@ -2246,6 +2247,7 @@
       "audioTooLong": "此音訊檔案的長度超過 {0} 分鐘，無法載入。",
       "imageUnreadable": "無法讀取此圖像。",
       "coverFailed": "無法產生封面。",
+      "codeFailed": "無法載入。請重新載入頁面以重試。",
       "failed": "無法完成此操作。"
     }
   },
@@ -2734,6 +2736,7 @@
     "alreadyMatches": "已與目前譜面一致",
     "restoreFailed": "無法還原",
     "peekFailed": "無法檢視此步驟",
+    "peekCodeFailed": "無法檢視此步驟。請重新載入頁面以重試。",
     "peekSessionFailed": "無法檢視此工作階段",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "時間軸中較早的步驟在歷史記錄中",

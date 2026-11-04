@@ -1579,6 +1579,7 @@
     "empty": "Aucune modification pour l’instant",
     "noSaves": "Aucune sauvegarde ni export",
     "loadFailed": "La chronologie n’a pas pu être chargée.",
+    "codeFailed": "La chronologie n’a pas pu être chargée. Rechargez la page pour réessayer.",
     "tryAgain": "Réessayer",
     "steps": "{0} étape|{0} étapes",
     "newerSteps": "{0} étape plus récente|{0} étapes plus récentes",
@@ -2246,6 +2247,7 @@
       "audioTooLong": "Ce fichier audio dure plus de {0} minutes et n’a pas pu être chargé.",
       "imageUnreadable": "Cette image n’a pas pu être lue.",
       "coverFailed": "La couverture n’a pas pu être générée.",
+      "codeFailed": "Cela n’a pas pu être chargé. Rechargez la page pour réessayer.",
       "failed": "L’opération n’a pas pu aboutir."
     }
   },
@@ -2734,6 +2736,7 @@
     "alreadyMatches": "Correspond déjà à la partition actuelle",
     "restoreFailed": "Impossible de restaurer",
     "peekFailed": "Impossible de consulter cette étape",
+    "peekCodeFailed": "Impossible de consulter cette étape. Rechargez la page pour réessayer.",
     "peekSessionFailed": "Impossible de consulter cette session",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes antérieures de la chronologie sont dans l’historique",

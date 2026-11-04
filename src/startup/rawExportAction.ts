@@ -1,6 +1,7 @@
 import { recordError } from '../diagnostics'
 import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
+import { importForTask } from '../utils/error'
 import { setRawExport } from './gate'
 import { rawExportName, rawExportNote, type RawExportRun } from './rawExportNote'
 import { runRawExport } from './rawExportRun'
@@ -9,7 +10,7 @@ import { runRawExport } from './rawExportRun'
 // Local Data both use it. The export module loads when it is used.
 
 export const runRawExportAction = async (signal?: AbortSignal): Promise<RawExportRun> => {
-    const { exportRawData } = await import('../local/rawExport')
+    const { exportRawData } = await importForTask(() => import('../local/rawExport'))
     return runRawExport(
         {
             exportRawData,

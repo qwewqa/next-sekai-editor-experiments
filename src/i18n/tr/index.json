@@ -1579,6 +1579,7 @@
     "empty": "Henüz değişiklik yok",
     "noSaves": "Kaydetme veya dışa aktarma yok",
     "loadFailed": "Zaman Çizgisi yüklenemedi.",
+    "codeFailed": "Zaman Çizgisi yüklenemedi. Tekrar denemek için sayfayı yeniden yükleyin.",
     "tryAgain": "Tekrar Dene",
     "steps": "{0} adım",
     "newerSteps": "{0} yeni adım",
@@ -2246,6 +2247,7 @@
       "audioTooLong": "Bu ses dosyası {0} dakikadan uzun olduğu için yüklenemedi.",
       "imageUnreadable": "Bu görsel okunamadı.",
       "coverFailed": "Kapak oluşturulamadı.",
+      "codeFailed": "Yüklenemedi. Tekrar denemek için sayfayı yeniden yükleyin.",
       "failed": "İşlem tamamlanamadı."
     }
   },
@@ -2734,6 +2736,7 @@
     "alreadyMatches": "Zaten geçerli çizelgeyle aynı",
     "restoreFailed": "Geri yüklenemedi",
     "peekFailed": "Bu adım görüntülenemedi",
+    "peekCodeFailed": "Bu adım görüntülenemedi. Tekrar denemek için sayfayı yeniden yükleyin.",
     "peekSessionFailed": "Bu oturum görüntülenemedi",
     "openHistory": "Geçmişi Aç",
     "earlierInHistory": "Zaman Çizgisi’ndeki önceki adımlar Geçmiş’te",

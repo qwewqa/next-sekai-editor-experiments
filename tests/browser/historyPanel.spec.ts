@@ -1132,6 +1132,8 @@ test.describe('states', () => {
         await expect(page.locator('[data-history-failed]')).toContainText(
             'The Timeline could not be loaded.',
         )
+        // A read that failed is not the page's code: reloading is not the advice.
+        await expect(page.locator('[data-history-failed]')).not.toContainText('Reload')
         await shoot(page, 'states-failed')
         await page.evaluate(() => {
             ;(window as unknown as { failTimeline?: boolean }).failTimeline = false

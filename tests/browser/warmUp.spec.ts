@@ -19,7 +19,7 @@ import {
 // says so. The warm-up also loads the History code before first use.
 
 const FLOW = '**/src/editor/save/flow.ts*'
-const failed = 'This could not be completed.'
+const failed = 'This could not be loaded. Reload the page to try again.'
 
 const errors = new WeakMap<Page, string[]>()
 
@@ -180,6 +180,6 @@ test('the docked History panel says so when its code does not load', async ({ pa
     const dock = page.locator('[data-workspace-dock="right"]')
     await dock.getByRole('tab', { name: 'History' }).click()
     await expect(dock.locator('[data-history-failed]')).toHaveText(
-        'The Timeline could not be loaded.',
+        'The Timeline could not be loaded. Reload the page to try again.',
     )
 })

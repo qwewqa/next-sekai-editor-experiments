@@ -1579,6 +1579,7 @@
     "empty": "尚无更改",
     "noSaves": "没有保存或导出",
     "loadFailed": "无法加载时间线。",
+    "codeFailed": "无法加载时间线。请重新加载页面以重试。",
     "tryAgain": "重试",
     "steps": "{0} 步",
     "newerSteps": "{0} 个较新的步骤",
@@ -2246,6 +2247,7 @@
       "audioTooLong": "此音频文件的时长超过 {0} 分钟，无法加载。",
       "imageUnreadable": "无法读取此图像。",
       "coverFailed": "无法生成封面。",
+      "codeFailed": "无法加载。请重新加载页面以重试。",
       "failed": "无法完成此操作。"
     }
   },
@@ -2734,6 +2736,7 @@
     "alreadyMatches": "已与当前谱面一致",
     "restoreFailed": "无法还原",
     "peekFailed": "无法查看此步骤",
+    "peekCodeFailed": "无法查看此步骤。请重新加载页面以重试。",
     "peekSessionFailed": "无法查看此会话",
     "openHistory": "打开历史记录",
     "earlierInHistory": "时间线中较早的步骤在历史记录中",
