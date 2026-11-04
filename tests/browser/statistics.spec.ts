@@ -445,6 +445,9 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
 }) => {
     await startLong(page)
     await open(page)
+    // The page's timers and frames advance only when the test says, so a wheel run ends on cue.
+    await page.clock.install()
+    const settle = () => page.clock.runFor(250)
     await page.evaluate(() => {
         addEventListener('wheel', (event) => {
             ;(window as unknown as { prevented: boolean }).prevented = event.defaultPrevented
@@ -462,6 +465,7 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
     await page.mouse.wheel(0, -100)
     await page.keyboard.up('Control')
     expect(await prevented()).toBe(true)
+    await settle()
     await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'false')
     expect(await timeAt(page, 0.5)).toBeCloseTo(middle, 1)
     const left = await timeAt(page, 0)
@@ -486,6 +490,16 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
     await page.mouse.up()
     const panned = await timeAt(page, 0)
     expect(panned).toBeGreaterThan(left + 1)
+
+    // The keyboard's readout stays where the slider says it is when a pan leaves it behind.
+    await chart(page).focus()
+    await page.keyboard.press('Home')
+    await chart(page).dispatchEvent('wheel', { deltaX: 2000, deltaY: 0, cancelable: true })
+    await settle()
+    const now = Number(await chart(page).getAttribute('aria-valuenow'))
+    expect(now).toBeGreaterThan(10)
+    const said = `${String(Math.floor(now / 60)).padStart(2, '0')}:${(now % 60).toFixed(3).padStart(6, '0')}`
+    await expect(chart(page)).toHaveAttribute('aria-valuetext', new RegExp(` at ${said}, `))
 
     // A click chooses where Zoom In zooms: the clicked time keeps its place.
     const span = await width(page)
@@ -513,13 +527,13 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
         })
     })
     await page.keyboard.press('0')
-    await page.waitForTimeout(100)
+    await settle()
     expect(await page.evaluate(() => (window as unknown as { changes: number }).changes)).toBe(0)
 
     // A zoom key that arrives before a queued wheel frame wins: the whole chart stays.
     await page.keyboard.press('+')
     await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'false')
-    await chart(page).evaluate(async (element) => {
+    await chart(page).evaluate((element) => {
         const box = element.getBoundingClientRect()
         element.dispatchEvent(
             new WheelEvent('wheel', {
@@ -532,8 +546,8 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
             }),
         )
         element.dispatchEvent(new KeyboardEvent('keydown', { key: '0', bubbles: true }))
-        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     })
+    await settle()
     await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'true')
     await expect(announced(page)).toHaveText(/^00:00\.000–01:0\d\.\d{3}$/)
     expect(await timeAt(page, 1)).toBeCloseTo(end, 0)
@@ -545,10 +559,10 @@ test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans
     await page.keyboard.press('Enter')
     await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'true')
     await expect(zoomOut(page)).toBeFocused()
-    const said = await announced(page).textContent()
+    const last = await announced(page).textContent()
     await page.keyboard.press('Enter')
     await expect(zoomOut(page)).toBeFocused()
-    await expect(announced(page)).toHaveText(said ?? '')
+    await expect(announced(page)).toHaveText(last ?? '')
 })
 
 test('a tap pins the readout, Zoom In zooms on it, and two touches pinch', async ({ page }) => {

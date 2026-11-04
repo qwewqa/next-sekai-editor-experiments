@@ -101,6 +101,10 @@ export const wheelPixels = (
 export const wheelZoomFactor = (dy: number) =>
     Math.exp(-Math.max(-WHEEL_CLAMP, Math.min(WHEEL_CLAMP, dy)) / 100)
 
+/** How far a pan run moves the content, in CSS px: sideways, or the wheel's turn with Shift. */
+export const wheelPanPixels = (pixels: { x: number; y: number }, shift: boolean) =>
+    shift && Math.abs(pixels.y) > Math.abs(pixels.x) ? pixels.y : pixels.x
+
 export type WheelIntent = 'zoom' | 'pan' | 'pass'
 
 /**
@@ -126,8 +130,9 @@ export const wheelIntent = (
 export type GestureSource = 'wheel' | 'gesture' | 'pinch' | 'drag'
 
 /**
- * Whether `source` may drive the view while `owner` drives it. A two-finger pinch on the plot
- * outranks Safari's gesture events, which drive it only with no finger down; the wheel and a
+ * Whether `source` may drive the view while `owner` drives it. Two fingers on the plot outrank
+ * every other source, and Safari's gesture events outrank the wheel and a mouse drag but drive the
+ * view only with no finger down; a source that outranks the owner takes over. The wheel and a
  * mouse drag go to whichever started first.
  */
 export const mayDrive = (
@@ -135,7 +140,7 @@ export const mayDrive = (
     source: GestureSource,
     touches: number,
 ) => {
-    if (source === 'pinch') return owner === undefined || owner === 'gesture' || owner === 'pinch'
-    if (source === 'gesture') return touches === 0 && (owner === undefined || owner === 'gesture')
+    if (source === 'pinch') return true
+    if (source === 'gesture') return touches === 0 && owner !== 'pinch'
     return owner === undefined || owner === source
 }

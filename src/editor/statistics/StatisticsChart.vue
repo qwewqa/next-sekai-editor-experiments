@@ -52,6 +52,7 @@ import {
     SETTLE_MS,
     WHEEL_RUN_MS,
     wheelIntent,
+    wheelPanPixels,
     wheelPixels,
     wheelZoomFactor,
     zoomable as canZoom,
@@ -208,17 +209,13 @@ const cursor = ref<number>()
 let pinned = false
 const focusRing = ref(false)
 
-/** The values at a time in the view; with `clamp`, at the nearest time in it. */
-const readingAt = (
-    time: number | undefined,
-    clamp = false,
-): (Reading & { time: number }) | undefined => {
+/** The values at a time in the view. */
+const readingAt = (time: number | undefined): (Reading & { time: number }) | undefined => {
     const current = model.value
     const drawn = drawing.value
     if (time === undefined || !current || !drawn) return undefined
-    const at = clamp ? Math.min(Math.max(time, current.x0), current.x1) : time
-    if (at < current.x0 - 1e-9 || at > current.x1 + 1e-9) return undefined
-    return { ...readAt(current, drawn, at), time: at }
+    if (time < current.x0 - 1e-9 || time > current.x1 + 1e-9) return undefined
+    return { ...readAt(current, drawn, time), time }
 }
 const reading = computed(() => readingAt(cursor.value))
 
@@ -264,10 +261,6 @@ const describe = (shown: (Reading & { time: number }) | undefined) => {
     return { value, time, beat: position(when), parts, valueText }
 }
 const readout = computed(() => describe(reading.value))
-// The slider's value text is the readout's, kept at the last time after the pointer leaves.
-const valueText = computed(
-    () => describe(readingAt(cursor.value ?? lastTime.value, true))?.valueText,
-)
 
 /** Shows the readout at a time within `bounds`: the view for a pointer, the whole for a key. */
 const show = (time: number, bounds: View | undefined = model.value) => {
@@ -283,9 +276,14 @@ const lastTime = ref(0)
 watch(cursor, (time) => {
     if (time !== undefined) lastTime.value = time
 })
-const valueNow = computed(() =>
-    extent.value ? Math.min(Math.max(lastTime.value, 0), extent.value.x1) : 0,
-)
+// The slider's value and its text: the readout's time, kept after the pointer leaves, and within
+// the view when a pan has moved past it.
+const valueNow = computed(() => {
+    const current = model.value
+    const time = cursor.value ?? lastTime.value
+    return current ? Math.min(Math.max(time, Math.max(0, current.x0)), current.x1) : 0
+})
+const valueText = computed(() => describe(readingAt(valueNow.value))?.valueText)
 // With no plot the readout clears; the view and the place the buttons zoom on stay.
 watch(
     () => !!model.value,
@@ -358,14 +356,19 @@ const settleLater = () => {
 const escapeDrag = () => {
     if (owner !== 'drag' || !press) return
     const id = press.id
-    complete({ view: press.view })
+    complete({ back: { view: press.view } })
     if (chart.value?.hasPointerCapture(id)) chart.value.releasePointerCapture(id)
 }
 /**
  * Ends the active gesture: shows its queued view, or drops it and puts `back` back, then settles.
- * Pointers still down do nothing more until they lift.
+ * Fingers still down after a pinch, or after a zoom from elsewhere (`freeze`), do nothing more
+ * until every finger lifts.
  */
-const complete = (back?: { view: View | undefined }) => {
+const complete = ({
+    back,
+    freeze = false,
+}: { back?: { view: View | undefined }; freeze?: boolean } = {}) => {
+    if (touches.size && (pinch || freeze)) touchInert = true
     if (back) {
         cancelFrame()
         pending = undefined
@@ -377,7 +380,6 @@ const complete = (back?: { view: View | undefined }) => {
     pinch = undefined
     safari = undefined
     wheelRun = undefined
-    if (touches.size) touchInert = true
     resizeEscapes.delete(escapeDrag)
     settle()
 }
@@ -392,7 +394,7 @@ const zoomInDisabled = computed(
 const zoomTo = (next: (from: View | undefined, full: View) => View | undefined) => {
     const full = extent.value
     if (!full || !zoomShown.value) return
-    complete()
+    complete({ freeze: true })
     const before = view.value
     viewWanted.value = next(before, full)
     settle()
@@ -407,7 +409,9 @@ const zoomTo = (next: (from: View | undefined, full: View) => View | undefined) 
         ),
     )
 }
-const zoomBy = (factor: number) => {
+/** A zoom button, or with `key` a zoom key, which first ends any gesture and then checks the limit. */
+const zoomBy = (factor: number, key = false) => {
+    if (key) complete({ freeze: true })
     // Enter and Space still click a button marked disabled.
     if (factor > 1 ? zoomInDisabled.value : zoomOutDisabled.value) return
     zoomTo((from, full) => {
@@ -445,8 +449,7 @@ const onWheel = (event: WheelEvent) => {
         const anchor = shown.x0 + ((event.clientX - box.left) / box.width) * span
         queue(zoomAt(from, full, anchor, wheelZoomFactor(d.y)))
     } else {
-        const distance = Math.abs(d.x) > Math.abs(d.y) ? d.x : d.y
-        queue(panBy(from, full, (distance / box.width) * span))
+        queue(panBy(from, full, (wheelPanPixels(d, event.shiftKey) / box.width) * span))
     }
     settleLater()
 }
@@ -470,7 +473,7 @@ const onPointerDown = (event: PointerEvent) => {
             // Two fingers never move the readout between them.
             pinned = false
             cursor.value = undefined
-            startPinch()
+            if (!touchInert) startPinch()
         }
         if (touches.size > 1 || touchInert) return
     }
@@ -485,7 +488,6 @@ const startPinch = () => {
     if (!full || a === undefined || b === undefined) return
     if (!zoomShown.value || !mayDrive(owner, 'pinch', touches.size)) return
     if (owner) complete()
-    touchInert = false
     const from = currentView()
     owner = 'pinch'
     pinch = {
@@ -574,6 +576,7 @@ const onGestureStart = (event: Event) => {
     event.preventDefault()
     const full = extent.value
     if (!full || !zoomShown.value || !mayDrive(owner, 'gesture', touches.size)) return
+    if (owner && owner !== 'gesture') complete()
     const from = currentView()
     owner = 'gesture'
     safari = { view: from, anchor: timeAtX((event as SafariGestureEvent).clientX, from ?? full) }
@@ -627,7 +630,7 @@ const onKeydown = (event: KeyboardEvent) => {
     if (zoom && zoomable.value) {
         event.preventDefault()
         if (zoom === 'all') showAll()
-        else zoomBy(zoom === 'in' ? 2 : 0.5)
+        else zoomBy(zoom === 'in' ? 2 : 0.5, true)
         return
     }
     // Smooth: 1 s and 10 s. Bars: one bar and ten. Rolling: one step and ten.

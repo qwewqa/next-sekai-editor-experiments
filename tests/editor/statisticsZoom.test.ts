@@ -8,6 +8,7 @@ import {
     panBy,
     pinchView,
     wheelIntent,
+    wheelPanPixels,
     wheelPixels,
     wheelZoomFactor,
     zoomAt,
@@ -107,6 +108,14 @@ test('a wheel event zooms in proportion to its distance, up to a clamp, the same
     assert.ok(Math.abs(wheelZoomFactor(-100) ** 2 - 2) < 0.02)
 })
 
+test('a pan run moves by the sideways distance, and by the wheel’s turn only with Shift', () => {
+    assert.equal(wheelPanPixels({ x: 10, y: 0 }, false), 10)
+    // A trackpad's vertical drift during a sideways run does not move the view back.
+    assert.equal(wheelPanPixels({ x: 1, y: -10 }, false), 1)
+    assert.equal(wheelPanPixels({ x: 0, y: 30 }, true), 30)
+    assert.equal(wheelPanPixels({ x: 30, y: 0 }, true), 30)
+})
+
 test('Ctrl and Cmd always zoom; a sideways run pans only a zoomed view and keeps its intent', () => {
     const event = (fields: Partial<Parameters<typeof wheelIntent>[0]> = {}) => ({
         ctrlKey: false,
@@ -129,16 +138,18 @@ test('Ctrl and Cmd always zoom; a sideways run pans only a zoomed view and keeps
     assert.equal(wheelIntent(event({ deltaX: 10 }), true, 'pass'), 'pass')
 })
 
-test('two fingers outrank Safari’s gesture; the wheel and a mouse drag go to the first', () => {
-    assert.equal(mayDrive(undefined, 'pinch', 2), true)
-    assert.equal(mayDrive('gesture', 'pinch', 2), true)
+test('two fingers outrank every source, Safari’s gesture outranks the wheel and a drag, and those two go to the first', () => {
+    for (const owner of [undefined, 'gesture', 'wheel', 'drag'] as const)
+        assert.equal(mayDrive(owner, 'pinch', 2), true, owner)
     assert.equal(mayDrive('pinch', 'gesture', 2), false)
     assert.equal(mayDrive(undefined, 'gesture', 2), false)
-    assert.equal(mayDrive(undefined, 'gesture', 0), true)
+    for (const owner of [undefined, 'gesture', 'wheel', 'drag'] as const)
+        assert.equal(mayDrive(owner, 'gesture', 0), true, owner)
     assert.equal(mayDrive('wheel', 'drag', 0), false)
     assert.equal(mayDrive('drag', 'wheel', 0), false)
+    assert.equal(mayDrive('gesture', 'wheel', 0), false)
+    assert.equal(mayDrive('pinch', 'drag', 2), false)
     assert.equal(mayDrive('wheel', 'wheel', 0), true)
-    assert.equal(mayDrive('drag', 'pinch', 2), false)
 })
 
 test('the mode control takes today’s padding, then less, then a select, by the heading row’s width', () => {
