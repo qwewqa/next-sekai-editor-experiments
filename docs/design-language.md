@@ -76,7 +76,7 @@ Control heights are the same for every pointer, so a layout does not change with
 - **28 px (`h-7`):** segments inside a 32 px recess track (`ChoiceField.vue`).
 - **24 px (`size-6`):** faces inside the 32 px change capsule.
 - **40 and 48 px** are rows and bands, not controls. A manager row is 36 px controls plus `p-0.5`. Bands are 48 px (`BaseModal` header `h-12`, the Properties tabs, the History panel band). Properties section headers are `h-10`.
-- **Hit area beyond the face.** A `::before` with a negative inset grows the target without growing the visual: the toolbar tool (`before:size-[--tool-size]`), the peek strip and capsule buttons (`-inset-1`), manager rows, the transport track. Controls whose faces are small can still be hit by a finger.
+- **Hit area beyond the face.** A `::before` with a negative inset grows the target without growing the visual: the toolbar tool (`before:size-(--tool-size)`), the peek strip and capsule buttons (`-inset-1`), manager rows, the transport track. Controls whose faces are small can still be hit by a finger.
 - **Rows** sit on a 44 px pitch: a 40 px pill and 4 px between pills.
 
 Spacing:

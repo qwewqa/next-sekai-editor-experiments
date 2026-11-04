@@ -37,7 +37,7 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **Before styling from an attribute, list every current use of it and read what each binding means,** then make the style opt-in. (`aria-pressed` on checked manager rows and on toolbar values.)
 - **A token retune lands with all of its consumers.** (`selected` at 40 % in `ManagerRow`.)
 - **Check a recipe's premise before applying it.** A recipe built for a transparent ghost on a band does not fit a button that is itself the band's fill. A `currentColor` ring does not fit an element that hides its own text.
-- **When you add a global rule, search for code that suppresses or overrides it** (a leftover `outline-none`), and run the guard test for that rule on the change.
+- **When you add a global rule, search for code that suppresses or overrides it** (a leftover `outline-hidden`, or a utility that beats a recipe), and run the guard test for that rule on the change.
 - **Validate a guard on the current tree:** it should fail for every inventoried case. Test a transition's end state too, such as an allowlist with no files left on it.
 
 ## Layout, content and devices
