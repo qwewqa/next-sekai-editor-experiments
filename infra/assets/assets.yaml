@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+    Next SEKAI Editor, the asset store: the hashed assets of earlier site builds, which each Pages deploy puts back
+    on the site for a while (README.md). One prefix per site; the Pages workflow's role reaches only its own.
+    The maintainer deploys it by hand.
+
+Parameters:
+    Environment:
+        Type: String
+        AllowedValues: [dev]
+
+Mappings:
+    # Subject is the deploying workflow's job, by GitHub's immutable subject (owner@owner-id/name@repository-id).
+    Sites:
+        dev:
+            Prefix: test
+            Subject: repo:qwewqa@17557038/nse-test-site@1423628953:environment:github-pages
+            Ref: refs/heads/main
+
+Resources:
+    Bucket:
+        Type: AWS::S3::Bucket
+        DeletionPolicy: RetainExceptOnCreate
+        UpdateReplacePolicy: Retain
+        Properties:
+            BucketName: !Sub nse-assets-${AWS::AccountId}
+            BucketEncryption:
+                ServerSideEncryptionConfiguration:
+                    - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+            PublicAccessBlockConfiguration:
+                BlockPublicAcls: true
+                BlockPublicPolicy: true
+                IgnorePublicAcls: true
+                RestrictPublicBuckets: true
+            Tags:
+                - { Key: 'nse:service', Value: assets }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    BucketPolicy:
+        Type: AWS::S3::BucketPolicy
+        Properties:
+            Bucket: !Ref Bucket
+            PolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Effect: Deny
+                      Principal: '*'
+                      Action: 's3:*'
+                      Resource: [!GetAtt Bucket.Arn, !Sub '${Bucket.Arn}/*']
+                      Condition: { Bool: { 'aws:SecureTransport': 'false' } }
+                    # A stored asset is never replaced, whoever writes: every put must be conditional on its absence.
+                    - Effect: Deny
+                      Principal: '*'
+                      Action: s3:PutObject
+                      Resource: !Sub ${Bucket.Arn}/*/assets/*
+                      Condition: { 'Null': { 's3:if-none-match': 'true' } }
+
+    # Assumed by the site's Pages workflow. It is not a stack deploy role, so it lives here and not in the baseline.
+    PagesRole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: nse-assets-pages
+            MaxSessionDuration: 3600
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Effect: Allow
+                      Principal:
+                          Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+                      Action: sts:AssumeRoleWithWebIdentity
+                      Condition:
+                          StringEquals:
+                              'token.actions.githubusercontent.com:aud': sts.amazonaws.com
+                              'token.actions.githubusercontent.com:sub':
+                                  !FindInMap [Sites, !Ref Environment, Subject]
+                              'token.actions.githubusercontent.com:ref':
+                                  !FindInMap [Sites, !Ref Environment, Ref]
+            Policies:
+                - PolicyName: store
+                  PolicyDocument:
+                      Version: '2012-10-17'
+                      Statement:
+                          - Effect: Allow
+                            Action: s3:ListBucket
+                            Resource: !GetAtt Bucket.Arn
+                            Condition:
+                                StringLike:
+                                    's3:prefix': !Sub
+                                        - ${Prefix}/assets/*
+                                        - Prefix: !FindInMap [Sites, !Ref Environment, Prefix]
+                          - Effect: Allow
+                            Action: [s3:GetObject, s3:PutObject]
+                            Resource:
+                                - !Sub
+                                  - ${Bucket.Arn}/${Prefix}/assets/*
+                                  - Prefix: !FindInMap [Sites, !Ref Environment, Prefix]
+                                - !Sub
+                                  - ${Bucket.Arn}/${Prefix}/index.json
+                                  - Prefix: !FindInMap [Sites, !Ref Environment, Prefix]
+                          - Effect: Allow
+                            Action: s3:DeleteObject
+                            Resource: !Sub
+                                - ${Bucket.Arn}/${Prefix}/assets/*
+                                - Prefix: !FindInMap [Sites, !Ref Environment, Prefix]
+            Tags:
+                - { Key: 'nse:service', Value: assets }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+Outputs:
+    BucketName:
+        Value: !Ref Bucket
+    PagesRoleArn:
+        Value: !GetAtt PagesRole.Arn

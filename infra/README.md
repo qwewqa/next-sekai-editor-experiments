@@ -1,6 +1,6 @@
 # Infrastructure
 
-The Next SEKAI Editor’s AWS services. The editor itself is static and needs none of this. These are the services around it, starting with `stats/` (usage statistics, a self-hosted Umami).
+The Next SEKAI Editor’s AWS services. The editor itself is static and needs none of this. These are the services around it, starting with `stats/` (usage statistics, a self-hosted Umami) and `assets/` (the hashed assets of earlier site builds).
 
 This folder is in neither the web build nor the native build, and has no `package.json`. Its checks run in `.github/workflows/infra-check.yml`, only when `infra/`, `src/analytics/` or an infra workflow changes, or by hand. Deploys are by hand and never part of a release.
 
@@ -12,12 +12,13 @@ This folder is in neither the web build nor the native build, and has no `packag
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `account/account.yaml` | The baseline, deployed once per account and again when a service is added: GitHub OIDC, the alert topic, the account budget, the services zone, an IAM Access Analyzer for external access, and a deploy role and an execution role per service |
 | `stats/`               | The first service, with its own template, host files, scripts, saved queries and runbook (`stats/README.md`)                                                                                                                                    |
+| `assets/`              | The asset store that the test site’s deploys use, with its template and runbook (`assets/README.md`)                                                                                                                                            |
 | `check_templates.py`   | The rules we check on every template, the host files, the workflows and `leftover.sh`, in addition to `cfn-lint`                                                                                                                                |
 | `create-accounts.sh`   | The one-time account creation                                                                                                                                                                                                                   |
 
 The account ids, email addresses and secrets are not in the repository. The ids are GitHub Environment variables, the email is passed on the command line, and a service generates its secrets on its own server.
 
-Every resource that takes tags carries `nse:service` (`stats`, or `shared` for the baseline) and `nse:env` (`prod` or `dev`).
+Every resource that takes tags carries `nse:service` (`stats`, `assets`, or `shared` for the baseline) and `nse:env` (`prod` or `dev`).
 
 ## Set-up, once
 
@@ -72,7 +73,7 @@ Then follow `stats/README.md` to deploy the first service.
 
 1. Add `infra/<service>/` with its template, scripts and runbook. It writes DNS records only under `<service>.` in the services zone.
 2. Add the service to `SERVICES` in `check_templates.py` with every resource type its template may create (see Cost review).
-3. Add its two roles, `nse-<service>-deploy` and `nse-<service>-cfn`, to `account/account.yaml`, scoped by stack name, resource name or tag as the stats roles are. Redeploy the baseline in each account (Set-up, step 5).
+3. If a workflow deploys its stack, add its two roles, `nse-<service>-deploy` and `nse-<service>-cfn`, to `account/account.yaml`, scoped by stack name, resource name or tag as the stats roles are. Redeploy the baseline in each account (Set-up, step 5). A stack the maintainer deploys by hand, as `assets/` is, needs neither; a role its own workflow uses for data goes in its template.
 4. Create the Environments `<service>-dev` and `<service>-prod` (Set-up, step 4) and the workflows. A deploy workflow runs by hand only and uses only OIDC. Only a `*-dev-down` workflow or `dev-down.sh` may delete a stack.
 5. Raise the prod budget in `account.yaml` if the service needs it.
 
@@ -107,7 +108,7 @@ Push a branch that adds or changes `infra/` to a `ci/<name>` branch first, and g
 No AWS access is needed for these:
 
 ```sh
-uv run --with cfn-lint==1.58.0 cfn-lint infra/account/account.yaml infra/stats/stats.yaml
+uv run --with cfn-lint==1.58.0 cfn-lint infra/account/account.yaml infra/stats/stats.yaml infra/assets/assets.yaml
 uv run infra/check_templates.py
 shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.sh
 bash infra/stats/scripts/contract-test.sh   # needs Docker, curl, jq and Linux

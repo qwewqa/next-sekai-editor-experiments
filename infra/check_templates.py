@@ -53,6 +53,15 @@ SERVICES = {
             "AWS::S3::BucketPolicy": (None, None, False),
         },
     },
+    "assets": {
+        "template": "assets/assets.yaml",
+        "readme": "assets/README.md",
+        "types": {
+            "AWS::S3::Bucket": ("Tags", "S3 Standard $0.023 per GB-month, retained", False),
+            "AWS::S3::BucketPolicy": (None, None, False),
+            "AWS::IAM::Role": ("Tags", None, False),
+        },
+    },
 }
 
 # Settings that set the monthly cost. Changing one means updating the runbook's cost table and this table.
@@ -244,6 +253,94 @@ def template_key(name):
     return SERVICES[name]["template"]
 
 
+def find_in_sites(value, key):
+    """Whether value is FindInMap [Sites, Environment, key]."""
+    return value == {"Fn::FindInMap": ["Sites", {"Ref": "Environment"}, key]}
+
+
+def prefixed(value, path):
+    """Whether value is the bucket ARN, then the site's prefix, then path (a Sub with the prefix from Sites)."""
+    sub = value.get("Fn::Sub") if isinstance(value, dict) else None
+    return (
+        isinstance(sub, list)
+        and sub[0] == f"${{Bucket.Arn}}/${{Prefix}}/{path}"
+        and set(sub[1]) == {"Prefix"}
+        and find_in_sites(sub[1]["Prefix"], "Prefix")
+    )
+
+
+def check_assets(errors):
+    """The asset store keeps files by the deploy script's rule, never overwrites them, and gives the Pages
+    workflow its own site's prefix only. Checked on actions, resources and conditions, not on statement names."""
+    template = load(INFRA / "assets/assets.yaml")
+    resources = template["Resources"]
+    by_type = lambda kind: [res for res in resources.values() if res["Type"] == kind]
+    for bucket in by_type("AWS::S3::Bucket"):
+        props = bucket["Properties"]
+        block = props.get("PublicAccessBlockConfiguration", {})
+        if not all(block.get(k) is True for k in ("BlockPublicAcls", "BlockPublicPolicy", "IgnorePublicAcls", "RestrictPublicBuckets")):
+            errors.append("assets: the bucket must block all public access.")
+        if "BucketEncryption" not in props:
+            errors.append("assets: the bucket must be encrypted.")
+        if "LifecycleConfiguration" in props or "VersioningConfiguration" in props:
+            errors.append("assets: the bucket has no lifecycle rules or versioning; files expire by the deploy script's rule.")
+    policies = by_type("AWS::S3::BucketPolicy")
+    policy_statements = [st for pol in policies for st in pol["Properties"]["PolicyDocument"]["Statement"]]
+    def denies(action, resource, condition):
+        return any(
+            st["Effect"] == "Deny" and st.get("Principal") == "*" and as_list(st["Action"]) == [action]
+            and resource(as_list(st["Resource"])) and st.get("Condition") == condition
+            for st in policy_statements
+        )
+    tls = lambda res: res == [{"Fn::GetAtt": ["Bucket", "Arn"]}, {"Fn::Sub": "${Bucket.Arn}/*"}]
+    if not denies("s3:*", tls, {"Bool": {"aws:SecureTransport": "false"}}):
+        errors.append("assets: the bucket policy must deny requests without TLS.")
+    assets = lambda res: res == [{"Fn::Sub": "${Bucket.Arn}/*/assets/*"}]
+    if not denies("s3:PutObject", assets, {"Null": {"s3:if-none-match": "true"}}):
+        errors.append("assets: the bucket policy must deny a put to */assets/* without If-None-Match.")
+
+    for name, site in template["Mappings"]["Sites"].items():
+        if not re.fullmatch(r"repo:[^/@:]+@\d+/[^/@:]+@\d+:environment:github-pages", site["Subject"]):
+            errors.append(f"assets: the {name} subject must be one repository's github-pages Environment, by its immutable subject.")
+        if site["Ref"] != "refs/heads/main":
+            errors.append(f"assets: the {name} ref must be refs/heads/main.")
+    for role in by_type("AWS::IAM::Role"):
+        trust = role["Properties"]["AssumeRolePolicyDocument"]["Statement"]
+        want = {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+            "token.actions.githubusercontent.com:sub": {"Fn::FindInMap": ["Sites", {"Ref": "Environment"}, "Subject"]},
+            "token.actions.githubusercontent.com:ref": {"Fn::FindInMap": ["Sites", {"Ref": "Environment"}, "Ref"]},
+        }
+        provider = {"Fn::Sub": "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"}
+        if (
+            len(trust) != 1
+            or trust[0]["Effect"] != "Allow"
+            or trust[0]["Action"] != "sts:AssumeRoleWithWebIdentity"
+            or trust[0]["Principal"] != {"Federated": provider}
+            or trust[0].get("Condition") != {"StringEquals": want}
+        ):
+            errors.append("assets: the role must trust only the GitHub provider, with the audience, subject and ref from Sites.")
+        actions = set()
+        for stmt, _ in statements(role):
+            acts = as_list(stmt["Action"])
+            actions |= set(acts)
+            res = as_list(stmt["Resource"])
+            if stmt["Effect"] != "Allow":
+                errors.append("assets: the role's statements are all Allow.")
+            elif acts == ["s3:ListBucket"]:
+                listing = {"StringLike": {"s3:prefix": {"Fn::Sub": ["${Prefix}/assets/*", {"Prefix": {"Fn::FindInMap": ["Sites", {"Ref": "Environment"}, "Prefix"]}}]}}}
+                if res != [{"Fn::GetAtt": ["Bucket", "Arn"]}] or stmt.get("Condition") != listing:
+                    errors.append("assets: s3:ListBucket is on the bucket only, for the site's assets/ prefix.")
+            elif "s3:ListBucket" in acts or not res:
+                errors.append("assets: s3:ListBucket has a statement of its own.")
+            else:
+                paths = ["assets/*"] if "s3:DeleteObject" in acts else ["assets/*", "index.json"]
+                if not all(any(prefixed(r, path) for path in paths) for r in res):
+                    errors.append(f"assets: {acts} reach outside the site's {' and '.join(paths)}.")
+        if actions != {"s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"}:
+            errors.append(f"assets: the role's actions are {sorted(actions)}; only list, get, put and delete are allowed.")
+
+
 def check_leftover(errors):
     markers = set(re.findall(r"# billable: (\S+)", (INFRA / "stats/scripts/leftover.sh").read_text(encoding="utf-8")))
     for kind, (_, _, checked) in SERVICES["stats"]["types"].items():
@@ -303,6 +400,7 @@ def main():
         check_network_and_metadata(name, template, errors)
         check_roles(name, template, errors)
         check_pins(name, template, errors)
+    check_assets(errors)
     check_leftover(errors)
     check_host(errors)
     check_workflows(errors)
