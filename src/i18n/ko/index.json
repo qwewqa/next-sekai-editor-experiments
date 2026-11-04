@@ -2656,6 +2656,8 @@
     "smooth": "곡선",
     "bars": "막대",
     "rolling": "롤링",
+    "zoomIn": "줌 인",
+    "zoomOut": "줌 아웃",
     "span": "{0}~{1}",
     "average": "평균",
     "median": "중앙값",

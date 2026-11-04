@@ -458,8 +458,61 @@ const share = () => {
 }
 
 /* Notes per Second. */
+/* The heading pushes the zoom buttons and the mode control to the right; on a narrow screen the
+   mode control wraps to a line of its own. */
 .stats-head {
-    @apply -mb-1 flex flex-wrap items-center justify-between gap-2;
+    @apply relative -mb-1 flex flex-wrap items-center gap-2;
+}
+.stats-head > h3 {
+    margin-right: auto;
+}
+.stats-mode-probe {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+}
+.stats-mode-probe > span {
+    display: inline-block;
+    @apply whitespace-nowrap text-sm;
+}
+.stats-zoom {
+    display: flex;
+}
+/* Each target grows 4 px outward and vertically, so the two meet where the faces do. */
+.stats-zoom-button {
+    @apply relative grid size-8 place-items-center rounded-full before:absolute before:-inset-y-1;
+}
+.stats-zoom-out {
+    @apply before:-left-1 before:right-0;
+}
+.stats-zoom-in {
+    @apply before:-right-1 before:left-0;
+}
+/* Disabled fades the glyph only, so the focus ring keeps its contrast. */
+.stats-zoom-button[aria-disabled='true'] {
+    pointer-events: none;
+}
+.stats-zoom-button[aria-disabled='true'] > svg {
+    opacity: 0.4;
+}
+.stats-head .compact .segment-face {
+    padding-inline: 0.5rem;
+}
+.stats-mode-select {
+    position: relative;
+}
+.stats-mode-select > select {
+    padding-right: 1.75rem;
+}
+.stats-mode-select-icon {
+    pointer-events: none;
+    position: absolute;
+    inset-block: 0;
+    right: 0.75rem;
+    display: flex;
+    align-items: center;
 }
 .stats-plot {
     position: relative;
@@ -522,6 +575,13 @@ const share = () => {
     outline: none;
     width: calc(100% - 2rem);
     align-self: flex-end;
+    user-select: none;
+}
+.stats-chart.zoomed {
+    cursor: grab;
+}
+.stats-chart.dragging {
+    cursor: grabbing;
 }
 .stats-plot-row.side .stats-chart {
     flex: 1;

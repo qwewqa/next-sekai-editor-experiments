@@ -2656,6 +2656,8 @@
         "smooth": "Smooth",
         "bars": "Bars",
         "rolling": "Rolling",
+        "zoomIn": "Zoom In",
+        "zoomOut": "Zoom Out",
         "span": "{0}–{1}",
         "average": "Average",
         "median": "Median",

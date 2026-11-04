@@ -12,6 +12,8 @@ const bubble = (page: Page) => page.locator('[data-statistics-bubble]')
 const chart = (page: Page) => dialog(page).locator('[data-statistics-chart]')
 const entry = (page: Page, category: string) =>
     dialog(page).locator(`[data-statistics-entry="${category}"]`)
+const zoomIn = (page: Page) => dialog(page).locator('[data-statistics-zoom-in]')
+const zoomOut = (page: Page) => dialog(page).locator('[data-statistics-zoom-out]')
 
 // A small known chart at 120 BPM: a critical tap slide to beat 2 (three hidden ticks), a flick at
 // 1, a trace at 1.5, a damage note at 3 and a fake tap at 4.
@@ -237,6 +239,9 @@ test('the modes and the legend persist, and Reset Settings restores them', async
     await expect(entry(page, 'tap').locator('input')).toBeChecked()
     await expect(entry(page, 'damage').locator('input')).not.toBeChecked()
     const plot = await chart(page).boundingBox()
+    // A chart under 10 s has nothing to zoom: the buttons keep their place, hidden.
+    await expect(zoomIn(page)).toBeHidden()
+    await expect(zoomOut(page)).toBeHidden()
     await entry(page, 'damage').click()
     await dialog(page).locator('[data-statistics-mode-option="bars"]').check({ force: true })
     await expect(chart(page).locator('rect[data-statistics-layer="damage"]')).toHaveCount(1)
@@ -403,6 +408,204 @@ test('a pen press pins the readout, as a touch does', async ({ page }) => {
     })
     await chart(page).dispatchEvent('pointerleave', { pointerType: 'pen' })
     await expect(dialog(page).locator('[data-statistics-readout]')).not.toHaveText('')
+})
+
+// A minute of taps at 120 BPM, one a beat, with a burst of sixteenths at beat 40.
+const startLong = async (page: Page, viewport = { width: 1440, height: 600 }) => {
+    await page.setViewportSize(viewport)
+    await page.addInitScript(installCanvasCounters)
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(() => {
+        const { fixtures, show } = window.editorTest
+        const chart = structuredClone(fixtures.interaction)
+        const [base] = chart.slides[0] ?? []
+        if (!base) throw new Error('No note')
+        const beats = [
+            ...Array.from({ length: 120 }, (_, i) => i),
+            ...Array.from({ length: 16 }, (_, i) => 40.125 + i / 4),
+        ]
+        chart.slides = beats.map((beat) => [{ ...base, beat }])
+        show(chart)
+    })
+}
+const announced = (page: Page) => dialog(page).locator('span.sr-only[role="status"]')
+/** The time the readout shows with the mouse at a fraction of the plot's width. */
+const timeAt = async (page: Page, fraction: number) => {
+    const plot = await chart(page).boundingBox()
+    if (!plot) throw new Error('No plot')
+    await page.mouse.move(plot.x + 1 + fraction * (plot.width - 2), plot.y + plot.height / 2)
+    return Number(await chart(page).getAttribute('aria-valuenow'))
+}
+const width = async (page: Page) => (await timeAt(page, 1)) - (await timeAt(page, 0))
+
+test('Ctrl+wheel zooms the plot, the plain wheel scrolls the dialog, a drag pans, and the keys and Zoom Out return to the whole chart', async ({
+    page,
+}) => {
+    await startLong(page)
+    await open(page)
+    await page.evaluate(() => {
+        addEventListener('wheel', (event) => {
+            ;(window as unknown as { prevented: boolean }).prevented = event.defaultPrevented
+        })
+    })
+    const prevented = () =>
+        page.evaluate(() => (window as unknown as { prevented: boolean }).prevented)
+    await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'true')
+    const end = Number(await chart(page).getAttribute('aria-valuemax'))
+    expect(await timeAt(page, 1)).toBeCloseTo(end, 0)
+
+    // Ctrl+wheel zooms at the pointer.
+    const middle = await timeAt(page, 0.5)
+    await page.keyboard.down('Control')
+    await page.mouse.wheel(0, -100)
+    await page.keyboard.up('Control')
+    expect(await prevented()).toBe(true)
+    await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'false')
+    expect(await timeAt(page, 0.5)).toBeCloseTo(middle, 1)
+    const left = await timeAt(page, 0)
+    expect(left).toBeGreaterThan(5)
+    await expect(chart(page)).toHaveClass(/zoomed/)
+
+    // The plain wheel scrolls the dialog and leaves the view.
+    const body = dialog(page).locator('.stats-body')
+    await timeAt(page, 0.5)
+    await page.mouse.wheel(0, 60)
+    await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+    expect(await prevented()).toBe(false)
+    expect(await timeAt(page, 0)).toBeCloseTo(left, 2)
+
+    // A drag pans: the content follows the pointer.
+    const plot = await chart(page).boundingBox()
+    if (!plot) throw new Error('No plot')
+    const y = plot.y + plot.height / 2
+    await page.mouse.move(plot.x + plot.width * 0.6, y)
+    await page.mouse.down()
+    await page.mouse.move(plot.x + plot.width * 0.4, y, { steps: 5 })
+    await page.mouse.up()
+    const panned = await timeAt(page, 0)
+    expect(panned).toBeGreaterThan(left + 1)
+
+    // A click chooses where Zoom In zooms: the clicked time keeps its place.
+    const span = await width(page)
+    await page.mouse.click(plot.x + plot.width * 0.3, y)
+    const clicked = Number(await chart(page).getAttribute('aria-valuenow'))
+    await zoomIn(page).click()
+    await expect.poll(() => width(page)).toBeLessThan(span * 0.6)
+    expect(await timeAt(page, 0.3)).toBeCloseTo(clicked, 1)
+
+    // The keys: - zooms out, 0 shows the whole chart and says its span, once.
+    await chart(page).focus()
+    const before = await width(page)
+    await page.keyboard.press('-')
+    await expect.poll(() => width(page)).toBeGreaterThan(before * 1.5)
+    await page.keyboard.press('0')
+    await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'true')
+    await expect(announced(page)).toHaveText(/^00:00\.000–01:0\d\.\d{3}$/)
+    await announced(page).evaluate((element) => {
+        const target = window as unknown as { changes: number }
+        target.changes = 0
+        new MutationObserver(() => target.changes++).observe(element, {
+            childList: true,
+            characterData: true,
+            subtree: true,
+        })
+    })
+    await page.keyboard.press('0')
+    await page.waitForTimeout(100)
+    expect(await page.evaluate(() => (window as unknown as { changes: number }).changes)).toBe(0)
+
+    // A zoom key that arrives before a queued wheel frame wins: the whole chart stays.
+    await page.keyboard.press('+')
+    await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'false')
+    await chart(page).evaluate(async (element) => {
+        const box = element.getBoundingClientRect()
+        element.dispatchEvent(
+            new WheelEvent('wheel', {
+                ctrlKey: true,
+                deltaY: -100,
+                clientX: box.left + box.width / 2,
+                clientY: box.top + box.height / 2,
+                bubbles: true,
+                cancelable: true,
+            }),
+        )
+        element.dispatchEvent(new KeyboardEvent('keydown', { key: '0', bubbles: true }))
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    })
+    await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'true')
+    await expect(announced(page)).toHaveText(/^00:00\.000–01:0\d\.\d{3}$/)
+    expect(await timeAt(page, 1)).toBeCloseTo(end, 0)
+
+    // Zoom Out keeps focus at the whole chart, and Enter there does nothing.
+    await chart(page).focus()
+    await page.keyboard.press('+')
+    await zoomOut(page).focus()
+    await page.keyboard.press('Enter')
+    await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'true')
+    await expect(zoomOut(page)).toBeFocused()
+    const said = await announced(page).textContent()
+    await page.keyboard.press('Enter')
+    await expect(zoomOut(page)).toBeFocused()
+    await expect(announced(page)).toHaveText(said ?? '')
+})
+
+test('a tap pins the readout, Zoom In zooms on it, and two touches pinch', async ({ page }) => {
+    await startLong(page, { width: 390, height: 844 })
+    await open(page)
+    const plot = await chart(page).boundingBox()
+    if (!plot) throw new Error('No plot')
+    const y = plot.y + plot.height / 2
+    const touch = (type: string, id: number, fraction: number) =>
+        chart(page).dispatchEvent(type, {
+            pointerType: 'touch',
+            pointerId: id,
+            isPrimary: id === 1,
+            clientX: plot.x + fraction * plot.width,
+            clientY: y,
+            buttons: type === 'pointerup' ? 0 : 1,
+        })
+    const now = async () => Number(await chart(page).getAttribute('aria-valuenow'))
+    await touch('pointerdown', 1, 0.3)
+    await touch('pointerup', 1, 0.3)
+    const tapped = await now()
+    await zoomIn(page).dispatchEvent('click')
+    await expect(zoomOut(page)).toHaveAttribute('aria-disabled', 'false')
+    await touch('pointerdown', 1, 0.3)
+    await touch('pointerup', 1, 0.3)
+    expect(await now()).toBeCloseTo(tapped, 1)
+
+    /** The view's ends, read by pen presses at the plot's edges. */
+    const ends = async () => {
+        const out: number[] = []
+        for (const fraction of [0, 1]) {
+            await chart(page).dispatchEvent('pointerdown', {
+                pointerType: 'pen',
+                clientX: plot.x + fraction * plot.width,
+                clientY: y,
+                buttons: 1,
+            })
+            out.push(await now())
+            await chart(page).dispatchEvent('pointerup', { pointerType: 'pen' })
+        }
+        return out
+    }
+    const [a0 = 0, a1 = 0] = await ends()
+    await touch('pointerdown', 1, 0.4)
+    await touch('pointerdown', 2, 0.6)
+    // The second finger clears the readout.
+    await expect(dialog(page).locator('[data-statistics-readout]')).toHaveText('')
+    await touch('pointermove', 1, 0.2)
+    await touch('pointermove', 2, 0.8)
+    await touch('pointerup', 1, 0.2)
+    await touch('pointerup', 2, 0.8)
+    await expect
+        .poll(async () => {
+            const [b0 = 0, b1 = 0] = await ends()
+            return (b1 - b0) / (a1 - a0)
+        })
+        .toBeCloseTo(1 / 3, 1)
 })
 
 const copyLines = [

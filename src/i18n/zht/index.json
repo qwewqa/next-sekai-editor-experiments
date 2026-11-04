@@ -2656,6 +2656,8 @@
     "smooth": "平滑",
     "bars": "長條圖",
     "rolling": "滾動計數",
+    "zoomIn": "放大",
+    "zoomOut": "縮小",
     "span": "{0}–{1}",
     "average": "平均",
     "median": "中位數",

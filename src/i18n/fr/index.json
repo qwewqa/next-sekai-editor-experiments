@@ -2656,6 +2656,8 @@
     "smooth": "Lissé",
     "bars": "Barres",
     "rolling": "Glissant",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
     "span": "{0}–{1}",
     "average": "Moyenne",
     "median": "Médiane",

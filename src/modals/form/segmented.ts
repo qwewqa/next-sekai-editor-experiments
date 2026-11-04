@@ -56,3 +56,25 @@ export const selectGlyphFits = (
     labelWidths: readonly number[],
     rem: number,
 ) => availableWidth > 0 && Math.max(0, ...labelWidths) <= availableWidth - selectGlyphInsets * rem
+
+/** Room, in rem, the wider px-3 padding adds to each segment over the measured px-2. */
+const wideSegmentPadding = 0.5
+
+export type SegmentsLayout = 'wide' | 'compact' | 'select'
+
+/** Segments with px-3 padding where they fit, then with px-2, then a select. */
+export const segmentsLayout = (
+    availableWidth: number,
+    labelWidths: readonly number[],
+    rem: number,
+): SegmentsLayout =>
+    segmentsFit(
+        availableWidth,
+        labelWidths.map((width) => width + wideSegmentPadding * rem),
+        false,
+        rem,
+    )
+        ? 'wide'
+        : segmentsFit(availableWidth, labelWidths, false, rem)
+          ? 'compact'
+          : 'select'

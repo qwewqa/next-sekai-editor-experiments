@@ -2656,6 +2656,8 @@
     "smooth": "スムーズ",
     "bars": "棒グラフ",
     "rolling": "ローリング",
+    "zoomIn": "ズームイン",
+    "zoomOut": "ズームアウト",
     "span": "{0}～{1}",
     "average": "平均",
     "median": "中央値",

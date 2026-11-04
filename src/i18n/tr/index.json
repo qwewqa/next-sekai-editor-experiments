@@ -2656,6 +2656,8 @@
     "smooth": "Pürüzsüz",
     "bars": "Çubuklar",
     "rolling": "Kayan",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
     "span": "{0}–{1}",
     "average": "Ortalama",
     "median": "Medyan",
