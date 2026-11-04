@@ -23,3 +23,9 @@ export function applyTestSite(html) {
 /** Whether the page is the test site's. */
 export const isTestSitePage = (html) =>
     /<meta name="robots" content="noindex"/.test(html) && html.includes(`<title>${testTitlePrefix}`)
+
+/** Each site's prefix in the asset store, and how many days a file stays after a deploy drops it (infra/assets). */
+export const storeSites = {
+    test: { prefix: 'test', days: 7 },
+    production: { prefix: 'prod', days: 30 },
+}
