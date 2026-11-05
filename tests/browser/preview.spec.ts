@@ -231,7 +231,7 @@ test('circular endpoints keep their preview geometry through a small fade', asyn
             await settle(page)
             const vertices = await page.evaluate(() => window.previewTest.vertices)
             expect(vertices.length).toBeGreaterThan(0)
-            geometry.push(vertices.filter((_, index) => index % 10 < 2))
+            geometry.push(vertices.filter((_, index) => index % 14 < 2))
         }
         expect(geometry[1]).toEqual(geometry[0])
     }

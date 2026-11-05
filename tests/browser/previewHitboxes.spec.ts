@@ -94,8 +94,8 @@ test('show hitboxes redraws immediately, persists and adds no history', async ({
     await toggle.check()
     await expect.poll(() => page.evaluate(() => window.hitboxTest.frames)).toBeGreaterThan(frames)
     const overlaid = await vertices(page)
-    // Six bounds lines and eight target quads, each six vertices of ten floats.
-    expect(overlaid - plain).toBe(14 * 6 * 10)
+    // Six bounds lines and eight target quads, each six vertices of 14 floats.
+    expect(overlaid - plain).toBe(14 * 6 * 14)
     expect(
         await page.evaluate(() =>
             localStorage.getItem('sonolus-next-sekai-editor.previewShowHitboxes'),

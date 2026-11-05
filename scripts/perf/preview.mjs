@@ -78,18 +78,26 @@ const renderer = {
         if (!sprite || a <= 0) return
         const order = entries.length
         let entry = pool[order]
-        if (!entry) pool.push((entry = { z, order, data: new Float32Array(60) }))
+        if (!entry) pool.push((entry = { z, order, data: new Float32Array(84) }))
         entry.z = z
         const d = entry.data
         d[0] = quad.bl.x
         d[1] = quad.bl.y
-        d[10] = quad.tl.x
-        d[11] = quad.tl.y
-        d[20] = quad.tr.x
-        d[21] = quad.tr.y
-        d[50] = quad.br.x
-        d[51] = quad.br.y
+        d[14] = quad.tl.x
+        d[15] = quad.tl.y
+        d[28] = quad.tr.x
+        d[29] = quad.tr.y
+        d[70] = quad.br.x
+        d[71] = quad.br.y
         d[9] = a
+        // The sprite's UV box, on each vertex the real renderer writes.
+        const atlas = (sprite.texture ?? 0) < 2
+        for (const offset of [10, 24, 38, 66]) {
+            d[offset] = atlas ? sprite.u0 : 0
+            d[offset + 1] = atlas ? sprite.v0 : 0
+            d[offset + 2] = atlas ? sprite.u1 : 0
+            d[offset + 3] = atlas ? sprite.v1 : 0
+        }
         entries.push(entry)
         hash?.update(
             `${quadText(quad)},${z.join(',')},${a},${sprite.u0},${sprite.v0},${tint ? `${tint.r},${tint.g},${tint.b}` : ''},${blend ?? ''};`,
@@ -104,8 +112,8 @@ const renderer = {
             }
             return a.order - b.order
         })
-        if (packed.length < entries.length * 60) packed = new Float32Array(entries.length * 120)
-        for (let i = 0; i < entries.length; i++) packed.set(entries[i].data, i * 60)
+        if (packed.length < entries.length * 84) packed = new Float32Array(entries.length * 168)
+        for (let i = 0; i < entries.length; i++) packed.set(entries[i].data, i * 84)
     },
     isContextLost: () => false,
     dispose() {},

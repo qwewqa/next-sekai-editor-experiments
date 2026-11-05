@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Quad } from '../../src/preview/engine/math'
-import { BlendMode, createPreviewRenderer, type BlendModeValue } from '../../src/preview/gl'
+import {
+    BlendMode,
+    createPreviewRenderer,
+    type BlendModeValue,
+    type PreviewFilter,
+} from '../../src/preview/gl'
 import type { Sprite } from '../../src/preview/skin'
 
 const sprite: Sprite = { u0: 0.1, v0: 0.2, u1: 0.7, v1: 0.8 }
@@ -15,6 +20,7 @@ const quad: Quad = {
 const createFixture = (
     failure?: 'compile' | 'link' | 'buffer' | 'texture',
     deleted: string[] = [],
+    filter?: PreviewFilter,
 ) => {
     const allocations: number[] = []
     const uploads: { data: Float32Array; buffer: ArrayBufferLike }[] = []
@@ -24,6 +30,7 @@ const createFixture = (
     let textureCount = 0
     let currentProgram: unknown
     const textureCalls: unknown[][] = []
+    const taps: number[][] = []
     const noop = () => {}
     const gl = {
         MAX_VIEWPORT_DIMS: 0x0d3a,
@@ -60,6 +67,7 @@ const createFixture = (
         getUniformLocation: () => ({}),
         uniform1i: noop,
         uniform1f: noop,
+        uniform1iv: (_location: unknown, value: Int32Array) => taps.push([...value]),
         createBuffer: () => (failure === 'buffer' ? null : {}),
         deleteBuffer: () => deleted.push('buffer'),
         bindBuffer: noop,
@@ -111,10 +119,11 @@ const createFixture = (
             return gl
         },
     }
-    const renderer = createPreviewRenderer(canvas as unknown as HTMLCanvasElement)
+    const renderer = createPreviewRenderer(canvas as unknown as HTMLCanvasElement, true, filter)
     renderer.setTexture(0, {} as ImageBitmap, true)
     return {
         renderer,
+        taps,
         canvas,
         allocations,
         uploads,
@@ -209,6 +218,8 @@ test('renderer preserves perspective UVs, transforms, texture selection and vert
     renderer.flush()
 
     const expected: number[] = []
+    // Skin and particle vertices carry the sprite's UV box as it was when drawn.
+    const box = [0.1, 0.2, 0.7, 0.8]
     for (const [xScale, yScale, texture, color] of [
         [-2, 0.5, 1, [0.2, 0.6, 0.9, 0.4]],
         [1, 1, 0, [1, 1, 1, 1]],
@@ -222,7 +233,16 @@ test('renderer preserves perspective UVs, transforms, texture selection and vert
             [1, 1, 0.7, 0.2, 1.5],
             [2, -1, 0.7, 0.8, 3],
         ] as const) {
-            expected.push(x * xScale, y * yScale, u * weight, v * weight, weight, texture, ...color)
+            expected.push(
+                x * xScale,
+                y * yScale,
+                u * weight,
+                v * weight,
+                weight,
+                texture,
+                ...color,
+                ...box,
+            )
         }
     }
     assert.deepEqual(uploads[0]!.data, new Float32Array(expected))
@@ -257,9 +277,52 @@ test('the text slot draws once reserved, chosen per sprite, with regions uploade
     renderer.flush()
     const data = uploads.at(-1)!.data
     assert.deepEqual(
-        Array.from({ length: 12 }, (_, vertex) => data[vertex * 10 + 5]),
+        Array.from({ length: 12 }, (_, vertex) => data[vertex * 14 + 5]),
         [0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2],
     )
+})
+
+test('text and background vertices carry an empty UV box', () => {
+    const { renderer, uploads } = createFixture()
+    renderer.reserveTexture(2, 64, 32)
+    renderer.setTexture(3, {} as ImageBitmap, false)
+    renderer.begin(1600, 900)
+    renderer.draw({ ...sprite, texture: 2 }, quad, [0], 1)
+    renderer.draw({ ...sprite, texture: 3 }, quad, [1], 1)
+    renderer.flush()
+    const data = uploads.at(-1)!.data
+    assert.equal(data.length, 2 * 6 * 14)
+    for (let vertex = 0; vertex < 12; vertex++)
+        assert.deepEqual([...data.subarray(vertex * 14 + 10, vertex * 14 + 14)], [0, 0, 0, 0])
+})
+
+test('the atlases take the tap cap of the filter, and pixel-art atlases a single tap', () => {
+    for (const [filter, cap] of [
+        [undefined, 4],
+        [4, 4],
+        [3, 3],
+        ['today', 0],
+    ] as const) {
+        const { renderer, taps } = createFixture(undefined, [], filter)
+        renderer.setTexture(1, {} as ImageBitmap, false)
+        renderer.begin(1600, 900)
+        renderer.draw(sprite, quad, [0], 1)
+        renderer.flush()
+        assert.deepEqual(taps, [[cap, 0]])
+        renderer.setTexture(0, {} as ImageBitmap, false)
+        renderer.setTexture(1, {} as ImageBitmap, true)
+        renderer.begin(1600, 900)
+        renderer.draw(sprite, quad, [0], 1)
+        renderer.flush()
+        // Unchanged caps are not sent again.
+        renderer.begin(1600, 900)
+        renderer.draw(sprite, quad, [0], 1)
+        renderer.flush()
+        assert.deepEqual(taps, [
+            [cap, 0],
+            [0, cap],
+        ])
+    }
 })
 
 test('renderer keeps lexicographic depth, submission ties and contiguous blend runs across frames', () => {
@@ -268,8 +331,8 @@ test('renderer keeps lexicographic depth, submission ties and contiguous blend r
         renderer.draw(sprite, quad, z, id / 10, undefined, blend)
     const ids = () => {
         const data = uploads.at(-1)!.data
-        return Array.from({ length: data.length / 60 }, (_, i) =>
-            Math.round(data[i * 60 + 9]! * 10),
+        return Array.from({ length: data.length / 84 }, (_, i) =>
+            Math.round(data[i * 84 + 9]! * 10),
         )
     }
 
@@ -310,14 +373,14 @@ test('renderer grows buffers only as needed and uploads only the active frame', 
         renderer.begin(1280, 720)
         for (let i = 0; i < count; i++) renderer.draw(sprite, quad, [-i], 1)
         renderer.flush()
-        assert.equal(uploads.at(-1)!.data.length, count * 60)
+        assert.equal(uploads.at(-1)!.data.length, count * 84)
     }
     frame(2)
     frame(1)
     assert.equal(allocations.length, 1)
     assert.equal(uploads[0]!.buffer, uploads[1]!.buffer)
 
-    const capacity = allocations[0]! / (60 * Float32Array.BYTES_PER_ELEMENT)
+    const capacity = allocations[0]! / (84 * Float32Array.BYTES_PER_ELEMENT)
     frame(capacity + 1)
     assert.equal(allocations.length, 2)
     assert.notEqual(uploads[1]!.buffer, uploads[2]!.buffer)
