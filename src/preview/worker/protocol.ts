@@ -47,10 +47,7 @@ export type ToPreviewWorker =
     | { type: 'overlay'; canvas?: OffscreenCanvas }
     /** The canvases replaced so far left the page two animation frames ago. Release their contexts. */
     | { type: 'release' }
-    /**
-     * While suspended, the worker frees the skin, particle and background textures and the
-     * background blur, and answers frames without drawing.
-     */
+    /** Frees the skin, particle and background textures and blur, and draws no frames. */
     | { type: 'suspend'; suspended: boolean }
     | {
           type: 'atlas'

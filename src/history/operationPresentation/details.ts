@@ -66,10 +66,7 @@ const brushGroupIndex = (field: FieldId, changed: NativeCounts) => {
 }
 const order = (field: FieldId) => tableIndex.get(field) ?? tableIndex.size
 
-/**
- * Assignments in the order of the form that made the step: for a Brush step (given what it
- * changed), the Brush's groups, else the field table.
- */
+/** Assignments in the form's order: the Brush's groups for a Brush step, else the field table. */
 const inFormOrder = <T extends { field: FieldId }>(
     assignments: readonly T[],
     brush: NativeCounts | undefined,
