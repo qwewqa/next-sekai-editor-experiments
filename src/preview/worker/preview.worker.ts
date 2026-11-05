@@ -11,6 +11,7 @@ import { createPreviewRenderer, type PreviewSurface } from '../gl'
 import { createOutlineRenderer, type OutlineRenderer } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
+import { installTextureAccount } from '../textureAccount'
 import { applyMirror, selectedObjects, type MirrorState } from './mirror'
 import type {
     FromPreviewWorker,
@@ -190,6 +191,8 @@ const installCounters = () => {
     watch('deleteProgram', (_gl, [program]) => {
         if (program && names.has(program)) current.releases++
     })
+    // The specs read it in this worker.
+    Reflect.set(globalThis, 'textureAccount', installTextureAccount(isPreview))
 }
 
 const report = () => {
