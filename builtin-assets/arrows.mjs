@@ -1,8 +1,8 @@
 // Flick arrow art, drawn per direction and width in the engine's arrow square (side 1, y up from
-// its bottom edge) so the shapes land undistorted: a filled, notched arrowhead with a light rim and
-// a soft glow. Sizes follow the base skin's arrows (Next SEKAI 01): where each lands and how much
-// of it is inked, measured in the same square. A diagonal is the up arrow of its width turned to
-// the base's tilt, so it points the way the engine moves it.
+// its bottom edge) so the shapes land undistorted: a filled, notched arrowhead with a broad light
+// rim and a soft glow in the rim's colour. Sizes follow the base skin's arrows (Next SEKAI 01):
+// where each lands and how much of it is inked, measured in the same square. A diagonal is the up
+// arrow of its width turned to the base's tilt, so it points the way the engine moves it.
 
 // The base's up and down arrows by width (1 to 6): [u0, u1, v0, v1] of what they ink.
 const upBoxes = [
@@ -147,11 +147,11 @@ export function arrowSprite(direction, width, { accent, rim, tip }, pixels = den
     const up = down ? (direction === 'down' ? 'up' : 'upLeft') : direction
     const { points, tip: tipAt, tail } = arrowOutline(up, width)
     const [x0, x1, y0, y1] = bounds(points)
-    // Rim, rounding and glow in square units: about 2 pixels of rim at the judge line.
-    const rimWidth = 0.05 / Math.sqrt(width)
-    const rounding = 0.6 * rimWidth
-    const glow = 0.025 + 0.003 * width
-    const margin = glow + 0.01
+    // Rim, corner rounding and the glow's room in square units: about 5 pixels of rim at the judge
+    // line.
+    const rimWidth = 0.12 / Math.sqrt(width)
+    const rounding = 0.03 / Math.sqrt(width)
+    const margin = 0.025 + 0.003 * width + 0.01
     const frame = [x0 - margin, x1 + margin, y0 - margin, y1 + margin]
     const scale = 100
     // SVG units: x right, y down from the frame's top-left.
@@ -171,9 +171,11 @@ export function arrowSprite(direction, width, { accent, rim, tip }, pixels = den
             outer: list(inset(points, rounding)),
             inner: list(inset(points, rounding + rimWidth)),
             round: round(2 * rounding * scale),
-            // A glow in two flat steps, so it packs small.
-            halo: round(2 * glow * scale),
-            blur: round(glow * scale),
+            // The glow, a near and a wide blur of the outline in the rim's colour, and the blur that
+            // softens the rim's outer edge into it.
+            near: round((margin / 4) * scale),
+            wide: round((margin / 2.5) * scale),
+            edge: round(0.12 * rimWidth * scale),
             ax,
             ay,
             bx,

@@ -128,23 +128,26 @@ export function box(u0, u1, v0, v1) {
     return out
 }
 
-// Arrows: the base's pink (or gold) fill, lighter towards the tip, inside a light rim of the same
-// hue, so they keep their colour at the engine's reduced alpha.
-const arrowTint = (accent) => ({
+// Arrows: the base's pink (or gold) fill, lighter towards the tip, inside a broad light rim of the
+// same hue, so they keep their colour at the engine's reduced alpha. A critical arrow's rim keeps
+// more of its colour, so the two kinds stay apart.
+const arrowTint = (accent, critical) => ({
     accent,
     tip: mix(accent, '#ffffff', 0.3),
-    rim: mix(accent, '#ffffff', 0.7),
+    rim: mix(accent, '#ffffff', critical ? 0.45 : 0.7),
 })
-const arrow = (direction, accent, width) => {
-    const { vars, width: pixels, frame } = arrowSprite(direction, width, arrowTint(accent))
-    return image('arrow', vars, { width: pixels, transform: box(...frame), glow: accent })
+const arrow = (direction, accent, width, critical) => {
+    const tint = arrowTint(accent, critical)
+    const { vars, width: pixels, frame } = arrowSprite(direction, width, tint)
+    return image('arrow', vars, { width: pixels, transform: box(...frame), glow: tint.rim })
 }
 // The marker draws in the flick judgment icons and stands in for missing arrows: the width 3 up
 // arrow, placed as in its own square like the base's, at 2 x 104 texels per unit for the larger
 // quad.
-const marker = (accent) => {
-    const { vars, width, frame } = arrowSprite('up', 3, arrowTint(accent), 104)
-    return image('arrow', vars, { width: 2 * width, transform: box(...frame), glow: accent })
+const marker = (accent, critical) => {
+    const tint = arrowTint(accent, critical)
+    const { vars, width, frame } = arrowSprite('up', 3, tint, 104)
+    return image('arrow', vars, { width: 2 * width, transform: box(...frame), glow: tint.rim })
 }
 
 // Note bodies fill their slices' quads exactly, as the base's bodies do (its lower band included):
@@ -609,7 +612,10 @@ export function skinSprites() {
         ])
             for (const [direction, key] of directions)
                 for (let width = 1; width <= 6; width++)
-                    add(`Sekai ${family} Arrow ${direction} ${width}`, arrow(key, color, width))
+                    add(
+                        `Sekai ${family} Arrow ${direction} ${width}`,
+                        arrow(key, color, width, family === 'Critical Flick'),
+                    )
         for (const [color, family] of [
             ['Red', 'Flick'],
             ['Yellow', 'Critical Flick'],
@@ -707,7 +713,7 @@ export function skinSprites() {
             ['RED', arrowColors.normal],
             ['YELLOW', arrowColors.critical],
         ])
-            add(`#DIRECTIONAL_MARKER_${color}`, marker(accent))
+            add(`#DIRECTIONAL_MARKER_${color}`, marker(accent, color === 'YELLOW'))
         for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN'])
             add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color))))
         for (const color of ['NEUTRAL', 'RED', 'YELLOW', 'PURPLE', 'CYAN'])
@@ -820,7 +826,9 @@ export function skinSprites() {
                     for (let width = 1; width <= 6; width++)
                         add(
                             `Sekai ${family} Arrow ${direction} ${width} ${color}`,
-                            arrow(key, family === 'Flick' ? tint : critical.arrow, width),
+                            family === 'Flick'
+                                ? arrow(key, tint, width, false)
+                                : arrow(key, critical.arrow, width, true),
                         )
             for (const [family, colors] of [
                 ['Normal', [rest, held]],
