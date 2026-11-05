@@ -1,5 +1,6 @@
 import type { PreviewFrameInput } from '../drawFrame'
 import type { ComboPixels } from '../engine/comboDraw'
+import type { PreviewFilter } from '../gl'
 import type { OutlineAlpha } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
@@ -40,9 +41,9 @@ export type ToPreviewWorker =
     | { type: 'start'; test: boolean; flags: PreviewWorkerFlags }
     /**
      * The preview's canvas, or none when the panel closes; the atlases stay. The canvas it
-     * replaces keeps its context until `release`.
+     * replaces keeps its context until `release`. Its renderer uses `filter`.
      */
-    | { type: 'canvas'; canvas?: OffscreenCanvas; antialias: boolean }
+    | { type: 'canvas'; canvas?: OffscreenCanvas; antialias: boolean; filter: PreviewFilter }
     | { type: 'overlay'; canvas?: OffscreenCanvas }
     /** The canvases replaced so far left the page two animation frames ago. Release their contexts. */
     | { type: 'release' }

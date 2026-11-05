@@ -21,6 +21,7 @@ import type { PreviewChart } from './engine/model'
 import { createPreviewRenderer, type PreviewSurface } from './gl'
 import { createOutlineRenderer, type OutlineRenderer } from './outlineRenderer'
 import type { LoadedParticle } from './particle'
+import { readPreviewFilter } from './previewFilter'
 import { exposePreviewTest } from './previewTest'
 import type { LoadedSkin } from './skin'
 import { previewSuspended } from './suspend'
@@ -133,7 +134,11 @@ export const usePreviewRendering = (
             return
 
         try {
-            renderer.value = createPreviewRenderer(canvas.value, settings.previewAntialias)
+            renderer.value = createPreviewRenderer(
+                canvas.value,
+                settings.previewAntialias,
+                readPreviewFilter(),
+            )
             clearGraphicsError()
         } catch (error) {
             console.error('Failed to create preview renderer:', error)

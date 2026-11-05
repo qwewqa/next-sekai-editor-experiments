@@ -11,6 +11,7 @@ import type { PreviewFrameInput, PreviewSelection } from '../drawFrame'
 import type { ComboPixels } from '../engine/comboDraw'
 import type { OutlineAlpha } from '../outlineRenderer'
 import type { LoadedParticle } from '../particle'
+import { readPreviewFilter } from '../previewFilter'
 import type { LoadedSkin } from '../skin'
 import { previewSuspended } from '../suspend'
 import { decodeAtlasesAgain } from '../usePreviewResources'
@@ -379,12 +380,14 @@ const startWorker = () => {
             const offscreen = transfer(canvas)
             if (!offscreen) return () => undefined
             attached++
-            post({ type: 'canvas', canvas: offscreen, antialias }, [offscreen])
+            post({ type: 'canvas', canvas: offscreen, antialias, filter: readPreviewFilter() }, [
+                offscreen,
+            ])
             wait('it did not start')
             return () => {
                 attached--
                 if (stopped) return
-                post({ type: 'canvas', antialias })
+                post({ type: 'canvas', antialias, filter: readPreviewFilter() })
                 releaseLater()
             }
         },

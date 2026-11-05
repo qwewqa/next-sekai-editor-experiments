@@ -7,7 +7,7 @@ import { copyAtlasBitmap } from '../copyAtlasBitmap'
 import { drawPreviewFrame, type PreviewFrameInput, type PreviewSelection } from '../drawFrame'
 import { createPreviewChartBuilder } from '../engine/chart'
 import { readCombo } from '../engine/comboDraw'
-import { createPreviewRenderer, type PreviewSurface } from '../gl'
+import { createPreviewRenderer, type PreviewFilter, type PreviewSurface } from '../gl'
 import { createOutlineRenderer, type OutlineRenderer } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
@@ -34,6 +34,7 @@ const messageOf = (error: unknown) =>
     error instanceof Error ? (error.stack ?? `${error.name}: ${error.message}`) : String(error)
 
 let flags: PreviewWorkerFlags = {}
+let filter: PreviewFilter = 4
 let frameCount = 0
 
 let canvas: OffscreenCanvas | undefined
@@ -79,7 +80,7 @@ const createRenderer = () => {
     if (!canvas || renderer || lost) return
     if (testKeysOpen && flags.noWebgl)
         throw new Error('WebGL2 is unavailable or disabled in this browser')
-    renderer = createPreviewRenderer(canvas, antialias)
+    renderer = createPreviewRenderer(canvas, antialias, filter)
     uploaded.length = 0
     upload()
 }
@@ -249,6 +250,7 @@ const handle = (message: ToPreviewWorker) => {
             if (!message.canvas) return
             canvas = message.canvas
             antialias = message.antialias
+            if (testKeysOpen) filter = message.filter
             canvas.addEventListener('webglcontextlost', onLost)
             canvas.addEventListener('webglcontextrestored', onRestored)
             try {

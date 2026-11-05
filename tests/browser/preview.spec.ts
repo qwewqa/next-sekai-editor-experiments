@@ -231,7 +231,7 @@ test('circular endpoints keep their preview geometry through a small fade', asyn
             await settle(page)
             const vertices = await page.evaluate(() => window.previewTest.vertices)
             expect(vertices.length).toBeGreaterThan(0)
-            geometry.push(vertices.filter((_, index) => index % 10 < 2))
+            geometry.push(vertices.filter((_, index) => index % 14 < 2))
         }
         expect(geometry[1]).toEqual(geometry[0])
     }
@@ -1633,7 +1633,7 @@ test.describe('preview background camera', () => {
     const background = (page: Page) =>
         page.evaluate(() => {
             const vertices = window.previewTest.backgroundVertices!
-            const corners = [0, 10, 20, 50].map((i) => [vertices[i]!, vertices[i + 1]!])
+            const corners = [0, 14, 28, 70].map((i) => [vertices[i]!, vertices[i + 1]!])
             const tl = corners[1]!,
                 tr = corners[2]!
             return { corners, rotation: Math.atan2(-(tr[1]! - tl[1]!), tr[0]! - tl[0]!) }

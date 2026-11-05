@@ -24,6 +24,12 @@ export type BlendModeValue = (typeof BlendMode)[keyof typeof BlendMode]
 /** The renderer's textures: 0 skin, 1 particle, 2 text and 3 background. */
 export type TextureSlot = 0 | 1 | 2 | 3
 
+/**
+ * How the skin and particle atlases are sampled where a pixel covers more than one texel: up to
+ * 4x4 or 3x3 bilinear taps, or `today`, a single tap.
+ */
+export type PreviewFilter = 'today' | 3 | 4
+
 export type PreviewRenderer = {
     maxViewportSize: {
         width: number
@@ -64,15 +70,18 @@ in vec2 a_position;
 in vec3 a_uvw;
 in float a_texture;
 in vec4 a_color;
+in vec4 a_box;
 uniform float u_aspect;
 out vec3 v_uvw;
 out float v_texture;
 out vec4 v_color;
+flat out vec4 v_box;
 void main() {
     gl_Position = vec4(a_position.x / u_aspect, a_position.y, 0.0, 1.0);
     v_uvw = a_uvw;
     v_texture = a_texture;
     v_color = a_color;
+    v_box = a_box;
 }
 `
 
@@ -82,25 +91,55 @@ uniform sampler2D u_texture0;
 uniform sampler2D u_texture1;
 uniform sampler2D u_texture2;
 uniform sampler2D u_texture3;
+uniform int u_taps[2];
 in vec3 v_uvw;
 in float v_texture;
 in vec4 v_color;
+flat in vec4 v_box;
 out vec4 outColor;
+// Where one screen pixel steps over more than one texel, up to taps x taps bilinear taps of
+// level 0 on a screen-space grid mapped into the texture by the pixel's steps dx and dy. Along
+// each screen axis the taps span the texels that step covers, minus one, so they meet at one
+// texel. Each tap is clamped to the sprite's UV box (v_box), which the single tap samples from.
+vec4 sampleAtlas(sampler2D atlas, int taps, vec2 uv, vec2 dx, vec2 dy) {
+    if (taps == 0 || v_box.z < v_box.x || v_box.w < v_box.y) return texture(atlas, uv);
+    vec2 size = vec2(textureSize(atlas, 0));
+    float lx = length(dx * size);
+    float ly = length(dy * size);
+    if (max(lx, ly) <= 1.0) return textureLod(atlas, uv, 0.0);
+    int nx = lx > 1.0 ? taps : 1;
+    int ny = ly > 1.0 ? taps : 1;
+    vec2 spanX = nx > 1 ? dx * ((lx - 1.0) / lx) : vec2(0.0);
+    vec2 spanY = ny > 1 ? dy * ((ly - 1.0) / ly) : vec2(0.0);
+    vec4 sum = vec4(0.0);
+    for (int i = 0; i < nx; i++) {
+        float fx = nx > 1 ? float(i) / float(nx - 1) - 0.5 : 0.0;
+        for (int j = 0; j < ny; j++) {
+            float fy = ny > 1 ? float(j) / float(ny - 1) - 0.5 : 0.0;
+            vec2 tap = clamp(uv + spanX * fx + spanY * fy, v_box.xy, v_box.zw);
+            sum += textureLod(atlas, tap, 0.0);
+        }
+    }
+    return sum / float(nx * ny);
+}
 void main() {
     vec2 uv = v_uvw.xy / v_uvw.z;
-    // The background's mip level comes from derivatives taken outside the branch.
+    // The background's mip level and the atlases' taps come from derivatives taken outside
+    // the branches.
     vec2 uvDx = dFdx(uv);
     vec2 uvDy = dFdy(uv);
     vec4 color = v_texture > 2.5
         ? textureGrad(u_texture3, uv, uvDx, uvDy)
         : v_texture > 1.5
         ? texture(u_texture2, uv)
-        : mix(texture(u_texture0, uv), texture(u_texture1, uv), v_texture);
+        : v_texture > 0.5
+        ? sampleAtlas(u_texture1, u_taps[1], uv, uvDx, uvDy)
+        : sampleAtlas(u_texture0, u_taps[0], uv, uvDx, uvDy);
     outColor = vec4(color.rgb * v_color.rgb * v_color.a, color.a * v_color.a);
 }
 `
 
-const FLOATS_PER_VERTEX = 10
+const FLOATS_PER_VERTEX = 14
 const FLOATS_PER_QUAD = FLOATS_PER_VERTEX * 6
 
 export const perspectiveWeights = (quad: Quad): [number, number, number, number] => {
@@ -154,6 +193,7 @@ const writeVertex = (
     g: number,
     b: number,
     a: number,
+    box: Sprite | undefined,
 ) => {
     data[offset] = x
     data[offset + 1] = y
@@ -165,6 +205,10 @@ const writeVertex = (
     data[offset + 7] = g
     data[offset + 8] = b
     data[offset + 9] = a
+    data[offset + 10] = box?.u0 ?? 0
+    data[offset + 11] = box?.v0 ?? 0
+    data[offset + 12] = box?.u1 ?? 0
+    data[offset + 13] = box?.v1 ?? 0
 }
 
 export type PreviewSurface = Omit<PreviewRenderer, 'setTexture'> & {
@@ -191,6 +235,7 @@ export type PreviewSurface = Omit<PreviewRenderer, 'setTexture'> & {
 export const createPreviewRenderer = (
     canvas: HTMLCanvasElement | OffscreenCanvas,
     antialias = true,
+    previewFilter: PreviewFilter = 4,
 ): PreviewSurface => {
     const getContext = (antialias: boolean) =>
         (canvas as HTMLCanvasElement).getContext('webgl2', {
@@ -235,6 +280,10 @@ export const createPreviewRenderer = (
     const maxViewportDimensions = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array
     const hasTextures = [false, false, false, false]
     let aspectLocation: WebGLUniformLocation | null
+    let tapsLocation: WebGLUniformLocation | null
+    // The tap cap of slots 0 and 1. A pixel-art atlas has 0 and keeps nearest sampling.
+    const taps = new Int32Array(2)
+    let tapsChanged = true
 
     try {
         program = linkProgram(gl, 'preview', VERTEX_SHADER, FRAGMENT_SHADER)
@@ -244,7 +293,9 @@ export const createPreviewRenderer = (
         const uvwLocation = gl.getAttribLocation(program, 'a_uvw')
         const textureLocation = gl.getAttribLocation(program, 'a_texture')
         const colorLocation = gl.getAttribLocation(program, 'a_color')
+        const boxLocation = gl.getAttribLocation(program, 'a_box')
         aspectLocation = gl.getUniformLocation(program, 'u_aspect')
+        tapsLocation = gl.getUniformLocation(program, 'u_taps')
 
         gl.uniform1i(gl.getUniformLocation(program, 'u_texture0'), 0)
         gl.uniform1i(gl.getUniformLocation(program, 'u_texture1'), 1)
@@ -265,6 +316,8 @@ export const createPreviewRenderer = (
         gl.vertexAttribPointer(textureLocation, 1, gl.FLOAT, false, stride, 20)
         gl.enableVertexAttribArray(colorLocation)
         gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, stride, 24)
+        gl.enableVertexAttribArray(boxLocation)
+        gl.vertexAttribPointer(boxLocation, 4, gl.FLOAT, false, stride, 40)
 
         gl.enable(gl.BLEND)
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
@@ -292,6 +345,11 @@ export const createPreviewRenderer = (
 
     const inputs = new Array<number>(8)
     const outputs = new Array<number>(8)
+
+    const setTaps = (slot: 0 | 1, interpolation: boolean) => {
+        taps[slot] = interpolation && previewFilter !== 'today' ? previewFilter : 0
+        tapsChanged = true
+    }
 
     const renderer: PreviewSurface = {
         prepareFrame(width, height) {
@@ -416,6 +474,7 @@ export const createPreviewRenderer = (
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap)
 
             const filter = interpolation ? gl.LINEAR : gl.NEAREST
+            if (index === 0 || index === 1) setTaps(index, interpolation)
             // The background is often larger than the panel: mipmaps keep its fine lines from aliasing.
             const mipmapped = index === 3 && interpolation
             if (mipmapped) gl.generateMipmap(gl.TEXTURE_2D)
@@ -571,6 +630,7 @@ export const createPreviewRenderer = (
 
             const { u0, v0, u1, v1 } = sprite
             const tex = sprite.texture ?? 0
+            const box = tex < 2 ? sprite : undefined
             const r = tint?.r ?? 1
             const g = tint?.g ?? 1
             const b = tint?.b ?? 1
@@ -585,12 +645,13 @@ export const createPreviewRenderer = (
             entry.blend = blend
 
             const { data } = entry
-            writeVertex(data, 0, bl.x, bl.y, u0, v1, wBl, tex, r, g, b, a)
-            writeVertex(data, 10, tl.x, tl.y, u0, v0, wTl, tex, r, g, b, a)
-            writeVertex(data, 20, tr.x, tr.y, u1, v0, wTr, tex, r, g, b, a)
-            data.copyWithin(30, 0, 10)
-            data.copyWithin(40, 20, 30)
-            writeVertex(data, 50, br.x, br.y, u1, v1, wBr, tex, r, g, b, a)
+            const F = FLOATS_PER_VERTEX
+            writeVertex(data, 0, bl.x, bl.y, u0, v1, wBl, tex, r, g, b, a, box)
+            writeVertex(data, F, tl.x, tl.y, u0, v0, wTl, tex, r, g, b, a, box)
+            writeVertex(data, 2 * F, tr.x, tr.y, u1, v0, wTr, tex, r, g, b, a, box)
+            data.copyWithin(3 * F, 0, F)
+            data.copyWithin(4 * F, 2 * F, 3 * F)
+            writeVertex(data, 5 * F, br.x, br.y, u1, v1, wBr, tex, r, g, b, a, box)
             entries.push(entry)
         },
 
@@ -599,6 +660,10 @@ export const createPreviewRenderer = (
             gl.clear(gl.COLOR_BUFFER_BIT)
 
             if (!entries.length) return
+            if (tapsChanged) {
+                gl.uniform1iv(tapsLocation, taps)
+                tapsChanged = false
+            }
 
             entries.sort((a, b) => {
                 const length = Math.max(a.z.length, b.z.length)

@@ -23,6 +23,7 @@ const previewHostSpecs = [
     'previewExportOpen.spec.ts',
     'previewCombo.spec.ts',
     'scalingLiveFactor.spec.ts',
+    'previewFilter.spec.ts',
 ]
 // Tests CI does not run, each with its reason; npm run test:browser still runs them. An entry names
 // a spec and, to leave the rest of the spec in, a pattern for the test's title and the project.
