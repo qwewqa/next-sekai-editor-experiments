@@ -162,8 +162,8 @@ export const flipVerticalWithReceipt = (
             continue
         }
         const beat = flippedBeat(entity)
-        // As every move does: a BPM change replaces the one at its destination, and a time scale
-        // replaces its group's there; an event joins the events already there.
+        // As every move does: a BPM change replaces the BPM changes at its destination, and a time
+        // scale replaces its group's there; an event joins the events already there.
         if (entity.type === 'bpm' || entity.type === 'timeScale') {
             for (const other of getInStoreGrid(transaction.store.grid, entity.type, beat) ?? []) {
                 if (other.beat === beat && !kept.has(other) && sameTrack(entity, other)) {

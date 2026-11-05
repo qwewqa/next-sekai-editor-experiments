@@ -216,8 +216,8 @@ export const transformSelectionWithReceipt = (
             replacements.set(entity, edited)
             continue
         }
-        // A BPM change replaces the one at its destination, and a time scale its group's there;
-        // an event joins the events already there.
+        // A BPM change replaces the BPM changes at its destination, and a time scale its group's
+        // there; an event joins the events already there.
         if (object.beat !== undefined && (entity.type === 'bpm' || entity.type === 'timeScale')) {
             for (const other of getInStoreGrid(transaction.store.grid, entity.type, object.beat) ??
                 []) {

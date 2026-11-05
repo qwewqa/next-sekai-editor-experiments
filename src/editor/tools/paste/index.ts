@@ -623,7 +623,7 @@ const emptyChart = (): Chart => ({
 
 // Authoring reveals its target: pasted objects land in the focused group/stage
 // or keep their own, and must neither vanish nor replace hidden objects (a
-// pasted time scale replaces one at the same beat of its group).
+// pasted time scale replaces those at the same beat of its group).
 const revealPasteTargets = (entities: Entity[]) => {
     for (const entity of entities) {
         const { groupId, stageId } = entityScopeIds(entity)
