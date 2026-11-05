@@ -38,12 +38,13 @@ const inHost = async <A, R>(page: Page, fn: (arg: A) => Promise<R>, arg: A): Pro
 }
 
 /**
- * Draws constant-colour sprites, each surrounded by a saturated colour of its own, at several
- * scales and orientations, with the 4x4, 3x3 and single-tap renderers. Returns the mismatches
- * with the CPU filter, the isolation and identity checks, and counts of what was checked.
+ * Draws sprites of one colour, and sprites of noise in red and alpha, each surrounded by a
+ * saturated colour of its own, at several scales and orientations, with the 4x4, 3x3 and
+ * single-tap renderers. Returns the mismatches with the CPU filter, the isolation and identity
+ * checks, and counts of what was checked.
  */
 const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean }) => {
-    type Rect = { x: number; y: number; w: number; h: number; alpha: number }
+    type Rect = { x: number; y: number; w: number; h: number; alpha: number; noise?: boolean }
     type P = { x: number; y: number }
     const { createPreviewRenderer } = (await import(
         `${origin}/src/preview/gl.ts`
@@ -81,14 +82,19 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
     // The atlas as data rects describe it, and the texels as the GPU holds them.
     const dataWidth = reduced ? 4096 : 64
     const dataHeight = reduced ? 2049 : 64
+    const hash = (x: number, y: number) =>
+        ((Math.imul(x, 0x9e3779b1) ^ Math.imul(y + 7, 0x85ebca6b)) >>> 0) % 251
     const fill = (data: Uint8ClampedArray, width: number, rect: Rect, color: readonly number[]) => {
         for (let y = Math.floor(rect.y); y < Math.ceil(rect.y + rect.h); y++)
             for (let x = Math.floor(rect.x); x < Math.ceil(rect.x + rect.w); x++) {
                 const k = (y * width + x) * 4
-                data[k] = color[0]!
+                data[k] = rect.noise ? hash(x, y) : color[0]!
                 data[k + 1] = color[1]!
                 data[k + 2] = color[2]!
-                data[k + 3] = Math.round(rect.alpha * 255)
+                data[k + 3] =
+                    rect.noise && rect.alpha < 1
+                        ? 64 + (hash(y, x) % 192)
+                        : Math.round(rect.alpha * 255)
             }
     }
     const atlasData = (rects: Rect[], index: number) => {
@@ -235,7 +241,7 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
     const check = (
         t: { width: number; height: number; texels: Uint8Array },
         rect: Rect,
-        color: readonly number[] | undefined,
+        isolated: boolean,
         label: string,
         interpolation = true,
     ) => {
@@ -285,7 +291,7 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
                         const k = (py * N + px) * 4
                         for (const [i, frame] of frames.entries()) {
                             // Isolation: the surrounding colour never reaches the screen.
-                            if (color && (frame[k + 1] !== 0 || frame[k + 2] !== 0))
+                            if (isolated && (frame[k + 1] !== 0 || frame[k + 2] !== 0))
                                 fail(
                                     `${where}: filter ${filters[i]} shows the surround at ${px}, ${py}`,
                                 )
@@ -311,7 +317,7 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
                                 }
                             // At least a pixel inside, an integer rect at full size shows only its
                             // own colour.
-                            if (color && margin >= 1) {
+                            if (isolated && !rect.noise && margin >= 1) {
                                 interior++
                                 for (let c = 0; c < 4; c++)
                                     if (Math.abs(frame[k + c]! - own[c]!) > 1) {
@@ -338,10 +344,11 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
             { x: 3001, y: 1501, w: 64, h: 1, alpha: 1 },
             { x: 101, y: 1201, w: 0.5, h: 3, alpha: 1 },
             { x: 200.5, y: 300.25, w: 1.5, h: 1.5, alpha: 0.5 },
+            { x: 517, y: 611, w: 100, h: 60, alpha: 0.5, noise: true },
         ]
         const t = await upload(atlasData(rects, 0), true)
         if (t.width !== 2048 || t.height !== 1024) fail(`decoded at ${t.width}x${t.height}`)
-        for (const rect of rects) check(t, rect, undefined, 'reduced')
+        for (const rect of rects) check(t, rect, false, 'reduced')
     } else {
         const integer: Rect[] = [
             { x: 0, y: 0, w: 1, h: 1, alpha: 1 },
@@ -353,6 +360,8 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
             { x: 0, y: 0, w: 64, h: 64, alpha: 0.5 },
             { x: 0, y: 10, w: 64, h: 3, alpha: 1 },
             { x: 20, y: 0, w: 1, h: 64, alpha: 0.5 },
+            { x: 3, y: 5, w: 50, h: 37, alpha: 1, noise: true },
+            { x: 10, y: 20, w: 40, h: 30, alpha: 0.5, noise: true },
         ]
         const fractional: Rect[] = [
             { x: 1, y: 7, w: 0.5, h: 3, alpha: 1 },
@@ -360,13 +369,12 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
         ]
         for (const [index, rect] of [...integer, ...fractional].entries()) {
             const t = await upload(atlasData([rect], index), true)
-            const isInteger = index < integer.length
-            check(t, rect, isInteger ? sprites[index % sprites.length] : undefined, 'full size')
+            check(t, rect, index < integer.length, 'full size')
         }
         // Pixel-art atlases keep nearest sampling and a single tap.
         for (const [index, rect] of integer.slice(5).entries()) {
             const t = await upload(atlasData([rect], index), false)
-            check(t, rect, undefined, 'pixel art', false)
+            check(t, rect, false, 'pixel art', false)
         }
     }
     for (const renderer of renderers) renderer.dispose()
