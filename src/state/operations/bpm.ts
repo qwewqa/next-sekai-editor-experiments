@@ -1,5 +1,7 @@
+import type { State } from '..'
 import type { BpmObject } from '../../chart/bpm'
 import type { BpmEntity } from '../entities/bpm'
+import { findIntegral } from '../integrals'
 import { addBpm, removeBpm, replaceBpm } from '../mutations/bpm'
 import { getInStoreGrid } from '../store/grid'
 import type { Transaction } from '../transaction'
@@ -53,3 +55,13 @@ export const editBpmWithReceipt = (
 
 export const editBpm = (...args: Parameters<typeof editBpmWithReceipt>) =>
     editBpmWithReceipt(...args).entities
+
+/** The BPM change in effect at a beat: the last one at the greatest beat at or before it, else the first. */
+export const bpmInEffect = (state: Pick<State, 'bpms' | 'store'>, beat: number) => {
+    const first = state.bpms[0]
+    if (!first) return
+    const { x } = beat >= first.x ? findIntegral(state.bpms, 'x', beat) : first
+    return getInStoreGrid(state.store.grid, 'bpm', x)
+        ?.filter((entity) => entity.beat === x)
+        .at(-1)
+}

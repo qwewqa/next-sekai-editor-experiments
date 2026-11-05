@@ -15,6 +15,8 @@ import { createViewport, getCameraInfo } from '../../src/preview/engine/layout'
 import type { State } from '../../src/state'
 import type { Entity } from '../../src/state/entities'
 import { beatToTime } from '../../src/state/integrals/bpms'
+import { addBpm } from '../../src/state/mutations/bpm'
+import { bpmInEffect } from '../../src/state/operations/bpm'
 import { flipVerticalWithReceipt } from '../../src/state/operations/flipVertical'
 import { planEdit } from '../../src/state/operations/properties/plan'
 import { scaleSelectionWithReceipt } from '../../src/state/operations/scaleSelection'
@@ -268,6 +270,21 @@ test('Set Beat lands objects from several beats in source-beat order, whatever t
         ])
             assertKept(planEdit(before, selection, { beat: 4 }).state, kind, 4, [0, 1, 2])
     }
+})
+
+test('the BPM change in effect after a same-beat stack is its last', () => {
+    const state = edits(
+        baseState(),
+        (t) => addBpm(t, { beat: 4, bpm: 180, meter: 3 }),
+        (t) => addBpm(t, { beat: 4, bpm: 90, meter: 4 }),
+    )
+    const tempo = (beat: number) => {
+        const entity = bpmInEffect(state, beat)
+        return entity && [entity.bpm, entity.meter]
+    }
+    assert.deepEqual(tempo(4), [90, 4])
+    assert.deepEqual(tempo(8), [90, 4])
+    assert.deepEqual(tempo(2), [120, 4])
 })
 
 test('moving one of a same-beat pair away and back puts it last, and that order is what is kept', () => {

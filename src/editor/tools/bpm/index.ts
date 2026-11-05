@@ -8,10 +8,10 @@ import { i18n } from '../../../i18n'
 import { clearPreviewEdit, setPreviewEdit } from '../../../preview/edit'
 import type { Entity } from '../../../state/entities'
 import { toBpmEntity, type BpmEntity } from '../../../state/entities/bpm'
-import { findIntegral } from '../../../state/integrals'
 import { addBpm } from '../../../state/mutations/bpm'
 import {
     editBpm as applyBpmEdit,
+    bpmInEffect,
     editBpmWithReceipt,
     editSelectedBpm,
 } from '../../../state/operations/bpm'
@@ -289,10 +289,7 @@ const find = (beat: number) =>
 
 // New changes keep the tempo and meter already in effect at their beat.
 const tempoAt = (beat: number): Omit<BpmObject, 'beat'> => {
-    const bpms = state.value.bpms
-    const first = bpms[0]
-    const integral = first && beat >= first.x ? findIntegral(bpms, 'x', beat) : first
-    const entity = integral && find(integral.x)
+    const entity = bpmInEffect(state.value, beat)
     return entity ? { bpm: entity.bpm, meter: entity.meter } : { bpm: 60 }
 }
 
