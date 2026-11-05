@@ -15,7 +15,7 @@ export const createExportRenderer = (scene: ExportScene, fail: (error: unknown) 
     const canvas = new OffscreenCanvas(s.width, s.height)
     const renderer = (() => {
         try {
-            return createPreviewRenderer(canvas, false)
+            return createPreviewRenderer(canvas, false, scene.filter)
         } catch (error) {
             closeExportAssets(assets)
             throw new GraphicsError(String(error))

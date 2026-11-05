@@ -11,6 +11,7 @@ import type { PreviewFrameInput, PreviewSelection } from '../drawFrame'
 import type { ComboPixels } from '../engine/comboDraw'
 import type { OutlineAlpha } from '../outlineRenderer'
 import type { LoadedParticle } from '../particle'
+import { readPreviewFilter } from '../previewFilter'
 import type { LoadedSkin } from '../skin'
 import { decodeAtlasesAgain } from '../usePreviewResources'
 import { createMirrorSender, selectionPlaces } from './mirror'
@@ -131,7 +132,12 @@ const startWorker = () => {
     const post = (message: ToPreviewWorker, transfer: Transferable[] = []) => {
         worker.postMessage(message, transfer)
     }
-    post({ type: 'start', test: testKeysOpen && 'previewTest' in window, flags })
+    post({
+        type: 'start',
+        test: testKeysOpen && 'previewTest' in window,
+        flags,
+        filter: readPreviewFilter(),
+    })
 
     /** The worker's renderer's limit, once its context is ready. */
     const maxViewportSize = shallowRef<{ width: number; height: number }>()

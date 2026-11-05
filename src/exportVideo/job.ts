@@ -5,6 +5,7 @@ import { videoLock } from '../platform/videoOutput'
 import { markVideoRunning } from '../platform/videoRunning'
 import type { HideChange } from '../playerSections'
 import type { SoundSource } from '../playerSounds'
+import { readPreviewFilter } from '../preview/previewFilter'
 import { createMirrorSender } from '../preview/worker/mirror'
 import type { State } from '../state'
 import { createSlideInfoLookup } from '../state/entities/slides/lookup'
@@ -204,7 +205,12 @@ export const createExportJob = (options: {
                 if (!mirror) throw new Error('Export snapshot is missing')
                 host = createExportHost(options.worker())
                 host.visibility(document.hidden)
-                const ready = host.prepare({ settings, assets, mirror })
+                const ready = host.prepare({
+                    settings,
+                    assets,
+                    mirror,
+                    filter: readPreviewFilter(),
+                })
                 assets = undefined
                 await abortable(ready, signal)
             } catch (error) {

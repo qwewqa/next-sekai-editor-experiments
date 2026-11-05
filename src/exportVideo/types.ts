@@ -1,5 +1,6 @@
 import type { LoadedBackground } from '../preview/assets/types'
 import type { PreviewFrameInput } from '../preview/drawFrame'
+import type { PreviewFilter } from '../preview/gl'
 import type { LoadedParticle } from '../preview/particle'
 import type { LoadedSkin } from '../preview/skin'
 import type { MirrorDiff } from '../preview/worker/mirror'
@@ -40,6 +41,7 @@ export type ExportScene = {
     mirror: MirrorDiff
     settings: ExportSettings
     assets: ExportAssets
+    filter: PreviewFilter
 }
 export type ExportConfig = SinkConfig & { settings: ExportSettings }
 export type ExportStart = ExportScene & ExportConfig
