@@ -625,15 +625,19 @@ export const moveEntities = (
 ) => {
     const transaction = createTransaction(source)
     const composed = getComposedLayout(source)
-    // Same-beat objects move in their stored order, so they keep it.
+    // Objects that meet on a beat land in source-beat order, then stored order, so a same-beat
+    // stack keeps its order.
     const rank = (entity: Entity) =>
         getInStoreGrid(source.store.grid, entity.type, entity.beat)?.indexOf(entity) ?? 0
     const entities = [...active.entities].sort(
         (a, b) =>
             (composed ? +(a.type === 'note') - +(b.type === 'note') : 0) ||
-            (beatOffset > 0 ? b.beat - a.beat : a.beat - b.beat) ||
+            a.beat - b.beat ||
             rank(a) - rank(b),
     )
+    // The moved objects, and what this move makes of them, are never replaced, whatever order
+    // they are processed in. A pinned starting value stays and can be replaced.
+    const kept = new Set(active.entities.filter((entity) => !isPinned(entity, beatOffset)))
     const selectedEntities: Entity[] = []
     const displaced: Entity[] = []
     const applied = new Map<Entity, number>()
@@ -700,7 +704,7 @@ export const moveEntities = (
             lane,
             beat,
             active.focus,
-            selectedEntities,
+            kept,
             rawMove,
             plan,
             displaced,
@@ -708,6 +712,7 @@ export const moveEntities = (
         if (result) {
             if (result.length && !applied.has(entity)) applied.set(entity, selectedEntities.length)
             selectedEntities.push(...result)
+            for (const other of result) kept.add(other)
         }
     }
     const result = transaction.commit(selectedEntities)
@@ -1368,8 +1373,8 @@ type Move<T extends Entity> = (
     lane: number,
     beat: number,
     focus: Entity,
-    /** Objects already placed by this move; they never replace each other. */
-    batch: readonly Entity[],
+    /** The moved objects and what this move made of them; they are never replaced. */
+    kept: ReadonlySet<Entity>,
     rawMove: RawMove | undefined,
     plan: MovePlan,
     displaced: Entity[],
@@ -1386,7 +1391,7 @@ const moves: {
         lane,
         beat,
         focus,
-        batch,
+        kept,
         rawMove,
         plan,
         displaced,
@@ -1396,7 +1401,7 @@ const moves: {
         if (object.beat === entity.beat) return replaceBpm(transaction, entity, object)
 
         if (entity.beat) removeBpm(transaction, entity)
-        displaced.push(...replaceBpmsAt(transaction, object.beat, (other) => batch.includes(other)))
+        displaced.push(...replaceBpmsAt(transaction, object.beat, (other) => kept.has(other)))
 
         return addBpm(transaction, object)
     },
@@ -1408,7 +1413,7 @@ const moves: {
         lane,
         beat,
         focus,
-        batch,
+        kept,
         rawMove,
         plan,
         displaced,
@@ -1427,13 +1432,13 @@ const moves: {
 
         removeTimeScale(transaction, entity)
 
-        // Replaces every one of its group at the beat, a pair too, but not its own batch.
+        // Replaces every one of its group at the beat, a pair too, but not what this move keeps.
         const overlaps = getInStoreGrid(transaction.store.grid, 'timeScale', object.beat) ?? []
         for (const overlap of overlaps)
             if (
                 overlap.beat === object.beat &&
                 overlap.groupId === object.groupId &&
-                !batch.includes(overlap)
+                !kept.has(overlap)
             ) {
                 displaced.push(overlap)
                 removeTimeScale(transaction, overlap)
@@ -1450,7 +1455,7 @@ const moves: {
         lane,
         beat,
         focus,
-        batch,
+        kept,
         rawMove,
         plan,
     ) => {
@@ -1479,7 +1484,7 @@ const moves: {
         lane,
         beat,
         focus,
-        batch,
+        kept,
         rawMove,
         plan,
     ) => {
@@ -1509,7 +1514,7 @@ const moves: {
         lane,
         beat,
         focus,
-        batch,
+        kept,
         rawMove,
         plan,
     ) => {
@@ -1538,7 +1543,7 @@ const moves: {
         lane,
         beat,
         focus,
-        batch,
+        kept,
         rawMove,
     ) => {
         const object = toMovedStageStyleEventObject(
@@ -1566,7 +1571,7 @@ const moves: {
         lane,
         beat,
         focus,
-        batch,
+        kept,
         rawMove,
         plan,
     ) => {
@@ -1587,7 +1592,7 @@ const moves: {
     },
     stageTransformEventConnection: undefined,
 
-    note: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove, plan) => {
+    note: (transaction, onlyType, entity, startLane, lane, beat, focus, kept, rawMove, plan) => {
         const object = toMovedNoteObject(
             onlyType,
             entity,

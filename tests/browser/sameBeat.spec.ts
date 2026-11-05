@@ -1418,4 +1418,34 @@ test.describe('Select moves of BPM changes and time scales', () => {
         )
         expect(moved).toMatchObject({ values: [180], displaced: { bpm: 2 } })
     })
+
+    for (const kind of ['bpm', 'timeScale', 'cameraEventJoint'] as const)
+        test(`${kind}: nearly equal beats moved later land in source order`, async ({ page }) => {
+            const moved = await move(
+                page,
+                kind,
+                [
+                    [4, 1, true],
+                    [4.0000001, 2, true],
+                ],
+                1,
+                5,
+            )
+            expect(moved).toMatchObject({ values: [1, 2], selected: 2, live: 2 })
+        })
+
+    for (const kind of ['bpm', 'timeScale'] as const)
+        test(`${kind}: a selected one that a nearly equal one lands on stays`, async ({ page }) => {
+            const moved = await move(
+                page,
+                kind,
+                [
+                    [3.9999999, 1, true],
+                    [4, 2, true],
+                ],
+                0.0000001,
+                4,
+            )
+            expect(moved).toEqual({ values: [2, 1], displaced: undefined, selected: 2, live: 2 })
+        })
 })
