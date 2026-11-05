@@ -48,7 +48,7 @@ export const bodyColors = {
 export const traceColors = { green: '#5fefc2', red: '#fe9ccb', yellow: '#fddd86' }
 export const diamondColors = { green: '#abfbe3', red: '#ffd8f6', yellow: '#fff2c3' }
 export const arrowColors = { normal: '#ec7cb4', critical: '#ffc633' }
-export const damage = { color: '#a50acc', edge: '#d28ae6' }
+export const damageFace = '#a50acc'
 
 /**
  * Colours sampled from the base set (Next SEKAI 01) where ours must match it side by side: the

@@ -6,7 +6,7 @@ import {
     baseColors,
     bodyColors,
     colorNames,
-    damage,
+    damageFace,
     diamondColors,
     guideColor,
     laneAlpha,
@@ -352,6 +352,11 @@ const bar = (kind, color, { edge = 'none', light } = {}) => {
         { transform: basicBox },
     )
 }
+// A damage note's rim is its face a quarter of the way to black, near the base's dark edge, so the
+// bar's edge steps down to the stage. Black keeps its light inner colour as its rim, without which
+// its bar would not show.
+const damageEdge = (face, color) =>
+    color === 'Black' ? styleColors('Black')[1] : mix(face, '#000000', 0.25)
 const damageImage = (part, color, edge) =>
     image(`note-damage-${part.toLowerCase()}`, { ...damageVars, color, edge }, { stretch: true })
 
@@ -516,7 +521,7 @@ export function skinSprites() {
                     bodyImage(part, bodyColors[key], isCritical(family) && baseColors.criticalGlow),
                 )
         for (const part of parts)
-            add(`Sekai Damage Note ${part}`, damageImage(part, damage.color, damage.edge))
+            add(`Sekai Damage Note ${part}`, damageImage(part, damageFace, damageEdge(damageFace)))
     })
 
     group('Trace bodies (slim)', () => {
@@ -558,7 +563,7 @@ export function skinSprites() {
                 `Sekai Trace Note Purple ${part}`,
                 image(
                     `note-damage-slim-${part.toLowerCase()}`,
-                    { ...damageSlimVars, color: damage.color, edge: damage.edge },
+                    { ...damageSlimVars, color: damageFace, edge: damageEdge(damageFace) },
                     { stretch: true },
                 ),
             )
@@ -579,7 +584,7 @@ export function skinSprites() {
                     name,
                     image(
                         'note-damage-basic',
-                        { color: damage.color, edge: damage.edge },
+                        { color: damageFace, edge: damageEdge(damageFace) },
                         { transform: basicBox },
                     ),
                 )
@@ -749,7 +754,7 @@ export function skinSprites() {
         add('Sekai Trace Note Green', bar('trace', traceColors.green))
         add('Sekai Trace Note Red', bar('trace', traceColors.red))
         add('Sekai Trace Note Yellow', bar('critical', traceColors.yellow))
-        add('Sekai Trace Note Purple', bar('damage', damage.color, { edge: damage.edge }))
+        add('Sekai Trace Note Purple', bar('damage', damageFace, { edge: damageEdge(damageFace) }))
         for (const color of colorNames) {
             const [outer, inner, accent] = styleColors(color)
             const critical = baseColors.styleCritical[color]
@@ -766,7 +771,10 @@ export function skinSprites() {
                         ? bar('critical', critical.trace, { light: trace.light })
                         : bar('trace', trace.bar, { light: trace.light }),
                 )
-            add(`Sekai Damage Note Basic ${color}`, bar('damage', accent, { edge: inner }))
+            add(
+                `Sekai Damage Note Basic ${color}`,
+                bar('damage', accent, { edge: damageEdge(accent, color) }),
+            )
         }
     })
 
@@ -793,7 +801,10 @@ export function skinSprites() {
                             : slimImage(part, trace.bar, trace.light),
                     )
             for (const part of parts)
-                add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, inner))
+                add(
+                    `Sekai Damage Note ${part} ${color}`,
+                    damageImage(part, accent, damageEdge(accent, color)),
+                )
             const [face, criticalFace] = baseColors.styleDiamond[color]
             const halo = baseColors.styleDiamondHalo[color]
             const haloed =
