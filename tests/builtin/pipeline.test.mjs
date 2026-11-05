@@ -220,5 +220,5 @@ test('the textures and files stay within their budgets', () => {
     let total = 0
     for (const [path, bytes] of first.files)
         if (path.startsWith('public/builtin/')) total += bytes.length
-    assert.ok(total <= 3.2 * 1024 * 1024, `the set is ${total} bytes`)
+    assert.ok(total <= 3.15 * 1024 * 1024, `the set is ${total} bytes`)
 })
