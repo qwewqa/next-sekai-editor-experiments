@@ -41,6 +41,9 @@ test('the transport step titles join their sentences and write the hold rate in 
     const japanese = page.getByRole('button', { name: '1ミリ秒戻る', exact: true })
     await expect(japanese).toHaveAttribute('title', '1ミリ秒戻る。長押しで0.1倍速で巻き戻し')
     await setLocale(page, 'fr')
-    const french = page.getByRole('button', { name: 'Reculer de 1 ms', exact: true })
-    await expect(french).toHaveAttribute('title', 'Reculer de 1 ms. Maintenir pour reculer à 0,1×')
+    const french = page.getByRole('button', { name: 'Reculer de 1\u00a0ms', exact: true })
+    await expect(french).toHaveAttribute(
+        'title',
+        'Reculer de 1\u00a0ms. Maintenir pour reculer à 0,1×',
+    )
 })

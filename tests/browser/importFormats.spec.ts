@@ -355,7 +355,7 @@ test('refusals read in the chosen language', async ({ page }) => {
         [
             'chart.sus',
             Buffer.from(sus.replace('ticks_per_beat 480', 'ticks_per_beat 1e999')),
-            'Partition non valide : ticks par temps manquants ou invalides',
+            'Partition non valide : ticks par temps manquants ou non valides',
         ],
     ] as const) {
         await page.reload()

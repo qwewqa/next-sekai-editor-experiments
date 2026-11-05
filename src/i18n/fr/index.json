@@ -34,7 +34,7 @@
         "download": "Télécharger la musique"
       },
       "fileChanged": "Fichier de la musique modifié",
-      "offsetSet": "Décalage de la musique défini sur {0} ms"
+      "offsetSet": "Décalage de la musique défini sur {0} ms"
     },
     "brush": {
       "title": "Pinceau",
@@ -59,7 +59,7 @@
     },
     "laneLimits": {
       "none": "Sans limite de voie",
-      "six": "Limiter à ±6 voies",
+      "six": "Limiter à ±6 voies",
       "custom": "Limite de voie personnalisée…",
       "customTitle": "Limite de voie personnalisée",
       "maximum": "Voie maximale (±)",
@@ -84,7 +84,7 @@
     },
     "divisions": {
       "title": "Division 1/{0}",
-      "switched": "Division en 1/{0} sélectionnée",
+      "switched": "Division réglée sur 1/{0}",
       "custom": {
         "title": "Division personnalisée…",
         "modal": {
@@ -138,7 +138,7 @@
     },
     "splitHold": {
       "title": "Scinder le slide",
-      "noConnections": "Sélectionnez une note suivie d’une connexion à scinder",
+      "noConnections": "Sélectionnez une note de slide reliée à la note suivante",
       "split": "{0} connexion scindée|{0} connexions scindées"
     },
     "combineNotes": {
@@ -224,9 +224,9 @@
     "note": {
       "title": {
         "default": "Note",
-        "preset": "Note n° {0}"
+        "preset": "Note n° {0}"
       },
-      "switched": "Outil Note n° {0} activé",
+      "switched": "Outil Note n° {0} activé",
       "modal": {
         "title": "Propriétés de note par défaut"
       }
@@ -278,11 +278,11 @@
         "invalidBpm": "le BPM doit être positif et fini",
         "missingValue": "{0} n’a pas de {1}",
         "missingNote": "il manque une note à {0}",
-        "ticksPerBeat": "ticks par temps manquants ou invalides",
-        "offset": "décalage invalide",
-        "timeScaleChange": "changement d’échelle de temps invalide",
+        "ticksPerBeat": "ticks par temps manquants ou non valides",
+        "offset": "décalage non valide",
+        "timeScaleChange": "changement d’échelle de temps non valide",
         "meter": "temps par mesure non valide",
-        "missingMeter": "aucun temps par mesure pour la mesure {0}"
+        "missingMeter": "temps par mesure non défini pour la mesure {0}"
       },
       "unsupportedParts": "Ce niveau contient des parties que cette version de l’éditeur ne prend pas en charge. Elles ont été omises."
     },
@@ -345,9 +345,9 @@
     "slide": {
       "title": {
         "default": "Slide",
-        "preset": "Slide n° {0}"
+        "preset": "Slide n° {0}"
       },
-      "switched": "Outil Slide n° {0} activé",
+      "switched": "Outil Slide n° {0} activé",
       "modal": {
         "title": "Propriétés de slide par défaut"
       }
@@ -486,7 +486,7 @@
       "nextSekai02": "Next SEKAI 02",
       "builtin": "Intégré",
       "useBuiltinAll": "Tout passer en intégré",
-      "resetDefault": "Rétablir par défaut",
+      "resetDefault": "Rétablir les valeurs par défaut",
       "stored": "Stocké : {0} élément, {1}|Stocké : {0} éléments, {1}",
       "storedEmpty": "Aucun élément stocké",
       "storedUnavailable": "L’éditeur ne peut pas accéder aux éléments stockés dans ce navigateur.",
@@ -566,7 +566,7 @@
         "particleCount": "Dans ce fichier, l’effet « {1} » ({0}) utilise plus de {2} particules.",
         "effectGroups": "Dans ce fichier, l’effet « {1} » ({0}) contient plus de {2} groupes de particules.",
         "noPerfect": "Dans ce fichier, l’audio ({0}) n’a pas de clip #PERFECT utilisable.",
-        "audioLength": "Dans ce fichier, l’audio ({0}) dépasse {1} secondes au total.",
+        "audioLength": "Dans ce fichier, l’audio ({0}) dépasse {1} secondes au total.",
         "packageTooLarge": "Cet élément dépasse {0} une fois stocké.",
         "storeFailed": "Cet élément n’a pas pu être stocké."
       },
@@ -603,7 +603,7 @@
         "tooManyEffects": "Dans cet élément, les données ({0}) contiennent plus de {1} effets.",
         "particleCount": "Dans cet élément, l’effet « {1} » ({0}) utilise plus de {2} particules.",
         "noPerfect": "Dans cet élément, l’audio ({0}) n’a pas de clip #PERFECT utilisable.",
-        "audioLength": "Dans cet élément, l’audio ({0}) dépasse {1} secondes au total.",
+        "audioLength": "Dans cet élément, l’audio ({0}) dépasse {1} secondes au total.",
         "tooManyParticles": "Dans cet élément, les données ({0}) contiennent plus de {1} particules.",
         "tooManyGroups": "Dans cet élément, les données ({0}) contiennent plus de {1} groupes de particules.",
         "effectGroups": "Dans cet élément, l’effet « {1} » ({0}) contient plus de {2} groupes de particules.",
@@ -769,7 +769,7 @@
       "view": "Appuyez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
       "viewClick": "Cliquez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
       "showChange": "Afficher la modification fait défiler la partition jusqu’à la modification suivante de l’étape de la Chronologie que vous consultez.",
-      "editsHere": "Trouver les modifications ici liste les étapes de la Chronologie avec des modifications aux temps couverts par la sélection, ou aux temps visibles si rien n’est sélectionné.",
+      "editsHere": "Trouver les modifications ici liste les étapes de la Chronologie qui ont modifié les temps couverts par la sélection, ou les temps visibles si rien n’est sélectionné.",
       "timeline": "Historique affiche vos modifications, vos sauvegardes et vos exportations de données de niveau sous forme d’étapes de la Chronologie."
     },
     "pasteTool": {
@@ -805,7 +805,7 @@
       "quickEditPanel": "Lorsque le panneau Propriétés est affiché, appuyez sur une note sélectionnée pour modifier toutes les notes sélectionnées avec le préréglage actuel.",
       "quickEditPanelClick": "Lorsque le panneau Propriétés est affiché, cliquez sur une note sélectionnée pour modifier toutes les notes sélectionnées avec le préréglage actuel.",
       "adds": "Slide ajoute des slides avec les propriétés par défaut du préréglage actuel.",
-      "presetCommands": "Slide n° 1 à Slide n° 5 activent Slide avec le préréglage choisi."
+      "presetCommands": "Slide n° 1 à Slide n° 5 activent Slide avec le préréglage choisi."
     },
     "generateSlideNotesTool": {
       "fillSelection": "Tracez un cadre en faisant glisser autour d’au moins deux notes d’un même slide pour remplir uniquement la partie entre elles."
@@ -859,7 +859,7 @@
     },
     "noteTool": {
       "adds": "Note ajoute des notes avec les propriétés par défaut du préréglage actuel.",
-      "presetCommands": "Note n° 1 à Note n° 4 activent Note avec le préréglage choisi."
+      "presetCommands": "Note n° 1 à Note n° 4 activent Note avec le préréglage choisi."
     }
   },
   "elevation": {
@@ -921,7 +921,7 @@
         "off": "Désactivée",
         "fft": "FFT",
         "volume": "Volume",
-        "changed": "Le mode de visualisation de la forme d’onde a changé. Rechargez le fichier audio pour appliquer ce changement."
+        "changed": "Sélectionnez à nouveau le fichier de la musique pour appliquer le nouveau paramètre de forme d’onde."
       },
       "maxScrollX": "Défilement horizontal maximal (voies)",
       "zeroWidthNotes": {
@@ -940,7 +940,7 @@
       "showOtherStages": "Afficher les autres scènes",
       "nameContrast": "Contraste des noms",
       "showOtherObjects": "Afficher les autres objets",
-      "deselectSwitchesToSelect": "Désélectionner deux fois pour passer à l’outil Sélection",
+      "deselectSwitchesToSelect": "Désélectionner deux fois pour passer à l’outil Sélectionner",
       "beatDisplay": {
         "title": "Affichage des temps",
         "beat": "Temps",
@@ -958,7 +958,7 @@
         "title": "Outil secondaire",
         "eraser": "Gomme",
         "select": "Sélectionner",
-        "selectContextMenu": "Sélection + menu contextuel"
+        "selectContextMenu": "Sélectionner + menu contextuel"
       },
       "smoothScrolling": "Défilement fluide"
     },
@@ -1020,7 +1020,7 @@
     },
     "touch": {
       "title": "Tactile",
-      "quickScrollWidth": "Largeur de la zone de défilement rapide (px)",
+      "quickScrollWidth": "Largeur de la zone de défilement rapide (px)",
       "showQuickScroll": {
         "title": "Afficher la zone de défilement rapide",
         "on": "Activé",
@@ -1056,7 +1056,7 @@
       "terms": "Conditions d’utilisation",
       "usageStatistics": "Envoyer des statistiques d’utilisation",
       "usageStatisticsNote": "Nous utilisons les statistiques d’utilisation pour décider quelles fonctionnalités améliorer. Les statistiques d’utilisation comprennent les outils utilisés, certains paramètres de l’éditeur, le type et la taille des fichiers, et la durée des actions. Consultez l’Avis de confidentialité pour en savoir plus.",
-      "diagnostics": "Copier les infos de diagnostic…",
+      "diagnostics": "Copier les informations de diagnostic…",
       "diagnosticsTitle": "Informations de diagnostic",
       "diagnosticsNote": "Les informations de diagnostic peuvent inclure des noms de fichiers et de dossiers. Vérifiez-les avant de les partager.",
       "copy": "Copier",
@@ -1079,14 +1079,14 @@
           "all": "Permet à toutes les notes d’avoir une largeur de zéro voie."
         }
       },
-      "dimUnchangedObjects": "Activation par défaut d’Afficher les modifications lorsque vous consultez des étapes de la chronologie.",
+      "dimUnchangedObjects": "Activation par défaut de l’option Afficher les modifications lorsque vous consultez des étapes de la Chronologie.",
       "showOtherGroups": "Affichage des objets des autres groupes en les estompant lorsqu’un groupe est ciblé.",
       "showOtherStages": "Affichage des objets des autres scènes en les estompant lorsqu’une scène est ciblée.",
       "showOtherObjects": "Affichage des objets des types que vous avez masqués en les estompant.",
       "nameContrast": "Ajout d’un contour noir aux noms des groupes et des scènes et éclaircissement des noms des scènes.",
       "dragToPanY": "Défilement de la partition vers le haut ou vers le bas lorsque vous faites glisser près de son bord supérieur ou inférieur.",
       "dragToPanX": "Défilement horizontal de la partition lorsque vous faites glisser près de son bord gauche ou droit.",
-      "previewRenderScale": "Multiplicateur de résolution de l’aperçu, de 0.25× à 2×. Des valeurs plus basses réduisent la netteté et peuvent améliorer les performances.",
+      "previewRenderScale": "Multiplicateur de résolution de l’aperçu, de 0,25× à 2×. Des valeurs plus basses réduisent la netteté et peuvent améliorer les performances.",
       "previewInWorker": "Rendu de l’aperçu en parallèle avec le reste de l’éditeur. Si l’aperçu s’affiche mal ou ne s’affiche pas, désactivez cette option.",
       "toolbarQuickSwitch": "Possibilité de maintenir un bouton de la barre d’outils enfoncé, puis de relâcher sur un outil pour le choisir.",
       "playFollowPosition": "Hauteur à laquelle Suivre maintient le curseur de lecture. 0 correspond au bas de la partie visible de la partition et 100 au haut.",
@@ -1129,7 +1129,7 @@
       },
       "confirmCloseUnsavedFile": "Demande de confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet.",
       "filePicker": {
-        "intro": "Écriture des sauvegardes et des exports dans des fichiers que vous choisissez, ou leur téléchargement.",
+        "intro": "Sauvegarde et exportation dans des fichiers que vous choisissez, ou par téléchargement.",
         "choices": {
           "auto": "Écrit dans les fichiers choisis. Télécharge les fichiers dans certains navigateurs.",
           "enabled": "Écrit dans les fichiers choisis.",
@@ -1207,7 +1207,7 @@
       "stored": "Stocké dans ce navigateur : {0} sur environ {1}",
       "deleteSessions": "Supprimer des sessions…",
       "deleteTitle": "Supprimer des sessions",
-      "lastEdited": "Dernière modification il y a plus de {0} jour|Dernière modification il y a plus de {0} jours",
+      "lastEdited": "Dernière modification il y a plus de {0} jour|Dernière modification il y a plus de {0} jours",
       "all": "Tout",
       "includeNotSaved": "Inclure le travail non sauvegardé",
       "deleteNext": "Supprimer…",
@@ -1308,7 +1308,7 @@
       "tooMany": "Trop de notes à générer"
     },
     "note": {
-      "title": "Note n° {0}",
+      "title": "Note n° {0}",
       "adding": "Ajout de {0} note|Ajout de {0} notes",
       "added": "{0} note ajoutée|{0} notes ajoutées",
       "editing": "Modification de {0} note|Modification de {0} notes",
@@ -1343,7 +1343,7 @@
       "moved": "{0} objet déplacé|{0} objets déplacés"
     },
     "slide": {
-      "title": "Slide n° {0}",
+      "title": "Slide n° {0}",
       "adding": "Ajout de {0} note|Ajout de {0} notes",
       "editing": "Modification de {0} note|Modification de {0} notes",
       "moving": "Déplacement de {0} note|Déplacement de {0} notes",
@@ -1429,7 +1429,7 @@
     "terms": "Conditions d’utilisation",
     "privacy": "Avis de confidentialité",
     "agree": "Accepter",
-    "sentence": "En choisissant Accepter, vous acceptez les Conditions d’utilisation et confirmez avoir 13 ans ou plus et avoir lu l’Avis de confidentialité.",
+    "sentence": "En choisissant Accepter, vous acceptez les Conditions d’utilisation et confirmez avoir 13 ans ou plus et avoir lu l’Avis de confidentialité.",
     "updated": {
       "terms": "Nous avons mis à jour les Conditions d’utilisation.",
       "privacy": "Nous avons mis à jour l’Avis de confidentialité.",
@@ -1449,7 +1449,7 @@
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel.",
     "journalKept": "Une modification récupérée de « {0} » a été conservée dans une session séparée.",
-    "fallback": "Travail non sauvegardé d’une visite précédente récupéré.",
+    "fallback": "Le travail non sauvegardé d’une visite précédente a été récupéré.",
     "fallbackLocal": "Du travail non sauvegardé d’une visite précédente se trouve dans Données locales.",
     "migrationFailed": "L’ancienne sauvegarde automatique n’a pas pu être restaurée.",
     "autoSave": "Reprise de « {0} » depuis l’ancienne sauvegarde automatique.",
@@ -1487,14 +1487,14 @@
     "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez pour conserver votre travail.",
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez pour conserver votre travail.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel.",
-    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
-    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail."
+    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
+    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail."
   },
   "player": {
     "started": "Lecture démarrée",
     "stopped": "Lecture arrêtée",
     "startFailed": "Impossible de démarrer la lecture. Réessayez.",
-    "changed": "Vitesse de lecture modifiée à {0}×"
+    "changed": "Vitesse de lecture modifiée : {0}×"
   },
   "history": {
     "summary": {
@@ -1587,20 +1587,20 @@
     "goTo": "Aller à",
     "show": "Afficher",
     "filterAll": "Tout",
-    "filterSaves": "Sauvegardes et exports",
+    "filterSaves": "Sauvegardes et exportations",
     "showAll": "Tout afficher",
     "now": "Maintenant",
     "today": "Aujourd’hui",
     "yesterday": "Hier",
     "empty": "Aucune modification pour l’instant",
-    "noSaves": "Aucune sauvegarde ni export",
-    "loadFailed": "La chronologie n’a pas pu être chargée.",
-    "codeFailed": "La chronologie n’a pas pu être chargée. Rechargez la page pour réessayer.",
+    "noSaves": "Aucune sauvegarde ni exportation",
+    "loadFailed": "La Chronologie n’a pas pu être chargée.",
+    "codeFailed": "La Chronologie n’a pas pu être chargée. Rechargez la page pour réessayer.",
     "tryAgain": "Réessayer",
     "steps": "{0} étape|{0} étapes",
     "newerSteps": "{0} étape plus récente|{0} étapes plus récentes",
     "notKept": "non conservée",
-    "earlierNotStored": "Les étapes antérieures de la chronologie ne sont pas stockées dans ce navigateur.",
+    "earlierNotStored": "Les étapes antérieures de la Chronologie ne sont pas stockées dans ce navigateur.",
     "damaged": "endommagée",
     "needsNewer": "nécessite une version plus récente",
     "savedOn": "Sauvegardé sur {0}",
@@ -1648,7 +1648,7 @@
       "recoveryContext": "Actions précédentes",
       "recoveryHead": "Récupéré jusqu’ici",
       "omittedDescriptions": "Actions précédentes non listées : {0}",
-      "droppedSteps": "Actions sans étape propre dans la chronologie : {0}",
+      "droppedSteps": "Actions sans étape propre dans la Chronologie : {0}",
       "counts": {
         "note": "{0} note|{0} notes",
         "bpm": "{0} changement de BPM|{0} changements de BPM",
@@ -1987,7 +1987,7 @@
         "pressUnassigned": "Appuyez sur une touche",
         "pressCancel": "Appuyez sur une touche ou sur Échap pour annuler",
         "unassigned": "Non attribué",
-        "reserved": "{0} est réservé au navigateur ou au système ; appuyez sur une autre touche.",
+        "reserved": "{0} est réservé au navigateur ou au système. Appuyez sur une autre touche.",
         "altGraph": "{0} sert à saisir des caractères dans de nombreuses dispositions de clavier. Appuyez sur une autre touche.",
         "alsoRuns": "Exécute aussi {0}.",
         "names": {
@@ -2065,7 +2065,7 @@
         "label": "Taille"
       },
       "skip": {
-        "label": "Intervalle (temps)"
+        "label": "Intervalle (temps)"
       },
       "stage": {
         "label": "Scène"
@@ -2099,7 +2099,7 @@
         "label": "Décalage Y"
       },
       "yOffsetBeat": {
-        "label": "Décalage Y (temps)"
+        "label": "Décalage Y (temps)"
       },
       "noteStyle": {
         "label": "Couleur des notes",
@@ -2178,7 +2178,7 @@
         },
         "hideNotes": "Masque les notes du groupe et les segments de connecteur qui y commencent. Dure jusqu’à la prochaine échelle de temps du groupe.",
         "cameraLeft": "Bord gauche de la vue de la caméra, en voies.",
-        "cameraSize": "Largeur de la vue de la caméra, de 6 à 24 voies.",
+        "cameraSize": "Largeur de la vue de la caméra, de 6 à 24 voies.",
         "cameraZoomTargetLane": "Voie qui sert de centre au zoom, comptée depuis le milieu de la vue de la caméra.",
         "cameraZoomTargetY": "Hauteur qui sert de centre au zoom, de -1 à 1. 0 correspond à la ligne de jugement et 1 au haut de la scène.",
         "cameraZoomVerticalAlign": {
@@ -2239,7 +2239,7 @@
         },
         "copyProperties": "Copie les propriétés réglées sur Copier depuis un seul objet sélectionné quand vous ajoutez un objet du même type.",
         "copyPropertiesSlide": "Copie les propriétés réglées sur Copier depuis le slide des notes sélectionnées quand vous y ajoutez une note.",
-        "forceNoteSpeed": "Vitesse de remplacement des notes du groupe, de 1 à 12.",
+        "forceNoteSpeed": "Vitesse imposée aux notes du groupe, de 1 à 12.",
         "isFromStart": "Dessine la scène avant son premier événement de masque.",
         "isUntilEnd": "Dessine la scène après son dernier événement de masque.",
         "generateSimLines": {
@@ -2262,8 +2262,8 @@
     "loading": {
       "loading": "Chargement…",
       "audioUnreadable": "Ce fichier audio n’a pas pu être lu.",
-      "audioMayBeTooLong": "Ce fichier audio n’a pas pu être chargé. La durée des fichiers audio ne doit pas dépasser {0} minutes.",
-      "audioTooLong": "Ce fichier audio dure plus de {0} minutes et n’a pas pu être chargé.",
+      "audioMayBeTooLong": "Ce fichier audio n’a pas pu être chargé. La durée des fichiers audio ne doit pas dépasser {0} minutes.",
+      "audioTooLong": "Ce fichier audio dure plus de {0} minutes et n’a pas pu être chargé.",
       "imageUnreadable": "Cette image n’a pas pu être lue.",
       "coverFailed": "La couverture n’a pas pu être générée.",
       "codeFailed": "Cela n’a pas pu être chargé. Rechargez la page pour réessayer.",
@@ -2277,7 +2277,7 @@
     "loadingSkin": "Chargement du skin…",
     "skinUnavailable": "Le skin de l’aperçu n’a pas pu être chargé.",
     "graphicsUnavailable": "L’aperçu n’a pas pu être affiché.",
-    "chartGraphicsUnavailable": "Le niveau n’a pas pu être affiché.",
+    "chartGraphicsUnavailable": "La partition n’a pas pu être affichée.",
     "graphicsHelp": "Vérifiez que l’accélération graphique et WebGL sont activés dans votre navigateur, puis redémarrez-le si nécessaire.",
     "errorDetails": "Détails de l’erreur",
     "reload": "Recharger",
@@ -2288,11 +2288,11 @@
       "controls": "Commandes de lecture de l’aperçu",
       "pause": "Mettre l’aperçu en pause",
       "play": "Lire l’aperçu",
-      "back": "Reculer de {0} ms",
-      "forward": "Avancer de {0} ms",
+      "back": "Reculer de {0} ms",
+      "forward": "Avancer de {0} ms",
       "holdBackward": "Maintenir pour reculer à {0}×",
       "holdForward": "Maintenir pour avancer à {0}×",
-      "stepSize": "Pas : {0} ms"
+      "stepSize": "Pas : {0} ms"
     }
   },
   "offscreenNotes": {
@@ -2359,8 +2359,8 @@
       "actions": "Plus d’actions pour {0}",
       "target": "Les nouveaux objets sont ajoutés à {0}",
       "rename": "Renommer",
-      "solo": "Afficher uniquement celui-ci",
-      "soloHint": "Alt+clic pour n’afficher que celui-ci",
+      "solo": "Afficher uniquement cet élément",
+      "soloHint": "Alt+clic pour n’afficher que cet élément",
       "select": "Sélectionner les objets",
       "selected": "{0} objet sélectionné|{0} objets sélectionnés",
       "moveSelection": "Déplacer la sélection ici",
@@ -2468,10 +2468,10 @@
     "in": "Entrée",
     "out": "Sortie",
     "length": "Durée",
-    "invalidTime": "Saisissez un temps comme 01:23.456.",
+    "invalidTime": "Saisissez une valeur au format 01:23.456.",
     "resolution": "Résolution",
     "frameRate": "Fréquence d’images",
-    "fps": "{0} fps",
+    "fps": "{0} fps",
     "quality": "Qualité",
     "qualities": {
       "low": "Faible",
@@ -2500,22 +2500,22 @@
         "webm": "Meilleure qualité d’image et de son à taille de fichier égale. Pris en charge par moins d’applications et d’appareils."
       }
     },
-    "videoBitrate": "Débit vidéo (Mbps)",
+    "videoBitrate": "Débit vidéo (Mbit/s)",
     "antialiasDescription": "Lissage des contours en escalier et réduction du scintillement dans la vidéo.",
     "renderScaleDescription": "Multiplicateur de résolution de rendu de chaque image. Des valeurs plus élevées rendent les contours plus lisses mais ralentissent l’exportation.",
     "fadeIn": "Fondu d’entrée (s)",
     "fadeOut": "Fondu de sortie (s)",
     "audioBitrate": "Débit audio",
-    "kbps": "{0} kbps",
-    "restoreDefaults": "Réinitialiser par défaut",
+    "kbps": "{0} kbit/s",
+    "restoreDefaults": "Rétablir les valeurs par défaut",
     "export": "Exporter…",
     "exportNow": "Exporter",
     "download": "Télécharger la vidéo",
     "share": "Partager la vidéo",
     "fileType": "Vidéo",
     "about": "Environ {0}",
-    "minutesLeft": "Encore environ {0} min",
-    "lessThanMinuteLeft": "Encore moins de 1 min",
+    "minutesLeft": "Il reste environ {0} min",
+    "lessThanMinuteLeft": "Il reste moins d’une minute",
     "preparing": "Préparation…",
     "exporting": "Exportation de la vidéo…",
     "finishing": "Finalisation…",
@@ -2614,10 +2614,10 @@
     "savedWithoutCoverLarge": "Sauvegardé dans {0} sans sa couverture",
     "savedWithoutPreviewLarge": "Sauvegardé dans {0} sans son aperçu audio",
     "savedWithoutMediaLarge": "Sauvegardé dans {0} sans ses médias",
-    "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures de la chronologie n’ont pas été conservées.",
-    "someStepsNotKeptLine": "Certaines étapes antérieures de la chronologie n’ont pas été conservées.",
-    "someStepsMayNotBeIncluded": "Sauvegardé dans {0}. Certaines étapes antérieures de la chronologie n’y figurent peut-être pas.",
-    "someStepsMayNotBeIncludedLine": "Certaines étapes antérieures de la chronologie n’y figurent peut-être pas.",
+    "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures de la Chronologie n’ont pas été conservées.",
+    "someStepsNotKeptLine": "Certaines étapes antérieures de la Chronologie n’ont pas été conservées.",
+    "someStepsMayNotBeIncluded": "Sauvegardé dans {0}. Certaines étapes antérieures de la Chronologie n’y figurent peut-être pas.",
+    "someStepsMayNotBeIncludedLine": "Certaines étapes antérieures de la Chronologie n’y figurent peut-être pas.",
     "committedState": "Le fichier contient la dernière version stockée de la session ouverte dans un autre onglet.",
     "noChanges": "Aucune modification depuis le téléchargement de {0}",
     "noChangesSaved": "Aucune modification depuis la sauvegarde de {0}",
@@ -2651,15 +2651,15 @@
     "scopeBoth": "« {0} » et l’historique stocké dans ce navigateur ont été vérifiés.",
     "scopeStored": "L’historique stocké dans ce navigateur a été vérifié.",
     "fileDamaged": "« {0} » est endommagé. La sauvegarde créera un fichier séparé.",
-    "repaired": "{0} étape de la chronologie réparée.|{0} étapes de la chronologie réparées.",
-    "storedDamaged": "{0} étape de la chronologie stockée dans ce navigateur est endommagée.|{0} étapes de la chronologie stockées dans ce navigateur sont endommagées.",
+    "repaired": "{0} étape de la Chronologie réparée.|{0} étapes de la Chronologie réparées.",
+    "storedDamaged": "{0} étape de la Chronologie stockée dans ce navigateur est endommagée.|{0} étapes de la Chronologie stockées dans ce navigateur sont endommagées.",
     "mediaDamaged": "La copie de {0} stockée dans ce navigateur était endommagée."
   },
   "levelInfo": {
     "file": "Fichier",
     "check": "Vérifier",
     "tagsPlaceholder": "Séparés par des virgules",
-    "editCover": "Éditeur de la couverture",
+    "editCover": "Modifier la couverture",
     "makePreview": "Créer à partir de la musique…",
     "notLoaded": "non chargé",
     "discard": "Abandonner les modifications des informations du niveau ?"
@@ -2728,8 +2728,8 @@
     "keptName": "{0} (remplacé le {1})",
     "replaceNewer": "Ce fichier a été créé par une version plus récente de {0}.",
     "replaceDamaged": "Ce fichier est endommagé.",
-    "replaceHoldsEarlier": "Il contient des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
-    "replaceMayHoldEarlier": "Il contient peut-être des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
+    "replaceHoldsEarlier": "Il contient des étapes antérieures de la Chronologie qui ne sont plus stockées dans ce navigateur.",
+    "replaceMayHoldEarlier": "Il contient peut-être des étapes antérieures de la Chronologie qui ne sont plus stockées dans ce navigateur.",
     "keepEditing": "Continuer à modifier"
   },
   "name": {
@@ -2745,22 +2745,22 @@
     "separateCopyOf": "Copie séparée de « {0} » ouverte.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
-    "bgmMayBeTooLong": "La musique n’a pas été chargée. La durée des fichiers audio ne doit pas dépasser {0} minutes.",
-    "bgmTooLong": "La musique dure plus de {0} minutes et n’a pas été chargée.",
+    "bgmMayBeTooLong": "La musique n’a pas été chargée. La durée des fichiers audio ne doit pas dépasser {0} minutes.",
+    "bgmTooLong": "La musique dure plus de {0} minutes et n’a pas été chargée.",
     "bgmDiffers": "Ce fichier est différent de la musique d’origine, « {0} ».",
     "bgmDiffersUnnamed": "Ce fichier est différent de la musique d’origine.",
     "newLevel": "Nouveau niveau",
     "reopen": "Rouvrir « {0} »",
     "reopenUntitled": "Rouvrir la session du {0}",
     "readOnlyPeek": "Lecture seule pendant la consultation de l’historique",
-    "restoredTo": "Restauré à {0}",
+    "restoredTo": "Version restaurée : {0}",
     "alreadyMatches": "Correspond déjà à la partition actuelle",
     "restoreFailed": "Impossible de restaurer",
     "peekFailed": "Impossible de consulter cette étape",
     "peekCodeFailed": "Impossible de consulter cette étape. Rechargez la page pour réessayer.",
     "peekSessionFailed": "Impossible de consulter cette session",
     "openHistory": "Ouvrir l’historique",
-    "earlierInHistory": "Les étapes antérieures de la chronologie sont dans l’historique",
+    "earlierInHistory": "Les étapes antérieures de la Chronologie sont dans Historique",
     "savedCurrent": "Version actuelle sauvegardée dans {0}"
   },
   "entry": {
@@ -2786,8 +2786,8 @@
   "prompt": {
     "title": "Modifications non stockées",
     "newTitle": "Créer une nouvelle partition ?",
-    "newMessage": "« {0} » contient des modifications non sauvegardées dans un fichier de projet. Vous pouvez rouvrir cette session depuis « Récentes ».",
-    "newMessageUntitled": "La session du {0} contient des modifications non sauvegardées dans un fichier de projet. Vous pouvez rouvrir cette session depuis « Récentes ».",
+    "newMessage": "« {0} » contient des modifications non sauvegardées dans un fichier de projet. Vous pouvez rouvrir cette session depuis les sessions récentes.",
+    "newMessageUntitled": "La session du {0} contient des modifications non sauvegardées dans un fichier de projet. Vous pouvez la rouvrir depuis les sessions récentes.",
     "newChart": "Nouvelle partition",
     "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Elles seront perdues si vous quittez.",
     "save": "Sauvegarder",
@@ -2847,8 +2847,8 @@
   },
   "file": {
     "replaced": "« {0} » a été remplacé. La sauvegarde créera un fichier séparé.",
-    "downloaded": "{0} · téléchargé {1}",
-    "opened": "{0} · ouvert {1}"
+    "downloaded": "{0} · téléchargé ({1})",
+    "opened": "{0} · ouvert ({1})"
   },
   "state": {
     "fileMissing": "Fichier introuvable",

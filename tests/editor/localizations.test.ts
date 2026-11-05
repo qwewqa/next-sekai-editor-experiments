@@ -261,10 +261,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'elevation.auto',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
-        // Units, and Format, Pause and Standard, spelled as in English.
+        // Format, Pause and Standard, spelled as in English.
         'exportVideo.format',
-        'exportVideo.fps',
-        'exportVideo.kbps',
         'exportVideo.pause',
         'exportVideo.qualities.standard',
         // The same comma as English.
