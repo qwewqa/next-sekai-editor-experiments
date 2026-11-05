@@ -31,7 +31,7 @@ export const builtinResources: readonly {
         type: 'background',
         hashes: {
             data: '4936603c515f4dd0ccaf503e9c7833f493b0e7b7',
-            image: '13e69a1ea01a3996cd85ea74e07c23fa33092cfd',
+            image: 'd1236e66beaa73cc2e30d706a13668b9e057053d',
             configuration: 'a3a808b95010ae835742c00d71202eee725caed3',
         },
     },

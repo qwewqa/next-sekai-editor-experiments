@@ -214,11 +214,11 @@ test('the textures and files stay within their budgets', () => {
     const particle = readBuiltinItem('particle').json('data')
     assert.ok(particle.width <= 1024 && particle.height <= 1024)
     const background = readBuiltinItem('background')
-    // The background's soft detail costs more than a plain gradient (pass 7), and it is square.
+    // The background is square, and its facets cost more than a plain gradient.
     const image = background.resource('image').length
-    assert.ok(image <= 780 * 1024, `the background image is ${image} bytes`)
+    assert.ok(image <= 372 * 1024, `the background image is ${image} bytes`)
     let total = 0
     for (const [path, bytes] of first.files)
         if (path.startsWith('public/builtin/')) total += bytes.length
-    assert.ok(total <= 3.15 * 1024 * 1024, `the set is ${total} bytes`)
+    assert.ok(total <= 2.74 * 1024 * 1024, `the set is ${total} bytes`)
 })
