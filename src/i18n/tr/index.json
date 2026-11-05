@@ -80,7 +80,7 @@
     "laneSnapping": {
       "title": "Şerit Hizalama",
       "absolute": "Mutlak şerit hizalamaya geçildi",
-      "relative": "Göreli şerit hizalamaya geçildi"
+      "relative": "Göreceli şerit hizalamaya geçildi"
     },
     "divisions": {
       "title": "1/{0} Bölüm",
@@ -125,7 +125,7 @@
       "scaled": "{0} nesnenin yükseklikleri ölçeklendi"
     },
     "scaleSelection": {
-      "factor": "Ölçek katsayısı",
+      "factor": "Ölçek Katsayısı",
       "apply": "Uygula",
       "invalidFactor": "Sonucu desteklenen aralıkta tutan pozitif bir ölçek katsayısı girin"
     },
@@ -185,17 +185,17 @@
       "title": "Grupları Yönet",
       "modal": {
         "title": "Grupları Yönet",
-        "moveUp": "Grubu yukarı taşı",
-        "moveDown": "Grubu aşağı taşı",
+        "moveUp": "Grubu Yukarı Taşı",
+        "moveDown": "Grubu Aşağı Taşı",
         "moved": "{0} grubu taşındı",
         "properties": {
-          "title": "Grup özelliklerini düzenle",
+          "title": "Grup Özelliklerini Düzenle",
           "modal": {
             "title": "Grup Özellikleri",
             "forceNoteSpeed": "Nota Hızını Sabitle"
           }
         },
-        "delete": "Grubu sil",
+        "delete": "Grubu Sil",
         "deleted": "{0} grubu silindi",
         "added": "{0} grubu eklendi"
       }
@@ -204,16 +204,16 @@
       "title": "Sahneleri Yönet",
       "modal": {
         "title": "Sahneleri Yönet",
-        "moveUp": "Sahneyi yukarı taşı",
-        "moveDown": "Sahneyi aşağı taşı",
+        "moveUp": "Sahneyi Yukarı Taşı",
+        "moveDown": "Sahneyi Aşağı Taşı",
         "moved": "{0} sahnesi taşındı",
         "properties": {
-          "title": "Sahne özelliklerini düzenle",
+          "title": "Sahne Özelliklerini Düzenle",
           "modal": {
             "title": "Sahne Özellikleri"
           }
         },
-        "delete": "Sahneyi sil",
+        "delete": "Sahneyi Sil",
         "deleted": "{0} sahnesi silindi",
         "added": "{0} sahnesi eklendi"
       }
@@ -226,7 +226,7 @@
         "default": "Nota",
         "preset": "Nota #{0}"
       },
-      "switched": "#{0} Nota aracına geçildi",
+      "switched": "Nota #{0} aracına geçildi",
       "modal": {
         "title": "Varsayılan Nota Özellikleri"
       }
@@ -347,7 +347,7 @@
         "default": "Kaydırma",
         "preset": "Kaydırma #{0}"
       },
-      "switched": "#{0} Kaydırma aracına geçildi",
+      "switched": "Kaydırma #{0} aracına geçildi",
       "modal": {
         "title": "Varsayılan Kaydırma Özellikleri"
       }
@@ -530,7 +530,7 @@
       "progress": {
         "reading": "Dosya okunuyor…",
         "storing": "Saklanıyor…",
-        "connecting": "Bağlanılıyor…",
+        "connecting": "Bağlanıyor…",
         "downloading": "İndiriliyor…"
       },
       "part": {
@@ -744,7 +744,7 @@
       "levelData": "Sonolus sunucusuna yükleyebileceğiniz seviye verisini (.nsld) dışa aktarır."
     },
     "exportVideo": {
-      "contents": "Nota çizelgesinin tamamının veya bir kısmının önizlemesini video olarak dışa aktarır. Arka plan müziği ve ses efektleri de eklenebilir."
+      "contents": "Çizelgenin tamamının veya bir kısmının önizlemesini video olarak dışa aktarır. Arka plan müziği ve ses efektleri de eklenebilir."
     },
     "utilities": {
       "editors": "Bir görselden kapak oluşturmak için Kapak Editörü’nü veya arka plan müziğinin bir bölümünden önizleme sesi oluşturmak için Önizleme Editörü’nü açar.",
@@ -866,20 +866,20 @@
     "edit": "Yükseklikleri Düzenle",
     "header": "Yükseklik Editörü",
     "beat": "Vuruş",
-    "previousBeat": "Önceki vuruş",
-    "nextBeat": "Sonraki vuruş",
+    "previousBeat": "Önceki Vuruş",
+    "nextBeat": "Sonraki Vuruş",
     "snap": "Hizalama",
-    "snapping": "Yükseklik hizalaması",
-    "squareGrid": "1:1 ızgara",
+    "snapping": "Yükseklik Hizalaması",
+    "squareGrid": "1:1 Izgara",
     "auto": "Otomatik",
-    "always": "Her zaman",
+    "always": "Her Zaman",
     "never": "Asla",
     "off": "Kapalı",
-    "canvas": "Nota yükseklikleri",
+    "canvas": "Nota Yükseklikleri",
     "empty": "Bu vuruşta nota yok",
     "changed": "{0} notanın yüksekliği değiştirildi",
-    "close": "Yükseklik editörünü kapat",
-    "resize": "Yükseklik editörünü yeniden boyutlandır"
+    "close": "Yükseklik Editörü’nü Kapat",
+    "resize": "Yükseklik Editörü’nü Yeniden Boyutlandır"
   },
   "contextMenu": {
     "title": "Seçim İşlemleri",
@@ -907,8 +907,8 @@
         "light": "Açık",
         "dark": "Koyu"
       },
-      "elevationSideBySide": "Yükseklik Editörünü Yan Yana Göster",
-      "elevationConnectorArrows": "Yükseklik Editöründe Bağlayıcı Okları",
+      "elevationSideBySide": "Yükseklik Editörü’nü Yan Yana Göster",
+      "elevationConnectorArrows": "Yükseklik Editörü’nde Bağlayıcı Okları",
       "minimap": "Mini Haritayı Göster",
       "minimapSide": {
         "title": "Mini Haritanın Konumu",
@@ -921,7 +921,7 @@
         "off": "Kapalı",
         "fft": "FFT",
         "volume": "Ses",
-        "changed": "Dalga formu görselleştirmesi değiştirildi. Değişikliğin uygulanması için arka plan müziği dosyasını tekrar seçin."
+        "changed": "Yeni dalga formu ayarını uygulamak için arka plan müziği dosyasını tekrar seçin."
       },
       "maxScrollX": "En Fazla X Kaydırması (şerit)",
       "zeroWidthNotes": {
@@ -1086,9 +1086,9 @@
       "nameContrast": "Grup ve sahne adlarının çevresine siyah bir kontur eklenmesi ve sahne adlarının daha parlak gösterilmesi.",
       "dragToPanY": "Çizelgenin üst veya alt kenarına yakın sürüklediğinizde çizelgenin yukarı veya aşağı kaydırılması.",
       "dragToPanX": "Çizelgenin sol veya sağ kenarına yakın sürüklediğinizde çizelgenin yana kaydırılması.",
-      "previewRenderScale": "Önizlemenin çözünürlük çarpanı, 0.25 ile 2 kat arasında. Daha düşük değerler keskinliği azaltır ve performansı artırabilir.",
+      "previewRenderScale": "Önizlemenin çözünürlük çarpanı, 0,25 ile 2 kat arasında. Daha düşük değerler keskinliği azaltır ve performansı artırabilir.",
       "previewInWorker": "Önizlemenin editörün geri kalanıyla paralel olarak çizilmesi. Önizleme yanlış görünüyorsa veya görünmüyorsa bunu kapatın.",
-      "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçebilme.",
+      "toolbarQuickSwitch": "Araç çubuğundaki bir düğmeyi basılı tutup bir aracın üzerinde bırakarak o aracı seçebilmeniz.",
       "playFollowPosition": "Takip Et’in oynatma imlecini tuttuğu yükseklik. Çizelgenin görünen kısmının altı 0, üstü 100’dür.",
       "playPreviewDuration": "Oynatma imlecini taşıdığınızda veya bir nesne seçtiğinizde arka plan müziğinin çalma süresi.",
       "mouseSecondaryTool": {
@@ -1111,7 +1111,7 @@
       "showStageName": "Dinamik Sahneler açıkken notaların ve sahne olaylarının yanında sahne adlarının gösterilmesi.",
       "maxScrollX": "Çizelgenin merkezinden sola veya sağa kaydırabileceğiniz mesafe. Birleşik düzende bu sınırın ötesindeki sahnelere ulaşmak için daha uzağa kaydırabilirsiniz.",
       "elevationEditorSideBySide": {
-        "intro": "Yükseklik Editörünün çizelgenin yanında mı yoksa yerine mi açılacağı.",
+        "intro": "Yükseklik Editörü’nün çizelgenin yanında mı yoksa yerine mi açılacağı.",
         "choices": {
           "auto": "Yer olduğunda çizelgenin yanında açar.",
           "allow": "Çizelge daralsa bile yanında açar.",
@@ -1143,7 +1143,7 @@
       "previewTransportPosition": {
         "intro": "Önizlemenin oynatma denetimlerinin görüneceği yer.",
         "choices": {
-          "auto": "Önizleme küçülmeden sığıyorsa denetimleri altına, aksi halde alt kenarının üzerine yerleştirir.",
+          "auto": "Önizleme küçülmeden sığıyorsa denetimleri altına, aksi hâlde alt kenarının üzerine yerleştirir.",
           "below": "Önizlemenin altında yer ayırır ve gerekirse önizlemeyi küçültür.",
           "overlay": "Denetimleri önizlemenin alt kenarının üzerine yerleştirir."
         }
@@ -1151,7 +1151,7 @@
       "previewControls": {
         "intro": "Oynatma durmuşken önizleme ayarlarının gösterilme biçimi.",
         "choices": {
-          "auto": "Fare kullanıyorsanız ve ayar formunun büyük kısmı önizleme paneline sığıyorsa başlangıçta formu, aksi halde bir düğme gösterir.",
+          "auto": "Fare kullanıyorsanız ve ayar formunun büyük kısmı önizleme paneline sığıyorsa başlangıçta formu, aksi hâlde bir düğme gösterir.",
           "expanded": "Ayar formunu gösterir.",
           "collapsed": "Ayarları açan bir düğme gösterir."
         }
@@ -1186,14 +1186,14 @@
       "discardAutoSave": "Eski otomatik kaydetme verisi ({0}) silinsin mi?",
       "discardUnreadable": "{0} tarihli kurtarılmış çalışma ({1}) silinsin mi? Bu çalışma açılamıyor.",
       "recovery": {
-        "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0} · {1}",
-        "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
+        "journal": "Önceki bir ziyaretten kalan kaydedilmemiş çalışma · {0} · {1}",
+        "journalUndated": "Önceki bir ziyaretten kalan kaydedilmemiş çalışma · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Açılamayan kurtarılmış çalışma · {0} · {1}",
         "listFailed": "Kurtarılmış çalışma okunamadı.",
         "downloadFailed": "Kurtarılmış çalışma indirilemedi."
       },
-      "openHistory": "Geçmişi Aç",
+      "openHistory": "Geçmiş’i Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
       "filePicker": {
         "title": "Seçilen Dosyalara Yaz",
@@ -1245,13 +1245,13 @@
   },
   "statusBar": {
     "group": {
-      "all": "Tüm gruplar",
-      "one": "{0} grubu",
+      "all": "Tüm Gruplar",
+      "one": "{0} Grubu",
       "shown": "{0}/{1} grup gösteriliyor"
     },
     "stage": {
-      "all": "Tüm sahneler",
-      "one": "{0} sahnesi",
+      "all": "Tüm Sahneler",
+      "one": "{0} Sahnesi",
       "shown": "{0}/{1} sahne gösteriliyor"
     }
   },
@@ -1281,7 +1281,7 @@
       "pick": "Seçimden Al",
       "picked": "Seçimden {0} özellik alındı",
       "clear": "Temizle",
-      "remove": "{0} kaldır",
+      "remove": "{0} Özelliğini Kaldır",
       "kinds": {
         "general": "Genel",
         "note": "Nota",
@@ -1449,8 +1449,8 @@
     "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
     "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Bazı özellikler çalışmayabilir ve saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı normalde kullandığınız tarayıcıda açın.",
     "journalKept": "“{0}” üzerindeki kurtarılan bir değişiklik ayrı bir oturum olarak saklandı.",
-    "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
-    "fallbackLocal": "Önceki bir ziyaretten kaydedilmemiş çalışma Yerel Veriler’de.",
+    "fallback": "Önceki bir ziyaretten kalan kaydedilmemiş çalışma kurtarıldı.",
+    "fallbackLocal": "Önceki bir ziyaretten kalan kaydedilmemiş çalışma Yerel Veriler’de.",
     "migrationFailed": "Eski otomatik kaydetme verisi geri yüklenemedi.",
     "autoSave": "“{0}”, eski otomatik kaydetme verisinden devam ettirildi.",
     "journal": "“{0}” üzerindeki son değişiklik kurtarıldı.",
@@ -1460,9 +1460,9 @@
     "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
     "autoSaveKept": "Eski otomatik kaydetme verisindeki “{0}” ayrı bir oturum olarak saklandı.",
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
-    "journalFailed": "Kurtarılan bir değişiklik oturumunda saklanamadı. Yerel Veriler’de bulunabilir.",
+    "journalFailed": "Kurtarılan bir değişiklik oturumunda saklanamadı. Değişiklik Yerel Veriler’de.",
     "storageNearlyFull": "Tarayıcının depolama alanı neredeyse dolu.",
-    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma tarayıcının depolama alanını dolduruyor.",
+    "journalsFull": "Önceki ziyaretlerden kalan kaydedilmemiş çalışma tarayıcının depolama alanını dolduruyor.",
     "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
     "sessionDamaged": "Bu oturum açılamadı.",
     "newestLater": "En son oturumunuz için editörün daha yeni bir sürümü gerekiyor.",
@@ -1472,7 +1472,7 @@
     "exportUnfinished": "Bir dışa aktarma işlemi tamamlanmadı. Seçtiğiniz dosya boş olabilir.",
     "more": "ve {0} tane daha Yerel Veriler’de",
     "localData": "Yerel Veriler",
-    "openHistory": "Geçmişi Aç",
+    "openHistory": "Geçmiş’i Aç",
     "copyLink": "Bağlantıyı Kopyala",
     "linkCopied": "Bağlantı kopyalandı",
     "linkNotCopied": "Bağlantı kopyalanamadı"
@@ -1575,7 +1575,7 @@
       "cutEvents": "Olaylar kesildi: {0}"
     },
     "undidSteps": "{0} adım geri alındı",
-    "redidSteps": "{0} adım yinelendi",
+    "redidSteps": "{0} adım yeniden yapıldı",
     "dynamicStages": {
       "title": "Dinamik Sahneler",
       "message": "Bu özellik dinamik sahneler gerektirir. Etkinleştirilsin mi?",
@@ -1598,7 +1598,7 @@
     "codeFailed": "Zaman Çizgisi yüklenemedi. Tekrar denemek için sayfayı yeniden yükleyin.",
     "tryAgain": "Tekrar Dene",
     "steps": "{0} adım",
-    "newerSteps": "{0} yeni adım",
+    "newerSteps": "{0} daha yeni adım",
     "notKept": "korunmadı",
     "earlierNotStored": "Zaman Çizgisi’ndeki önceki adımlar bu tarayıcıda saklanmıyor.",
     "damaged": "hasarlı",
@@ -1622,14 +1622,14 @@
       "loadFailed": "Son Oturumlar yüklenemedi.",
       "thisTab": "Bu sekme",
       "elsewhere": "Başka sekme",
-      "actions": "“{0}” için diğer işlemler",
+      "actions": "“{0}” İçin Diğer İşlemler",
       "saveToFile": "Kaydet…",
       "delete": "Sil",
       "openReason": "Başka bir sekmede veya pencerede açık."
     },
     "details": {
-      "title": "Adım ayrıntıları",
-      "named": "Adım ayrıntıları: {0}",
+      "title": "Adım Ayrıntıları",
+      "named": "Adım Ayrıntıları: {0}",
       "action": "Ayrıntılar",
       "unsupported": "Editörün bu sürümü bu adımın ayrıntılarını okuyamıyor.",
       "newer": "Bu adım editörün daha yeni bir sürümüyle oluşturuldu.",
@@ -1638,14 +1638,14 @@
       "changed": "Değiştirilen",
       "changedValue": "Değiştirildi",
       "orderChanged": "Sıra değiştirildi",
-      "displaced": "Değiştirilen kayıtlar",
+      "displaced": "Üzerine Yazılan",
       "placed": "Yapıştırılan",
       "pastedFlipped": "Çevrilerek yapıştırıldı",
       "retainedInitialBpm": "İlk BPM değişikliği korundu",
-      "pivot": "Ölçekleme merkezi",
-      "composedTransform": "Birden fazla ayarlama",
-      "released": "Klasörden çıkarılan",
-      "recoveryContext": "Önceki işlemler",
+      "pivot": "Ölçekleme Merkezi",
+      "composedTransform": "Birden Fazla Ayarlama",
+      "released": "Klasörden Çıkarılan",
+      "recoveryContext": "Önceki İşlemler",
       "recoveryHead": "Buraya kadar kurtarıldı",
       "omittedDescriptions": "Listelenmeyen önceki işlemler: {0}",
       "droppedSteps": "Zaman Çizgisi’nde kendi adımı olmayan işlemler: {0}",
@@ -1659,10 +1659,10 @@
         "groupFolder": "{0} grup klasörü",
         "stageFolder": "{0} sahne klasörü"
       },
-      "bgmOffset": "Arka plan müziği zaman kayması",
-      "pasteLocation": "Yapıştırma konumu",
+      "bgmOffset": "Arka Plan Müziği Zaman Kayması",
+      "pasteLocation": "Yapıştırma Konumu",
       "pointer": "İşaretçi",
-      "position": "Seçilen konum"
+      "position": "Seçilen Konum"
     },
     "operation": {
       "changedHeader": "{0} değiştirildi",
@@ -1722,11 +1722,11 @@
       "duplicatedGroupsAndFolders": "Gruplar ({0}) ve klasörler ({1}) çoğaltıldı",
       "deletedGroupsAndFolders": "Gruplar ({0}) ve klasörler ({1}) silindi",
       "createdGroupFolderWith": "{0} grup içeren {1} klasörü oluşturuldu",
-      "changedGroupProperties": "{0} grubunun {1} özellikleri değiştirildi",
+      "changedGroupProperties": "{0} grubunda {1} değiştirildi",
       "duplicatedStagesAndFolders": "Sahneler ({0}) ve klasörler ({1}) çoğaltıldı",
       "deletedStagesAndFolders": "Sahneler ({0}) ve klasörler ({1}) silindi",
       "createdStageFolderWith": "{0} sahne içeren {1} klasörü oluşturuldu",
-      "changedStageProperties": "{0} sahnesinin {1} özellikleri değiştirildi",
+      "changedStageProperties": "{0} sahnesinde {1} değiştirildi",
       "newLevel": "Yeni seviye oluşturuldu",
       "importedLevel": "Seviye içe aktarıldı",
       "movedGroupsInto": "{0} grup {1} klasörüne taşındı",
@@ -1799,11 +1799,11 @@
       },
       "centerXOffset": {
         "label": "Merkezin X Kayması",
-        "qualified": "Dönüş Merkezinin X Kayması"
+        "qualified": "Dönüş Merkezi’nin X Kayması"
       },
       "centerYOffset": {
         "label": "Merkezin Y Kayması",
-        "qualified": "Dönüş Merkezinin Y Kayması"
+        "qualified": "Dönüş Merkezi’nin Y Kayması"
       },
       "connectorActiveIsCritical": {
         "label": "Kritik Kaydırma"
@@ -1987,7 +1987,7 @@
         "pressUnassigned": "Bir tuşa basın",
         "pressCancel": "Bir tuşa basın veya Esc ile iptal edin",
         "unassigned": "Atanmamış",
-        "reserved": "{0} tarayıcıya veya sisteme ayrılmıştır; başka bir tuşa basın.",
+        "reserved": "{0} tarayıcıya veya sisteme ayrılmıştır. Başka bir tuşa basın.",
         "altGraph": "{0} birçok klavye düzeninde karakter yazmak için kullanılır. Başka bir tuşa basın.",
         "alsoRuns": "{0} komutunu da çalıştırır.",
         "names": {
@@ -2113,7 +2113,7 @@
         "label": "Ölçü"
       },
       "coverage": "Seçili {1} nesnenin {0} tanesine uygulanır",
-      "selectOnly": "Yalnızca {1} seç ({0})",
+      "selectOnly": "Yalnızca {1} Seç ({0})",
       "unset": {
         "unchanged": "Değiştirilmez",
         "auto": "Otomatik",
@@ -2121,7 +2121,7 @@
       },
       "unknown": "Bilinmiyor ({0})",
       "coverageChip": "{1} içinden {0}",
-      "selectCovered": "Yalnızca uygulandığı nesneleri seç ({1} içinden {0})",
+      "selectCovered": "Yalnızca Uygulandığı Nesneleri Seç ({1} içinden {0})",
       "descriptions": {
         "elevation": "Yükseklik, şerit biriminde.",
         "noteType": {
@@ -2228,8 +2228,8 @@
             "vanishingPoint": "Şeritlerin uzakta birleştiği nokta."
           }
         },
-        "centerXOffset": "Dönüş Merkezinin yatay kayması, şerit biriminde. Pozitif değerler Dönüş Merkezini sağa kaydırır.",
-        "centerYOffset": "Dönüş Merkezinin dikey kayması, şerit biriminde. Pozitif değerler Dönüş Merkezini yukarı kaydırır.",
+        "centerXOffset": "Dönüş Merkezi’nin yatay kayması, şerit biriminde. Pozitif değerler Dönüş Merkezi’ni sağa kaydırır.",
+        "centerYOffset": "Dönüş Merkezi’nin dikey kayması, şerit biriminde. Pozitif değerler Dönüş Merkezi’ni yukarı kaydırır.",
         "anchor": {
           "intro": "Y Ötelemesi için referans noktası.",
           "choices": {
@@ -2271,23 +2271,23 @@
     }
   },
   "preview": {
-    "settings": "Önizleme ayarları",
-    "minimizeSettings": "Önizleme ayarlarını daralt",
-    "showSettings": "Önizleme ayarlarını göster",
+    "settings": "Önizleme Ayarları",
+    "minimizeSettings": "Önizleme Ayarlarını Daralt",
+    "showSettings": "Önizleme Ayarlarını Göster",
     "loadingSkin": "Görünüm yükleniyor…",
     "skinUnavailable": "Önizleme görünümü yüklenemedi.",
     "graphicsUnavailable": "Önizleme görüntülenemedi.",
-    "chartGraphicsUnavailable": "Nota çizelgesi görüntülenemedi.",
+    "chartGraphicsUnavailable": "Çizelge görüntülenemedi.",
     "graphicsHelp": "Tarayıcınızda grafik hızlandırmanın ve WebGL özelliğinin etkin olduğunu kontrol edin. Gerekirse tarayıcıyı yeniden başlatın.",
-    "errorDetails": "Hata ayrıntıları",
+    "errorDetails": "Hata Ayrıntıları",
     "reload": "Yeniden Yükle",
     "transport": {
-      "hide": "Oynatma denetimlerini gizle",
-      "show": "Oynatma denetimlerini göster",
-      "time": "Önizleme zamanı",
-      "controls": "Önizleme oynatma denetimleri",
-      "pause": "Önizlemeyi duraklat",
-      "play": "Önizlemeyi oynat",
+      "hide": "Oynatma Denetimlerini Gizle",
+      "show": "Oynatma Denetimlerini Göster",
+      "time": "Önizleme Zamanı",
+      "controls": "Önizleme Oynatma Denetimleri",
+      "pause": "Önizlemeyi Duraklat",
+      "play": "Önizlemeyi Oynat",
       "back": "{0} ms geri",
       "forward": "{0} ms ileri",
       "holdBackward": "{0}× hızla geri gitmek için basılı tutun",
@@ -2296,10 +2296,10 @@
     }
   },
   "offscreenNotes": {
-    "left": "Ekranın solunda kalan notalar: {0}",
-    "right": "Ekranın sağında kalan notalar: {0}",
-    "top": "Ekranın üstünde kalan notalar: {0}",
-    "bottom": "Ekranın altında kalan notalar: {0}"
+    "left": "Ekranın Solunda Kalan Notalar: {0}",
+    "right": "Ekranın Sağında Kalan Notalar: {0}",
+    "top": "Ekranın Üstünde Kalan Notalar: {0}",
+    "bottom": "Ekranın Altında Kalan Notalar: {0}"
   },
   "workspace": {
     "panels": {
@@ -2309,89 +2309,89 @@
       "properties": "Özellikler"
     },
     "docks": {
-      "left": "Sol paneller",
-      "right": "Sağ paneller",
-      "top": "Üst paneller"
+      "left": "Sol Paneller",
+      "right": "Sağ Paneller",
+      "top": "Üst Paneller"
     },
-    "show": "{0} panelini göster",
-    "hide": "{0} panelini gizle",
+    "show": "{0} Panelini Göster",
+    "hide": "{0} Panelini Gizle",
     "collapse": {
-      "left": "Sol panelleri gizle",
-      "right": "Sağ panelleri gizle",
-      "top": "Üst panelleri gizle"
+      "left": "Sol Panelleri Gizle",
+      "right": "Sağ Panelleri Gizle",
+      "top": "Üst Panelleri Gizle"
     },
     "expand": {
-      "left": "Sol panelleri göster",
-      "right": "Sağ panelleri göster",
-      "top": "Üst panelleri göster"
+      "left": "Sol Panelleri Göster",
+      "right": "Sağ Panelleri Göster",
+      "top": "Üst Panelleri Göster"
     },
     "resize": {
-      "left": "Sol panelleri yeniden boyutlandır",
-      "right": "Sağ panelleri yeniden boyutlandır",
-      "top": "Üst panelleri yeniden boyutlandır",
-      "minimap": "Mini haritayı yeniden boyutlandır"
+      "left": "Sol Panelleri Yeniden Boyutlandır",
+      "right": "Sağ Panelleri Yeniden Boyutlandır",
+      "top": "Üst Panelleri Yeniden Boyutlandır",
+      "minimap": "Mini Haritayı Yeniden Boyutlandır"
     },
-    "resizeTiles": "{0} ve {1} panellerini yeniden boyutlandır",
-    "resizeTileRow": "{0}, {1} ve {2} panellerini yeniden boyutlandır",
+    "resizeTiles": "{0} ve {1} Panellerini Yeniden Boyutlandır",
+    "resizeTileRow": "{0}, {1} ve {2} Panellerini Yeniden Boyutlandır",
     "dock": {
       "auto": "Otomatik Yerleştir",
       "left": "Sola Yerleştir",
       "right": "Sağa Yerleştir",
       "top": "Üste Yerleştir"
     },
-    "closePanel": "{0} panelini kapat",
+    "closePanel": "{0} Panelini Kapat",
     "folders": {
-      "new": "Yeni klasör",
-      "moveTo": "Klasöre taşı…",
-      "none": "Klasör yok",
-      "expand": "{0} öğesini genişlet",
-      "collapse": "{0} öğesini daralt",
+      "new": "Yeni Klasör",
+      "moveTo": "Klasöre Taşı…",
+      "none": "Klasör Yok",
+      "expand": "{0} Öğesini Genişlet",
+      "collapse": "{0} Öğesini Daralt",
       "empty": "{0} klasörü boş",
-      "moveUp": "Klasörü yukarı taşı",
-      "moveDown": "Klasörü aşağı taşı",
-      "ungroup": "Klasörü dağıt",
+      "moveUp": "Klasörü Yukarı Taşı",
+      "moveDown": "Klasörü Aşağı Taşı",
+      "ungroup": "Klasörü Dağıt",
       "path": "{0} › {1}",
       "ungrouped": "{0} klasörü dağıtıldı"
     },
     "manager": {
-      "show": "{0} öğesini göster",
-      "hide": "{0} öğesini gizle",
-      "actions": "{0} için diğer işlemler",
+      "show": "{0} Öğesini Göster",
+      "hide": "{0} Öğesini Gizle",
+      "actions": "{0} İçin Diğer İşlemler",
       "target": "Yeni nesneler {0} öğesine eklenir",
-      "rename": "Yeniden adlandır",
-      "solo": "Yalnızca bunu göster",
+      "rename": "Yeniden Adlandır",
+      "solo": "Yalnızca Bunu Göster",
       "soloHint": "Yalnızca bunu göstermek için Alt+tıklayın",
-      "select": "Nesneleri seç",
+      "select": "Nesneleri Seç",
       "selected": "{0} nesne seçildi",
-      "moveSelection": "Seçimi buraya taşı",
+      "moveSelection": "Seçimi Buraya Taşı",
       "objects": "{0} nesne",
       "drag": "{0} öğesini yeniden sıralamak için sürükleyin",
-      "selectMultiple": "Birden çok seç",
+      "selectMultiple": "Birden Çok Seç",
       "selecting": "{0} seçili",
-      "stopSelecting": "Seçimi bitir",
-      "selectItem": "{0} öğesini seç",
-      "selectAll": "Tümünü seç",
-      "selectNone": "Seçimi kaldır",
-      "showSelected": "Seçilenleri göster",
-      "hideSelected": "Seçilenleri gizle",
-      "soloSelected": "Yalnızca seçilenleri göster",
-      "deleteSelected": "Seçilenleri sil…",
-      "selectionActions": "Seçim için diğer işlemler",
+      "stopSelecting": "Seçimi Bitir",
+      "selectItem": "{0} Öğesini Seç",
+      "selectAll": "Tümünü Seç",
+      "selectNone": "Seçimi Kaldır",
+      "showSelected": "Seçilenleri Göster",
+      "hideSelected": "Seçilenleri Gizle",
+      "soloSelected": "Yalnızca Seçilenleri Göster",
+      "deleteSelected": "Seçilenleri Sil…",
+      "selectionActions": "Seçim İçin Diğer İşlemler",
       "duplicate": "Çoğalt",
-      "duplicateSelected": "Seçilenleri çoğalt",
+      "duplicateSelected": "Seçilenleri Çoğalt",
       "copyName": "{0} ({1})"
     },
     "groups": {
-      "deleteFolder": "Klasörü ve grupları sil…",
-      "deleteFolderTitle": "Klasörü ve grupları sil",
+      "deleteFolder": "Klasörü ve Grupları Sil…",
+      "deleteFolderTitle": "Klasörü ve Grupları Sil",
       "deleteFolderMessage": "{0} klasörü, içindeki gruplar ({1}) ve nesneleri ({2}) silinsin mi?",
       "renamed": "{0} grubu {1} olarak yeniden adlandırıldı",
-      "all": "Tüm gruplar",
-      "showAll": "Tüm grupları göster",
-      "hideAll": "Tüm grupları gizle",
-      "add": "Grup ekle",
-      "deleteSelectedTitle": "Grupları sil",
-      "deleteSelectedFoldersTitle": "Klasörü ve grupları sil|Klasörleri ve grupları sil",
+      "all": "Tüm Gruplar",
+      "showAll": "Tüm Grupları Göster",
+      "hideAll": "Tüm Grupları Gizle",
+      "add": "Grup Ekle",
+      "deleteSelectedTitle": "Grupları Sil",
+      "deleteSelectedFoldersTitle": "Klasörü ve Grupları Sil|Klasörleri ve Grupları Sil",
       "deleteSelectedMessage": "Seçilen gruplar ({0}) ve nesneleri ({1}) silinsin mi?",
       "deleteSelectedFoldersMessage": "Seçilen klasörler ({0}), gruplar ({1}) ve nesneleri ({2}) silinsin mi?",
       "duplicated": "{0} grubu çoğaltıldı",
@@ -2399,25 +2399,25 @@
       "propertyCleared": "{0} grubunun {1} değeri kaldırıldı"
     },
     "stages": {
-      "deleteFolder": "Klasörü ve sahneleri sil…",
-      "deleteFolderTitle": "Klasörü ve sahneleri sil",
+      "deleteFolder": "Klasörü ve Sahneleri Sil…",
+      "deleteFolderTitle": "Klasörü ve Sahneleri Sil",
       "deleteFolderMessage": "{0} klasörü, içindeki sahneler ({1}) ve nesneleri ({2}) silinsin mi?",
       "renamed": "{0} sahnesi {1} olarak yeniden adlandırıldı",
-      "all": "Tüm sahneler",
-      "showAll": "Tüm sahneleri göster",
-      "hideAll": "Tüm sahneleri gizle",
-      "add": "Sahne ekle",
+      "all": "Tüm Sahneler",
+      "showAll": "Tüm Sahneleri Göster",
+      "hideAll": "Tüm Sahneleri Gizle",
+      "add": "Sahne Ekle",
       "disabled": "Bu seviyede dinamik sahneler kapalı.",
-      "enable": "Dinamik sahneleri etkinleştir",
-      "deleteSelectedTitle": "Sahneleri sil",
-      "deleteSelectedFoldersTitle": "Klasörü ve sahneleri sil|Klasörleri ve sahneleri sil",
+      "enable": "Dinamik Sahneleri Etkinleştir",
+      "deleteSelectedTitle": "Sahneleri Sil",
+      "deleteSelectedFoldersTitle": "Klasörü ve Sahneleri Sil|Klasörleri ve Sahneleri Sil",
       "deleteSelectedMessage": "Seçilen sahneler ({0}) ve nesneleri ({1}) silinsin mi?",
       "deleteSelectedFoldersMessage": "Seçilen klasörler ({0}), sahneler ({1}) ve nesneleri ({2}) silinsin mi?",
       "duplicated": "{0} sahnesi çoğaltıldı",
       "propertySet": "{0} sahnesinin {1} değeri {2} olarak ayarlandı"
     },
     "properties": {
-      "sections": "Özellik bölümleri",
+      "sections": "Özellik Bölümleri",
       "selection": "Seçim",
       "tool": "Araç",
       "view": "Görünüm",
@@ -2433,7 +2433,7 @@
         "stageTransformEventJoint": "Sahne Dönüşüm Olayları"
       },
       "connector": "Bağlayıcı",
-      "selectOnly": "Yalnızca bunları seç",
+      "selectOnly": "Yalnızca Bunları Seç",
       "inSlides": "{0} kaydırmada",
       "valuesDiffer": "{0} değer farklı"
     }
@@ -2461,7 +2461,7 @@
     "setOut": "Çıkış İşaretle",
     "range": "Aralık",
     "wholeBgm": "Tüm Arka Plan Müziği",
-    "wholeChart": "Tüm Nota Çizelgesi",
+    "wholeChart": "Tüm Çizelge",
     "selection": "Seçim",
     "nothingSelected": "Seçim yok",
     "zoom": "Aralığa Yakınlaştır",
@@ -2535,7 +2535,7 @@
       "resolution": "Videonun çözünürlüğü {0}. Seçilen çözünürlük {1} idi.",
       "soundStops": "Ses, aralık bitmeden duruyor."
     },
-    "discardTitle": "Bu video silinsin mi?",
+    "discardTitle": "Bu Video Silinsin mi?",
     "discard": "Videoyu Sil",
     "unsupported": "Bu tarayıcı video dışa aktaramıyor.",
     "errors": {
@@ -2571,10 +2571,10 @@
     "bpms": "{0} BPM değişikliği",
     "timeScales": "{0} zaman ölçeği",
     "events": "{0} olay",
-    "changesAbove": "Yukarıdaki değişiklikler: {0}",
-    "changesBelow": "Aşağıdaki değişiklikler: {0}",
-    "changesAboveAny": "Yukarıdaki değişiklikler",
-    "changesBelowAny": "Aşağıdaki değişiklikler",
+    "changesAbove": "Yukarıdaki Değişiklikler: {0}",
+    "changesBelow": "Aşağıdaki Değişiklikler: {0}",
+    "changesAboveAny": "Yukarıdaki Değişiklikler",
+    "changesBelowAny": "Aşağıdaki Değişiklikler",
     "savesCurrent": "Zaman Çizgisi’nde Şimdi olarak işaretlenen sürümü kaydeder.",
     "showEdits": "Değişiklikleri Göster",
     "changeOptions": "Değişiklik Seçenekleri"
@@ -2659,10 +2659,10 @@
     "file": "Dosya",
     "check": "Denetle",
     "tagsPlaceholder": "Virgülle ayrılmış",
-    "editCover": "Kapak Editöründe Düzenle",
+    "editCover": "Kapak Editörü’nde Düzenle",
     "makePreview": "Arka Plan Müziğinden Oluştur…",
     "notLoaded": "yüklenmedi",
-    "discard": "Seviye Bilgileri değişiklikleri silinsin mi?"
+    "discard": "Seviye Bilgileri Değişiklikleri Silinsin mi?"
   },
   "statistics": {
     "combo": "Kombo",
@@ -2750,7 +2750,7 @@
     "bgmDiffers": "Bu, özgün arka plan müziği olan “{0}” dosyasından farklı bir dosya.",
     "bgmDiffersUnnamed": "Bu, özgün arka plan müziği dosyasından farklı bir dosya.",
     "newLevel": "Yeni seviye",
-    "reopen": "“{0}” Yeniden Aç",
+    "reopen": "“{0}” Oturumunu Yeniden Aç",
     "reopenUntitled": "{0} Tarihli Oturumu Yeniden Aç",
     "readOnlyPeek": "Geçmiş görüntülenirken salt okunur",
     "restoredTo": "{0} anına geri yüklendi",
@@ -2759,7 +2759,7 @@
     "peekFailed": "Bu adım görüntülenemedi",
     "peekCodeFailed": "Bu adım görüntülenemedi. Tekrar denemek için sayfayı yeniden yükleyin.",
     "peekSessionFailed": "Bu oturum görüntülenemedi",
-    "openHistory": "Geçmişi Aç",
+    "openHistory": "Geçmiş’i Aç",
     "earlierInHistory": "Zaman Çizgisi’ndeki önceki adımlar Geçmiş’te",
     "savedCurrent": "Güncel sürüm {0} dosyasına kaydedildi"
   },
@@ -2797,7 +2797,7 @@
     "separateCopyShort": "Ayrı kopya",
     "notInFile": "Kaydedilmemiş",
     "separateCopy": "{0} için ayrı kopya",
-    "opensLevelInfo": "Seviye bilgisini açar",
+    "opensLevelInfo": "Seviye Bilgileri’ni açar",
     "changedSaved": "{0}, {1} dosyasına kaydedildikten sonra değişti",
     "changedDownload": "{0}, {1} indirildikten sonra değişti",
     "changedOpened": "{0}, {1} açıldıktan sonra değişti"
