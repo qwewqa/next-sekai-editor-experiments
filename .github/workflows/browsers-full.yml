@@ -200,6 +200,9 @@ jobs:
                   node-version-file: .node-version
                   cache: npm
             - run: npm ci
+            # The same fonts as the chromium job, so a test here fails or passes as it would there.
+            - name: Install the test fonts
+              run: scripts/ci/install-test-fonts.sh
             # The five locked preview packages, as build:release stages them. Without them the preview specs fall back to Built-in only.
             - name: Fetch the preview assets
               run: node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
