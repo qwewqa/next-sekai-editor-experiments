@@ -6,6 +6,7 @@ import {
 } from '@sonolus/core'
 import { noteStyles, type NoteStyle } from '../chart/noteStyle'
 import { readItem, type ResourceGetter } from './assets/scpItem'
+import { decodeAtlas } from './decodeAtlas'
 import type { Tint } from './gl'
 import { parseGzippedJson } from './scp'
 import { toSpriteUv, type Sprite } from './skin'
@@ -131,10 +132,7 @@ export const buildParticle = async (
     const particle = resolveParticle((name) => effects.get(name))
 
     // Finish fallible metadata processing before allocating a decoded texture.
-    const texture = await createImageBitmap(new Blob([new Uint8Array(textureRaw)]), {
-        premultiplyAlpha: 'premultiply',
-        colorSpaceConversion: 'none',
-    })
+    const texture = await decodeAtlas(textureRaw)
 
     return {
         title,
