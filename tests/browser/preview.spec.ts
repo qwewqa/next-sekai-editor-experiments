@@ -879,7 +879,7 @@ test.describe('preview transport', () => {
             expect(tapped).toBe(20.123456 + milliseconds / 1000)
             await page.clock.runFor(250)
             const started = (await clock(page)).now
-            await page.clock.runFor(1000)
+            await page.clock.runFor(250)
             const expected = tapped + (((await clock(page)).frame - started) * milliseconds) / 10
             expect(await cursor(page)).toBeCloseTo(expected, 9)
             // A delayed frame catches up by elapsed time without replaying taps.
