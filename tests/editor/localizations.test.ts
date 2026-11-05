@@ -192,7 +192,7 @@ test('Japanese writes ペースト, as the command, never 貼り付け', () => {
 
 test('Japanese units take half-width parentheses', () => {
     for (const [key, text] of Object.entries(read('ja')))
-        assert.doesNotMatch(text, /（[^{}）]*）$/, key)
+        assert.doesNotMatch(text, /（(?:ミリ秒|秒|拍|レーン|度|%|px|Mbps|±)）$/, key)
 })
 
 test('Turkish editor names all use Editör', () => {

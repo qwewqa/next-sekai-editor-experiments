@@ -390,7 +390,7 @@ T: Added group “New Group”
 T: Groupe « New Group » ajouté
 
 #owner.create.group ja
-T: 「New Group」グループを追加しました
+T: グループ「New Group」を追加しました
 
 #owner.create.stage en
 T: Added stage “New Stage”
@@ -482,7 +482,7 @@ T: Groupe « Alpha » déplacé
 R: Ordre [order]: 3 > 1
 
 #owner.move.reorder.indexes ja
-T: 「Alpha」グループを移動しました
+T: グループ「Alpha」を移動しました
 R: 順序 [order]: 3 > 1
 
 #owner.move.reorder.noIndexes en
@@ -520,7 +520,7 @@ T: Duplicated group “Alpha”
 T: Groupe « Alpha » dupliqué
 
 #owner.duplicate.group ja
-T: 「Alpha」グループを複製しました
+T: グループ「Alpha」を複製しました
 
 #owner.duplicate.groups.noSource en
 T: Duplicated 3 groups
@@ -539,7 +539,7 @@ T: Deleted group “Alpha”
 T: Groupe « Alpha » supprimé
 
 #owner.delete.group ja
-T: 「Alpha」グループを削除しました
+T: グループ「Alpha」を削除しました
 
 #owner.delete.groups.noTarget en
 T: Deleted 4 groups
@@ -723,7 +723,7 @@ S: 3 steps (no prefix)
   - 2 notes ajoutées
 
 #undo.group.3 ja
-T: 3 操作を元に戻しました
+T: 3件の操作を元に戻しました
 S: 3 steps (no prefix)
   - 1個のノーツを削除しました
   - 3個のノーツを編集しました
@@ -1304,9 +1304,9 @@ R: Supprimé [removed]: 1 groupe / 800 notes / 12 échelles de temps
 F: Groupe « Group 1 » ajouté
 
 #owner.delete.cascade ja
-T: 「Alpha」グループを削除しました
+T: グループ「Alpha」を削除しました
 R: 削除 [removed]: 1個のグループ / 800個のノーツ / 12個のハイスピード
-F: 「Group 1」グループを追加しました
+F: グループ「Group 1」を追加しました
 
 #owner.delete.cascade.stageFolder en
 T: Deleted stage folder “Folder S”

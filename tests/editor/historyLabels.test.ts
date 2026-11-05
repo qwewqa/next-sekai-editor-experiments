@@ -271,6 +271,6 @@ test('step counts pluralise and group digits in each language', () => {
     assert.match(stepsText(1206), /^1\s206 étapes$/)
     assert.match(newerStepsText(1206), /^1\s206 étapes plus récentes$/)
     inLocale('ja')
-    assert.equal(stepsText(1206), '1,206 操作')
-    assert.equal(newerStepsText(1206), '新しい操作 1,206 件')
+    assert.equal(stepsText(1206), '1,206件の操作')
+    assert.equal(newerStepsText(1206), '新しい操作1,206件')
 })
