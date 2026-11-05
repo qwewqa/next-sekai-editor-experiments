@@ -428,7 +428,7 @@ export const diffChanges = (input: DiffInput, totals?: ChangeTotals): ChangeSet 
     const counts = emptyCounts()
     let least = 0
     for (const [kind, side] of sides) {
-        counts[kind] = Math.max(side.removed.length, side.added.length) + side.reordered.length
+        counts[kind] = Math.max(side.removed.length, side.added.length)
         least += counts[kind]
     }
     const total = totals ? totals.notes + totals.events : 0

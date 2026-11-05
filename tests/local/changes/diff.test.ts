@@ -339,7 +339,7 @@ test('a reordered stack or a changed slide connection marks only the notes and e
     assert.equal(runBeats.set.counts.bpms, 48)
 })
 
-test('connection changes count toward the layout and keep their marks in the most layout', async () => {
+test('connection changes keep their marks in the most layout, which added and removed objects decide', async () => {
     const beatsOf = async (before: State, after: State) => {
         const set = await diff(before, after)
         const beats = [...new Set(set.objects.map((object) => object.beat))].sort((a, b) => a - b)
@@ -353,12 +353,12 @@ test('connection changes count toward the layout and keep their marks in the mos
     }
     const every = (count: number) => Array.from({ length: count }, (_, beat) => beat)
 
-    // 200 taps combined into one slide: 200 of 202 objects changed, and nothing else.
+    // 200 taps combined into one slide: nothing added or removed, so the change is counted.
     const joined = await beatsOf(
         chart(every(200).map((beat) => [note(beat)])),
         chart([every(200).map((beat) => note(beat))]),
     )
-    assert.equal(joined.set.layout, 'most')
+    assert.equal(joined.set.layout, 'large')
     assert.equal(joined.set.counts.slides, 200)
     assert.ok(joined.set.objects.every((object) => object.status === 'changed'))
     assert.deepEqual(joined.beats, every(200))
