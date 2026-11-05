@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { installEditorFixture, waitForStartup } from './editorFixture'
+import { insideAnHour } from './historyJourney'
 
 const presentation = (page: Page) => page.locator('[data-history-presentation]')
 const list = (page: Page) => presentation(page).locator('[data-history-list]')
@@ -34,6 +35,7 @@ const load = async (page: Page) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
     await page.evaluate(installEditorFixture)
+    await insideAnHour(page)
     await page.evaluate(async () => {
         const { history } = window.editorTest
         for (let i = 1; i <= 30; i++)

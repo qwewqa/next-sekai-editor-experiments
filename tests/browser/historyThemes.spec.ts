@@ -3,6 +3,7 @@ import en from '../../src/i18n/en/index.json' with { type: 'json' }
 import { touchInput } from './editorFixture'
 import {
     errorsFail,
+    insideAnHour,
     liveOf,
     load,
     noErrors,
@@ -430,6 +431,7 @@ const themed = async (page: Page, scheme: Scheme) => {
     await expect
         .poll(() => page.evaluate(() => document.documentElement.dataset.theme))
         .toBe(scheme)
+    await insideAnHour(page)
     for (const beat of [1, 2, 3]) await placeTap(page, { lane: 0, beat })
     await synthesise(page, 4)
     await openHistory(page)

@@ -5,7 +5,7 @@ import {
     installTestPlatform,
     waitForStartup,
 } from './editorFixture'
-import { row as historyRow } from './historyJourney'
+import { row as historyRow, insideAnHour } from './historyJourney'
 import { flushed, notice, pressSave, queuePicks, submitSave } from './saveFlows'
 
 // The History tab and dialog, the Timeline and the peek bar.
@@ -829,6 +829,7 @@ test.describe('the Timeline', () => {
     test('rows show kind icons, ×N groups collapse and open, and undone steps carry no flag', async ({
         page,
     }) => {
+        await insideAnHour(page)
         await edit(page, 4)
         await page.keyboard.press('z')
         await page.keyboard.press('z')
@@ -1630,6 +1631,7 @@ test.describe('touch disclosure', () => {
     test('tap disclosure expands without peeking and scrolling cancels row long press', async ({
         page,
     }) => {
+        await insideAnHour(page)
         for (let i = 0; i < 3; i++) await edit(page, 1, 'Touch edit', true)
         await stored(page)
         await openTab(page, 'top')

@@ -12,6 +12,7 @@ import {
     errorsFail,
     flush,
     holdWorker,
+    insideAnHour,
     liveOf,
     load,
     notice,
@@ -239,18 +240,6 @@ const newVisit = async (page: Page) => {
 
 const canUndo = (page: Page) => page.evaluate(() => window.editorTest.history.canUndo.value)
 
-/**
- * Waits out an hour that ends within a minute: entries either side of an hour never share a
- * Timeline row, so steps that should make one row start well inside an hour.
- */
-const insideAnHour = async (page: Page) => {
-    const hour = 3_600_000
-    const left = await page.evaluate((hour) => hour - (Date.now() % hour), hour)
-    if (left >= 60_000) return
-    test.setTimeout(test.info().timeout + left)
-    await page.waitForTimeout(left + 100)
-}
-
 const press = async (page: Page, key: string, times: number) => {
     await page.evaluate(() => {
         const active = document.activeElement
@@ -413,6 +402,7 @@ test('a step eight back in the Timeline of a reloaded stack peeks and restores',
     errorsFail(page)
     await load(page)
     const start = await lifeOf(page)
+    await insideAnHour(page)
     await pushLifeSteps(page, 20)
     await flush(page)
     await reloadAndWait(page)

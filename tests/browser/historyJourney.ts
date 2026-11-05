@@ -1,5 +1,6 @@
 import {
     expect,
+    test,
     type BrowserContext,
     type ConsoleMessage,
     type Locator,
@@ -54,6 +55,7 @@ import { installEditorFixture, installTestPlatform, useTool, waitForStartup } fr
  *   sampleClock(context, start)     an installed SampleClock (page clock and worker Date together)
  *   notice(page, text?)             notices, optionally filtered by text
  *   newestSeq(page)                 the newest entry's seq in the open session
+ *   insideAnHour(page)              wait out a local hour that ends within a minute
  *
  * The Hold returned by `holdWorker` has `reached()` (resolves when a call is held), `count()`
  * and `release(fail?)`. A hold gates a call BEFORE it runs, so a held `flush` writes nothing.
@@ -388,6 +390,24 @@ export const newestSeq = (page: Page) =>
         const flusher = window.nseFlushTest?.flusher
         return flusher?.session ? flusher.newestSeq(flusher.session) : 0
     })
+
+/**
+ * Waits out a local hour that ends within a minute, and raises the test's timeout by the wait.
+ * Entries either side of an hour never share a Timeline row, so call it before steps that should
+ * make one row, when they are all made within a minute.
+ */
+export const insideAnHour = async (page: Page) => {
+    const left = await page.evaluate(() => {
+        const now = new Date()
+        return (
+            3_600_000 -
+            (now.getMinutes() * 60_000 + now.getSeconds() * 1000 + now.getMilliseconds())
+        )
+    })
+    if (left >= 60_000) return
+    test.setTimeout(test.info().timeout + left)
+    await page.waitForTimeout(left + 100)
+}
 
 // --- Chart digests
 

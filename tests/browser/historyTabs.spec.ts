@@ -7,6 +7,7 @@ import {
     closePage,
     errorsFail,
     flush,
+    insideAnHour,
     liveOf,
     load,
     noErrors,
@@ -161,6 +162,7 @@ test('a duplicated tab forks with a divider, and nothing it does reaches the fir
 }) => {
     errorsFail(page)
     await load(page)
+    await insideAnHour(page)
     await placeTap(page, { lane: -2, beat: 1 })
     await placeTap(page, { lane: 0, beat: 2 })
     await flush(page)
@@ -247,6 +249,7 @@ test('a new visit continues with a divider, its earlier rows peek and restore, a
 }) => {
     errorsFail(page)
     await load(page)
+    await insideAnHour(page)
     await placeTap(page, { lane: -2, beat: 1 })
     await placeTap(page, { lane: 0, beat: 2 })
     await flush(page)

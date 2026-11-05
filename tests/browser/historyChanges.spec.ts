@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
-import { row as historyRow, holdWorker, release } from './historyJourney'
+import { row as historyRow, holdWorker, insideAnHour, release } from './historyJourney'
 
 // The change view: what a peeked entry changed against the
 // entry before it, marked on the chart with the rest dimmed, counted on the peek bar, brought
@@ -24,6 +24,7 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
     await page.evaluate(installEditorFixture)
+    await insideAnHour(page)
 })
 
 test.afterEach(({ page }) => {

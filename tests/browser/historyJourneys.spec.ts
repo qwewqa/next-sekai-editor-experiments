@@ -12,6 +12,7 @@ import {
     errorsFail,
     flush,
     holdWorker,
+    insideAnHour,
     liveOf,
     load,
     newestSeq,
@@ -281,6 +282,7 @@ test('edit, group, peek, Details, Restore, Undo, Redo and reload, all by real in
     errorsFail(page)
     await load(page)
     await addVolume(page, 30)
+    await insideAnHour(page)
 
     // 1. Three taps, a drag, and Lane changed three times.
     await placeTap(page, { lane: -3, beat: 4 })
@@ -451,6 +453,8 @@ test('Save, Export and a reload while peeking write and show the live chart', as
     errorsFail(page)
     await load(page, { platform: opfs })
 
+    await insideAnHour(page)
+
     // 1. Five taps, saved to j2.nxsp.
     for (let i = 0; i < 5; i++) await placeTap(page, { lane: -4 + i, beat: 4 + i })
     await pressSave(page)
@@ -577,6 +581,7 @@ test('a crash while peeking recovers the live chart, never the peeked one', asyn
         await page.evaluate(() => {
             window.editorTest.history.resetState(false)
         })
+        await insideAnHour(page)
         await placeTap(page, { lane: -4, beat: 4 })
         const first = await liveOf(page)
         for (let i = 1; i < 4; i++) await placeTap(page, { lane: -4 + i, beat: 4 + i })

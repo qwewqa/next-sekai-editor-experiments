@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { installEditorFixture, waitForStartup } from './editorFixture'
+import { insideAnHour } from './historyJourney'
 
 const shots = process.env.NSE_HISTORY_SHOTS_DIR ?? 'test-results/history-shots'
 const boot = async (page: Page) => {
@@ -367,6 +368,7 @@ for (const width of [1440, 390])
         })
         test('group labels and disclosure keep chronological actions visible', async ({ page }) => {
             await boot(page)
+            await insideAnHour(page)
             await page.evaluate(() => {
                 const { history } = window.editorTest
                 const labels = [
