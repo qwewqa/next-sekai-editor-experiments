@@ -185,7 +185,7 @@ const fitRows = () => {
         const labels = rows.map((row) => row.querySelector<HTMLElement>('.preview-setting-label'))
         body.classList.remove('preview-controls-roomy')
         for (const row of rows) row.classList.remove('preview-setting-stacked')
-        // One column for every row keeps the controls' edges aligned. Its room only
+        // One column for every field row keeps the controls' edges aligned. Its room only
         // widens labels, so only those that overflowed are measured again.
         const overflowingOf = (labels: HTMLElement[]) => {
             const overflows = wordsOverflow(labels)

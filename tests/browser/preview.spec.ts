@@ -2212,7 +2212,7 @@ test('a preview settings refit measures each label once', async ({ page }) => {
     expect(await page.evaluate(() => window.labelMeasures)).toBe(labels * 2)
 })
 
-test('a preview settings refit reads every label before it sets any, so layout runs once a pass', async ({
+test('a preview settings refit reads the field labels, then the Assets label, each group before it sets any, so layout runs once a pass', async ({
     page,
 }) => {
     await settle(page)
