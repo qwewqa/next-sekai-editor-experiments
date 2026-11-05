@@ -35,9 +35,9 @@ const translucent = [
     // The base's slots are a translucent lit fill inside an opaque outline.
     { pattern: /^Sekai Slot (?!Glow)/, floor: 1 },
     // The base's flick arrows glow softly round an opaque arrowhead: inside the glow (alpha under
-    // core), the arrowhead itself is opaque. Ours glow strongly next to the rim's soft outer edge,
-    // up to about 0.945 alpha, so core stays below that: at 0.95 an arrow whose rim fill is missing
-    // would pass, as the glow under it would not count.
+    // core), the arrowhead itself is opaque. The Built-in arrows glow strongly next to the rim's
+    // soft outer edge, up to about 0.945 alpha, so core stays below that. At 0.95 an arrow whose
+    // rim fill is missing would pass, as the glow under it would not count.
     { pattern: /Arrow|^#DIRECTIONAL_MARKER/, floor: 1, opaque: 0.99, core: 0.92 },
     // The base's critical diamonds glow round an opaque kite, the same way.
     {
