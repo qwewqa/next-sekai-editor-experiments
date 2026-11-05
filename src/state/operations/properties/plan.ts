@@ -16,7 +16,7 @@ import { propertyEditReceipt } from '../historyReceipts'
 import { editSelectedNote } from '../note'
 import { isWithinBeatRange } from '../scaleValues'
 import { editSelectedTimeScale, editTimeScaleWithReceipt } from '../timeScale'
-import { inStoredOrder } from '../transformSelection'
+import { inLandingOrder } from '../transformSelection'
 import { noteFieldsApply } from './applicability'
 import { getNoteFieldsIn } from './noteFields'
 
@@ -130,8 +130,8 @@ export const planEdit = (
     // What a lone BPM or time scale edit took from its destination, and the initial BPM kept.
     const displaced: Entity[] = []
     let retainedInitialBpm = false
-    // Moved same-beat objects land in their stored order, whatever the selection order.
-    for (const entity of inStoredOrder(source, changed, (entity) => entity)) {
+    // Objects moved onto one beat land in source-beat order, then stored order.
+    for (const entity of inLandingOrder(source, changed, (entity) => entity)) {
         if (results.has(entity)) continue
         const own = objectOf(entity)
         requests.set(entity, { ...own })

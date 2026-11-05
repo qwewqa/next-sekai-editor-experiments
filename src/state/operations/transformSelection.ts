@@ -128,6 +128,25 @@ export const inStoredOrder = <T>(
         .map(({ item }) => item)
 }
 
+/**
+ * The order moved objects are added in: objects that meet on one beat land in source-beat order,
+ * then stored order, and a same-beat pair stays a pair. Notes keep their places.
+ */
+export const inLandingOrder = <T>(source: State, items: T[], entityOf: (item: T) => Entity) => {
+    const rank = (entity: Entity) =>
+        getInStoreGrid(source.store.grid, entity.type, entity.beat)?.indexOf(entity) ?? 0
+    const timing = items
+        .filter((item) => entityOf(item).type !== 'note')
+        .sort((a, b) => {
+            const [x, y] = [entityOf(a), entityOf(b)]
+            return x.beat - y.beat || rank(x) - rank(y)
+        })
+    const sorted = items.map((item) =>
+        entityOf(item).type === 'note' ? item : (timing.shift() ?? item),
+    )
+    return inStoredOrder(source, sorted, entityOf)
+}
+
 export type SelectionTransformResult = {
     state: State
     counts: NativeCounts
@@ -168,17 +187,7 @@ export const transformSelectionWithReceipt = (
     for (const [entity, object] of changed) {
         if (entity.type !== 'note' && !stays(entity, object)) remove(transaction, entity)
     }
-    // Movers that meet on one beat land in source-beat order, then stored order; notes keep their places.
-    const rank = (entity: Entity) =>
-        getInStoreGrid(source.store.grid, entity.type, entity.beat)?.indexOf(entity) ?? 0
-    const timing = changed
-        .filter(([entity]) => entity.type !== 'note')
-        .sort(([a], [b]) => a.beat - b.beat || rank(a) - rank(b))
-    const sorted = changed.map((entry) =>
-        entry[0].type === 'note' ? entry : (timing.shift() ?? entry),
-    )
-    // A same-beat pair lands in its stored order and stays a pair.
-    const ordered = inStoredOrder(source, sorted, ([entity]) => entity)
+    const ordered = inLandingOrder(source, changed, ([entity]) => entity)
     // The operands, and what this transform puts in their place, are never replaced.
     const kept = new Set<Entity>(changes.keys())
     const displaced = new Set<Entity>()

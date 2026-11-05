@@ -16,6 +16,7 @@ import type { State } from '../../src/state'
 import type { Entity } from '../../src/state/entities'
 import { beatToTime } from '../../src/state/integrals/bpms'
 import { flipVerticalWithReceipt } from '../../src/state/operations/flipVertical'
+import { planEdit } from '../../src/state/operations/properties/plan'
 import { scaleSelectionWithReceipt } from '../../src/state/operations/scaleSelection'
 import {
     inStoredOrder,
@@ -246,6 +247,27 @@ test('a camera event stacked at an occupied beat plays the stack in order', () =
     assert.equal(lane(8), 9)
     assert.equal(lane(8, true), 2)
     assert.equal(lane(10), 2)
+})
+
+test('Set Beat lands objects from several beats in source-beat order, whatever the selection order', () => {
+    for (const kind of kinds) {
+        const before = edits(
+            baseState(),
+            (t) => add(t, kind, 4, 0),
+            (t) => add(t, kind, 3, 2),
+            (t) => add(t, kind, 2, 1),
+        )
+        const [zero, one, two] = [
+            entityAt(before, kind, 4, 0),
+            entityAt(before, kind, 2, 1),
+            entityAt(before, kind, 3, 2),
+        ] as [Entity, Entity, Entity]
+        for (const selection of [
+            [one, two, zero],
+            [two, one, zero],
+        ])
+            assertKept(planEdit(before, selection, { beat: 4 }).state, kind, 4, [0, 1, 2])
+    }
 })
 
 test('moving one of a same-beat pair away and back puts it last, and that order is what is kept', () => {
