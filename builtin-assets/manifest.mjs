@@ -210,11 +210,11 @@ const slimEdge = (light) =>
               lh: n((slimH - 2 * slimTop) / 8),
           }
         : { light: 'none', ly: 0, lh: 0 }
-// Damage: half the height through its middle, as the base's bright bar (its dark rim left out),
-// with a 4 unit rim.
+// Damage: half the height through its middle, as the base's bright bar, with a 4 unit rim and a
+// soft halo (below).
 const damageTop = damageH / 4
 const damageVars = {
-    h: n(damageH),
+    end: 48,
     rim: endShape(0, damageTop, damageH - damageTop, 22),
     face: endShape(4, damageTop + 4, damageH - damageTop - 4, 18),
     top: n(damageTop),
@@ -224,7 +224,7 @@ const damageVars = {
 }
 // The damage art at the slim end width (24 units), for the base's purple trace, its damage note.
 const damageSlimVars = {
-    h: n(damageH),
+    end: 24,
     rim: endShape(0, damageTop, damageH - damageTop, 22, 24),
     face: endShape(4, damageTop + 4, damageH - damageTop - 4, 18, 24),
 }
@@ -239,17 +239,26 @@ const traceOf = (color) =>
         ? { bar: baseColors.blackTrace.bar, light: baseColors.blackTrace.edge }
         : { bar: styleColors(color)[2] }
 
-// Critical notes in play carry a soft halo in the base's critical halo colour, under half alpha
-// outside the art so the note keeps its cell: the critical diamonds' (above), and this glow round
-// critical bodies and traces. Normal notes and the result-bucket Basics have none. The glow is a
-// Gaussian blur of the art's box in the style's light critical glow colour, under the art: 0.4
-// alpha at the art's edge, so the art's half-alpha edge stays put, fading out 3 sigma past it. It
-// is drawn as the product of two gradients, across the note and along it, so the slices join where
-// a blur filter, cut at each slice's edge, would leave seams. Every body and trace slice has the
-// glow's frame, since the engine's perspective mapping places art alike only on the same quad.
-const glowAcross = 32 // sigma across the note, in units: 0.106 lane at tilt 0
-const glowAlong = 20 // and along it: 0.104 lane
-const glowAtEdge = 0.4
+// Critical notes in play carry a soft halo in the base's critical halo colour: the critical
+// diamonds' (above), and this glow round critical bodies and traces, in the style's light critical
+// glow colour. Damage notes carry one in their rim colour, as the base's do, except on Black.
+// Normal notes and the result-bucket Basics have none. The glow is a Gaussian blur of the art's box,
+// under the art, fading out 3 sigma past it. It is under half alpha at the art's edge, so the art's
+// half-alpha edge stays put and the note keeps its cell. It is drawn as the product of two
+// gradients, across the note and along it, so the slices join where a blur filter, cut at each
+// slice's edge, would leave seams. Every slice of a body, trace or damage note has its kind's glow
+// frame, glowing or not, since the engine's perspective mapping places art alike only on the same
+// quad.
+// By kind: the art's height, its top and end width, the glow's sigma across the note and along it
+// in units (192 a lane at tilt 0), and its alpha at the art's edge. The base's purple trace ends
+// are the damage art at the slim end width, on the damage note's frame, so their glow along is
+// half as wide.
+const sliceKinds = {
+    body: { h: bodyH, y0: 0, end: 48, across: 32, along: 20, atEdge: 0.4 },
+    slim: { h: slimH, y0: slimTop, end: 24, across: 32, along: 20, atEdge: 0.4 },
+    damage: { h: damageH, y0: damageTop, end: 48, across: 16, along: 16, atEdge: 0.45 },
+    'damage slim': { h: damageH, y0: damageTop, end: 24, across: 16, along: 8, atEdge: 0.45 },
+}
 // The standard normal distribution function, with erf by Abramowitz and Stegun 7.1.26.
 const phi = (t) => {
     const x = Math.abs(t) / Math.SQRT2
@@ -271,21 +280,21 @@ const gradientStops = (count, color, alpha) =>
     ).join('')
 // The glow along a slice, at d units in from the art's outer end: the blur's edge outside, then
 // eased to exactly 1, flat, at the slice's inner end, where the middle slice carries it on.
-const alongEnd = (d, end) =>
-    d <= 0 ? phi(d / glowAlong) : 1 - (1 - phi(d / glowAlong)) * (1 - smoothstep(d / end))
+const alongEnd = (d, end, along) =>
+    d <= 0 ? phi(d / along) : 1 - (1 - phi(d / along)) * (1 - smoothstep(d / end))
 
-/** A body or trace slice's frame and glow: the vars and transform for its template. */
+/** A body, trace or damage slice's frame and glow: the vars and transform for its template. */
 function noteSlice(kind, part, glow) {
-    const [h, y0, end] = kind === 'body' ? [bodyH, 0, 48] : [slimH, slimTop, 24]
+    const { h, y0, end, across: sigma, along, atEdge } = sliceKinds[kind]
     const y1 = h - y0
     const width = part === 'Middle' ? 16 : end
-    const pad = part === 'Middle' ? 0 : 3 * glowAlong
-    const rise = 3 * glowAcross - y0
+    const pad = part === 'Middle' ? 0 : 3 * along
+    const rise = 3 * sigma - y0
     const tall = h + 2 * rise
-    const peak = glowAtEdge / (0.5 - phi((y0 - y1) / glowAcross))
+    const peak = atEdge / (0.5 - phi((y0 - y1) / sigma))
     const across = (t) => {
         const y = -rise + t * tall
-        return peak * (phi((y - y0) / glowAcross) - phi((y - y1) / glowAcross))
+        return peak * (phi((y - y0) / sigma) - phi((y - y1) / sigma))
     }
     const vars = {
         view: `${part === 'Left' ? -pad : 0} ${n(-rise)} ${width + pad} ${n(tall)}`,
@@ -302,7 +311,7 @@ function noteSlice(kind, part, glow) {
             hxa: part === 'Left' ? -pad : end + pad,
             hxb: part === 'Left' ? end : 0,
             hstops: glow
-                ? gradientStops(32, '#fff', (t) => alongEnd(-pad + t * (pad + end), end))
+                ? gradientStops(32, '#fff', (t) => alongEnd(-pad + t * (pad + end), end, along))
                 : '',
         })
     const [u0, u1] = [part === 'Left' ? -pad / end : 0, part === 'Right' ? 1 + pad / end : 1]
@@ -365,8 +374,17 @@ const bar = (kind, color, { edge = 'none', light } = {}) => {
 // Black keeps its light inner colour as the rim, since a dark rim would hide its bar.
 const damageEdge = (face, color) =>
     color === 'Black' ? styleColors('Black')[1] : mix(face, '#000000', 0.25)
-const damageImage = (part, color, edge) =>
-    image(`note-damage-${part.toLowerCase()}`, { ...damageVars, color, edge }, { stretch: true })
+/** A damage slice in a style's face colour, at the slim end width for the base's purple trace. */
+const damageImage = (part, face, color, slim = false) => {
+    const edge = damageEdge(face, color)
+    const glow = color !== 'Black' && edge
+    const slice = noteSlice(slim ? 'damage slim' : 'damage', part, glow)
+    return image(
+        `note-damage-${part.toLowerCase()}`,
+        { ...(slim ? damageSlimVars : damageVars), color: face, edge, ...slice.vars },
+        { stretch: true, transform: slice.transform, ...(glow && { glow }) },
+    )
+}
 
 const bodyFamilies = [
     ['Normal Note', 'tap'],
@@ -528,8 +546,7 @@ export function skinSprites() {
                     `Sekai ${family} ${part}`,
                     bodyImage(part, bodyColors[key], isCritical(family) && baseColors.criticalGlow),
                 )
-        for (const part of parts)
-            add(`Sekai Damage Note ${part}`, damageImage(part, damageFace, damageEdge(damageFace)))
+        for (const part of parts) add(`Sekai Damage Note ${part}`, damageImage(part, damageFace))
     })
 
     group('Trace bodies (slim)', () => {
@@ -567,14 +584,7 @@ export function skinSprites() {
                 )
         // The base's purple trace is its damage note, drawn at the slim end width.
         for (const part of ['Left', 'Right'])
-            add(
-                `Sekai Trace Note Purple ${part}`,
-                image(
-                    `note-damage-slim-${part.toLowerCase()}`,
-                    { ...damageSlimVars, color: damageFace, edge: damageEdge(damageFace) },
-                    { stretch: true },
-                ),
-            )
+            add(`Sekai Trace Note Purple ${part}`, damageImage(part, damageFace, undefined, true))
         alias('Sekai Trace Note Purple Middle', 'Sekai Damage Note Middle')
     })
 
@@ -809,10 +819,7 @@ export function skinSprites() {
                             : slimImage(part, trace.bar, trace.light),
                     )
             for (const part of parts)
-                add(
-                    `Sekai Damage Note ${part} ${color}`,
-                    damageImage(part, accent, damageEdge(accent, color)),
-                )
+                add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, color))
             const [face, criticalFace] = baseColors.styleDiamond[color]
             const halo = baseColors.styleDiamondHalo[color]
             const haloed =

@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="96" viewBox="0 0 16 var(--h)" preserveAspectRatio="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="var(--pw)" height="var(--ph)" viewBox="var(--view)" preserveAspectRatio="none">
+    <linearGradient id="v" gradientUnits="userSpaceOnUse" x1="0" y1="var(--vya)" x2="0" y2="var(--vyb)">var(--vstops)</linearGradient>
+    <rect x="-100" y="var(--vya)" width="300" height="var(--vyh)" fill="var(--halo)"/>
     <rect y="var(--top)" width="16" height="var(--span)" fill="var(--edge)"/>
     <rect y="var(--inset)" width="16" height="var(--inside)" fill="var(--color)"/>
 </svg>
