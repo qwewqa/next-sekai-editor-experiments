@@ -274,6 +274,11 @@ const reloadedStack = async (page: Page) => {
     return start + 40
 }
 
+// Traces without the screencast, which keeps commands in flight on the page: when Chrome answers
+// one after the crash test's crash, Playwright fails the test with "Assertion error"
+// (CRSession._onMessage).
+test.use({ trace: { mode: 'retain-on-failure', screenshots: false } })
+
 test.beforeEach(async ({ page }) => {
     await recordNotices(page)
 })
