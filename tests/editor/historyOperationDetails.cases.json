@@ -6781,6 +6781,123 @@
         ]
     },
     {
+        "id": "brush.objects.elevationVaries",
+        "cat": "property",
+        "locales": true,
+        "note": "The Brush's Note and Stage Transform Event Elevation rows set to different values on objects that held different values.",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.object.brush",
+                    "data": {
+                        "subject": "objects",
+                        "changed": {
+                            "note": 1,
+                            "stageTransformEvent": 1
+                        },
+                        "assignments": [
+                            {
+                                "field": "elevation",
+                                "before": {
+                                    "mode": "varying"
+                                },
+                                "after": {
+                                    "mode": "varying"
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "brush.note.sameName",
+        "cat": "property",
+        "note": "Brushed into another group with the same name.",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.object.brush",
+                    "data": {
+                        "subject": "note",
+                        "changed": {
+                            "note": 1
+                        },
+                        "assignments": [
+                            {
+                                "field": "groupId",
+                                "before": {
+                                    "mode": "uniform",
+                                    "value": {
+                                        "kind": "group",
+                                        "id": 1,
+                                        "name": {
+                                            "text": "Lead"
+                                        }
+                                    }
+                                },
+                                "after": {
+                                    "mode": "uniform",
+                                    "value": {
+                                        "kind": "group",
+                                        "id": 2,
+                                        "name": {
+                                            "text": "Lead"
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "property.note.preset.coupled",
+        "cat": "property",
+        "locales": true,
+        "note": "A note preset setting Critical and Fake on notes already Fake whose connectors are not.",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.property.set",
+                    "data": {
+                        "subject": "note",
+                        "changed": {
+                            "note": 2
+                        },
+                        "assignments": [
+                            {
+                                "field": "isCritical",
+                                "before": {
+                                    "mode": "uniform",
+                                    "value": false
+                                },
+                                "after": {
+                                    "mode": "uniform",
+                                    "value": true
+                                }
+                            },
+                            {
+                                "field": "isFake",
+                                "before": {
+                                    "mode": "uniform",
+                                    "value": true
+                                },
+                                "after": {
+                                    "mode": "uniform",
+                                    "value": true
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    {
         "id": "property.note.group.beforeName",
         "cat": "property",
         "members": [

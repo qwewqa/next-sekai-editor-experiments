@@ -1184,6 +1184,40 @@ R: Size [size]: 1 > 2
 #property.note.noop en
 T: Set Lane to 1 on 1 note
 
+#brush.objects.elevationVaries en
+T: Brushed 2 objects
+R: Changed [changed]: 1 note / 1 stage transform event
+R: Elevation [elevation]: Changed
+
+#brush.objects.elevationVaries fr
+T: 2 objets peints
+R: Modification [changed]: 1 note / 1 événement de transformation de scène
+R: Élévation [elevation]: Modification
+
+#brush.objects.elevationVaries ja
+T: 2個のオブジェクトに反映しました
+R: 変更 [changed]: 1個のノーツ / 1個のステージ変形イベント
+R: 高さ [elevation]: 変更
+
+#brush.note.sameName en
+T: Brushed 1 note
+R: Group [groupId]: Changed
+
+#property.note.preset.coupled en
+T: Edited 2 notes
+R: Critical [isCritical]: Disabled > Enabled
+R: Fake [isFake]: Changed
+
+#property.note.preset.coupled fr
+T: 2 notes modifiées
+R: Critique [isCritical]: Désactivé > Activé
+R: Factice [isFake]: Modification
+
+#property.note.preset.coupled ja
+T: 2個のノーツを編集しました
+R: クリティカル [isCritical]: 無効 > 有効
+R: フェイク [isFake]: 変更
+
 #property.note.group.beforeName en
 T: Set Group to “” on 2 notes
 R: Group [groupId]: Old Group > “”

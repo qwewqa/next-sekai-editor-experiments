@@ -257,18 +257,25 @@ const nativeRecord = (
         case 'nse.property.set': {
             changed(d.changed, operation.data.changed, false)
             collateral(operation.data)
+            // A one-field edit's title names its field. Elsewhere a field whose values read the
+            // same before and after (each varies, or a coupled connector flag changed) still changed.
+            const titled =
+                operation.id === 'nse.property.set' && operation.data.assignments.length === 1
             for (const assignment of inFormOrder(
                 operation.data.assignments,
                 operation.id === 'nse.object.brush',
-            ))
+            )) {
+                const label = operationFieldLabel(assignment.field, context)
+                const before = assigned(assignment.field, assignment.before, context)
+                const after = assigned(assignment.field, assignment.after, context)
                 rows.push(
-                    ...changeRow(
-                        assignment.field,
-                        operationFieldLabel(assignment.field, context),
-                        assigned(assignment.field, assignment.before, context),
-                        assigned(assignment.field, assignment.after, context),
-                    ),
+                    ...(!sameText(before, after)
+                        ? changeRow(assignment.field, label, before, after)
+                        : titled
+                          ? []
+                          : valueRow(assignment.field, label, plain(d.changed))),
                 )
+            }
             retained(operation.data)
             break
         }
