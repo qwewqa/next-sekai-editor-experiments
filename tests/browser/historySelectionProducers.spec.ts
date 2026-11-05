@@ -796,3 +796,72 @@ test('Combine counts all participating notes and Split counts unique eligible cu
     expect(result.split?.operation).toMatchObject({ id: 'nse.note.split', data: { targets: 1 } })
     expect(result.lengths.sort()).toEqual([1, 3])
 })
+
+test('Scale Apply after dragging part of a stack away and back keeps the chart and adds no step', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { appImport, fixtures, history, show, store } = window.editorTest
+        const session = await appImport<
+            typeof import('../../src/editor/commands/scaleSelection/session')
+        >('/src/editor/commands/scaleSelection/session.ts')
+        const preview =
+            await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+        const camera = fixtures.events.cameraEvents[0]!
+        // S (1) and P (2) share beat 4; P stays unselected.
+        show({
+            ...fixtures.events,
+            isDynamicStages: true,
+            cameraEvents: [
+                [0, 0],
+                [4, 1],
+                [4, 2],
+                [12, 3],
+            ].map(([beat, cameraLeft]) => ({ ...camera, beat: beat!, cameraLeft: cameraLeft! })),
+        })
+        const cameraAt = (state: typeof history.state.value) =>
+            [...new Set([...state.store.grid.cameraEventJoint.values()].flatMap((b) => [...b]))]
+                .filter((entity) => entity.beat === 4)
+                .map((entity) => entity.cameraLeft)
+        const events = [...store.getAllEntities()].filter(
+            (entity) => entity.type === 'cameraEventJoint',
+        )
+        const s = events.find((entity) => entity.cameraLeft === 1)!
+        if (s.type !== 'cameraEventJoint') throw new Error('Missing S')
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: events.filter((entity) => entity.cameraLeft !== 2),
+        })
+        const before = history.state.value
+        const head = history.headStep.value
+        const opened = session.beginScalingSession('beat')
+        const drags = [
+            session.beginScalingDrag(s, 4),
+            session.updateScalingDrag(8),
+            (session.endScalingDrag(), true),
+            session.beginScalingDrag(s, 8),
+            session.updateScalingDrag(4),
+            (session.endScalingDrag(), true),
+        ]
+        const draft = cameraAt(preview.getPreviewState(history.state.value))
+        session.applyScalingSession()
+        return {
+            opened: !!opened,
+            drags,
+            draft,
+            after: cameraAt(history.state.value),
+            unchanged: history.state.value.store === before.store,
+            sameHead: history.headStep.value === head,
+            undo: history.canUndo.value,
+        }
+    })
+    expect(result).toMatchObject({
+        opened: true,
+        drags: [true, true, true, true, true, true],
+        draft: [2, 1],
+        after: [1, 2],
+        unchanged: true,
+        sameHead: true,
+        undo: false,
+    })
+})
