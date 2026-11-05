@@ -36,6 +36,9 @@ export const tiltDegrees = 22
 // Texture pixels per unit of the square. The engine's square is min(width / 2, 3) lanes, so every
 // width from 2 gets 84 texels per lane on screen, and width 1 gets 120.
 export const density = [60, 84, 126, 168, 210, 252]
+// The glow's room per width, as a multiple. Widths 1 and 2 get more, since their square is small on
+// screen and the glow is what softens the silhouette.
+const glowRoom = [2, 1.5, 1, 1, 1, 1]
 
 const round = (value) => Math.round(value * 1000) / 1000
 
@@ -147,11 +150,11 @@ export function arrowSprite(direction, width, { accent, rim, tip }, pixels = den
     const up = down ? (direction === 'down' ? 'up' : 'upLeft') : direction
     const { points, tip: tipAt, tail } = arrowOutline(up, width)
     const [x0, x1, y0, y1] = bounds(points)
-    // Rim, corner rounding and the glow's room in square units: about 5 pixels of rim at the judge
+    // Rim, corner rounding and the glow's room in square units, about 5 pixels of rim at the judge
     // line.
     const rimWidth = 0.12 / Math.sqrt(width)
     const rounding = 0.03 / Math.sqrt(width)
-    const margin = 0.025 + 0.003 * width + 0.01
+    const margin = (0.025 + 0.003 * width + 0.01) * glowRoom[width - 1]
     const frame = [x0 - margin, x1 + margin, y0 - margin, y1 + margin]
     const scale = 100
     // SVG units: x right, y down from the frame's top-left.
