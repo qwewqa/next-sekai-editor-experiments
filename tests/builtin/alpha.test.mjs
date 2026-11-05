@@ -15,8 +15,12 @@ const translucent = [
         pattern: /^Sekai Lane Background( Preview)?( [A-Z][a-z]+)?$|^#LANE$|^#STAGE_MIDDLE$/,
         floor: 0.4,
     },
-    // The base's dividers are grey-white at 0.36, its borders white at 0.21.
-    { pattern: /^Sekai (Lane Divider|Stage Border)( Preview)?$/, floor: 0.25 },
+    // The base's dividers are grey-white at 0.36, its borders white at 0.21, its preview-mode
+    // borders a line at 0.3.
+    {
+        pattern: /^Sekai (Lane Divider|Stage Border)( Preview)?$|^#STAGE_(LEFT|RIGHT)_BORDER$/,
+        floor: 0.25,
+    },
     // The base's judgment background is black at 0.57, darkening the lane under the line.
     { pattern: /^Sekai Judgment Background/, floor: 0.5 },
     // The base's fallback judge line has opaque lines round a dark middle at 0.6.

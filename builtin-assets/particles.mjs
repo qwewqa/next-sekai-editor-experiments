@@ -184,7 +184,7 @@ const flickers = (color) =>
         ),
     )
 
-// Critical flicks: a fan of needles opening along the flick.
+// Flicks: a fan of needles opening along the flick.
 const needleFan = (color) =>
     Array.from({ length: 10 }, (_, k) => {
         const r = 1.2 - (2.48 * k) / 9
@@ -432,7 +432,10 @@ export const kinds = {
     ],
 
     // Flicks, in the linear square turned to the flick (y runs along the flick, 0.32 s).
-    directional: (color) => [...flickers(pale(color, 0.45)), once(...flame(color))],
+    directional: (color) => [
+        ...flickers(pale(color, 0.45)),
+        once(...needleFan(color), ...flame(color)),
+    ],
     criticalDirectional: (color) => [
         once(...sparkleFan(color)),
         ...flickers(pale(color, 0.5)),

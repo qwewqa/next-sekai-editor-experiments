@@ -237,11 +237,20 @@ export function skinSprites() {
 
     group('Stage, standard', () => {
         add('#STAGE_COVER', solid(stage.navy))
-        add('#LANE', solid(stage.navy, 0.85))
+        // Two lanes, a divider line at each edge, as the base's.
+        add(
+            '#LANE',
+            image(
+                'lane',
+                { color: stage.navy, alpha: 0.85, edge: stage.stroke, edgeAlpha: 0.3 },
+                { stretch: true },
+            ),
+        )
         add('#STAGE_MIDDLE', solid(stage.navy, 0.5))
         add('#JUDGMENT_LINE', image('judgment-line', {}, { stretch: true }))
-        add('#STAGE_LEFT_BORDER', solid(stage.stroke, 1, 8, 4))
-        add('#STAGE_RIGHT_BORDER', solid(stage.stroke, 1, 8, 4))
+        // Half a lane outside the lanes, each drawn as it is: a line at the edge next to the lanes.
+        add('#STAGE_LEFT_BORDER', { ...solid(stage.stroke, 0.7), transform: box(0.875, 1, 0, 1) })
+        add('#STAGE_RIGHT_BORDER', { ...solid(stage.stroke, 0.7), transform: box(0, 0.125, 0, 1) })
     })
 
     group('Stage, Sekai', () => {

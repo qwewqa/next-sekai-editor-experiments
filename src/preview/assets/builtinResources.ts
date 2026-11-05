@@ -14,15 +14,15 @@ export const builtinResources: readonly {
         source: 'builtin',
         type: 'skin',
         hashes: {
-            data: 'a662d7d2a22b3ae6124a687c6b8924207021599e',
-            texture: '48a1141ad69d183a298fbad310016461ba4a60f4',
+            data: '4eace932eb4b4929ad5654feef750832ab70cfc4',
+            texture: '9e1ba7d31ae6419204d3ef55dcce7070a780492b',
         },
     },
     {
         source: 'builtin',
         type: 'particle',
         hashes: {
-            data: 'af824bc415ec6c3041e90bbdc916a81d17185452',
+            data: 'dcf2c39ba7c511d344ebf6e39a57000f9adda807',
             texture: '3e807633ba397e0862fc21b26540d651cc5ce292',
         },
     },
