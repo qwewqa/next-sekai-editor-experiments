@@ -1,4 +1,5 @@
 import { easeFunctionOf, easeMode, easeTypeOf, type Ease } from '../../ease'
+import { toDisplayedBeat } from '../../editor/beatDisplay'
 import { propertyField } from '../../editor/workspace/properties/fields'
 import { languageTag, pluralForm } from '../../i18n/plural'
 import { formatPropertyNumber } from '../../utils/formatPropertyNumber'
@@ -120,7 +121,9 @@ export const operationValueText = (
     value: FieldValue<FieldId>,
     context: OperationTextContext,
 ) => {
-    if (typeof value === 'number') return numberText(value, context)
+    // Beats read as the Beat field shows them.
+    if (typeof value === 'number')
+        return numberText(field === 'beat' ? toDisplayedBeat(value) : value, context)
     if (typeof value === 'boolean') return booleanText(value, context)
     if (typeof value === 'object') return ownerName(value, context)
     const render = enumText[field as EnumField]

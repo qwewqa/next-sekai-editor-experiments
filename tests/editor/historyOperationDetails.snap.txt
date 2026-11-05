@@ -173,6 +173,10 @@ R: Voie [left]: ~Variable > -2,5
 T: 1個のノーツの「レーン」を-2.5に設定しました
 R: レーン [left]: ~値が異なります > -2.5
 
+#property.note.beat en
+T: Set Beat to 3 on 2 notes
+R: Beat [beat]: 2 > 3
+
 #property.note.varying en
 T: Changed Lane on 8 notes
 R: Lane [left]: 0 > ~Varies
@@ -271,7 +275,7 @@ T: Flipped objects horizontally
 T: Scaled beats of 10 objects
 R: Changed [changed]: 5 notes / 5 BPM changes
 R: Scale Factor [factor]: 2
-R: Scale Origin [pivot]: 4
+R: Scale Origin [pivot]: 5
 
 #scale.width.uniform en
 T: Scaled width of 3 objects
@@ -1222,7 +1226,7 @@ T: Scaled beats of 10 objects
 R: Changed [changed]: 8 notes / 2 BPM changes
 R: Replaced [displaced]: 1 BPM change
 R: Scale Factor [factor]: 0.5
-R: Scale Origin [pivot]: 0
+R: Scale Origin [pivot]: 1
 F: Kept the initial BPM change
 
 #scale.empty en

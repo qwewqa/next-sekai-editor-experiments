@@ -700,6 +700,36 @@
         "locales": true
     },
     {
+        "id": "property.note.beat",
+        "cat": "property",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.property.set",
+                    "data": {
+                        "subject": "note",
+                        "assignments": [
+                            {
+                                "field": "beat",
+                                "before": {
+                                    "mode": "uniform",
+                                    "value": 1
+                                },
+                                "after": {
+                                    "mode": "uniform",
+                                    "value": 2
+                                }
+                            }
+                        ],
+                        "changed": {
+                            "note": 2
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    {
         "id": "property.note.varying",
         "cat": "property",
         "members": [

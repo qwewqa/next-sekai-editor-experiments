@@ -1,3 +1,4 @@
+import { toDisplayedBeat } from '../../editor/beatDisplay'
 import {
     checkedSum,
     decodeOperation,
@@ -276,7 +277,18 @@ const nativeRecord = (
                         t.commands.scaleSelection.factor,
                         plain(numberText(transform.factor, context)),
                     ),
-                    ...valueRow('pivot', d.pivot, plain(numberText(transform.pivot, context))),
+                    ...valueRow(
+                        'pivot',
+                        d.pivot,
+                        plain(
+                            numberText(
+                                operation.data.axis === 'beats'
+                                    ? toDisplayedBeat(transform.pivot)
+                                    : transform.pivot,
+                                context,
+                            ),
+                        ),
+                    ),
                 )
             else
                 rows.push(
