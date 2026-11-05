@@ -63,7 +63,8 @@ let lastInput: PreviewFrameInput | undefined
 
 let counters: PreviewWorkerCounters | undefined
 
-// Set while Export Video is open. The worker then holds no textures and does not draw.
+// Set while Export Video is open. The worker then frees the skin, particle and background
+// textures and the background blur, and does not draw.
 let suspended = false
 
 const upload = () => {

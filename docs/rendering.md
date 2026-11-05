@@ -231,7 +231,7 @@ The maintenance runner sweeps unlocked staged files before checking storage pres
 
 ### Export jobs
 
-`src/exportVideo/job.ts` owns one chart snapshot and its export. The editor supplies copied assets, audio buffers, a destination and a worker. `copyExportAssets` copies the shown skin, particles and background through their current preview host. The worker uploads the copies and closes them. While the dialog is open, the preview frees its textures and background blur and draws nothing; it uploads them again when the dialog closes. The renderer keeps the background's uploaded dimensions separately from its bitmap.
+`src/exportVideo/job.ts` owns one chart snapshot and its export. The editor supplies copied assets, audio buffers, a destination and a worker. `copyExportAssets` copies the shown skin, particles and background through their current preview host. The worker uploads the copies and closes them. While the dialog is open, the preview frees its skin, particle and background textures and the background blur, and draws nothing. It uploads them again when the dialog closes. The renderer keeps the background's uploaded dimensions separately from its bitmap.
 
 When browser storage is available, an export writes its resolution and render scale to `localStorage` under `exportVideoRunning.<id>` after acquiring its job lock. It removes that marker at every end and on `pagehide`. The dialog removes abandoned markers under their job locks and remembers the last interrupted choices. After an interruption, it opens with choices from the last completed export, or defaults if no export completed.
 
