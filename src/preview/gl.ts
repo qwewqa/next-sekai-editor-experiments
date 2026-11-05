@@ -26,9 +26,9 @@ export type TextureSlot = 0 | 1 | 2 | 3
 
 /**
  * How the skin and particle atlases are sampled where a pixel covers more than one texel: up to
- * 4x4 or 3x3 bilinear taps, or `today`, a single tap.
+ * 4x4 or 3x3 bilinear taps, or `single`, a single tap.
  */
-export type PreviewFilter = 'today' | 3 | 4
+export type PreviewFilter = 'single' | 3 | 4
 
 export type PreviewRenderer = {
     maxViewportSize: {
@@ -347,7 +347,7 @@ export const createPreviewRenderer = (
     const outputs = new Array<number>(8)
 
     const setTaps = (slot: 0 | 1, interpolation: boolean) => {
-        taps[slot] = interpolation && previewFilter !== 'today' ? previewFilter : 0
+        taps[slot] = interpolation && previewFilter !== 'single' ? previewFilter : 0
         tapsChanged = true
     }
 

@@ -7,7 +7,7 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 // last tests check that the panel, in either host, and Export Video use the filter that
 // `nse.test.previewFilter` names.
 
-type Filter = 'today' | 3 | 4
+type Filter = 'single' | 3 | 4
 
 /** Runs `fn` in the page, or in a dedicated worker in the chromium-worker project. */
 const inHost = async <A, R>(page: Page, fn: (arg: A) => Promise<R>, arg: A): Promise<R> => {
@@ -58,7 +58,7 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
     )) as typeof import('../../src/preview/decodeAtlas')
 
     const N = 256
-    const filters: Filter[] = [4, 3, 'today']
+    const filters: Filter[] = [4, 3, 'single']
     const renderers = filters.map((filter) =>
         createPreviewRenderer(new OffscreenCanvas(N, N), false, filter),
     )
@@ -317,7 +317,7 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
                                 continue
                             }
                             if (margin < 0.01) continue
-                            const cap = filters[i] === 'today' ? 0 : (filters[i] as number)
+                            const cap = filters[i] === 'single' ? 0 : (filters[i] as number)
                             const u = box.u0 + a * du
                             const v = box.v0 + b * dv
                             // SwiftShader interpolates a UV near 1 to about 2^-16, so the GPU's
@@ -585,7 +585,7 @@ test.describe('the renderer', () => {
             // The second difference at frame k + 1.
             const at = scales.slice(1, -1)
             const results: Record<string, { second: number[] }> = {}
-            for (const filter of ['today', 4, 3] as const)
+            for (const filter of ['single', 4, 3] as const)
                 results[filter] = await inHost(page, sweep, {
                     origin: baseURL!,
                     filter,
@@ -608,7 +608,7 @@ test.describe('the renderer', () => {
                         `${filter} taps at ${threshold} texels a pixel`,
                     ).toBeLessThanOrEqual(3)
                 }
-                expect(steady(second), `${filter} taps`).toBeLessThan(steady(results.today!.second))
+                expect(steady(second), `${filter} taps`).toBeLessThan(steady(results.single!.second))
             }
         })
 
@@ -742,7 +742,7 @@ test.describe('the hosts', () => {
 
     test('the panel draws with the filter the test key names', async ({ page }) => {
         const shots: Buffer[] = []
-        for (const filter of [undefined, '3', 'today']) {
+        for (const filter of [undefined, '3', 'single']) {
             await reopen(page, filter)
             shots.push(await shoot(page))
         }
@@ -756,14 +756,14 @@ test.describe('the hosts', () => {
         await reopen(page, undefined)
         await shoot(page)
         // An Antialiasing change creates a new renderer, in either host.
-        await page.evaluate(() => localStorage.setItem('nse.test.previewFilter', 'today'))
+        await page.evaluate(() => localStorage.setItem('nse.test.previewFilter', 'single'))
         const changed = await shoot(page, false)
-        await reopen(page, 'today')
+        await reopen(page, 'single')
         const reloaded = await shoot(page, false)
         expect(changed.equals(reloaded)).toBe(true)
     })
 
-    for (const filter of ['3', 'today'])
+    for (const filter of ['3', 'single'])
         test(`Export Video draws with the filter the test key names: ${filter}`, async ({
             page,
         }, testInfo) => {

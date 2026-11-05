@@ -169,7 +169,7 @@ Show Combo (`previewShowCombo`) draws the combo of a perfect play in the preview
 - Each tap is clamped to the sprite's UV box, which every vertex of a skin or particle sprite carries (text and the background carry zeros). The filter thus reads only texels that the single tap could read. A rect with whole-texel position and size on a full-size atlas reaches only its own texels. A fractional rect, or an atlas decoded at a reduced size, mixes its neighbours as the single tap does.
 - Where neither step covers more than one texel, the shader takes the single tap, so magnified and unscaled sprites draw as without the filter. A pixel-art atlas (`interpolation` false) and a box with `u1 < u0` or `v1 < v0` take the single tap too.
 
-In test builds, `nse.test.previewFilter` set to `today` turns the filter off and `3` caps it at 3x3 taps, so one build can compare them. The main thread reads the key for each renderer and passes the filter to the worker host and to Export Video.
+In test builds, `nse.test.previewFilter` set to `single` turns the filter off and `3` caps it at 3x3 taps, so one build can compare them. The main thread reads the key for each renderer and passes the filter to the worker host and to Export Video.
 
 **The glyphs.** The digits are Outfit SemiBold and the label is Outfit Bold. Their outlines are baked into [`comboGlyphs.ts`](../src/preview/engine/comboGlyphs.ts) by `scripts/bake-combo-glyphs.py` from a pinned font file. The bake keeps the coordinates that instancing and overlap removal produce, and measures each glyph's bounds and flat edges on the path data it writes. No font is loaded, so every locale and thread draws the same label.
 
