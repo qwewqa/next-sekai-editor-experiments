@@ -1,3 +1,4 @@
+import { nextTick } from 'vue'
 import type { Command } from '..'
 import { i18n } from '../../../i18n'
 import { notify } from '../../notification'
@@ -13,12 +14,14 @@ export const brush: Command = {
         is: BrushIcon,
     },
 
-    execute() {
+    async execute() {
         switchToolTo('brush')
 
         notify(() => i18n.value.commands.brush.switched)
 
         if (!isSidebarVisible.value) {
+            // The tool dialog host closes its dialog when the tool changes, at the next flush.
+            await nextTick()
             void showToolModal(BrushPropertiesModal, {})
         } else {
             revealPropertiesSection('tool')

@@ -66,6 +66,7 @@
 - On iPhone and iPad, Play now works after the audio is interrupted, for example by a call or another app.
 - Suggested file names containing dots, such as “feat. Miku”, are no longer cut off at the first dot.
 - (Web) On Android, dragging down in a dialog no longer reloads the page.
+- When the Properties panel is not shown, choosing Brush from another tool now opens Brush Properties.
 - (Web) If a session did not finish opening last time, a prompt shows Try Again and Start Blank. The session stays in Recent Sessions.
 - Audio files can be up to 90 minutes long.
 - A confirmation appears before opening a project file larger than 256 MB. Level files larger than 256 MB are not opened.
