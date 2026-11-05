@@ -24,7 +24,6 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
     await page.evaluate(installEditorFixture)
-    await insideAnHour(page)
 })
 
 test.afterEach(({ page }) => {
@@ -1209,6 +1208,7 @@ test('a notice card stays clear of the adjacent spatial controls', async ({ page
 test('equal-count action groups retain exact group, child and Restore scopes', async ({
     page,
 }, testInfo) => {
+    await insideAnHour(page)
     for (const beat of [40, 50])
         await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] }, true)
     for (const beat of [40, 50])
@@ -1309,6 +1309,7 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
 test('group disclosure preserves scope and selecting its newest child changes the baseline', async ({
     page,
 }) => {
+    await insideAnHour(page)
     for (const beat of [40, 50, 60])
         await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] }, true)
     await stored(page)
@@ -1332,6 +1333,7 @@ test('group disclosure preserves scope and selecting its newest child changes th
 test('a delayed group Show Change cannot scroll a child comparison with the same target', async ({
     page,
 }) => {
+    await insideAnHour(page)
     for (const beat of [40, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] }, true)
     await stored(page)
     await openTab(page)
@@ -1392,6 +1394,7 @@ test('a delayed group Show Change cannot scroll a child comparison with the same
 })
 
 test('a group at a page boundary reads the predecessor of its oldest member', async ({ page }) => {
+    await insideAnHour(page)
     for (const beat of [40, 50, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] }, true)
     await stored(page)
     await openTab(page)
@@ -1432,6 +1435,7 @@ test('an arrow keeps focus after its last target enters the visible band, and a 
 })
 
 test('net-zero runs retain their real steps and show an equal comparison', async ({ page }) => {
+    await insideAnHour(page)
     await edit(page, 'Adjust', { kind: 'life' }, true)
     await page.evaluate(() => {
         const { history } = window.editorTest
@@ -1511,6 +1515,7 @@ test('both footprints of a moved object remain reachable on opposite sides of th
 test('a selected edge singleton stays separate when an older matching page arrives', async ({
     page,
 }) => {
+    await insideAnHour(page)
     for (const beat of [40, 50, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] }, true)
     await stored(page)
     await page.evaluate(async () => {
@@ -1720,6 +1725,7 @@ test('inactive History band waits for focus and resumes with current layout at N
 test('Edits Here counts its last group exactly once its scan has finished, whatever the Timeline pages', async ({
     page,
 }) => {
+    await insideAnHour(page)
     await edit(page, 'Moved near', { kind: 'move', beats: [5] }, true)
     await edit(page, 'Moved near again', { kind: 'move', beats: [7] }, true)
     await stored(page)

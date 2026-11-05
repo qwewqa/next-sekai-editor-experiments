@@ -35,7 +35,6 @@ const load = async (page: Page) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
     await page.evaluate(installEditorFixture)
-    await insideAnHour(page)
     await page.evaluate(async () => {
         const { history } = window.editorTest
         for (let i = 1; i <= 30; i++)
@@ -107,6 +106,7 @@ test.afterEach(({ page }) => {
 })
 
 const seedNativeLifeGroup = async (page: Page, unavailable = false) => {
+    await insideAnHour(page)
     await page.evaluate(async (unavailable) => {
         const { history, historySteps, appImport } = window.editorTest
         for (let i = 0; i < 2; i++) {
@@ -1091,6 +1091,7 @@ test.describe('touch metadata actions', () => {
 test('unavailable group height and expansion preserve virtual offsets and the visible anchor', async ({
     page,
 }) => {
+    await insideAnHour(page)
     await page.evaluate(async () => {
         const { storageWorker } =
             await window.editorTest.appImport<typeof import('../../src/local/start')>(
@@ -1180,6 +1181,7 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
 test('actual 220px French dock protects partial count and the complete unavailable reason', async ({
     page,
 }) => {
+    await insideAnHour(page)
     await page.evaluate(async () => {
         const { storageWorker } =
             await window.editorTest.appImport<typeof import('../../src/local/start')>(
@@ -1284,6 +1286,7 @@ for (const width of [1600, 390, 320]) {
         test('action captions, directional aggregate and expanded members remain distinct', async ({
             page,
         }) => {
+            await insideAnHour(page)
             await page.evaluate(async () => {
                 const { history, historySteps, appImport } = window.editorTest
                 const [
