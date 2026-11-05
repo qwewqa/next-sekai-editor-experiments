@@ -27,8 +27,29 @@ const edgeSprites = [
     'Sekai Lane Divider Preview',
 ]
 
-/** The least alpha, of 255, that counts as ink. */
+const colors = ['Neutral', 'Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Black']
+const traceKinds = [
+    'Normal Trace',
+    'Trace Flick',
+    'Trace Down Flick',
+    'Critical Trace',
+    'Critical Trace Flick',
+    'Critical Trace Down Flick',
+    'Damage',
+]
+
+/** Whole-note trace and damage sprites, drawn as slim bars; the fixture keeps their ink boxes. */
+const barSprites = [
+    ...['Green', 'Red', 'Yellow', 'Purple'].map((color) => `Sekai Trace Note ${color}`),
+    ...traceKinds.flatMap((kind) => colors.map((color) => `Sekai ${kind} Note Basic ${color}`)),
+]
+
+/**
+ * The least alpha, of 255, that counts as ink: 64, and 128 for the bars, whose soft edges are
+ * wide.
+ */
 const inkAlpha = 64
+const barAlpha = 128
 
 const sorted = (names) => [...new Set(names)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 const round = (value) => Math.round(value * 1000) / 1000
@@ -53,14 +74,14 @@ const at = ([bl, tl, tr, br], u, v) => {
 }
 
 /**
- * The box [x0, x1, y0, y1] in the unit quad of a sprite's pixels at inkAlpha or more, through its
- * transform; alpha(column, row) reads the sprite's pixels, row 0 at the top.
+ * The box [x0, x1, y0, y1] in the unit quad of a sprite's pixels at least `least` in alpha, through
+ * its transform; alpha(column, row) reads the sprite's pixels, row 0 at the top.
  */
-export function inkBox({ w, h, transform }, alpha) {
+export function inkBox({ w, h, transform }, alpha, least = inkAlpha) {
     let [u0, u1, v0, v1] = [Infinity, -Infinity, Infinity, -Infinity]
     for (let row = 0; row < h; row++)
         for (let column = 0; column < w; column++)
-            if (alpha(column, row) >= inkAlpha) {
+            if (alpha(column, row) >= least) {
                 u0 = Math.min(u0, column / w)
                 u1 = Math.max(u1, (column + 1) / w)
                 v0 = Math.min(v0, 1 - (row + 1) / h)
@@ -85,6 +106,7 @@ export async function extractOriginals(root = new URL('../', import.meta.url)) {
     const shared = new Map()
     const sha256 = {}
     let edges
+    let bars
     for (const name of packages) {
         const bytes = await readFile(new URL(`public/resource/${name}.scp`, root))
         const hash = createHash('sha256').update(bytes).digest('hex')
@@ -103,16 +125,19 @@ export async function extractOriginals(root = new URL('../', import.meta.url)) {
         if (name === 'skin') {
             const texture = decodePng(entries.get('texture'))
             const byName = new Map(data.sprites.map((sprite) => [sprite.name, sprite]))
-            edges = Object.fromEntries(
-                edgeSprites.map((sprite) => {
-                    const { x, y, ...rest } = byName.get(sprite)
-                    const alpha = (column, row) =>
-                        texture.channels === 4
-                            ? texture.data[((y + row) * texture.width + x + column) * 4 + 3]
-                            : 255
-                    return [sprite, inkBox(rest, alpha).map(round)]
-                }),
-            )
+            const boxes = (names, least) =>
+                Object.fromEntries(
+                    names.map((sprite) => {
+                        const { x, y, ...rest } = byName.get(sprite)
+                        const alpha = (column, row) =>
+                            texture.channels === 4
+                                ? texture.data[((y + row) * texture.width + x + column) * 4 + 3]
+                                : 255
+                        return [sprite, inkBox(rest, alpha, least).map(round)]
+                    }),
+                )
+            edges = boxes(edgeSprites)
+            bars = boxes(barSprites, barAlpha)
         }
     }
     const sharedFiles = sorted(
@@ -130,6 +155,7 @@ export async function extractOriginals(root = new URL('../', import.meta.url)) {
         clips: sorted(clips),
         sharedFiles,
         edges,
+        bars,
     }
 }
 

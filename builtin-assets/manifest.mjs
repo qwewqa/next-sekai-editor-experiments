@@ -155,6 +155,15 @@ const slimVars = {
     top: n(slimTop),
     span: n(slimH - 2 * slimTop),
 }
+// A light lower edge an eighth of the bar's height, as the base's traces have.
+const slimEdge = (light) =>
+    light
+        ? {
+              light,
+              ly: n(slimH - slimTop - (slimH - 2 * slimTop) / 8),
+              lh: n((slimH - 2 * slimTop) / 8),
+          }
+        : { light: 'none', ly: 0, lh: 0 }
 // Damage: half the height through its middle, as the base's bright bar (its dark rim left out),
 // with a 4 unit rim.
 const damageTop = damageH / 4
@@ -178,6 +187,11 @@ const basicBox = box(-0.02, 1.02, -0.06, 1.06)
 const capital = (word) => word[0].toUpperCase() + word.slice(1).toLowerCase()
 // Styled critical notes have their own colours, as the base's do.
 const isCritical = (family) => family.startsWith('Critical')
+// A style's normal trace bar and light edge: Black's from the base, the others the style's accent.
+const traceOf = (color) =>
+    color === 'Black'
+        ? { bar: baseColors.blackTrace.bar, light: baseColors.blackTrace.edge }
+        : { bar: styleColors(color)[2] }
 
 const parts = ['Left', 'Middle', 'Right']
 const bodyImage = (part, [outer, inner, accent]) =>
@@ -186,8 +200,49 @@ const bodyImage = (part, [outer, inner, accent]) =>
         { ...bodyVars, outer, inner, accent },
         { stretch: true },
     )
-const slimImage = (part, accent) =>
-    image(`note-slim-${part.toLowerCase()}`, { ...slimVars, accent }, { stretch: true })
+const slimImage = (part, accent, light) =>
+    image(
+        `note-slim-${part.toLowerCase()}`,
+        { ...slimVars, accent, ...slimEdge(light) },
+        { stretch: true },
+    )
+// The whole-note trace and damage bars and their Basic {Color}: a bar on the base's ink box for its
+// kind, a third of its height round at the corners. Damage keeps its rim.
+const barBoxes = {
+    trace: [0.15, 0.85, 0.37, 0.63],
+    critical: [0.13, 0.87, 0.33, 0.67],
+    damage: [0.12, 0.88, 0.31, 0.69],
+}
+const bar = (kind, color, { edge = 'none', light } = {}) => {
+    const [u0, u1, v0, v1] = barBoxes[kind]
+    // The Basic frame: u -0.02 to 1.02 over 144, v -0.06 to 1.06 over 96, v up.
+    const x = ((u0 + 0.02) / 1.04) * 144
+    const w = ((u1 + 0.02) / 1.04) * 144 - x
+    const y = ((1.06 - v1) / 1.12) * 96
+    const h = ((1.06 - v0) / 1.12) * 96 - y
+    const rim = edge === 'none' ? 0 : 3
+    return image(
+        'note-bar-basic',
+        {
+            x: n(x),
+            y: n(y),
+            w: n(w),
+            h: n(h),
+            r: n(h / 3),
+            ix: n(x + rim),
+            iy: n(y + rim),
+            iw: n(w - 2 * rim),
+            ih: n(h - 2 * rim),
+            ir: n(h / 3 - rim),
+            color,
+            edge,
+            light: light ?? 'none',
+            ly: n(y + (light ? (7 * h) / 8 : h)),
+            lh: n(light ? h / 8 : 0),
+        },
+        { transform: basicBox },
+    )
+}
 const damageImage = (part, color, edge) =>
     image(`note-damage-${part.toLowerCase()}`, { ...damageVars, color, edge }, { stretch: true })
 
@@ -536,7 +591,7 @@ export function skinSprites() {
         for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN'])
             add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color))))
         for (const color of ['NEUTRAL', 'RED', 'YELLOW', 'PURPLE', 'CYAN'])
-            add(`#GRID_${color}`, solid(guideColor(capital(color))))
+            add(`#GRID_${color}`, solid(baseColors.grid[color]))
     })
 
     // Names only the base set carries: the standard colours the engine does not draw, the names
@@ -557,8 +612,7 @@ export function skinSprites() {
             add(`#NOTE_TICK_${color.toUpperCase()}`, kite(face, 'slide'))
         for (const [color, face] of Object.entries(baseColors.marker))
             add(`#DIRECTIONAL_MARKER_${color.toUpperCase()}`, marker(face))
-        for (const color of ['Blue', 'Green'])
-            add(`#GRID_${color.toUpperCase()}`, solid(guideColor(color)))
+        for (const color of ['BLUE', 'GREEN']) add(`#GRID_${color}`, solid(baseColors.grid[color]))
         for (const color of ['Green', 'Yellow']) {
             alias(`Sekai Slide Connection ${color}`, `Sekai Active Slide Connection ${color}`)
             alias(
@@ -566,10 +620,10 @@ export function skinSprites() {
                 `Sekai Active Slide Connection ${color} Active`,
             )
         }
-        alias('Sekai Trace Note Green', 'Sekai Normal Trace Note Basic')
-        alias('Sekai Trace Note Red', 'Sekai Trace Flick Note Basic')
-        alias('Sekai Trace Note Yellow', 'Sekai Critical Trace Note Basic')
-        alias('Sekai Trace Note Purple', 'Sekai Damage Note Basic')
+        add('Sekai Trace Note Green', bar('trace', traceColors.green))
+        add('Sekai Trace Note Red', bar('trace', traceColors.red))
+        add('Sekai Trace Note Yellow', bar('critical', traceColors.yellow))
+        add('Sekai Trace Note Purple', bar('damage', damage.color, { edge: damage.edge }))
         for (const color of colorNames) {
             const [outer, inner, accent] = styleColors(color)
             const critical = baseColors.styleCritical[color]
@@ -578,19 +632,15 @@ export function skinSprites() {
                     `Sekai ${family} Basic ${color}`,
                     basic(isCritical(family) ? critical.body : [outer, inner, accent]),
                 )
+            const trace = traceOf(color)
             for (const [family] of traceFamilies)
                 add(
                     `Sekai ${family} Basic ${color}`,
-                    image(
-                        'note-slim-basic',
-                        { accent: isCritical(family) ? critical.trace : accent },
-                        { transform: basicBox },
-                    ),
+                    isCritical(family)
+                        ? bar('critical', critical.trace, { light: trace.light })
+                        : bar('trace', trace.bar, { light: trace.light }),
                 )
-            add(
-                `Sekai Damage Note Basic ${color}`,
-                image('note-damage-basic', { color: accent, edge: inner }, { transform: basicBox }),
-            )
+            add(`Sekai Damage Note Basic ${color}`, bar('damage', accent, { edge: inner }))
         }
     })
 
@@ -607,11 +657,16 @@ export function skinSprites() {
                             isCritical(family) ? critical.body : [outer, inner, accent],
                         ),
                     )
+            const trace = traceOf(color)
             for (const [family] of traceFamilies)
                 for (const part of parts)
                     add(
                         `Sekai ${family} ${part} ${color}`,
-                        slimImage(part, isCritical(family) ? critical.trace : accent),
+                        slimImage(
+                            part,
+                            isCritical(family) ? critical.trace : trace.bar,
+                            trace.light,
+                        ),
                     )
             for (const part of parts)
                 add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, inner))

@@ -1818,5 +1818,367 @@
             0,
             1
         ]
+    },
+    "bars": {
+        "Sekai Trace Note Green": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Note Red": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Note Yellow": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Trace Note Purple": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ],
+        "Sekai Normal Trace Note Basic Neutral": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Normal Trace Note Basic Red": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Normal Trace Note Basic Green": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Normal Trace Note Basic Blue": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Normal Trace Note Basic Yellow": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Normal Trace Note Basic Purple": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Normal Trace Note Basic Cyan": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Normal Trace Note Basic Black": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Flick Note Basic Neutral": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Flick Note Basic Red": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Flick Note Basic Green": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Flick Note Basic Blue": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Flick Note Basic Yellow": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Flick Note Basic Purple": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Flick Note Basic Cyan": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Flick Note Basic Black": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Down Flick Note Basic Neutral": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Down Flick Note Basic Red": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Down Flick Note Basic Green": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Down Flick Note Basic Blue": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Down Flick Note Basic Yellow": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Down Flick Note Basic Purple": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Down Flick Note Basic Cyan": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Trace Down Flick Note Basic Black": [
+            0.147,
+            0.853,
+            0.366,
+            0.634
+        ],
+        "Sekai Critical Trace Note Basic Neutral": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Note Basic Red": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Note Basic Green": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Note Basic Blue": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Note Basic Yellow": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Note Basic Purple": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Note Basic Cyan": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Note Basic Black": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Flick Note Basic Neutral": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Flick Note Basic Red": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Flick Note Basic Green": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Flick Note Basic Blue": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Flick Note Basic Yellow": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Flick Note Basic Purple": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Flick Note Basic Cyan": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Flick Note Basic Black": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Down Flick Note Basic Neutral": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Down Flick Note Basic Red": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Down Flick Note Basic Green": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Down Flick Note Basic Blue": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Down Flick Note Basic Yellow": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Down Flick Note Basic Purple": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Down Flick Note Basic Cyan": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Critical Trace Down Flick Note Basic Black": [
+            0.127,
+            0.873,
+            0.328,
+            0.672
+        ],
+        "Sekai Damage Note Basic Neutral": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ],
+        "Sekai Damage Note Basic Red": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ],
+        "Sekai Damage Note Basic Green": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ],
+        "Sekai Damage Note Basic Blue": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ],
+        "Sekai Damage Note Basic Yellow": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ],
+        "Sekai Damage Note Basic Purple": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ],
+        "Sekai Damage Note Basic Cyan": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ],
+        "Sekai Damage Note Basic Black": [
+            0.121,
+            0.879,
+            0.306,
+            0.694
+        ]
     }
 }

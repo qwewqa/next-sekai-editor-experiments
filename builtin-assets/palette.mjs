@@ -136,6 +136,20 @@ export const baseColors = {
             arrow: '#3d3d3d',
         },
     },
+    // Black traces: the bar in the base's grey, which reads on the lane where the editor's black
+    // does not, and its light lower edge.
+    blackTrace: { bar: '#3f3f3f', edge: '#5b5b5b' },
+    // The grid lines' colours, which the engine's preview mode draws: NEUTRAL for beats, the
+    // others for events.
+    grid: {
+        NEUTRAL: '#808080',
+        RED: '#ff4040',
+        GREEN: '#40ff40',
+        BLUE: '#4040ff',
+        YELLOW: '#ffff40',
+        PURPLE: '#ff40ff',
+        CYAN: '#40ffff',
+    },
     // Per style, the slot glows of normal and critical notes.
     styleGlow: {
         Neutral: [

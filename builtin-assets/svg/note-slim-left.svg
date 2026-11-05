@@ -1,3 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="96" viewBox="0 0 24 var(--h)" preserveAspectRatio="none">
+    <clipPath id="c">
+        <path d="var(--face)"/>
+    </clipPath>
     <path d="var(--face)" fill="var(--accent)"/>
+    <rect y="var(--ly)" width="24" height="var(--lh)" fill="var(--light)" clip-path="url(#c)"/>
 </svg>

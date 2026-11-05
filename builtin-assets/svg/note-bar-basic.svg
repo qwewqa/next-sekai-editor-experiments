@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 96">
+    <clipPath id="c">
+        <rect x="var(--x)" y="var(--y)" width="var(--w)" height="var(--h)" rx="var(--r)"/>
+    </clipPath>
+    <rect x="var(--x)" y="var(--y)" width="var(--w)" height="var(--h)" rx="var(--r)" fill="var(--edge)"/>
+    <rect x="var(--ix)" y="var(--iy)" width="var(--iw)" height="var(--ih)" rx="var(--ir)" fill="var(--color)"/>
+    <rect x="var(--x)" y="var(--ly)" width="var(--w)" height="var(--lh)" fill="var(--light)" clip-path="url(#c)"/>
+</svg>

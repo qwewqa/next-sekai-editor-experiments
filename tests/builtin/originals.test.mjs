@@ -77,6 +77,20 @@ test("stage edge lines and corners sit at the edge the originals' do", () => {
     }
 })
 
+// The engine draws these in the result buckets and the app's standard roles: slim bars, the trace
+// and damage kinds each on their own box.
+test("whole-note trace and damage bars ink the originals' boxes", () => {
+    for (const [name, base] of Object.entries(originals.bars)) {
+        const ours = box(name)
+        ours.forEach((value, i) =>
+            assert.ok(
+                Math.abs(value - base[i]) <= 0.03,
+                `${name}: ${show(ours)}, the originals ${show(base)}`,
+            ),
+        )
+    }
+})
+
 // The originals' border ramps up to the stage edge (u = 1) across the whole strip, so where its ink
 // starts depends on the threshold; ours is a line, which must stay in the strip's inner half.
 test('the preview-mode stage border is a line at the stage edge', () => {
