@@ -118,7 +118,7 @@ test('ja values at a 336 dock, below the default, fit beside or below their labe
 }) => {
     await open(page, 'ja', 336)
     const candidates = ['スライドフェイク', 'スライドクリティカル']
-    const misfits = () =>
+    const layout = () =>
         selection(page).evaluate(async (section) => {
             const { valueOverflows, wordsOverflow } = await window.editorTest.appImport<
                 typeof import('../../src/modals/form/fieldLayout')
@@ -128,11 +128,11 @@ test('ja values at a 336 dock, below the default, fit beside or below their labe
                 field.querySelector<HTMLElement>('.form-field-text')!,
             )
             const breaks = wordsOverflow(texts)
-            return fields.flatMap((field, index) => {
+            const stacked: string[] = []
+            const misfits = fields.flatMap((field, index) => {
                 const label = texts[index]!.textContent ?? ''
-                if (field.classList.contains('form-field-value-stacked'))
-                    return [`stacked ${label}`]
-                // Beside the value, no phrase breaks inside and the value shows in full.
+                if (field.classList.contains('form-field-value-stacked')) stacked.push(label)
+                // Beside the value or below it, no phrase breaks inside and the value shows in full.
                 const control = field.querySelector<HTMLElement>(
                     '.form-field-row > select, .form-field-row > input[type="number"], .form-field-select > select, .form-field-toggle > input',
                 )
@@ -141,14 +141,18 @@ test('ja values at a 336 dock, below the default, fit beside or below their labe
                     ...(control && valueOverflows(control) ? [`truncates ${label}`] : []),
                 ]
             })
+            return { stacked, misfits }
         })
+    // Only the candidates may go below their label.
     await expect
-        .poll(async () =>
-            (await misfits()).filter(
-                (misfit) => !candidates.some((label) => misfit === `stacked ${label}`),
-            ),
-        )
-        .toEqual([])
+        .poll(async () => {
+            const { stacked, misfits } = await layout()
+            return {
+                misfits,
+                unexpected: stacked.filter((label) => !candidates.includes(label)),
+            }
+        })
+        .toEqual({ misfits: [], unexpected: [] })
 })
 
 test('brush values stack too, with remove kept on the label line', async ({ page }) => {
