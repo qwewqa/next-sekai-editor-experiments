@@ -15,7 +15,7 @@ The bucket is `nse-assets-<account id>` in `nse-dev`. Each site has a prefix: `t
 - **`prepare`,** before `check:release`. The files to keep are `live`, an unrecorded `next` (it may have gone live), and every file whose `lastLive` is within 7 days. Those the new build lacks are downloaded, checked against their SHA-256, added to `dist/assets/` and listed in the manifest's `retained`. The build's own new files are uploaded, and the build is staged as `next`.
 - **`record`,** after a successful publish. Everything in `live` and `next` gets the current time as `lastLive`, and `next` becomes `live`. Files not live whose `lastLive` is more than 7 days old are deleted, and their entries leave the index.
 
-A failed or cancelled publish leaves `next` in place, so the next deploy keeps both releases. A stored file is never replaced: every upload is conditional on the name being free, the bucket policy refuses any upload that is not, and a name already stored with other bytes fails the deploy.
+A failed or canceled publish leaves `next` in place, so the next deploy keeps both releases. A stored file is never replaced: every upload is conditional on the name being free, the bucket policy refuses any upload that is not, and a name already stored with other bytes fails the deploy.
 
 When `prepare` fails, nothing is published: a missing, invalid or changed index, a stored file that does not match its hash, or a name with other bytes stops the deploy before the upload to Pages. When `record` fails, the build has already been published, so a red run can be live. The next deploy keeps both that build and the one before it, and a failed delete is tried again at the next `record`.
 

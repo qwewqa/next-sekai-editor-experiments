@@ -1,8 +1,8 @@
-# Colour system
+# Color system
 
-The roles, tokens and control recipes behind the editor's UI colour, and the rules that keep them consistent. The values and recipes live in `src/themes.css` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 9) enforces the rules.
+The roles, tokens and control recipes behind the editor's UI color, and the rules that keep them consistent. The values and recipes live in `src/themes.css` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 9) enforces the rules.
 
-- **Scope.** UI colour roles. Chart content keeps its own colours (section 10).
+- **Scope.** UI color roles. Chart content keeps its own colors (section 10).
 - **Related.** [design-language.md](design-language.md) covers surfaces, shape, size, the History surfaces, and waits and feedback; [ui-review-checklist.md](ui-review-checklist.md) is the review questions.
 
 ---
@@ -17,12 +17,12 @@ Mint keeps one meaning: **something is on** (a switch, the tool in use, a mode i
 
 Each principle gives its reason and its known exceptions. When one does not fit a case, depart from it and say why in review.
 
-1. **Name a role, not a colour.** Components use role tokens (`primary`, `danger-fill`, `press`) through the recipes, never raw palette classes (`amber-300`) or literals in UI chrome.
+1. **Name a role, not a color.** Components use role tokens (`primary`, `danger-fill`, `press`) through the recipes, never raw palette classes (`amber-300`) or literals in UI chrome.
    - *Reason:* a role can be retuned in one place, and the guard test can check its use.
    - *Exceptions:* chart content (section 10); shadows that are geometry rather than a role, such as the dock edge.
 
 2. **Mint means on.** The tool in use, a switch that is on, Show Edits, Select while selecting, rows checked for an action and the peek ring are mint. The quick notice is mint too: the one transient element in the brand color.
-   - *Reason:* it is the app's brand colour, and in v0.5.22 it was every on-state. Giving it one meaning lets a user read it at a glance.
+   - *Reason:* it is the app's brand color, and in v0.5.22 it was every on-state. Giving it one meaning lets a user read it at a glance.
    - *How the rest is shown:* single-select selection (the current row, the selected segment) is elevation, the raised pill. Current markers are mint only on the dark chrome, where mint has contrast (the rail tab bar); on light bands they are ink (the band tab marker, 4.97:1 against mint's 1.85:1). Thin mint marks on light surfaces use `accent-strong`.
    - *Exception:* the hover and press glow is mint. It is a shadow, never a fill, and it lasts only while pointed at or pressed, so it cannot read as on.
 
@@ -39,15 +39,15 @@ Each principle gives its reason and its known exceptions. When one does not fit 
    - *Reason:* amber and red are close for deuteranopia (light ΔE 1); the glyph and the words carry the meaning.
    - *Exception:* the change orange is drawn only on the chart, never in the UI (section 10).
 
-6. **Roles that must differ, differ in lightness, not hue alone.** Check fill against fill, under colour-vision deficiency too, not only text against fill. Section 4.3 is the check.
-   - *Reason:* about 1 man in 12 has a red-green deficiency, and a hue-only difference vanishes for him. That is why a pale lavender dark primary was rejected (deutan ΔE 2.0 from mint), and why the light press face is darker than the mint (deutan ΔE 1.6 at a lighter grey).
-   - *Exceptions:* pairs that never meet, or that something other than colour separates, are listed with the reason (danger fill against primary fill: the danger fill shows only while a quiet button is pressed).
+6. **Roles that must differ, differ in lightness, not hue alone.** Check fill against fill, under color-vision deficiency too, not only text against fill. Section 4.3 is the check.
+   - *Reason:* about 1 man in 12 has a red-green deficiency, and a hue-only difference vanishes for him. That is why a pale lavender dark primary was rejected (deutan ΔE 2.0 from mint), and why the light press face is darker than the mint (deutan ΔE 1.6 at a lighter gray).
+   - *Exceptions:* pairs that never meet, or that something other than color separates, are listed with the reason (danger fill against primary fill: the danger fill shows only while a quiet button is pressed).
 
 7. **Three elevations tell the state.**
    - **Raised** (shadow): pressable at rest.
-   - **Flat** (no shadow): on, latched among raised neighbours. This is the tool in use and a raised toggle that is on.
+   - **Flat** (no shadow): on, latched among raised neighbors. This is the tool in use and a raised toggle that is on.
    - **Sunk** (inner shadow): being pressed.
-   - *Reason:* this is a non-colour cue for the two states that colour alone separates least. It also matches the existing shapes, so nothing new has to be learned.
+   - *Reason:* this is a non-color cue for the two states that color alone separates least. It also matches the existing shapes, so nothing new has to be learned.
    - *Exception:* ghosts have no elevation, so they show state with their tint alone.
 
 8. **Hover is pointer-only and transient.** A raised face glows mint, and red if it is destructive. A face that is on (flat) glows too. A ghost takes one tint step: `fg/10` on a panel or popup, `band-hover` on a band, white/10 on the chrome.
@@ -62,16 +62,16 @@ Each principle gives its reason and its known exceptions. When one does not fit 
    - *Direction:* the step goes the way that keeps the label at 4.5:1. That is usually the same direction as hover and toward the label. The exceptions, each forced by contrast:
      - dark filled faces with dark ink (periwinkle, coral) lighten;
      - on the mid-tone light chrome, a press darkens (`chrome-press`), because a lighter step dims its white ink below 4.5:1.
-   - *Classify by behaviour:* anything held under a finger, key or drag is a press, including the held transport step, the toolbar face a Quick Switch press holds, the flyout row under a press-drag and the resize line being dragged.
+   - *Classify by behavior:* anything held under a finger, key or drag is a press, including the held transport step, the toolbar face a Quick Switch press holds, the flyout row under a press-drag and the resize line being dragged.
 
 10. **Focus is a 2 px ring drawn 2 px inside the face, in the face's own ink.** The face shows on both sides of the ring, so it reads on any fill over any surface.
-    - *Reason:* a ring is visible only if it contrasts with what lies on both sides of it. A ring flush with the edge merges with a surround of its own colour: the white ring of an ink pill on a white-ish modal, or the ink ring of a light tool over the ink-coloured chart.
+    - *Reason:* a ring is visible only if it contrasts with what lies on both sides of it. A ring flush with the edge merges with a surround of its own color: the white ring of an ink pill on a white-ish modal, or the ink ring of a light tool over the ink-colored chart.
     - *Exceptions:*
       - Faces under 32 px draw it 1 px outside, in the surface's ink (`.focus-out`).
       - Rows and menu rows ring at their edge with `focus-edge` (a 2 px `fg` ring, no offset), because `fg` contrasts with both the row and the surface.
       - Text fields show it on `:focus`, because a caret appears there.
 
-11. **State is never colour alone, where that is natural.**
+11. **State is never color alone, where that is natural.**
     - On/off: the knob moves and the field reads Enabled or Disabled. Show Edits swaps the eye for the hidden eye. The tool in use sits flat.
     - Selected: the raised pill, a checkbox or a tab bar.
     - Destructive: the label names the action.
@@ -92,13 +92,13 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 16. **Keep the feel.** The palette stays seven hues. A change to surfaces, `accent` or `danger` is a retune and lands with every consumer (principle 15).
 
-17. **Forced colours: basic function only** (low priority). The recipes keep the transparent resting outline that high contrast paints as an edge, and thicken focus to 4 px there. No other work.
+17. **Forced colors: basic function only** (low priority). The recipes keep the transparent resting outline that high contrast paints as an edge, and thicken focus to 4 px there. No other work.
 
 ---
 
 ## 3. Tokens
 
-Values are given as RGB channels and hex; `src/themes.css` writes them as `rgb()` colours. OKLCH is given as L C h.
+Values are given as RGB channels and hex; `src/themes.css` writes them as `rgb()` colors. OKLCH is given as L C h.
 
 These have not been retuned (principle 16):
 
@@ -143,7 +143,7 @@ These have not been retuned (principle 16):
 
 `.surface-chrome` cascades to every descendant. Put it on roots whose descendants are all chrome, not on a root that also contains light faces or popups. The toolbar flyout (white faces on `popover`, inside the toolbar row's DOM) is the case to watch: under `.surface-chrome` its `accent-strong`, `danger` and `focus-out` would flip to the pale chrome values. Nothing in the flyout uses them. If a flyout face ever needs one of those roles, move the class inward to the chrome parts.
 
-**Deliberate exception: the shown toolbar tool.** `LevelEditorToolbar.vue` puts `surface-chrome` on each shown tool, a white raised face over the chart. The toolbar row is listed as chrome, but its root is a transparent container that also holds the flyout, so the class cannot go there. The tool is the only element that carries it, and the class stays off the flyout (the flyout is a sibling, not a descendant). Nothing inside a tool face uses `danger`, `warning`, `info`, `accent-strong` or `focus-out`, so the class changes no colour there. If a tool face ever needs one of those roles, drop the class from the tool and set the role's chrome value on the face that needs it.
+**Deliberate exception: the shown toolbar tool.** `LevelEditorToolbar.vue` puts `surface-chrome` on each shown tool, a white raised face over the chart. The toolbar row is listed as chrome, but its root is a transparent container that also holds the flyout, so the class cannot go there. The tool is the only element that carries it, and the class stays off the flyout (the flyout is a sibling, not a descendant). Nothing inside a tool face uses `danger`, `warning`, `info`, `accent-strong` or `focus-out`, so the class changes no color there. If a tool face ever needs one of those roles, drop the class from the tool and set the role's chrome value on the face that needs it.
 
 **Shadows** (themes.css):
 
@@ -157,7 +157,7 @@ These have not been retuned (principle 16):
 
 ## 4. Contrast and distinction (computed from the source files)
 
-WCAG 2 relative luminance. ΔE is OKLab times 100, where about 2 is the threshold of noticing. Colour-vision deficiency is simulated with Machado 2009 at severity 1.0 (p protan, d deutan, t tritan). The values come from `src/themes.css`.
+WCAG 2 relative luminance. ΔE is OKLab times 100, where about 2 is the threshold of noticing. Color-vision deficiency is simulated with Machado 2009 at severity 1.0 (p protan, d deutan, t tritan). The values come from `src/themes.css`.
 
 ### 4.1 Text and glyphs on their face (need 4.5)
 
@@ -204,7 +204,7 @@ WCAG 2 relative luminance. ΔE is OKLab times 100, where about 2 is the threshol
 | primary vs danger-fill | 1.43; 24, 12, 20, 27 | 1.13; 18, 15, 15, 22 | Hue and form; the danger fill shows only while a quiet button is pressed |
 | primary vs secondary | 9.27; 60 | 3.28; 29 | Distinct |
 | on vs secondary | 1.38; 17, 8, 13, 19 | 5.94; 47 | Light: the mint fill differs from white mainly in hue. The knob, the eye swap or flatness carries the state (principle 11) |
-| press vs on | 1.27; 14, 11, **6**, 14 | 3.83; 37 | Distinct. The light press is darker than mint for this; at a lighter grey it was deutan 1.6 |
+| press vs on | 1.27; 14, 11, **6**, 14 | 3.83; 37 | Distinct. The light press is darker than mint for this; at a lighter gray it was deutan 1.6 |
 | press vs secondary rest | 1.76; 18 | 1.55; 10 | A clear step, plus the sink and the glow |
 | on pressed vs on | 1.47; 12 | 1.47; 12 | Clear |
 | danger label vs fg label | 1.43; 24, 12, 20, 27 | 1.23; 10, 10, 7, 12 | The quiet destructive pill reads red, also for CVD |
@@ -231,9 +231,9 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 
 ## 5. Role decisions
 
-### 5.1 What shares a colour, and what tells it apart
+### 5.1 What shares a color, and what tells it apart
 
-| Role | Colour | Told apart by |
+| Role | Color | Told apart by |
 |---|---|---|
 | On: switch, tool in use, Show Edits, Select, snap | `accent` fill | Flat; knob, eye swap |
 | Current on the dark chrome (rail tab) | `accent` 3 px bar | A bar |
@@ -302,7 +302,7 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 
 - **Quick notice:** the mint pill for every quick notice, as in v0.5.22.
   - A failure of something the user asked for is a card with the error glyph, not a quick notice. design-language.md, section 9, says which notice fits and gives the one exception.
-- **Notice cards** stay neutral surfaces: `bg-modal` with `ring-fg/10` in the pane, `bg-popup` with the `popup-edge` outline over a dialog. The card is the peek strip's surface, so there is no tint and no coloured edge.
+- **Notice cards** stay neutral surfaces: `bg-modal` with `ring-fg/10` in the pane, `bg-popup` with the `popup-edge` outline over a dialog. The card is the peek strip's surface, so there is no tint and no colored edge.
   - Severity is a leading 16 px glyph (`SeverityIcon`) in `text-warning` (triangle), `text-danger` (circle with an exclamation mark) or `text-info` (circle with an i). It is the optional `severity` field on `Notice`, `NoticeLine` and `LoadNotice`, set where the notice is raised, and it has no text of its own. Contrast is the `warning`, `info` and `danger` pairs of 4.1 on `modal` (in the pane) and `popup` (over a dialog); a glyph needs 3.
   - The mapping rule:
     - error: what the user asked for did not happen;
@@ -413,8 +413,8 @@ Prefer making the face the element.
 | Check a new role against existing roles fill against fill, under CVD | Hue alone vanishes for 1 man in 12 | — |
 | Check a focus ring against both sides | A ring on one contrast edge merges with the other | — |
 | Treat anything held as a press | A press must never look on | — |
-| Pair warning, info and error colours with their glyphs and words | Amber and red are deutan-confusable | — |
-| Put `.surface-chrome` on a new dark-chrome root | Its status colours pass on both chromes | — |
+| Pair warning, info and error colors with their glyphs and words | Amber and red are deutan-confusable | — |
+| Put `.surface-chrome` on a new dark-chrome root | Its status colors pass on both chromes | — |
 
 | Don't | Why | Exceptions |
 |---|---|---|
@@ -445,7 +445,7 @@ Three treatments were compared side by side, on a specimen of every control and 
 - **Light theme.** The glow removes the remaining disabled reading: disabled never glows, and a pressed face does.
 - **On a mouse,** pressing keeps the hover's glow while the face drops a tone and sinks, so the press reads as more of the hover rather than as the glow switching off.
 - **It cannot read as on.** The glow is a shadow and on is a flat mint fill. A pressed control also has a sunk, non-mint face (deutan ΔE 6 from mint in light).
-- **The sink stays,** for a non-colour cue and for continuity with the inset `shadow-track` of recessed controls. Without it (variant 3) the look is nearly the same, so the cost is nil.
+- **The sink stays,** for a non-color cue and for continuity with the inset `shadow-track` of recessed controls. Without it (variant 3) the look is nearly the same, so the cost is nil.
 - **Ghosts do not glow:** they have no face or elevation, and a halo under a translucent tint looks like a smudge.
 
 ### 8.2 ConfirmModal: the accidental-activation guard
@@ -477,7 +477,7 @@ None of these can be undone. Remove deletes a stored preview asset whether or no
 ### 9.1 What it scans
 
 - Every `src/**/*.{vue,ts,css}`, as text.
-- Template and TS class strings and `@apply` lines are tokenised with their variant prefixes.
+- Template and TS class strings and `@apply` lines are tokenized with their variant prefixes.
 - CSS rules (in `.css` and `<style>` blocks) are parsed, so a rule's selector supplies the state for the `@apply` and `var(--color-*)` uses in its body.
 - Comments are stripped.
 
@@ -485,13 +485,13 @@ None of these can be undone. Remove deletes a stored preview asset whether or no
 
 | Rule | Catches | Reason |
 |---|---|---|
-| `press-is-mint` | Mint, or any `bg-`, `text-`, `fill-`, `ring-`, `border-` (and the other colour prefixes) `on-accent`, with or without an opacity, under any press variant (`active:`, `group-active:`, `peer-active:`, `has-[:active]:`, `has-active:`, `enabled:active:`, `[.popup-item:enabled:active_&]:`), and any CSS rule whose selector is `:active`, `.is-held`, `.is-pressed` or `-pressed` (ignoring `:not(:active)`) with mint in its body | Press is never on |
+| `press-is-mint` | Mint, or any `bg-`, `text-`, `fill-`, `ring-`, `border-` (and the other color prefixes) `on-accent`, with or without an opacity, under any press variant (`active:`, `group-active:`, `peer-active:`, `has-[:active]:`, `has-active:`, `enabled:active:`, `[.popup-item:enabled:active_&]:`), and any CSS rule whose selector is `:active`, `.is-held`, `.is-pressed` or `-pressed` (ignoring `:not(:active)`) with mint in its body | Press is never on |
 | `mint-outside-recipes` | `bg-` / `text-` / `ring-` / `fill-` / `border-` / `outline-` / `shadow-` with `accent`, `accent-press`, `accent-strong` or `selected`; `var(--color-accent / on-accent / selected)` | On-states come from recipes; **bare `bg-accent` included** |
 | `hover-glow-outside-recipes` | `shadow-accent` with any variant | The glow lives in `.btn` |
-| `focus-colour` | A focus variant (`focus:`, `focus-visible:`, `focus-within:`, `group-focus-visible:` or `peer-focus-visible:`) with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`. It carries no colour prefix, so it passes; `.popup-item` shares its rules |
+| `focus-colour` | A focus variant (`focus:`, `focus-visible:`, `focus-within:`, `group-focus-visible:` or `peer-focus-visible:`) with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`. It carries no color prefix, so it passes; `.popup-item` shares its rules |
 | `focus-outline-none` | `outline-none` or `outline-hidden` under any of those focus variants, such as `focus:outline-none` or `focus-visible:outline-hidden` (in a class string or `@apply`), in a non-exempt file | The recipe ring sits in the components layer, and any utility beats it from the utilities layer, so it would remove the ring without any visible error |
 | `danger-fill-outside-recipes` | `bg-danger` | `danger-fill` |
-| `raw-palette` | Tailwind palette colours (`amber-300`, `sky-300`, …) | Tokens |
+| `raw-palette` | Tailwind palette colors (`amber-300`, `sky-300`, …) | Tokens |
 | `colour-literal` | `bg-[#…]`, `text-[rgb(…)]` | Tokens |
 
 ### 9.3 Exemptions and allowances
@@ -527,7 +527,7 @@ A unit test feeds one synthetic line per inventoried form through the detector a
 
 ## 10. Out of scope: chart content and the change orange
 
-Chart content keeps its own colours:
+Chart content keeps its own colors:
 
 - notes, connectors, guides, grid and stages;
 - the minimap's content, change ticks and selection marks (its box and cursor are UI: white on `bg`, the box with a dark outer ring);

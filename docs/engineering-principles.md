@@ -14,7 +14,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Exception.** A derivative output, such as an Export Video file, may use an identified estimate for an unknown value when it warns the user. The value stays unknown everywhere else: the AAC delay that cannot be measured is placed with an estimate of 1,024 samples and the `audioSyncEstimated` warning, and is never cached as a measurement.
 
-**Example.** A History entry whose count could not be read was stored with `noteCount: 0`, and its neighbours showed false deltas such as +1,200. The count is now optional and stays unknown in the row and in the file, and a row with an unknown count shows no delta (`src/editor/history/rows.ts`). The same rule applies to the file on disk in the Save conflict dialog: `DiskVersion.notes` is absent when the file has no summary (`src/editor/save/dialogs.ts`), and a Save total over a part of unknown size is unknown, not final (`src/editor/save/total.ts`).
+**Example.** A History entry whose count could not be read was stored with `noteCount: 0`, and its neighbors showed false deltas such as +1,200. The count is now optional and stays unknown in the row and in the file, and a row with an unknown count shows no delta (`src/editor/history/rows.ts`). The same rule applies to the file on disk in the Save conflict dialog: `DiskVersion.notes` is absent when the file has no summary (`src/editor/save/dialogs.ts`), and a Save total over a part of unknown size is unknown, not final (`src/editor/save/total.ts`).
 
 ## 2. One fact, one place
 
@@ -42,7 +42,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 ## 5. Tests prove what they claim
 
-**Rule.** A regression test fails without its fix; run it once against the unfixed code and say so. A fake behaves like the real code on every path a test relies on; where a test depends on the behaviour of storage or saving code that runs in Node, it uses the real code in preference to a fake. An assertion on an animated property reads it once two consecutive reads agree, or with transitions disabled. An ordering bug is tested with the order fixed, not by repeating runs under load. Wait for a signal, never for a length of time.
+**Rule.** A regression test fails without its fix; run it once against the unfixed code and say so. A fake behaves like the real code on every path a test relies on; where a test depends on the behavior of storage or saving code that runs in Node, it uses the real code in preference to a fake. An assertion on an animated property reads it once two consecutive reads agree, or with transitions disabled. An ordering bug is tested with the order fixed, not by repeating runs under load. Wait for a signal, never for a length of time.
 
 **Why.** A test that cannot fail, or that fails one run in six, is read as noise and then ignored.
 
@@ -90,7 +90,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 ## 11. An element earns its place
 
-**Rule.** Lean towards leaving out UI of doubtful use. Weigh removing an element as a real option, before adding it and when revisiting it.
+**Rule.** Lean toward leaving out UI of doubtful use. Weigh removing an element as a real option, before adding it and when revisiting it.
 
 **Why.** No feature or element is free. Each is code to maintain, and one that users almost never need still costs them screen space, clicks or confusion.
 

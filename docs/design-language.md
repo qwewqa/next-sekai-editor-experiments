@@ -1,6 +1,6 @@
 # Design language
 
-How the editor's UI is built: surfaces, shape, size, spacing, type, the History surfaces, and waits and feedback. Use it when you add or change UI, so new work looks like it belongs. Colour roles and control recipes are in [color-system.md](color-system.md). The questions to ask in review are in [ui-review-checklist.md](ui-review-checklist.md).
+How the editor's UI is built: surfaces, shape, size, spacing, type, the History surfaces, and waits and feedback. Use it when you add or change UI, so new work looks like it belongs. Color roles and control recipes are in [color-system.md](color-system.md). The questions to ask in review are in [ui-review-checklist.md](ui-review-checklist.md).
 
 - **Principles, not laws.** Each rule has a reason. When a case does not fit, depart from it and say why in the change. The rules with the least room to bend are about data safety: guard the user's work, and never show a notice that is not true ([engineering-principles.md](engineering-principles.md), principles 7 and 9).
 - **The code is the record.** Paths are relative to the repository root. Pixel values assume the 16 px root font size set in `src/index.css`. Surfaces that mirror sizes in script follow a changed root size (`src/editor/useRootFontSize.ts`).
@@ -10,7 +10,7 @@ How the editor's UI is built: surfaces, shape, size, spacing, type, the History 
 
 ## 1. Surfaces
 
-Colours are Tailwind theme colours (`src/themes.css`), so every role has its utilities and opacity modifiers. UI code names a role (`bg-modal`, `text-fg`), never a palette colour. Chart content is the exception ([color-system.md](color-system.md) section 10). Light / dark values of the surface stack:
+Colors are Tailwind theme colors (`src/themes.css`), so every role has its utilities and opacity modifiers. UI code names a role (`bg-modal`, `text-fg`), never a palette color. Chart content is the exception ([color-system.md](color-system.md) section 10). Light / dark values of the surface stack:
 
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
@@ -35,8 +35,8 @@ Surfaces step up from the chart: chrome, then panels, then bands, then controls.
 
 **Minimap** (`src/editor/minimap/Minimap.vue`). A strip docked beside the chart pane in the editor row, on the side the `minimapSide` setting names (`MinimapColumn.vue`); with the Elevation Editor side by side it stays beside the chart pane. The user sets its width by dragging the edge it shares with the chart pane (`ResizeHandle`, with the keys, Escape and reset of the other dividers; dragging or pressing an arrow key toward the chart widens it): the `minimapWidth` setting, 60 px by default, 24 to 160 px and at most a quarter of the workspace (`minimapWidth` in `src/editor/workspace/index.ts`). It is on by default from a 1000 px workspace, and the side docks' default sizes leave its room at the current width, so turning it on or resizing it moves no panel.
 - *Surface:* `bg-bg` with the dark chrome edge on the side facing the chart pane (`shadow-[inset_1px_0_0_rgb(255_255_255/0.1)]`, mirrored on the left). No ring and no shadow. The marks below do not mirror: the ticks stay at the strip's left and the rail at its right, like the lanes.
-- *Content:* the chart's own artwork and connector colours, the same in both themes (color-system.md section 10). The strip shows what the chart pane shows: hidden groups, stages and types are left out, and what the chart dims (other groups or stages with Show Other on, hidden types with Show Other Objects) is dimmed by the same amount. The range stays the whole chart's.
-- *Box and cursor:* the box is the part of the chart in view: a 2 px `border-white/85` line inside a 1 px `rgb(0 0 0 / 0.6)` ring (a box-shadow) and a `bg-white/[0.16]` fill, so it reads over light and dark notes. It is square, at least 8 px tall, starts and ends 6 px from the strip's edges, so its 1 px ring meets the change ticks and the selection rail; it is centred on the strip and the lanes (`PAD_LEFT` and `PAD_RIGHT`, 4 px each in `mapping.ts`, plus 2 px on each side), and has a `CanvasText` border in forced colours. The cursor is a 1 px `bg-white` line, as the chart's cursor is white. Past the last note both stay pinned at the top of the range, so an *edge mark* says so: an 11 by 6 px white chevron pointing up (`stroke-width 1.5`, `CanvasText` in forced colours), 4 px from the strip's top and centred on the strip. Its left is a whole pixel, so the tip is one pixel wide and sits half a pixel right of the middle at an even width. The range starts 17 px below the strip's top (`MARK_ROWS` and `PAD_Y` in `mapping.ts`), so the notes, the box, the cursor and the change ticks stay below the mark's 13 px, and the mark ends 2 px above the box's outline. Only the lane rules run through those 13 px, as they run through the rest of the strip. The 13 px stay reserved while the mark is hidden, so nothing moves when it shows. It shows while the cursor or the top of the view is past the range end, and has no animation. The overlay writes a style only when its value changed, with rows rounded to device pixels.
+- *Content:* the chart's own artwork and connector colors, the same in both themes (color-system.md section 10). The strip shows what the chart pane shows: hidden groups, stages and types are left out, and what the chart dims (other groups or stages with Show Other on, hidden types with Show Other Objects) is dimmed by the same amount. The range stays the whole chart's.
+- *Box and cursor:* the box is the part of the chart in view: a 2 px `border-white/85` line inside a 1 px `rgb(0 0 0 / 0.6)` ring (a box-shadow) and a `bg-white/[0.16]` fill, so it reads over light and dark notes. It is square, at least 8 px tall, starts and ends 6 px from the strip's edges, so its 1 px ring meets the change ticks and the selection rail; it is centered on the strip and the lanes (`PAD_LEFT` and `PAD_RIGHT`, 4 px each in `mapping.ts`, plus 2 px on each side), and has a `CanvasText` border in forced colors. The cursor is a 1 px `bg-white` line, as the chart's cursor is white. Past the last note both stay pinned at the top of the range, so an *edge mark* says so: an 11 by 6 px white chevron pointing up (`stroke-width 1.5`, `CanvasText` in forced colors), 4 px from the strip's top and centered on the strip. Its left is a whole pixel, so the tip is one pixel wide and sits half a pixel right of the middle at an even width. The range starts 17 px below the strip's top (`MARK_ROWS` and `PAD_Y` in `mapping.ts`), so the notes, the box, the cursor and the change ticks stay below the mark's 13 px, and the mark ends 2 px above the box's outline. Only the lane rules run through those 13 px, as they run through the rest of the strip. The 13 px stay reserved while the mark is hidden, so nothing moves when it shows. It shows while the cursor or the top of the view is past the range end, and has no animation. The overlay writes a style only when its value changed, with rows rounded to device pixels.
 - *Pointer:* the arrow on the strip, as on a scrollbar track, `cursor-grab` on the box and `cursor-grabbing` while it is held. No hover state and no focus state: the strip is `aria-hidden`, a pointer shortcut whose keyboard equivalents are Jump to Start and End and the Page Up and Down scrolls.
 - *Peek:* the mint ring stays on the chart pane (`PeekBar.vue`); the strip adds none of its own.
 - *Change ticks:* while the chart marks a peeked step's changes, `CHANGE_COLOR` ticks at the strip's left edge, one per run of nearby places where the chart draws the object (a move keeps its shown side), 5 px wide (`GUTTER_MARK_WIDTH`: the 4 px left gutter plus 1 px of the lane margin) and at least 3 px tall, flush with the left edge, over the strip's edge line when the strip is on the right. With at most 24 runs, each run shorter than 8 px also gets a 1 device px hairline across the strip in `CHANGE_COLOR` at 45% opacity, drawn under the ticks, so a lone change reads against the notes; long stretches (a select-all move) and busy columns get ticks only. The content takes an inline `opacity: 0.45` (so the compositor does it) while the chart dims, and the mark layers are not dimmed, so the marks stay full strength; there are no ticks during the read hold.
@@ -47,14 +47,14 @@ Surfaces step up from the chart: chrome, then panels, then bands, then controls.
 - *Surface:* a 16 px ruler (`text-xs tabular-nums fg/80`, labels at least 64 px apart) over the recessed track (`rounded-lg bg-recess shadow-track`), 56 px tall, or 48 px on phones. The track holds the notes-per-second curve as one wash (`fg/30` fill, `fg/60` line) and a 1 px `fg/60` tick at the BGM end.
 - *Range:* `bg-scrim/50` outside it, and 2 px `accent-strong` edges along it, so the range does not rely on the shade.
 - *Handles:* 10 px pills, 8 px taller than the track, `bg-button shadow-md` with a 1 px inset `fg/80` ring and a grip; `is-pressed` while held. Their targets are 44 px wide, split at the midpoint where two meet.
-- *Playhead:* a 2 px `fg-strong` line with an 8 px knob in the ruler, ringed in the surface colour. A label under the knob or a handle is hidden in place, never moved.
+- *Playhead:* a 2 px `fg-strong` line with an 8 px knob in the ruler, ringed in the surface color. A label under the knob or a handle is hidden in place, never moved.
 - *Focus:* the playhead, In and Out are sliders; their faces are under 32 px, so they ring with `focus-out`.
 
-**Autoscroll marker** (`src/editor/AutoscrollMarker.vue`). A 32 px circle at the point of a middle press, with filled carets for the axes that scroll (up and down, plus left and right when sideways scrolling is possible) and a centre dot. It is not a control, so it takes the menu surface, not the raised-button face: `bg-popup shadow-md outline-1 outline-popup-edge`. The floating-card surface (`bg-modal`) nearly vanishes against the chart in dark at this size. It is `fixed`, teleported to `body` so a press near a pane edge or a dock is not clipped, `pointer-events-none` and `aria-hidden`, and it has no animation or hover. The glyphs are `currentColor` fills, as chrome glyphs are (section 3), so forced colours keep them. While it shows, one cursor applies to the whole window through `html[data-autoscroll]` (`ns-resize`, or `all-scroll` with sideways scrolling), as the browsers' own autoscroll does.
+**Autoscroll marker** (`src/editor/AutoscrollMarker.vue`). A 32 px circle at the point of a middle press, with filled carets for the axes that scroll (up and down, plus left and right when sideways scrolling is possible) and a center dot. It is not a control, so it takes the menu surface, not the raised-button face: `bg-popup shadow-md outline-1 outline-popup-edge`. The floating-card surface (`bg-modal`) nearly vanishes against the chart in dark at this size. It is `fixed`, teleported to `body` so a press near a pane edge or a dock is not clipped, `pointer-events-none` and `aria-hidden`, and it has no animation or hover. The glyphs are `currentColor` fills, as chrome glyphs are (section 3), so forced colors keep them. While it shows, one cursor applies to the whole window through `html[data-autoscroll]` (`ns-resize`, or `all-scroll` with sideways scrolling), as the browsers' own autoscroll does.
 
 ## 2. Shape
 
-Shape says what a thing is, and corners that nest should share a centre.
+Shape says what a thing is, and corners that nest should share a center.
 
 - **`rounded-full`** is the default for anything you press or type into: buttons, fields, list rows, tab pills, segments, chips and strips.
 - **`rounded-xl`** (12 px) is for dialogs, floating cards and multi-line selectable rows in dialogs (`.row-select` in `SaveDialog.vue` and the Preview Assets rows), where a pill would over-round a tall row.
@@ -90,7 +90,7 @@ Icons are Font Awesome fills (`fill-current`): `size-4` for actions and rows, an
 
 ## 4. Controls
 
-Colour, elevation, hover, press and focus of every button family come from the recipes in `src/controls.css`, described in [color-system.md](color-system.md) section 6. This section is the geometry that stays at the call site.
+Color, elevation, hover, press and focus of every button family come from the recipes in `src/controls.css`, described in [color-system.md](color-system.md) section 6. This section is the geometry that stays at the call site.
 
 - **Raised button** (`btn btn-secondary`, `btn-primary`, `btn-danger-quiet`): `h-9 min-w-24 max-w-full truncate rounded-full px-4`, normal weight, 16 px (14 px in a strip). Dialog footers are `flex justify-end gap-2`, the one filled button last and focused (`data-autofocus`, see `ConfirmModal.vue`). A footer that must stay in view while a long body scrolls goes in `BaseModal`'s `footer` slot (`px-4 pb-4`, outside the scroller), as in the agreement dialog. Weight stays normal: bold is for titles, band labels, tabs and section headings.
 - **Ghost** (`ghost`): no face until pointed at. On a band it is `ghost ghost-band`, on the dark chrome `ghost ghost-chrome`. `BaseModal`'s close is the pattern: `ghost ghost-band size-9 rounded-full`.
@@ -107,7 +107,7 @@ Colour, elevation, hover, press and focus of every button family come from the r
   - Property descriptions show only on the surfaces that ask for them (`providePropertyDescriptions`): Selection, the tools' settings, Group Properties, Stage Properties and Level Info. Show Property Descriptions turns them off.
 - **Disabled:** `opacity-40` with no pointer events (the recipes do this), or `aria-disabled` with the same opacity when the control should stay focusable.
 - **Hover is pointer-only.** Tailwind's `hover:` and the recipes both sit under `(hover: hover) and (pointer: fine)`, so a tap leaves no hover look behind.
-- **Focus** is one rule: a 2 px ring drawn 2 px inside the face in the face's own ink, so the face shows on both sides of it. Faces under 32 px use `focus-out`; rows and menu rows use `focus-edge`. Outlines rest transparent so forced colours can paint them; `controls.css` and `index.css` thicken them to 4 px there. Do not suppress an outline without replacing it. A ring appears at once: colour transitions use `transition-ink`, which leaves the outline out (Tailwind's `transition-colors` would fade it in), and reduced motion keeps colour transitions but not the outline's.
+- **Focus** is one rule: a 2 px ring drawn 2 px inside the face in the face's own ink, so the face shows on both sides of it. Faces under 32 px use `focus-out`; rows and menu rows use `focus-edge`. Outlines rest transparent so forced colors can paint them; `controls.css` and `index.css` thicken them to 4 px there. Do not suppress an outline without replacing it. A ring appears at once: color transitions use `transition-ink`, which leaves the outline out (Tailwind's `transition-colors` would fade it in), and reduced motion keeps color transitions but not the outline's.
 
 ## 5. Bands, rows and lists
 
@@ -154,7 +154,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 
 **Change capsule** (`ChangeArrows.vue`)
 - A second strip under the first, as wide as the strip less 12 px, so its end caps are concentric with the strip's.
-- Every face is a 24 px circle or pill 4 px in from the capsule's edge. The faces are the Show Edits toggle (an eye), the summary and two arrows with a count each. The arrow's face is the chevron's circle, so hover, press and focus are drawn centred on the glyph rather than on an empty slot.
+- Every face is a 24 px circle or pill 4 px in from the capsule's edge. The faces are the Show Edits toggle (an eye), the summary and two arrows with a count each. The arrow's face is the chevron's circle, so hover, press and focus are drawn centered on the glyph rather than on an empty slot.
 - In panes under 320 px, or when the widest state line would not fit, an options button and menu replace the eye and the summary. Disabled arrows dim the chevron and count only, so a focus ring stays strong.
 - While a new step's change is read, for up to 250 ms from the first switch, the strip and capsule keep the last read step's date, line, counts, arrows and summary. One swap then follows, and nothing shows blank, dashed or dimmed. After 250 ms they name the new step and show loading. A press meanwhile acts on the new step once it is read (`changes.ts` `awaitingRead`, `pressWhenRead`).
 - The first step of a peek has nothing to keep. Its date and change strip stay hidden in place until its change is read or the loading state shows at 250 ms (`firstRead`), and a press waits the same way.
@@ -190,7 +190,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 **Step Details and Property Changes** (`OperationDetailsContent.vue`, `DetailsHeader.vue`, `PropertyChangesModal.vue`)
 - A row exists only when it adds something to the title. When the title says everything, the header has no rows. A block with nothing to show is not drawn, and no heading stands over nothing.
 - In a group, a step is a disclosure only when its own record has content. Otherwise it is a plain row with an empty 12 px slot, so labels stay aligned.
-- On a phone the dialog stays a centred card that sizes to its content, like every other `BaseModal`.
+- On a phone the dialog stays a centered card that sizes to its content, like every other `BaseModal`.
 - Property Changes shows Before and After in two columns. An added or removed entry has one side, so its rows show that value alone, with no empty column.
 
 ## 9. Waits and feedback
@@ -236,16 +236,16 @@ Pick the form by where the wait is. Every form uses the ink (`fg`, or white over
 ### Cancel, and the rest of the UI
 
 - **A wait blocks the editor only when the user started it and must see it through.** A file read, a build or a check may be a dialog that blocks the editor, and the dialog can be closed. Any other wait leaves the rest usable and disables only the controls whose press would conflict.
-- **Cancel stops the work at its next safe point.** A blocking wait can be cancelled with the dialog's ×, with Escape, and with Cancel when the dialog has a footer. Work that already finished stays, such as a removed session or a written repair, and the outcome says what happened. Once a step has started that cannot be stopped, such as Check's finish, closing the dialog only hides it.
-- **A wait that cannot be cancelled has a way out once it is clearly slow.** The startup gate adds Start Blank and Open in Safe Mode after 10 s. A session that did not finish opening last time asks at once, with no spinner: Start Blank (first, focused) or Try Again.
+- **Cancel stops the work at its next safe point.** A blocking wait can be canceled with the dialog's ×, with Escape, and with Cancel when the dialog has a footer. Work that already finished stays, such as a removed session or a written repair, and the outcome says what happened. Once a step has started that cannot be stopped, such as Check's finish, closing the dialog only hides it.
+- **A wait that cannot be canceled has a way out once it is clearly slow.** The startup gate adds Start Blank and Open in Safe Mode after 10 s. A session that did not finish opening last time asks at once, with no spinner: Start Blank (first, focused) or Try Again.
 - **A wait in place needs no cancel.** Moving on ends it: another step, another row, closing the panel.
 - **A press during a wait is not dropped silently.** It takes effect once the result arrives, as the change arrows do, or it is refused with a reason.
 
 ### Motion and accessibility
 
-- **Reduced motion.** `src/index.css` limits transitions to colour and opacity and leaves animations alone. Each animation opts out itself: `motion-safe:` on the motion, and a fade in its place. A spinner or a sliding bar that only stopped would look stuck, so it pulses its opacity. Placeholder rows already look like placeholders when still, so they only drop the pulse (`motion-safe:animate-pulse`).
+- **Reduced motion.** `src/index.css` limits transitions to color and opacity and leaves animations alone. Each animation opts out itself: `motion-safe:` on the motion, and a fade in its place. A spinner or a sliding bar that only stopped would look stuck, so it pulses its opacity. Placeholder rows already look like placeholders when still, so they only drop the pulse (`motion-safe:animate-pulse`).
 - **Status text is a live region** (`role="status"`) that is in the page before its text changes, so a screen reader reads each stage. The Loading dialog does this. Preparing's line has none: focus moves to its button, and the line is that button's description. Lines that mount together with their text are announced unreliably: the chooser's Reading file… and Storing… lines and both of its error lines, an asset's Loading line, and the Edits Here scan row. Fix them when the file next changes for another reason.
-- **Glyphs, bars and placeholder rows are `aria-hidden`.** A bar that shows a fraction is `role="progressbar"` with its value, labelled by the status text.
+- **Glyphs, bars and placeholder rows are `aria-hidden`.** A bar that shows a fraction is `role="progressbar"` with its value, labeled by the status text.
 - **Focus stays where it was** during a wait in place. A wait dialog follows the dialog rules, and a button that appears when the work is ready takes focus (Preparing).
 
 ### Which notice
@@ -261,13 +261,13 @@ Section 8 describes the notice card and the quick toast. This part says which on
 
 ### Status glyphs
 
-- `SeverityIcon.vue` is the one warning, error and info glyph, at every size. color-system.md 5.6 says which severity fits. Local copies drew three different triangles, one of them in the text colour.
+- `SeverityIcon.vue` is the one warning, error and info glyph, at every size. color-system.md 5.6 says which severity fits. Local copies drew three different triangles, one of them in the text color.
 
 ### Empty lists
 
 - **Empty is not failed and not loading.** A list that can be empty has its own line for it, apart from its failure line (with Try Again) and its loading form (engineering principle 4). A list that stops short because an older page failed to load ends in the failure line with Try Again, rather than stopping at the last row with no line.
 - A fragment names what is missing and has no full stop: "No stored items", "No changes yet". A full sentence has one: "This file has no skins."
-- The line is `text-fg/80`: `text-sm` in a list pane, the dialog's body size in a dialog. In a list that fills its pane, centre it in a block of fixed height (Timeline, Recent Sessions). In a dialog, start it at the text column like the lines around it (Preview Assets).
+- The line is `text-fg/80`: `text-sm` in a list pane, the dialog's body size in a dialog. In a list that fills its pane, center it in a block of fixed height (Timeline, Recent Sessions). In a dialog, start it at the text column like the lines around it (Preview Assets).
 
 ### The agreement dialog
 
@@ -283,9 +283,9 @@ Section 8 describes the notice card and the quick toast. This part says which on
 
 ## 10. Principles for new UI
 
-1. **Use the roles.** Theme tokens and the recipes, not palette colours or hand-rolled hover and press states. A retune then lands everywhere, and the guard test can check it. A scrim over the chart or a preview overlay (`bg-black/30`) is geometry rather than a role; chrome that sits over the chart may use white or black ink where the chrome tier says so.
+1. **Use the roles.** Theme tokens and the recipes, not palette colors or hand-rolled hover and press states. A retune then lands everywhere, and the guard test can check it. A scrim over the chart or a preview overlay (`bg-black/30`) is geometry rather than a role; chrome that sits over the chart may use white or black ink where the chrome tier says so.
 2. **Pick a size from the scale.** 36 px, or 32 px where space is tight, or 28 px inside a recess track. Grow the hit area with `::before` rather than the face. A visible 44 px control is a sign something else is wrong. Only the error fallback button (`rendering/RenderingError.vue`, `min-h-11`) and the toolbar on touch have one.
-3. **Shape follows what the thing is,** and nested corners share a centre: container radius = inner radius + inset. Inset controls evenly on every side so a hover fill never touches the container on one axis only.
+3. **Shape follows what the thing is,** and nested corners share a center: container radius = inner radius + inset. Inset controls evenly on every side so a hover fill never touches the container on one axis only.
 4. **Size to content, then fit.** A floating strip is as wide as what it must hold, and a fit measures that content from the producer's own forms. Check it in the longest locale and at the narrowest pane.
 5. **Reuse the pattern before adding a variant.** A second local copy of a control (a selectable row, a tab strip) is the sign to add or use a shared recipe. The same role looks the same in every dialog that shares a shell.
 6. **Align to a grid.** Bands, rows, headers and dividers share columns. Indentation, guide lines, glyph size and weight each say one thing.
@@ -293,5 +293,5 @@ Section 8 describes the notice card and the quick toast. This part says which on
 8. **Secondary text stays legible:** no lighter than `fg/80` on a light modal, full `fg` on bands. Disabled may fade.
 9. **Reserve space for what may appear.** Content that is hidden but still in flow takes space. Remove an element until it is shown, rather than hiding it, and keep geometry stable while content changes.
 10. **Respect the browser floor.** Check selectors and features against the build target before writing CSS. An unsupported selector invalidates its whole rule.
-11. **A tool, its shortcut and its command do the same thing.** A toolbar tool, its keyboard shortcut and any menu or list that offers the command all run that one command (`runCommand`), so a user who learns one knows the others. When two behaviours are needed, make two commands. A link in a notice or dialog may go somewhere more specific. Open History in a notice, for example, goes to a History tab.
+11. **A tool, its shortcut and its command do the same thing.** A toolbar tool, its keyboard shortcut and any menu or list that offers the command all run that one command (`runCommand`), so a user who learns one knows the others. When two behaviors are needed, make two commands. A link in a notice or dialog may go somewhere more specific. Open History in a notice, for example, goes to a History tab.
 12. **Keep the editor cohesive.** New and changed surfaces fit the current design language and the surfaces beside them, and differ only where their job differs, as the notice cards do. An existing look is a default. Change it when that makes the editor clearer or more consistent, and update the surfaces that share that look in the same change.

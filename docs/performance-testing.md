@@ -59,7 +59,7 @@ A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 - Per-frame timings (`src/perf/probe.ts`):
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
     - `clockFrame`: the app clock's whole frame, with the time watchers, Vue's flush and the draws it triggers. The clock runs only while something moves through it (eases, inertia, playback, a tool drag), so direct scrolls such as `quicktouch` and `minimapdrag` have few or no clock frames: compare their `chartDraw` and frame intervals;
-    - `previewDraw`, `elevationDraw`, `minimapOverlay` and `minimapSelection` (one paint of the minimap's selection layer, recording only: its rasterisation shows in a trace). In the worker host, `previewDraw` is the main thread's part of a frame: resolving the state, building the chart's diff and posting the frame;
+    - `previewDraw`, `elevationDraw`, `minimapOverlay` and `minimapSelection` (one paint of the minimap's selection layer, recording only: its rasterization shows in a trace). In the worker host, `previewDraw` is the main thread's part of a frame: resolving the state, building the chart's diff and posting the frame;
     - the worker host's `previewWorkerDraw`, the worker's draw with any rebuild, and `previewWorkerAnswer`, the time from posting a frame until the worker's `drawn` message arrives. `previewReplaced` counts the frames that a newer request replaced before they were sent. `perf:report <run> frames` gives the worker's frames per second beside the clock's;
     - `stageTile`: each Composed stage tile build. `perf:report <run> frames` gives the builds per chart draw.
 
@@ -201,7 +201,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
     - **Average cost:** the steady per-frame work, p50 and p95 against the budget. It decides the sustained frame rate.
     - **Stutters and unevenness:**
         - the tail: p99, max, and the counts over budget, over 2x and over 4x;
-        - jitter: the interval SD, and the share of neighbouring frames that differ by more than 0.9 of a frame;
+        - jitter: the interval SD, and the share of neighboring frames that differ by more than 0.9 of a frame;
         - each spike tied to its trace event with `perf:report <run> long`.
 
         One 400 ms frame a minute barely moves a median and is what a user remembers.

@@ -1,23 +1,23 @@
 # UI design and review checklist
 
-Questions to ask when you build or review UI. They come from defects that shipped or nearly shipped. Read it with [design-language.md](design-language.md) (how the UI is built) and [color-system.md](color-system.md) (colour roles and control recipes).
+Questions to ask when you build or review UI. They come from defects that shipped or nearly shipped. Read it with [design-language.md](design-language.md) (how the UI is built) and [color-system.md](color-system.md) (color roles and control recipes).
 
 **How to use and maintain it:**
-- These are principles with their reasons, not hard rules. Apply judgement. When one does not fit a case, depart from it and say why in the review.
+- These are principles with their reasons, not hard rules. Apply judgment. When one does not fit a case, depart from it and say why in the review.
 - The exceptions are the invariants that protect users' work. A notice that is not true, or a path that can lose data, is a defect whatever the design says.
 - Add an item only for an issue that recurred or was costly. Give the reason and one short example.
 - Generalize before you add. If a new defect is another case of an existing item, extend the example instead.
 - Rewrite or remove items that stop matching the product. Keep it short.
 
 ## Composition
-- **Balanced faces.** A hover, press or focus fill should look centred on what it highlights. Fills that include empty slots or uneven padding read as lopsided. (The History Up and Down arrows.)
-- **Proximity carries meaning.** Things that belong together sit closer to each other than to their neighbours. Check with realistic short and long content. (A trailing chevron read as a third arrow.)
+- **Balanced faces.** A hover, press or focus fill should look centered on what it highlights. Fills that include empty slots or uneven padding read as lopsided. (The History Up and Down arrows.)
+- **Proximity carries meaning.** Things that belong together sit closer to each other than to their neighbors. Check with realistic short and long content. (A trailing chevron read as a third arrow.)
 - **Whitespace should have a reason:** a column shared with other rows, or room that matches its siblings. An empty area that appears in only one kind of row usually signals a layout problem. (The expanded-group step count.)
 - **Lists are one grid.** Decide the columns first (leading mark, text edge, meta), then place every row kind in them. Patching row kinds one at a time drifts. (Expanded History groups.)
 - **Scope a mode rule to the row kind it is for.** A rule for two-line rows written on a class every row shares also catches the odd row out. (The Now row sat 1 px off.)
 - **A mark per row should be able to differ per row.** Before repeating a glyph on every row, check that it can vary. (Every group member repeated the parent's kind glyph.)
 - **Each hierarchy cue should earn its place.** Indentation, guide lines, glyph size and weight work best when each says something the others do not. (Group membership layout.)
-- **Look at the whole group, not only the numbers.** Column and centre measurements can all pass while the composition feels wrong. Also look for:
+- **Look at the whole group, not only the numbers.** Column and center measurements can all pass while the composition feels wrong. Also look for:
   - empty cells in a column that is otherwise full;
   - near-misses, where things meant to differ sit only a few px apart;
   - whether the heaviest mark is the most informative one.
@@ -25,15 +25,15 @@ Questions to ask when you build or review UI. They come from defects that shippe
 
 ## States
 - **Think per interactive element:** rest, hover, press, focus, open or on, and disabled, plus loading and empty where they exist. Families of surfaces hide gaps. (The Details pill and Go To.)
-- **On and off should be readable without hover,** and preferably not by colour alone. Press feedback should not be mistaken for an on state.
+- **On and off should be readable without hover,** and preferably not by color alone. Press feedback should not be mistaken for an on state.
 - **Primary, neutral and destructive actions should be distinguishable** at a glance in both themes.
-- **Classify state by behaviour, not by name or look.** Anything held under a finger, key or drag is a press. (The held transport step, the resize line.)
+- **Classify state by behavior, not by name or look.** Anything held under a finger, key or drag is a press. (The held transport step, the resize line.)
 
-## Colour and focus
-- **Roles that must differ should differ in lightness, not hue alone.** Check fill against fill, also under colour-vision deficiency, and list every pair including transient states. (The dark primary against the mint; a light press against the mint.)
+## Color and focus
+- **Roles that must differ should differ in lightness, not hue alone.** Check fill against fill, also under color-vision deficiency, and list every pair including transient states. (The dark primary against the mint; a light press against the mint.)
 - **A focus ring should contrast with both the face and what surrounds it.** (A white ring on an ink pill vanished against a light modal.)
-- **Press should differ from hover as clearly as hover differs from rest,** on each surface it sits on, and it should strengthen the ink so it never looks disabled. (Press equalled hover on light bands.)
-- **Let contrast choose a direction.** The light chrome is mid-tone, so "lighter on press" can dim white ink. Check colour on the dark chrome in both themes.
+- **Press should differ from hover as clearly as hover differs from rest,** on each surface it sits on, and it should strengthen the ink so it never looks disabled. (Press equaled hover on light bands.)
+- **Let contrast choose a direction.** The light chrome is mid-tone, so "lighter on press" can dim white ink. Check color on the dark chrome in both themes.
 - **Before styling from an attribute, list every current use of it and read what each binding means,** then make the style opt-in. (`aria-pressed` on checked manager rows and on toolbar values.)
 - **A token retune lands with all of its consumers.** (`selected` at 40 % in `ManagerRow`.)
 - **Check a recipe's premise before applying it.** A recipe built for a transparent ghost on a band does not fit a button that is itself the band's fill. A `currentColor` ring does not fit an element that hides its own text.
@@ -41,7 +41,7 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **Validate a guard on the current tree:** it should fail for every inventoried case. Test a transition's end state too, such as an allowlist with no files left on it.
 
 ## Layout, content and devices
-- **Hidden content still takes space.** Opacity, visibility and a delayed animation keep an element in flow. A "Loading" line meant to appear only after a delay opened a 32 px gap under the chosen row for the whole load. Delay by not rendering: gate the element on a timer so it takes no space until it is shown. For any transient element, assert in a browser spec that the neighbouring boxes stay put on every frame, not only that the element appears.
+- **Hidden content still takes space.** Opacity, visibility and a delayed animation keep an element in flow. A "Loading" line meant to appear only after a delay opened a 32 px gap under the chosen row for the whole load. Delay by not rendering: gate the element on a timer so it takes no space until it is shown. For any transient element, assert in a browser spec that the neighboring boxes stay put on every frame, not only that the element appears.
 - **Prefer stable geometry.** Controls should not jump when only the content changes. Size a fit from the widest form, not from the live value.
 - **Measure what is bounded.** A line whose form is a number and a unit has a measurable widest form, so it is not free text. Size the fit for its usual widest form (for example a 3-digit count) in the longest locale, through the producer's own formatting. (The French "Modifications : 160 n…".)
 - **Size fits from every content the producer can return,** enumerated from the function that produces it, not read off the template. (The capsule missed `peek.settingsChanged`.) A fit that hides or shrinks controls must also include the content it is making room for.
@@ -53,7 +53,7 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **Leave ring room with the outline offset,** not margins, and check `scrollWidth` against `clientWidth` afterwards.
 
 ## Data, feedback and truth
-- **A notice must be true when it is shown.** When a call can complete later, return how it ended (landed, cancelled, netted to nothing, failed), not only that it was accepted, and notify on the outcome. A queued Undo said "Undid" before the chart changed, and a failed read said nothing. Test every outcome, including the failure.
+- **A notice must be true when it is shown.** When a call can complete later, return how it ended (landed, canceled, netted to nothing, failed), not only that it was accepted, and notify on the outcome. A queued Undo said "Undid" before the chart changed, and a failed read said nothing. Test every outcome, including the failure.
 - **A view that merges two sources must not drop what it showed.** If one source forgets (a flush that clears its pending list) and the other catches up later, keep what was shown until the second has it. The Timeline lost rows for about a second after a Restore. Test the transient state by sampling frames, not by polling the final list.
 - **A merge by overlap must survive a larger update than one overlap window.** A burst of entries replaced the loaded run and the reader's place. Read until the runs join instead of replacing, and bound it.
 - **A new state flag needs its consumer in the same change,** and a test of the user-visible effect, such as the computed cursor, not the flag.
@@ -86,5 +86,5 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **Check selectors against the build target** (set in the Vite configuration: Chrome 111, Edge 111, Firefox 128, Safari 16 and iOS 16). An unsupported selector invalidates the whole rule it sits in, including its selector list.
 
 ## Scope
-- **Follow standard best practice** where it is natural and cheap: contrast in both themes, semantic colour roles and visible keyboard focus.
-- **Niche modes** such as forced colours get basic function, not polish.
+- **Follow standard best practice** where it is natural and cheap: contrast in both themes, semantic color roles and visible keyboard focus.
+- **Niche modes** such as forced colors get basic function, not polish.

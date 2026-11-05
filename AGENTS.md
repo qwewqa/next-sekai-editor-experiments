@@ -25,7 +25,7 @@ It holds only what is specific to agents. Read the project's own docs first:
 
 - Verify a tool's or another agent's claim before you pass it on. A summarizer once reported "hidden instructions" in a paper that had none.
 - Understand every test failure. Never delete a test to clear one.
-- Before you call a behaviour a bug, check it against the last release. Existing charts rely on patterns such as notes on the same beat.
+- Before you call a behavior a bug, check it against the last release. Existing charts rely on patterns such as notes on the same beat.
 
 ## Git
 
@@ -45,7 +45,7 @@ It holds only what is specific to agents. Read the project's own docs first:
 ## Reviews
 
 - Report findings with a concrete scenario: what the user does and what goes wrong.
-- Weigh likelihood and impact against the code a fix adds (engineering principle 9). Do not over-weight behaviour that is acceptable or arguable.
+- Weigh likelihood and impact against the code a fix adds (engineering principle 9). Do not over-weight behavior that is acceptable or arguable.
 
 ## Performance work
 

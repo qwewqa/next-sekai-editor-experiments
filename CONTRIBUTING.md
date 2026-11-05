@@ -45,7 +45,7 @@ The lint enforces the boundary (`npm run check-lint`):
 
 1. Add the field to `PlatformCapabilities` in `src/platform/types.ts`, named for what it allows.
 2. Set it in `src/platform/web.ts`, in `src/platform/native/` and in the mock's defaults (`src/platform/mock.ts`).
-3. Read it as `platform.capabilities.<name>` where behaviour differs. Never branch on `kind` or `os` outside `src/platform/`.
+3. Read it as `platform.capabilities.<name>` where behavior differs. Never branch on `kind` or `os` outside `src/platform/`.
 4. Test the code with both values (see Tests).
 
 ### Adding a string variant
@@ -71,14 +71,14 @@ The rules in these docs are principles with reasons. Depart from one when a case
 
 In code, tests and docs, cite only what is in the repository: the docs, by file name and section, such as "history-format.md §4.6". Never cite an outside plan or design record. A reader cannot open it. `tests/citations.test.mjs` fails on the common forms of such a citation.
 
-Keep a rule at the scope it was made for. Do not turn a rule for one control or feature into a project-wide rule. Do not document a specific behaviour that the code already shows.
+Keep a rule at the scope it was made for. Do not turn a rule for one control or feature into a project-wide rule. Do not document a specific behavior that the code already shows.
 
 ## UI design
 
 Read these before you change the UI and when you review a UI change:
 
 - [docs/design-language.md](docs/design-language.md): surfaces, shape, sizes, spacing, the History surfaces, and waits and feedback.
-- [docs/color-system.md](docs/color-system.md): colour roles and the control recipes in `src/controls.css`.
+- [docs/color-system.md](docs/color-system.md): color roles and the control recipes in `src/controls.css`.
 - [docs/ui-review-checklist.md](docs/ui-review-checklist.md): the questions to ask in review, from past defects.
 - [docs/writing.md](docs/writing.md): the writing rules for user-facing text, these docs, code comments and commit messages.
 
@@ -86,7 +86,7 @@ Read these before you change the UI and when you review a UI change:
 
 `builtin-assets/` makes the Built-in set (`public/builtin/*.scp`) and the rendered app icons. Edit a template in `builtin-assets/svg/` or the manifest, then run `npm run build:builtin-assets` and commit the result. `npm run check:builtin-assets` fails when the committed files differ from a rebuild.
 
-The art is CC0 and must be original. The generator scripts are MIT. `REUSE.toml` says which licence covers which path, and `tests/licensing.test.mjs` fails on a new image, sound or icon that has no annotation.
+The art is CC0 and must be original. The generator scripts are MIT. `REUSE.toml` says which license covers which path, and `tests/licensing.test.mjs` fails on a new image, sound or icon that has no annotation.
 
 `tests/fixtures/next-sekai-names.json` holds the names the engine declares. A maintainer refreshes it with `scripts/extract-engine-names.mjs` from a built engine when the engine changes.
 

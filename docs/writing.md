@@ -63,7 +63,7 @@ These rules apply only to user-facing text: the strings in `src/i18n/`, Help, no
   - When setting choices need explanation, give a short introduction naming what the setting decides, then explain each choice with a noun phrase or direct verb. Use whichever makes the difference clear; do not change a clear choice line only to match a pattern. Omit a redundant introduction when the label already supplies it, as Format in Export Video does. Chart properties use the property rule above.
   - The editor puts a choice's name before its line, so the line does not repeat it.
   - Use prose for a select whose choices are groups, stages or presets, and for one whose choice names already say what differs, as colors, sounds, flick directions and ease curves do. Toggles and number fields use prose too.
-- Label related controls the same way: if one has a suffix, its neighbours have one too, or none does. In each locale, put a name in the same place across related messages: "Added group {0}", "Deleted group {0}".
+- Label related controls the same way: if one has a suffix, its neighbors have one too, or none does. In each locale, put a name in the same place across related messages: "Added group {0}", "Deleted group {0}".
 
 ### Help
 

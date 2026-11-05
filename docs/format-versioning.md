@@ -2,7 +2,7 @@
 
 How the editor's stored and exchanged formats change, and what each version number does. Read this before changing anything a file, a database row, a journal or an operation holds.
 
-Where this page and the code disagree, the code wins. This page summarises the rules and gives the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md), and this page does not repeat them. The full byte-level description of `.nxsp` is in [nxsp-format.md](nxsp-format.md).
+Where this page and the code disagree, the code wins. This page summarizes the rules and gives the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md), and this page does not repeat them. The full byte-level description of `.nxsp` is in [nxsp-format.md](nxsp-format.md).
 
 ## 1. The rules
 
@@ -50,7 +50,7 @@ A partial open stays unbound, so Save opens the file picker. The picker suggests
 
 ## 3. The extension points
 
-What a later build may add without changing an older reader's behaviour, and what the older reader does with it. Anything not in this list needs a version.
+What a later build may add without changing an older reader's behavior, and what the older reader does with it. Anything not in this list needs a version.
 
 | Point | Where | Older reader | Writer rule |
 | --- | --- | --- | --- |
@@ -162,7 +162,7 @@ The canonical v1 fixtures below follow the current writer. The separate immutabl
 
 **Why every later build reads them.** A later build must open every artifact v1 wrote. `tests/zip/nxspV1.test.ts`, `tests/local/journalV1.test.ts`, `tests/local/fixturesV1.test.ts`, `tests/browser/formats/webStorageV1.spec.ts` and `nxspWriteBackV1.spec.ts` read them, and `check.yml` runs the independent checker over the `.nxsp` files. The `formats` job runs the browser specs in Chromium on every push, and `browsers-full.yml` runs the web storage spec in Firefox and WebKit. A build that misreads a v1 artifact fails CI before it ships. Each test names the bug it catches in a comment. The Node tests decode every state the files and the main dump hold, not only the head, and compare each entry's `noteCount` with its state. They check each file's per-document device id against the derivation in `src/local/deviceId.ts`, and check that every handle row is tagged as a real export tags it.
 
-**Only what v1 can write is frozen.** Content a v1 build cannot write (a newer `levelVersion`, a `parts` key, an unknown choice value) is not a v1 artifact. Its correct reading changes when a later version defines it, so a frozen copy would pin the wrong behaviour. v1's rules for such content are in the crafted reader tests (`tests/local/nxsp/read.test.ts` and the agreement probes). Tests that need such a file make it from a fixture when they run.
+**Only what v1 can write is frozen.** Content a v1 build cannot write (a newer `levelVersion`, a `parts` key, an unknown choice value) is not a v1 artifact. Its correct reading changes when a later version defines it, so a frozen copy would pin the wrong behavior. v1's rules for such content are in the crafted reader tests (`tests/local/nxsp/read.test.ts` and the agreement probes). Tests that need such a file make it from a fixture when they run.
 
 **How they are made, and when.** `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.ts`) drives the real editor in Chromium on a dev server through a scripted scenario, and writes both folders. Run it with `NSE_WRITE_FIXTURES=1` and `TZ=UTC`. It writes only into empty folders and refuses otherwise; `NSE_FIXTURES_OUT=<dir>` writes `<dir>/nxsp-v1` and `<dir>/web-storage-v1` instead, for a dry run. It runs once, before the v0.6.0 tag and after the last in-place format change. An in-place change that lands before the tag empties the folders (`git rm`) and runs it again in the same commit; then set `FIXTURE_BUILDS`, `SUMS_DIGESTS` and `FIXTURES_CONFIRMED_AT` in `tests/local/fixturesV1Pins.ts`, which pin the build and each `SHA256SUMS` from outside the folders (a regenerated folder cannot pass as the old one). It never runs after v0.6.0 ships.
 

@@ -39,7 +39,7 @@ A complete description of the Next SEKAI Editor's project file, written so that 
 
 **Times.** `time`, `fromTime` and `targetTime` are milliseconds since the Unix epoch (UTC). `revision.savedAt` is the one string time (§5.3).
 
-**Units.** Beats are beats. Lanes are lane units. The stage is 12 lanes wide, lane 0 its centre, so a left edge of `-6` and a width of `12` cover it. `bgmOffset` is in seconds everywhere in the file (the editor shows milliseconds). `initialLife` is a plain number.
+**Units.** Beats are beats. Lanes are lane units. The stage is 12 lanes wide, lane 0 its center, so a left edge of `-6` and a width of `12` cover it. `bgmOffset` is in seconds everywhere in the file (the editor shows milliseconds). `initialLife` is a plain number.
 
 **Terms.**
 
@@ -304,11 +304,11 @@ The tree a viewer shows is built from the flat list (`buildFolderTree`, `src/cha
 3. Walk the entries in list order with a position counter starting at 0. Before each entry, emit every memberless folder whose `index <= position`; then increment the position. A loose entry is emitted as an item; the first member of a folder emits the folder with all its members; later members emit nothing.
 4. After the walk, emit the remaining memberless folders.
 
-The editor keeps lists normalised: each folder's members contiguous, entries in depth-first tree order, and each folder's `index` equal to the number of entries before it.
+The editor keeps lists normalized: each folder's members contiguous, entries in depth-first tree order, and each folder's `index` equal to the number of entries before it.
 
 ### 6.4 Notes and slides
 
-A **slide** is a non-empty list of notes in beat order (ties in list order). A one-note slide is a single note. The connector between consecutive notes of a slide is described by the fields of its notes as level data does. The slide is cut into segments at its first note and at each note with `isConnectorSeparator`; a segment's type, colour, fake and critical flags, guide alpha, layer, pass-through and presentation come from its first note (the segment head); each note's `connectorEase` eases the connector leaving it.
+A **slide** is a non-empty list of notes in beat order (ties in list order). A one-note slide is a single note. The connector between consecutive notes of a slide is described by the fields of its notes as level data does. The slide is cut into segments at its first note and at each note with `isConnectorSeparator`; a segment's type, color, fake and critical flags, guide alpha, layer, pass-through and presentation come from its first note (the segment head); each note's `connectorEase` eases the connector leaving it.
 
 | Field | Domain | Meaning |
 | --- | --- | --- |
@@ -316,8 +316,8 @@ A **slide** is a non-empty list of notes in beat order (ties in list order). A o
 | `stageId` | id of a stage | Stage. |
 | `beat` | finite number (level data: `>= 0`) | Beat. |
 | `elevation` | finite number, default 0 | Elevation (engine revision 2: not scaled by stage tilt). |
-| `noteStyle` | `default neutral red green blue yellow purple cyan black` | Note colour; `default` is the engine's own. |
-| `connectorStyle` | the same set | Connector colour; for a guide, `default` is the default guide colour (drawn green). |
+| `noteStyle` | `default neutral red green blue yellow purple cyan black` | Note color; `default` is the engine's own. |
+| `connectorStyle` | the same set | Connector color; for a guide, `default` is the default guide color (drawn green). |
 | `noteType` | `default trace anchor damage forceTick forceNonTick` | `default`: tap, or tick in the middle of an active connector; `forceTick` and `forceNonTick` force the other; `trace`, `anchor`, `damage` as the engine. |
 | `isAttached` | boolean | Attached to its connector (meaningful only for a middle note). |
 | `left` | finite number, lanes | Left edge. |
@@ -366,7 +366,7 @@ A **media reference** is `{hash, filename, size, type}`: `hash` the hash16 of th
 
 `{"bgmOffset": number, "entities": [LevelDataEntity, ...]}`: ordinary Sonolus level data after decoding (§4.1), with the same value the editor exports. An entity is `{name?: string, archetype: string, data: [{name, value: number} | {name, ref: string}, ...]}`. Top-level keys other than `bgmOffset` and `entities` are `unknown-key`. The file's chart *now* is this value with `project.json`'s level info and BGM (§10.6).
 
-Ids are not in level data. A parse numbers groups, stages and folders afresh. Default guide colours (§7.6) and level info and BGM metadata (`project.json`) are kept outside it.
+Ids are not in level data. A parse numbers groups, stages and folders afresh. Default guide colors (§7.6) and level info and BGM metadata (`project.json`) are kept outside it.
 
 ### 7.2 Entities the editor writes, in order
 
@@ -427,7 +427,7 @@ Data: `#TIMESCALE_GROUP` (ref), `stage` (ref; dynamic stages only), `#BEAT`, `la
 | booleans (`fromStart`, `untilEnd`, `hideNotes`, `maskNotes`, `fullWidth`, `isAttached`, `isSeparator`, `segmentThroughJudgeLine`) | 1 or 0; a reader takes any non-zero number as true |
 | camera and mask `lane`, `size` | `lane = left + size / 2`, `size = size / 2` |
 
-**`segmentKind`.** For a guide: `100 + c`, `c` the guide colour's code (neutral 1 … black 8), a `default` guide colour written as green (103). Otherwise `family` is 3 for damage, 2 for a critical active connector, 1 for an active one; with `s` the `connectorStyle` code (0 for default): `(connectorIsFake ? 50 : 0) + (s > 0 ? 10 * family + s : family)`. The values are 1, 2, 3, 51, 52, 53, 101–108, and the coloured 11–18, 21–28, 31–38, 61–68, 71–78, 81–88.
+**`segmentKind`.** For a guide: `100 + c`, `c` the guide color's code (neutral 1 … black 8), a `default` guide color written as green (103). Otherwise `family` is 3 for damage, 2 for a critical active connector, 1 for an active one; with `s` the `connectorStyle` code (0 for default): `(connectorIsFake ? 50 : 0) + (s > 0 ? 10 * family + s : family)`. The values are 1, 2, 3, 51, 52, 53, 101–108, and the colored 11–18, 21–28, 31–38, 61–68, 71–78, 81–88.
 
 ### 7.5 Reading level data into a chart
 
@@ -436,12 +436,12 @@ The editor's parse (`parseLevelDataChart`). A viewer that shows the head from le
 1. **Folders.** For `EditorGroupFolder`, then `EditorStageFolder`, every entity *with a name*: label `editorName` (blank or absent: the entity's name), index `editorIndex` (absent: infinity), parent `editorFolder`. A folder nested in another resolves to its outermost ancestor (a cycle roots at its first folder in entity order) and its members join that folder. Folder ids are numbered across both kinds, group folders first.
 2. **Initialization** (only if it is the first entity): `initialLife` (default 1000), `firstCamera`.
 3. **BPM changes**: every `#BPM_CHANGE` in entity order; `meter` default 4.
-4. **Groups**: every `#TIMESCALE_GROUP` in entity order makes a group: name `editorName` (blank or absent: `#n`, one past the highest `#n` taken, or the localised "Default" for the first), `forceNoteSpeed` (0 reads as none), folder by `editorFolder`. None at all: one default group.
+4. **Groups**: every `#TIMESCALE_GROUP` in entity order makes a group: name `editorName` (blank or absent: `#n`, one past the highest `#n` taken, or the localized "Default" for the first), `forceNoteSpeed` (0 reads as none), folder by `editorFolder`. None at all: one default group.
 5. **Stages**: every `Stage` makes a stage (blank name: `#n`) and turns dynamic stages on; `generateSimLines` default 0. None: one default stage named `#1`, From Start and Until End on, dynamic stages off.
-6. **Normalise folders** (§6.3): groups and stages are reordered into tree order (stage folders only with dynamic stages; without them stage folders are dropped).
+6. **Normalize folders** (§6.3): groups and stages are reordered into tree order (stage folders only with dynamic stages; without them stage folders are dropped).
 7. **Events**: each kind is read only along its chains, from `Initialization.firstCamera` and each stage's `first…Change` refs, following `next`; entities not reached are not read. Any chain without dynamic stages is refused. A loop is refused. Defaults for absent optional fields: camera `lane` 0, `size` 0 (sampling reads a size below 0.01 as 0.01), `zoom` 1, `zoomTargetLane` 0, `zoomTargetY` 0, `zoomVerticalAlign` 0, `rotate` 0, `stageTilt` 1; mask `maskNotes` 0; style `editorLane` 0, `laneColor` 0, `judgeLineStyle` 0, `fullWidth` 0, `noteAlpha` 1, `divisionLineAlpha` 1, and a legacy `alpha` (default 1) multiplies `laneAlpha` and `judgeLineAlpha`; transform `rotate` 0, `xLaneTranslate` 0, `yLaneTranslate` 0, `elevation` 0, `anchor` 0, `rotationCenter` 0, `rotationCenterXOffset` 0, `rotationCenterYOffset` 0; every event `ease` 0. `lane`/`size` convert back as `left = lane - size`, `width = 2 * size`.
 8. **Time scales**: each group's chain from `first` along `next` (stopping at a missing or repeated entity), then every other `#TIMESCALE_CHANGE` in entity order. `editorLane` default -6, `transitionStyle` default 0, `hideNotes` default 0.
-9. **Notes**: a note entity without a name is a one-note slide (in entity order, these come first). Named notes are joined into slides by `next`; a slide is ordered by `#BEAT` (stable). For each note: `left = lane - size`, `size = 2 * size`, `elevation` default 0, `style` default 0, `effectKind` default 0, `isSeparator`, `segmentLayer`, `segmentThroughJudgeLine`, `segmentPresentation` default 0; connector type, fake and critical flags from `segmentKind`'s base kind; `connectorStyle` from the colour digit (guides 101–108 and coloured kinds), except that a note whose entity index is in `defaultGuideColors` and whose `segmentKind` is 103 has `connectorStyle: default`.
+9. **Notes**: a note entity without a name is a one-note slide (in entity order, these come first). Named notes are joined into slides by `next`; a slide is ordered by `#BEAT` (stable). For each note: `left = lane - size`, `size = 2 * size`, `elevation` default 0, `style` default 0, `effectKind` default 0, `isSeparator`, `segmentLayer`, `segmentThroughJudgeLine`, `segmentPresentation` default 0; connector type, fake and critical flags from `segmentKind`'s base kind; `connectorStyle` from the color digit (guides 101–108 and colored kinds), except that a note whose entity index is in `defaultGuideColors` and whose `segmentKind` is 103 has `connectorStyle: default`.
    - **Note archetypes** (`noteArchetypeNames` in `src/chart/parse/levelData/slide.ts`, 68 names), each with or without a leading `Fake`: `Normal` or `Critical`, then `Head`, `Tail` or nothing, then `Tap`, `Flick`, `Trace`, `TraceFlick` or `Release`, then `Note`; `NormalTickNote` and `CriticalTickNote`; `DamageNote` and `AnchorNote`. That is more than the writer uses (§7.3): `NormalReleaseNote`, `NormalHeadReleaseNote` and `NormalTailTapNote` are notes, not unknown archetypes.
    - `Fake` prefix: `isFake`. `AnchorNote`: `noteType: anchor`, no flick, `isCritical = connectorActiveIsCritical`. `DamageNote`: `noteType: damage`, no flick.
    - Otherwise `Critical` sets `isCritical`. After `Head`/`Tail`, a `Trace…` archetype is `noteType: trace` (a flick only for `TraceFlick`).
@@ -454,7 +454,7 @@ The editor's parse (`parseLevelDataChart`). A viewer that shows the head from le
 
 ### 7.6 `editor.defaultGuideColors`
 
-Level data cannot say "the default guide colour": a default guide writes `segmentKind` 103 (green). `project.json` `editor.defaultGuideColors` lists the indices in `entities` of the note entities whose connector is a guide with `connectorStyle: default`. On read, a listed entity with `segmentKind` 103 reads as `default`.
+Level data cannot say "the default guide color": a default guide writes `segmentKind` 103 (green). `project.json` `editor.defaultGuideColors` lists the indices in `entities` of the note entities whose connector is a guide with `connectorStyle: default`. On read, a listed entity with `segmentKind` 103 reads as `default`.
 
 ### 7.7 Level-data ranges are not the format's
 
@@ -466,7 +466,7 @@ Records accept any finite number (§8). The level-data parser refuses values out
 
 A **record** is a JSON array whose positions are fields; it holds only arrays, strings, finite numbers and booleans (no objects, no `null`). Optional fields come only at the end and an unset one is left off; fields the model fills with a default are always written.
 
-**Canonical text** is ECMAScript `JSON.stringify` of the array: no whitespace, numbers by `Number::toString` (`-0` as `0`, `1e+21`, `1e-7`, `0.30000000000000004`, `5e-324`), strings by `QuoteJSONString` (`\"`, `\\`, `\b \f \n \r \t`, other controls as lowercase `\u00xx`, lone surrogates escaped, nothing else escaped, no Unicode normalisation). **Canonical bytes** are that text in UTF-8. A record's **hash** is hash16 of its canonical bytes, never of stored or deflated bytes.
+**Canonical text** is ECMAScript `JSON.stringify` of the array: no whitespace, numbers by `Number::toString` (`-0` as `0`, `1e+21`, `1e-7`, `0.30000000000000004`, `5e-324`), strings by `QuoteJSONString` (`\"`, `\\`, `\b \f \n \r \t`, other controls as lowercase `\u00xx`, lone surrogates escaped, nothing else escaped, no Unicode normalization). **Canonical bytes** are that text in UTF-8. A record's **hash** is hash16 of its canonical bytes, never of stored or deflated bytes.
 
 ### 8.2 Chunks
 
@@ -493,7 +493,7 @@ A chunk's stored form is one raw DEFLATE stream of its bytes. Reading a chunk is
 | mediaRef | `hash` hash16, `filename` string, `size` uint, `type` string |
 | bgm | `hash` hash16, `filename` string, `size` uint, `type` string, `durationMs` uint (optional) |
 
-Header checks: group ids unique, stage ids unique, folder ids unique across both folder lists; every `folderId` names an existing folder of its list; folder parent links never loop. Lists are in tree order (§6.3). The chain name, the binding, the export name, the view (which groups or stages are shown, hidden or dimmed, zoom, selection) and the default guide colour setting are not in a snapshot.
+Header checks: group ids unique, stage ids unique, folder ids unique across both folder lists; every `folderId` names an existing folder of its list; folder parent links never loop. Lists are in tree order (§6.3). The chain name, the binding, the export name, the view (which groups or stages are shown, hidden or dimmed, zoom, selection) and the default guide color setting are not in a snapshot.
 
 ### 8.5 Body records
 
@@ -635,7 +635,7 @@ The editor's Timeline lists entries newest first, one row per entry, titled by t
 
 The file's chart now is decoded level data parsed (§7.5), with level info from `metadata` (§5.4) and the BGM from `bgm` (§5.5), or the History head's BGM reference when `bgm` is absent. When the file has history, the level report is empty and the file **matches** its History head, the editor shows the History head itself (keeping its ids); otherwise it shows the level-data chart (fresh ids).
 
-**Matches** means: the level info read from `metadata` (§5.4) equals the head's level info (compared as canonical level-info records); `bgm`, when present, names the head's BGM hash; and decoded level data matches the head as level data: both the file's entities and the head re-serialised (§16.4) are parsed (§7.5), groups, stages and folders renumbered 1…n in list order (folders in one sequence, group folders first, references following), converted to records in the writer's order (§8.6) with level info and BGM left out (header positions 0–6 only), and compared as canonical text.
+**Matches** means: the level info read from `metadata` (§5.4) equals the head's level info (compared as canonical level-info records); `bgm`, when present, names the head's BGM hash; and decoded level data matches the head as level data: both the file's entities and the head re-serialized (§16.4) are parsed (§7.5), groups, stages and folders renumbered 1…n in list order (folders in one sequence, group folders first, references following), converted to records in the writer's order (§8.6) with level info and BGM left out (header positions 0–6 only), and compared as canonical text.
 
 When the file does not match, the editor's import adds, after the file's entries, an `edit` entry of `nse.externalChange` with the level-data state, then a `continue` entry of `nse.origin` (`{origin: import, source: <file name>}`); when it matches, only the `continue`. A file without history opens as one `init` slot of that `nse.origin`. These rows are the open's, not the file's.
 
@@ -705,7 +705,7 @@ Allowed on: an entry, a step, a recovery context, its head and each dropped item
 | `timeScaleEase` | a time-scale ease | timeScale |
 | `timeScaleTransition` | `timeScale scroll` | timeScale |
 | `hideNotes` | boolean | timeScale |
-| `laneColor` | `default` and the eight colours | stageStyleEvent |
+| `laneColor` | `default` and the eight colors | stageStyleEvent |
 | `judgmentLineColor` | `neutral red green blue yellow purple cyan black` | stageStyleEvent |
 | `judgmentLineStyle` | `default singleLine` | stageStyleEvent |
 | `leftBorderStyle`, `rightBorderStyle` | `default light medium disabled` | stageStyleEvent |
@@ -713,7 +713,7 @@ Allowed on: an entry, a step, a recovery context, its head and each dropped item
 | `noteAlpha`, `laneAlpha`, `judgmentLineAlpha`, `divisionLineAlpha` | finite | stageStyleEvent |
 | `eventEase` | an ease | the five event kinds |
 | `noteType`, `flickDirection`, `sfx`, `connectorType`, `connectorLayer`, `connectorPresentation` | their enums (§6.4) | note |
-| `noteStyle`, `connectorStyle` | `default` and the eight colours | note |
+| `noteStyle`, `connectorStyle` | `default` and the eight colors | note |
 | `connectorEase` | an ease | note |
 | `isCritical`, `isAttached`, `isFake`, `isConnectorSeparator`, `connectorIsFake`, `connectorActiveIsCritical`, `connectorIsPassThrough` | boolean | note |
 | `connectorGuideAlpha` | finite | note |
@@ -764,7 +764,7 @@ Each id below has `version` 1. "Kind" is the entry or step kind it is written as
 
 | Id | `data` | Constraints | Meaning | Title |
 | --- | --- | --- | --- | --- |
-| `nse.object.flip` | `{axis: horizontal \| vertical, subject, changed: NC, displaced?: NC+, retainedInitialBpm?: true}` | *agrees*; collateral only for `vertical`; retained only with `bpm` or `objects` | Horizontal: lanes mirrored (a note's `left`, flick directions, event lanes, rotations, a transform's centre X offset, border styles). Vertical: beats mirrored between the selection's ends, connector properties and eases reversed. | "Flipped {sum of changed} object(s)", "Flipped {sum} object(s) vertically" |
+| `nse.object.flip` | `{axis: horizontal \| vertical, subject, changed: NC, displaced?: NC+, retainedInitialBpm?: true}` | *agrees*; collateral only for `vertical`; retained only with `bpm` or `objects` | Horizontal: lanes mirrored (a note's `left`, flick directions, event lanes, rotations, a transform's center X offset, border styles). Vertical: beats mirrored between the selection's ends, connector properties and eases reversed. | "Flipped {sum of changed} object(s)", "Flipped {sum} object(s) vertically" |
 | `nse.object.scale` | `{axis: beats \| width \| elevation, subject, changed: NC, transform, displaced?, retainedInitialBpm?}` | `transform` `{mode: uniform, factor: finite, pivot: finite}` or `{mode: composed}`; collateral only for `beats` | Scale Beat, Width or Elevation. `uniform` when the result is one scale by `factor` about `pivot` (beats, lanes or elevation); `composed` after several adjustments. | "Scaled beats of {sum} object(s)", "Scaled width of {sum} object(s)", "Scaled elevations of {sum} object(s)" |
 
 ### 12.5 Property edits
@@ -931,7 +931,7 @@ A reader needs none of this. A writer that wants its files to open as the editor
 - The pinned headers of §3.1; entry order of §4; one DOS time from `savedAt`; never ZIP64 (a plan of 65,535 entries or more, or any size or offset of 4 GB or more, is refused).
 - JSON is `JSON.stringify` output: compact, no BOM, no trailing newline. Plain JSON entries are DEFLATE (raw, pako's default level); `level.json.gz`, `chunks.bin` and media are STORE. The level JSON is gzipped once with deterministic raw DEFLATE at pako's default level. Its 10-byte gzip header is `1f 8b 08 00 00 00 00 00 00 ff`; its trailer is the JSON bytes' CRC-32 and size modulo 2^32, each little-endian. The timestamp is zero; filename and comment are absent. The gzip wrapper is pinned by the goldens.
 - `project.json` keys in the order `format version minor patch levelVersion appVersion id lineageId revision name exportName level editor bgm history summary metadata`, then the extra keys, then extra `metadata` keys merged into `metadata`; `parts` never. `revision` keys in the order of §5.3; `savedAt` UTC to the second; at most 1,024 ancestors; `completeFrom` only with history, written as given when it is the new id or an ancestor, else the oldest ancestor, else the new id.
-- `minor` and `patch` are the lowest that hold the content (both 0 in v1). `editor` is `{}` when there are no default guide colours. `metadata` per §5.4. `summary` is always written: `noteCount` of the head, `durationMs` = the time of the latest note beat (summing `(min(last, end) - start) * 60000 / bpm` over BPM segments in list order, the first applying from beat 0), `Math.round`, 0 when not a positive safe integer; `revisionId` the new revision.
+- `minor` and `patch` are the lowest that hold the content (both 0 in v1). `editor` is `{}` when there are no default guide colors. `metadata` per §5.4. `summary` is always written: `noteCount` of the head, `durationMs` = the time of the latest note beat (summing `(min(last, end) - start) * 60000 / bpm` over BPM segments in list order, the first applying from beat 0), `Math.round`, 0 when not a positive safe integer; `revisionId` the new revision.
 - `history.entries` the total entry count; `segments` only when there are any.
 
 ### 16.2 History
@@ -949,7 +949,7 @@ A cover or preview is `assets/cover.<ext>` or `assets/preview.<ext>`. The BGM is
 
 ### 16.4 Level data
 
-Serialise from the state with the entity order, data order and codes of §7.2–§7.4, entity names as lowercase hex in the order first needed. Per slide: the notes, then for each connector run the hidden ticks the engine needs (`TransientHiddenTickNote` along active connectors, `TransientHiddenDamageTickNote` along damage ones, on half-beat ticks as `scheduleHiddenTicks` in `src/state/entities/slides/hiddenTicks.ts` places them) and a `Connector` with `head`, `tail`, `segmentHead`, `segmentTail` and, for active and damage connectors, `activeHead` and `activeTail`; after all slides, `SimLine` entities between neighbouring notes (by lane centre) that share a tick, per stage when its sim lines are isolated, else across stages, for every note but anchors, damage notes and ticks. `editor.defaultGuideColors` lists the default-coloured guide notes' entity indices. The code is `src/levelData/entities/serialize/`.
+Serialize from the state with the entity order, data order and codes of §7.2–§7.4, entity names as lowercase hex in the order first needed. Per slide: the notes, then for each connector run the hidden ticks the engine needs (`TransientHiddenTickNote` along active connectors, `TransientHiddenDamageTickNote` along damage ones, on half-beat ticks as `scheduleHiddenTicks` in `src/state/entities/slides/hiddenTicks.ts` places them) and a `Connector` with `head`, `tail`, `segmentHead`, `segmentTail` and, for active and damage connectors, `activeHead` and `activeTail`; after all slides, `SimLine` entities between neighboring notes (by lane center) that share a tick, per stage when its sim lines are isolated, else across stages, for every note but anchors, damage notes and ticks. `editor.defaultGuideColors` lists the default-colored guide notes' entity indices. The code is `src/levelData/entities/serialize/`.
 
 ## 17. Worked examples, fixtures and tools
 
@@ -985,7 +985,7 @@ This example records the old plain-level layout; it is not current writer output
 {"bgmOffset":0,"entities":[{"archetype":"Initialization","data":[{"name":"initialLife","value":1000},{"name":"revision","value":2}]},{"archetype":"#BPM_CHANGE","data":[{"name":"#BEAT","value":0},{"name":"#BPM","value":60},{"name":"meter","value":4}]},{"archetype":"#TIMESCALE_GROUP","data":[{"name":"editorName","ref":"Default"}],"name":"0"},{"archetype":"NormalTapNote","data":[{"name":"#TIMESCALE_GROUP","ref":"0"},{"name":"#BEAT","value":1},{"name":"lane","value":1},{"name":"size","value":1},{"name":"style","value":0},{"name":"direction","value":0},{"name":"isAttached","value":0},{"name":"isSeparator","value":0},{"name":"connectorEase","value":1},{"name":"segmentKind","value":1},{"name":"segmentAlpha","value":1},{"name":"segmentLayer","value":0},{"name":"effectKind","value":0},{"name":"segmentThroughJudgeLine","value":0},{"name":"segmentPresentation","value":0}]},…]}
 ```
 
-The first note is `left 0, size 2` (lane centre 1, half-width 1); the second `left -3, size 3` (centre -1.5, half-width 1.5).
+The first note is `left 0, size 2` (lane center 1, half-width 1); the second `left -3, size 3` (center -1.5, half-width 1.5).
 
 ### 17.2 A small history
 
