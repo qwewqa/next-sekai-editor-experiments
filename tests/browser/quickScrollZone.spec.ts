@@ -105,7 +105,7 @@ test('the zone is at most half the pane', async ({ page }) => {
     ).toEqual([200, 150])
 })
 
-test('the strip shows for On, hides for Off, follows touch screens for Touch Screens Only and takes its side', async ({
+test('the strip shows for On, hides for Off, follows touchscreens for Touchscreens Only and takes its side', async ({
     page,
 }) => {
     const strip = page.locator('.editor .editor-quick-scroll-zone')

@@ -417,7 +417,7 @@ test('a sync client writing into the picked file after the pick: nothing is writ
     await writeFile(page, 'coconut.nxsp', [1, 2, 3, 4])
     await release(page)
     await expect(page.getByRole('dialog')).toContainText(
-        'The contents of “coconut.nxsp” have changed.',
+        'The contents of coconut.nxsp have changed.',
     )
     expect(await readFile(page, 'coconut.nxsp')).toEqual([1, 2, 3, 4])
 })
@@ -474,9 +474,7 @@ test("B mid-write: A's pick waits for B to finish, then refuses the filled file"
         .poll(async () => ((await chainById(a, bChain.chainId))?.revision as Row | undefined)?.n)
         .toBe(2)
     await expect(b.getByRole('dialog')).toHaveCount(0)
-    await expect(a.getByRole('dialog')).toContainText(
-        'The contents of “coconut.nxsp” have changed.',
-    )
+    await expect(a.getByRole('dialog')).toContainText('The contents of coconut.nxsp have changed.')
     expect((await projectOf(a, 'coconut.nxsp')).id).toBe(bChain.docId)
     const { chains } = await rows(a, ['chains'])
     const revoked = chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)!

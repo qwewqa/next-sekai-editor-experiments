@@ -382,7 +382,7 @@ test('Close in Ready asks before discarding a video that was not downloaded', as
     await exportButton(page).click()
     await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('ready')
     await dialog.locator('[data-export-close]').click()
-    const ask = page.getByRole('dialog', { name: 'Discard this video?' })
+    const ask = page.getByRole('dialog', { name: 'Discard This Video?' })
     await expect(ask).toBeVisible()
     // A choice dialog ignores presses in its first 300 ms.
     await page.waitForTimeout(350)
@@ -434,7 +434,7 @@ test('failed cleanup releases the page-close warning and closes the dialog', asy
     })
     await page.clock.install()
     await dialog.locator('[data-export-close]').click()
-    const ask = page.getByRole('dialog', { name: 'Discard this video?' })
+    const ask = page.getByRole('dialog', { name: 'Discard This Video?' })
     await expect(ask).toBeVisible()
     await page.clock.fastForward(350)
     await ask.getByRole('button', { name: 'Discard Video' }).click()

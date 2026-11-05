@@ -57,7 +57,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('Selection chips show keyboard focus', async ({ page }) => {
-    const chip = panel(page).getByRole('button', { name: /^Select only Disabled/ })
+    const chip = panel(page).getByRole('button', { name: /^Select Only Disabled/ })
     await focus(chip)
     expect(await outline(chip)).toEqual({
         style: 'solid',

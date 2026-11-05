@@ -814,12 +814,12 @@
       "tempo": "Çizelgenin temposunu belirlemek için BPM değişiklikleri ekler."
     },
     "timeScale": {
-      "speed": "Bir grubun hızını ayarlamak için zaman ölçeği değişiklikleri ekler. Notalara basılma zamanları değişmez."
+      "speed": "Bir grubun hızını ayarlamak için zaman ölçekleri ekler. Notalara basılma zamanları değişmez."
     },
     "groups": {
-      "speed": "Her grubun kendi zaman ölçeği değişiklikleriyle belirlenen bir hızı vardır.",
-      "current": "Bir grubu geçerli grup yapmak için ona dokunun. Yeni notalar ve zaman ölçeği değişiklikleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez.",
-      "currentClick": "Bir grubu geçerli grup yapmak için ona tıklayın. Yeni notalar ve zaman ölçeği değişiklikleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez.",
+      "speed": "Her grubun kendi zaman ölçekleriyle belirlenen bir hızı vardır.",
+      "current": "Bir grubu geçerli grup yapmak için ona dokunun. Yeni notalar ve zaman ölçekleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez.",
+      "currentClick": "Bir grubu geçerli grup yapmak için ona tıklayın. Yeni notalar ve zaman ölçekleri bu gruba eklenir; diğer gruplardaki nesneler seçilemez veya düzenlenemez.",
       "manage": "Grupları Yönet, grupları listeler ve grup eklemenizi, sıralamalarını değiştirmenizi ve düzenlemenizi sağlar.",
       "switch": "Önceki Gruba Geç ve Sonraki Gruba Geç, geçerli grubu değiştirir; Tüm Gruplara Geç ise tüm gruplara geçer."
     },
@@ -1107,7 +1107,7 @@
           "both": "İki gösterimi birlikte gösterir ve hizalamayı ölçülere göre yapar."
         }
       },
-      "showGroupName": "Varsayılan grubun dışındaki notaların ve zaman ölçeği değişikliklerinin yanında grup adlarının gösterilmesi.",
+      "showGroupName": "Varsayılan grubun dışındaki notaların ve zaman ölçeklerinin yanında grup adlarının gösterilmesi.",
       "showStageName": "Dinamik Sahneler açıkken notaların ve sahne olaylarının yanında sahne adlarının gösterilmesi.",
       "maxScrollX": "Çizelgenin merkezinden sola veya sağa kaydırabileceğiniz mesafe. Birleşik düzende bu sınırın ötesindeki sahnelere ulaşmak için daha uzağa kaydırabilirsiniz.",
       "elevationEditorSideBySide": {
@@ -1730,9 +1730,9 @@
       "newLevel": "Yeni seviye oluşturuldu",
       "importedLevel": "Seviye içe aktarıldı",
       "movedGroupsInto": "{0} grup {1} klasörüne taşındı",
-      "movedGroupsOut": "{0} grup klasörlerden çıkarıldı",
+      "movedGroupsOut": "{0} grup klasörden çıkarıldı|{0} grup klasörlerden çıkarıldı",
       "movedStagesInto": "{0} sahne {1} klasörüne taşındı",
-      "movedStagesOut": "{0} sahne klasörlerden çıkarıldı"
+      "movedStagesOut": "{0} sahne klasörden çıkarıldı|{0} sahne klasörlerden çıkarıldı"
     }
   },
   "modals": {
@@ -2169,14 +2169,14 @@
         "meter": "Ölçü başına vuruş sayısı.",
         "timeScale": "Grubun notaları için hız çarpanı. Negatif değerler notaları geriye hareket ettirir.",
         "skip": "Grubun notalarının vuruş çizgisine doğru bir anda atladığı mesafe. 1, notaların zaman ölçeği 1 iken bir vuruşta aldığı yoldur.",
-        "timeScaleEase": "Grubun sonraki zaman ölçeği değişikliğine kadar hızın nasıl değişeceği.",
+        "timeScaleEase": "Grubun sonraki zaman ölçeğine kadar hızın nasıl değişeceği.",
         "timeScaleTransition": {
           "choices": {
             "timeScale": "Nota aralıkları ilerideki hız değişikliklerini gösterir.",
             "scroll": "Nota aralıkları geçerli hızı takip eder."
           }
         },
-        "hideNotes": "Grubun notalarını ve grupta başlayan bağlayıcı bölümlerini gizler. Grubun sonraki zaman ölçeği değişikliğine kadar sürer.",
+        "hideNotes": "Grubun notalarını ve grupta başlayan bağlayıcı bölümlerini gizler. Grubun sonraki zaman ölçeğine kadar sürer.",
         "cameraLeft": "Kameranın gördüğü alanın sol kenarı, şerit biriminde.",
         "cameraSize": "Kameranın gördüğü alanın genişliği, 6 ile 24 şerit arasında.",
         "cameraZoomTargetLane": "Yakınlaştırmanın merkez aldığı şerit, kameranın gördüğü alanın ortasından sayılır.",

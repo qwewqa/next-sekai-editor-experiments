@@ -255,8 +255,8 @@
             "importedSus": "Imported SUS chart",
             "unsupported": "Unsupported file. Open a project file, a Sonolus package, level data, a Chart Cyanvas level, or a USC or SUS chart.",
             "tooLarge": "This file is too large to open.",
-            "invalidLevel": "Invalid level: {0}",
-            "invalidChart": "Invalid chart: {0}",
+            "invalidLevel": "Invalid level: {0}.",
+            "invalidChart": "Invalid chart: {0}.",
             "revision": {
                 "older": "This level was made for an older engine revision and now uses the current one. Check that it still looks and plays as expected.",
                 "newer": "This level was made for a newer engine revision than this editor supports. Some parts may not display or save correctly."
@@ -814,12 +814,12 @@
             "tempo": "Adds BPM changes to set the chart’s tempo."
         },
         "timeScale": {
-            "speed": "Adds time scale changes to set a group’s speed. Notes are still hit at the same times."
+            "speed": "Adds time scales to set a group’s speed. Notes are still hit at the same times."
         },
         "groups": {
-            "speed": "Each group has its own speed, set by its time scale changes.",
-            "current": "Tap a group to make it the current group. New notes and time scale changes go into it, and objects in other groups cannot be selected or edited.",
-            "currentClick": "Click a group to make it the current group. New notes and time scale changes go into it, and objects in other groups cannot be selected or edited.",
+            "speed": "Each group has its own speed, set by its time scales.",
+            "current": "Tap a group to make it the current group. New notes and time scales go into it, and objects in other groups cannot be selected or edited.",
+            "currentClick": "Click a group to make it the current group. New notes and time scales go into it, and objects in other groups cannot be selected or edited.",
             "manage": "Manage Groups lists the groups and lets you add, reorder and edit them.",
             "switch": "Previous Group and Next Group change the current group, and All Groups switches to all groups."
         },
@@ -1020,12 +1020,12 @@
         },
         "touch": {
             "title": "Touch",
-            "quickScrollWidth": "Quick Scroll Zone Width (px)",
+            "quickScrollWidth": "Quick Scroll Zone Width (px)",
             "showQuickScroll": {
                 "title": "Show Quick Scroll Zone",
                 "on": "On",
                 "off": "Off",
-                "touch": "Touch Screens Only"
+                "touch": "Touchscreens Only"
             },
             "quickScrollSide": {
                 "title": "Quick Scroll Zone Side",
@@ -1094,7 +1094,7 @@
             "mouseSecondaryTool": {
                 "intro": "What right-click and right-drag do.",
                 "choices": {
-                    "eraser": "Deletes objects with a right-click or objects in an area with a right-drag.",
+                    "eraser": "Erases objects on right-click or in a box on right-drag.",
                     "select": "Lets you select, move or resize objects with the right mouse button.",
                     "selectContextMenu": "Opens the context menu on right-click, and lets you select, move or resize objects by right-dragging."
                 }
@@ -1107,7 +1107,7 @@
                     "both": "Shows the two formats together, and aligns snapping to measures."
                 }
             },
-            "showGroupName": "Whether to show group names beside notes and time scale changes outside the default group.",
+            "showGroupName": "Whether to show group names beside notes and time scales outside the default group.",
             "showStageName": "Whether to show stage names beside notes and stage events when Dynamic Stages is on.",
             "maxScrollX": "How far you can scroll left or right from the chart’s center. In the Composed layout, you can scroll farther to reach stages beyond this limit.",
             "elevationEditorSideBySide": {
@@ -1730,9 +1730,9 @@
             "newLevel": "Started a new level",
             "importedLevel": "Imported a level",
             "movedGroupsInto": "Moved {0} group into folder {1}|Moved {0} groups into folder {1}",
-            "movedGroupsOut": "Moved {0} group out of folders|Moved {0} groups out of folders",
+            "movedGroupsOut": "Moved {0} group out of its folder|Moved {0} groups out of folders",
             "movedStagesInto": "Moved {0} stage into folder {1}|Moved {0} stages into folder {1}",
-            "movedStagesOut": "Moved {0} stage out of folders|Moved {0} stages out of folders"
+            "movedStagesOut": "Moved {0} stage out of its folder|Moved {0} stages out of folders"
         }
     },
     "modals": {
@@ -2113,7 +2113,7 @@
                 "label": "Meter"
             },
             "coverage": "Applies to {0} of {1} selected objects",
-            "selectOnly": "Select only {1} ({0})",
+            "selectOnly": "Select Only {1} ({0})",
             "unset": {
                 "unchanged": "Unchanged",
                 "auto": "Auto",
@@ -2121,7 +2121,7 @@
             },
             "unknown": "Unknown ({0})",
             "coverageChip": "{0} of {1}",
-            "selectCovered": "Select only objects this property applies to ({0} of {1})",
+            "selectCovered": "Select Only Objects with This Property ({0} of {1})",
             "descriptions": {
                 "elevation": "Height, in lanes.",
                 "noteType": {
@@ -2169,14 +2169,14 @@
                 "meter": "Beats per measure.",
                 "timeScale": "Speed multiplier for the group’s notes. Negative values move them backward.",
                 "skip": "Distance the group’s notes jump toward the judgment line. 1 is the distance notes travel in one beat at time scale 1.",
-                "timeScaleEase": "How the speed changes until the group’s next time scale change.",
+                "timeScaleEase": "How the speed changes until the group’s next time scale.",
                 "timeScaleTransition": {
                     "choices": {
                         "timeScale": "Note spacing shows upcoming speed changes.",
                         "scroll": "Note spacing follows the current speed."
                     }
                 },
-                "hideNotes": "Hides the group’s notes and the connector segments that start in it. Lasts until the group’s next time scale change.",
+                "hideNotes": "Hides the group’s notes and the connector segments that start in it. Lasts until the group’s next time scale.",
                 "cameraLeft": "Left edge of the camera’s view, in lanes.",
                 "cameraSize": "Width of the camera’s view, 6 to 24 lanes.",
                 "cameraZoomTargetLane": "Lane that the zoom centers on, counted from the middle of the camera’s view.",
@@ -2433,7 +2433,7 @@
                 "stageTransformEventJoint": "Stage Transform Events"
             },
             "connector": "Connector",
-            "selectOnly": "Select only",
+            "selectOnly": "Select Only",
             "inSlides": "in {0} slide|in {0} slides",
             "valuesDiffer": "{0} value differs|{0} values differ"
         }
@@ -2535,7 +2535,7 @@
             "resolution": "The video is {0}. The selected resolution was {1}.",
             "soundStops": "The sound stops before the end of the range."
         },
-        "discardTitle": "Discard this video?",
+        "discardTitle": "Discard This Video?",
         "discard": "Discard Video",
         "unsupported": "This browser cannot export video.",
         "errors": {
@@ -2597,7 +2597,7 @@
         "noSpace": "There is not enough space to write {0}.",
         "writeFailed": "“{0}” could not be written.",
         "fileNowEmpty": "The file is now empty.",
-        "openedContentGone": "The contents of “{0}” have changed.",
+        "openedContentGone": "The contents of {0} have changed.",
         "title": "Save Project File",
         "titleAs": "Save As",
         "history": "History",
@@ -2648,7 +2648,7 @@
         "changed": "“{0}” changed while it was being checked. Try again.",
         "stillOpening": "“{0}” is still being opened. Try again.",
         "noDamage": "No damage found.",
-        "scopeBoth": "Checked “{0}” and the history stored in this browser.",
+        "scopeBoth": "Checked {0} and the history stored in this browser.",
         "scopeStored": "Checked the history stored in this browser.",
         "fileDamaged": "“{0}” is damaged. Saving will create a separate file.",
         "repaired": "Repaired {0} Timeline step.|Repaired {0} Timeline steps.",
@@ -2662,7 +2662,7 @@
         "editCover": "Edit in Cover Editor",
         "makePreview": "Make from BGM…",
         "notLoaded": "not loaded",
-        "discard": "Discard changes to Level Info?"
+        "discard": "Discard Changes to Level Info?"
     },
     "statistics": {
         "combo": "Combo",
@@ -2747,7 +2747,7 @@
         "chooseAudio": "Choose Audio…",
         "bgmMayBeTooLong": "The BGM was not loaded. Audio files can be up to {0} minutes long.",
         "bgmTooLong": "The BGM is longer than {0} minutes and was not loaded.",
-        "bgmDiffers": "This is a different file from the original BGM, “{0}”.",
+        "bgmDiffers": "This is a different file from the original BGM, {0}.",
         "bgmDiffersUnnamed": "This is a different file from the original BGM.",
         "newLevel": "New level",
         "reopen": "Reopen “{0}”",
@@ -2855,7 +2855,7 @@
         "changedOnDisk": "Changed on disk",
         "newerOnDisk": "Newer on disk",
         "changedOnDiskName": "“{0}” has changed on disk since you opened or saved it here.",
-        "newerOnDiskName": "A newer version of “{0}” is on disk.",
+        "newerOnDiskName": "A newer version of {0} is on disk.",
         "notStored": "Not stored"
     },
     "notSaving": {

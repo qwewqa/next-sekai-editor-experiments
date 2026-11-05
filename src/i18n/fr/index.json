@@ -814,12 +814,12 @@
       "tempo": "Ajoute des changements de BPM pour définir le tempo de la partition."
     },
     "timeScale": {
-      "speed": "Ajoute des changements d’échelle de temps pour régler la vitesse d’un groupe. Les notes se jouent toujours aux mêmes moments."
+      "speed": "Ajoute des échelles de temps pour régler la vitesse d’un groupe. Les notes se jouent toujours aux mêmes moments."
     },
     "groups": {
-      "speed": "Chaque groupe a sa propre vitesse, réglée par ses changements d’échelle de temps.",
-      "current": "Appuyez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouveaux changements d’échelle de temps y sont ajoutés, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés.",
-      "currentClick": "Cliquez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouveaux changements d’échelle de temps y sont ajoutés, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés.",
+      "speed": "Chaque groupe a sa propre vitesse, réglée par ses échelles de temps.",
+      "current": "Appuyez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouvelles échelles de temps y sont ajoutées, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés.",
+      "currentClick": "Cliquez sur un groupe pour en faire le groupe actuel. Les nouvelles notes et les nouvelles échelles de temps y sont ajoutées, et les objets des autres groupes ne peuvent pas être sélectionnés ni modifiés.",
       "manage": "Gérer les groupes affiche les groupes et permet de les ajouter, de les réordonner et de les modifier.",
       "switch": "Passer au groupe précédent et Passer au groupe suivant changent le groupe actuel, et Passer à tous les groupes active tous les groupes."
     },
@@ -1107,7 +1107,7 @@
           "both": "Affiche les deux formats ensemble et règle l’alignement par rapport aux mesures."
         }
       },
-      "showGroupName": "Affichage des noms des groupes à côté des notes et des changements d’échelle de temps qui ne sont pas dans le groupe par défaut.",
+      "showGroupName": "Affichage des noms des groupes à côté des notes et des échelles de temps qui ne sont pas dans le groupe par défaut.",
       "showStageName": "Affichage des noms des scènes à côté des notes et des événements de scène lorsque Scènes dynamiques est activé.",
       "maxScrollX": "Distance de défilement à gauche ou à droite du centre de la partition. Dans la disposition Composée, vous pouvez faire défiler plus loin pour atteindre les scènes au-delà de cette limite.",
       "elevationEditorSideBySide": {
@@ -1730,9 +1730,9 @@
       "newLevel": "Nouveau niveau créé",
       "importedLevel": "Niveau importé",
       "movedGroupsInto": "{0} groupe déplacé dans le dossier {1}|{0} groupes déplacés dans le dossier {1}",
-      "movedGroupsOut": "{0} groupe sorti des dossiers|{0} groupes sortis des dossiers",
+      "movedGroupsOut": "{0} groupe sorti de son dossier|{0} groupes sortis des dossiers",
       "movedStagesInto": "{0} scène déplacée dans le dossier {1}|{0} scènes déplacées dans le dossier {1}",
-      "movedStagesOut": "{0} scène sortie des dossiers|{0} scènes sorties des dossiers"
+      "movedStagesOut": "{0} scène sortie de son dossier|{0} scènes sorties des dossiers"
     }
   },
   "modals": {
@@ -2169,14 +2169,14 @@
         "meter": "Nombre de temps par mesure.",
         "timeScale": "Multiplicateur de vitesse des notes du groupe. Les valeurs négatives les font reculer.",
         "skip": "Distance du saut des notes du groupe vers la ligne de jugement. 1 correspond à la distance parcourue par les notes en un temps à une échelle de temps de 1.",
-        "timeScaleEase": "Évolution de la vitesse jusqu’au prochain changement d’échelle de temps du groupe.",
+        "timeScaleEase": "Évolution de la vitesse jusqu’à la prochaine échelle de temps du groupe.",
         "timeScaleTransition": {
           "choices": {
             "timeScale": "L’espacement des notes montre les changements de vitesse à venir.",
             "scroll": "L’espacement des notes suit la vitesse actuelle."
           }
         },
-        "hideNotes": "Masque les notes du groupe et les segments de connecteur qui y commencent. Dure jusqu’au prochain changement d’échelle de temps du groupe.",
+        "hideNotes": "Masque les notes du groupe et les segments de connecteur qui y commencent. Dure jusqu’à la prochaine échelle de temps du groupe.",
         "cameraLeft": "Bord gauche de la vue de la caméra, en voies.",
         "cameraSize": "Largeur de la vue de la caméra, de 6 à 24 voies.",
         "cameraZoomTargetLane": "Voie qui sert de centre au zoom, comptée depuis le milieu de la vue de la caméra.",

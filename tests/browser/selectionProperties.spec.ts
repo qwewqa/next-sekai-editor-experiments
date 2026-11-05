@@ -133,13 +133,13 @@ test.describe('mixed values', () => {
         await expect(color.locator('option', { hasText: 'Default' })).toHaveText('Default · 4')
         await expect(color.locator('option', { hasText: 'Blue' })).toHaveText('Blue')
 
-        await selection(page).getByRole('button', { name: 'Select only Red (1)' }).click()
+        await selection(page).getByRole('button', { name: 'Select Only Red (1)' }).click()
         expect(await selectedCount(page)).toBe(1)
         await expect(color.locator('option:checked')).toHaveText('Red')
     })
 
     test('narrowing by keyboard keeps focus in the field', async ({ page }) => {
-        await selection(page).getByRole('button', { name: 'Select only Red (1)' }).focus()
+        await selection(page).getByRole('button', { name: 'Select Only Red (1)' }).focus()
         await page.keyboard.press('Enter')
         expect(await selectedCount(page)).toBe(1)
         await expect(control(page, 'Note Color')).toBeFocused()
@@ -170,7 +170,7 @@ test.describe('mixed values', () => {
         await expect(control(page, 'Critical')).toHaveAccessibleDescription(
             'Mixed: Disabled 4, Enabled 1',
         )
-        await critical.getByRole('button', { name: 'Select only Enabled (1)' }).click()
+        await critical.getByRole('button', { name: 'Select Only Enabled (1)' }).click()
         expect(await selectedCount(page)).toBe(1)
     })
 
@@ -192,7 +192,7 @@ test.describe('mixed values', () => {
         await expect(type.locator('.form-field-coverage-chip')).toHaveCount(0)
         // The chip narrows to the objects the field covers.
         await attached
-            .getByRole('button', { name: 'Select only objects this property applies to (1 of 5)' })
+            .getByRole('button', { name: 'Select Only Objects with This Property (1 of 5)' })
             .click()
         expect(await selectedCount(page)).toBe(1)
     })
@@ -410,7 +410,7 @@ test.describe('kind blocks', () => {
                 .filter({ has: page.getByText('Beat', { exact: true }) }),
         ).toHaveCount(1)
         const notes = header(page, /^Notes/)
-        await notes.getByRole('button', { name: 'Select only Notes (4)' }).focus()
+        await notes.getByRole('button', { name: 'Select Only Notes (4)' }).focus()
         await page.keyboard.press('Enter')
         expect(await selectedCount(page)).toBe(4)
         await expect(control(page, 'Beat')).toHaveCount(1)
@@ -436,8 +436,8 @@ test.describe('kind blocks', () => {
             await nextTick()
         })
         const action = header(page, /^Time Scales/).getByRole('button')
-        await expect(action).toHaveText('Select only')
-        await expect(action).toHaveAccessibleName('Select only Time Scales (4)')
+        await expect(action).toHaveText('Select Only')
+        await expect(action).toHaveAccessibleName('Select Only Time Scales (4)')
         // French names it at greater length than a narrow header has room for.
         await page.evaluate(() => (window.editorTest.settings.locale = 'fr'))
         const french = header(page, /^Échelles de temps/).getByRole('button')
@@ -459,7 +459,7 @@ test.describe('kind blocks', () => {
             })
             await nextTick()
         })
-        await expect(header(page, /^Notes/).getByRole('button')).toHaveText('Select only')
+        await expect(header(page, /^Notes/).getByRole('button')).toHaveText('Select Only')
         // Widths the action gets wrong, by the title's and the named action's own widths.
         const wrong = await header(page, /^Notes/).evaluate(async (element) => {
             const { settings } = window.editorTest
@@ -978,7 +978,7 @@ test('two-value choices list the values in use while mixed', async ({ page }) =>
         .locator('.form-field')
         .filter({ has: page.getByRole('radiogroup', { name: /^Transition/ }) })
     await expect(field.locator('.form-field-mixed-value')).toHaveText(['Time Scale 2', 'Scroll 2'])
-    await field.getByRole('button', { name: 'Select only Scroll (2)' }).click()
+    await field.getByRole('button', { name: 'Select Only Scroll (2)' }).click()
     expect(await selectedCount(page)).toBe(2)
 })
 

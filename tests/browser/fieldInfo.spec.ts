@@ -229,7 +229,7 @@ test.describe('in Settings', () => {
         const lines = [
             'On: Shades the zone on any device.',
             'Off: Leaves the zone unshaded.',
-            'Touch Screens Only: Shades the zone when touch input is available.',
+            'Touchscreens Only: Shades the zone when touch input is available.',
         ]
         await expect(root.getByRole('combobox')).toHaveAccessibleDescription(
             [intro, ...lines].join(' '),

@@ -188,7 +188,7 @@ test('a clean bound file: no damage found, the file and the stored history check
     const dialog = checkDialog(page)
     await expect(dialog).toContainText('No damage found.')
     await expect(dialog).toContainText(
-        'Checked “coconut.nxsp” and the history stored in this browser.',
+        'Checked coconut.nxsp and the history stored in this browser.',
     )
     await expect(dialog).not.toContainText('could not be read')
     expect(await readFile(page, 'coconut.nxsp')).toEqual(before)
@@ -211,7 +211,7 @@ test('a chunk damaged in the file after it was opened: damaged, unlinked, the fi
         '“coconut.nxsp” is damaged. Saving will create a separate file.',
     )
     await expect(dialog).toContainText(
-        'Checked “coconut.nxsp” and the history stored in this browser.',
+        'Checked coconut.nxsp and the history stored in this browser.',
     )
     await expect(dialog).not.toContainText('No damage found.')
     await expect(label(page)).toContainText(/separate copy of coconut.nxsp/i)

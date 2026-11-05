@@ -179,9 +179,7 @@ test('a picker waiting for nse-bind refuses a file filled by another Save', asyn
 
     const written = await readFile(b, 'coconut.nxsp')
     await release(a)
-    await expect(saveDialog(a, 'Save')).toContainText(
-        'The contents of “coconut.nxsp” have changed.',
-    )
+    await expect(saveDialog(a, 'Save')).toContainText('The contents of coconut.nxsp have changed.')
     expect(await readFile(a, 'coconut.nxsp')).toEqual(written)
     expect((await sessionOf(a)).file).toBeUndefined()
     expect((await chainById(a, bChain.chainId))?.file).toMatchObject({ name: 'coconut.nxsp' })

@@ -44,7 +44,7 @@ const english = {
 }
 const en = {
     unreadable: 'This level’s data could not be read.',
-    noBpm: 'Invalid level: initial BPM not found',
+    noBpm: 'Invalid level: initial BPM not found.',
 }
 
 const opened = async (bytes: Uint8Array) => {
