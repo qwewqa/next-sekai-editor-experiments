@@ -241,11 +241,11 @@ const traceOf = (color) =>
 
 // Critical notes in play carry a soft halo in the base's critical halo colour: the critical
 // diamonds' (above), and this glow round critical bodies and traces, in the style's light critical
-// glow colour. Damage notes carry one in their rim colour, as the base's do, except on Black.
-// Normal notes and the result-bucket Basics have none. The glow is a Gaussian blur of the art's
-// box, under the art, fading out 3 sigma past it. It is under half alpha at the art's edge, so the
-// art's half-alpha edge stays put and the note keeps its cell. It is drawn as the product of two
-// gradients, across the note and along it, so the slices join where a blur filter, cut at each
+// glow colour. Damage notes carry one in a deeper shade of their face, as the base's do, except on
+// Black. Normal notes and the result-bucket Basics have none. The glow is a Gaussian blur of the
+// art's box, under the art, fading out 3 sigma past it. It is under half alpha at the art's edge,
+// so the art's half-alpha edge stays put and the note keeps its cell. It is drawn as the product of
+// two gradients, across the note and along it, so the slices join where a blur filter, cut at each
 // slice's edge, would leave seams. Every slice of a body, trace or damage note has its kind's glow
 // frame, glowing or not, since the engine's perspective mapping places art alike only on the same
 // quad.
@@ -370,23 +370,41 @@ const bar = (kind, color, { edge = 'none', light } = {}) => {
         { transform: basicBox },
     )
 }
-/** A style's damage note face: the base's deep shade, Black's accent. */
+// A damage note's face is the base's deep shade of its style, mixed further towards black. The
+// default starts from the editor's damage colour and Black from its accent. The rim is the face,
+// except on Black, where it is the face a quarter of the way to black. The halo (above) is the face
+// a quarter of the way to black, and Black has none.
+const damageDarken = 0.15
 const damageFaceOf = (color) =>
-    color === 'Black' ? styleColors('Black')[2] : baseColors.styleDamage[color]
-// A damage note's rim is its face colour a quarter of the way to black, near the base's dark edge.
-// Black keeps its light inner colour as the rim, since a dark rim would hide its bar.
-const damageEdge = (face, color) =>
-    color === 'Black' ? styleColors('Black')[1] : mix(face, '#000000', 0.25)
-/** A damage slice in a style's face colour, at the slim end width for the base's purple trace. */
-const damageImage = (part, face, color, slim = false) => {
-    const edge = damageEdge(face, color)
-    const glow = color !== 'Black' && edge
+    mix(
+        color === undefined
+            ? damageFace
+            : color === 'Black'
+              ? styleColors('Black')[2]
+              : baseColors.styleDamage[color],
+        '#000000',
+        damageDarken,
+    )
+const damageShade = (face) => mix(face, '#000000', 0.25)
+/** A damage note's [face, rim, halo] for a style, or the default's. */
+const damageColors = (color) => {
+    const face = damageFaceOf(color)
+    return color === 'Black' ? [face, damageShade(face)] : [face, face, damageShade(face)]
+}
+/** A damage slice in a style's colours, at the slim end width for the base's purple trace. */
+const damageImage = (part, color, slim = false) => {
+    const [face, edge, glow] = damageColors(color)
     const slice = noteSlice(slim ? 'damage slim' : 'damage', part, glow)
     return image(
         `note-damage-${part.toLowerCase()}`,
         { ...(slim ? damageSlimVars : damageVars), color: face, edge, ...slice.vars },
         { stretch: true, transform: slice.transform, ...(glow && { glow }) },
     )
+}
+/** A damage note's whole bar, for the Basic icons and the base's whole purple trace. */
+const damageBar = (color) => {
+    const [face, edge] = damageColors(color)
+    return bar('damage', face, { edge })
 }
 
 const bodyFamilies = [
@@ -549,7 +567,7 @@ export function skinSprites() {
                     `Sekai ${family} ${part}`,
                     bodyImage(part, bodyColors[key], isCritical(family) && baseColors.criticalGlow),
                 )
-        for (const part of parts) add(`Sekai Damage Note ${part}`, damageImage(part, damageFace))
+        for (const part of parts) add(`Sekai Damage Note ${part}`, damageImage(part))
     })
 
     group('Trace bodies (slim)', () => {
@@ -587,7 +605,7 @@ export function skinSprites() {
                 )
         // The base's purple trace is its damage note, drawn at the slim end width.
         for (const part of ['Left', 'Right'])
-            add(`Sekai Trace Note Purple ${part}`, damageImage(part, damageFace, undefined, true))
+            add(`Sekai Trace Note Purple ${part}`, damageImage(part, undefined, true))
         alias('Sekai Trace Note Purple Middle', 'Sekai Damage Note Middle')
     })
 
@@ -605,7 +623,7 @@ export function skinSprites() {
                     name,
                     image(
                         'note-damage-basic',
-                        { color: damageFace, edge: damageEdge(damageFace) },
+                        { color: damageColors()[0], edge: damageColors()[1] },
                         { transform: basicBox },
                     ),
                 )
@@ -775,7 +793,7 @@ export function skinSprites() {
         add('Sekai Trace Note Green', bar('trace', traceColors.green))
         add('Sekai Trace Note Red', bar('trace', traceColors.red))
         add('Sekai Trace Note Yellow', bar('critical', traceColors.yellow))
-        add('Sekai Trace Note Purple', bar('damage', damageFace, { edge: damageEdge(damageFace) }))
+        add('Sekai Trace Note Purple', damageBar())
         for (const color of colorNames) {
             const [outer, inner, accent] = styleColors(color)
             const critical = baseColors.styleCritical[color]
@@ -792,12 +810,7 @@ export function skinSprites() {
                         ? bar('critical', critical.trace, { light: trace.light })
                         : bar('trace', trace.bar, { light: trace.light }),
                 )
-            add(
-                `Sekai Damage Note Basic ${color}`,
-                bar('damage', damageFaceOf(color), {
-                    edge: damageEdge(damageFaceOf(color), color),
-                }),
-            )
+            add(`Sekai Damage Note Basic ${color}`, damageBar(color))
         }
     })
 
@@ -824,10 +837,7 @@ export function skinSprites() {
                             : slimImage(part, trace.bar, trace.light),
                     )
             for (const part of parts)
-                add(
-                    `Sekai Damage Note ${part} ${color}`,
-                    damageImage(part, damageFaceOf(color), color),
-                )
+                add(`Sekai Damage Note ${part} ${color}`, damageImage(part, color))
             const [face, criticalFace] = baseColors.styleDiamond[color]
             const halo = baseColors.styleDiamondHalo[color]
             const haloed =

@@ -14,8 +14,8 @@ export const builtinResources: readonly {
         source: 'builtin',
         type: 'skin',
         hashes: {
-            data: 'e3cbc733d74a64a869968cd40c286690359b3397',
-            texture: 'de89eea9db0a23a0f529224e60cb636e72649268',
+            data: '2a1c37d42e378dbb8c4064825a38f1b64a761384',
+            texture: 'f9fe555c929bce01a184af8914f621a85468e516',
         },
     },
     {

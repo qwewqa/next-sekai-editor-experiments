@@ -58,8 +58,8 @@
             "bytes": 123502
         },
         "public/builtin/skin.scp": {
-            "sha256": "89ca133965e993ce02b8f389f752b4a1c2f1478886f5a4fdb4491ed231d9ce39",
-            "bytes": 2013721
+            "sha256": "fba06c544eb6ddb6a2caa32774f72ad7a4aa2350162d9ac8dad6bf56004cc130",
+            "bytes": 2012341
         }
     },
     "resources": {
@@ -70,14 +70,14 @@
                 "bytes": 1986
             },
             "data": {
-                "sha1": "e3cbc733d74a64a869968cd40c286690359b3397",
-                "sha256": "d708fb82ff6d8997bf3cd540141dd3e6e2f5302c5a4f92160c733dc8d17d78d0",
-                "bytes": 27109
+                "sha1": "2a1c37d42e378dbb8c4064825a38f1b64a761384",
+                "sha256": "374dc6253bb6d452f337c1a8a96c1f7eebf1d01b4165d0128b0cb1ad27162e04",
+                "bytes": 27115
             },
             "texture": {
-                "sha1": "de89eea9db0a23a0f529224e60cb636e72649268",
-                "sha256": "ecdf51de7e6e53fe8fc69756d1d123b0ea3d2643297f8c9809da687d991836af",
-                "bytes": 1982620
+                "sha1": "f9fe555c929bce01a184af8914f621a85468e516",
+                "sha256": "7a98e5f07fc3a905216cf117120dfdd84de85a713cdba919e35b5b7152b4029b",
+                "bytes": 1981227
             }
         },
         "particle": {

@@ -118,9 +118,8 @@ const bordered = [
     ['Sekai Critical Note', '', 0.25],
     ['Sekai Critical Flick Note', ' Red', 0.25],
     ['Sekai Normal Note', ' Purple', 0.25],
-    ['Sekai Damage Note', '', 0.25],
-    ['Sekai Damage Note', ' Blue', 0.25],
-    ['Sekai Trace Note Purple', '', 0.125],
+    // Damage notes have no border of their own, except on Black.
+    ['Sekai Damage Note', ' Black', 0.25],
 ]
 
 test('note borders render as thick on every side at stage tilt 0', () => {
