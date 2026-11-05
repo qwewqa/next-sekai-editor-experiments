@@ -52,9 +52,9 @@ export const damage = { color: '#a50acc', edge: '#d28ae6' }
 
 /**
  * Colours sampled from the base set (Next SEKAI 01) where ours must match it side by side: the
- * connectors (at rest and held), the slot glows, the effects, the standard ticks and markers and the
- * styled diamonds. The base's styled pieces follow its own rule per style hue, so they are listed
- * per style.
+ * connectors (at rest and held), the slot glows, the effects, the standard ticks and markers, the
+ * grids, the styled diamonds and the styled critical notes. The base's styled pieces follow its own
+ * rule per style hue, so they are listed per style.
  */
 export const baseColors = {
     connector: {
