@@ -445,7 +445,7 @@ const isSameSlides = (a: NoteObject[][], b: NoteObject[][]) =>
         )
     })
 
-// Each pasted BPM replaces the first unpasted one at its beat and follows any left there.
+// Each pasted BPM replaces every BPM change at its beat except those this paste added.
 const toGhostBpms = (bpms: BpmIntegral[], pasted: BpmObject[]) => {
     if (!pasted.length) return bpms
     const added = new Set<BpmIntegral>()
@@ -1400,9 +1400,8 @@ const pastes: {
 } = {
     bpm: (transaction, onlyType, entity, startLane, lane, beat, flip, batch, displaced) => {
         const object = toMovedBpmObject(entity, beat)
-        displaced?.push(
-            ...replaceBpmsAt(transaction, object.beat, (other) => batch.includes(other)),
-        )
+        const replaced = replaceBpmsAt(transaction, object.beat, (other) => batch.includes(other))
+        displaced?.push(...replaced)
 
         return addBpm(transaction, object)
     },
