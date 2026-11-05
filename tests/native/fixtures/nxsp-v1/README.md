@@ -19,9 +19,9 @@ contexts):
 | `kept-first.nxsp` | B: the file on its disk replaced by A10's, then Save and the conflict dialog's Replace | `revision.replaces` names the revision the Replace wrote over; the base's `completeFrom` is carried |
 | `carried.nxsp` | D: `full.nxsp` opened in a browser without pickers, edited and saved (a download) | The base's `completeFrom`, carried |
 | `not-carried.nxsp` | D: a stored chunk only a row of `full.nxsp` needs goes bad, and the next Save finds it | `completeFrom` is its own revision; the damaged row `kept: false` |
-| `media-not-held.nxsp` | D: Undo to a state whose BGM, cover and preview this browser does not hold, then Save As… | `bgm`, `metadata.cover` and `metadata.preview` without a file, with `hash`, `size` and `type` |
-| `bgm-unticked.nxsp` | D: back at the head, Save As… with BGM unticked | No `bgm` key while the head records a BGM |
+| `media-not-held.nxsp` | D: Undo to a state whose BGM, cover and preview this browser does not hold, then Save As | `bgm`, `metadata.cover` and `metadata.preview` without a file, with `hash`, `size` and `type` |
+| `bgm-unticked.nxsp` | D: back at the head, Save As with BGM unticked | No `bgm` key while the head records a BGM |
 | `no-history.nxsp` | A8: a level file opened (chain I), one edit, Save with History unticked | No history |
-| `no-media.nxsp` | A7: File › New (chain N), one edit, Save As… | History from the new level's `init` (`init`, `edit`, `save`); no BGM, cover or preview in any state |
+| `no-media.nxsp` | A7: File › New (chain N), one edit, Save As | History from the new level's `init` (`init`, `edit`, `save`); no BGM, cover or preview in any state |
 
 A file's `project.json` `appVersion` is the build's, which predates the 0.6.0 bump. Readers never compare it. A file's `revision.device.id` is per document: an HMAC of the lineage under the browser's own id.

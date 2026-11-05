@@ -327,7 +327,7 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 
 ### 5.8 Destructive buttons outside dialogs
 
-- **Reset Settings…, Reset Shortcuts… and Remove… for a stored preview asset:** a quiet red label (`btn-danger-quiet`) and a confirmation (8.3).
+- **Reset Settings, Reset Shortcuts and Remove for a stored preview asset:** a quiet red label (`btn-danger-quiet`) and a confirmation (8.3).
 - **Reset to Default and Use Built-in for All** in Preview Assets: a quiet red label with no confirmation. Each rewrites every type's source in one press.
 
 ---
@@ -458,7 +458,7 @@ A held or doubled Enter must not confirm a destructive delete. Enter on a menu's
 - `tests/browser/confirmDialog.spec.ts` checks that a held Enter and a doubled Enter (80 ms) do not confirm, that a fresh press after 300 ms does, and that focus on open is Cancel for a destructive confirm and the confirm button otherwise.
 - Other specs that confirm a Confirm or Choice dialog press through the guard with `confirmWhenReady` or `confirmKeyWhenReady` (`tests/browser/confirmWhenReady.ts`). A press inside the guard does nothing by design, so the helper presses again until the dialog has closed. It never waits a fixed time. A spec that tests the guard itself holds time with `page.clock`, as `confirmDialog.spec.ts` does.
 
-### 8.3 Reset Settings…, Reset Shortcuts… and Remove…: confirm with Cancel as the default
+### 8.3 Reset Settings, Reset Shortcuts and Remove: confirm with Cancel as the default
 
 None of these can be undone. Remove deletes a stored preview asset whether or not a type uses it, and the user may not be able to load it again.
 
@@ -466,7 +466,7 @@ None of these can be undone. Remove deletes a stored preview asset whether or no
 - ChoiceModal's guard (8.2) applies.
 - A destructive ConfirmModal, for deletes that can be undone, also defaults to Cancel (5.2).
 - No notice follows a reset.
-- The Reset Settings… message, "Restore default settings, keeping keyboard shortcuts?", says that shortcuts are kept.
+- The Reset Settings message, "Restore default settings, keeping keyboard shortcuts?", says that shortcuts are kept.
 
 ---
 

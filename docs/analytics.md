@@ -25,7 +25,7 @@ Usage statistics must never make the editor worse to use. These rules hold for e
 - **Bounded memory:** at most 1,000 counters (900 of them `usage`), 50 queued events and 32 KB.
 - **Silent failure.** A blocked, offline, failing or hanging endpoint, or a client chunk gone after a deploy, shows nothing and holds nothing up.
 - **No storage.** No IndexedDB, Cache Storage or quota. The only stored value is the switch's setting. The lint keeps `src/analytics/` away from the notice, dialog and storage modules. Only `status.ts` may import the local-data modules, and only to read.
-- **Opt-out at once.** Turning the switch off drops the queue and the counters, and nothing more is sent, even when the page closes. Other open tabs stop too. Reset Settings… keeps the choice.
+- **Opt-out at once.** Turning the switch off drops the queue and the counters, and nothing more is sent, even when the page closes. Other open tabs stop too. Reset Settings keeps the choice.
 - **The data paths are never touched.** The client reads what the flows already know. It never calls a storage, Save or History function.
 
 A change that adds work to a hot path is measured with the perf tools, with statistics on and off (`docs/performance-testing.md`).
@@ -49,8 +49,8 @@ A hook is one call into `tally.ts`, or a read by the client. Nothing else on a h
 | `notify`, `recordDiagnostic` | `notices.<severity>`, `errors.<kind>` |
 | `finishStartup`, `failStartup` | `markStartup`: the time, the outcome, and whether the page was ever hidden |
 | `local/start.ts` | `note('reload')` when the tab's claim is its own reload |
-| Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed. Save and Export add `buildMs`, read from the clock on either side of the build await that already exists in their flows (`runBuild` and the Recent Sessions Save… build, and the `build` wrapper in `exportLevel/flow.ts`). No hook adds an await. Check adds `scope` and `size` from the plan it already holds. All but Export Level Data also call `busy` while they run, as Restore and Export Video do, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
-| `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, autoscroll, Quick Switch | `features.<name>` and `peekShown` |
+| Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed. Save and Export add `buildMs`, read from the clock on either side of the build await that already exists in their flows (`runBuild` and the Recent Sessions Save build, and the `build` wrapper in `exportLevel/flow.ts`). No hook adds an await. Check adds `scope` and `size` from the plan it already holds. All but Export Level Data also call `busy` while they run, as Restore and Export Video do, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
+| `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions, the minimap, autoscroll, Quick Switch | `features.<name>` and `peekShown` |
 | `history/index.ts`, `editor/save/report.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
 | Export Video | `record('exportVideo', ...)` once per attempt. For a staged file, the event is recorded on its first delivery or discard. `took` is captured when work ends, before the wait for delivery. The clip length and settings are captured at the start. `features.videoPlayback` and `features.videoAdvanced` count the first use in each dialog. Playback in this dialog does not add to `playSeconds` |
 | The preview worker host | `record('preview', ...)` when the worker fails and the main thread takes over |
@@ -76,7 +76,7 @@ The client reads the rest: the settings (`snapshot.ts`), the load events, the st
 - the browser is not automated (`navigator.webdriver`), unless a dev build's test key or a loopback origin points it at a mock;
 - the page is on its site's host (`nse.qwewqa.dev` or `test.nse.qwewqa.dev`) or on this machine, so a copy of the files hosted elsewhere sends nothing.
 
-The switch appears only in a build with a target. Reset Settings… skips it, and its confirmation says so in those builds.
+The switch appears only in a build with a target. Reset Settings skips it, and its confirmation says so in those builds.
 
 ## Privacy rules
 
@@ -122,8 +122,8 @@ How the code enforces them:
 | `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `usageShare`, `cleanup`, `sessions` |
 | `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `objects`, `dynamicStages`, `bgm`, `historySteps` |
 | `preview` | client start if the preview is shown, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
-| `open` | each Open… | `format`, `via`, `size`, `outcome`, `reason`, `took`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
-| `save` | each Save, Save As…, Download Again and Recent Sessions' Save… | `action`, `target`, `history`, `bgm`, `size`, `took`, `buildMs`, `outcome`, `reason`, `step`, `emptied`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
+| `open` | each Open | `format`, `via`, `size`, `outcome`, `reason`, `took`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
+| `save` | each Save, Save As, Download Again and Recent Sessions' Save | `action`, `target`, `history`, `bgm`, `size`, `took`, `buildMs`, `outcome`, `reason`, `step`, `emptied`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
 | `export` | each Export | `format`, `target`, `size`, `took`, `buildMs`, `outcome`, `reason`, `step`, `emptied`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
 | `exportVideo` | once per attempt, on writing, failure, cancellation, first delivery or discard | `outcome`, `stage`, `reason`, `emptied`, `format`, `support`, `target`, `resolution`, `frameRate`, `aspect`, `quality`, `renderScale`, `antialias`, `audio`, `range`, `source`, `hidden`, `length`, `size`, `took`, `speed`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |
 | `check` | each Check File and History | `outcome`, `took`, `scope`, `size`, `cores`, `deviceMemory`, `engine`, `touch`, `dpr`, `viewport`, `viewportHeight`, `viewportAspect` |

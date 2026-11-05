@@ -148,7 +148,7 @@ Operation codecs are strict. Data with a member the codec does not list fails it
 
 ## 7. What the readers do not do
 
-- They do not expect a chain to outlive an older build. A user's Delete or Delete Sessions… in an older build removes a whole chain by key range, whatever its sessions' versions. A newer build reads a missing chain, parent session or body as removed, as this one does.
+- They do not expect a chain to outlive an older build. A user's Delete or Delete Sessions in an older build removes a whole chain by key range, whatever its sessions' versions. A newer build reads a missing chain, parent session or body as removed, as this one does.
 - They do not read the history of a file whose `minor` is newer, or of one that is damaged.
 - They do not carry through a Save any content they do not read, except `extra` and the contents of `x` and of an operation.
 - They do not recover missing or unreadable level data from the history, or substitute an alternate payload for a supported pointer that names missing or damaged data. A later build may; that changes how a build treats damaged files, not what files contain.
