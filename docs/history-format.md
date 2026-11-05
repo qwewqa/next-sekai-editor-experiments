@@ -383,7 +383,7 @@ A failed write keeps the session's binding. If the picked file was the bound one
 | `not-project` | No `project.json`, or `format != "nxsp"`. |
 | `unreadable` | Not a readable ZIP; more than 65,535 entries; `project.json` or the selected level payload missing, ambiguous or unreadable (cap, CRC, ZIP/gzip decoding, UTF-8, JSON, nesting). Nothing opens. |
 | `nxsp`, `open: 'full'` | The report is empty or holds only `newer-patch`. |
-| `nxsp`, `open: 'partial'` | Anything else in the report. Unbound, a new `docId`, no `revision`. Save opens the file picker; choosing the original replaces it with the content the editor read. |
+| `nxsp`, `open: 'partial'` | Anything else in the report. Unbound, a new `docId`, no `revision`. Save shows the Save dialog, then writes to a picked file or downloads it. Choosing the original in the picker replaces it with only the content this build supports. |
 
 History is read only when the report holds no `damaged` and no `newer-minor`.
 

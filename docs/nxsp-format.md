@@ -861,7 +861,7 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 | `not-project` | A ZIP without `project.json`, or whose `project.json` is not an object with `format: "nxsp"`. |
 | `unreadable` | Not a readable ZIP (no end record and no local header; more than 65,535 entries); `project.json` ambiguous or unreadable (cap, CRC, inflate, UTF-8, JSON, depth); the selected level payload missing, ambiguous or unreadable (§4.1). Nothing opens. |
 | `nxsp`, `full` | The report is empty or holds only `newer-patch`. |
-| `nxsp`, `partial` | Any other report item. The editor opens it as a separate copy: unbound, a new document id, no revision. Save opens the file picker; choosing the original replaces it with the content the editor read. |
+| `nxsp`, `partial` | Any other report item. The editor opens it as a separate copy: unbound, a new document id, no revision. Save shows the Save dialog, then writes to a picked file or downloads it. Choosing the original in the picker replaces it with only the content this build supports. |
 
 The editor's open is whole only when the result is `full`, the level report (§7.5) is empty, and the level parsed; a refused level opens nothing.
 

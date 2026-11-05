@@ -46,7 +46,7 @@ An older reader can meet new content in two ways. A file that **only adds someth
 - New content that an older reader reports as unknown (a ZIP entry it does not name, a `parts` key) still makes **that** open partial and unbound (`unknown-entry`, `unknown-key`), whatever the `patch`. `patch` gives the shorter line and a whole open only when nothing else is unknown. That is the case for content a reader ignores by rule (`x`, `cache/`, `extra` keys).
 - A partial open never says "newer version" twice. A newer `patch` adds its line only when no other reason gives one.
 
-A partial open stays unbound, so Save opens the file picker. The picker suggests a separate file. Choosing the original replaces it with the content this editor read, once the user confirms the OS's replace prompt.
+A partial open stays unbound, so Save shows the Save dialog, then writes to a picked file or downloads it. The picker suggests a separate file. Choosing the original replaces it with only the content this build supports, once the user confirms the OS's replace prompt.
 
 ## 3. The extension points
 
