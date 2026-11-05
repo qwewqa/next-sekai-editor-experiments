@@ -195,6 +195,7 @@ export const createExportJob = (options: {
             throw new Error(`Encoder configuration unavailable: ${codecs.reason}`)
         return {
             settings: structuredClone(settings),
+            filter: readPreviewFilter(settings.antialias),
             codecs,
             samples,
             frames: settings.frames,
@@ -443,7 +444,11 @@ export const createExportJob = (options: {
             const pending = (async () => {
                 await prepare()
                 if (!host) throw new Error('Export worker is unavailable')
-                return host.view(time, { ...settings, ...viewSettings })
+                return host.view(
+                    time,
+                    { ...settings, ...viewSettings },
+                    readPreviewFilter(settings.antialias),
+                )
             })()
             lastView = pending
             return pending

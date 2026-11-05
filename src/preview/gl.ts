@@ -226,6 +226,8 @@ export type PreviewSurface = Omit<PreviewRenderer, 'setTexture'> & {
      * stay.
      */
     releaseTextures: () => void
+    /** Sets the skin and particle atlases' filter for the frames drawn after it. */
+    setFilter: (filter: PreviewFilter) => void
     setRenderTarget: (options: RenderTargetOptions | undefined) => RenderTarget | undefined
     /** The caller owns this single-sample target and presents it after the composite. */
     setCompositeTarget: (target: RenderTarget | undefined) => void
@@ -283,6 +285,8 @@ export const createPreviewRenderer = (
     let tapsLocation: WebGLUniformLocation | null
     // The tap cap of slots 0 and 1. A pixel-art atlas has 0 and keeps nearest sampling.
     const taps = new Int32Array(2)
+    const interpolated: [boolean, boolean] = [false, false]
+    let atlasFilter = previewFilter
     let tapsChanged = true
 
     try {
@@ -347,7 +351,8 @@ export const createPreviewRenderer = (
     const outputs = new Array<number>(8)
 
     const setTaps = (slot: 0 | 1, interpolation: boolean) => {
-        taps[slot] = interpolation && previewFilter !== 'single' ? previewFilter : 0
+        interpolated[slot] = interpolation
+        taps[slot] = interpolation && atlasFilter !== 'single' ? atlasFilter : 0
         tapsChanged = true
     }
 
@@ -436,6 +441,12 @@ export const createPreviewRenderer = (
             restoreState = true
             // Without a flush, the deletes reach the GPU process only with the next frame.
             gl.flush()
+        },
+        setFilter(value) {
+            if (value === atlasFilter) return
+            atlasFilter = value
+            setTaps(0, interpolated[0])
+            setTaps(1, interpolated[1])
         },
         setCompositeTarget: (value) => {
             compositeTarget = value

@@ -1,6 +1,6 @@
 import { drawPreviewFrame } from '../../preview/drawFrame'
 import { createPreviewChartBuilder } from '../../preview/engine/chart'
-import { createPreviewRenderer } from '../../preview/gl'
+import { createPreviewRenderer, type PreviewFilter } from '../../preview/gl'
 import { linkProgram } from '../../preview/program'
 import { createRenderTarget } from '../../preview/renderTarget'
 import { applyMirror } from '../../preview/worker/mirror'
@@ -75,9 +75,15 @@ void main() { outColor = vec4(0.0, 0.0, 0.0, u_alpha); }`,
         const build = createPreviewChartBuilder()
         const mirror = applyMirror(undefined, scene.mirror)
         /** Whether the drawn frame passes the graphics check. Throws when it cannot be drawn. */
-        const draw = (time: number, clipTime?: number, settings: ExportSettings = s) => {
+        const draw = (
+            time: number,
+            clipTime?: number,
+            settings: ExportSettings = s,
+            filter: PreviewFilter = scene.filter,
+        ) => {
             try {
                 const s = settings
+                renderer.setFilter(filter)
                 const width = Math.round(s.width * s.renderScale)
                 const height = Math.round(s.height * s.renderScale)
                 renderer.setRenderTarget({ width, height, antialias: s.antialias })

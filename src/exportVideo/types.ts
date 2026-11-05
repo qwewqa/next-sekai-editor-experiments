@@ -43,5 +43,5 @@ export type ExportScene = {
     assets: ExportAssets
     filter: PreviewFilter
 }
-export type ExportConfig = SinkConfig & { settings: ExportSettings }
+export type ExportConfig = SinkConfig & { settings: ExportSettings; filter: PreviewFilter }
 export type ExportStart = ExportScene & ExportConfig

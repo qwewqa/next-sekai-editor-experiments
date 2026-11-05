@@ -1,3 +1,4 @@
+import type { PreviewFilter } from '../preview/gl'
 import { exportError, restoreExportError } from './error'
 import type { ExportFaults, FromExportWorker, ToExportWorker } from './protocol'
 import type { AudioBlock } from './timing'
@@ -18,6 +19,7 @@ export const createExportHost = (worker: Worker) => {
         | {
               time: number
               settings: ExportSettings
+              filter: PreviewFilter
               resolve(value: ImageBitmap | undefined): void
               reject(error: Error): void
           }
@@ -40,7 +42,7 @@ export const createExportHost = (worker: Worker) => {
         if (view || !pendingView) return
         view = pendingView
         pendingView = undefined
-        post({ type: 'view', time: view.time, settings: view.settings })
+        post({ type: 'view', time: view.time, settings: view.settings, filter: view.filter })
     }
     const viewMessage = (data: FromExportWorker) => {
         if (data.type === 'prepared') {
@@ -75,11 +77,11 @@ export const createExportHost = (worker: Worker) => {
                 post({ type: 'prepare', scene }, assetTransfers(scene.assets))
             })
         },
-        view(time: number, settings: ExportSettings) {
+        view(time: number, settings: ExportSettings, filter: PreviewFilter) {
             if (!prepared || running) return Promise.reject(new Error('Export view is unavailable'))
             return new Promise<ImageBitmap | undefined>((resolve, reject) => {
                 pendingView?.resolve(undefined)
-                pendingView = { time, settings, resolve, reject }
+                pendingView = { time, settings, filter, resolve, reject }
                 nextView()
             })
         },

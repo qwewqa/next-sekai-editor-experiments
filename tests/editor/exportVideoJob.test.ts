@@ -207,3 +207,48 @@ test('a failed preparation is tried again by the export', async () => {
     assert.equal(state.phase, 'ready', state.phase === 'failed' ? String(state.error) : '')
     assert.equal(workers, 2)
 })
+
+test('an Antialiasing change after the first view sets the filter of later views and the export', async () => {
+    for (const [first, then, filter] of [
+        [false, true, 4],
+        [true, false, 'single'],
+    ] as const) {
+        const sent: ToWorker[] = []
+        const job = createExportJob({
+            ...jobOptions(),
+            settings: { ...jobOptions().settings, antialias: first },
+            destination: async () => staged(),
+            worker: () => {
+                const made = {
+                    onmessage: undefined as ((event: { data: FromWorker }) => void) | undefined,
+                    postMessage(message: ToWorker) {
+                        sent.push(message)
+                        const answer: FromWorker | undefined =
+                            message.type === 'prepare'
+                                ? { type: 'prepared' }
+                                : message.type === 'view'
+                                  ? { type: 'view', bitmap: { close() {} } as ImageBitmap }
+                                  : message.type === 'start'
+                                    ? { type: 'done', result: {}, warnings: [] }
+                                    : undefined
+                        if (answer) setImmediate(() => made.onmessage?.({ data: answer }))
+                    },
+                    terminate() {},
+                }
+                return made as unknown as Worker
+            },
+        })
+        await job.preview(0)
+        job.configure({ ...jobOptions().settings, antialias: then })
+        await job.preview(0)
+        assert.equal((await job.start()).phase, 'ready')
+        const filters = sent.flatMap((message) =>
+            message.type === 'view'
+                ? [message.filter]
+                : message.type === 'start'
+                  ? [message.config.filter]
+                  : [],
+        )
+        assert.deepEqual(filters, [first ? 4 : 'single', filter, filter])
+    }
+})

@@ -225,7 +225,14 @@ export const installExportWorker = (
         } else if (data.type === 'view') {
             try {
                 if (!renderer || started) throw new Error('Export view is unavailable')
-                if (!renderer.draw(data.time, data.time - data.settings.in, data.settings))
+                if (
+                    !renderer.draw(
+                        data.time,
+                        data.time - data.settings.in,
+                        data.settings,
+                        data.filter,
+                    )
+                )
                     throw new GraphicsError('Export frame failed its graphics check')
                 const bitmap = renderer.canvas.transferToImageBitmap()
                 post({ type: 'view', bitmap }, [bitmap])

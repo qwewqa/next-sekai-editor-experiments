@@ -1,3 +1,4 @@
+import type { PreviewFilter } from '../preview/gl'
 import type { ExportFailure } from './error'
 import type { GraphicsLimits } from './graphics'
 import type { AudioBlock } from './timing'
@@ -18,7 +19,7 @@ export type ExportFaults = {
 export type ToExportWorker =
     | { type: 'limits' }
     | { type: 'prepare'; scene: ExportScene }
-    | { type: 'view'; time: number; settings: ExportSettings }
+    | { type: 'view'; time: number; settings: ExportSettings; filter: PreviewFilter }
     | { type: 'visibility'; hidden: boolean }
     | {
           type: 'start'
