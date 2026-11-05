@@ -378,6 +378,63 @@ test('a flipped stack marks the same from storage when a shared chunk moves past
     await check(stackOf(248, earlier, distinct(384), same(384)), 248, 768)
 })
 
+test('a stack split over chunks apart from each other marks the same from storage as in full', async () => {
+    type Side = { chunks: Rec[][] } | { leaves: Rec[][][] }
+    /** BPM snapshots `'0'`, `'1'`, ... from chunk lists or leaves; each part's key is its content. */
+    const layoutSource = (...sides: Side[]): PartSource => {
+        const nodes = new Map<string, { depth: 0 | 1; children: string[] }>()
+        const chunks = new Map<string, Rec[]>()
+        const chunkKey = (records: Rec[]) => {
+            const key = `chunk:${JSON.stringify(records)}`
+            chunks.set(key, records)
+            return key
+        }
+        const nodeKey = (depth: 0 | 1, children: string[]) => {
+            const key = `node${depth}:${children.join()}`
+            nodes.set(key, { depth, children })
+            return key
+        }
+        const roots = sides.map((side) => {
+            const top =
+                'chunks' in side
+                    ? nodeKey(0, side.chunks.map(chunkKey))
+                    : nodeKey(
+                          1,
+                          side.leaves.map((leaf) => nodeKey(0, leaf.map(chunkKey))),
+                      )
+            return { header: 'header', kinds: new Map<KindName, string>([['bpms', top]]) }
+        })
+        return {
+            root: (hex) => Promise.resolve(roots[Number(hex)]),
+            node: (hex) => Promise.resolve(nodes.get(hex)),
+            chunk: (hex) => Promise.resolve(chunks.get(hex)),
+        }
+    }
+    const recordsOf = (side: Side) => ('chunks' in side ? side.chunks : side.leaves.flat()).flat()
+    const bpm = (beat: number, value: number): Rec => [beat, value, 4]
+    const d = Array.from({ length: 24 }, (_, i) => bpm(4, 100 + i))
+    const s = Array.from({ length: 24 }, () => bpm(4, 90))
+    const x = [bpm(8, 120)]
+    const z = [bpm(12, 120)]
+    const reversed = [...d].reverse()
+    const check = async (before: Side, after: Side) => {
+        const input = await readCandidates(layoutSource(before, after), '0', '1')
+        assert.ok(input)
+        const full = diffChanges({
+            header: false,
+            kinds: [{ kind: 'bpms', before: recordsOf(before), after: recordsOf(after) }],
+        })
+        assert.equal(full.counts.bpms, 48)
+        assert.deepEqual(diffChanges(input), full)
+    }
+    // Empty chunks between the parts of the stack.
+    await check({ chunks: [d, [], s, []] }, { chunks: [[], s, [], reversed] })
+    // Chunks of other beats between them, out of the writer's order.
+    await check({ chunks: [d, x, s, z] }, { chunks: [x, s, z, reversed] })
+    // The same with shared leaves.
+    await check({ leaves: [[d], [x], [s], [z]] }, { leaves: [[x], [s], [z], [reversed]] })
+})
+
 test('connection changes keep their marks in the most layout, which added and removed objects decide', async () => {
     const beatsOf = async (before: State, after: State) => {
         const set = await diff(before, after)

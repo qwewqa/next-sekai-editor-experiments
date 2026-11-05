@@ -79,8 +79,14 @@ const trackOf = (kind: KindName, record: Rec) =>
     kind === 'bpms' || kind === 'cameraEvents' ? 0 : (record[0] as number)
 
 /** An event's same-beat stack: its track and beat. */
-export const stackKey = (kind: KindName, record: Rec) =>
+const stackKey = (kind: KindName, record: Rec) =>
     `${trackOf(kind, record)}|${String(record[eventBeat[kind]])}`
+
+/** An event's same-beat stack as a place to sort by: its beat, then its track. */
+export const stackPlace = (kind: KindName, record: Rec): readonly [number, number] => [
+    record[eventBeat[kind]] as number,
+    trackOf(kind, record),
+]
 
 const textOf = (record: Rec) => JSON.stringify(record)
 
