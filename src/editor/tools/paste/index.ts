@@ -53,7 +53,7 @@ import { toNoteEntity, type NoteEntity } from '../../../state/entities/slides/no
 import { toTimeScaleEntity, type TimeScaleEntity } from '../../../state/entities/timeScale'
 import { calculateBpms, toBpmIntegral, type BpmIntegral } from '../../../state/integrals/bpms'
 import { snapBeat } from '../../../state/integrals/grid'
-import { addBpm, removeBpm } from '../../../state/mutations/bpm'
+import { addBpm } from '../../../state/mutations/bpm'
 import { addCameraEventJoint } from '../../../state/mutations/events/camera'
 import { addStageMaskEventJoint } from '../../../state/mutations/events/stage/mask'
 import { addStagePivotEventJoint } from '../../../state/mutations/events/stage/pivot'
@@ -61,6 +61,7 @@ import { addStageStyleEventJoint } from '../../../state/mutations/events/stage/s
 import { addStageTransformEventJoint } from '../../../state/mutations/events/stage/transform.ts'
 import { addNote } from '../../../state/mutations/slides/note'
 import { addTimeScale, removeTimeScale } from '../../../state/mutations/timeScale'
+import { replaceBpmsAt } from '../../../state/operations/bpm'
 import {
     countNativeEntities,
     nonEmpty,
@@ -448,12 +449,12 @@ const isSameSlides = (a: NoteObject[][], b: NoteObject[][]) =>
 const toGhostBpms = (bpms: BpmIntegral[], pasted: BpmObject[]) => {
     if (!pasted.length) return bpms
     const added = new Set<BpmIntegral>()
-    const integrals = [...bpms]
+    let integrals = [...bpms]
     for (const object of pasted) {
-        const overlap = integrals.findIndex(
-            (integral) => integral.x === object.beat && !added.has(integral),
+        // As the paste does: every BPM change at the beat goes, except this paste's own.
+        integrals = integrals.filter(
+            (integral) => integral.x !== object.beat || added.has(integral),
         )
-        if (overlap >= 0) integrals.splice(overlap, 1)
         let index = bisect(integrals, 'x', object.beat)
         while (integrals[index]?.x === object.beat) index++
         const integral = toBpmIntegral(object)
@@ -1399,14 +1400,9 @@ const pastes: {
 } = {
     bpm: (transaction, onlyType, entity, startLane, lane, beat, flip, batch, displaced) => {
         const object = toMovedBpmObject(entity, beat)
-
-        const overlap = getInStoreGrid(transaction.store.grid, 'bpm', object.beat)?.find(
-            (entity) => entity.beat === object.beat && !batch.includes(entity),
+        displaced?.push(
+            ...replaceBpmsAt(transaction, object.beat, (other) => batch.includes(other)),
         )
-        if (overlap) {
-            displaced?.push(overlap)
-            removeBpm(transaction, overlap)
-        }
 
         return addBpm(transaction, object)
     },

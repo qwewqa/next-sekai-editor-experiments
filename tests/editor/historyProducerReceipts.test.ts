@@ -416,7 +416,7 @@ test('duplicate operands use the rebuilt effective note instead of a stale preco
     assert.equal(head.size, 2)
 })
 
-test('initial BPM move reports its retained anchor, fresh target and one displaced member of a destination pair', () => {
+test('initial BPM move reports its retained anchor, fresh target and both displaced members of a destination pair', () => {
     const transaction = createTransaction(baseState())
     addBpm(transaction, { beat: 4, bpm: 130, meter: 4 })
     addBpm(transaction, { beat: 4, bpm: 140, meter: 4 })
@@ -429,7 +429,7 @@ test('initial BPM move reports its retained anchor, fresh target and one displac
         {
             subject: 'bpm',
             changed: { bpm: 1 },
-            displaced: { bpm: 1 },
+            displaced: { bpm: 2 },
             retainedInitialBpm: true,
         },
     )
@@ -439,7 +439,7 @@ test('initial BPM move reports its retained anchor, fresh target and one displac
     )
     assert.deepEqual(
         bpmAt(state, 4).map(({ bpm }) => bpm),
-        [140, 120],
+        [120],
     )
     assert.deepEqual(
         bpmAt(source, 4).map(({ bpm }) => bpm),

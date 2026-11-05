@@ -287,6 +287,19 @@ test('the BPM change in effect after a same-beat stack is its last', () => {
     assert.deepEqual(tempo(2), [120, 4])
 })
 
+test('a lone BPM change moved by Beat onto a BPM pair replaces both', () => {
+    const bpm = kinds.find((kind) => kind.type === 'bpm')!
+    const before = edits(
+        baseState(),
+        (t) => add(t, bpm, 12, 1),
+        (t) => add(t, bpm, 12, 2),
+        (t) => add(t, bpm, 4, 3),
+    )
+    const moved = planEdit(before, [entityAt(before, bpm, 4, 3)], { beat: 12 })
+    assertKept(moved.state, bpm, 12, [3])
+    assert.equal(moved.displaced.length, 2)
+})
+
 test('moving one of a same-beat pair away and back puts it last, and that order is what is kept', () => {
     // The select tool's drag moves an event as a remove and an add (select.ts `moves`).
     for (const kind of kinds) {

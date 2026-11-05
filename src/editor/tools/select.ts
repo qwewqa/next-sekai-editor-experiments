@@ -67,6 +67,7 @@ import {
 } from '../../state/mutations/events/stage/transform'
 import { replaceNote } from '../../state/mutations/slides/note'
 import { addTimeScale, removeTimeScale, replaceTimeScale } from '../../state/mutations/timeScale'
+import { replaceBpmsAt } from '../../state/operations/bpm'
 import { changedNativeCounts, editInput } from '../../state/operations/historyReceipts'
 import { editChanges } from '../../state/operations/properties/plan'
 import { getInStoreGrid } from '../../state/store/grid'
@@ -1395,14 +1396,7 @@ const moves: {
         if (object.beat === entity.beat) return replaceBpm(transaction, entity, object)
 
         if (entity.beat) removeBpm(transaction, entity)
-
-        const overlap = getInStoreGrid(transaction.store.grid, 'bpm', object.beat)?.find(
-            (entity) => entity.beat === object.beat && !batch.includes(entity),
-        )
-        if (overlap) {
-            displaced.push(overlap)
-            removeBpm(transaction, overlap)
-        }
+        displaced.push(...replaceBpmsAt(transaction, object.beat, (other) => batch.includes(other)))
 
         return addBpm(transaction, object)
     },

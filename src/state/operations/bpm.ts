@@ -24,7 +24,20 @@ export const editSelectedBpm = (
     return addBpm(transaction, edited)
 }
 
-// A single move replaces its destination and preserves the initial BPM at zero.
+/** Removes every BPM change at the beat that `keeps` does not keep, and returns them. */
+export const replaceBpmsAt = (
+    transaction: Transaction,
+    beat: number,
+    keeps: (entity: BpmEntity) => boolean = () => false,
+) => {
+    const replaced = (getInStoreGrid(transaction.store.grid, 'bpm', beat) ?? []).filter(
+        (entity) => entity.beat === beat && !keeps(entity),
+    )
+    for (const entity of replaced) removeBpm(transaction, entity)
+    return replaced
+}
+
+// A move replaces every BPM change at its destination and preserves the initial BPM at zero.
 // Batch property edits retain their existing remove-and-add semantics.
 export const editBpmWithReceipt = (
     transaction: Transaction,
@@ -38,10 +51,7 @@ export const editBpmWithReceipt = (
     }
 
     if (entity.beat) removeBpm(transaction, entity)
-    const overlap = getInStoreGrid(transaction.store.grid, 'bpm', beat)?.find(
-        (candidate) => candidate.beat === beat,
-    )
-    if (overlap) removeBpm(transaction, overlap)
+    const displaced = replaceBpmsAt(transaction, beat)
     const entities = addBpm(transaction, {
         beat,
         bpm: object.bpm ?? entity.bpm,
@@ -49,7 +59,7 @@ export const editBpmWithReceipt = (
     })
     return {
         entities,
-        receipt: editOutcomeReceipt(entity, entities, overlap ? [overlap] : [], !entity.beat),
+        receipt: editOutcomeReceipt(entity, entities, displaced, !entity.beat),
     }
 }
 

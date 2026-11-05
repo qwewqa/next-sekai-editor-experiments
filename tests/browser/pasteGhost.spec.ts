@@ -196,13 +196,32 @@ test('a pasted BPM change times the ghost as the paste does', async ({ page }) =
 })
 
 test('a BPM pasted onto a same-beat pair times the ghost as the paste does', async ({ page }) => {
-    // It lands at 5.5, replacing the first of the pair and following the second.
+    // It lands at 5.5, replacing both of the pair.
     const target = await hoverPasteWithBpm(page, [
         ...bpms,
         { beat: 5.5, bpm: 90 },
         { beat: 5.5, bpm: 200 },
     ])
     await expectLandedAsShown(page, target)
+    const at = () =>
+        page.evaluate(() => {
+            const { history } = window.editorTest
+            const { store, bpms } = history.state.value
+            return {
+                bpms: [...new Set([...store.grid.bpm.values()].flatMap((bucket) => [...bucket]))]
+                    .filter((entity) => entity.beat === 5.5)
+                    .map(({ bpm }) => bpm),
+                integrals: bpms.filter(({ x }) => x === 5.5).map(({ s }) => 60 / s),
+                operation: history.headStep.value?.operation,
+            }
+        })
+    expect(await at()).toMatchObject({
+        bpms: [30],
+        integrals: [30],
+        operation: { data: { displaced: { bpm: 2 } } },
+    })
+    await page.evaluate(() => window.editorTest.history.undoState())
+    expect(await at()).toMatchObject({ bpms: [90, 200], integrals: [90, 200] })
 })
 
 test('the ghost is dropped once a paste lands or the tool changes', async ({ page }) => {
