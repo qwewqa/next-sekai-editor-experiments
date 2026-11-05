@@ -631,6 +631,8 @@ for (const [label, chart] of [
         await page.keyboard.press('Enter')
         const saved = readFileSync((await (await downloading).path())!)
         expect(gunzipSync(saved).toString()).not.toContain('null')
+        // The download starts before the dialog closes, and the dialog takes keys until then.
+        await expect(exporting).toHaveCount(0)
 
         await open(page, 'saved', saved)
         await expect(
