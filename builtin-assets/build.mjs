@@ -185,7 +185,7 @@ async function buildParticle(report) {
 }
 
 function buildBackground(report) {
-    const image = renderBackground(1080)
+    const image = renderBackground(1920)
     const { width, height } = image
     report.background = { width, height }
     return {
@@ -214,19 +214,13 @@ function buildEffect(report) {
     }
 }
 
-// The background's thumbnail is its middle square.
-const thumbnailFor = async (name) => {
-    if (name !== 'background') return pngOf(await renderTemplate(`thumb-${name}`, {}, 256))
-    const image = renderBackground(256)
-    const left = (image.width - 256) >> 1
-    const data = new Uint8Array(256 * 256 * 4)
-    for (let y = 0; y < 256; y++)
-        data.set(
-            image.data.subarray((y * image.width + left) * 4, (y * image.width + left + 256) * 4),
-            y * 256 * 4,
-        )
-    return pngOf({ width: 256, height: 256, data })
-}
+// The background's thumbnail is the whole square.
+const thumbnailFor = async (name) =>
+    pngOf(
+        name === 'background'
+            ? renderBackground(256)
+            : await renderTemplate(`thumb-${name}`, {}, 256),
+    )
 
 // The standard single-item package of 2.2: info, list, details and the repository.
 function createItemScp(type, resources) {

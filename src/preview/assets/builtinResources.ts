@@ -30,8 +30,8 @@ export const builtinResources: readonly {
         source: 'builtin',
         type: 'background',
         hashes: {
-            data: '3770cff1c04645257aaead593074a3db7d5a2ca4',
-            image: 'c632731a6289c3348810af8958e931a825bd6742',
+            data: '4936603c515f4dd0ccaf503e9c7833f493b0e7b7',
+            image: '13e69a1ea01a3996cd85ea74e07c23fa33092cfd',
             configuration: 'a3a808b95010ae835742c00d71202eee725caed3',
         },
     },

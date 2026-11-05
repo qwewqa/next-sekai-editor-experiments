@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { color } from '../../builtin-assets/background.mjs'
+import { color, stripClouds } from '../../builtin-assets/background.mjs'
 import { readBuiltinItem } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -12,12 +12,13 @@ const luma = (x, y) => {
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-test('the image is 16:9, covers, and fills around with the colour its margins fade to', () => {
+test('the image is square, covers, and fills around with the colour its margins fade to', () => {
     const data = background.json('data')
     assert.equal(data.fit, 'cover')
     assert.equal(data.color, color)
-    assert.equal(image.width * 9, image.height * 16)
-    assert.ok(image.height >= 1080)
+    assert.equal(data.aspectRatio, 1)
+    assert.equal(image.width, image.height)
+    assert.ok(image.height >= 1920)
     // Every edge pixel is the fill, so a zoomed-out camera shows no edge.
     for (let x = 0; x < image.width; x++)
         for (const y of [0, image.height - 1])
@@ -58,4 +59,15 @@ test('the middle has detail at several scales, at low contrast', () => {
     for (let y = 0; y < height; y += 5) for (let x = 0; x < width; x += 5) total += luma(x, y)
     const mean = total / Math.ceil(height / 5) / Math.ceil(width / 5)
     assert.ok(mean > 20 && mean < 50, `mean luma ${mean}`)
+})
+
+test('the clouds above and below the band leave its inner three quarters within a level', () => {
+    // In band heights, the band runs from 0 to 1. A cloud blends its colour in by at most its
+    // weight at the nearest point of the inner rows, and the mottle brightens by at most 16%.
+    let most = 0
+    for (const [, y, , ry, , strength] of stripClouds) {
+        const distance = y < 0 ? 0.125 - y : y - 0.875
+        most += strength * Math.exp(-2 * (distance / ry) ** 2)
+    }
+    assert.ok(most * 1.16 * 255 <= 1, `up to ${most * 1.16 * 255} levels`)
 })
