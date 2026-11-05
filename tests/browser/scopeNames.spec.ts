@@ -26,8 +26,8 @@ test('scope-name settings default on, persist independently and keep their place
     await expect(group).toHaveAttribute('aria-checked', 'true')
     await expect(stage).toHaveAttribute('aria-checked', 'true')
     const labels = await page.getByRole('dialog').locator('.form-field-text').allTextContents()
-    expect(labels[labels.indexOf('Show Group Name') + 1]).toBe(groupOption)
-    expect(labels[labels.indexOf('Show Stage Name') + 1]).toBe(stageOption)
+    expect(labels[labels.indexOf('Show Group Names') + 1]).toBe(groupOption)
+    expect(labels[labels.indexOf('Show Stage Names') + 1]).toBe(stageOption)
     await group.click()
     expect(
         await page.evaluate(() =>

@@ -403,7 +403,7 @@
         },
         "visibilities": {
             "cycle": {
-                "title": "Cycle Object Visibilities",
+                "title": "Cycle Object Visibility",
                 "all": "Visibility: all objects",
                 "only": "Visibility: {0} only"
             },
@@ -932,10 +932,10 @@
             },
             "dragToPanY": "Drag to Pan Y",
             "dragToPanX": "Drag to Pan X",
-            "showGroupName": "Show Group Name",
+            "showGroupName": "Show Group Names",
             "hideGroupNameWhenFocusingGroup": "Hide Group Names When Focusing a Group",
             "showOtherGroups": "Show Other Groups",
-            "showStageName": "Show Stage Name",
+            "showStageName": "Show Stage Names",
             "hideStageNameWhenFocusingStage": "Hide Stage Names When Focusing a Stage",
             "showOtherStages": "Show Other Stages",
             "nameContrast": "Name Contrast",
@@ -1015,7 +1015,7 @@
             "add": "Add Tool…",
             "remove": "Remove “{0}” from Toolbar",
             "modal": {
-                "title": "Select Tool"
+                "title": "Add Tool"
             }
         },
         "touch": {

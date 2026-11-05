@@ -625,12 +625,12 @@ test('a punctuation shortcut reads larger and bold, as in the toolbar', async ({
 
 test('Name Contrast follows the Show Other rows rather than splitting them', async ({ page }) => {
     const labels = await page.getByRole('dialog').locator('.form-field-text').allTextContents()
-    const start = labels.indexOf('Show Group Name')
+    const start = labels.indexOf('Show Group Names')
     expect(labels.slice(start, start + 9)).toEqual([
-        'Show Group Name',
+        'Show Group Names',
         'Hide Group Names When Focusing a Group',
         'Show Other Groups',
-        'Show Stage Name',
+        'Show Stage Names',
         'Hide Stage Names When Focusing a Stage',
         'Show Other Stages',
         'Show Other Objects',

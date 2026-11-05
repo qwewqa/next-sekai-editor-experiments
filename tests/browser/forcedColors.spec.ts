@@ -328,7 +328,7 @@ test('toolbar tools keep their edge, and the tool in use is selected', async ({ 
     await expect(listed.first()).toBeVisible()
     await expectTools(listed, 0)
     await dialog.getByRole('button', { name: 'Add Tool…' }).first().click()
-    const picker = page.getByRole('dialog', { name: 'Select Tool' })
+    const picker = page.getByRole('dialog', { name: 'Add Tool' })
     await expect(picker).toBeVisible()
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
     await expectTools(picker.locator('button[title]:not([aria-label])'), 0)

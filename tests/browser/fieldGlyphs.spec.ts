@@ -411,7 +411,7 @@ test('wide text icons keep clear of their names in the shortcut list and flyouts
 
     await page.setViewportSize({ width: 390, height: 844 })
     const shown = page.locator('[data-editor-toolbar] > div > div > button')
-    await shown.and(page.getByTitle('Cycle Object Visibilities', { exact: true })).hover()
+    await shown.and(page.getByTitle('Cycle Object Visibility', { exact: true })).hover()
     const item = page
         .locator('[data-editor-toolbar] > div > div > div button')
         .filter({ hasText: 'Toggle BPM Visibility' })

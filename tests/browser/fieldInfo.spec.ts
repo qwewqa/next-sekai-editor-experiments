@@ -466,7 +466,7 @@ test.describe('on touch', () => {
         await shown.tap()
         await page.waitForTimeout(300)
         await expect(shown).toBeVisible()
-        const other = field(dialog, 'Show Stage Name').root.getByRole('switch')
+        const other = field(dialog, 'Show Stage Names').root.getByRole('switch')
         const before = await other.getAttribute('aria-checked')
         await other.tap()
         await expect(shown).toHaveCount(0)
@@ -518,7 +518,7 @@ test.describe('on touch', () => {
         await info.scrollIntoViewIfNeeded()
         await info.tap()
         await expect(bubble(page)).toBeVisible()
-        const list = await box(field(dialog, 'Show Group Name').root)
+        const list = await box(field(dialog, 'Show Group Names').root)
         const touch = await touchInput(page)
         const x = list.x + 40
         const y = list.y + list.height / 2

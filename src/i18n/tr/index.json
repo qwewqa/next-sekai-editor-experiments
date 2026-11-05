@@ -403,7 +403,7 @@
     },
     "visibilities": {
       "cycle": {
-        "title": "Nesne Görünürlüklerini Değiştir",
+        "title": "Nesne Görünürlüğünü Değiştir",
         "all": "Tüm nesneler gösteriliyor",
         "only": "Yalnızca {0} gösteriliyor"
       },
@@ -932,10 +932,10 @@
       },
       "dragToPanY": "Y Eksenini Kaydırmak İçin Sürükle",
       "dragToPanX": "X Eksenini Kaydırmak İçin Sürükle",
-      "showGroupName": "Grup Adını Göster",
+      "showGroupName": "Grup Adlarını Göster",
       "hideGroupNameWhenFocusingGroup": "Bir Gruba Odaklanırken Grup Adlarını Gizle",
       "showOtherGroups": "Diğer Grupları Göster",
-      "showStageName": "Sahne Adını Göster",
+      "showStageName": "Sahne Adlarını Göster",
       "hideStageNameWhenFocusingStage": "Bir Sahneye Odaklanırken Sahne Adlarını Gizle",
       "showOtherStages": "Diğer Sahneleri Göster",
       "nameContrast": "Ad Kontrastı",
@@ -1015,7 +1015,7 @@
       "add": "Araç Ekle…",
       "remove": "“{0}” Aracını Araç Çubuğundan Kaldır",
       "modal": {
-        "title": "Araç Seç"
+        "title": "Araç Ekle"
       }
     },
     "touch": {

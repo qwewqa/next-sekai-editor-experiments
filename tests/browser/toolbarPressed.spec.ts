@@ -639,7 +639,7 @@ test("the default toolbar's faces follow the tool and values in use", async ({ p
         'Event',
         'Manage Stages',
         'Jump to Start',
-        'Cycle Object Visibilities',
+        'Cycle Object Visibility',
         '1/4 Division*',
         '1/1 Lane Division*',
         'No Lane Limit*',

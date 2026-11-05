@@ -932,10 +932,10 @@
       },
       "dragToPanY": "Glisser pour déplacer la vue verticalement",
       "dragToPanX": "Glisser pour déplacer la vue horizontalement",
-      "showGroupName": "Afficher le nom du groupe",
+      "showGroupName": "Afficher les noms des groupes",
       "hideGroupNameWhenFocusingGroup": "Masquer les noms des groupes lorsqu’un groupe est ciblé",
       "showOtherGroups": "Afficher les autres groupes",
-      "showStageName": "Afficher le nom de la scène",
+      "showStageName": "Afficher les noms des scènes",
       "hideStageNameWhenFocusingStage": "Masquer les noms des scènes lorsqu’une scène est ciblée",
       "showOtherStages": "Afficher les autres scènes",
       "nameContrast": "Contraste des noms",
@@ -1015,7 +1015,7 @@
       "add": "Ajouter un outil…",
       "remove": "Retirer « {0} » de la barre d’outils",
       "modal": {
-        "title": "Sélectionner l’outil"
+        "title": "Ajouter un outil"
       }
     },
     "touch": {
