@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { before, test } from 'node:test'
 import { buildAll, renderSpec } from '../../builtin-assets/build.mjs'
 import { omittedSprites, skinSprites } from '../../builtin-assets/manifest.mjs'
-import { renderSvg } from '../../builtin-assets/svg.mjs'
+import { fill, renderSvg } from '../../builtin-assets/svg.mjs'
 import { readBuiltinItem, readFixture } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -125,6 +125,10 @@ test('the PNG matches the renderer for three sprites and the 32 px icon', async 
         assert.deepEqual(pixelAt(icon, i % 32, Math.floor(i / 32)), [
             ...rendered.data.subarray(i * 4, i * 4 + 4),
         ])
+})
+
+test('a template variable that is not filled stops the build', () => {
+    assert.throws(() => fill('<rect fill-opacity="var(--edgeAlpha)"/>', { edgeAlpha: 0.3 }))
 })
 
 test('un-premultiplying gives straight alpha and the expected colour', async () => {

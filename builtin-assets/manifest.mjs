@@ -242,7 +242,7 @@ export function skinSprites() {
             '#LANE',
             image(
                 'lane',
-                { color: stage.navy, alpha: 0.85, edge: stage.stroke, edgeAlpha: 0.3 },
+                { color: stage.navy, alpha: 0.85, edge: stage.stroke, edgealpha: 0.3 },
                 { stretch: true },
             ),
         )
