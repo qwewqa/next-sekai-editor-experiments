@@ -947,7 +947,7 @@ test(
 )
 
 // Video queries and trials that wait for the test to answer them. Each counts while it runs, so
-// a test can check how many ran at once. The settings are silent WebM: one query per size.
+// a test can check how many ran at once. The settings are silent WebM, with one query per size.
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 const silentWebm = { ...settings, format: 'webm', bgm: false, sfx: false } as const
 const at = (height: number): CodecSettings => ({ ...silentWebm, ...outputSize(height, 16 / 9) })
@@ -997,7 +997,7 @@ const heldProbes = () => {
         },
         /** The operations started so far, in order. */
         names: () => started.map((held) => held.name),
-        /** Answers the operation running now; false when none is running. */
+        /** Answers the operation running now. Returns false when none is running. */
         answer: async (supported = true) => {
             await tick()
             const held = started.find((item) => !item.settled)
@@ -1058,7 +1058,7 @@ test("a newer update's selection waits for the running query, and the older upda
     assert.equal(held.most, 1)
 })
 
-test('a query that never ends holds the lane: later queries wait, cached answers do not, and a diagnostic is recorded once', async () => {
+test('a query that never ends holds the lane, so later queries wait, cached answers do not, and a diagnostic is recorded once', async () => {
     const held = heldProbes()
     await held.answerUntil(held.probes.resolve(at(540), { trial: false }))
     const before = held.names().length

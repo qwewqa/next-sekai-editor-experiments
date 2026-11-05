@@ -1,4 +1,4 @@
-/** Test builds: what the preview's atlas textures hold in one realm, as GL keeps them. */
+/** For test builds. The bytes the preview's atlas textures hold in one realm. */
 export type TextureAccount = {
     /**
      * The bytes of the skin, particle and background textures, every mip level included, and of
@@ -12,7 +12,7 @@ export type TextureAccount = {
 /**
  * Wraps the realm's WebGL2 calls to keep a `TextureAccount`. The page's specs install it from its
  * source, so it refers to nothing outside itself. An atlas is a texture that received an
- * `ImageBitmap`; a blur buffer is storage allocated from the background pass.
+ * `ImageBitmap`. A blur buffer is storage allocated from the background pass.
  */
 export const installTextureAccount = (
     isPreview: (gl: WebGL2RenderingContext) => boolean,

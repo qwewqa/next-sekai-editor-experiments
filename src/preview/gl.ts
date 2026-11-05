@@ -173,8 +173,8 @@ export type PreviewSurface = PreviewRenderer & {
     compositeBackground: (quad: Quad, input: PreviewFrameInput) => void
     hasTexture: (slot: TextureSlot) => boolean
     /**
-     * Frees the skin's, particle's and background's textures with every mip level, and the
-     * background's blur. The slots stay empty until the next upload. The context and the canvas
+     * Frees the skin, particle and background textures with every mip level, and the background
+     * blur. The slots stay empty until the next upload. The context and the canvas
      * stay.
      */
     releaseTextures: () => void

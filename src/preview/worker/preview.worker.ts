@@ -61,7 +61,7 @@ let lastInput: PreviewFrameInput | undefined
 
 let counters: PreviewWorkerCounters | undefined
 
-// While Export Video is open: no atlas textures, and no drawing.
+// Set while Export Video is open. The worker then holds no atlas textures and does not draw.
 let suspended = false
 
 const upload = () => {
@@ -308,7 +308,7 @@ const handle = (message: ToPreviewWorker) => {
                 uploaded.length = 0
                 return
             }
-            // The atlases current now, including any that arrived while suspended.
+            // Upload the current atlases, including any that arrived while suspended.
             upload()
             draw()
             return

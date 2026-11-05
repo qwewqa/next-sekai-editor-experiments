@@ -116,7 +116,7 @@ class Superseded extends Error {
     }
 }
 
-/** A queue shared by several kinds of work: each run starts once the previous run has ended. */
+/** A queue shared by several kinds of work. Each run starts once the previous run has ended. */
 export type Lane = { tail: Promise<unknown> }
 export const createLane = (): Lane => ({ tail: Promise.resolve() })
 
@@ -357,9 +357,9 @@ export const createCodecProbes = (
         return result
     }
     // In Chromium on Windows a video support query creates an encoder, and a 2160p one takes over
-    // 1 GB for a moment. A trial holds an encoder and full-size frames. So both share one lane,
-    // and at most one of them runs at a time. A query cannot be stopped, so it holds the lane
-    // until the browser answers.
+    // 1 GB for a moment. A trial holds an encoder and full-size frames. Both therefore share one
+    // lane, and at most one of them runs at a time. A query cannot be stopped, so it holds the
+    // lane until it ends.
     const lane = createLane()
     const trials = createSharedWork<boolean>(lane)
     const queries = createSharedWork<boolean>(lane, {
@@ -372,7 +372,7 @@ export const createCodecProbes = (
         },
     })
     /**
-     * Rejects with the signal's reason once it aborts. Like `probe`, a refused configuration is
+     * Rejects with the signal's reason once it aborts. As in `probe`, a refused configuration is
      * kept, and any other failure counts as unsupported for this call only.
      */
     const videoQuery = async (

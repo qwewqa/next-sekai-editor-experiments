@@ -462,7 +462,7 @@ for (const failure of ['throws', 'hangs'] as const)
                 handle(event)
             }
         }, failure)
-        // A frame for another time.
+        // A new cursor time makes the page post a frame.
         await page.evaluate(() => (window.editorTest.view.cursorTime = 0.9))
         await expect.poll(() => host(page), { timeout: 10_000 }).toBe('main')
         await settle(page)

@@ -307,7 +307,7 @@ export const usePreviewRendering = (
                 return
             }
             const host = worker.value
-            // The worker host posts frames, which its worker answers without drawing.
+            // The worker host posts frames. Its worker answers them without drawing.
             if (!host && previewSuspended.value) {
                 renderFrame = undefined
                 return
