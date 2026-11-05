@@ -163,6 +163,20 @@ export const baseColors = {
         Cyan: '#00afc4',
         Black: '#333333',
     },
+    // The light glow round critical bodies and traces, sampled round the base's critical bodies:
+    // the default's and one per style. The base's Black glow (#3e3e3e) does not show on the stage,
+    // so Black's is a light grey.
+    criticalGlow: '#f8f166',
+    styleCriticalGlow: {
+        Neutral: '#adadad',
+        Red: '#f868a0',
+        Green: '#68f8c5',
+        Blue: '#6868f8',
+        Yellow: '#f8cc68',
+        Purple: '#cd68f8',
+        Cyan: '#68e7f8',
+        Black: '#a8a8a8',
+    },
     // Per style, the slot glows of normal and critical notes.
     styleGlow: {
         Neutral: [

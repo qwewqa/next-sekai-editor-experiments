@@ -44,6 +44,14 @@ const translucent = [
         opaque: 0.99,
         core: 0.5,
     },
+    // The base's critical bodies and traces glow round opaque art, the same way.
+    {
+        pattern:
+            /^Sekai Critical .*Note (Left|Middle|Right)|^Sekai (Trace )?Note Yellow (Left|Middle|Right)$/,
+        floor: 1,
+        opaque: 0.99,
+        core: 0.5,
+    },
 ]
 
 const opaqueShare = (alphas) => alphas.filter((alpha) => alpha === 255).length / alphas.length

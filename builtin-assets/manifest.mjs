@@ -227,19 +227,91 @@ const traceOf = (color) =>
         ? { bar: baseColors.blackTrace.bar, light: baseColors.blackTrace.edge }
         : { bar: styleColors(color)[2] }
 
+// Critical notes in play carry a soft halo in the base's critical halo colour, under half alpha
+// outside the art so the note keeps its cell: the critical diamonds' (above), and this glow round
+// critical bodies and traces. Normal notes and the result-bucket Basics have none. The glow is a
+// Gaussian blur of the art's box in the style's light critical glow colour, under the art: 0.4
+// alpha at the art's edge, so the art's half-alpha edge stays put, fading out 3 sigma past it. It
+// is drawn as the product of two gradients, across the note and along it, so the slices join where
+// a blur filter, cut at each slice's edge, would leave seams. Every body and trace slice has the
+// glow's frame, since the engine's perspective mapping places art alike only on the same quad.
+const glowAcross = 32 // sigma across the note, in units: 0.106 lane at tilt 0
+const glowAlong = 20 // and along it: 0.104 lane
+const glowAtEdge = 0.4
+// The standard normal distribution function, with erf by Abramowitz and Stegun 7.1.26.
+const phi = (t) => {
+    const x = Math.abs(t) / Math.SQRT2
+    const k = 1 / (1 + 0.3275911 * x)
+    const poly =
+        ((((1.061405429 * k - 1.453152027) * k + 1.421413741) * k - 0.284496736) * k +
+            0.254829592) *
+        k
+    const erf = 1 - poly * Math.exp(-x * x)
+    return t >= 0 ? (1 + erf) / 2 : (1 - erf) / 2
+}
+const r4 = (value) => Math.round(value * 1e4) / 1e4
+const smoothstep = (t) => t * t * (3 - 2 * t)
+const gradientStops = (count, color, alpha) =>
+    Array.from(
+        { length: count + 1 },
+        (_, i) =>
+            `<stop offset="${r4(i / count)}" stop-color="${color}" stop-opacity="${r4(alpha(i / count))}"/>`,
+    ).join('')
+// The glow along a slice, at d units in from the art's outer end: the blur's edge outside, then
+// eased to exactly 1, flat, at the slice's inner end, where the middle slice carries it on.
+const alongEnd = (d, end) =>
+    d <= 0 ? phi(d / glowAlong) : 1 - (1 - phi(d / glowAlong)) * (1 - smoothstep(d / end))
+
+/** A body or trace slice's frame and glow: the vars and transform for its template. */
+function noteSlice(kind, part, glow) {
+    const [h, y0, end] = kind === 'body' ? [bodyH, 0, 48] : [slimH, slimTop, 24]
+    const y1 = h - y0
+    const width = part === 'Middle' ? 16 : end
+    const pad = part === 'Middle' ? 0 : 3 * glowAlong
+    const rise = 3 * glowAcross - y0
+    const tall = h + 2 * rise
+    const peak = glowAtEdge / (0.5 - phi((y0 - y1) / glowAcross))
+    const across = (t) => {
+        const y = -rise + t * tall
+        return peak * (phi((y - y0) / glowAcross) - phi((y - y1) / glowAcross))
+    }
+    const vars = {
+        view: `${part === 'Left' ? -pad : 0} ${n(-rise)} ${width + pad} ${n(tall)}`,
+        pw: width + pad,
+        ph: (96 * tall) / h,
+        vya: n(-rise),
+        vyb: n(h + rise),
+        vyh: n(tall),
+        halo: glow ? 'url(#v)' : 'none',
+        vstops: glow ? gradientStops(48, glow, across) : '',
+    }
+    if (part !== 'Middle')
+        Object.assign(vars, {
+            hxa: part === 'Left' ? -pad : end + pad,
+            hxb: part === 'Left' ? end : 0,
+            hstops: glow
+                ? gradientStops(32, '#fff', (t) => alongEnd(-pad + t * (pad + end), end))
+                : '',
+        })
+    const [u0, u1] = [part === 'Left' ? -pad / end : 0, part === 'Right' ? 1 + pad / end : 1]
+    return { vars, transform: box(u0, u1, -rise / h, 1 + rise / h) }
+}
+
 const parts = ['Left', 'Middle', 'Right']
-const bodyImage = (part, [outer, inner, accent]) =>
-    image(
-        `note-body-${part.toLowerCase()}`,
-        { ...bodyVars, outer, inner, accent },
-        { stretch: true },
+const sliceImage = (kind, part, vars, glow) => {
+    const slice = noteSlice(kind, part, glow)
+    return image(
+        `note-${kind === 'body' ? 'body' : 'slim'}-${part.toLowerCase()}`,
+        { ...vars, ...slice.vars },
+        { stretch: true, transform: slice.transform, ...(glow && { glow }) },
     )
-const slimImage = (part, accent, light) =>
-    image(
-        `note-slim-${part.toLowerCase()}`,
-        { ...slimVars, accent, ...slimEdge(light) },
-        { stretch: true },
-    )
+}
+/** A body slice in [outer, inner, accent], with a critical note's glow colour if given. */
+const bodyImage = (part, [outer, inner, accent], glow) =>
+    sliceImage('body', part, { ...bodyVars, outer, inner, accent }, glow)
+/** A trace slice, its bar in accent, a light lower edge if given, and a critical note's glow. */
+const slimImage = (part, accent, light, glow) =>
+    sliceImage('slim', part, { ...slimVars, accent, ...slimEdge(light) }, glow)
 // The whole-note trace and damage bars and their Basic {Color}: a bar on the base's ink box for its
 // kind, a third of its height round at the corners. Damage keeps its rim.
 const barBoxes = {
@@ -436,7 +508,10 @@ export function skinSprites() {
     group('Note bodies, default', () => {
         for (const [family, key] of bodyFamilies)
             for (const part of parts)
-                add(`Sekai ${family} ${part}`, bodyImage(part, bodyColors[key]))
+                add(
+                    `Sekai ${family} ${part}`,
+                    bodyImage(part, bodyColors[key], isCritical(family) && baseColors.criticalGlow),
+                )
         for (const part of parts)
             add(`Sekai Damage Note ${part}`, damageImage(part, damage.color, damage.edge))
     })
@@ -444,7 +519,15 @@ export function skinSprites() {
     group('Trace bodies (slim)', () => {
         for (const [family, key] of traceFamilies)
             for (const part of parts)
-                add(`Sekai ${family} ${part}`, slimImage(part, traceColors[key]))
+                add(
+                    `Sekai ${family} ${part}`,
+                    slimImage(
+                        part,
+                        traceColors[key],
+                        undefined,
+                        isCritical(family) && baseColors.criticalGlow,
+                    ),
+                )
     })
 
     group('Legacy colour bodies', () => {
@@ -456,13 +539,16 @@ export function skinSprites() {
         ])
             for (const part of parts)
                 alias(`Sekai Note ${color} ${part}`, `Sekai ${family} ${part}`)
-        for (const [color, accent] of [
+        for (const [color, accent, bodyGlow] of [
             ['Green', traceColors.green],
             ['Red', traceColors.red],
-            ['Yellow', traceColors.yellow],
+            ['Yellow', traceColors.yellow, baseColors.criticalGlow],
         ])
             for (const part of parts)
-                add(`Sekai Trace Note ${color} ${part}`, slimImage(part, accent))
+                add(
+                    `Sekai Trace Note ${color} ${part}`,
+                    slimImage(part, accent, undefined, bodyGlow),
+                )
         // The base's purple trace is its damage note, drawn at the slim end width.
         for (const part of ['Left', 'Right'])
             add(
@@ -682,25 +768,23 @@ export function skinSprites() {
         for (const color of colorNames) {
             const [outer, inner, accent] = styleColors(color)
             const critical = baseColors.styleCritical[color]
+            const bodyGlow = baseColors.styleCriticalGlow[color]
             for (const [family] of bodyFamilies)
                 for (const part of parts)
                     add(
                         `Sekai ${family} ${part} ${color}`,
-                        bodyImage(
-                            part,
-                            isCritical(family) ? critical.body : [outer, inner, accent],
-                        ),
+                        isCritical(family)
+                            ? bodyImage(part, critical.body, bodyGlow)
+                            : bodyImage(part, [outer, inner, accent]),
                     )
             const trace = traceOf(color)
             for (const [family] of traceFamilies)
                 for (const part of parts)
                     add(
                         `Sekai ${family} ${part} ${color}`,
-                        slimImage(
-                            part,
-                            isCritical(family) ? critical.trace : trace.bar,
-                            trace.light,
-                        ),
+                        isCritical(family)
+                            ? slimImage(part, critical.trace, trace.light, bodyGlow)
+                            : slimImage(part, trace.bar, trace.light),
                     )
             for (const part of parts)
                 add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, inner))
