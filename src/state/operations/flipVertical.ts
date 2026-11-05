@@ -28,7 +28,7 @@ import { connectorProperties } from './connectorProperties'
 import { isEditableEntity, type EditableEntity } from './editable'
 import { changedNativeCounts } from './historyReceipts'
 import { addBeatOffset } from './scaleValues'
-import { edit, inStoredOrder } from './transformSelection'
+import { edit, inLandingOrder, inStoredOrder } from './transformSelection'
 
 const reverseSlideProperties = (source: State, selected: Set<EditableEntity>) => {
     const properties = new Map<NoteEntity, Partial<NoteObject>>()
@@ -143,10 +143,12 @@ export const flipVerticalWithReceipt = (
     // Remove the entire selection first. Sequential moves can otherwise delete
     // each other's destination, particularly when swapping BPMs and events.
     for (const entity of entities) if (!stays(entity)) remove(transaction, entity)
-    // A same-beat pair stays a pair, its order mirrored as the jump now runs back.
-    const ordered = inStoredOrder(source, entities, (entity) => entity, true)
+    // A same-beat pair stays a pair, its order mirrored as the jump now runs back; objects that
+    // meet on a beat land in mirrored source-beat order.
+    const ordered = inLandingOrder(source, entities, (entity) => entity, true)
     const eases = reverseEases(source, entities)
-    const placed = new Map<Entity, number>()
+    // The flipped objects and what the flip makes of them are never replaced.
+    const kept = new Set<Entity>(entities)
     const flipped: Entity[] = []
     // What a timing point took from its destination: removed objects that were not flipped ones.
     const displaced = new Set<Entity>()
@@ -154,7 +156,9 @@ export const flipVerticalWithReceipt = (
     for (const entity of ordered) {
         pairs.push({ before: entity, index: flipped.length })
         if (entity.type !== 'note' && stays(entity)) {
-            flipped.push(...edit(transaction, entity, eases.get(entity) ?? {}))
+            const edited = edit(transaction, entity, eases.get(entity) ?? {})
+            for (const other of edited) kept.add(other)
+            flipped.push(...edited)
             continue
         }
         const beat = flippedBeat(entity)
@@ -162,12 +166,8 @@ export const flipVerticalWithReceipt = (
         // replaces its group's there; an event joins the events already there.
         if (entity.type === 'bpm' || entity.type === 'timeScale') {
             for (const other of getInStoreGrid(transaction.store.grid, entity.type, beat) ?? []) {
-                if (
-                    other.beat === beat &&
-                    placed.get(other) !== entity.beat &&
-                    sameTrack(entity, other)
-                ) {
-                    if (!placed.has(other)) displaced.add(other)
+                if (other.beat === beat && !kept.has(other) && sameTrack(entity, other)) {
+                    displaced.add(other)
                     remove(transaction, other)
                 }
             }
@@ -177,7 +177,7 @@ export const flipVerticalWithReceipt = (
             ...(entity.type === 'note' ? properties.get(entity) : eases.get(entity)),
             beat,
         })
-        for (const other of added) placed.set(other, entity.beat)
+        for (const other of added) kept.add(other)
         // A tick flipped past its slide's end keeps its gameplay place, as detaching does.
         if (entity.type === 'note' && entity.isAttached && added[0])
             transaction.store.setOrigin(added[0] as NoteEntity, entity)

@@ -3,8 +3,10 @@ import test from 'node:test'
 import type { StageId } from '../../src/chart/stages'
 import { createState, type State } from '../../src/state'
 import { cleanBeat, GLOBAL_GRID, nearGridsBeat } from '../../src/state/integrals/grid'
-import { flipVertical } from '../../src/state/operations/flipVertical'
+import { flipVertical, flipVerticalWithReceipt } from '../../src/state/operations/flipVertical'
+import { getInStoreGrid } from '../../src/state/store/grid'
 import { groupId, note } from './chartFixture'
+import { add, baseState, edits, entityAt, kinds, seen } from './sameBeatKinds'
 
 const stageId = 1 as StageId
 
@@ -81,6 +83,40 @@ test('a vertical flip lands triplets exactly while the grid is in quarters', () 
                     )
                 }
             }
+        }
+    }
+})
+
+test('objects at nearly equal beats that a flip lands on one beat all stay, in mirrored order', () => {
+    const camera = kinds[0]!
+    const quarters = (beat: number, offset: number) => cleanBeat([GLOBAL_GRID], beat + offset, 4)
+    for (const kind of kinds.filter(({ type }) =>
+        ['cameraEventJoint', 'timeScale', 'bpm'].includes(type),
+    )) {
+        // 1 at 4 and 2 just after it, flipped between camera events at 0 and 10, land on 6.
+        const source = edits(
+            baseState(),
+            (t) => add(t, kind, 4, 1),
+            (t) => add(t, kind, 4 + 1e-7, 2),
+            (t) => add(t, camera, 0, 8),
+            (t) => add(t, camera, 10, 9),
+        )
+        const [one, two] = [entityAt(source, kind, 4, 1), entityAt(source, kind, 4 + 1e-7, 2)]
+        const ends = [entityAt(source, camera, 0, 8), entityAt(source, camera, 10, 9)]
+        for (const order of [
+            [one, two],
+            [two, one],
+        ]) {
+            const flipped = flipVerticalWithReceipt(source, [...ends, ...order], quarters)
+            assert.deepEqual(seen(flipped.state, kind, 6), [2, 1], kind.name)
+            assert.deepEqual(flipped.displaced, [], kind.name)
+            for (const entity of flipped.state.selectedEntities)
+                assert.ok(
+                    getInStoreGrid(flipped.state.store.grid, entity.type, entity.beat)?.includes(
+                        entity as never,
+                    ),
+                    kind.name,
+                )
         }
     }
 })

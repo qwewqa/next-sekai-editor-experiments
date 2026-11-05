@@ -130,21 +130,27 @@ export const inStoredOrder = <T>(
 
 /**
  * The order moved objects are added in: objects that meet on one beat land in source-beat order,
- * then stored order, and a same-beat pair stays a pair. Notes keep their places.
+ * then stored order, or both reversed when mirrored, and a same-beat pair stays a pair. Notes keep
+ * their places.
  */
-export const inLandingOrder = <T>(source: State, items: T[], entityOf: (item: T) => Entity) => {
+export const inLandingOrder = <T>(
+    source: State,
+    items: T[],
+    entityOf: (item: T) => Entity,
+    mirrored = false,
+) => {
     const rank = (entity: Entity) =>
         getInStoreGrid(source.store.grid, entity.type, entity.beat)?.indexOf(entity) ?? 0
     const timing = items
         .filter((item) => entityOf(item).type !== 'note')
         .sort((a, b) => {
             const [x, y] = [entityOf(a), entityOf(b)]
-            return x.beat - y.beat || rank(x) - rank(y)
+            return (x.beat - y.beat || rank(x) - rank(y)) * (mirrored ? -1 : 1)
         })
     const sorted = items.map((item) =>
         entityOf(item).type === 'note' ? item : (timing.shift() ?? item),
     )
-    return inStoredOrder(source, sorted, entityOf)
+    return inStoredOrder(source, sorted, entityOf, mirrored)
 }
 
 export type SelectionTransformResult = {
