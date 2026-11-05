@@ -2238,7 +2238,7 @@
           }
         },
         "copyProperties": "Copie les propriétés réglées sur Copier depuis un seul objet sélectionné quand vous ajoutez un objet du même type.",
-        "copyPropertiesSlide": "Copie les propriétés réglées sur Copier depuis une seule note sélectionnée et son slide quand vous ajoutez une note.",
+        "copyPropertiesSlide": "Copie les propriétés réglées sur Copier depuis la note sélectionnée et son slide quand vous ajoutez une note.",
         "forceNoteSpeed": "Vitesse de remplacement des notes du groupe, de 1 à 12.",
         "isFromStart": "Dessine la scène avant son premier événement de masque.",
         "isUntilEnd": "Dessine la scène après son dernier événement de masque.",
