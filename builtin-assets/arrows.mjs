@@ -35,7 +35,7 @@ const armShare = [0.64, 0.62, 0.58, 0.52, 0.48, 0.46]
 export const tiltDegrees = 22
 // Texture pixels per unit of the square. The engine's square is min(width / 2, 3) lanes, so every
 // width from 2 gets 84 texels per lane on screen, and width 1 gets 120.
-export const density = [60, 84, 126, 168, 210, 252]
+const density = [60, 84, 126, 168, 210, 252]
 // A multiplier on the glow's room, by width. Widths 1 and 2 get more, since their square is small on
 // screen and the glow softens the arrow's silhouette.
 const glowRoom = [2, 1.5, 1, 1, 1, 1]

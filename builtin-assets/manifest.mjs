@@ -97,7 +97,7 @@ const kiteImage = (template, vars, role, scale = 1) => {
  * The frame of a diamond against its kite's: room for a critical diamond's halo. Normal diamonds
  * share it, since the engine's perspective mapping places art alike only on the same quad.
  */
-export const diamondFrameScale = 88 / 64
+const diamondFrameScale = 88 / 64
 const diamondView = '-12 -12 88 88'
 const kite = (color, role) =>
     kiteImage('kite', { color, view: diamondView }, role, diamondFrameScale)

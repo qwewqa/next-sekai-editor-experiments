@@ -118,7 +118,7 @@ class Superseded extends Error {
 
 /** A queue shared by several kinds of work. Each run starts once the previous run has ended. */
 export type Lane = { tail: Promise<unknown> }
-export const createLane = (): Lane => ({ tail: Promise.resolve() })
+const createLane = (): Lane => ({ tail: Promise.resolve() })
 
 export type SharedWorkOptions = {
     /**
