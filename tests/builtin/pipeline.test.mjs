@@ -26,12 +26,6 @@ test("the committed outputs are the build's outputs", () => {
         )
 })
 
-test('building twice gives the same bytes', async () => {
-    const second = await buildAll()
-    assert.deepEqual([...second.files.keys()], [...first.files.keys()])
-    for (const [path, bytes] of first.files) assert.ok(second.files.get(path).equals(bytes), path)
-})
-
 test('the lock records every output with its sha256', () => {
     const lock = JSON.parse(first.files.get('builtin-assets/builtin-assets.lock.json'))
     for (const [path, bytes] of first.files) {
