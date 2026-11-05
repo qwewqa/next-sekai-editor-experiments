@@ -121,8 +121,9 @@ test('group and stage names stand apart from the noun after them', () => {
     for (const locale of ['ja', 'ko', 'zhs', 'zht']) {
         const messages = read(locale)
         for (const key of ['statusBar.group.one', 'statusBar.stage.one']) {
-            // Names such as "Verse" or Korean "기본" (Default) don't run into the noun or take 번 ("number").
-            assert.match(messages[key]!, /^\{0\} \S/, `${locale} ${key}`)
+            // Names such as "Verse" or Korean "기본" (Default) don't run into the noun or take 번 ("number"):
+            // a space or quotation marks set them apart.
+            assert.match(messages[key]!, /^\{0\} \S|[“「]\{0\}[”」]/, `${locale} ${key}`)
             assert.doesNotMatch(messages[key]!, /번/, `${locale} ${key}`)
         }
     }
