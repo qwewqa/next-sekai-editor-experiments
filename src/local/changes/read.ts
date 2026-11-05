@@ -87,6 +87,31 @@ const remember = (key: string, span: Span) => {
     return span
 }
 
+/** At most this many chunk reads in flight while spans are read. */
+const SPAN_READS = 16
+
+/** Runs `task` on each item, `limit` at a time; the first failure is thrown once all have stopped. */
+const eachLimited = async <T>(
+    items: readonly T[],
+    limit: number,
+    task: (item: T) => Promise<unknown>,
+) => {
+    let next = 0
+    let failure: { error: unknown } | undefined
+    const worker = async () => {
+        while (!failure && next < items.length) {
+            const item = items[next++] as T
+            try {
+                await task(item)
+            } catch (error) {
+                failure ??= { error }
+            }
+        }
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+    if (failure) throw failure.error
+}
+
 const widen = (span: Span, place: Place): Span =>
     span
         ? {
@@ -210,6 +235,13 @@ const kindChunks = async (
                     if (reaches(await chunkSpan(chunk))) list.push(chunk)
         return list
     }
+    // Every shared chunk's span is needed. Reading them a few at a time overlaps the reads, which
+    // matters the first time a kind's spans are read.
+    const unread: string[] = []
+    for (const { hash, leaf, shared } of unitsA)
+        if (shared && !(leaf && spans.has(`${kind}:leaf:${hash}`)))
+            unread.push(...(leaf ? await leafChunks(hash) : [hash]))
+    await eachLimited(unread, SPAN_READS, chunkSpan)
     return [await listOf(unitsA), await listOf(unitsB)]
 }
 

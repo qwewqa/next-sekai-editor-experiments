@@ -433,6 +433,17 @@ test('a stack split over chunks apart from each other marks the same from storag
     await check({ chunks: [d, x, s, z] }, { chunks: [x, s, z, reversed] })
     // The same with shared leaves.
     await check({ leaves: [[d], [x], [s], [z]] }, { leaves: [[x], [s], [z], [reversed]] })
+    // A shared chunk read only for its span, missing among many: the change is unknown. No other
+    // test has these records, so their spans are not kept from before.
+    const far = Array.from({ length: 40 }, (_, i) => [bpm(100 + i, 121)])
+    const source = layoutSource({ chunks: [d, ...far] }, { chunks: [reversed, ...far] })
+    const lost = `chunk:${JSON.stringify(far[30])}`
+    const missing: PartSource = {
+        ...source,
+        chunk: (hex) => (hex === lost ? Promise.resolve(undefined) : source.chunk(hex)),
+    }
+    assert.equal(await readCandidates(missing, '0', '1'), undefined)
+    assert.ok(await readCandidates(source, '0', '1'))
 })
 
 test('connection changes keep their marks in the most layout, which added and removed objects decide', async () => {
