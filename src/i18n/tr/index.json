@@ -86,9 +86,9 @@
       "title": "1/{0} Bölüm",
       "switched": "1/{0} bölümüne geçildi",
       "custom": {
-        "title": "Özelleştirilebilir Bölüm…",
+        "title": "Özel Bölüm…",
         "modal": {
-          "title": "Özelleştirilebilir Bölüm",
+          "title": "Özel Bölüm",
           "division": "Bölüm"
         }
       }
@@ -142,7 +142,7 @@
       "split": "{0} bağlantı bölündü"
     },
     "combineNotes": {
-      "title": "Kaydırmada Birleştir",
+      "title": "Tek Kaydırmada Birleştir",
       "noSelected": "Birleştirilecek notaları seçin",
       "sameSlide": "Seçilen notalar zaten aynı kaydırmaya ait",
       "combined": "{0} nota tek kaydırmada birleştirildi"
@@ -408,7 +408,7 @@
         "only": "Yalnızca {0} gösteriliyor"
       },
       "toggle": {
-        "title": "Görünürlük: {0}",
+        "title": "{0} Görünürlüğünü Aç/Kapat",
         "on": "{0} görünürlüğü açıldı",
         "off": "{0} görünürlüğü kapatıldı",
         "types": {
@@ -751,7 +751,7 @@
       "levelInfo": "İkisi de dosyaya dışa aktarır. Seviyenin kapağını veya önizleme sesini ayarlamak için Seviye Bilgileri’ni kullanın."
     },
     "play": {
-      "startPosition": "Oynat komutunun oynatma imlecinden başlaması için Ayarlar › Oynat bölümünde Başlangıç Konumu’nu İmleç olarak ayarlayın.",
+      "startPosition": "Oynat komutunun oynatma imlecinden başlaması için Ayarlar › Oynatma bölümünde Başlangıç Konumu’nu İmleç olarak ayarlayın.",
       "stop": "Durdur, oynatmayı sonlandırır ve oynatma imlecini oynatmanın başladığı yere geri götürür.",
       "toggle": "Oynat, oynatmayı başlatır veya geçerli konumda durdurur."
     },
@@ -855,7 +855,7 @@
     },
     "splitCombine": {
       "split": "Kaydırmayı Böl, seçili her notadan sonraki bağlantıyı keser.",
-      "combine": "Kaydırmada Birleştir, seçili notaları ve ait oldukları kaydırmaları tek bir kaydırmada birleştirir."
+      "combine": "Tek Kaydırmada Birleştir, seçili notaları ve ait oldukları kaydırmaları tek bir kaydırmada birleştirir."
     },
     "noteTool": {
       "adds": "Nota, geçerli ön ayarın varsayılan özellikleriyle notalar ekler.",
@@ -957,13 +957,13 @@
       "secondaryTool": {
         "title": "İkincil Araç",
         "eraser": "Silgi",
-        "select": "Seç",
-        "selectContextMenu": "Seç + Bağlam Menüsü"
+        "select": "Seçim",
+        "selectContextMenu": "Seçim + Bağlam Menüsü"
       },
       "smoothScrolling": "Pürüzsüz Kaydırma"
     },
     "play": {
-      "title": "Oynat",
+      "title": "Oynatma",
       "bgmVolume": "Arka Plan Müziği Sesi (%)",
       "sfxVolume": "Ses Efekti Sesi (%)",
       "startPosition": {
@@ -972,7 +972,7 @@
         "cursor": "İmleç"
       },
       "follow": "Takip Et",
-      "followPosition": "Pozisyonu Takip Et (%)",
+      "followPosition": "Takip Konumu (%)",
       "previewDuration": "Önizleme Süresi (ms)"
     },
     "preview": {
@@ -1159,11 +1159,11 @@
       "playStartPosition": {
         "intro": "Oynat komutunun başlangıç konumu.",
         "choices": {
-          "view": "Çizelgenin görünen kısmının altından veya Takip Et açıkken Pozisyonu Takip Et ayarında belirtilen konumdan başlar.",
+          "view": "Çizelgenin görünen kısmının altından veya Takip Et açıkken Takip Konumu’ndan başlar.",
           "cursor": "Oynatma imlecinin bulunduğu yerden başlar."
         }
       },
-      "playFollow": "Oynatma sırasında oynatma imlecini Pozisyonu Takip Et ayarında belirtilen konumda tutmak için çizelgenin kaydırılması.",
+      "playFollow": "Oynatma sırasında oynatma imlecini Takip Konumu’nda tutmak için çizelgenin kaydırılması.",
       "touchQuickScrollWidth": "Tek parmakla kaydırabileceğiniz alanın genişliği. 0 değeri bu alanı kapatır.",
       "touchQuickScrollShow": {
         "intro": "Hızlı kaydırma alanının gölgelendirilme koşulları.",
@@ -1335,7 +1335,7 @@
       }
     },
     "select": {
-      "title": "Seç",
+      "title": "Seçim",
       "deselected": "Tüm nesnelerin seçimi kaldırıldı",
       "selecting": "{0} nesne seçiliyor",
       "selected": "{0} nesne seçildi",
@@ -2065,7 +2065,7 @@
         "label": "Boyut"
       },
       "skip": {
-        "label": "Atla (vuruş)"
+        "label": "Atlama (vuruş)"
       },
       "stage": {
         "label": "Sahne"
