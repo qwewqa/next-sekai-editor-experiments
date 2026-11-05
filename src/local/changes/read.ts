@@ -1,11 +1,13 @@
 import type { RecordValue } from '../records/canonical'
 import { recordPastLimit } from '../records/limits'
 import { kindNames, type KindName } from '../records/schema'
-import type { DiffInput, KindCandidates } from './diff'
+import { stackKey, type DiffInput, type KindCandidates } from './diff'
 
 // The worker's narrowing: two snapshots compared by hash, so equal roots, kind
 // nodes, leaves and chunks are skipped and only the chunks one side has are read and decoded.
 // Chunks that only changed place make their kind read in full, so its stacks keep their order.
+// A shared chunk that holds part of a same-beat stack with records in a changed chunk is read on
+// both sides, so the diff compares that stack whole.
 
 type Rec = readonly RecordValue[]
 
@@ -30,20 +32,21 @@ const need = <T>(value: T | undefined): T => {
     return value
 }
 
-const countsOf = (values: readonly string[]) => {
+/** For each value of `a`, whether `b` has it, with multiplicity, first occurrences first. */
+const matched = (a: readonly string[], b: readonly string[]) => {
     const counts = new Map<string, number>()
-    for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1)
-    return counts
+    for (const value of b) counts.set(value, (counts.get(value) ?? 0) + 1)
+    return a.map((value) => {
+        const count = counts.get(value) ?? 0
+        if (count) counts.set(value, count - 1)
+        return count > 0
+    })
 }
 
 /** The values of `a` that `b` has (`shared`) or lacks, with their multiplicity, in `a`'s order. */
 const pick = (a: readonly string[], b: readonly string[], shared: boolean) => {
-    const counts = countsOf(b)
-    return a.filter((value) => {
-        const count = counts.get(value) ?? 0
-        if (count) counts.set(value, count - 1)
-        return !!count === shared
-    })
+    const found = matched(a, b)
+    return a.filter((_, i) => found[i] === shared)
 }
 
 /** The values only one side has, with their multiplicity, in list order. */
@@ -59,36 +62,115 @@ const sameOrder = (a: readonly string[], b: readonly string[]) => {
     return x.length === y.length && x.every((value, i) => value === y[i])
 }
 
+/** A chunk, or a leaf both sides have; `shared` numbers the units both sides have, in order. */
+type Unit = { hash: string; leaf: boolean; shared?: number }
+
+type Read = (hash: string) => Promise<readonly Rec[]>
+
 /**
  * The chunk hashes of a kind on each side that the other side lacks. A kind other than slides
- * gives all of them when its shared leaves or chunks changed place.
+ * also gives the shared chunks that hold part of a changed stack, and gives all of its chunks
+ * when its shared leaves or chunks changed place.
  */
-const kindChunks = async (source: PartSource, kind: KindName, a?: string, b?: string) => {
+const kindChunks = async (
+    source: PartSource,
+    read: Read,
+    kind: KindName,
+    a?: string,
+    b?: string,
+): Promise<[string[], string[]]> => {
     const empty: NodeParts = { depth: 0, children: [] }
     const nodeA = a ? need(await source.node(a)) : empty
     const nodeB = b ? need(await source.node(b)) : empty
-    const leaves = async (node: NodeParts, only?: readonly string[]) => {
-        if (node.depth === 0) return node.children
+    const leafChunks = async (leaf: string) => {
+        const found = need(await source.node(leaf))
+        if (found.depth !== 0) throw new Unreadable()
+        return found.children
+    }
+    const chunksOf = async (node: NodeParts, only?: readonly string[]) => {
+        if (node.depth === 0) return [...node.children]
         const chunks: string[] = []
-        for (const leaf of only ?? node.children) {
-            const found = need(await source.node(leaf))
-            if (found.depth !== 0) throw new Unreadable()
-            for (const chunk of found.children) chunks.push(chunk)
-        }
+        for (const leaf of only ?? node.children) chunks.push(...(await leafChunks(leaf)))
         return chunks
     }
-    const ordered = kind !== 'slides'
-    const all = async () => [await leaves(nodeA), await leaves(nodeB)] as const
     // Two-level kinds skip the leaves they share.
     const twoLevel = nodeA.depth === 1 && nodeB.depth === 1
-    if (twoLevel && ordered && !sameOrder(nodeA.children, nodeB.children)) return all()
-    const [leavesA, leavesB] = twoLevel
-        ? difference(nodeA.children, nodeB.children)
-        : [undefined, undefined]
-    const chunksA = await leaves(nodeA, leavesA)
-    const chunksB = await leaves(nodeB, leavesB)
-    if (ordered && !sameOrder(chunksA, chunksB)) return all()
-    return difference(chunksA, chunksB)
+    if (kind === 'slides') {
+        const [leavesA, leavesB] = twoLevel
+            ? difference(nodeA.children, nodeB.children)
+            : [undefined, undefined]
+        return difference(await chunksOf(nodeA, leavesA), await chunksOf(nodeB, leavesB))
+    }
+
+    const unitsOf = async (node: NodeParts, other: NodeParts) => {
+        if (!twoLevel) return (await chunksOf(node)).map((hash): Unit => ({ hash, leaf: false }))
+        const kept = matched(node.children, other.children)
+        const units: Unit[] = []
+        for (const [i, leaf] of node.children.entries())
+            if (kept[i]) units.push({ hash: leaf, leaf: true })
+            else for (const hash of await leafChunks(leaf)) units.push({ hash, leaf: false })
+        return units
+    }
+    const unitsA = await unitsOf(nodeA, nodeB)
+    const unitsB = await unitsOf(nodeB, nodeA)
+    const keysOf = (units: readonly Unit[]) =>
+        units.map(({ hash, leaf }) => `${leaf ? 'leaf' : 'chunk'}:${hash}`)
+    const keysA = keysOf(unitsA)
+    const keysB = keysOf(unitsB)
+    if (!sameOrder(keysA, keysB)) return [await chunksOf(nodeA), await chunksOf(nodeB)]
+    for (const [units, found] of [
+        [unitsA, matched(keysA, keysB)],
+        [unitsB, matched(keysB, keysA)],
+    ] as const) {
+        let n = 0
+        for (const [i, unit] of units.entries()) if (found[i]) unit.shared = n++
+    }
+
+    // The stacks with a record in a changed chunk, and the shared chunks that hold part of one.
+    const stacks = new Set<string>()
+    for (const unit of [...unitsA, ...unitsB])
+        if (unit.shared === undefined)
+            for (const record of await read(unit.hash)) stacks.add(stackKey(kind, record))
+    const holdsStack = async (hash: string) =>
+        (await read(hash)).some((record) => stacks.has(stackKey(kind, record)))
+    const keptChunks = new Set<number>()
+    const keptInLeaves = new Map<number, Set<number>>()
+    // Records are in beat order, so a stack's chunks come one after another: from each changed
+    // chunk, walk each way while the next chunk holds part of a changed stack.
+    for (const units of [unitsA, unitsB])
+        for (const [start, unit] of units.entries()) {
+            if (unit.shared !== undefined) continue
+            for (const step of [-1, 1])
+                walk: for (let i = start + step; ; i += step) {
+                    const next = units[i]
+                    if (next?.shared === undefined) break
+                    if (!next.leaf) {
+                        if (!(await holdsStack(next.hash))) break
+                        keptChunks.add(next.shared)
+                        continue
+                    }
+                    const chunks = await leafChunks(next.hash)
+                    const kept = keptInLeaves.get(next.shared) ?? new Set()
+                    keptInLeaves.set(next.shared, kept)
+                    for (let j = 0; j < chunks.length; j++) {
+                        const at = step > 0 ? j : chunks.length - 1 - j
+                        if (!(await holdsStack(need(chunks[at])))) break walk
+                        kept.add(at)
+                    }
+                }
+        }
+    const listOf = async (units: readonly Unit[]) => {
+        const list: string[] = []
+        for (const { hash, leaf, shared } of units) {
+            if (shared === undefined || (!leaf && keptChunks.has(shared))) list.push(hash)
+            const kept = shared === undefined ? undefined : keptInLeaves.get(shared)
+            if (leaf && kept?.size)
+                for (const [at, chunk] of (await leafChunks(hash)).entries())
+                    if (kept.has(at)) list.push(chunk)
+        }
+        return list
+    }
+    return [await listOf(unitsA), await listOf(unitsB)]
 }
 
 /**
@@ -104,16 +186,22 @@ export const readCandidates = async (
     try {
         const a = need(await source.root(before))
         const b = need(await source.root(after))
+        const read = new Map<string, Promise<readonly Rec[]>>()
+        const chunk: Read = (hash) => {
+            let records = read.get(hash)
+            if (!records) read.set(hash, (records = source.chunk(hash).then(need)))
+            return records
+        }
         const kinds: KindCandidates[] = []
         for (const kind of kindNames) {
             const nodeA = a.kinds.get(kind)
             const nodeB = b.kinds.get(kind)
             if (nodeA === nodeB) continue
-            const [chunksA, chunksB] = await kindChunks(source, kind, nodeA, nodeB)
+            const [chunksA, chunksB] = await kindChunks(source, chunk, kind, nodeA, nodeB)
             const records = async (chunks: readonly string[]) => {
                 const list: Rec[] = []
-                for (const chunk of chunks)
-                    for (const record of need(await source.chunk(chunk))) {
+                for (const hash of chunks)
+                    for (const record of await chunk(hash)) {
                         // Past the limits is damage: building it would hang the grid.
                         if (recordPastLimit(kind, record)) throw new Unreadable()
                         list.push(record)

@@ -339,6 +339,45 @@ test('a reordered stack or a changed slide connection marks only the notes and e
     assert.equal(runBeats.set.counts.bpms, 48)
 })
 
+test('a flipped stack marks the same from storage when a shared chunk moves past a changed one', async () => {
+    const bpmsOf = (state: State) => [...state.store.grid.bpm.values()].flatMap((b) => [...b])
+    /** A stack of these runs at `at`, a BPM change 2 beats each side of it, and `fill` beats. */
+    const stackOf = (at: number, fill: number[], ...runs: number[][]) =>
+        chart(
+            [],
+            [
+                ...fill.map((beat) => ({ beat, bpm: 120, meter: 4 })),
+                { beat: at - 2, bpm: 100, meter: 4 },
+                ...runs.flat().map((bpm) => ({ beat: at, bpm, meter: 4 })),
+                { beat: at + 2, bpm: 100, meter: 4 },
+            ],
+        )
+    const distinct = (count: number) => Array.from({ length: count }, (_, i) => 100 + i)
+    const same = (count: number) => Array.from({ length: count }, () => 90)
+    /** The flip of the stack and its two neighbours, which reverses the stack. */
+    const check = async (before: State, at: number, marks: number) => {
+        const after = flipVerticalWithReceipt(
+            before,
+            bpmsOf(before).filter((bpm) => Math.abs(bpm.beat - at) <= 2),
+        ).state
+        const set = await diff(before, after)
+        assert.equal(set.counts.bpms, marks)
+        const input = await readCandidates(
+            memorySource(before, after),
+            rootOf(before),
+            rootOf(after),
+        )
+        assert.deepEqual(summarizeChanges(input!).beats, [at])
+    }
+    // The run of equal changes is a shared chunk that the flip moves past the other run.
+    const later = [0, ...Array.from({ length: 20 }, (_, i) => 8 + i)]
+    await check(stackOf(4, later, distinct(24), same(24)), 4, 48)
+    await check(stackOf(4, later, same(24), distinct(24)), 4, 48)
+    // Fifteen chunks before the stack and sixteen chunks a run: the equal run is a shared leaf.
+    const earlier = Array.from({ length: 15 }, (_, i) => i * 16)
+    await check(stackOf(248, earlier, distinct(384), same(384)), 248, 768)
+})
+
 test('connection changes keep their marks in the most layout, which added and removed objects decide', async () => {
     const beatsOf = async (before: State, after: State) => {
         const set = await diff(before, after)

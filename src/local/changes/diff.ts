@@ -78,6 +78,10 @@ const eventBeat: Record<KindName, number> = {
 const trackOf = (kind: KindName, record: Rec) =>
     kind === 'bpms' || kind === 'cameraEvents' ? 0 : (record[0] as number)
 
+/** An event's same-beat stack: its track and beat. */
+export const stackKey = (kind: KindName, record: Rec) =>
+    `${trackOf(kind, record)}|${String(record[eventBeat[kind]])}`
+
 const textOf = (record: Rec) => JSON.stringify(record)
 
 const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
@@ -153,7 +157,7 @@ const restacked = (kind: KindName, before: readonly Entry[], after: readonly Ent
     const stacksOf = (entries: readonly Entry[]) => {
         const stacks = new Map<string, Entry[]>()
         for (const entry of entries) {
-            const key = `${trackOf(kind, entry.record)}|${String(entry.record[eventBeat[kind]])}`
+            const key = stackKey(kind, entry.record)
             const stack = stacks.get(key)
             if (stack) stack.push(entry)
             else stacks.set(key, [entry])
