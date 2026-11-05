@@ -92,7 +92,7 @@ const renderer = {
         d[9] = a
         // The sprite's UV box, on each vertex the real renderer writes.
         const atlas = (sprite.texture ?? 0) < 2
-        for (const offset of [10, 24, 38, 66]) {
+        for (const offset of [10, 24, 38, 80]) {
             d[offset] = atlas ? sprite.u0 : 0
             d[offset + 1] = atlas ? sprite.v0 : 0
             d[offset + 2] = atlas ? sprite.u1 : 0
