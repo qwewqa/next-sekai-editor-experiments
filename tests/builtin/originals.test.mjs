@@ -117,3 +117,24 @@ test('the lane strips fade in at the far end only', () => {
         assert.ok(Math.max(...alphas) - Math.min(...alphas) <= 1, `${name} Preview is not even`)
     }
 })
+
+test("styled critical notes have images of their own, as the originals' do", () => {
+    const pairs = [
+        ['Sekai Normal Note Left', 'Sekai Critical Note Left'],
+        ['Sekai Normal Trace Note Middle', 'Sekai Critical Trace Note Middle'],
+        ['Sekai Slot Normal', 'Sekai Slot Critical'],
+        ['Sekai Flick Arrow Up Left 6', 'Sekai Critical Flick Arrow Up Left 6'],
+        ['Sekai Normal Note Basic', 'Sekai Critical Note Basic'],
+        ['Sekai Normal Trace Note Basic', 'Sekai Critical Trace Note Basic'],
+    ]
+    for (const color of colorNames)
+        for (const [normal, critical] of pairs) {
+            const [a, b] = [`${normal} ${color}`, `${critical} ${color}`].map((name) =>
+                sprites.get(name),
+            )
+            assert.ok(
+                a.x !== b.x || a.y !== b.y,
+                `${critical} ${color} shares the image of ${normal} ${color}`,
+            )
+        }
+})

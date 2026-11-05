@@ -176,6 +176,8 @@ const damageSlimVars = {
 const basicBox = box(-0.02, 1.02, -0.06, 1.06)
 
 const capital = (word) => word[0].toUpperCase() + word.slice(1).toLowerCase()
+// Styled critical notes have their own colours, as the base's do.
+const isCritical = (family) => family.startsWith('Critical')
 
 const parts = ['Left', 'Middle', 'Right']
 const bodyImage = (part, [outer, inner, accent]) =>
@@ -570,12 +572,20 @@ export function skinSprites() {
         alias('Sekai Trace Note Purple', 'Sekai Damage Note Basic')
         for (const color of colorNames) {
             const [outer, inner, accent] = styleColors(color)
+            const critical = baseColors.styleCritical[color]
             for (const [family] of bodyFamilies)
-                add(`Sekai ${family} Basic ${color}`, basic([outer, inner, accent]))
+                add(
+                    `Sekai ${family} Basic ${color}`,
+                    basic(isCritical(family) ? critical.body : [outer, inner, accent]),
+                )
             for (const [family] of traceFamilies)
                 add(
                     `Sekai ${family} Basic ${color}`,
-                    image('note-slim-basic', { accent }, { transform: basicBox }),
+                    image(
+                        'note-slim-basic',
+                        { accent: isCritical(family) ? critical.trace : accent },
+                        { transform: basicBox },
+                    ),
                 )
             add(
                 `Sekai Damage Note Basic ${color}`,
@@ -587,30 +597,40 @@ export function skinSprites() {
     group('Style colours', () => {
         for (const color of colorNames) {
             const [outer, inner, accent] = styleColors(color)
+            const critical = baseColors.styleCritical[color]
             for (const [family] of bodyFamilies)
                 for (const part of parts)
-                    add(`Sekai ${family} ${part} ${color}`, bodyImage(part, [outer, inner, accent]))
+                    add(
+                        `Sekai ${family} ${part} ${color}`,
+                        bodyImage(
+                            part,
+                            isCritical(family) ? critical.body : [outer, inner, accent],
+                        ),
+                    )
             for (const [family] of traceFamilies)
                 for (const part of parts)
-                    add(`Sekai ${family} ${part} ${color}`, slimImage(part, accent))
+                    add(
+                        `Sekai ${family} ${part} ${color}`,
+                        slimImage(part, isCritical(family) ? critical.trace : accent),
+                    )
             for (const part of parts)
                 add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, inner))
             for (const [family, , role] of diamondFamilies)
                 add(
                     `Sekai ${family} ${color}`,
-                    kite(
-                        baseColors.styleDiamond[color][family.startsWith('Critical') ? 1 : 0],
-                        role,
-                    ),
+                    kite(baseColors.styleDiamond[color][isCritical(family) ? 1 : 0], role),
                 )
             const [rest, held, criticalRest, criticalHeld, damaged, , , tint] =
                 baseColors.style[color]
             const [slotGlow, criticalGlow] = baseColors.styleGlow[color]
             for (const [family] of slotFamilies) {
-                add(`Sekai Slot ${family} ${color}`, slot(accent))
+                add(
+                    `Sekai Slot ${family} ${color}`,
+                    slot(isCritical(family) ? critical.slot : accent),
+                )
                 add(
                     `Sekai Slot Glow ${family} ${color}`,
-                    glow(family.startsWith('Critical') ? criticalGlow : slotGlow),
+                    glow(isCritical(family) ? criticalGlow : slotGlow),
                 )
             }
             for (const family of ['Normal', 'Critical'])
@@ -623,7 +643,7 @@ export function skinSprites() {
                     for (let width = 1; width <= 6; width++)
                         add(
                             `Sekai ${family} Arrow ${direction} ${width} ${color}`,
-                            arrow(key, tint, width),
+                            arrow(key, family === 'Flick' ? tint : critical.arrow, width),
                         )
             for (const [family, colors] of [
                 ['Normal', [rest, held]],

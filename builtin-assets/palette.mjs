@@ -84,6 +84,58 @@ export const baseColors = {
         Cyan: ['#a1f0f9', '#bff8ff'],
         Black: ['#5e5e5e', '#7a7a7a'],
     },
+    // Per style, the critical notes' own colours: the body [outer, inner, accent], the trace bar,
+    // the slot and the flick arrow.
+    styleCritical: {
+        Neutral: {
+            body: ['#bfbfbf', '#e5e5e5', '#a3a3a3'],
+            trace: '#c1c1c1',
+            slot: '#c3c3c3',
+            arrow: '#999999',
+        },
+        Red: {
+            body: ['#fe80b3', '#ffcce0', '#fe4a92'],
+            trace: '#fe85b6',
+            slot: '#ff84b5',
+            arrow: '#ff3385',
+        },
+        Green: {
+            body: ['#80fed3', '#ccffee', '#4afec0'],
+            trace: '#85fed5',
+            slot: '#84ffd5',
+            arrow: '#33ffb9',
+        },
+        Blue: {
+            body: ['#8080fe', '#ccccff', '#4a4afe'],
+            trace: '#8585fe',
+            slot: '#8484ff',
+            arrow: '#3333ff',
+        },
+        Yellow: {
+            body: ['#fed980', '#fff0cc', '#fec84a'],
+            trace: '#feda85',
+            slot: '#ffdb84',
+            arrow: '#ffc333',
+        },
+        Purple: {
+            body: ['#dc80fe', '#f1ccff', '#cd4afe'],
+            trace: '#dd85fe',
+            slot: '#de84ff',
+            arrow: '#c833ff',
+        },
+        Cyan: {
+            body: ['#80f1fe', '#ccfaff', '#4aeafe'],
+            trace: '#85f1fe',
+            slot: '#84f2ff',
+            arrow: '#33e9ff',
+        },
+        Black: {
+            body: ['#4a4a4a', '#8c8c8c', '#3e3e3e'],
+            trace: '#4b4b4b',
+            slot: '#4c4c4c',
+            arrow: '#3d3d3d',
+        },
+    },
     // Per style, the slot glows of normal and critical notes.
     styleGlow: {
         Neutral: [
