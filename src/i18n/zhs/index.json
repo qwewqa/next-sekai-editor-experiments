@@ -280,7 +280,7 @@
         "missingNote": "{0} 缺少音符",
         "ticksPerBeat": "每拍 tick 数缺失或无效",
         "offset": "偏移无效",
-        "timeScaleChange": "时间尺度变化无效",
+        "timeScaleChange": "时间尺度无效",
         "meter": "每小节拍数无效",
         "missingMeter": "第 {0} 小节没有每小节拍数"
       },

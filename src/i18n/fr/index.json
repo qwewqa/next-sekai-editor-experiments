@@ -280,7 +280,7 @@
         "missingNote": "il manque une note à {0}",
         "ticksPerBeat": "ticks par temps manquants ou non valides",
         "offset": "décalage non valide",
-        "timeScaleChange": "changement d’échelle de temps non valide",
+        "timeScaleChange": "échelle de temps non valide",
         "meter": "temps par mesure non valide",
         "missingMeter": "temps par mesure non défini pour la mesure {0}"
       },

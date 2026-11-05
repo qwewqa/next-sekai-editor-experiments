@@ -280,7 +280,7 @@
         "missingNote": "{0}에 노트가 없음",
         "ticksPerBeat": "비트당 틱 수가 없거나 잘못됨",
         "offset": "잘못된 오프셋",
-        "timeScaleChange": "잘못된 시간 배율 변경",
+        "timeScaleChange": "잘못된 시간 배율",
         "meter": "잘못된 박자",
         "missingMeter": "{0} 마디에 박자가 없음"
       },

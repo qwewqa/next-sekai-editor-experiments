@@ -280,7 +280,7 @@
                 "missingNote": "{0} has a missing note",
                 "ticksPerBeat": "missing or invalid ticks per beat",
                 "offset": "invalid offset",
-                "timeScaleChange": "invalid time scale change",
+                "timeScaleChange": "invalid time scale",
                 "meter": "invalid meter",
                 "missingMeter": "no meter for measure {0}"
             },

@@ -525,13 +525,13 @@ for (const [label, edit, message] of [
         'an infinite time scale',
         (chart: string) => `${chart}
 #TIL00: "0'480:1e999"`,
-        'Invalid chart: invalid time scale change',
+        'Invalid chart: invalid time scale.',
     ],
     [
         'a malformed time scale segment',
         (chart: string) => `${chart}
 #TIL00: "abc"`,
-        'Invalid chart: invalid time scale change',
+        'Invalid chart: invalid time scale.',
     ],
     [
         'an infinite offset',

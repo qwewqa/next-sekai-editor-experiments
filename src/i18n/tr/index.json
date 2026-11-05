@@ -280,7 +280,7 @@
         "missingNote": "{0} içinde eksik nota var",
         "ticksPerBeat": "vuruş başına tick sayısı eksik veya geçersiz",
         "offset": "geçersiz zaman kayması",
-        "timeScaleChange": "geçersiz zaman ölçeği değişikliği",
+        "timeScaleChange": "geçersiz zaman ölçeği",
         "meter": "geçersiz ölçü",
         "missingMeter": "{0}. ölçünün ölçü değeri yok"
       },

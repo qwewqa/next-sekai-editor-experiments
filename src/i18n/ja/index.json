@@ -280,7 +280,7 @@
         "missingNote": "{0}のノーツが見つかりません",
         "ticksPerBeat": "1拍あたりのtick数がないか、無効な値です",
         "offset": "オフセットが無効な値です",
-        "timeScaleChange": "ハイスピード変更の値が無効です",
+        "timeScaleChange": "ハイスピードの値が無効です",
         "meter": "拍子が無効です",
         "missingMeter": "小節{0}の拍子がありません"
       },
