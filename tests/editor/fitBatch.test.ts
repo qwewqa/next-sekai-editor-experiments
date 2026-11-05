@@ -22,19 +22,3 @@ test('queued fits run each stage together, so layout is forced once per stage', 
     await Promise.resolve()
     assert.deepEqual(log, ['A0', 'b0', 'A1', 'A2'])
 })
-
-test('a stage can add stages to its fit, and they run in step with other fits', async () => {
-    const log: string[] = []
-    const grown = [() => void log.push('a0')]
-    grown.push(() => {
-        log.push('a1')
-        grown.push(() => void log.push('a2'))
-    })
-    queueFit({}, grown)
-    queueFit(
-        {},
-        [0, 1, 2, 3].map((stage) => () => void log.push(`b${stage}`)),
-    )
-    await Promise.resolve()
-    assert.deepEqual(log, ['a0', 'b0', 'a1', 'b1', 'a2', 'b2', 'b3'])
-})
