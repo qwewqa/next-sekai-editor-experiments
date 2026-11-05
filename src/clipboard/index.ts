@@ -116,6 +116,7 @@ const getClipboardEntry = (text: string): ClipboardEntry => {
 
         return {
             name: `#${++i} (${
+                chart.bpms.length +
                 chart.cameraEvents.length +
                 chart.stageMaskEvents.length +
                 chart.stagePivotEvents.length +
