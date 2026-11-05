@@ -60,8 +60,11 @@ let lastInput: PreviewFrameInput | undefined
 
 let counters: PreviewWorkerCounters | undefined
 
+// While Export Video is open: no atlas textures, and no drawing.
+let suspended = false
+
 const upload = () => {
-    if (!renderer) return
+    if (!renderer || suspended) return
     for (const slot of [0, 1, 3] as const) {
         const atlas = atlases[slot]
         if (!atlas || uploaded[slot] === atlas.bitmap) continue
@@ -80,7 +83,7 @@ const createRenderer = () => {
 }
 
 const draw = () => {
-    if (!renderer || lost || !skin || !mirror || !lastInput) return
+    if (!renderer || lost || suspended || !skin || !mirror || !lastInput) return
     const chart = build(mirror, lastInput.noteSpeed)
     drawPreviewFrame(renderer, outline, skin, particle, chart, lastInput, selection)
 }
@@ -293,6 +296,18 @@ const handle = (message: ToPreviewWorker) => {
         }
         case 'release':
             for (const item of retired.splice(0)) item.dispose()
+            return
+        case 'suspend':
+            if (message.suspended === suspended) return
+            suspended = message.suspended
+            if (suspended) {
+                renderer?.releaseTextures()
+                uploaded.length = 0
+                return
+            }
+            // The atlases current now, including any that arrived while suspended.
+            upload()
+            draw()
             return
         case 'return': {
             // The canvases stay. The main thread terminates the worker once the page no longer

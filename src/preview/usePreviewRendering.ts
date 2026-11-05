@@ -23,6 +23,7 @@ import { createOutlineRenderer, type OutlineRenderer } from './outlineRenderer'
 import type { LoadedParticle } from './particle'
 import { exposePreviewTest } from './previewTest'
 import type { LoadedSkin } from './skin'
+import { previewSuspended } from './suspend'
 import type { usePreviewResources } from './usePreviewResources'
 import { previewHost, previewWorker } from './worker/host'
 
@@ -175,10 +176,18 @@ export const usePreviewRendering = (
     let uploadedSkin: LoadedSkin | undefined
     let uploadedParticle: LoadedParticle | undefined
     let uploadedBackground: LoadedBackground | undefined
+    watch(previewSuspended, (suspended) => {
+        if (!suspended) return
+        renderer.value?.releaseTextures()
+        uploadedRenderer = undefined
+        uploadedSkin = undefined
+        uploadedParticle = undefined
+        uploadedBackground = undefined
+    })
     watch(
-        [renderer, skin, particle, loadedBackground, isAppActive],
-        ([nextRenderer, nextSkin, nextParticle, nextBackground, active]) => {
-            if (!active || !nextRenderer) return
+        [renderer, skin, particle, loadedBackground, isAppActive, previewSuspended],
+        ([nextRenderer, nextSkin, nextParticle, nextBackground, active, suspended]) => {
+            if (!active || !nextRenderer || suspended) return
 
             try {
                 // A bitmap moved to the worker is detached, with no size, until it comes back or
@@ -298,6 +307,11 @@ export const usePreviewRendering = (
                 return
             }
             const host = worker.value
+            // The worker host posts frames, which its worker answers without drawing.
+            if (!host && previewSuspended.value) {
+                renderFrame = undefined
+                return
+            }
             const currentRenderer = renderer.value
             const currentSkin = skin.value
             // The worker host draws once the worker has a context for the panel's canvas.
