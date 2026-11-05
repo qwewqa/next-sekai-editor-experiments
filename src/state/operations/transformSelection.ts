@@ -147,8 +147,9 @@ export const inLandingOrder = <T>(
             const [x, y] = [entityOf(a), entityOf(b)]
             return (x.beat - y.beat || rank(x) - rank(y)) * (mirrored ? -1 : 1)
         })
+    let next = 0
     const sorted = items.map((item) =>
-        entityOf(item).type === 'note' ? item : (timing.shift() ?? item),
+        entityOf(item).type === 'note' ? item : (timing[next++] ?? item),
     )
     return inStoredOrder(source, sorted, entityOf, mirrored)
 }
