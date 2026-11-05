@@ -344,3 +344,54 @@ test('Properties geometry normalization cannot erase the applied beat field duri
     assert.ok(result.receipt.assignments.some(({ field }) => field === 'beat'))
     assert.equal(middle.beat, 3)
 })
+
+test("Properties sides read only the objects that use a field, not an attached tick's derived size", () => {
+    // The tail is not edited, so the tick's size follows the new head and the tail and differs.
+    const source = withNotes(
+        [
+            { beat: 0, size: 3 },
+            { beat: 1, isAttached: true },
+            { beat: 2, size: 5, elevation: 4 },
+        ],
+        true,
+    )
+    const [head, tick] = notes(source)
+    const result = planEdit(source, [head!, tick!], { size: 2, elevation: 2 })
+    assert.deepEqual(result.receipt?.changed, { note: 2 })
+    assert.deepEqual(result.receipt?.assignments, [
+        {
+            field: 'elevation',
+            before: { mode: 'uniform', value: 0 },
+            after: { mode: 'uniform', value: 2 },
+        },
+        {
+            field: 'size',
+            before: { mode: 'uniform', value: 3 },
+            after: { mode: 'uniform', value: 2 },
+        },
+    ])
+})
+
+test('Properties sides fall back to every holder when no changed object uses the field', () => {
+    const source = withNotes(
+        [{ beat: 0 }, { beat: 1, isAttached: true, elevation: 7 }, { beat: 2 }],
+        true,
+    )
+    const [head, tick, tail] = notes(source)
+    // An unused elevation on the tick does not make the used ones vary.
+    const all = planEdit(source, [head!, tick!, tail!], { elevation: 2, isCritical: true })
+    assert.deepEqual(all.receipt?.assignments[0], {
+        field: 'elevation',
+        before: { mode: 'uniform', value: 0 },
+        after: { mode: 'uniform', value: 2 },
+    })
+    // The tick alone: only its unused value changed, and the sides still read it.
+    const alone = planEdit(source, [tick!], { elevation: 2 })
+    assert.deepEqual(alone.receipt?.assignments, [
+        {
+            field: 'elevation',
+            before: { mode: 'uniform', value: 7 },
+            after: { mode: 'uniform', value: 2 },
+        },
+    ])
+})

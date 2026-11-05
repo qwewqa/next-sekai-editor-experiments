@@ -21,6 +21,8 @@ import {
 import type { Entity } from '../entities'
 import { getInStoreGrid } from '../store/grid'
 import type { EditableEntity, EditableObject } from './editable'
+import { noteFieldsApply } from './properties/applicability'
+import { getNoteFieldsIn } from './properties/noteFields'
 
 const kinds = {
     note: 'note',
@@ -274,15 +276,45 @@ export const propertyEditReceipt = (
         rows.flatMap(({ target, fields }) => fields.filter((field) => fieldChanged(target, field))),
     )
     if (!rows.length || !applied.size) return
+    // A side reads the holders that use the field (not an attached tick's lane or a tail's
+    // connector), or every holder when none does.
+    const side = (from: State) => {
+        const uses = new Map<EditableEntity, (field: string) => boolean>()
+        const usesOf = (entity: EditableEntity) => {
+            let applies = uses.get(entity)
+            if (!applies) {
+                applies =
+                    entity.type === 'note'
+                        ? noteFieldsApply(getNoteFieldsIn(from.store, entity))
+                        : () => true
+                uses.set(entity, applies)
+            }
+            return applies
+        }
+        return (entities: readonly EditableEntity[], field: FieldId) => {
+            const used = entities.filter((entity) => usesOf(entity)(field))
+            return (used.length ? used : entities).map((entity) =>
+                effectiveValue(from, entity, field),
+            )
+        }
+    }
+    const beforeOf = side(source)
+    const afterOf = side(state)
     const assignments = [...applied].sort().map((field): Assignment => {
         const holders = rows.filter(({ fields }) => fields.includes(field))
         return Object.freeze({
             field,
             before: assigned(
-                holders.map(({ target }) => effectiveValue(source, target.before, field)),
+                beforeOf(
+                    holders.map(({ target }) => target.before),
+                    field,
+                ),
             ),
             after: assigned(
-                holders.map(({ target }) => effectiveValue(state, target.after, field)),
+                afterOf(
+                    holders.map(({ target }) => target.after),
+                    field,
+                ),
             ),
         }) as Assignment
     })
