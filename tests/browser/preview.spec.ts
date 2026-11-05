@@ -1654,12 +1654,13 @@ test.describe('preview background camera', () => {
         })
         await settle(page)
         const last = await background(page)
-        // Engine 9e93ba0, same camera as the reference in background.test.ts.
+        // Engine bfe6144, the same camera as a square reference in background.test.ts: the
+        // backgrounds are square.
         const expected = [
-            [-4.601563948172114, -1.4209550223968535],
-            [-2.7713883637279726, 2.9078173025386116],
-            [4.924206880601742, -0.3458281809176391],
-            [3.094031296157601, -4.674600505853104],
+            [-3.6889609703184427, -2.4453959061979624],
+            [-1.4006828383259018, 2.9668908348760104],
+            [4.011603902748071, 0.6786127028834699],
+            [1.7233257707555296, -4.733674038190503],
         ]
         for (let i = 0; i < 4; i++) {
             expect(last.corners[i]![0]).toBeCloseTo(expected[i]![0]!, 4)
@@ -1746,7 +1747,8 @@ test.describe('preview background camera', () => {
         await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.interaction))
         await settle(page)
         expect((await background(page)).rotation).toBeCloseTo(0)
-        expect((await background(page)).corners[0]![1]).toBe(-1)
+        // The square image covers the 16:9 screen by its width.
+        expect((await background(page)).corners[0]![1]).toBeCloseTo(-16 / 9, 5)
     })
 })
 
