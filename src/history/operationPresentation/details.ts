@@ -56,17 +56,27 @@ type RecordData = {
 const plain = (text: string): DetailText => ({ text })
 
 const tableIndex = new Map<string, number>(propertyFields.map((field, index) => [field.key, index]))
-const brushGroupIndex = (field: FieldId) => {
-    const group = propertyField.get(field)?.brush?.group
+// With no notes changed, a Brush step's Elevation is the stage transform events' row.
+const brushGroupIndex = (field: FieldId, changed: NativeCounts) => {
+    const group =
+        field === 'elevation' && !changed.note
+            ? 'transform'
+            : propertyField.get(field)?.brush?.group
     return group ? brushGroups.indexOf(group) : brushGroups.length
 }
 const order = (field: FieldId) => tableIndex.get(field) ?? tableIndex.size
 
-/** Assignments in the order of the form that made the step: the Brush's groups, else the field table. */
-const inFormOrder = <T extends { field: FieldId }>(assignments: readonly T[], brush: boolean) =>
+/**
+ * Assignments in the order of the form that made the step: for a Brush step (given what it
+ * changed), the Brush's groups, else the field table.
+ */
+const inFormOrder = <T extends { field: FieldId }>(
+    assignments: readonly T[],
+    brush: NativeCounts | undefined,
+) =>
     [...assignments].sort(
         (a, b) =>
-            (brush ? brushGroupIndex(a.field) - brushGroupIndex(b.field) : 0) ||
+            (brush ? brushGroupIndex(a.field, brush) - brushGroupIndex(b.field, brush) : 0) ||
             order(a.field) - order(b.field),
     )
 const placeholder = (text: string): DetailText => ({ text, placeholder: true })
@@ -263,7 +273,7 @@ const nativeRecord = (
                 operation.id === 'nse.property.set' && operation.data.assignments.length === 1
             for (const assignment of inFormOrder(
                 operation.data.assignments,
-                operation.id === 'nse.object.brush',
+                operation.id === 'nse.object.brush' ? operation.data.changed : undefined,
             )) {
                 const label = operationFieldLabel(assignment.field, context)
                 const before = assigned(assignment.field, assignment.before, context)

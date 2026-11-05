@@ -6750,6 +6750,46 @@
         ]
     },
     {
+        "id": "brush.objects.stageElevation",
+        "cat": "property",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.object.brush",
+                    "data": {
+                        "subject": "objects",
+                        "changed": {
+                            "timeScale": 2,
+                            "stageTransformEvent": 3
+                        },
+                        "assignments": [
+                            {
+                                "field": "elevation",
+                                "before": {
+                                    "mode": "varying"
+                                },
+                                "after": {
+                                    "mode": "uniform",
+                                    "value": 5
+                                }
+                            },
+                            {
+                                "field": "timeScale",
+                                "before": {
+                                    "mode": "varying"
+                                },
+                                "after": {
+                                    "mode": "uniform",
+                                    "value": 2
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    {
         "id": "property.note.noop",
         "cat": "property",
         "note": "Not produced today: only a coupled connector field can make a field row equal before and after.",

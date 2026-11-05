@@ -1181,6 +1181,12 @@ R: Changed [changed]: 2 notes / 3 time scales
 R: Group [groupId]: ~Varies > Main Group
 R: Size [size]: 1 > 2
 
+#brush.objects.stageElevation en
+T: Brushed 5 objects
+R: Changed [changed]: 2 time scales / 3 stage transform events
+R: Time Scale [timeScale]: ~Varies > 2
+R: Elevation [elevation]: ~Varies > 5
+
 #property.note.noop en
 T: Set Lane to 1 on 1 note
 

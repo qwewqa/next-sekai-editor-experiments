@@ -459,6 +459,11 @@ test('property steps show the before value, in the editor words', () => {
     assert.deepEqual(items(objects, 'changed'), ['2 notes', '3 time scales'])
     const critical = byId('brush.note.1field')
     assert.equal(change(critical, 'isCritical'), '~Varies > Enabled')
+    // In the Brush's order: with no notes changed, Elevation is the stage transform events' row.
+    assert.deepEqual(
+        byId('brush.objects.stageElevation').rows.map(({ key }) => key),
+        ['changed', 'timeScale', 'elevation'],
+    )
 })
 
 test('header, BGM and Level values are in the editor units', () => {
