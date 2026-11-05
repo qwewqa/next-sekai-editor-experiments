@@ -47,7 +47,6 @@ jobs:
             - name: Read the legacy .nxsp fixtures with the independent checker
               run: node scripts/check-nxsp-legacy.mjs
             - run: npm run test:release
-            - run: npm run check:builtin-assets
             - run: npm run build:native
             - run: npm run check:native-bundle
 

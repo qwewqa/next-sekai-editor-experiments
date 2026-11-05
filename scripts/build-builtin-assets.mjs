@@ -10,9 +10,9 @@ import { readZip } from '../builtin-assets/zip.mjs'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 // The folders whose files the build owns, so a stray or leftover file is reported too.
-const ownedFolders = ['public/builtin', 'builtin-assets/out']
+export const ownedFolders = ['public/builtin', 'builtin-assets/out']
 
-async function listFiles(directory) {
+export async function listFiles(directory) {
     const files = []
     let entries
     try {

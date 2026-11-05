@@ -5,6 +5,7 @@ import { before, test } from 'node:test'
 import { buildAll, renderSpec } from '../../builtin-assets/build.mjs'
 import { omittedSprites, skinSprites } from '../../builtin-assets/manifest.mjs'
 import { fill, renderSvg } from '../../builtin-assets/svg.mjs'
+import { listFiles, ownedFolders } from '../../scripts/build-builtin-assets.mjs'
 import { readBuiltinItem, readFixture } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -24,6 +25,12 @@ test("the committed outputs are the build's outputs", () => {
             readFileSync(new URL(`../../${path}`, import.meta.url)).equals(bytes),
             `${path} is stale; run npm run build:builtin-assets`,
         )
+})
+
+test('the folders the build owns hold only its outputs', async () => {
+    for (const folder of ownedFolders)
+        for (const path of await listFiles(folder))
+            assert.ok(first.files.has(path), `${path} is not produced by the build`)
 })
 
 test('the lock records every output with its sha256', () => {
