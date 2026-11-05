@@ -29,6 +29,7 @@ export type PreviewRenderer = {
         width: number
         height: number
     }
+    /** Throws when the upload fails. */
     setTexture: (index: TextureSlot, texture: ImageBitmap, interpolation: boolean) => void
     /** Replaces the texture in `slot` with a transparent one, with linear filtering. */
     reserveTexture: (slot: TextureSlot, width: number, height: number) => void
@@ -377,6 +378,8 @@ export const createPreviewRenderer = (
 
         setTexture(index, bitmap, interpolation) {
             if (disposed) return
+            // An error left by an earlier call is not the upload's.
+            for (let i = 0; i < 16; i++) if (gl.getError() === gl.NO_ERROR) break
             gl.activeTexture(gl.TEXTURE0 + index)
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             gl.bindTexture(gl.TEXTURE_2D, textures[index]!)
@@ -393,6 +396,11 @@ export const createPreviewRenderer = (
                 mipmapped ? gl.LINEAR_MIPMAP_LINEAR : filter,
             )
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
+            // A failed allocation is reported here, not by an exception. A lost context is
+            // restored instead.
+            const error = gl.getError()
+            if (error !== gl.NO_ERROR && !gl.isContextLost())
+                throw new Error(`Preview texture upload failed with GL error ${error}`)
 
             hasTextures[index] = true
             if (index === 3) backgroundIdentity = { width: bitmap.width, height: bitmap.height }
