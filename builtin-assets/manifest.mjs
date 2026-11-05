@@ -443,13 +443,18 @@ export function skinSprites() {
         }
         for (const key of ['green', 'red', 'yellow'])
             add(`#NOTE_TICK_${key.toUpperCase()}`, kite(diamondColors[key], 64))
-        // The fallback marker fills its quad.
+        // The marker draws in the flick judgment icons and stands in for missing arrows: the width 3
+        // up arrow, placed as in its own square like the base's, at twice the density for the
+        // larger quad.
         for (const [color, accent] of [
             ['RED', arrowColors.normal],
             ['YELLOW', arrowColors.critical],
         ]) {
-            const { vars, width } = arrowSprite('up', 1, arrowTint(accent))
-            add(`#DIRECTIONAL_MARKER_${color}`, image('arrow', vars, { width }))
+            const { vars, width, frame } = arrowSprite('up', 3, arrowTint(accent))
+            add(
+                `#DIRECTIONAL_MARKER_${color}`,
+                image('arrow', vars, { width: 2 * width, transform: box(...frame) }),
+            )
         }
         for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN'])
             add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color))))

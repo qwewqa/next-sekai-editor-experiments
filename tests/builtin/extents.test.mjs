@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { diagonalPlaces } from '../../builtin-assets/arrows.mjs'
 import { readBuiltinItem } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -29,9 +30,6 @@ const targets = {
     'Sekai Flick Arrow Up 6': [-0.03, 1.03, 0.06, 0.64],
     'Sekai Flick Arrow Down 1': [-0.14, 1.14, 0.18, 1.55],
     'Sekai Flick Arrow Down 3': [-0.07, 1.07, 0.07, 0.9],
-    'Sekai Flick Arrow Up Left 1': [-0.32, 1.32, 0.27, 1.66],
-    'Sekai Flick Arrow Up Left 6': [-0.13, 1.09, 0.07, 0.75],
-    'Sekai Flick Arrow Down Left 2': [-0.24, 1.21, 0.11, 1.18],
     'Sekai Critical Flick Arrow Up 1 Neutral': [-0.14, 1.14, 0.25, 1.61],
 }
 const tolerance = 0.06
@@ -123,6 +121,44 @@ test("sprites land where the base skin's do in the engine's quads", () => {
                 Math.abs(got[i] - target[i]) <= tolerance,
                 `${name}: ${got.map((value) => value.toFixed(2))} against ${target}`,
             )
+    }
+})
+
+// The inked pixels' centroid x and lowest y in the engine's quad, through the sprite's transform.
+function inkedPlace(name, threshold = 128) {
+    const { x, y, w, h, transform } = sprites.get(name)
+    const corners = apply(transform, unit)
+    let [sum, count, low] = [0, 0, Infinity]
+    for (let row = 0; row < h; row++)
+        for (let column = 0; column < w; column++)
+            if (pixelAt(texture, x + column, y + row)[3] >= threshold) {
+                const [px, py] = at(corners, (column + 0.5) / w, 1 - (row + 0.5) / h)
+                sum += px
+                count++
+                low = Math.min(low, py)
+            }
+    return [sum / count, low]
+}
+
+test("diagonal arrows sit where the base's arrowheads do", () => {
+    for (let width = 1; width <= 6; width++) {
+        const [x, upLow, downLow] = diagonalPlaces[width - 1]
+        // The rounded rim pulls an up-left arrow's sharp lowest corner up a little.
+        for (const [direction, low, slack] of [
+            ['Up Left', upLow, 0.06],
+            ['Down Left', downLow, 0.04],
+        ]) {
+            const name = `Sekai Flick Arrow ${direction} ${width}`
+            const [gotX, gotLow] = inkedPlace(name)
+            assert.ok(
+                Math.abs(gotX - x) <= 0.04,
+                `${name}: centroid x ${gotX.toFixed(3)}, the base ${x}`,
+            )
+            assert.ok(
+                Math.abs(gotLow - low) <= slack,
+                `${name}: lowest ${gotLow.toFixed(3)}, the base ${low}`,
+            )
+        }
     }
 })
 
