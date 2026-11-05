@@ -158,9 +158,9 @@ export const flipVerticalWithReceipt = (
             continue
         }
         const beat = flippedBeat(entity)
-        if (entity.type !== 'note') {
-            // Match the editor's move behavior: a timing point replaces an
-            // occupied destination in its own group/stage, never another lane.
+        // As every move does: a BPM change replaces the one at its destination, and a time scale
+        // replaces its group's there; an event joins the events already there.
+        if (entity.type === 'bpm' || entity.type === 'timeScale') {
             for (const other of getInStoreGrid(transaction.store.grid, entity.type, beat) ?? []) {
                 if (
                     other.beat === beat &&

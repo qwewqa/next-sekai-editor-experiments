@@ -99,7 +99,7 @@ test('elevation scaling preserves same-beat slide order, connectors, and untouch
     })
 })
 
-test('beat scaling preserves selected destinations and replaces only occupied matching event lanes', async ({
+test('beat scaling preserves selected destinations, replaces BPM changes and time scales at occupied beats and stacks events there', async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {
@@ -211,20 +211,27 @@ test('beat scaling preserves selected destinations and replaces only occupied ma
         [true, 8, 1],
         [false, 8, 3],
     ])
-    expect(result.camera).toEqual([[8, 1]])
+    expect(result.camera).toEqual([
+        [8, 9],
+        [8, 1],
+    ])
     expect(result.mask).toEqual([
+        [true, 8, 9],
         [true, 8, 6],
         [false, 8, 3],
     ])
     expect(result.pivot).toEqual([
+        [true, 8, 9],
         [true, 8, 1],
         [false, 8, 3],
     ])
     expect(result.style).toEqual([
+        [true, 8, 0.9],
         [true, 8, 0.2],
         [false, 8, 0.3],
     ])
     expect(result.transform).toEqual([
+        [true, 8, 9],
         [true, 8, 2],
         [false, 8, 3],
     ])

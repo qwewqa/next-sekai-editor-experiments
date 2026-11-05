@@ -1229,6 +1229,13 @@ R: Scale Factor [factor]: 0.5
 R: Scale Origin [pivot]: 1
 F: Kept the initial BPM change
 
+#scale.beats.displacedEvent en
+T: Scaled beats of 2 objects
+R: Changed [changed]: 2 camera events
+R: Replaced [displaced]: 1 camera event
+R: Scale Factor [factor]: 2
+R: Scale Origin [pivot]: 1
+
 #scale.empty en
 T: Scaled width
 R: Scale Factor [factor]: Multiple Adjustments

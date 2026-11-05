@@ -7004,6 +7004,33 @@
         ]
     },
     {
+        "id": "scale.beats.displacedEvent",
+        "cat": "transform",
+        "note": "Not produced today: a scaled event joins the events at its destination. Steps stored when it replaced them still read.",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.object.scale",
+                    "data": {
+                        "axis": "beats",
+                        "subject": "cameraEvent",
+                        "changed": {
+                            "cameraEvent": 2
+                        },
+                        "displaced": {
+                            "cameraEvent": 1
+                        },
+                        "transform": {
+                            "mode": "uniform",
+                            "factor": 2,
+                            "pivot": 0
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    {
         "id": "scale.empty",
         "cat": "transform",
         "members": [

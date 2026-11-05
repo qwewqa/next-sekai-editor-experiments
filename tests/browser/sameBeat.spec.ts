@@ -734,7 +734,7 @@ for (const [operation, extra] of [
     ['translate', 7],
     ['flipVertical', 2],
 ] as const) {
-    test(`${operation}: selected pairs stay, unselected objects at a destination are replaced`, async ({
+    test(`${operation}: selected pairs stay; unselected BPM changes and time scales at a destination are replaced, events there stay`, async ({
         page,
     }) => {
         await showPairs(page, extra)
@@ -743,17 +743,18 @@ for (const [operation, extra] of [
             beats: [2, 4, 6],
             except: 9,
         })
-        // The unselected 9 sits where the last (or, flipped, the first) object lands.
+        // The unselected 9 sits where the last (or, flipped, the first) object lands: the time
+        // scale there is replaced, and the camera event stays before the one that lands.
         expect(await exported(page)).toEqual(
             operation === 'flipVertical'
                 ? {
                       timeScale: [3, 2, 1, 0.5],
                       bpm: [120, 200, 180, 120],
                       bpmIntegrals: [120, 200, 180, 120],
-                      cameraEventJoint: [3, 2, 1, 0.5],
+                      cameraEventJoint: [9, 3, 2, 1, 0.5],
                       stageMaskEventJoint: [1.5, 1, 0.5, 2.5],
                   }
-                : original,
+                : { ...original, cameraEventJoint: [0.5, 1, 2, 9, 3] },
         )
     })
 }
