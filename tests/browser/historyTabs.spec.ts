@@ -270,6 +270,7 @@ test('a new visit continues with a divider, its earlier rows peek and restore, a
     await flush(next)
     const before = await liveOf(next)
     await openHistory(next)
+    await timelineRead(next)
     const listed = await rowsAndDividers(next)
     const at = listed.findIndex((text) => text?.startsWith('| '))
     expect(listed.slice(0, at)).toEqual([expect.stringMatching(/^Now/), 'Visit 2 1'])
