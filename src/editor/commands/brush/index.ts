@@ -3,7 +3,7 @@ import { i18n } from '../../../i18n'
 import { notify } from '../../notification'
 import { isSidebarVisible, revealPropertiesSection } from '../../sidebars'
 import { showToolModal } from '../../toolModals'
-import { switchToolTo } from '../../tools'
+import { switchToolTo, toolName } from '../../tools'
 import BrushIcon from './BrushIcon.vue'
 import BrushPropertiesModal from './BrushPropertiesModal.vue'
 
@@ -14,14 +14,13 @@ export const brush: Command = {
     },
 
     execute() {
+        const active = toolName.value === 'brush'
         switchToolTo('brush')
 
         notify(() => i18n.value.commands.brush.switched)
 
-        if (!isSidebarVisible.value) {
-            void showToolModal(BrushPropertiesModal, {})
-        } else {
-            revealPropertiesSection('tool')
-        }
+        if (isSidebarVisible.value) revealPropertiesSection('tool')
+        // From another tool it only switches, as Note, Slide and Event do.
+        else if (active) void showToolModal(BrushPropertiesModal, {})
     },
 }

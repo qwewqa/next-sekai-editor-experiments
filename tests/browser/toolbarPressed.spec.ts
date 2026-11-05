@@ -1348,6 +1348,32 @@ test.describe('on a phone', () => {
         // Focus stays where it was.
         expect(await checked.evaluate((row) => row.contains(document.activeElement))).toBe(false)
     })
+
+    test('choosing Brush from another tool switches to it, and choosing it again opens Brush Properties', async ({
+        page,
+    }) => {
+        await page.evaluate(() => {
+            window.editorTest.settings.toolbar = [['brush'], ['select']]
+        })
+        const dialog = page.locator('.editor-tool-modal')
+        const tool = () =>
+            page.evaluate(async () => {
+                const { toolName } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/tools/state')
+                >('/src/editor/tools/state.ts')
+                return toolName.value
+            })
+        const brush = shown(page).and(page.getByTitle('Brush', { exact: true }))
+        await shown(page)
+            .and(page.getByTitle('Select', { exact: true }))
+            .tap()
+        await expect.poll(tool).toBe('select')
+        await brush.tap()
+        await expect.poll(tool).toBe('brush')
+        await expect(dialog).toHaveCount(0)
+        await brush.tap()
+        await expect(dialog.getByText('Brush Properties', { exact: true })).toBeVisible()
+    })
 })
 
 // A flyout opened by hovering leaves Escape to the field, rename or dialog that has focus.
