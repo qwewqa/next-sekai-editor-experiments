@@ -231,7 +231,7 @@ const drawnSlots = (page: Page) =>
     page.evaluate(() => {
         const vertices = window.previewTest.vertices
         const slots = new Set<number>()
-        for (let i = 5; i < vertices.length; i += 10) slots.add(vertices[i]!)
+        for (let i = 5; i < vertices.length; i += 14) slots.add(vertices[i]!)
         return [...slots].sort()
     })
 

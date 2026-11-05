@@ -90,7 +90,8 @@ export const installTextureAccount = (
     wrap('bufferSubData', (gl, [, , data]) => {
         const frame = frames.at(-1)
         if (!isPreview(gl) || !frame || !(data instanceof Float32Array)) return
-        for (let i = 5; i < data.length; i += 10) {
+        // gl.ts's FLOATS_PER_VERTEX: specs serialize this function, so it cannot import it.
+        for (let i = 5; i < data.length; i += 14) {
             const slot = data[i]
             if (slot !== undefined && !frame.slots.includes(slot)) frame.slots.push(slot)
         }
