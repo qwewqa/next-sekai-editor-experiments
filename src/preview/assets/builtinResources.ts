@@ -14,16 +14,16 @@ export const builtinResources: readonly {
         source: 'builtin',
         type: 'skin',
         hashes: {
-            data: '5a805153c16a7bc6d78f8b1bdef12d02fd976fe2',
-            texture: '3be588eeb355e990c3f5ad2126f5d6ebab13f525',
+            data: '49e56cc8f08c2bede1fd6130d14d07231a2b50d8',
+            texture: '33cd84617cf2e5b8a8cd09ee1b0d3da54e29ccf5',
         },
     },
     {
         source: 'builtin',
         type: 'particle',
         hashes: {
-            data: 'dcf2c39ba7c511d344ebf6e39a57000f9adda807',
-            texture: '3e807633ba397e0862fc21b26540d651cc5ce292',
+            data: 'c605c4ddb526e38081ad8a78c5aa692c5f440132',
+            texture: 'ff98e8d1d69a3181bdced37339c0a0e2f406b6d0',
         },
     },
     {

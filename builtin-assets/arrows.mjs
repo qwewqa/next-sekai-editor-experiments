@@ -33,8 +33,9 @@ const armShare = [0.64, 0.62, 0.58, 0.52, 0.48, 0.46]
 // The base's diagonals point this far from straight up or down, at every width. The engine moves
 // them 26.6 degrees off vertical.
 export const tiltDegrees = 22
-// Texture pixels per unit of the square: narrow arrows draw small, wide ones large.
-const density = [60, 84, 104, 120, 136, 150]
+// Texture pixels per unit of the square. The engine's square is min(width / 2, 3) lanes, so every
+// width from 2 gets 84 texels per lane on screen, and width 1 gets 120.
+export const density = [60, 84, 126, 168, 210, 252]
 
 const round = (value) => Math.round(value * 1000) / 1000
 
@@ -141,7 +142,7 @@ const flipped = ([u0, u1, v0, v1], shift) => [u0, u1, v1 + shift, v0 + shift]
  * the arrow square that the texture covers. Down arrows are their up arrow's art, flipped by the
  * frame (v0 above v1), so the two share a texture.
  */
-export function arrowSprite(direction, width, { accent, rim, tip }) {
+export function arrowSprite(direction, width, { accent, rim, tip }, pixels = density[width - 1]) {
     const down = direction === 'down' || direction === 'downLeft'
     const up = down ? (direction === 'down' ? 'up' : 'upLeft') : direction
     const { points, tip: tipAt, tail } = arrowOutline(up, width)
@@ -181,7 +182,7 @@ export function arrowSprite(direction, width, { accent, rim, tip }) {
             rim,
             tip,
         },
-        width: Math.max(8, Math.round((frame[1] - frame[0]) * density[width - 1])),
+        width: Math.max(8, Math.round((frame[1] - frame[0]) * pixels)),
         frame: down ? flipped(frame, bounds(arrowOutline(direction, width).points)[2] - y0) : frame,
     }
 }

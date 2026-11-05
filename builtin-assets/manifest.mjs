@@ -63,8 +63,15 @@ const bands = ([rest, held]) => [band(rest), band(held, 0.8, mix(held, '#ffffff'
 const glow = ([light, color, top]) => image('slot-glow', { light, color, top }, { stretch: true })
 // Slots fill their lane cell exactly with square corners, the rim on the cell's edge and a soft
 // glow past it, the way the base's do (its 128 px square over the cell's -0.28 to 1.28).
-const slot = (color) => image('slot', { color }, { transform: box(-0.28, 1.28, -0.28, 1.28) })
-const kite = (color, width) => image('kite', { color }, { width, transform: kiteBox(width) })
+const slot = (color) =>
+    image('slot', { color }, { width: 192, transform: box(-0.28, 1.28, -0.28, 1.28) })
+// Diamonds and ticks draw the art 1.4 times the engine's square about its middle, trace diamonds
+// 1.28 times, at 144 and 108 texels per lane on screen.
+const kiteRoles = {
+    slide: { width: 128, transform: box(-0.2, 1.2, -0.2, 1.2) },
+    trace: { width: 88, transform: box(-0.14, 1.14, -0.14, 1.14) },
+}
+const kite = (color, role) => image('kite', { color }, kiteRoles[role])
 
 /**
  * A sprite transform that draws the sprite's frame over the box [u0, u1] x [v0, v1] of the engine's
@@ -97,6 +104,13 @@ const arrowTint = (accent) => ({
 const arrow = (direction, accent, width) => {
     const { vars, width: pixels, frame } = arrowSprite(direction, width, arrowTint(accent))
     return image('arrow', vars, { width: pixels, transform: box(...frame) })
+}
+// The marker draws in the flick judgment icons and stands in for missing arrows: the width 3 up
+// arrow, placed as in its own square like the base's, at 2 x 104 texels per unit for the larger
+// quad.
+const marker = (accent) => {
+    const { vars, width, frame } = arrowSprite('up', 3, arrowTint(accent), 104)
+    return image('arrow', vars, { width: 2 * width, transform: box(...frame) })
 }
 
 // Note bodies fill their slices' quads exactly, as the base's bodies do (its lower band included):
@@ -160,8 +174,6 @@ const damageSlimVars = {
     face: endShape(4, damageTop + 4, damageH - damageTop - 4, 18, 24),
 }
 const basicBox = box(-0.02, 1.02, -0.06, 1.06)
-// Diamonds are drawn 1.4 times their square about its middle, trace diamonds 1.28 times.
-const kiteBox = (width) => (width < 64 ? box(-0.14, 1.14, -0.14, 1.14) : box(-0.2, 1.2, -0.2, 1.2))
 
 const capital = (word) => word[0].toUpperCase() + word.slice(1).toLowerCase()
 
@@ -209,14 +221,14 @@ const basicFamilies = [
     ['Critical Trace Flick', 'slim', 'yellow'],
 ]
 const diamondFamilies = [
-    ['Normal Slide Diamond', 'green', 64],
-    ['Critical Slide Diamond', 'yellow', 64],
-    ['Normal Trace Diamond', 'green', 44],
-    ['Trace Flick Diamond', 'red', 44],
-    ['Trace Down Flick Diamond', 'red', 44],
-    ['Critical Trace Diamond', 'yellow', 44],
-    ['Critical Trace Flick Diamond', 'yellow', 44],
-    ['Critical Trace Down Flick Diamond', 'yellow', 44],
+    ['Normal Slide Diamond', 'green', 'slide'],
+    ['Critical Slide Diamond', 'yellow', 'slide'],
+    ['Normal Trace Diamond', 'green', 'trace'],
+    ['Trace Flick Diamond', 'red', 'trace'],
+    ['Trace Down Flick Diamond', 'red', 'trace'],
+    ['Critical Trace Diamond', 'yellow', 'trace'],
+    ['Critical Trace Flick Diamond', 'yellow', 'trace'],
+    ['Critical Trace Down Flick Diamond', 'yellow', 'trace'],
 ]
 const slotFamilies = [
     ['Normal', 'tap', 'Cyan'],
@@ -400,12 +412,12 @@ export function skinSprites() {
     })
 
     group('Diamonds', () => {
-        for (const [family, key, width] of diamondFamilies)
-            add(`Sekai ${family}`, kite(diamondColors[key], width))
+        for (const [family, key, role] of diamondFamilies)
+            add(`Sekai ${family}`, kite(diamondColors[key], role))
         for (const key of ['green', 'yellow'])
-            add(`Sekai Diamond ${capital(key)}`, kite(diamondColors[key], 64))
+            add(`Sekai Diamond ${capital(key)}`, kite(diamondColors[key], 'slide'))
         for (const key of ['green', 'red', 'yellow'])
-            add(`Sekai Trace Diamond ${capital(key)}`, kite(diamondColors[key], 44))
+            add(`Sekai Trace Diamond ${capital(key)}`, kite(diamondColors[key], 'trace'))
     })
 
     group('Flick arrows', () => {
@@ -513,20 +525,12 @@ export function skinSprites() {
             )
         }
         for (const key of ['green', 'red', 'yellow'])
-            add(`#NOTE_TICK_${key.toUpperCase()}`, kite(diamondColors[key], 64))
-        // The marker draws in the flick judgment icons and stands in for missing arrows: the width 3
-        // up arrow, placed as in its own square like the base's, at twice the density for the
-        // larger quad.
+            add(`#NOTE_TICK_${key.toUpperCase()}`, kite(diamondColors[key], 'slide'))
         for (const [color, accent] of [
             ['RED', arrowColors.normal],
             ['YELLOW', arrowColors.critical],
-        ]) {
-            const { vars, width, frame } = arrowSprite('up', 3, arrowTint(accent))
-            add(
-                `#DIRECTIONAL_MARKER_${color}`,
-                image('arrow', vars, { width: 2 * width, transform: box(...frame) }),
-            )
-        }
+        ])
+            add(`#DIRECTIONAL_MARKER_${color}`, marker(accent))
         for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN'])
             add(`#NOTE_CONNECTION_${color}_SEAMLESS`, band(guideColor(capital(color))))
         for (const color of ['NEUTRAL', 'RED', 'YELLOW', 'PURPLE', 'CYAN'])
@@ -548,14 +552,9 @@ export function skinSprites() {
             alias(`#SIMULTANEOUS_CONNECTION_${color}_SEAMLESS`, '#SIMULTANEOUS_CONNECTION_NEUTRAL')
         }
         for (const [color, face] of Object.entries(baseColors.tick))
-            add(`#NOTE_TICK_${color.toUpperCase()}`, kite(face, 64))
-        for (const [color, face] of Object.entries(baseColors.marker)) {
-            const { vars, width, frame } = arrowSprite('up', 3, arrowTint(face))
-            add(
-                `#DIRECTIONAL_MARKER_${color.toUpperCase()}`,
-                image('arrow', vars, { width: 2 * width, transform: box(...frame) }),
-            )
-        }
+            add(`#NOTE_TICK_${color.toUpperCase()}`, kite(face, 'slide'))
+        for (const [color, face] of Object.entries(baseColors.marker))
+            add(`#DIRECTIONAL_MARKER_${color.toUpperCase()}`, marker(face))
         for (const color of ['Blue', 'Green'])
             add(`#GRID_${color.toUpperCase()}`, solid(guideColor(color)))
         for (const color of ['Green', 'Yellow']) {
@@ -596,12 +595,12 @@ export function skinSprites() {
                     add(`Sekai ${family} ${part} ${color}`, slimImage(part, accent))
             for (const part of parts)
                 add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, inner))
-            for (const [family, , width] of diamondFamilies)
+            for (const [family, , role] of diamondFamilies)
                 add(
                     `Sekai ${family} ${color}`,
                     kite(
                         baseColors.styleDiamond[color][family.startsWith('Critical') ? 1 : 0],
-                        width,
+                        role,
                     ),
                 )
             const [rest, held, criticalRest, criticalHeld, damaged, , , tint] =
@@ -644,21 +643,22 @@ export function skinSprites() {
 }
 
 /** The particle sprites, in the order the effects index them (sprite in particles.mjs), and a
- * width for the soft ones drawn smaller. */
+ * texture width where it differs from the template's: smaller for soft sprites, larger for the
+ * sharp ones that draw large. */
 export const particleSprites = [
     ['glow', 'particle-glow', 96],
     ['halo', 'particle-halo', 96],
-    ['frame', 'particle-frame-thin'],
-    ['line', 'particle-frame-line'],
-    ['plate', 'particle-plate'],
-    ['flare', 'particle-flare'],
-    ['sparkle', 'particle-sparkle'],
+    ['frame', 'particle-frame-thin', 256],
+    ['line', 'particle-frame-line', 256],
+    ['plate', 'particle-plate', 256],
+    ['flare', 'particle-flare', 128],
+    ['sparkle', 'particle-sparkle', 128],
     ['mote', 'particle-circle'],
     ['shard', 'particle-diamond'],
-    ['arc', 'particle-arc'],
+    ['arc', 'particle-arc', 256],
     ['flame', 'particle-flame'],
-    ['needle', 'particle-needle'],
-    ['ring', 'particle-ring'],
+    ['needle', 'particle-needle', 64],
+    ['ring', 'particle-ring', 256],
     ['wisp', 'particle-wisp'],
     ['fan', 'particle-fan'],
     ['flash', 'particle-flash'],

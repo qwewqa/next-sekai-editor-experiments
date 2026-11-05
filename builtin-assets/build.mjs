@@ -124,7 +124,7 @@ async function buildSkin(report) {
     )
     if (missing.length)
         throw new Error(`The skin lacks ${missing.length} engine names, such as ${missing[0]}`)
-    const atlas = await buildAtlas(sprites, 2048, 'skin texture')
+    const atlas = await buildAtlas(sprites, 4096, 'skin texture')
     const data = {
         width: atlas.size,
         height: atlas.size,
@@ -158,7 +158,7 @@ async function buildParticle(report) {
         throw new Error(`The particle lacks ${missing.length} engine names, such as ${missing[0]}`)
     const atlas = await buildAtlas(
         particleSprites.map(({ name, spec }) => [name, spec]),
-        512,
+        1024,
         'particle texture',
     )
     const groupsOf = new Map()

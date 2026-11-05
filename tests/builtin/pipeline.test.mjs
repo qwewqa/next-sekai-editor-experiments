@@ -173,11 +173,12 @@ test('stretch sprites extrude their edges into the gutter and the others have a 
 
 test('the textures and files stay within their budgets', () => {
     const skinData = skin.json('data')
-    assert.ok(skinData.width <= 2048 && skinData.height <= 2048)
+    assert.equal(skinData.width, 4096)
+    assert.equal(skinData.height, 4096)
     // The arrow images, one per direction and width, are counted in.
     assert.ok(skinData.sprites.some((sprite) => sprite.name === 'Sekai Flick Arrow Up Left 6'))
     const particle = readBuiltinItem('particle').json('data')
-    assert.ok(particle.width <= 512 && particle.height <= 512)
+    assert.ok(particle.width <= 1024 && particle.height <= 1024)
     const background = readBuiltinItem('background')
     // The background's soft detail costs more than a plain gradient (pass 7), and it is square.
     const image = background.resource('image').length
@@ -185,5 +186,5 @@ test('the textures and files stay within their budgets', () => {
     let total = 0
     for (const [path, bytes] of first.files)
         if (path.startsWith('public/builtin/')) total += bytes.length
-    assert.ok(total <= 2.5 * 1024 * 1024, `the set is ${total} bytes`)
+    assert.ok(total <= 3.8 * 1024 * 1024, `the set is ${total} bytes`)
 })
