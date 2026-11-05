@@ -12,6 +12,7 @@ import { createOutlineRenderer, type OutlineRenderer } from '../outlineRenderer'
 import type { PreviewParticle } from '../particle'
 import type { PreviewSkin } from '../skin'
 import { installTextureAccount } from '../textureAccount'
+import { uploadAtlas } from '../uploadAtlas'
 import { applyMirror, selectedObjects, type MirrorState } from './mirror'
 import type {
     FromPreviewWorker,
@@ -69,7 +70,7 @@ const upload = () => {
     for (const slot of [0, 1, 3] as const) {
         const atlas = atlases[slot]
         if (!atlas || uploaded[slot] === atlas.bitmap) continue
-        renderer.setTexture(slot, atlas.bitmap, atlas.interpolation)
+        uploadAtlas(renderer, slot, atlas.bitmap, atlas.interpolation)
         uploaded[slot] = atlas.bitmap
     }
 }

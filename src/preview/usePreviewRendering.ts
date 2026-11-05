@@ -24,6 +24,7 @@ import type { LoadedParticle } from './particle'
 import { exposePreviewTest } from './previewTest'
 import type { LoadedSkin } from './skin'
 import { previewSuspended } from './suspend'
+import { uploadAtlas } from './uploadAtlas'
 import type { usePreviewResources } from './usePreviewResources'
 import { previewHost, previewWorker } from './worker/host'
 
@@ -196,21 +197,21 @@ export const usePreviewRendering = (
                     nextSkin?.texture.width &&
                     (nextRenderer !== uploadedRenderer || nextSkin !== uploadedSkin)
                 ) {
-                    nextRenderer.setTexture(0, nextSkin.texture, nextSkin.interpolation)
+                    uploadAtlas(nextRenderer, 0, nextSkin.texture, nextSkin.interpolation)
                     uploadedSkin = nextSkin
                 }
                 if (
                     nextParticle?.texture.width &&
                     (nextRenderer !== uploadedRenderer || nextParticle !== uploadedParticle)
                 ) {
-                    nextRenderer.setTexture(1, nextParticle.texture, nextParticle.interpolation)
+                    uploadAtlas(nextRenderer, 1, nextParticle.texture, nextParticle.interpolation)
                     uploadedParticle = nextParticle
                 }
                 if (
                     nextBackground?.texture.width &&
                     (nextRenderer !== uploadedRenderer || nextBackground !== uploadedBackground)
                 ) {
-                    nextRenderer.setTexture(3, nextBackground.texture, true)
+                    uploadAtlas(nextRenderer, 3, nextBackground.texture, true)
                     uploadedBackground = nextBackground
                 }
                 uploadedRenderer = nextRenderer

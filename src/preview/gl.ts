@@ -29,7 +29,6 @@ export type PreviewRenderer = {
         width: number
         height: number
     }
-    /** Throws when the upload fails. */
     setTexture: (index: TextureSlot, texture: ImageBitmap, interpolation: boolean) => void
     /** Replaces the texture in `slot` with a transparent one, with linear filtering. */
     reserveTexture: (slot: TextureSlot, width: number, height: number) => void
@@ -168,7 +167,12 @@ const writeVertex = (
     data[offset + 9] = a
 }
 
-export type PreviewSurface = PreviewRenderer & {
+export type PreviewSurface = Omit<PreviewRenderer, 'setTexture'> & {
+    /**
+     * Returns the upload's GL error, or `NO_ERROR` (0). After an error the slot's texture may be
+     * incomplete. A lost context counts as no error, since it is restored instead.
+     */
+    setTexture: (index: TextureSlot, texture: ImageBitmap, interpolation: boolean) => number
     prepareFrame: (width: number, height: number) => void
     compositeBackground: (quad: Quad, input: PreviewFrameInput) => void
     hasTexture: (slot: TextureSlot) => boolean
@@ -402,7 +406,7 @@ export const createPreviewRenderer = (
         },
 
         setTexture(index, bitmap, interpolation) {
-            if (disposed) return
+            if (disposed) return gl.NO_ERROR
             // An error left by an earlier call is not the upload's.
             for (let i = 0; i < 16; i++) if (gl.getError() === gl.NO_ERROR) break
             gl.activeTexture(gl.TEXTURE0 + index)
@@ -421,14 +425,11 @@ export const createPreviewRenderer = (
                 mipmapped ? gl.LINEAR_MIPMAP_LINEAR : filter,
             )
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
-            // A failed allocation is reported here, not by an exception. A lost context is
-            // restored instead.
-            const error = gl.getError()
-            if (error !== gl.NO_ERROR && !gl.isContextLost())
-                throw new Error(`Preview texture upload failed with GL error ${error}`)
-
             hasTextures[index] = true
             if (index === 3) backgroundIdentity = { width: bitmap.width, height: bitmap.height }
+            // A failed allocation is reported here, not by an exception.
+            const error = gl.getError()
+            return gl.isContextLost() ? gl.NO_ERROR : error
         },
 
         reserveTexture(slot, width, height) {
