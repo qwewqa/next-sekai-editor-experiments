@@ -26,7 +26,7 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 ## 4. What to ask for
 
 - The ZIP file from Export Raw Data, as a private link by email.
-- The version: Settings › About, or Copy Diagnostic Info….
+- The version: Settings › About, or Copy Diagnostic Info.
 - The browser and the operating system.
 - What they did and what they saw: the text of the message, or a screenshot.
 - Whether the editor opens with `?safe` added to the address.
@@ -35,10 +35,10 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 
 ## 5. Loading a dump
 
-1. Leave the ZIP as it is. Its first entry, `dump.json`, holds the rows and `localStorage`. Each stored file (media, recovered work, a preview package) is its own `blobs/<n>` entry, which a `$blobEntry` tag in `dump.json` names. To look at the data, check `dump.json`’s `format` (`nse-local-data-dump`), its `version` and its `appVersion`, the build that wrote it. A value JSON has no form for is tagged (`$num`, `$date`, `$typed`, `$other`). A stored file the export could not read is `{"$blobUnreadable": true, "type", "size"}` in `dump.json`, with no `blobs/` entry. The seeder writes an empty file of that type in its row, so it shows as not loaded or damaged.
+1. Leave the ZIP as it is. Its first entry, `dump.json`, holds the rows and `localStorage`. Each stored file (media, recovered work, a preview package) is its own `blobs/<n>` entry, which a `$blobEntry` tag in `dump.json` names. To look at the data, check `dump.json`’s `format` (`nse-local-data-dump`), its `version` and its `appVersion`, the build that wrote it. A value that JSON has no form for is tagged (`$num`, `$date`, `$typed`, `$other`). A stored file the export could not read is `{"$blobUnreadable": true, "type", "size"}` in `dump.json`, with no `blobs/` entry. The seeder writes an empty file of that type in its row, so it shows as not loaded or damaged.
 2. Copy the ZIP itself into the nse-next `samples/` folder (or the folder `NSE_SAMPLES_DIR` names) as `<case>.zip`, for example `reporter-1.zip`. Never copy it into the repository. Case names use letters, digits, `.`, `_` and `-`.
 3. Run `npm run dev` in a worktree at the broken release’s tag, to see what the user saw, or at the fix.
-4. Open a fresh browser profile. The seeder refuses a database that holds any chain or session. A dump holds no file handles (the seeder leaves its handle rows out), so the first Save of a chain asks where to write.
+4. Open a fresh browser profile. The seeder refuses a database that holds any chain or session. A dump holds no file handles (the seeder leaves its handle rows out), so the first Save of a chain opens the file picker.
 5. Open `/?seedSample=<case>.zip` on the dev server. The page seeds the profile and reloads with the user’s data. The dump’s `journal.*` keys are seeded too and replay on that first load, so the profile is written to. The console says `[seedSample] Seeded <case>.zip; reloading.` A refusal says why, and the editor loads as usual.
 
 ## 6. Getting the work out
@@ -49,7 +49,7 @@ Work the editor could not read is under Settings › Local Data: the unreadable 
 
 If the build cannot read a chain, fix the reader on a branch and load the dump again into a fresh profile. The seeder refuses the profile that was seeded already.
 
-There is no `tools/recover.py`. It is deferred until a storage bug needs it.
+There is no recovery script. Write one only if a storage bug needs it.
 
 ## 7. Returning the files
 

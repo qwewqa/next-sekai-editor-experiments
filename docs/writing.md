@@ -1,6 +1,6 @@
 # Writing
 
-These rules cover everything we write: the text users see, the maintainer docs (`README.md`, `CONTRIBUTING.md` and `docs/`), code comments, commit messages and the release notes. The first part applies to all of it. The second part adds the rules for user-facing text.
+These rules cover everything we write: the text users see, the maintainer docs (`README.md`, `CONTRIBUTING.md`, `docs/` and the README files in other folders), code comments, commit messages and the release notes. The first part applies to all of it. The second part adds the rules for user-facing text.
 
 ## Everything we write
 
@@ -8,10 +8,11 @@ These rules cover everything we write: the text users see, the maintainer docs (
 - Choose the word that is idiomatic in the register. The app uses plain software English, neither literary nor bureaucratic. The docs and comments use plain technical English.
   - A file contains something, and a feature requires something.
   - When unsure, follow the existing text, then common software usage.
+- Docs and maintainer text use American spelling (color, center, behavior), as the UI and code do.
 - Leave out what the reader can assume.
 - Give extra information its own sentence, not a ", which …" tail.
 - Within a document, refer to the writer and the reader the same way throughout, such as "we" and "you".
-- In code, comments, test titles, messages only developers see and commit messages, use ASCII quotes, apostrophes and operators, and name a command without its ellipsis. Keep other characters only where the text quotes the UI or the data needs them.
+- In code, comments, maintainer docs, test titles, messages only developers see and commit messages, use ASCII quotes, apostrophes and operators, and name a command without its ellipsis. Keep other characters only where the text quotes the UI or the data needs them.
 - Reword existing text only when the new wording is clearer or more accurate.
 
 ### Easy to read

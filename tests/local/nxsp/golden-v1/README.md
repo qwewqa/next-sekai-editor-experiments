@@ -1,8 +1,8 @@
 # `.nxsp` v1: the builder golden
 
-Frozen with Formats v1. `tests/local/nxsp/golden.test.ts` builds a fixed chain with fixed `{ now, newId, device, appVersion }`: a first session (an import, a row whose state the file does not hold, `kept: false`, an edit, a BGM change, a Save) and a second that writes back to the first file (a continue, an edit, a cover change, a Save that appends). Every later build must plan exactly this. Never edit these files once v0.6.0 ships.
+`tests/local/nxsp/golden.test.ts` builds a fixed chain with fixed `{ now, newId, device, appVersion }`: a first session (an import, a row whose state the file does not hold, `kept: false`, an edit, a BGM change, a Save) and a second that writes back to the first file (a continue, an edit, a cover change, a Save that appends). Every later build must plan exactly this. Never edit these files once v0.6.0 ships.
 
-- `store.json`: the chunks' stored forms (raw DEFLATE), inputs, so a pako change never changes a plan. The test checks each inflates to its record's canonical bytes.
+- `store.json`: the chunks' stored forms (raw DEFLATE). They are inputs, so a pako change never changes a plan. The test checks each inflates to its record's canonical bytes.
 - `plan-1.json`, `plan-2.json`: the two plans, with deflated parts inflated, `.json` parts as parsed values and other parts in base64. `plan-2.json`'s copies name the source `golden`, which is `write-1.nxsp`.
 - `write-1.nxsp`, `write-2.nxsp`: the files the plans execute to, including one stored `level.json.gz` and the five Sonolus metadata entries. The test compares entry by entry (names, methods, CRCs, sizes, uncompressed bytes). ZIP compression changes alone do not fail it; the inner gzip stream is pinned. CI runs the independent checker over them:
 

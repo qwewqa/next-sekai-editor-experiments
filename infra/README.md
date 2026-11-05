@@ -83,7 +83,7 @@ Nothing is needed in the management account.
 
 Infrastructure costs money every month, so someone other than the author reviews every change that can change the bill, before it merges. The reviewer gets the change and the code, and checks both security and cost. The change updates the service’s cost table (each environment’s monthly cost, each price and where it was read), and the pull request states the change in monthly cost.
 
-A service’s template can create roles with any permissions: `nse-<service>-cfn` may create roles named `nse-<service>-*` with any inline policy. The reviewer therefore reads every IAM statement in the template. A permissions boundary would close this, and is not used.
+A service’s template can create roles with any permissions: `nse-<service>-cfn` may create roles named `nse-<service>-*` with any inline policy. The reviewer therefore reads every IAM statement in the template. A permissions boundary would close this gap, but none is used.
 
 `check_templates.py` fails when a template creates a resource type missing from the service’s list of reviewed types, when a billable type is missing from the service’s cost table, and when an instance size, a volume size or a budget differs from its pinned value. To fix a failure, review the cost, update the cost table in the runbook, and then the list in the script.
 
@@ -114,6 +114,6 @@ shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.
 bash infra/stats/scripts/contract-test.sh   # needs Docker, curl, jq and Linux
 ```
 
-On Windows, run these in Git Bash and use `uv run --with shellcheck-py shellcheck …` for the third. The contract test reads `/proc` and mounts Linux paths, so it does not run in Git Bash. Run it in CI, or in WSL 2 with Docker.
+On Windows, run these in Git Bash and use `uv run --with shellcheck-py shellcheck ...` for the third. The contract test reads `/proc` and mounts Linux paths, so it does not run in Git Bash. Run it in CI, or in WSL 2 with Docker.
 
 `infra-check.yml` runs the same when `infra/`, `src/analytics/` or an infra workflow changes. Its `stats-compose` job runs the contract test against the real images.

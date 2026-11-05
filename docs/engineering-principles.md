@@ -8,13 +8,13 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 ## 1. A default is for a known absence, never for an unknown value
 
-**Rule.** Use a default when the absence has a defined meaning: the format's default, the product's default, a genuinely empty thing, a first use, or the safe side. When the true value exists but is not known, represent it as absent and show it as unknown, drop its clause, or fall to the safe side. Never fill in a plausible value.
+**Rule.** Use a default when the absence has a defined meaning: the format's default, the product's default, a genuinely empty thing, a first use, or the safe side. When the true value exists but is not known, represent it as absent and show it as unknown, drop its clause, or fall back to the safe side. Never fill in a plausible value.
 
 **Why.** A plausible value reads as a fact, and a stored one is never questioned again.
 
 **Exception.** A derivative output, such as an Export Video file, may use an identified estimate for an unknown value when it warns the user. The value stays unknown everywhere else: the AAC delay that cannot be measured is placed with an estimate of 1,024 samples and the `audioSyncEstimated` warning, and is never cached as a measurement.
 
-**Example.** A History entry whose count could not be read was stored with `noteCount: 0`, and its neighbours showed false deltas such as +1,200. The count is now optional and stays unknown in the row and in the file, and a row with an unknown count shows no delta (`src/editor/history/rows.ts`). The same rule for the file on disk in the Save conflict dialog: `DiskVersion.notes` is absent when the file has no summary (`src/editor/save/dialogs.ts`), and a Save total over a part of unknown size is unknown, not final (`src/editor/save/total.ts`).
+**Example.** A History entry whose count could not be read was stored with `noteCount: 0`, and its neighbours showed false deltas such as +1,200. The count is now optional and stays unknown in the row and in the file, and a row with an unknown count shows no delta (`src/editor/history/rows.ts`). The same rule applies to the file on disk in the Save conflict dialog: `DiskVersion.notes` is absent when the file has no summary (`src/editor/save/dialogs.ts`), and a Save total over a part of unknown size is unknown, not final (`src/editor/save/total.ts`).
 
 ## 2. One fact, one place
 
@@ -22,7 +22,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** Two records of one fact disagree for as long as one of them is late.
 
-**Example.** The modal stack was updated from a dialog's `close` event, a task after the dialog closed, so a key pressed just after Escape was refused and an Undo could be dropped. It is now updated where Escape cancels, and `close` only repeats it. See `src/modals/ModalManager.vue` and `tests/browser/modalEscapeKeys.spec.ts`. The same shape: every Timeline divider named the wrong time after a `.nxsp` open because it read a side lookup (`entry.from`) when the entry's own record held the fact (`src/editor/history/rowText.ts`, `dividerText`); and a Save cut that counted rows by a different rule than the file did.
+**Example.** The modal stack was updated from a dialog's `close` event, a task after the dialog closed, so a key pressed just after Escape was refused and an Undo could be dropped. It is now updated where Escape cancels, and `close` only repeats it. See `src/modals/ModalManager.vue` and `tests/browser/modalEscapeKeys.spec.ts`. Other cases of the same kind: every Timeline divider named the wrong time after a `.nxsp` open because it read a side lookup (`entry.from`) when the entry's own record held the fact (`src/editor/history/rowText.ts`, `dividerText`); and a Save cut that counted rows by a different rule than the file did.
 
 ## 3. Module state has one owner
 
@@ -30,7 +30,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** Code written for one consumer stops or restarts the work of another when a second one appears.
 
-**Example.** Every mounted Timeline called `followEntries`, but the Edits Here scan state is module-wide, so closing the History dialog stopped the docked panel's scan. See `src/editor/history/source.ts`. The same class: Export's re-entry guard that did not exist during its first `await`, and notice holds released only by the event that placed them (`src/editor/NoticeCard.vue`).
+**Example.** Every mounted Timeline called `followEntries`, but the Edits Here scan state is module-wide, so closing the History dialog stopped the docked panel's scan. See `src/editor/history/source.ts`. Other cases of the same kind: Export's re-entry guard that did not exist during its first `await`, and notice holds released only by the event that placed them (`src/editor/NoticeCard.vue`).
 
 ## 4. A failure is not an empty result
 
@@ -38,7 +38,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** "None found" and "could not look" call for different action, and a user acting on the wrong one loses work.
 
-**Example.** A failed Edits Here scan read as "No edits here", and a recovery listing that failed read as "nothing to recover". A search that can fail has a third state beside found and nothing, with a retry. A `.catch(() => [])` needs a reason in a comment. Storage reads whose empty answer a caller acts on go through the `storedRead` gate (`src/local/storedRead.ts`). It returns the value or the failure and never rejects, and the `local/stored-reads` lint rule keeps those reads there. Each caller writes its failed case; a wrapper over such a read passes the failure on and never decides it for its callers.
+**Example.** A failed Edits Here scan read as "No edits here", and a recovery listing that failed read as "nothing to recover". A search that can fail has a third state beside found and nothing, with a retry. A `.catch(() => [])` needs a reason in a comment. Storage reads whose empty result a caller acts on go through the `storedRead` gate (`src/local/storedRead.ts`). It returns the value or the failure and never rejects, and the `local/stored-reads` lint rule keeps those reads there. Each caller writes its failed case; a wrapper over such a read passes the failure on and never decides it for its callers.
 
 ## 5. Tests prove what they claim
 
@@ -52,7 +52,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Rule.** A browser spec finds rows, dialogs and other regions through the helpers shared for that region, scoped to it. It does not match text ad hoc. A change to a component's DOM runs that component's specs before it merges, however small it looks.
 
-**Why.** One copy of a locator breaks as one set; many copies break one by one, on main.
+**Why.** A shared locator breaks in one place and is fixed once; copies break one at a time, on main.
 
 **Example.** Wrapping a word of the Timeline's text in a `lang` span broke 21 History specs on main, because their locators matched the Now row's text. The shared History row helper is `row` in `tests/browser/historyJourney.ts`: it matches a row by its title only, so the Now row never matches.
 
@@ -74,7 +74,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 ## 9. Protect in proportion
 
-**Rule.** Guard the paths users really take with one simple, structural guarantee. A case that needs two independent failures at once, a failure inside a narrow window, or two tabs plus a failure is an accepted residual: state it once, in the spec, and add no code for it unless the fix is trivial. Session History, recoverable through Recent Sessions, is the main safeguard; protection on the file side matters for bytes that are in a file but not in this browser, and `.nxsp` is the source of truth, while `.nsld` is an import source and an Export artifact.
+**Rule.** Guard the paths users really take with one simple, structural guarantee. A case that needs two independent failures at once, a failure inside a narrow window, or two tabs plus a failure is an accepted residual: state it once, in the spec, and add no code for it unless the fix is trivial. Session History, recoverable through Recent Sessions, is the main safeguard. Protection on the file side matters for bytes that are in a file but not in this browser. `.nxsp` is the source of truth; `.nsld` is an import source and an Export artifact.
 
 **Why.** Every extra rule is code to keep and a new place for bugs, and some of those bugs lose data themselves. Session History already lets a user recover from most rare failures.
 
@@ -86,13 +86,13 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** Tests serve the product. A test of little value is upkeep without return, and a bad test is worse than none. The cheapest time to weigh a test is before it is written.
 
-**Example.** Reviews stopped running mutation campaigns over whole changes; one targeted mutation still checks a key safety test. The matrix's Export cells waited a fixed 20 ms for a read. Once the real storage handlers made the read slower, they failed under load; they now wait until the storage door has no call in flight.
+**Example.** Reviews stopped running mutation campaigns over whole changes; one targeted mutation still checks a key safety test. The matrix's Export cells waited a fixed 20 ms for a read. Once the real storage handlers made the read slower, they failed under load; they now wait until no storage call is in flight.
 
 ## 11. An element earns its place
 
 **Rule.** Lean towards leaving out UI of doubtful use. Weigh removing an element as a real option, before adding it and when revisiting it.
 
-**Why.** No feature or element is free. Each is code to maintain, and one that users almost never need still costs them real estate, clicks or confusion. Such an element wastes effort, adds upkeep and leaves users worse off.
+**Why.** No feature or element is free. Each is code to maintain, and one that users almost never need still costs them screen space, clicks or confusion.
 
 **Example.** The Groups and Stages managers had a collapsed "Current Group" / "Current Stage" row at the top of the list. It only revealed the current item’s path and its shown count, and the status bar’s scope label and the list’s current row already show both; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the "Use only items you are allowed to use." line the same day.
 

@@ -113,7 +113,7 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
     1. For every website and complete month (any month before this one) that has no `final` row in `nse_monthly`, it replaces that month’s rows with new totals from the raw records. A report that arrives late is counted by the next run.
     2. It adds a `final` row for each month that has a record to delete now, then deletes the records older than 13 months, in this order: `event_data`, `website_event`, then the sessions with no event left (`created_at` older than 13 months) with their `session_data`, `session_link`, `session_replay`, `heatmap_event` and `revenue` rows, `session_replay_saved` and `session`. A `final` month is never totalled again, because its records are partly gone. Umami v3.4.1 has no foreign keys (Prisma `relationMode` is `prisma`); the schema was read at that tag, in `prisma/schema.prisma` and `prisma/migrations`.
 
-    Only what `src/analytics/catalogue.ts` allows is totalled (`allowlist.sql` is generated from it: `npm run analytics:allowlist`), and a row stands for at least 10 distinct sessions (see `docs/analytics.md`, “What the server keeps”). If step 1 fails, nothing is deleted, and the nightly email says “The retention job failed.” It is safe to run again, by hand with `/opt/nse-stats/nightly.sh retain`. After an Umami upgrade, the contract test fails if a table that the job deletes from is gone; add any new table that holds visits to `retention.sql`. `queries/monthly.sql` reads the monthly totals and `queries/weekly.sql` the weekly counts. The same transaction makes `nse_weekly` from the raw records the same way: a week is final in the run that deletes its first record, which a week that is split across two months does not change. The job reads the raw records of up to 14 months each night, so its time grows with their number.
+    Only what `src/analytics/catalogue.ts` allows is totalled (`allowlist.sql` is generated from it: `npm run analytics:allowlist`), and a row stands for at least 10 distinct sessions (see `docs/analytics.md`, “What the server keeps”). If step 1 fails, nothing is deleted, and the nightly email says “The retention job failed.” It is safe to run again, by hand with `/opt/nse-stats/nightly.sh retain`. After an Umami upgrade, the contract test fails if a table that the job deletes from is gone; add any new table that holds visits to `retention.sql`. `queries/monthly.sql` reads the monthly totals and `queries/weekly.sql` the weekly counts. The same transaction makes `nse_weekly` from the raw records the same way: a week is final in the run that deletes its first record, even when the week spans two months. The job reads the raw records of up to 14 months each night, so its time grows with their number.
 
 - **Delete data.** One website: Settings › Websites › Edit › Reset Data. That does not touch the totals, `nse_monthly` and `nse_weekly`. To remove a website’s totals too, run both statements in `dc exec db psql -U umami umami`: `DELETE FROM nse_monthly WHERE website_id = '<id>'` and `DELETE FROM nse_weekly WHERE website_id = '<id>'`. To delete records sooner than 13 months, edit the interval in `nse_cutoff` in `retention.sql` and run `nightly.sh retain`; the months and weeks in between get their totals first.
 
@@ -175,7 +175,7 @@ Sign in at `http://localhost:3000` as `admin` / `umami`, create a website, and s
 
 ## Reading the numbers
 
-- A pageview is an engaged visit: one where the user clicked, pressed a key, touched or scrolled. Loads that never interacted are not counted at all. The totals therefore undercount page loads, by design.
+- A pageview is an engaged visit: one where the user clicked, pressed a key, touched or scrolled. Loads with no interaction are not counted at all. The totals therefore undercount page loads, by design.
 - Count visits from pageviews, and time spent from `visibleTime`, in seconds. Umami’s visit duration and bounce rate are wrong for this client, so ignore them.
 - Umami’s unique visitors are visitors per day, because the salt rotates daily.
 - The saved queries in `queries/` answer the usual questions. Each takes the website’s id:
@@ -184,7 +184,19 @@ Sign in at `http://localhost:3000` as `admin` / `umami`, create a website, and s
     bash infra/stats/scripts/query.sh prod infra/stats/queries/commands.sql <website id>
     ```
 
-    `visits.sql` counts visits per day by country, `commands.sql` ranks commands by use and visitors, `saves.sql` lists Save outcomes by target and reason, `startup.sql` gives startup time percentiles by navigation type and document delivery, then the restored chart sizes, `frames.sql` gives long frames per minute of visible playback by preview host and render scale, and the share it leaves out, `actions.sql` gives action time percentiles by action, target and file size, `peek.sql` counts Timeline steps by the time they took, `layout.sql` gives the share of time each panel was shown on each side, each panel size and Preview share as a share of the cells printed, and the share of time with a drawer, hidden panels or Groups and Stages side by side, for the cells that 10 or more sessions reached, `settings.sql` lists every setting value with its number of visits, and `monthly.sql` reads the monthly totals: visits, sessions and events a month, visits by version, and the timing percentiles, and `weekly.sql` reads the weekly counts: visits and sessions a week, and each event name a week. The contract test runs all of them against Umami’s real schema.
+    - `visits.sql` counts visits per day by country.
+    - `commands.sql` ranks commands by use and visitors.
+    - `saves.sql` lists Save outcomes by target and reason.
+    - `startup.sql` gives startup time percentiles by navigation type and document delivery, then the restored chart sizes.
+    - `frames.sql` gives long frames per minute of visible playback by preview host and render scale, and the share it leaves out.
+    - `actions.sql` gives action time percentiles by action, target and file size.
+    - `peek.sql` counts Timeline steps by the time they took.
+    - `layout.sql` gives the share of time each panel was shown on each side, each panel size and Preview share as a share of the cells printed, and the share of time with a drawer, hidden panels or Groups and Stages side by side, for the cells that 10 or more sessions reached.
+    - `settings.sql` lists every setting value with its number of visits.
+    - `monthly.sql` reads the monthly totals: visits, sessions and events a month, visits by version, and the timing percentiles.
+    - `weekly.sql` reads the weekly counts: visits and sessions a week, and each event name a week.
+
+    The contract test runs all of them against Umami's real schema.
 
 ## Cost
 

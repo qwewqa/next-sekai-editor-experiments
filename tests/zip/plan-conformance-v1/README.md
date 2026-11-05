@@ -1,6 +1,6 @@
 # The plan conformance set, v1
 
-Frozen with Formats v1: the same plan gives the same bytes on every platform. The web executor (`tests/zip/planConformance.test.ts`) runs every case, and any other writer of the format must reproduce them. Never edit these files once v0.6.0 ships.
+The same plan gives the same bytes on every platform. The web executor (`tests/zip/planConformance.test.ts`) runs every case, and any other writer of the format must reproduce them. Never edit these files once v0.6.0 ships.
 
 Each `<case>/` holds:
 
@@ -12,6 +12,12 @@ Each `<case>/` holds:
 
 **Pass criteria:** an executor produces `expected.nxsp` byte for byte or fails with the expected code; its `inspect` of every source gives `pinned.json`; every `expected.nxsp` passes `uv run python -I tools/nxsp_check.py`.
 
-The cases: `fresh` and `append` (the builder golden's two writes); appends onto `write-1.nxsp` rewritten as other tools write it: `source-deflated-descriptors` (DEFLATE throughout, data descriptors with and without their signature, so `chunks.bin` and the media are `inflate` copies), `source-local-extra` (local extra fields that differ from the central directory's), `source-zip64` (ZIP64 extra fields and end record) and `source-comment-signature` (an archive comment holding an end-record signature); and the failures: `fail-crc-mismatch`, `fail-inflate-trailing`, `fail-inflate-truncated` and `fail-bomb` (a deflated `chunks.bin` inflating past its declared size) are damage in the source (`io`); `fail-changed-bytes` (the source rewritten after `inspect` with a longer `project.json`, so every copy's `dataOffset` moved) is a `conflict`; `fail-method-mismatch`, `fail-wrong-crc`, `fail-too-many-entries` (65,535 entries), `fail-method8-two-parts`, `fail-method8-inflate` and `fail-dataoffset-mismatch` are plan errors.
+The cases:
+
+- `fresh` and `append`: the builder golden's two writes.
+- Appends onto `write-1.nxsp` rewritten as other tools write it: `source-deflated-descriptors` (DEFLATE throughout, data descriptors with and without their signature, so `chunks.bin` and the media are `inflate` copies), `source-local-extra` (local extra fields that differ from the central directory's), `source-zip64` (ZIP64 extra fields and end record) and `source-comment-signature` (an archive comment holding an end-record signature).
+- Damage in the source (`io`): `fail-crc-mismatch`, `fail-inflate-trailing`, `fail-inflate-truncated` and `fail-bomb` (a deflated `chunks.bin` inflating past its declared size).
+- A `conflict`: `fail-changed-bytes` (the source rewritten after `inspect` with a longer `project.json`, so every copy's `dataOffset` moved).
+- Plan errors: `fail-method-mismatch`, `fail-wrong-crc`, `fail-too-many-entries` (65,535 entries), `fail-method8-two-parts`, `fail-method8-inflate` and `fail-dataoffset-mismatch`.
 
 Written by `NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts`, from the builder golden (`tests/local/nxsp/golden-v1/`).

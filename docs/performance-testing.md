@@ -60,14 +60,14 @@ A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
     - `clockFrame`: the app clock's whole frame, with the time watchers, Vue's flush and the draws it triggers. The clock runs only while something moves through it (eases, inertia, playback, a tool drag), so direct scrolls such as `quicktouch` and `minimapdrag` have few or no clock frames: compare their `chartDraw` and frame intervals;
     - `previewDraw`, `elevationDraw`, `minimapOverlay` and `minimapSelection` (one paint of the minimap's selection layer, recording only: its rasterisation shows in a trace). In the worker host, `previewDraw` is the main thread's part of a frame: resolving the state, building the chart's diff and posting the frame;
-    - the worker host's `previewWorkerDraw`, the worker's draw with any rebuild, and `previewWorkerAnswer`, the time from posting a frame until the worker's `drawn` message arrives. `previewReplaced` counts the frames that a newer request replaced before they were sent. `perf:report … frames` gives the worker's frames per second beside the clock's;
-    - `stageTile`: each Composed stage tile build. `perf:report … frames` gives the builds per chart draw.
+    - the worker host's `previewWorkerDraw`, the worker's draw with any rebuild, and `previewWorkerAnswer`, the time from posting a frame until the worker's `drawn` message arrives. `previewReplaced` counts the frames that a newer request replaced before they were sent. `perf:report <run> frames` gives the worker's frames per second beside the clock's;
+    - `stageTile`: each Composed stage tile build. `perf:report <run> frames` gives the builds per chart draw.
 
 Other builds define the flag false: `timed` returns its callback, and the hook is never imported or bundled. Probes collect only while a run has switched them on.
 
 ## The preview in Node
 
-`npm run perf:preview -- <level.json> --start 15 --seconds 9` draws the preview's frames in Node with the real skin and particles, and a renderer that does the real one's CPU work: the vertices, the layer sort and the pack. It prints the per-frame times and the heaviest seconds. Start a plan's playback cells there.
+`npm run perf:preview -- <level.json> --start 15 --seconds 9` draws the preview's frames in Node with the real skin and particles, and a renderer that does the real one's CPU work: the vertices, the layer sort and the pack. It prints the per-frame times and the heaviest seconds. Use them to choose where a plan's playback cells start.
 
 `--digest` adds a hash of every draw, and of paused frames with everything selected. A change that should draw exactly the same must leave the digest unchanged on several charts and windows. To compare with another commit, unpack its `src/` under `perf-results/` (`git archive <commit> src`) and pass it as `--src`. Hashing slows the frames, so take times from a run without `--digest`.
 
@@ -108,7 +108,7 @@ Each cell can set:
     - `act`: a user action, `action` (see "Actions");
     - `startup`: a reload that records, from the start of the page, the times of the first paint, the startup gate, the chart and the end of startup (`paint`, `gate`, `chart`, `done`). Its group needs `boot`;
     - `heaps`: the main thread's heap and each worker's heap after a forced GC, when the chart has opened and again after `seconds` (60) of playback. Each worker's heap is read through its own CDP session;
-    - `memory`: one long run that records the JS heap and DOM counts after a forced GC at each stage: opened, after sweeps of the whole chart at several zooms and layouts, after `seconds` (200) of playback at `speed` (1, 1.5 or 2) sampled every `sampleEvery` s (40, without GC), after New, after Open again, and after one more sweep. It writes `heap-<stage>.json` sampling profiles to the run folder (read them with `perf:report … heap`) and records the process tree's memory at each stage;
+    - `memory`: one long run that records the JS heap and DOM counts after a forced GC at each stage: opened, after sweeps of the whole chart at several zooms and layouts, after `seconds` (200) of playback at `speed` (1, 1.5 or 2) sampled every `sampleEvery` s (40, without GC), after New, after Open again, and after one more sweep. It writes `heap-<stage>.json` sampling profiles to the run folder (read them with `perf:report <run> heap`) and records the process tree's memory at each stage;
 - `layout`;
 - `minimap`, `preview`, `elevation` (beside the chart) and `selection` (every note and connector);
 - `pps` (100 is fully zoomed out);
@@ -144,7 +144,7 @@ Actions, by `action`:
 - Settings: `openSettings` (until the Language field and Local Data's heading show), `openSettingsAll` (until About, the last section, is mounted) and `closeSettings`;
 - Local Data: `localData` (Settings), `deleteCounts` (Delete Sessions… up to its counts), `deleteAll` (deletes every session, so it runs once in a group of its own) and `exportRaw`;
 - files: `save` (the first repeat names the file), `open` (`file`, through the file input), `newChart`, `exportLevel` and `check` (Level Info › Check);
-- the minimap's selection layer: `selectAll` (every note and connector selected, then nothing, in turn), `boxSelect` (a box drag with the Select tool over `seconds`, 1 by default. The view moves to the chart's start, and the drag starts at the first point on the view's bottom edge where a click selects nothing, then ends at the opposite top corner. With `ctrl` it is a Ctrl box over a selection of every note outside the view, so each move adds notes to a large selection. The action fails unless the selection changed and the layer painted more than once, and records `layerPaints`) and `selectionUndo` (every note and connector selected and flipped once, then Undo and Redo in turn);
+- the minimap's selection layer: `selectAll` (every note and connector selected, then nothing, in turn), `boxSelect` (a box drag with the Select tool over `seconds`, 1 by default) and `selectionUndo` (every note and connector selected and flipped once, then Undo and Redo in turn). For `boxSelect`, the view moves to the chart's start, and the drag starts at the first point on the view's bottom edge where a click selects nothing, then ends at the opposite top corner. With `ctrl` it is a Ctrl box over a selection of every note outside the view, so each move adds notes to a large selection. The action fails unless the selection changed and the layer painted more than once, and records `layerPaints`;
 - `dialog` (`open`: a key, or `click:<selector>`, until a dialog with `title` shows), `setting` (a setting flipped, and the frames that redraw it), and `goToIndex` (reads Go To's index for an opened file's session of `rows` rows through the storage worker, without the UI).
 
 Settings opens with Editor and Local Data and mounts the other sections in tasks after the first frame. A comment in `SettingsModal.vue` names the stages. Judge a change to Settings by `openSettings` and its `tailTask`, which shows a staging task in the 600 ms after the first screen only when it takes 50 ms or more, so 0 means every stage stayed under that. `openSettingsAll` shows how long the rest takes.
@@ -169,7 +169,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
     - Use the dev server only to compare.
 - **Run headed with the real GPU.** Headless Chromium can fall back to SwiftShader, and then every chart number is meaningless.
     - Every group records `UNMASKED_RENDERER_WEBGL` in `info.renderer`.
-    - Check that it names your GPU (for example `ANGLE (NVIDIA, …, D3D11)`), not SwiftShader.
+    - Check that it names your GPU (for example `ANGLE (NVIDIA, ..., D3D11)`), not SwiftShader.
 - Open the chart through Open and load its BGM through the BGM dialog. This is the user's path: the waveform draws and the session counts as edited.
 
 ### Display rate and what to judge
@@ -202,7 +202,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
     - **Stutters and unevenness:**
         - the tail: p99, max, and the counts over budget, over 2× and over 4×;
         - jitter: the interval SD, and the share of neighbouring frames that differ by more than 0.9 of a frame;
-        - each spike tied to its trace event with `perf:report … long`.
+        - each spike tied to its trace event with `perf:report <run> long`.
 
         One 400 ms frame a minute barely moves a median and is what a user remembers.
 - Spikes that recur on a timer show up in any scenario long enough to meet them: garbage collection passes and the storage journal. When a max jumps in one run of five, look for them before blaming the scenario (see "Known costs").
@@ -213,10 +213,10 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 ### Tracing
 
 - The traced run is extra and is used for attribution only. Tracing with the CPU profiler adds about **1.5×** to main-thread time and stalls about 1 s when it starts (before the run's window).
-- **Light traces** (`traceEach`) leave out the CPU profiler: they record task timings (`devtools.timeline`, `v8.execute`, GC, user timing, `gpu`, `viz`, `toplevel`), so tasks cost what they cost. Use them for what happens around a mark and for counts, and a full trace for attributing time to functions. `perf:report … tasks`, `idle` and `edit` read them; `callers`, `inside`, `heap` and `long` need a full trace or a heap profile.
+- **Light traces** (`traceEach`) leave out the CPU profiler: they record task timings (`devtools.timeline`, `v8.execute`, GC, user timing, `gpu`, `viz`, `toplevel`), so tasks cost what they cost. Use them for what happens around a mark and for counts, and a full trace for attributing time to functions. `perf:report <run> tasks`, `idle` and `edit` read them; `callers`, `inside`, `heap` and `long` need a full trace or a heap profile.
 - A trace over 512 MB (native-rate playback) cannot be parsed as one string. `trace.mjs` reads it line by line.
 - Categories of a full trace: `devtools.timeline`, `disabled-by-default-devtools.timeline` and its `.frame` and `.stack`, `disabled-by-default-v8.cpu_profiler`, `v8.execute`, `v8`, `disabled-by-default-v8.gc`, `blink.user_timing`, `blink`, `gpu`, `viz`, `cc`, `benchmark`, `latencyInfo`, `input`, `toplevel`, `loading`.
-- A `nse-perf-sync` user-timing mark ties the page clock to the trace clock, so `perf:report … work` reads exactly the frames the run measured.
+- A `nse-perf-sync` user-timing mark ties the page clock to the trace clock, so `perf:report <run> work` reads exactly the frames the run measured.
 - Profile frames for native calls (a DOM setter, a GL call, `clearTimeout`) are shown with their script caller; their exact attribution is approximate.
 - `(program)` is 30 to 45% of the CPU profile's samples. It is time outside JavaScript, so read the other rows against the rest, not against 100%.
 - CPU time at 4× is meaningless: the throttle changes how long JavaScript takes, not what the compositor, GPU and other processes use. Compare scripting and main-thread time only.
@@ -285,9 +285,9 @@ Note counts are the editor's where known, else level data's.
 These recur, and a spike in a run is often one of them. Check them before blaming the scenario.
 
 - **Pixi's GC pass** (`GCSystem.run`, then `runOnHash`) walks every tracked resource, so its cost grows with what is live: 2–8 ms early in a session and 10–20 ms later at 1×, 15–30 ms rising to 60 ms at 4×. It runs every 10 s (`GC_FREQUENCY`), at idle time and never inside a frame (`RenderingScheduler`, `docs/rendering.md`). In a trace it is an idle callback.
-- **V8 major GCs** in long playback on dense charts take 15–40 ms, mostly to finish marking a 300–400 MB heap. Per-frame allocations in a draw path make them more frequent. Major GCs every second or so during playback can mean that a per-frame allocation site also builds long-lived data, so V8 allocates the site's objects in the old generation (`docs/rendering.md`). To check, count `MajorGC` events in light traces with and without the `browserArgs` value `--js-flags=--no-allocation-site-pretenuring`. In Node, `node --trace-gc --import tsx scripts/perf/preview.mjs …` prints each `Mark-Compact`.
+- **V8 major GCs** in long playback on dense charts take 15–40 ms, mostly to finish marking a 300–400 MB heap. Per-frame allocations in a draw path make them more frequent. Major GCs every second or so during playback can mean that a per-frame allocation site also builds long-lived data, so V8 allocates the site's objects in the old generation (`docs/rendering.md`). To check, count `MajorGC` events in light traces with and without the `browserArgs` value `--js-flags=--no-allocation-site-pretenuring`. In Node, `node --trace-gc --import tsx scripts/perf/preview.mjs <level.json> ...` prints each `Mark-Compact`.
 - **First-visit section compiles** (`notes.ts` `prepareSections`, `vectorRanges.ts` `captureVectors`) take 20–45 ms at 4×. The idle compile ahead (`docs/rendering.md`) compiles sections near the view early, but a jump or the `cold` run still meets them. An idle capture can delay an input that lands in it, so measure a wake from a pause with `notch`.
-- **Composed stage tile builds** are the cost in zoomed-out Composed flicks: at `pps` 100 one tile can hold over a thousand divider strokes. Check `stageTile`, and the builds per chart draw in `perf:report … frames`.
+- **Composed stage tile builds** are the cost in zoomed-out Composed flicks: at `pps` 100 one tile can hold over a thousand divider strokes. Check `stageTile`, and the builds per chart draw in `perf:report <run> frames`.
 - **Path-cache churn.** A path built anew every frame and kept in the path cache fills its 128 MiB budget with geometry nothing draws again, and the grown maps and garbage then stall chart frames. A context's current path lasts one frame for this reason (`docs/rendering.md`). A record whose `pathCache` shows steady `trimmed` counts during playback has a new case of it.
 - **The journal with storage unavailable** serializes and gzips the whole chart every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. Its idle callback's 5 s timeout can land it in the middle of a scroll. Measure it with `journal` and a group's `storage` flag.
 - **The journal on hide.** A hide right after an edit writes the whole state synchronously: 20–30 ms on coconut on the desktop, 100–135 ms at 4×, and about 0.6 s at 4× on 21888 and ×8. It shows in `hide` cells with `after` 0.

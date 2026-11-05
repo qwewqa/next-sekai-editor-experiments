@@ -14,6 +14,6 @@ frozen when v0.6.0 is tagged and never changed after it; every later build reads
 | `saving-marker-file.nxsp` | Context A, step 13: A's file as the last Save wrote it, whose binding was never recorded | The file the `saving.*` marker in `nse-local-data.json` names: its revision, a document device id derived from this browser's id, and a `save` entry last |
 | `journal-unavailable.json` | Context E: storage unavailable, one edit, the journal written after 10 seconds | A journal (`keep` 0), the raw value of its `journal.*` key |
 
-Handles are tagged `{ "$handle": "file", "name": … }` in the dumps, as a real Chromium dump holds
+Handles are tagged `{ "$handle": "file", "name": ... }` in the dumps, as a real Chromium dump holds
 them (`raw-export.zip` is the editor's own output, rebuilt with its handle rows tagged the same way, since the run's override stands for a handle with a plain token). The pending
 journal in `nse-local-data.json` is the ordinary v1 form.

@@ -21,7 +21,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
    - *Reason:* a role can be retuned in one place, and the guard test can check its use.
    - *Exceptions:* chart content (section 10); shadows that are geometry rather than a role, such as the dock edge.
 
-2. **Mint means on.** The tool in use, a switch that is on, Show Edits, Select while selecting, rows checked for an action and the peek ring are mint. The quick notice is mint too, as the brand's one transient voice.
+2. **Mint means on.** The tool in use, a switch that is on, Show Edits, Select while selecting, rows checked for an action and the peek ring are mint. The quick notice is mint too: the one transient element in the brand color.
    - *Reason:* it is the app's brand colour, and in v0.5.22 it was every on-state. Giving it one meaning lets a user read it at a glance.
    - *How the rest is shown:* single-select selection (the current row, the selected segment) is elevation, the raised pill. Current markers are mint only on the dark chrome, where mint has contrast (the rail tab bar); on light bands they are ink (the band tab marker, 4.97:1 against mint's 1.85:1). Thin mint marks on light surfaces use `accent-strong`.
    - *Exception:* the hover and press glow is mint. It is a shadow, never a fill, and it lasts only while pointed at or pressed, so it cannot read as on.
@@ -64,7 +64,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
      - on the mid-tone light chrome, a press darkens (`chrome-press`), because a lighter step dims its white ink below 4.5:1.
    - *Classify by behaviour:* anything held under a finger, key or drag is a press, including the held transport step, the toolbar face a Quick Switch press holds, the flyout row under a press-drag and the resize line being dragged.
 
-10. **Focus is a 2 px ring drawn 2 px inside the face, in the face's own ink.** Face shows on both sides of the ring, so it reads on any fill over any surface.
+10. **Focus is a 2 px ring drawn 2 px inside the face, in the face's own ink.** The face shows on both sides of the ring, so it reads on any fill over any surface.
     - *Reason:* a ring is visible only if it contrasts with what lies on both sides of it. A ring flush with the edge merges with a surround of its own colour: the white ring of an ink pill on a white-ish modal, or the ink ring of a light tool over the ink-coloured chart.
     - *Exceptions:*
       - Faces under 32 px draw it 1 px outside, in the surface's ink (`.focus-out`).
@@ -82,7 +82,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 13. **A real dark theme, tuned, not inverted.**
     - Surfaces stay deep indigo, and body ink (`fg`) is never pure white. The chrome uses white/80 and white.
     - Dark fills carry dark ink (`#232539`): periwinkle, coral, mint.
-    - A tune that cannot be seen (ΔE under 2) is not made. Dark mint and dark danger text are left untuned for that reason.
+    - A retune that cannot be seen (ΔE under 2) is not made. Dark mint and dark danger text are left untuned for that reason.
 
 14. **Style from state opt-in, never from a bare attribute.** A recipe styles `aria-pressed` only on `.btn-toggle`, and the open look only on popup triggers or `.holds-open`.
     - *Reason:* one attribute can mean different things. `aria-pressed` marks a checked Manager row and a toolbar value in use; `aria-expanded` marks folder disclosure. Section 6.3 lists every current use.

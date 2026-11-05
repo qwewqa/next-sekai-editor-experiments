@@ -15,7 +15,7 @@ The bucket is `nse-assets-<account id>` in `nse-dev`. Each site has a prefix: `t
 - **`prepare`,** before `check:release`. The files to keep are `live`, an unrecorded `next` (it may have gone live), and every file whose `lastLive` is within 7 days. Those the new build lacks are downloaded, checked against their SHA-256, added to `dist/assets/` and listed in the manifest’s `retained`. The build’s own new files are uploaded, and the build is staged as `next`.
 - **`record`,** after a successful publish. Everything in `live` and `next` gets the current time as `lastLive`, and `next` becomes `live`. Files not live whose `lastLive` is more than 7 days old are deleted, and their entries leave the index.
 
-A failed or cancelled publish leaves `next` in place, so the next deploy keeps both releases. A stored file is never replaced: every upload is conditional on the name being free, the bucket policy refuses any other, and a name already stored with other bytes fails the deploy.
+A failed or cancelled publish leaves `next` in place, so the next deploy keeps both releases. A stored file is never replaced: every upload is conditional on the name being free, the bucket policy refuses any upload that is not, and a name already stored with other bytes fails the deploy.
 
 When `prepare` fails, nothing is published: a missing, invalid or changed index, a stored file that does not match its hash, or a name with other bytes stops the deploy before the upload to Pages. When `record` fails, the build has already been published, so a red run can be live. The next deploy keeps both that build and the one before it, and a failed delete is tried again at the next `record`.
 
@@ -63,7 +63,7 @@ Anything done by hand, such as `seed`, runs only while deploys are stopped:
 
 All of these run with deploys stopped.
 
-- **The index is lost:** run `seed` as in Set-up. The files on the live site stay protected. A deploy cannot always say that the index is missing: the role may list only `test/assets/`, so S3 can answer `AccessDenied` instead of `NoSuchKey`. Check with `aws s3 ls --profile nse-dev s3://nse-assets-<dev id>/test/index.json`.
+- **The index is lost:** run `seed` as in Set-up. The files on the live site stay protected. A deploy cannot always tell that the index is missing: the role may list only `test/assets/`, so S3 can return `AccessDenied` instead of `NoSuchKey`. Check with `aws s3 ls --profile nse-dev s3://nse-assets-<dev id>/test/index.json`.
 - **The index is broken** (a deploy says it is invalid): run `seed` with `--replace`. It replaces the index without reading it. Stored files that are not on the live site lose their entries and are no longer kept.
 - **After a deploy with `skip_store`** (the test site workflow’s input that deploys without the store): the older files left the site with that deploy, and the store does not know its files. The next normal deploy puts the older files that are still within their 7 days back, and that deploy removes the skipped build’s files. To keep the skipped build’s files instead, run `seed --replace` before the next deploy; that drops the older entries.
 - **Resetting protection** on purpose: write `{"version":1,"live":[],"next":null,"assets":{}}` over `test/index.json`. The next deploy then removes every older file from the site.

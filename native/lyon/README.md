@@ -3,12 +3,12 @@
 This is the small fill kernel used after the editor has flattened and outlined a
 path. It uses Lyon 1.0.22 with a fixed `1e-5` tolerance and explicit nonzero/evenodd
 fill rules. Native strokes, text shaping, curve flattening and the editor's
-positive/zero interval decisions remain in their existing callers. No upstream
+positive/zero interval decisions stay with their callers, outside this kernel. No upstream
 Lyon arithmetic is patched.
 
-The checked-in `src/rendering/vendor/lyon.wasm` allows normal JavaScript builds
-without Rust. `npm run check:lyon` verifies the exact owned source, lockfile,
-compiler settings and binary hashes in `artifact.json`. `npm run build` runs that
+Because `src/rendering/vendor/lyon.wasm` is committed, a normal build needs no
+Rust. `npm run check:lyon` checks this folder's source, the lockfile, the compiler
+settings and the binary against the hashes in `artifact.json`. `npm run build` runs that
 check before Vite. Changing native source requires rebuilding and reviewing the
 new manifest and geometry tests together.
 
@@ -29,8 +29,9 @@ are valid only until the next mutating export or memory growth. The TypeScript
 wrapper refreshes heap views and copies the complete triangle list into its own
 Float64Array before returning. It retains one page-owned instance and reuses its
 scratch storage; memory can grow to the stated maximum and does not shrink while
-that instance remains live. A trap retires all exports/views without calling a
-possibly corrupted destructor. Normal page unload releases the page-owned kernel.
+that instance remains live. After a trap, the wrapper stops using the
+instance's exports and views, and does not call its destructor, which may be
+corrupted. Normal page unload releases the page-owned kernel.
 
 The JS caller and native ABI independently cap submitted edges at 32,767 because
 Lyon's internal winding accumulator is signed 16-bit. A single contour can wind
@@ -38,39 +39,39 @@ repeatedly, so contour count alone is insufficient. The JS wrapper also checks
 finite/local coordinates, actual f32 input packing error, worst-case f32 spacing
 within the local bounding box, fixed endpoint-snap scale, and restoration error
 of newly generated intersection vertices. Its error budget is 0.025 compiled
-pixels, one quarter of the existing 0.1-pixel curve tolerance. The existing mesh
-upload precision guard is retained separately. These numeric checks bound the
+pixels, one quarter of the 0.1-pixel curve tolerance. The precision guard on mesh
+uploads is separate. These numeric checks bound the
 representation changes; visual tests are still required for Lyon's intersection
 algorithm and anti-aliasing behavior.
 
-Unsupported geometry uses the unchanged JS tessellator with the original input.
-Helpers without an explicit compiled resolution also retain JS because their
-final device-space precision cannot be bounded yet.
+Unsupported geometry uses the JS tessellator with the original input. Helpers
+without an explicit compiled resolution also use JS, because their final
+device-space precision cannot be bounded yet.
 Allocation/status/output errors and traps retire the instance and use that same
 JS path for this and subsequent calls. No partially computed geometry is exposed.
-The original JS dependency remains deliberately available for these cases.
+The JS tessellator stays a dependency for these cases.
 
 `initializeLyon` starts alongside renderer initialization without delaying drawing.
 Existing cached JS geometry stays valid while later cache misses use Lyon; there
 is no cache invalidation or geometry swap when loading completes. It fetches the
-same-origin Vite-generated asset and compiles it without host imports. A four
-second total deadline aborts a slow request while rendering continues through JS;
+same-origin Vite-generated asset and compiles it without host imports. A
+four-second total deadline aborts a slow request while rendering continues through JS;
 a late instance is disposed. HTTP/compile/CSP failures also keep rendering on JS
 for the page. Deployment should serve the emitted asset with the rest of the
 build; `application/wasm` is recommended, though this loader uses `arrayBuffer`
-and does not depend on streaming MIME handling. A restrictive CSP must permit
-the asset fetch and WebAssembly compilation for acceleration; it need not be
-weakened to preserve editor correctness.
+and does not depend on streaming MIME handling. A restrictive CSP must allow
+the asset fetch and WebAssembly compilation for Lyon to be used. Without them
+the editor still draws correctly, through JS.
 
 `tests/editor/lyon.test.ts` exercises winding, holes, precision boundaries,
 generated intersections at distant origins, allocation/status/trap/output
-failure, detached views, disposal, HTTP/compile/deadline failure and unchanged JS
-fallback. For a failing contour, instantiate the module and pass its existing
-contours through `LyonTessellator`; retain the fill rule and compiled resolution.
+failure, detached views, disposal, HTTP/compile/deadline failure and the JS
+fallback. To debug a failing contour, instantiate the module and pass the same
+contours to `LyonTessellator`, with the same fill rule and compiled resolution.
 The optional Cargo `release-debug` profile keeps optimized code with DWARF debug
 information (`cargo build --locked --profile release-debug --target
 wasm32-unknown-unknown`). These larger debugging artifacts are not distributed.
-The browser wrapper remains normal TypeScript with Vite source maps; failures
+The browser wrapper is plain TypeScript with Vite source maps; failures
 can be reproduced without a generated JS bridge.
 
 All nine locked package notices, including the complete libm notices and the

@@ -1,6 +1,6 @@
 # Snapshot encoding v1: golden vectors
 
-Frozen with Formats v1. Every later build encodes the golden chart and the edge chart (`tests/local/records/charts.ts`) to exactly these records, with root `v` 1 at `levelVersion` 1; `tests/local/records/golden.test.ts` checks it. Never edit these files once v0.6.0 ships.
+Every later build encodes the golden chart and the edge chart (`tests/local/records/charts.ts`) to exactly these records, with root `v` 1 at `levelVersion` 1; `tests/local/records/golden.test.ts` checks it. Never edit these files once v0.6.0 ships.
 
 - `snapshot.json`: the root, the header chunk, the kind nodes (each kind's depth-0 nodes before its depth-1 node) and the body chunks, by hash.
 - `records/<hash>.canonical`: each record's canonical bytes, exactly; they are its JSON form. The file's name is its hash.

@@ -7,7 +7,7 @@ The code is in `src/analytics/`:
 - `tally.ts`: the counters and the input that arms a visit. It is in the main bundle, and it is the only analytics code that the edit and command paths call.
 - `catalogue.ts`: every event and the values each property may take, with the functions that turn numbers into ranges.
 - `config.ts`: the rule that decides whether a page sends.
-- `device.ts`: the reader of the device an event ran on. `start.ts` hands it to `tally.record`.
+- `device.ts`: the function that reads the details of the device an event ran on. `start.ts` hands it to `tally.record`.
 - `allowlist.ts`: the allowed events, properties and values for the server's monthly totals, written to `infra/stats/host/allowlist.sql` (see "What the server keeps").
 - `start.ts`: starts and stops the client, and follows the switch in this tab and in other tabs.
 - `client.ts` and `sender.ts`: loaded after startup, only when statistics are on. They build the events and send them.
@@ -21,7 +21,7 @@ Usage statistics must never make the editor worse to use. These rules hold for e
 - **O(1) on the edit, flush, Save and startup paths.** A hook is one `bump` or `bumpCommand`: a `Map` increment behind one boolean, with no await or I/O.
 - **The client loads after startup.** It loads once startup has ended, with the session open or with the gate's error, and the page is idle.
 - **Few, small requests.** At most one in flight and one a minute while the page is open, each at most 32 KB, and 30 a visit.
-- **No retries.** Nothing is sent while offline, and nothing more that visit after one failed request. A page that asks to save data sends nothing.
+- **No retries.** Nothing is sent while offline, and nothing more that visit after one failed request. Nothing is sent when the browser requests reduced data use (Save-Data).
 - **Bounded memory:** at most 1,000 counters (900 of them `usage`), 50 queued events and 32 KB.
 - **Silent failure.** A blocked, offline, failing or hanging endpoint, or a client chunk gone after a deploy, shows nothing and holds nothing up.
 - **No storage.** No IndexedDB, Cache Storage or quota. The only stored value is the switch's setting. The lint keeps `src/analytics/` away from the notice, dialog and storage modules. Only `status.ts` may import the local-data modules, and only to read.
@@ -52,8 +52,8 @@ A hook is one call into `tally.ts`, or a read by the client. Nothing else on a h
 | Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed. Save and Export add `buildMs`, read from the clock on either side of the build await that already exists in their flows (`runBuild` and the Recent Sessions Save… build, and the `build` wrapper in `exportLevel/flow.ts`). No hook adds an await. Check adds `scope` and `size` from the plan it already holds. All but Export Level Data also call `busy` while they run, as Restore and Export Video do, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
 | `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, autoscroll, Quick Switch | `features.<name>` and `peekShown` |
 | `history/index.ts`, `editor/save/report.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
-| Export Video | `record('exportVideo', …)` once per attempt. For a staged file, the event is recorded on its first delivery or discard. `took` is captured when work ends, before the wait for delivery. The clip length and settings are captured at the start. `features.videoPlayback` and `features.videoAdvanced` count the first use in each dialog. Playback in this dialog does not add to `playSeconds` |
-| The preview worker host | `record('preview', …)` when the worker fails and the main thread takes over |
+| Export Video | `record('exportVideo', ...)` once per attempt. For a staged file, the event is recorded on its first delivery or discard. `took` is captured when work ends, before the wait for delivery. The clip length and settings are captured at the start. `features.videoPlayback` and `features.videoAdvanced` count the first use in each dialog. Playback in this dialog does not add to `playSeconds` |
+| The preview worker host | `record('preview', ...)` when the worker fails and the main thread takes over |
 | The editor canvas | `note('graphicsUnavailable')` when its renderer fails |
 
 The client reads the rest: the settings (`snapshot.ts`), the load events, the storage status and the pressure runs (`status.ts`), the playing state and the observers (`field.ts`). A `source` is where the press came from. Two choices to know: the key presses inside the History lists are `key`, and an Open of a project file is `restore` in `chart`, because it shows a stored session.
@@ -72,7 +72,7 @@ The client reads the rest: the settings (`snapshot.ts`), the load events, the st
 
 - the build has a target (below);
 - the switch is on: the user's choice, or, before they choose, on unless the browser sends Do Not Track or Global Privacy Control;
-- safe mode is off, and the browser does not ask to save data;
+- safe mode is off, and the browser does not request reduced data use (Save-Data);
 - the browser is not automated (`navigator.webdriver`), unless a dev build's test key or a loopback origin points it at a mock;
 - the page is on its site's host (`nse.qwewqa.dev` or `test.nse.qwewqa.dev`) or on this machine, so a copy of the files hosted elsewhere sends nothing.
 
@@ -170,7 +170,7 @@ Scales (`src/analytics/scales.ts`) use half-open `[lower, upper)` ranges, except
 
 The Recent Sessions count (`sessions`) is known only after the History tab has read its list. If the first `storage` event went without it, one more goes when the count becomes known. The client reads no storage of its own for it.
 
-`unsupported` is sent by `public/gate.js`, not by the client, when the support gate stops the editor. The build puts the target in a tag on the editor's page, `<meta name="nse-analytics" content="ORIGIN WEBSITE HOST">`, and only in a build with a target; `check:release` compares it with the manifest. The page sends one beacon on its first trusted input while visible, under the same rules as the client (a signal, an off switch, an automated browser, a request to save data, another host).
+`unsupported` is sent by `public/gate.js`, not by the client, when the support gate stops the editor. The build puts the target in a tag on the editor's page, `<meta name="nse-analytics" content="ORIGIN WEBSITE HOST">`, and only in a build with a target; `check:release` compares it with the manifest. The page sends one beacon on its first trusted input while visible, under the same rules as the client (a signal, an off switch, an automated browser, a Save-Data request, another host).
 
 Umami's own visit counts, durations and bounce rates are wrong for this client. Without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime` (seconds).
 
