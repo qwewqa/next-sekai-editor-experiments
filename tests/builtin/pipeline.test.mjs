@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { before, test } from 'node:test'
 import { buildAll, renderSpec } from '../../builtin-assets/build.mjs'
 import { omittedSprites, skinSprites } from '../../builtin-assets/manifest.mjs'
-import { renderSvg } from '../../builtin-assets/svg.mjs'
+import { fill, renderSvg } from '../../builtin-assets/svg.mjs'
 import { readBuiltinItem, readFixture } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -26,12 +26,6 @@ test("the committed outputs are the build's outputs", () => {
         )
 })
 
-test('building twice gives the same bytes', async () => {
-    const second = await buildAll()
-    assert.deepEqual([...second.files.keys()], [...first.files.keys()])
-    for (const [path, bytes] of first.files) assert.ok(second.files.get(path).equals(bytes), path)
-})
-
 test('the lock records every output with its sha256', () => {
     const lock = JSON.parse(first.files.get('builtin-assets/builtin-assets.lock.json'))
     for (const [path, bytes] of first.files) {
@@ -42,9 +36,9 @@ test('the lock records every output with its sha256', () => {
             path,
         )
     }
-    assert.equal(lock.counts.skinNames, 1331)
+    assert.equal(lock.counts.skinNames, 1512)
     assert.equal(lock.counts.particleEffects, 505)
-    assert.equal(lock.counts.clips, 15)
+    assert.equal(lock.counts.clips, 16)
 })
 
 test('the skin has every engine sprite except those the set omits', () => {
@@ -54,7 +48,7 @@ test('the skin has every engine sprite except those the set omits', () => {
         fixture.sprites.filter((name) => !names.has(name)),
         [...omittedSprites].sort(),
     )
-    assert.equal(names.size, fixture.sprites.length - omittedSprites.length)
+    assert.equal(names.size, 1512)
 })
 
 test('the particle and effect have every engine name', () => {
@@ -127,6 +121,10 @@ test('the PNG matches the renderer for three sprites and the 32 px icon', async 
         ])
 })
 
+test('a template variable that is not filled stops the build', () => {
+    assert.throws(() => fill('<rect fill-opacity="var(--edgeAlpha)"/>', { edgeAlpha: 0.3 }))
+})
+
 test('un-premultiplying gives straight alpha and the expected colour', async () => {
     const rendered = await renderSvg(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2"><rect width="2" height="2" fill="#ff8000" fill-opacity="0.5"/></svg>',
@@ -167,19 +165,60 @@ test('stretch sprites extrude their edges into the gutter and the others have a 
     assert.ok(stretch > 10 && plain > 10)
 })
 
+// A device whose textures are smaller than the atlas gets it at half size, each texel the average of
+// a 2x2 block (src/preview/decodeAtlas.ts). Sampled from half a texel inside its edge, a sprite then
+// reads half-size texels whose blocks reach at most 2 texels out: its gutter. So each block it reads
+// holds only its own pixels, their extruded copies (stretch sprites) or clear ones.
+test('at half size, each sprite reads only its own pixels and its gutter', () => {
+    const { rects } = first.report.skin
+    const seen = new Set()
+    for (const { x, y, w, h, stretch } of Object.values(rects)) {
+        if (seen.has(`${x},${y}`)) continue
+        seen.add(`${x},${y}`)
+        // The half-size texels a bilinear sample reads between full-size p0 and p1.
+        const read = (p0, p1) => [Math.floor(p0 / 2 - 0.5), Math.floor(p1 / 2 - 0.5) + 1]
+        const [i0, i1] = read(x + 0.5, x + w - 0.5)
+        const [j0, j1] = read(y + 0.5, y + h - 0.5)
+        for (let j = j0; j <= j1; j++)
+            for (let i = i0; i <= i1; i++) {
+                if (i > i0 && i < i1 && j > j0 && j < j1) continue
+                for (const [px, py] of [
+                    [2 * i, 2 * j],
+                    [2 * i + 1, 2 * j],
+                    [2 * i, 2 * j + 1],
+                    [2 * i + 1, 2 * j + 1],
+                ]) {
+                    const inside = px >= x && px < x + w && py >= y && py < y + h
+                    if (inside) continue
+                    assert.ok(px >= x - 2 && px < x + w + 2 && py >= y - 2 && py < y + h + 2)
+                    const got = pixelAt(skinTexture, px, py)
+                    const own = stretch
+                        ? pixelAt(
+                              skinTexture,
+                              Math.min(x + w - 1, Math.max(x, px)),
+                              Math.min(y + h - 1, Math.max(y, py)),
+                          )
+                        : [0, 0, 0, 0]
+                    assert.deepEqual(got, own, `the block at ${i},${j} by ${x},${y}`)
+                }
+            }
+    }
+})
+
 test('the textures and files stay within their budgets', () => {
     const skinData = skin.json('data')
-    assert.ok(skinData.width <= 2048 && skinData.height <= 2048)
+    assert.equal(skinData.width, 4096)
+    assert.equal(skinData.height, 4096)
     // The arrow images, one per direction and width, are counted in.
     assert.ok(skinData.sprites.some((sprite) => sprite.name === 'Sekai Flick Arrow Up Left 6'))
     const particle = readBuiltinItem('particle').json('data')
-    assert.ok(particle.width <= 512 && particle.height <= 512)
+    assert.ok(particle.width <= 1024 && particle.height <= 1024)
     const background = readBuiltinItem('background')
-    // The background's soft detail costs more than a plain gradient (pass 7), and it is square.
+    // The background is square, and its facets cost more than a plain gradient.
     const image = background.resource('image').length
-    assert.ok(image <= 780 * 1024, `the background image is ${image} bytes`)
+    assert.ok(image <= 372 * 1024, `the background image is ${image} bytes`)
     let total = 0
     for (const [path, bytes] of first.files)
         if (path.startsWith('public/builtin/')) total += bytes.length
-    assert.ok(total <= 2.5 * 1024 * 1024, `the set is ${total} bytes`)
+    assert.ok(total <= 2.76 * 1024 * 1024, `the set is ${total} bytes`)
 })

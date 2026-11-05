@@ -63,13 +63,20 @@ test('note body slices join edge to edge and are extruded', () => {
     }
 })
 
+// The play-mode lane strips (Sekai Lane Background, Lane Divider and Stage Border) do not repeat:
+// each is one quad over the stage's whole length, fading in at the far end. They are extruded too.
 test('connector, guide and stage pieces repeat along their length and are extruded', () => {
     const repeated = names.filter((name) =>
-        /Slide Connection|^#NOTE_CONNECTION_|^Sekai Guide|^Sekai (Lane Background|Lane Divider|Stage Border)|^#LANE$|^#STAGE_(LEFT|RIGHT)_BORDER$|^#SIMULTANEOUS/.test(
+        /Slide Connection|^#NOTE_CONNECTION_|^Sekai Guide|^Sekai (Lane Background|Lane Divider|Stage Border) Preview|^#LANE(_|$)|^#STAGE_(LEFT|RIGHT)_BORDER(_SEAMLESS)?$|^#SIMULTANEOUS/.test(
             name,
         ),
     )
     assert.ok(repeated.length > 60, `${repeated.length} pieces`)
+    const strips = names.filter((name) =>
+        /^Sekai (Lane Background( (?!Preview)\w+)?|Lane Divider|Stage Border)$/.test(name),
+    )
+    assert.equal(strips.length, 11)
+    for (const name of strips) extruded(name)
     for (const name of repeated) {
         same(row(name, 0), row(name, -1), `${name} top and bottom`)
         extruded(name)

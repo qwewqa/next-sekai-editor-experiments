@@ -26,6 +26,8 @@ export function fill(text, vars = {}) {
         if (!(key in vars)) throw new Error(`Template variable --${key} is not set`)
         return String(vars[key])
     })
+    const left = result.match(/var\(--[^)]*\)/g)
+    if (left) throw new Error(`Template variables left unfilled: ${left.join(', ')}`)
     return result
 }
 

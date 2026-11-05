@@ -1,0 +1,154 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { clipAliases, omittedOriginals } from '../../builtin-assets/manifest.mjs'
+import { colorNames } from '../../builtin-assets/palette.mjs'
+import { readZip } from '../../builtin-assets/zip.mjs'
+import { inkBox } from '../../scripts/extract-original-names.mjs'
+import { readBuiltinItem, readOriginals } from './helpers.mjs'
+import { decode, pixelAt } from './pngDecode.mjs'
+
+// The Next SEKAI packages the editor ships as its Default ("the originals"), as recorded by
+// scripts/extract-original-names.mjs. A skin, particle or effect that names what they name works
+// with any engine written for them.
+const originals = readOriginals()
+
+const skin = readBuiltinItem('skin')
+const texture = decode(skin.resource('texture'))
+const sprites = new Map(skin.json('data').sprites.map((sprite) => [sprite.name, sprite]))
+const effect = readBuiltinItem('effect')
+const clips = effect.json('data').clips
+
+const box = (name) => {
+    const sprite = sprites.get(name)
+    return inkBox(sprite, (column, row) => pixelAt(texture, sprite.x + column, sprite.y + row)[3])
+}
+const show = (values) => values.map((value) => value.toFixed(3)).join(', ')
+
+test('the set carries every original name but the ones it leaves out', () => {
+    assert.deepEqual(
+        originals.sprites.filter((name) => !sprites.has(name)),
+        [...omittedOriginals].sort(),
+    )
+    const effects = new Set(
+        readBuiltinItem('particle')
+            .json('data')
+            .effects.map(({ name }) => name),
+    )
+    assert.deepEqual(
+        originals.particles.filter((name) => !effects.has(name)),
+        [],
+    )
+    assert.deepEqual(
+        originals.clips.filter((name) => !clips.some((clip) => clip.name === name)),
+        [],
+    )
+})
+
+test("a clip plays another clip's file only where the originals share that file", () => {
+    const files = readZip(effect.resource('audio'))
+    for (const { name, filename } of clips) assert.ok(files.has(filename), `${name}: ${filename}`)
+    const fileOf = (name) => clips.find((clip) => clip.name === name).filename
+    for (const [name, target] of Object.entries(clipAliases)) {
+        assert.equal(fileOf(name), fileOf(target), name)
+        assert.ok(
+            originals.sharedFiles.some((group) => group.includes(name) && group.includes(target)),
+            `${name} and ${target} do not share a file in the originals`,
+        )
+    }
+})
+
+// The ink at alpha 64 or more, through each sprite's transform, in the engine's unit quad.
+test("stage edge lines and corners sit at the edge the originals' do", () => {
+    const near = 1 / 8
+    for (const name of Object.keys(originals.edges).filter((name) => name.startsWith('#STAGE'))) {
+        const base = originals.edges[name]
+        const ours = box(name)
+        const label = `${name}: ${show(ours)}, the originals ${show(base)}`
+        for (const axis of [0, 2]) {
+            const [b0, b1, o0, o1] = [base[axis], base[axis + 1], ours[axis], ours[axis + 1]]
+            if (b1 - b0 >= 0.75) {
+                assert.ok(o1 - o0 >= 0.75, `${label}: not across the quad`)
+                continue
+            }
+            assert.ok(o1 - o0 <= 1 / 4, `${label}: too thick`)
+            if (b0 <= near) assert.ok(o0 <= near, `${label}: off the edge`)
+            if (b1 >= 1 - near) assert.ok(o1 >= 1 - near, `${label}: off the edge`)
+        }
+    }
+})
+
+// The engine draws these in the result buckets and the app's standard roles: slim bars, the trace
+// and damage kinds each on their own box.
+test("whole-note trace and damage bars ink the originals' boxes", () => {
+    for (const [name, base] of Object.entries(originals.bars)) {
+        const ours = box(name)
+        ours.forEach((value, i) =>
+            assert.ok(
+                Math.abs(value - base[i]) <= 0.03,
+                `${name}: ${show(ours)}, the originals ${show(base)}`,
+            ),
+        )
+    }
+})
+
+// The originals' border ramps up to the stage edge (u = 1) across the whole strip, so where its ink
+// starts depends on the threshold; ours is a line, which must stay in the strip's inner half.
+test('the preview-mode stage border is a line at the stage edge', () => {
+    const [x0, x1] = box('Sekai Stage Border Preview')
+    assert.equal(originals.edges['Sekai Stage Border Preview'][1], 1)
+    assert.ok(x1 >= 1 - 1e-9 && x0 >= 0.5, show([x0, x1]))
+})
+
+test('the preview-mode lane divider is centred on its strip', () => {
+    const [x0, x1] = box('Sekai Lane Divider Preview')
+    assert.ok(Math.abs((x0 + x1) / 2 - 0.5) <= 0.15, show([x0, x1]))
+})
+
+// The originals' lane strips rise from clear over the far 11.7 % of the stage. They also fade over
+// their last rows at the near end, where the originals draw Sekai Stage on most charts; ours keep
+// full alpha there, since that would dim the lanes round the judge line. The preview-mode strips
+// are drawn in pieces along the stage, so they stay even.
+test('the lane strips fade in at the far end only', () => {
+    const profile = (name) => {
+        const { x, y, w, h } = sprites.get(name)
+        return Array.from({ length: h }, (_, row) => pixelAt(texture, x + (w >> 1), y + row)[3])
+    }
+    const backgrounds = ['', ...colorNames.map((color) => ` ${color}`)].map(
+        (color) => `Sekai Lane Background${color}`,
+    )
+    for (const name of [...backgrounds, 'Sekai Lane Divider', 'Sekai Stage Border']) {
+        // Row 0 is the far end.
+        const alphas = profile(name)
+        const full = Math.max(...alphas)
+        alphas.forEach((alpha, row) => {
+            const depth = row / alphas.length
+            if (depth < 0.02) assert.ok(alpha <= 0.1 * full, `${name}: ${alpha} at row ${row}`)
+            if (depth >= 0.13) assert.ok(alpha >= full - 1, `${name}: ${alpha} at row ${row}`)
+        })
+    }
+    for (const name of [...backgrounds, 'Sekai Lane Divider']) {
+        const alphas = profile(name.replace(/^Sekai Lane (Background|Divider)/, '$& Preview'))
+        assert.ok(Math.max(...alphas) - Math.min(...alphas) <= 1, `${name} Preview is not even`)
+    }
+})
+
+test("styled critical notes have images of their own, as the originals' do", () => {
+    const pairs = [
+        ['Sekai Normal Note Left', 'Sekai Critical Note Left'],
+        ['Sekai Normal Trace Note Middle', 'Sekai Critical Trace Note Middle'],
+        ['Sekai Slot Normal', 'Sekai Slot Critical'],
+        ['Sekai Flick Arrow Up Left 6', 'Sekai Critical Flick Arrow Up Left 6'],
+        ['Sekai Normal Note Basic', 'Sekai Critical Note Basic'],
+        ['Sekai Normal Trace Note Basic', 'Sekai Critical Trace Note Basic'],
+    ]
+    for (const color of colorNames)
+        for (const [normal, critical] of pairs) {
+            const [a, b] = [`${normal} ${color}`, `${critical} ${color}`].map((name) =>
+                sprites.get(name),
+            )
+            assert.ok(
+                a.x !== b.x || a.y !== b.y,
+                `${critical} ${color} shares the image of ${normal} ${color}`,
+            )
+        }
+})

@@ -1,9 +1,12 @@
-// The Built-in background: soft colour clouds in the base's hues, a faint mottle and scattered soft
-// specks, so camera zoom and pan read at several scales. No lines or shapes. The image is square,
-// like the Default, so a 16:9 screen shows its middle band. It is drawn in units of that band's
-// height (x from 0 to 16/9, y from 0 to 1 in the band, -7/18 to 25/18 over the square), so any
-// size renders the same picture. The margins fade to `color`, which fills the screen where a
-// zoomed-out camera leaves it bare.
+// The Built-in background: a sparse low-poly mesh over a dark gradient. Large jittered triangles,
+// each a flat plane tinted from a ramp running teal, indigo, violet and plum, a little lighter or
+// darker than its neighbours and shaded along its own slope, meet at soft edges. A faint
+// brightness drift runs across them. The edges and slopes make camera zoom, pan and rotation read,
+// and nothing is finer than the soft edges. Round the judgment line the facets keep to indigo and
+// violet, away from the notes' hues. The image is square, like the Default, so a 16:9 screen shows
+// its middle band. It is drawn in units of that band's height (x from 0 to 16/9, y from 0 to 1 in
+// the band, -7/18 to 25/18 over the square), so any size renders the same picture. The margins
+// fade to `color`, which fills the screen where a zoomed-out camera leaves it bare.
 
 /** The fill around the image, and the colour its margins fade to. */
 export const color = '#211f4a'
@@ -14,43 +17,22 @@ const top = hex('#14173a')
 const bottom = hex('#251f4c')
 const fill = hex(color)
 
-/** The square's top edge, in band heights from the band's top. */
-const squareTop = -7 / 18
+/** The colours the facets are tinted with, from one end of the hue field to the other. */
+const ramp = ['#22709a', '#33389e', '#6a36aa', '#8a3496'].map(hex)
 
-// [x, y, radius x, radius y, colour, strength], in band heights.
-const clouds = [
-    [0.32, 0.82, 0.55, 0.32, '#2f7f9c', 0.4],
-    [1.45, 0.8, 0.6, 0.34, '#8a37b8', 0.42],
-    [0.88, 0.95, 0.75, 0.3, '#4a2fa8', 0.36],
-    [0.36, 0.2, 0.5, 0.3, '#6a2f9a', 0.28],
-    [1.42, 0.2, 0.48, 0.28, '#1f6c8c', 0.28],
-    [0.95, 0.38, 0.62, 0.22, '#23338a', 0.2],
-    [0.55, 0.6, 0.28, 0.2, '#5a3bb0', 0.12],
-    [1.3, 0.55, 0.3, 0.2, '#2d5aa8', 0.12],
-].map(([x, y, rx, ry, c, s]) => [x, y, rx, ry, hex(c), s])
+/** How far each facet is tinted towards its ramp colour. */
+const tint = 0.3
 
-/**
- * The clouds above and below the band, in the hues of the band's clouds nearest them. They are
- * kept far enough from the band that its inner three quarters change by less than a level.
- */
-export const stripClouds = [
-    [0.36, -0.22, 0.5, 0.19, '#5a2f8f', 0.26],
-    [0.95, -0.24, 0.55, 0.19, '#23338a', 0.2],
-    [1.42, -0.22, 0.5, 0.19, '#1f5f86', 0.26],
-    [0.32, 1.22, 0.55, 0.19, '#2f7090', 0.3],
-    [0.9, 1.24, 0.6, 0.19, '#4a2fa8', 0.28],
-    [1.48, 1.22, 0.55, 0.19, '#7a35a8', 0.3],
-].map(([x, y, rx, ry, c, s]) => [x, y, rx, ry, hex(c), s])
+// The mesh, in band heights: a triangular lattice of this cell, turned by `angle`, its vertices
+// moved by up to `jitter` cells. Edges blend over `feather` (about 24 px at 1920).
+const cell = 0.25
+const angle = 0.29
+const jitter = 0.26
+const feather = 0.022
 
-const speckColors = ['#c9c2ff', '#a9e4ff', '#f0c8ff', '#e8ecff'].map(hex)
-
-/** A seeded generator in [0, 1) (mulberry32). */
-const random = (seed) => () => {
-    seed = (seed + 0x6d2b79f5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-}
+/** Per facet: brightness up to this fraction either way, and the steepest slope across it. */
+const facetLight = 0.08
+const facetSlope = 0.6
 
 const hash = (x, y, seed) => {
     let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 2147483647)
@@ -60,25 +42,123 @@ const hash = (x, y, seed) => {
 
 const fade = (t) => t * t * t * (t * (t * 6 - 15) + 10)
 
-// Smooth value noise in [0, 1].
+const directions = Array.from({ length: 16 }, (_, i) => [
+    Math.cos((i / 16) * Math.PI * 2),
+    Math.sin((i / 16) * Math.PI * 2),
+])
+
+const corner = (ix, iy, seed, dx, dy) => {
+    const [gx, gy] = directions[Math.floor(hash(ix, iy, seed) * 16)]
+    return gx * dx + gy * dy
+}
+
+// Gradient noise with a standard deviation of about 0.7.
 const noise = (x, y, seed) => {
     const ix = Math.floor(x)
     const iy = Math.floor(y)
-    const fx = fade(x - ix)
-    const fy = fade(y - iy)
-    const a = hash(ix, iy, seed) + (hash(ix + 1, iy, seed) - hash(ix, iy, seed)) * fx
-    const b = hash(ix, iy + 1, seed) + (hash(ix + 1, iy + 1, seed) - hash(ix, iy + 1, seed)) * fx
-    return a + (b - a) * fy
+    const fx = x - ix
+    const fy = y - iy
+    const u = fade(fx)
+    const v = fade(fy)
+    const a = corner(ix, iy, seed, fx, fy)
+    const b = corner(ix + 1, iy, seed, fx - 1, fy)
+    const c = corner(ix, iy + 1, seed, fx, fy - 1)
+    const d = corner(ix + 1, iy + 1, seed, fx - 1, fy - 1)
+    const ab = a + (b - a) * u
+    const cd = c + (d - c) * u
+    return (ab + (cd - ab) * v) * 2.9
 }
 
-// Three octaves, from a sixth of the height down to a twenty-fourth, in [-1, 1].
-const mottle = (x, y) =>
-    ((noise(x * 6, y * 6, 1) - 0.5) * 4 +
-        (noise(x * 12, y * 12, 2) - 0.5) * 2 +
-        (noise(x * 24, y * 24, 3) - 0.5)) /
-    3.5
+/**
+ * Noise at several wavelengths (in band heights) and weights, divided by the weights' root sum of
+ * squares, so its spread stays about that of one layer. Each layer's lattice is turned and
+ * shifted by its seed, so no two share axes.
+ */
+const octaves = (list, seed) => {
+    const layers = list.map(([wavelength, weight], k) => {
+        const s = seed * 31 + k
+        const turn = hash(s, 7, 99) * Math.PI
+        return [Math.cos(turn), Math.sin(turn), wavelength, weight, s]
+    })
+    const norm = Math.sqrt(list.reduce((sum, [, weight]) => sum + weight * weight, 0))
+    return (x, y) => {
+        let sum = 0
+        for (const [c, s, wavelength, weight, layerSeed] of layers)
+            sum +=
+                weight *
+                noise(
+                    (c * x - s * y) / wavelength + layerSeed * 17.31,
+                    (s * x + c * y) / wavelength - layerSeed * 9.73,
+                    layerSeed,
+                )
+        return sum / norm
+    }
+}
+
+const hueField = octaves([[1.1, 1]], 704)
+const drift = octaves(
+    [
+        [0.3, 1],
+        [0.15, 0.5],
+    ],
+    706,
+)
 
 const smoothstep = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t))
+
+/** Pulls a hue towards `to` by `strength` near (x, y), over an ellipse of radii rx, ry. */
+const pull = (h, to, strength, x, y, rx, ry, px, py) => {
+    const dx = (px - x) / rx
+    const dy = (py - y) / ry
+    return h + (to - h) * strength * Math.exp(-(dx * dx + dy * dy))
+}
+
+const e1 = [Math.cos(angle) * cell, Math.sin(angle) * cell]
+const e2 = [Math.cos(angle + Math.PI / 3) * cell, Math.sin(angle + Math.PI / 3) * cell]
+const det = e1[0] * e2[1] - e1[1] * e2[0]
+
+const vertex = (i, j) => {
+    const a = (hash(i, j, 705) - 0.5) * 2 * jitter
+    const b = (hash(i, j, 706) - 0.5) * 2 * jitter
+    return [(i + a) * e1[0] + (j + b) * e2[0], (i + a) * e1[1] + (j + b) * e2[1]]
+}
+
+/** A facet: its edges as inward normals [nx, ny, c] (distance nx x + ny y + c), and its look. */
+const facet = (points, i, j, k) => {
+    const [[x0, y0], [x1, y1], [x2, y2]] = points
+    const sign = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0) > 0 ? 1 : -1
+    const edges = points.map(([ax, ay], n) => {
+        const [bx, by] = points[(n + 1) % 3]
+        const length = Math.hypot(bx - ax, by - ay)
+        const nx = (-(by - ay) / length) * sign
+        const ny = ((bx - ax) / length) * sign
+        return [nx, ny, -(nx * ax + ny * ay)]
+    })
+    const cx = (x0 + x1 + x2) / 3
+    const cy = (y0 + y1 + y2) / 3
+    const random = (n) => hash(i * 2 + k, j, 0x51 + n)
+    // Its hue: the hue field at its centre, nudged per facet; indigo and violet round the
+    // judgment line, teal towards the upper right.
+    let h = 0.5 + 0.32 * hueField(cx, cy) + 0.12 * (random(0) - 0.5)
+    h = pull(h, 0.45, 0.85, 8 / 9, 0.8, 0.75, 0.35, cx, cy)
+    h = pull(h, 0.08, 0.8, 1.45, 0.12, 0.45, 0.3, cx, cy)
+    const s = Math.min(0.9999, Math.max(0, h)) * (ramp.length - 1)
+    const r = Math.floor(s)
+    const f = smoothstep(s - r)
+    const colour = ramp[r].map((value, n) => value + (ramp[r + 1][n] - value) * f)
+    // A plane lit from the upper left: its slope points within about 60 degrees of that.
+    const turn = -2.3 + (random(2) - 0.5) * 2.2
+    const slope = facetSlope * (0.4 + random(3))
+    return {
+        edges,
+        cx,
+        cy,
+        colour,
+        light: 1 + facetLight * (random(1) - 0.5) * 2,
+        gx: Math.cos(turn) * slope,
+        gy: Math.sin(turn) * slope,
+    }
+}
 
 /** Renders the square background at the given side (a multiple of 32) to straight RGBA. */
 export function renderBackground(side) {
@@ -88,87 +168,64 @@ export function renderBackground(side) {
     const height = (side * 9) / 16
     const offset = (side * 7) / 32
     const unit = 1 / height
-    const rgb = new Float32Array(side * side * 3)
-    const allClouds = [...clouds, ...stripClouds]
+    const data = new Uint8Array(side * side * 4)
+    const quads = new Map()
+    const quad = (i, j) => {
+        const key = i * 100003 + j
+        let q = quads.get(key)
+        if (!q) {
+            const p00 = vertex(i, j)
+            const p10 = vertex(i + 1, j)
+            const p01 = vertex(i, j + 1)
+            const p11 = vertex(i + 1, j + 1)
+            q = [facet([p00, p10, p01], i, j, 0), facet([p10, p11, p01], i, j, 1)]
+            quads.set(key, q)
+        }
+        return q
+    }
+    const sum = [0, 0, 0]
 
-    // Gradient (extrapolated past the band), clouds and mottle. Rows count from the band's top.
-    for (let row = -offset; row < side - offset; row++) {
-        const y = (row + 0.5) * unit
-        const base = top.map((c, i) => c + (bottom[i] - c) * y)
+    for (let py = 0; py < side; py++) {
+        // Rows count from the band's top; the gradient extrapolates past the band.
+        const y = (py - offset + 0.5) * unit
+        const v = Math.abs((2 * (py + 0.5)) / side - 1) ** 6
+        const ground = top.map((c, i) => c + (bottom[i] - c) * y)
         for (let px = 0; px < width; px++) {
             const x = (px + 0.5) * unit
-            const out = [...base]
-            for (const [cx, cy, rx, ry, c, s] of allClouds) {
-                const dx = (x - cx) / rx
-                const dy = (y - cy) / ry
-                const w = s * Math.exp(-2 * (dx * dx + dy * dy))
-                if (w < 1e-4) continue
-                for (let i = 0; i < 3; i++) out[i] += (c[i] - out[i]) * w
-            }
-            const m = 1 + 0.16 * mottle(x, y)
-            const at = ((row + offset) * width + px) * 3
-            for (let i = 0; i < 3; i++) rgb[at + i] = out[i] * m
-        }
-    }
-
-    // Specks: soft round dots of many sizes, clustered by the mottle. Most are small and faint;
-    // a few are wide, fainter still. The band's own set, then a set for the strips above and below
-    // it at the same density.
-    const specks = (next, count, place) => {
-        for (let k = 0; k < count; k++) {
-            const x = next() * (width * unit)
-            const y = place(next())
-            const size = next()
-            const shade = next()
-            const c = speckColors[Math.floor(next() * speckColors.length)]
-            if (next() > 0.45 + mottle(x + 3.1, y + 1.7)) continue
-            // Radius in heights: 0.0012 to 0.006 for most, 0.008 to 0.03 for one in five.
-            const wide = size >= 0.8
-            const radius = wide
-                ? 0.008 + 0.022 * ((size - 0.8) / 0.2) ** 2
-                : 0.0012 * 5 ** (size / 0.8)
-            const alpha = wide ? 0.04 + 0.05 * shade : 0.06 + 0.14 * shade * (1 - size)
-            const sigma = Math.max(radius * height, 1.2)
-            const scale = alpha * Math.min(1, (radius * height) / 1.2) ** 2
-            const reach = Math.ceil(sigma * 3)
-            const cx = x * height - 0.5
-            const cy = y * height - 0.5
-            const y0 = Math.max(-offset, Math.floor(cy) - reach)
-            const y1 = Math.min(side - offset - 1, Math.ceil(cy) + reach)
-            const x0 = Math.max(0, Math.floor(cx) - reach)
-            const x1 = Math.min(width - 1, Math.ceil(cx) + reach)
-            for (let row = y0; row <= y1; row++)
-                for (let px = x0; px <= x1; px++) {
-                    const d2 = ((px - cx) ** 2 + (row - cy) ** 2) / (sigma * sigma)
-                    const w = scale * Math.exp(-0.5 * d2)
-                    if (w < 1e-4) continue
-                    const at = ((row + offset) * width + px) * 3
-                    for (let i = 0; i < 3; i++) rgb[at + i] += (c[i] - rgb[at + i]) * w
-                }
-        }
-    }
-    specks(random(0x5e4a1), 1800, (t) => t)
-    const strip = -squareTop
-    specks(random(0x5e4a2), Math.round(1800 * 2 * strip), (t) =>
-        t < 0.5 ? squareTop + 2 * strip * t : 1 + 2 * strip * (t - 0.5),
-    )
-
-    // The margins fade to the fill along a rounded square.
-    const data = new Uint8Array(side * side * 4)
-    for (let py = 0; py < side; py++) {
-        const v = Math.abs((2 * (py + 0.5)) / side - 1) ** 6
-        for (let px = 0; px < width; px++) {
+            // The margins fade to the fill along a rounded square.
             const u = Math.abs((2 * (px + 0.5)) / width - 1) ** 6
             const e = smoothstep((1 - (u + v) ** (1 / 6)) / 0.25)
-            const at = (py * width + px) * 3
-            for (let i = 0; i < 3; i++) {
-                const value = fill[i] + (rgb[at + i] - fill[i]) * e
-                data[(py * width + px) * 4 + i] = Math.max(
-                    0,
-                    Math.min(255, Math.round(value * 255)),
-                )
+            const at = (py * width + px) * 4
+            data[at + 3] = 255
+            if (e === 0) {
+                for (let i = 0; i < 3; i++) data[at + i] = Math.round(fill[i] * 255)
+                continue
             }
-            data[(py * width + px) * 4 + 3] = 255
+            // Blend the facets round the point by their soft coverage.
+            const a = (x * e2[1] - y * e2[0]) / det
+            const b = (y * e1[0] - x * e1[1]) / det
+            const i0 = Math.floor(a)
+            const j0 = Math.floor(b)
+            const m = 1 + 0.045 * drift(x, y)
+            sum[0] = sum[1] = sum[2] = 0
+            let total = 0
+            for (let i = i0 - 1; i <= i0 + 1; i++)
+                for (let j = j0 - 1; j <= j0 + 1; j++)
+                    for (const f of quad(i, j)) {
+                        let inside = Infinity
+                        for (const [nx, ny, c] of f.edges)
+                            inside = Math.min(inside, nx * x + ny * y + c)
+                        const w = smoothstep((inside + feather / 2) / feather)
+                        if (w <= 0) continue
+                        const k = m * f.light * (1 + f.gx * (x - f.cx) + f.gy * (y - f.cy))
+                        for (let n = 0; n < 3; n++)
+                            sum[n] += w * (ground[n] + (f.colour[n] - ground[n]) * tint) * k
+                        total += w
+                    }
+            for (let n = 0; n < 3; n++) {
+                const value = fill[n] + (sum[n] / total - fill[n]) * e
+                data[at + n] = Math.max(0, Math.min(255, Math.round(value * 255)))
+            }
         }
     }
     return { width, height: side, data }

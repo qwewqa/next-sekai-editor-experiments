@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { diagonalPlaces } from '../../builtin-assets/arrows.mjs'
 import { readBuiltinItem } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -22,6 +23,8 @@ const targets = {
     'Sekai Diamond Green': [-0.12, 1.1, 0.22, 1.12],
     'Sekai Normal Trace Diamond Neutral': [-0.05, 1.05, 0.27, 1.02],
     'Sekai Slot Glow Cyan': [0, 1, 0.02, 0.69],
+    'Sekai Slot Glow Green Slider Hold': [0, 1, 0.04, 0.54],
+    'Sekai Slot Glow Yellow Slider Hold': [0, 1, 0.06, 0.39],
     'Sekai Active Slide Connection Green': [0.02, 0.98, 0, 1],
     'Sekai Guide Neutral': [0, 1, 0, 1],
     'Sekai Judgment Gradient Neutral': [0, 1, 0, 1],
@@ -29,9 +32,6 @@ const targets = {
     'Sekai Flick Arrow Up 6': [-0.03, 1.03, 0.06, 0.64],
     'Sekai Flick Arrow Down 1': [-0.14, 1.14, 0.18, 1.55],
     'Sekai Flick Arrow Down 3': [-0.07, 1.07, 0.07, 0.9],
-    'Sekai Flick Arrow Up Left 1': [-0.32, 1.32, 0.27, 1.66],
-    'Sekai Flick Arrow Up Left 6': [-0.13, 1.09, 0.07, 0.75],
-    'Sekai Flick Arrow Down Left 2': [-0.24, 1.21, 0.11, 1.18],
     'Sekai Critical Flick Arrow Up 1 Neutral': [-0.14, 1.14, 0.25, 1.61],
 }
 const tolerance = 0.06
@@ -93,9 +93,9 @@ function inked(name, threshold = 128) {
     return { box: [u0, u1, v0, v1], share: count / (w * h) }
 }
 
-function extent(name, quad = unit) {
+function extent(name, quad = unit, threshold = 128) {
     const corners = apply(sprites.get(name).transform, quad)
-    const [u0, u1, v0, v1] = inked(name).box
+    const [u0, u1, v0, v1] = inked(name, threshold).box
     const points = [
         at(corners, u0, v0),
         at(corners, u0, v1),
@@ -123,6 +123,82 @@ test("sprites land where the base skin's do in the engine's quads", () => {
                 Math.abs(got[i] - target[i]) <= tolerance,
                 `${name}: ${got.map((value) => value.toFixed(2))} against ${target}`,
             )
+    }
+})
+
+// A critical diamond's halo is soft: from half alpha up it inks the kite of its normal sibling, to
+// a unit of the 64-unit art, and from a quarter to 2 units. Its frame, the 88-unit one every diamond
+// shares, has room for the halo, so a later fit to the atlas does not cut it.
+test('critical diamonds ink their kite, with room for the halo', () => {
+    const frameWidth = (name) => {
+        const [bl, , , br] = apply(sprites.get(name).transform, unit)
+        return br[0] - bl[0]
+    }
+    const pairs = [
+        ['Sekai Normal Slide Diamond', 'Sekai Critical Slide Diamond'],
+        ['Sekai Diamond Green', 'Sekai Diamond Yellow'],
+        ['Sekai Trace Diamond Green', 'Sekai Trace Diamond Yellow'],
+        ...['Blue', 'Neutral', 'Black'].flatMap((color) => [
+            [`Sekai Normal Slide Diamond ${color}`, `Sekai Critical Slide Diamond ${color}`],
+            [`Sekai Normal Trace Diamond ${color}`, `Sekai Critical Trace Diamond ${color}`],
+        ]),
+    ]
+    for (const [normal, critical] of pairs) {
+        for (const [threshold, within] of [
+            [128, (1 / 88) * frameWidth(normal)],
+            [64, (2 / 88) * frameWidth(normal)],
+        ]) {
+            const [a, b] = [normal, critical].map((name) => extent(name, unit, threshold))
+            for (let i = 0; i < 4; i++)
+                assert.ok(
+                    Math.abs(a[i] - b[i]) <= within,
+                    `${critical} at ${threshold}: ${b.map((value) => value.toFixed(3))} against ${a.map((value) => value.toFixed(3))}`,
+                )
+        }
+        const { x, y, w, h } = sprites.get(critical)
+        for (let i = 0; i < w; i++)
+            for (const edge of [0, h - 1]) {
+                assert.ok(pixelAt(texture, x + i, y + edge)[3] <= 2, `${critical} is cut`)
+                assert.ok(pixelAt(texture, x + edge, y + i)[3] <= 2, `${critical} is cut`)
+            }
+    }
+})
+
+// The inked pixels' centroid x and lowest y in the engine's quad, through the sprite's transform.
+function inkedPlace(name, threshold = 128) {
+    const { x, y, w, h, transform } = sprites.get(name)
+    const corners = apply(transform, unit)
+    let [sum, count, low] = [0, 0, Infinity]
+    for (let row = 0; row < h; row++)
+        for (let column = 0; column < w; column++)
+            if (pixelAt(texture, x + column, y + row)[3] >= threshold) {
+                const [px, py] = at(corners, (column + 0.5) / w, 1 - (row + 0.5) / h)
+                sum += px
+                count++
+                low = Math.min(low, py)
+            }
+    return [sum / count, low]
+}
+
+test("diagonal arrows sit where the base's arrowheads do", () => {
+    for (let width = 1; width <= 6; width++) {
+        const [x, upLow, downLow] = diagonalPlaces[width - 1]
+        // The rounded rim pulls an up-left arrow's sharp lowest corner up a little.
+        for (const [direction, low, slack] of [
+            ['Up Left', upLow, 0.06],
+            ['Down Left', downLow, 0.04],
+        ]) {
+            const name = `Sekai Flick Arrow ${direction} ${width}`
+            const [gotX, gotLow] = inkedPlace(name)
+            assert.ok(
+                Math.abs(gotX - x) <= 0.04,
+                `${name}: centroid x ${gotX.toFixed(3)}, the base ${x}`,
+            )
+            assert.ok(
+                Math.abs(gotLow - low) <= slack,
+                `${name}: lowest ${gotLow.toFixed(3)}, the base ${low}`,
+            )
+        }
     }
 })
 
@@ -172,6 +248,7 @@ test('whole notes stay inside their lanes at every width, joined at the slices',
         ['Sekai Normal Note {} Purple', 0.25],
         ['Sekai Normal Trace Note {} Neutral', 0.125],
         ['Sekai Damage Note', 0.125],
+        ['Sekai Trace Note Purple', 0.125],
     ])
         for (const width of [1, 2, 3, 6, 12]) {
             const quads = noteSlices(width, edge)

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { color, stripClouds } from '../../builtin-assets/background.mjs'
+import { color } from '../../builtin-assets/background.mjs'
 import { readBuiltinItem } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -32,10 +32,10 @@ test('the image is square, covers, and fills around with the colour its margins 
                 .forEach((value, i) => assert.ok(Math.abs(value - fill[i]) <= 1, `${x}, ${y}`))
 })
 
-test('the middle has detail at several scales, at low contrast', () => {
-    // Differences between points a step apart over the middle half: specks show in short steps,
-    // clouds and mottle in long ones. A plain gradient (main's, before pass 7) has a mean under
-    // 0.6 at 24 pixels and a most of 2 at 3; the base's picture has means of 4 to 16 and a most of 80.
+test('the middle has soft-edged facets at low contrast, without specks', () => {
+    // Differences between points a step apart over the middle half. The facets' soft edges and
+    // slopes show in middle steps and their tints in long ones; specks or hard edges would show as
+    // large short steps. A plain gradient has a mean under 0.6 at 24 pixels and under 2 at 160.
     const { width, height } = image
     const differences = (step) => {
         let sum = 0
@@ -51,23 +51,12 @@ test('the middle has detail at several scales, at low contrast', () => {
         return { mean: sum / count, most }
     }
     const [fine, middle, broad] = [3, 24, 160].map(differences)
-    assert.ok(fine.most > 8, `specks: most ${fine.most}`)
-    assert.ok(middle.mean > 1.5, `mottle: mean ${middle.mean}`)
-    assert.ok(broad.mean > 2, `clouds: mean ${broad.mean}`)
-    for (const { mean, most } of [fine, middle, broad]) assert.ok(mean < 8 && most < 64)
+    assert.ok(fine.most <= 5, `specks or hard edges: most ${fine.most}`)
+    assert.ok(middle.mean > 0.8, `facet edges and slopes: mean ${middle.mean}`)
+    assert.ok(broad.mean > 2.5, `facet tints: mean ${broad.mean}`)
+    for (const { mean, most } of [fine, middle, broad]) assert.ok(mean < 8 && most < 20)
     let total = 0
     for (let y = 0; y < height; y += 5) for (let x = 0; x < width; x += 5) total += luma(x, y)
     const mean = total / Math.ceil(height / 5) / Math.ceil(width / 5)
     assert.ok(mean > 20 && mean < 50, `mean luma ${mean}`)
-})
-
-test('the clouds above and below the band leave its inner three quarters within a level', () => {
-    // In band heights, the band runs from 0 to 1. A cloud blends its colour in by at most its
-    // weight at the nearest point of the inner rows, and the mottle brightens by at most 16%.
-    let most = 0
-    for (const [, y, , ry, , strength] of stripClouds) {
-        const distance = y < 0 ? 0.125 - y : y - 0.875
-        most += strength * Math.exp(-2 * (distance / ry) ** 2)
-    }
-    assert.ok(most * 1.16 * 255 <= 1, `up to ${most * 1.16 * 255} levels`)
 })

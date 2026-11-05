@@ -48,12 +48,13 @@ export const bodyColors = {
 export const traceColors = { green: '#5fefc2', red: '#fe9ccb', yellow: '#fddd86' }
 export const diamondColors = { green: '#abfbe3', red: '#ffd8f6', yellow: '#fff2c3' }
 export const arrowColors = { normal: '#ec7cb4', critical: '#ffc633' }
-export const damage = { color: '#a50acc', edge: '#d28ae6' }
+export const damageFace = '#a50acc'
 
 /**
  * Colours sampled from the base set (Next SEKAI 01) where ours must match it side by side: the
- * connectors (at rest and held), the slot glows and the effects. The base's styled pieces follow
- * its own rule per style hue, so they are listed per style.
+ * connectors (at rest and held), the slot glows, the effects, the standard ticks and markers, the
+ * grids, the styled diamonds and the styled critical notes. The base's styled pieces follow its own
+ * rule per style hue, so they are listed per style.
  */
 export const baseColors = {
     connector: {
@@ -71,6 +72,110 @@ export const baseColors = {
         'Green Slider Hold': ['#08ff9e', '#02fff7', '#0095ff'],
         'Yellow Slider Hold': ['#a9ff53', '#5cff2e', '#00ff00'],
         'Yellow Slider Tap': ['#dbfb43', '#d3ff5e', '#86ff0b'],
+    },
+    // Per style, the faces of normal and critical diamonds.
+    styleDiamond: {
+        Neutral: ['#cdcdcd', '#dedede'],
+        Red: ['#f9a1c4', '#ffbfd8'],
+        Green: ['#a1f9db', '#bfffe9'],
+        Blue: ['#a1a1f9', '#bfbfff'],
+        Yellow: ['#f9dfa1', '#ffecbf'],
+        Purple: ['#e1a1f9', '#edbfff'],
+        Cyan: ['#a1f0f9', '#bff8ff'],
+        Black: ['#5e5e5e', '#7a7a7a'],
+    },
+    // Per style, the critical notes' own colours: the body [outer, inner, accent], the trace bar,
+    // the slot and the flick arrow.
+    styleCritical: {
+        Neutral: {
+            body: ['#bfbfbf', '#e5e5e5', '#a3a3a3'],
+            trace: '#c1c1c1',
+            slot: '#c3c3c3',
+            arrow: '#999999',
+        },
+        Red: {
+            body: ['#fe80b3', '#ffcce0', '#fe4a92'],
+            trace: '#fe85b6',
+            slot: '#ff84b5',
+            arrow: '#ff3385',
+        },
+        Green: {
+            body: ['#80fed3', '#ccffee', '#4afec0'],
+            trace: '#85fed5',
+            slot: '#84ffd5',
+            arrow: '#33ffb9',
+        },
+        Blue: {
+            body: ['#8080fe', '#ccccff', '#4a4afe'],
+            trace: '#8585fe',
+            slot: '#8484ff',
+            arrow: '#3333ff',
+        },
+        Yellow: {
+            body: ['#fed980', '#fff0cc', '#fec84a'],
+            trace: '#feda85',
+            slot: '#ffdb84',
+            arrow: '#ffc333',
+        },
+        Purple: {
+            body: ['#dc80fe', '#f1ccff', '#cd4afe'],
+            trace: '#dd85fe',
+            slot: '#de84ff',
+            arrow: '#c833ff',
+        },
+        Cyan: {
+            body: ['#80f1fe', '#ccfaff', '#4aeafe'],
+            trace: '#85f1fe',
+            slot: '#84f2ff',
+            arrow: '#33e9ff',
+        },
+        Black: {
+            body: ['#4a4a4a', '#8c8c8c', '#3e3e3e'],
+            trace: '#4b4b4b',
+            slot: '#4c4c4c',
+            arrow: '#3d3d3d',
+        },
+    },
+    // Black traces: the bar in the base's grey, which reads on the lane where the editor's black
+    // does not, and its light lower edge.
+    blackTrace: { bar: '#3f3f3f', edge: '#5b5b5b' },
+    // The grid lines' colours, which the engine's preview mode draws: NEUTRAL for beats, the
+    // others for events.
+    grid: {
+        NEUTRAL: '#808080',
+        RED: '#ff4040',
+        GREEN: '#40ff40',
+        BLUE: '#4040ff',
+        YELLOW: '#ffff40',
+        PURPLE: '#ff40ff',
+        CYAN: '#40ffff',
+    },
+    // The halo round critical diamonds, sampled round the base's critical slide diamonds: the
+    // default's and one per style.
+    diamondHalo: '#c49400',
+    styleDiamondHalo: {
+        Neutral: '#626262',
+        Red: '#c4004e',
+        Green: '#00c481',
+        Blue: '#0000c4',
+        Yellow: '#c48a00',
+        Purple: '#8f00c4',
+        Cyan: '#00afc4',
+        Black: '#333333',
+    },
+    // The light glow round critical bodies and traces, sampled round the base's critical bodies:
+    // the default's and one per style. The base's Black glow (#3e3e3e) does not show on the stage,
+    // so Black's is a light grey.
+    criticalGlow: '#f8f166',
+    styleCriticalGlow: {
+        Neutral: '#adadad',
+        Red: '#f868a0',
+        Green: '#68f8c5',
+        Blue: '#6868f8',
+        Yellow: '#f8cc68',
+        Purple: '#cd68f8',
+        Cyan: '#68e7f8',
+        Black: '#a8a8a8',
     },
     // Per style, the slot glows of normal and critical notes.
     styleGlow: {
@@ -120,6 +225,15 @@ export const baseColors = {
         Black: ['#000000', '#222222'],
     },
     judgmentBand: ['#000000', 0.57],
+    // The standard ticks' and directional markers' faces, per standard colour.
+    tick: { Neutral: '#e8e8e8', Blue: '#a2a2fa', Cyan: '#a2fafa', Purple: '#faa2fa' },
+    marker: {
+        Neutral: '#a1a1a1',
+        Green: '#7eed7e',
+        Blue: '#7e7eed',
+        Purple: '#ed7eed',
+        Cyan: '#7eeded',
+    },
     // Effects, from captures of each hit: the hue where the effects add light.
     effect: { tap: '#6266f2', flick: '#e640bc', trace: '#39b2e6' },
     // Per style: connector at rest and held, critical connector at rest and held, damage
@@ -211,7 +325,8 @@ export const baseColors = {
 /** The editor's stage colours (the preview navy, the stage stroke and the accent). */
 export const stage = { navy: '#292b42', lane: '#1c1e31', stroke: '#b4d6e8', accent: '#77efdc' }
 
-const channels = (hex) => [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16))
+/** The red, green and blue levels of a #rrggbb colour. */
+export const channels = (hex) => [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16))
 
 /** The colour t of the way from a to b, as #rrggbb. */
 export const mix = (a, b, t) =>

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { gzip } from 'pako'
 import { color as backgroundColor, renderBackground } from './background.mjs'
 import {
+    clipAliases,
     clipFiles,
     itemMeta,
     omittedSprites,
@@ -12,6 +13,7 @@ import {
     skinSprites,
 } from './manifest.mjs'
 import { composeTexture, imageKey, packImages } from './pack.mjs'
+import { channels } from './palette.mjs'
 import { kinds, particleEffects } from './particles.mjs'
 import { encodePng } from './png.mjs'
 import { renderWavs } from './sfx.mjs'
@@ -73,14 +75,40 @@ export function dither({ width, height, data }) {
     return { width, height, data: out }
 }
 
+const premultiplied = (value, alpha) => Math.round((value * alpha) / 255)
+
+/**
+ * Stores a soft glow's pixels in its flat colour. A partly clear pixel's straight colour is its
+ * premultiplied value divided by alpha, so at low alpha one level of rounding becomes a large swing:
+ * noise that roughly doubles a glow's PNG bytes. Where a pixel's premultiplied colour is the glow
+ * colour's within a level, the glow colour is written exactly; the premultiplied value the GPU
+ * blends moves by a level at most. Pixels where the art's edge mixes with the glow stay as they are.
+ */
+export function snapGlow({ width, height, data }, color) {
+    const target = channels(color)
+    const out = new Uint8Array(data)
+    for (let i = 0; i < out.length; i += 4) {
+        const alpha = out[i + 3]
+        if (alpha === 0 || alpha === 255) continue
+        const near = target.every(
+            (value, c) =>
+                Math.abs(premultiplied(value, alpha) - premultiplied(out[i + c], alpha)) <= 1,
+        )
+        if (near) out.set(target, i)
+    }
+    return { width, height, data: out }
+}
+
 const renderCache = new Map()
 
-/** Renders a sprite spec, once per distinct template, variables and width. */
+/** Renders a sprite spec, once per distinct template, variables, width and glow colour. */
 export function renderSpec(spec) {
-    const key = JSON.stringify([spec.template, spec.vars, spec.width ?? null])
+    const key = JSON.stringify([spec.template, spec.vars, spec.width ?? null, spec.glow ?? null])
     let rendered = renderCache.get(key)
     if (!rendered) {
-        rendered = renderTemplate(spec.template, spec.vars, spec.width)
+        rendered = renderTemplate(spec.template, spec.vars, spec.width).then((image) =>
+            spec.glow ? snapGlow(image, spec.glow) : image,
+        )
         renderCache.set(key, rendered)
     }
     return rendered
@@ -123,7 +151,7 @@ async function buildSkin(report) {
     )
     if (missing.length)
         throw new Error(`The skin lacks ${missing.length} engine names, such as ${missing[0]}`)
-    const atlas = await buildAtlas(sprites, 2048, 'skin texture')
+    const atlas = await buildAtlas(sprites, 4096, 'skin texture')
     const data = {
         width: atlas.size,
         height: atlas.size,
@@ -157,7 +185,7 @@ async function buildParticle(report) {
         throw new Error(`The particle lacks ${missing.length} engine names, such as ${missing[0]}`)
     const atlas = await buildAtlas(
         particleSprites.map(({ name, spec }) => [name, spec]),
-        512,
+        1024,
         'particle texture',
     )
     const groupsOf = new Map()
@@ -197,21 +225,26 @@ function buildBackground(report) {
 
 function buildEffect(report) {
     const wavs = renderWavs()
-    const clips = Object.keys(clipFiles)
-    const missing = readFixture().clips.filter((name) => !clips.includes(name))
+    const files = Object.keys(clipFiles)
+    // Each file once; an alias plays its target's file.
+    const clips = [
+        ...files.map((name) => ({ name, filename: clipFiles[name] })),
+        ...Object.entries(clipAliases).map(([name, target]) => ({
+            name,
+            filename: clipFiles[target],
+        })),
+    ]
+    const missing = readFixture().clips.filter((name) => !clips.some((clip) => clip.name === name))
     if (missing.length) throw new Error(`The effect lacks engine clips: ${missing.join(', ')}`)
     const audio = createZip(
-        sortedBy(clips, (name) => clipFiles[name]).map((name) => ({
+        sortedBy(files, (name) => clipFiles[name]).map((name) => ({
             name: clipFiles[name],
             data: wavs[name],
             method: 'deflate',
         })),
     )
     report.effect = { clips: clips.length, audioBytes: audio.length }
-    return {
-        data: gzipJson({ clips: clips.map((name) => ({ name, filename: clipFiles[name] })) }),
-        audio,
-    }
+    return { data: gzipJson({ clips }), audio }
 }
 
 // The background's thumbnail is the whole square.

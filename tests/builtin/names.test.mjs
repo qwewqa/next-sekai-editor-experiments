@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { omittedSprites, skinSprites } from '../../builtin-assets/manifest.mjs'
 import { particleEffects } from '../../builtin-assets/particles.mjs'
 import { collectNames, nameListHash } from '../../scripts/extract-engine-names.mjs'
-import { readFixture } from './helpers.mjs'
+import { readFixture, readOriginals } from './helpers.mjs'
 
 test('the fixture names its engine commit and its list hash', () => {
     const fixture = readFixture()
@@ -28,17 +28,21 @@ test('collectNames takes the sorted union over the engine data', () => {
     assert.deepEqual(names, { sprites: ['a', 'b', 'c'], particles: ['p'], clips: ['k'] })
 })
 
-test("the manifest expands to the engine's names and the counts of the design", () => {
+test("the manifest expands to the engine's names, every other name is an original's", () => {
     const fixture = readFixture()
+    const originals = readOriginals()
     const { sprites, groups } = skinSprites()
     assert.deepEqual(
         fixture.sprites.filter((name) => !sprites.has(name)),
         [...omittedSprites].sort(),
     )
     assert.deepEqual(
-        [...sprites.keys()].filter((name) => !fixture.sprites.includes(name)),
+        [...sprites.keys()].filter(
+            (name) => !fixture.sprites.includes(name) && !originals.sprites.includes(name),
+        ),
         [],
     )
+    assert.equal(groups.get('Originals only'), 168)
     assert.equal(groups.get('Judgment'), 41)
     assert.equal(groups.get('Style colours'), 1000)
     assert.equal(groups.get('Flick arrows'), 96)

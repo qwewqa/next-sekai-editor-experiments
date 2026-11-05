@@ -14,16 +14,16 @@ export const builtinResources: readonly {
         source: 'builtin',
         type: 'skin',
         hashes: {
-            data: '74d1779397892b2081e092c9bbf1a4e09abfbe72',
-            texture: '8de0477d9e2311dcb26faa2e020e7aae04205413',
+            data: 'ca117e78ff0b7b6ae89fcd4fdf2b70910a473c3c',
+            texture: '526dbbe431f5ffbb0b0d58824ea1d3ce780611c8',
         },
     },
     {
         source: 'builtin',
         type: 'particle',
         hashes: {
-            data: 'af824bc415ec6c3041e90bbdc916a81d17185452',
-            texture: '3e807633ba397e0862fc21b26540d651cc5ce292',
+            data: 'c605c4ddb526e38081ad8a78c5aa692c5f440132',
+            texture: 'ff98e8d1d69a3181bdced37339c0a0e2f406b6d0',
         },
     },
     {
@@ -31,7 +31,7 @@ export const builtinResources: readonly {
         type: 'background',
         hashes: {
             data: '4936603c515f4dd0ccaf503e9c7833f493b0e7b7',
-            image: '13e69a1ea01a3996cd85ea74e07c23fa33092cfd',
+            image: 'd1236e66beaa73cc2e30d706a13668b9e057053d',
             configuration: 'a3a808b95010ae835742c00d71202eee725caed3',
         },
     },
@@ -39,7 +39,7 @@ export const builtinResources: readonly {
         source: 'builtin',
         type: 'effect',
         hashes: {
-            data: 'bfaa2638e12b01735eda3d56d5636910584c123e',
+            data: 'fa0daa6591f26603ed56a6eef2e0e065bc389abb',
             audio: '360374d06f2d97637b49852bfc331feef9be73e3',
         },
     },

@@ -90,6 +90,8 @@ The art is CC0 and must be original. The generator scripts are MIT. `REUSE.toml`
 
 `tests/fixtures/next-sekai-names.json` holds the names the engine declares. A maintainer refreshes it with `scripts/extract-engine-names.mjs` from a built engine when the engine changes.
 
+`tests/fixtures/next-sekai-originals.json` holds the names in the Next SEKAI packages the editor uses as its Default, and where their stage edges are drawn. The Built-in set carries every one of those names but those `omittedOriginals` in the manifest lists. A maintainer refreshes the fixture with `scripts/extract-original-names.mjs` when `deployment/preview-assets.lock.json` changes; it reads the packages the dev server stages in `public/resource/`.
+
 ## Tests
 
 CI runs these (`.github/workflows/check.yml`):

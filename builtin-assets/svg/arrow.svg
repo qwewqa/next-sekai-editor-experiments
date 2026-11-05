@@ -3,10 +3,11 @@
         <stop offset="0" stop-color="var(--tip)"/>
         <stop offset="0.7" stop-color="var(--accent)"/>
     </linearGradient>
-    <g fill="none" stroke="var(--accent)" stroke-linejoin="round">
-        <polygon points="var(--glow)" stroke-width="var(--halo)" stroke-opacity="0.18"/>
-        <polygon points="var(--glow)" stroke-width="var(--blur)" stroke-opacity="0.3"/>
-    </g>
-    <polygon points="var(--outer)" fill="var(--rim)" stroke="var(--rim)" stroke-width="var(--round)" stroke-linejoin="round"/>
+    <filter id="near" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" x="-1000" y="-1000" width="3000" height="3000"><feGaussianBlur stdDeviation="var(--near)"/></filter>
+    <filter id="wide" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" x="-1000" y="-1000" width="3000" height="3000"><feGaussianBlur stdDeviation="var(--wide)"/></filter>
+    <filter id="edge" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" x="-1000" y="-1000" width="3000" height="3000"><feGaussianBlur stdDeviation="var(--edge)"/></filter>
+    <polygon points="var(--glow)" fill="var(--rim)" fill-opacity="0.45" filter="url(#wide)"/>
+    <polygon points="var(--glow)" fill="var(--rim)" fill-opacity="0.9" filter="url(#near)"/>
+    <polygon points="var(--outer)" fill="var(--rim)" stroke="var(--rim)" stroke-width="var(--round)" stroke-linejoin="round" filter="url(#edge)"/>
     <polygon points="var(--inner)" fill="url(#g)" stroke="url(#g)" stroke-width="var(--round)" stroke-linejoin="round"/>
 </svg>

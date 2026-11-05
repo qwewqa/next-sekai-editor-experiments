@@ -1,7 +1,8 @@
 // Flick arrow art, drawn per direction and width in the engine's arrow square (side 1, y up from
-// its bottom edge) so the shapes land undistorted: a filled, notched arrowhead with a light rim and
-// a soft glow. Sizes follow the base skin's arrows (Next SEKAI 01): where each lands and how much
-// of it is inked, measured in the same square.
+// its bottom edge) so the shapes land undistorted: a filled, notched arrowhead with a broad light
+// rim and a soft glow in the rim's colour. Sizes follow the base skin's arrows (Next SEKAI 01):
+// where each lands and how much of it is inked, measured in the same square. A diagonal is the up
+// arrow of its width turned to the base's tilt, so it points the way the engine moves it.
 
 // The base's up and down arrows by width (1 to 6): [u0, u1, v0, v1] of what they ink.
 const upBoxes = [
@@ -14,28 +15,30 @@ const upBoxes = [
 ]
 // The base's down arrows sit a little lower.
 const downDrop = [0.07, 0.06, 0.04, 0.04, 0.03, 0.03]
-// The base's up-left arrows, [u0, u1, v0, v1]; its down-left ones sit a little lower.
-const diagonalBoxes = [
-    [-0.32, 1.32, 0.27, 1.66],
-    [-0.24, 1.21, 0.2, 1.27],
-    [-0.19, 1.15, 0.15, 1.03],
-    [-0.17, 1.12, 0.11, 0.89],
-    [-0.15, 1.1, 0.08, 0.81],
-    [-0.13, 1.09, 0.07, 0.75],
+// The base's diagonal arrowheads by width (its motion trail left out): the x of the fill's
+// centroid, and the lowest point of the up-left and of the down-left fill.
+export const diagonalPlaces = [
+    [0.41, 0.29, 0.18],
+    [0.38, 0.21, 0.12],
+    [0.36, 0.15, 0.08],
+    [0.34, 0.11, 0.06],
+    [0.345, 0.09, 0.05],
+    [0.34, 0.08, 0.04],
 ]
-const diagonalDrop = [0.11, 0.09, 0.08, 0.06, 0.04, 0.04]
 
 // The arms' thickness as a share of the height: a notched "house" on narrow notes (the notch
 // about 36% of the height), a chevron with arms at least 45% of it on wide ones. Area = W x S, the
 // base's inked area.
 const armShare = [0.64, 0.62, 0.58, 0.52, 0.48, 0.46]
-// Diagonals turn an arrowhead towards the flick, less on wide notes, and its size is solved so the
-// turned shape fills the base's box: the same proportions on screen. Turned shapes are flatter, so
-// their arms take more of the height to ink as much.
-const turn = [22, 18, 14, 12, 10, 10].map((degrees) => (degrees * Math.PI) / 180)
-const diagonalShare = [0.66, 0.62, 0.58, 0.55, 0.5, 0.47]
-// Texture pixels per unit of the square: narrow arrows draw small, wide ones large.
-const density = [60, 84, 104, 120, 136, 150]
+// The base's diagonals point this far from straight up or down, at every width. The engine moves
+// them 26.6 degrees off vertical.
+export const tiltDegrees = 22
+// Texture pixels per unit of the square. The engine's square is min(width / 2, 3) lanes, so every
+// width from 2 gets 84 texels per lane on screen, and width 1 gets 120.
+export const density = [60, 84, 126, 168, 210, 252]
+// A multiplier on the glow's room, by width. Widths 1 and 2 get more, since their square is small on
+// screen and the glow softens the arrow's silhouette.
+const glowRoom = [2, 1.5, 1, 1, 1, 1]
 
 const round = (value) => Math.round(value * 1000) / 1000
 
@@ -81,6 +84,18 @@ const turnBy = (points, angle) =>
         x * Math.cos(angle) - y * Math.sin(angle),
         x * Math.sin(angle) + y * Math.cos(angle),
     ])
+const centroid = (points) => {
+    const area = signedArea(points)
+    const sum = points.reduce(
+        ([sx, sy], [x, y], i) => {
+            const [nx, ny] = points[(i + 1) % points.length]
+            const cross = x * ny - nx * y
+            return [sx + (x + nx) * cross, sy + (y + ny) * cross]
+        },
+        [0, 0],
+    )
+    return sum.map((value) => value / (6 * area))
+}
 const bounds = (points) => {
     const xs = points.map(([x]) => x)
     const ys = points.map(([, y]) => y)
@@ -93,41 +108,33 @@ const bounds = (points) => {
  */
 export function arrowOutline(direction, width) {
     const diagonal = direction === 'upLeft' || direction === 'downLeft'
-    const [u0, u1, v0, v1] = (diagonal ? diagonalBoxes : upBoxes)[width - 1]
-    const angle = diagonal ? turn[width - 1] : 0
-    const share = (diagonal ? diagonalShare : armShare)[width - 1]
-    const shape = (w, h) => {
-        const turned = (list) =>
-            turnBy(
-                list.map(([x, y]) => [x, y - h / 2]),
-                angle,
-            )
-        return [
-            turned(upOutline(w, h, share * h)),
-            ...turned([
-                [0, h],
-                [0, 0],
-            ]),
-        ]
+    const down = direction === 'down' || direction === 'downLeft'
+    const [u0, u1, v0, v1] = upBoxes[width - 1]
+    const [w, h] = [u1 - u0, v1 - v0]
+    const angle = diagonal ? (tiltDegrees * Math.PI) / 180 : 0
+    // The outline, then the tip and the middle of the base, turned about the middle.
+    let points = turnBy(
+        [...upOutline(w, h, armShare[width - 1] * h), [0, h], [0, 0]].map(([x, y]) => [
+            x,
+            y - h / 2,
+        ]),
+        angle,
+    )
+    if (down) points = points.map(([x, y]) => [x, -y])
+    const shape = points.slice(0, 6)
+    const [x0, , y0] = bounds(shape)
+    // Up and down arrows on the base's box, down arrows lower; diagonals on the base's arrowheads.
+    let place
+    if (diagonal) {
+        const [x, upLow, downLow] = diagonalPlaces[width - 1]
+        const [cx] = centroid(shape)
+        place = ([px, py]) => [px - cx + x, py - y0 + (down ? downLow : upLow)]
+    } else {
+        const bottom = v0 - (down ? downDrop[width - 1] : 0)
+        place = ([px, py]) => [px - x0 + u0, py - y0 + bottom]
     }
-    // The W and H whose turned outline has the box's bounds (a few rounds converge).
-    let [w, h] = [u1 - u0, v1 - v0]
-    for (let round = 0; round < (diagonal ? 30 : 0); round++) {
-        const [x0, x1, y0, y1] = bounds(shape(w, h)[0])
-        ;[w, h] = [(w * (u1 - u0)) / (x1 - x0), (h * (v1 - v0)) / (y1 - y0)]
-    }
-    let [points, tip, tail] = shape(w, h)
-    if (direction === 'down' || direction === 'downLeft') {
-        const flip = ([x, y]) => [x, -y]
-        ;[points, tip, tail] = [points.map(flip), flip(tip), flip(tail)]
-    }
-    // Place on the base's box, down arrows lower.
-    const [x0, , y0] = bounds(points)
-    const drop =
-        direction === 'down' ? downDrop : direction === 'downLeft' ? diagonalDrop : undefined
-    const bottom = v0 - (drop ? drop[width - 1] : 0)
-    const place = ([x, y]) => [x - x0 + u0, y - y0 + bottom]
-    return { points: points.map(place), tip: place(tip), tail: place(tail) }
+    const [tip, tail] = points.slice(6).map(place)
+    return { points: shape.map(place), tip, tail }
 }
 
 // The frame moved up by shift and turned upside down.
@@ -138,16 +145,16 @@ const flipped = ([u0, u1, v0, v1], shift) => [u0, u1, v1 + shift, v0 + shift]
  * the arrow square that the texture covers. Down arrows are their up arrow's art, flipped by the
  * frame (v0 above v1), so the two share a texture.
  */
-export function arrowSprite(direction, width, { accent, rim, tip }) {
+export function arrowSprite(direction, width, { accent, rim, tip }, pixels = density[width - 1]) {
     const down = direction === 'down' || direction === 'downLeft'
     const up = down ? (direction === 'down' ? 'up' : 'upLeft') : direction
     const { points, tip: tipAt, tail } = arrowOutline(up, width)
     const [x0, x1, y0, y1] = bounds(points)
-    // Rim, rounding and glow in square units: about 2 pixels of rim at the judge line.
-    const rimWidth = 0.05 / Math.sqrt(width)
-    const rounding = 0.6 * rimWidth
-    const glow = 0.025 + 0.003 * width
-    const margin = glow + 0.01
+    // Rim, corner rounding and the glow's room in square units. The rim is about 5 pixels at the
+    // judge line.
+    const rimWidth = 0.12 / Math.sqrt(width)
+    const rounding = 0.03 / Math.sqrt(width)
+    const margin = (0.025 + 0.003 * width + 0.01) * glowRoom[width - 1]
     const frame = [x0 - margin, x1 + margin, y0 - margin, y1 + margin]
     const scale = 100
     // SVG units: x right, y down from the frame's top-left.
@@ -167,9 +174,11 @@ export function arrowSprite(direction, width, { accent, rim, tip }) {
             outer: list(inset(points, rounding)),
             inner: list(inset(points, rounding + rimWidth)),
             round: round(2 * rounding * scale),
-            // A glow in two flat steps, so it packs small.
-            halo: round(2 * glow * scale),
-            blur: round(glow * scale),
+            // The glow, a near and a wide blur of the outline in the rim's colour, and the blur that
+            // softens the rim's outer edge into it.
+            near: round((margin / 4) * scale),
+            wide: round((margin / 2.5) * scale),
+            edge: round(0.12 * rimWidth * scale),
             ax,
             ay,
             bx,
@@ -178,7 +187,7 @@ export function arrowSprite(direction, width, { accent, rim, tip }) {
             rim,
             tip,
         },
-        width: Math.max(8, Math.round((frame[1] - frame[0]) * density[width - 1])),
+        width: Math.max(8, Math.round((frame[1] - frame[0]) * pixels)),
         frame: down ? flipped(frame, bounds(arrowOutline(direction, width).points)[2] - y0) : frame,
     }
 }

@@ -537,38 +537,39 @@ test.describe('fallbacks', () => {
         )
     })
 
-    test("the panel's line and the dialog's row give one reason for each case", async ({
-        browser,
-    }) => {
-        const cases = [
-            {
-                seed: { previewAssets: { skin: { ...fileChoice, source: 'file' } } },
-                reason: 'The skin file is no longer stored in this browser.',
-                using: 'Next SEKAI 01',
-            },
-            {
-                seed: {
-                    previewAssets: {
-                        skin: { ...fileChoice, source: 'server', origin: 'https://example.com' },
-                    },
+    // Each case loads the preview, so each is its own test: four loads in one run past the timeout.
+    const reasonCases = [
+        {
+            seed: { previewAssets: { skin: { ...fileChoice, source: 'file' } } },
+            reason: 'The skin file is no longer stored in this browser.',
+            using: 'Next SEKAI 01',
+        },
+        {
+            seed: {
+                previewAssets: {
+                    skin: { ...fileChoice, source: 'server', origin: 'https://example.com' },
                 },
-                reason: 'The skin could not be downloaded again from example.com.',
-                using: 'Next SEKAI 01',
             },
-            {
-                seed: { previewAssets: { skin: { source: 'builtin' } } },
-                fail: ['builtin-skin' as const],
-                reason: 'The built-in asset could not be loaded.',
-                using: 'Next SEKAI 01',
-            },
-            {
-                seed: {},
-                fail: ['default-skin' as const],
-                reason: 'Next SEKAI 01 could not be loaded.',
-                using: 'Built-in',
-            },
-        ]
-        for (const [index, item] of cases.entries()) {
+            reason: 'The skin could not be downloaded again from example.com.',
+            using: 'Next SEKAI 01',
+        },
+        {
+            seed: { previewAssets: { skin: { source: 'builtin' } } },
+            fail: ['builtin-skin' as const],
+            reason: 'The built-in asset could not be loaded.',
+            using: 'Next SEKAI 01',
+        },
+        {
+            seed: {},
+            fail: ['default-skin' as const],
+            reason: 'Next SEKAI 01 could not be loaded.',
+            using: 'Built-in',
+        },
+    ]
+    for (const [index, item] of reasonCases.entries())
+        test(`the panel's line and the dialog's row give one reason: ${item.reason}`, async ({
+            browser,
+        }) => {
             const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
             // A server choice is downloaded again at load: the server is not there.
             await context.route('https://example.com/**', (route) => route.abort('failed'))
@@ -595,8 +596,7 @@ test.describe('fallbacks', () => {
                 ),
             ).toEqual(item.seed.previewAssets ?? {})
             await context.close()
-        }
-    })
+        })
 
     test('a dismissed line stays dismissed for that choice, and the dialog keeps its row', async ({
         page,
