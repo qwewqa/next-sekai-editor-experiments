@@ -3,40 +3,10 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // The atlas filter of the preview's renderer (docs/rendering.md, "Atlas filtering"). The renderer
 // tests draw single sprites with createPreviewRenderer and compare them with the filter computed
-// on the CPU from the same texels. In the chromium-worker project they draw in a worker. The
-// last tests check that the panel, in either host, and Export Video use the filter that
-// `nse.test.previewFilter` names.
+// on the CPU from the same texels. The last tests check that the panel, in either host, and
+// Export Video use the filter that `nse.test.previewFilter` names.
 
 type Filter = 'single' | 3 | 4
-
-/** Runs `fn` in the page, or in a dedicated worker in the chromium-worker project. */
-const inHost = async <A, R>(page: Page, fn: (arg: A) => Promise<R>, arg: A): Promise<R> => {
-    if (test.info().project.name !== 'chromium-worker')
-        return page.evaluate(fn as (arg: unknown) => Promise<R>, arg)
-    return page.evaluate(
-        ({ source, arg }) =>
-            new Promise<R>((resolve, reject) => {
-                const script = `onmessage = async (event) => {
-                    try { postMessage({ value: await (${source})(event.data) }) }
-                    catch (error) { postMessage({ error: String((error && error.stack) || error) }) }
-                }`
-                const url = URL.createObjectURL(new Blob([script], { type: 'text/javascript' }))
-                const worker = new Worker(url, { type: 'module' })
-                worker.onmessage = ({ data }: MessageEvent<{ value?: R; error?: string }>) => {
-                    worker.terminate()
-                    URL.revokeObjectURL(url)
-                    if (data.error !== undefined) reject(new Error(data.error))
-                    else resolve(data.value as R)
-                }
-                worker.onerror = (event) => {
-                    worker.terminate()
-                    reject(new Error(event.message))
-                }
-                worker.postMessage(arg)
-            }),
-        { source: fn.toString(), arg },
-    )
-}
 
 /**
  * Draws sprites of one colour, and sprites of noise in red and alpha, each surrounded by a
@@ -549,7 +519,9 @@ const median = (values: number[]) => {
 }
 
 test.describe('the renderer', () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        // A worker draws on the same OffscreenCanvas. The hosts' tests cover the worker's filter.
+        test.skip(testInfo.project.name === 'chromium-worker', 'Same drawing as in the page')
         await page.route('**/__preview-filter', (route) =>
             route.fulfill({ contentType: 'text/html', body: '<!doctype html>' }),
         )
@@ -561,8 +533,8 @@ test.describe('the renderer', () => {
             page,
             baseURL,
         }) => {
-            test.setTimeout(120_000)
-            const result = await inHost(page, exactness, { origin: baseURL!, reduced })
+            test.slow()
+            const result = await page.evaluate(exactness, { origin: baseURL!, reduced })
             expect(result.failures).toEqual([])
             expect(result.compared).toBeGreaterThan(reduced ? 20_000 : 100_000)
             expect(result.taps).toBeGreaterThan(100_000)
@@ -579,14 +551,14 @@ test.describe('the renderer', () => {
             page,
             baseURL,
         }) => {
-            test.setTimeout(120_000)
+            test.slow()
             const frames = 720
             const scales = Array.from({ length: frames }, (_, k) => 0.8 + (3.6 * k) / (frames - 1))
             // The second difference at frame k + 1.
             const at = scales.slice(1, -1)
             const results: Record<string, { second: number[] }> = {}
             for (const filter of ['single', 4, 3] as const)
-                results[filter] = await inHost(page, sweep, {
+                results[filter] = await page.evaluate(sweep, {
                     origin: baseURL!,
                     filter,
                     angle,
@@ -620,10 +592,10 @@ test.describe('the renderer', () => {
                 page,
                 baseURL,
             }) => {
-                test.setTimeout(120_000)
+                test.slow()
                 const frames = 360
                 for (const filter of [4, 3] as const) {
-                    const { first, lengths } = await inHost(page, sweep, {
+                    const { first, lengths } = await page.evaluate(sweep, {
                         origin: baseURL!,
                         filter,
                         angle,
@@ -656,11 +628,11 @@ test.describe('the renderer', () => {
             page,
             baseURL,
         }) => {
-            test.setTimeout(120_000)
+            test.slow()
             const frames = 600
             // The default, 4x4. 3x3 changes about as much at zero, but less elsewhere at 0 degrees,
             // so its ratio is higher.
-            const { first } = await inHost(page, sweep, {
+            const { first } = await page.evaluate(sweep, {
                 origin: baseURL!,
                 filter: 4,
                 angle,
