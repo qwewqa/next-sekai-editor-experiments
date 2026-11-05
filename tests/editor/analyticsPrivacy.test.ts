@@ -241,12 +241,13 @@ test('the device details are explained once, with the values the catalogue allow
 
 test('the reference states the exact values, the caps and the ranges', () => {
     const exact = section('How Exact the Values Are')
+    const number = (value: number) => value.toLocaleString('en-US')
     for (const words of [
-        `from 0 to ${COUNT_CAP}`,
-        `from 0 to ${MS_CAP}`,
-        `from 0 to ${SECONDS_CAP}`,
-        `up to ${STACK_CAP}.`,
-        `up to ${COUNT_CAP}.`,
+        `from 0 to ${number(COUNT_CAP)}`,
+        `from 0 to ${number(MS_CAP)}`,
+        `from 0 to ${number(SECONDS_CAP)}`,
+        `up to ${number(STACK_CAP)}.`,
+        `up to ${number(COUNT_CAP)}.`,
         'Processor cores** are exact from 1 to 32',
         'Pixel density** is exact for 1, 1.25, 1.5, 1.75, 2 and 3',
         '**Screen size** is exact',

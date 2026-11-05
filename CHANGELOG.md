@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Added Show Combo to Preview Settings and Settings › Preview.
-- Preview Settings now opens in the Preview panel when most of it fits, and scrolls the rest.
+- Preview Settings now opens in the Preview panel when most of it fits. You can scroll to see the rest.
 - In the Properties panel, Settings and dialogs, a value now goes below its label when a word in the label does not fit beside the value. In Brush Properties, it also does so when the label would wrap onto more than two lines.
 - When objects of several kinds are selected, the Properties panel now shows General first. Beat now also appears for notes and events selected together with BPM changes or time scales. Notes and stage transform events now have separate Elevation fields, both when selected together and in Brush Properties.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
@@ -29,7 +29,7 @@
 - Added Find Edits Here to the chart’s context menu. It filters the Timeline to steps that changed the selected beats or the beats in view.
 - Undo now supports up to 1,000 steps, even after you reload the page. Earlier Timeline steps are available in History.
 - (Web) When browser storage runs low, the editor deletes audio and cover images used only by earlier Timeline steps. Once storage is full, new changes are not stored until you free up space, for example with Delete Sessions in Settings › Local Data.
-- Settings › Local Data replaces the Auto Save settings. It has Export Raw Data, which saves everything the editor has stored in your browser as a ZIP file, for reporting a problem.
+- Settings › Local Data replaces the Auto Save settings. Its Export Raw Data button exports everything the editor has stored in your browser as a ZIP file, for reporting a problem.
 - Reset Settings and Reset Shortcuts now show a confirmation before they reset.
 - (Web) Except on iPhone and iPad, a confirmation appears when you close a tab with unsaved changes. This also applies after an export. To turn this off, use Settings › Local Data › Ask Before Closing with Unsaved Changes.
 - Level Properties is now Level Info, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file. The text fields in Level Info and the names of groups, stages and folders now have a maximum length.
@@ -39,7 +39,7 @@
 - Open (O) now opens Sonolus packages (.scp). A package with one level and nothing else opens that level. Otherwise, a list shows each level with Open, and each skin, particle effect, background and set of sound effects with Import. Import adds the item to Preview Assets and uses it.
 - (Web) The editor now also includes the Next SEKAI 02 skin and sound effects.
 - (Web) Replaced the preview’s Default background with a new image.
-- Added a Minimap beside the chart. It shows the whole chart and the selection, and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its edge next to the chart to resize it. It is shown by default in wide windows; show or hide it with the Minimap tool or Settings › Editor › Show Minimap, and choose its side in Settings › Editor › Minimap Side.
+- Added a minimap beside the chart. It shows the whole chart and the selection, and marks the changes made at the Timeline step you are viewing. Click or drag in it to scroll, or drag its edge next to the chart to resize it. It is shown by default in wide windows. To show or hide it, use the Minimap tool or Settings › Editor › Show Minimap. To choose its side, use Settings › Editor › Minimap Side.
 - Added Statistics to the toolbar. It shows the combo, the count of each note type, Notes per Second and the times of the first and last notes. You can zoom and pan the Notes per Second graph, or show it as a distribution. Copy Text copies the statistics, and Share Image makes an image of them to share, copy or download. If you have customized the toolbar, add Statistics in Settings › Toolbar.
 - (Web) Added Export Video to the toolbar. It makes a video of the preview for the whole chart or part of it, with optional BGM and sound effects. If you have customized the toolbar, add Export Video in Settings › Toolbar. Usage statistics include each export’s settings, outcome and time taken. They also record whether you used Play or opened Advanced in Export Video.
 - When Preview, Groups and Stages are all shown in the left panels or all in the right panels, and those panels are wide, Groups and Stages are now shown side by side below Preview. To widen the panels, drag the edge between the panels and the chart. To use this in narrower panels or turn it off, use Settings › Panels › Groups and Stages Side by Side.

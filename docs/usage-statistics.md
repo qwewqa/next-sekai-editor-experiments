@@ -23,16 +23,16 @@ The editor does not create or store a visitor identifier for statistics. It does
 
 Most numeric values are sent as ranges.
 
-- **Counts** (the Count format in the tables) are whole numbers from 0 to 9999. A larger count is sent as 9999.
+- **Counts** (the Count format in the tables) are whole numbers from 0 to 9,999. A larger count is sent as 9,999.
 - **Activity counts** are sent only when greater than zero. Other counts, such as `interactions` and the number of sessions in Recent Sessions, can be zero.
-- **Durations** are whole milliseconds, from 0 to 600000 (ten minutes). A longer duration is sent as 600000.
-- **Time spent** (`playSeconds`, `visibleTime` and the times in `layout`) is measured since the previous batch and reported in whole seconds from 0 to 86400 (one day).
+- **Durations** are whole milliseconds, from 0 to 600,000 (ten minutes). A longer duration is sent as 600,000.
+- **Time spent** (`playSeconds`, `visibleTime` and the times in `layout`) is measured since the previous batch and reported in whole seconds from 0 to 86,400 (one day).
 - **Processor cores** are exact from 1 to 32, then in ranges.
 - **Pixel density** is exact for 1, 1.25, 1.5, 1.75, 2 and 3, and a range otherwise.
 - **Screen size** is exact, in pixels.
 - **Chart counts** are exact from 0 to 9, then in ranges.
-- **Undo history** (`historySteps`) is an exact number of steps, up to 1000.
-- **The Recent Sessions count** (`sessions`) is exact, up to 9999.
+- **Undo history** (`historySteps`) is an exact number of steps, up to 1,000.
+- **The Recent Sessions count** (`sessions`) is exact, up to 9,999.
 - **Music lengths and file sizes** are always ranges.
 - **A missing or invalid measurement** is left out.
 
@@ -69,7 +69,7 @@ The page view and every event include the fields below. The page view is the fir
 | --- | --- | --- |
 | `website` | This site’s identifier on the statistics server, the same for all visitors | Fixed |
 | `hostname` | The host name of the page, such as `nse.qwewqa.dev` or `test.nse.qwewqa.dev`, or `localhost` when the editor runs on your own machine | Exact |
-| `timestamp` | When the page view or event was recorded, in whole seconds since 1 January 1970 | Exact |
+| `timestamp` | When the page view or event was recorded, in whole seconds since January 1, 1970 | Exact |
 | `language` | The editor’s language setting, as a language tag such as `en`, `ja`, `zh-Hans` or `zh-Hant` | Choice |
 | `screen` | The size of the whole screen in pixels, written width x height, such as `1920x1080` | Exact |
 | `referrer` | The origin of the page you followed a link from, or empty when you opened the editor directly or followed a link within the same site. An origin is the protocol, domain and any non-default port, such as `https://example.com`. It has no path, query or fragment | Origin only |
@@ -221,14 +221,14 @@ Recorded after a chart is opened through **Open…**, a stored session is shown 
 | `trigger` | What caused the count | `open`, `restore` or `save` |
 | `notes` | The number of notes | Range |
 | `slides` | The number of slides, each a set of notes joined together | Range |
-| `bpms` | The number of BPM entries | Range |
-| `timeScales` | The number of time scale entries | Range |
-| `events` | The number of animation event joints | Range |
+| `bpms` | The number of BPM changes | Range |
+| `timeScales` | The number of time scales | Range |
+| `events` | The number of animation events | Range |
 | `stages`, `groups` | The number of stages and the number of groups | Range |
-| `objects` | The total of notes, time scale entries, animation event joints, BPM entries, stages and groups. Slides are not added because their notes are already counted | Range |
+| `objects` | The total of notes, time scales, animation events, BPM changes, stages and groups. Slides are not added because their notes are already counted | Range |
 | `dynamicStages` | Whether the chart uses dynamic stages | Yes or no |
 | `bgm` | Whether the chart has music. The music’s length is in the `bgm` event | `none` or `some` |
-| `historySteps` | The number of steps kept in the Undo history (not the Timeline) | Exact, up to 1000 |
+| `historySteps` | The number of steps kept in the Undo history (not the Timeline) | Exact, up to 1,000 |
 
 ### `preview`
 
@@ -243,7 +243,7 @@ Recorded when statistics collection starts, if the preview is shown, and when th
 
 ### `open`
 
-Recorded when an attempt to open a chart through **Open…** ends, including a level opened from a Sonolus package. Opening audio or archives, the list of a package’s items, and dropping files onto the editor are not recorded.
+Recorded when an attempt to open a chart through **Open…** ends, including a level opened from a Sonolus package. Opening audio or archives, showing the list of a package’s items and dropping files onto the editor are not recorded.
 
 | Field | Meaning | Format |
 | --- | --- | --- |
@@ -433,7 +433,7 @@ Sent with `perf`, only when the page was visible for at least a second since the
 
 | Field | Meaning | Format |
 | --- | --- | --- |
-| `visibleTime` | The time this batch covers: the page was visible | Seconds |
+| `visibleTime` | The time the page was visible since the previous batch | Seconds |
 | `panelSeconds.<panel>.<place>` | The time a panel was shown on the `left`, `right` or `top`, or was `covered`. The panels are `preview`, `groups`, `stages`, `properties` and `history`. A panel is covered when it is open but its side has no room to show it. A panel is not covered while its side is hidden. A panel shown over the chart counts as shown | Seconds for each panel and place |
 | `dockSizeSeconds.<side>.<size>` | The time the `left`, `right` or `top` panels were shown at each size. The size is the width of the left or right panels, or the height of the top panels, in pixels | Seconds for each side and range |
 | `previewShareSeconds.<share>` | The time the preview was shown at each share of the workspace’s area, in percent | Seconds for each range |
