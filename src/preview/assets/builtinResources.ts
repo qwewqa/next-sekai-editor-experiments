@@ -14,8 +14,8 @@ export const builtinResources: readonly {
         source: 'builtin',
         type: 'skin',
         hashes: {
-            data: 'db5e1024587f4a22151c3835e0040ebbd335d846',
-            texture: '52758b440838cf7add31619b991114b158eb9ebf',
+            data: 'b1ed9aeabb3196e1ac3413e0e3981f8770c64967',
+            texture: '320dc6a511250acd2b004dbfcef88120304c340b',
         },
     },
     {
@@ -39,7 +39,7 @@ export const builtinResources: readonly {
         source: 'builtin',
         type: 'effect',
         hashes: {
-            data: 'bfaa2638e12b01735eda3d56d5636910584c123e',
+            data: 'fa0daa6591f26603ed56a6eef2e0e065bc389abb',
             audio: '360374d06f2d97637b49852bfc331feef9be73e3',
         },
     },

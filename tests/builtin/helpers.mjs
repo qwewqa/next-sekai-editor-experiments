@@ -19,3 +19,7 @@ export function readBuiltinItem(type) {
 
 export const readFixture = () =>
     JSON.parse(readFileSync(new URL('tests/fixtures/next-sekai-names.json', root), 'utf8'))
+
+/** The names of the Next SEKAI packages the editor ships as its Default. */
+export const readOriginals = () =>
+    JSON.parse(readFileSync(new URL('tests/fixtures/next-sekai-originals.json', root), 'utf8'))

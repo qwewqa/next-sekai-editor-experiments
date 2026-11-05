@@ -12,13 +12,16 @@ const edgeBand = 2
 const translucent = [
     // The base's lane is dark navy at 0.40 alpha, over the background. Ours, in every color, is too.
     {
-        pattern: /^Sekai Lane Background( Preview)?( [A-Z][a-z]+)?$|^#LANE$|^#STAGE_MIDDLE$/,
+        pattern:
+            /^Sekai Lane Background( Preview)?( [A-Z][a-z]+)?$|^#LANE(_ALTERNATIVE)?(_SEAMLESS)?$|^#STAGE_MIDDLE$/,
         floor: 0.4,
     },
-    // The base's dividers are grey-white at 0.36, its borders white at 0.21, its preview-mode
-    // borders a line at 0.3.
+    // The base's dividers are grey-white at 0.36 and its borders white at 0.21. Its standard stage
+    // edges and corners are lines at 0.3, and its preview-mode border for stage changes a 3 px ramp
+    // up to 0.59 at the stage edge.
     {
-        pattern: /^Sekai (Lane Divider|Stage Border)( Preview)?$|^#STAGE_(LEFT|RIGHT)_BORDER$/,
+        pattern:
+            /^Sekai (Lane Divider|Stage Border)( Preview)?$|^#STAGE_(LEFT|RIGHT|TOP|BOTTOM)_BORDER(_SEAMLESS)?$|^#STAGE_.*_CORNER$/,
         floor: 0.25,
     },
     // The base's judgment background is black at 0.57, darkening the lane under the line.

@@ -65,7 +65,7 @@ test('note body slices join edge to edge and are extruded', () => {
 
 test('connector, guide and stage pieces repeat along their length and are extruded', () => {
     const repeated = names.filter((name) =>
-        /Slide Connection|^#NOTE_CONNECTION_|^Sekai Guide|^Sekai (Lane Background|Lane Divider|Stage Border)|^#LANE$|^#STAGE_(LEFT|RIGHT)_BORDER$|^#SIMULTANEOUS/.test(
+        /Slide Connection|^#NOTE_CONNECTION_|^Sekai Guide|^Sekai (Lane Background|Lane Divider|Stage Border)|^#LANE(_|$)|^#STAGE_(LEFT|RIGHT)_BORDER(_SEAMLESS)?$|^#SIMULTANEOUS/.test(
             name,
         ),
     )

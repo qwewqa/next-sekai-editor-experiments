@@ -42,9 +42,9 @@ test('the lock records every output with its sha256', () => {
             path,
         )
     }
-    assert.equal(lock.counts.skinNames, 1331)
+    assert.equal(lock.counts.skinNames, 1512)
     assert.equal(lock.counts.particleEffects, 505)
-    assert.equal(lock.counts.clips, 15)
+    assert.equal(lock.counts.clips, 16)
 })
 
 test('the skin has every engine sprite except those the set omits', () => {
@@ -54,7 +54,7 @@ test('the skin has every engine sprite except those the set omits', () => {
         fixture.sprites.filter((name) => !names.has(name)),
         [...omittedSprites].sort(),
     )
-    assert.equal(names.size, fixture.sprites.length - omittedSprites.length)
+    assert.equal(names.size, 1512)
 })
 
 test('the particle and effect have every engine name', () => {

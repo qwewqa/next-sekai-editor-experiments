@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { gzip } from 'pako'
 import { color as backgroundColor, renderBackground } from './background.mjs'
 import {
+    clipAliases,
     clipFiles,
     itemMeta,
     omittedSprites,
@@ -197,21 +198,26 @@ function buildBackground(report) {
 
 function buildEffect(report) {
     const wavs = renderWavs()
-    const clips = Object.keys(clipFiles)
-    const missing = readFixture().clips.filter((name) => !clips.includes(name))
+    const files = Object.keys(clipFiles)
+    // Each file once; an alias plays its target's file.
+    const clips = [
+        ...files.map((name) => ({ name, filename: clipFiles[name] })),
+        ...Object.entries(clipAliases).map(([name, target]) => ({
+            name,
+            filename: clipFiles[target],
+        })),
+    ]
+    const missing = readFixture().clips.filter((name) => !clips.some((clip) => clip.name === name))
     if (missing.length) throw new Error(`The effect lacks engine clips: ${missing.join(', ')}`)
     const audio = createZip(
-        sortedBy(clips, (name) => clipFiles[name]).map((name) => ({
+        sortedBy(files, (name) => clipFiles[name]).map((name) => ({
             name: clipFiles[name],
             data: wavs[name],
             method: 'deflate',
         })),
     )
     report.effect = { clips: clips.length, audioBytes: audio.length }
-    return {
-        data: gzipJson({ clips: clips.map((name) => ({ name, filename: clipFiles[name] })) }),
-        audio,
-    }
+    return { data: gzipJson({ clips }), audio }
 }
 
 // The background's thumbnail is the whole square.

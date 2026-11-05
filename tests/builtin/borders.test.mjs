@@ -72,7 +72,7 @@ const column = (name, at, reverse = false) => {
 
 // The four borders of a bordered body family, in lanes: the end slices' sides along their middle
 // row, the middle slice's top and bottom down its middle column.
-function borders(prefix, suffix, width) {
+function borders(prefix, suffix, width, edge) {
     const name = (part) => `${prefix} ${part}${suffix}`
     const middle = name('Middle')
     const { w: mw, h: mh } = sprites.get(middle)
@@ -81,8 +81,8 @@ function borders(prefix, suffix, width) {
     const { w: lw, h: lh } = sprites.get(left)
     // The face at the slice's inner end, on a row clear of the mark.
     const sideFace = pixel(left, lw - 2, Math.round(lh * 0.3))
-    const sx = scale(left, 'Left', width, 0.25)
-    const sy = scale(middle, 'Middle', width, 0.25)
+    const sx = scale(left, 'Left', width, edge)
+    const sy = scale(middle, 'Middle', width, edge)
     const right = name('Right')
     return {
         left: border(left, row(left, Math.round(lh * 0.3)), sideFace).pixels * sx.x,
@@ -112,20 +112,21 @@ function cornerRadii(name, part, width, edge) {
 }
 
 const bordered = [
-    ['Sekai Normal Note', ''],
-    ['Sekai Slide Note', ''],
-    ['Sekai Flick Note', ''],
-    ['Sekai Critical Note', ''],
-    ['Sekai Critical Flick Note', ' Red'],
-    ['Sekai Normal Note', ' Purple'],
-    ['Sekai Damage Note', ''],
-    ['Sekai Damage Note', ' Blue'],
+    ['Sekai Normal Note', '', 0.25],
+    ['Sekai Slide Note', '', 0.25],
+    ['Sekai Flick Note', '', 0.25],
+    ['Sekai Critical Note', '', 0.25],
+    ['Sekai Critical Flick Note', ' Red', 0.25],
+    ['Sekai Normal Note', ' Purple', 0.25],
+    ['Sekai Damage Note', '', 0.25],
+    ['Sekai Damage Note', ' Blue', 0.25],
+    ['Sekai Trace Note Purple', '', 0.125],
 ]
 
 test('note borders render as thick on every side at stage tilt 0', () => {
-    for (const [prefix, suffix] of bordered)
+    for (const [prefix, suffix, edge] of bordered)
         for (const width of widths) {
-            const sides = borders(prefix, suffix, width)
+            const sides = borders(prefix, suffix, width, edge)
             const values = Object.values(sides)
             assert.ok(Math.min(...values) > 0, `${prefix}${suffix}: no border`)
             for (const [size, perLane] of Object.entries(lanePixels)) {
@@ -146,6 +147,7 @@ test('note ends have round corners at stage tilt 0', () => {
         ['Sekai Damage Note Left', 0.25],
         ['Sekai Normal Trace Note Left', 0.125],
         ['Sekai Critical Trace Note Left Yellow', 0.125],
+        ['Sekai Trace Note Purple Left', 0.125],
     ]
     for (const [name, edge] of ends)
         for (const width of widths) {

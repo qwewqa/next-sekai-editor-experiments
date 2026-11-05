@@ -15,7 +15,8 @@ test('the Built-in clips decode with decodeAudioData', async ({ page }) => {
         clips: { name: string; filename: string }[]
     }
     const files = readZip(entries.get(item.audio.url.slice(1))!)
-    expect(data.clips).toHaveLength(15)
+    // 16 clips from 15 files: #HOLD_ALTERNATIVE plays #HOLD's.
+    expect(data.clips).toHaveLength(16)
 
     await page.goto('about:blank')
     for (const { name, filename } of data.clips) {

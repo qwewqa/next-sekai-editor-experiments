@@ -208,6 +208,7 @@ test('whole notes stay inside their lanes at every width, joined at the slices',
         ['Sekai Normal Note {} Purple', 0.25],
         ['Sekai Normal Trace Note {} Neutral', 0.125],
         ['Sekai Damage Note', 0.125],
+        ['Sekai Trace Note Purple', 0.125],
     ])
         for (const width of [1, 2, 3, 6, 12]) {
             const quads = noteSlices(width, edge)

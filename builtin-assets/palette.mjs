@@ -120,6 +120,15 @@ export const baseColors = {
         Black: ['#000000', '#222222'],
     },
     judgmentBand: ['#000000', 0.57],
+    // The standard ticks' and directional markers' faces, per standard colour.
+    tick: { Neutral: '#e8e8e8', Blue: '#a2a2fa', Cyan: '#a2fafa', Purple: '#faa2fa' },
+    marker: {
+        Neutral: '#a1a1a1',
+        Green: '#7eed7e',
+        Blue: '#7e7eed',
+        Purple: '#ed7eed',
+        Cyan: '#7eeded',
+    },
     // Effects, from captures of each hit: the hue where the effects add light.
     effect: { tap: '#6266f2', flick: '#e640bc', trace: '#39b2e6' },
     // Per style: connector at rest and held, critical connector at rest and held, damage

@@ -24,11 +24,17 @@ export const productName = product.name
 export const setVersion = 1
 
 /**
- * The sprites the set leaves out on purpose: the stage that bakes in its dividers and the colored
- * judgment bands. The base set has only the uncolored one.
+ * The original names (tests/fixtures/next-sekai-originals.json) the set leaves out: the stage that
+ * bakes in its dividers, which would replace the drawn stage on every chart without stage changes.
+ */
+export const omittedOriginals = ['Sekai Stage']
+
+/**
+ * The engine names the set leaves out on purpose: those above and the colored judgment bands,
+ * which the base set lacks too. The engine falls back to the uncolored one.
  */
 export const omittedSprites = [
-    'Sekai Stage',
+    ...omittedOriginals,
     ...colorNames.map((color) => `Sekai Judgment Background ${color}`),
 ]
 
@@ -138,6 +144,12 @@ const damageVars = {
     span: n(damageH - 2 * damageTop),
     inset: n(damageTop + 4),
     inside: n(damageH - 2 * damageTop - 8),
+}
+// The damage art at the slim end width (24 units), for the base's purple trace, its damage note.
+const damageSlimVars = {
+    h: n(damageH),
+    rim: endShape(0, damageTop, damageH - damageTop, 22, 24),
+    face: endShape(4, damageTop + 4, damageH - damageTop - 4, 18, 24),
 }
 const basicBox = box(-0.02, 1.02, -0.06, 1.06)
 // Diamonds are drawn 1.4 times their square about its middle, trace diamonds 1.28 times.
@@ -251,6 +263,23 @@ export function skinSprites() {
         // Half a lane outside the lanes, each drawn as it is: a line at the edge next to the lanes.
         add('#STAGE_LEFT_BORDER', { ...solid(stage.stroke, 0.7), transform: box(0.875, 1, 0, 1) })
         add('#STAGE_RIGHT_BORDER', { ...solid(stage.stroke, 0.7), transform: box(0, 0.125, 0, 1) })
+        // Above and below the lanes the same line, and a dot where two lines meet.
+        const edge = (u0, u1, v0, v1) => ({
+            ...solid(stage.stroke, 0.7),
+            transform: box(u0, u1, v0, v1),
+        })
+        add('#STAGE_TOP_BORDER', edge(0, 1, 0, 0.125))
+        add('#STAGE_BOTTOM_BORDER', edge(0, 1, 0.875, 1))
+        add('#STAGE_TOP_LEFT_CORNER', edge(0.875, 1, 0, 0.125))
+        add('#STAGE_TOP_RIGHT_CORNER', edge(0, 0.125, 0, 0.125))
+        add('#STAGE_BOTTOM_LEFT_CORNER', edge(0.875, 1, 0.875, 1))
+        add('#STAGE_BOTTOM_RIGHT_CORNER', edge(0, 0.125, 0.875, 1))
+        for (const name of ['LANE', 'STAGE_LEFT_BORDER', 'STAGE_RIGHT_BORDER'])
+            alias(`#${name}_SEAMLESS`, `#${name}`)
+        for (const name of ['STAGE_TOP_BORDER', 'STAGE_BOTTOM_BORDER'])
+            alias(`#${name}_SEAMLESS`, `#${name}`)
+        alias('#LANE_ALTERNATIVE', '#LANE')
+        alias('#LANE_ALTERNATIVE_SEAMLESS', '#LANE')
     })
 
     group('Stage, Sekai', () => {
@@ -313,10 +342,20 @@ export function skinSprites() {
             ['Green', traceColors.green],
             ['Red', traceColors.red],
             ['Yellow', traceColors.yellow],
-            ['Purple', styleColors('Purple')[2]],
         ])
             for (const part of parts)
                 add(`Sekai Trace Note ${color} ${part}`, slimImage(part, accent))
+        // The base's purple trace is its damage note, drawn at the slim end width.
+        for (const part of ['Left', 'Right'])
+            add(
+                `Sekai Trace Note Purple ${part}`,
+                image(
+                    `note-damage-slim-${part.toLowerCase()}`,
+                    { ...damageSlimVars, color: damage.color, edge: damage.edge },
+                    { stretch: true },
+                ),
+            )
+        alias('Sekai Trace Note Purple Middle', 'Sekai Damage Note Middle')
     })
 
     group('Basic (result buckets)', () => {
@@ -471,6 +510,58 @@ export function skinSprites() {
             add(`#GRID_${color}`, solid(guideColor(capital(color))))
     })
 
+    // Names only the base set carries: the standard colours the engine does not draw, the names
+    // its sprites share, and the Basic bodies its build makes per style colour.
+    group('Originals only', () => {
+        const basic = ([outer, inner, accent]) =>
+            image('note-body-basic', { outer, inner, accent }, { transform: basicBox })
+        add('#NOTE_HEAD_NEUTRAL', basic(styleColors('Neutral')))
+        add('#NOTE_HEAD_BLUE', basic(styleColors('Blue')))
+        for (const color of ['NEUTRAL', 'RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE', 'CYAN']) {
+            alias(`#NOTE_TAIL_${color}`, `#NOTE_HEAD_${color}`)
+            alias(`#NOTE_CONNECTION_${color}`, `#NOTE_CONNECTION_${color}_SEAMLESS`)
+            if (color !== 'NEUTRAL')
+                alias(`#SIMULTANEOUS_CONNECTION_${color}`, '#SIMULTANEOUS_CONNECTION_NEUTRAL')
+            alias(`#SIMULTANEOUS_CONNECTION_${color}_SEAMLESS`, '#SIMULTANEOUS_CONNECTION_NEUTRAL')
+        }
+        for (const [color, face] of Object.entries(baseColors.tick))
+            add(`#NOTE_TICK_${color.toUpperCase()}`, kite(face, 64))
+        for (const [color, face] of Object.entries(baseColors.marker)) {
+            const { vars, width, frame } = arrowSprite('up', 3, arrowTint(face))
+            add(
+                `#DIRECTIONAL_MARKER_${color.toUpperCase()}`,
+                image('arrow', vars, { width: 2 * width, transform: box(...frame) }),
+            )
+        }
+        for (const color of ['Blue', 'Green'])
+            add(`#GRID_${color.toUpperCase()}`, solid(guideColor(color)))
+        for (const color of ['Green', 'Yellow']) {
+            alias(`Sekai Slide Connection ${color}`, `Sekai Active Slide Connection ${color}`)
+            alias(
+                `Sekai Slide Connection ${color} Active`,
+                `Sekai Active Slide Connection ${color} Active`,
+            )
+        }
+        alias('Sekai Trace Note Green', 'Sekai Normal Trace Note Basic')
+        alias('Sekai Trace Note Red', 'Sekai Trace Flick Note Basic')
+        alias('Sekai Trace Note Yellow', 'Sekai Critical Trace Note Basic')
+        alias('Sekai Trace Note Purple', 'Sekai Damage Note Basic')
+        for (const color of colorNames) {
+            const [outer, inner, accent] = styleColors(color)
+            for (const [family] of bodyFamilies)
+                add(`Sekai ${family} Basic ${color}`, basic([outer, inner, accent]))
+            for (const [family] of traceFamilies)
+                add(
+                    `Sekai ${family} Basic ${color}`,
+                    image('note-slim-basic', { accent }, { transform: basicBox }),
+                )
+            add(
+                `Sekai Damage Note Basic ${color}`,
+                image('note-damage-basic', { color: accent, edge: inner }, { transform: basicBox }),
+            )
+        }
+    })
+
     group('Style colours', () => {
         for (const color of colorNames) {
             const [outer, inner, accent] = styleColors(color)
@@ -563,6 +654,9 @@ export const clipFiles = {
     'Sekai Trace': 'trace.wav',
     'Sekai Critical Trace': 'critical-trace.wav',
 }
+
+/** Clips the base set plays from another clip's file: the name, and the clip whose file it plays. */
+export const clipAliases = { '#HOLD_ALTERNATIVE': '#HOLD' }
 
 /** The metadata shared by the four items. */
 export const itemMeta = {
