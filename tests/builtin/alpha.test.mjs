@@ -60,8 +60,8 @@ const translucent = [
         core: 0.5,
     },
     // The base's damage notes glow round opaque art too (the purple trace slices draw that art).
-    // Translucent or missing art still fails: the glow under it measures above core, and Black's
-    // bar, with no glow, then has no interior or a translucent one.
+    // Translucent or missing art still fails: the glow under it raises the alpha above core, and
+    // Black's bar, which has no glow, would have no interior or a translucent one.
     {
         pattern:
             /^Sekai Damage Note (Left|Middle|Right)|^Sekai Trace Note Purple (Left|Middle|Right)$/,

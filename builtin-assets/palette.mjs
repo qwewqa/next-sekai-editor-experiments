@@ -164,7 +164,7 @@ export const baseColors = {
         Black: '#333333',
     },
     // Each style's damage note face, sampled from the base's damage notes: a deep shade of the
-    // style's hue, well darker than its trace. Black keeps its accent, #222222, darker than the
+    // style's hue, much darker than its trace. Black keeps its accent, #222222, darker than the
     // base's.
     styleDamage: {
         Neutral: '#5f5f5f',

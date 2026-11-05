@@ -242,17 +242,17 @@ const traceOf = (color) =>
 // Critical notes in play carry a soft halo in the base's critical halo colour: the critical
 // diamonds' (above), and this glow round critical bodies and traces, in the style's light critical
 // glow colour. Damage notes carry one in their rim colour, as the base's do, except on Black.
-// Normal notes and the result-bucket Basics have none. The glow is a Gaussian blur of the art's box,
-// under the art, fading out 3 sigma past it. It is under half alpha at the art's edge, so the art's
-// half-alpha edge stays put and the note keeps its cell. It is drawn as the product of two
+// Normal notes and the result-bucket Basics have none. The glow is a Gaussian blur of the art's
+// box, under the art, fading out 3 sigma past it. It is under half alpha at the art's edge, so the
+// art's half-alpha edge stays put and the note keeps its cell. It is drawn as the product of two
 // gradients, across the note and along it, so the slices join where a blur filter, cut at each
 // slice's edge, would leave seams. Every slice of a body, trace or damage note has its kind's glow
 // frame, glowing or not, since the engine's perspective mapping places art alike only on the same
 // quad.
-// By kind: the art's height, its top and end width, the glow's sigma across the note and along it
-// in units (192 a lane at tilt 0), and its alpha at the art's edge. The base's purple trace ends
-// are the damage art at the slim end width, on the damage note's frame, so their glow along is
-// half as wide.
+// By kind: the art's height, its top offset and end width, the glow's sigma across the note and
+// along it in units (192 a lane at tilt 0), and its alpha at the art's edge. The base's purple
+// trace ends are the damage art at the slim end width, on the damage note's frame, so their sigma
+// along the note is half as large.
 const sliceKinds = {
     body: { h: bodyH, y0: 0, end: 48, across: 32, along: 20, atEdge: 0.4 },
     slim: { h: slimH, y0: slimTop, end: 24, across: 32, along: 20, atEdge: 0.4 },
