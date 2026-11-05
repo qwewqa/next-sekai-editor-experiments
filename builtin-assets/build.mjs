@@ -13,6 +13,7 @@ import {
     skinSprites,
 } from './manifest.mjs'
 import { composeTexture, imageKey, packImages } from './pack.mjs'
+import { channels } from './palette.mjs'
 import { kinds, particleEffects } from './particles.mjs'
 import { encodePng } from './png.mjs'
 import { renderWavs } from './sfx.mjs'
@@ -74,14 +75,40 @@ export function dither({ width, height, data }) {
     return { width, height, data: out }
 }
 
+const premultiplied = (value, alpha) => Math.round((value * alpha) / 255)
+
+/**
+ * Stores a soft glow's pixels in its flat colour. A partly clear pixel's straight colour is its
+ * premultiplied value divided by alpha, so at low alpha one level of rounding becomes a large swing:
+ * noise that roughly doubles a glow's PNG bytes. Where a pixel's premultiplied colour is the glow
+ * colour's within a level, the glow colour is written exactly; the premultiplied value the GPU
+ * blends moves by a level at most. Pixels where the art's edge mixes with the glow stay as they are.
+ */
+export function snapGlow({ width, height, data }, color) {
+    const target = channels(color)
+    const out = new Uint8Array(data)
+    for (let i = 0; i < out.length; i += 4) {
+        const alpha = out[i + 3]
+        if (alpha === 0 || alpha === 255) continue
+        const near = target.every(
+            (value, c) =>
+                Math.abs(premultiplied(value, alpha) - premultiplied(out[i + c], alpha)) <= 1,
+        )
+        if (near) out.set(target, i)
+    }
+    return { width, height, data: out }
+}
+
 const renderCache = new Map()
 
-/** Renders a sprite spec, once per distinct template, variables and width. */
+/** Renders a sprite spec, once per distinct template, variables, width and glow colour. */
 export function renderSpec(spec) {
-    const key = JSON.stringify([spec.template, spec.vars, spec.width ?? null])
+    const key = JSON.stringify([spec.template, spec.vars, spec.width ?? null, spec.glow ?? null])
     let rendered = renderCache.get(key)
     if (!rendered) {
-        rendered = renderTemplate(spec.template, spec.vars, spec.width)
+        rendered = renderTemplate(spec.template, spec.vars, spec.width).then((image) =>
+            spec.glow ? snapGlow(image, spec.glow) : image,
+        )
         renderCache.set(key, rendered)
     }
     return rendered

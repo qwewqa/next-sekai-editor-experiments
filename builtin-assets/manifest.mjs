@@ -38,6 +38,8 @@ export const omittedSprites = [
     ...colorNames.map((color) => `Sekai Judgment Background ${color}`),
 ]
 
+// An image's options: stretch, width, transform, and glow, the one flat colour its soft glow or
+// halo is drawn in, which the build stores exactly in the glow's pixels (build.mjs, snapGlow).
 const image = (template, vars = {}, options = {}) => ({
     template,
     vars,
@@ -69,7 +71,7 @@ const glow = ([light, color, top], height = 1) =>
 // Slots fill their lane cell exactly with square corners, the rim on the cell's edge and a soft
 // glow past it, the way the base's do (its 128 px square over the cell's -0.28 to 1.28).
 const slot = (color) =>
-    image('slot', { color }, { width: 192, transform: box(-0.28, 1.28, -0.28, 1.28) })
+    image('slot', { color }, { width: 192, transform: box(-0.28, 1.28, -0.28, 1.28), glow: color })
 // Diamonds and ticks draw the art 1.4 times the engine's square about its middle, trace diamonds
 // 1.28 times, at 144 and 108 texels per lane on screen: [texture width, half the art's side].
 const kiteRoles = { slide: [128, 0.7], trace: [88, 0.64] }
@@ -79,6 +81,7 @@ const kiteImage = (template, vars, role, scale = 1) => {
     return image(template, vars, {
         width: Math.round(width * scale),
         transform: box(0.5 - side, 0.5 + side, 0.5 - side, 0.5 + side),
+        ...(vars.halo && { glow: vars.halo }),
     })
 }
 /**
@@ -134,14 +137,14 @@ const arrowTint = (accent) => ({
 })
 const arrow = (direction, accent, width) => {
     const { vars, width: pixels, frame } = arrowSprite(direction, width, arrowTint(accent))
-    return image('arrow', vars, { width: pixels, transform: box(...frame) })
+    return image('arrow', vars, { width: pixels, transform: box(...frame), glow: accent })
 }
 // The marker draws in the flick judgment icons and stands in for missing arrows: the width 3 up
 // arrow, placed as in its own square like the base's, at 2 x 104 texels per unit for the larger
 // quad.
 const marker = (accent) => {
     const { vars, width, frame } = arrowSprite('up', 3, arrowTint(accent), 104)
-    return image('arrow', vars, { width: 2 * width, transform: box(...frame) })
+    return image('arrow', vars, { width: 2 * width, transform: box(...frame), glow: accent })
 }
 
 // Note bodies fill their slices' quads exactly, as the base's bodies do (its lower band included):
