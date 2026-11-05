@@ -634,7 +634,7 @@ test.describe('the renderer', () => {
             // so its ratio is higher.
             const { first } = await page.evaluate(sweep, {
                 origin: baseURL!,
-                filter: 4,
+                filter: 4 as const,
                 angle,
                 mirror: false,
                 frames,
