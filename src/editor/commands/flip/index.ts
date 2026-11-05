@@ -28,9 +28,11 @@ export const flip: Command = {
             return
         }
 
+        // Rules over the selection count only what Flip changes, so BPM changes leave them alone.
+        const flipped = entities.filter((entity) => flips[entity.type])
         const changes = new Map<Entity, EditableObject>()
         for (const entity of entities) {
-            const object = flips[entity.type]?.(entities, entity as never)
+            const object = flips[entity.type]?.(flipped, entity as never)
             if (object && editChanges(state.value.store, entity, object))
                 changes.set(entity, object)
         }

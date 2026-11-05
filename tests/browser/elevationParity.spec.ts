@@ -279,12 +279,15 @@ test("Edit Elevations in the Elevation Editor's own context menu jumps to the se
     await expect(edit).toBeVisible()
     await page.keyboard.press('Escape')
 
-    // On a selected note off this beat, it goes to the note's beat.
+    // Opened by keys with notes selected off this beat, it goes to the last one's beat, as the
+    // Elevation command does.
     await page.evaluate(() => {
         const { history } = window.editorTest
         const source = history.state.value
-        const note = [...source.store.slides.note.values()].flat().find((note) => note.beat === 8)!
-        history.replaceState({ ...source, selectedEntities: [note] })
+        const notes = [...source.store.slides.note.values()].flat()
+        const first = notes.find((note) => note.beat !== 8)!
+        const last = notes.find((note) => note.beat === 8)!
+        history.replaceState({ ...source, selectedEntities: [first, last] })
     })
     await page.evaluate(async () => {
         const { commands } = await window.editorTest.appImport<

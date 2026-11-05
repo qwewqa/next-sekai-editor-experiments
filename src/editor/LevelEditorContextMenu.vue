@@ -27,7 +27,7 @@ import SelectSlideNotesIcon from './contextMenu/SelectSlideNotesIcon.vue'
 import { canSelectSlideNotes } from './contextMenu/selection'
 import { pasteAtContextPosition } from './contextMenuPaste'
 import { canEditSelectionProperties, focusSelectionProperties } from './editSelectionProperties'
-import { openElevationEditor } from './elevation/state'
+import { openElevationEditor, selectedElevationNote } from './elevation/state'
 import PropertiesIcon from './commands/levelInfo/LevelInfoIcon.vue'
 import { isCoarsePointer } from './workspace'
 import { editorNavigation } from './navigation'
@@ -95,17 +95,17 @@ const actions = computed(() => {
             transforms.push('flip')
         if (new Set(selection.filter(isEditableEntity).map((entity) => entity.beat)).size > 1)
             transforms.push('flipVertical')
-        if (canScaleSelection(selection, 'width', state.value)) transforms.push('scaleWidth')
-        if (canScaleSelection(selection, 'beat')) transforms.push('scaleBeat')
-        if (canScaleSelection(selection, 'elevation', state.value))
-            transforms.push('scaleElevation')
-        if (canMakeVertical(selection, state.value)) transforms.push('makeVertical')
+        if (getSplitHoldNotes(state.value, selection).length) transforms.push('splitHold')
         if (
             new Set(selection.flatMap((entity) => (entity.type === 'note' ? [entity.slideId] : [])))
                 .size > 1
         )
             transforms.push('combineNotes')
-        if (getSplitHoldNotes(state.value, selection).length) transforms.push('splitHold')
+        if (canMakeVertical(selection, state.value)) transforms.push('makeVertical')
+        if (canScaleSelection(selection, 'beat')) transforms.push('scaleBeat')
+        if (canScaleSelection(selection, 'elevation', state.value))
+            transforms.push('scaleElevation')
+        if (canScaleSelection(selection, 'width', state.value)) transforms.push('scaleWidth')
     }
     if (transforms.length) groups.push(transforms)
     const editors: ActionName[] = []
@@ -168,9 +168,12 @@ const execute = (name: ActionName, byKeyboard = true, byTouch = false) => {
     dismiss(true)
     if (name === 'editElevations') {
         if (point) {
-            const note = (
-                point.selection ? selectedEntities.value : pointHitsAt(point.x, point.y).set
-            ).find((entity) => entity.type === 'note' && selectedEntities.value.includes(entity))
+            // Opened by keys, at the note the Elevation command opens at; by a pointer, at the one under it.
+            const note = point.selection
+                ? selectedElevationNote()
+                : pointHitsAt(point.x, point.y).set.find(
+                      (entity) => entity.type === 'note' && selectedEntities.value.includes(entity),
+                  )
             openElevationEditor(
                 note?.beat ??
                     editorNavigation.value?.positionAtPoint(point.x, point.y).beat ??
