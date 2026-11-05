@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import type { BrushProperties } from '../../src/editor/tools/brush'
 import { aggregateValues, countOptions, valueRange } from '../../src/editor/utils/aggregate'
 import {
     brushFields,
     brushGroups,
+    brushObjectOf,
     fieldLabel,
     layoutFields,
     pickBrush,
@@ -22,8 +24,12 @@ import {
     mixedRange,
     mixedValues,
 } from '../../src/modals/form/fieldUsage'
+import { createState } from '../../src/state'
 import type { Entity } from '../../src/state/entities'
+import { planEdit } from '../../src/state/operations/properties/plan'
 import { formatNumber } from '../../src/utils/formatNumber'
+import { note, stage } from '../local/records/charts'
+import { baseChart } from './sameBeatKinds'
 
 type Row = { kind: string; a?: number; b?: string; hidden?: number }
 
@@ -132,7 +138,7 @@ test('the brush offers only properties it can apply', () => {
         'xTranslation',
     ])
         assert.ok(!keys.includes(key), key)
-    assert.equal(keys.length, 56)
+    assert.equal(keys.length, 57)
     assert.equal(propertyField.get('connectorEase')?.ease, true)
 })
 
@@ -245,21 +251,102 @@ test('picking a brush keeps agreeing values and the agreeing half of eases', () 
         { noteType: 'default', size: 3, connectorEase: 'inCubic', beat: 2, cameraSize: 4 },
     ]
     const aggregate = aggregateValues(notes, () => () => true)
-    assert.deepEqual(pickBrush(aggregate, false), {
-        noteType: 'default',
-        connectorEase: 'type:in',
-    })
-    assert.deepEqual(pickBrush(aggregate, true), {
-        noteType: 'default',
-        connectorEase: 'type:in',
-        cameraSize: 4,
-    })
+    assert.deepEqual(
+        pickBrush(() => aggregate, false),
+        {
+            noteType: 'default',
+            connectorEase: 'type:in',
+        },
+    )
+    assert.deepEqual(
+        pickBrush(() => aggregate, true),
+        {
+            noteType: 'default',
+            connectorEase: 'type:in',
+            cameraSize: 4,
+        },
+    )
+    // Each Elevation row picks from its own kind.
+    const objects = [
+        { type: 'note', elevation: 1 },
+        { type: 'note', elevation: 1 },
+        { type: 'stageTransformEventJoint', elevation: 3 },
+    ]
+    const ofKinds = (kinds?: readonly string[]) =>
+        aggregateValues(
+            objects.filter(({ type }) => !kinds || kinds.includes(type)),
+            () => () => true,
+        )
+    assert.deepEqual(pickBrush(ofKinds, true), { elevation: 1, stageElevation: 3 })
+    assert.deepEqual(pickBrush(ofKinds, false), { elevation: 1 })
 })
 
 test('picking skips the stage without dynamic stages', () => {
     const aggregate = aggregateValues([{ stageId: 1, groupId: 2 }], () => () => true)
-    assert.deepEqual(pickBrush(aggregate, false), { groupId: 2 })
-    assert.deepEqual(pickBrush(aggregate, true), { groupId: 2, stageId: 1 })
+    assert.deepEqual(
+        pickBrush(() => aggregate, false),
+        { groupId: 2 },
+    )
+    assert.deepEqual(
+        pickBrush(() => aggregate, true),
+        { groupId: 2, stageId: 1 },
+    )
+})
+
+test('the two Elevation rows brush notes and stage transform events apart, in one edit', () => {
+    const state = createState(
+        {
+            ...baseChart(),
+            slides: [[note(1)]],
+            stageTransformEvents: [
+                {
+                    stageId: stage(1),
+                    beat: 2,
+                    rotation: 0,
+                    xTranslation: 0,
+                    yTranslation: 0,
+                    elevation: 0,
+                    anchor: 'default',
+                    rotationCenter: 'stage',
+                    centerXOffset: 0,
+                    centerYOffset: 0,
+                    eventEase: 'linear',
+                },
+            ],
+        },
+        0,
+    )
+    const selected = [
+        ...state.store.grid.note.values(),
+        ...state.store.grid.stageTransformEventJoint.values(),
+    ].flatMap((bucket) => [...bucket])
+    const brush = (properties: BrushProperties) => {
+        for (const entity of selected)
+            assert.ok(!('stageElevation' in brushObjectOf(properties, entity)))
+        const plan = planEdit(state, selected, properties, {
+            each: (entity) => brushObjectOf(properties, entity),
+        })
+        const elevations = Object.fromEntries(
+            plan.state.selectedEntities.map((entity) => [
+                entity.type,
+                (entity as { elevation: number }).elevation,
+            ]),
+        )
+        return { plan, elevations }
+    }
+    const both = brush({ elevation: 2, stageElevation: 5, isCritical: true })
+    assert.deepEqual(both.elevations, { note: 2, stageTransformEventJoint: 5 })
+    const elevation = both.plan.receipt!.assignments.filter((a) => a.field === 'elevation')
+    assert.deepEqual(elevation, [
+        { field: 'elevation', before: { mode: 'uniform', value: 0 }, after: { mode: 'varying' } },
+    ])
+    // The Note row alone leaves the transform event as it is.
+    const notesOnly = brush({ elevation: 2 })
+    assert.deepEqual(notesOnly.elevations, { note: 2, stageTransformEventJoint: 0 })
+    assert.deepEqual(
+        notesOnly.plan.changed.map((entity) => entity.type),
+        ['note'],
+    )
 })
 
 test('unknown and unset values are told apart from mixed ones', () => {
@@ -303,7 +390,11 @@ const editableTypes = [
 ] as const
 
 // Every name a field renders: its label, or an ease's type and function.
-const renderedLabels = (field: PropertyField, t: Messages, qualified: boolean) => {
+const renderedLabels = (
+    field: Omit<PropertyField, 'key'> & { key: string },
+    t: Messages,
+    qualified: boolean,
+) => {
     if (!field.ease) return [fieldLabel(field, t, qualified)]
     const form = t.modals.form[field.key as 'timeScaleEase'] as {
         type: string
@@ -380,17 +471,24 @@ test('fields of several kinds open the selection with General', () => {
         [undefined, 'cameraEventJoint', 'stageMaskEventJoint'],
     )
     assert.ok((events[1]![1] as string[]).includes('eventEase'))
-    assert.deepEqual(events[0]![1], ['beat', 'eventEase', 'stageId'])
-    // Group, Stage and Elevation stay out of the kinds' blocks.
+    // Stage is the mask's alone here: it stays in the mask's block.
+    assert.deepEqual(events[0]![1], ['beat', 'eventEase'])
+    assert.ok((events[2]![1] as string[]).includes('stageId'))
+    // Group is shared with the time scale; Stage and Elevation are the notes' alone.
     const mixed = keys(context({ counts: { note: 2, timeScale: 1 } }))
+    assert.deepEqual(mixed[0]![1], ['beat', 'groupId'])
     assert.ok(!(mixed[1]![1] as string[]).includes('groupId'))
-    assert.deepEqual(mixed[0]![1], ['beat', 'groupId', 'stageId', 'elevation'])
-    // Beat that General cannot take goes to each kind that can.
+    assert.deepEqual((mixed[1]![1] as string[]).slice(-2), ['stageId', 'elevation'])
+    // Elevation is never shared: each kind's block edits its own.
+    const transform = keys(context({ counts: { note: 2, stageTransformEventJoint: 1 } }))
+    assert.deepEqual(transform[0]![1], ['beat', 'stageId'])
+    assert.equal((transform[1]![1] as string[]).at(-1), 'elevation')
+    assert.equal((transform[2]![1] as string[]).at(-1), 'elevation')
+    // Beat that General cannot take goes to each kind that can; with nothing shared, no General.
     const bpms = keys(context({ counts: { note: 2, bpm: 2 } }))
     assert.deepEqual(
         bpms.map(([kind, fields]) => [kind, (fields as string[]).includes('beat')]),
         [
-            [undefined, false],
             ['note', true],
             ['bpm', false],
         ],
@@ -419,16 +517,18 @@ test("the tools' settings list their fields in the table's order", () => {
             new URL(`../../src/editor/tools/${path}`, import.meta.url),
             'utf8',
         )
-        const template = source.slice(source.indexOf('<template>'))
-        const keys = [...template.matchAll(/<Optional(\w+)Field\b/g)].map(
-            ([, name]) => name!.charAt(0).toLowerCase() + name!.slice(1),
-        )
-        for (const key of keys) assert.ok(order.includes(key), `${path}: ${key}`)
-        assert.deepEqual(
-            keys,
-            [...keys].sort((a, b) => order.indexOf(a) - order.indexOf(b)),
-            path,
-        )
+        // Within each heading.
+        for (const part of source.slice(source.indexOf('<template>')).split('<h3')) {
+            const keys = [...part.matchAll(/<Optional(\w+)Field\b/g)].map(
+                ([, name]) => name!.charAt(0).toLowerCase() + name!.slice(1),
+            )
+            for (const key of keys) assert.ok(order.includes(key), `${path}: ${key}`)
+            assert.deepEqual(
+                keys,
+                [...keys].sort((a, b) => order.indexOf(a) - order.indexOf(b)),
+                path,
+            )
+        }
     }
 })
 

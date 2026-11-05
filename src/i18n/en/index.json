@@ -1889,7 +1889,8 @@
                 "label": "Editor Lane"
             },
             "elevation": {
-                "label": "Elevation"
+                "label": "Elevation",
+                "stage": "Stage Elevation"
             },
             "eventEase": {
                 "label": "Ease",

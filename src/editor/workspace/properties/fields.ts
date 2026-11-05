@@ -71,9 +71,9 @@ export type PropertyField = {
     /** Only exists with dynamic stages. */
     dynamicStages?: boolean
     /**
-     * In a selection of several kinds: `only` shows the field once in General, or, where General
-     * cannot show it, in each kind's block that can; `also` shows it in each kind's block and once
-     * more in General when two or more blocks show it.
+     * In a selection of several kinds: `only` shows the field once in General when two or more
+     * kinds' blocks show it and General can, otherwise in each block that shows it; `also` shows
+     * it in each kind's block and once more in General when two or more blocks show it.
      */
     general?: 'only' | 'also'
     /** Brushable properties: the group the brush lists them under, and the value an added row starts from. */
@@ -616,14 +616,14 @@ const fields: PropertyField[] = [
         brush: { group: 'general', initial: undefined },
     },
 
-    // Elevation, kept last as an advanced placement value.
+    // Elevation, kept last as an advanced placement value. A note's adds to its stage's, so
+    // notes and stage transform events each edit their own.
     {
         key: 'elevation',
         section: 'advanced',
         label: (t) => t.modals.form.elevation.label,
         show: (context) => !!context.counts.stageTransformEventJoint || note('elevation')(context),
-        general: 'only',
-        brush: { group: 'general', initial: 0 },
+        brush: { group: 'note', initial: 0 },
     },
 ]
 
@@ -633,14 +633,20 @@ export const propertyFields: readonly PropertyField[] = fields
  * A field's name; qualified, as in a notice or Brush's Remove, without its unit,
  * unless only the unit tells it from another field, as Y Offset (beats).
  */
-export const fieldLabel = (field: PropertyField, t: Localization, qualified: boolean) => {
+export const fieldLabel = (
+    field: Pick<PropertyField, 'label' | 'qualifiedLabel'> & { key: string },
+    t: Localization,
+    qualified: boolean,
+) => {
     const label = field.label(t)
     if (!qualified) return label
     const named = field.qualifiedLabel?.(t)
     if (named !== undefined) return named
     const short = withoutUnit(label)
     const taken = fields.some(
-        (other) => other !== field && [other.label(t), withoutUnit(other.label(t))].includes(short),
+        (other) =>
+            other.key !== field.key &&
+            [other.label(t), withoutUnit(other.label(t))].includes(short),
     )
     return taken ? label : short
 }
@@ -677,18 +683,14 @@ export const layoutFields = (
     const blocks: FieldBlock[] = kinds.map((kind) => ({ kind, sections: emptySections() }))
     const general = emptySections()
     for (const field of fields) {
-        if (field.general === 'only' && field.show(context)) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const owners = blocks.filter((block) => field.show(kindContext(block.kind!)))
+        if (field.general === 'only' && owners.length > 1 && field.show(context)) {
             general[field.section].push(field)
             continue
         }
-        let owners = 0
-        for (const block of blocks) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            if (!field.show(kindContext(block.kind!))) continue
-            block.sections[field.section].push(field)
-            owners++
-        }
-        if (owners > 1 && field.general === 'also') general[field.section].push(field)
+        for (const block of owners) block.sections[field.section].push(field)
+        if (owners.length > 1 && field.general === 'also') general[field.section].push(field)
     }
     return propertySections.some((section) => general[section].length)
         ? [{ sections: general }, ...blocks]
@@ -697,12 +699,56 @@ export const layoutFields = (
 
 export type BrushKey = keyof BrushProperties
 
-export type BrushField = PropertyField & {
+/** A Brush row: its own key, and the chart property it writes. */
+export type BrushField = Omit<PropertyField, 'key'> & {
     key: BrushKey
+    property: PropertyKey
+    /** The only kinds the row reads and writes; every kind with the property otherwise. */
+    kinds?: readonly EntityType[]
     brush: NonNullable<PropertyField['brush']>
 }
 
-export const brushFields = fields.filter((field): field is BrushField => !!field.brush)
+type Brushable = PropertyField & { brush: NonNullable<PropertyField['brush']> }
+
+const brushRow = (field: Brushable, row: Partial<BrushField> = {}): BrushField => ({
+    ...field,
+    key: field.key as BrushKey,
+    property: field.key,
+    ...row,
+})
+
+const brushable = fields.filter((field): field is Brushable => !!field.brush)
+
+// Elevation has a row for notes and one for stage transform events, as Selection has.
+export const brushFields: readonly BrushField[] = [
+    ...brushable.map((field) =>
+        brushRow(field, field.key === 'elevation' ? { kinds: ['note'] } : {}),
+    ),
+    ...brushable
+        .filter((field) => field.key === 'elevation')
+        .map((field) =>
+            brushRow(field, {
+                key: 'stageElevation',
+                qualifiedLabel: (t) => t.modals.form.elevation.stage,
+                kinds: ['stageTransformEventJoint'],
+                brush: { group: 'transform', initial: 0 },
+            }),
+        ),
+]
+
+/** What the brush writes to an object: each row that reaches its kind, under the row's property. */
+export const brushObjectOf = (
+    properties: BrushProperties,
+    entity: { type: EntityType },
+): EditableObject => {
+    const object: Record<string, unknown> = {}
+    for (const field of brushFields) {
+        const value = properties[field.key]
+        if (value === undefined || (field.kinds && !field.kinds.includes(entity.type))) continue
+        object[field.property] = value
+    }
+    return object
+}
 
 /** The connector values summarized while the connector fields are collapsed. */
 export const connectorSummaryKeys: readonly PropertyKey[] = [
@@ -716,15 +762,22 @@ export const connectorSummaryKeys: readonly PropertyKey[] = [
 export const isBrushAvailable = (field: BrushField, isDynamicStages: boolean) =>
     isDynamicStages || (!stageGroups.has(field.brush.group) && !field.dynamicStages)
 
-/** A brush matching the selection: every brushable value it agrees on. */
-export const pickBrush = ({ model, usage }: Aggregate, isDynamicStages: boolean) => {
+/**
+ * A brush matching the selection: every brushable value it agrees on. `aggregate` gives the
+ * selection's values, or those of its objects of `kinds`, for a row that reaches only them.
+ */
+export const pickBrush = (
+    aggregate: (kinds?: readonly EntityType[]) => Aggregate,
+    isDynamicStages: boolean,
+) => {
     const brush: Record<string, unknown> = {}
     for (const field of brushFields) {
         if (!isBrushAvailable(field, isDynamicStages)) continue
+        const { model, usage } = aggregate(field.kinds)
         // Eases keep the half the selection agrees on.
         const value = field.ease
-            ? mergeEases((usage.get(field.key)?.values.keys() ?? []) as Iterable<Ease>)
-            : model[field.key]
+            ? mergeEases((usage.get(field.property)?.values.keys() ?? []) as Iterable<Ease>)
+            : model[field.property]
         if (value !== undefined) brush[field.key] = value
     }
     return brush as BrushProperties

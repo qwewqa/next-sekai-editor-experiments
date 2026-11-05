@@ -40,6 +40,7 @@ import {
     yToTime,
     yToValidBeat,
 } from '../../view'
+import { brushObjectOf } from '../../workspace/properties/fields'
 import { holdToolSection } from '../../workspace/properties/toolSectionHold'
 import {
     hitAllEntitiesInSelection,
@@ -105,6 +106,8 @@ export type BrushProperties = {
     centerYOffset?: number
     yTranslation?: number
     elevation?: number
+    /** Stage transform events' Elevation; `elevation` is the notes'. */
+    stageElevation?: number
     anchor?: Anchor
     eventEase?: EaseEdit
 }
@@ -241,13 +244,16 @@ export const applyBrushToEntities = (entities: Entity[]) => {
         return
     }
 
-    // The brush writes every key it holds, as it always has, but never to BPM changes.
+    // The brush writes every key it holds, as it always has, but never to BPM changes, and
+    // each Elevation row only to its kind.
+    const properties = brushProperties.value
     const {
         state: brushed,
         changed,
         receipt,
-    } = planEdit(state.value, entities, brushProperties.value, {
+    } = planEdit(state.value, entities, properties, {
         only: (entity) => entity.type !== 'bpm',
+        each: (entity) => brushObjectOf(properties, entity),
     })
     view.entities = {
         hovered: [],

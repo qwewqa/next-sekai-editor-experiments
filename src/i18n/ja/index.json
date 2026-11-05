@@ -1889,7 +1889,8 @@
         "label": "エディター内のレーン"
       },
       "elevation": {
-        "label": "高さ"
+        "label": "高さ",
+        "stage": "ステージの高さ"
       },
       "eventEase": {
         "label": "加減速",

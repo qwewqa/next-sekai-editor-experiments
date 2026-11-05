@@ -14,6 +14,7 @@ import {
     stackLongWordsKey,
     stackTallLabelsKey,
 } from '../../../modals/form/fieldLayout'
+import type { EntityType } from '../../../state/entities'
 import { isEditableEntity } from '../../../state/operations/editable'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { notify } from '../../notification'
@@ -74,9 +75,22 @@ const menu = computed(() =>
     byKind(brushFields.filter((field) => !isSet(field) && available(field))),
 )
 
-// Aggregated only when used, so selecting stays cheap while the brush shows.
-const selection = computed(() => aggregateEntities(selectedEntities.value.filter(isEditableEntity)))
-const canPick = computed(() => selectedEntities.value.some(isEditableEntity))
+// Aggregated only when used, so selecting stays cheap while the brush shows. A row that reaches
+// some kinds reads only their objects.
+const editable = computed(() => selectedEntities.value.filter(isEditableEntity))
+const selection = computed(() => {
+    const entities = editable.value
+    const of = (kinds?: readonly EntityType[]) =>
+        aggregateEntities(
+            kinds ? entities.filter((entity) => kinds.includes(entity.type)) : entities,
+        )
+    const all = of()
+    const byKinds = new Map(
+        brushFields.flatMap(({ kinds }) => (kinds ? [[kinds.join(), of(kinds)] as const] : [])),
+    )
+    return (kinds?: readonly EntityType[]) => (kinds && byKinds.get(kinds.join())) ?? all
+})
+const canPick = computed(() => editable.value.length > 0)
 
 // Values the editor's view already suggests.
 const fromView: Partial<Record<BrushKey, () => unknown>> = {

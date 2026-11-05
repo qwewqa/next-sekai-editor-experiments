@@ -247,4 +247,5 @@ export const optionalFieldComponents: Record<BrushKey, Component> = {
     groupId: OptionalGroupField,
     stageId: OptionalStageField,
     elevation: OptionalElevationField,
+    stageElevation: OptionalElevationField,
 }
