@@ -28,9 +28,9 @@ import {
     fieldLabel,
     isBrushAvailable,
     pickBrush,
-    propertyKinds,
+    brushGroups,
+    type BrushField,
     type BrushKey,
-    type PropertyField,
 } from '../../workspace/properties/fields'
 import { formatCount } from '../../../utils/size'
 
@@ -58,14 +58,13 @@ const models = Object.fromEntries(brushFields.map((field) => [field.key, createM
 const root = useTemplateRef<HTMLElement>('root')
 const addButton = useTemplateRef<HTMLButtonElement>('addButton')
 
-const available = (field: PropertyField) => isBrushAvailable(field, isDynamicStages.value)
+const available = (field: BrushField) => isBrushAvailable(field, isDynamicStages.value)
 
-const isSet = (field: PropertyField & { key: BrushKey }) =>
-    brushProperties.value[field.key] !== undefined
+const isSet = (field: BrushField) => brushProperties.value[field.key] !== undefined
 
-const byKind = (fields: (PropertyField & { key: BrushKey })[]) =>
-    propertyKinds.flatMap((kind) => {
-        const ofKind = fields.filter((field) => field.kind === kind)
+const byKind = (fields: BrushField[]) =>
+    brushGroups.flatMap((kind) => {
+        const ofKind = fields.filter((field) => field.brush.group === kind)
         return ofKind.length ? [{ kind, fields: ofKind }] : []
     })
 
@@ -86,11 +85,11 @@ const fromView: Partial<Record<BrushKey, () => unknown>> = {
     size: () => view.noteSize,
 }
 
-const initialValue = (field: PropertyField & { key: BrushKey }) => {
+const initialValue = (field: BrushField) => {
     // Start from the selection's value when it agrees, as Pick does.
     const picked = pickBrush(selection.value, isDynamicStages.value)[field.key]
     if (picked !== undefined) return picked
-    return fromView[field.key]?.() ?? field.brush?.initial
+    return fromView[field.key]?.() ?? field.brush.initial
 }
 
 // Add Property opens a menu of the properties not in the brush, under their kinds.

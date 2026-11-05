@@ -490,6 +490,53 @@ for (const tick of [false, true])
         expect(errors).toEqual([])
     })
 
+test('a Beat edit that reaches one BPM change replaces at its destination and keeps the notes selected', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { fixtures, show, history, appImport } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show(
+            {
+                ...fixtures.interaction,
+                bpms: [
+                    { beat: 0, bpm: 120 },
+                    { beat: 12, bpm: 180 },
+                ],
+                slides: [[{ ...base, beat: 2 }], [{ ...base, beat: 4 }]],
+            },
+            1,
+        )
+        const state = history.state.value
+        const bpm = [...state.store.grid.bpm.get(12)!].find((entity) => entity.beat === 12)!
+        const notes = [...state.store.slides.note.values()].flat()
+        history.replaceState({ ...state, selectedEntities: [...notes, bpm] })
+        const { editSelectedEditableEntities } = await appImport<
+            typeof import('../../src/editor/sidebars/default')
+        >('/src/editor/sidebars/default/index.ts')
+        // As the BPM dialog's Beat with the notes selected.
+        editSelectedEditableEntities({ beat: 0 }, (entity) => entity.type === 'bpm')
+        const after = history.state.value
+        return {
+            bpms: [...after.store.grid.bpm.values()]
+                .flatMap((bucket) => [...bucket])
+                .map((entity) => [entity.beat, entity.bpm]),
+            step: history.headStep.value?.operation,
+            selected: after.selectedEntities.map((entity) => [entity.type, entity.beat]),
+        }
+    })
+    expect(result.bpms).toEqual([[0, 180]])
+    expect(result.step).toMatchObject({
+        id: 'nse.object.replace',
+        data: { subject: 'bpm', displaced: { bpm: 1 } },
+    })
+    expect(result.selected).toEqual([
+        ['note', 2],
+        ['note', 4],
+        ['bpm', 0],
+    ])
+})
+
 test('an edit looks up the changed objects in linear time', async ({ page }) => {
     const result = await page.evaluate(async () => {
         const { fixtures, show, history, appImport } = window.editorTest

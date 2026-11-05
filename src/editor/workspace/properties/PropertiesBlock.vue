@@ -22,7 +22,7 @@ import type { Entity } from '../../../state/entities'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { toDisplayedBeat } from '../../beatDisplay'
 import SelectIcon from '../../commands/select/SelectIcon.vue'
-import { fieldApplies, useEntitiesProperties, type EntitiesAggregate } from '../../utils/properties'
+import { fieldApplies, useEntitiesProperties, type ValuesAggregate } from '../../utils/properties'
 import ChevronIcon from '../ChevronIcon.vue'
 import { multiFieldComponents } from './fieldComponents'
 import FieldUsageProvider from './FieldUsageProvider.vue'
@@ -43,7 +43,7 @@ const props = defineProps<{
     /** The kind of the block's objects; General when unset. */
     kind?: SummaryKind
     entities: readonly Entity[]
-    aggregate: EntitiesAggregate
+    aggregate: ValuesAggregate
     sections: Record<PropertySection, PropertyField[]>
     count: number
     slides: number

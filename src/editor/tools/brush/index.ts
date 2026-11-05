@@ -248,7 +248,6 @@ export const applyBrushToEntities = (entities: Entity[]) => {
         receipt,
     } = planEdit(state.value, entities, brushProperties.value, {
         only: (entity) => entity.type !== 'bpm',
-        single: false,
     })
     view.entities = {
         hovered: [],

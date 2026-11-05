@@ -284,10 +284,6 @@ export const bpm: Tool = {
     },
 }
 
-export const editBpm = (entity: BpmEntity, object: Partial<BpmObject>) => {
-    editMoveOrReplace(entity, object)
-}
-
 const find = (beat: number) =>
     getInStoreGrid(store.value.grid, 'bpm', beat)?.find((entity) => entity.beat === beat)
 

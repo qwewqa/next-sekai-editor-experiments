@@ -396,12 +396,19 @@ test.describe('kind blocks', () => {
             await nextTick()
         })
         await expect(selection(page).locator('.properties-block-header h3')).toHaveText([
+            'General',
             'Notes 4 · in 1 slide',
             'BPM 1',
-            'General',
         ])
-        // Several BPM changes hide Beat; narrowing to notes brings it back.
-        await expect(control(page, 'Beat')).toHaveCount(0)
+        // One BPM change keeps Beat, once, in General.
+        await expect(control(page, 'Beat')).toHaveCount(1)
+        await expect(
+            selection(page)
+                .locator('.properties-block')
+                .first()
+                .locator('.form-field')
+                .filter({ has: page.getByText('Beat', { exact: true }) }),
+        ).toHaveCount(1)
         const notes = header(page, /^Notes/)
         await notes.getByRole('button', { name: 'Select only Notes (4)' }).focus()
         await page.keyboard.press('Enter')

@@ -434,9 +434,17 @@ test('BPM producer captures initial anchor and actual first destination replacem
 }) => {
     const result = await page.evaluate(async () => {
         const { show, fixtures, history, appImport } = window.editorTest
-        const { editBpm } = await appImport<typeof import('../../src/editor/tools/bpm')>(
-            '/src/editor/tools/bpm/index.ts',
-        )
+        const { editSelectedEditableEntities } = await appImport<
+            typeof import('../../src/editor/sidebars/default')
+        >('/src/editor/sidebars/default/index.ts')
+        // Edits the object alone selected, as its Properties do.
+        const edit = (
+            entity: (typeof history.state.value.selectedEntities)[number],
+            object: object,
+        ) => {
+            history.replaceState({ ...history.state.value, selectedEntities: [entity] })
+            editSelectedEditableEntities(object)
+        }
         const { loadedStates } =
             await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
         show({
@@ -451,7 +459,7 @@ test('BPM producer captures initial anchor and actual first destination replacem
         const initial = [...history.state.value.store.grid.bpm.values()]
             .flatMap((bucket) => [...bucket])
             .find(({ beat }) => !beat)!
-        editBpm(initial, { beat: 4 })
+        edit(initial, { beat: 4 })
         const replacement = history.headStep.value!.operation
         const bpms = [...history.state.value.store.grid.bpm.values()]
             .flatMap((bucket) => [...bucket])
@@ -459,7 +467,7 @@ test('BPM producer captures initial anchor and actual first destination replacem
             .sort((a, b) => a[0]! - b[0]!)
         const selected = history.state.value.selectedEntities[0]!
         if (selected.type !== 'bpm') throw new Error('Missing moved BPM')
-        editBpm(selected, { bpm: selected.bpm })
+        edit(selected, { bpm: selected.bpm })
         return { replacement, bpms, steps: loadedStates().length - 1 }
     })
     expect(result.replacement).toMatchObject({
@@ -485,9 +493,17 @@ test('Time Scale producer captures both actually replaced same-group destination
 }) => {
     const result = await page.evaluate(async () => {
         const { show, fixtures, history, appImport } = window.editorTest
-        const { editTimeScale } = await appImport<
-            typeof import('../../src/editor/tools/timeScale')
-        >('/src/editor/tools/timeScale/index.ts')
+        const { editSelectedEditableEntities } = await appImport<
+            typeof import('../../src/editor/sidebars/default')
+        >('/src/editor/sidebars/default/index.ts')
+        // Edits the object alone selected, as its Properties do.
+        const edit = (
+            entity: (typeof history.state.value.selectedEntities)[number],
+            object: object,
+        ) => {
+            history.replaceState({ ...history.state.value, selectedEntities: [entity] })
+            editSelectedEditableEntities(object)
+        }
         const base = fixtures.events.timeScales[0]!
         show({
             ...fixtures.interaction,
@@ -522,7 +538,7 @@ test('Time Scale producer captures both actually replaced same-group destination
         const before = [...history.state.value.store.grid.timeScale.values()]
             .flatMap((bucket) => [...bucket])
             .find(({ beat }) => beat === 2)!
-        editTimeScale(before, { beat: 4 })
+        edit(before, { beat: 4 })
         return [...history.state.value.store.grid.timeScale.values()]
             .flatMap((bucket) => [...bucket])
             .map(({ beat, groupId, timeScale }) => [beat, groupId, timeScale])
@@ -537,14 +553,21 @@ test('Time Scale producer captures both actually replaced same-group destination
     })
 })
 
-// Editing a Time Scale to the values it has leaves the chart as it was: no step,
-// though the edit still selects it.
+// Editing a Time Scale to the values it has leaves the chart as it was: no step.
 test('a Time Scale edit that changes nothing pushes no step', async ({ page }) => {
     const result = await page.evaluate(async () => {
         const { show, fixtures, history, appImport } = window.editorTest
-        const { editTimeScale } = await appImport<
-            typeof import('../../src/editor/tools/timeScale')
-        >('/src/editor/tools/timeScale/index.ts')
+        const { editSelectedEditableEntities } = await appImport<
+            typeof import('../../src/editor/sidebars/default')
+        >('/src/editor/sidebars/default/index.ts')
+        // Edits the object alone selected, as its Properties do.
+        const edit = (
+            entity: (typeof history.state.value.selectedEntities)[number],
+            object: object,
+        ) => {
+            history.replaceState({ ...history.state.value, selectedEntities: [entity] })
+            editSelectedEditableEntities(object)
+        }
         const { loadedStates } =
             await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
         const base = fixtures.events.timeScales[0]!
@@ -563,7 +586,7 @@ test('a Time Scale edit that changes nothing pushes no step', async ({ page }) =
         const entity = [...history.state.value.store.grid.timeScale.values()]
             .flatMap((bucket) => [...bucket])
             .find(({ beat }) => beat === 2)!
-        editTimeScale(entity, { timeScale: 1 })
+        edit(entity, { timeScale: 1 })
         return {
             steps: loadedStates().length - 1,
             undo: history.canUndo.value,

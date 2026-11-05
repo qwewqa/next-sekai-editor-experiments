@@ -69,10 +69,10 @@ const copyProperties = createModel('copyProperties')
     </h3>
     <EmptyLabelProvider :label="copyLabel">
         <OptionalNoteTypeField v-model="noteType" />
-        <OptionalNoteStyleField v-model="noteStyle" />
-        <OptionalIsAttachedField v-model="isAttached" />
         <OptionalIsCriticalField v-model="isCritical" />
         <OptionalFlickDirectionField v-model="flickDirection" />
+        <OptionalIsAttachedField v-model="isAttached" />
+        <OptionalNoteStyleField v-model="noteStyle" />
         <OptionalIsFakeField v-model="isFake" />
         <OptionalSfxField v-model="sfx" />
     </EmptyLabelProvider>

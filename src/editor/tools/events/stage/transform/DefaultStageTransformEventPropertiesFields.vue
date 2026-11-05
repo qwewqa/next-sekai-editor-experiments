@@ -39,11 +39,11 @@ const copyProperties = createModel('copyProperties')
 
 <template>
     <EmptyLabelProvider :label="copyLabel">
+        <OptionalYTranslationField v-model="yTranslation" />
         <OptionalRotationField v-model="rotation" />
         <OptionalRotationCenterField v-model="rotationCenter" />
         <OptionalCenterXOffsetField v-model="centerXOffset" />
         <OptionalCenterYOffsetField v-model="centerYOffset" />
-        <OptionalYTranslationField v-model="yTranslation" />
         <OptionalAnchorField v-model="anchor" />
         <OptionalEventEaseField v-model="eventEase" />
         <OptionalElevationField v-model="elevation" />
