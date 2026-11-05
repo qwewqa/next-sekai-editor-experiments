@@ -24,21 +24,21 @@
     },
     "bgm": {
       "title": "BGM",
-      "changed": "已更改 BGM",
+      "changed": "已變更 BGM",
       "modal": {
         "file": "檔案",
         "offset": "偏移（毫秒）",
         "loading": "正在載入檔案…",
         "decoding": "正在解碼音訊…",
-        "generating": "生成波形…",
+        "generating": "正在產生波形…",
         "download": "下載 BGM"
       },
-      "fileChanged": "已更改 BGM 檔案",
+      "fileChanged": "已變更 BGM 檔案",
       "offsetSet": "已將 BGM 偏移設為 {0} 毫秒"
     },
     "brush": {
       "title": "筆刷",
-      "switched": "切換到筆刷工具",
+      "switched": "已切換到筆刷工具",
       "modal": {
         "title": "筆刷屬性"
       }
@@ -138,7 +138,7 @@
     },
     "splitHold": {
       "title": "拆分滑條",
-      "noConnections": "請選取具有後續連接的音符",
+      "noConnections": "請選取與下一個音符相連的滑條音符",
       "split": "已拆分 {0} 個連接"
     },
     "combineNotes": {
@@ -163,7 +163,7 @@
       },
       "switched": {
         "all": "已切換到所有圖層",
-        "one": "已切換到 {0} 圖層"
+        "one": "已切換到「{0}」圖層"
       }
     },
     "generateSlideNotes": {
@@ -238,7 +238,7 @@
       "decrease": {
         "title": "縮小音符尺寸"
       },
-      "changed": "已將音符尺寸更改為 {0}"
+      "changed": "已將音符尺寸變更為 {0}"
     },
     "offset": {
       "title": "偏移",
@@ -262,7 +262,7 @@
         "newer": "此關卡是為較新的引擎修訂版製作的，此編輯器尚不支援。部分內容可能無法正確顯示或儲存。"
       },
       "refusals": {
-        "dynamicStages": "關卡使用了動態舞台，但未啟用",
+        "dynamicStages": "使用了動態舞台，但未將其啟用",
         "cyclicEventRef": "事件參照「{0}」形成循環",
         "cyclicSlideRef": "滑條參照「{0}」形成循環",
         "refNotFound": "找不到參照「{0}」",
@@ -305,7 +305,7 @@
     },
     "redo": {
       "title": "重做",
-      "noState": "無需重做",
+      "noState": "沒有可重做的操作",
       "failed": "無法重做",
       "redid": "已重做「{0}」"
     },
@@ -377,16 +377,16 @@
       },
       "switched": {
         "all": "已切換到所有舞台",
-        "one": "已切換到 {0} 舞台"
+        "one": "已切換到「{0}」舞台"
       }
     },
     "stop": {
       "title": "停止"
     },
     "toggleVolume": {
-      "title": "切換 {0} 音量",
-      "muted": "已將 {0} 靜音",
-      "unmuted": "已取消 {0} 靜音",
+      "title": "切換{0}音量",
+      "muted": "已將{0}靜音",
+      "unmuted": "已取消{0}靜音",
       "type": {
         "bgm": "BGM",
         "sfx": "音效"
@@ -394,7 +394,7 @@
     },
     "undo": {
       "title": "撤銷",
-      "noState": "無需撤銷",
+      "noState": "沒有可撤銷的操作",
       "failed": "無法撤銷",
       "undid": "已撤銷「{0}」"
     },
@@ -405,12 +405,12 @@
       "cycle": {
         "title": "循環切換物件顯示狀態",
         "all": "已顯示所有物件",
-        "only": "已僅顯示 {0}"
+        "only": "已僅顯示{0}"
       },
       "toggle": {
-        "title": "切換 {0} 顯示狀態",
-        "on": "已顯示 {0}",
-        "off": "已隱藏 {0}",
+        "title": "切換{0}顯示狀態",
+        "on": "已顯示{0}",
+        "off": "已隱藏{0}",
         "types": {
           "note": "音符",
           "cameraEvent": "攝影機事件",
@@ -425,20 +425,20 @@
     },
     "zooms": {
       "zoomXIn": {
-        "title": "放大X軸",
-        "zoomed": "橫向放大 10%"
+        "title": "放大 X 軸",
+        "zoomed": "已橫向放大 10%"
       },
       "zoomXOut": {
-        "title": "縮小X軸",
-        "zoomed": "橫向縮小 10%"
+        "title": "縮小 X 軸",
+        "zoomed": "已橫向縮小 10%"
       },
       "zoomYIn": {
-        "title": "放大Y軸",
-        "zoomed": "縱向放大 10%"
+        "title": "放大 Y 軸",
+        "zoomed": "已縱向放大 10%"
       },
       "zoomYOut": {
-        "title": "縮小Y軸",
-        "zoomed": "縱向縮小 10%"
+        "title": "縮小 Y 軸",
+        "zoomed": "已縱向縮小 10%"
       }
     },
     "bpm": {
@@ -451,7 +451,7 @@
     },
     "events": {
       "title": "{0}",
-      "switched": "已切換到 {0} 工具",
+      "switched": "已切換到{0}工具",
       "modal": {
         "title": "預設{0}屬性"
       }
@@ -486,7 +486,7 @@
       "nextSekai02": "Next SEKAI 02",
       "builtin": "內建",
       "useBuiltinAll": "全部使用內建",
-      "resetDefault": "重置為預設",
+      "resetDefault": "重設為預設",
       "stored": "已存放：{0} 項，{1}",
       "storedEmpty": "沒有已存放的項目",
       "storedUnavailable": "編輯器無法存取此瀏覽器中已存放的項目。",
@@ -497,9 +497,9 @@
         "effect": "音效"
       },
       "fallback": {
-        "panel": "{0}：正在使用{1}。{2}",
+        "panel": "{0}：正在使用「{1}」。{2}",
         "panelStored": "{0}：正在使用「{1}」。{2}",
-        "row": "正在使用{0}。{1}",
+        "row": "正在使用「{0}」。{1}",
         "rowStored": "正在使用「{0}」。{1}"
       },
       "reason": {
@@ -507,11 +507,11 @@
         "storageUnavailable": "編輯器無法存取此瀏覽器中已存放的{0}。",
         "serverFailed": "無法從 {1} 重新下載{0}。",
         "invalid": "無法讀取已存放的{0}。",
-        "failed": "無法載入{0}。",
+        "failed": "無法載入「{0}」。",
         "builtinFailed": "無法載入內建資源。"
       },
       "offline": "您已離線。",
-      "safeMode": "安全模式使用{0}。",
+      "safeMode": "安全模式使用「{0}」。",
       "choose": "選擇…",
       "chooseSkin": "選擇外觀",
       "chooseParticle": "選擇粒子",
@@ -522,8 +522,8 @@
       "remove": "移除",
       "removeStored": "移除…",
       "inUse": "使用中",
-      "removeInUse": "移除「{0}」？預覽將改用預設選項。",
-      "removeUnused": "移除「{0}」？",
+      "removeInUse": "要移除「{0}」嗎？預覽將改用預設選項。",
+      "removeUnused": "要移除「{0}」嗎？",
       "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇…",
       "noneInFile": "此檔案中沒有{0}。",
@@ -747,7 +747,7 @@
       "contents": "將整個譜面或部分譜面的預覽匯出為影片，可包含 BGM 和音效。"
     },
     "utilities": {
-      "editors": "開啟「封面編輯器」以用圖像製作封面，或開啟「預覽編輯器」以用 BGM 的片段製作預覽音訊。",
+      "editors": "開啟「封面編輯器」以用圖片製作封面，或開啟「預覽編輯器」以用 BGM 的片段製作預覽音訊。",
       "levelInfo": "兩者都會匯出為檔案。要設定關卡的封面或預覽音訊，請使用「關卡資訊」。"
     },
     "play": {
@@ -873,11 +873,11 @@
     "squareGrid": "1:1 網格",
     "auto": "自動",
     "always": "始終",
-    "never": "從不",
+    "never": "永不",
     "off": "關閉",
     "canvas": "音符高度",
     "empty": "此節拍沒有音符",
-    "changed": "已更改 {0} 個音符的高度",
+    "changed": "已變更 {0} 個音符的高度",
     "close": "關閉高度編輯器",
     "resize": "調整高度編輯器大小"
   },
@@ -921,7 +921,7 @@
         "off": "關閉",
         "fft": "FFT",
         "volume": "音量",
-        "changed": "您已變更波形視覺化，請再次選擇 BGM 檔案以使此變更生效。"
+        "changed": "請再次選擇 BGM 檔案以套用新的波形設定。"
       },
       "maxScrollX": "水平捲動上限（軌道）",
       "zeroWidthNotes": {
@@ -964,7 +964,7 @@
     },
     "play": {
       "title": "播放",
-      "bgmVolume": "BGM音量（%）",
+      "bgmVolume": "BGM 音量（%）",
       "sfxVolume": "音效音量（%）",
       "startPosition": {
         "title": "播放起點",
@@ -1052,7 +1052,7 @@
       "source": "原始碼",
       "license": "授權條款",
       "notices": "第三方聲明",
-      "privacy": "隱私",
+      "privacy": "隱私權",
       "terms": "使用條款",
       "usageStatistics": "傳送使用統計",
       "usageStatisticsNote": "我們根據使用統計決定改善哪些功能。使用統計包括您使用的工具、部分編輯器設定、檔案類型和大小，以及操作所需的時間。詳情請參閱「隱私權聲明」。",
@@ -1194,7 +1194,7 @@
         "downloadFailed": "無法下載已恢復的內容。"
       },
       "openHistory": "開啟歷史記錄",
-      "confirmClose": "關閉前詢問未儲存的變更",
+      "confirmClose": "有未儲存的變更時在關閉前詢問",
       "filePicker": {
         "title": "寫入所選檔案",
         "auto": "自動",
@@ -1246,12 +1246,12 @@
   "statusBar": {
     "group": {
       "all": "所有圖層",
-      "one": "{0} 圖層",
+      "one": "「{0}」圖層",
       "shown": "顯示 {0}/{1} 個圖層"
     },
     "stage": {
       "all": "所有舞台",
-      "one": "{0} 舞台",
+      "one": "「{0}」舞台",
       "shown": "顯示 {0}/{1} 個舞台"
     }
   },
@@ -1390,7 +1390,7 @@
       "size": "尺寸",
       "generate": "產生",
       "loading": "正在載入檔案…",
-      "decoding": "正在解碼圖像…",
+      "decoding": "正在解碼圖片…",
       "generating": "正在產生封面…"
     },
     "previewEditor": {
@@ -1406,7 +1406,7 @@
       "generate": "產生",
       "loading": "正在載入檔案…",
       "decoding": "正在解碼音訊…",
-      "generating": "正在生成預覽…"
+      "generating": "正在產生預覽…"
     }
   },
   "startup": {
@@ -1448,9 +1448,9 @@
     "continuedUndated": "已繼續「{0}」。",
     "cleared": "先前造訪的內容已遺失。瀏覽器清除了此網站的儲存空間。",
     "inAppBrowser": "這似乎是應用程式內建瀏覽器。部分功能可能無法使用，已存放的內容也可能被刪除。如需保留內容，請在常用瀏覽器中開啟此頁面。",
-    "journalKept": "已將對「{0}」的已恢復變更保留為獨立的工作階段。",
+    "journalKept": "已恢復對「{0}」的變更，並將其保留為獨立的工作階段。",
     "fallback": "已恢復先前造訪中未儲存的內容。",
-    "fallbackLocal": "先前造訪中未儲存的內容在本機資料中。",
+    "fallbackLocal": "先前造訪中未儲存的內容在「本機資料」中。",
     "migrationFailed": "無法還原舊的自動儲存。",
     "autoSave": "已從舊的自動儲存繼續「{0}」。",
     "journal": "已恢復對「{0}」的最後變更。",
@@ -1460,7 +1460,7 @@
     "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
     "autoSaveKept": "已將舊的自動儲存中的「{0}」保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
-    "journalFailed": "無法將已恢復的變更存放到其工作階段中。可在本機資料中找到。",
+    "journalFailed": "無法將已恢復的變更存放到其工作階段中。可在「本機資料」中找到。",
     "storageNearlyFull": "瀏覽器儲存空間幾乎已滿。",
     "journalsFull": "先前造訪中未儲存的內容正在佔滿瀏覽器儲存空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",
@@ -1470,7 +1470,7 @@
     "bgmNotLoaded": "BGM 未載入。",
     "saveUnfinished": "儲存未能完成。您選擇的檔案可能是空的。",
     "exportUnfinished": "匯出未能完成。您選擇的檔案可能是空的。",
-    "more": "另有 {0} 則在本機資料中",
+    "more": "另有 {0} 則在「本機資料」中",
     "localData": "本機資料",
     "openHistory": "開啟歷史記錄",
     "copyLink": "複製連結",
@@ -1491,10 +1491,10 @@
     "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請儲存以保留內容。"
   },
   "player": {
-    "started": "開始播放",
-    "stopped": "停止播放",
+    "started": "已開始播放",
+    "stopped": "已停止播放",
     "startFailed": "無法開始播放。請重試。",
-    "changed": "將播放速度改為 {0}×"
+    "changed": "已將播放速度變更為 {0}×"
   },
   "history": {
     "summary": {
@@ -1502,7 +1502,7 @@
       "editedNotes": "已編輯音符",
       "movedNotes": "已移動音符",
       "resizedNotes": "已調整音符大小",
-      "changedNoteElevations": "已更改音符高度",
+      "changedNoteElevations": "已變更音符高度",
       "generatedNotes": "已生成音符",
       "addedBpm": "已新增 BPM",
       "editedBpm": "已編輯 BPM",
@@ -1574,8 +1574,8 @@
       "deletedEvents": "已刪除{0}事件",
       "cutEvents": "已剪下{0}事件"
     },
-    "undidSteps": "撤銷了 {0} 步",
-    "redidSteps": "重做了 {0} 步",
+    "undidSteps": "已撤銷 {0} 步",
+    "redidSteps": "已重做 {0} 步",
     "dynamicStages": {
       "title": "動態舞台",
       "message": "此功能需要動態舞台。要啟用嗎？",
@@ -1604,7 +1604,7 @@
     "damaged": "已損毀",
     "needsNewer": "需要較新版本",
     "savedOn": "儲存於 {0}",
-    "savedWeb": "儲存於網頁編輯器 ({0})",
+    "savedWeb": "儲存於網頁編輯器（{0}）",
     "savedWebAny": "儲存於網頁編輯器",
     "quoted": "「{0}」",
     "quotedField": "{0}",
@@ -2113,13 +2113,13 @@
         "label": "每小節拍數"
       },
       "coverage": "適用於所選 {1} 個物件中的 {0} 個",
-      "selectOnly": "僅選取{1} ({0})",
+      "selectOnly": "僅選取{1}（{0}）",
       "unset": {
         "unchanged": "不變更",
         "auto": "自動",
         "copy": "複製"
       },
-      "unknown": "未知 ({0})",
+      "unknown": "未知（{0}）",
       "coverageChip": "{1} 個中的 {0} 個",
       "selectCovered": "僅選取適用的物件（{1} 個中的 {0} 個）",
       "descriptions": {
@@ -2129,7 +2129,7 @@
             "default": "依滑條中的位置和「滑動方向」，作為點按、滑動、放開或判定點。",
             "trace": "描跡或描跡滑動。",
             "anchor": "沒有判定的不可見音符。用於決定連接線形狀。",
-            "damage": "觸碰時會產生 miss 的音符。",
+            "damage": "觸碰時會造成 MISS 的音符。",
             "forceTick": "始終作為判定點，即使不在滑條中。",
             "forceNonTick": "始終不作為判定點，即使在滑條中間。"
           }
@@ -2143,7 +2143,7 @@
           "choices": {
             "active": "需要持續按住的連接線。",
             "guide": "僅用於顯示的連接線。",
-            "damage": "觸碰時會產生 miss 的連接線。"
+            "damage": "觸碰時會造成 MISS 的連接線。"
           }
         },
         "connectorStyle": "覆寫連接線顏色。",
@@ -2264,7 +2264,7 @@
       "audioUnreadable": "無法讀取此音訊檔案。",
       "audioMayBeTooLong": "無法載入此音訊檔案。音訊長度不能超過 {0} 分鐘。",
       "audioTooLong": "此音訊檔案的長度超過 {0} 分鐘，無法載入。",
-      "imageUnreadable": "無法讀取此圖像。",
+      "imageUnreadable": "無法讀取此圖片。",
       "coverFailed": "無法產生封面。",
       "codeFailed": "無法載入。請重新載入頁面以重試。",
       "failed": "無法完成此操作。"
@@ -2296,10 +2296,10 @@
     }
   },
   "offscreenNotes": {
-    "left": "螢幕左側外的音符：{0}",
-    "right": "螢幕右側外的音符：{0}",
-    "top": "螢幕上方外的音符：{0}",
-    "bottom": "螢幕下方外的音符：{0}"
+    "left": "超出螢幕左邊緣的音符：{0}",
+    "right": "超出螢幕右邊緣的音符：{0}",
+    "top": "超出螢幕上邊緣的音符：{0}",
+    "bottom": "超出螢幕下邊緣的音符：{0}"
   },
   "workspace": {
     "panels": {
@@ -2384,7 +2384,7 @@
     "groups": {
       "deleteFolder": "刪除資料夾及圖層…",
       "deleteFolderTitle": "刪除資料夾及圖層",
-      "deleteFolderMessage": "刪除 {0} 資料夾及其中的 {1} 個圖層和 {2} 個物件？",
+      "deleteFolderMessage": "要刪除資料夾「{0}」及其中的 {1} 個圖層和 {2} 個物件嗎？",
       "renamed": "已將圖層{0}重新命名為{1}",
       "all": "所有圖層",
       "showAll": "顯示所有圖層",
@@ -2392,8 +2392,8 @@
       "add": "新增圖層",
       "deleteSelectedTitle": "刪除圖層",
       "deleteSelectedFoldersTitle": "刪除資料夾及圖層",
-      "deleteSelectedMessage": "刪除所選的 {0} 個圖層及其中的 {1} 個物件？",
-      "deleteSelectedFoldersMessage": "刪除所選的 {0} 個資料夾、{1} 個圖層及其中的 {2} 個物件？",
+      "deleteSelectedMessage": "要刪除所選的 {0} 個圖層及其中的 {1} 個物件嗎？",
+      "deleteSelectedFoldersMessage": "要刪除所選的 {0} 個資料夾、{1} 個圖層及其中的 {2} 個物件嗎？",
       "duplicated": "已為{0}圖層建立複本",
       "propertySet": "已將圖層{0}的{1}設為{2}",
       "propertyCleared": "已清除圖層{0}的{1}"
@@ -2401,7 +2401,7 @@
     "stages": {
       "deleteFolder": "刪除資料夾及舞台…",
       "deleteFolderTitle": "刪除資料夾及舞台",
-      "deleteFolderMessage": "刪除 {0} 資料夾及其中的 {1} 個舞台和 {2} 個物件？",
+      "deleteFolderMessage": "要刪除資料夾「{0}」及其中的 {1} 個舞台和 {2} 個物件嗎？",
       "renamed": "已將舞台{0}重新命名為{1}",
       "all": "所有舞台",
       "showAll": "顯示所有舞台",
@@ -2411,8 +2411,8 @@
       "enable": "啟用動態舞台",
       "deleteSelectedTitle": "刪除舞台",
       "deleteSelectedFoldersTitle": "刪除資料夾及舞台",
-      "deleteSelectedMessage": "刪除所選的 {0} 個舞台及其中的 {1} 個物件？",
-      "deleteSelectedFoldersMessage": "刪除所選的 {0} 個資料夾、{1} 個舞台及其中的 {2} 個物件？",
+      "deleteSelectedMessage": "要刪除所選的 {0} 個舞台及其中的 {1} 個物件嗎？",
+      "deleteSelectedFoldersMessage": "要刪除所選的 {0} 個資料夾、{1} 個舞台及其中的 {2} 個物件嗎？",
       "duplicated": "已為{0}舞台建立複本",
       "propertySet": "已將舞台{0}的{1}設為{2}"
     },
@@ -2507,7 +2507,7 @@
     "fadeOut": "淡出（秒）",
     "audioBitrate": "音訊位元率",
     "kbps": "{0} kbps",
-    "restoreDefaults": "重置為預設值",
+    "restoreDefaults": "重設為預設值",
     "export": "匯出…",
     "exportNow": "匯出",
     "download": "下載影片",
@@ -2697,8 +2697,8 @@
     "lastNote": "最後一個音符",
     "bgmEnd": "BGM 結束",
     "copyText": "複製文字",
-    "copiedText": "已複製統計",
-    "notCopiedText": "無法複製統計",
+    "copiedText": "已複製統計資料",
+    "notCopiedText": "無法複製統計資料",
     "shareImage": "分享圖片…",
     "shareImageTitle": "分享圖片",
     "link": "連結",
@@ -2728,8 +2728,8 @@
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "此檔案由較新版本的 {0} 建立。",
     "replaceDamaged": "此檔案已損毀。",
-    "replaceHoldsEarlier": "它包含此瀏覽器中已不再存放的較早時間軸步驟。",
-    "replaceMayHoldEarlier": "它可能包含此瀏覽器中已不再存放的較早時間軸步驟。",
+    "replaceHoldsEarlier": "此檔案包含此瀏覽器中已不再存放的較早時間軸步驟。",
+    "replaceMayHoldEarlier": "此檔案可能包含此瀏覽器中已不再存放的較早時間軸步驟。",
     "keepEditing": "繼續編輯"
   },
   "name": {
@@ -2760,7 +2760,7 @@
     "peekCodeFailed": "無法檢視此步驟。請重新載入頁面以重試。",
     "peekSessionFailed": "無法檢視此工作階段",
     "openHistory": "開啟歷史記錄",
-    "earlierInHistory": "時間軸中較早的步驟在歷史記錄中",
+    "earlierInHistory": "時間軸中較早的步驟在「歷史記錄」中",
     "savedCurrent": "已將目前版本儲存到 {0}"
   },
   "entry": {
@@ -2776,7 +2776,7 @@
   "session": {
     "untitled": "未命名 · {0}",
     "restored": "已還原「{0}」",
-    "restoredCopy": "已還原「{0}」的複本",
+    "restoredCopy": "已還原「{0}」的副本",
     "deletedMany": "已刪除 {0} 個工作階段",
     "deleted": "已刪除「{0}」",
     "deleteRefused": "未刪除。「{0}」正在某個分頁或視窗中使用。",
@@ -2830,7 +2830,7 @@
       "body": "此檔案的大小為 {0}。開啟它可能需要很長時間，並占用此瀏覽器的大量儲存空間。",
       "open": "仍然開啟"
     },
-    "unsavedChanges": "已開啟 {0}。您在 {1} 對它有未儲存的變更。",
+    "unsavedChanges": "已開啟 {0}。您在 {1} 對此檔案所做的變更尚未儲存。",
     "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在「最近工作階段」中。",
     "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在「最近工作階段」中。",
     "restoreIt": "還原工作階段",
