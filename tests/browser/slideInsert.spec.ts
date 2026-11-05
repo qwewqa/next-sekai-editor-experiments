@@ -27,7 +27,13 @@ const settle = (page: Page) =>
         )
     })
 
-type Note = { beat?: number; left: number; elevation?: number }
+type Note = {
+    beat?: number
+    left: number
+    elevation?: number
+    groupId?: number
+    connectorType?: 'active' | 'guide'
+}
 
 /**
  * One slide of four-lane notes in Basic, at beat 3 unless given, with those at these store
@@ -443,6 +449,34 @@ test("a chart Slide insert takes the selected note's properties, not the first a
         [2, 2, 3],
         [2, -1, 3],
     ])
+
+    // With several notes of one slide selected, the note an add follows gives its properties.
+    await seed(
+        page,
+        [
+            { beat: 2, left: -6, groupId: 2, connectorType: 'guide' },
+            { beat: 4, left: -6, groupId: 2, connectorType: 'active' },
+            { beat: 4, left: 2, groupId: 2, connectorType: 'active' },
+            { beat: 8, left: -6, groupId: 2, connectorType: 'guide' },
+        ],
+        [0, 1, 2, 3],
+        false,
+    )
+    const added = (beat: number) =>
+        page.evaluate((beat) => {
+            const { history } = window.editorTest
+            const notes = [...history.state.value.store.slides.note.values()].flat()
+            // Every note again, and the new one's group, connector and place in the slide.
+            history.replaceState({ ...history.state.value, selectedEntities: notes })
+            const index = notes.findIndex((note) => note.beat === beat && note.left === -1)
+            const note = notes[index]!
+            return [index, note.groupId, note.connectorType]
+        }, beat)
+    await tap(page, await page.evaluate(() => window.editorTest.point(-1, 6)))
+    expect(await added(6)).toEqual([3, 2, 'active'])
+    await settle(page)
+    await tap(page, await page.evaluate(() => window.editorTest.point(-1, 4)))
+    expect(await added(4)).toEqual([3, 2, 'active'])
 })
 
 test("an Elevation Editor insert takes the selected note's beat exactly", async ({ page }) => {
