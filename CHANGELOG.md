@@ -5,7 +5,7 @@
 - Added Show Combo to Preview Settings and Settings › Preview.
 - Preview Settings now opens in the Preview panel when most of it fits, and scrolls the rest.
 - In the Properties panel, Settings and dialogs, a value now goes below its label when a word in the label does not fit beside the value. In Brush Properties, it also does so when the label would wrap onto more than two lines.
-- When objects of several kinds are selected, their properties now start with General, and Beat shows when BPM changes or time scales are selected with notes or events. Notes and stage transform events now have separate Elevation fields, both when selected together and in Brush Properties.
+- When objects of several kinds are selected, the Properties panel now shows General first, and Beat shows when BPM changes or time scales are selected with notes or events. Notes and stage transform events now have separate Elevation fields, both when selected together and in Brush Properties.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
 - Notes and effects in the preview shimmer less when drawn small, for example far from the judgment line.
