@@ -171,6 +171,46 @@ test('stretch sprites extrude their edges into the gutter and the others have a 
     assert.ok(stretch > 10 && plain > 10)
 })
 
+// A device whose textures are smaller than the atlas gets it at half size, each texel the average of
+// a 2x2 block (src/preview/decodeAtlas.ts). Sampled from half a texel inside its edge, a sprite then
+// reads half-size texels whose blocks reach at most 2 texels out: its gutter. So each block it reads
+// holds only its own pixels, their extruded copies (stretch sprites) or clear ones.
+test('at half size, each sprite reads only its own pixels and its gutter', () => {
+    const { rects } = first.report.skin
+    const seen = new Set()
+    for (const { x, y, w, h, stretch } of Object.values(rects)) {
+        if (seen.has(`${x},${y}`)) continue
+        seen.add(`${x},${y}`)
+        // The half-size texels a bilinear sample reads between full-size p0 and p1.
+        const read = (p0, p1) => [Math.floor(p0 / 2 - 0.5), Math.floor(p1 / 2 - 0.5) + 1]
+        const [i0, i1] = read(x + 0.5, x + w - 0.5)
+        const [j0, j1] = read(y + 0.5, y + h - 0.5)
+        for (let j = j0; j <= j1; j++)
+            for (let i = i0; i <= i1; i++) {
+                if (i > i0 && i < i1 && j > j0 && j < j1) continue
+                for (const [px, py] of [
+                    [2 * i, 2 * j],
+                    [2 * i + 1, 2 * j],
+                    [2 * i, 2 * j + 1],
+                    [2 * i + 1, 2 * j + 1],
+                ]) {
+                    const inside = px >= x && px < x + w && py >= y && py < y + h
+                    if (inside) continue
+                    assert.ok(px >= x - 2 && px < x + w + 2 && py >= y - 2 && py < y + h + 2)
+                    const got = pixelAt(skinTexture, px, py)
+                    const own = stretch
+                        ? pixelAt(
+                              skinTexture,
+                              Math.min(x + w - 1, Math.max(x, px)),
+                              Math.min(y + h - 1, Math.max(y, py)),
+                          )
+                        : [0, 0, 0, 0]
+                    assert.deepEqual(got, own, `the block at ${i},${j} by ${x},${y}`)
+                }
+            }
+    }
+})
+
 test('the textures and files stay within their budgets', () => {
     const skinData = skin.json('data')
     assert.equal(skinData.width, 4096)
