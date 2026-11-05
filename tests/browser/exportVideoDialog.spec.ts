@@ -1179,7 +1179,8 @@ test('in phone landscape, Export keeps the form and the focus with the message s
 test('an export waits for the sound effects, which it takes as it starts', async ({
     page,
 }, testInfo) => {
-    test.setTimeout(90_000)
+    // Two page loads and a production export.
+    test.slow()
     // The page again, with its sound effects still loading when the dialog opens.
     let release!: () => void
     const held = new Promise<void>((resolve) => (release = resolve))
@@ -1191,10 +1192,10 @@ test('an export waits for the sound effects, which it takes as it starts', async
     await page.evaluate(() => Reflect.deleteProperty(window, 'showSaveFilePicker'))
     const dialog = await open(page, { production: true })
     await shortClip(page)
-    // The fixture chart has no BGM and its first notes are at 1 s.
+    // The fixture chart has no BGM and its first notes are at 1 s: 6 frames around them.
     for (const [name, value] of [
-        ['Out', '1.5'],
-        ['In', '0.5'],
+        ['Out', '1.1'],
+        ['In', '0.9'],
     ]) {
         const field = dialog.getByRole('textbox', { name, exact: true })
         await field.fill(value!)
@@ -1206,13 +1207,13 @@ test('an export waits for the sound effects, which it takes as it starts', async
     await expect(exportButton(page)).toBeDisabled()
     // With SFX off, nothing waits.
     await dialog.getByRole('switch', { name: 'SFX' }).click()
-    await expect(exportButton(page)).toBeEnabled({ timeout: 15_000 })
+    await expect(exportButton(page)).toBeEnabled({ timeout: videoExportTimeout })
     await dialog.getByRole('switch', { name: 'SFX' }).click()
     await expect(exportButton(page)).toBeDisabled()
     release()
-    await expect(exportButton(page)).toBeEnabled({ timeout: 15_000 })
+    await expect(exportButton(page)).toBeEnabled({ timeout: videoExportTimeout })
     await exportButton(page).click()
-    await expect.poll(() => phase(page), { timeout: 60_000 }).toBe('ready')
+    await expect.poll(() => phase(page), { timeout: videoExportTimeout }).toBe('ready')
     const downloading = page.waitForEvent('download')
     await dialog.locator('[data-export-download]').click()
     const path = testInfo.outputPath('export.webm')
