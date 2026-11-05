@@ -718,16 +718,26 @@ test.describe('the hosts', () => {
         await expect(viewport.locator('canvas').first()).toBeVisible()
         const host = test.info().project.name === 'chromium-worker' ? 'worker' : 'main'
         await expect.poll(() => page.evaluate(() => window.nsePreviewTest?.host)).toBe(host)
-        for (let i = 0; i < 2; i++)
-            await page.evaluate(async () => {
+        await page.waitForLoadState('networkidle')
+        const settle = () =>
+            page.evaluate(async () => {
                 await window.editorTest.nextTick()
                 await new Promise<void>((resolve) =>
                     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
                 )
                 await window.nsePreviewTest?.settled()
             })
-        await page.waitForTimeout(400)
-        return viewport.screenshot({ animations: 'disabled' })
+        // The atlases load, and a new renderer draws, in their own time, so the picture counts
+        // once three shots in a row agree.
+        const shots: Buffer[] = []
+        for (let i = 0; i < 40; i++) {
+            await settle()
+            await page.waitForTimeout(150)
+            shots.push(await viewport.screenshot({ animations: 'disabled' }))
+            const last = shots.slice(-3)
+            if (last.length === 3 && last.every((shot) => shot.equals(last[0]!))) return last[0]!
+        }
+        throw new Error('The preview picture did not settle')
     }
 
     test('the panel draws with the filter the test key names', async ({ page }) => {
