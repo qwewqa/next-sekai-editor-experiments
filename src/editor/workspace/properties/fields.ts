@@ -72,8 +72,9 @@ export type PropertyField = {
     dynamicStages?: boolean
     /**
      * In a selection of several kinds: `only` shows the field once in General when two or more
-     * kinds' blocks show it and General can, otherwise in each block that shows it; `also` shows
-     * it in each kind's block and once more in General when two or more blocks show it.
+     * kinds' blocks show it and the whole selection allows it (Beat: at most one BPM change and
+     * one time scale), otherwise in each block that shows it; `also` shows it in each kind's
+     * block and once more in General when two or more blocks show it.
      */
     general?: 'only' | 'also'
     /** Brushable properties: the group the brush lists them under, and the value an added row starts from. */

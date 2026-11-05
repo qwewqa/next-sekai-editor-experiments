@@ -57,16 +57,16 @@ const available = (field: BrushField) => isBrushAvailable(field, isDynamicStages
 
 const isSet = (field: BrushField) => brushProperties.value[field.key] !== undefined
 
-const byKind = (fields: BrushField[]) =>
-    brushGroups.flatMap((kind) => {
-        const ofKind = fields.filter((field) => field.brush.group === kind)
-        return ofKind.length ? [{ kind, fields: ofKind }] : []
+const byGroup = (fields: BrushField[]) =>
+    brushGroups.flatMap((group) => {
+        const ofGroup = fields.filter((field) => field.brush.group === group)
+        return ofGroup.length ? [{ group, fields: ofGroup }] : []
     })
 
 // Only properties in the brush are listed; the menu offers the rest.
-const groups = computed(() => byKind(brushFields.filter(isSet)))
+const groups = computed(() => byGroup(brushFields.filter(isSet)))
 const menu = computed(() =>
-    byKind(brushFields.filter((field) => !isSet(field) && available(field))),
+    byGroup(brushFields.filter((field) => !isSet(field) && available(field))),
 )
 
 // Aggregated only when used, so selecting stays cheap while the brush shows. A row that reaches
@@ -100,16 +100,16 @@ const initialValue = (field: BrushField) => {
     return fromView[field.key]?.() ?? field.brush.initial
 }
 
-// Add Property opens a menu of the properties not in the brush, under their kinds.
+// Add Property opens a menu of the properties not in the brush, under their groups.
 const addMenu = shallowRef<{ modals: number; last?: boolean }>()
 const addItems = computed((): ManagerMenuItem[] => {
     const items: ManagerMenuItem[] = []
-    for (const { kind, fields } of menu.value)
+    for (const { group, fields } of menu.value)
         for (const field of fields)
             items.push({
                 key: field.key,
                 label: field.label(i18n.value),
-                group: i18n.value.tools.brush.kinds[kind],
+                group: i18n.value.tools.brush.kinds[group],
             })
     return items
 })
@@ -177,7 +177,7 @@ const clear = () => {
 <template>
     <div ref="root" class="contents">
         <div class="flex flex-wrap gap-2">
-            <!-- A menu of the properties not in the brush, grouped by kind, on its own row
+            <!-- A menu of the properties not in the brush, under their groups, on its own row
             so its label fits; Pick and Clear share the next. -->
             <button
                 ref="addButton"
@@ -223,12 +223,12 @@ const clear = () => {
         </div>
 
         <section
-            v-for="{ kind, fields } in groups"
-            :key="kind"
+            v-for="{ group, fields } in groups"
+            :key="group"
             class="brush-group flex flex-col gap-3 border-t border-fg/15 pt-3"
-            :aria-label="i18n.tools.brush.kinds[kind]"
+            :aria-label="i18n.tools.brush.kinds[group]"
         >
-            <h3 class="text-sm font-bold">{{ i18n.tools.brush.kinds[kind] }}</h3>
+            <h3 class="text-sm font-bold">{{ i18n.tools.brush.kinds[group] }}</h3>
             <!-- Fields measure the full row, as elsewhere in the panel, so their columns
             line up; remove sits at the end of the label column. -->
             <div

@@ -28,7 +28,8 @@ export const flip: Command = {
             return
         }
 
-        // Rules over the selection count only what Flip changes, so BPM changes leave them alone.
+        // Rules that look at the whole selection, such as whether to negate Editor Lane, look
+        // only at the objects Flip changes, so selected BPM changes do not affect them.
         const flipped = entities.filter((entity) => flips[entity.type])
         const changes = new Map<Entity, EditableObject>()
         for (const entity of entities) {
