@@ -20,10 +20,12 @@ import type { KindName } from '../../../src/local/records/schema'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import type { State } from '../../../src/state'
 import { createState } from '../../../src/state'
+import type { Entity } from '../../../src/state/entities'
 import { createSlideId } from '../../../src/state/entities/slides'
 import type { NoteEntity } from '../../../src/state/entities/slides/note'
 import { addBpm, replaceBpm } from '../../../src/state/mutations/bpm'
 import { addNote, removeNote, replaceNote } from '../../../src/state/mutations/slides/note'
+import { flipVerticalWithReceipt } from '../../../src/state/operations/flipVertical'
 import { createTransaction, type Transaction } from '../../../src/state/transaction'
 import { edgeChart, goldenChart, note, stateOf } from '../records/charts'
 
@@ -92,11 +94,13 @@ const edit = (state: State, change: (transaction: Transaction, notes: NoteEntity
 const replace = (t: Transaction, entity: NoteEntity, extra: Partial<NoteObject>) =>
     replaceNote(t, entity, { ...noteObjectOf(entity), ...extra })
 
-const taps = (beats: number[], extra: Partial<NoteObject> = {}) =>
+/** The golden chart's header and BPM changes with these slides and no other events. */
+const chart = (slides: NoteObject[][], bpms = goldenChart().chart.bpms) =>
     createState(
         {
             ...goldenChart().chart,
-            slides: beats.map((beat) => [note(beat, extra)]),
+            slides,
+            bpms,
             cameraEvents: [],
             stageMaskEvents: [],
             stagePivotEvents: [],
@@ -106,6 +110,9 @@ const taps = (beats: number[], extra: Partial<NoteObject> = {}) =>
         },
         0,
     )
+
+const taps = (beats: number[], extra: Partial<NoteObject> = {}) =>
+    chart(beats.map((beat) => [note(beat, extra)]))
 
 const statuses = (set: ChangeSet) =>
     set.objects.map((object) => `${object.kind}:${object.status}@${object.beat}`)
@@ -228,6 +235,108 @@ test('one tick added to a slide marks one note, and Edits Here finds only its be
     assert.deepEqual(summary.beats, [6])
     assert.equal(touchesBeats(summary.beats, 0, 4), false)
     assert.equal(touchesBeats(summary.beats, 5, 7), true)
+})
+
+test('a reordered stack or a changed slide connection marks only the notes and events it moved', async () => {
+    const flip = (state: State, entities: Entity[]) =>
+        flipVerticalWithReceipt(state, entities).state
+    const bpmsOf = (state: State) => [...state.store.grid.bpm.values()].flatMap((b) => [...b])
+    /** The changed objects' beats on both paths, and the beats Edits Here finds. */
+    const beatsOf = async (before: State, after: State) => {
+        const set = await diff(before, after)
+        const beats = [...new Set(set.objects.map((object) => object.beat))].sort((a, b) => a - b)
+        const input = await readCandidates(
+            memorySource(before, after),
+            rootOf(before),
+            rootOf(after),
+        )
+        assert.deepEqual(summarizeChanges(input!).beats, beats, 'Edits Here finds the same beats')
+        return { set, beats }
+    }
+
+    const stack = chart(
+        [],
+        [
+            { beat: 0, bpm: 120, meter: 4 },
+            { beat: 4, bpm: 180, meter: 4 },
+            { beat: 4, bpm: 90, meter: 4 },
+        ],
+    )
+    const swapped = edit(stack, (t) => {
+        const [, fast, slow] = bpmsOf(stack)
+        replaceBpm(t, fast!, { beat: 4, bpm: 90, meter: 4 })
+        replaceBpm(t, slow!, { beat: 4, bpm: 180, meter: 4 })
+    })
+    const reordered = await beatsOf(stack, swapped)
+    assert.deepEqual(reordered.beats, [4])
+    assert.equal(reordered.set.counts.bpms, 2)
+    for (const object of reordered.set.objects) {
+        assert.equal(object.status, 'changed')
+        assert.equal(isMoved(object), false)
+    }
+    // An edit to the first of the pair is that change alone, as before.
+    const edited = edit(stack, (t) =>
+        replaceBpm(t, bpmsOf(stack)[1]!, { beat: 4, bpm: 200, meter: 4 }),
+    )
+    assert.deepEqual(statuses(await diff(stack, edited)), ['bpms:changed@4'])
+
+    // Two slides flipped: [A, A, B, A] at 4 becomes [A, B, A, A]; [C, D] at 0 and 8 reverse.
+    const a = (beat: number) => note(beat, { left: -2 })
+    const b = (beat: number) => note(beat, { left: 2 })
+    const c = (beat: number) => note(beat, { left: -4 })
+    const d = (beat: number) => note(beat, { left: 4 })
+    const two = chart([
+        [note(2), a(4), a(4), b(4), a(4), note(6)],
+        [c(0), d(0), c(8), d(8)],
+    ])
+    const flipped = await beatsOf(two, flip(two, notesOf(two)))
+    // The endpoints at 2 and 6 keep their neighbours.
+    assert.deepEqual(flipped.beats, [0, 4, 8])
+    assert.equal(flipped.set.counts.slides, 7)
+
+    // A long slide flipped: only the stack moved; the notes at 99 and 101 keep theirs.
+    const long = chart([
+        Array.from({ length: 201 }, (_, beat) =>
+            beat === 100 ? [a(100), a(100), b(100), a(100)] : [note(beat)],
+        ).flat(),
+    ])
+    const longFlipped = await beatsOf(long, flip(long, notesOf(long)))
+    assert.deepEqual(longFlipped.beats, [100])
+    assert.equal(longFlipped.set.counts.slides, 3)
+
+    // Two taps combined into a slide, and split again.
+    const apart = chart([[note(2)], [note(4)]])
+    const joined = chart([[note(2), note(4)]])
+    for (const [before, after] of [
+        [apart, joined],
+        [joined, apart],
+    ] as const) {
+        const { set, beats } = await beatsOf(before, after)
+        assert.deepEqual(beats, [2, 4])
+        assert.equal(set.counts.slides, 2)
+    }
+
+    // Three runs of 24 BPM changes at 4 permuted: whole stored chunks change place.
+    const runs = chart(
+        [],
+        [
+            { beat: 0, bpm: 120, meter: 4 },
+            { beat: 2, bpm: 100, meter: 4 },
+            ...[180, 90, 120].flatMap((bpm) =>
+                Array.from({ length: 24 }, () => ({ beat: 4, bpm, meter: 4 })),
+            ),
+            { beat: 6, bpm: 100, meter: 4 },
+        ],
+    )
+    const permuted = flip(
+        runs,
+        bpmsOf(runs).filter((bpm) => bpm.beat > 0),
+    )
+    const input = await readCandidates(memorySource(runs, permuted), rootOf(runs), rootOf(permuted))
+    assert.ok(input!.kinds.some((kind) => kind.before.length && kind.after.length))
+    const runBeats = await beatsOf(runs, permuted)
+    assert.deepEqual(runBeats.beats, [4])
+    assert.equal(runBeats.set.counts.bpms, 48)
 })
 
 test('a record past the chart limits makes the change unknown: nothing is built from it', async () => {

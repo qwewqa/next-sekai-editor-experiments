@@ -5,6 +5,7 @@ import type { DiffInput, KindCandidates } from './diff'
 
 // The worker's narrowing: two snapshots compared by hash, so equal roots, kind
 // nodes, leaves and chunks are skipped and only the chunks one side has are read and decoded.
+// Chunks that only changed place make their kind read in full, so its stacks keep their order.
 
 type Rec = readonly RecordValue[]
 
@@ -29,23 +30,40 @@ const need = <T>(value: T | undefined): T => {
     return value
 }
 
-/** The values only one side has, with their multiplicity. */
-const difference = (a: readonly string[], b: readonly string[]): [string[], string[]] => {
+const countsOf = (values: readonly string[]) => {
     const counts = new Map<string, number>()
-    for (const value of a) counts.set(value, (counts.get(value) ?? 0) + 1)
-    const onlyB: string[] = []
-    for (const value of b) {
-        const count = counts.get(value) ?? 0
-        if (count) counts.set(value, count - 1)
-        else onlyB.push(value)
-    }
-    const onlyA: string[] = []
-    for (const [value, count] of counts) for (let i = 0; i < count; i++) onlyA.push(value)
-    return [onlyA, onlyB]
+    for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1)
+    return counts
 }
 
-/** The chunk hashes of a kind on each side that the other side lacks. */
-const kindChunks = async (source: PartSource, a?: string, b?: string) => {
+/** The values of `a` that `b` has (`shared`) or lacks, with their multiplicity, in `a`'s order. */
+const pick = (a: readonly string[], b: readonly string[], shared: boolean) => {
+    const counts = countsOf(b)
+    return a.filter((value) => {
+        const count = counts.get(value) ?? 0
+        if (count) counts.set(value, count - 1)
+        return !!count === shared
+    })
+}
+
+/** The values only one side has, with their multiplicity, in list order. */
+const difference = (a: readonly string[], b: readonly string[]): [string[], string[]] => [
+    pick(a, b, false),
+    pick(b, a, false),
+]
+
+/** Whether the values both sides have come in the same order. */
+const sameOrder = (a: readonly string[], b: readonly string[]) => {
+    const x = pick(a, b, true)
+    const y = pick(b, a, true)
+    return x.length === y.length && x.every((value, i) => value === y[i])
+}
+
+/**
+ * The chunk hashes of a kind on each side that the other side lacks. A kind other than slides
+ * gives all of them when its shared leaves or chunks changed place.
+ */
+const kindChunks = async (source: PartSource, kind: KindName, a?: string, b?: string) => {
     const empty: NodeParts = { depth: 0, children: [] }
     const nodeA = a ? need(await source.node(a)) : empty
     const nodeB = b ? need(await source.node(b)) : empty
@@ -59,12 +77,18 @@ const kindChunks = async (source: PartSource, a?: string, b?: string) => {
         }
         return chunks
     }
+    const ordered = kind !== 'slides'
+    const all = async () => [await leaves(nodeA), await leaves(nodeB)] as const
     // Two-level kinds skip the leaves they share.
-    const [leavesA, leavesB] =
-        nodeA.depth === 1 && nodeB.depth === 1
-            ? difference(nodeA.children, nodeB.children)
-            : [undefined, undefined]
-    return difference(await leaves(nodeA, leavesA), await leaves(nodeB, leavesB))
+    const twoLevel = nodeA.depth === 1 && nodeB.depth === 1
+    if (twoLevel && ordered && !sameOrder(nodeA.children, nodeB.children)) return all()
+    const [leavesA, leavesB] = twoLevel
+        ? difference(nodeA.children, nodeB.children)
+        : [undefined, undefined]
+    const chunksA = await leaves(nodeA, leavesA)
+    const chunksB = await leaves(nodeB, leavesB)
+    if (ordered && !sameOrder(chunksA, chunksB)) return all()
+    return difference(chunksA, chunksB)
 }
 
 /**
@@ -85,7 +109,7 @@ export const readCandidates = async (
             const nodeA = a.kinds.get(kind)
             const nodeB = b.kinds.get(kind)
             if (nodeA === nodeB) continue
-            const [chunksA, chunksB] = await kindChunks(source, nodeA, nodeB)
+            const [chunksA, chunksB] = await kindChunks(source, kind, nodeA, nodeB)
             const records = async (chunks: readonly string[]) => {
                 const list: Rec[] = []
                 for (const chunk of chunks)
