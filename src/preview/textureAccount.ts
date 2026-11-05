@@ -1,4 +1,4 @@
-/** For test builds. The bytes the preview's atlas textures hold in one realm. */
+/** For test builds. The bytes the preview's textures hold in one realm. */
 export type TextureAccount = {
     /**
      * The bytes of the skin, particle and background textures, every mip level included, and of

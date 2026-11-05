@@ -6,7 +6,7 @@ import { openVideoDialog, videoDialog } from './exportVideoDialog'
 import { patched } from './previewAssetsPackages'
 import { resource } from './previewResourceFixture'
 
-// The preview frees its atlas textures while Export Video is open and uploads them again when it
+// The preview frees its textures while Export Video is open and uploads them again when it
 // closes, in either host.
 
 declare global {

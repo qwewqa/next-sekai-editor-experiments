@@ -725,7 +725,7 @@ An **assignment** is `{field, before, after}`; a side is `{mode: "varying"}` (th
 
 **Property data** (brush and `nse.property.set`): `{subject, changed: NC+, assignments, displaced?: NC+, retainedInitialBpm?: true}` where `assignments` holds 1 to 65 assignments in strictly ascending field-id order (string comparison); `subject == subjectOfCounts(changed)`; `retainedInitialBpm` only with subject `bpm` or `objects`; `displaced` or `retainedInitialBpm` only with a `beat` assignment; every assignment applies to some changed kind and every changed kind has an assignment that applies to it.
 
-**Collateral.** `displaced` counts objects the edit replaced that were not its operands (a BPM or time scale moved onto an occupied beat removes the ones there). `retainedInitialBpm: true` says the beat-0 BPM change stayed in place or was added back. `false` is never written and fails.
+**Collateral.** `displaced` counts objects the edit replaced that were not its operands (a BPM change moved onto an occupied beat removes the BPM changes there, and a time scale removes its group's time scales there). `retainedInitialBpm: true` says the beat-0 BPM change stayed in place or was added back. `false` is never written and fails.
 
 ## 12. Every operation
 
@@ -749,13 +749,13 @@ Each id below has `version` 1. "Kind" is the entry or step kind it is written as
 | `nse.object.add` | `{subject, created: count}` | subject a native kind other than `note` | BPM, Time Scale and the five event tools: objects placed. | "Added {created} BPM change(s)", "… time scale(s)", "… {kind} event(s)" |
 | `nse.object.edit` | `{subject, changed: NC, displaced?: NC+, retainedInitialBpm?: true}` | *agrees*; retained only with `bpm` or `objects` | A tool edit in place (a tap on an occupied BPM edits it); an Elevation Editor width change. `changed` counts operands whose principal fields changed (`{}` allowed: "Edited notes"). | "Edited {n} note(s)"; `objects`: "Edited objects" |
 | `nse.object.move` | as `edit`, plus `resized?: true` | `resized` only with subject `note`, `cameraEvent` or `stageMaskEvent` and without collateral | A tool or Select drag; an Elevation Editor lane change. `resized`: the drag took an edge and changed only widths or ranges (no beat). A beat-0 BPM moved with its tool stays, with a copy at the new beat (`retainedInitialBpm`). | "Moved {n} note(s)"; resized: "Resized {n} note(s)" |
-| `nse.object.replace` | `{subject: bpm \| timeScale, changed: NC, displaced: NC+, retainedInitialBpm?: true}` | *agrees*; every `displaced` kind is the subject; retained only for `bpm` | A BPM change or time scale moved onto an occupied beat: it replaced the ones there. | "Replaced {n} BPM change(s)" |
+| `nse.object.replace` | `{subject: bpm \| timeScale, changed: NC, displaced: NC+, retainedInitialBpm?: true}` | *agrees*; every `displaced` kind is the subject; retained only for `bpm` | A BPM change or time scale moved onto an occupied beat: it replaced the BPM changes there, or, for a time scale, its group's time scales there. | "Replaced {n} BPM change(s)" |
 
 ### 12.3 Paste, brush, delete, cut
 
 | Id | `data` | Meaning | Title |
 | --- | --- | --- | --- |
-| `nse.object.paste` | `{placed: NC+, variant: basic \| composed, flipped: boolean, at: pointer \| position, displaced?: NC+}` | The Paste tool (`at: pointer`) or Paste at a position (context menu, Elevation Editor: `position`). `placed` counts pasted objects kept; `composed` is the composed layout with dynamic stages; `flipped` is Shift; a pasted BPM or time scale replaces the ones at its beat (`displaced`). | "Pasted {sum} object(s)" |
+| `nse.object.paste` | `{placed: NC+, variant: basic \| composed, flipped: boolean, at: pointer \| position, displaced?: NC+}` | The Paste tool (`at: pointer`) or Paste at a position (context menu, Elevation Editor: `position`). `placed` counts pasted objects kept; `composed` is the composed layout with dynamic stages; `flipped` is Shift; a pasted BPM change replaces the BPM changes at its beat, and a pasted time scale replaces its group's time scales there, except what the same paste placed (`displaced`). | "Pasted {sum} object(s)" |
 | `nse.object.brush` | property data | The Brush tool: the brush's fields written on the objects (never BPM changes). | "Brushed {n} note(s)" (one kind) or "Brushed {n} object(s)" |
 | `nse.object.delete` | `{removed: NC}` | Eraser, Delete, Elevation Editor delete. Notes, BPM changes above beat 0, time scales and events are removable; connectors are not objects. | "Deleted {n} note(s)" or "Deleted {n} object(s)" |
 | `nse.object.cut` | `{removed: NC}` | Cut. The clipboard is outside History. | "Cut {n} note(s)" or "Cut {n} object(s)" |

@@ -47,7 +47,7 @@ export type ToPreviewWorker =
     | { type: 'overlay'; canvas?: OffscreenCanvas }
     /** The canvases replaced so far left the page two animation frames ago. Release their contexts. */
     | { type: 'release' }
-    /** While suspended, the worker holds no atlas textures and answers frames without drawing. */
+    /** While suspended, the worker holds no textures and answers frames without drawing. */
     | { type: 'suspend'; suspended: boolean }
     | {
           type: 'atlas'
