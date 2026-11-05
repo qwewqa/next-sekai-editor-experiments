@@ -163,6 +163,18 @@ export const baseColors = {
         Cyan: '#00afc4',
         Black: '#333333',
     },
+    // Each style's damage note face, sampled from the base's damage notes: a deep shade of the
+    // style's hue, well darker than its trace. Black keeps its accent, #222222, darker than the
+    // base's.
+    styleDamage: {
+        Neutral: '#5f5f5f',
+        Red: '#be004c',
+        Green: '#00be7d',
+        Blue: '#0000be',
+        Yellow: '#be8600',
+        Purple: '#8b00be',
+        Cyan: '#00aabe',
+    },
     // The light glow round critical bodies and traces, sampled round the base's critical bodies:
     // the default's and one per style. The base's Black glow (#3e3e3e) does not show on the stage,
     // so Black's is a light grey.

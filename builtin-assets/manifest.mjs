@@ -370,6 +370,9 @@ const bar = (kind, color, { edge = 'none', light } = {}) => {
         { transform: basicBox },
     )
 }
+/** A style's damage note face: the base's deep shade, Black's accent. */
+const damageFaceOf = (color) =>
+    color === 'Black' ? styleColors('Black')[2] : baseColors.styleDamage[color]
 // A damage note's rim is its face colour a quarter of the way to black, near the base's dark edge.
 // Black keeps its light inner colour as the rim, since a dark rim would hide its bar.
 const damageEdge = (face, color) =>
@@ -791,7 +794,9 @@ export function skinSprites() {
                 )
             add(
                 `Sekai Damage Note Basic ${color}`,
-                bar('damage', accent, { edge: damageEdge(accent, color) }),
+                bar('damage', damageFaceOf(color), {
+                    edge: damageEdge(damageFaceOf(color), color),
+                }),
             )
         }
     })
@@ -819,7 +824,10 @@ export function skinSprites() {
                             : slimImage(part, trace.bar, trace.light),
                     )
             for (const part of parts)
-                add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, color))
+                add(
+                    `Sekai Damage Note ${part} ${color}`,
+                    damageImage(part, damageFaceOf(color), color),
+                )
             const [face, criticalFace] = baseColors.styleDiamond[color]
             const halo = baseColors.styleDiamondHalo[color]
             const haloed =
