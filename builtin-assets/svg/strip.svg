@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 128">
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0.0000" stop-color="var(--color)" stop-opacity="0"/>
+        <stop offset="0.0293" stop-color="var(--color)" stop-opacity="var(--qa)"/>
+        <stop offset="0.0585" stop-color="var(--color)" stop-opacity="var(--ha)"/>
+        <stop offset="0.0878" stop-color="var(--color)" stop-opacity="var(--ta)"/>
+        <stop offset="0.1170" stop-color="var(--color)" stop-opacity="var(--alpha)"/>
+        <stop offset="1" stop-color="var(--color)" stop-opacity="var(--alpha)"/>
+    </linearGradient>
+    <rect width="4" height="128" fill="url(#g)"/>
+</svg>

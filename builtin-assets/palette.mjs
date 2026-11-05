@@ -52,8 +52,9 @@ export const damage = { color: '#a50acc', edge: '#d28ae6' }
 
 /**
  * Colours sampled from the base set (Next SEKAI 01) where ours must match it side by side: the
- * connectors (at rest and held), the slot glows and the effects. The base's styled pieces follow
- * its own rule per style hue, so they are listed per style.
+ * connectors (at rest and held), the slot glows, the effects, the standard ticks and markers and the
+ * styled diamonds. The base's styled pieces follow its own rule per style hue, so they are listed
+ * per style.
  */
 export const baseColors = {
     connector: {
@@ -71,6 +72,17 @@ export const baseColors = {
         'Green Slider Hold': ['#08ff9e', '#02fff7', '#0095ff'],
         'Yellow Slider Hold': ['#a9ff53', '#5cff2e', '#00ff00'],
         'Yellow Slider Tap': ['#dbfb43', '#d3ff5e', '#86ff0b'],
+    },
+    // Per style, the faces of normal and critical diamonds.
+    styleDiamond: {
+        Neutral: ['#cdcdcd', '#dedede'],
+        Red: ['#f9a1c4', '#ffbfd8'],
+        Green: ['#a1f9db', '#bfffe9'],
+        Blue: ['#a1a1f9', '#bfbfff'],
+        Yellow: ['#f9dfa1', '#ffecbf'],
+        Purple: ['#e1a1f9', '#edbfff'],
+        Cyan: ['#a1f0f9', '#bff8ff'],
+        Black: ['#5e5e5e', '#7a7a7a'],
     },
     // Per style, the slot glows of normal and critical notes.
     styleGlow: {

@@ -46,6 +46,14 @@ const image = (template, vars = {}, options = {}) => ({
 })
 const solid = (color, alpha = 1, w = 4, h = 4) =>
     image('solid', { color, alpha, w, h }, { stretch: true })
+// A strip along the whole stage, the far end at its top, rising from clear over the far 11.7 % as
+// the base's do: the alpha at a quarter, half and three quarters of the rise, an ease-in.
+const strip = (color, alpha) =>
+    image(
+        'strip',
+        { color, alpha, qa: alpha / 16, ha: alpha / 4, ta: (alpha * 9) / 16 },
+        { stretch: true },
+    )
 // A connector band: feathered sides, lighter towards them.
 const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
     image('band', { color, light, alpha }, { stretch: true })
@@ -284,21 +292,22 @@ export function skinSprites() {
 
     group('Stage, Sekai', () => {
         // Lane effects draw under the lane, so it lets them through, like the base's.
-        add('Sekai Lane Background', solid(stage.lane, laneAlpha, 4, 64))
+        add('Sekai Lane Background', strip(stage.lane, laneAlpha))
         for (const [color, shade] of Object.entries(laneColors))
-            add(`Sekai Lane Background ${color}`, solid(shade, laneAlpha, 4, 64))
-        add('Sekai Lane Divider', solid(stage.stroke, 0.3, 4, 64))
-        add('Sekai Stage Border', solid(stage.stroke, 0.7, 4, 64))
-        for (const name of ['Lane Background', 'Lane Divider'])
-            alias(`Sekai ${name} Preview`, `Sekai ${name}`)
+            add(`Sekai Lane Background ${color}`, strip(shade, laneAlpha))
+        add('Sekai Lane Divider', strip(stage.stroke, 0.3))
+        add('Sekai Stage Border', strip(stage.stroke, 0.7))
+        // Preview mode draws its strips in pieces along the stage, so they stay even.
+        add('Sekai Lane Background Preview', solid(stage.lane, laneAlpha, 4, 64))
+        for (const [color, shade] of Object.entries(laneColors))
+            add(`Sekai Lane Background Preview ${color}`, solid(shade, laneAlpha, 4, 64))
+        add('Sekai Lane Divider Preview', solid(stage.stroke, 0.3, 4, 64))
         // Preview mode draws it on a strip 0.15 lane wide beside the stage: the line at its inner
         // third, next to the stage, as the base's ramp brightens towards it.
         add('Sekai Stage Border Preview', {
             ...solid(stage.stroke, 0.7),
             transform: box(2 / 3, 1, 0, 1),
         })
-        for (const color of Object.keys(laneColors))
-            alias(`Sekai Lane Background Preview ${color}`, `Sekai Lane Background ${color}`)
     })
 
     // Opaque strips and dividers in the base's colours: its edge colour at the stage edges and on
@@ -588,7 +597,13 @@ export function skinSprites() {
             for (const part of parts)
                 add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, inner))
             for (const [family, , width] of diamondFamilies)
-                add(`Sekai ${family} ${color}`, kite(inner, width))
+                add(
+                    `Sekai ${family} ${color}`,
+                    kite(
+                        baseColors.styleDiamond[color][family.startsWith('Critical') ? 1 : 0],
+                        width,
+                    ),
+                )
             const [rest, held, criticalRest, criticalHeld, damaged, , , tint] =
                 baseColors.style[color]
             const [slotGlow, criticalGlow] = baseColors.styleGlow[color]

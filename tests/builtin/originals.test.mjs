@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { clipAliases, omittedOriginals } from '../../builtin-assets/manifest.mjs'
+import { colorNames } from '../../builtin-assets/palette.mjs'
 import { readZip } from '../../builtin-assets/zip.mjs'
 import { inkBox } from '../../scripts/extract-original-names.mjs'
 import { readBuiltinItem, readOriginals } from './helpers.mjs'
@@ -87,4 +88,32 @@ test('the preview-mode stage border is a line at the stage edge', () => {
 test('the preview-mode lane divider is centred on its strip', () => {
     const [x0, x1] = box('Sekai Lane Divider Preview')
     assert.ok(Math.abs((x0 + x1) / 2 - 0.5) <= 0.15, show([x0, x1]))
+})
+
+// The originals' lane strips rise from clear over the far 11.7 % of the stage. They also fade over
+// their last rows at the near end, where the originals draw Sekai Stage on most charts; ours keep
+// full alpha there, since that would dim the lanes round the judge line. The preview-mode strips
+// are drawn in pieces along the stage, so they stay even.
+test('the lane strips fade in at the far end only', () => {
+    const profile = (name) => {
+        const { x, y, w, h } = sprites.get(name)
+        return Array.from({ length: h }, (_, row) => pixelAt(texture, x + (w >> 1), y + row)[3])
+    }
+    const backgrounds = ['', ...colorNames.map((color) => ` ${color}`)].map(
+        (color) => `Sekai Lane Background${color}`,
+    )
+    for (const name of [...backgrounds, 'Sekai Lane Divider', 'Sekai Stage Border']) {
+        // Row 0 is the far end.
+        const alphas = profile(name)
+        const full = Math.max(...alphas)
+        alphas.forEach((alpha, row) => {
+            const depth = row / alphas.length
+            if (depth < 0.02) assert.ok(alpha <= 0.1 * full, `${name}: ${alpha} at row ${row}`)
+            if (depth >= 0.13) assert.ok(alpha >= full - 1, `${name}: ${alpha} at row ${row}`)
+        })
+    }
+    for (const name of [...backgrounds, 'Sekai Lane Divider']) {
+        const alphas = profile(name.replace(/^Sekai Lane (Background|Divider)/, '$& Preview'))
+        assert.ok(Math.max(...alphas) - Math.min(...alphas) <= 1, `${name} Preview is not even`)
+    }
 })
