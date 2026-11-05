@@ -289,8 +289,14 @@ export function skinSprites() {
             add(`Sekai Lane Background ${color}`, solid(shade, laneAlpha, 4, 64))
         add('Sekai Lane Divider', solid(stage.stroke, 0.3, 4, 64))
         add('Sekai Stage Border', solid(stage.stroke, 0.7, 4, 64))
-        for (const name of ['Lane Background', 'Lane Divider', 'Stage Border'])
+        for (const name of ['Lane Background', 'Lane Divider'])
             alias(`Sekai ${name} Preview`, `Sekai ${name}`)
+        // Preview mode draws it on a strip 0.15 lane wide beside the stage: the line at its inner
+        // third, next to the stage, as the base's ramp brightens towards it.
+        add('Sekai Stage Border Preview', {
+            ...solid(stage.stroke, 0.7),
+            transform: box(2 / 3, 1, 0, 1),
+        })
         for (const color of Object.keys(laneColors))
             alias(`Sekai Lane Background Preview ${color}`, `Sekai Lane Background ${color}`)
     })
@@ -427,8 +433,16 @@ export function skinSprites() {
             ['Yellow Slider', 'critical'],
         ])
             add(`Sekai Slot ${color}`, slot(bodyColors[key][2]))
+        // The base's Slider Hold glows are shorter than the others, their tops at 0.54 and 0.39
+        // of the cell.
+        const height = { 'Green Slider Hold': 0.83, 'Yellow Slider Hold': 0.6 }
         for (const [color, value] of Object.entries(baseColors.slotGlow))
-            add(`Sekai Slot Glow ${color}`, glow(value))
+            add(
+                `Sekai Slot Glow ${color}`,
+                height[color]
+                    ? { ...glow(value), transform: box(0, 1, 0, height[color]) }
+                    : glow(value),
+            )
         add('Sekai Normal Slide Slot Glow', glow(baseColors.slotGlow['Green Slider Hold']))
         add('Sekai Critical Slide Slot Glow', glow(baseColors.slotGlow['Yellow Slider Hold']))
     })

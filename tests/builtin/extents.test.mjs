@@ -23,6 +23,8 @@ const targets = {
     'Sekai Diamond Green': [-0.12, 1.1, 0.22, 1.12],
     'Sekai Normal Trace Diamond Neutral': [-0.05, 1.05, 0.27, 1.02],
     'Sekai Slot Glow Cyan': [0, 1, 0.02, 0.69],
+    'Sekai Slot Glow Green Slider Hold': [0, 1, 0.04, 0.54],
+    'Sekai Slot Glow Yellow Slider Hold': [0, 1, 0.06, 0.39],
     'Sekai Active Slide Connection Green': [0.02, 0.98, 0, 1],
     'Sekai Guide Neutral': [0, 1, 0, 1],
     'Sekai Judgment Gradient Neutral': [0, 1, 0, 1],

@@ -76,6 +76,14 @@ test("stage edge lines and corners sit at the edge the originals' do", () => {
     }
 })
 
+// The originals' border ramps up to the stage edge (u = 1) across the whole strip, so where its ink
+// starts depends on the threshold; ours is a line, which must stay in the strip's inner half.
+test('the preview-mode stage border is a line at the stage edge', () => {
+    const [x0, x1] = box('Sekai Stage Border Preview')
+    assert.equal(originals.edges['Sekai Stage Border Preview'][1], 1)
+    assert.ok(x1 >= 1 - 1e-9 && x0 >= 0.5, show([x0, x1]))
+})
+
 test('the preview-mode lane divider is centred on its strip', () => {
     const [x0, x1] = box('Sekai Lane Divider Preview')
     assert.ok(Math.abs((x0 + x1) / 2 - 0.5) <= 0.15, show([x0, x1]))
