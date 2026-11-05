@@ -6,7 +6,7 @@ const options = { premultiplyAlpha: 'premultiply', colorSpaceConversion: 'none' 
 /**
  * The size to decode an atlas at on a device whose textures are at most `limit` wide: halved until
  * both sides fit, so each texel of the result averages a square block of the original and the
- * sprites' 2 px gutters still keep their neighbours out.
+ * Built-in atlases' 2 px gutters still keep neighbouring sprites out.
  */
 export const decodeSize = (width: number, height: number, limit: number) => {
     let factor = 1
