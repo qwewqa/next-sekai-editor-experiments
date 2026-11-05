@@ -11,7 +11,8 @@ type Filter = 'today' | 3 | 4
 
 /** Runs `fn` in the page, or in a dedicated worker in the chromium-worker project. */
 const inHost = async <A, R>(page: Page, fn: (arg: A) => Promise<R>, arg: A): Promise<R> => {
-    if (test.info().project.name !== 'chromium-worker') return page.evaluate(fn, arg)
+    if (test.info().project.name !== 'chromium-worker')
+        return page.evaluate(fn as (arg: unknown) => Promise<R>, arg)
     return page.evaluate(
         ({ source, arg }) =>
             new Promise<R>((resolve, reject) => {
@@ -146,7 +147,19 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
         return renderer.readPixels('frame', 0, 0, N, N)
     }
 
-    const scales = [0.5, 1, 1.5, 3, 6]
+    // Texels a pixel along the sprite's width and height: the same on both, then one axis on
+    // either side of one texel a pixel while the other is minified.
+    const scales = [
+        [0.5, 0.5],
+        [1, 1],
+        [1.5, 1.5],
+        [3, 3],
+        [6, 6],
+        [0.98, 3],
+        [1.04, 3],
+        [3, 0.98],
+        [3, 1.04],
+    ] as const
     const orientations = [
         { angle: 0, mirror: false },
         { angle: 30, mirror: false },
@@ -156,11 +169,12 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
     // Corners on a 1/16-pixel grid, which rasterizers hold exactly, so the GPU interpolates the
     // same parallelogram the CPU does.
     const snap = (value: number) => Math.round(value * 16) / 16
-    const quadOf = (rect: Rect, scale: number, angle: number, mirror: boolean) => {
+    const UV_ERROR = 2 ** -16
+    const quadOf = (rect: Rect, [sx, sy]: readonly number[], angle: number, mirror: boolean) => {
         const c = Math.cos((angle * Math.PI) / 180)
         const s = Math.sin((angle * Math.PI) / 180)
-        const w = rect.w / scale
-        const h = rect.h / scale
+        const w = rect.w / sx!
+        const h = rect.h / sy!
         const ex = { x: snap((mirror ? -w : w) * c), y: snap((mirror ? -w : w) * s) }
         const ey = { x: snap(-h * s), y: snap(h * c) }
         const tl = {
@@ -254,9 +268,9 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
             for (const { angle, mirror } of orientations) {
                 const quad = quadOf(rect, scale, angle, mirror)
                 const frames = renderers.map((renderer) => draw(renderer, box, quad))
-                const where = `${label} ${JSON.stringify(rect)} at ${scale} texels a pixel, ${angle} degrees${mirror ? ' mirrored' : ''}`
+                const where = `${label} ${JSON.stringify(rect)} at ${scale.join(' x ')} texels a pixel, ${angle} degrees${mirror ? ' mirrored' : ''}`
                 // Magnified and unscaled sprites, and pixel-art atlases, draw as with one tap.
-                if (scale <= 1 || !interpolation)
+                if (Math.max(...scale) <= 1 || !interpolation)
                     for (const [i, frame] of frames.entries())
                         if (frame.some((value, k) => value !== frames[2]![k]))
                             fail(`${where}: filter ${filters[i]} differs from one tap`)
@@ -306,15 +320,39 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
                             const cap = filters[i] === 'today' ? 0 : (filters[i] as number)
                             const u = box.u0 + a * du
                             const v = box.v0 + b * dv
-                            const expected = cpuFilter(t, cap, box, u, v, dx, dy)
+                            // SwiftShader interpolates a UV near 1 to about 2^-16, so the GPU's
+                            // value may be the filter's at any UV that close.
+                            const results = [
+                                [0, 0],
+                                [-1, 0],
+                                [1, 0],
+                                [0, -1],
+                                [0, 1],
+                            ].map(([eu, ev]) =>
+                                cpuFilter(
+                                    t,
+                                    cap,
+                                    box,
+                                    u + eu! * UV_ERROR,
+                                    v + ev! * UV_ERROR,
+                                    dx,
+                                    dy,
+                                ),
+                            )
                             compared++
-                            for (let c = 0; c < 4; c++)
-                                if (Math.abs(frame[k + c]! - expected[c]!) > 1) {
+                            for (let c = 0; c < 4; c++) {
+                                const values = results.map((result) => result[c]!)
+                                const value = frame[k + c]!
+                                if (
+                                    value < Math.min(...values) - 1 ||
+                                    value > Math.max(...values) + 1
+                                ) {
                                     fail(
-                                        `${where}: filter ${filters[i]} at ${px}, ${py} channel ${c}: ${frame[k + c]} against ${expected[c]!.toFixed(2)} on the CPU`,
+                                        `${where}: filter ${filters[i]} at ${px}, ${py} channel ${c}: ${value} against ${values[0]!.toFixed(2)} on the CPU`,
                                     )
                                     break
                                 }
+                            }
                             // At least a pixel inside, an integer rect at full size shows only its
                             // own colour.
                             if (isolated && !rect.noise && margin >= 1) {
@@ -342,6 +380,7 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
             { x: 1001, y: 999, w: 3, h: 3, alpha: 1 },
             { x: 2001, y: 501, w: 1, h: 3, alpha: 0.5 },
             { x: 3001, y: 1501, w: 64, h: 1, alpha: 1 },
+            { x: 3501, y: 101, w: 1, h: 64, alpha: 0.5 },
             { x: 101, y: 1201, w: 0.5, h: 3, alpha: 1 },
             { x: 200.5, y: 300.25, w: 1.5, h: 1.5, alpha: 0.5 },
             { x: 517, y: 611, w: 100, h: 60, alpha: 0.5, noise: true },
@@ -360,6 +399,8 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
             { x: 0, y: 0, w: 64, h: 64, alpha: 0.5 },
             { x: 0, y: 10, w: 64, h: 3, alpha: 1 },
             { x: 20, y: 0, w: 1, h: 64, alpha: 0.5 },
+            { x: 0, y: 40, w: 64, h: 1, alpha: 1 },
+            { x: 50, y: 0, w: 1, h: 64, alpha: 1 },
             { x: 3, y: 5, w: 50, h: 37, alpha: 1, noise: true },
             { x: 10, y: 20, w: 40, h: 30, alpha: 0.5, noise: true },
         ]
@@ -383,8 +424,9 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
 
 /**
  * A 64x64 pattern (isolated bright texels every 3 texels, a 1-texel line each way) drawn once a
- * frame on a 128x128 frame with antialiasing, as a scale sweep from 0.8 to 4.4 texels a pixel
- * or, with `shear`, at 3 texels a pixel with the quad's shear swept from -shear to +shear.
+ * frame on a 128x128 frame with antialiasing, as a scale sweep from 0.8 to 4.4 texels a pixel.
+ * With `shear`, it is drawn at 3 texels a pixel with the quad's shear swept from -shear to
+ * +shear. With `axis`, only that axis sweeps, from 0.8 to 1.6, and the other stays at 3.
  * Returns, per frame, the RMS over pixels of the first and second differences in time.
  */
 const sweep = async (o: {
@@ -394,6 +436,7 @@ const sweep = async (o: {
     mirror: boolean
     frames: number
     shear?: number
+    axis?: 'x' | 'y'
 }) => {
     const { createPreviewRenderer } = (await import(
         `${o.origin}/src/preview/gl.ts`
@@ -432,10 +475,10 @@ const sweep = async (o: {
     for (let k = 0; k < o.frames; k++) {
         const t = k / (o.frames - 1)
         const shear = o.shear ? -o.shear + 2 * o.shear * t : 0
-        const scale = o.shear ? 3 : 0.8 + (4.4 - 0.8) * t
+        const scale = o.shear ? 3 : o.axis ? 0.8 + 0.8 * t : 0.8 + (4.4 - 0.8) * t
         // Half extents in clip units: the sprite is T / scale pixels, and a pixel 2 / N units.
-        const hw = T / scale / N
-        const hh = T / scale / N
+        const hw = T / (o.axis === 'y' ? 3 : scale) / N
+        const hh = T / (o.axis === 'x' ? 3 : scale) / N
         const sx = shear * hh
         renderer.begin(N, N, 1)
         renderer.draw(
@@ -542,6 +585,36 @@ test.describe('the renderer', () => {
                 expect(steady(second), `${filter} taps`).toBeLessThan(steady(results.today!.second))
             }
         })
+
+    for (const axis of ['x', 'y'] as const)
+        for (const angle of [0, 30])
+            test(`a sweep of ${axis} through one texel a pixel at ${angle} degrees, the other axis minified, has no jump`, async ({
+                page,
+                baseURL,
+            }) => {
+                test.setTimeout(120_000)
+                const frames = 360
+                const at = Array.from({ length: frames }, (_, k) => 0.8 + (0.8 * k) / (frames - 1))
+                for (const filter of [4, 3] as const) {
+                    const { second } = await inHost(page, sweep, {
+                        origin: baseURL!,
+                        filter,
+                        angle,
+                        mirror: false,
+                        frames,
+                        axis,
+                    })
+                    // The box spans 63 texels, so the step reaches one texel at 64 / 63.
+                    const crossing = 64 / 63
+                    const distance = (k: number) => Math.abs(at[k + 1]! - crossing)
+                    const near = second.filter((_, k) => distance(k) < 0.02)
+                    const around = second.filter((_, k) => distance(k) < 0.3 && distance(k) >= 0.02)
+                    expect(
+                        Math.max(...near) / median(around),
+                        `${filter} taps`,
+                    ).toBeLessThanOrEqual(3)
+                }
+            })
 
     for (const [name, angle] of [
         ['0 degrees', 0],
