@@ -8,7 +8,7 @@ import { videoLock } from '../../platform/videoOutput'
 import { webVideoOutput } from '../../platform/webVideoOutput'
 import { drawPreviewFrame } from '../../preview/drawFrame'
 import { createPreviewChartBuilder } from '../../preview/engine/chart'
-import { createPreviewRenderer } from '../../preview/gl'
+import { createPreviewRenderer, type PreviewFilter } from '../../preview/gl'
 import { readPreviewFilter } from '../../preview/previewFilter'
 import { copyExportAssets } from './assets'
 
@@ -18,6 +18,8 @@ export type ExportTestOptions = {
     cancelAt?: JobState['phase'] | 'mix' | 'drain' | 'finalize' | 'view'
     loseContextAt?: number
     parityAt?: number
+    /** The parity reference draws with this filter instead of the export's. */
+    referenceFilter?: PreviewFilter
     previewFirst?: boolean
     backgroundBlur?: number
     failWrite?: boolean
@@ -115,7 +117,11 @@ export const exportVideoTest = async (options: ExportTestOptions = {}) => {
                 const width = Math.round(settings.width * settings.renderScale)
                 const height = Math.round(settings.height * settings.renderScale)
                 const canvas = document.createElement('canvas')
-                const renderer = createPreviewRenderer(canvas, false, readPreviewFilter())
+                const renderer = createPreviewRenderer(
+                    canvas,
+                    false,
+                    options.referenceFilter ?? readPreviewFilter(settings.antialias),
+                )
                 try {
                     renderer.setRenderTarget({ width, height, antialias: settings.antialias })
                     renderer.setTexture(0, assets.skin.texture, assets.skin.interpolation)

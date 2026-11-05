@@ -251,7 +251,7 @@ const handle = (message: ToPreviewWorker) => {
             if (!message.canvas) return
             canvas = message.canvas
             antialias = message.antialias
-            if (testKeysOpen) filter = message.filter
+            filter = message.filter
             canvas.addEventListener('webglcontextlost', onLost)
             canvas.addEventListener('webglcontextrestored', onRestored)
             try {

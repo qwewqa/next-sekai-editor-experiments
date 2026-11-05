@@ -380,14 +380,20 @@ const startWorker = () => {
             const offscreen = transfer(canvas)
             if (!offscreen) return () => undefined
             attached++
-            post({ type: 'canvas', canvas: offscreen, antialias, filter: readPreviewFilter() }, [
-                offscreen,
-            ])
+            post(
+                {
+                    type: 'canvas',
+                    canvas: offscreen,
+                    antialias,
+                    filter: readPreviewFilter(antialias),
+                },
+                [offscreen],
+            )
             wait('it did not start')
             return () => {
                 attached--
                 if (stopped) return
-                post({ type: 'canvas', antialias, filter: readPreviewFilter() })
+                post({ type: 'canvas', antialias, filter: readPreviewFilter(antialias) })
                 releaseLater()
             }
         },

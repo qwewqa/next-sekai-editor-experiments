@@ -4,7 +4,8 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 // The atlas filter of the preview's renderer (docs/rendering.md, "Atlas filtering"). The renderer
 // tests draw single sprites with createPreviewRenderer and compare them with the filter computed
 // on the CPU from the same texels. The last tests check that the panel, in either host, and
-// Export Video use the filter that `nse.test.previewFilter` names.
+// Export Video follow Antialiasing, and the filter that `nse.test.previewFilter` names in its
+// place.
 
 type Filter = 'single' | 3 | 4
 
@@ -730,11 +731,57 @@ test.describe('the hosts', () => {
         await reopen(page, undefined)
         await shoot(page)
         // An Antialiasing change creates a new renderer, in either host.
-        await page.evaluate(() => localStorage.setItem('nse.test.previewFilter', 'single'))
+        await page.evaluate(() => localStorage.setItem('nse.test.previewFilter', '3'))
         const changed = await shoot(page, false)
-        await reopen(page, 'single')
+        await reopen(page, '3')
         const reloaded = await shoot(page, false)
         expect(changed.equals(reloaded)).toBe(true)
+    })
+
+    test('Antialiasing turns the filter on and off without a reload', async ({ page }) => {
+        test.slow()
+        // The key fixes the filter for the references; Antialiasing also turns MSAA on and off.
+        const references: Record<string, Buffer> = {}
+        for (const filter of ['4', 'single'])
+            for (const antialias of [true, false]) {
+                await reopen(page, filter)
+                references[`${filter} ${antialias}`] = await shoot(page, antialias)
+            }
+        await reopen(page, undefined)
+        const shots = [await shoot(page, true), await shoot(page, false), await shoot(page, true)]
+        expect(shots[0]!.equals(references['4 true']!)).toBe(true)
+        expect(shots[1]!.equals(references['single false']!)).toBe(true)
+        expect(shots[2]!.equals(references['4 true']!)).toBe(true)
+        expect(references['4 true']!.equals(references['single true']!)).toBe(false)
+        expect(references['4 false']!.equals(references['single false']!)).toBe(false)
+    })
+
+    test('Export Video follows its own Antialiasing', async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name === 'chromium-worker', 'Export Video has its own worker')
+        await reopen(page, undefined)
+        await page.evaluate(() => window.editorTest.show(window.editorTest.fixtures.notes))
+        // The reference draws with the filter given; the export with its own.
+        const maxError = async (antialias: boolean, referenceFilter: Filter) => {
+            const result = await page.evaluate(
+                ({ antialias, referenceFilter }) => {
+                    // The preview's Antialiasing is the opposite, so only the export's own counts.
+                    window.editorTest.settings.previewAntialias = !antialias
+                    return window.editorTest.exportVideo({
+                        parityAt: 0,
+                        referenceFilter,
+                        settings: { frames: 3, antialias },
+                    })
+                },
+                { antialias, referenceFilter },
+            )
+            expect(result.error).toBeUndefined()
+            expect(result.phase).toBe('ready')
+            return result.maxError!
+        }
+        expect(await maxError(true, 4)).toBeLessThanOrEqual(1)
+        expect(await maxError(true, 'single')).toBeGreaterThan(1)
+        expect(await maxError(false, 'single')).toBeLessThanOrEqual(1)
+        expect(await maxError(false, 4)).toBeGreaterThan(1)
     })
 
     for (const filter of ['3', 'single'])

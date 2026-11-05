@@ -215,7 +215,7 @@ export const createExportJob = (options: {
                     settings,
                     assets,
                     mirror,
-                    filter: readPreviewFilter(),
+                    filter: readPreviewFilter(settings.antialias),
                 })
                 assets = undefined
                 await abortable(ready, signal)

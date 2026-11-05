@@ -137,7 +137,7 @@ export const usePreviewRendering = (
             renderer.value = createPreviewRenderer(
                 canvas.value,
                 settings.previewAntialias,
-                readPreviewFilter(),
+                readPreviewFilter(settings.previewAntialias),
             )
             clearGraphicsError()
         } catch (error) {
