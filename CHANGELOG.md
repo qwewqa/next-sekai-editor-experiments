@@ -4,9 +4,11 @@
 
 - Added Show Combo to Preview Settings and Settings › Preview.
 - Preview Settings now opens in the Preview panel when most of it fits, and scrolls the rest.
-- In Brush Properties, a value now goes below its label when the label would wrap onto more than two lines.
+- In the Properties panel, Settings and dialogs, a value now goes below its label when a word in the label does not fit beside the value. In Brush Properties, it also does so when the label would wrap onto more than two lines.
+- When objects of several kinds are selected, their properties now start with General, and Beat shows when BPM changes or time scales are selected with notes or events. Notes and stage transform events now have separate Elevation fields, both when selected together and in Brush Properties.
 - Fixed missing bends in elevated connectors with Back or Elastic easing.
 - Improved preview performance for curved connectors between elevated notes.
+- Notes and effects in the preview shimmer less when drawn small, for example far from the judgment line.
 - (Web) The editor now requires Chrome or Edge 111 or later, Firefox 128 or later, or Safari 17 or later. On iPhone and iPad, it requires iOS 17 or later.
 - (Web) By default, the editor now sends usage statistics unless Do Not Track or Global Privacy Control is enabled in your browser. To stop sending them, turn off Settings › About › Send Usage Statistics. The privacy page lists what is sent and how long it is kept.
 - (Web) Before you first use the editor, you agree to the Terms of Service in a welcome window that also has the Language, Theme and Send Usage Statistics settings. The window appears again after some changes to the Terms of Service or the Privacy Notice. Usage statistics from the editor are sent only after you agree. The unsupported-browser page may send a browser report before you agree.
@@ -33,7 +35,7 @@
 - Level Properties is now Level Info, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file. The text fields in Level Info and the names of groups, stages and folders now have a maximum length.
 - The BGM dialog now has a Download BGM button. When the BGM is not loaded, a notice offers Choose Audio to load an audio file.
 - Level Info now has a Check button for the project file and the history stored in your browser. It uses the file to repair damaged history where possible and reports any remaining damage. In Settings › Toolbar and Settings › Keyboard Shortcuts, the command is named Check File and History.
-- Added Preview Assets to the toolbar, the Preview panel’s menu and Preview Settings for choosing the skin, particle effects, background and sound effects.
+- Added Preview Assets for choosing the skin, particle effects, background and sound effects. It is on the toolbar and in the Preview panel’s menu, Preview Settings and Settings › Preview. The choices include the editor’s Built-in assets.
 - Open (O) now opens Sonolus packages (.scp). A package with one level and nothing else opens that level. Otherwise, a list shows each level with Open, and each skin, particle effect, background and set of sound effects with Import. Import adds the item to Preview Assets and uses it.
 - (Web) The editor now also includes the Next SEKAI 02 skin and sound effects.
 - (Web) Replaced the preview’s Default background with a new image.
@@ -47,6 +49,10 @@
 - You can now middle-click in the chart or the Elevation Editor and move the mouse to scroll. Click again to stop.
 - With Settings › Toolbar › Quick Switch enabled, you can now press and hold a tool button, then drag along its toolbar row to select another tool.
 - Moving or pasting a BPM change onto a beat that has more than one BPM change now replaces all of them. Previously, only one of them was replaced.
+- Scale Beats, Scale Width and Scale Elevations no longer delete or reorder unselected objects on the same beat as a selected object. When Scale Beats or Flip Vertically moves an event onto a beat that has other events, those events are now kept, as when dragging.
+- Flip Horizontally now flips the Editor Lane of selected time scales, or of selected stage style events, when the only other selected objects are BPM changes. Flip Vertically no longer deletes selected BPM changes or time scales that are at nearly equal beats.
+- When several notes of one slide are selected, a note added with the Slide tool now copies the properties set to Copy from the note it follows in that slide, or from the slide’s first note when added before it.
+- Clipboard History now counts copied BPM changes.
 - (Web) Ctrl/Cmd+R now reloads the page and Ctrl/Cmd+F opens the browser’s find bar. Previously, these shortcuts ran the commands assigned to R and F. You can assign either shortcut to a command in Settings › Keyboard Shortcuts.
 - Added an About section in Settings with the editor version and a Copy Diagnostic Info button.
 - The preview now renders in parallel with the rest of the editor. This makes chart rendering smoother during playback and editing, especially with dense charts. If the preview looks wrong or does not appear, turn off Settings › Preview › Parallel Rendering.
