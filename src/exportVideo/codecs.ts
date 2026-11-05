@@ -116,14 +116,31 @@ class Superseded extends Error {
     }
 }
 
+/** A queue shared by several kinds of work: each run starts once the previous run has ended. */
+export type Lane = { tail: Promise<unknown> }
+export const createLane = (): Lane => ({ tail: Promise.resolve() })
+
+export type SharedWorkOptions = {
+    /**
+     * False for work that cannot be stopped once started. It then runs on when its last caller
+     * leaves, holds the lane until it ends, and its result is kept.
+     */
+    stoppable?: boolean
+    /** Called once for a run still going after `ms`, with its key. */
+    stall?: { ms: number; report: (key: string) => void }
+}
+
 /**
- * Work shared by callers with the same key. With `oneAtATime`, each run waits for the previous
- * one to end. A caller leaves when its signal aborts. When the last caller leaves, the work stops
- * and is forgotten, and a queued run is skipped. Started work whose last caller was superseded
- * runs on until it ends or `Superseded.closed` aborts. A result is kept. A failure is forgotten,
- * so a later call runs the work again. `kept` gives a kept result without running the work.
+ * Work shared by callers with the same key. In a lane, each run waits for the previous one to
+ * end. A caller leaves when its signal aborts. When the last caller leaves, the work stops and is
+ * forgotten, and a queued run is skipped. Started work whose last caller was superseded runs on
+ * until it ends or `Superseded.closed` aborts. A result is kept. A failure is forgotten, so a
+ * later call runs the work again. `kept` gives a kept result without running the work.
  */
-export const createSharedWork = <T>(oneAtATime = false) => {
+export const createSharedWork = <T>(
+    lane?: Lane,
+    { stoppable = true, stall }: SharedWorkOptions = {},
+) => {
     type Entry = {
         result: Promise<T>
         callers: number
@@ -133,28 +150,41 @@ export const createSharedWork = <T>(oneAtATime = false) => {
         stop: AbortController
     }
     const entries = new Map<string, Entry>()
-    let queue: Promise<unknown> = Promise.resolve()
+    const start = (key: string, run: (signal: AbortSignal) => Promise<T>, stop: AbortSignal) => {
+        const result = run(stop)
+        if (stall) {
+            const timer = setTimeout(() => {
+                stall.report(key)
+            }, stall.ms)
+            const clear = () => {
+                clearTimeout(timer)
+            }
+            result.then(clear, clear)
+        }
+        return result
+    }
     const call = (key: string, run: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal) => {
         signal?.throwIfAborted()
         let entry = entries.get(key)
         if (!entry) {
             const stop = new AbortController()
             const created: Entry = {
-                result: oneAtATime
-                    ? queue.then(() => {
+                result: lane
+                    ? lane.tail.then(() => {
                           stop.signal.throwIfAborted()
                           created.started = true
-                          return run(stop.signal)
+                          return start(key, run, stop.signal)
                       })
-                    : run(stop.signal),
+                    : start(key, run, stop.signal),
                 callers: 0,
-                started: !oneAtATime,
+                started: !lane,
                 settled: false,
                 stop,
             }
             entry = created
             entries.set(key, created)
-            if (oneAtATime) queue = created.result.catch(() => undefined)
+            // The next run waits for this one's work to end, whether or not anyone still waits.
+            if (lane) lane.tail = created.result.catch(() => undefined)
             created.result.then(
                 (value) => {
                     created.settled = true
@@ -170,7 +200,7 @@ export const createSharedWork = <T>(oneAtATime = false) => {
         joined.callers++
         if (!signal) return joined.result
         const cancel = () => {
-            if (joined.settled || joined.callers) return
+            if (joined.settled || joined.callers || (joined.started && !stoppable)) return
             if (entries.get(key) === joined) entries.delete(key)
             joined.stop.abort()
         }
@@ -293,12 +323,25 @@ export type ResolveOptions = {
     signal?: AbortSignal
 }
 
-/** The page owner keeps this instance for both settings and export jobs. */
+/**
+ * How long a video support query runs before a diagnostic records it. No other query or trial
+ * starts until it ends.
+ */
+const STALL_MS = 10_000
+
+/**
+ * The page owner keeps this instance for both settings and export jobs. `diagnose` records a
+ * support query that stalls the lane.
+ */
 export const createCodecProbes = (
     probes: EncoderProbes = browserEncoderProbes(),
     engine?: Engine,
+    { diagnose, stallMs = STALL_MS }: { diagnose?: (text: string) => void; stallMs?: number } = {},
 ) => {
     const cache = new Map<string, Promise<boolean>>()
+    const refused = (error: unknown) =>
+        error instanceof TypeError ||
+        (error instanceof DOMException && error.name === 'NotSupportedError')
     const probe = <C>(kind: string, config: C, run: (c: C) => Promise<{ supported?: boolean }>) => {
         const key = kind + configurationKey(config)
         let result = cache.get(key)
@@ -306,19 +349,55 @@ export const createCodecProbes = (
             // A query that throws counts as unsupported. Only a refused configuration is kept;
             // after any other error, the next call asks again.
             result = (async () => !!(await run(config)).supported)().catch((error: unknown) => {
-                if (
-                    !(error instanceof TypeError) &&
-                    !(error instanceof DOMException && error.name === 'NotSupportedError')
-                )
-                    cache.delete(key)
+                if (!refused(error)) cache.delete(key)
                 return false
             })
             cache.set(key, result)
         }
         return result
     }
-    // Trials run one at a time, since each holds an encoder and full-size frames.
-    const trials = createSharedWork<boolean>(true)
+    // In Chromium on Windows a video support query creates an encoder, and a 2160p one takes over
+    // 1 GB for a moment. A trial holds an encoder and full-size frames. So both share one lane,
+    // and at most one of them runs at a time. A query cannot be stopped, so it holds the lane
+    // until the browser answers.
+    const lane = createLane()
+    const trials = createSharedWork<boolean>(lane)
+    const queries = createSharedWork<boolean>(lane, {
+        stoppable: false,
+        stall: diagnose && {
+            ms: stallMs,
+            report: (key) => {
+                diagnose(`Video support query still running after ${stallMs / 1000} s: ${key}`)
+            },
+        },
+    })
+    /**
+     * Rejects with the signal's reason once it aborts. Like `probe`, a refused configuration is
+     * kept, and any other failure counts as unsupported for this call only.
+     */
+    const videoQuery = async (
+        run: NonNullable<EncoderProbes['video']>,
+        config: VideoEncoderConfig,
+        signal?: AbortSignal,
+    ) => {
+        try {
+            return await queries(
+                configurationKey(config),
+                async () => {
+                    try {
+                        return !!(await run(config)).supported
+                    } catch (error) {
+                        if (refused(error)) return false
+                        throw error
+                    }
+                },
+                signal,
+            )
+        } catch (error) {
+            if (signal?.aborted) throw error
+            return false
+        }
+    }
     const passesTrial = async (config: TrialConfig, signal?: AbortSignal) => {
         const run = probes.trial
         if (!run) return true
@@ -380,7 +459,7 @@ export const createCodecProbes = (
         }
         let accepted = false
         for (const video of configs) {
-            const probed = await probe('video', video, probes.video)
+            const probed = await videoQuery(probes.video, video, signal)
             signal?.throwIfAborted()
             if (!probed) continue
             accepted = true

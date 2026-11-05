@@ -1,4 +1,5 @@
 import type { GroupId } from '../chart/groups'
+import { recordDiagnostic } from '../diagnostics'
 import { detection } from '../platform/detect'
 import type { Platform } from '../platform/types'
 import { videoLock } from '../platform/videoOutput'
@@ -104,6 +105,11 @@ export const createExportServices = () => ({
     probes: createCodecProbes(
         { ...browserEncoderProbes(), aacDelay: createAacCalibration() },
         detection().engine,
+        {
+            diagnose: (text) => {
+                recordDiagnostic('error', text)
+            },
+        },
     ),
 })
 
