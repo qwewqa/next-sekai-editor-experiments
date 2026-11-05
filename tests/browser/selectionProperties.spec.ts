@@ -396,12 +396,19 @@ test.describe('kind blocks', () => {
             await nextTick()
         })
         await expect(selection(page).locator('.properties-block-header h3')).toHaveText([
+            'General',
             'Notes 4 · in 1 slide',
             'BPM 1',
-            'General',
         ])
-        // Several BPM changes hide Beat; narrowing to notes brings it back.
-        await expect(control(page, 'Beat')).toHaveCount(0)
+        // One BPM change keeps Beat, once, in General.
+        await expect(control(page, 'Beat')).toHaveCount(1)
+        await expect(
+            selection(page)
+                .locator('.properties-block')
+                .first()
+                .locator('.form-field')
+                .filter({ has: page.getByText('Beat', { exact: true }) }),
+        ).toHaveCount(1)
         const notes = header(page, /^Notes/)
         await notes.getByRole('button', { name: 'Select only Notes (4)' }).focus()
         await page.keyboard.press('Enter')
@@ -835,6 +842,69 @@ test.describe('brush', () => {
             .locator('select')
         await expect(name).toBeDisabled()
         await expect(name.locator('option:checked')).toHaveText('—')
+    })
+
+    test('the Note and Stage Transform Event Elevation rows each brush their own kind', async ({
+        page,
+    }) => {
+        await page.evaluate(async () => {
+            const { fixtures, show, history, store, nextTick } = window.editorTest
+            show(fixtures.events)
+            const all = [...store.getAllEntities()].sort((a, b) => a.beat - b.beat)
+            history.replaceState({
+                ...history.state.value,
+                selectedEntities: ['note', 'stageTransformEventJoint'].map((type) =>
+                    all.find((entity) => entity.type === type)!,
+                ),
+            })
+            await nextTick()
+        })
+        // A new chart starts with the Select tool.
+        await page.keyboard.press('b')
+        await expect(tool(page).getByText('Brush Properties')).toBeVisible()
+        await addBrushProperty(tool(page), 'elevation')
+        await addBrushProperty(tool(page), 'stageElevation')
+        await expect(tool(page).locator('.brush-group h3')).toHaveText([
+            'Note',
+            'Stage Transform Event',
+        ])
+        const noteRow = tool(page).locator('[data-brush-key="elevation"] input')
+        const stageRow = tool(page).locator('[data-brush-key="stageElevation"] input')
+        await noteRow.fill('2')
+        await noteRow.press('Enter')
+        await stageRow.fill('5')
+        await stageRow.press('Enter')
+        const brushed = await page.evaluate(async () => {
+            const { appImport, history, nextTick } = window.editorTest
+            const brush = await appImport<typeof import('../../src/editor/tools/brush')>(
+                '/src/editor/tools/brush/index.ts',
+            )
+            const elevations = () =>
+                history.state.value.selectedEntities.map(
+                    (entity) => (entity as { elevation?: number }).elevation,
+                )
+            brush.applyBrushToEntities(history.state.value.selectedEntities)
+            const after = elevations()
+            const operation = (history.headStep.value?.operation as { id?: string } | undefined)?.id
+            // One step: a single undo restores both.
+            history.undoState()
+            await nextTick()
+            return { after, operation, undone: elevations() }
+        })
+        expect(brushed).toEqual({
+            after: [2, 5],
+            operation: 'nse.object.brush',
+            undone: [0, 0],
+        })
+
+        await tool(page)
+            .getByRole('button', { name: 'Remove Stage Elevation', exact: true })
+            .click()
+        await expect(stageRow).toHaveCount(0)
+        await expect(noteRow).toHaveValue('2')
+        await expect(
+            tool(page).getByRole('button', { name: 'Remove Elevation', exact: true }),
+        ).toHaveCount(1)
     })
 
     test('never offers the stage without dynamic stages', async ({ page }) => {

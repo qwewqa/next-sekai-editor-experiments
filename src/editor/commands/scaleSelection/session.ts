@@ -350,7 +350,9 @@ export const applyScalingSession = () => {
         },
     })
     cancelScalingSession()
-    if (result === session.source) return true
+    // Nothing changed or was displaced: a drag away and back leaves the chart as it was, with
+    // its same-beat order.
+    if (result === session.source || (!Object.keys(counts).length && !displaced.length)) return true
     const pushed = pushState(operation, result)
     if (pushed) notify(() => operation.fallback.text)
     return true

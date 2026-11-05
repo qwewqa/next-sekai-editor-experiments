@@ -5,18 +5,17 @@ import { store } from '../../history/store'
 import { numberEditKey } from '../../modals/form/numberEdit'
 import { clearPreviewEdit, previewEdit, setPreviewEdit, type PreviewEdit } from '../../preview/edit'
 import type { State } from '../../state'
-import type { Entity, EntityType } from '../../state/entities'
+import type { Entity } from '../../state/entities'
 import type { EditableObject } from '../../state/operations/editable'
 import {
     appliesToEditIn,
     fieldAppliesIn,
     noteFieldsApply,
 } from '../../state/operations/properties/applicability'
-import { getNoteFieldsIn } from '../../state/operations/properties/noteFields'
+import { getNoteFieldsIn, type NoteFields } from '../../state/operations/properties/noteFields'
 import { isEditInRange, planEdit, type EachEdit } from '../../state/operations/properties/plan'
 import { editSelectedEditableEntities } from '../sidebars/default'
 import { aggregateValues, type ValueUsage } from './aggregate'
-import type { NoteFields } from './noteFields'
 
 export const useProperties =
     <T>(ref: Ref<T>) =>
@@ -37,13 +36,16 @@ export const useProperties =
 
 export type EntitiesAggregate = ReturnType<typeof aggregateEntities>
 
+/** The values a scope's objects hold, as General shows them for several kinds. */
+export type ValuesAggregate = Pick<EntitiesAggregate, 'model' | 'usage'>
+
 /**
  * Models editing a scope of the selection, such as one kind's objects. Edits
  * and their live previews write only to the scope's objects that use them.
  */
 export const useEntitiesProperties = (
     entities: Ref<readonly Entity[]>,
-    aggregate: Ref<EntitiesAggregate>,
+    aggregate: Ref<ValuesAggregate>,
 ) => {
     const draft = shallowRef<EditableObject>()
     const revision = shallowRef(0)
@@ -221,13 +223,11 @@ export const fieldApplies = (entity: Entity, key: string) =>
     fieldAppliesIn(store.value, entity, key)
 
 export const aggregateEntities = (entities: readonly Entity[]) => {
-    const types: Partial<Record<EntityType, boolean>> = {}
     const noteFields: Partial<NoteFields> = {}
     const noteFieldsOf = new Map<Entity, NoteFields>()
     const current = store.value
 
     for (const entity of entities) {
-        types[entity.type] = true
         if (entity.type !== 'note') continue
 
         const fields = getNoteFieldsIn(current, entity)
@@ -241,14 +241,14 @@ export const aggregateEntities = (entities: readonly Entity[]) => {
         return fields ? noteFieldsApply(fields) : () => true
     })
 
-    return { model: model as Partial<EditableObject>, usage, types, noteFields }
+    return { model: model as Partial<EditableObject>, usage, noteFields }
 }
 
 /** One aggregate of several kinds' aggregates, for the keys they share. */
 export const mergeAggregates = (
     aggregates: readonly EntitiesAggregate[],
     keys: Iterable<string>,
-): EntitiesAggregate => {
+): ValuesAggregate => {
     const model: Record<string, unknown> = {}
     const usage = new Map<string, ValueUsage>()
     for (const key of keys) {
@@ -267,13 +267,7 @@ export const mergeAggregates = (
         usage.set(key, { values, covered, total })
         if (values.size === 1) model[key] = values.keys().next().value
     }
-    const types: EntitiesAggregate['types'] = {}
-    const noteFields: EntitiesAggregate['noteFields'] = {}
-    for (const aggregate of aggregates) {
-        Object.assign(types, aggregate.types)
-        Object.assign(noteFields, aggregate.noteFields)
-    }
-    return { model, usage, types, noteFields }
+    return { model, usage }
 }
 
 const aggregate = <T extends object>(aggregate: Partial<T>, object: T) => {

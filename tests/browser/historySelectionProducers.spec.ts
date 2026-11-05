@@ -255,9 +255,7 @@ test('Scale cancellation restores the prior uniform receipt and accepted outcome
     })
 })
 
-test('Scale retains displaced principal participation and exact survivor lineage for a later drag', async ({
-    page,
-}) => {
+test('Scale keeps converging twins and their lineage for a later drag', async ({ page }) => {
     const result = await page.evaluate(async () => {
         const { fixtures, show, history, appImport, view } = window.editorTest
         view.division = 1
@@ -284,23 +282,35 @@ test('Scale retains displaced principal participation and exact survivor lineage
         session.beginScalingSession('beat')
         session.setScalingFactor(2)
         const draft = preview.getPreviewState(history.state.value)
-        const survivor = draft.selectedEntities.find((entity) => entity.type === 'timeScale')!
-        if (survivor.type !== 'timeScale') throw new Error('Missing survivor')
-        const exactBaseline = session.getScalingBaselineEntity(survivor) === originals[1]
-        session.beginScalingDrag(survivor, survivor.beat)
+        const twins = draft.selectedEntities.filter((entity) => entity.type === 'timeScale')
+        const twin = twins[0]!
+        if (twin.type !== 'timeScale') throw new Error('Missing twin')
+        const exactBaseline = session.getScalingBaselineEntity(twin) === originals[0]
+        session.beginScalingDrag(twin, twin.beat)
         session.updateScalingDrag(144)
         session.endScalingDrag()
         session.applyScalingSession()
         return {
             exactBaseline,
+            draft: twins.map((entity) => [
+                entity.beat,
+                entity.type === 'timeScale' && entity.timeScale,
+            ]),
             step: history.headStep.value,
             timeScales: [...history.state.value.store.grid.timeScale.values()]
                 .flatMap((bucket) => [...bucket])
                 .map(({ beat, timeScale }) => [beat, timeScale]),
         }
     })
+    expect(result.draft).toEqual([
+        [96, 2],
+        [96, 3],
+    ])
     expect(result.exactBaseline).toBe(true)
-    expect(result.timeScales).toEqual([[144, 3]])
+    expect(result.timeScales).toEqual([
+        [144, 2],
+        [144, 3],
+    ])
     expect(result.step?.operation).toMatchObject({
         id: 'nse.object.scale',
         data: {
@@ -310,6 +320,212 @@ test('Scale retains displaced principal participation and exact survivor lineage
             transform: { mode: 'composed' },
         },
     })
+})
+
+test('a scale session stacks moved events after those at their destination and counts only the BPM change it replaced', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { fixtures, show, history, appImport, view } = window.editorTest
+        view.division = 1
+        const camera = fixtures.events.cameraEvents[0]!
+        show({
+            ...fixtures.events,
+            bpms: [
+                { beat: 0, bpm: 120 },
+                { beat: 8, bpm: 150 },
+                { beat: 12, bpm: 200 },
+            ],
+            cameraEvents: [
+                { ...camera, beat: 4, cameraZoom: 1 },
+                { ...camera, beat: 6, cameraZoom: 3 },
+                { ...camera, beat: 8, cameraZoom: 2 },
+                { ...camera, beat: 12, cameraZoom: 9 },
+            ],
+        })
+        type State = typeof history.state.value
+        type Entity = State['selectedEntities'][number]
+        const entities = (state: State): Entity[] =>
+            [
+                ...state.store.grid.cameraEventJoint.values(),
+                ...state.store.grid.bpm.values(),
+            ].flatMap((bucket) => [...bucket])
+        // Each object as its beat and value.
+        const tag = (entity: Entity) => [
+            entity.beat,
+            entity.type === 'cameraEventJoint'
+                ? entity.cameraZoom
+                : entity.type === 'bpm'
+                  ? entity.bpm
+                  : NaN,
+        ]
+        // The chart's objects by beat, camera events first at a beat, each kind in playing order.
+        const chart = (state: State) =>
+            entities(state)
+                .sort((a, b) => a.beat - b.beat)
+                .map((entity) => [entity.type === 'bpm' ? 'bpm' : 'camera', ...tag(entity)])
+        const selected = (state: State) =>
+            state.selectedEntities.map(tag).sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]!)
+        const source = history.state.value
+        history.replaceState({
+            ...source,
+            selectedEntities: entities(source).filter(
+                (entity) =>
+                    (entity.type === 'cameraEventJoint' && entity.cameraZoom !== 9) ||
+                    (entity.type === 'bpm' && entity.beat === 8),
+            ),
+        })
+        const before = history.state.value
+        const session = await appImport<
+            typeof import('../../src/editor/commands/scaleSelection/session')
+        >('/src/editor/commands/scaleSelection/session.ts')
+        const preview =
+            await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+        // Cancel leaves the chart as it was.
+        session.beginScalingSession('beat')
+        session.setScalingFactor(2)
+        session.cancelScalingSession()
+        const cancelled = history.state.value === before && !history.canUndo.value
+        // x2 from beat 4, then a drag of the middle event 4 beats later.
+        session.beginScalingSession('beat')
+        session.setScalingFactor(2)
+        const scaled = preview.getPreviewState(history.state.value)
+        const middle = scaled.selectedEntities.find(
+            (entity) => entity.type === 'cameraEventJoint' && entity.cameraZoom === 3,
+        )!
+        if (middle.type !== 'cameraEventJoint') throw new Error('Missing middle event')
+        session.beginScalingDrag(middle, middle.beat)
+        session.updateScalingDrag(middle.beat + 4)
+        session.endScalingDrag()
+        const draft = preview.getPreviewState(history.state.value)
+        session.applyScalingSession()
+        const applied = history.state.value
+        const step = history.headStep.value?.operation
+        history.undoState()
+        const undone = chart(history.state.value)
+        history.redoState()
+        return {
+            cancelled,
+            scaled: chart(scaled),
+            scaledSelection: selected(scaled),
+            draft: chart(draft),
+            applied: chart(applied),
+            selection: selected(applied),
+            step,
+            undone,
+            redone: chart(history.state.value),
+            original: chart(before),
+        }
+    })
+    expect(result.cancelled).toBe(true)
+    // The unselected 9 stays first at its beat and never joins the selection.
+    expect(result.scaled).toEqual([
+        ['bpm', 0, 120],
+        ['camera', 4, 1],
+        ['camera', 8, 3],
+        ['camera', 12, 9],
+        ['camera', 12, 2],
+        ['bpm', 12, 150],
+    ])
+    expect(result.scaledSelection).toEqual([
+        [4, 1],
+        [8, 3],
+        [12, 2],
+        [12, 150],
+    ])
+    expect(result.draft).toEqual([
+        ['bpm', 0, 120],
+        ['camera', 8, 1],
+        ['camera', 12, 9],
+        ['camera', 12, 3],
+        ['camera', 16, 2],
+        ['bpm', 16, 150],
+    ])
+    expect(result.applied).toEqual(result.draft)
+    expect(result.selection).toEqual([
+        [8, 1],
+        [12, 3],
+        [16, 2],
+        [16, 150],
+    ])
+    expect(result.step).toMatchObject({
+        id: 'nse.object.scale',
+        data: {
+            axis: 'beats',
+            subject: 'objects',
+            changed: { bpm: 1, cameraEvent: 3 },
+            displaced: { bpm: 1 },
+        },
+    })
+    expect(result.undone).toEqual(result.original)
+    expect(result.redone).toEqual(result.draft)
+})
+
+test('Flip Vertical stacks a moved event after those at its destination and records nothing displaced', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { fixtures, show, history, appImport } = window.editorTest
+        const camera = fixtures.events.cameraEvents[0]!
+        show({
+            ...fixtures.events,
+            cameraEvents: [
+                { ...camera, beat: 2, cameraZoom: 1 },
+                { ...camera, beat: 6, cameraZoom: 2 },
+                { ...camera, beat: 6, cameraZoom: 9 },
+            ],
+        })
+        type State = typeof history.state.value
+        const cameras = (state: State) =>
+            [...state.store.grid.cameraEventJoint.values()]
+                .flatMap((bucket) => [...bucket])
+                .sort((a, b) => a.beat - b.beat)
+        const chart = (state: State) =>
+            cameras(state).map((entity) => [entity.beat, entity.cameraZoom])
+        const source = history.state.value
+        history.replaceState({
+            ...source,
+            selectedEntities: cameras(source).filter((entity) => entity.cameraZoom !== 9),
+        })
+        const before = chart(history.state.value)
+        const { flipVertical } = await appImport<
+            typeof import('../../src/editor/commands/flipVertical')
+        >('/src/editor/commands/flipVertical/index.ts')
+        flipVertical.execute()
+        const flipped = history.state.value
+        const step = history.headStep.value?.operation
+        history.undoState()
+        const undone = chart(history.state.value)
+        history.redoState()
+        return {
+            before,
+            flipped: chart(flipped),
+            selection: flipped.selectedEntities
+                .map((entity) =>
+                    entity.type === 'cameraEventJoint' ? [entity.beat, entity.cameraZoom] : [],
+                )
+                .sort((a, b) => a[0]! - b[0]!),
+            step,
+            undone,
+            redone: chart(history.state.value),
+        }
+    })
+    expect(result.flipped).toEqual([
+        [2, 2],
+        [6, 9],
+        [6, 1],
+    ])
+    expect(result.selection).toEqual([
+        [2, 2],
+        [6, 1],
+    ])
+    expect(result.step).toMatchObject({
+        id: 'nse.object.flip',
+        data: { axis: 'vertical', subject: 'cameraEvent', changed: { cameraEvent: 2 } },
+    })
+    expect(result.step).not.toHaveProperty('data.displaced')
+    expect(result.undone).toEqual(result.before)
+    expect(result.redone).toEqual(result.flipped)
 })
 
 // Dragging the factor back to where it started leaves the chart as it was: no step.
@@ -579,4 +795,73 @@ test('Combine counts all participating notes and Split counts unique eligible cu
     })
     expect(result.split?.operation).toMatchObject({ id: 'nse.note.split', data: { targets: 1 } })
     expect(result.lengths.sort()).toEqual([1, 3])
+})
+
+test('Scale Apply after dragging part of a stack away and back keeps the chart and adds no step', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { appImport, fixtures, history, show, store } = window.editorTest
+        const session = await appImport<
+            typeof import('../../src/editor/commands/scaleSelection/session')
+        >('/src/editor/commands/scaleSelection/session.ts')
+        const preview =
+            await appImport<typeof import('../../src/preview/edit')>('/src/preview/edit.ts')
+        const camera = fixtures.events.cameraEvents[0]!
+        // S (1) and P (2) share beat 4; P stays unselected.
+        show({
+            ...fixtures.events,
+            isDynamicStages: true,
+            cameraEvents: [
+                [0, 0],
+                [4, 1],
+                [4, 2],
+                [12, 3],
+            ].map(([beat, cameraLeft]) => ({ ...camera, beat: beat!, cameraLeft: cameraLeft! })),
+        })
+        const cameraAt = (state: typeof history.state.value) =>
+            [...new Set([...state.store.grid.cameraEventJoint.values()].flatMap((b) => [...b]))]
+                .filter((entity) => entity.beat === 4)
+                .map((entity) => entity.cameraLeft)
+        const events = [...store.getAllEntities()].filter(
+            (entity) => entity.type === 'cameraEventJoint',
+        )
+        const s = events.find((entity) => entity.cameraLeft === 1)!
+        if (s.type !== 'cameraEventJoint') throw new Error('Missing S')
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: events.filter((entity) => entity.cameraLeft !== 2),
+        })
+        const before = history.state.value
+        const head = history.headStep.value
+        const opened = session.beginScalingSession('beat')
+        const drags = [
+            session.beginScalingDrag(s, 4),
+            session.updateScalingDrag(8),
+            (session.endScalingDrag(), true),
+            session.beginScalingDrag(s, 8),
+            session.updateScalingDrag(4),
+            (session.endScalingDrag(), true),
+        ]
+        const draft = cameraAt(preview.getPreviewState(history.state.value))
+        session.applyScalingSession()
+        return {
+            opened: !!opened,
+            drags,
+            draft,
+            after: cameraAt(history.state.value),
+            unchanged: history.state.value.store === before.store,
+            sameHead: history.headStep.value === head,
+            undo: history.canUndo.value,
+        }
+    })
+    expect(result).toMatchObject({
+        opened: true,
+        drags: [true, true, true, true, true, true],
+        draft: [2, 1],
+        after: [1, 2],
+        unchanged: true,
+        sameHead: true,
+        undo: false,
+    })
 })

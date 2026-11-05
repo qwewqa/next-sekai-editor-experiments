@@ -185,7 +185,7 @@ const dynamic: Record<string, string> = {
     'storage.': 'StorageLineKey',
     'save.': 'FileErrorKey',
     'name.': "the file name problem's reason",
-    'tools.brush.kinds.': 'PropertyKind',
+    'tools.brush.kinds.': 'BrushGroup',
     'modals.form.key.names.': "the key's name from the event",
     'modals.loading.': 'TaskFailureKind',
     'peek.loadingShort': 'fixedLines in history/changes.ts, read through fixedLine',

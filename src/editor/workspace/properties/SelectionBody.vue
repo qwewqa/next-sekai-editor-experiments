@@ -10,7 +10,7 @@ import type { Store } from '../../../state/store'
 import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
 import { providePropertyDescriptions } from '../../../modals/form/propertyDescription'
 import { aggregateEntities, mergeAggregates, type EntitiesAggregate } from '../../utils/properties'
-import { generalKeys, layoutFields, sharedKeys, type SelectionContext } from './fields'
+import { layoutFields, propertyFields, type SelectionContext } from './fields'
 import PropertiesBlock from './PropertiesBlock.vue'
 import { summarizeSelection, type SummaryKind } from './summary'
 
@@ -67,20 +67,22 @@ const byKind = computed(() => {
     return kinds
 })
 
-const context = (kinds: SummaryKind[], count: number): SelectionContext => {
-    const types: SelectionContext['types'] = {}
-    const noteFields = byKind.value.get('note')?.aggregate.noteFields ?? {}
-    for (const kind of kinds) types[kind] = true
-    return { types, noteFields, count, isDynamicStages: isDynamicStages.value }
-}
+// The keys General shows for several kinds.
+const generalKeys = propertyFields.flatMap((field) => (field.general ? [field.key] : []))
+
+const context = (counts: SelectionContext['counts']): SelectionContext => ({
+    counts,
+    noteFields: byKind.value.get('note')?.aggregate.noteFields ?? {},
+    isDynamicStages: isDynamicStages.value,
+})
 
 const blocks = computed(() => {
     const kinds = summary.value.kinds.map(({ kind }) => kind)
     const counts = new Map(summary.value.kinds.map(({ kind, count }) => [kind, count]))
     const layout = layoutFields(
         kinds,
-        (kind) => context([kind as SummaryKind], counts.get(kind as SummaryKind) ?? 0),
-        context(kinds, entities.value.length),
+        (kind) => context({ [kind]: counts.get(kind as SummaryKind) ?? 0 }),
+        context(Object.fromEntries(counts)),
     )
     return layout.map(({ kind, sections }) => {
         const own = kind && byKind.value.get(kind)
@@ -93,7 +95,7 @@ const blocks = computed(() => {
                 ? own.aggregate
                 : mergeAggregates(
                       [...byKind.value.values()].map(({ aggregate }) => aggregate),
-                      [...generalKeys, ...sharedKeys],
+                      generalKeys,
                   ),
             count: kind ? (counts.get(kind as SummaryKind) ?? 0) : entities.value.length,
             slides: kind === 'note' ? summary.value.slides : 0,

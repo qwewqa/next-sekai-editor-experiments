@@ -194,9 +194,7 @@ test('property receipts are accepted for random selections and edits', () => {
     for (let seed = 0; seed < 200; seed++) {
         const rand = random(seed + 3000)
         const { state, selected } = randomScene(rand)
-        const result = planEdit(state, selected, pick(rand, fields)(rand) as never, {
-            single: chance(rand, 0.5),
-        })
+        const result = planEdit(state, selected, pick(rand, fields)(rand) as never)
         if (!result.receipt) continue
         receipts++
         for (const id of ['nse.property.set', 'nse.object.brush'] as const)

@@ -1,3 +1,9 @@
+import { toDisplayedBeat } from '../../editor/beatDisplay'
+import {
+    brushGroups,
+    propertyField,
+    propertyFields,
+} from '../../editor/workspace/properties/fields'
 import {
     checkedSum,
     decodeOperation,
@@ -48,6 +54,21 @@ type RecordData = {
 }
 
 const plain = (text: string): DetailText => ({ text })
+
+const tableIndex = new Map<string, number>(propertyFields.map((field, index) => [field.key, index]))
+const brushGroupIndex = (field: FieldId) => {
+    const group = propertyField.get(field)?.brush?.group
+    return group ? brushGroups.indexOf(group) : brushGroups.length
+}
+const order = (field: FieldId) => tableIndex.get(field) ?? tableIndex.size
+
+/** Assignments in the order of the form that made the step: the Brush's groups, else the field table. */
+const inFormOrder = <T extends { field: FieldId }>(assignments: readonly T[], brush: boolean) =>
+    [...assignments].sort(
+        (a, b) =>
+            (brush ? brushGroupIndex(a.field) - brushGroupIndex(b.field) : 0) ||
+            order(a.field) - order(b.field),
+    )
 const placeholder = (text: string): DetailText => ({ text, placeholder: true })
 
 /**
@@ -236,15 +257,25 @@ const nativeRecord = (
         case 'nse.property.set': {
             changed(d.changed, operation.data.changed, false)
             collateral(operation.data)
-            for (const assignment of operation.data.assignments)
+            // A one-field edit's title names its field. Elsewhere a field whose values read the
+            // same before and after (each varies, or a coupled connector flag changed) still changed.
+            const titled =
+                operation.id === 'nse.property.set' && operation.data.assignments.length === 1
+            for (const assignment of inFormOrder(
+                operation.data.assignments,
+                operation.id === 'nse.object.brush',
+            )) {
+                const label = operationFieldLabel(assignment.field, context)
+                const before = assigned(assignment.field, assignment.before, context)
+                const after = assigned(assignment.field, assignment.after, context)
                 rows.push(
-                    ...changeRow(
-                        assignment.field,
-                        operationFieldLabel(assignment.field, context),
-                        assigned(assignment.field, assignment.before, context),
-                        assigned(assignment.field, assignment.after, context),
-                    ),
+                    ...(!sameText(before, after)
+                        ? changeRow(assignment.field, label, before, after)
+                        : titled
+                          ? []
+                          : valueRow(assignment.field, label, plain(d.changedValue))),
                 )
+            }
             retained(operation.data)
             break
         }
@@ -276,7 +307,18 @@ const nativeRecord = (
                         t.commands.scaleSelection.factor,
                         plain(numberText(transform.factor, context)),
                     ),
-                    ...valueRow('pivot', d.pivot, plain(numberText(transform.pivot, context))),
+                    ...valueRow(
+                        'pivot',
+                        d.pivot,
+                        plain(
+                            numberText(
+                                operation.data.axis === 'beats'
+                                    ? toDisplayedBeat(transform.pivot)
+                                    : transform.pivot,
+                                context,
+                            ),
+                        ),
+                    ),
                 )
             else
                 rows.push(
@@ -379,9 +421,9 @@ const nativeRecord = (
                         ] as const)
                             if (value)
                                 rows.push(...valueRow(key, text, plain(numberText(value, context))))
-                        // Kept tags that moved: the label alone, with the existing "Changed".
+                        // Kept tags that moved: the label alone, with "Order changed".
                         if (change.reordered)
-                            rows.push(...valueRow('tagsOrder', label, plain(d.changed)))
+                            rows.push(...valueRow('tagsOrder', label, plain(d.orderChanged)))
                         break
                     case 'title':
                     case 'artists':

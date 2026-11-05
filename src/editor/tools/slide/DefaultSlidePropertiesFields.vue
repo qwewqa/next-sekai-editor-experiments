@@ -69,12 +69,13 @@ const copyProperties = createModel('copyProperties')
     </h3>
     <EmptyLabelProvider :label="copyLabel">
         <OptionalNoteTypeField v-model="noteType" />
-        <OptionalNoteStyleField v-model="noteStyle" />
-        <OptionalIsAttachedField v-model="isAttached" />
         <OptionalIsCriticalField v-model="isCritical" />
         <OptionalFlickDirectionField v-model="flickDirection" />
+        <OptionalIsAttachedField v-model="isAttached" />
+        <OptionalNoteStyleField v-model="noteStyle" />
         <OptionalIsFakeField v-model="isFake" />
         <OptionalSfxField v-model="sfx" />
+        <OptionalElevationField v-model="elevation" />
     </EmptyLabelProvider>
     <h3 class="border-t border-fg/15 pt-3 text-sm font-bold">
         {{ i18n.workspace.properties.connector }}
@@ -100,8 +101,5 @@ const copyProperties = createModel('copyProperties')
     <h3 class="border-t border-fg/15 pt-3 text-sm font-bold">
         {{ i18n.tools.brush.kinds.general }}
     </h3>
-    <EmptyLabelProvider :label="copyLabel">
-        <OptionalElevationField v-model="elevation" />
-    </EmptyLabelProvider>
     <CopyPropertiesField v-model="copyProperties" slide />
 </template>

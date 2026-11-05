@@ -1,15 +1,17 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import type { BrushProperties } from '../../src/editor/tools/brush'
 import { aggregateValues, countOptions, valueRange } from '../../src/editor/utils/aggregate'
 import {
     brushFields,
+    brushGroups,
+    brushObjectOf,
     fieldLabel,
     layoutFields,
     pickBrush,
     propertyField,
     propertyFields,
-    propertyKinds,
     propertySections,
     type PropertyField,
     type SelectionContext,
@@ -22,8 +24,12 @@ import {
     mixedRange,
     mixedValues,
 } from '../../src/modals/form/fieldUsage'
+import { createState } from '../../src/state'
 import type { Entity } from '../../src/state/entities'
+import { planEdit } from '../../src/state/operations/properties/plan'
 import { formatNumber } from '../../src/utils/formatNumber'
+import { note, stage } from '../local/records/charts'
+import { baseChart } from './sameBeatKinds'
 
 type Row = { kind: string; a?: number; b?: string; hidden?: number }
 
@@ -72,9 +78,8 @@ test('ranges and option counts read the usage', () => {
 })
 
 const context = (values: Partial<SelectionContext>): SelectionContext => ({
-    types: {},
+    counts: {},
     noteFields: {},
-    count: 1,
     isDynamicStages: true,
     ...values,
 })
@@ -83,7 +88,7 @@ const shown = (values: Partial<SelectionContext>) =>
     propertyFields.filter((field) => field.show(context(values))).map((field) => field.key)
 
 test('a single note shows its fields grouped as before, elevation last', () => {
-    const keys = shown({ types: { note: true } })
+    const keys = shown({ counts: { note: 1 } })
     assert.deepEqual(keys.slice(0, 3), ['beat', 'left', 'size'])
     assert.equal(keys.at(-1), 'elevation')
     assert.ok(keys.includes('connectorEase'))
@@ -91,19 +96,21 @@ test('a single note shows its fields grouped as before, elevation last', () => {
 })
 
 test('fields hidden for every selected note stay hidden', () => {
-    const keys = shown({ types: { note: true }, noteFields: { connectorEase: false, left: false } })
+    const keys = shown({ counts: { note: 1 }, noteFields: { connectorEase: false, left: false } })
     assert.ok(!keys.includes('connectorEase'))
     assert.ok(!keys.includes('left'))
     assert.ok(keys.includes('size'))
 })
 
 test('beat hides for several BPM or time scale changes', () => {
-    assert.ok(!shown({ types: { bpm: true, note: true }, count: 3 }).includes('beat'))
-    assert.ok(shown({ types: { bpm: true }, count: 1 }).includes('beat'))
+    assert.ok(shown({ counts: { bpm: 1, note: 2 } }).includes('beat'))
+    assert.ok(shown({ counts: { bpm: 1, timeScale: 1 } }).includes('beat'))
+    assert.ok(!shown({ counts: { bpm: 2, note: 2 } }).includes('beat'))
+    assert.ok(!shown({ counts: { timeScale: 2 } }).includes('beat'))
 })
 
 test('stage fields need dynamic stages', () => {
-    assert.ok(!shown({ types: { note: true }, isDynamicStages: false }).includes('stageId'))
+    assert.ok(!shown({ counts: { note: 1 }, isDynamicStages: false }).includes('stageId'))
 })
 
 test('fields keep sections in order and each key appears once', () => {
@@ -131,7 +138,7 @@ test('the brush offers only properties it can apply', () => {
         'xTranslation',
     ])
         assert.ok(!keys.includes(key), key)
-    assert.equal(keys.length, 56)
+    assert.equal(keys.length, 57)
     assert.equal(propertyField.get('connectorEase')?.ease, true)
 })
 
@@ -244,21 +251,102 @@ test('picking a brush keeps agreeing values and the agreeing half of eases', () 
         { noteType: 'default', size: 3, connectorEase: 'inCubic', beat: 2, cameraSize: 4 },
     ]
     const aggregate = aggregateValues(notes, () => () => true)
-    assert.deepEqual(pickBrush(aggregate, false), {
-        noteType: 'default',
-        connectorEase: 'type:in',
-    })
-    assert.deepEqual(pickBrush(aggregate, true), {
-        noteType: 'default',
-        connectorEase: 'type:in',
-        cameraSize: 4,
-    })
+    assert.deepEqual(
+        pickBrush(() => aggregate, false),
+        {
+            noteType: 'default',
+            connectorEase: 'type:in',
+        },
+    )
+    assert.deepEqual(
+        pickBrush(() => aggregate, true),
+        {
+            noteType: 'default',
+            connectorEase: 'type:in',
+            cameraSize: 4,
+        },
+    )
+    // Each Elevation row picks from its own kind.
+    const objects = [
+        { type: 'note', elevation: 1 },
+        { type: 'note', elevation: 1 },
+        { type: 'stageTransformEventJoint', elevation: 3 },
+    ]
+    const ofKinds = (kinds?: readonly string[]) =>
+        aggregateValues(
+            objects.filter(({ type }) => !kinds || kinds.includes(type)),
+            () => () => true,
+        )
+    assert.deepEqual(pickBrush(ofKinds, true), { elevation: 1, stageElevation: 3 })
+    assert.deepEqual(pickBrush(ofKinds, false), { elevation: 1 })
 })
 
 test('picking skips the stage without dynamic stages', () => {
     const aggregate = aggregateValues([{ stageId: 1, groupId: 2 }], () => () => true)
-    assert.deepEqual(pickBrush(aggregate, false), { groupId: 2 })
-    assert.deepEqual(pickBrush(aggregate, true), { groupId: 2, stageId: 1 })
+    assert.deepEqual(
+        pickBrush(() => aggregate, false),
+        { groupId: 2 },
+    )
+    assert.deepEqual(
+        pickBrush(() => aggregate, true),
+        { groupId: 2, stageId: 1 },
+    )
+})
+
+test('the two Elevation rows brush notes and stage transform events apart, in one edit', () => {
+    const state = createState(
+        {
+            ...baseChart(),
+            slides: [[note(1)]],
+            stageTransformEvents: [
+                {
+                    stageId: stage(1),
+                    beat: 2,
+                    rotation: 0,
+                    xTranslation: 0,
+                    yTranslation: 0,
+                    elevation: 0,
+                    anchor: 'default',
+                    rotationCenter: 'stage',
+                    centerXOffset: 0,
+                    centerYOffset: 0,
+                    eventEase: 'linear',
+                },
+            ],
+        },
+        0,
+    )
+    const selected = [
+        ...state.store.grid.note.values(),
+        ...state.store.grid.stageTransformEventJoint.values(),
+    ].flatMap((bucket) => [...bucket])
+    const brush = (properties: BrushProperties) => {
+        for (const entity of selected)
+            assert.ok(!('stageElevation' in brushObjectOf(properties, entity)))
+        const plan = planEdit(state, selected, properties, {
+            each: (entity) => brushObjectOf(properties, entity),
+        })
+        const elevations = Object.fromEntries(
+            plan.state.selectedEntities.map((entity) => [
+                entity.type,
+                (entity as { elevation: number }).elevation,
+            ]),
+        )
+        return { plan, elevations }
+    }
+    const both = brush({ elevation: 2, stageElevation: 5, isCritical: true })
+    assert.deepEqual(both.elevations, { note: 2, stageTransformEventJoint: 5 })
+    const elevation = both.plan.receipt!.assignments.filter((a) => a.field === 'elevation')
+    assert.deepEqual(elevation, [
+        { field: 'elevation', before: { mode: 'uniform', value: 0 }, after: { mode: 'varying' } },
+    ])
+    // The Note row alone leaves the transform event as it is.
+    const notesOnly = brush({ elevation: 2 })
+    assert.deepEqual(notesOnly.elevations, { note: 2, stageTransformEventJoint: 0 })
+    assert.deepEqual(
+        notesOnly.plan.changed.map((entity) => entity.type),
+        ['note'],
+    )
 })
 
 test('unknown and unset values are told apart from mixed ones', () => {
@@ -302,7 +390,11 @@ const editableTypes = [
 ] as const
 
 // Every name a field renders: its label, or an ease's type and function.
-const renderedLabels = (field: PropertyField, t: Messages, qualified: boolean) => {
+const renderedLabels = (
+    field: Omit<PropertyField, 'key'> & { key: string },
+    t: Messages,
+    qualified: boolean,
+) => {
     if (!field.ease) return [fieldLabel(field, t, qualified)]
     const form = t.modals.form[field.key as 'timeScaleEase'] as {
         type: string
@@ -318,10 +410,10 @@ const renderedLabels = (field: PropertyField, t: Messages, qualified: boolean) =
 
 // Blocks of one kind, plus General, as Selection lays out the selection.
 const blocksOf = (selection: SelectionContext) => {
-    const kinds = editableTypes.filter((type) => selection.types[type])
+    const kinds = editableTypes.filter((type) => selection.counts[type])
     return layoutFields(
         kinds,
-        (kind) => ({ ...selection, types: { [kind]: true } }),
+        (kind) => ({ ...selection, counts: { [kind]: selection.counts[kind] } }),
         selection,
     ).map(({ kind, sections }) => ({
         kind,
@@ -333,14 +425,11 @@ for (const locale of locales) {
     test(`${locale} Selection labels stay unique within each block`, () => {
         const t = messages(locale)
         for (let mask = 1; mask < 1 << editableTypes.length; mask++) {
-            const types = Object.fromEntries(
-                editableTypes.filter((_, index) => mask & (1 << index)).map((type) => [type, true]),
-            )
+            const types = editableTypes.filter((_, index) => mask & (1 << index))
             for (const isDynamicStages of [true, false]) {
                 for (const count of [1, 2]) {
-                    for (const { kind, fields } of blocksOf(
-                        context({ types, isDynamicStages, count }),
-                    )) {
+                    const counts = Object.fromEntries(types.map((type) => [type, count]))
+                    for (const { kind, fields } of blocksOf(context({ counts, isDynamicStages }))) {
                         // General names a field several kinds share by what it applies to.
                         const labels = fields.flatMap((field) =>
                             renderedLabels(field, t, !kind && field.key === 'eventEase'),
@@ -348,47 +437,62 @@ for (const locale of locales) {
                         const repeated = labels.filter(
                             (label, index) => labels.indexOf(label) !== index,
                         )
-                        assert.deepEqual(repeated, [], `${Object.keys(types).join('+')}`)
+                        assert.deepEqual(repeated, [], `${types.join('+')}`)
                     }
                 }
             }
         }
     })
 
-    test(`${locale} brush labels stay unique within each kind and when removed`, () => {
+    test(`${locale} brush labels stay unique within each brush group and when removed`, () => {
         const t = messages(locale)
-        for (const kind of propertyKinds) {
+        for (const group of brushGroups) {
             const labels = brushFields
-                .filter((field) => field.kind === kind)
+                .filter((field) => field.brush.group === group)
                 .flatMap((field) => renderedLabels(field, t, false))
-            assert.equal(new Set(labels).size, labels.length, kind)
+            assert.equal(new Set(labels).size, labels.length, group)
         }
         const removed = brushFields.map((field) => fieldLabel(field, t, true))
         assert.equal(new Set(removed).size, removed.length)
     })
 }
 
-test('fields of several kinds close the selection under General', () => {
+test('fields of several kinds open the selection with General', () => {
     const keys = (selection: SelectionContext) =>
         blocksOf(selection).map(({ kind, fields }) => [kind, fields.map((field) => field.key)])
     // One kind keeps every field in one block.
-    const notes = keys(context({ types: { note: true }, count: 3 }))
+    const notes = keys(context({ counts: { note: 3 } }))
     assert.equal(notes.length, 1)
     assert.ok((notes[0]![1] as string[]).includes('beat'))
     // Events each get their ease; General adds one for all of them, and Beat.
-    const events = keys(
-        context({ types: { cameraEventJoint: true, stageMaskEventJoint: true }, count: 2 }),
-    )
+    const events = keys(context({ counts: { cameraEventJoint: 1, stageMaskEventJoint: 1 } }))
     assert.deepEqual(
         events.map(([kind]) => kind),
-        ['cameraEventJoint', 'stageMaskEventJoint', undefined],
+        [undefined, 'cameraEventJoint', 'stageMaskEventJoint'],
     )
-    assert.ok((events[0]![1] as string[]).includes('eventEase'))
-    assert.deepEqual(events[2]![1], ['beat', 'eventEase', 'stageId'])
-    // Group, Stage and Elevation stay out of the kinds' blocks.
-    const mixed = keys(context({ types: { note: true, timeScale: true }, count: 2 }))
-    assert.ok(!(mixed[0]![1] as string[]).includes('groupId'))
-    assert.deepEqual(mixed[2]![1], ['groupId', 'stageId', 'elevation'])
+    assert.ok((events[1]![1] as string[]).includes('eventEase'))
+    // Stage is the mask's alone here: it stays in the mask's block.
+    assert.deepEqual(events[0]![1], ['beat', 'eventEase'])
+    assert.ok((events[2]![1] as string[]).includes('stageId'))
+    // Group is shared with the time scale; Stage and Elevation are the notes' alone.
+    const mixed = keys(context({ counts: { note: 2, timeScale: 1 } }))
+    assert.deepEqual(mixed[0]![1], ['beat', 'groupId'])
+    assert.ok(!(mixed[1]![1] as string[]).includes('groupId'))
+    assert.deepEqual((mixed[1]![1] as string[]).slice(-2), ['stageId', 'elevation'])
+    // Elevation is never shared: each kind's block edits its own.
+    const transform = keys(context({ counts: { note: 2, stageTransformEventJoint: 1 } }))
+    assert.deepEqual(transform[0]![1], ['beat', 'stageId'])
+    assert.equal((transform[1]![1] as string[]).at(-1), 'elevation')
+    assert.equal((transform[2]![1] as string[]).at(-1), 'elevation')
+    // Beat that General cannot take goes to each kind that can; with nothing shared, no General.
+    const bpms = keys(context({ counts: { note: 2, bpm: 2 } }))
+    assert.deepEqual(
+        bpms.map(([kind, fields]) => [kind, (fields as string[]).includes('beat')]),
+        [
+            ['note', true],
+            ['bpm', false],
+        ],
+    )
     const t = messages('en')
     const ease = propertyField.get('timeScaleEase')!
     assert.equal(fieldLabel(ease, t, false), 'Ease')
@@ -398,12 +502,42 @@ test('fields of several kinds close the selection under General', () => {
     assert.equal(fieldLabel(lane, t, true), fieldLabel(lane, t, false))
 })
 
+test("the tools' settings list their fields in the table's order", () => {
+    const order = propertyFields.map((field) => field.key as string)
+    for (const path of [
+        'note/DefaultNotePropertiesFields.vue',
+        'slide/DefaultSlidePropertiesFields.vue',
+        'events/camera/DefaultCameraEventPropertiesFields.vue',
+        'events/stage/mask/DefaultStageMaskEventPropertiesFields.vue',
+        'events/stage/pivot/DefaultStagePivotEventPropertiesFields.vue',
+        'events/stage/style/DefaultStageStyleEventPropertiesFields.vue',
+        'events/stage/transform/DefaultStageTransformEventPropertiesFields.vue',
+    ]) {
+        const source = readFileSync(
+            new URL(`../../src/editor/tools/${path}`, import.meta.url),
+            'utf8',
+        )
+        // Within each heading.
+        for (const part of source.slice(source.indexOf('<template>')).split('<h3')) {
+            const keys = [...part.matchAll(/<Optional(\w+)Field\b/g)].map(
+                ([, name]) => name!.charAt(0).toLowerCase() + name!.slice(1),
+            )
+            for (const key of keys) assert.ok(order.includes(key), `${path}: ${key}`)
+            assert.deepEqual(
+                keys,
+                [...keys].sort((a, b) => order.indexOf(a) - order.indexOf(b)),
+                path,
+            )
+        }
+    }
+})
+
 test('a brushed time scale ease starts from None, which writes NONE', () => {
     assert.equal(propertyField.get('timeScaleEase')?.brush?.initial, 'none')
 })
 
 test('the rotation center fields follow Rotation, with qualified names for History and Brush', () => {
-    const keys = shown({ types: { stageTransformEventJoint: true } })
+    const keys = shown({ counts: { stageTransformEventJoint: 1 } })
     const at = keys.indexOf('rotation')
     assert.deepEqual(keys.slice(at, at + 5), [
         'rotation',

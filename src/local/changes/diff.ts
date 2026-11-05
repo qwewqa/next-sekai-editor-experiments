@@ -4,7 +4,8 @@ import { kindNames, type KindName } from '../records/schema'
 // What a History entry changed: the records two snapshots differ in, as objects
 // added, removed or changed. One core for the storage worker, which narrows the records by hash,
 // and the page, which narrows them by identity: supersets give the same answer, as the shared
-// records cancel in the multiset difference.
+// records cancel in the multiset difference. A shared record whose place in its same-beat stack,
+// or whose neighbour in its slide, changed is a change too.
 
 type Rec = readonly RecordValue[]
 
@@ -45,7 +46,7 @@ export type ChangedObject = {
 export type ChangeLayout = 'none' | 'small' | 'large' | 'most'
 
 export type ChangeSet = {
-    /** In chart order; unpaired additions/removals in the `most` layout. */
+    /** In chart order; in the `most` layout, unpaired additions/removals and moved shared ones. */
     objects: ChangedObject[]
     /** Objects changed per kind; in `most`, at least this many. */
     counts: Record<KindName, number>
@@ -78,6 +79,8 @@ const trackOf = (kind: KindName, record: Rec) =>
     kind === 'bpms' || kind === 'cameraEvents' ? 0 : (record[0] as number)
 
 const textOf = (record: Rec) => JSON.stringify(record)
+
+const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
 type Item = {
     kind: KindName
@@ -126,26 +129,132 @@ const difference = <T>(
     return [removed, added]
 }
 
-type Sides = { removed: Item[]; added: Item[] }
+type Entry = { record: Rec; text: string }
 
-/** Each kind's removed and added objects: slides flattened to notes, which cancel again. */
+/** Per text, each side's first `min(before, after)` occurrences: the records on both sides. */
+const commonOf = <T extends Entry>(before: readonly T[], after: readonly T[]): [T[], T[]] => {
+    const countOf = (list: readonly T[]) => {
+        const counts = new Map<string, number>()
+        for (const { text } of list) counts.set(text, (counts.get(text) ?? 0) + 1)
+        return counts
+    }
+    const keep = (list: readonly T[], other: Map<string, number>) =>
+        list.filter(({ text }) => {
+            const left = other.get(text) ?? 0
+            if (left) other.set(text, left - 1)
+            return left > 0
+        })
+    return [keep(before, countOf(after)), keep(after, countOf(before))]
+}
+
+/** Shared records whose place in their same-beat stack changed: the after side's. */
+const restacked = (kind: KindName, before: readonly Entry[], after: readonly Entry[]) => {
+    // Equal texts share a beat and a track, so a stack holds the same records on both sides.
+    const stacksOf = (entries: readonly Entry[]) => {
+        const stacks = new Map<string, Entry[]>()
+        for (const entry of entries) {
+            const key = `${trackOf(kind, entry.record)}|${String(entry.record[eventBeat[kind]])}`
+            const stack = stacks.get(key)
+            if (stack) stack.push(entry)
+            else stacks.set(key, [entry])
+        }
+        return stacks
+    }
+    const [old, next] = commonOf(before, after)
+    const was = stacksOf(old)
+    const marked: Entry[] = []
+    for (const [key, stack] of stacksOf(next))
+        for (const [i, entry] of stack.entries())
+            if (was.get(key)?.[i]?.text !== entry.text) marked.push(entry)
+    return marked
+}
+
+type SlideNote = Entry & { slide: Rec }
+
+/** Shared notes whose predecessor or successor in their slide changed: the after side's. */
+const reconnected = (before: readonly SlideNote[][], after: readonly SlideNote[][]) => {
+    const keyOf = (notes: readonly SlideNote[]) => notes.map(({ text }) => text).join('\n')
+    const sequencesOf = (slides: readonly SlideNote[][]) =>
+        slides
+            .map((notes) => ({ key: keyOf(notes), notes }))
+            .sort((a, b) => compareText(a.key, b.key))
+    // Sorted first, so both paths keep the same occurrences of a note.
+    const [oldShared, nextShared] = commonOf(
+        sequencesOf(before).flatMap(({ notes }) => notes),
+        sequencesOf(after).flatMap(({ notes }) => notes),
+    )
+    const sharedOf = (slides: readonly SlideNote[][], notes: readonly SlideNote[]) => {
+        const shared = new Set(notes)
+        return slides
+            .map((slide) => slide.filter((note) => shared.has(note)))
+            .filter((slide) => slide.length)
+            .map((slide) => ({ key: keyOf(slide), notes: slide }))
+    }
+    // Equal sequences cancel; the k-th occurrence of a note before is its k-th after.
+    // Identical notes on two slides can swap partners, and a mark finds any note with its record.
+    const [gone, come] = difference(
+        sharedOf(before, oldShared),
+        sharedOf(after, nextShared),
+        ({ key }) => key,
+    )
+    const linksOf = (sequences: { key: string; notes: readonly SlideNote[] }[]) => {
+        sequences.sort((a, b) => compareText(a.key, b.key))
+        const links = new Map<string, { note: SlideNote; link: string }[]>()
+        for (const { notes } of sequences)
+            for (const [i, note] of notes.entries()) {
+                const link = `${notes[i - 1]?.text ?? ''}\n${notes[i + 1]?.text ?? ''}`
+                const occurrences = links.get(note.text)
+                if (occurrences) occurrences.push({ note, link })
+                else links.set(note.text, [{ note, link }])
+            }
+        return links
+    }
+    const old = linksOf(gone)
+    const marked: SlideNote[] = []
+    for (const [text, occurrences] of linksOf(come))
+        for (const [k, { note, link }] of occurrences.entries())
+            if (old.get(text)?.[k]?.link !== link) marked.push(note)
+    return marked
+}
+
+type Sides = { removed: Item[]; added: Item[]; reordered: Item[] }
+
+/**
+ * Each kind's removed and added objects, slides flattened to notes, which cancel again; and the
+ * shared objects whose place in a stack or neighbours in a slide changed.
+ */
 const sidesOf = (input: DiffInput): Map<KindName, Sides> => {
     const sides = new Map<KindName, Sides>()
     for (const { kind, before, after } of input.kinds) {
-        const [removed, added] = difference(before, after, textOf)
-        const side = sides.get(kind) ?? { removed: [], added: [] }
+        const side = sides.get(kind) ?? { removed: [], added: [], reordered: [] }
         sides.set(kind, side)
         if (kind === 'slides') {
-            const notes = (slides: Rec[]) =>
-                slides.flatMap((slide) =>
-                    (slide as readonly Rec[]).map((note) => ({ note, slide, text: textOf(note) })),
+            const [removed, added] = difference(before, after, textOf)
+            const notesOf = (slides: Rec[]) =>
+                slides.map((slide) =>
+                    (slide as readonly Rec[]).map((record) => ({
+                        record,
+                        slide,
+                        text: textOf(record),
+                    })),
                 )
-            const [gone, come] = difference(notes(removed), notes(added), (note) => note.text)
-            side.removed.push(...gone.map((n) => itemOf(kind, n.note, n.text, n.slide)))
-            side.added.push(...come.map((n) => itemOf(kind, n.note, n.text)))
+            const old = notesOf(removed)
+            const next = notesOf(added)
+            const [gone, come] = difference(old.flat(), next.flat(), (note) => note.text)
+            side.removed.push(...gone.map((n) => itemOf(kind, n.record, n.text, n.slide)))
+            side.added.push(...come.map((n) => itemOf(kind, n.record, n.text)))
+            for (const n of reconnected(old, next))
+                side.reordered.push(itemOf(kind, n.record, n.text))
         } else {
-            side.removed.push(...removed.map((record) => itemOf(kind, record)))
-            side.added.push(...added.map((record) => itemOf(kind, record)))
+            const entriesOf = (records: readonly Rec[]): Entry[] =>
+                records.map((record) => ({ record, text: textOf(record) }))
+            const old = entriesOf(before)
+            const next = entriesOf(after)
+            const [gone, come] = difference(old, next, (entry) => entry.text)
+            side.removed.push(...gone.map((e) => itemOf(kind, e.record, e.text)))
+            side.added.push(...come.map((e) => itemOf(kind, e.record, e.text)))
+            for (const e of restacked(kind, old, next))
+                side.reordered.push(itemOf(kind, e.record, e.text))
         }
     }
     for (const side of sides.values()) {
@@ -158,8 +267,8 @@ const sidesOf = (input: DiffInput): Map<KindName, Sides> => {
 /** The changed beats and whether the header differs: no pairing and no records kept. */
 export const summarizeChanges = (input: DiffInput): ChangeSummary => {
     const beats = new Set<number>()
-    for (const { removed, added } of sidesOf(input).values())
-        for (const item of [...removed, ...added]) beats.add(item.beat)
+    for (const { removed, added, reordered } of sidesOf(input).values())
+        for (const item of [...removed, ...added, ...reordered]) beats.add(item.beat)
     return { beats: [...beats].sort((a, b) => a - b), header: input.header }
 }
 
@@ -301,8 +410,6 @@ const emptyCounts = (): Record<KindName, number> =>
 
 const kindOrder = new Map(kindNames.map((kind, i) => [kind, i]))
 
-const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
-
 /** Chart order: by beat, kind and lane, then by record, so equal inputs sort alike. */
 const compareObjects = (a: ChangedObject, b: ChangedObject) =>
     a.beat - b.beat ||
@@ -337,8 +444,9 @@ export const diffChanges = (input: DiffInput, totals?: ChangeTotals): ChangeSet 
             objects.push(
                 ...side.removed.map((item) => objectOf(item, 'removed')),
                 ...side.added.map((item) => objectOf(item, 'added')),
+                ...side.reordered.map((item) => objectOf(item, 'changed', item)),
             )
-            counts[kind] = side.removed.length + side.added.length
+            counts[kind] = side.removed.length + side.added.length + side.reordered.length
         }
         objects.sort(compareObjects)
         return { objects, counts, header: input.header, layout: 'most' }
@@ -363,7 +471,9 @@ export const diffChanges = (input: DiffInput, totals?: ChangeTotals): ChangeSet 
         for (const { removed, added } of pairs) objects.push(objectOf(added, 'changed', removed))
         for (const item of side.removed) if (!item.paired) objects.push(objectOf(item, 'removed'))
         for (const item of side.added) if (!item.paired) objects.push(objectOf(item, 'added'))
-        counts[kind] = pairs.length + side.removed.length + side.added.length - 2 * pairs.length
+        for (const item of side.reordered) objects.push(objectOf(item, 'changed', item))
+        counts[kind] =
+            side.removed.length + side.added.length - pairs.length + side.reordered.length
     }
     objects.sort(compareObjects)
     const layout = !objects.length ? 'none' : objects.length > MARK_LIMIT ? 'large' : 'small'

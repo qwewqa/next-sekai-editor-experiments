@@ -14,6 +14,7 @@ import {
     stackLongWordsKey,
     stackTallLabelsKey,
 } from '../../../modals/form/fieldLayout'
+import type { EntityType } from '../../../state/entities'
 import { isEditableEntity } from '../../../state/operations/editable'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { notify } from '../../notification'
@@ -28,9 +29,9 @@ import {
     fieldLabel,
     isBrushAvailable,
     pickBrush,
-    propertyKinds,
+    brushGroups,
+    type BrushField,
     type BrushKey,
-    type PropertyField,
 } from '../../workspace/properties/fields'
 import { formatCount } from '../../../utils/size'
 
@@ -58,14 +59,13 @@ const models = Object.fromEntries(brushFields.map((field) => [field.key, createM
 const root = useTemplateRef<HTMLElement>('root')
 const addButton = useTemplateRef<HTMLButtonElement>('addButton')
 
-const available = (field: PropertyField) => isBrushAvailable(field, isDynamicStages.value)
+const available = (field: BrushField) => isBrushAvailable(field, isDynamicStages.value)
 
-const isSet = (field: PropertyField & { key: BrushKey }) =>
-    brushProperties.value[field.key] !== undefined
+const isSet = (field: BrushField) => brushProperties.value[field.key] !== undefined
 
-const byKind = (fields: (PropertyField & { key: BrushKey })[]) =>
-    propertyKinds.flatMap((kind) => {
-        const ofKind = fields.filter((field) => field.kind === kind)
+const byKind = (fields: BrushField[]) =>
+    brushGroups.flatMap((kind) => {
+        const ofKind = fields.filter((field) => field.brush.group === kind)
         return ofKind.length ? [{ kind, fields: ofKind }] : []
     })
 
@@ -75,9 +75,22 @@ const menu = computed(() =>
     byKind(brushFields.filter((field) => !isSet(field) && available(field))),
 )
 
-// Aggregated only when used, so selecting stays cheap while the brush shows.
-const selection = computed(() => aggregateEntities(selectedEntities.value.filter(isEditableEntity)))
-const canPick = computed(() => selectedEntities.value.some(isEditableEntity))
+// Aggregated only when used, so selecting stays cheap while the brush shows. A row that reaches
+// some kinds reads only their objects.
+const editable = computed(() => selectedEntities.value.filter(isEditableEntity))
+const selection = computed(() => {
+    const entities = editable.value
+    const of = (kinds?: readonly EntityType[]) =>
+        aggregateEntities(
+            kinds ? entities.filter((entity) => kinds.includes(entity.type)) : entities,
+        )
+    const all = of()
+    const byKinds = new Map(
+        brushFields.flatMap(({ kinds }) => (kinds ? [[kinds.join(), of(kinds)] as const] : [])),
+    )
+    return (kinds?: readonly EntityType[]) => (kinds && byKinds.get(kinds.join())) ?? all
+})
+const canPick = computed(() => editable.value.length > 0)
 
 // Values the editor's view already suggests.
 const fromView: Partial<Record<BrushKey, () => unknown>> = {
@@ -86,11 +99,11 @@ const fromView: Partial<Record<BrushKey, () => unknown>> = {
     size: () => view.noteSize,
 }
 
-const initialValue = (field: PropertyField & { key: BrushKey }) => {
+const initialValue = (field: BrushField) => {
     // Start from the selection's value when it agrees, as Pick does.
     const picked = pickBrush(selection.value, isDynamicStages.value)[field.key]
     if (picked !== undefined) return picked
-    return fromView[field.key]?.() ?? field.brush?.initial
+    return fromView[field.key]?.() ?? field.brush.initial
 }
 
 // Add Property opens a menu of the properties not in the brush, under their kinds.

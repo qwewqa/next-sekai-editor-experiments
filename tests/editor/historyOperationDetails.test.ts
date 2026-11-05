@@ -446,10 +446,11 @@ test('property steps show the before value, in the editor words', () => {
     assert.equal(lane.description, 'Set Lane to -2.5 on 1 note')
     assert.equal(change(lane, 'left'), '~Varies > -2.5')
     assert.equal(rowOf(byId('property.note.noop'), 'left'), undefined)
+    // In the field table's order, as the form that made the step lists them.
     const multi = byId('property.timeScale.multi')
     assert.deepEqual(
         multi.rows.map(({ key }) => key),
-        ['hideNotes', 'timeScale', 'timeScaleTransition'],
+        ['timeScale', 'timeScaleTransition', 'hideNotes'],
     )
     const group = byId('property.note.group.beforeName')
     // The new group has an empty name: a group, so its name reads quoted empty, not Not set.

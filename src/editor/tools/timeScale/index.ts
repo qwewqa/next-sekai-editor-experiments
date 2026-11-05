@@ -322,13 +322,6 @@ export const timeScale: Tool = {
     },
 }
 
-export const editTimeScale = (
-    entity: TimeScaleEntity,
-    object: Partial<WithEaseEdits<TimeScaleObject>>,
-) => {
-    editMoveOrReplace(entity, object)
-}
-
 // Data-level lookup. A time scale created at an occupied beat of its own group
 // replaces the existing one, so a group never holds two time scales at one
 // beat; placement reveals the target group first, so the replaced time scale

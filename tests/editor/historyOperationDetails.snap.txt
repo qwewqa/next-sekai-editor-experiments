@@ -156,10 +156,10 @@ R: Critical [isCritical]: ~Varies > Enabled
 
 #brush.note.many en
 T: Brushed 3 notes
-R: Flick Direction [flickDirection]: ~Varies > Up
-R: Critical [isCritical]: Disabled > Enabled
-R: Note Color [noteStyle]: ~Varies > Red
 R: Size [size]: 1 > 1.5
+R: Critical [isCritical]: Disabled > Enabled
+R: Flick Direction [flickDirection]: ~Varies > Up
+R: Note Color [noteStyle]: ~Varies > Red
 
 #property.note.lane en
 T: Set Lane to -2.5 on 1 note
@@ -172,6 +172,10 @@ R: Voie [left]: ~Variable > -2,5
 #property.note.lane ja
 T: 1個のノーツの「レーン」を-2.5に設定しました
 R: レーン [left]: ~値が異なります > -2.5
+
+#property.note.beat en
+T: Set Beat to 3 on 2 notes
+R: Beat [beat]: 2 > 3
 
 #property.note.varying en
 T: Changed Lane on 8 notes
@@ -208,9 +212,9 @@ R: Time Scale Ease [timeScaleEase]: ~Varies > Quad In
 
 #property.timeScale.multi en
 T: Edited 2 time scales
-R: Hide Notes [hideNotes]: ~Varies > Enabled
 R: Time Scale [timeScale]: 1 > 2.25
 R: Time Scale Transition [timeScaleTransition]: ~Varies > Scroll
+R: Hide Notes [hideNotes]: ~Varies > Enabled
 
 #property.camera.zoom en
 T: Set Camera Zoom to 1.25 on 3 camera events
@@ -218,8 +222,8 @@ R: Camera Zoom [cameraZoom]: ~Varies > 1.25
 
 #property.stageStyle.color en
 T: Edited 1 stage style event
-R: Judgment Line Color [judgmentLineColor]: ~Varies > Cyan
 R: Lane Color [laneColor]: Default > Red
+R: Judgment Line Color [judgmentLineColor]: ~Varies > Cyan
 R: Border Style (Left) [leftBorderStyle]: Default > Medium
 
 #property.bpm.value en
@@ -271,7 +275,7 @@ T: Flipped objects horizontally
 T: Scaled beats of 10 objects
 R: Changed [changed]: 5 notes / 5 BPM changes
 R: Scale Factor [factor]: 2
-R: Scale Origin [pivot]: 4
+R: Scale Origin [pivot]: 5
 
 #scale.width.uniform en
 T: Scaled width of 3 objects
@@ -322,7 +326,7 @@ R: Title [title]: Old Title > New Title
 R: Rating [rating]: ~Not set > 27
 R: Tags Added [tagsAdded]: 2
 R: Tags Removed [tagsRemoved]: 1
-R: Tags [tagsOrder]: Changed
+R: Tags [tagsOrder]: Order changed
 R: Cover [cover]: old.png > new.png
 
 #levelInfo.set fr
@@ -331,7 +335,7 @@ R: Titre [title]: Old Title > New Title
 R: Difficulté [rating]: ~Non défini > 27
 R: Tags ajoutés [tagsAdded]: 2
 R: Tags supprimés [tagsRemoved]: 1
-R: Tags [tagsOrder]: Modification
+R: Tags [tagsOrder]: Ordre modifié
 R: Couverture [cover]: old.png > new.png
 
 #levelInfo.set ja
@@ -340,7 +344,7 @@ R: タイトル [title]: Old Title > New Title
 R: 難易度 [rating]: ~未設定 > 27
 R: 追加したタグ [tagsAdded]: 2
 R: 削除したタグ [tagsRemoved]: 1
-R: タグ [tagsOrder]: 変更
+R: タグ [tagsOrder]: 順序を変更
 R: ジャケット [cover]: old.png > new.png
 
 #bgm.change.file en
@@ -1180,6 +1184,40 @@ R: Size [size]: 1 > 2
 #property.note.noop en
 T: Set Lane to 1 on 1 note
 
+#brush.objects.elevationVaries en
+T: Brushed 2 objects
+R: Changed [changed]: 1 note / 1 stage transform event
+R: Elevation [elevation]: Changed
+
+#brush.objects.elevationVaries fr
+T: 2 objets peints
+R: Modification [changed]: 1 note / 1 événement de transformation de scène
+R: Élévation [elevation]: Valeur modifiée
+
+#brush.objects.elevationVaries ja
+T: 2個のオブジェクトに反映しました
+R: 変更 [changed]: 1個のノーツ / 1個のステージ変形イベント
+R: 高さ [elevation]: 変更
+
+#brush.note.sameName en
+T: Brushed 1 note
+R: Group [groupId]: Changed
+
+#property.note.preset.coupled en
+T: Edited 2 notes
+R: Critical [isCritical]: Disabled > Enabled
+R: Fake [isFake]: Changed
+
+#property.note.preset.coupled fr
+T: 2 notes modifiées
+R: Critique [isCritical]: Désactivé > Activé
+R: Factice [isFake]: Valeur modifiée
+
+#property.note.preset.coupled ja
+T: 2個のノーツを編集しました
+R: クリティカル [isCritical]: 無効 > 有効
+R: フェイク [isFake]: 変更
+
 #property.note.group.beforeName en
 T: Set Group to “” on 2 notes
 R: Group [groupId]: Old Group > “”
@@ -1222,8 +1260,15 @@ T: Scaled beats of 10 objects
 R: Changed [changed]: 8 notes / 2 BPM changes
 R: Replaced [displaced]: 1 BPM change
 R: Scale Factor [factor]: 0.5
-R: Scale Origin [pivot]: 0
+R: Scale Origin [pivot]: 1
 F: Kept the initial BPM change
+
+#scale.beats.displacedEvent en
+T: Scaled beats of 2 objects
+R: Changed [changed]: 2 camera events
+R: Replaced [displaced]: 1 camera event
+R: Scale Factor [factor]: 2
+R: Scale Origin [pivot]: 1
 
 #scale.empty en
 T: Scaled width

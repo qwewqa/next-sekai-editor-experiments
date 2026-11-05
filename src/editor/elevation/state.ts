@@ -23,11 +23,15 @@ export const elevationToolNames: readonly ToolName[] = [
     'generateSlideNotes',
 ]
 
+/** The note the Elevation Editor opens at without a pointer: the last selected one. */
+export const selectedElevationNote = () =>
+    selectedEntities.value.filter((entity) => entity.type === 'note').pop()
+
 export const openElevationEditor = (beat?: number) => {
     if (isElevationEditorOpen.value && beat === undefined) return
 
     const wasOpen = isElevationEditorOpen.value
-    const note = selectedEntities.value.filter((entity) => entity.type === 'note').pop()
+    const note = selectedElevationNote()
     const displayedBeat =
         beat ??
         note?.beat ??

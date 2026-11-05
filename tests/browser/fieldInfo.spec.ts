@@ -100,11 +100,11 @@ test.describe('in Settings', () => {
         await boot(page)
     })
 
-    test('35 described rows, each with a 24 px face, a 44 px target and exact names', async ({
+    test('36 described rows, each with a 24 px face, a 44 px target and exact names', async ({
         page,
     }) => {
         const dialog = await openSettings(page)
-        await expect(dialog.locator('[data-field-info]')).toHaveCount(35)
+        await expect(dialog.locator('[data-field-info]')).toHaveCount(36)
         const { root, info } = field(dialog, 'Name Contrast')
         await expect(info).toHaveAccessibleName('About Name Contrast')
         const toggle = root.getByRole('switch')
@@ -975,7 +975,7 @@ test.describe('on chart properties', () => {
             expect(new Set(fields.map(({ info }) => info)), surface).toEqual(new Set([0]))
         }
         const dialog = await openSettings(page)
-        await expect(dialog.locator('[data-field-info]')).toHaveCount(35)
+        await expect(dialog.locator('[data-field-info]')).toHaveCount(36)
     })
 
     for (const where of ['panel', 'selection dialog'] as const)

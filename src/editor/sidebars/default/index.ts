@@ -5,13 +5,11 @@ import { selectedEntities } from '../../../history/selectedEntities'
 import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
 import { isEditableEntity, type EditableObject } from '../../../state/operations/editable'
+import { editInput } from '../../../state/operations/historyReceipts'
 import { isEditInRange, planEdit, type EachEdit } from '../../../state/operations/properties/plan'
 import { notify } from '../../notification'
 import { revealAuthoringTarget } from '../../scope'
-import { editBpm } from '../../tools/bpm'
-import { editTimeScale } from '../../tools/timeScale'
-import { view } from '../../view'
-export { isEditableEntity } from '../../../state/operations/editable'
+import { focusEntityAtBeat, view } from '../../view'
 
 /** Edits the selected objects, or only those `only` accepts; `each` edits each its own way. */
 export const editSelectedEditableEntities = (
@@ -30,6 +28,8 @@ export const editSelectedEditableEntities = (
         state: edited,
         changed,
         receipt,
+        displaced,
+        retainedInitialBpm,
     } = planEdit(state.value, selectedEntities.value, object, {
         only,
         each,
@@ -38,30 +38,27 @@ export const editSelectedEditableEntities = (
         notify(() => i18n.value.sidebars.default.noChange)
         return
     }
-
-    // A lone BPM or time scale moving by beat says so, as its tool does.
-    const [entity] = changed
-    const own = entity && each ? each(entity) : object
-    const delegate =
-        entity !== undefined &&
-        selectedEntities.value.filter(isEditableEntity).length === 1 &&
-        own.beat !== undefined &&
-        own.beat !== entity.beat &&
-        (entity.type === 'bpm' || entity.type === 'timeScale')
-    if (delegate) {
-        revealAuthoringTarget(object)
-        if (entity.type === 'bpm') {
-            editBpm(entity, own)
-        } else {
-            editTimeScale(entity, own)
-        }
-        return
-    }
-
     if (!receipt) throw new Error('Unexpected missing property receipt')
+
+    // An edit that reaches one BPM change or time scale and moves it is its tool's Move or Replace.
+    const reached = selectedEntities.value.filter(
+        (entity) => isEditableEntity(entity) && (!only || only(entity)),
+    )
+    const [entity] = changed
+    const beat = (entity && each ? each(entity) : object).beat
+    const moved =
+        reached.length === 1 &&
+        entity !== undefined &&
+        (entity.type === 'bpm' || entity.type === 'timeScale') &&
+        beat !== undefined &&
+        beat !== entity.beat
     // Moving objects into a hidden group or stage reveals it, like authoring.
     revealAuthoringTarget(object)
-    const operation = createHistoryOperation({ id: 'nse.property.set', data: receipt })
+    const operation = createHistoryOperation(
+        moved
+            ? editInput('move', receipt.changed, entity.type, { displaced, retainedInitialBpm })
+            : { id: 'nse.property.set', data: receipt },
+    )
     const pushed = pushState(operation, edited)
     view.entities = {
         hovered: [],
@@ -69,4 +66,5 @@ export const editSelectedEditableEntities = (
     }
 
     if (pushed) notify(() => operation.fallback.text)
+    if (moved) focusEntityAtBeat(beat)
 }

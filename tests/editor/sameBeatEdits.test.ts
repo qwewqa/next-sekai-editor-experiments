@@ -10,9 +10,21 @@ import { peek, pushState, redoState, resetStates, state, undoState } from '../..
 import { serializeEditorMetadata } from '../../src/levelData/editorMetadata'
 import { serializeToLevelDataEntities } from '../../src/levelData/entities/serialize'
 import { stateFromRecords, toRecords } from '../../src/local/records/records'
+import { createCameraCompiler } from '../../src/preview/engine/chart'
+import { createViewport, getCameraInfo } from '../../src/preview/engine/layout'
 import type { State } from '../../src/state'
 import type { Entity } from '../../src/state/entities'
-import { inStoredOrder, transformSelection } from '../../src/state/operations/transformSelection'
+import { beatToTime } from '../../src/state/integrals/bpms'
+import { addBpm } from '../../src/state/mutations/bpm'
+import { bpmInEffect } from '../../src/state/operations/bpm'
+import { flipVerticalWithReceipt } from '../../src/state/operations/flipVertical'
+import { planEdit } from '../../src/state/operations/properties/plan'
+import { scaleSelectionWithReceipt } from '../../src/state/operations/scaleSelection'
+import {
+    inStoredOrder,
+    transformSelection,
+    transformSelectionWithReceipt,
+} from '../../src/state/operations/transformSelection'
 import { createStore } from '../../src/state/store/creates'
 import type { Transaction } from '../../src/state/transaction'
 import { futureInitialLife, initialStep, originOperation } from '../helpers/historySteps'
@@ -133,6 +145,159 @@ test('moving a same-beat pair keeps its order whatever the selection order', () 
             assertKept(after, kind, 8, [1, 2])
         }
     }
+})
+
+test('transforming part of a same-beat stack keeps the rest of it in place', () => {
+    for (const kind of kinds) {
+        const before = edits(
+            baseState(),
+            (t) => add(t, kind, 4, 1),
+            (t) => add(t, kind, 4, 2),
+            (t) => add(t, kind, 4, 3),
+            (t) => add(t, kind, 8, 80),
+        )
+        const [one, two, mover] = [
+            entityAt(before, kind, 4, 1),
+            entityAt(before, kind, 4, 2),
+            entityAt(before, kind, 8, 80),
+        ] as [Entity, Entity, Entity]
+        // As Scale Beats from beat 4, then as Scale Width.
+        for (const changes of [
+            [
+                [one, { beat: 4 }],
+                [two, { beat: 4 }],
+                [mover, { beat: 12 }],
+            ],
+            [
+                [one, kind.edit],
+                [two, kind.edit],
+            ],
+        ] as const) {
+            const selection = changes.map(([entity]) => entity)
+            const after = transformSelectionWithReceipt(
+                before,
+                selection,
+                new Map(changes as unknown as [never, never][]),
+            )
+            assert.deepEqual(after.displaced, [], kind.name)
+            assertKept(after.state, kind, 4, [1, 2, 3])
+            assert.equal(after.state.selectedEntities.length, selection.length, kind.name)
+        }
+    }
+})
+
+test('at an occupied beat a moved BPM change or time scale replaces, and a moved event joins the events there', () => {
+    for (const kind of kinds) {
+        const replaces = kind.type === 'bpm' || kind.type === 'timeScale'
+        // Scale Beats x2 from beat 4: the object at 6 lands on 8, beside an unselected one.
+        const before = edits(
+            baseState(),
+            (t) => add(t, kind, 4, 1),
+            (t) => add(t, kind, 6, 2),
+            (t) => add(t, kind, 8, 3),
+        )
+        const scaled = scaleSelectionWithReceipt(
+            before,
+            [entityAt(before, kind, 4, 1), entityAt(before, kind, 6, 2)],
+            'beat',
+            2,
+            4,
+        )
+        assertKept(scaled.state, kind, 8, replaces ? [2] : [3, 2])
+        assert.equal(scaled.displaced.length, replaces ? 1 : 0, kind.name)
+        // Flip Vertical: the objects at 2 and 6 swap, and the unselected one at 6 stays.
+        const pair = edits(
+            baseState(),
+            (t) => add(t, kind, 2, 1),
+            (t) => add(t, kind, 6, 2),
+            (t) => add(t, kind, 6, 3),
+        )
+        const flipped = flipVerticalWithReceipt(pair, [
+            entityAt(pair, kind, 2, 1),
+            entityAt(pair, kind, 6, 2),
+        ])
+        assertKept(flipped.state, kind, 6, replaces ? [1] : [3, 1])
+        assertKept(flipped.state, kind, 2, [2])
+        assert.equal(flipped.displaced.length, replaces ? 1 : 0, kind.name)
+    }
+})
+
+test('a camera event stacked at an occupied beat plays the stack in order', () => {
+    // Shift Lane 1 at beat 0 and 2 at beat 4 scaled x2 onto an unselected 9 at beat 8, linear.
+    const kind = kinds.find(({ type }) => type === 'cameraEventJoint')!
+    const before = edits(
+        baseState(),
+        (t) => add(t, kind, 0, 1),
+        (t) => add(t, kind, 4, 2),
+        (t) => add(t, kind, 8, 9),
+    )
+    const after = scaleSelectionWithReceipt(
+        before,
+        [entityAt(before, kind, 0, 1), entityAt(before, kind, 4, 2)],
+        'beat',
+        2,
+        0,
+    ).state
+    const cameras = createCameraCompiler()(after)
+    const viewport = createViewport(1600, 900)
+    // The lane a camera event shows is its Shift Lane plus half its width of 12.
+    const lane = (beat: number, rightLimit = false) =>
+        getCameraInfo(viewport, cameras, beatToTime(after.bpms, beat), { rightLimit }).lane - 6
+    // On the way, the transition heads for the first event at the beat.
+    assert.equal(lane(6), 7)
+    // At the beat: the first event from the left, the last from the right.
+    assert.equal(lane(8), 9)
+    assert.equal(lane(8, true), 2)
+    assert.equal(lane(10), 2)
+})
+
+test('Set Beat lands objects from several beats in source-beat order, whatever the selection order', () => {
+    for (const kind of kinds) {
+        const before = edits(
+            baseState(),
+            (t) => add(t, kind, 4, 0),
+            (t) => add(t, kind, 3, 2),
+            (t) => add(t, kind, 2, 1),
+        )
+        const [zero, one, two] = [
+            entityAt(before, kind, 4, 0),
+            entityAt(before, kind, 2, 1),
+            entityAt(before, kind, 3, 2),
+        ] as [Entity, Entity, Entity]
+        for (const selection of [
+            [one, two, zero],
+            [two, one, zero],
+        ])
+            assertKept(planEdit(before, selection, { beat: 4 }).state, kind, 4, [0, 1, 2])
+    }
+})
+
+test('the BPM change in effect after a same-beat stack is its last', () => {
+    const state = edits(
+        baseState(),
+        (t) => addBpm(t, { beat: 4, bpm: 180, meter: 3 }),
+        (t) => addBpm(t, { beat: 4, bpm: 90, meter: 4 }),
+    )
+    const tempo = (beat: number) => {
+        const entity = bpmInEffect(state, beat)
+        return entity && [entity.bpm, entity.meter]
+    }
+    assert.deepEqual(tempo(4), [90, 4])
+    assert.deepEqual(tempo(8), [90, 4])
+    assert.deepEqual(tempo(2), [120, 4])
+})
+
+test('a lone BPM change moved by Beat onto a BPM pair replaces both', () => {
+    const bpm = kinds.find((kind) => kind.type === 'bpm')!
+    const before = edits(
+        baseState(),
+        (t) => add(t, bpm, 12, 1),
+        (t) => add(t, bpm, 12, 2),
+        (t) => add(t, bpm, 4, 3),
+    )
+    const moved = planEdit(before, [entityAt(before, bpm, 4, 3)], { beat: 12 })
+    assertKept(moved.state, bpm, 12, [3])
+    assert.equal(moved.displaced.length, 2)
 })
 
 test('moving one of a same-beat pair away and back puts it last, and that order is what is kept', () => {

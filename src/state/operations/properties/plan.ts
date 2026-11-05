@@ -16,15 +16,13 @@ import { propertyEditReceipt } from '../historyReceipts'
 import { editSelectedNote } from '../note'
 import { isWithinBeatRange } from '../scaleValues'
 import { editSelectedTimeScale, editTimeScaleWithReceipt } from '../timeScale'
-import { inStoredOrder } from '../transformSelection'
+import { inLandingOrder } from '../transformSelection'
 import { noteFieldsApply } from './applicability'
 import { getNoteFieldsIn } from './noteFields'
 
 export type PlanOptions = {
     /** Edits only these selected objects; the rest stay selected unchanged. */
     only?: (entity: Entity) => boolean
-    /** A lone object edits as its tool would, moving or replacing by beat. */
-    single?: boolean
     /** Each object's own edit, as a mixed field's step; the edit then only names its keys. */
     each?: EachEdit
 }
@@ -100,10 +98,16 @@ export const planEdit = (
     source: State,
     selected: Entity[],
     object: EditableObject,
-    { only, single = true, each }: PlanOptions = {},
+    { only, each }: PlanOptions = {},
 ) => {
     if (!isEditInRange(source, selected, object, only, each))
-        return { state: source, changed: [], receipt: undefined }
+        return {
+            state: source,
+            changed: [],
+            receipt: undefined,
+            displaced: [],
+            retainedInitialBpm: false,
+        }
     const objectOf = (entity: EditableEntity) => (each ? each(entity) : object)
     const changed = selected.filter(
         (entity): entity is EditableEntity =>
@@ -112,8 +116,12 @@ export const planEdit = (
             editChanges(source.store, entity, objectOf(entity)),
     )
     const transaction = createTransaction(source)
-    const editable = selected.filter(isEditableEntity)
-    const lone = single && editable.length === 1 ? editable[0] : undefined
+    // A BPM change or time scale alone of its kind in the edit moves as its tool does.
+    const reached = new Map<Entity['type'], number>()
+    for (const entity of selected)
+        if (isEditableEntity(entity) && (!only || only(entity)))
+            reached.set(entity.type, (reached.get(entity.type) ?? 0) + 1)
+    const lone = (entity: EditableEntity) => reached.get(entity.type) === 1
     const initialBpm = getInStoreGrid(source.store.grid, 'bpm', 0)?.find(
         (entity) => entity.beat === 0,
     )
@@ -122,15 +130,15 @@ export const planEdit = (
     // What a lone BPM or time scale edit took from its destination, and the initial BPM kept.
     const displaced: Entity[] = []
     let retainedInitialBpm = false
-    // Moved same-beat objects land in their stored order, whatever the selection order.
-    for (const entity of inStoredOrder(source, changed, (entity) => entity)) {
+    // Objects moved onto one beat land in source-beat order, then stored order.
+    for (const entity of inLandingOrder(source, changed, (entity) => entity)) {
         if (results.has(entity)) continue
         const own = objectOf(entity)
         requests.set(entity, { ...own })
         const alone =
-            entity === lone && entity.type === 'bpm'
+            entity.type === 'bpm' && lone(entity)
                 ? editBpmWithReceipt(transaction, entity, own)
-                : entity === lone && entity.type === 'timeScale'
+                : entity.type === 'timeScale' && lone(entity)
                   ? editTimeScaleWithReceipt(transaction, entity, own)
                   : undefined
         if (alone) {
@@ -178,5 +186,7 @@ export const planEdit = (
         state,
         changed,
         receipt: propertyEditReceipt(source, state, targets, { displaced, retainedInitialBpm }),
+        displaced,
+        retainedInitialBpm,
     }
 }

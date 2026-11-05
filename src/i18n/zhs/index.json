@@ -1636,6 +1636,8 @@
       "textShortened": "文本已缩短显示",
       "varying": "值不一致",
       "changed": "已修改",
+      "changedValue": "已修改",
+      "orderChanged": "顺序已更改",
       "displaced": "已替换",
       "placed": "已粘贴",
       "pastedFlipped": "已翻转粘贴",
@@ -1889,7 +1891,8 @@
         "label": "编辑器轨道"
       },
       "elevation": {
-        "label": "高度"
+        "label": "高度",
+        "stage": "舞台高度"
       },
       "eventEase": {
         "label": "缓动",

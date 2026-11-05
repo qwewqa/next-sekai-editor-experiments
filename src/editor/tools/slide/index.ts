@@ -26,7 +26,6 @@ import {
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
 import { shiftComputed } from '../../../utils/math'
-import { bisect } from '../../../utils/ordered'
 import { formatCount } from '../../../utils/size'
 import {
     getComposedGridOffset,
@@ -389,34 +388,46 @@ export const slide: Tool = {
     },
 }
 
-const getNoteFromSelection = () => {
-    if (!defaultSlideProperties.value.copyProperties) return
-
-    if (selectedEntities.value.length !== 1) return
-
-    const [entity] = selectedEntities.value
-    if (entity?.type !== 'note') return
-
-    // As a pending draft shows it, which the click commits first.
-    return withDraft(entity)
-}
-
 // As a pending draft shows the slide, which the click commits first.
-const getNearestNoteInSlide = (slideId: SlideId, beat: number) => {
+const getNoteBefore = (slideId: SlideId, beat: number) => {
     const notes = (
         previewEdit.value?.isDraft ? sceneState.value.store : store.value
     ).slides.note.get(slideId)
     if (!notes) throw new Error('Unexpected notes not found')
 
-    const index = bisect(notes, 'beat', beat)
-    return notes[index - 1] ?? notes[index]
+    // An add lands after the slide's notes at or before its beat, as the slide's sort places it.
+    let lo = 0
+    let hi = notes.length
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (notes[mid]!.beat <= beat) lo = mid + 1
+        else hi = mid
+    }
+    return notes[lo - 1] ?? notes[0]
+}
+
+/**
+ * Where a Slide add copies from: `note` gives the note fields and `nearest` the connector's. One
+ * selected note gives its note fields, and the connector's too at its beat; otherwise the note the
+ * add follows gives the connector's, and with several notes of one slide every field.
+ */
+const getSourceFromSelection = (beat: number) => {
+    if (!defaultSlideProperties.value.copyProperties) return {}
+    const slideId = getSelectedSlideId()
+    if (slideId === undefined) return {}
+    const [entity] = selectedEntities.value
+    if (selectedEntities.value.length === 1 && entity?.type === 'note') {
+        // As a pending draft shows it, which the click commits first.
+        const note = withDraft(entity)
+        return { note, nearest: sameBeat(note.beat, beat) ? note : getNoteBefore(slideId, beat) }
+    }
+    const nearest = getNoteBefore(slideId, beat)
+    return { note: nearest, nearest }
 }
 
 export const getSlidePropertiesFromSelection = (beat: number) => {
-    const note = getNoteFromSelection()
-    // An insert after the note takes its properties.
-    const nearest =
-        note && (sameBeat(note.beat, beat) ? note : getNearestNoteInSlide(note.slideId, beat))
+    const { note, nearest } = getSourceFromSelection(beat)
 
     return {
         groupId: view.groupId ?? note?.groupId ?? defaultGroupId.value,

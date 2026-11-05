@@ -108,8 +108,8 @@ test('Cut and Properties see only the objects still shown', async ({ page }) => 
         '#workspace-panel-properties #properties-section-selection .properties-block-header h3',
     )
     await marquee(page)
-    await expect(headings.first()).toHaveText('Notes 2')
-    await expect(headings).not.toHaveCount(1)
+    await expect(headings.first()).toHaveText('General')
+    await expect(headings.nth(1)).toHaveText('Notes 2')
     await page.keyboard.press('/')
     await expect(headings).toHaveText(['Notes 2'])
     await page.keyboard.press('x')

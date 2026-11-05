@@ -734,7 +734,7 @@ for (const [operation, extra] of [
     ['translate', 7],
     ['flipVertical', 2],
 ] as const) {
-    test(`${operation}: selected pairs stay, unselected objects at a destination are replaced`, async ({
+    test(`${operation}: selected pairs stay; unselected BPM changes and time scales at a destination are replaced, events there stay`, async ({
         page,
     }) => {
         await showPairs(page, extra)
@@ -743,17 +743,18 @@ for (const [operation, extra] of [
             beats: [2, 4, 6],
             except: 9,
         })
-        // The unselected 9 sits where the last (or, flipped, the first) object lands.
+        // The unselected 9 sits where the last (or, flipped, the first) object lands: the time
+        // scale there is replaced, and the camera event stays before the one that lands.
         expect(await exported(page)).toEqual(
             operation === 'flipVertical'
                 ? {
                       timeScale: [3, 2, 1, 0.5],
                       bpm: [120, 200, 180, 120],
                       bpmIntegrals: [120, 200, 180, 120],
-                      cameraEventJoint: [3, 2, 1, 0.5],
+                      cameraEventJoint: [9, 3, 2, 1, 0.5],
                       stageMaskEventJoint: [1.5, 1, 0.5, 2.5],
                   }
-                : original,
+                : { ...original, cameraEventJoint: [0.5, 1, 2, 9, 3] },
         )
     })
 }
@@ -1320,4 +1321,131 @@ test.describe('a lone time scale placed on a pair replaces both', () => {
         await copyAndPaste(page, 0)
         expect((await atBeat4(page)).filter((entry) => entry !== '2:7')).toEqual(['1:1', '1:2'])
     })
+})
+
+test.describe('Select moves of BPM changes and time scales', () => {
+    type MoveKind = 'bpm' | 'timeScale' | 'cameraEventJoint'
+
+    /**
+     * Shows objects of the kind as [beat, value, selected], moves the selected ones by the beat
+     * offset as Select's drag does, and reads the values at a beat in order.
+     */
+    const move = (
+        page: Page,
+        kind: MoveKind,
+        objects: [number, number, boolean][],
+        beatOffset: number,
+        at: number,
+    ) =>
+        page.evaluate(
+            async ({ kind, objects, beatOffset, at }) => {
+                const { show, fixtures, history, store, view, appImport } = window.editorTest
+                const select = await appImport<typeof import('../../src/editor/tools/select')>(
+                    '/src/editor/tools/select.ts',
+                )
+                const valueOf = (entity: object) =>
+                    (entity as Record<string, number>)[
+                        { bpm: 'bpm', timeScale: 'timeScale', cameraEventJoint: 'cameraLeft' }[kind]
+                    ]
+                const timeScale = fixtures.events.timeScales[0]!
+                const camera = fixtures.events.cameraEvents[0]!
+                const made = (make: (beat: number, value: number) => object) =>
+                    objects.map(([beat, value]) => make(beat, value)) as never[]
+                show({
+                    ...fixtures.events,
+                    isDynamicStages: true,
+                    bpms: [
+                        { beat: 0, bpm: 120 },
+                        ...(kind === 'bpm' ? made((beat, bpm) => ({ beat, bpm })) : []),
+                    ],
+                    timeScales:
+                        kind === 'timeScale'
+                            ? made((beat, value) => ({ ...timeScale, beat, timeScale: value }))
+                            : [],
+                    cameraEvents:
+                        kind === 'cameraEventJoint'
+                            ? made((beat, value) => ({ ...camera, beat, cameraLeft: value }))
+                            : [],
+                })
+                view.division = 1
+                const source = history.state.value
+                const selected = [...store.getAllEntities()].filter(
+                    (entity) =>
+                        entity.type === kind &&
+                        objects.some(
+                            ([beat, value, chosen]) =>
+                                chosen && entity.beat === beat && valueOf(entity) === value,
+                        ),
+                )
+                const focus = selected[0]!
+                const active = {
+                    type: 'move' as const,
+                    lane: 0,
+                    focus,
+                    entities: selected,
+                    onlyType: undefined,
+                    pressBeat: focus.beat,
+                }
+                const { plan, rawMove } = select.planMove(source, active, 0, beatOffset)
+                const moved = select.moveEntities(source, active, 0, beatOffset, plan, rawMove)
+                const { grid } = moved.state.store
+                const live = new Set(
+                    [...grid[kind].values()].flatMap((bucket) => [...bucket]) as object[],
+                )
+                return {
+                    values: [...live]
+                        .filter((entity) => (entity as { beat: number }).beat === at)
+                        .map(valueOf),
+                    displaced: (moved.operation.data as { displaced?: unknown }).displaced,
+                    selected: moved.state.selectedEntities.length,
+                    live: moved.state.selectedEntities.filter((entity) => live.has(entity)).length,
+                }
+            },
+            { kind, objects, beatOffset, at },
+        )
+
+    test('a BPM change moved onto a pair replaces both', async ({ page }) => {
+        const moved = await move(
+            page,
+            'bpm',
+            [
+                [8, 90, false],
+                [8, 150, false],
+                [4, 180, true],
+            ],
+            4,
+            8,
+        )
+        expect(moved).toMatchObject({ values: [180], displaced: { bpm: 2 } })
+    })
+
+    for (const kind of ['bpm', 'timeScale', 'cameraEventJoint'] as const)
+        test(`${kind}: nearly equal beats moved later land in source order`, async ({ page }) => {
+            const moved = await move(
+                page,
+                kind,
+                [
+                    [4, 1, true],
+                    [4.0000001, 2, true],
+                ],
+                1,
+                5,
+            )
+            expect(moved).toMatchObject({ values: [1, 2], selected: 2, live: 2 })
+        })
+
+    for (const kind of ['bpm', 'timeScale'] as const)
+        test(`${kind}: a selected one that a nearly equal one lands on stays`, async ({ page }) => {
+            const moved = await move(
+                page,
+                kind,
+                [
+                    [3.9999999, 1, true],
+                    [4, 2, true],
+                ],
+                0.0000001,
+                4,
+            )
+            expect(moved).toEqual({ values: [2, 1], displaced: undefined, selected: 2, live: 2 })
+        })
 })

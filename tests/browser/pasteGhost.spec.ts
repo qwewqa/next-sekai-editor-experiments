@@ -196,13 +196,32 @@ test('a pasted BPM change times the ghost as the paste does', async ({ page }) =
 })
 
 test('a BPM pasted onto a same-beat pair times the ghost as the paste does', async ({ page }) => {
-    // It lands at 5.5, replacing the first of the pair and following the second.
+    // It lands at 5.5, replacing both of the pair.
     const target = await hoverPasteWithBpm(page, [
         ...bpms,
         { beat: 5.5, bpm: 90 },
         { beat: 5.5, bpm: 200 },
     ])
     await expectLandedAsShown(page, target)
+    const at = () =>
+        page.evaluate(() => {
+            const { history } = window.editorTest
+            const { store, bpms } = history.state.value
+            return {
+                bpms: [...new Set([...store.grid.bpm.values()].flatMap((bucket) => [...bucket]))]
+                    .filter((entity) => entity.beat === 5.5)
+                    .map(({ bpm }) => bpm),
+                integrals: bpms.filter(({ x }) => x === 5.5).map(({ s }) => 60 / s),
+                operation: history.headStep.value?.operation,
+            }
+        })
+    expect(await at()).toMatchObject({
+        bpms: [30],
+        integrals: [30],
+        operation: { data: { displaced: { bpm: 2 } } },
+    })
+    await page.evaluate(() => window.editorTest.history.undoState())
+    expect(await at()).toMatchObject({ bpms: [90, 200], integrals: [90, 200] })
 })
 
 test('the ghost is dropped once a paste lands or the tool changes', async ({ page }) => {
@@ -288,3 +307,66 @@ test('the paste ghost follows a scroll under a still mouse without reading the c
     await page.mouse.move(position.x, position.y - 4)
     await expect.poll(reads).toBeGreaterThan(before)
 })
+
+for (const withNote of [true, false])
+    test(`the Composed ghost replaces every BPM change at its beat, ${withNote ? 'with' : 'without'} a note`, async ({
+        page,
+    }) => {
+        const bpms = await page.evaluate(async (withNote) => {
+            const { show, fixtures, history, view, point, appImport } = window.editorTest
+            Object.defineProperty(navigator.clipboard, 'writeText', {
+                configurable: true,
+                value: async () => undefined,
+            })
+            const { copy } = await appImport<typeof import('../../src/editor/commands/copy')>(
+                '/src/editor/commands/copy/index.ts',
+            )
+            const { paste, pasteGhostState } = await appImport<
+                typeof import('../../src/editor/tools/paste')
+            >('/src/editor/tools/paste/index.ts')
+            const base = fixtures.interaction.slides[0]![0]!
+            const blank = { ...fixtures.interaction, isDynamicStages: true, slides: [] }
+            view.layout = 'composed'
+            show(
+                {
+                    ...blank,
+                    slides: withNote ? [[{ ...base, beat: 2 }]] : [],
+                    bpms: [
+                        { beat: 0, bpm: 120 },
+                        { beat: 2, bpm: 150 },
+                    ],
+                },
+                2,
+            )
+            const source = history.state.value
+            history.replaceState({
+                ...source,
+                selectedEntities: [
+                    ...[...source.store.slides.note.values()].flat(),
+                    ...[...source.store.grid.bpm.values()]
+                        .flatMap((bucket) => [...bucket])
+                        .filter(({ beat }) => beat === 2),
+                ],
+            })
+            copy.execute()
+            show(
+                {
+                    ...blank,
+                    bpms: [
+                        { beat: 0, bpm: 120 },
+                        { beat: 4, bpm: 130 },
+                        { beat: 4, bpm: 140 },
+                    ],
+                },
+                2,
+            )
+            view.layout = 'composed'
+            const at = point(-1, 4)
+            paste.hover?.(at.x, at.y, { ctrl: false, shift: false })
+            return pasteGhostState()?.bpms.map(({ x, s }) => [x, Math.round(60 / s)])
+        }, withNote)
+        expect(bpms).toEqual([
+            [0, 120],
+            [4, 150],
+        ])
+    })

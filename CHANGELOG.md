@@ -46,6 +46,7 @@
 - Level data now opens when it leaves out a stage transform event’s rotation, translation or anchor, a camera event’s lane or size, or an event’s easing. It also opens with any camera size of 0 or more. The editor reads missing values as Sonolus does.
 - You can now middle-click in the chart or the Elevation Editor and move the mouse to scroll. Click again to stop.
 - With Settings › Toolbar › Quick Switch enabled, you can now press and hold a tool button, then drag along its toolbar row to select another tool.
+- Moving or pasting a BPM change onto a beat that has more than one BPM change now replaces all of them. Before, the others stayed at that beat beneath it.
 - (Web) Ctrl/Cmd+R now reloads the page and Ctrl/Cmd+F opens the browser’s find bar. Previously, these shortcuts ran the commands assigned to R and F. You can assign either shortcut to a command in Settings › Keyboard Shortcuts.
 - Added an About section in Settings with the editor version and a Copy Diagnostic Info button.
 - The preview now renders in parallel with the rest of the editor. This makes chart rendering smoother during playback and editing, especially with dense charts. If the preview looks wrong or does not appear, turn off Settings › Preview › Parallel Rendering.
