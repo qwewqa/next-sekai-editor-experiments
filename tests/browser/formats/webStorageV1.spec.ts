@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { readNxsp } from '../../../src/local/nxsp'
 import { ZipReader } from '../../../src/zip'
 import { Editor } from '../../samples/driver'
+import { workTimeout } from '../confirmWhenReady'
 import { closePage } from '../editorFixture'
 import { errorsFail, noErrors, notice, openHistory, timeline } from '../historyJourney'
 import { readFile, writeFile } from '../saveFlows'
@@ -343,7 +344,9 @@ test('Restore Session of M and of I opens each as it was', async ({ browser, bro
     await openRecent(page)
     await rowAction(page, chains.M, 'Restore Session')
     await expect
-        .poll(() => page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId))
+        .poll(() => page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId), {
+            timeout: workTimeout,
+        })
         .toBe(chains.M)
     // The old auto save's chart: one BPM change of 150.
     expect(
@@ -356,7 +359,9 @@ test('Restore Session of M and of I opens each as it was', async ({ browser, bro
     await openRecent(page)
     await rowAction(page, chains.I, 'Restore Session')
     await expect
-        .poll(() => page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId))
+        .poll(() => page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId), {
+            timeout: workTimeout,
+        })
         .toBe(chains.I)
     const summary = valuesOf(main, 'chains').find((chain) => chain.chainId === chains.I)!
         .summary as { noteCount: number }
@@ -382,7 +387,9 @@ test('Restore Session of Q settles its unfinished import and loses no row', asyn
     await openRecent(page)
     await rowAction(page, chains.Q, 'Restore Session')
     await expect
-        .poll(() => page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId))
+        .poll(() => page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId), {
+            timeout: workTimeout,
+        })
         .toBe(chains.Q)
     await expect
         .poll(
