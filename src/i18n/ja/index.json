@@ -1636,6 +1636,8 @@
       "textShortened": "テキストを省略しています",
       "varying": "値が異なります",
       "changed": "変更",
+      "changedValue": "変更",
+      "orderChanged": "順序を変更",
       "displaced": "置き換え",
       "placed": "ペースト",
       "pastedFlipped": "反転してペーストしました",

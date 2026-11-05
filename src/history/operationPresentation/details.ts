@@ -273,7 +273,7 @@ const nativeRecord = (
                         ? changeRow(assignment.field, label, before, after)
                         : titled
                           ? []
-                          : valueRow(assignment.field, label, plain(d.changed))),
+                          : valueRow(assignment.field, label, plain(d.changedValue))),
                 )
             }
             retained(operation.data)
@@ -421,9 +421,9 @@ const nativeRecord = (
                         ] as const)
                             if (value)
                                 rows.push(...valueRow(key, text, plain(numberText(value, context))))
-                        // Kept tags that moved: the label alone, with the existing "Changed".
+                        // Kept tags that moved: the label alone, with "Order changed".
                         if (change.reordered)
-                            rows.push(...valueRow('tagsOrder', label, plain(d.changed)))
+                            rows.push(...valueRow('tagsOrder', label, plain(d.orderChanged)))
                         break
                     case 'title':
                     case 'artists':

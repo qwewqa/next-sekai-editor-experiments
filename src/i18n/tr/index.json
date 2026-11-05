@@ -1636,6 +1636,8 @@
       "textShortened": "Metin kısaltılarak gösteriliyor",
       "varying": "Değişken",
       "changed": "Değiştirilen",
+      "changedValue": "Değiştirildi",
+      "orderChanged": "Sıra değiştirildi",
       "displaced": "Değiştirilen kayıtlar",
       "placed": "Yapıştırılan",
       "pastedFlipped": "Çevrilerek yapıştırıldı",

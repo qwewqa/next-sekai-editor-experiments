@@ -326,7 +326,7 @@ R: Title [title]: Old Title > New Title
 R: Rating [rating]: ~Not set > 27
 R: Tags Added [tagsAdded]: 2
 R: Tags Removed [tagsRemoved]: 1
-R: Tags [tagsOrder]: Changed
+R: Tags [tagsOrder]: Order changed
 R: Cover [cover]: old.png > new.png
 
 #levelInfo.set fr
@@ -335,7 +335,7 @@ R: Titre [title]: Old Title > New Title
 R: Difficulté [rating]: ~Non défini > 27
 R: Tags ajoutés [tagsAdded]: 2
 R: Tags supprimés [tagsRemoved]: 1
-R: Tags [tagsOrder]: Modification
+R: Tags [tagsOrder]: Ordre modifié
 R: Couverture [cover]: old.png > new.png
 
 #levelInfo.set ja
@@ -344,7 +344,7 @@ R: タイトル [title]: Old Title > New Title
 R: 難易度 [rating]: ~未設定 > 27
 R: 追加したタグ [tagsAdded]: 2
 R: 削除したタグ [tagsRemoved]: 1
-R: タグ [tagsOrder]: 変更
+R: タグ [tagsOrder]: 順序を変更
 R: ジャケット [cover]: old.png > new.png
 
 #bgm.change.file en
@@ -1192,7 +1192,7 @@ R: Elevation [elevation]: Changed
 #brush.objects.elevationVaries fr
 T: 2 objets peints
 R: Modification [changed]: 1 note / 1 événement de transformation de scène
-R: Élévation [elevation]: Modification
+R: Élévation [elevation]: Valeur modifiée
 
 #brush.objects.elevationVaries ja
 T: 2個のオブジェクトに反映しました
@@ -1211,7 +1211,7 @@ R: Fake [isFake]: Changed
 #property.note.preset.coupled fr
 T: 2 notes modifiées
 R: Critique [isCritical]: Désactivé > Activé
-R: Factice [isFake]: Modification
+R: Factice [isFake]: Valeur modifiée
 
 #property.note.preset.coupled ja
 T: 2個のノーツを編集しました

@@ -1636,6 +1636,8 @@
             "textShortened": "Text shortened for display",
             "varying": "Varies",
             "changed": "Changed",
+            "changedValue": "Changed",
+            "orderChanged": "Order changed",
             "displaced": "Replaced",
             "placed": "Pasted",
             "pastedFlipped": "Pasted flipped",

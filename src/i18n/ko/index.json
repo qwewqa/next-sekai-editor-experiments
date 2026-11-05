@@ -1636,6 +1636,8 @@
       "textShortened": "텍스트를 줄여 표시함",
       "varying": "값이 다름",
       "changed": "변경",
+      "changedValue": "변경",
+      "orderChanged": "순서 변경",
       "displaced": "교체",
       "placed": "붙여넣기",
       "pastedFlipped": "뒤집어서 붙여넣음",

@@ -1636,6 +1636,8 @@
       "textShortened": "Texte affiché en abrégé",
       "varying": "Variable",
       "changed": "Modification",
+      "changedValue": "Valeur modifiée",
+      "orderChanged": "Ordre modifié",
       "displaced": "Remplacement",
       "placed": "Collage",
       "pastedFlipped": "Collé et retourné",
