@@ -102,16 +102,54 @@ const longWords: Record<string, string[]> = {
     en: [],
     fr: [],
     tr: ['Vuruş Çizgisinden Geçen'],
-    ja: ['スライドフェイク', 'スライドクリティカル'],
 }
 for (const [locale, labels] of Object.entries(longWords)) {
-    test(`${locale} values at a 336 dock, below the default, stay beside their labels`, async ({
+    test(`${locale} values at a 336 dock, below the default, go below only labels with a word too long`, async ({
         page,
     }) => {
         await open(page, locale, 336)
         await expect.poll(() => stacked(page)).toEqual(labels)
     })
 }
+
+// Japanese is drawn in the machine's own font, so its wrap points vary: the check is fit.
+test('ja values at a 336 dock, below the default, fit beside or below their labels', async ({
+    page,
+}) => {
+    await open(page, 'ja', 336)
+    const candidates = ['スライドフェイク', 'スライドクリティカル']
+    const misfits = () =>
+        selection(page).evaluate(async (section) => {
+            const { valueOverflows, wordsOverflow } = await window.editorTest.appImport<
+                typeof import('../../src/modals/form/fieldLayout')
+            >('/src/modals/form/fieldLayout.ts')
+            const fields = [...section.querySelectorAll<HTMLElement>('.form-field')]
+            const texts = fields.map((field) =>
+                field.querySelector<HTMLElement>('.form-field-text')!,
+            )
+            const breaks = wordsOverflow(texts)
+            return fields.flatMap((field, index) => {
+                const label = texts[index]!.textContent ?? ''
+                if (field.classList.contains('form-field-value-stacked'))
+                    return [`stacked ${label}`]
+                // Beside the value, no phrase breaks inside and the value shows in full.
+                const control = field.querySelector<HTMLElement>(
+                    '.form-field-row > select, .form-field-row > input[type="number"], .form-field-select > select, .form-field-toggle > input',
+                )
+                return [
+                    ...(breaks[index] ? [`breaks ${label}`] : []),
+                    ...(control && valueOverflows(control) ? [`truncates ${label}`] : []),
+                ]
+            })
+        })
+    await expect
+        .poll(async () =>
+            (await misfits()).filter(
+                (misfit) => !candidates.some((label) => misfit === `stacked ${label}`),
+            ),
+        )
+        .toEqual([])
+})
 
 test('brush values stack too, with remove kept on the label line', async ({ page }) => {
     await open(page, 'ja', 260)
