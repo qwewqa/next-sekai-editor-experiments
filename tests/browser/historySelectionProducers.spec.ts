@@ -255,9 +255,7 @@ test('Scale cancellation restores the prior uniform receipt and accepted outcome
     })
 })
 
-test('Scale retains displaced principal participation and exact survivor lineage for a later drag', async ({
-    page,
-}) => {
+test('Scale keeps converging twins and their lineage for a later drag', async ({ page }) => {
     const result = await page.evaluate(async () => {
         const { fixtures, show, history, appImport, view } = window.editorTest
         view.division = 1
@@ -284,23 +282,35 @@ test('Scale retains displaced principal participation and exact survivor lineage
         session.beginScalingSession('beat')
         session.setScalingFactor(2)
         const draft = preview.getPreviewState(history.state.value)
-        const survivor = draft.selectedEntities.find((entity) => entity.type === 'timeScale')!
-        if (survivor.type !== 'timeScale') throw new Error('Missing survivor')
-        const exactBaseline = session.getScalingBaselineEntity(survivor) === originals[1]
-        session.beginScalingDrag(survivor, survivor.beat)
+        const twins = draft.selectedEntities.filter((entity) => entity.type === 'timeScale')
+        const twin = twins[0]!
+        if (twin.type !== 'timeScale') throw new Error('Missing twin')
+        const exactBaseline = session.getScalingBaselineEntity(twin) === originals[0]
+        session.beginScalingDrag(twin, twin.beat)
         session.updateScalingDrag(144)
         session.endScalingDrag()
         session.applyScalingSession()
         return {
             exactBaseline,
+            draft: twins.map((entity) => [
+                entity.beat,
+                entity.type === 'timeScale' && entity.timeScale,
+            ]),
             step: history.headStep.value,
             timeScales: [...history.state.value.store.grid.timeScale.values()]
                 .flatMap((bucket) => [...bucket])
                 .map(({ beat, timeScale }) => [beat, timeScale]),
         }
     })
+    expect(result.draft).toEqual([
+        [96, 2],
+        [96, 3],
+    ])
     expect(result.exactBaseline).toBe(true)
-    expect(result.timeScales).toEqual([[144, 3]])
+    expect(result.timeScales).toEqual([
+        [144, 2],
+        [144, 3],
+    ])
     expect(result.step?.operation).toMatchObject({
         id: 'nse.object.scale',
         data: {

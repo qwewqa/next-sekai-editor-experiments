@@ -12,7 +12,11 @@ import { serializeToLevelDataEntities } from '../../src/levelData/entities/seria
 import { stateFromRecords, toRecords } from '../../src/local/records/records'
 import type { State } from '../../src/state'
 import type { Entity } from '../../src/state/entities'
-import { inStoredOrder, transformSelection } from '../../src/state/operations/transformSelection'
+import {
+    inStoredOrder,
+    transformSelection,
+    transformSelectionWithReceipt,
+} from '../../src/state/operations/transformSelection'
 import { createStore } from '../../src/state/store/creates'
 import type { Transaction } from '../../src/state/transaction'
 import { futureInitialLife, initialStep, originOperation } from '../helpers/historySteps'
@@ -131,6 +135,45 @@ test('moving a same-beat pair keeps its order whatever the selection order', () 
             )
             assert.deepEqual(seen(after, kind, 4), [], kind.name)
             assertKept(after, kind, 8, [1, 2])
+        }
+    }
+})
+
+test('transforming part of a same-beat stack keeps the rest of it in place', () => {
+    for (const kind of kinds) {
+        const before = edits(
+            baseState(),
+            (t) => add(t, kind, 4, 1),
+            (t) => add(t, kind, 4, 2),
+            (t) => add(t, kind, 4, 3),
+            (t) => add(t, kind, 8, 80),
+        )
+        const [one, two, mover] = [
+            entityAt(before, kind, 4, 1),
+            entityAt(before, kind, 4, 2),
+            entityAt(before, kind, 8, 80),
+        ] as [Entity, Entity, Entity]
+        // As Scale Beats from beat 4, then as Scale Width.
+        for (const changes of [
+            [
+                [one, { beat: 4 }],
+                [two, { beat: 4 }],
+                [mover, { beat: 12 }],
+            ],
+            [
+                [one, kind.edit],
+                [two, kind.edit],
+            ],
+        ] as const) {
+            const selection = changes.map(([entity]) => entity)
+            const after = transformSelectionWithReceipt(
+                before,
+                selection,
+                new Map(changes as unknown as [never, never][]),
+            )
+            assert.deepEqual(after.displaced, [], kind.name)
+            assertKept(after.state, kind, 4, [1, 2, 3])
+            assert.equal(after.state.selectedEntities.length, selection.length, kind.name)
         }
     }
 })

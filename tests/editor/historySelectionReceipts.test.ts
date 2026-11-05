@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { NoteObject } from '../../src/chart/note'
 import { createState, type State } from '../../src/state'
+import type { Entity } from '../../src/state/entities'
 import { createSlideId } from '../../src/state/entities/slides'
 import { cleanBeat, GLOBAL_GRID } from '../../src/state/integrals/grid'
 import { addBpm } from '../../src/state/mutations/bpm'
@@ -87,32 +88,86 @@ const withTimeScales = (beats: number[], tracks = beats.map(() => 1)) => {
     ])
     return source
 }
+/** The tags at a beat in stored order: a time scale's value, or a BPM change's BPM. */
+const timingAt = (state: State, type: 'timeScale' | 'bpm', beat: number) =>
+    [...(state.store.grid[type].get(Math.floor(beat)) ?? [])]
+        .filter((entity) => entity.beat === beat)
+        .map((entity) =>
+            entity.type === 'timeScale' ? entity.timeScale : (entity as { bpm: number }).bpm,
+        )
 const cleanMove = (beat: number, offset: number) =>
     offset === 0 ? beat : cleanBeat([GLOBAL_GRID], beat + offset, 1)
 
-test('rounded timing collisions retain both principal applications but only the actual live output', () => {
-    const source = withTimeScales([48, 48.000000025])
-    const [first, second] = source.selectedEntities
-    const result = scaleSelectionWithReceipt(
-        source,
-        [second!, first!, second!],
-        'beat',
-        2,
-        0,
-        cleanMove,
-    )
-    assert.deepEqual(result.counts, { timeScale: 2 })
-    assert.equal(result.applications.size, 2)
-    assert.equal(result.applications.get(first!)?.beat, 96)
-    assert.equal(result.applications.get(second!)?.beat, 96)
-    assert.equal(result.replacements.size, 1)
-    assert.equal(result.replacements.has(second!), false)
-    assert.equal(result.replacements.get(first!)?.beat, 96)
-    assert.equal(result.state.selectedEntities.length, 1)
-    assert.deepEqual(
-        source.selectedEntities.map((entity) => entity.beat),
-        [48, 48.000000025],
-    )
+test('rounded timing collisions keep both time scales, in source-beat order', () => {
+    for (const order of [
+        (first: Entity, second: Entity) => [second, first, second],
+        (first: Entity, second: Entity) => [first, second],
+    ]) {
+        const source = withTimeScales([48, 48.000000025])
+        const [first, second] = source.selectedEntities
+        const result = scaleSelectionWithReceipt(
+            source,
+            order(first!, second!),
+            'beat',
+            2,
+            0,
+            cleanMove,
+        )
+        assert.deepEqual(result.counts, { timeScale: 2 })
+        assert.equal(result.applications.size, 2)
+        assert.equal(result.applications.get(first!)?.beat, 96)
+        assert.equal(result.applications.get(second!)?.beat, 96)
+        assert.equal(result.replacements.size, 2)
+        assert.equal(result.replacements.get(first!)?.beat, 96)
+        assert.equal(result.replacements.get(second!)?.beat, 96)
+        assert.equal(result.state.selectedEntities.length, 2)
+        assert.deepEqual(result.displaced, [])
+        assert.deepEqual(timingAt(result.state, 'timeScale', 96), [1, 2])
+        assert.deepEqual(
+            source.selectedEntities.map((entity) => entity.beat),
+            [48, 48.000000025],
+        )
+    }
+})
+
+test('a twin moved onto a stationary twin keeps both, the stationary one first', () => {
+    const withBpms = (beats: number[]) => {
+        const source = createState(
+            {
+                ...baseChart(),
+                bpms: [
+                    { beat: 0, bpm: 120, meter: 4 },
+                    ...beats.map((beat, index) => ({ beat, bpm: index + 1, meter: 4 })),
+                ],
+            },
+            0,
+        )
+        source.selectedEntities = [...source.store.grid.bpm.values()]
+            .flatMap((bucket) => [...bucket])
+            .filter((entity) => entity.beat > 0)
+        return source
+    }
+    for (const [type, source] of [
+        ['timeScale', withTimeScales([4, 4.00000001, 8])],
+        ['bpm', withBpms([4, 4.00000001, 8])],
+    ] as const) {
+        const result = scaleSelectionWithReceipt(
+            source,
+            source.selectedEntities,
+            'beat',
+            2,
+            4,
+            cleanMove,
+        )
+        assert.deepEqual(timingAt(result.state, type, 4), [1, 2], type)
+        assert.deepEqual(timingAt(result.state, type, 12), [3], type)
+        assert.deepEqual(
+            result.state.selectedEntities.map((entity) => entity.beat).sort((a, b) => a - b),
+            [4, 4, 12],
+            type,
+        )
+        assert.deepEqual(result.displaced, [], type)
+    }
 })
 
 test('exact same-beat pairs and different tracks preserve their own live correspondence', () => {
