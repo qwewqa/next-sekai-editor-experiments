@@ -176,7 +176,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 
 - **Judge per-frame work, not frame intervals.** The budgets are:
     - **4.17 ms per frame for the 240 Hz desktop**;
-    - **8.33 ms for a 120 Hz phone**, using the 4× profile.
+    - **8.33 ms for a 120 Hz phone**, using the 4x profile.
 
     Compare the probes' p50, p95 and p99, and the traced run's main-thread scripting, style and layout, paint, and GPU time, against them.
 
@@ -187,7 +187,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 
 ### The phone stand-in
 
-- The `phone` profile is 390×844 at DPR 3, with touch, `isMobile` and a **4× CDP CPU throttle**.
+- The `phone` profile is 390x844 at DPR 3, with touch, `isMobile` and a **4x CDP CPU throttle**.
 - The throttle slows the CPU only. GPU costs at DPR 3 are not scaled, so a real phone can be slower on fill rate than these runs show.
 - Workers are not throttled. The harness throttles the page's own session only, and a worker target returns an error for `Emulation.setCPUThrottlingRate` (measured), so the storage worker and the preview's worker run at full speed, and a phone figure that includes worker time is a lower bound.
 - Use touch scenarios on it (`quicktouch`, `flick`, `minimapdrag`): wheel and keys are not phone input.
@@ -200,7 +200,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 - **Keep two axes apart:**
     - **Average cost:** the steady per-frame work, p50 and p95 against the budget. It decides the sustained frame rate.
     - **Stutters and unevenness:**
-        - the tail: p99, max, and the counts over budget, over 2× and over 4×;
+        - the tail: p99, max, and the counts over budget, over 2x and over 4x;
         - jitter: the interval SD, and the share of neighbouring frames that differ by more than 0.9 of a frame;
         - each spike tied to its trace event with `perf:report <run> long`.
 
@@ -212,14 +212,14 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 
 ### Tracing
 
-- The traced run is extra and is used for attribution only. Tracing with the CPU profiler adds about **1.5×** to main-thread time and stalls about 1 s when it starts (before the run's window).
+- The traced run is extra and is used for attribution only. Tracing with the CPU profiler adds about **1.5x** to main-thread time and stalls about 1 s when it starts (before the run's window).
 - **Light traces** (`traceEach`) leave out the CPU profiler: they record task timings (`devtools.timeline`, `v8.execute`, GC, user timing, `gpu`, `viz`, `toplevel`), so tasks cost what they cost. Use them for what happens around a mark and for counts, and a full trace for attributing time to functions. `perf:report <run> tasks`, `idle` and `edit` read them; `callers`, `inside`, `heap` and `long` need a full trace or a heap profile.
 - A trace over 512 MB (native-rate playback) cannot be parsed as one string. `trace.mjs` reads it line by line.
 - Categories of a full trace: `devtools.timeline`, `disabled-by-default-devtools.timeline` and its `.frame` and `.stack`, `disabled-by-default-v8.cpu_profiler`, `v8.execute`, `v8`, `disabled-by-default-v8.gc`, `blink.user_timing`, `blink`, `gpu`, `viz`, `cc`, `benchmark`, `latencyInfo`, `input`, `toplevel`, `loading`.
 - A `nse-perf-sync` user-timing mark ties the page clock to the trace clock, so `perf:report <run> work` reads exactly the frames the run measured.
 - Profile frames for native calls (a DOM setter, a GL call, `clearTimeout`) are shown with their script caller; their exact attribution is approximate.
 - `(program)` is 30 to 45% of the CPU profile's samples. It is time outside JavaScript, so read the other rows against the rest, not against 100%.
-- CPU time at 4× is meaningless: the throttle changes how long JavaScript takes, not what the compositor, GPU and other processes use. Compare scripting and main-thread time only.
+- CPU time at 4x is meaningless: the throttle changes how long JavaScript takes, not what the compositor, GPU and other processes use. Compare scripting and main-thread time only.
 - Chrome's own `PipelineReporter` states (`STATE_DROPPED`) refer to the compositor's rate, not the gated rAF rate. Do not use them under a gate.
 
 ### Scenario pitfalls
@@ -284,13 +284,13 @@ Note counts are the editor's where known, else level data's.
 
 These recur, and a spike in a run is often one of them. Check them before blaming the scenario.
 
-- **Pixi's GC pass** (`GCSystem.run`, then `runOnHash`) walks every tracked resource, so its cost grows with what is live: 2–8 ms early in a session and 10–20 ms later at 1×, 15–30 ms rising to 60 ms at 4×. It runs every 10 s (`GC_FREQUENCY`), at idle time and never inside a frame (`RenderingScheduler`, `docs/rendering.md`). In a trace it is an idle callback.
+- **Pixi's GC pass** (`GCSystem.run`, then `runOnHash`) walks every tracked resource, so its cost grows with what is live: 2–8 ms early in a session and 10–20 ms later at 1x, 15–30 ms rising to 60 ms at 4x. It runs every 10 s (`GC_FREQUENCY`), at idle time and never inside a frame (`RenderingScheduler`, `docs/rendering.md`). In a trace it is an idle callback.
 - **V8 major GCs** in long playback on dense charts take 15–40 ms, mostly to finish marking a 300–400 MB heap. Per-frame allocations in a draw path make them more frequent. Major GCs every second or so during playback can mean that a per-frame allocation site also builds long-lived data, so V8 allocates the site's objects in the old generation (`docs/rendering.md`). To check, count `MajorGC` events in light traces with and without the `browserArgs` value `--js-flags=--no-allocation-site-pretenuring`. In Node, `node --trace-gc --import tsx scripts/perf/preview.mjs <level.json> ...` prints each `Mark-Compact`.
-- **First-visit section compiles** (`notes.ts` `prepareSections`, `vectorRanges.ts` `captureVectors`) take 20–45 ms at 4×. The idle compile ahead (`docs/rendering.md`) compiles sections near the view early, but a jump or the `cold` run still meets them. An idle capture can delay an input that lands in it, so measure a wake from a pause with `notch`.
+- **First-visit section compiles** (`notes.ts` `prepareSections`, `vectorRanges.ts` `captureVectors`) take 20–45 ms at 4x. The idle compile ahead (`docs/rendering.md`) compiles sections near the view early, but a jump or the `cold` run still meets them. An idle capture can delay an input that lands in it, so measure a wake from a pause with `notch`.
 - **Composed stage tile builds** are the cost in zoomed-out Composed flicks: at `pps` 100 one tile can hold over a thousand divider strokes. Check `stageTile`, and the builds per chart draw in `perf:report <run> frames`.
 - **Path-cache churn.** A path built anew every frame and kept in the path cache fills its 128 MiB budget with geometry nothing draws again, and the grown maps and garbage then stall chart frames. A context's current path lasts one frame for this reason (`docs/rendering.md`). A record whose `pathCache` shows steady `trimmed` counts during playback has a new case of it.
-- **The journal with storage unavailable** serializes and gzips the whole chart every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. Its idle callback's 5 s timeout can land it in the middle of a scroll. Measure it with `journal` and a group's `storage` flag.
-- **The journal on hide.** A hide right after an edit writes the whole state synchronously: 20–30 ms on coconut on the desktop, 100–135 ms at 4×, and about 0.6 s at 4× on 21888 and ×8. It shows in `hide` cells with `after` 0.
+- **The journal with storage unavailable** serializes and gzips the whole chart every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on x8 at 1x, 110–635 ms at 4x. Its idle callback's 5 s timeout can land it in the middle of a scroll. Measure it with `journal` and a group's `storage` flag.
+- **The journal on hide.** A hide right after an edit writes the whole state synchronously: 20–30 ms on coconut on the desktop, 100–135 ms at 4x, and about 0.6 s at 4x on 21888 and x8. It shows in `hide` cells with `after` 0.
 
 ## Usage statistics on and off
 

@@ -172,7 +172,7 @@ External resource fields are empty SRLs (`{}`), without `hash` or `url`: engine 
 
 Bundled SRLs have a 40-character lowercase SHA-1 `hash` and `url:"/" + entryName`. Each hash covers the entry's bytes after ZIP decoding. Data points to `/level.json.gz`, and its hash covers the exact gzip bytes, including the gzip header and trailer. Included cover, BGM and preview bytes are referenced directly, with no second copy or conversion. Preview is omitted without its bytes. SHA-1 is used only for these generated resource links; NXSP media hashes are SHA-256.
 
-When cover bytes are absent, the package uses `sonolus/cover.png`, an opaque black 1 × 1 RGB PNG. When BGM bytes are absent, held as metadata only or unticked, it uses `sonolus/bgm.mp3`, generated silence. These STORE entries follow the included media and precede the five JSON endpoints, cover first. They are referenced only by the package and never added to editor media, Level Info, records or history. A failed read of included media still fails the Save.
+When cover bytes are absent, the package uses `sonolus/cover.png`, an opaque black 1x1 RGB PNG. When BGM bytes are absent, held as metadata only or unticked, it uses `sonolus/bgm.mp3`, generated silence. These STORE entries follow the included media and precede the five JSON endpoints, cover first. They are referenced only by the package and never added to editor media, Level Info, records or history. A failed read of included media still fails the Save.
 
 Silence lasts through the latest note's BPM time plus `bgmOffset` plus one second, rounded up to a whole second and then a whole MP3 frame, with a minimum of one second. Without notes it lasts at least one second, regardless of late events or offset. All note archetypes count, including fake notes, anchors and slide tails. Scroll time scales and stage events do not change the note clock. The bytes are MPEG-1 Layer III mono at 32 kHz and 32 kbps: each 144-byte frame starts `ff fb 18 c0` and has zero side information and main data, giving 1,152 silent samples. The writer checks the media cap before allocation. No encoder dependency is used.
 
@@ -341,8 +341,8 @@ A **slide** is a non-empty list of notes in beat order (ties in list order). A o
 | Kind (list) | Fields (domain) |
 | --- | --- |
 | BPM change (`bpms`) | `beat` (finite; one must be at beat 0), `bpm` (finite; level data `> 0`), `meter` (finite, default 4; level data `> 0`) |
-| time scale (`timeScales`) | `groupId` (id of a group), `beat`, `editorLane` (finite: the lane the editor draws its marker in; level data default −6), `timeScale` (finite), `skip` (finite), `timeScaleEase` (an ease without Back and Elastic), `timeScaleTransition` (`timeScale` \| `scroll`), `hideNotes` (boolean) |
-| camera event (`cameraEvents`) | `beat`, `cameraLeft`, `cameraSize` (lanes; level data `>= 0`), `cameraZoom` (level data `>= 0.01`), `cameraZoomTargetLane`, `cameraZoomTargetY` (level data −1 to 1), `cameraZoomVerticalAlign` (`default` \| `center`), `cameraRotation`, `cameraStageTilt` (level data 0 to 1), `eventEase` |
+| time scale (`timeScales`) | `groupId` (id of a group), `beat`, `editorLane` (finite: the lane the editor draws its marker in; level data default -6), `timeScale` (finite), `skip` (finite), `timeScaleEase` (an ease without Back and Elastic), `timeScaleTransition` (`timeScale` \| `scroll`), `hideNotes` (boolean) |
+| camera event (`cameraEvents`) | `beat`, `cameraLeft`, `cameraSize` (lanes; level data `>= 0`), `cameraZoom` (level data `>= 0.01`), `cameraZoomTargetLane`, `cameraZoomTargetY` (level data -1 to 1), `cameraZoomVerticalAlign` (`default` \| `center`), `cameraRotation`, `cameraStageTilt` (level data 0 to 1), `eventEase` |
 | stage mask event (`stageMaskEvents`) | `stageId`, `beat`, `maskLeft`, `maskSize` (lanes; level data `>= 0`), `isMaskNotes` (boolean), `eventEase` |
 | stage pivot event (`stagePivotEvents`) | `stageId`, `beat`, `pivotLane`, `divisionSize` (level data: integer `>= 1`), `divisionParity` (`even` \| `odd`), `yOffset`, `yOffsetBeat`, `eventEase` |
 | stage style event (`stageStyleEvents`) | `stageId`, `beat`, `editorLane` (marker lane), `laneColor` (`default neutral red green blue yellow purple cyan black`), `judgmentLineColor` (`neutral red green blue yellow purple cyan black`), `judgmentLineStyle` (`default` \| `singleLine`), `leftBorderStyle`, `rightBorderStyle` (`default light medium disabled`), `isFullWidth` (boolean), `noteAlpha`, `laneAlpha`, `judgmentLineAlpha`, `divisionLineAlpha` (level data 0 to 1), `eventEase` |
@@ -440,7 +440,7 @@ The editor's parse (`parseLevelDataChart`). A viewer that shows the head from le
 5. **Stages**: every `Stage` makes a stage (blank name: `#n`) and turns dynamic stages on; `generateSimLines` default 0. None: one default stage named `#1`, From Start and Until End on, dynamic stages off.
 6. **Normalise folders** (§6.3): groups and stages are reordered into tree order (stage folders only with dynamic stages; without them stage folders are dropped).
 7. **Events**: each kind is read only along its chains, from `Initialization.firstCamera` and each stage's `first…Change` refs, following `next`; entities not reached are not read. Any chain without dynamic stages is refused. A loop is refused. Defaults for absent optional fields: camera `lane` 0, `size` 0 (sampling reads a size below 0.01 as 0.01), `zoom` 1, `zoomTargetLane` 0, `zoomTargetY` 0, `zoomVerticalAlign` 0, `rotate` 0, `stageTilt` 1; mask `maskNotes` 0; style `editorLane` 0, `laneColor` 0, `judgeLineStyle` 0, `fullWidth` 0, `noteAlpha` 1, `divisionLineAlpha` 1, and a legacy `alpha` (default 1) multiplies `laneAlpha` and `judgeLineAlpha`; transform `rotate` 0, `xLaneTranslate` 0, `yLaneTranslate` 0, `elevation` 0, `anchor` 0, `rotationCenter` 0, `rotationCenterXOffset` 0, `rotationCenterYOffset` 0; every event `ease` 0. `lane`/`size` convert back as `left = lane - size`, `width = 2 * size`.
-8. **Time scales**: each group's chain from `first` along `next` (stopping at a missing or repeated entity), then every other `#TIMESCALE_CHANGE` in entity order. `editorLane` default −6, `transitionStyle` default 0, `hideNotes` default 0.
+8. **Time scales**: each group's chain from `first` along `next` (stopping at a missing or repeated entity), then every other `#TIMESCALE_CHANGE` in entity order. `editorLane` default -6, `transitionStyle` default 0, `hideNotes` default 0.
 9. **Notes**: a note entity without a name is a one-note slide (in entity order, these come first). Named notes are joined into slides by `next`; a slide is ordered by `#BEAT` (stable). For each note: `left = lane - size`, `size = 2 * size`, `elevation` default 0, `style` default 0, `effectKind` default 0, `isSeparator`, `segmentLayer`, `segmentThroughJudgeLine`, `segmentPresentation` default 0; connector type, fake and critical flags from `segmentKind`'s base kind; `connectorStyle` from the colour digit (guides 101–108 and coloured kinds), except that a note whose entity index is in `defaultGuideColors` and whose `segmentKind` is 103 has `connectorStyle: default`.
    - **Note archetypes** (`noteArchetypeNames` in `src/chart/parse/levelData/slide.ts`, 68 names), each with or without a leading `Fake`: `Normal` or `Critical`, then `Head`, `Tail` or nothing, then `Tap`, `Flick`, `Trace`, `TraceFlick` or `Release`, then `Note`; `NormalTickNote` and `CriticalTickNote`; `DamageNote` and `AnchorNote`. That is more than the writer uses (§7.3): `NormalReleaseNote`, `NormalHeadReleaseNote` and `NormalTailTapNote` are notes, not unknown archetypes.
    - `Fake` prefix: `isFake`. `AnchorNote`: `noteType: anchor`, no flick, `isCritical = connectorActiveIsCritical`. `DamageNote`: `noteType: damage`, no flick.
@@ -600,11 +600,11 @@ Entries are numbered by position (1-based, across all parts). Sessions are separ
 | `continue` | `operation` (`nse.continue`, or `nse.origin` for a `.nxsp` open) | The state the session starts from | Keeps the stack; with none, starts one slot whose step is `init`. |
 | `edit` | `step` (kind `edit`) | The state after the step | Drops slots after the index, pushes, index + 1. |
 | `restore` | `step` (kind `restore`, `nse.restore`) | The restored entry's state with the current BGM, and the entry's BGM offset only when its BGM is the current one | As `edit`. |
-| `undo` | `step`: the step crossed (the slot left) | The state landed on | Index − 1; the snapshot is the slot landed on. |
+| `undo` | `step`: the step crossed (the slot left) | The state landed on | Index - 1; the snapshot is the slot landed on. |
 | `redo` | `step`: the step crossed (the slot entered) | The state landed on | Index + 1. |
 | `save` | `operation` (`nse.file.save`), `revisionId`, `device`, `appVersion` | The state saved | None. |
 | `export` | `operation` (`nse.file.export`) | The state exported | None. |
-| `recovered` | `operation` (`nse.recovery`), `recoveryContext`, `stack` | The recovered state | Keeps slots `0 … keep − 1`, appends `stack.push` (absolute numbering), sets the index to `stack.index`. |
+| `recovered` | `operation` (`nse.recovery`), `recoveryContext`, `stack` | The recovered state | Keeps slots `0 … keep - 1`, appends `stack.push` (absolute numbering), sets the index to `stack.index`. |
 
 A file's chronology need not replay from its first entry to its `undoStack`. Sessions may come from forks, and the writer cuts the stored stack. A viewer shows entries as they are and takes the undo stack from `undoStack`.
 
@@ -653,7 +653,7 @@ A known operation is titled in the viewer's language from its `data` (§12 gives
 
 ### 11.3 Resource bounds
 
-Every operation must be plain JSON: finite numbers, well-formed strings (keys included), no more than 256 KiB of compact UTF-8, nesting depth at most 16 (the operation itself is level 0; a value at level 17 fails). A step (§11.4) is at most 2 × 256 KiB + 128 KiB + 4 KiB and depth 20; a recovery context at most 256 KiB + 128 KiB + 2 KiB and depth 19. An `x` is measured apart (§11.6). Beyond a bound the description is **resource-invalid**: `history-unreadable`, not merely unsupported.
+Every operation must be plain JSON: finite numbers, well-formed strings (keys included), no more than 256 KiB of compact UTF-8, nesting depth at most 16 (the operation itself is level 0; a value at level 17 fails). A step (§11.4) is at most 2 x 256 KiB + 128 KiB + 4 KiB and depth 20; a recovery context at most 256 KiB + 128 KiB + 2 KiB and depth 19. An `x` is measured apart (§11.6). Beyond a bound the description is **resource-invalid**: `history-unreadable`, not merely unsupported.
 
 ### 11.4 Steps
 
@@ -740,7 +740,7 @@ Each id below has `version` 1. "Kind" is the entry or step kind it is written as
 | `nse.note.elevation` | edit | `{targets: count}` | An Elevation Editor drag that changed only elevation. | "Changed elevation of {targets} note(s)" |
 | `nse.note.combine` | edit | `{targets: count}` | Combine into Slide: every note of the slides involved, re-made as one slide by beat. | "Combined {targets} notes into one slide" |
 | `nse.note.split` | edit | `{targets: count}` | Split Slide: the cut points (selected notes that were not their slide's last). | "Split {targets} slide connection(s)" |
-| `nse.note.vertical` | edit | `{targets: count}` | Make Vertical: notes moved to the earliest selected beat with elevation = beat − that beat, and detached. | "Made {targets} note(s) vertical" |
+| `nse.note.vertical` | edit | `{targets: count}` | Make Vertical: notes moved to the earliest selected beat with elevation = beat - that beat, and detached. | "Made {targets} note(s) vertical" |
 
 ### 12.2 Adding, editing, moving
 
@@ -777,7 +777,7 @@ Each id below has `version` 1. "Kind" is the entry or step kind it is written as
 
 | Id | `data` | Meaning | Title |
 | --- | --- | --- | --- |
-| `nse.header.set` | `{field: initialLife \| bgmOffset, before: finite, after: finite}` | Level Info (Initial Life alone), the Offset tool, the BGM dialog when only the offset changed. `bgmOffset` in seconds. | "Set Initial Life to {after}", "Set BGM Offset to {after × 1000} ms" |
+| `nse.header.set` | `{field: initialLife \| bgmOffset, before: finite, after: finite}` | Level Info (Initial Life alone), the Offset tool, the BGM dialog when only the offset changed. `bgmOffset` in seconds. | "Set Initial Life to {after}", "Set BGM Offset to {after * 1000} ms" |
 | `nse.bgm.change` | `{file: {before, after: NameText \| null}, offset?: {before, after: finite}}` | The BGM dialog or opening an audio file: a new BGM (file name without extension; `null` for none); `offset` only when it changed. Re-picking the same file is still a change. | "Changed BGM" (with `offset`), else "Changed BGM file" |
 | `nse.levelInfo.set` | `{changes: [...]}` | One Apply of the Level Info dialog. 1 to 9 changes in the order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not `initialLife` alone. Shapes: `{field: title \| artists \| author \| description, before, after: NameText}`; `{field: rating, before, after: finite \| null}`; `{field: tags, added: count, removed: count, reordered?: true}` (at least one non-zero or `reordered`); `{field: cover \| preview, before, after: NameText \| null}`; `{field: initialLife, before, after: finite}`. A name pair is no change only when the texts are equal and neither is cut. | "Changed level info" |
 | `nse.dynamicStages.enable` | `{created: NC}` | Enabling dynamic stages: a mask, a pivot and a style event at beat 0 on the default stage (`{stageMaskEvent: 1, stagePivotEvent: 1, stageStyleEvent: 1}`). | "Enabled dynamic stages" |
@@ -985,7 +985,7 @@ This example records the old plain-level layout; it is not current writer output
 {"bgmOffset":0,"entities":[{"archetype":"Initialization","data":[{"name":"initialLife","value":1000},{"name":"revision","value":2}]},{"archetype":"#BPM_CHANGE","data":[{"name":"#BEAT","value":0},{"name":"#BPM","value":60},{"name":"meter","value":4}]},{"archetype":"#TIMESCALE_GROUP","data":[{"name":"editorName","ref":"Default"}],"name":"0"},{"archetype":"NormalTapNote","data":[{"name":"#TIMESCALE_GROUP","ref":"0"},{"name":"#BEAT","value":1},{"name":"lane","value":1},{"name":"size","value":1},{"name":"style","value":0},{"name":"direction","value":0},{"name":"isAttached","value":0},{"name":"isSeparator","value":0},{"name":"connectorEase","value":1},{"name":"segmentKind","value":1},{"name":"segmentAlpha","value":1},{"name":"segmentLayer","value":0},{"name":"effectKind","value":0},{"name":"segmentThroughJudgeLine","value":0},{"name":"segmentPresentation","value":0}]},…]}
 ```
 
-The first note is `left 0, size 2` (lane centre 1, half-width 1); the second `left -3, size 3` (centre −1.5, half-width 1.5).
+The first note is `left 0, size 2` (lane centre 1, half-width 1); the second `left -3, size 3` (centre -1.5, half-width 1.5).
 
 ### 17.2 A small history
 
@@ -1011,7 +1011,7 @@ A first Save of a chain of three states (`05a-sessions-first-save.nxsp` of the c
 
 The three states share one header chunk and one `bpms` node: equal records give equal hashes. The chunk index tiles `chunks.bin` (331 bytes): 0+65, 65+75, 140+12, 152+86, 238+93 = 331.
 
-The `bpms` chunk, worked through: canonical text `[[0,60,4]]` (10 bytes); SHA-256 begins `051d3d5b72e451f94ad6a8535d65fa79`, its name; stored at offset 140 as the 12 bytes `8b 8e 36 d0 31 33 d0 31 89 8d 05 00` (raw DEFLATE). The header chunk at offset 0 inflates to `[1000,false,0,[[1,"Default",0]],[[1,"#1",true,true,"global"]],[],[],["","","","",[],[],[]]]`: Initial Life 1000, dynamic stages off, offset 0, group 1 "Default" (no Force Note Speed), stage 1 "#1" (From Start, Until End, global sim lines), no folders, empty level info, no BGM. The first slides chunk inflates to `[[[1,1,0,0,"default","default","default",false,-6,2,false,"none",false,"default",false,"active","linear",false,false,1,"top",false,"default"]]]`: one slide of one note at beat 0, lanes −6 to −4.
+The `bpms` chunk, worked through: canonical text `[[0,60,4]]` (10 bytes); SHA-256 begins `051d3d5b72e451f94ad6a8535d65fa79`, its name; stored at offset 140 as the 12 bytes `8b 8e 36 d0 31 33 d0 31 89 8d 05 00` (raw DEFLATE). The header chunk at offset 0 inflates to `[1000,false,0,[[1,"Default",0]],[[1,"#1",true,true,"global"]],[],[],["","","","",[],[],[]]]`: Initial Life 1000, dynamic stages off, offset 0, group 1 "Default" (no Force Note Speed), stage 1 "#1" (From Start, Until End, global sim lines), no folders, empty level info, no BGM. The first slides chunk inflates to `[[[1,1,0,0,"default","default","default",false,-6,2,false,"none",false,"default",false,"active","linear",false,false,1,"top",false,"default"]]]`: one slide of one note at beat 0, lanes -6 to -4.
 
 ### 17.3 An append
 

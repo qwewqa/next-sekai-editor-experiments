@@ -157,7 +157,7 @@ These have not been retuned (principle 16):
 
 ## 4. Contrast and distinction (computed from the source files)
 
-WCAG 2 relative luminance. ΔE is OKLab ×100, where about 2 is the threshold of noticing. Colour-vision deficiency is simulated with Machado 2009 at severity 1.0 (p protan, d deutan, t tritan). The values come from `src/themes.css`.
+WCAG 2 relative luminance. ΔE is OKLab times 100, where about 2 is the threshold of noticing. Colour-vision deficiency is simulated with Machado 2009 at severity 1.0 (p protan, d deutan, t tritan). The values come from `src/themes.css`.
 
 ### 4.1 Text and glyphs on their face (need 4.5)
 
