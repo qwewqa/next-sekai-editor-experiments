@@ -39,9 +39,11 @@ const translucent = [
     // soft outer edge, up to about 0.945 alpha, so core stays below that. At 0.95 an arrow whose
     // rim fill is missing would pass, as the glow under it would not count.
     { pattern: /Arrow|^#DIRECTIONAL_MARKER/, floor: 1, opaque: 0.99, core: 0.92 },
-    // The base's critical diamonds glow round an opaque kite, the same way.
+    // The base's diamonds and ticks fade into their glow round an opaque kite. Ours fade over a soft
+    // outline, and the critical ones also glow. Inside that edge (alpha under core), the kite is
+    // opaque.
     {
-        pattern: /^Sekai Critical .*Diamond|^Sekai (Trace )?Diamond Yellow$/,
+        pattern: /Diamond|^#NOTE_TICK_/,
         floor: 1,
         opaque: 0.99,
         core: 0.5,

@@ -75,14 +75,23 @@ const slot = (color) =>
 // Diamonds and ticks draw the art 1.4 times the engine's square about its middle, trace diamonds
 // 1.28 times, at 144 and 108 texels per lane on screen: [texture width, half the art's side].
 const kiteRoles = { slide: [128, 0.7], trace: [88, 0.64] }
+// The face's outline fades over 0.75 texel, as the base's kites fade into their glow, so a small
+// kite flickers less as it moves. The white facet stays sharp, and an alpha slope keeps the inside
+// fully opaque. The view is scale times the kite's 64 units across. A normal kite's soft edge is
+// stored in its face colour.
 const kiteImage = (template, vars, role, scale = 1) => {
     const [width, half] = kiteRoles[role]
     const side = half * scale
-    return image(template, vars, {
-        width: Math.round(width * scale),
-        transform: box(0.5 - side, 0.5 + side, 0.5 - side, 0.5 + side),
-        ...(vars.halo && { glow: vars.halo }),
-    })
+    const pixels = Math.round(width * scale)
+    return image(
+        template,
+        { ...vars, soft: n((0.75 * 64 * scale) / pixels) },
+        {
+            width: pixels,
+            transform: box(0.5 - side, 0.5 + side, 0.5 - side, 0.5 + side),
+            glow: vars.halo ?? vars.color,
+        },
+    )
 }
 /**
  * The frame of a diamond against its kite's: room for a critical diamond's halo. Normal diamonds

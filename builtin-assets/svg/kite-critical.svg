@@ -2,7 +2,13 @@
     <filter id="b" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="5"/>
     </filter>
+    <filter id="s" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" x="-100" y="-100" width="300" height="300">
+        <feGaussianBlur stdDeviation="var(--soft)"/>
+        <feComponentTransfer>
+            <feFuncA type="linear" slope="1.02"/>
+        </feComponentTransfer>
+    </filter>
     <polygon points="4,32 32,4 60,32 32,46" fill="var(--halo)" filter="url(#b)"/>
-    <polygon points="4,32 32,4 60,32 32,46" fill="var(--color)"/>
+    <polygon points="4,32 32,4 60,32 32,46" fill="var(--color)" filter="url(#s)"/>
     <polygon points="8.7,32 32,8.7 32,41.3" fill="#fff"/>
 </svg>
