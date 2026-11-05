@@ -1633,7 +1633,7 @@ test.describe('preview background camera', () => {
     const background = (page: Page) =>
         page.evaluate(() => {
             const vertices = window.previewTest.backgroundVertices!
-            const corners = [0, 10, 20, 50].map((i) => [vertices[i]!, vertices[i + 1]!])
+            const corners = [0, 14, 28, 70].map((i) => [vertices[i]!, vertices[i + 1]!])
             const tl = corners[1]!,
                 tr = corners[2]!
             return { corners, rotation: Math.atan2(-(tr[1]! - tl[1]!), tr[0]! - tl[0]!) }
