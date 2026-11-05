@@ -8,7 +8,7 @@ These rules cover everything we write: the text users see, the maintainer docs (
 - Choose the word that is idiomatic in the register. The app uses plain software English, neither literary nor bureaucratic. The docs and comments use plain technical English.
   - A file contains something, and a feature requires something.
   - When unsure, follow the existing text, then common software usage.
-- Docs and maintainer text use American spelling (color, center, behavior), as the UI and code do.
+- Docs use American spelling (color, center, behavior), as the UI and code do.
 - Leave out what the reader can assume.
 - Give extra information its own sentence, not a ", which …" tail.
 - Within a document, refer to the writer and the reader the same way throughout, such as "we" and "you".
