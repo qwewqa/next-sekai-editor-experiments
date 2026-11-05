@@ -1,8 +1,8 @@
 import type { PreviewSurface, TextureSlot } from './gl'
 
 /**
- * Uploads an atlas to the preview's renderer, and throws when the upload fails. Each host recovers
- * from the throw: the main thread shows the graphics error, and a worker hands over.
+ * Uploads an atlas to the preview's renderer, and throws when the upload fails. The main thread
+ * then shows the graphics error, and a worker hands over.
  */
 export const uploadAtlas = (
     renderer: PreviewSurface,

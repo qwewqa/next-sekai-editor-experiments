@@ -7,7 +7,7 @@ export type TextureAccount = {
     bytes: () => number
     /** The preview's `deleteTexture`, `deleteFramebuffer` and `flush` calls, in order. */
     calls: string[]
-    /** The preview's frames in order: the size each was drawn at, and the slots its quads use. */
+    /** The preview's frames in order, each with the size it was drawn at and the slots it used. */
     frames: { width: number; height: number; slots: number[] }[]
 }
 
