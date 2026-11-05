@@ -259,7 +259,7 @@
       "invalidChart": "Partition non valide : {0}",
       "revision": {
         "older": "Ce niveau a été créé pour une révision plus ancienne du moteur et utilise maintenant la révision actuelle. Vérifiez qu’il s’affiche et se joue toujours comme prévu.",
-        "newer": "Ce niveau a été créé pour une révision du moteur plus récente que celle prise en charge par cet éditeur. Certaines parties risquent de ne pas s’afficher ou de ne pas être sauvegardées correctement."
+        "newer": "Ce niveau a été créé pour une révision du moteur plus récente que celle prise en charge par cet éditeur. Certaines parties risquent de ne pas s’afficher ou de ne pas être enregistrées correctement."
       },
       "refusals": {
         "dynamicStages": "le niveau utilise des scènes dynamiques sans les activer",
@@ -313,7 +313,7 @@
       "title": "Nouveau"
     },
     "save": {
-      "title": "Sauvegarder"
+      "title": "Enregistrer"
     },
     "scrolls": {
       "scrollLeft": {
@@ -329,10 +329,10 @@
         "title": "Défiler vers le haut"
       },
       "scrollPageDown": {
-        "title": "Défiler la page vers le bas"
+        "title": "Défiler d’une page vers le bas"
       },
       "scrollPageUp": {
-        "title": "Défiler la page vers le haut"
+        "title": "Défiler d’une page vers le haut"
       }
     },
     "select": {
@@ -408,7 +408,7 @@
         "only": "Objets affichés : {0} uniquement"
       },
       "toggle": {
-        "title": "Visibilité : {0}",
+        "title": "Afficher/masquer : {0}",
         "on": "Visibilité activée : {0}",
         "off": "Visibilité désactivée : {0}",
         "types": {
@@ -620,7 +620,7 @@
       "title": "Trouver les modifications ici"
     },
     "saveAs": {
-      "title": "Sauvegarder sous…"
+      "title": "Enregistrer sous…"
     }
   },
   "help": {
@@ -708,7 +708,7 @@
         "drag": "Faites glisser vers le haut ou vers le bas pour modifier le décalage de la musique."
       }
     },
-    "recentSessions": "Pour retrouver le travail non sauvegardé conservé dans ce navigateur, ouvrez Historique › Récentes.",
+    "recentSessions": "Pour retrouver le travail non enregistré conservé dans ce navigateur, ouvrez Historique › Récentes.",
     "sections": {
       "controls": "Commandes",
       "file": "Fichier",
@@ -737,7 +737,7 @@
       "formats": "Ouvre les fichiers de projet, les paquets Sonolus, les données de niveau, les niveaux Chart Cyanvas et les partitions USC et SUS. Choisir un fichier audio remplace la musique."
     },
     "save": {
-      "projectFile": "Sauvegarde votre travail dans un fichier de projet (.nxsp)."
+      "projectFile": "Enregistre votre travail dans un fichier de projet (.nxsp)."
     },
     "exportLevel": {
       "contents": "Les données de niveau contiennent la partition, la Vie initiale et le décalage de la musique, mais pas la musique ni le reste des Informations du niveau.",
@@ -770,7 +770,7 @@
       "viewClick": "Cliquez sur une étape de la Chronologie pour voir la partition telle qu’elle était alors. Restaurer rétablit cette version en ajoutant une nouvelle étape à la Chronologie.",
       "showChange": "Afficher la modification fait défiler la partition jusqu’à la modification suivante de l’étape de la Chronologie que vous consultez.",
       "editsHere": "Trouver les modifications ici liste les étapes de la Chronologie qui ont modifié les temps couverts par la sélection, ou les temps visibles si rien n’est sélectionné.",
-      "timeline": "Historique affiche vos modifications, vos sauvegardes et vos exportations de données de niveau sous forme d’étapes de la Chronologie."
+      "timeline": "Historique affiche vos modifications, vos enregistrements et vos exportations de données de niveau sous forme d’étapes de la Chronologie."
     },
     "pasteTool": {
       "clipboardHistory": "L’Historique du presse-papiers du panneau Propriétés affiche vos copies récentes. Choisissez-en une pour la coller ensuite."
@@ -1127,9 +1127,9 @@
           "disabled": "Les garde l’un au-dessus de l’autre."
         }
       },
-      "confirmCloseUnsavedFile": "Demande de confirmation avant la fermeture de la page lorsque des modifications ne sont pas sauvegardées dans un fichier de projet.",
+      "confirmCloseUnsavedFile": "Demande de confirmation avant la fermeture de la page lorsque des modifications ne sont pas enregistrées dans un fichier de projet.",
       "filePicker": {
-        "intro": "Sauvegarde et exportation dans des fichiers que vous choisissez, ou par téléchargement.",
+        "intro": "Enregistrement et exportation dans des fichiers que vous choisissez, ou par téléchargement.",
         "choices": {
           "auto": "Écrit dans les fichiers choisis. Télécharge les fichiers dans certains navigateurs.",
           "enabled": "Écrit dans les fichiers choisis.",
@@ -1186,15 +1186,15 @@
       "discardAutoSave": "Abandonner l’ancienne sauvegarde automatique ({0}) ?",
       "discardUnreadable": "Abandonner le travail récupéré du {0} ({1}) ? Il ne peut pas être ouvert.",
       "recovery": {
-        "journal": "Travail non sauvegardé d’une visite précédente · {0} · {1}",
-        "journalUndated": "Travail non sauvegardé d’une visite précédente · {0}",
+        "journal": "Travail non enregistré d’une visite précédente · {0} · {1}",
+        "journalUndated": "Travail non enregistré d’une visite précédente · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré qui ne peut pas être ouvert · {0} · {1}",
         "listFailed": "Le travail récupéré n’a pas pu être lu.",
         "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé."
       },
       "openHistory": "Ouvrir l’historique",
-      "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
+      "confirmClose": "Demander avant de fermer avec des modifications non enregistrées",
       "filePicker": {
         "title": "Écrire dans les fichiers choisis",
         "auto": "Auto",
@@ -1209,10 +1209,10 @@
       "deleteTitle": "Supprimer des sessions",
       "lastEdited": "Dernière modification il y a plus de {0} jour|Dernière modification il y a plus de {0} jours",
       "all": "Tout",
-      "includeNotSaved": "Inclure le travail non sauvegardé",
+      "includeNotSaved": "Inclure le travail non enregistré",
       "deleteNext": "Supprimer…",
       "deleteConfirm": "Supprimer {0} session ?|Supprimer {0} sessions ?",
-      "notSaved": "{0} session a des modifications non sauvegardées : {1}.|{0} sessions ont des modifications non sauvegardées : {1}.",
+      "notSaved": "{0} session a des modifications non enregistrées : {1}.|{0} sessions ont des modifications non enregistrées : {1}.",
       "namesMore": "{1} et {0} autre|{1} et {0} autres",
       "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
       "deleting": "Suppression…",
@@ -1441,7 +1441,7 @@
     "updated": "Mis à jour vers la version {0}",
     "whatsNew": "Notes de version",
     "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
-    "olderVersion": "Une version plus récente de l’éditeur a été ouverte dans ce navigateur. Rechargez la page, ou sauvegardez pour conserver votre travail.",
+    "olderVersion": "Une version plus récente de l’éditeur a été ouverte dans ce navigateur. Rechargez la page, ou enregistrez pour conserver votre travail.",
     "tryAgain": "Réessayer",
     "continued": "Session reprise : « {0} » ({1}).",
     "continuedUntitled": "Votre session a été reprise ({0}).",
@@ -1449,8 +1449,8 @@
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel.",
     "journalKept": "Une modification récupérée de « {0} » a été conservée dans une session séparée.",
-    "fallback": "Le travail non sauvegardé d’une visite précédente a été récupéré.",
-    "fallbackLocal": "Du travail non sauvegardé d’une visite précédente se trouve dans Données locales.",
+    "fallback": "Le travail non enregistré d’une visite précédente a été récupéré.",
+    "fallbackLocal": "Du travail non enregistré d’une visite précédente se trouve dans Données locales.",
     "migrationFailed": "L’ancienne sauvegarde automatique n’a pas pu être restaurée.",
     "autoSave": "Reprise de « {0} » depuis l’ancienne sauvegarde automatique.",
     "journal": "Dernière modification de « {0} » récupérée.",
@@ -1462,13 +1462,13 @@
     "autoSaveOpened": "Ancienne sauvegarde automatique ouverte.",
     "journalFailed": "Une modification récupérée n’a pas pu être stockée dans sa session. Elle se trouve dans Données locales.",
     "storageNearlyFull": "Le stockage du navigateur est presque plein.",
-    "journalsFull": "Du travail non sauvegardé de visites précédentes remplit le stockage du navigateur.",
+    "journalsFull": "Du travail non enregistré de visites précédentes remplit le stockage du navigateur.",
     "sessionLater": "Cette session nécessite une version plus récente de l’éditeur.",
     "sessionDamaged": "Cette session n’a pas pu être ouverte.",
     "newestLater": "Votre session la plus récente nécessite une version plus récente de l’éditeur.",
     "newestDamaged": "Votre session la plus récente n’a pas pu être ouverte.",
     "bgmNotLoaded": "La musique n’est pas chargée.",
-    "saveUnfinished": "Une sauvegarde ne s’est pas terminée. Le fichier choisi est peut-être vide.",
+    "saveUnfinished": "Un enregistrement ne s’est pas terminé. Le fichier choisi est peut-être vide.",
     "exportUnfinished": "Une exportation ne s’est pas terminée. Le fichier choisi est peut-être vide.",
     "more": "et {0} autres dans Données locales",
     "localData": "Données locales",
@@ -1484,11 +1484,11 @@
       "readOnly": "Une version plus récente de l’éditeur a été ouverte.",
       "upgrading": "Une version plus récente de l’éditeur est ouverte dans un autre onglet."
     },
-    "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez pour conserver votre travail.",
-    "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez pour conserver votre travail.",
+    "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Enregistrez pour conserver votre travail.",
+    "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Enregistrez pour conserver votre travail.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur habituel.",
-    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
-    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail."
+    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Enregistrez pour conserver votre travail.",
+    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Enregistrez pour conserver votre travail."
   },
   "player": {
     "started": "Lecture démarrée",
@@ -1587,13 +1587,13 @@
     "goTo": "Aller à",
     "show": "Afficher",
     "filterAll": "Tout",
-    "filterSaves": "Sauvegardes et exportations",
+    "filterSaves": "Enregistrements et exportations",
     "showAll": "Tout afficher",
     "now": "Maintenant",
     "today": "Aujourd’hui",
     "yesterday": "Hier",
     "empty": "Aucune modification pour l’instant",
-    "noSaves": "Aucune sauvegarde ni exportation",
+    "noSaves": "Aucun enregistrement ni exportation",
     "loadFailed": "La Chronologie n’a pas pu être chargée.",
     "codeFailed": "La Chronologie n’a pas pu être chargée. Rechargez la page pour réessayer.",
     "tryAgain": "Réessayer",
@@ -1603,9 +1603,9 @@
     "earlierNotStored": "Les étapes antérieures de la Chronologie ne sont pas stockées dans ce navigateur.",
     "damaged": "endommagée",
     "needsNewer": "nécessite une version plus récente",
-    "savedOn": "Sauvegardé sur {0}",
-    "savedWeb": "Sauvegardé dans l’éditeur web ({0})",
-    "savedWebAny": "Sauvegardé dans l’éditeur web",
+    "savedOn": "Enregistré sur {0}",
+    "savedWeb": "Enregistré dans l’éditeur web ({0})",
+    "savedWebAny": "Enregistré dans l’éditeur web",
     "quoted": "« {0} »",
     "quotedField": "{0}",
     "continuedFrom": "Reprise du {0}",
@@ -1623,7 +1623,7 @@
       "thisTab": "Cet onglet",
       "elsewhere": "Autre onglet",
       "actions": "Plus d’actions pour « {0} »",
-      "saveToFile": "Sauvegarder…",
+      "saveToFile": "Enregistrer…",
       "delete": "Supprimer",
       "openReason": "Elle est ouverte dans un autre onglet ou une autre fenêtre."
     },
@@ -2065,7 +2065,7 @@
         "label": "Taille"
       },
       "skip": {
-        "label": "Intervalle (temps)"
+        "label": "Saut (temps)"
       },
       "stage": {
         "label": "Scène"
@@ -2575,7 +2575,7 @@
     "changesBelow": "Modifications en bas : {0}",
     "changesAboveAny": "Modifications en haut",
     "changesBelowAny": "Modifications en bas",
-    "savesCurrent": "Sauvegarde la version marquée « Maintenant » dans la Chronologie.",
+    "savesCurrent": "Enregistre la version marquée « Maintenant » dans la Chronologie.",
     "showEdits": "Afficher les modifications",
     "changeOptions": "Options des modifications"
   },
@@ -2598,8 +2598,8 @@
     "writeFailed": "« {0} » n’a pas pu être écrit.",
     "fileNowEmpty": "Le fichier est maintenant vide.",
     "openedContentGone": "Le contenu de « {0} » a changé.",
-    "title": "Sauvegarder le fichier de projet",
-    "titleAs": "Sauvegarder sous",
+    "title": "Enregistrer le fichier de projet",
+    "titleAs": "Enregistrer sous",
     "history": "Historique",
     "bgm": "Musique",
     "placeholder": "Sans titre",
@@ -2607,20 +2607,20 @@
     "exportHintFirst": "Les fichiers de projet (.nxsp) sont réservés à cet éditeur. Pour obtenir des données de niveau à envoyer à un serveur Sonolus, utilisez Exporter les données de niveau…",
     "exportHintNames": "Les fichiers de données de niveau peuvent être sans extension ou se terminer par .nsld ou .json.gz.",
     "readOnly": "Impossible d’écrire dans « {0} ».",
-    "notKept": "Non sauvegardé. « {0} » n’a pas pu être lu entièrement.",
-    "notKeptFull": "Non sauvegardé. Le stockage du navigateur est plein. Supprimez des sessions dans Paramètres › Données locales, puis sauvegardez à nouveau.",
-    "saved": "Sauvegardé dans {0}",
-    "savedWithoutBgmLarge": "Sauvegardé dans {0} sans sa musique",
-    "savedWithoutCoverLarge": "Sauvegardé dans {0} sans sa couverture",
-    "savedWithoutPreviewLarge": "Sauvegardé dans {0} sans son aperçu audio",
-    "savedWithoutMediaLarge": "Sauvegardé dans {0} sans ses médias",
-    "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures de la Chronologie n’ont pas été conservées.",
+    "notKept": "Non enregistré. « {0} » n’a pas pu être lu entièrement.",
+    "notKeptFull": "Non enregistré. Le stockage du navigateur est plein. Supprimez des sessions dans Paramètres › Données locales, puis enregistrez à nouveau.",
+    "saved": "Enregistré dans {0}",
+    "savedWithoutBgmLarge": "Enregistré dans {0} sans sa musique",
+    "savedWithoutCoverLarge": "Enregistré dans {0} sans sa couverture",
+    "savedWithoutPreviewLarge": "Enregistré dans {0} sans son aperçu audio",
+    "savedWithoutMediaLarge": "Enregistré dans {0} sans ses médias",
+    "someStepsNotKept": "Enregistré dans {0}. Certaines étapes antérieures de la Chronologie n’ont pas été conservées.",
     "someStepsNotKeptLine": "Certaines étapes antérieures de la Chronologie n’ont pas été conservées.",
-    "someStepsMayNotBeIncluded": "Sauvegardé dans {0}. Certaines étapes antérieures de la Chronologie n’y figurent peut-être pas.",
+    "someStepsMayNotBeIncluded": "Enregistré dans {0}. Certaines étapes antérieures de la Chronologie n’y figurent peut-être pas.",
     "someStepsMayNotBeIncludedLine": "Certaines étapes antérieures de la Chronologie n’y figurent peut-être pas.",
     "committedState": "Le fichier contient la dernière version stockée de la session ouverte dans un autre onglet.",
     "noChanges": "Aucune modification depuis le téléchargement de {0}",
-    "noChangesSaved": "Aucune modification depuis la sauvegarde de {0}",
+    "noChangesSaved": "Aucune modification depuis l’enregistrement de {0}",
     "noChangesOpened": "Aucune modification depuis l’ouverture de {0}",
     "downloadAgain": "Télécharger à nouveau",
     "alwaysDownload": "Toujours télécharger",
@@ -2628,9 +2628,9 @@
     "tooLarge": "Le fichier est trop volumineux.",
     "restoredName": "{0} (restauré le {1})",
     "fileType": "Fichier de projet Next SEKAI",
-    "unavailable": "Non sauvegardé. Utilisez Exporter les données de niveau.",
-    "sessionUnavailable": "Cette session n’a pas pu être sauvegardée.",
-    "storageUnavailable": "Non sauvegardé. L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez, ou utilisez Sauvegarder sous.",
+    "unavailable": "Non enregistré. Utilisez Exporter les données de niveau.",
+    "sessionUnavailable": "Cette session n’a pas pu être enregistrée.",
+    "storageUnavailable": "Non enregistré. L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez, ou utilisez Enregistrer sous.",
     "include": "Inclure",
     "historySize": "{0} étape · {1}|{0} étapes · {1}",
     "historyNote": "Toute personne disposant du fichier peut consulter son historique.",
@@ -2650,7 +2650,7 @@
     "noDamage": "Aucun dommage trouvé.",
     "scopeBoth": "« {0} » et l’historique stocké dans ce navigateur ont été vérifiés.",
     "scopeStored": "L’historique stocké dans ce navigateur a été vérifié.",
-    "fileDamaged": "« {0} » est endommagé. La sauvegarde créera un fichier séparé.",
+    "fileDamaged": "« {0} » est endommagé. L’enregistrement créera un fichier séparé.",
     "repaired": "{0} étape de la Chronologie réparée.|{0} étapes de la Chronologie réparées.",
     "storedDamaged": "{0} étape de la Chronologie stockée dans ce navigateur est endommagée.|{0} étapes de la Chronologie stockées dans ce navigateur sont endommagées.",
     "mediaDamaged": "La copie de {0} stockée dans ce navigateur était endommagée."
@@ -2715,13 +2715,13 @@
     "exportBodyOpened": "« {0} » a changé depuis que vous l’avez ouvert ici.",
     "replace": "Remplacer",
     "title": "« {0} » a changé",
-    "body": "« {0} » a changé depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "body": "« {0} » a changé depuis que vous l’avez ouvert ou enregistré ici.",
     "saved": "{0}, {1} · {2}.",
     "savedNoNotes": "{0}, {1}.",
     "otherProject": "Un autre fichier de projet, « {0} ».",
     "otherProjectUnnamed": "Un autre fichier de projet.",
-    "notDescendant": "La version sauvegardée le {0} n’est pas basée sur votre version.",
-    "separate": "Sauvegarder dans un fichier séparé…",
+    "notDescendant": "La version enregistrée le {0} n’est pas basée sur votre version.",
+    "separate": "Enregistrer dans un fichier séparé…",
     "openOther": "Ouvrir l’autre version",
     "openOtherNote": "Vos modifications restent dans les sessions récentes.",
     "replaceNote": "La version sur le disque sera conservée dans les sessions récentes.",
@@ -2761,11 +2761,11 @@
     "peekSessionFailed": "Impossible de consulter cette session",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes antérieures de la Chronologie sont dans Historique",
-    "savedCurrent": "Version actuelle sauvegardée dans {0}"
+    "savedCurrent": "Version actuelle enregistrée dans {0}"
   },
   "entry": {
     "exported": "{0} exporté",
-    "saved": "{0} sauvegardé",
+    "saved": "{0} enregistré",
     "downloaded": "{0} téléchargé",
     "continued": "Session reprise",
     "migrated": "Ancienne sauvegarde automatique ouverte",
@@ -2786,19 +2786,19 @@
   "prompt": {
     "title": "Modifications non stockées",
     "newTitle": "Créer une nouvelle partition ?",
-    "newMessage": "« {0} » contient des modifications non sauvegardées dans un fichier de projet. Vous pouvez rouvrir cette session depuis les sessions récentes.",
-    "newMessageUntitled": "La session du {0} contient des modifications non sauvegardées dans un fichier de projet. Vous pouvez la rouvrir depuis les sessions récentes.",
+    "newMessage": "« {0} » contient des modifications non enregistrées dans un fichier de projet. Vous pouvez rouvrir cette session depuis les sessions récentes.",
+    "newMessageUntitled": "La session du {0} contient des modifications non enregistrées dans un fichier de projet. Vous pouvez la rouvrir depuis les sessions récentes.",
     "newChart": "Nouvelle partition",
     "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Elles seront perdues si vous quittez.",
-    "save": "Sauvegarder",
+    "save": "Enregistrer",
     "leaveAnyway": "Quitter quand même"
   },
   "status": {
     "separateCopyShort": "Copie séparée",
-    "notInFile": "Non sauvegardé",
+    "notInFile": "Non enregistré",
     "separateCopy": "Copie séparée de {0}",
     "opensLevelInfo": "Ouvre les informations du niveau",
-    "changedSaved": "{0}, modifié depuis la sauvegarde de {1}",
+    "changedSaved": "{0}, modifié depuis l’enregistrement de {1}",
     "changedDownload": "{0}, modifié depuis le téléchargement de {1}",
     "changedOpened": "{0}, modifié depuis l’ouverture de {1}"
   },
@@ -2807,11 +2807,11 @@
     "severalProjects": "Ce ZIP contient plusieurs fichiers de projet. Décompressez-le et ouvrez-les un par un.",
     "damagedUnopened": "Ce fichier est endommagé et n’a pas pu être ouvert.",
     "damaged": "Ce fichier est endommagé. Il a été ouvert sans son historique.",
-    "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde créera un fichier séparé.",
-    "newerVersion": "Ce fichier a été créé par une version plus récente de {0}. La sauvegarde créera un fichier séparé.",
+    "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. L’enregistrement créera un fichier séparé.",
+    "newerVersion": "Ce fichier a été créé par une version plus récente de {0}. L’enregistrement créera un fichier séparé.",
     "newerRefused": "Ce fichier a été créé par une version plus récente de {0} et ne peut pas être ouvert.",
     "newerPatch": "Ce fichier a été créé par une version plus récente de {0}. Certains contenus peuvent ne pas s’afficher.",
-    "mediaBad": "Impossible de lire {0} de ce fichier. La sauvegarde créera un fichier séparé.",
+    "mediaBad": "Impossible de lire {0} de ce fichier. L’enregistrement créera un fichier séparé.",
     "media": {
       "bgm": "la musique",
       "cover": "la couverture",
@@ -2830,11 +2830,11 @@
       "body": "Ce fichier fait {0}. Son ouverture peut prendre beaucoup de temps et utiliser beaucoup d’espace de stockage dans ce navigateur.",
       "open": "Ouvrir quand même"
     },
-    "unsavedChanges": "{0} ouvert. Ce fichier a des modifications non sauvegardées ({1}).",
-    "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans les sessions récentes.",
+    "unsavedChanges": "{0} ouvert. Ce fichier a des modifications non enregistrées ({1}).",
+    "unsavedEarlier": "Des modifications non enregistrées d’une version antérieure de {0} ({1}) sont dans les sessions récentes.",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente ({1}) est dans les sessions récentes.",
     "restoreIt": "Restaurer la session",
-    "damagedHistory": "L’historique de {0} est endommagé. La sauvegarde créera un fichier séparé.",
+    "damagedHistory": "L’historique de {0} est endommagé. L’enregistrement créera un fichier séparé.",
     "package": {
       "open": "Ouvrir",
       "import": "Importer",
@@ -2846,7 +2846,7 @@
     }
   },
   "file": {
-    "replaced": "« {0} » a été remplacé. La sauvegarde créera un fichier séparé.",
+    "replaced": "« {0} » a été remplacé. L’enregistrement créera un fichier séparé.",
     "downloaded": "{0} · téléchargé ({1})",
     "opened": "{0} · ouvert ({1})"
   },
@@ -2854,7 +2854,7 @@
     "fileMissing": "Fichier introuvable",
     "changedOnDisk": "Modifié sur le disque",
     "newerOnDisk": "Plus récent sur le disque",
-    "changedOnDiskName": "« {0} » a changé sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
+    "changedOnDiskName": "« {0} » a changé sur le disque depuis que vous l’avez ouvert ou enregistré ici.",
     "newerOnDiskName": "Une version plus récente de « {0} » est sur le disque.",
     "notStored": "Non stocké"
   },
