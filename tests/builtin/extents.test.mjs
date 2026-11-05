@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { diagonalPlaces } from '../../builtin-assets/arrows.mjs'
+import { criticalKiteScale } from '../../builtin-assets/manifest.mjs'
 import { readBuiltinItem } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -93,9 +94,9 @@ function inked(name, threshold = 128) {
     return { box: [u0, u1, v0, v1], share: count / (w * h) }
 }
 
-function extent(name, quad = unit) {
+function extent(name, quad = unit, threshold = 128) {
     const corners = apply(sprites.get(name).transform, quad)
-    const [u0, u1, v0, v1] = inked(name).box
+    const [u0, u1, v0, v1] = inked(name, threshold).box
     const points = [
         at(corners, u0, v0),
         at(corners, u0, v1),
@@ -123,6 +124,46 @@ test("sprites land where the base skin's do in the engine's quads", () => {
                 Math.abs(got[i] - target[i]) <= tolerance,
                 `${name}: ${got.map((value) => value.toFixed(2))} against ${target}`,
             )
+    }
+})
+
+// A critical diamond's halo is soft: from half alpha up it inks the kite of its normal sibling, to
+// a unit of the 64-unit art, and from a quarter to 2 units. Its frame is wider by the halo's room, so
+// a later fit to the atlas does not cut it.
+test('critical diamonds ink their kite, with room for the halo', () => {
+    const frameWidth = (name) => {
+        const [bl, , , br] = apply(sprites.get(name).transform, unit)
+        return br[0] - bl[0]
+    }
+    const pairs = [
+        ['Sekai Normal Slide Diamond', 'Sekai Critical Slide Diamond'],
+        ['Sekai Diamond Green', 'Sekai Diamond Yellow'],
+        ['Sekai Trace Diamond Green', 'Sekai Trace Diamond Yellow'],
+        ...['Blue', 'Neutral', 'Black'].flatMap((color) => [
+            [`Sekai Normal Slide Diamond ${color}`, `Sekai Critical Slide Diamond ${color}`],
+            [`Sekai Normal Trace Diamond ${color}`, `Sekai Critical Trace Diamond ${color}`],
+        ]),
+    ]
+    for (const [normal, critical] of pairs) {
+        for (const [threshold, within] of [
+            [128, (1 / 64) * frameWidth(normal)],
+            [64, (2 / 64) * frameWidth(normal)],
+        ]) {
+            const [a, b] = [normal, critical].map((name) => extent(name, unit, threshold))
+            for (let i = 0; i < 4; i++)
+                assert.ok(
+                    Math.abs(a[i] - b[i]) <= within,
+                    `${critical} at ${threshold}: ${b.map((value) => value.toFixed(3))} against ${a.map((value) => value.toFixed(3))}`,
+                )
+        }
+        const ratio = frameWidth(critical) / frameWidth(normal)
+        assert.ok(Math.abs(ratio - criticalKiteScale) <= 1e-6, `${critical}: frame ${ratio}`)
+        const { x, y, w, h } = sprites.get(critical)
+        for (let i = 0; i < w; i++)
+            for (const edge of [0, h - 1]) {
+                assert.ok(pixelAt(texture, x + i, y + edge)[3] <= 2, `${critical} is cut`)
+                assert.ok(pixelAt(texture, x + edge, y + i)[3] <= 2, `${critical} is cut`)
+            }
     }
 })
 

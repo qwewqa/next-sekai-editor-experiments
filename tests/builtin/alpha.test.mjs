@@ -37,6 +37,13 @@ const translucent = [
     // The base's flick arrows glow softly round an opaque arrowhead: inside the glow (alpha under
     // core), the arrowhead itself is opaque.
     { pattern: /Arrow|^#DIRECTIONAL_MARKER/, floor: 1, opaque: 0.99, core: 0.5 },
+    // The base's critical diamonds glow round an opaque kite, the same way.
+    {
+        pattern: /^Sekai Critical .*Diamond|^Sekai (Trace )?Diamond Yellow$/,
+        floor: 1,
+        opaque: 0.99,
+        core: 0.5,
+    },
 ]
 
 const opaqueShare = (alphas) => alphas.filter((alpha) => alpha === 255).length / alphas.length

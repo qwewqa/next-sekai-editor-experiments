@@ -150,6 +150,19 @@ export const baseColors = {
         PURPLE: '#ff40ff',
         CYAN: '#40ffff',
     },
+    // The halo round critical diamonds, sampled round the base's critical slide diamonds: the
+    // default's and one per style.
+    diamondHalo: '#c49400',
+    styleDiamondHalo: {
+        Neutral: '#626262',
+        Red: '#c4004e',
+        Green: '#00c481',
+        Blue: '#0000c4',
+        Yellow: '#c48a00',
+        Purple: '#8f00c4',
+        Cyan: '#00afc4',
+        Black: '#333333',
+    },
     // Per style, the slot glows of normal and critical notes.
     styleGlow: {
         Neutral: [

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 88 88">
+    <filter id="b" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="5"/>
+    </filter>
+    <polygon points="4,32 32,4 60,32 32,46" fill="var(--halo)" filter="url(#b)"/>
+    <polygon points="4,32 32,4 60,32 32,46" fill="var(--color)"/>
+    <polygon points="8.7,32 32,8.7 32,41.3" fill="#fff"/>
+</svg>

@@ -66,12 +66,31 @@ const glow = ([light, color, top]) => image('slot-glow', { light, color, top }, 
 const slot = (color) =>
     image('slot', { color }, { width: 192, transform: box(-0.28, 1.28, -0.28, 1.28) })
 // Diamonds and ticks draw the art 1.4 times the engine's square about its middle, trace diamonds
-// 1.28 times, at 144 and 108 texels per lane on screen.
-const kiteRoles = {
-    slide: { width: 128, transform: box(-0.2, 1.2, -0.2, 1.2) },
-    trace: { width: 88, transform: box(-0.14, 1.14, -0.14, 1.14) },
+// 1.28 times, at 144 and 108 texels per lane on screen: [texture width, half the art's side].
+const kiteRoles = { slide: [128, 0.7], trace: [88, 0.64] }
+const kiteImage = (template, vars, role, scale = 1) => {
+    const [width, half] = kiteRoles[role]
+    const side = half * scale
+    return image(template, vars, {
+        width: Math.round(width * scale),
+        transform: box(0.5 - side, 0.5 + side, 0.5 - side, 0.5 + side),
+    })
 }
-const kite = (color, role) => image('kite', { color }, kiteRoles[role])
+const kite = (color, role) => kiteImage('kite', { color }, role)
+/** The frame of a critical diamond against its kite's, with room for the halo. */
+export const criticalKiteScale = 88 / 64
+// Critical diamonds, as the base marks them: a soft halo round the kite in its deep colour, and
+// the face a fifth of the way to it. The grey styles' halo is too dark to show on the stage, so
+// their trace diamonds take a light one, and their faces keep their own lightness.
+const criticalKite = (color, role, halo) =>
+    kiteImage('kite-critical', { color: mix(color, halo, 0.2), halo }, role, criticalKiteScale)
+const greyCriticalKite = (color, role, halo) =>
+    kiteImage(
+        'kite-critical',
+        { color, halo: role === 'trace' ? mix(color, '#ffffff', 0.5) : halo },
+        role,
+        criticalKiteScale,
+    )
 
 /**
  * A sprite transform that draws the sprite's frame over the box [u0, u1] x [v0, v1] of the engine's
@@ -469,12 +488,17 @@ export function skinSprites() {
     })
 
     group('Diamonds', () => {
+        // Yellow is the critical colour of the default diamonds.
+        const defaultKite = (key, role) =>
+            key === 'yellow'
+                ? criticalKite(diamondColors[key], role, baseColors.diamondHalo)
+                : kite(diamondColors[key], role)
         for (const [family, key, role] of diamondFamilies)
-            add(`Sekai ${family}`, kite(diamondColors[key], role))
+            add(`Sekai ${family}`, defaultKite(key, role))
         for (const key of ['green', 'yellow'])
-            add(`Sekai Diamond ${capital(key)}`, kite(diamondColors[key], 'slide'))
+            add(`Sekai Diamond ${capital(key)}`, defaultKite(key, 'slide'))
         for (const key of ['green', 'red', 'yellow'])
-            add(`Sekai Trace Diamond ${capital(key)}`, kite(diamondColors[key], 'trace'))
+            add(`Sekai Trace Diamond ${capital(key)}`, defaultKite(key, 'trace'))
     })
 
     group('Flick arrows', () => {
@@ -670,10 +694,14 @@ export function skinSprites() {
                     )
             for (const part of parts)
                 add(`Sekai Damage Note ${part} ${color}`, damageImage(part, accent, inner))
+            const [face, criticalFace] = baseColors.styleDiamond[color]
+            const halo = baseColors.styleDiamondHalo[color]
+            const haloed =
+                color === 'Neutral' || color === 'Black' ? greyCriticalKite : criticalKite
             for (const [family, , role] of diamondFamilies)
                 add(
                     `Sekai ${family} ${color}`,
-                    kite(baseColors.styleDiamond[color][isCritical(family) ? 1 : 0], role),
+                    isCritical(family) ? haloed(criticalFace, role, halo) : kite(face, role),
                 )
             const [rest, held, criticalRest, criticalHeld, damaged, , , tint] =
                 baseColors.style[color]
