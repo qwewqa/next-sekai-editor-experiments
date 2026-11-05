@@ -56,6 +56,7 @@ const seed = (page: Page, notes: Note[], selected: number[], editor = true) =>
                             elevation: 0,
                             noteType: 'forceNonTick' as const,
                             ...note,
+                            groupId: (note.groupId ?? base.groupId) as typeof base.groupId,
                         })),
                     ],
                 },
