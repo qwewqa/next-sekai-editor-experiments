@@ -160,6 +160,16 @@ const settle = (page: Page) =>
 
 const host = (page: Page) => page.evaluate(() => window.nsePreviewTest?.host)
 
+/** The latest preview worker. */
+const previewWorker = (page: Page) => {
+    const worker = page
+        .workers()
+        .filter((item) => item.url().includes('preview.worker'))
+        .at(-1)
+    if (!worker) throw new Error('No preview worker')
+    return worker
+}
+
 /** The account of the realm that draws the preview: the page's, or the latest preview worker's. */
 const account = async (page: Page) => {
     const read = () => {
@@ -167,9 +177,7 @@ const account = async (page: Page) => {
         return { bytes: bytes(), calls: [...calls] }
     }
     if ((await host(page)) === 'main') return page.evaluate(read)
-    const worker = page.workers().findLast((item) => item.url().includes('preview.worker'))
-    if (!worker) throw new Error('No preview worker')
-    return worker.evaluate(read)
+    return previewWorker(page).evaluate(read)
 }
 const bytes = async (page: Page) => (await account(page)).bytes
 
@@ -442,8 +450,8 @@ for (const failure of ['throws', 'hangs'] as const)
         await openVideoDialog(page)
         await expect.poll(() => bytes(page)).toBe(0)
         const counted = await counts(page)
-        const worker = page.workers().findLast((item) => item.url().includes('preview.worker'))!
-        await worker.evaluate((failure) => {
+        const worker = previewWorker(page)
+        await worker.evaluate((failure: string) => {
             const scope = self as unknown as { onmessage: (event: MessageEvent) => void }
             const handle = scope.onmessage
             scope.onmessage = (event: MessageEvent<{ type: string }>) => {
@@ -504,7 +512,7 @@ const injectGlError = async (page: Page, kind: 'upload' | 'earlier') => {
         await page.evaluate(inject, kind)
         return () => page.evaluate(() => Reflect.get(globalThis, 'glErrorRead') as boolean)
     }
-    const worker = page.workers().findLast((item) => item.url().includes('preview.worker'))!
+    const worker = previewWorker(page)
     await worker.evaluate(inject, kind)
     return () => worker.evaluate(() => Reflect.get(globalThis, 'glErrorRead') as boolean)
 }
