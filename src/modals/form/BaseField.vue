@@ -14,14 +14,8 @@ import {
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import { splitUnit } from '../../utils/unitLabel'
-import {
-    measureWord,
-    useStackLongValues,
-    useStackLongWords,
-    useStackTallLabels,
-    valueOverflows,
-} from './fieldLayout'
-import { cancelFit, queueFit } from './fitBatch'
+import { measureWord, useStackLongValues, useStackTallLabels, valueOverflows } from './fieldLayout'
+import { cancelFit, queueFit, type FitStage } from './fitBatch'
 import { holdsTyping } from './resync'
 import { fittedAtWidth, observeWidth, unobserveWidth } from './widthObserver'
 import { formatNumber } from '../../utils/formatNumber'
@@ -44,6 +38,8 @@ const props = defineProps<{
      * the row as it is with one, so the control stays when the ⓘ comes or goes.
      */
     description?: FieldDescription | null
+    /** A button that keeps its whole name: beside the label while the whole label fits on one line. */
+    action?: boolean
 }>()
 
 const field = useFieldUsage()
@@ -115,9 +111,7 @@ const spokenDescription = computed(() => props.description && descriptionText(pr
 const labelRow = useTemplateRef<HTMLElement>('labelRow')
 const fieldRoot = useTemplateRef<HTMLElement>('fieldRoot')
 const stackLongValues = useStackLongValues()
-const stackLongWords = useStackLongWords()
 const stackTallLabels = useStackTallLabels()
-const labelFitOwner = {}
 
 const overTwoLines = (text: HTMLElement) =>
     text.clientHeight > parseFloat(getComputedStyle(text).lineHeight) * 2 + 1
@@ -133,61 +127,100 @@ const shownValue = (control: ReturnType<typeof controlOf>) =>
           : control?.textContent
 // The value the label was last fitted beside; updates that keep it need no fit.
 let fittedValue: string | undefined
-const fitLabel = (nextFrame = false) => {
+// Read every row before changing any: Settings mounts hundreds of fields, and alternating
+// writes/reads per field forced a full layout for each one.
+const labelStages = (): FitStage[] => {
     const element = labelRow.value
     const text = element?.querySelector<HTMLElement>('.form-field-text')
-    if (!element || !text) return
+    if (!element || !text) return []
     let roomy = false
     let stacked = false
     let word: ReturnType<typeof measureWord> | undefined
-    // Read every row before changing any: Settings mounts hundreds of fields,
-    // and alternating writes/reads per field forced a full layout for each one.
+    return [
+        () => {
+            element.classList.remove('form-field-label-roomy')
+            fieldRoot.value?.classList.remove('form-field-value-stacked')
+        },
+        () => {
+            roomy = overTwoLines(text)
+            // The layout is current here, so reading the width forces no layout, and the
+            // observer's first entry at this width does not fit the label again. A hidden
+            // field has no width (NaN).
+            if (fieldRoot.value)
+                fittedAtWidth(fieldRoot.value, parseFloat(getComputedStyle(fieldRoot.value).width))
+        },
+        () => {
+            if (roomy) element.classList.add('form-field-label-roomy')
+        },
+        () => {
+            const control = controlOf()
+            fittedValue = shownValue(control)
+            // Toggles fit their longer value, so switching doesn't move the row.
+            const { enabled, disabled } = i18n.value.modals.form.toggle
+            const others = control?.parentElement?.classList.contains('form-field-toggle')
+                ? [enabled, disabled]
+                : []
+            stacked =
+                !!(
+                    stackLongValues &&
+                    !props.action &&
+                    control &&
+                    valueOverflows(control, others)
+                ) ||
+                (stackTallLabels && overTwoLines(text))
+            // A word, or a Japanese phrase (index.css), that would break stacks the value.
+            // An action's label stays on one line beside its button.
+            if (!stacked) word = measureWord(text, props.action)
+        },
+        () => word?.prepare(),
+        () => {
+            if (word) stacked = word.overflows()
+        },
+        () => {
+            word?.restore()
+            if (stacked) fieldRoot.value?.classList.add('form-field-value-stacked')
+        },
+    ]
+}
+
+// The coverage line and the label fit in one pass per field, the line first. Both set and clear
+// the label's wrapping while they measure, so they must never overlap, and the label fits the
+// place the line leaves it. What a pass runs is chosen as it starts, so requests made before
+// then share it.
+const fieldFitOwner = {}
+let labelPending = false
+let coveragePending: FitStage[] | undefined
+// Where the coverage line last left the label: no line, beside it, or under it.
+let placement = 'none'
+const queueFieldFit = (nextFrame: boolean) => {
+    let plan: FitStage[] = []
+    const stage = (index: number) => {
+        if (index === 0) {
+            // A stage that does nothing keeps the label's reads in step with other fields'.
+            plan = coveragePending ? [...coveragePending, () => undefined] : []
+            coveragePending = undefined
+        }
+        if (index === plan.length && labelPending) {
+            labelPending = false
+            plan.push(...labelStages())
+        }
+        return index < plan.length ? plan[index]?.() : false
+    }
     queueFit(
-        labelFitOwner,
-        [
-            () => {
-                element.classList.remove('form-field-label-roomy')
-                fieldRoot.value?.classList.remove('form-field-value-stacked')
-            },
-            () => {
-                roomy = overTwoLines(text)
-                // The layout is current here, so reading the width forces no layout, and the
-                // observer's first entry at this width does not fit the label again. A hidden
-                // field has no width (NaN).
-                if (fieldRoot.value)
-                    fittedAtWidth(
-                        fieldRoot.value,
-                        parseFloat(getComputedStyle(fieldRoot.value).width),
-                    )
-            },
-            () => {
-                if (roomy) element.classList.add('form-field-label-roomy')
-            },
-            () => {
-                const control = controlOf()
-                fittedValue = shownValue(control)
-                // Toggles fit their longer value, so switching doesn't move the row.
-                const { enabled, disabled } = i18n.value.modals.form.toggle
-                const others = control?.parentElement?.classList.contains('form-field-toggle')
-                    ? [enabled, disabled]
-                    : []
-                stacked =
-                    !!(stackLongValues && control && valueOverflows(control, others)) ||
-                    (stackTallLabels && overTwoLines(text))
-                // A word, or a Japanese phrase (index.css), that would break stacks the value.
-                if (!stacked && stackLongWords) word = measureWord(text)
-            },
-            () => word?.prepare(),
-            () => {
-                if (word) stacked = word.overflows()
-            },
-            () => {
-                word?.restore()
-                if (stacked) fieldRoot.value?.classList.add('form-field-value-stacked')
-            },
-        ],
+        fieldFitOwner,
+        Array.from({ length: 13 }, (_, index) => () => stage(index)),
         nextFrame,
     )
+}
+const fitLabel = (nextFrame = false) => {
+    labelPending = true
+    queueFieldFit(nextFrame)
+}
+// The label refits only when the line moves it.
+const place = (next: string) => {
+    if (next === placement) return
+    placement = next
+    labelPending = true
 }
 const refitLabel = () => {
     fitLabel(true)
@@ -217,7 +250,7 @@ onUpdated(() => {
 
 onBeforeUnmount(() => {
     if (fieldRoot.value) unobserveWidth(fieldRoot.value)
-    cancelFit(labelFitOwner)
+    cancelFit(fieldFitOwner)
 })
 
 /** The detail row: how many objects the field covers, then the values in use. */
@@ -310,15 +343,16 @@ let lineWidth = 0
 // What the line was last fitted for; while it holds, as when only a count's digits
 // change, the fit stands.
 let fitted = ''
-const fitOwner = {}
 const fitCoverage = (nextFrame = false, force = false) => {
     const element = line.value
     const text = labelRow.value?.querySelector<HTMLElement>('.form-field-text')
     if (!element || !text) return
     if (!coverageOnly.value) {
-        cancelFit(fitOwner)
+        coveragePending = undefined
         element.classList.add('form-field-stacked')
         fitted = ''
+        place('none')
+        if (labelPending) queueFieldFit(nextFrame)
         return
     }
     // Digits keep their width, so a count changing its digits alone keeps the fit.
@@ -331,36 +365,41 @@ const fitCoverage = (nextFrame = false, force = false) => {
     if (!force && fitFor === fitted) return
     let stackedHeight = 0
     let fits = true
-    queueFit(
-        fitOwner,
-        [
-            () => {
-                element.classList.add('form-field-stacked')
-            },
-            () => {
-                stackedHeight = text.scrollHeight
-            },
-            () => {
-                element.classList.remove('form-field-stacked')
-                text.style.overflowWrap = 'normal'
-            },
-            () => {
-                // A word even a fraction wider than the box would break, so widths are sub-pixel.
-                const range = document.createRange()
-                range.selectNodeContents(text)
-                fits =
-                    range.getBoundingClientRect().width <=
-                        text.getBoundingClientRect().width + 0.01 &&
-                    text.scrollHeight <= Math.min(stackedHeight, text.clientHeight) + 1
-            },
-            () => {
-                text.style.overflowWrap = ''
-                if (!fits) element.classList.add('form-field-stacked')
-                fitted = fitFor
-            },
-        ],
-        nextFrame,
-    )
+    // The line is measured beside an unstacked value, as a new selection would be; a stacked
+    // value turns the grid off.
+    let valueStacked = false
+    coveragePending = [
+        () => {
+            valueStacked = !!fieldRoot.value?.classList.contains('form-field-value-stacked')
+            fieldRoot.value?.classList.remove('form-field-value-stacked')
+            element.classList.add('form-field-stacked')
+        },
+        () => {
+            stackedHeight = text.scrollHeight
+        },
+        () => {
+            element.classList.remove('form-field-stacked')
+            text.style.overflowWrap = 'normal'
+        },
+        () => {
+            // A word even a fraction wider than the box would break, so widths are sub-pixel.
+            const range = document.createRange()
+            range.selectNodeContents(text)
+            fits =
+                range.getBoundingClientRect().width <= text.getBoundingClientRect().width + 0.01 &&
+                text.scrollHeight <= Math.min(stackedHeight, text.clientHeight) + 1
+        },
+        () => {
+            text.style.overflowWrap = ''
+            if (!fits) element.classList.add('form-field-stacked')
+            fitted = fitFor
+            place(fits ? 'beside' : 'under')
+            // Without a label fit to follow, the value goes back where it was.
+            if (valueStacked && !labelPending)
+                fieldRoot.value?.classList.add('form-field-value-stacked')
+        },
+    ]
+    queueFieldFit(nextFrame)
 }
 const lineObserver = new ResizeObserver(([entry]) => {
     if (!entry || entry.contentRect.width === lineWidth) return
@@ -395,7 +434,6 @@ watch(
 )
 onBeforeUnmount(() => {
     lineObserver.disconnect()
-    cancelFit(fitOwner)
     document.fonts.removeEventListener('loadingdone', refitFonts)
 })
 
@@ -440,7 +478,12 @@ watchEffect(
 <template>
     <!-- Lays out by the width the field actually receives (dialog, tool modal or
     dock panel), not by the viewport: the wrapper is the query container. -->
-    <div ref="fieldRoot" class="form-field" @change="refitLabel">
+    <div
+        ref="fieldRoot"
+        class="form-field"
+        :class="{ 'form-field-action': action }"
+        @change="refitLabel"
+    >
         <!-- Coverage alone joins the label's column where it fits. -->
         <div ref="line" :class="{ 'form-field-inline': coverageOnly }">
             <component
@@ -821,6 +864,29 @@ watchEffect(
 
 .form-field.form-field-value-stacked .form-field-label {
     width: auto;
+}
+
+/* Stacked controls keep their own height. */
+.form-field.form-field-value-stacked .form-field-row > :not(.form-field-label) {
+    flex: none;
+}
+
+/* An action's button takes the room its label does not need. */
+@container (min-width: 19rem) {
+    .form-field-action:not(.form-field-value-stacked) .form-field-label {
+        flex: 0 1 auto;
+    }
+
+    .form-field-action:not(.form-field-value-stacked) .form-field-row > :not(.form-field-label) {
+        flex: 1 0 auto;
+        max-width: 100%;
+    }
+}
+
+@container (min-width: 13.5rem) and (max-width: 18.99rem) {
+    .form-field-action .form-field-row {
+        grid-template-columns: minmax(0, 1fr) minmax(max(6.25rem, 50%), max-content);
+    }
 }
 
 /* Even the full row may be too narrow for a prompt, which then wraps. */
