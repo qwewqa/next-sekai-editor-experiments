@@ -14,6 +14,7 @@ import {
     holdWorker,
     liveOf,
     load,
+    notice,
     openHistory,
     peekRow,
     placeTap,
@@ -25,7 +26,7 @@ import {
     timeline,
     timelineRead,
 } from './historyJourney'
-import { pressSave, readFile, submitSave } from './saveFlows'
+import { pressSave, submitSave } from './saveFlows'
 
 // Reload, lazy slots, queued moves and recovery.
 // After a reload the stack holds only its head and the head's neighbours (the rest are stored
@@ -427,9 +428,8 @@ test('the Timeline survives a reload exactly, with an edit only the journal hold
     // A Save, to a file the test platform provides.
     await pressSave(page)
     await submitSave(page, 'r5')
-    await expect
-        .poll(() => readFile(page, 'r5.nxsp').then((bytes) => bytes?.length ?? 0))
-        .toBeGreaterThan(0)
+    // The file is written before the Save's entry is committed; the notice comes after.
+    await expect(notice(page, en.save.saved.replace('{0}', 'r5.nxsp'))).toBeVisible()
     await flush(page)
     // Then an edit that is never flushed.
     await holdWorker(page, 'flush')
