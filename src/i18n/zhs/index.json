@@ -1139,7 +1139,7 @@
       "previewNoteSpeed": "预览中音符接近的速度，范围为 1 到 12。",
       "previewShowHitboxes": "是否显示用于判定音符和长按音符的区域。",
       "previewShowEffects": "音符被击中时以及长按音符被按住期间，是否在预览中显示粒子和发光效果。",
-      "previewAntialias": "是否平滑预览中的锯齿边缘。",
+      "previewAntialias": "是否在预览中平滑锯齿边缘并减少闪烁。",
       "previewTransportPosition": {
         "intro": "预览播放控件的显示位置。",
         "choices": {
@@ -2501,7 +2501,7 @@
       }
     },
     "videoBitrate": "视频码率（Mbps）",
-    "antialiasDescription": "是否平滑视频中的锯齿边缘。",
+    "antialiasDescription": "是否在视频中平滑锯齿边缘并减少闪烁。",
     "renderScaleDescription": "绘制每帧时使用的分辨率倍率。数值越高，边缘越平滑，但导出耗时越长。",
     "fadeIn": "淡入（秒）",
     "fadeOut": "淡出（秒）",

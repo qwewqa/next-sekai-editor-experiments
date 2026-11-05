@@ -1139,7 +1139,7 @@
       "previewNoteSpeed": "Önizlemede notaların yaklaşma hızı, 1 ile 12 arasında.",
       "previewShowHitboxes": "Notaları ve kaydırmaları değerlendirmek için kullanılan alanların gösterilmesi.",
       "previewShowEffects": "Önizlemede notalara basıldığında ve kaydırmalar basılı tutulurken parçacıkların ve parlamaların gösterilmesi.",
-      "previewAntialias": "Önizlemedeki tırtıklı kenarların yumuşatılması.",
+      "previewAntialias": "Önizlemede tırtıklı kenarların yumuşatılması ve titremenin azaltılması.",
       "previewTransportPosition": {
         "intro": "Önizlemenin oynatma denetimlerinin görüneceği yer.",
         "choices": {
@@ -2501,7 +2501,7 @@
       }
     },
     "videoBitrate": "Video Bit Hızı (Mbps)",
-    "antialiasDescription": "Videodaki tırtıklı kenarların yumuşatılması.",
+    "antialiasDescription": "Videoda tırtıklı kenarların yumuşatılması ve titremenin azaltılması.",
     "renderScaleDescription": "Her kareyi çizmek için kullanılan çözünürlük çarpanı. Daha yüksek değerler kenarları yumuşatır ancak dışa aktarmayı yavaşlatır.",
     "fadeIn": "Giriş Geçişi (sn)",
     "fadeOut": "Çıkış Geçişi (sn)",

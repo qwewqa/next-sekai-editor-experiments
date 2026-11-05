@@ -1139,7 +1139,7 @@
             "previewNoteSpeed": "How fast notes approach in the preview, from 1 to 12.",
             "previewShowHitboxes": "Whether to show the areas used to judge notes and slides.",
             "previewShowEffects": "Whether to show particles and glows in the preview when notes are hit and while slides are held.",
-            "previewAntialias": "Whether to smooth jagged edges in the preview.",
+            "previewAntialias": "Whether to smooth jagged edges and reduce shimmer in the preview.",
             "previewTransportPosition": {
                 "intro": "Where the preview’s playback controls appear.",
                 "choices": {
@@ -2501,7 +2501,7 @@
             }
         },
         "videoBitrate": "Video Bitrate (Mbps)",
-        "antialiasDescription": "Whether to smooth jagged edges in the video.",
+        "antialiasDescription": "Whether to smooth jagged edges and reduce shimmer in the video.",
         "renderScaleDescription": "Resolution multiplier used to draw each frame. Higher values give smoother edges but slow the export.",
         "fadeIn": "Fade In (s)",
         "fadeOut": "Fade Out (s)",

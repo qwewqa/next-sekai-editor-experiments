@@ -1139,7 +1139,7 @@
       "previewNoteSpeed": "미리보기에서 노트가 다가오는 속도, 1부터 12까지.",
       "previewShowHitboxes": "노트와 슬라이드의 판정에 쓰이는 영역을 표시할지 여부.",
       "previewShowEffects": "미리보기에서 노트를 칠 때와 슬라이드를 누르고 있는 동안 입자와 빛 효과를 표시할지 여부.",
-      "previewAntialias": "미리보기에서 가장자리의 계단 현상을 부드럽게 처리할지 여부.",
+      "previewAntialias": "미리보기에서 가장자리의 계단 현상을 부드럽게 처리하고 깜박임을 줄일지 여부.",
       "previewTransportPosition": {
         "intro": "미리보기의 재생 컨트롤을 표시할 위치.",
         "choices": {
@@ -2501,7 +2501,7 @@
       }
     },
     "videoBitrate": "동영상 비트레이트 (Mbps)",
-    "antialiasDescription": "동영상에서 가장자리의 계단 현상을 부드럽게 처리할지 여부.",
+    "antialiasDescription": "동영상에서 가장자리의 계단 현상을 부드럽게 처리하고 깜박임을 줄일지 여부.",
     "renderScaleDescription": "각 프레임을 그리는 해상도의 배율. 값이 높을수록 가장자리가 부드러워지지만 내보내기에 시간이 더 걸립니다.",
     "fadeIn": "페이드 인 (초)",
     "fadeOut": "페이드 아웃 (초)",

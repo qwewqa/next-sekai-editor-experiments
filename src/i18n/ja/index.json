@@ -1139,7 +1139,7 @@
       "previewNoteSpeed": "プレビューでノーツが近づく速度、1から12。",
       "previewShowHitboxes": "ノーツやスライドの判定に使う範囲を表示するかどうか。",
       "previewShowEffects": "ノーツを叩いたときやスライドを押している間のパーティクルと発光をプレビューに表示するかどうか。",
-      "previewAntialias": "プレビューの輪郭のギザギザを滑らかにするかどうか。",
+      "previewAntialias": "プレビューで輪郭のギザギザを滑らかにし、ちらつきを抑えるかどうか。",
       "previewTransportPosition": {
         "intro": "プレビューの再生コントロールを表示する位置。",
         "choices": {
@@ -2501,7 +2501,7 @@
       }
     },
     "videoBitrate": "動画ビットレート (Mbps)",
-    "antialiasDescription": "動画の輪郭のギザギザを滑らかにするかどうか。",
+    "antialiasDescription": "動画で輪郭のギザギザを滑らかにし、ちらつきを抑えるかどうか。",
     "renderScaleDescription": "各フレームを描画する解像度の倍率。値を大きくすると輪郭が滑らかになりますが、出力に時間がかかります。",
     "fadeIn": "フェードイン (秒)",
     "fadeOut": "フェードアウト (秒)",

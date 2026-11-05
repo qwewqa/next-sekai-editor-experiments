@@ -1139,7 +1139,7 @@
       "previewNoteSpeed": "Vitesse à laquelle les notes approchent dans l’aperçu, de 1 à 12.",
       "previewShowHitboxes": "Affichage des zones utilisées pour juger les notes et les slides.",
       "previewShowEffects": "Affichage de particules et de lueurs dans l’aperçu lorsque les notes sont touchées et pendant que les slides sont maintenus.",
-      "previewAntialias": "Lissage des contours en escalier dans l’aperçu.",
+      "previewAntialias": "Lissage des contours en escalier et réduction du scintillement dans l’aperçu.",
       "previewTransportPosition": {
         "intro": "Emplacement des commandes de lecture de l’aperçu.",
         "choices": {
@@ -2501,7 +2501,7 @@
       }
     },
     "videoBitrate": "Débit vidéo (Mbps)",
-    "antialiasDescription": "Lissage des contours en escalier dans la vidéo.",
+    "antialiasDescription": "Lissage des contours en escalier et réduction du scintillement dans la vidéo.",
     "renderScaleDescription": "Multiplicateur de résolution de rendu de chaque image. Des valeurs plus élevées rendent les contours plus lisses mais ralentissent l’exportation.",
     "fadeIn": "Fondu d’entrée (s)",
     "fadeOut": "Fondu de sortie (s)",
