@@ -339,6 +339,45 @@ test('a reordered stack or a changed slide connection marks only the notes and e
     assert.equal(runBeats.set.counts.bpms, 48)
 })
 
+test('connection changes count toward the layout and keep their marks in the most layout', async () => {
+    const beatsOf = async (before: State, after: State) => {
+        const set = await diff(before, after)
+        const beats = [...new Set(set.objects.map((object) => object.beat))].sort((a, b) => a - b)
+        const input = await readCandidates(
+            memorySource(before, after),
+            rootOf(before),
+            rootOf(after),
+        )
+        assert.deepEqual(summarizeChanges(input!).beats, beats, 'Edits Here finds the same beats')
+        return { set, beats }
+    }
+    const every = (count: number) => Array.from({ length: count }, (_, beat) => beat)
+
+    // 200 taps combined into one slide: 200 of 202 objects changed, and nothing else.
+    const joined = await beatsOf(
+        chart(every(200).map((beat) => [note(beat)])),
+        chart([every(200).map((beat) => note(beat))]),
+    )
+    assert.equal(joined.set.layout, 'most')
+    assert.equal(joined.set.counts.slides, 200)
+    assert.ok(joined.set.objects.every((object) => object.status === 'changed'))
+    assert.deepEqual(joined.beats, every(200))
+
+    // 400 taps combined while the first 340 lose Slide Critical: the other 60 keep their marks.
+    const critical = (beat: number) => note(beat, { connectorActiveIsCritical: beat < 340 })
+    const mixed = await beatsOf(
+        chart(every(400).map((beat) => [critical(beat)])),
+        chart([every(400).map((beat) => note(beat))]),
+    )
+    assert.equal(mixed.set.layout, 'most')
+    assert.deepEqual(mixed.beats, every(400))
+    assert.deepEqual(
+        mixed.set.objects.filter((object) => object.status === 'changed').map((o) => o.beat),
+        every(400).slice(340),
+    )
+    assert.equal(mixed.set.counts.slides, 340 + 340 + 60)
+})
+
 test('a record past the chart limits makes the change unknown: nothing is built from it', async () => {
     const base = stateOf(goldenChart())
     const past = edit(base, (t) => addNote(t, createSlideId(), note(maxBeat + 1)))

@@ -258,21 +258,23 @@ export const changeText = (change: Pick<ChangeView, 'set' | 'totals'>) => {
         const text = interpolateRaw(strings.changeCount, count(set.objects.length))
         return set.header ? `${text} · ${strings.settingsChanged}` : text
     }
-    const fragments: string[] = []
-    const { counts } = set
     if (set.layout === 'most') {
         const added = set.objects.filter((object) => object.status === 'added').length
         const removed = set.objects.filter((object) => object.status === 'removed').length
-        const text = interpolateRaw(strings.addedRemoved, count(added), count(removed))
-        return set.header ? `${text} · ${strings.settingsChanged}` : text
-    } else {
-        if (counts.slides) fragments.push(interpolateRaw(strings.notes, count(counts.slides)))
-        if (counts.bpms) fragments.push(interpolateRaw(strings.bpms, count(counts.bpms)))
-        if (counts.timeScales)
-            fragments.push(interpolateRaw(strings.timeScales, count(counts.timeScales)))
-        const others = eventCount(counts)
-        if (others) fragments.push(interpolateRaw(strings.events, count(others)))
+        // Objects that only changed place in a stack or slide are counted by kind, as below.
+        if (added || removed) {
+            const text = interpolateRaw(strings.addedRemoved, count(added), count(removed))
+            return set.header ? `${text} · ${strings.settingsChanged}` : text
+        }
     }
+    const fragments: string[] = []
+    const { counts } = set
+    if (counts.slides) fragments.push(interpolateRaw(strings.notes, count(counts.slides)))
+    if (counts.bpms) fragments.push(interpolateRaw(strings.bpms, count(counts.bpms)))
+    if (counts.timeScales)
+        fragments.push(interpolateRaw(strings.timeScales, count(counts.timeScales)))
+    const others = eventCount(counts)
+    if (others) fragments.push(interpolateRaw(strings.events, count(others)))
     const text = interpolateRaw(strings.changedLarge, fragments.join(' · '))
     return set.header ? `${text} · ${strings.settingsChanged}` : text
 }

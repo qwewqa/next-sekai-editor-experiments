@@ -46,7 +46,7 @@ export type ChangedObject = {
 export type ChangeLayout = 'none' | 'small' | 'large' | 'most'
 
 export type ChangeSet = {
-    /** In chart order; unpaired additions/removals in the `most` layout. */
+    /** In chart order; in the `most` layout, unpaired additions/removals and moved shared ones. */
     objects: ChangedObject[]
     /** Objects changed per kind; in `most`, at least this many. */
     counts: Record<KindName, number>
@@ -428,7 +428,7 @@ export const diffChanges = (input: DiffInput, totals?: ChangeTotals): ChangeSet 
     const counts = emptyCounts()
     let least = 0
     for (const [kind, side] of sides) {
-        counts[kind] = Math.max(side.removed.length, side.added.length)
+        counts[kind] = Math.max(side.removed.length, side.added.length) + side.reordered.length
         least += counts[kind]
     }
     const total = totals ? totals.notes + totals.events : 0
@@ -444,8 +444,9 @@ export const diffChanges = (input: DiffInput, totals?: ChangeTotals): ChangeSet 
             objects.push(
                 ...side.removed.map((item) => objectOf(item, 'removed')),
                 ...side.added.map((item) => objectOf(item, 'added')),
+                ...side.reordered.map((item) => objectOf(item, 'changed', item)),
             )
-            counts[kind] = side.removed.length + side.added.length
+            counts[kind] = side.removed.length + side.added.length + side.reordered.length
         }
         objects.sort(compareObjects)
         return { objects, counts, header: input.header, layout: 'most' }
