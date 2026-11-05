@@ -15,7 +15,7 @@ Where this page and the code disagree, the code wins. This page summarizes the r
 
 The NXSP reader accepts plain `level.json` files written by test deployment `20f5883341e5410eb08611a65c4ba7ca631627e7`. New writes use one gzip level payload and a derived Sonolus package, with every format number unchanged. The old reader need not read new files. This exception covers those deployed project files only; it does not cover stored-data migrations or support for unspecified earlier test formats. Open does not convert a file; a successful Save rewrites it in the current layout and follows the usual history rules.
 
-`tests/local/nxsp/legacy-test20f/` holds a small, fixed corpus of files that this deployment reads, with their provenance and SHA-256 digests: earlier builder goldens and native fixtures. Reader tests cover it, and it is never regenerated. The regenerated writer fixtures and goldens use the current gzip and package layout. See [nxsp-format.md](nxsp-format.md) §§4 and 17.
+`tests/local/nxsp/legacy-test20f/` holds a small, fixed corpus of earlier builder goldens and native fixtures that this deployment reads, with their provenance and SHA-256 digests. Reader tests cover it, and it is never regenerated. The regenerated writer fixtures and goldens use the current gzip and package layout. See [nxsp-format.md](nxsp-format.md) §§4 and 17.
 
 ## 2. Every version number
 

@@ -7,8 +7,8 @@ positive/zero interval decisions stay with their callers, outside this kernel. N
 Lyon arithmetic is patched.
 
 Because `src/rendering/vendor/lyon.wasm` is committed, a normal build needs no
-Rust. `npm run check:lyon` checks this folder's source, the lockfile, the compiler
-settings and the binary against the hashes in `artifact.json`. `npm run build` runs that
+Rust. `npm run check:lyon` checks the kernel's source and build files, the lockfile, the
+compiler settings and the binary against the hashes in `artifact.json`. `npm run build` runs that
 check before Vite. Changing native source requires rebuilding and reviewing the
 new manifest and geometry tests together.
 

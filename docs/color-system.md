@@ -21,7 +21,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
    - *Reason:* a role can be retuned in one place, and the guard test can check its use.
    - *Exceptions:* chart content (section 10); shadows that are geometry rather than a role, such as the dock edge.
 
-2. **Mint means on.** The tool in use, a switch that is on, Show Edits, Select while selecting, rows checked for an action and the peek ring are mint. The quick notice is mint too: the one transient element in the brand color.
+2. **Mint means on.** The tool in use, a switch that is on, Show Edits, Select while selecting, rows checked for an action and the peek ring are mint. The quick notice is mint too: the one transient message in the brand color.
    - *Reason:* it is the app's brand color, and in v0.5.22 it was every on-state. Giving it one meaning lets a user read it at a glance.
    - *How the rest is shown:* single-select selection (the current row, the selected segment) is elevation, the raised pill. Current markers are mint only on the dark chrome, where mint has contrast (the rail tab bar); on light bands they are ink (the band tab marker, 4.97:1 against mint's 1.85:1). Thin mint marks on light surfaces use `accent-strong`.
    - *Exception:* the hover and press glow is mint. It is a shadow, never a fill, and it lasts only while pointed at or pressed, so it cannot read as on.
