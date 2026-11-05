@@ -88,8 +88,11 @@ in vec4 v_color;
 out vec4 outColor;
 void main() {
     vec2 uv = v_uvw.xy / v_uvw.z;
+    // The background's mip level comes from derivatives taken outside the branch.
+    vec2 uvDx = dFdx(uv);
+    vec2 uvDy = dFdy(uv);
     vec4 color = v_texture > 2.5
-        ? texture(u_texture3, uv)
+        ? textureGrad(u_texture3, uv, uvDx, uvDy)
         : v_texture > 1.5
         ? texture(u_texture2, uv)
         : mix(texture(u_texture0, uv), texture(u_texture1, uv), v_texture);
@@ -381,7 +384,14 @@ export const createPreviewRenderer = (
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap)
 
             const filter = interpolation ? gl.LINEAR : gl.NEAREST
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter)
+            // The background is often larger than the panel: mipmaps keep its fine lines from aliasing.
+            const mipmapped = index === 3 && interpolation
+            if (mipmapped) gl.generateMipmap(gl.TEXTURE_2D)
+            gl.texParameteri(
+                gl.TEXTURE_2D,
+                gl.TEXTURE_MIN_FILTER,
+                mipmapped ? gl.LINEAR_MIPMAP_LINEAR : filter,
+            )
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
 
             hasTextures[index] = true

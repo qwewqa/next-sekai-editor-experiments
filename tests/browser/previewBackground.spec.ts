@@ -192,6 +192,56 @@ test('additive foreground keeps its alpha when composited over an exposed backgr
     expect(result.final[3]).toBe(255)
 })
 
+test('a background far larger than the frame shows fine lines as their average', async ({
+    page,
+}) => {
+    const rows = await page.evaluate(async () => {
+        const { createPreviewRenderer } = await import('/src/preview/gl.ts')
+        const canvas = new OffscreenCanvas(32, 32)
+        const renderer = createPreviewRenderer(canvas, false)
+        // One white row in three, 32 image rows to each frame row.
+        const image = new OffscreenCanvas(1024, 1024)
+        const context = image.getContext('2d')!
+        context.fillStyle = '#000'
+        context.fillRect(0, 0, 1024, 1024)
+        context.fillStyle = '#fff'
+        for (let y = 0; y < 1024; y += 3) context.fillRect(0, y, 1024, 1)
+        const bitmap = await createImageBitmap(image)
+        renderer.setTexture(3, bitmap, true)
+        renderer.prepareFrame(32, 32)
+        renderer.begin(32, 32)
+        renderer.flush()
+        renderer.compositeBackground(
+            { tl: { x: -1, y: 1 }, tr: { x: 1, y: 1 }, bl: { x: -1, y: -1 }, br: { x: 1, y: -1 } },
+            {
+                time: 0,
+                leftLimit: false,
+                width: 32,
+                height: 32,
+                displayWidth: 32,
+                displayHeight: 32,
+                overlayWidth: 0,
+                overlayHeight: 0,
+                noteSpeed: 10,
+                showEffects: true,
+                showHitboxes: false,
+                showCombo: false,
+                background: { aspectRatio: 1, fit: 'cover', color: '#000000', sigma: 0 },
+            },
+        )
+        const gl = canvas.getContext('webgl2')!
+        const column = new Uint8Array(32 * 4)
+        gl.readPixels(16, 0, 1, 32, gl.RGBA, gl.UNSIGNED_BYTE, column)
+        const clean = renderer.checkError()
+        renderer.dispose()
+        bitmap.close()
+        return { values: [...column].filter((_, i) => i % 4 === 0), clean }
+    })
+    expect(rows.clean).toBe(true)
+    // A third of 255 is 85; sampling the full-size image alone gives rows from black to white.
+    for (const value of rows.values) expect(Math.abs(value - 85)).toBeLessThanOrEqual(12)
+})
+
 test('blur after a resolution or sigma change matches a fresh copy, including maximum blur at 2160p', async ({
     page,
 }) => {
