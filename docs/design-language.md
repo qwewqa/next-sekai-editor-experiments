@@ -188,7 +188,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 - The status bar's file chip shows one state at a time, and its dialog lists the others.
 
 **Step Details and Property Changes** (`OperationDetailsContent.vue`, `DetailsHeader.vue`, `PropertyChangesModal.vue`)
-- A row exists only when it adds something to the title. When the title says everything, the header has no rows. A block with nothing to show is not drawn, and no heading stands over nothing.
+- A row exists only when it adds something to the title. When the title says everything, the dialog has no rows below the header. A block with nothing to show is not drawn, and no heading stands over nothing.
 - In a group, a step is a disclosure only when its own record has content. Otherwise it is a plain row with an empty 12 px slot, so labels stay aligned.
 - On a phone the dialog stays a centered card that sizes to its content, like every other `BaseModal`.
 - Property Changes shows Before and After in two columns. An added or removed entry has one side, so its rows show that value alone, with no empty column.
