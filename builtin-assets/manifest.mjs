@@ -59,8 +59,13 @@ const band = (color, alpha = 0.8, light = mix(color, '#ffffff', 0.35)) =>
     image('band', { color, light, alpha }, { stretch: true })
 // A connector at rest and held, in the base set's colours: [rest, held].
 const bands = ([rest, held]) => [band(rest), band(held, 0.8, mix(held, '#ffffff', 0.3))]
-// Slot glows in the base set's glow colours: [at the note, middle, top].
-const glow = ([light, color, top]) => image('slot-glow', { light, color, top }, { stretch: true })
+// Slot glows in the base set's glow colours: [at the note, middle, top], up to a height of the cell.
+const glow = ([light, color, top], height = 1) =>
+    image(
+        'slot-glow',
+        { light, color, top, y: n(128 * (1 - height)), h: n(128 * height) },
+        { stretch: true },
+    )
 // Slots fill their lane cell exactly with square corners, the rim on the cell's edge and a soft
 // glow past it, the way the base's do (its 128 px square over the cell's -0.28 to 1.28).
 const slot = (color) =>
@@ -76,20 +81,27 @@ const kiteImage = (template, vars, role, scale = 1) => {
         transform: box(0.5 - side, 0.5 + side, 0.5 - side, 0.5 + side),
     })
 }
-const kite = (color, role) => kiteImage('kite', { color }, role)
-/** The frame of a critical diamond against its kite's, with room for the halo. */
-export const criticalKiteScale = 88 / 64
+/**
+ * The frame of a diamond against its kite's: room for a critical diamond's halo. Normal diamonds
+ * share it, since the engine's perspective mapping places art alike only on the same quad.
+ */
+export const diamondFrameScale = 88 / 64
+const diamondView = '-12 -12 88 88'
+const kite = (color, role) =>
+    kiteImage('kite', { color, view: diamondView }, role, diamondFrameScale)
+// The standard ticks keep the kite's own frame.
+const tick = (color) => kiteImage('kite', { color, view: '0 0 64 64' }, 'slide')
 // Critical diamonds, as the base marks them: a soft halo round the kite in its deep colour, and
 // the face a fifth of the way to it. The grey styles' halo is too dark to show on the stage, so
 // their trace diamonds take a light one, and their faces keep their own lightness.
 const criticalKite = (color, role, halo) =>
-    kiteImage('kite-critical', { color: mix(color, halo, 0.2), halo }, role, criticalKiteScale)
+    kiteImage('kite-critical', { color: mix(color, halo, 0.2), halo }, role, diamondFrameScale)
 const greyCriticalKite = (color, role, halo) =>
     kiteImage(
         'kite-critical',
         { color, halo: role === 'trace' ? mix(color, '#ffffff', 0.5) : halo },
         role,
-        criticalKiteScale,
+        diamondFrameScale,
     )
 
 /**
@@ -536,15 +548,10 @@ export function skinSprites() {
         ])
             add(`Sekai Slot ${color}`, slot(bodyColors[key][2]))
         // The base's Slider Hold glows are shorter than the others, their tops at 0.54 and 0.39
-        // of the cell.
+        // of the cell; drawn in the same frame, clear above.
         const height = { 'Green Slider Hold': 0.83, 'Yellow Slider Hold': 0.6 }
         for (const [color, value] of Object.entries(baseColors.slotGlow))
-            add(
-                `Sekai Slot Glow ${color}`,
-                height[color]
-                    ? { ...glow(value), transform: box(0, 1, 0, height[color]) }
-                    : glow(value),
-            )
+            add(`Sekai Slot Glow ${color}`, glow(value, height[color]))
         add('Sekai Normal Slide Slot Glow', glow(baseColors.slotGlow['Green Slider Hold']))
         add('Sekai Critical Slide Slot Glow', glow(baseColors.slotGlow['Yellow Slider Hold']))
     })
@@ -606,7 +613,7 @@ export function skinSprites() {
             )
         }
         for (const key of ['green', 'red', 'yellow'])
-            add(`#NOTE_TICK_${key.toUpperCase()}`, kite(diamondColors[key], 'slide'))
+            add(`#NOTE_TICK_${key.toUpperCase()}`, tick(diamondColors[key]))
         for (const [color, accent] of [
             ['RED', arrowColors.normal],
             ['YELLOW', arrowColors.critical],
@@ -633,7 +640,7 @@ export function skinSprites() {
             alias(`#SIMULTANEOUS_CONNECTION_${color}_SEAMLESS`, '#SIMULTANEOUS_CONNECTION_NEUTRAL')
         }
         for (const [color, face] of Object.entries(baseColors.tick))
-            add(`#NOTE_TICK_${color.toUpperCase()}`, kite(face, 'slide'))
+            add(`#NOTE_TICK_${color.toUpperCase()}`, tick(face))
         for (const [color, face] of Object.entries(baseColors.marker))
             add(`#DIRECTIONAL_MARKER_${color.toUpperCase()}`, marker(face))
         for (const color of ['BLUE', 'GREEN']) add(`#GRID_${color}`, solid(baseColors.grid[color]))

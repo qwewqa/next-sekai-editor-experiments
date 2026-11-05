@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { diagonalPlaces } from '../../builtin-assets/arrows.mjs'
-import { criticalKiteScale } from '../../builtin-assets/manifest.mjs'
 import { readBuiltinItem } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
 
@@ -128,8 +127,8 @@ test("sprites land where the base skin's do in the engine's quads", () => {
 })
 
 // A critical diamond's halo is soft: from half alpha up it inks the kite of its normal sibling, to
-// a unit of the 64-unit art, and from a quarter to 2 units. Its frame is wider by the halo's room, so
-// a later fit to the atlas does not cut it.
+// a unit of the 64-unit art, and from a quarter to 2 units. Its frame, the 88-unit one every diamond
+// shares, has room for the halo, so a later fit to the atlas does not cut it.
 test('critical diamonds ink their kite, with room for the halo', () => {
     const frameWidth = (name) => {
         const [bl, , , br] = apply(sprites.get(name).transform, unit)
@@ -146,8 +145,8 @@ test('critical diamonds ink their kite, with room for the halo', () => {
     ]
     for (const [normal, critical] of pairs) {
         for (const [threshold, within] of [
-            [128, (1 / 64) * frameWidth(normal)],
-            [64, (2 / 64) * frameWidth(normal)],
+            [128, (1 / 88) * frameWidth(normal)],
+            [64, (2 / 88) * frameWidth(normal)],
         ]) {
             const [a, b] = [normal, critical].map((name) => extent(name, unit, threshold))
             for (let i = 0; i < 4; i++)
@@ -156,8 +155,6 @@ test('critical diamonds ink their kite, with room for the halo', () => {
                     `${critical} at ${threshold}: ${b.map((value) => value.toFixed(3))} against ${a.map((value) => value.toFixed(3))}`,
                 )
         }
-        const ratio = frameWidth(critical) / frameWidth(normal)
-        assert.ok(Math.abs(ratio - criticalKiteScale) <= 1e-6, `${critical}: frame ${ratio}`)
         const { x, y, w, h } = sprites.get(critical)
         for (let i = 0; i < w; i++)
             for (const edge of [0, h - 1]) {

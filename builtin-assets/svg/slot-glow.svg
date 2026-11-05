@@ -5,5 +5,5 @@
         <stop offset="0.8" stop-color="var(--top)" stop-opacity="0.3"/>
         <stop offset="1" stop-color="var(--top)" stop-opacity="0"/>
     </linearGradient>
-    <rect width="8" height="128" fill="url(#g)"/>
+    <rect y="var(--y)" width="8" height="var(--h)" fill="url(#g)"/>
 </svg>
