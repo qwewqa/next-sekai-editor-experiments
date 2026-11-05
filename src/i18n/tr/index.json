@@ -255,8 +255,8 @@
       "importedSus": "SUS çizelgesi içe aktarıldı",
       "unsupported": "Desteklenmeyen dosya. Proje dosyası, Sonolus paketi, seviye verisi, Chart Cyanvas seviyesi ya da USC veya SUS çizelgesi açın.",
       "tooLarge": "Bu dosya açılamayacak kadar büyük.",
-      "invalidLevel": "Geçersiz seviye: {0}",
-      "invalidChart": "Geçersiz çizelge: {0}",
+      "invalidLevel": "Geçersiz seviye: {0}.",
+      "invalidChart": "Geçersiz çizelge: {0}.",
       "revision": {
         "older": "Bu seviye daha eski bir motor revizyonu için yapılmış ve artık güncel revizyonu kullanıyor. Hâlâ beklendiği gibi göründüğünü ve oynandığını kontrol edin.",
         "newer": "Bu seviye, bu editörün desteklediğinden daha yeni bir motor revizyonu için yapılmış. Bazı kısımlar doğru görüntülenmeyebilir veya kaydedilmeyebilir."

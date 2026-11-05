@@ -255,8 +255,8 @@
       "importedSus": "已导入 SUS 谱面",
       "unsupported": "不支持的文件。请打开项目文件、Sonolus 包、关卡数据、Chart Cyanvas 关卡，或 USC、SUS 谱面。",
       "tooLarge": "此文件过大，无法打开。",
-      "invalidLevel": "无效的关卡：{0}",
-      "invalidChart": "无效的谱面：{0}",
+      "invalidLevel": "无效的关卡：{0}。",
+      "invalidChart": "无效的谱面：{0}。",
       "revision": {
         "older": "此关卡是为较旧的引擎修订版制作的，现在使用当前修订版。请检查其显示和游玩效果是否仍符合预期。",
         "newer": "此关卡是为较新的引擎修订版制作的，此编辑器尚不支持。部分内容可能无法正确显示或保存。"

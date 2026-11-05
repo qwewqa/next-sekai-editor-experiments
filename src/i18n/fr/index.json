@@ -255,8 +255,8 @@
       "importedSus": "Partition SUS importée",
       "unsupported": "Fichier non pris en charge. Ouvrez un fichier de projet, un paquet Sonolus, des données de niveau, un niveau Chart Cyanvas, ou une partition USC ou SUS.",
       "tooLarge": "Ce fichier est trop volumineux pour être ouvert.",
-      "invalidLevel": "Niveau non valide : {0}",
-      "invalidChart": "Partition non valide : {0}",
+      "invalidLevel": "Niveau non valide : {0}.",
+      "invalidChart": "Partition non valide : {0}.",
       "revision": {
         "older": "Ce niveau a été créé pour une révision plus ancienne du moteur et utilise maintenant la révision actuelle. Vérifiez qu’il s’affiche et se joue toujours comme prévu.",
         "newer": "Ce niveau a été créé pour une révision du moteur plus récente que celle prise en charge par cet éditeur. Certaines parties risquent de ne pas s’afficher ou de ne pas être enregistrées correctement."
