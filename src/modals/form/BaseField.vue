@@ -44,6 +44,8 @@ const props = defineProps<{
      * the row as it is with one, so the control stays when the ⓘ comes or goes.
      */
     description?: FieldDescription | null
+    /** A button that keeps its whole name: beside the label while the whole label fits on one line. */
+    action?: boolean
 }>()
 
 const field = useFieldUsage()
@@ -172,10 +174,17 @@ const fitLabel = (nextFrame = false) => {
                     ? [enabled, disabled]
                     : []
                 stacked =
-                    !!(stackLongValues && control && valueOverflows(control, others)) ||
+                    !!(
+                        stackLongValues &&
+                        !props.action &&
+                        control &&
+                        valueOverflows(control, others)
+                    ) ||
                     (stackTallLabels && overTwoLines(text))
                 // A word, or a Japanese phrase (index.css), that would break stacks the value.
-                if (!stacked && stackLongWords) word = measureWord(text)
+                // An action's label stays on one line beside its button.
+                if (!stacked && (stackLongWords || props.action))
+                    word = measureWord(text, props.action)
             },
             () => word?.prepare(),
             () => {
@@ -440,7 +449,12 @@ watchEffect(
 <template>
     <!-- Lays out by the width the field actually receives (dialog, tool modal or
     dock panel), not by the viewport: the wrapper is the query container. -->
-    <div ref="fieldRoot" class="form-field" @change="refitLabel">
+    <div
+        ref="fieldRoot"
+        class="form-field"
+        :class="{ 'form-field-action': action }"
+        @change="refitLabel"
+    >
         <!-- Coverage alone joins the label's column where it fits. -->
         <div ref="line" :class="{ 'form-field-inline': coverageOnly }">
             <component
@@ -821,6 +835,29 @@ watchEffect(
 
 .form-field.form-field-value-stacked .form-field-label {
     width: auto;
+}
+
+/* Stacked controls keep their own height. */
+.form-field.form-field-value-stacked .form-field-row > :not(.form-field-label) {
+    flex: none;
+}
+
+/* An action's button takes the room its label does not need. */
+@container (min-width: 19rem) {
+    .form-field-action:not(.form-field-value-stacked) .form-field-label {
+        flex: 0 1 auto;
+    }
+
+    .form-field-action:not(.form-field-value-stacked) .form-field-row > :not(.form-field-label) {
+        flex: 1 0 auto;
+        max-width: 100%;
+    }
+}
+
+@container (min-width: 13.5rem) and (max-width: 18.99rem) {
+    .form-field-action .form-field-row {
+        grid-template-columns: minmax(0, 1fr) minmax(max(6.25rem, 50%), max-content);
+    }
 }
 
 /* Even the full row may be too narrow for a prompt, which then wraps. */

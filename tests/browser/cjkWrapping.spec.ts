@@ -87,17 +87,26 @@ test('Preview Settings labels make room for a phrase rather than break inside it
     await expect.poll(() => label('アンチエイリアス')).toEqual(['アンチエイリアス'])
     await expect.poll(() => label('再生コントロール')).toEqual(['再生コントロール'])
     await expect.poll(() => label('選択対象を強調表示')).toEqual(['選択対象を', '強調表示'])
-    // Controls beside their labels share one column, and no value truncates. The Assets button
-    // is too wide for that column, so it goes under its label.
-    await expect(form.locator('.preview-setting.preview-setting-stacked')).toHaveText(
-        /^\s*アセット\s*プレビューアセット\s*$/,
+    // Nothing stacks. Fields share one column, and no value truncates. The Assets button is wider
+    // than that column, so it takes room its short label does not need and keeps the fields' right
+    // edge, whole.
+    await expect(form.locator('.preview-setting-stacked')).toHaveCount(0)
+    const edges = (side: 'left' | 'right', selector: string) =>
+        form
+            .locator(selector)
+            .evaluateAll(
+                (elements, side) =>
+                    elements.map((element) => Math.round(element.getBoundingClientRect()[side])),
+                side,
+            )
+    const fields = '.preview-setting:not(.preview-setting-action) .preview-setting-control'
+    expect(new Set(await edges('left', fields)).size).toBe(1)
+    const right = new Set(await edges('right', `${fields}, [data-preview-settings-assets]`))
+    expect(right.size).toBe(1)
+    const assets = form.locator('[data-preview-settings-assets]')
+    expect(await assets.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+        true,
     )
-    const edges = await form
-        .locator('.preview-setting:not(.preview-setting-stacked) .preview-setting-control')
-        .evaluateAll((elements) =>
-            elements.map((element) => Math.round(element.getBoundingClientRect().left)),
-        )
-    expect(new Set(edges).size).toBe(1)
     for (const field of await form.locator('.preview-field').all())
         expect(await field.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
             true,

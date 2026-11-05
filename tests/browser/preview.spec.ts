@@ -2208,7 +2208,7 @@ test('a preview settings refit measures each label once', async ({ page }) => {
     // Chinese breaks between any characters, so no label takes more room or stacks.
     await page.evaluate(() => (window.editorTest.settings.locale = 'zhs'))
     await settle(page)
-    // Its box, then its longest word.
+    // Its box, then its longest word, or for Assets its whole line.
     expect(await page.evaluate(() => window.labelMeasures)).toBe(labels * 2)
 })
 
@@ -2217,7 +2217,7 @@ test('a preview settings refit reads every label before it sets any, so layout r
 }) => {
     await settle(page)
     const labels = await page.locator('.preview-controls .preview-setting-label').count()
-    // How many labels are set to their longest word at each label read.
+    // How many labels are set to their longest word or whole line at each label read.
     await page.evaluate(() => {
         const measure = Element.prototype.getBoundingClientRect
         window.labelsSetAtReads = []
@@ -2225,7 +2225,7 @@ test('a preview settings refit reads every label before it sets any, so layout r
             if (this.classList.contains('preview-setting-label'))
                 window.labelsSetAtReads.push(
                     [...document.querySelectorAll<HTMLElement>('.preview-setting-label')].filter(
-                        (label) => label.style.width === 'min-content',
+                        (label) => ['min-content', 'max-content'].includes(label.style.width),
                     ).length,
                 )
             return measure.call(this)
@@ -2233,9 +2233,13 @@ test('a preview settings refit reads every label before it sets any, so layout r
     })
     await page.evaluate(() => (window.editorTest.settings.locale = 'zhs'))
     await settle(page)
+    // The fields' labels in one pass, then the Assets label in its own, after the fields' columns
+    // are set.
     expect(await page.evaluate(() => window.labelsSetAtReads)).toEqual([
-        ...Array<number>(labels).fill(0),
-        ...Array<number>(labels).fill(labels),
+        ...Array<number>(labels - 1).fill(0),
+        ...Array<number>(labels - 1).fill(labels - 1),
+        0,
+        1,
     ])
 })
 

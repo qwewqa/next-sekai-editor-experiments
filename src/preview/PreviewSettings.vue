@@ -191,11 +191,18 @@ const fitRows = () => {
             const overflows = wordsOverflow(labels)
             return labels.filter((_, index) => overflows[index])
         }
-        let overflowing = overflowingOf(labels.filter((label) => label !== null))
+        // The action row's column follows its button, not the shared one.
+        const isAction = (label: HTMLElement) => !!label.closest('.preview-setting-action')
+        const present = labels.filter((label) => label !== null)
+        let overflowing = overflowingOf(present.filter((label) => !isAction(label)))
         if (overflowing.length) {
             body.classList.add('preview-controls-roomy')
             overflowing = overflowingOf(overflowing)
         }
+        // An action's label stays on one line beside its whole button.
+        const actions = present.filter(isAction)
+        const actionOverflows = wordsOverflow(actions, true)
+        overflowing.push(...actions.filter((_, index) => actionOverflows[index]))
         rows.forEach((row, index) => {
             const label = labels[index]
             if (label && overflowing.includes(label)) labelStacked.add(row)
@@ -206,9 +213,7 @@ const fitRows = () => {
     for (const row of rows) row.classList.toggle('preview-setting-stacked', labelStacked.has(row))
     const valueStacked = rows.filter((row) => {
         if (labelStacked.has(row)) return false
-        const control = row.querySelector<HTMLElement>(
-            '.preview-toggle, select.preview-field, .preview-assets',
-        )
+        const control = row.querySelector<HTMLElement>('.preview-toggle, select.preview-field')
         const others = control instanceof HTMLSelectElement ? [] : [enabled, disabled]
         return !!control && valueOverflows(control, others)
     })
@@ -616,12 +621,12 @@ const onPlacementChange = () => {
                     </span>
                 </label>
 
-                <div class="preview-setting">
+                <div class="preview-setting preview-setting-action">
                     <span class="preview-setting-label">{{ i18n.settings.preview.assets }}</span>
                     <span class="preview-setting-control flex">
                         <button
                             type="button"
-                            class="preview-assets btn btn-secondary h-8 max-w-full min-w-0 truncate rounded-full px-4"
+                            class="preview-assets btn btn-secondary h-8 w-full truncate rounded-full px-4"
                             data-preview-settings-assets
                             @click="openAssets"
                         >
@@ -644,8 +649,9 @@ const onPlacementChange = () => {
 }
 
 .preview-setting {
+    --preview-control: 10rem;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 10rem;
+    grid-template-columns: minmax(0, 1fr) var(--preview-control-track, var(--preview-control));
     align-items: center;
     column-gap: 0.75rem;
     row-gap: 0.25rem;
@@ -654,8 +660,13 @@ const onPlacementChange = () => {
 }
 
 /* Labels whose word or phrase would break take back some of the controls' room. */
-.preview-controls-roomy .preview-setting:not(.preview-setting-stacked) {
-    grid-template-columns: minmax(0, 1fr) 9rem;
+.preview-controls-roomy .preview-setting {
+    --preview-control: 9rem;
+}
+
+/* A button keeps its whole name: its column widens into the label's spare room. */
+.preview-setting-action {
+    --preview-control-track: minmax(var(--preview-control), max-content);
 }
 
 /* A value too long to sit beside its label takes the full row below it. */
@@ -782,12 +793,12 @@ const onPlacementChange = () => {
 /* Narrow panels give labels a little more of the row, then stack them. */
 @container (max-width: 19rem) {
     .preview-setting {
-        grid-template-columns: minmax(0, 1fr) 8.5rem;
+        --preview-control: 8.5rem;
         column-gap: 0.5rem;
     }
 
-    .preview-controls-roomy .preview-setting:not(.preview-setting-stacked) {
-        grid-template-columns: minmax(0, 1fr) 7.5rem;
+    .preview-controls-roomy .preview-setting {
+        --preview-control: 7.5rem;
     }
 }
 
@@ -799,8 +810,7 @@ const onPlacementChange = () => {
 }
 
 @container (max-width: 15.99rem) {
-    .preview-setting,
-    .preview-controls-roomy .preview-setting:not(.preview-setting-stacked) {
+    .preview-setting {
         grid-template-columns: minmax(0, 1fr);
     }
 }

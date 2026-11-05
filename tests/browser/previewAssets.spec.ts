@@ -310,7 +310,7 @@ test.describe('from Preview Settings on a phone', () => {
         expect(await controlsSetting(page)).toBe('collapsed')
     })
 
-    test('in French at 320 px the button goes under its label, whole, and scrolls into view', async ({
+    test('in French the button sits beside its label at 320 px, and at 304 px goes under it, whole, and scrolls into view', async ({
         page,
     }) => {
         await page.setViewportSize({ width: 320, height: 568 })
@@ -318,10 +318,20 @@ test.describe('from Preview Settings on a phone', () => {
         const body = form.locator('.preview-controls-body')
         const row = form.locator('.preview-setting').last()
         const button = row.getByRole('button', { name: 'Ressources d’aperçu' })
-        await expect(row).toHaveClass(/preview-setting-stacked/)
-        expect(await button.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
-            true,
+        const whole = () => button.evaluate((element) => element.scrollWidth <= element.clientWidth)
+        // The label is short, so the whole button fits beside it, wider than the fields' column.
+        await expect(row).not.toHaveClass(/preview-setting-stacked/)
+        expect(await whole()).toBe(true)
+        const label = (await row.locator('.preview-setting-label').boundingBox())!
+        const beside = (await button.boundingBox())!
+        expect(beside.x).toBeGreaterThan(label.x + label.width)
+        expect(Math.abs(beside.y + beside.height / 2 - (label.y + label.height / 2))).toBeLessThan(
+            2,
         )
+
+        await page.setViewportSize({ width: 304, height: 568 })
+        await expect(row).toHaveClass(/preview-setting-stacked/)
+        expect(await whole()).toBe(true)
         // The form scrolls here; at its end the button shows whole, with no fade over it.
         expect(await body.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
             true,
@@ -1277,6 +1287,33 @@ test.describe('native mode', () => {
 })
 
 test.describe('the Settings row and the Preview tab menu', () => {
+    test('in French on a phone the button sits beside its label, and under it with larger text, as tall as the fields', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await start(page)
+        await page.evaluate(() => (window.editorTest.settings.locale = 'fr'))
+        const button = dialog(page).locator('[data-settings-assets]')
+        const field = dialog(page).locator('.form-field', {
+            has: page.locator('[data-settings-assets]'),
+        })
+        const whole = () => button.evaluate((element) => element.scrollWidth <= element.clientWidth)
+        // The label is short, so the whole button fits beside it.
+        await run(page, 'settings')
+        await expect(field).not.toHaveClass(/form-field-value-stacked/)
+        expect(await whole()).toBe(true)
+        expect((await button.boundingBox())!.height).toBe(36)
+        await page.keyboard.press('Escape')
+        await expect(dialog(page)).toHaveCount(0)
+
+        // With 20 px text the label and the whole button no longer fit on one line.
+        await page.addStyleTag({ content: 'html { font-size: 20px !important; }' })
+        await run(page, 'settings')
+        await expect(field).toHaveClass(/form-field-value-stacked/)
+        expect(await whole()).toBe(true)
+        expect((await button.boundingBox())!.height).toBe(45)
+    })
+
     for (const theme of ['light', 'dark'] as const)
         test(`look right in the ${theme} theme`, async ({ page }) => {
             await start(page)
