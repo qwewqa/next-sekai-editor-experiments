@@ -2238,7 +2238,7 @@
           }
         },
         "copyProperties": "Aynı türden bir nesne eklediğinizde, Kopyala olarak ayarlanmış özellikleri seçili tek bir nesneden kopyalar.",
-        "copyPropertiesSlide": "Bir nota eklediğinizde, Kopyala olarak ayarlanmış özellikleri seçili notadan ve kaydırmasından kopyalar.",
+        "copyPropertiesSlide": "Seçili notaların kaydırmasına bir nota eklediğinizde, Kopyala olarak ayarlanmış özellikleri o kaydırmadan kopyalar.",
         "forceNoteSpeed": "Grubun nota hızının yerine kullanılacak hız, 1 ile 12 arasında.",
         "isFromStart": "Sahneyi ilk maske olayından önce çizer.",
         "isUntilEnd": "Sahneyi son maske olayından sonra çizer.",
