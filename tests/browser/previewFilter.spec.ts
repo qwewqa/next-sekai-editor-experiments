@@ -426,8 +426,11 @@ const exactness = async ({ origin, reduced }: { origin: string; reduced: boolean
  * A 64x64 pattern (isolated bright texels every 3 texels, a 1-texel line each way) drawn once a
  * frame on a 128x128 frame with antialiasing, as a scale sweep from 0.8 to 4.4 texels a pixel.
  * With `shear`, it is drawn at 3 texels a pixel with the quad's shear swept from -shear to
- * +shear. With `axis`, only that axis sweeps, from 0.8 to 1.6, and the other stays at 3.
- * Returns, per frame, the RMS over pixels of the first and second differences in time.
+ * +shear. With `axis`, the quad is built so that a screen pixel steps over `l` texels along that
+ * screen axis and 3 along the other, in texture directions turned by `angle`, with `l` swept from
+ * 0.85 to 1.15.
+ * Returns, per frame, the RMS over pixels of the first and second differences in time, and the
+ * texels a pixel along screen x and y, measured from the quad as drawn.
  */
 const sweep = async (o: {
     origin: string
@@ -470,28 +473,51 @@ const sweep = async (o: {
     }
     const first: number[] = []
     const second: number[] = []
+    const lengths: { x: number; y: number }[] = []
     let previous: Float32Array | undefined
     let before: Float32Array | undefined
     for (let k = 0; k < o.frames; k++) {
         const t = k / (o.frames - 1)
         const shear = o.shear ? -o.shear + 2 * o.shear * t : 0
-        const scale = o.shear ? 3 : o.axis ? 0.8 + 0.8 * t : 0.8 + (4.4 - 0.8) * t
+        const scale = o.shear ? 3 : o.axis ? 0.85 + 0.3 * t : 0.8 + (4.4 - 0.8) * t
         // Half extents in clip units: the sprite is T / scale pixels, and a pixel 2 / N units.
-        const hw = T / (o.axis === 'y' ? 3 : scale) / N
-        const hh = T / (o.axis === 'x' ? 3 : scale) / N
+        const hw = T / scale / N
+        const hh = T / scale / N
         const sx = shear * hh
+        let quad = {
+            bl: at(-hw - sx, -hh),
+            tl: at(-hw + sx, hh),
+            tr: at(hw + sx, hh),
+            br: at(hw - sx, -hh),
+        }
+        if (o.axis) {
+            // A screen pixel steps lx texels along (c, sn) for x and ly along (-sn, c) for y, so a
+            // texel offset (u, v) from the middle lies at pixel (u c + v sn) / lx, (v c - u sn) / ly.
+            const lx = o.axis === 'x' ? scale : 3
+            const ly = o.axis === 'y' ? scale : 3
+            const h = (T - 1) / 2
+            const corner = (u: number, v: number) => ({
+                x: (((u * c + v * sn) / lx) * 2) / N + 0.0013,
+                y: (-((v * c - u * sn) / ly) * 2) / N + 0.0007,
+            })
+            quad = { tl: corner(-h, -h), tr: corner(h, -h), bl: corner(-h, h), br: corner(h, h) }
+        }
+        // The steps the shader sees, from the box's T - 1 texels over the quad's edges in pixels.
+        {
+            const px = (p: { x: number; y: number }) => ({ x: (p.x * N) / 2, y: (-p.y * N) / 2 })
+            const tl = px(quad.tl)
+            const tr = px(quad.tr)
+            const bl = px(quad.bl)
+            const ex = { x: tr.x - tl.x, y: tr.y - tl.y }
+            const ey = { x: bl.x - tl.x, y: bl.y - tl.y }
+            const det = ex.x * ey.y - ex.y * ey.x
+            lengths.push({
+                x: ((T - 1) * Math.hypot(ey.y, ex.y)) / Math.abs(det),
+                y: ((T - 1) * Math.hypot(ey.x, ex.x)) / Math.abs(det),
+            })
+        }
         renderer.begin(N, N, 1)
-        renderer.draw(
-            sprite,
-            {
-                bl: at(-hw - sx, -hh),
-                tl: at(-hw + sx, hh),
-                tr: at(hw + sx, hh),
-                br: at(hw - sx, -hh),
-            },
-            [1],
-            1,
-        )
+        renderer.draw(sprite, quad, [1], 1)
         renderer.flush()
         const pixels = renderer.readPixels('frame', 0, 0, N, N)
         const grey = new Float32Array(N * N)
@@ -511,7 +537,7 @@ const sweep = async (o: {
         previous = grey
     }
     renderer.dispose()
-    return { first, second }
+    return { first, second, lengths }
 }
 
 const median = (values: number[]) => {
@@ -594,9 +620,8 @@ test.describe('the renderer', () => {
             }) => {
                 test.setTimeout(120_000)
                 const frames = 360
-                const at = Array.from({ length: frames }, (_, k) => 0.8 + (0.8 * k) / (frames - 1))
                 for (const filter of [4, 3] as const) {
-                    const { second } = await inHost(page, sweep, {
+                    const { first, lengths } = await inHost(page, sweep, {
                         origin: baseURL!,
                         filter,
                         angle,
@@ -604,11 +629,16 @@ test.describe('the renderer', () => {
                         frames,
                         axis,
                     })
-                    // The box spans 63 texels, so the step reaches one texel at 64 / 63.
-                    const crossing = 64 / 63
-                    const distance = (k: number) => Math.abs(at[k + 1]! - crossing)
-                    const near = second.filter((_, k) => distance(k) < 0.02)
-                    const around = second.filter((_, k) => distance(k) < 0.3 && distance(k) >= 0.02)
+                    // One step crosses one texel a pixel while the other stays minified.
+                    const swept = lengths.map((length) => length[axis])
+                    const other = lengths.map((length) => length[axis === 'x' ? 'y' : 'x'])
+                    expect(Math.min(...swept)).toBeLessThan(0.9)
+                    expect(Math.max(...swept)).toBeGreaterThan(1.1)
+                    expect(Math.min(...other)).toBeGreaterThan(2.9)
+                    // The change from frame k to frame k + 1, where the step crosses one texel.
+                    const distance = (k: number) => Math.abs(swept[k + 1]! - 1)
+                    const near = first.filter((_, k) => distance(k) < 0.02)
+                    const around = first.filter((_, k) => distance(k) < 0.15 && distance(k) >= 0.02)
                     expect(
                         Math.max(...near) / median(around),
                         `${filter} taps`,
