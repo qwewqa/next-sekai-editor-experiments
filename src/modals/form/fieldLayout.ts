@@ -7,11 +7,6 @@ export const stackLongValuesKey: InjectionKey<boolean> = Symbol('stackLongValues
 
 export const useStackLongValues = () => inject(stackLongValuesKey, false)
 
-/** Fields whose label would break inside a word take the row below it. */
-export const stackLongWordsKey: InjectionKey<boolean> = Symbol('stackLongWords')
-
-export const useStackLongWords = () => inject(stackLongWordsKey, false)
-
 /** Fields whose label would take more than two lines take the row below it. */
 export const stackTallLabelsKey: InjectionKey<boolean> = Symbol('stackTallLabels')
 

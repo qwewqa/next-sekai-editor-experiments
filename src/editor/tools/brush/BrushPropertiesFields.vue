@@ -9,11 +9,7 @@ import { defaultStageId } from '../../../history/stages'
 import { i18n } from '../../../i18n'
 import { modals } from '../../../modals'
 import { emptyLabelKey, unsetChoiceKey } from '../../../modals/form/emptyLabel'
-import {
-    stackLongValuesKey,
-    stackLongWordsKey,
-    stackTallLabelsKey,
-} from '../../../modals/form/fieldLayout'
+import { stackLongValuesKey, stackTallLabelsKey } from '../../../modals/form/fieldLayout'
 import { isEditableEntity } from '../../../state/operations/editable'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { notify } from '../../notification'
@@ -39,9 +35,7 @@ provide(emptyLabelKey, () => i18n.value.modals.form.unset.unchanged)
 provide(unsetChoiceKey, false)
 // Long values go below their label, as in Selection and View.
 provide(stackLongValuesKey, true)
-// Beside the remove button, a label may lack room for its longest word.
-provide(stackLongWordsKey, true)
-// Or would take more than two lines.
+// Beside the remove button, a label that would take more than two lines takes the row below.
 provide(stackTallLabelsKey, true)
 
 // A blank entry is rejected and reverts; rows leave only through their remove button.

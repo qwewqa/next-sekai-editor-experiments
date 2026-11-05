@@ -85,12 +85,19 @@ test('a stacked choice stays a select instead of switching back and forth', asyn
     await expect(presentation.locator('[role="radiogroup"]')).toBeVisible()
 })
 
-for (const locale of ['en', 'fr', 'tr', 'ja']) {
+// Only labels whose longest word or phrase does not fit beside the value stack.
+const longWords: Record<string, string[]> = {
+    en: [],
+    fr: [],
+    tr: ['Vuruş Çizgisinden Geçen'],
+    ja: ['スライドフェイク', 'スライドクリティカル'],
+}
+for (const [locale, labels] of Object.entries(longWords)) {
     test(`${locale} values at a 336 dock, below the default, stay beside their labels`, async ({
         page,
     }) => {
         await open(page, locale, 336)
-        expect(await stacked(page)).toEqual([])
+        await expect.poll(() => stacked(page)).toEqual(labels)
     })
 }
 
@@ -255,4 +262,59 @@ test('a field refits when only its mixed range changes', async ({ page }) => {
     await expect(beat.locator('input')).toHaveAttribute('placeholder', '57.3333 … 63.75')
     await expect(beat).toHaveAttribute('data-kept', '')
     await expect(beat).toHaveClass(/form-field-value-stacked/)
+})
+
+test('a label too long to sit beside its value stacks from the first selection through coverage changes and resizes', async ({
+    page,
+}) => {
+    await open(page, 'en', 260)
+    const presentation = field(page, 'Presentation')
+    // Fitting sets the label's wrapping only while it measures; the last resort comes back.
+    const label = () =>
+        presentation.locator('.form-field-text').evaluate((text) => ({
+            inline: text.style.overflowWrap,
+            computed: getComputedStyle(text).overflowWrap,
+            lines: Math.round(
+                text.getBoundingClientRect().height / parseFloat(getComputedStyle(text).lineHeight),
+            ),
+        }))
+    const line = () =>
+        presentation.evaluate((field) =>
+            field.querySelector('.form-field-inline')
+                ? 'coverage'
+                : field.querySelector('.form-field-mixed')
+                  ? 'values'
+                  : 'none',
+        )
+    const expectStacked = async (stacked: boolean) => {
+        await expect(presentation).toHaveClass(
+            stacked ? /form-field-value-stacked/ : /^(?!.*form-field-value-stacked)/,
+        )
+        await expect.poll(label).toEqual({ inline: '', computed: 'anywhere', lines: 1 })
+    }
+    const select = (filter: string) =>
+        page.evaluate(async (filter) => {
+            const { history, store, nextTick } = window.editorTest
+            const notes = [...store.getAllEntities()].filter((entity) => entity.type === 'note')
+            const chosen = {
+                all: notes,
+                one: notes.slice(0, 1),
+                rest: notes.slice(1),
+            }[filter]!
+            history.replaceState({ ...history.state.value, selectedEntities: chosen })
+            await nextTick()
+        }, filter)
+    // "Presentation" does not fit beside its value at 260 px, whatever line it has.
+    const seen = new Set<string>()
+    for (const filter of ['all', 'one', 'rest', 'all']) {
+        await select(filter)
+        await expectStacked(true)
+        seen.add(await line())
+    }
+    expect(seen.size).toBeGreaterThan(1)
+    // A wider dock gives it room beside its value, and a narrow one takes it back.
+    await page.evaluate(() => (window.editorTest.settings.rightDockWidth = 480))
+    await expectStacked(false)
+    await page.evaluate(() => (window.editorTest.settings.rightDockWidth = 260))
+    await expectStacked(true)
 })
