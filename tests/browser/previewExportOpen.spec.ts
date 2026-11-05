@@ -38,6 +38,10 @@ const boot = async (page: Page, { builtin = false, holdParticle = false }: Boot 
         await page.route('**/builtin/background.scp*', (route) =>
             route.fulfill({ body: Buffer.from(background) }),
         )
+        await page.route('**/builtin/particle.scp*', async (route) => {
+            if (holdParticle) await particleHeld
+            await route.continue()
+        })
         await page.addInitScript(() => {
             localStorage.setItem(
                 'sonolus-next-sekai-editor.previewAssets',
@@ -145,6 +149,16 @@ const boot = async (page: Page, { builtin = false, holdParticle = false }: Boot 
     await expect(page.locator('.preview-viewport')).toBeVisible()
     if (!holdParticle)
         await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(2)
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { assetSession } = await window.editorTest.appImport<
+                    typeof import('../../src/preview/assets')
+                >('/src/preview/assets/index.ts')
+                return assetSession.slots.background.value.state
+            }),
+        )
+        .toBe('ready')
     await settle(page)
     return releaseParticle
 }
@@ -173,13 +187,24 @@ const previewWorker = (page: Page) => {
 /** The account of the realm that draws the preview: the page's, or the latest preview worker's. */
 const account = async (page: Page) => {
     const read = () => {
-        const { bytes, calls } = Reflect.get(globalThis, 'textureAccount') as TextureAccount
-        return { bytes: bytes(), calls: [...calls] }
+        const { bytes, calls, frames } = Reflect.get(globalThis, 'textureAccount') as TextureAccount
+        return {
+            bytes: bytes(),
+            calls: [...calls],
+            frames: frames.map((frame) => ({ ...frame, slots: [...frame.slots].sort() })),
+        }
     }
     if ((await host(page)) === 'main') return page.evaluate(read)
     return previewWorker(page).evaluate(read)
 }
 const bytes = async (page: Page) => (await account(page)).bytes
+const frameCount = async (page: Page) => (await account(page)).frames.length
+
+/** The frames drawn after the first `count`, once there is one. */
+const framesAfter = async (page: Page, count: number) => {
+    await expect.poll(() => frameCount(page)).toBeGreaterThan(count)
+    return (await account(page)).frames.slice(count)
+}
 
 const counts = (page: Page) =>
     page.evaluate(() => ({
@@ -217,11 +242,10 @@ test('the atlases and the blur are freed while Export Video is open and come bac
     // Notes and a hit effect.
     await page.evaluate(() => (window.editorTest.view.cursorTime = 1.2))
     await settle(page)
-    expect(await drawnSlots(page)).toEqual([0, 1])
-    expect(
-        await page.evaluate(() => window.previewTest.backgroundVertices?.length),
-    ).toBeGreaterThan(0)
     const before = await account(page)
+    const last = before.frames.at(-1)!
+    // The skin, the particle and the background.
+    expect(last.slots).toEqual([0, 1, 3])
     expect(before.bytes).toBeGreaterThan(0)
     const shown = await picture(page)
     const counted = await counts(page)
@@ -229,8 +253,8 @@ test('the atlases and the blur are freed while Export Video is open and come bac
     await openVideoDialog(page)
     await expect.poll(() => bytes(page)).toBe(0)
     // The release submits its deletes at once.
-    const { calls } = await account(page)
-    const released = calls.slice(before.calls.length)
+    const opened = await account(page)
+    const released = opened.calls.slice(before.calls.length)
     expect(released).toContain('deleteTexture')
     expect(released).toContain('deleteFramebuffer')
     expect(released.lastIndexOf('flush')).toBeGreaterThan(
@@ -238,16 +262,20 @@ test('the atlases and the blur are freed while Export Video is open and come bac
     )
     await settle(page)
     expect(await counts(page)).toEqual(counted)
+    expect(await frameCount(page)).toBe(before.frames.length)
 
     await closeDialog(page)
-    // The worker's counters arrive in one message: the skin and particle uploads and the frame.
+    // The first frame after closing has every atlas, at the same size.
+    const [first] = await framesAfter(page, before.frames.length)
+    expect(first).toEqual(last)
     await expect
         .poll(() => page.evaluate(() => window.previewTest.uploads))
         .toBe(counted.uploads + 2)
-    expect((await counts(page)).frames).toBeGreaterThan(counted.frames)
     expect(await bytes(page)).toBe(before.bytes)
     await settle(page)
+    // The picture is that first frame's.
     expect((await picture(page)).equals(shown)).toBe(true)
+    expect(await frameCount(page)).toBe(before.frames.length + 1)
 })
 
 const particleState = async (page: Page) =>
@@ -258,11 +286,15 @@ const particleState = async (page: Page) =>
         return assetSession.slots.particle.value.state
     })
 
-test('an atlas that arrives while Export Video is open is uploaded when it closes', async ({
+test('a particle atlas that arrives while Export Video is open draws its effects when it closes', async ({
     page,
 }) => {
-    const releaseParticle = await boot(page, { holdParticle: true })
+    const releaseParticle = await boot(page, { builtin: true, holdParticle: true })
     await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(1)
+    // A hit effect is due, but the particle has not arrived.
+    await page.evaluate(() => (window.editorTest.view.cursorTime = 1.2))
+    await settle(page)
+    expect((await account(page)).frames.at(-1)!.slots).toEqual([0, 3])
     await openVideoDialog(page)
     await expect.poll(() => bytes(page)).toBe(0)
     releaseParticle()
@@ -270,10 +302,19 @@ test('an atlas that arrives while Export Video is open is uploaded when it close
     await settle(page)
     expect(await counts(page)).toMatchObject({ uploads: 1 })
     expect(await bytes(page)).toBe(0)
+    const count = await frameCount(page)
     await closeDialog(page)
-    // The skin and the particle.
+    const [first] = await framesAfter(page, count)
+    expect(first!.slots).toEqual([0, 1, 3])
     await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(3)
-    await expect.poll(() => bytes(page)).toBeGreaterThan(0)
+    await settle(page)
+    const withEffects = await picture(page)
+    expect(await frameCount(page)).toBe(count + 1)
+    // The effect's pixels are on screen: without effects the picture differs.
+    await page.evaluate(() => (window.editorTest.settings.previewShowEffects = false))
+    await settle(page)
+    expect((await account(page)).frames.at(-1)!.slots).not.toContain(1)
+    expect((await picture(page)).equals(withEffects)).toBe(false)
 })
 
 /** The preview's pixels that are pure red, from a screenshot. */
@@ -320,53 +361,92 @@ test('a skin replaced while Export Video is open is the one drawn when it closes
     })
     await settle(page)
     expect(await counts(page)).toEqual(counted)
+    const count = await frameCount(page)
     await closeDialog(page)
+    const [first] = await framesAfter(page, count)
+    expect(first!.slots).toContain(0)
     await expect
         .poll(() => page.evaluate(() => window.previewTest.uploads))
         .toBe(counted.uploads + 2)
     await settle(page)
+    // The picture is the first frame's.
     expect(await redPixels(page)).toBeGreaterThan(0)
+    expect(await frameCount(page)).toBe(count + 1)
 })
 
-test('closing and opening Export Video again at once leaves the atlases freed, and the picture comes back', async ({
+/** Opens Export Video as the toolbar does, and keeps the opening's promise. */
+const openTracked = async (page: Page) => {
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { openExportVideo } = await appImport<
+            typeof import('../../src/editor/exportVideo/open')
+        >('/src/editor/exportVideo/open.ts')
+        const { pageEnv } = await appImport<typeof import('../../src/editor/exportVideo/env')>(
+            '/src/editor/exportVideo/env.ts',
+        )
+        const env = pageEnv(
+            () => new Worker('/src/editor/exportVideo/export.worker.ts', { type: 'module' }),
+        )
+        Reflect.set(window, 'videoOpening', openExportVideo(env))
+        Reflect.set(window, 'videoEnv', env)
+    })
+    await expect(videoDialog(page)).toBeVisible()
+}
+
+test('closing and opening Export Video again at once leaves the atlases freed, and every frame between has them', async ({
     page,
 }) => {
     await boot(page)
+    const before = await account(page)
+    const last = before.frames.at(-1)!
+    expect(last.slots).toContain(0)
     const shown = await picture(page)
-    await openVideoDialog(page)
+    await openTracked(page)
     await expect.poll(() => bytes(page)).toBe(0)
+    // The second opening starts as soon as the first has ended, before the next animation frame.
     await page.evaluate(async () => {
-        const { appImport } = window.editorTest
-        const [{ modals, closeModal }, { openExportVideoTest }] = await Promise.all([
-            appImport<typeof import('../../src/modals')>('/src/modals/index.ts'),
-            appImport<typeof import('../../src/editor/exportVideo/test')>(
-                '/src/editor/exportVideo/test.ts',
-            ),
-        ])
+        const { modals, closeModal } =
+            await window.editorTest.appImport<typeof import('../../src/modals')>(
+                '/src/modals/index.ts',
+            )
+        const { openExportVideo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/exportVideo/open')
+        >('/src/editor/exportVideo/open.ts')
+        const opening = Reflect.get(window, 'videoOpening') as Promise<void>
         closeModal(modals.at(-1)!)
-        // The next opening waits for the last one to end, a task later.
-        await new Promise((resolve) => setTimeout(resolve))
-        await openExportVideoTest()
+        await opening
+        Reflect.set(
+            window,
+            'videoOpening',
+            openExportVideo(
+                Reflect.get(window, 'videoEnv') as Parameters<typeof openExportVideo>[0],
+            ),
+        )
     })
     await expect(videoDialog(page)).toBeVisible()
     await expect.poll(() => bytes(page)).toBe(0)
     await settle(page)
-    // No frame drew without the atlases.
-    expect(await drawnSlots(page)).toContain(0)
+    // Any frame drawn between the two openings had every atlas.
+    const between = (await account(page)).frames.slice(before.frames.length)
+    for (const frame of between) expect(frame).toEqual(last)
     await closeDialog(page)
-    await expect.poll(() => bytes(page)).toBeGreaterThan(0)
+    const [first] = await framesAfter(page, before.frames.length + between.length)
+    expect(first).toEqual(last)
     await settle(page)
     expect((await picture(page)).equals(shown)).toBe(true)
+    expect(await frameCount(page)).toBe(before.frames.length + between.length + 1)
 })
 
 test('a resize while Export Video is open draws nothing until it closes, then draws at the new size', async ({
     page,
 }) => {
     await boot(page)
+    const last = (await account(page)).frames.at(-1)!
     await openVideoDialog(page)
     await expect.poll(() => bytes(page)).toBe(0)
     await settle(page)
     const counted = await counts(page)
+    const count = await frameCount(page)
     const size = () =>
         page
             .locator('.preview-viewport > canvas:not(.preview-selection)')
@@ -376,11 +456,16 @@ test('a resize while Export Video is open draws nothing until it closes, then dr
     await expect.poll(size).not.toEqual(shown)
     await settle(page)
     expect(await counts(page)).toEqual(counted)
+    expect(await frameCount(page)).toBe(count)
     await closeDialog(page)
-    // The worker draws when it resumes, without a frame from the page.
-    await expect.poll(async () => (await counts(page)).frames).toBeGreaterThan(counted.frames)
-    // The frame has a render target of the new size.
-    expect((await counts(page)).allocations).toBeGreaterThan(counted.allocations)
+    const [first] = await framesAfter(page, count)
+    expect(first!.slots).toContain(0)
+    expect([first!.width, first!.height]).not.toEqual([last.width, last.height])
+    // A later frame at rest has the same size.
+    await settle(page)
+    await page.evaluate(() => (window.editorTest.view.cursorTime += 0.01))
+    const [rest] = await framesAfter(page, count + 1)
+    expect([first!.width, first!.height]).toEqual([rest!.width, rest!.height])
 })
 
 test('a context lost and restored while Export Video is open gets its atlases when it closes', async ({

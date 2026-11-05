@@ -7,6 +7,8 @@ export type TextureAccount = {
     bytes: () => number
     /** The preview's `deleteTexture`, `deleteFramebuffer` and `flush` calls, in order. */
     calls: string[]
+    /** The preview's frames in order: the size each was drawn at, and the slots its quads use. */
+    frames: { width: number; height: number; slots: number[] }[]
 }
 
 /**
@@ -20,6 +22,7 @@ export const installTextureAccount = (
     // Each texture's levels, as width and height.
     const contexts = new Map<WebGL2RenderingContext, Map<WebGLTexture, [number, number][]>>()
     const calls: string[] = []
+    const frames: TextureAccount['frames'] = []
     const prototype = WebGL2RenderingContext.prototype as unknown as Record<
         string,
         (...args: unknown[]) => unknown
@@ -77,6 +80,21 @@ export const installTextureAccount = (
     wrap('flush', (gl) => {
         if (isPreview(gl)) calls.push('flush')
     })
+    // A frame starts with a transparent clear, as the preview specs count frames.
+    wrap('clear', (gl) => {
+        if (!isPreview(gl) || (gl.getParameter(gl.COLOR_CLEAR_VALUE) as Float32Array)[3] !== 0)
+            return
+        const [, , width = 0, height = 0] = gl.getParameter(gl.VIEWPORT) as Int32Array
+        frames.push({ width, height, slots: [] })
+    })
+    wrap('bufferSubData', (gl, [, , data]) => {
+        const frame = frames.at(-1)
+        if (!isPreview(gl) || !frame || !(data instanceof Float32Array)) return
+        for (let i = 5; i < data.length; i += 10) {
+            const slot = data[i]
+            if (slot !== undefined && !frame.slots.includes(slot)) frame.slots.push(slot)
+        }
+    })
     return {
         bytes: () => {
             let total = 0
@@ -87,5 +105,6 @@ export const installTextureAccount = (
             return total
         },
         calls,
+        frames,
     }
 }
