@@ -171,7 +171,7 @@
       "switched": "已切換到滑條音符生成工具"
     },
     "help": {
-      "title": "幫助"
+      "title": "說明"
     },
     "jumps": {
       "jumpDown": {
@@ -317,22 +317,22 @@
     },
     "scrolls": {
       "scrollLeft": {
-        "title": "向左滾動"
+        "title": "向左捲動"
       },
       "scrollRight": {
-        "title": "向右滾動"
+        "title": "向右捲動"
       },
       "scrollDown": {
-        "title": "向下滾動"
+        "title": "向下捲動"
       },
       "scrollUp": {
-        "title": "向上滾動"
+        "title": "向上捲動"
       },
       "scrollPageDown": {
-        "title": "向下捲動頁面"
+        "title": "向下翻頁"
       },
       "scrollPageUp": {
-        "title": "向上捲動頁面"
+        "title": "向上翻頁"
       }
     },
     "select": {
@@ -393,13 +393,13 @@
       }
     },
     "undo": {
-      "title": "撤銷",
-      "noState": "沒有可撤銷的操作",
-      "failed": "無法撤銷",
-      "undid": "已撤銷「{0}」"
+      "title": "復原",
+      "noState": "沒有可復原的操作",
+      "failed": "無法復原",
+      "undid": "已復原「{0}」"
     },
     "utilities": {
-      "title": "工具"
+      "title": "實用工具"
     },
     "visibilities": {
       "cycle": {
@@ -457,7 +457,7 @@
       }
     },
     "openContextMenu": {
-      "title": "開啟上下文選單"
+      "title": "開啟快顯選單"
     },
     "editorLayout": {
       "title": "編輯器配置",
@@ -625,7 +625,7 @@
   },
   "help": {
     "modal": {
-      "title": "幫助",
+      "title": "說明",
       "touchscreen": {
         "title": "觸控螢幕",
         "longPress": "長按物件即可開啟快顯選單。",
@@ -891,10 +891,10 @@
   },
   "settings": {
     "title": "設定",
-    "resetSettings": "重置設定…",
-    "resetSettingsTitle": "重置設定",
-    "resetKeybinds": "重置快捷鍵…",
-    "resetKeybindsTitle": "重置快捷鍵",
+    "resetSettings": "重設設定…",
+    "resetSettingsTitle": "重設設定",
+    "resetKeybinds": "重設快捷鍵…",
+    "resetKeybindsTitle": "重設快捷鍵",
     "resetSettingsMessage": "要將設定重設為預設值嗎？鍵盤快捷鍵會保留。",
     "resetSettingsMessageStatistics": "要將設定重設為預設值嗎？鍵盤快捷鍵和「傳送使用統計」設定會保留。",
     "resetKeybindsMessage": "要將鍵盤快捷鍵重設為預設值嗎？",
@@ -960,7 +960,7 @@
         "select": "選取",
         "selectContextMenu": "選取 + 快顯選單"
       },
-      "smoothScrolling": "平滑滾動"
+      "smoothScrolling": "平滑捲動"
     },
     "play": {
       "title": "播放",
@@ -1019,7 +1019,7 @@
       }
     },
     "touch": {
-      "title": "觸碰",
+      "title": "觸控",
       "quickScrollWidth": "快速捲動區寬度（px）",
       "showQuickScroll": {
         "title": "顯示快速捲動區",
@@ -1032,9 +1032,9 @@
         "left": "左邊",
         "right": "右邊"
       },
-      "scrollInertia": "滾動慣性",
+      "scrollInertia": "捲動慣性",
       "resizeHandles": "顯示調整大小把手",
-      "longPressContextMenu": "長按開啟右鍵選單"
+      "longPressContextMenu": "長按開啟快顯選單"
     },
     "panels": {
       "title": "面板",
@@ -1383,7 +1383,7 @@
     }
   },
   "utilities": {
-    "title": "工具",
+    "title": "實用工具",
     "coverEditor": {
       "title": "封面編輯器",
       "cover": "封面",
@@ -1397,12 +1397,12 @@
       "title": "預覽編輯器",
       "bgm": "BGM",
       "start": "開始（秒）",
-      "end": "結尾（秒）",
+      "end": "結束（秒）",
       "fadeStart": "淡入時長（秒）",
       "fadeEnd": "淡出時長（秒）",
-      "invalidRange": "結尾必須晚於開始",
+      "invalidRange": "結束必須晚於開始",
       "startPastEnd": "開始晚於音訊的結尾",
-      "invalidFades": "淡入與淡出時長之和不能超過開始到結尾的時長",
+      "invalidFades": "淡入與淡出時長之和不能超過開始到結束的時長",
       "generate": "產生",
       "loading": "正在載入檔案…",
       "decoding": "正在解碼音訊…",
@@ -1574,7 +1574,7 @@
       "deletedEvents": "已刪除{0}事件",
       "cutEvents": "已剪下{0}事件"
     },
-    "undidSteps": "已撤銷 {0} 步",
+    "undidSteps": "已復原 {0} 步",
     "redidSteps": "已重做 {0} 步",
     "dynamicStages": {
       "title": "動態舞台",
@@ -1940,7 +1940,7 @@
         "label": "假音符"
       },
       "isFromStart": {
-        "label": "從開始"
+        "label": "從開頭"
       },
       "isFullWidth": {
         "label": "全寬"
@@ -1949,7 +1949,7 @@
         "label": "遮罩音符"
       },
       "isUntilEnd": {
-        "label": "至結束"
+        "label": "至結尾"
       },
       "judgmentLineAlpha": {
         "label": "判定線不透明度"
@@ -2418,7 +2418,7 @@
     },
     "properties": {
       "sections": "屬性分區",
-      "selection": "選取",
+      "selection": "選取項目",
       "tool": "工具",
       "view": "檢視",
       "noTool": "目前的工具沒有設定。",
@@ -2781,7 +2781,7 @@
     "deleted": "已刪除「{0}」",
     "deleteRefused": "未刪除。「{0}」正在某個分頁或視窗中使用。",
     "deleteFailed": "無法刪除「{0}」。",
-    "undoLost": "已刪除「{0}」。此次刪除無法再撤銷。"
+    "undoLost": "已刪除「{0}」。此次刪除無法再復原。"
   },
   "prompt": {
     "title": "變更未存放",
