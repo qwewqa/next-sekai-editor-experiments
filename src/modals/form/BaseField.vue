@@ -365,8 +365,13 @@ const fitCoverage = (nextFrame = false, force = false) => {
     if (!force && fitFor === fitted) return
     let stackedHeight = 0
     let fits = true
+    // The line is measured beside an unstacked value, as a new selection would be; a stacked
+    // value turns the grid off.
+    let valueStacked = false
     coveragePending = [
         () => {
+            valueStacked = !!fieldRoot.value?.classList.contains('form-field-value-stacked')
+            fieldRoot.value?.classList.remove('form-field-value-stacked')
             element.classList.add('form-field-stacked')
         },
         () => {
@@ -389,6 +394,9 @@ const fitCoverage = (nextFrame = false, force = false) => {
             if (!fits) element.classList.add('form-field-stacked')
             fitted = fitFor
             place(fits ? 'beside' : 'under')
+            // Without a label fit to follow, the value goes back where it was.
+            if (valueStacked && !labelPending)
+                fieldRoot.value?.classList.add('form-field-value-stacked')
         },
     ]
     queueFieldFit(nextFrame)

@@ -3,18 +3,30 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 const selection = (page: Page) => page.locator('#properties-section-selection')
 
-const open = async (page: Page, locale: string, rightDockWidth: number) => {
+const open = async (
+    page: Page,
+    locale: string,
+    rightDockWidth: number,
+    // The first head's connector shows Fullscreen, the others Default.
+    mixedPresentation = false,
+) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
     await page.evaluate(
-        async ({ locale, rightDockWidth }) => {
+        async ({ locale, rightDockWidth, mixedPresentation }) => {
             const { history, store, nextTick, fixtures, settings } = window.editorTest
             const chart = structuredClone(fixtures.interaction)
             // Each head gets a tail, so connector fields show; Critical is mixed.
             chart.slides = chart.slides.map(([head], index) => [
-                { ...head!, isCritical: index === 0 },
+                {
+                    ...head!,
+                    isCritical: index === 0,
+                    ...(mixedPresentation && {
+                        connectorPresentation: index === 0 ? 'fullscreen' : 'default',
+                    }),
+                },
                 { ...head!, beat: head!.beat + 1 },
             ])
             history.resetState(false, chart, 0, { sourceName: 'stacking.json' })
@@ -31,7 +43,7 @@ const open = async (page: Page, locale: string, rightDockWidth: number) => {
             })
             await nextTick()
         },
-        { locale, rightDockWidth },
+        { locale, rightDockWidth, mixedPresentation },
     )
     await expect(selection(page).locator('.form-field').first()).toBeVisible()
     // Lets observers settle.
@@ -264,10 +276,10 @@ test('a field refits when only its mixed range changes', async ({ page }) => {
     await expect(beat).toHaveClass(/form-field-value-stacked/)
 })
 
-test('a label too long to sit beside its value stacks from the first selection through coverage changes and resizes', async ({
+test('a label too long to sit beside its value stacks from the first selection through coverage and value changes', async ({
     page,
 }) => {
-    await open(page, 'en', 260)
+    await open(page, 'en', 260, true)
     const presentation = field(page, 'Presentation')
     // Fitting sets the label's wrapping only while it measures; the last resort comes back.
     const label = () =>
@@ -286,35 +298,103 @@ test('a label too long to sit beside its value stacks from the first selection t
                   ? 'values'
                   : 'none',
         )
-    const expectStacked = async (stacked: boolean) => {
-        await expect(presentation).toHaveClass(
-            stacked ? /form-field-value-stacked/ : /^(?!.*form-field-value-stacked)/,
-        )
+    // "Presentation" does not fit beside its value at 260 px, whatever line it has.
+    const expectStacked = async (shown: string) => {
+        await expect.poll(line).toBe(shown)
+        await expect(presentation).toHaveClass(/form-field-value-stacked/)
         await expect.poll(label).toEqual({ inline: '', computed: 'anywhere', lines: 1 })
     }
-    const select = (filter: string) =>
+    const select = (filter: 'coverage' | 'values' | 'none') =>
         page.evaluate(async (filter) => {
             const { history, store, nextTick } = window.editorTest
             const notes = [...store.getAllEntities()].filter((entity) => entity.type === 'note')
+            const heads = notes.filter(
+                (note) =>
+                    !notes.some(
+                        (other) => other.slideId === note.slideId && other.beat < note.beat,
+                    ),
+            )
             const chosen = {
-                all: notes,
-                one: notes.slice(0, 1),
-                rest: notes.slice(1),
-            }[filter]!
+                // Every note but the Fullscreen head: Default on 3 of 7.
+                coverage: notes.filter((note) => note.connectorPresentation !== 'fullscreen'),
+                // Every note: Default and Fullscreen, on 4 of 8.
+                values: notes,
+                // The Default heads only.
+                none: heads.filter((note) => note.connectorPresentation === 'default'),
+            }[filter]
             history.replaceState({ ...history.state.value, selectedEntities: chosen })
             await nextTick()
         }, filter)
-    // "Presentation" does not fit beside its value at 260 px, whatever line it has.
-    const seen = new Set<string>()
-    for (const filter of ['all', 'one', 'rest', 'all']) {
-        await select(filter)
-        await expectStacked(true)
-        seen.add(await line())
+    // The first selection shows every note, with mixed values.
+    await expectStacked('values')
+    for (const shown of ['coverage', 'values', 'none', 'coverage', 'none', 'values'] as const) {
+        await select(shown)
+        await expectStacked(shown)
     }
-    expect(seen.size).toBeGreaterThan(1)
-    // A wider dock gives it room beside its value, and a narrow one takes it back.
-    await page.evaluate(() => (window.editorTest.settings.rightDockWidth = 480))
-    await expectStacked(false)
-    await page.evaluate(() => (window.editorTest.settings.rightDockWidth = 260))
-    await expectStacked(true)
 })
+
+// Every field's layout in the Selection section: stacked, or beside its value with its coverage
+// beside the label or under it.
+const layout = (page: Page) =>
+    selection(page)
+        .locator('.form-field')
+        .evaluateAll((fields) =>
+            fields.map((field) => [
+                field.querySelector('.form-field-text')?.textContent?.trim(),
+                field.classList.contains('form-field-value-stacked')
+                    ? 'stacked'
+                    : field
+                            .querySelector('.form-field-inline')
+                            ?.classList.contains('form-field-stacked')
+                      ? 'coverage under'
+                      : 'beside',
+            ]),
+        )
+const settle = (page: Page) =>
+    page.evaluate(async () => {
+        await window.editorTest.nextTick()
+        for (let i = 0; i < 4; i++) await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+const selectAll = (page: Page) =>
+    page.evaluate(async () => {
+        const { history, store, nextTick } = window.editorTest
+        history.replaceState({ ...history.state.value, selectedEntities: [] })
+        await nextTick()
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...store.getAllEntities()],
+        })
+        await nextTick()
+    })
+
+for (const [from, to] of [
+    [260, 380],
+    [380, 260],
+] as const)
+    test(`connectors selected at a ${from} px dock and kept at ${to} px lay out as if selected there`, async ({
+        page,
+    }) => {
+        await page.addInitScript(installCanvasCounters)
+        await page.goto('/')
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await page.evaluate(installEditorFixture)
+        await page.evaluate(async (from) => {
+            const { nextTick, fixtures, settings, show } = window.editorTest
+            Object.assign(settings, {
+                locale: 'en',
+                showSidebar: true,
+                rightDockWidth: from,
+                propertiesConnectorExpanded: true,
+            })
+            show(fixtures.connectors, 3)
+            await nextTick()
+        }, from)
+        await selectAll(page)
+        await settle(page)
+        await page.evaluate((to) => (window.editorTest.settings.rightDockWidth = to), to)
+        await settle(page)
+        const kept = await layout(page)
+        await selectAll(page)
+        await settle(page)
+        expect(kept).toEqual(await layout(page))
+    })
