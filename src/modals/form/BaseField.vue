@@ -193,24 +193,27 @@ let coveragePending: FitStage[] | undefined
 // Where the coverage line last left the label: no line, beside it, or under it.
 let placement = 'none'
 const queueFieldFit = (nextFrame: boolean) => {
-    let plan: FitStage[] = []
+    const plan: FitStage[] = []
+    // One stage per planned stage and one past them, where the label fit joins or the pass ends.
+    const stages: FitStage[] = []
     const stage = (index: number) => {
         if (index === 0) {
             // A stage that does nothing keeps the label's reads in step with other fields'.
-            plan = coveragePending ? [...coveragePending, () => undefined] : []
+            if (coveragePending) plan.push(...coveragePending, () => undefined)
             coveragePending = undefined
         }
         if (index === plan.length && labelPending) {
             labelPending = false
             plan.push(...labelStages())
         }
+        while (stages.length <= plan.length) {
+            const next = stages.length
+            stages.push(() => stage(next))
+        }
         return index < plan.length ? plan[index]?.() : false
     }
-    queueFit(
-        fieldFitOwner,
-        Array.from({ length: 13 }, (_, index) => () => stage(index)),
-        nextFrame,
-    )
+    stages.push(() => stage(0))
+    queueFit(fieldFitOwner, stages, nextFrame)
 }
 const fitLabel = (nextFrame = false) => {
     labelPending = true

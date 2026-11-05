@@ -1,7 +1,7 @@
 /**
- * A fit's stages alternate reads and writes; returning false ends that fit. Every
- * queued fit runs each stage before any runs the next, so layout is forced once per
- * stage however many fields fit.
+ * A fit's stages alternate reads and writes; returning false ends that fit, and a stage
+ * may add stages to the end of its fit's list. Every queued fit runs each stage before any
+ * runs the next, so layout is forced once per stage however many fields fit.
  */
 export type FitStage = () => unknown
 
