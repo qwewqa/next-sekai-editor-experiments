@@ -1,5 +1,4 @@
 import backgroundUrl from '../bg.png'
-import { TARGET_ASPECT_RATIO } from '../engine/layout'
 import { loadParticleFromScp } from '../particle'
 import { loadPreviewResource } from '../resource'
 import { loadSkinFromScp } from '../skin'
@@ -38,6 +37,6 @@ export default {
     skin: ({ signal }) => loadPreviewResource(resourceUrl('skin'), loadSkinFromScp, signal),
     particle: ({ signal }) =>
         loadPreviewResource(resourceUrl('particle'), loadParticleFromScp, signal),
-    background: ({ signal }) => syntheticBackground(backgroundUrl, TARGET_ASPECT_RATIO, signal),
+    background: ({ signal }) => syntheticBackground(backgroundUrl, signal),
     effect: (context) => loadEffectPackage(resourceUrl('effect'), context),
 } satisfies AssetDefaults

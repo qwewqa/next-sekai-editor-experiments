@@ -124,16 +124,135 @@ const engineCases = [
     },
 ]
 
+// Generated in engine bfe6144 by compiling a preprocess probe that calls the same functions,
+// with get_camera_info and the field size of init_layout, and running it in the engine tests'
+// numeric interpreter at double precision, with a cover-fitted square image (as the Default and
+// Built-in backgrounds are) and default options. The same probe gives the 16:9 cases above exactly.
+const squareCases = [
+    {
+        aspect: 16 / 9,
+        camera: camera(),
+        corners: [
+            [-2.010972930839002, -2.010972930839002],
+            [-2.010972930839002, 2.010972930839002],
+            [2.010972930839002, 2.010972930839002],
+            [2.010972930839002, -2.010972930839002],
+        ],
+    },
+    {
+        aspect: 16 / 9,
+        camera: camera({ zoom: 0.5 }),
+        corners: [
+            [-1.005486465419501, -1.2967077664399091],
+            [-1.005486465419501, 0.7142651643990929],
+            [1.005486465419501, 0.7142651643990929],
+            [1.005486465419501, -1.2967077664399091],
+        ],
+    },
+    {
+        aspect: 16 / 9,
+        camera: camera({ rotate: Math.PI / 4 }),
+        corners: [
+            [-3.21439996719378, 0],
+            [0, 3.21439996719378],
+            [3.21439996719378, 0],
+            [0, -3.21439996719378],
+        ],
+    },
+    {
+        aspect: 16 / 9,
+        camera: camera({ stageTilt: 0 }),
+        corners: [
+            [-2.010972930839002, -2.010972930839002],
+            [-2.010972930839002, 2.010972930839002],
+            [2.010972930839002, 2.010972930839002],
+            [2.010972930839002, -2.010972930839002],
+        ],
+    },
+    {
+        aspect: 16 / 9,
+        camera: camera({
+            lane: 1.5,
+            size: 4,
+            zoom: 1.3,
+            zoomTargetLane: -0.75,
+            zoomTargetY: 0.35,
+            rotate: 0.4,
+            stageTilt: 0.5,
+        }),
+        corners: [
+            [-3.6889609703184427, -2.4453959061979624],
+            [-1.4006828383259018, 2.9668908348760104],
+            [4.011603902748071, 0.6786127028834699],
+            [1.7233257707555296, -4.733674038190503],
+        ],
+    },
+    {
+        aspect: 21 / 9,
+        camera: camera({
+            zoom: 0.8,
+            zoomTargetY: 0.5,
+            zoomVerticalAlign: 1,
+            rotate: -0.7,
+            stageTilt: 0,
+        }),
+        corners: [
+            [-0.167368678885925, -3.2433420653140432],
+            [-3.0243825793270336, 0.14862435225704917],
+            [0.3675838382440586, 3.0056382526981578],
+            [3.2245977386851674, -0.38632816487293486],
+        ],
+    },
+    {
+        aspect: 4 / 3,
+        camera: camera({ lane: -1, size: 5, zoom: 1.5, zoomTargetLane: 1, rotate: 2.2 }),
+        corners: [
+            [-0.2458461783507646, 3.9849759865819294],
+            [4.220845086683044, 0.7336902820463098],
+            [0.9695593821474251, -3.7330009829874986],
+            [-3.4971318828863835, -0.4817152784518792],
+        ],
+    },
+    {
+        aspect: 4 / 3,
+        camera: camera({
+            lane: 2,
+            size: 3,
+            zoom: 1.1,
+            zoomTargetLane: 0.5,
+            zoomTargetY: 0.7,
+            zoomVerticalAlign: 1,
+            rotate: -0.03,
+            stageTilt: 0.02,
+        }),
+        corners: [
+            [-1.370105305925462, -2.1546392329131883],
+            [-1.4715733501803567, 1.2266141675880382],
+            [1.9096800503208695, 1.328082211842933],
+            [2.011148094575764, -2.0531711886582937],
+        ],
+    },
+]
+
 test('background corners match the game engine reference', () => {
-    for (const fixture of engineCases) {
-        const viewport = createViewport(fixture.aspect * 900, 900)
-        const cameras = [fixture.camera]
-        const quad = layoutBackground(viewport, cameras, getCameraInfo(viewport, cameras, 0))
-        for (const [index, corner] of (['bl', 'tl', 'tr', 'br'] as const).entries()) {
-            close(quad[corner].x, fixture.corners[index]![0]!)
-            close(quad[corner].y, fixture.corners[index]![1]!)
+    for (const [imageAspectRatio, fixtures] of [
+        [16 / 9, engineCases],
+        [1, squareCases],
+    ] as const)
+        for (const fixture of fixtures) {
+            const viewport = createViewport(fixture.aspect * 900, 900)
+            const cameras = [fixture.camera]
+            const quad = layoutBackground(
+                viewport,
+                cameras,
+                getCameraInfo(viewport, cameras, 0),
+                imageAspectRatio,
+            )
+            for (const [index, corner] of (['bl', 'tl', 'tr', 'br'] as const).entries()) {
+                close(quad[corner].x, fixture.corners[index]![0]!)
+                close(quad[corner].y, fixture.corners[index]![1]!)
+            }
         }
-    }
 })
 
 test('rotation overscan accounts for the whole chart and stays fixed while seeking', () => {
@@ -188,7 +307,7 @@ test("a background's aspect ratio and fit place its image before camera motion",
     // A 21:9 image on 16:9: contain is as wide as the screen.
     close(place('contain', 21 / 9).width, 16 / 9)
     close(place('contain', 21 / 9).height, 16 / 9 / (21 / 9))
-    // The defaults are the bundled 16:9 cover.
+    // The defaults, used before a background has loaded, are a 16:9 cover.
     const plain = half(layoutBackground(screen, [], defaultCameraInfo()))
     close(plain.width, place('cover', 16 / 9).width)
     close(plain.height, place('cover', 16 / 9).height)

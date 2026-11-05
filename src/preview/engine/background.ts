@@ -33,8 +33,8 @@ const rotationLimit = (cameras: readonly CameraChange[]) => {
 }
 
 // Matches sekai/lib/layout.py: background_camera_zoom and apply_camera_zoom.
-// The default background is 16:9, covered; fit the complete image before camera motion
-// so wider/taller viewports retain the same crop and rotation coverage as game.
+// The image is fitted by its aspect ratio and fit before camera motion, as Sonolus fits it
+// for background(), so wider/taller viewports retain the same crop and rotation coverage as game.
 export const layoutBackground = (
     viewport: PreviewViewport,
     cameras: readonly CameraChange[],
